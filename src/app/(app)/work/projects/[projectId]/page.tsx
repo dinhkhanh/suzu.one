@@ -6,8 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
+import { getDaysOff } from "@/modules/attendance/service";
+import { isMonthKey, monthGrid } from "@/modules/work/engine/calendar";
 import { FILTER_KEYS, GROUPINGS, type Grouping, type TaskFilters } from "@/modules/work/engine/filter";
-import { canContributeToProject, canManageProject, canViewProject, findProject, listAssignable, listClients, listLabels, listProjectMembers, listProjectTasks, listSavedViews, listStates, loadViewer, projectFacts } from "@/modules/work/service";
+import { canContributeToProject, canManageProject, canViewProject, findProject, listAssignable, listClients, listLabels, listProjectMembers, listProjectTasks, listSavedViews, listStates, loadViewer, projectFacts, withEditable } from "@/modules/work/service";
+import { BoardView } from "@/modules/work/ui/board-view";
+import { CalendarView } from "@/modules/work/ui/calendar-view";
+import { ViewTabs, WORK_VIEWS, type WorkView } from "@/modules/work/ui/filter-bar";
 import { ProjectForm } from "@/modules/work/ui/project-forms";
 import { TaskListView } from "@/modules/work/ui/task-list-view";
 import { MemberManager } from "@/modules/work/ui/team-forms";
@@ -41,6 +46,12 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const filters: TaskFilters = Object.fromEntries(FILTER_KEYS.flatMap((key) => (typeof query[key] === "string" ? [[key, query[key]]] : [])));
   const grouping = GROUPINGS.includes(query.group as Grouping) ? (query.group as Grouping) : "none";
   const clientName = clients.find((client) => client.id === project.clientId)?.name;
+  const view: WorkView = WORK_VIEWS.includes(query.view as WorkView) ? (query.view as WorkView) : "list";
+  const options = { states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })), people: assignable, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })) };
+  const canContribute = canContributeToProject(viewer, facts) && project.status !== "archived";
+  const month = isMonthKey(query.month) ? query.month : today.slice(0, 7);
+  const grid = monthGrid(month);
+  const [calendarTasks, daysOff] = view === "calendar" ? await Promise.all([withEditable(viewer, tasks), getDaysOff(project.entityId ?? team.entityId, grid.from, grid.to)]) : [[], []];
 
   return (
     <div className="flex max-w-6xl flex-col gap-6">
@@ -62,17 +73,33 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
         <p className="text-sm text-muted-foreground">{[clientName, project.description].filter(Boolean).join(" · ")}</p>
       </header>
 
-      <TaskListView
-        tasks={tasks}
-        options={{ states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })), people: assignable, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })) }}
-        scope={{ teamId: team.id, projectId: project.id }}
-        initialFilters={filters}
-        initialGrouping={grouping}
-        selfId={user.person.id}
-        today={today}
-        canContribute={canContributeToProject(viewer, facts) && project.status !== "archived"}
-        savedViews={views.map((view) => ({ id: view.id, name: view.name, isShared: view.isShared, mine: view.ownerPersonId === user.person.id, canDelete: view.ownerPersonId === user.person.id || manage, filters: view.filters }))}
-      />
+      <ViewTabs current={view} />
+      {view === "board" ? (
+        <BoardView tasks={tasks} options={options} initialFilters={filters} selfId={user.person.id} today={today} canContribute={canContribute} />
+      ) : view === "calendar" ? (
+        <CalendarView
+          tasks={calendarTasks.map((task) => ({ ...task, editable: task.editable && project.status !== "archived" }))}
+          options={options}
+          month={month}
+          daysOff={daysOff.map(({ date, name }) => ({ date, name }))}
+          initialFilters={filters}
+          initialExtra={{ channel: typeof query.channel === "string" ? query.channel : undefined }}
+          selfId={user.person.id}
+          today={today}
+        />
+      ) : (
+        <TaskListView
+          tasks={tasks}
+          options={options}
+          scope={{ teamId: team.id, projectId: project.id }}
+          initialFilters={filters}
+          initialGrouping={grouping}
+          selfId={user.person.id}
+          today={today}
+          canContribute={canContribute}
+          savedViews={views.map((view) => ({ id: view.id, name: view.name, isShared: view.isShared, mine: view.ownerPersonId === user.person.id, canDelete: view.ownerPersonId === user.person.id || manage, filters: view.filters }))}
+        />
+      )}
 
       <details className="rounded-xl border p-4">
         <summary className="cursor-pointer text-sm font-medium">{t("projects.membersAndSettings", { count: members.length })}</summary>

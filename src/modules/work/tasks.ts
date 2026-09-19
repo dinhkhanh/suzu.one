@@ -54,7 +54,8 @@ export async function loadTask(taskId: string, executor: Executor = db()): Promi
 
 type ActivityEntry = { type: string; field?: string | null; from?: unknown; to?: unknown };
 
-async function logActivity(tx: Executor, taskId: string, actorPersonId: string | null, entries: ActivityEntry[]): Promise<void> {
+export type { ActivityEntry };
+export async function logActivity(tx: Executor, taskId: string, actorPersonId: string | null, entries: ActivityEntry[]): Promise<void> {
   if (entries.length === 0) return;
   await tx.insert(schema.workActivity).values(entries.map((entry) => ({ taskId, actorPersonId, type: entry.type, field: entry.field ?? null, fromValue: entry.from ?? null, toValue: entry.to ?? null })));
 }
@@ -453,7 +454,7 @@ export type TaskListItem = {
   updatedAt: string;
 };
 
-async function listItems(where: SQL | undefined, executor: Executor, limit = 2000): Promise<TaskListItem[]> {
+export async function listItems(where: SQL | undefined, executor: Executor, limit = 2000): Promise<TaskListItem[]> {
   const assignee = alias(schema.person, "assignee");
   const rows = await executor
     .select({ task: schema.task, work: schema.workTask, teamKey: schema.workTeam.key, assigneeName: assignee.fullName })

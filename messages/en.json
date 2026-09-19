@@ -2793,6 +2793,31 @@
       "dependency_not_found": "That link no longer exists.",
       "view_limit": "You already keep 30 saved filters here. Delete one first.",
       "view_not_found": "That saved filter no longer exists."
+    },
+    "views": {
+      "list": "List",
+      "board": "Board",
+      "calendar": "Calendar"
+    },
+    "board": {
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "moveTo": "Move to column",
+      "emptyColumn": "Nothing here"
+    },
+    "calendar": {
+      "title": "Content calendar",
+      "description": "Every dated task you can see, on its due date. Filter by client or channel to get one brand's calendar.",
+      "previous": "Previous month",
+      "next": "Next month",
+      "today": "This month",
+      "team": "Team",
+      "anyTeam": "Every team",
+      "channel": "Channel",
+      "anyChannel": "Every channel",
+      "more": "+{count} more",
+      "less": "Show fewer",
+      "hint": "Drag a task to another day to change its due date."
     }
   }
 }

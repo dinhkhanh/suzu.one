@@ -50,6 +50,9 @@ export default async function WorkPage() {
           <Link href="/tasks" className="underline">
             {t("myWork")}
           </Link>
+          <Link href="/work/calendar" className="underline">
+            {t("calendar.title")}
+          </Link>
           {viewer.principal.workforceType === "collaborator" ? null : (
             <Link href="/work/clients" className="underline">
               {t("clients.title")}

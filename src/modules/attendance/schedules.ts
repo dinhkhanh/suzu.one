@@ -84,6 +84,24 @@ export async function listCalendarDays(year: number): Promise<CalendarDayView[]>
   return rows.map(({ row, entityName }) => ({ ...row, entityName }));
 }
 
+export type DayOff = { date: IsoDate; kind: CalendarDayKind; name: string };
+
+/**
+ * The days off of an entity (null = the group's own rows only) in a range, for other modules: the
+ * work calendar shades them, the ops tracker shifts due dates past them. An entity's row beats the
+ * group's row for the same date; a working override removes the date.
+ */
+export async function getDaysOff(entityId: string | null, from: IsoDate, to: IsoDate, executor: Executor = db()): Promise<DayOff[]> {
+  const rows = await executor
+    .select()
+    .from(schema.calendarDay)
+    .where(and(between(schema.calendarDay.date, from, to), entityId ? or(isNull(schema.calendarDay.entityId), eq(schema.calendarDay.entityId, entityId)) : isNull(schema.calendarDay.entityId)))
+    .orderBy(asc(schema.calendarDay.date));
+  const byDate = new Map<IsoDate, (typeof rows)[number]>();
+  for (const row of rows) if (!byDate.has(row.date) || row.entityId) byDate.set(row.date, row);
+  return [...byDate.values()].filter((row) => row.kind !== "working_override").map((row) => ({ date: row.date, kind: row.kind, name: row.name }));
+}
+
 export async function getCalendarDay(id: string): Promise<CalendarDayRow | null> {
   const [row] = await db().select().from(schema.calendarDay).where(eq(schema.calendarDay.id, id)).limit(1);
   return row ?? null;

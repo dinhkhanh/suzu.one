@@ -2793,6 +2793,31 @@
       "dependency_not_found": "Liên kết này không còn tồn tại.",
       "view_limit": "Bạn đã lưu 30 bộ lọc ở đây. Hãy xóa bớt trước.",
       "view_not_found": "Bộ lọc đã lưu này không còn tồn tại."
+    },
+    "views": {
+      "list": "Danh sách",
+      "board": "Bảng",
+      "calendar": "Lịch"
+    },
+    "board": {
+      "moveUp": "Chuyển lên",
+      "moveDown": "Chuyển xuống",
+      "moveTo": "Chuyển sang cột",
+      "emptyColumn": "Chưa có gì"
+    },
+    "calendar": {
+      "title": "Lịch nội dung",
+      "description": "Mọi công việc có hạn mà bạn được xem, đặt theo ngày đến hạn. Lọc theo khách hàng hoặc kênh để có lịch nội dung của một thương hiệu.",
+      "previous": "Tháng trước",
+      "next": "Tháng sau",
+      "today": "Tháng này",
+      "team": "Nhóm",
+      "anyTeam": "Mọi nhóm",
+      "channel": "Kênh",
+      "anyChannel": "Mọi kênh",
+      "more": "+{count} việc nữa",
+      "less": "Thu gọn",
+      "hint": "Kéo công việc sang ngày khác để đổi hạn."
     }
   }
 }
