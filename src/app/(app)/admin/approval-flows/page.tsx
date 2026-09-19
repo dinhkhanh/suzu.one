@@ -31,8 +31,8 @@ export default async function ApprovalFlowsPage() {
   };
   const describe = (flow: FlowDefinition) =>
     flow.steps
-      .map((step) => `${step.parallel ? "‖ " : ""}${step.approvers.map((rule) => t(`flows.rules.${rule.rule}` as "flows.rules.line_manager")).join(" + ")}${step.condition ? ` (${step.condition.field} ${t(`flows.ops.${step.condition.op}` as "flows.ops.eq")} ${String(step.condition.value)})` : ""}`)
-      .join(" → ");
+      .map((step, index) => `${index === 0 ? "" : step.parallel ? " ‖ " : " → "}${step.approvers.map((rule) => t(`flows.rules.${rule.rule}` as "flows.rules.line_manager")).join(" + ")}${step.condition ? ` (${step.condition.field} ${t(`flows.ops.${step.condition.op}` as "flows.ops.eq")} ${String(step.condition.value)})` : ""}`)
+      .join("");
 
   return (
     <div className="flex max-w-4xl flex-col gap-8">
