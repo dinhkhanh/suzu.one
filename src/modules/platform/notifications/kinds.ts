@@ -1,7 +1,7 @@
 // The catalogue of notifications. Plain module: shared by the server and the preferences screen.
 // Wording lives in messages/*.json under `notifications.kinds.<kind>` (dots become underscores).
 
-export const CATEGORIES = ["security", "system", "hr"] as const;
+export const CATEGORIES = ["security", "system", "hr", "approvals"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const EMAIL_CHANNELS = ["instant", "digest", "off"] as const;
@@ -14,6 +14,8 @@ export const CATEGORY_DEFINITIONS: Record<Category, { defaults: ChannelChoice; /
   system: { defaults: { inApp: true, email: "instant" }, mandatory: false },
   // Deadlines HR and managers act on: contracts running out, probation ending, documents expiring.
   hr: { defaults: { inApp: true, email: "digest" }, mandatory: false },
+  // A request waits for you, or yours was answered: worth an email straight away.
+  approvals: { defaults: { inApp: true, email: "instant" }, mandatory: false },
 };
 
 export const KINDS = {
@@ -25,6 +27,8 @@ export const KINDS = {
   "hr.contract_expiring": "hr",
   "hr.probation_ending": "hr",
   "hr.document_expiring": "hr",
+  "approvals.requested": "approvals",
+  "approvals.decided": "approvals",
 } as const satisfies Record<string, Category>;
 export type Kind = keyof typeof KINDS;
 
@@ -43,6 +47,8 @@ export function effectiveChoice(category: Category, stored: ChannelChoice | unde
 export function resolveParams(params: Record<string, string | number>, lookup: (key: string) => string): Record<string, string | number> {
   const resolved = { ...params };
   if (typeof params.role === "string") resolved.role = lookup(`roles.${params.role}`);
+  if (typeof params.requestType === "string") resolved.requestType = lookup(`approvals.types.${params.requestType}`);
+  if (typeof params.outcome === "string") resolved.outcome = lookup(`approvals.status.${params.outcome}`);
   if (typeof params.scopeType === "string") {
     const scopeType = lookup(`rbac.scope.${params.scopeType}`);
     resolved.scope = params.scopeName ? `${scopeType}: ${params.scopeName}` : scopeType;

@@ -3,9 +3,12 @@ import { and, asc, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
-import { db, schema } from "@/lib/db";
+import { db, schema, type Tx } from "@/lib/db";
+
+// Reads that also run inside someone else's transaction (approver resolution) take the executor.
+type Executor = Tx | ReturnType<typeof db>;
 import { notify } from "../notifications/service";
-import { can, type Grant, type Scope, type Target } from "./policy";
+import { can, type Grant, type Scope, scopeCovers, type Target } from "./policy";
 import { type Permission, ROLE_DEFINITIONS, ROLES, type Role } from "./roles";
 
 export type RoleAssignmentRow = typeof schema.roleAssignment.$inferSelect;
@@ -166,9 +169,9 @@ async function describeGrant(grant: RoleAssignmentRow, actorPersonId: string) {
 }
 
 /** Who to tell when the system itself needs attention. */
-export async function listOwnerPersonIds(): Promise<string[]> {
+export async function listOwnerPersonIds(executor: Executor = db()): Promise<string[]> {
   const today = todayInVietnam();
-  const rows = await db()
+  const rows = await executor
     .select({ personId: schema.roleAssignment.personId })
     .from(schema.roleAssignment)
     .where(and(eq(schema.roleAssignment.role, "owner"), eq(schema.roleAssignment.scopeType, "group"), lte(schema.roleAssignment.validFrom, today), notEnded(today)));
@@ -179,9 +182,9 @@ export async function listOwnerPersonIds(): Promise<string[]> {
  * Who holds `permission` over `target` today — e.g. the HR people to warn about someone's contract.
  * Reads every grant in force: fine for a company-sized table, and it keeps `can()` the one rule.
  */
-export async function listPeopleHolding(permission: Exclude<Permission, "*">, target: Target, options: { today?: IsoDate; /** false = only roles that name the permission: routine notices skip the owners, whose "*" covers everything. */ includeWildcard?: boolean } = {}): Promise<string[]> {
-  const { today = todayInVietnam(), includeWildcard = true } = options;
-  const rows = await db()
+export async function listPeopleHolding(permission: Exclude<Permission, "*">, target: Target, options: { today?: IsoDate; /** false = only roles that name the permission: routine notices skip the owners, whose "*" covers everything. */ includeWildcard?: boolean; executor?: Executor } = {}): Promise<string[]> {
+  const { today = todayInVietnam(), includeWildcard = true, executor = db() } = options;
+  const rows = await executor
     .select()
     .from(schema.roleAssignment)
     .where(and(lte(schema.roleAssignment.validFrom, today), notEnded(today)));
@@ -193,4 +196,17 @@ export async function listPeopleHolding(permission: Exclude<Permission, "*">, ta
     grantsByPerson.set(row.personId, [...(grantsByPerson.get(row.personId) ?? []), { role: row.role as Role, scope }]);
   }
   return [...grantsByPerson].filter(([personId, grants]) => can({ personId, workforceType: null, grants }, permission, target)).map(([personId]) => personId);
+}
+
+/** Who holds `role` with a scope that covers `target` today — for approval steps that name a role (FR-PLT-20). */
+export async function listPeopleWithRole(role: Role, target: Target, executor: Executor = db()): Promise<string[]> {
+  const today = todayInVietnam();
+  const rows = await executor
+    .select()
+    .from(schema.roleAssignment)
+    .where(and(eq(schema.roleAssignment.role, role), lte(schema.roleAssignment.validFrom, today), notEnded(today)));
+  return [...new Set(rows.filter((row) => {
+    const scope = toScope(row.scopeType, row.scopeId);
+    return !!scope && scopeCovers(scope, target);
+  }).map((row) => row.personId))];
 }

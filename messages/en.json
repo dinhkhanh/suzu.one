@@ -1,5 +1,8 @@
 {
-  "app": { "name": "Suzu One", "tagline": "Suzu Group's internal operations platform" },
+  "app": {
+    "name": "Suzu One",
+    "tagline": "Suzu Group's internal operations platform"
+  },
   "signIn": {
     "title": "Sign in",
     "subtitle": "Use your company Google Workspace account (suzu.vn or suzu.group).",
@@ -32,7 +35,9 @@
     "notifications": "Notifications",
     "jobs": "Scheduled jobs",
     "rules": "Statutory parameters",
-    "flags": "Rollout"
+    "flags": "Rollout",
+    "me": "My profile",
+    "approvals": "Approvals"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -120,7 +125,8 @@
       "employment": "Employment",
       "placement": "Position and reporting line",
       "personal": "Personal details",
-      "history": "Assignment history"
+      "history": "Assignment history",
+      "changeRequests": "Change requests waiting for HR"
     },
     "hire": {
       "title": "Add person",
@@ -517,7 +523,8 @@
       "category": {
         "security": "Security & access",
         "system": "System",
-        "hr": "HR deadlines"
+        "hr": "HR deadlines",
+        "approvals": "Approvals"
       }
     },
     "kinds": {
@@ -552,6 +559,14 @@
       "hr_document_expiring": {
         "title": "A document of {person} {days, plural, =0 {expires today} one {expires in # day} other {expires in # days}}",
         "body": "\"{label}\" in the document vault of {person} expires on {date}."
+      },
+      "approvals_requested": {
+        "title": "{requester} sent a request: {requestType}",
+        "body": "{requester} sent a request ({requestType}) that is waiting for your approval."
+      },
+      "approvals_decided": {
+        "title": "Your request ({requestType}): {outcome}",
+        "body": "{approver} answered your request ({requestType}): {outcome}."
       }
     },
     "errors": {
@@ -700,5 +715,144 @@
     "notFoundTitle": "Page not found",
     "notFoundDescription": "This page does not exist, or you do not have access to it.",
     "home": "Back to home"
+  },
+  "approvals": {
+    "title": "Approvals",
+    "description": "Requests waiting for your answer, and the requests you have sent.",
+    "inbox": "Waiting for me ({count})",
+    "inboxEmpty": "Nothing is waiting for you.",
+    "mine": "My requests",
+    "mineEmpty": "You have not sent any requests.",
+    "withdraw": "Withdraw request",
+    "withdrawConfirm": "Withdraw this request?",
+    "columns": {
+      "request": "Request",
+      "requester": "From",
+      "submitted": "Sent",
+      "status": "Status"
+    },
+    "types": {
+      "profile_change": "Personal data change"
+    },
+    "status": {
+      "pending": "Waiting for approval",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "returned": "Returned for changes",
+      "withdrawn": "Withdrawn",
+      "cancelled": "Cancelled"
+    },
+    "assignee": {
+      "pending": "waiting",
+      "approved": "approved",
+      "rejected": "rejected",
+      "returned": "returned"
+    },
+    "events": {
+      "submitted": "Sent",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "returned": "Returned for changes",
+      "resubmitted": "Sent again",
+      "commented": "Comment",
+      "withdrawn": "Withdrawn",
+      "delegated": "Delegated",
+      "cancelled": "Cancelled"
+    },
+    "history": {
+      "title": "History",
+      "step": "Step {number} ({mode, select, all {everyone must approve} other {any one approver}}):",
+      "verified": "Verified through a second channel"
+    },
+    "decide": {
+      "title": "Your decision",
+      "comment": "Comment",
+      "commentHint": "Required when you return or reject",
+      "approve": "Approve",
+      "return": "Return for changes",
+      "reject": "Reject"
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "forbidden": "You may not decide this request.",
+      "invalid": "Please check the form.",
+      "approval_not_found": "The request was not found.",
+      "approval_not_pending": "This request is no longer waiting for an answer.",
+      "approval_not_assignee": "This request is not waiting for your answer.",
+      "approval_not_requester": "Only the person who sent the request can do this.",
+      "approval_own_request": "You cannot decide your own request.",
+      "approval_comment_required": "Please say why in the comment.",
+      "approval_no_approver": "Nobody is available to approve this request. Please contact HR.",
+      "change_request_verification_required": "Confirm that you verified the new bank account with the employee through a second channel."
+    }
+  },
+  "changeRequests": {
+    "title": "Request a change to my data",
+    "description": "You cannot edit your record directly: send a request and HR will review it. Name, date of birth and work email are corrected by HR.",
+    "oneAtATime": "You have a request in progress. Wait for HR's answer or withdraw it before sending another.",
+    "none": "No change requests yet.",
+    "fields": {
+      "phone": "Phone",
+      "personalEmail": "Personal email",
+      "permanentAddress": "Permanent address",
+      "currentAddress": "Current address",
+      "maritalStatus": "Marital status",
+      "nationalId": "Citizen ID (CCCD)",
+      "nationalIdIssuedOn": "ID issue date",
+      "nationalIdIssuedAt": "ID issued by",
+      "taxCode": "Personal tax code",
+      "socialInsuranceNumber": "Social insurance number",
+      "bankAccount": "Bank account for pay"
+    },
+    "bank": {
+      "bankName": "Bank",
+      "accountNumber": "Account number",
+      "accountHolder": "Account holder",
+      "branch": "Branch"
+    },
+    "maritalStatus": {
+      "single": "Single",
+      "married": "Married",
+      "divorced": "Divorced",
+      "widowed": "Widowed"
+    },
+    "form": {
+      "title": "New change request",
+      "resubmitTitle": "Correct and send again",
+      "hint": "Change the fields that are wrong and leave the rest as they are.",
+      "restricted": "Identity and tax details",
+      "restrictedHint": "Leave a field empty to keep what is on file. These values are stored encrypted and only HR sees them.",
+      "bankHint": "Fill in only to change the account your pay goes to. HR will contact you to confirm before approving.",
+      "submit": "Send to HR",
+      "resubmit": "Send again",
+      "sending": "Sending…",
+      "sent": "Sent. HR has been notified."
+    },
+    "detail": {
+      "title": "Personal data change",
+      "personal": "Personal details",
+      "restricted": "Restricted details (new values)",
+      "field": "Field",
+      "from": "On file",
+      "to": "Requested",
+      "currentValues": "Current values are on the person's page (viewing them is audited):",
+      "verify": "I have confirmed this bank account with the employee through a second channel (phone call or in person), not through this app or email."
+    },
+    "reveal": {
+      "show": "Show values",
+      "hide": "Hide",
+      "audited": "Every viewing is written to the audit log."
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "invalid": "Please check the fields.",
+      "forbidden": "You may not do this.",
+      "change_request_empty": "Nothing was changed.",
+      "change_request_open": "You already have a request in progress.",
+      "change_request_bank_incomplete": "A bank account needs at least the bank and the account number.",
+      "approval_no_approver": "Nobody is available to approve this request. Please contact HR.",
+      "approval_not_pending": "This request can no longer be changed.",
+      "approval_not_requester": "Only the person who sent the request can do this."
+    }
   }
 }

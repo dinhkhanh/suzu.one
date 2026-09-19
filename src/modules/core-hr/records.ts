@@ -10,7 +10,7 @@ import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { fieldBlindIndex, fieldCipher } from "@/lib/crypto";
 import type { IsoDate } from "@/lib/dates";
-import { db, schema } from "@/lib/db";
+import { db, schema, type Tx } from "@/lib/db";
 import { beginUpload, completeUpload, createDownloadLink, findFile, softDeleteFile, type StoredFileRow } from "@/modules/platform/files/service";
 import { canReadTier, type Principal } from "@/modules/platform/rbac/policy";
 import type { Tier } from "@/modules/platform/rbac/roles";
@@ -64,10 +64,10 @@ export async function getSensitiveFields(principal: Principal, personId: string)
 }
 
 /** Replaces the restricted fields. Returns only the *names* of what changed: values never reach the audit log. */
-export async function updateSensitiveFields(personId: string, input: SensitiveFields): Promise<{ changed: string[]; entityId: string | null }> {
-  const target = await getPersonTarget(personId);
+export async function updateSensitiveFields(personId: string, input: SensitiveFields, executor: Tx | ReturnType<typeof db> = db()): Promise<{ changed: string[]; entityId: string | null }> {
+  const target = await getPersonTarget(personId, executor);
   if (!target) throw new ActionError("person_not_found");
-  const [before] = await db().select().from(schema.personSensitive).where(eq(schema.personSensitive.personId, personId)).limit(1);
+  const [before] = await executor.select().from(schema.personSensitive).where(eq(schema.personSensitive.personId, personId)).limit(1);
 
   const accounts = input.bankAccounts.length ? JSON.stringify(input.bankAccounts) : null;
   const plain: Record<string, string | null> = { ...Object.fromEntries(SENSITIVE_TEXT_FIELDS.map((field) => [field, input[field]])), bankAccounts: accounts };
@@ -82,12 +82,26 @@ export async function updateSensitiveFields(personId: string, input: SensitiveFi
   }
   if (changed.includes("nationalId")) values.nationalIdIndex = input.nationalId ? fieldBlindIndex(normalizeIdNumber(input.nationalId), NATIONAL_ID_INDEX_CONTEXT) : null;
   if (changed.length) {
-    await db()
+    await executor
       .insert(schema.personSensitive)
       .values({ personId, ...values })
       .onConflictDoUpdate({ target: schema.personSensitive.personId, set: { ...values, updatedAt: new Date() } });
   }
   return { changed, entityId: target.entityId ?? null };
+}
+
+/**
+ * Changes some restricted fields and leaves the rest as they are — what an approved change request
+ * does. A new bank account becomes the first one (the one pay goes to); the others are kept.
+ */
+export async function patchSensitiveFields(executor: Tx | ReturnType<typeof db>, personId: string, patch: Partial<Record<SensitiveTextField, string | null>> & { bankAccount?: BankAccount | null }) {
+  const [row] = await executor.select().from(schema.personSensitive).where(eq(schema.personSensitive.personId, personId)).limit(1);
+  const current = Object.fromEntries(SENSITIVE_TEXT_FIELDS.map((field) => [field, unseal(row?.[field] ?? null, sensitiveContext(field, personId))])) as Record<SensitiveTextField, string | null>;
+  const stored = unseal(row?.bankAccounts ?? null, sensitiveContext("bankAccounts", personId));
+  const accounts = stored ? (JSON.parse(stored) as BankAccount[]) : [];
+  const { bankAccount, ...text } = patch;
+  const bankAccounts = bankAccount ? [bankAccount, ...accounts.slice(1).filter((account) => account.accountNumber !== bankAccount.accountNumber)] : accounts;
+  return updateSensitiveFields(personId, { ...current, ...text, bankAccounts }, executor);
 }
 
 /** Other people with the same national ID on file — for the duplicate-person warning. Decrypts nothing. */

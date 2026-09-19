@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
-import { canBrowsePeople, canEditPerson, canFilterByPersonalFacts, canHireInto, canManageRecords, canReadRecords, canReassign } from "./policy";
+import { canBrowsePeople, canDecideProfileChange, canEditPerson, canFilterByPersonalFacts, canHireInto, canManageRecords, canReadRecords, canReassign } from "./policy";
 
 const ENTITY_A = "entity-a";
 const ENTITY_B = "entity-b";
@@ -77,5 +77,18 @@ describe("core HR policy", () => {
     // Reads compensation, but holds no person:manage.
     expect(canManageRecords(principal([{ role: "finance", scope: { type: "group" } }]), someone, "personal")).toBe(false);
     expect(canManageRecords(lineManager, someone, "personal")).toBe(false);
+  });
+
+  it("lets only HR over the person answer their change requests — never the line manager, never the person", () => {
+    for (const hasRestricted of [false, true]) {
+      expect(canDecideProfileChange(hrOfA, someone, { hasRestricted })).toBe(true);
+      expect(canDecideProfileChange(hrAdmin, someone, { hasRestricted })).toBe(true);
+      expect(canDecideProfileChange(lineManager, someone, { hasRestricted })).toBe(false);
+      expect(canDecideProfileChange(head, someone, { hasRestricted })).toBe(false);
+      expect(canDecideProfileChange(hrOfA, { ...someone, entityId: ENTITY_B }, { hasRestricted })).toBe(false);
+      // HR staff asking for a change to their own record are not their own approver.
+      expect(canDecideProfileChange({ ...hrOfA, personId: "someone" }, someone, { hasRestricted })).toBe(false);
+      expect(canDecideProfileChange(owner, null, { hasRestricted })).toBe(false);
+    }
   });
 });

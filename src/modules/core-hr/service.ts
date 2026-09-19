@@ -174,9 +174,9 @@ export async function listPeople(principal: Principal, filters: PeopleFilters): 
 }
 
 /** Where a person sits today, as an authorization target. */
-export async function getPersonTarget(personId: string): Promise<(Target & { personId: string }) | null> {
+export async function getPersonTarget(personId: string, executor: Tx | ReturnType<typeof db> = db()): Promise<(Target & { personId: string }) | null> {
   const { e, a } = placementOn(todayInVietnam());
-  const [row] = await db()
+  const [row] = await executor
     .select({ personId: schema.person.id, entityId: e.entityId, departmentId: a.departmentId, teamId: a.teamId, managerId: a.managerId })
     .from(schema.person)
     .leftJoinLateral(e, sql`true`)
@@ -405,38 +405,41 @@ export type HireInput = {
 };
 
 export async function hirePerson(input: HireInput, actorPersonId: string) {
-  return inTransaction(async (tx) => {
-    const [entity] = await tx.select().from(schema.entity).where(eq(schema.entity.id, input.entityId)).limit(1);
-    if (!entity?.isActive) throw new ActionError("entity_not_found");
-    const values = await resolvePlacement(tx, input.placement, { entityId: entity.id, personId: null });
+  return inTransaction((tx) => hireInTransaction(tx, input, actorPersonId));
+}
 
-    const person = await createPerson(tx, {
-      fullName: input.fullName,
-      workEmail: input.workEmail,
-      status: input.startDate > todayInVietnam() ? "preboarding" : "active",
-    });
-    await tx.insert(schema.personProfile).values({ personId: person.id, ...input.profile });
+/** The one code path that puts a person on the books — the hire form and the bulk import both end here. */
+export async function hireInTransaction(tx: Tx, input: HireInput, actorPersonId: string) {
+  const [entity] = await tx.select().from(schema.entity).where(eq(schema.entity.id, input.entityId)).limit(1);
+  if (!entity?.isActive) throw new ActionError("entity_not_found");
+  const values = await resolvePlacement(tx, input.placement, { entityId: entity.id, personId: null });
 
-    const employeeCode = input.employeeCode ? normalizeEmployeeCode(input.employeeCode) : await allocateEmployeeCode(tx, entity);
-    if (await employeeCodeExists(tx, entity.id, employeeCode)) throw new ActionError("employee_code_taken");
-    const [employment] = await tx
-      .insert(schema.employment)
-      .values({ personId: person.id, entityId: entity.id, employeeCode, startDate: input.startDate, seniorityDate: input.seniorityDate ?? input.startDate })
-      .returning();
-    const [assignment] = await tx
-      .insert(schema.assignment)
-      .values({ ...values, employmentId: employment.id, validFrom: input.startDate, createdByPersonId: actorPersonId })
-      .returning();
-
-    await setPersonPlacement(tx, person.id, {
-      workforceType: values.workforceType,
-      primaryEntityId: entity.id,
-      departmentId: values.departmentId,
-      teamId: values.teamId,
-      managerId: values.managerId,
-    });
-    return { person, employment, assignment };
+  const person = await createPerson(tx, {
+    fullName: input.fullName,
+    workEmail: input.workEmail,
+    status: input.startDate > todayInVietnam() ? "preboarding" : "active",
   });
+  await tx.insert(schema.personProfile).values({ personId: person.id, ...input.profile });
+
+  const employeeCode = input.employeeCode ? normalizeEmployeeCode(input.employeeCode) : await allocateEmployeeCode(tx, entity);
+  if (await employeeCodeExists(tx, entity.id, employeeCode)) throw new ActionError("employee_code_taken");
+  const [employment] = await tx
+    .insert(schema.employment)
+    .values({ personId: person.id, entityId: entity.id, employeeCode, startDate: input.startDate, seniorityDate: input.seniorityDate ?? input.startDate })
+    .returning();
+  const [assignment] = await tx
+    .insert(schema.assignment)
+    .values({ ...values, employmentId: employment.id, validFrom: input.startDate, createdByPersonId: actorPersonId })
+    .returning();
+
+  await setPersonPlacement(tx, person.id, {
+    workforceType: values.workforceType,
+    primaryEntityId: entity.id,
+    departmentId: values.departmentId,
+    teamId: values.teamId,
+    managerId: values.managerId,
+  });
+  return { person, employment, assignment };
 }
 
 export async function updatePersonBasics(personId: string, input: { fullName: string; workEmail: string | null; profile: ProfileInput }) {

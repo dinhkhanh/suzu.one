@@ -25,7 +25,7 @@ export type Target = {
   managerId?: string | null;
 };
 
-function scopeCovers(scope: Scope, target: Target): boolean {
+export function scopeCovers(scope: Scope, target: Target): boolean {
   switch (scope.type) {
     case "group":
       return true;

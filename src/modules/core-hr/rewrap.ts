@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { fieldCipher } from "@/lib/crypto";
 import { db, schema } from "@/lib/db";
 import { SENSITIVE_TEXT_FIELDS } from "./enums";
-import { contractTermsContext, dependentContext, sensitiveContext } from "./field-contexts";
+import { changeRequestContext, contractTermsContext, dependentContext, sensitiveContext } from "./field-contexts";
 
 export async function rewrapEncryptedFields(): Promise<{ rewrapped: number; alreadyCurrent: number }> {
   const cipher = fieldCipher();
@@ -34,6 +34,11 @@ export async function rewrapEncryptedFields(): Promise<{ rewrapped: number; alre
   for (const row of await db().select().from(schema.dependent)) {
     const changes = defined({ idNumber: move(row.idNumber, dependentContext("idNumber", row.id)), taxCode: move(row.taxCode, dependentContext("taxCode", row.id)) });
     if (Object.keys(changes).length) await db().update(schema.dependent).set(changes).where(eq(schema.dependent.id, row.id));
+  }
+  // Change requests keep their proposed restricted values encrypted for good (they are history).
+  for (const row of await db().select({ id: schema.approvalRequest.id, payloadEnc: schema.approvalRequest.payloadEnc }).from(schema.approvalRequest).where(eq(schema.approvalRequest.type, "profile_change"))) {
+    const payloadEnc = move(row.payloadEnc, changeRequestContext(row.id));
+    if (payloadEnc) await db().update(schema.approvalRequest).set({ payloadEnc }).where(eq(schema.approvalRequest.id, row.id));
   }
   return tally;
 }

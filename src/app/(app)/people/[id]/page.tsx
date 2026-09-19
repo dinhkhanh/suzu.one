@@ -6,10 +6,12 @@ import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
+import { listProfileChanges } from "@/modules/core-hr/change-requests";
 import { getPersonView, loadPlacementOptions, peopleModuleOpen } from "@/modules/core-hr/service";
 import { AssignmentForm } from "@/modules/core-hr/ui/assignment-form";
 import { EditPersonForm } from "@/modules/core-hr/ui/edit-person-form";
 import { RecordSections } from "@/modules/core-hr/ui/record-sections";
+import { RequestTable } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
 
 export const metadata: Metadata = { title: "Person" };
@@ -37,6 +39,8 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
   const day = (value: string | null | undefined) => (value ? format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" }) : null);
   const personLink = (personId: string | null, name: string | null) => (personId && name ? <Link href={`/people/${personId}`} className="hover:underline">{name}</Link> : null);
   const { personal } = person;
+  // HR sees what the employee has asked to change; listProfileChanges answers null to everyone else.
+  const changeRequests = person.id === user.person.id ? null : await listProfileChanges({ personId: user.person.id, principal: user.principal }, person.id, "pending");
   const options = person.canManage && person.entityId ? await loadPlacementOptions(person.entityId) : null;
 
   return (
@@ -88,6 +92,13 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
           </section>
 
           {person.canManage ? <EditPersonForm person={person} /> : null}
+
+          {changeRequests?.length ? (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-sm font-medium text-muted-foreground">{t("sections.changeRequests")}</h2>
+              <RequestTable rows={changeRequests} empty="" showRequester={false} />
+            </section>
+          ) : null}
 
           <RecordSections principal={user.principal} personId={person.id} />
 

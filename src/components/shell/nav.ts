@@ -7,6 +7,7 @@ export type NavItem = { key: string; href?: string; phase?: number };
 export function navFor(principal: Principal, open: { people: boolean }): { main: NavItem[]; admin: NavItem[] } {
   const main: NavItem[] = [
     { key: "home", href: "/home" },
+    { key: "me", href: "/me" },
     ...(open.people ? [{ key: "people", href: "/people" }] : []),
     { key: "attendance", phase: 2 },
     { key: "leave", phase: 2 },

@@ -10,3 +10,7 @@ export const DEPENDENT_RELATIONSHIPS = ["child", "spouse", "parent", "parent_in_
 export const DOCUMENT_CATEGORIES = ["id_scan", "degree", "certificate", "health_check", "contract", "decision", "other"] as const;
 // Restricted-tier fields of a person; each is one encrypted column of `person_sensitive`.
 export const SENSITIVE_TEXT_FIELDS = ["nationalId", "nationalIdIssuedOn", "nationalIdIssuedAt", "passportNumber", "taxCode", "socialInsuranceNumber", "healthInsuranceHospital"] as const;
+// What an employee may ask to change through a change request (FR-CHR-12). Name, work email, date of
+// birth and gender are HR's to correct; the bank account is requested as one block of its own.
+export const PERSONAL_CHANGE_FIELDS = ["phone", "personalEmail", "permanentAddress", "currentAddress", "maritalStatus"] as const;
+export const RESTRICTED_CHANGE_FIELDS = ["nationalId", "nationalIdIssuedOn", "nationalIdIssuedAt", "taxCode", "socialInsuranceNumber"] as const;

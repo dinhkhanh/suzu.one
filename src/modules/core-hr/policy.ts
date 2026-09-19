@@ -46,3 +46,11 @@ export function canReadRecords(principal: Principal, person: PersonTarget | null
 export function canManageRecords(principal: Principal, person: PersonTarget | null, tier: Tier): boolean {
   return !!person && can(principal, "person:manage", person) && canReadTier(principal, person, tier);
 }
+
+/**
+ * Answering an employee's change request: HR authority over the person, and — when the request
+ * carries restricted values — the right to read that tier. A line manager has neither.
+ */
+export function canDecideProfileChange(principal: Principal, person: PersonTarget | null, request: { hasRestricted: boolean }): boolean {
+  return !!person && principal.personId !== person.personId && can(principal, "person:manage", person) && (!request.hasRestricted || canReadTier(principal, person, "restricted"));
+}

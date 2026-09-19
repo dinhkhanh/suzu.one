@@ -5,6 +5,7 @@ import { navFor, type NavItem } from "@/components/shell/nav";
 import { SignOutButton } from "@/components/shell/sign-out-button";
 import { Badge } from "@/components/ui/badge";
 import { peopleModuleOpen } from "@/modules/core-hr/service";
+import { countInbox } from "@/modules/platform/approvals/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { countUnread } from "@/modules/platform/notifications/service";
 
@@ -12,7 +13,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
   const t = await getTranslations();
   const nav = navFor(user.principal, { people: await peopleModuleOpen(user) });
-  const unread = await countUnread(user.person.id);
+  const [unread, waiting] = await Promise.all([countUnread(user.person.id), countInbox(user.person.id)]);
 
   const renderItem = (item: NavItem) =>
     item.href ? (
@@ -36,6 +37,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         </Link>
         <nav className="flex flex-col gap-0.5">
           {nav.main.map(renderItem)}
+          <Link href="/approvals" className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+            {t("nav.approvals")}
+            {waiting > 0 ? <Badge className="text-[10px]">{waiting > 99 ? "99+" : waiting}</Badge> : null}
+          </Link>
           <Link href="/notifications" className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted">
             {t("nav.notifications")}
             {unread > 0 ? <Badge className="text-[10px]">{unread > 99 ? "99+" : unread}</Badge> : null}

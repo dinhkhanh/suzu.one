@@ -1,5 +1,8 @@
 {
-  "app": { "name": "Suzu One", "tagline": "Nền tảng vận hành nội bộ của Suzu Group" },
+  "app": {
+    "name": "Suzu One",
+    "tagline": "Nền tảng vận hành nội bộ của Suzu Group"
+  },
   "signIn": {
     "title": "Đăng nhập",
     "subtitle": "Dùng tài khoản Google Workspace của công ty (suzu.vn hoặc suzu.group).",
@@ -32,7 +35,9 @@
     "notifications": "Thông báo",
     "jobs": "Tác vụ tự động",
     "rules": "Tham số pháp định",
-    "flags": "Triển khai tính năng"
+    "flags": "Triển khai tính năng",
+    "me": "Hồ sơ của tôi",
+    "approvals": "Phê duyệt"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -120,7 +125,8 @@
       "employment": "Quan hệ lao động",
       "placement": "Vị trí và tuyến báo cáo",
       "personal": "Chi tiết cá nhân",
-      "history": "Lịch sử công tác"
+      "history": "Lịch sử công tác",
+      "changeRequests": "Yêu cầu thay đổi đang chờ Nhân sự"
     },
     "hire": {
       "title": "Thêm nhân sự",
@@ -517,7 +523,8 @@
       "category": {
         "security": "Bảo mật & quyền truy cập",
         "system": "Hệ thống",
-        "hr": "Hạn nhân sự"
+        "hr": "Hạn nhân sự",
+        "approvals": "Phê duyệt"
       }
     },
     "kinds": {
@@ -552,6 +559,14 @@
       "hr_document_expiring": {
         "title": "Giấy tờ của {person} hết hạn {days, plural, =0 {hôm nay} other {sau # ngày}}",
         "body": "\"{label}\" trong hồ sơ của {person} hết hạn ngày {date}."
+      },
+      "approvals_requested": {
+        "title": "{requester} gửi yêu cầu: {requestType}",
+        "body": "{requester} đã gửi một yêu cầu ({requestType}) đang chờ bạn duyệt."
+      },
+      "approvals_decided": {
+        "title": "Yêu cầu của bạn ({requestType}): {outcome}",
+        "body": "{approver} đã trả lời yêu cầu của bạn ({requestType}): {outcome}."
       }
     },
     "errors": {
@@ -700,5 +715,144 @@
     "notFoundTitle": "Không tìm thấy trang",
     "notFoundDescription": "Trang không tồn tại, hoặc bạn không có quyền xem.",
     "home": "Về trang chủ"
+  },
+  "approvals": {
+    "title": "Phê duyệt",
+    "description": "Các yêu cầu đang chờ bạn trả lời và các yêu cầu bạn đã gửi.",
+    "inbox": "Đang chờ tôi ({count})",
+    "inboxEmpty": "Không có yêu cầu nào đang chờ bạn.",
+    "mine": "Yêu cầu của tôi",
+    "mineEmpty": "Bạn chưa gửi yêu cầu nào.",
+    "withdraw": "Rút yêu cầu",
+    "withdrawConfirm": "Rút yêu cầu này?",
+    "columns": {
+      "request": "Yêu cầu",
+      "requester": "Người gửi",
+      "submitted": "Gửi lúc",
+      "status": "Trạng thái"
+    },
+    "types": {
+      "profile_change": "Thay đổi thông tin cá nhân"
+    },
+    "status": {
+      "pending": "Đang chờ duyệt",
+      "approved": "Đã duyệt",
+      "rejected": "Từ chối",
+      "returned": "Trả lại để chỉnh sửa",
+      "withdrawn": "Đã rút",
+      "cancelled": "Đã hủy"
+    },
+    "assignee": {
+      "pending": "đang chờ",
+      "approved": "đã duyệt",
+      "rejected": "từ chối",
+      "returned": "trả lại"
+    },
+    "events": {
+      "submitted": "Đã gửi",
+      "approved": "Đã duyệt",
+      "rejected": "Từ chối",
+      "returned": "Trả lại để chỉnh sửa",
+      "resubmitted": "Gửi lại",
+      "commented": "Ý kiến",
+      "withdrawn": "Đã rút",
+      "delegated": "Ủy quyền",
+      "cancelled": "Đã hủy"
+    },
+    "history": {
+      "title": "Lịch sử",
+      "step": "Bước {number} ({mode, select, all {tất cả phải duyệt} other {một người duyệt là đủ}}):",
+      "verified": "Đã xác minh qua kênh thứ hai"
+    },
+    "decide": {
+      "title": "Quyết định của bạn",
+      "comment": "Ý kiến",
+      "commentHint": "Bắt buộc khi trả lại hoặc từ chối",
+      "approve": "Duyệt",
+      "return": "Trả lại để chỉnh sửa",
+      "reject": "Từ chối"
+    },
+    "errors": {
+      "generic": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+      "forbidden": "Bạn không được quyết định yêu cầu này.",
+      "invalid": "Vui lòng kiểm tra lại biểu mẫu.",
+      "approval_not_found": "Không tìm thấy yêu cầu.",
+      "approval_not_pending": "Yêu cầu này không còn chờ trả lời.",
+      "approval_not_assignee": "Yêu cầu này không chờ bạn trả lời.",
+      "approval_not_requester": "Chỉ người gửi yêu cầu mới làm được việc này.",
+      "approval_own_request": "Bạn không thể tự duyệt yêu cầu của mình.",
+      "approval_comment_required": "Vui lòng nêu lý do trong phần ý kiến.",
+      "approval_no_approver": "Không có ai để duyệt yêu cầu này. Vui lòng liên hệ Nhân sự.",
+      "change_request_verification_required": "Hãy xác nhận rằng bạn đã xác minh tài khoản ngân hàng mới với nhân viên qua kênh thứ hai."
+    }
+  },
+  "changeRequests": {
+    "title": "Yêu cầu thay đổi thông tin của tôi",
+    "description": "Bạn không sửa trực tiếp hồ sơ của mình: hãy gửi yêu cầu, Nhân sự sẽ xem xét. Họ tên, ngày sinh và email công việc do Nhân sự chỉnh sửa.",
+    "oneAtATime": "Bạn đang có một yêu cầu chưa xử lý xong. Hãy chờ Nhân sự trả lời hoặc rút yêu cầu trước khi gửi yêu cầu khác.",
+    "none": "Chưa có yêu cầu thay đổi nào.",
+    "fields": {
+      "phone": "Số điện thoại",
+      "personalEmail": "Email cá nhân",
+      "permanentAddress": "Địa chỉ thường trú",
+      "currentAddress": "Nơi ở hiện tại",
+      "maritalStatus": "Tình trạng hôn nhân",
+      "nationalId": "Số CCCD",
+      "nationalIdIssuedOn": "Ngày cấp CCCD",
+      "nationalIdIssuedAt": "Nơi cấp CCCD",
+      "taxCode": "Mã số thuế cá nhân",
+      "socialInsuranceNumber": "Số sổ BHXH",
+      "bankAccount": "Tài khoản ngân hàng nhận lương"
+    },
+    "bank": {
+      "bankName": "Ngân hàng",
+      "accountNumber": "Số tài khoản",
+      "accountHolder": "Chủ tài khoản",
+      "branch": "Chi nhánh"
+    },
+    "maritalStatus": {
+      "single": "Độc thân",
+      "married": "Đã kết hôn",
+      "divorced": "Ly hôn",
+      "widowed": "Góa"
+    },
+    "form": {
+      "title": "Yêu cầu thay đổi mới",
+      "resubmitTitle": "Chỉnh sửa và gửi lại",
+      "hint": "Sửa những thông tin chưa đúng, giữ nguyên các thông tin còn lại.",
+      "restricted": "Giấy tờ tùy thân và thuế",
+      "restrictedHint": "Để trống nếu muốn giữ nguyên thông tin đang lưu. Các thông tin này được mã hóa và chỉ Nhân sự xem được.",
+      "bankHint": "Chỉ điền khi muốn đổi tài khoản nhận lương. Nhân sự sẽ liên hệ bạn để xác nhận trước khi duyệt.",
+      "submit": "Gửi Nhân sự",
+      "resubmit": "Gửi lại",
+      "sending": "Đang gửi…",
+      "sent": "Đã gửi. Nhân sự đã được thông báo."
+    },
+    "detail": {
+      "title": "Thay đổi thông tin cá nhân",
+      "personal": "Thông tin cá nhân",
+      "restricted": "Thông tin hạn chế (giá trị mới)",
+      "field": "Thông tin",
+      "from": "Đang lưu",
+      "to": "Yêu cầu đổi thành",
+      "currentValues": "Giá trị hiện tại nằm ở trang hồ sơ của nhân viên (việc xem được ghi nhật ký):",
+      "verify": "Tôi đã xác nhận tài khoản ngân hàng này với nhân viên qua kênh thứ hai (gọi điện hoặc gặp trực tiếp), không qua ứng dụng này hay email."
+    },
+    "reveal": {
+      "show": "Hiện giá trị",
+      "hide": "Ẩn",
+      "audited": "Mỗi lần xem đều được ghi vào nhật ký kiểm tra."
+    },
+    "errors": {
+      "generic": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+      "invalid": "Vui lòng kiểm tra lại các trường.",
+      "forbidden": "Bạn không được làm việc này.",
+      "change_request_empty": "Không có thông tin nào thay đổi.",
+      "change_request_open": "Bạn đang có một yêu cầu chưa xử lý xong.",
+      "change_request_bank_incomplete": "Tài khoản ngân hàng cần ít nhất tên ngân hàng và số tài khoản.",
+      "approval_no_approver": "Không có ai để duyệt yêu cầu này. Vui lòng liên hệ Nhân sự.",
+      "approval_not_pending": "Yêu cầu này không còn thay đổi được.",
+      "approval_not_requester": "Chỉ người gửi yêu cầu mới làm được việc này."
+    }
   }
 }
