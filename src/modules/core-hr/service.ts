@@ -374,6 +374,11 @@ export async function listPositionNames(): Promise<string[]> {
   return rows.map((row) => row.name);
 }
 
+/** The shared position catalogue, for pickers that key on a position (checklist templates). */
+export async function listPositions(): Promise<{ id: string; name: string }[]> {
+  return db().select({ id: schema.position.id, name: schema.position.name }).from(schema.position).orderBy(asc(schema.position.searchName));
+}
+
 /** Choices for the placement fields. Names only: nothing here is above the directory tier. */
 export async function loadPlacementOptions(entityId?: string) {
   const [departments, teams, branches, positions, people] = await Promise.all([listDepartments(), listTeams(), listBranches(), listPositionNames(), listPersonNames()]);

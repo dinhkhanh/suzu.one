@@ -37,7 +37,10 @@
     "rules": "Tham số pháp định",
     "flags": "Triển khai tính năng",
     "me": "Hồ sơ của tôi",
-    "approvals": "Phê duyệt"
+    "approvals": "Phê duyệt",
+    "tasks": "Việc của tôi",
+    "checklists": "Mẫu checklist",
+    "reports": "Báo cáo"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -542,7 +545,8 @@
         "security": "Bảo mật & quyền truy cập",
         "system": "Hệ thống",
         "hr": "Hạn nhân sự",
-        "approvals": "Phê duyệt"
+        "approvals": "Phê duyệt",
+        "tasks": "Công việc được giao"
       }
     },
     "kinds": {
@@ -585,6 +589,10 @@
       "approvals_decided": {
         "title": "Yêu cầu của bạn ({requestType}): {outcome}",
         "body": "{approver} đã trả lời yêu cầu của bạn ({requestType}): {outcome}."
+      },
+      "tasks_assigned": {
+        "title": "Bạn được giao {count, plural, =1 {việc: {title}} other {# việc mới}}",
+        "body": "Bạn có {count, plural, =1 {một việc mới: {title}} other {# việc mới, bắt đầu bằng: {title}}}. Mở mục Việc của tôi để xem hạn và đánh dấu hoàn thành."
       }
     },
     "errors": {
@@ -885,6 +893,83 @@
       "approval_no_approver": "Không có ai để duyệt yêu cầu này. Vui lòng liên hệ Nhân sự.",
       "approval_not_pending": "Yêu cầu này không còn thay đổi được.",
       "approval_not_requester": "Chỉ người gửi yêu cầu mới làm được việc này."
+    }
+  },
+  "tasks": {
+    "title": "Việc của tôi",
+    "description": "Mọi việc đang chờ bạn làm, việc quá hạn xếp trước.",
+    "open": "Đang mở ({count})",
+    "openEmpty": "Không có việc nào đang chờ bạn.",
+    "recentlyDone": "Hoàn thành gần đây",
+    "about": "Về {name}",
+    "due": "Hạn {date}",
+    "unassigned": "Chưa giao cho ai",
+    "openRecord": "Mở hồ sơ",
+    "overdue": "Quá hạn",
+    "start": "Bắt đầu",
+    "complete": "Hoàn thành",
+    "reopen": "Mở lại",
+    "cancel": "Hủy việc",
+    "reassign": "Giao cho",
+    "progress": "{done}/{total} việc xong",
+    "progressOverdue": "{count} quá hạn",
+    "status": {
+      "todo": "Chưa làm",
+      "in_progress": "Đang làm",
+      "done": "Xong",
+      "cancelled": "Đã hủy"
+    },
+    "errors": {
+      "generic": "Không cập nhật được việc này.",
+      "forbidden": "Bạn không có quyền với việc này.",
+      "task_not_found": "Không tìm thấy việc này.",
+      "task_assignee_not_found": "Không tìm thấy người được giao, hoặc người đó đã nghỉ việc."
+    }
+  },
+  "checklists": {
+    "title": "Mẫu checklist",
+    "description": "Các bước tiếp nhận và thôi việc. Khi có người vào hoặc nghỉ, mẫu phù hợp nhất (vị trí > phòng ban > pháp nhân > toàn tập đoàn) được chuyển thành việc cho từng người phụ trách.",
+    "empty": "Chưa có mẫu nào.",
+    "everyone": "Áp dụng cho tất cả",
+    "inactive": "Ngừng dùng",
+    "itemCount": "{count} bước",
+    "offset": "{days, plural, =0 {đúng ngày mốc} other {{days} ngày so với ngày mốc}}",
+    "newTemplate": "Mẫu mới",
+    "save": "Lưu",
+    "create": "Tạo mẫu",
+    "saved": "Đã lưu.",
+    "addItem": "Thêm bước",
+    "removeItem": "Xóa",
+    "purpose": {
+      "onboarding": "Tiếp nhận nhân sự",
+      "offboarding": "Thôi việc"
+    },
+    "rule": {
+      "subject": "Chính nhân sự đó",
+      "line_manager": "Quản lý trực tiếp",
+      "person": "Một người cụ thể",
+      "permission": "Nhân sự phụ trách (HR)"
+    },
+    "fields": {
+      "name": "Tên mẫu",
+      "purpose": "Dùng khi",
+      "entityId": "Pháp nhân",
+      "departmentId": "Phòng ban",
+      "positionId": "Vị trí",
+      "isActive": "Đang dùng",
+      "title": "Việc cần làm",
+      "description": "Ghi chú",
+      "rule": "Giao cho",
+      "assigneePersonId": "Người phụ trách",
+      "dueOffsetDays": "Hạn (số ngày so với ngày mốc, âm = trước)"
+    },
+    "errors": {
+      "generic": "Không lưu được.",
+      "forbidden": "Bạn không có quyền sửa mẫu này.",
+      "invalid": "Kiểm tra lại các ô đã nhập.",
+      "template_not_found": "Không tìm thấy mẫu.",
+      "template_rule_invalid": "Cách giao việc không hợp lệ.",
+      "template_person_required": "Chọn người phụ trách."
     }
   }
 }

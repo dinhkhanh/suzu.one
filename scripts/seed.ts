@@ -1,10 +1,11 @@
 // Seeds editable starter data: placeholder legal entities, the shared departments (SRS D8) and the
-// statutory parameter snapshot (SRS Appendix A).
+// statutory parameter snapshot (SRS Appendix A) and the starter onboarding/offboarding checklists.
 // Safe to re-run: existing codes are left untouched. Run with `pnpm db:seed`.
 import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { department, entity, statutoryParameter } from "../src/lib/db/schema";
+import { department, entity, statutoryParameter, taskTemplate, taskTemplateItem } from "../src/lib/db/schema";
+import { TEMPLATE_SEED } from "../src/modules/platform/tasks-engine/seed-templates";
 import { STATUTORY_SEED } from "../src/modules/platform/statutory/seed-values";
 
 config({ path: ".env.local" });
@@ -45,6 +46,16 @@ async function main() {
   const missing = STATUTORY_SEED.filter((seed) => !present.has(seed.key));
   if (missing.length) await db.insert(statutoryParameter).values(missing.map((seed) => ({ ...seed, status: "approved" as const, isVerified: false })));
   console.log(`Seeded ${missing.length} statutory parameters (unverified until the chief accountant confirms them).`);
+
+  // Starter checklists: only for a purpose that has no template at all, so nothing HR wrote is touched.
+  const purposes = new Set((await db.selectDistinct({ purpose: taskTemplate.purpose }).from(taskTemplate)).map((row) => row.purpose));
+  let templates = 0;
+  for (const seed of TEMPLATE_SEED.filter((template) => !purposes.has(template.purpose))) {
+    const [created] = await db.insert(taskTemplate).values({ purpose: seed.purpose, name: seed.name }).returning();
+    await db.insert(taskTemplateItem).values(seed.items.map((item, index) => ({ templateId: created.id, title: item.title, description: item.description ?? null, assigneeRule: item.assigneeRule, dueOffsetDays: item.dueOffsetDays, sortOrder: index })));
+    templates++;
+  }
+  console.log(`Seeded ${templates} checklist templates (purposes that already have one skipped).`);
 
   await client.end();
 }

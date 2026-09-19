@@ -12,6 +12,7 @@ export * from "../../modules/platform/statutory/schema";
 export * from "../../modules/platform/flags/schema";
 export * from "../../modules/platform/import/schema";
 export * from "../../modules/platform/approvals/schema";
+export * from "../../modules/platform/tasks-engine/schema";
 export * from "../../modules/core-hr/schema";
 
 // Every table calls `.enableRLS()` with no policies. The app connects as the table owner, which

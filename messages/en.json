@@ -37,7 +37,10 @@
     "rules": "Statutory parameters",
     "flags": "Rollout",
     "me": "My profile",
-    "approvals": "Approvals"
+    "approvals": "Approvals",
+    "tasks": "My tasks",
+    "checklists": "Checklist templates",
+    "reports": "Reports"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -542,7 +545,8 @@
         "security": "Security & access",
         "system": "System",
         "hr": "HR deadlines",
-        "approvals": "Approvals"
+        "approvals": "Approvals",
+        "tasks": "Tasks assigned to you"
       }
     },
     "kinds": {
@@ -585,6 +589,10 @@
       "approvals_decided": {
         "title": "Your request ({requestType}): {outcome}",
         "body": "{approver} answered your request ({requestType}): {outcome}."
+      },
+      "tasks_assigned": {
+        "title": "You were given {count, plural, =1 {a task: {title}} other {# new tasks}}",
+        "body": "You have {count, plural, =1 {a new task: {title}} other {# new tasks, starting with: {title}}}. Open My tasks to see due dates and mark them done."
       }
     },
     "errors": {
@@ -885,6 +893,83 @@
       "approval_no_approver": "Nobody is available to approve this request. Please contact HR.",
       "approval_not_pending": "This request can no longer be changed.",
       "approval_not_requester": "Only the person who sent the request can do this."
+    }
+  },
+  "tasks": {
+    "title": "My tasks",
+    "description": "Everything waiting for you, overdue first.",
+    "open": "Open ({count})",
+    "openEmpty": "Nothing is waiting for you.",
+    "recentlyDone": "Recently done",
+    "about": "About {name}",
+    "due": "Due {date}",
+    "unassigned": "Unassigned",
+    "openRecord": "Open record",
+    "overdue": "Overdue",
+    "start": "Start",
+    "complete": "Done",
+    "reopen": "Reopen",
+    "cancel": "Cancel task",
+    "reassign": "Assign to",
+    "progress": "{done}/{total} done",
+    "progressOverdue": "{count} overdue",
+    "status": {
+      "todo": "To do",
+      "in_progress": "In progress",
+      "done": "Done",
+      "cancelled": "Cancelled"
+    },
+    "errors": {
+      "generic": "The task could not be updated.",
+      "forbidden": "You may not change this task.",
+      "task_not_found": "Task not found.",
+      "task_assignee_not_found": "That person was not found or has left."
+    }
+  },
+  "checklists": {
+    "title": "Checklist templates",
+    "description": "The steps for onboarding and offboarding. When someone joins or leaves, the best-fitting template (position > department > entity > whole group) becomes tasks for the people responsible.",
+    "empty": "No templates yet.",
+    "everyone": "Applies to everyone",
+    "inactive": "Not in use",
+    "itemCount": "{count, plural, one {# step} other {# steps}}",
+    "offset": "{days, plural, =0 {on the anchor date} other {{days} days from the anchor date}}",
+    "newTemplate": "New template",
+    "save": "Save",
+    "create": "Create template",
+    "saved": "Saved.",
+    "addItem": "Add step",
+    "removeItem": "Remove",
+    "purpose": {
+      "onboarding": "Onboarding",
+      "offboarding": "Offboarding"
+    },
+    "rule": {
+      "subject": "The person themselves",
+      "line_manager": "Line manager",
+      "person": "A named person",
+      "permission": "HR in charge"
+    },
+    "fields": {
+      "name": "Template name",
+      "purpose": "Used for",
+      "entityId": "Entity",
+      "departmentId": "Department",
+      "positionId": "Position",
+      "isActive": "In use",
+      "title": "What to do",
+      "description": "Note",
+      "rule": "Assign to",
+      "assigneePersonId": "Person in charge",
+      "dueOffsetDays": "Due (days from the anchor date, negative = before)"
+    },
+    "errors": {
+      "generic": "Could not save.",
+      "forbidden": "You may not change this template.",
+      "invalid": "Check the fields you entered.",
+      "template_not_found": "Template not found.",
+      "template_rule_invalid": "That assignment rule is not valid.",
+      "template_person_required": "Choose the person in charge."
     }
   }
 }
