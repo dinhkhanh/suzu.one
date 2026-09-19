@@ -2676,7 +2676,14 @@
       "empty": "Chưa có công việc.",
       "noMatch": "Không có công việc nào khớp bộ lọc.",
       "blocked": "Bị chặn",
-      "subtasks": "{done}/{total} việc con"
+      "subtasks": "{done}/{total} việc con",
+      "views": {
+        "shared": "dùng chung",
+        "delete": "Xóa bộ lọc đã lưu {name}",
+        "name": "Đặt tên bộ lọc…",
+        "share": "Chia sẻ với dự án",
+        "save": "Lưu bộ lọc"
+      }
     },
     "task": {
       "fields": {
@@ -2783,7 +2790,9 @@
       "dependency_self": "Công việc không thể phụ thuộc chính nó.",
       "dependency_exists": "Hai công việc này đã được liên kết.",
       "dependency_cycle": "Như vậy các công việc sẽ chờ nhau thành vòng tròn.",
-      "dependency_not_found": "Liên kết này không còn tồn tại."
+      "dependency_not_found": "Liên kết này không còn tồn tại.",
+      "view_limit": "Bạn đã lưu 30 bộ lọc ở đây. Hãy xóa bớt trước.",
+      "view_not_found": "Bộ lọc đã lưu này không còn tồn tại."
     }
   }
 }

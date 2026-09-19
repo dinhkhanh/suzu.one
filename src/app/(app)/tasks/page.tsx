@@ -14,6 +14,8 @@ export default async function TasksPage() {
   const t = await getTranslations("tasks");
   const { open, recentlyDone } = await listMyTasks(user.person.id);
   const today = todayInVietnam();
+  // Work tasks and obligations are worked on in their own screens; checklist steps right here.
+  const linkFor = (task: { id: string; kind: string }) => (task.kind === "work" ? `/work/tasks/${task.id}` : task.kind === "obligation" ? `/ops/obligations/${task.id}` : null);
   // Overdue first, then by due date as the service ordered them.
   const ordered = [...open].sort((a, b) => Number(!!b.dueDate && b.dueDate < today) - Number(!!a.dueDate && a.dueDate < today));
 
@@ -25,12 +27,12 @@ export default async function TasksPage() {
       </header>
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">{t("open", { count: open.length })}</h2>
-        {open.length === 0 ? <p className="text-sm text-muted-foreground">{t("openEmpty")}</p> : <TaskList tasks={presentTasks(user.principal, ordered)} today={today} showSubject />}
+        {open.length === 0 ? <p className="text-sm text-muted-foreground">{t("openEmpty")}</p> : <TaskList tasks={presentTasks(user.principal, ordered, linkFor)} today={today} showSubject />}
       </section>
       {recentlyDone.length > 0 ? (
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-medium text-muted-foreground">{t("recentlyDone")}</h2>
-          <TaskList tasks={presentTasks(user.principal, recentlyDone)} today={today} showSubject />
+          <TaskList tasks={presentTasks(user.principal, recentlyDone, linkFor)} today={today} showSubject />
         </section>
       ) : null}
     </div>

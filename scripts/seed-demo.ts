@@ -12,6 +12,7 @@ import { toSearchKey } from "../src/lib/text";
 import { seedAttendance, seedPunches } from "./seed-demo-attendance";
 import { seedLeave } from "./seed-demo-leave";
 import { seedAttendanceRequests } from "./seed-demo-requests";
+import { seedWork } from "./seed-demo-work";
 import { changeRequestContext, contractTermsContext, dependentContext, NATIONAL_ID_INDEX_CONTEXT, normalizeIdNumber, sensitiveContext } from "../src/modules/core-hr/field-contexts";
 
 config({ path: ".env.local" });
@@ -128,6 +129,7 @@ async function main() {
   console.log(`Seeded ${await seedPunches(db)}.`);
   // After the punches: approved corrections add theirs, a day worked from home loses its clock rows.
   console.log(`Seeded ${await seedAttendanceRequests(db)}.`);
+  console.log(`Seeded ${await seedWork(db, today)}.`);
   await client.end();
 }
 

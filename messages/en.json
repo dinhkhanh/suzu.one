@@ -2676,7 +2676,14 @@
       "empty": "No tasks yet.",
       "noMatch": "No task matches these filters.",
       "blocked": "Blocked",
-      "subtasks": "{done}/{total} sub-tasks"
+      "subtasks": "{done}/{total} sub-tasks",
+      "views": {
+        "shared": "shared",
+        "delete": "Delete the saved filter {name}",
+        "name": "Name this filter…",
+        "share": "Share with the project",
+        "save": "Save filter"
+      }
     },
     "task": {
       "fields": {
@@ -2783,7 +2790,9 @@
       "dependency_self": "A task cannot depend on itself.",
       "dependency_exists": "These two tasks are already linked.",
       "dependency_cycle": "That would make the tasks wait for each other in a circle.",
-      "dependency_not_found": "That link no longer exists."
+      "dependency_not_found": "That link no longer exists.",
+      "view_limit": "You already keep 30 saved filters here. Delete one first.",
+      "view_not_found": "That saved filter no longer exists."
     }
   }
 }

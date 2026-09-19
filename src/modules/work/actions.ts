@@ -4,11 +4,12 @@ import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { findDepartment } from "../platform/org/service";
 import { CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_STATUSES, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "./enums";
-import { canAdminTeam, canContributeToProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canViewTask } from "./policy";
+import { canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canViewTask } from "./policy";
 import { createProject, findProject, projectFacts, setProjectMember, updateProject } from "./projects";
 import { addDependency, createWorkTask, deleteWorkTask, findDependency, loadTask, removeDependency, updateWorkTask } from "./tasks";
 import { createTeam, deleteLabel, findLabel, findTeam, saveClient, saveLabel, saveState, setTeamMember, teamFacts, updateTeam } from "./teams";
 import { loadViewer } from "./viewer";
+import { createSavedView, deleteSavedView, findSavedView } from "./views";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
 const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blankToNull, schema.nullable().default(null));
@@ -397,4 +398,50 @@ const removeDependencyPipeline = createAction({
 });
 export async function removeDependencyAction(input: unknown) {
   return removeDependencyPipeline(input);
+}
+
+// ── Saved filters ───────────────────────────────────────────────────────────────────────────
+
+const VIEW_PARAMETERS = ["q", "assignee", "state", "priority", "label", "client", "due", "closed", "group"];
+
+const saveViewPipeline = createAction({
+  name: "work.view.save",
+  input: z.object({ projectId: z.uuid(), name: z.string().trim().min(1).max(60), isShared: checkbox.default(false), filters: z.record(z.string(), z.string().max(200)).refine((filters) => Object.keys(filters).every((key) => VIEW_PARAMETERS.includes(key))) }),
+  // Anyone who can open the project keeps their own filters; a shared one is put in front of the
+  // whole project, which is for the people working in it.
+  authorize: async (user, input) => {
+    const found = await findProject(input.projectId);
+    if (!found) return false;
+    const viewer = await loadViewer(user);
+    const facts = projectFacts(found.project, found.team);
+    return input.isShared ? canContributeToProject(viewer, facts) : canViewProject(viewer, facts);
+  },
+  run: async ({ user, input }) => {
+    const view = await createSavedView(input, user.person.id);
+    revalidatePath(`/work/projects/${input.projectId}`);
+    return { data: { id: view.id }, audit: { resource: { type: "work_saved_view", id: view.id }, summary: `${view.name}${view.isShared ? " (shared)" : ""}`, after: view } };
+  },
+});
+export async function saveViewAction(input: unknown) {
+  return saveViewPipeline(input);
+}
+
+const deleteViewPipeline = createAction({
+  name: "work.view.delete",
+  input: z.object({ viewId: z.uuid() }),
+  authorize: async (user, input) => {
+    const view = await findSavedView(input.viewId);
+    if (!view) return false;
+    if (view.ownerPersonId === user.person.id) return true;
+    const found = view.isShared && view.projectId ? await findProject(view.projectId) : undefined;
+    return !!found && canManageProject(await loadViewer(user), projectFacts(found.project, found.team));
+  },
+  run: async ({ input }) => {
+    const view = await deleteSavedView(input.viewId);
+    if (view.projectId) revalidatePath(`/work/projects/${view.projectId}`);
+    return { data: { id: view.id }, audit: { resource: { type: "work_saved_view", id: view.id }, summary: view.name, before: view } };
+  },
+});
+export async function deleteViewAction(input: unknown) {
+  return deleteViewPipeline(input);
 }

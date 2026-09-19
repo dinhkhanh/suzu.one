@@ -12,7 +12,7 @@ import type { Principal } from "../rbac/policy";
 import type { Permission } from "../rbac/roles";
 import { listPeopleHolding } from "../rbac/service";
 import { type AssigneeRule, parseAssigneeRule, pickTemplate, planChecklist } from "./engine/checklist";
-import { canManageTask, canMoveTask } from "./policy";
+import { canManageTask, canMoveTask, movesThroughEngine } from "./policy";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type TaskRow = typeof schema.task.$inferSelect;
@@ -253,8 +253,12 @@ export async function removeTemplateItem(itemId: string): Promise<TaskTemplateIt
 
 // ── For the screens ─────────────────────────────────────────────────────────────────────────
 
-/** Tasks as the list component shows them, with what this viewer may do (the actions re-check). */
-export function presentTasks(principal: Principal, tasks: TaskView[]) {
+/**
+ * Tasks as the list component shows them, with what this viewer may do (the actions re-check).
+ * Kinds that do not move through the engine's own actions (work tasks, obligations) get no buttons
+ * here: `linkFor` says where their own screen is.
+ */
+export function presentTasks(principal: Principal, tasks: TaskView[], linkFor?: (task: TaskView) => string | null) {
   return tasks.map((task) => ({
     id: task.id,
     title: task.title,
@@ -265,7 +269,8 @@ export function presentTasks(principal: Principal, tasks: TaskView[]) {
     assigneeName: task.assigneeName,
     subjectPersonId: task.subjectPersonId,
     subjectName: task.subjectName,
-    canMove: canMoveTask(principal, task),
-    canManage: canManageTask(principal, task),
+    href: linkFor?.(task) ?? null,
+    canMove: movesThroughEngine(task) && canMoveTask(principal, task),
+    canManage: movesThroughEngine(task) && canManageTask(principal, task),
   }));
 }

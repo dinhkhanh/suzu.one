@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { createTaskAction, updateTaskAction } from "../actions";
+import { createTaskAction, deleteViewAction, saveViewAction, updateTaskAction } from "../actions";
 import { FILTER_KEYS, filterTasks, type Grouping, GROUPINGS, groupTasks, nestTasks, type TaskFilters } from "../engine/filter";
 import { PRIORITIES } from "../enums";
 import { LabelChip } from "./team-forms";
@@ -48,6 +48,7 @@ export function TaskListView({
   selfId,
   today,
   canContribute,
+  savedViews,
 }: {
   tasks: ListTask[];
   options: ListOptions;
@@ -58,6 +59,8 @@ export function TaskListView({
   selfId: string;
   today: string;
   canContribute: boolean;
+  /** Project lists only: named filter sets, the viewer's own and the shared ones. */
+  savedViews?: { id: string; name: string; isShared: boolean; mine: boolean; canDelete: boolean; filters: Record<string, string> }[];
 }) {
   const t = useTranslations("work.list");
   const tWork = useTranslations("work");
@@ -129,6 +132,25 @@ export function TaskListView({
   }
 
   const filtered = FILTER_KEYS.some((key) => filters[key]);
+
+  function applyView(view: { filters: Record<string, string> }) {
+    const next: TaskFilters = Object.fromEntries(FILTER_KEYS.flatMap((key) => (view.filters[key] ? [[key, view.filters[key]]] : [])));
+    const nextGrouping = GROUPINGS.includes(view.filters.group as Grouping) ? (view.filters.group as Grouping) : "none";
+    setFilters(next);
+    setGrouping(nextGrouping);
+    sync(next, nextGrouping);
+  }
+  function saveView(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const current = { ...Object.fromEntries(FILTER_KEYS.flatMap((key) => (filters[key] ? [[key, filters[key]]] : []))), ...(grouping === "none" ? {} : { group: grouping }) };
+    startTransition(async () => {
+      failed(await saveViewAction({ projectId: scope.projectId, name: data.get("name"), isShared: data.get("isShared") === "on", filters: current }));
+      form.reset();
+      router.refresh();
+    });
+  }
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -221,6 +243,48 @@ export function TaskListView({
         <span className="ml-auto text-xs text-muted-foreground">{t("count", { shown: visible.length, total: shown.length })}</span>
       </div>
 
+      {savedViews && scope.projectId ? (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          {savedViews.map((view) => (
+            <span key={view.id} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5">
+              <button type="button" className="hover:underline" onClick={() => applyView(view)}>
+                {view.name}
+              </button>
+              {view.isShared ? <span className="text-xs text-muted-foreground">{t("views.shared")}</span> : null}
+              {view.canDelete ? (
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-destructive"
+                  aria-label={t("views.delete", { name: view.name })}
+                  disabled={pending}
+                  onClick={() =>
+                    startTransition(async () => {
+                      failed(await deleteViewAction({ viewId: view.id }));
+                      router.refresh();
+                    })
+                  }
+                >
+                  ×
+                </button>
+              ) : null}
+            </span>
+          ))}
+          {filtered || grouping !== "none" ? (
+            <form onSubmit={saveView} className="flex flex-wrap items-center gap-2">
+              <Input name="name" required maxLength={60} placeholder={t("views.name")} aria-label={t("views.name")} className="h-7 w-44" />
+              {canContribute ? (
+                <label className="flex items-center gap-1.5 text-xs">
+                  <input type="checkbox" name="isShared" /> {t("views.share")}
+                </label>
+              ) : null}
+              <Button type="submit" size="sm" variant="outline" disabled={pending}>
+                {t("views.save")}
+              </Button>
+            </form>
+          ) : null}
+        </div>
+      ) : null}
+
       {errorKey ? (
         <p role="alert" className="text-sm text-destructive">
           {tWork.has(`errors.${errorKey}`) ? tWork(`errors.${errorKey}`) : tWork("errors.generic")}
@@ -253,7 +317,7 @@ export function TaskListView({
                 return (
                   <li key={task.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm" style={{ paddingLeft: `${0.75 + depth * 1.25}rem` }}>
                     <span className={`w-4 text-center text-xs font-bold ${task.priority ? PRIORITY_CLASS[task.priority] : "text-transparent"}`} title={task.priority ? tWork(`priority.${task.priority}`) : undefined}>
-                      {task.priority ? "!".repeat(Math.max(1, 4 - task.priority)) : "·"}
+                      {task.priority ? (task.priority === 4 ? "↓" : "!".repeat(4 - task.priority)) : "·"}
                     </span>
                     <span className="w-16 shrink-0 font-mono text-xs text-muted-foreground">{task.key}</span>
                     <Link href={`/work/tasks/${task.id}`} className={`min-w-0 flex-1 truncate hover:underline ${open ? "font-medium" : "text-muted-foreground line-through"}`}>

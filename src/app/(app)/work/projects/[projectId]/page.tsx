@@ -7,7 +7,7 @@ import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { FILTER_KEYS, GROUPINGS, type Grouping, type TaskFilters } from "@/modules/work/engine/filter";
-import { canContributeToProject, canManageProject, canViewProject, findProject, listAssignable, listClients, listLabels, listProjectMembers, listProjectTasks, listStates, loadViewer, projectFacts } from "@/modules/work/service";
+import { canContributeToProject, canManageProject, canViewProject, findProject, listAssignable, listClients, listLabels, listProjectMembers, listProjectTasks, listSavedViews, listStates, loadViewer, projectFacts } from "@/modules/work/service";
 import { ProjectForm } from "@/modules/work/ui/project-forms";
 import { TaskListView } from "@/modules/work/ui/task-list-view";
 import { MemberManager } from "@/modules/work/ui/team-forms";
@@ -28,7 +28,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const manage = canManageProject(viewer, facts);
   const today = todayInVietnam();
 
-  const [tasks, states, labels, clients, members, assignable, people] = await Promise.all([
+  const [views, tasks, states, labels, clients, members, assignable, people] = await Promise.all([
+    listSavedViews(project.id, user.person.id),
     listProjectTasks(project.id),
     listStates([team.id]),
     listLabels([team.id]),
@@ -70,6 +71,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
         selfId={user.person.id}
         today={today}
         canContribute={canContributeToProject(viewer, facts) && project.status !== "archived"}
+        savedViews={views.map((view) => ({ id: view.id, name: view.name, isShared: view.isShared, mine: view.ownerPersonId === user.person.id, canDelete: view.ownerPersonId === user.person.id || manage, filters: view.filters }))}
       />
 
       <details className="rounded-xl border p-4">

@@ -17,6 +17,8 @@ export type TaskItem = {
   assigneeName: string | null;
   subjectPersonId: string | null;
   subjectName: string | null;
+  /** The task's own screen, for kinds that are not worked on from this list (work tasks, obligations). */
+  href?: string | null;
   /** Decided on the server by the task policy; the actions check again. */
   canMove: boolean;
   canManage: boolean;
@@ -49,7 +51,15 @@ export function TaskList({ tasks, today, showSubject = false, people }: { tasks:
           return (
             <li key={task.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm">
               <div className="min-w-0 flex-1">
-                <p className={open ? "font-medium" : "text-muted-foreground line-through"}>{task.title}</p>
+                <p className={open ? "font-medium" : "text-muted-foreground line-through"}>
+                  {task.href ? (
+                    <Link href={task.href} className="hover:underline">
+                      {task.title}
+                    </Link>
+                  ) : (
+                    task.title
+                  )}
+                </p>
                 {task.description ? <p className="text-xs text-muted-foreground">{task.description}</p> : null}
                 <p className="text-xs text-muted-foreground">
                   {[
