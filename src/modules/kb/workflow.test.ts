@@ -25,7 +25,11 @@ import { doc, heading, paragraph } from "./engine/build";
 import { createPage, loadPage, publishPage, saveDraft, setPageAccess, setPageMeta } from "./pages";
 import { type KbViewer, viewerKeys } from "./policy";
 import { decidePageReview, getPublishReview, submitPageForReview, syncReviewState, withdrawPageReview } from "./publishing";
+import { listPopularPages, listRecentlyPublished, listRecentlyViewed, searchKb } from "./search";
 import { createSpace } from "./spaces";
+import { snippetOf, toTsQuery } from "./engine/search";
+import { recordView } from "./pages";
+import { canViewPage } from "./policy";
 
 type Who = "owner" | "hrGroup" | "hrSzm" | "editor" | "huy" | "khoi" | "ngo";
 const ids = {} as Record<Who | "szm" | "szc" | "vid" | "des", string>;
@@ -243,5 +247,90 @@ describe("policy acknowledgement", () => {
     await setPageMeta(policy, { ownerPersonId: ids.hrSzm, reviewBy: "2020-01-01" });
     expect(await sendReviewDueNotices(today)).toEqual({ notified: 1 });
     expect(await notices("kb.review_due", ids.hrSzm)).toBe(2);
+  });
+});
+
+describe("search", () => {
+  const made = {} as Record<"leave" | "training" | "secret" | "draft" | "szm" | "archived", string>;
+  const titles = async (who: Who, query: string, spaceId?: string) => (await searchKb(viewers[who], { query, spaceId })).hits.map((hit) => hit.title);
+
+  beforeAll(async () => {
+    const hr = { personId: ids.hrGroup };
+    const make = async (spaceId: string, title: string, text: string, parentId: string | null = null, publish = true) => {
+      const page = await createPage({ spaceId, parentId, title, content: body(title, text) }, hr);
+      if (publish) await publishPage(page.id, hr);
+      return page.id;
+    };
+    made.leave = await make(spaces.handbook, "Nghỉ phép năm", "Mỗi nhân viên có 12 ngày nghỉ phép năm hưởng nguyên lương. Đăng ký nghỉ phép trên Suzu One trước ít nhất ba ngày làm việc.");
+    made.training = await make(spaces.handbook, "Đào tạo và phát triển", "Công ty hỗ trợ chi phí đào tạo cho khoá học liên quan đến công việc.", made.leave);
+    made.secret = await make(spaces.handbook, "Khung nghỉ phép của quản lý", "Quản lý cấp cao có thêm ngày nghỉ phép thâm niên.");
+    await setPageAccess(made.secret, [{ subjectKey: `person:${ids.hrSzm}`, level: "view" }]);
+    made.draft = await make(spaces.handbook, "Nghỉ phép không lương (nháp)", "Bản nháp về nghỉ phép không lương.", null, false);
+    made.szm = await make(spaces.szmHr, "Nghỉ phép bù tại SZM", "Quy định nghỉ phép bù riêng của Suzu Media.");
+    made.archived = await make(spaces.tools, "Nghỉ phép: mẹo cũ", "Trang cũ về nghỉ phép.");
+    const { setPageArchived } = await import("./pages");
+    await setPageArchived(made.archived, true);
+  });
+
+  it("builds the query and the snippet without losing the accents", () => {
+    expect(toTsQuery("  Nghỉ PHÉP  năm ")).toBe("nghi & phep & nam:*");
+    expect(toTsQuery("đào tạo")).toBe("dao & tao:*");
+    expect(toTsQuery("!!! & | ( ) :*")).toBeNull();
+    expect(toTsQuery("a' OR 1=1 --")).toBe("a & or & 1:*");
+    expect(snippetOf("Mỗi nhân viên có 12 ngày nghỉ phép năm hưởng nguyên lương.", "nghi phep", { before: 2, after: 4 })).toEqual({ text: "… 12 ngày nghỉ phép năm hưởng …", matched: true });
+    expect(snippetOf("Không có gì.", "xyz").matched).toBe(false);
+  });
+
+  it("finds accented text from unaccented words, by prefix, title first", async () => {
+    expect((await titles("hrGroup", "nghi phep"))[0]).toBe("Nghỉ phép năm");
+    expect(await titles("huy", "dao tao")).toEqual(["Đào tạo và phát triển"]);
+    expect(await titles("huy", "ĐÀO TẠO")).toEqual(["Đào tạo và phát triển"]);
+    expect(await titles("huy", "thuong nien")).toEqual([]);
+    expect(await titles("huy", "nghi ph")).toContain("Nghỉ phép năm");
+    const [hit] = (await searchKb(viewers.huy, { query: "dao tao" })).hits;
+    expect(hit).toMatchObject({ spaceKey: "handbook", path: ["Nghỉ phép năm"] });
+    expect(hit.snippet).toContain("đào tạo");
+    expect((await searchKb(viewers.huy, { query: "" })).total).toBe(0);
+  });
+
+  it("filters by permission in SQL: no drafts, restricted subtrees, other entities' spaces or archived pages — and agrees with the policy", async () => {
+    expect((await titles("huy", "nghi phep")).sort()).toEqual(["Nghỉ phép bù tại SZM", "Nghỉ phép năm"]);
+    expect((await titles("khoi", "nghi phep")).sort()).toEqual(["Nghỉ phép năm"]);
+    expect((await titles("hrSzm", "nghi phep")).sort()).toEqual(["Khung nghỉ phép của quản lý", "Nghỉ phép bù tại SZM", "Nghỉ phép năm"]);
+    expect(await titles("ngo", "nghi phep")).toEqual([]);
+    // Editors search what readers read: a draft is not in the index.
+    expect(await titles("hrGroup", "khong luong")).toEqual([]);
+    expect(await titles("huy", "nghi phep", spaces.szmHr)).toEqual(["Nghỉ phép bù tại SZM"]);
+
+    for (const who of ["owner", "hrSzm", "huy", "khoi", "ngo"] as const) {
+      const result = await searchKb(viewers[who], { query: "nghi phep", limit: 50 });
+      let expected = 0;
+      for (const pageId of Object.values(made)) {
+        const loaded = (await loadPage(pageId))!;
+        const readable = loaded.pageFacts.readable && canViewPage(viewers[who], loaded.facts, loaded.pageFacts) && pageId !== made.training;
+        if (readable) expected++;
+      }
+      expect([who, result.total]).toEqual([who, expected]);
+      expect(result.hits).toHaveLength(expected);
+    }
+  });
+
+  it("lists recent, popular and newly published pages through the same filter", async () => {
+    const { todayInVietnam } = await import("@/lib/dates");
+    await recordView(made.leave, ids.huy, todayInVietnam());
+    await recordView(made.leave, ids.khoi, todayInVietnam());
+    await recordView(made.secret, ids.hrSzm, todayInVietnam());
+    await recordView(made.szm, ids.huy, todayInVietnam());
+    expect((await listRecentlyViewed(viewers.huy)).map((page) => page.title).sort()).toEqual(["Nghỉ phép bù tại SZM", "Nghỉ phép năm"]);
+    expect((await listPopularPages(viewers.khoi)).map((page) => [page.title, page.views])).toEqual([["Nghỉ phép năm", 2]]);
+    expect((await listPopularPages(viewers.hrSzm)).map((page) => page.title)).toContain("Khung nghỉ phép của quản lý");
+    const fresh = (await listRecentlyPublished(viewers.khoi, { limit: 50 })).map((page) => page.title);
+    expect(fresh).toContain("Nghỉ phép năm");
+    expect(fresh).not.toContain("Khung nghỉ phép của quản lý");
+    expect(fresh).not.toContain("Nghỉ phép bù tại SZM");
+    // After the reader loses access, the page leaves their "recently viewed".
+    await setPageAccess(made.leave, [{ subjectKey: `person:${ids.khoi}`, level: "view" }]);
+    expect(await listRecentlyViewed(viewers.huy)).toHaveLength(1);
+    await setPageAccess(made.leave, []);
   });
 });

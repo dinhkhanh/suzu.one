@@ -14,6 +14,7 @@ import { AckSettingsForm, AcknowledgeButton } from "@/modules/kb/ui/ack-forms";
 import { MovePageForm, PageLifecycleButtons, PageMetaForm, PublishDraftButton, SubmitReviewButton } from "@/modules/kb/ui/page-forms";
 import { PageTree } from "@/modules/kb/ui/page-tree";
 import { RenderDoc } from "@/modules/kb/ui/render-doc";
+import { KbSearchBox } from "@/modules/kb/ui/search-box";
 
 export const metadata: Metadata = { title: "Knowledge base" };
 
@@ -65,6 +66,7 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
         <Link href={`/kb/spaces/${space.key}`} className="text-sm font-medium hover:underline">
           <span aria-hidden>{space.icon ?? "📄"}</span> {space.name}
         </Link>
+        <KbSearchBox spaceId={space.id} compact />
         <PageTree tree={tree} currentId={page.id} compact />
       </aside>
 

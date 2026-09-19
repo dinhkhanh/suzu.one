@@ -11,3 +11,4 @@ export { atLeast, canCreatePage, canEditPage, canManageAnySpace, canManageSpace,
 export * from "./spaces";
 export { getPublishReview, kbPublishRequest, type PublishReviewView, syncReviewState } from "./publishing";
 export * from "./acknowledgements";
+export * from "./search";

@@ -4179,6 +4179,23 @@
       "status": "Trạng thái",
       "lastNotice": "Nhắc gần nhất (số lần)",
       "myLink": "Xác nhận của tôi"
+    },
+    "search": {
+      "title": "Tìm trong kho tri thức",
+      "placeholder": "Tìm trang… (gõ không dấu cũng được)",
+      "submit": "Tìm",
+      "hint": "Gõ từ khoá để tìm. Không cần gõ dấu: “nghi phep” vẫn tìm ra “nghỉ phép”.",
+      "count": "{count, plural, =0 {Không tìm thấy trang nào.} other {# trang phù hợp}}",
+      "filter": "Lọc theo không gian",
+      "allSpaces": "Tất cả không gian",
+      "previous": "Trang trước",
+      "next": "Trang sau"
+    },
+    "lists": {
+      "recent": "Tôi vừa xem",
+      "popular": "Được đọc nhiều (30 ngày)",
+      "updated": "Mới cập nhật",
+      "views": "{count} lượt đọc"
     }
   }
 }

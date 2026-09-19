@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
-import { canManageAnySpace, canManageSpace, kbViewerOf, listSpaces } from "@/modules/kb/service";
+import { canManageAnySpace, canManageSpace, countMyPendingAcks, type KbPageCard, kbViewerOf, listPopularPages, listRecentlyPublished, listRecentlyViewed, listSpaces } from "@/modules/kb/service";
+import { KbSearchBox } from "@/modules/kb/ui/search-box";
 import { NewSpaceForm } from "@/modules/kb/ui/space-forms";
 
 export const metadata: Metadata = { title: "Knowledge base" };
@@ -13,7 +14,13 @@ export const metadata: Metadata = { title: "Knowledge base" };
 export default async function KnowledgeBasePage() {
   const user = await requireUser();
   const t = await getTranslations("kb");
-  const spaces = await listSpaces(kbViewerOf(user));
+  const viewer = kbViewerOf(user);
+  const [spaces, recent, popular, updated, pendingAcks] = await Promise.all([listSpaces(viewer), listRecentlyViewed(viewer), listPopularPages(viewer), listRecentlyPublished(viewer), countMyPendingAcks(viewer)]);
+  const lists: { key: "recent" | "popular" | "updated"; pages: KbPageCard[] }[] = [
+    { key: "recent", pages: recent },
+    { key: "popular", pages: popular },
+    { key: "updated", pages: updated },
+  ];
   // The form offers only what the action would accept.
   const manageable = canManageAnySpace(user.principal) ? (await listEntities()).filter((entity) => canManageSpace(user.principal, { entityId: entity.id })) : [];
   const groupWide = canManageSpace(user.principal, { entityId: null });
@@ -29,6 +36,13 @@ export default async function KnowledgeBasePage() {
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
+      <div className="flex flex-wrap items-center gap-4">
+        <KbSearchBox />
+        <Link href="/kb/acknowledgements" className="text-sm underline underline-offset-2">
+          {t("ack.myLink")}
+          {pendingAcks > 0 ? ` (${pendingAcks})` : ""}
+        </Link>
+      </div>
       {groups.length === 0 ? <p className="text-sm text-muted-foreground">{t("noSpaces")}</p> : null}
       {groups.map((group) => (
         <section key={group.key} className="flex flex-col gap-3">
@@ -58,6 +72,29 @@ export default async function KnowledgeBasePage() {
           </div>
         </section>
       ))}
+      {lists.some((list) => list.pages.length > 0) ? (
+        <div className="grid gap-6 md:grid-cols-3">
+          {lists.map((list) => (
+            <section key={list.key} className="flex flex-col gap-2">
+              <h2 className="text-sm font-medium text-muted-foreground">{t(`lists.${list.key}`)}</h2>
+              {list.pages.length === 0 ? <p className="text-sm text-muted-foreground">—</p> : null}
+              <ul className="flex flex-col gap-1.5 text-sm">
+                {list.pages.map((page) => (
+                  <li key={page.pageId} className="flex flex-col">
+                    <Link href={`/kb/pages/${page.pageId}`} className="truncate hover:underline">
+                      {page.title}
+                    </Link>
+                    <span className="text-xs text-muted-foreground">
+                      {page.spaceName}
+                      {page.views ? ` · ${t("lists.views", { count: page.views })}` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      ) : null}
       {groupWide || manageable.length > 0 ? (
         <details className="rounded-md border p-4">
           <summary className="cursor-pointer text-sm font-medium">{t("space.new")}</summary>

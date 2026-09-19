@@ -4179,6 +4179,23 @@
       "status": "Status",
       "lastNotice": "Last notice (count)",
       "myLink": "My acknowledgements"
+    },
+    "search": {
+      "title": "Search the knowledge base",
+      "placeholder": "Search pages… (accents optional)",
+      "submit": "Search",
+      "hint": "Type a keyword. Accents are optional: “nghi phep” finds “nghỉ phép”.",
+      "count": "{count, plural, =0 {No pages found.} one {# page} other {# pages}}",
+      "filter": "Filter by space",
+      "allSpaces": "All spaces",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "lists": {
+      "recent": "Recently viewed",
+      "popular": "Popular (30 days)",
+      "updated": "Recently updated",
+      "views": "{count, plural, one {# read} other {# reads}}"
     }
   }
 }
