@@ -65,7 +65,8 @@ async function facts(executor: Executor, personId: string): Promise<EmploymentFa
 }
 
 /** Colleagues of the same group (team, or department within the entity) away on those dates, and minimum staffing. */
-async function teamConflicts(executor: Executor, person: EmploymentFacts, dates: readonly IsoDate[]): Promise<TeamConflicts> {
+// The head count uses pending requests too; names of people whose leave is not approved yet are for the approver only.
+async function teamConflicts(executor: Executor, person: EmploymentFacts, dates: readonly IsoDate[], options: { namePending: boolean }): Promise<TeamConflicts> {
   if (dates.length === 0 || (!person.teamId && !person.departmentId)) return { colleaguesAway: [], shortfalls: [] };
   const group = await executor
     .select({ id: schema.person.id, fullName: schema.person.fullName })
@@ -74,7 +75,7 @@ async function teamConflicts(executor: Executor, person: EmploymentFacts, dates:
   if (group.length === 0) return { colleaguesAway: [], shortfalls: [] };
   const away = await leaveDayRows(executor, group.map((row) => row.id), dates[0], dates.at(-1)!, { includePending: true });
   const onDates = away.filter((row) => dates.includes(row.date) && row.portion !== "hours");
-  const colleaguesAway = group.map((colleague) => ({ name: colleague.fullName, dates: onDates.filter((row) => row.personId === colleague.id).map((row) => row.date) })).filter((row) => row.dates.length > 0);
+  const colleaguesAway = group.map((colleague) => ({ name: colleague.fullName, dates: onDates.filter((row) => row.personId === colleague.id && (options.namePending || row.status === "approved")).map((row) => row.date) })).filter((row) => row.dates.length > 0);
   const rule = staffingRuleFor(await executor.select().from(schema.teamStaffingRule), person);
   const awayByDate: Record<IsoDate, number> = {};
   for (const row of onDates) awayByDate[row.date] = (awayByDate[row.date] ?? 0) + 1;
@@ -125,7 +126,7 @@ export async function previewLeave(personId: string, input: LeaveInput, options:
     availableByYear,
     existingDays: existing.map((row) => ({ date: row.date, portion: row.portion })),
   });
-  const conflicts = await teamConflicts(executor, person, counted.days.map((day) => day.date));
+  const conflicts = await teamConflicts(executor, person, counted.days.map((day) => day.date), { namePending: !!options.filedByHr });
   return { type, counted, problems, availableByYear, conflicts };
 }
 
@@ -135,6 +136,12 @@ async function checkAttachment(executor: Executor, fileId: string | null, person
   if (!fileId) return;
   const [file] = await executor.select().from(schema.storedFile).where(eq(schema.storedFile.id, fileId)).limit(1);
   if (!file || file.ownerType !== "leave_attachment" || file.ownerId !== personId || file.status !== "ready" || file.deletedAt) throw new ActionError("file_not_found");
+}
+
+/** The uploader's own leave attachment that still waits for its check — what the "complete" action may touch. */
+export async function isPendingLeaveAttachment(fileId: string, uploaderPersonId: string): Promise<boolean> {
+  const [file] = await db().select({ id: schema.storedFile.id }).from(schema.storedFile).where(and(eq(schema.storedFile.id, fileId), eq(schema.storedFile.ownerType, "leave_attachment"), eq(schema.storedFile.uploadedByPersonId, uploaderPersonId), eq(schema.storedFile.status, "pending"))).limit(1);
+  return !!file;
 }
 
 async function submitInTransaction(tx: Tx, personId: string, input: LeaveInput, actor: { personId: string; isHr: boolean }, amendsRequestId: string | null): Promise<{ leaveRequest: LeaveRequestRow; approvalRequestId: string; outcome: string; conflicts: TeamConflicts }> {
@@ -352,6 +359,6 @@ export async function getLeaveRequestView(viewer: { personId: string; principal:
   ]);
   const balances = type.tracksBalance ? (await getBalances([leaveRequest.personId], Number(leaveRequest.startDate.slice(0, 4)))).get(leaveRequest.personId) : undefined;
   const balance = balances?.find((row) => row.leaveTypeId === type.id) ?? null;
-  const conflicts = await teamConflicts(db(), person, days.map((day) => day.date));
+  const conflicts = await teamConflicts(db(), person, days.map((day) => day.date), { namePending: !view.isRequester || view.canDecide });
   return { ...view, leaveRequest, type, days: days.map((day) => ({ date: day.date, portion: day.portion, amountCenti: day.amountCenti })), balance: balance ? { balanceCenti: balance.balanceCenti, pendingCenti: balance.pendingCenti } : null, conflicts };
 }

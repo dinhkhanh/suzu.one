@@ -12,19 +12,20 @@ import { can } from "@/modules/platform/rbac/policy";
 import { postEntry } from "./ledger";
 import { leaveTypesFor } from "./types";
 
-// "7", "7.5", "7,5" → hundredths of a day. Balances may be negative (leave taken in advance).
+// "7", "7.5", "7,5" → "7.5": kept as days so that the preview reads like the file; the commit turns
+// it into hundredths of a day. Balances may be negative (leave taken in advance).
 const days = (cell: string) => {
   const match = /^(-?)(\d{1,3})(?:[.,](\d{1,2}))?$/.exec(cell.trim());
   if (!match) return { ok: false as const, code: "bad_days" };
   const centi = Number(match[2]) * 100 + Number((match[3] ?? "0").padEnd(2, "0"));
-  return { ok: true as const, value: match[1] ? -centi : centi };
+  return { ok: true as const, value: String((match[1] ? -centi : centi) / 100) };
 };
 
 export const openingBalanceColumns = {
   employeeCode: { headers: ["Mã nhân viên", "Employee code"], required: true, parse: code(24), example: "SZM-0004" } as Column<string>,
   typeCode: { headers: ["Loại phép (mã)", "Leave type code"], required: true, parse: code(24), example: "ANNUAL" } as Column<string>,
   year: { headers: ["Năm", "Year"], required: true, parse: integer, example: "2026" } as Column<number>,
-  days: { headers: ["Số ngày còn lại", "Days remaining"], required: true, parse: days, example: "7,5" } as Column<number>,
+  days: { headers: ["Số ngày còn lại", "Days remaining"], required: true, parse: days, example: "7,5" } as Column<string>,
   asOf: { headers: ["Tính đến ngày", "As at"], parse: day, example: "2026-01-01" } as Column<string>,
   note: { headers: ["Ghi chú", "Note"], parse: text(200), example: "Chuyển từ bảng theo dõi phép 2025" } as Column<string>,
 };
@@ -93,11 +94,12 @@ export async function commitOpeningRows(rows: Row[], tx: Tx, user: { principal: 
     let posted = 0;
     let totalCenti = 0;
     for (const item of resolved) {
-      const { year, days: amount, note } = item.row.values;
-      const entry = await postEntry(tx, { personId: item.personId, entityId: item.entityId, leaveTypeId: item.leaveTypeId, leaveYear: year!, kind: "opening", amountCenti: amount!, effectiveDate: item.asOf, sourceKey: `opening:${item.personId}:${item.leaveTypeId}:${year}`, reason: note ?? "Số dư đầu kỳ (nhập từ tệp)", createdByPersonId: user.person.id });
+      const { year, note } = item.row.values;
+      const amount = Math.round(Number(item.row.values.days) * 100);
+      const entry = await postEntry(tx, { personId: item.personId, entityId: item.entityId, leaveTypeId: item.leaveTypeId, leaveYear: year!, kind: "opening", amountCenti: amount, effectiveDate: item.asOf, sourceKey: `opening:${item.personId}:${item.leaveTypeId}:${year}`, reason: note ?? "Số dư đầu kỳ (nhập từ tệp)", createdByPersonId: user.person.id });
       if (entry) {
         posted++;
-        totalCenti += amount!;
+        totalCenti += amount;
       }
     }
     // The file's total, so that HR can tick it against the spreadsheet.

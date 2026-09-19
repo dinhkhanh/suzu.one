@@ -11,7 +11,7 @@ import { ACCRUAL_METHODS, BASE_SOURCES, LEAVE_CATEGORIES, PAYROLL_TREATMENTS, PO
 import { openingBalanceImport } from "./import";
 import { adjustBalance, runLeaveAccruals } from "./ledger";
 import { canFileLeaveFor, canManageLeaveConfig, canManageLeaveOf } from "./policy";
-import { amendLeave, cancelLeave, decideLeave, findLeaveRequest, getLeaveRequestView, submitLeave } from "./requests";
+import { amendLeave, cancelLeave, decideLeave, findLeaveRequest, getLeaveRequestView, isPendingLeaveAttachment, submitLeave } from "./requests";
 import { deleteStaffingRule, getLeaveType, getStaffingRule, saveLeavePolicy, saveLeaveType, saveStaffingRule } from "./types";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -151,17 +151,11 @@ export async function beginLeaveAttachmentAction(input: unknown) {
   return beginAttachmentPipeline(input);
 }
 
-const attachmentOwner = async (user: { person: { id: string }; principal: Parameters<typeof can>[0] }, fileId: string) => {
-  const file = await findFile(fileId);
-  if (!file || file.ownerType !== "leave_attachment") return false;
-  const target = await getPersonTarget(file.ownerId);
-  return !!target && canFileLeaveFor(user.principal, target);
-};
-
 const completeAttachmentPipeline = createAction({
   name: "leave.attachment.complete",
   input: z.object({ fileId: z.uuid() }),
-  authorize: (user, input) => attachmentOwner(user, input.fileId),
+  // Only the person who started this upload, and only while it waits for its check.
+  authorize: (user, input) => isPendingLeaveAttachment(input.fileId, user.person.id),
   run: async ({ user, input }) => {
     const file = await completeUpload(input.fileId, { personId: user.person.id, email: user.email });
     return { data: { fileId: file.id, fileName: file.fileName }, audit: { resource: { type: "file", id: file.id, entityId: file.entityId }, summary: `leave attachment stored: ${file.fileName}` } };

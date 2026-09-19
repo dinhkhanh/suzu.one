@@ -118,16 +118,16 @@ describe("the ledger job", () => {
 
   it("leaves out the months an imported opening balance already contains", async () => {
     const user = { principal: principal(ids.hr, [{ role: "hr_staff", scope: { type: "entity", id: ids.media } }]), person: { id: ids.hr } };
-    const row = (employeeCode: string, days: number, overrides: Record<string, unknown> = {}) => ({ row: 2, values: { employeeCode, typeCode: "ANNUAL", year: 2026, days, asOf: "2026-09-01", note: null, ...overrides } });
+    const row = (employeeCode: string, days: string, overrides: Record<string, unknown> = {}) => ({ row: 2, values: { employeeCode, typeCode: "ANNUAL", year: 2026, days, asOf: "2026-09-01", note: null, ...overrides } });
     const newcomer = await addPerson("Imported", { code: "SZM-0010", start: "2022-02-01", managerId: ids.head });
     const outsider = await addPerson("Outsider", { code: "SZC-0001", entityId: ids.creative });
 
-    const { problems } = await resolveOpeningRows([row("SZM-0010", 650), row("SZM-0010", 100), row("SZC-0001", 300), row("SZM-9999", 100), row("SZM-0004", 100, { typeCode: "SICK" }), row("SZM-0004", 100, { asOf: "2025-12-31" })], user);
+    const { problems } = await resolveOpeningRows([row("SZM-0010", "6.5"), row("SZM-0010", "1"), row("SZC-0001", "3"), row("SZM-9999", "1"), row("SZM-0004", "1", { typeCode: "SICK" }), row("SZM-0004", "1", { asOf: "2025-12-31" })], user);
     expect(problems.map((problem) => problem.code).sort()).toEqual(["as_of_outside_year", "duplicate_in_file", "leave_type_keeps_no_balance", "person_not_found", "person_not_found"]);
 
-    const counts = await db().transaction((tx) => commitOpeningRows([row("SZM-0010", 650)], tx as never, user));
+    const counts = await db().transaction((tx) => commitOpeningRows([row("SZM-0010", "6.5")], tx as never, user));
     expect(counts).toEqual({ posted: 1, totalCenti: 650 });
-    expect((await resolveOpeningRows([row("SZM-0010", 650)], user)).problems.map((problem) => problem.code)).toEqual(["opening_exists"]);
+    expect((await resolveOpeningRows([row("SZM-0010", "6.5")], user)).problems.map((problem) => problem.code)).toEqual(["opening_exists"]);
 
     await runLeaveAccruals("2026-09-19", { personIds: [newcomer, outsider] });
     // 6.5 as at 1 September + September's day; January–August are inside the opening balance.
@@ -324,7 +324,8 @@ describe("the team calendar", () => {
     await saveStaffingRule({ entityId: ids.media, departmentId: ids.video, teamId: null, minPresent: 9 });
     const preview = await previewLeave(ids.lead, request({ startDate: "2026-10-20", endDate: "2026-10-22" }));
     expect(preview.problems).toEqual([]);
-    expect(preview.conflicts.colleaguesAway.map((row) => row.name).sort()).toEqual(["Huy", "Nam"]);
+    // Huy's leave is approved; Nam's amended request is still pending — counted, but not named to a colleague.
+    expect(preview.conflicts.colleaguesAway.map((row) => row.name)).toEqual(["Huy"]);
     // Eleven active people in Video at Media; Huy and Nam are away on the 20th and 21st, and the requester would be.
     expect(preview.conflicts.shortfalls).toEqual([
       { date: "2026-10-20", present: 8, minPresent: 9 },

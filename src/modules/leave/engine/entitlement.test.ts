@@ -1,6 +1,6 @@
 // Golden tests for the leave entitlement and accrual engine (FR-LVE-02, 03).
 import { describe, expect, it } from "vitest";
-import { accrualTarget, carryOverExpiryDate, carryOverLapse, completedYears, countedMonths, type EmploymentFacts, fullYearDays, isOnProbation, type PolicyRules, roundDays, terminationPayout, yearEndCarryOver } from "./entitlement";
+import { accrualPostings, accrualTarget, carryOverExpiryDate, carryOverLapse, completedYears, countedMonths, type EmploymentFacts, fullYearDays, isOnProbation, type PolicyRules, roundDays, terminationPayout, yearEndCarryOver } from "./entitlement";
 
 const STATUTORY = { baseDays: 12, yearsOfServicePerExtraDay: 5 };
 const ANNUAL: PolicyRules = {
@@ -195,5 +195,42 @@ describe("probation", () => {
     expect(isOnProbation(person, "2026-09-01")).toBe(true);
     expect(isOnProbation(person, "2026-10-03")).toBe(false);
     expect(isOnProbation(employed("2026-08-03", { probation: [{ start: "2026-08-03", end: null }] }), "2027-01-01")).toBe(true);
+  });
+});
+
+describe("accrual postings", () => {
+  const policyAt = () => ANNUAL;
+
+  it("catches up month by month and finds nothing the second time", () => {
+    const first = accrualPostings({ year: 2026, asOf: "2026-03-10", statutory: STATUTORY, employment: employed("2024-01-15"), policyAt, given: [] });
+    expect(first.map((row) => [row.effectiveDate, row.amountCenti, row.kind])).toEqual([
+      ["2026-01-01", 100, "accrual"],
+      ["2026-02-01", 100, "accrual"],
+      ["2026-03-01", 100, "accrual"],
+    ]);
+    expect(accrualPostings({ year: 2026, asOf: "2026-03-10", statutory: STATUTORY, employment: employed("2024-01-15"), policyAt, given: first })).toEqual([]);
+  });
+
+  it("starts a joiner on their first day", () => {
+    const rows = accrualPostings({ year: 2026, asOf: "2026-09-19", statutory: STATUTORY, employment: employed("2026-08-03"), policyAt, given: [] });
+    expect(rows.map((row) => [row.effectiveDate, row.amountCenti])).toEqual([
+      ["2026-08-03", 100],
+      ["2026-09-01", 100],
+    ]);
+  });
+
+  it("settles a late end date with one negative row today", () => {
+    const given = accrualPostings({ year: 2026, asOf: "2026-09-19", statutory: STATUTORY, employment: employed("2024-01-15"), policyAt, given: [] });
+    const rows = accrualPostings({ year: 2026, asOf: "2026-09-19", statutory: STATUTORY, employment: employed("2024-01-15", { endDate: "2026-06-10" }), policyAt, given });
+    expect(rows.map((row) => [row.effectiveDate, row.amountCenti])).toEqual([["2026-09-19", -400]]);
+  });
+
+  it("follows a policy change from its start date and skips dates without a policy", () => {
+    const rows = accrualPostings({ year: 2026, asOf: "2026-03-01", statutory: STATUTORY, employment: employed("2024-01-15"), policyAt: (date) => (date < "2026-02-01" ? null : { ...ANNUAL, extraDaysCenti: 1200 }), given: [] });
+    // No policy in January; from February 24 days a year: two months' worth on 1 February, one more on 1 March.
+    expect(rows.map((row) => [row.effectiveDate, row.amountCenti])).toEqual([
+      ["2026-02-01", 400],
+      ["2026-03-01", 200],
+    ]);
   });
 });

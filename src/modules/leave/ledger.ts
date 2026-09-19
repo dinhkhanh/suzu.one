@@ -8,7 +8,7 @@ import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { type EmploymentFacts, listEmploymentFacts } from "@/modules/core-hr/service";
 import { getParameter } from "@/modules/platform/statutory/service";
-import { accrualTarget, carryOverExpiryDate, carryOverLapse, terminationPayout, yearEndCarryOver } from "./engine/entitlement";
+import { accrualPostings, carryOverExpiryDate, carryOverLapse, terminationPayout, yearEndCarryOver } from "./engine/entitlement";
 import { type LeavePolicyRow, type LeaveTypeRow, leaveTypesFor, listPolicies, policyOn, policyRules } from "./types";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -151,7 +151,6 @@ export async function balanceOf(executor: Executor, personId: string, leaveTypeI
 
 // ── The daily job ───────────────────────────────────────────────────────────────────────────
 
-const pad = (value: number) => String(value).padStart(2, "0");
 const sum = (rows: readonly LedgerEntryRow[], keep: (row: LedgerEntryRow) => boolean) => rows.filter(keep).reduce((total, row) => total + row.amountCenti, 0);
 const GIVEN: LedgerKind[] = ["accrual", "grant"];
 
@@ -236,25 +235,29 @@ export async function runLeaveAccruals(today: IsoDate = todayInVietnam(), option
 
 type Post = (entry: Pick<NewEntry, "leaveYear" | "kind" | "amountCenti" | "effectiveDate" | "sourceKey" | "reason">) => Promise<LedgerEntryRow | null>;
 
-// One row per month that became due, so that the ledger reads like a calendar even when the job
-// catches up on several months at once. After a payout nothing more is given.
+// One row per checkpoint at which something became due (see `accrualPostings`), so that the ledger
+// reads like a calendar even when the job catches up on several months at once. After a payout
+// nothing more is given.
 async function accrue(facts: EmploymentFacts, type: LeaveTypeRow, policies: readonly LeavePolicyRow[], statutory: { baseDays: number; yearsOfServicePerExtraDay: number }, year: number, asOf: IsoDate, entries: LedgerEntryRow[], post: Post, key: (what: string, ...parts: (string | number)[]) => string): Promise<number> {
   if (entries.some((row) => row.kind === "payout")) return 0;
+  // Leave the person's kind of employment does not have is not earned either.
+  if (type.eligibleWorkforceTypes && !type.eligibleWorkforceTypes.includes(facts.workforceType)) return 0;
   const opening = entries.filter((row) => row.leaveYear === year && row.kind === "opening").map((row) => row.effectiveDate).sort().at(-1) ?? null;
-  const checkpoints = [...Array.from({ length: 12 }, (_, index) => `${year}-${pad(index + 1)}-01`), facts.startDate!, asOf].filter((date) => date <= asOf && date.startsWith(String(year))).sort();
+  const postings = accrualPostings({
+    year,
+    asOf,
+    statutory,
+    employment: engineFacts(facts),
+    openingDate: opening,
+    policyAt: (date) => {
+      const policy = policyOn(policies, type.id, facts.entityId, date);
+      return policy ? policyRules(policy) : null;
+    },
+    given: entries.filter((row) => row.leaveYear === year && GIVEN.includes(row.kind)),
+  });
   let posted = 0;
-  for (const checkpoint of [...new Set(checkpoints)]) {
-    const policy = policyOn(policies, type.id, facts.entityId, checkpoint);
-    if (!policy) continue;
-    const rules = policyRules(policy);
-    const { targetCenti, trace } = accrualTarget({ year, asOf: checkpoint, policy: rules, statutory, employment: engineFacts(facts), openingDate: opening });
-    // Compared with what had been given by that date, so a re-run finds nothing due at past checkpoints
-    // and a late change of facts is settled at the last one (today).
-    const given = sum(entries, (row) => row.leaveYear === year && GIVEN.includes(row.kind) && row.effectiveDate <= checkpoint);
-    const due = targetCenti - given;
-    if (due === 0) continue;
-    const kind = rules.accrualMethod === "yearly_grant" ? "grant" : "accrual";
-    if (await post({ leaveYear: year, kind, amountCenti: due, effectiveDate: checkpoint, sourceKey: key(kind, year, checkpoint), reason: trace.join("; ") })) posted++;
+  for (const posting of postings) {
+    if (await post({ leaveYear: year, kind: posting.kind, amountCenti: posting.amountCenti, effectiveDate: posting.effectiveDate, sourceKey: key(posting.kind, year, posting.effectiveDate), reason: posting.trace.join("; ") })) posted++;
   }
   return posted;
 }

@@ -69,14 +69,15 @@ export function roundDays(centi: number, rounding: PolicyRules["rounding"]): num
  */
 export function fullYearDays(year: number, policy: PolicyRules, statutory: StatutoryAnnual, employment: EmploymentFacts): { centi: number; trace: string[] } {
   const base = policy.baseSource === "statutory_annual" ? statutory.baseDays * 100 : policy.fixedDaysCenti;
-  const trace = [`base ${base / 100} (${policy.baseSource})`];
-  if (policy.extraDaysCenti) trace.push(`company extra ${policy.extraDaysCenti / 100}`);
+  // The trace ends up as the reason of a ledger row, read by HR: Vietnamese, the source language.
+  const trace = [`cơ sở ${base / 100} ngày (${policy.baseSource === "statutory_annual" ? "theo luật" : "cố định"})`];
+  if (policy.extraDaysCenti) trace.push(`công ty thêm ${policy.extraDaysCenti / 100}`);
   let bonus = 0;
   if (policy.seniorityBonus && statutory.yearsOfServicePerExtraDay > 0) {
     const reference = employment.endDate ? earlier(employment.endDate, `${year}-12-31`) : `${year}-12-31`;
     const years = completedYears(employment.seniorityDate, reference);
     bonus = Math.floor(years / statutory.yearsOfServicePerExtraDay) * 100;
-    trace.push(`seniority ${years}y on ${reference} → +${bonus / 100}`);
+    trace.push(`thâm niên ${years} năm tính đến ${reference} → +${bonus / 100}`);
   }
   return { centi: base + policy.extraDaysCenti + bonus, trace };
 }
@@ -118,7 +119,7 @@ export type TargetInput = {
  */
 export function accrualTarget(input: TargetInput): { targetCenti: number; entitlementCenti: number; trace: string[] } {
   const { year, asOf, policy, employment } = input;
-  if (policy.accrualMethod === "none") return { targetCenti: 0, entitlementCenti: 0, trace: ["no accrual: balance comes from postings only"] };
+  if (policy.accrualMethod === "none") return { targetCenti: 0, entitlementCenti: 0, trace: ["không tự cấp: số dư chỉ thay đổi qua bút toán"] };
 
   const full = fullYearDays(year, policy, input.statutory, employment);
   const trace = [...full.trace];
@@ -129,21 +130,23 @@ export function accrualTarget(input: TargetInput): { targetCenti: number; entitl
   const yearMonths = countable.filter(Boolean).length;
   // Without pro-rating anyone employed in the year gets the whole year.
   const entitlement = policy.prorate ? roundDays((full.centi * yearMonths) / 12, policy.rounding) : months.some(Boolean) ? full.centi : 0;
-  trace.push(`${yearMonths}/12 months count${opening ? ` (opening balance on ${opening})` : ""} → entitlement ${entitlement / 100}`);
+  trace.push(`${yearMonths}/12 tháng được tính${opening ? ` (số dư đầu kỳ ngày ${opening})` : ""} → hưởng ${entitlement / 100} ngày`);
 
   if (policy.accrualMethod === "yearly_grant") {
     const grantDay = later(`${year}-01-01`, employment.startDate);
-    if (opening !== null && opening > grantDay) return { targetCenti: 0, entitlementCenti: 0, trace: [...trace, "the opening balance already contains this year's grant"] };
+    if (opening !== null && opening > grantDay) return { targetCenti: 0, entitlementCenti: 0, trace: [...trace, "số dư đầu kỳ đã gồm phần cấp của năm"] };
     const due = asOf >= grantDay && (!employment.endDate || employment.endDate >= grantDay);
-    return { targetCenti: due ? entitlement : 0, entitlementCenti: entitlement, trace: [...trace, due ? `granted on ${grantDay}` : `grant due on ${grantDay}`] };
+    return { targetCenti: due ? entitlement : 0, entitlementCenti: entitlement, trace: [...trace, due ? `cấp ngày ${grantDay}` : `sẽ cấp ngày ${grantDay}`] };
   }
 
-  const reached = countable.filter((counts, index) => counts && monthStart(year, index + 1) <= asOf).length;
+  // A month's share is due on its first day — for a joiner's first month, on their first day.
+  const dueOn = (month: number) => later(monthStart(year, month), employment.startDate);
+  const reached = countable.filter((counts, index) => counts && dueOn(index + 1) <= asOf).length;
   const lastCountable = countable.lastIndexOf(true) + 1;
-  const complete = lastCountable > 0 && monthStart(year, lastCountable) <= asOf;
+  const complete = lastCountable > 0 && dueOn(lastCountable) <= asOf;
   const share = policy.prorate ? full.centi : yearMonths > 0 ? (full.centi * 12) / yearMonths : 0;
   const target = complete ? entitlement : Math.floor((share * reached) / 12);
-  trace.push(`${reached} month(s) reached by ${asOf} → ${target / 100}`);
+  trace.push(`đến ${asOf}: ${reached} tháng → ${target / 100} ngày`);
   return { targetCenti: target, entitlementCenti: entitlement, trace };
 }
 
@@ -167,4 +170,31 @@ export function carryOverLapse(input: { carriedCenti: number; usedByExpiryCenti:
 /** Unused days paid out when employment ends (FR-LVE-03) — payroll reads the ledger's `payout` rows. */
 export function terminationPayout(balanceCenti: number, policy: Pick<PolicyRules, "payoutOnTermination">): number {
   return policy.payoutOnTermination && balanceCenti > 0 ? balanceCenti : 0;
+}
+
+export type AccrualPosting = { effectiveDate: IsoDate; amountCenti: number; kind: "accrual" | "grant"; trace: string[] };
+
+/**
+ * The ledger rows that bring a year's accruals up to `asOf`: one per checkpoint (the first of each
+ * month, the first day of employment, `asOf` itself) that lies after the last row already given
+ * and at which the target differs from what was given. History is never re-posted: a re-run finds
+ * nothing due, and a late change of facts (an end date, a corrected seniority date) is settled
+ * in one row at the next checkpoint.
+ */
+export function accrualPostings(input: Omit<TargetInput, "policy"> & { policyAt: (date: IsoDate) => PolicyRules | null; given: readonly { effectiveDate: IsoDate; amountCenti: number }[] }): AccrualPosting[] {
+  const { year, asOf, employment } = input;
+  const lastGiven = input.given.map((row) => row.effectiveDate).sort().at(-1) ?? "";
+  const checkpoints = [...new Set([...Array.from({ length: 12 }, (_, index) => monthStart(year, index + 1)), employment.startDate, asOf])].filter((date) => date <= asOf && date > lastGiven && date.startsWith(`${year}-`)).sort();
+  let given = input.given.reduce((sum, row) => sum + row.amountCenti, 0);
+  const postings: AccrualPosting[] = [];
+  for (const checkpoint of checkpoints) {
+    const policy = input.policyAt(checkpoint);
+    if (!policy) continue;
+    const { targetCenti, trace } = accrualTarget({ year, asOf: checkpoint, policy, statutory: input.statutory, employment, openingDate: input.openingDate });
+    const due = targetCenti - given;
+    if (due === 0) continue;
+    postings.push({ effectiveDate: checkpoint, amountCenti: due, kind: policy.accrualMethod === "yearly_grant" ? "grant" : "accrual", trace });
+    given += due;
+  }
+  return postings;
 }

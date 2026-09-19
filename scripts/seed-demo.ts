@@ -10,6 +10,7 @@ import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, assignm
 import { planChecklist } from "../src/modules/platform/tasks-engine/engine/checklist";
 import { toSearchKey } from "../src/lib/text";
 import { seedAttendance } from "./seed-demo-attendance";
+import { seedLeave } from "./seed-demo-leave";
 import { changeRequestContext, contractTermsContext, dependentContext, NATIONAL_ID_INDEX_CONTEXT, normalizeIdNumber, sensitiveContext } from "../src/modules/core-hr/field-contexts";
 
 config({ path: ".env.local" });
@@ -121,6 +122,7 @@ async function main() {
   console.log(`Seeded ${await seedChangeRequests(db)} pending change requests (people who already have one skipped).`);
   console.log(`Seeded ${await seedLifecycle(db, today)} lifecycle events, checklists and a resignation request (existing ones skipped).`);
   console.log(`Seeded ${await seedAttendance(db)}.`);
+  console.log(`Seeded ${await seedLeave(db, today)}.`);
   await client.end();
 }
 
