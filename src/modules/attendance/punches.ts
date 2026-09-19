@@ -10,6 +10,7 @@ import { matchesReach, permissionReach, type Principal, tierReach } from "@/modu
 import type { DayPlan } from "./engine/calendar";
 import { evaluatePunch, type Position, type PunchFlag, type WorkLocationRule } from "./engine/geofence";
 import { canSeePunchDetailOf } from "./policy";
+import { requestTimesheetRecompute } from "./recompute";
 import { getDayPlans } from "./schedules";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -109,6 +110,8 @@ export async function recordAppPunch(input: AppPunchInput, now: Date = new Date(
         note: input.note,
       })
       .returning();
+    // A punch is an input of the day's timesheet (FR-ATT-09) — and of yesterday's, when it closes an overnight shift.
+    await requestTimesheetRecompute([person.id], addDays(today, -1), today, tx);
     return { punch, outcome: needsReview ? "flagged" : "accepted", flags: verdict.flags, locationName: nameOf(locationId), duplicate: false };
   });
 }
@@ -238,6 +241,9 @@ export async function reviewPunch(punchId: string, reviewerPersonId: string, inp
       .set({ reviewStatus: input.decision === "accept" ? "accepted" : "rejected", reviewedByPersonId: reviewerPersonId, reviewedAt: new Date(), reviewNote: input.note?.trim() || null })
       .where(eq(schema.punch.id, punchId))
       .returning();
+    // Rejecting takes the punch out of the day; accepting changes nothing the timesheet counts, but costs nothing to re-run.
+    const day = todayInVietnam(after.at);
+    await requestTimesheetRecompute([after.personId], addDays(day, -1), day, tx);
     return { before, after };
   });
 }
