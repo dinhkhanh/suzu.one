@@ -1291,5 +1291,172 @@
       },
       "department": "Phòng ban"
     }
+  },
+  "attendance": {
+    "title": "Chấm công",
+    "description": "Các ngày làm việc của bạn. Chấm công và bảng công sẽ xuất hiện tại đây.",
+    "mySchedule": "Hai tuần tới của tôi",
+    "dayKinds": {
+      "working": "Ngày làm việc",
+      "untracked": "Làm việc — không chấm công",
+      "rest": "Ngày nghỉ",
+      "holiday": "Ngày lễ",
+      "compensatory_off": "Nghỉ bù",
+      "company_off": "Công ty cho nghỉ",
+      "unscheduled": "Chưa có lịch"
+    },
+    "settings": {
+      "title": "Thiết lập chấm công",
+      "description": "Lịch làm việc, ca và lịch ca dùng để tính công và ngày phép.",
+      "tabs": {
+        "calendar": "Lịch làm việc",
+        "schedules": "Lịch làm việc theo tuần",
+        "shifts": "Ca & phân ca"
+      },
+      "appliesTo": "Áp dụng cho",
+      "everyEntity": "Mọi pháp nhân",
+      "save": "Lưu",
+      "saved": "Đã lưu.",
+      "remove": "Xóa",
+      "removeConfirm": "Xóa dòng này?",
+      "active": "Đang dùng",
+      "inactive": "Không dùng",
+      "breakMinutes": "Nghỉ giữa giờ (phút)",
+      "weekdays": {
+        "1": "Thứ Hai",
+        "2": "Thứ Ba",
+        "3": "Thứ Tư",
+        "4": "Thứ Năm",
+        "5": "Thứ Sáu",
+        "6": "Thứ Bảy",
+        "7": "Chủ Nhật"
+      },
+      "weekdaysShort": {
+        "1": "T2",
+        "2": "T3",
+        "3": "T4",
+        "4": "T5",
+        "5": "T6",
+        "6": "T7",
+        "7": "CN"
+      },
+      "calendar": {
+        "add": "Thêm hoặc thay một ngày",
+        "date": "Ngày",
+        "kind": "Loại",
+        "name": "Tên",
+        "hint": "Các ngày khác với lịch tuần. Ngày lễ âm lịch và ngày hoán đổi hằng năm được điền sẵn và chờ xác nhận theo thông báo chính thức. Dòng riêng của pháp nhân được ưu tiên hơn dòng chung cho cùng một ngày.",
+        "empty": "Chưa có ngày nào cho năm {year}.",
+        "unconfirmed": "Chờ xác nhận",
+        "confirm": "Xác nhận",
+        "kinds": {
+          "public_holiday": "Ngày lễ",
+          "compensatory_off": "Nghỉ bù",
+          "company_off": "Công ty cho nghỉ",
+          "working_override": "Ngày làm bù"
+        }
+      },
+      "schedules": {
+        "title": "Lịch làm việc",
+        "empty": "Chưa có lịch làm việc.",
+        "add": "Thêm lịch làm việc",
+        "name": "Tên",
+        "kind": "Loại",
+        "default": "Mặc định",
+        "isDefault": "Lịch mặc định (cho người chưa được gán lịch)",
+        "dayType": "Loại ngày",
+        "requiredMinutes": "Số phút yêu cầu",
+        "creditMinutes": "Số phút ghi nhận",
+        "alternateSaturday": "Thứ Bảy cách tuần: cứ hai tuần nghỉ một Thứ Bảy",
+        "anchor": "Một Thứ Bảy theo lịch ở trên",
+        "kinds": {
+          "fixed": "Giờ hành chính",
+          "flexible": "Giờ linh hoạt",
+          "shift": "Theo ca (phân ca)"
+        },
+        "kindHints": {
+          "fixed": "Giờ bắt đầu và kết thúc cố định.",
+          "flexible": "Khung giờ là giờ bắt buộc có mặt; số phút yêu cầu là tổng thời gian làm trong ngày.",
+          "shift": "Bảng phân ca cho biết ai làm ca nào ngày nào; lịch tuần dưới đây áp dụng cho ngày chưa phân ca."
+        },
+        "dayTypes": {
+          "working": "Làm việc",
+          "untracked": "Làm việc, không chấm công (WFH)",
+          "off": "Nghỉ"
+        }
+      },
+      "assignments": {
+        "title": "Ai theo lịch nào",
+        "empty": "Chưa gán: mọi người theo lịch mặc định.",
+        "add": "Gán lịch làm việc",
+        "scope": "Cho",
+        "entity": "Pháp nhân",
+        "department": "Phòng ban",
+        "person": "Nhân viên",
+        "schedule": "Lịch",
+        "from": "Từ ngày",
+        "until": "Đến ngày",
+        "note": "Ghi chú",
+        "submit": "Gán",
+        "hint": "Gán cụ thể nhất được ưu tiên: nhân viên, rồi phòng ban, rồi pháp nhân. Gán mới sẽ kết thúc gán cũ cùng phạm vi vào ngày hôm trước.",
+        "scopes": {
+          "entity": "Pháp nhân",
+          "department": "Phòng ban",
+          "person": "Nhân viên"
+        },
+        "state": {
+          "active": "Đang hiệu lực",
+          "upcoming": "Sắp tới",
+          "ended": "Đã kết thúc"
+        }
+      },
+      "shifts": {
+        "title": "Ca làm việc",
+        "empty": "Chưa có ca.",
+        "add": "Thêm ca",
+        "code": "Mã",
+        "name": "Tên",
+        "start": "Bắt đầu",
+        "end": "Kết thúc",
+        "start2": "Phần hai — bắt đầu",
+        "end2": "Phần hai — kết thúc",
+        "overnightHint": "Giờ kết thúc không sau giờ bắt đầu nghĩa là ca qua nửa đêm; ca thuộc về ngày bắt đầu."
+      },
+      "roster": {
+        "title": "Phân ca",
+        "hint": "Ai làm ca nào vào ngày nào. Phân ca thay cho lịch tuần của ngày đó.",
+        "empty": "Chưa phân ca trong các tuần tới.",
+        "set": "Phân ca cho một giai đoạn",
+        "shift": "Ca",
+        "off": "Nghỉ theo phân ca",
+        "clear": "Xóa (theo lịch tuần)"
+      },
+      "errors": {
+        "generic": "Không lưu được.",
+        "forbidden": "Bạn không được thay đổi mục này.",
+        "invalid": "Vui lòng kiểm tra biểu mẫu.",
+        "calendar_day_not_found": "Không tìm thấy ngày này.",
+        "shift_not_found": "Không tìm thấy ca hoặc ca không còn dùng.",
+        "shift_code_taken": "Mã ca đã được dùng.",
+        "schedule_not_found": "Không tìm thấy lịch hoặc lịch không còn dùng.",
+        "schedule_default_group_only": "Lịch mặc định phải áp dụng cho mọi pháp nhân và đang dùng.",
+        "schedule_entity_fixed": "Lịch thuộc về pháp nhân đã tạo ra nó.",
+        "schedule_other_entity": "Lịch này thuộc pháp nhân khác.",
+        "schedule_assignment_scope": "Hãy chọn đối tượng được gán.",
+        "schedule_assignment_dates": "Ngày kết thúc trước ngày bắt đầu.",
+        "schedule_assignment_overlap": "Đã có gán khác cùng phạm vi bắt đầu trong giai đoạn này. Hãy xóa nó trước.",
+        "schedule_assignment_not_found": "Không tìm thấy gán lịch.",
+        "roster_dates": "Ngày kết thúc trước ngày bắt đầu.",
+        "roster_range_too_long": "Mỗi lần phân ca tối đa hai tháng.",
+        "pattern_missing_weekday": "Mỗi ngày trong tuần cần một quy tắc.",
+        "pattern_bad_time": "Giờ phải theo dạng HH:MM, phần hai cần đủ hai mốc giờ.",
+        "pattern_no_segments": "Ngày làm việc cần có giờ làm.",
+        "pattern_segments_overlap": "Các phần trong ngày chồng nhau hoặc dài quá 24 giờ.",
+        "pattern_break_too_long": "Giờ nghỉ dài bằng thời gian làm việc.",
+        "pattern_bad_credit": "Số phút ghi nhận từ 0 đến 1440.",
+        "pattern_bad_required": "Ngày linh hoạt cần số phút yêu cầu.",
+        "pattern_no_working_day": "Tuần không có ngày làm việc nào."
+      }
+    }
   }
 }

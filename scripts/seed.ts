@@ -1,10 +1,13 @@
 // Seeds editable starter data: placeholder legal entities, the shared departments (SRS D8) and the
-// statutory parameter snapshot (SRS Appendix A) and the starter onboarding/offboarding checklists.
+// statutory parameter snapshot (SRS Appendix A), the starter onboarding/offboarding checklists,
+// the public holidays of this year and the next, and the default work schedule.
 // Safe to re-run: existing codes are left untouched. Run with `pnpm db:seed`.
 import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { department, entity, statutoryParameter, taskTemplate, taskTemplateItem } from "../src/lib/db/schema";
+import { between } from "drizzle-orm";
+import { calendarDay, department, entity, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
+import { CALENDAR_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 import { TEMPLATE_SEED } from "../src/modules/platform/tasks-engine/seed-templates";
 import { STATUTORY_SEED } from "../src/modules/platform/statutory/seed-values";
 
@@ -56,6 +59,22 @@ async function main() {
     templates++;
   }
   console.log(`Seeded ${templates} checklist templates (purposes that already have one skipped).`);
+
+  // Working calendar: only years that have no row at all, so nothing HR entered or removed comes back.
+  let calendarDays = 0;
+  for (const year of [...new Set(CALENDAR_SEED.map((row) => row.date.slice(0, 4)))]) {
+    const [existing] = await db.select({ id: calendarDay.id }).from(calendarDay).where(between(calendarDay.date, `${year}-01-01`, `${year}-12-31`)).limit(1);
+    if (existing) continue;
+    const rows = CALENDAR_SEED.filter((row) => row.date.startsWith(year));
+    await db.insert(calendarDay).values(rows.map((row) => ({ ...row, entityId: null, isConfirmed: false })));
+    calendarDays += rows.length;
+  }
+  console.log(`Seeded ${calendarDays} public holidays (unconfirmed until HR checks them against the official announcement).`);
+
+  // The default schedule: only when there is no schedule at all.
+  const [anySchedule] = await db.select({ id: workSchedule.id }).from(workSchedule).limit(1);
+  if (!anySchedule) await db.insert(workSchedule).values({ ...DEFAULT_SCHEDULE_SEED, entityId: null, isDefault: true });
+  console.log(`Seeded ${anySchedule ? 0 : 1} default work schedule.`);
 
   await client.end();
 }

@@ -1291,5 +1291,172 @@
       },
       "department": "Department"
     }
+  },
+  "attendance": {
+    "title": "Attendance",
+    "description": "Your working days. Check-in and your timesheet will appear here.",
+    "mySchedule": "My next two weeks",
+    "dayKinds": {
+      "working": "Working day",
+      "untracked": "Working — no punches",
+      "rest": "Rest day",
+      "holiday": "Public holiday",
+      "compensatory_off": "Compensatory day off",
+      "company_off": "Company day off",
+      "unscheduled": "No schedule"
+    },
+    "settings": {
+      "title": "Attendance settings",
+      "description": "The working calendar, schedules and shifts the timesheet and leave are counted against.",
+      "tabs": {
+        "calendar": "Working calendar",
+        "schedules": "Schedules",
+        "shifts": "Shifts & roster"
+      },
+      "appliesTo": "Applies to",
+      "everyEntity": "Every entity",
+      "save": "Save",
+      "saved": "Saved.",
+      "remove": "Remove",
+      "removeConfirm": "Remove this row?",
+      "active": "In use",
+      "inactive": "Not in use",
+      "breakMinutes": "Break (min)",
+      "weekdays": {
+        "1": "Monday",
+        "2": "Tuesday",
+        "3": "Wednesday",
+        "4": "Thursday",
+        "5": "Friday",
+        "6": "Saturday",
+        "7": "Sunday"
+      },
+      "weekdaysShort": {
+        "1": "Mon",
+        "2": "Tue",
+        "3": "Wed",
+        "4": "Thu",
+        "5": "Fri",
+        "6": "Sat",
+        "7": "Sun"
+      },
+      "calendar": {
+        "add": "Add or replace a date",
+        "date": "Date",
+        "kind": "Kind",
+        "name": "Name",
+        "hint": "Dates that differ from the weekly schedule. Lunar holidays and the yearly swap days are pre-filled and wait for confirmation against the official announcement. An entity's own row wins over the group's for the same date.",
+        "empty": "No dates for {year} yet.",
+        "unconfirmed": "To confirm",
+        "confirm": "Confirm",
+        "kinds": {
+          "public_holiday": "Public holiday",
+          "compensatory_off": "Compensatory day off",
+          "company_off": "Company day off",
+          "working_override": "Make-up working day"
+        }
+      },
+      "schedules": {
+        "title": "Schedules",
+        "empty": "No schedules yet.",
+        "add": "Add a schedule",
+        "name": "Name",
+        "kind": "Kind",
+        "default": "Default",
+        "isDefault": "Default schedule (for anyone without an assignment)",
+        "dayType": "Day type",
+        "requiredMinutes": "Required (min)",
+        "creditMinutes": "Credited (min)",
+        "alternateSaturday": "Alternate Saturdays: every other Saturday is a day off",
+        "anchor": "A Saturday that follows the pattern above",
+        "kinds": {
+          "fixed": "Fixed hours",
+          "flexible": "Flexible hours",
+          "shift": "Shifts (roster)"
+        },
+        "kindHints": {
+          "fixed": "Fixed start and end times.",
+          "flexible": "The hours are core hours; the required minutes are the daily total to work.",
+          "shift": "The roster says who works which shift on which date; the week below is what applies on dates without a roster entry."
+        },
+        "dayTypes": {
+          "working": "Working",
+          "untracked": "Working, no punches (WFH)",
+          "off": "Off"
+        }
+      },
+      "assignments": {
+        "title": "Who follows which schedule",
+        "empty": "No assignments: everyone follows the default schedule.",
+        "add": "Assign a schedule",
+        "scope": "For",
+        "entity": "Entity",
+        "department": "Department",
+        "person": "Person",
+        "schedule": "Schedule",
+        "from": "From",
+        "until": "Until",
+        "note": "Note",
+        "submit": "Assign",
+        "hint": "The most specific assignment wins: person, then department, then entity. A new assignment ends the previous one of the same scope the day before.",
+        "scopes": {
+          "entity": "Entity",
+          "department": "Department",
+          "person": "Person"
+        },
+        "state": {
+          "active": "In force",
+          "upcoming": "Upcoming",
+          "ended": "Ended"
+        }
+      },
+      "shifts": {
+        "title": "Shifts",
+        "empty": "No shifts yet.",
+        "add": "Add a shift",
+        "code": "Code",
+        "name": "Name",
+        "start": "Start",
+        "end": "End",
+        "start2": "Second part — start",
+        "end2": "Second part — end",
+        "overnightHint": "An end time that is not after the start runs past midnight; the shift belongs to the day it starts on."
+      },
+      "roster": {
+        "title": "Roster",
+        "hint": "Which shift a person works on which date. A roster entry overrides the weekly schedule for that date.",
+        "empty": "No roster entries in the coming weeks.",
+        "set": "Set the roster for a period",
+        "shift": "Shift",
+        "off": "Rostered off",
+        "clear": "Clear (back to the weekly schedule)"
+      },
+      "errors": {
+        "generic": "Could not save.",
+        "forbidden": "You may not change this.",
+        "invalid": "Please check the form.",
+        "calendar_day_not_found": "The date was not found.",
+        "shift_not_found": "The shift was not found or is not in use.",
+        "shift_code_taken": "This shift code is already used.",
+        "schedule_not_found": "The schedule was not found or is not in use.",
+        "schedule_default_group_only": "The default schedule must apply to every entity and be in use.",
+        "schedule_entity_fixed": "A schedule stays with the entity it was made for.",
+        "schedule_other_entity": "This schedule belongs to another entity.",
+        "schedule_assignment_scope": "Choose who the assignment is for.",
+        "schedule_assignment_dates": "The end date is before the start date.",
+        "schedule_assignment_overlap": "Another assignment for the same scope starts in this period. Remove it first.",
+        "schedule_assignment_not_found": "The assignment was not found.",
+        "roster_dates": "The end date is before the start date.",
+        "roster_range_too_long": "Set at most two months at a time.",
+        "pattern_missing_weekday": "Every weekday needs a rule.",
+        "pattern_bad_time": "Times must be HH:MM, and a second part needs both times.",
+        "pattern_no_segments": "A working day needs hours.",
+        "pattern_segments_overlap": "The parts of the day overlap or span more than 24 hours.",
+        "pattern_break_too_long": "The break is as long as the working time.",
+        "pattern_bad_credit": "Credited minutes must be between 0 and 1440.",
+        "pattern_bad_required": "Flexible days need the required minutes.",
+        "pattern_no_working_day": "The week has no working day."
+      }
+    }
   }
 }

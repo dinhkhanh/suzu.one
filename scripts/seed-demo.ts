@@ -9,6 +9,7 @@ import { blindIndex, createFieldCipher, parseKeyRing } from "../src/lib/crypto/f
 import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, assignment, contract, department, dependent, emergencyContact, employeeCodeScheme, employment, entity, lifecycleEvent, person, personProfile, personSensitive, position, roleAssignment, task, taskTemplate, taskTemplateItem } from "../src/lib/db/schema";
 import { planChecklist } from "../src/modules/platform/tasks-engine/engine/checklist";
 import { toSearchKey } from "../src/lib/text";
+import { seedAttendance } from "./seed-demo-attendance";
 import { changeRequestContext, contractTermsContext, dependentContext, NATIONAL_ID_INDEX_CONTEXT, normalizeIdNumber, sensitiveContext } from "../src/modules/core-hr/field-contexts";
 
 config({ path: ".env.local" });
@@ -119,6 +120,7 @@ async function main() {
   console.log(`Seeded ${await seedRecords(db, today)} contracts, restricted details and dependents (existing ones skipped).`);
   console.log(`Seeded ${await seedChangeRequests(db)} pending change requests (people who already have one skipped).`);
   console.log(`Seeded ${await seedLifecycle(db, today)} lifecycle events, checklists and a resignation request (existing ones skipped).`);
+  console.log(`Seeded ${await seedAttendance(db)}.`);
   await client.end();
 }
 
