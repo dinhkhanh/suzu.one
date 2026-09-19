@@ -658,6 +658,26 @@
       "tasks_work_assigned": {
         "title": "{key} được giao cho bạn: {title}",
         "body": "Bạn vừa được giao công việc {key} “{title}”. Mở công việc để xem brief, hạn hoàn thành và những người cùng tham gia."
+      },
+      "tasks_mentioned": {
+        "title": "{name} nhắc đến bạn ở {key}",
+        "body": "{name} nhắc đến bạn ở {key} “{title}”: {excerpt}"
+      },
+      "tasks_commented": {
+        "title": "{name} bình luận ở {key}",
+        "body": "{name} ở {key} “{title}”: {excerpt}"
+      },
+      "tasks_status_changed": {
+        "title": "{key} chuyển sang {state}",
+        "body": "{name} đã chuyển {key} “{title}” sang {state}."
+      },
+      "tasks_due_soon": {
+        "title": "Đến hạn ngày mai: {count, plural, =1 {{title}} other {# công việc}}",
+        "body": "{count, plural, =1 {{key} “{title}” đến hạn vào ngày mai.} other {Bạn có # công việc đến hạn vào ngày mai, đầu tiên là {key} “{title}”.}}"
+      },
+      "tasks_overdue": {
+        "title": "Quá hạn: {count, plural, =1 {{title}} other {# công việc}}",
+        "body": "{count, plural, =1 {{key} “{title}” đã đến hạn từ {dueDate} và vẫn chưa xong.} other {Bạn có # công việc đã quá hạn, lâu nhất là {key} “{title}” ({dueDate}).}} Hãy hoàn thành, hoặc dời hạn và nêu lý do."
       }
     },
     "errors": {
@@ -2742,7 +2762,11 @@
         "person_removed": "gỡ {name}",
         "dependency_added": "liên kết với {name}",
         "dependency_removed": "gỡ một liên kết",
-        "deleted": "xóa công việc"
+        "deleted": "xóa công việc",
+        "commented": "đã bình luận",
+        "comment_deleted": "đã xóa một bình luận",
+        "attachment_added": "đã đính kèm {name}",
+        "attachment_removed": "đã gỡ tệp {name}"
       }
     },
     "palette": {
@@ -2818,6 +2842,51 @@
       "more": "+{count} việc nữa",
       "less": "Thu gọn",
       "hint": "Kéo công việc sang ngày khác để đổi hạn."
+    },
+    "discussion": {
+      "title": "Trao đổi ({count})",
+      "show": {
+        "all": "Bình luận và lịch sử",
+        "comments": "Chỉ bình luận"
+      },
+      "placeholder": "Viết bình luận… gõ @ để nhắc đến ai đó",
+      "replyPlaceholder": "Trả lời…",
+      "composerHint": "Ctrl/⌘ + Enter để gửi. Liên kết ảnh và video được giữ dạng liên kết.",
+      "send": "Bình luận",
+      "reply": "Trả lời",
+      "edit": "Sửa",
+      "saveEdit": "Lưu",
+      "cancel": "Hủy",
+      "delete": "Xóa",
+      "react": "Thêm biểu cảm",
+      "edited": "(đã sửa)",
+      "deleted": "Bình luận này đã bị xóa.",
+      "mentionPicker": "Những người có thể nhắc đến",
+      "followers": "{count, plural, =0 {Chưa ai theo dõi công việc này} other {# người theo dõi công việc này}}",
+      "follow": "Theo dõi",
+      "unfollow": "Bỏ theo dõi",
+      "followWorking": "Bạn đang làm công việc này nên luôn nhận thông báo.",
+      "files": "Tệp đính kèm ({count})",
+      "addFile": "Đính kèm tệp",
+      "removeFile": "Gỡ",
+      "uploading": "Đang tải lên…",
+      "errors": {
+        "generic": "Không thực hiện được. Hãy thử lại.",
+        "forbidden": "Bạn không được làm việc này trên công việc này.",
+        "invalid": "Hãy kiểm tra lại nội dung đã nhập.",
+        "task_not_found": "Không tìm thấy công việc.",
+        "comment_not_found": "Bình luận này không còn nữa.",
+        "reaction_invalid": "Biểu cảm này không dùng được.",
+        "follow_working": "Bạn đang làm công việc này nên luôn nhận thông báo.",
+        "file_empty": "Tệp trống.",
+        "file_too_large": "Tệp lớn hơn 20 MB.",
+        "file_type_not_allowed": "Loại tệp này không được phép.",
+        "file_name_invalid": "Tên tệp không hợp lệ.",
+        "file_upload_failed": "Tệp chưa lên được kho lưu trữ. Hãy thử lại.",
+        "file_not_uploaded": "Tệp chưa được tải lên. Hãy thử lại.",
+        "file_content_mismatch": "Nội dung tệp không khớp với loại tệp.",
+        "file_not_found": "Không tìm thấy tệp."
+      }
     }
   }
 }

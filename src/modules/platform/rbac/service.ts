@@ -32,8 +32,8 @@ function toScope(scopeType: ScopeType, scopeId: string | null): Scope | null {
 }
 
 /** The grants in force today. Unknown roles and broken scopes grant nothing. */
-export async function loadGrants(personId: string, today: IsoDate = todayInVietnam()): Promise<Grant[]> {
-  const rows = await db()
+export async function loadGrants(personId: string, today: IsoDate = todayInVietnam(), executor: Executor = db()): Promise<Grant[]> {
+  const rows = await executor
     .select()
     .from(schema.roleAssignment)
     .where(and(eq(schema.roleAssignment.personId, personId), lte(schema.roleAssignment.validFrom, today), notEnded(today)));

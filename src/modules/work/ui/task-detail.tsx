@@ -70,7 +70,7 @@ function useRun() {
   return { run, pending, errorKey };
 }
 
-export function TaskDetailView({ task, options, subtasks, linked, activity, canEdit, canDelete }: { task: DetailTask; options: DetailOptions; subtasks: DetailSubtask[]; linked: DetailLink[]; activity: DetailActivity[]; canEdit: boolean; canDelete: boolean }) {
+export function TaskDetailView({ task, options, subtasks, linked, canEdit, canDelete, children }: { task: DetailTask; options: DetailOptions; subtasks: DetailSubtask[]; linked: DetailLink[]; canEdit: boolean; canDelete: boolean; /** Files and the conversation, under the task's own sections. */ children?: React.ReactNode }) {
   const t = useTranslations("work.task");
   const tWork = useTranslations("work");
   const format = useFormatter();
@@ -105,19 +105,6 @@ export function TaskDetailView({ task, options, subtasks, linked, activity, canE
       () => setSaved(true),
     );
   }
-
-  const describe = (entry: DetailActivity): string => {
-    const name = (value: unknown) => (value && typeof value === "object" && "name" in value ? String((value as Named).name) : value === null || value === undefined ? "—" : String(value));
-    if (entry.type === "field_changed" && entry.field) {
-      const field = t.has(`fields.${entry.field}`) ? t(`fields.${entry.field}`) : entry.field;
-      if (entry.field === "description" || entry.field === "links") return t("activity.changedPlain", { field });
-      if (entry.field === "checklist") return t("activity.checklist", entry.toValue as { done: number; total: number });
-      if (entry.field === "priority") return t("activity.changed", { field, from: entry.fromValue ? tWork(`priority.${entry.fromValue}`) : "—", to: entry.toValue ? tWork(`priority.${entry.toValue}`) : "—" });
-      return t("activity.changed", { field, from: name(entry.fromValue), to: name(entry.toValue) });
-    }
-    const subject = name(entry.toValue ?? entry.fromValue);
-    return t.has(`activity.${entry.type}`) ? t(`activity.${entry.type}`, { name: subject }) : entry.type;
-  };
 
   const select = (name: string, label: string, value: string | null, children: React.ReactNode) => (
     <div className="flex flex-col gap-1.5">
@@ -299,18 +286,7 @@ export function TaskDetailView({ task, options, subtasks, linked, activity, canE
           ) : null}
         </section>
 
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("activityTitle")}</h2>
-          <ul className="flex flex-col gap-1.5 text-sm">
-            {activity.map((entry) => (
-              <li key={entry.id} className="flex flex-wrap gap-x-2">
-                <span className="font-medium">{entry.actorName ?? t("system")}</span>
-                <span className="min-w-0 flex-1 text-muted-foreground">{describe(entry)}</span>
-                <time className="text-xs text-muted-foreground">{format.dateTime(new Date(entry.createdAt), { dateStyle: "short", timeStyle: "short" })}</time>
-              </li>
-            ))}
-          </ul>
-        </section>
+        {children}
       </div>
 
       <aside className="flex flex-col gap-3">

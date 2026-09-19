@@ -6,6 +6,7 @@ import { filesCleanupJob } from "@/modules/platform/files/jobs";
 import { leaveAccrualJob } from "@/modules/leave/jobs";
 import { type JobDefinition, runJob } from "@/modules/platform/jobs/service";
 import { notificationsDailyJob } from "@/modules/platform/notifications/jobs";
+import { workRemindersJob } from "@/modules/work/jobs";
 
 // What each cron URL runs. Schedules live in vercel.json and stay daily, which every Vercel plan
 // allows; jobs that share a time of day share a URL but are still recorded (and fail) one by one.
@@ -14,7 +15,7 @@ const SCHEDULES: Record<string, JobDefinition[]> = {
   // last: it closes yesterday with the leave and the employment facts of today.
   midnight: [peopleRollOverJob, leaveAccrualJob, timesheetRecomputeJob],
   // Alerts (and, on the 1st, "your month is ready to confirm") first, so the digest that follows carries them.
-  morning: [hrAlertsJob, timesheetMonthReadyJob, notificationsDailyJob, filesCleanupJob],
+  morning: [hrAlertsJob, timesheetMonthReadyJob, workRemindersJob, notificationsDailyJob, filesCleanupJob],
 };
 
 // Run by hand only: /api/cron/<job name>.

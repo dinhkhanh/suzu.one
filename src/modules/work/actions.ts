@@ -3,8 +3,11 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { findDepartment } from "../platform/org/service";
-import { CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_STATUSES, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "./enums";
-import { canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canViewTask } from "./policy";
+import { addComment, deleteComment, editComment, findComment, toggleReaction } from "./comments";
+import { beginTaskUpload, completeTaskUpload, findTaskFile, removeTaskFile, taskFileLink } from "./attachments";
+import { setFollowing } from "./followers";
+import { CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "./enums";
+import { canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canModerateTask, canViewTask } from "./policy";
 import { createProject, findProject, projectFacts, setProjectMember, updateProject } from "./projects";
 import { addDependency, createWorkTask, deleteWorkTask, findDependency, loadTask, removeDependency, updateWorkTask } from "./tasks";
 import { createTeam, deleteLabel, findLabel, findTeam, saveClient, saveLabel, saveState, setTeamMember, teamFacts, updateTeam } from "./teams";
@@ -289,7 +292,7 @@ export async function createTaskAction(input: unknown) {
 }
 
 const checklistItem = z.object({ id: z.string().min(1).max(40), text: z.string().trim().min(1).max(200), done: z.boolean() });
-const linkItem = z.object({ id: z.string().min(1).max(40), url: z.url({ protocol: /^https?$/ }).max(1000), title: optional(z.string().trim().max(120)) });
+const linkItem = z.object({ id: z.string().min(1).max(40), url: z.url({ protocol: /^https$/ }).max(1000), title: optional(z.string().trim().max(120)) });
 
 const updateTaskPipeline = createAction({
   name: "work.task.update",
@@ -444,4 +447,175 @@ const deleteViewPipeline = createAction({
 });
 export async function deleteViewAction(input: unknown) {
   return deleteViewPipeline(input);
+}
+
+// ── Conversation: comments, reactions, followers ────────────────────────────────────────────
+
+const commentBody = z.string().trim().min(1).max(5000);
+const actorOf = (user: { person: { id: string; fullName: string }; email: string }) => ({ personId: user.person.id, email: user.email, fullName: user.person.fullName });
+
+const addCommentPipeline = createAction({
+  name: "work.comment.add",
+  input: z.object({ taskId: z.uuid(), body: commentBody, parentId: optional(z.uuid()) }),
+  // Whoever may see the task may join the conversation — the requester too, who cannot edit it.
+  authorize: async (user, input) => {
+    const task = await loadTask(input.taskId);
+    return !!task && canViewTask(await loadViewer(user), task.facts);
+  },
+  run: async ({ user, input }) => {
+    const { comment, mentioned, told } = await addComment(input.taskId, input, user.person);
+    revalidatePath(`/work/tasks/${input.taskId}`);
+    // The audit log says that someone commented and who was called in — the words stay in the task.
+    return { data: { id: comment.id, mentioned: mentioned.length }, audit: { resource: { type: "task:work", id: input.taskId }, summary: `comment ${comment.id}`, after: { commentId: comment.id, parentId: comment.parentId, mentioned, notified: told.length } } };
+  },
+});
+export async function addCommentAction(input: unknown) {
+  return addCommentPipeline(input);
+}
+
+const editCommentPipeline = createAction({
+  name: "work.comment.edit",
+  input: z.object({ commentId: z.uuid(), body: commentBody }),
+  // Your own words only, and only while you may still see the task.
+  authorize: async (user, input) => {
+    const comment = await findComment(input.commentId);
+    const task = comment && comment.authorPersonId === user.person.id ? await loadTask(comment.taskId) : undefined;
+    return !!task && canViewTask(await loadViewer(user), task.facts);
+  },
+  run: async ({ user, input }) => {
+    const { after, mentioned } = await editComment(input.commentId, input.body, user.person);
+    revalidatePath(`/work/tasks/${after.taskId}`);
+    return { data: { id: after.id }, audit: { resource: { type: "task:work", id: after.taskId }, summary: `comment ${after.id} edited`, after: { commentId: after.id, mentioned } } };
+  },
+});
+export async function editCommentAction(input: unknown) {
+  return editCommentPipeline(input);
+}
+
+const deleteCommentPipeline = createAction({
+  name: "work.comment.delete",
+  input: z.object({ commentId: z.uuid() }),
+  authorize: async (user, input) => {
+    const comment = await findComment(input.commentId);
+    const task = comment ? await loadTask(comment.taskId) : undefined;
+    if (!comment || !task) return false;
+    const viewer = await loadViewer(user);
+    return (comment.authorPersonId === user.person.id && canViewTask(viewer, task.facts)) || canModerateTask(viewer, task.facts);
+  },
+  run: async ({ user, input }) => {
+    const comment = await deleteComment(input.commentId, user.person.id);
+    revalidatePath(`/work/tasks/${comment.taskId}`);
+    return { data: { id: comment.id }, audit: { resource: { type: "task:work", id: comment.taskId }, summary: `comment ${comment.id} deleted`, before: { commentId: comment.id, authorPersonId: comment.authorPersonId } } };
+  },
+});
+export async function deleteCommentAction(input: unknown) {
+  return deleteCommentPipeline(input);
+}
+
+const reactPipeline = createAction({
+  name: "work.comment.react",
+  input: z.object({ commentId: z.uuid(), emoji: z.enum(REACTIONS) }),
+  authorize: async (user, input) => {
+    const comment = await findComment(input.commentId);
+    const task = comment ? await loadTask(comment.taskId) : undefined;
+    return !!task && canViewTask(await loadViewer(user), task.facts);
+  },
+  run: async ({ user, input }) => {
+    const { comment, added } = await toggleReaction(input.commentId, input.emoji, user.person.id);
+    revalidatePath(`/work/tasks/${comment.taskId}`);
+    return { data: { id: comment.id, added }, audit: { resource: { type: "task:work", id: comment.taskId }, summary: `${added ? "+" : "−"}${input.emoji} on comment ${comment.id}` } };
+  },
+});
+export async function reactToCommentAction(input: unknown) {
+  return reactPipeline(input);
+}
+
+const followPipeline = createAction({
+  name: "work.task.follow",
+  input: z.object({ taskId: z.uuid(), follow: z.boolean() }),
+  // For yourself only; stopping is always allowed, starting takes the right to see the task.
+  authorize: async (user, input) => {
+    const task = await loadTask(input.taskId);
+    return !!task && (!input.follow || canViewTask(await loadViewer(user), task.facts));
+  },
+  run: async ({ user, input }) => {
+    const { before, after } = await setFollowing(input.taskId, user.person.id, input.follow);
+    revalidatePath(`/work/tasks/${input.taskId}`);
+    return { data: { state: after }, audit: { resource: { type: "task:work", id: input.taskId }, summary: `follow: ${before} → ${after}`, before: { state: before }, after: { state: after } } };
+  },
+});
+export async function followTaskAction(input: unknown) {
+  return followPipeline(input);
+}
+
+// ── Attachments (platform files module; signed-URL upload) ──────────────────────────────────
+
+const beginUploadPipeline = createAction({
+  name: "work.task.file.begin",
+  input: z.object({ taskId: z.uuid(), fileName: z.string().min(1).max(255), sizeBytes: z.number().int().positive() }),
+  authorize: async (user, input) => {
+    const task = await loadTask(input.taskId);
+    return !!task && canEditTask(await loadViewer(user), task.facts);
+  },
+  run: async ({ user, input }) => {
+    const task = (await loadTask(input.taskId))!;
+    const upload = await beginTaskUpload(task, input, actorOf(user));
+    return { data: upload, audit: { resource: auditTask(input.taskId, task.task.entityId), summary: input.fileName, after: { fileId: upload.fileId, fileName: input.fileName, sizeBytes: input.sizeBytes } } };
+  },
+});
+export async function beginTaskUploadAction(input: unknown) {
+  return beginUploadPipeline(input);
+}
+
+const completeUploadPipeline = createAction({
+  name: "work.task.file.add",
+  input: z.object({ fileId: z.uuid() }),
+  authorize: async (user, input) => {
+    const found = await findTaskFile(input.fileId, { pending: true });
+    return !!found && found.file.uploadedByPersonId === user.person.id && canEditTask(await loadViewer(user), found.loaded.facts);
+  },
+  run: async ({ user, input }) => {
+    const file = await completeTaskUpload(input.fileId, actorOf(user));
+    revalidatePath(`/work/tasks/${file.ownerId}`);
+    return { data: { id: file.id }, audit: { resource: auditTask(file.ownerId, file.entityId), summary: file.fileName, after: { fileId: file.id, fileName: file.fileName, sizeBytes: file.sizeBytes } } };
+  },
+});
+export async function completeTaskUploadAction(input: unknown) {
+  return completeUploadPipeline(input);
+}
+
+const downloadPipeline = createAction({
+  name: "work.task.file.open",
+  input: z.object({ fileId: z.uuid() }),
+  authorize: async (user, input) => {
+    const found = await findTaskFile(input.fileId);
+    return !!found && canViewTask(await loadViewer(user), found.loaded.facts);
+  },
+  run: async ({ user, input }) => {
+    const { file } = (await findTaskFile(input.fileId))!;
+    const url = await taskFileLink(file, actorOf(user), user.request);
+    return { data: { url }, audit: { resource: auditTask(file.ownerId, file.entityId), summary: file.fileName } };
+  },
+});
+export async function openTaskFileAction(input: unknown) {
+  return downloadPipeline(input);
+}
+
+const removeFilePipeline = createAction({
+  name: "work.task.file.remove",
+  input: z.object({ fileId: z.uuid() }),
+  authorize: async (user, input) => {
+    const found = await findTaskFile(input.fileId);
+    if (!found) return false;
+    const viewer = await loadViewer(user);
+    return (found.file.uploadedByPersonId === user.person.id && canEditTask(viewer, found.loaded.facts)) || canModerateTask(viewer, found.loaded.facts);
+  },
+  run: async ({ user, input }) => {
+    const file = await removeTaskFile(input.fileId, user.person.id);
+    revalidatePath(`/work/tasks/${file.ownerId}`);
+    return { data: { id: file.id }, audit: { resource: auditTask(file.ownerId, file.entityId), summary: file.fileName, before: { fileId: file.id, fileName: file.fileName } } };
+  },
+});
+export async function removeTaskFileAction(input: unknown) {
+  return removeFilePipeline(input);
 }

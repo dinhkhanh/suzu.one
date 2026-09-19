@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { cache } from "react";
 import { db, schema, type Tx } from "@/lib/db";
 import type { Principal } from "../platform/rbac/policy";
+import { loadGrants } from "../platform/rbac/service";
 import type { TeamRole } from "./enums";
 import type { WorkViewer } from "./policy";
 
@@ -26,3 +27,13 @@ export async function loadViewerWith(executor: Executor, user: ViewerSource): Pr
 // Once per request: `getCurrentUser` is cached, so pages, components and an action's authorize
 // step pass the same object and share one answer.
 export const loadViewer = cache((user: ViewerSource): Promise<WorkViewer> => loadViewerWith(db(), user));
+
+/**
+ * Somebody else as the policy sees them — to decide whether a mention may reach them, or whether
+ * a follower still belongs on a task. null = unknown or gone.
+ */
+export async function viewerOfPerson(executor: Executor, personId: string): Promise<WorkViewer | null> {
+  const [person] = await executor.select({ id: schema.person.id, primaryEntityId: schema.person.primaryEntityId, workforceType: schema.person.workforceType, status: schema.person.status }).from(schema.person).where(eq(schema.person.id, personId)).limit(1);
+  if (!person || person.status === "offboarded") return null;
+  return loadViewerWith(executor, { person, principal: { personId: person.id, workforceType: person.workforceType, grants: await loadGrants(person.id, undefined, executor) } });
+}

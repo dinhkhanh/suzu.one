@@ -9,6 +9,7 @@ import { notify } from "../platform/notifications/service";
 import { createTask, type TaskRow } from "../platform/tasks-engine/service";
 import { rankBetween, wouldCreateDependencyCycle, wouldCreateParentCycle } from "./engine/graph";
 import { CATEGORY_STATUS, type DependencyType, type StateCategory } from "./enums";
+import { notifyFollowers } from "./followers";
 import { canViewProject, canViewTask, canViewTeamBacklog, type TaskFacts, type WorkViewer } from "./policy";
 import { projectFacts, type ProjectRow } from "./projects";
 import type { TaskChecklistItem, TaskLink } from "./schema";
@@ -25,7 +26,7 @@ export const taskKey = (teamKey: string, number: number) => `${teamKey}-${number
 
 // ── Loading one task with what the policy needs ─────────────────────────────────────────────
 
-export type LoadedTask = { task: TaskRow; work: WorkTaskRow; team: TeamRow; project: ProjectRow | null; peopleIds: string[]; facts: TaskFacts };
+export type LoadedTask = { task: TaskRow; work: WorkTaskRow; team: TeamRow; project: ProjectRow | null; /** Collaborators. */ peopleIds: string[]; followerIds: string[]; mutedIds: string[]; facts: TaskFacts };
 
 export async function loadTask(taskId: string, executor: Executor = db()): Promise<LoadedTask | undefined> {
   const [row] = await executor
@@ -37,8 +38,11 @@ export async function loadTask(taskId: string, executor: Executor = db()): Promi
     .where(and(eq(schema.task.id, taskId), live))
     .limit(1);
   if (!row) return undefined;
-  const people = await executor.select({ personId: schema.workTaskPerson.personId }).from(schema.workTaskPerson).where(eq(schema.workTaskPerson.taskId, taskId));
-  const peopleIds = people.map((person) => person.personId);
+  const people = await executor.select({ personId: schema.workTaskPerson.personId, role: schema.workTaskPerson.role }).from(schema.workTaskPerson).where(eq(schema.workTaskPerson.taskId, taskId));
+  // Following gives notifications, not rights: only collaborators count as people on the task.
+  const peopleIds = people.filter((person) => person.role === "collaborator").map((person) => person.personId);
+  const followerIds = people.filter((person) => person.role === "follower").map((person) => person.personId);
+  const mutedIds = people.filter((person) => person.role === "muted").map((person) => person.personId);
   const facts: TaskFacts = {
     team: teamFacts(row.team),
     project: row.project ? projectFacts(row.project, row.team) : null,
@@ -47,7 +51,7 @@ export async function loadTask(taskId: string, executor: Executor = db()): Promi
     createdByPersonId: row.task.createdByPersonId,
     peopleIds,
   };
-  return { ...row, peopleIds, facts };
+  return { ...row, peopleIds, followerIds, mutedIds, facts };
 }
 
 // ── Activity ────────────────────────────────────────────────────────────────────────────────
@@ -365,6 +369,14 @@ export async function updateWorkTask(taskId: string, patch: WorkTaskPatch, actor
 
     const recipients = [newAssignee, ...newCollaborators].filter((id): id is string => !!id && id !== actorPersonId);
     await notify({ recipients, kind: "tasks.work_assigned", params: { key: taskKey(team.key, work.number), title: patch.title ?? task.title }, link: taskLink(taskId) }, tx);
+    // A move to another state reaches everyone following the task (FR-WRK-17) — except whoever was
+    // just handed it: one notice per event per person.
+    const stateChange = changes.find((change) => change.field === "state");
+    if (stateChange) {
+      const after = await loadTask(taskId, tx);
+      const [actor] = actorPersonId ? await tx.select({ name: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, actorPersonId)).limit(1) : [];
+      if (after) await notifyFollowers(tx, after, actorPersonId, "tasks.status_changed", { name: actor?.name ?? "", state: (stateChange.to as { name: string }).name }, recipients);
+    }
     return { before, changes };
   });
 }
@@ -517,7 +529,7 @@ export const listTeamBacklog = (teamId: string, executor: Executor = db()) => li
 /**
  * The list form of `canViewTask`: which work tasks may this viewer see? Projects and teams are
  * few, so the pure policy picks the ids and SQL only matches them; the people on a task (assignee,
- * requester, creator, collaborators, followers) always see it. A PGlite test keeps this and
+ * requester, creator, collaborators) always see it — followers do not: following gives no rights. A PGlite test keeps this and
  * `canViewTask` in step.
  */
 export async function visibleTaskCondition(viewer: WorkViewer, executor: Executor = db()): Promise<SQL> {
@@ -537,7 +549,7 @@ export async function visibleTaskCondition(viewer: WorkViewer, executor: Executo
       eq(schema.task.assigneePersonId, self),
       eq(schema.task.requesterPersonId, self),
       eq(schema.task.createdByPersonId, self),
-      exists(executor.select({ one: sql`1` }).from(schema.workTaskPerson).where(and(eq(schema.workTaskPerson.taskId, schema.task.id), eq(schema.workTaskPerson.personId, self)))),
+      exists(executor.select({ one: sql`1` }).from(schema.workTaskPerson).where(and(eq(schema.workTaskPerson.taskId, schema.task.id), eq(schema.workTaskPerson.personId, self), eq(schema.workTaskPerson.role, "collaborator")))),
     );
   }
   return or(...clauses.filter((clause): clause is SQL => !!clause)) ?? sql`false`;

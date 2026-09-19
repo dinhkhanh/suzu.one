@@ -26,7 +26,7 @@ export type TaskFacts = {
   assigneePersonId: string | null;
   requesterPersonId: string | null;
   createdByPersonId: string | null;
-  /** Collaborators and followers. */
+  /** Collaborators. Followers are not here: following a task gives notifications, never rights. */
   peopleIds: readonly string[];
 };
 
@@ -106,5 +106,10 @@ export function canEditTask(viewer: WorkViewer, task: TaskFacts): boolean {
 export function canDeleteTask(viewer: WorkViewer, task: TaskFacts): boolean {
   const self = viewer.principal.personId;
   if (self && task.createdByPersonId === self && canEditTask(viewer, task)) return true;
+  return task.project ? canManageProject(viewer, task.project) : canAdminTeam(viewer, task.team);
+}
+
+/** Remove someone else's comment or file: whoever runs the project (or the team, for its backlog). */
+export function canModerateTask(viewer: WorkViewer, task: TaskFacts): boolean {
   return task.project ? canManageProject(viewer, task.project) : canAdminTeam(viewer, task.team);
 }

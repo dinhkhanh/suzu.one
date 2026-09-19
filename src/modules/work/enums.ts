@@ -65,3 +65,7 @@ export const WORKFLOW_PRESETS: Record<"simple" | "content", { key: string; categ
   ],
 };
 export type WorkflowPreset = keyof typeof WORKFLOW_PRESETS;
+
+/** Reactions on a comment (FR-WRK-09): a short fixed set, so a reaction is one tap and one meaning. */
+export const REACTIONS = ["👍", "❤️", "🎉", "👀", "✅"] as const;
+export type Reaction = (typeof REACTIONS)[number];

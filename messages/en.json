@@ -658,6 +658,26 @@
       "tasks_work_assigned": {
         "title": "{key} is yours: {title}",
         "body": "You were put on the task {key} “{title}”. Open it to see the brief, the due date and who else is on it."
+      },
+      "tasks_mentioned": {
+        "title": "{name} mentioned you on {key}",
+        "body": "{name} mentioned you on {key} “{title}”: {excerpt}"
+      },
+      "tasks_commented": {
+        "title": "{name} commented on {key}",
+        "body": "{name} on {key} “{title}”: {excerpt}"
+      },
+      "tasks_status_changed": {
+        "title": "{key} moved to {state}",
+        "body": "{name} moved {key} “{title}” to {state}."
+      },
+      "tasks_due_soon": {
+        "title": "Due tomorrow: {count, plural, =1 {{title}} other {# tasks}}",
+        "body": "{count, plural, =1 {{key} “{title}” is due tomorrow.} other {# of your tasks are due tomorrow, starting with {key} “{title}”.}}"
+      },
+      "tasks_overdue": {
+        "title": "Overdue: {count, plural, =1 {{title}} other {# tasks}}",
+        "body": "{count, plural, =1 {{key} “{title}” was due on {dueDate} and is still open.} other {# of your tasks are past their due date, the oldest being {key} “{title}” ({dueDate}).}} Finish it, or move the date and say why."
       }
     },
     "errors": {
@@ -2742,7 +2762,11 @@
         "person_removed": "removed {name}",
         "dependency_added": "linked {name}",
         "dependency_removed": "removed a link",
-        "deleted": "deleted the task"
+        "deleted": "deleted the task",
+        "commented": "commented",
+        "comment_deleted": "deleted a comment",
+        "attachment_added": "attached {name}",
+        "attachment_removed": "removed the file {name}"
       }
     },
     "palette": {
@@ -2818,6 +2842,51 @@
       "more": "+{count} more",
       "less": "Show fewer",
       "hint": "Drag a task to another day to change its due date."
+    },
+    "discussion": {
+      "title": "Conversation ({count})",
+      "show": {
+        "all": "Comments and history",
+        "comments": "Comments only"
+      },
+      "placeholder": "Write a comment… type @ to mention someone",
+      "replyPlaceholder": "Reply…",
+      "composerHint": "Ctrl/⌘ + Enter to send. Links to images and videos stay links.",
+      "send": "Comment",
+      "reply": "Reply",
+      "edit": "Edit",
+      "saveEdit": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "react": "Add a reaction",
+      "edited": "(edited)",
+      "deleted": "This comment was deleted.",
+      "mentionPicker": "People you can mention",
+      "followers": "{count, plural, =0 {Nobody follows this task} =1 {1 person follows this task} other {# people follow this task}}",
+      "follow": "Follow",
+      "unfollow": "Unfollow",
+      "followWorking": "You are on this task, so you always hear about it.",
+      "files": "Files ({count})",
+      "addFile": "Attach a file",
+      "removeFile": "Remove",
+      "uploading": "Uploading…",
+      "errors": {
+        "generic": "That did not work. Try again.",
+        "forbidden": "You may not do that on this task.",
+        "invalid": "Check what you entered.",
+        "task_not_found": "Task not found.",
+        "comment_not_found": "That comment is gone.",
+        "reaction_invalid": "That reaction is not available.",
+        "follow_working": "You are on this task, so you always hear about it.",
+        "file_empty": "The file is empty.",
+        "file_too_large": "The file is larger than 20 MB.",
+        "file_type_not_allowed": "This kind of file is not allowed.",
+        "file_name_invalid": "The file name is not valid.",
+        "file_upload_failed": "The upload did not reach storage. Try again.",
+        "file_not_uploaded": "The upload did not arrive. Try again.",
+        "file_content_mismatch": "The file's content does not match its type.",
+        "file_not_found": "File not found."
+      }
     }
   }
 }

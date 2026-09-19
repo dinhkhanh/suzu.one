@@ -204,6 +204,13 @@
       "when": 1789847071385,
       "tag": "0028_work_management",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1789849405853,
+      "tag": "0029_work_reminders",
+      "breakpoints": true
     }
   ]
 }

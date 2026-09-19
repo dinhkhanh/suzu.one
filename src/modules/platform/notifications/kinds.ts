@@ -41,6 +41,12 @@ export const KINDS = {
   "tasks.assigned": "tasks",
   // Work management (Phase 3): a task in a project, with a link straight to it.
   "tasks.work_assigned": "tasks",
+  // What happens on tasks I follow (FR-WRK-17), and the daily reminders of the work-reminders job.
+  "tasks.mentioned": "tasks",
+  "tasks.commented": "tasks",
+  "tasks.status_changed": "tasks",
+  "tasks.due_soon": "tasks",
+  "tasks.overdue": "tasks",
   "attendance.month_ready": "attendance",
   "attendance.month_waiting": "attendance",
   "attendance.month_reopened": "attendance",

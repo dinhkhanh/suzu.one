@@ -273,6 +273,24 @@ export const workComment = pgTable(
   (t) => [index("work_comment_task_idx").on(t.taskId, t.createdAt)],
 ).enableRLS();
 
+// Due-soon and overdue reminders already sent (FR-WRK-17): one per task, kind and day, so a
+// second run of the daily job — or a retry — tells nobody twice.
+export const workReminderSent = pgTable(
+  "work_reminder_sent",
+  {
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    // due_soon | overdue
+    kind: text("kind").notNull(),
+    sentOn: date("sent_on").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.taskId, t.personId, t.kind, t.sentOn] })],
+).enableRLS();
+
 export type SavedViewFilters = Record<string, string>;
 
 // A named set of list filters: personal, or shared with everyone who can open the project.
