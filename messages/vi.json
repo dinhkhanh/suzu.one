@@ -654,6 +654,10 @@
       "attendance_nudge": {
         "title": "Vui lòng kiểm tra chấm công tháng {month}",
         "body": "Nhân sự đề nghị bạn xem lại chấm công tháng {month}: bổ sung lần chấm còn thiếu hoặc gửi các đơn còn mở."
+      },
+      "tasks_work_assigned": {
+        "title": "{key} được giao cho bạn: {title}",
+        "body": "Bạn vừa được giao công việc {key} “{title}”. Mở công việc để xem brief, hạn hoàn thành và những người cùng tham gia."
       }
     },
     "errors": {

@@ -64,6 +64,31 @@ describe("can", () => {
   });
 });
 
+describe("work and ops permissions (Phase 3)", () => {
+  it("lets leaders run work management in their scope, and nobody else by role", () => {
+    const head = principal([{ role: "department_head", scope: { type: "department", id: DESIGN } }]);
+    expect(can(head, "work:manage", { departmentId: DESIGN, entityId: ENTITY_A })).toBe(true);
+    expect(can(head, "work:manage", { departmentId: "dept-video", entityId: ENTITY_A })).toBe(false);
+    expect(can(principal([{ role: "entity_director", scope: { type: "entity", id: ENTITY_A } }]), "work:manage", { entityId: ENTITY_A })).toBe(true);
+    expect(can(principal([{ role: "entity_director", scope: { type: "entity", id: ENTITY_A } }]), "work:manage", { entityId: ENTITY_B })).toBe(false);
+    for (const role of ["hr_admin", "hr_staff", "payroll", "finance", "recruiter", "asset_admin", "auditor"] as const) expect(can(principal([{ role, scope: { type: "group" } }]), "work:manage")).toBe(false);
+  });
+
+  it("gives the compliance tracker to HR, C&B and finance; executives and the auditor only read it", () => {
+    const group = { type: "group" } as const;
+    for (const role of ["hr_admin", "hr_staff", "payroll", "finance"] as const) expect(can(principal([{ role, scope: group }]), "ops:manage")).toBe(true);
+    for (const role of ["c_level", "entity_director", "auditor"] as const) {
+      expect(can(principal([{ role, scope: group }]), "ops:read")).toBe(true);
+      expect(can(principal([{ role, scope: group }]), "ops:manage")).toBe(false);
+    }
+    for (const role of ["department_head", "recruiter", "asset_admin"] as const) {
+      expect(can(principal([{ role, scope: group }]), "ops:read")).toBe(false);
+      expect(can(principal([{ role, scope: group }]), "ops:manage")).toBe(false);
+    }
+    expect(can(principal([{ role: "hr_staff", scope: { type: "entity", id: ENTITY_A } }]), "ops:manage", { entityId: ENTITY_B })).toBe(false);
+  });
+});
+
 describe("readableTier", () => {
   it("lets everyone read their own compensation", () => {
     expect(readableTier(principal([], { personId: "lan" }), lan)).toBe("compensation");

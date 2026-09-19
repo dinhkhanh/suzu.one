@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { ASSIGNEE_RULES } from "./engine/checklist";
-import { canManageTask, canManageTemplates, canMoveTask } from "./policy";
+import { canManageTask, canManageTemplates, canMoveTask, movesThroughEngine } from "./policy";
 import { addTemplateItem, findTask, findTemplate, findTemplateItem, reassignTask, removeTemplateItem, saveTemplate, setTaskStatus } from "./service";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -22,7 +22,7 @@ const statusPipeline = createAction({
   authorize: async (user, input) => {
     const task = await findTask(input.taskId);
     // Cancelling says "this will not happen": the manager's call, not the assignee's.
-    return !!task && (input.status === "cancelled" ? canManageTask(user.principal, task) : canMoveTask(user.principal, task));
+    return !!task && movesThroughEngine(task) && (input.status === "cancelled" ? canManageTask(user.principal, task) : canMoveTask(user.principal, task));
   },
   run: async ({ user, input }) => {
     const { before, after } = await setTaskStatus(input.taskId, input.status, user.person.id);
@@ -40,7 +40,7 @@ const reassignPipeline = createAction({
   input: z.object({ taskId: z.uuid(), assigneePersonId: optional(z.uuid()) }),
   authorize: async (user, input) => {
     const task = await findTask(input.taskId);
-    return !!task && canManageTask(user.principal, task);
+    return !!task && movesThroughEngine(task) && canManageTask(user.principal, task);
   },
   run: async ({ user, input }) => {
     const { before, after } = await reassignTask(input.taskId, input.assigneePersonId, user.person.id);

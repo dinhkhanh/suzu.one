@@ -39,6 +39,9 @@ export type NewTask = {
   subjectPersonId?: string | null;
   sortOrder?: number;
   templateItemId?: string | null;
+  startDate?: IsoDate | null;
+  estimateMinutes?: number | null;
+  requesterPersonId?: string | null;
 };
 
 async function tellAssignees(executor: Executor, tasks: TaskRow[], actorId: string | null): Promise<void> {
@@ -49,17 +52,18 @@ async function tellAssignees(executor: Executor, tasks: TaskRow[], actorId: stri
   }
 }
 
-export async function createTasks(executor: Executor, tasks: NewTask[], actorId: string | null): Promise<TaskRow[]> {
+/** `notify: false` when the calling module tells people itself, in its own words and with its own link. */
+export async function createTasks(executor: Executor, tasks: NewTask[], actorId: string | null, options: { notify?: boolean } = {}): Promise<TaskRow[]> {
   if (tasks.length === 0) return [];
   const rows = await executor
     .insert(schema.task)
     .values(tasks.map(({ context, ...task }) => ({ ...task, contextType: context?.type ?? null, contextId: context?.id ?? null, createdByPersonId: actorId })))
     .returning();
-  await tellAssignees(executor, rows, actorId);
+  if (options.notify !== false) await tellAssignees(executor, rows, actorId);
   return rows;
 }
 
-export const createTask = async (executor: Executor, task: NewTask, actorId: string | null): Promise<TaskRow> => (await createTasks(executor, [task], actorId))[0];
+export const createTask = async (executor: Executor, task: NewTask, actorId: string | null, options: { notify?: boolean } = {}): Promise<TaskRow> => (await createTasks(executor, [task], actorId, options))[0];
 
 export type InstantiateInput = {
   purpose: string;

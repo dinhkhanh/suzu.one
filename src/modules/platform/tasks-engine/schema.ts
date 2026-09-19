@@ -59,6 +59,12 @@ export const task = pgTable(
     status: taskStatus("status").notNull().default("todo"),
     assigneePersonId: uuid("assignee_person_id").references(() => person.id),
     dueDate: date("due_date"),
+    // Phase 3 (work tasks; harmless for the other kinds): when work starts, how long it should
+    // take, and who asked for it (the creator may be someone filing it on their behalf).
+    startDate: date("start_date"),
+    estimateMinutes: integer("estimate_minutes"),
+    requesterPersonId: uuid("requester_person_id").references(() => person.id),
+    // 1 = urgent … 4 = low; null = none.
     priority: smallint("priority"),
     entityId: uuid("entity_id").references(() => entity.id),
     parentTaskId: uuid("parent_task_id").references((): AnyPgColumn => task.id),
@@ -81,5 +87,6 @@ export const task = pgTable(
     index("task_assignee_open_idx").on(t.assigneePersonId, t.dueDate).where(sql`${t.deletedAt} IS NULL AND ${t.status} IN ('todo', 'in_progress')`),
     index("task_context_idx").on(t.contextType, t.contextId),
     index("task_subject_idx").on(t.subjectPersonId),
+    index("task_parent_idx").on(t.parentTaskId),
   ],
 ).enableRLS();

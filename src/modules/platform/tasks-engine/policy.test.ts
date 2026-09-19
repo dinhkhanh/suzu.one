@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Principal } from "../rbac/policy";
-import { canManageTask, canManageTemplates, canMoveTask, canViewTask } from "./policy";
+import { canManageTask, canManageTemplates, canMoveTask, canViewTask, movesThroughEngine } from "./policy";
 
 const person = (personId: string, grants: Principal["grants"] = []): Principal => ({ personId, workforceType: "employee", grants });
 const task = { kind: "checklist", entityId: "SZM", assigneePersonId: "assignee", subjectPersonId: "subject", createdByPersonId: "creator" };
@@ -21,6 +21,17 @@ describe("task policy", () => {
   });
   it("has no manager for a kind nobody registered", () => {
     expect(canManageTask(person("owner", [{ role: "owner", scope: { type: "group" } }]), { ...task, kind: "unknown" })).toBe(false);
+  });
+  it("names a manager for work tasks and obligations, and keeps them out of the generic actions", () => {
+    const head = person("head", [{ role: "department_head", scope: { type: "entity", id: "SZM" } }]);
+    const finance = person("fin", [{ role: "finance", scope: { type: "entity", id: "SZM" } }]);
+    expect(canManageTask(head, { ...task, kind: "work" })).toBe(true);
+    expect(canManageTask(hrOf("SZM"), { ...task, kind: "work" })).toBe(false);
+    expect(canManageTask(finance, { ...task, kind: "obligation" })).toBe(true);
+    expect(canManageTask(head, { ...task, kind: "obligation" })).toBe(false);
+    expect(movesThroughEngine(task)).toBe(true);
+    expect(movesThroughEngine({ kind: "work" })).toBe(false);
+    expect(movesThroughEngine({ kind: "obligation" })).toBe(false);
   });
   it("lets the subject and the creator look, not touch", () => {
     for (const id of ["subject", "creator"]) {

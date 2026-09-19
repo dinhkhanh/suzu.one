@@ -39,6 +39,8 @@ export const KINDS = {
   // HR called off someone's approved leave: the person is told, the days are back in the balance.
   "approvals.leave_cancelled": "approvals",
   "tasks.assigned": "tasks",
+  // Work management (Phase 3): a task in a project, with a link straight to it.
+  "tasks.work_assigned": "tasks",
   "attendance.month_ready": "attendance",
   "attendance.month_waiting": "attendance",
   "attendance.month_reopened": "attendance",

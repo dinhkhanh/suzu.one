@@ -1,0 +1,110 @@
+// Who may see and change what in work management. Pure: the service loads the viewer's
+// memberships once per request (viewer.ts) and asks these functions.
+//
+// Rights come from membership first — a team's leads run the team, a project's members work in it —
+// and from the `work:manage` permission for leaders over their scope. Privacy (FR-WRK-18):
+//   entity  → everyone in the project's entity (a group project: everyone); never collaborators
+//   team    → the owning team's members and the project's members
+//   private → the project's members and the team's leads. `work:manage` does not open a private
+//             project: an HR or finance project stays with the people in it.
+import { can, type Principal } from "../platform/rbac/policy";
+import type { TeamRole, Visibility } from "./enums";
+
+export type WorkViewer = {
+  principal: Principal;
+  /** The viewer's primary entity. */
+  entityId: string | null;
+  teamRoles: ReadonlyMap<string, TeamRole>;
+  projectRoles: ReadonlyMap<string, TeamRole>;
+};
+
+export type TeamFacts = { id: string; entityId: string | null; departmentId: string | null; defaultVisibility: Visibility };
+export type ProjectFacts = { id: string; entityId: string | null; visibility: Visibility; team: TeamFacts };
+export type TaskFacts = {
+  team: TeamFacts;
+  project: ProjectFacts | null;
+  assigneePersonId: string | null;
+  requesterPersonId: string | null;
+  createdByPersonId: string | null;
+  /** Collaborators and followers. */
+  peopleIds: readonly string[];
+};
+
+const isCollaborator = (viewer: WorkViewer) => viewer.principal.workforceType === "collaborator";
+const scopeOf = (team: Pick<TeamFacts, "entityId" | "departmentId">) => ({ entityId: team.entityId, departmentId: team.departmentId });
+
+/** Create teams here, keep the client list: leaders with `work:manage` over the place. */
+export function canManageWorkspace(viewer: WorkViewer, place?: { entityId: string | null; departmentId: string | null }): boolean {
+  return can(viewer.principal, "work:manage", place ? scopeOf(place) : undefined);
+}
+
+/** Members, workflow, labels, templates of a team. */
+export function canAdminTeam(viewer: WorkViewer, team: TeamFacts): boolean {
+  return viewer.teamRoles.get(team.id) === "lead" || canManageWorkspace(viewer, team);
+}
+
+/** A team's name, members and workflow are directory information — not for collaborators who are not in it. */
+export function canViewTeam(viewer: WorkViewer, team: TeamFacts): boolean {
+  return viewer.teamRoles.has(team.id) || canAdminTeam(viewer, team) || !isCollaborator(viewer);
+}
+
+function seesByVisibility(viewer: WorkViewer, visibility: Visibility, entityId: string | null, team: TeamFacts): boolean {
+  if (viewer.teamRoles.get(team.id) === "lead") return true;
+  if (visibility === "private") return false;
+  if (viewer.teamRoles.has(team.id) || canManageWorkspace(viewer, team)) return true;
+  return visibility === "entity" && !isCollaborator(viewer) && (entityId === null || entityId === viewer.entityId);
+}
+
+export function canViewProject(viewer: WorkViewer, project: ProjectFacts): boolean {
+  return viewer.projectRoles.has(project.id) || seesByVisibility(viewer, project.visibility, project.entityId, project.team);
+}
+
+/** Settings, members, archive. */
+export function canManageProject(viewer: WorkViewer, project: ProjectFacts): boolean {
+  if (viewer.projectRoles.get(project.id) === "lead" || viewer.teamRoles.get(project.team.id) === "lead") return true;
+  return project.visibility !== "private" && canManageWorkspace(viewer, project.team);
+}
+
+export function canCreateProject(viewer: WorkViewer, team: TeamFacts): boolean {
+  return viewer.teamRoles.has(team.id) || canAdminTeam(viewer, team);
+}
+
+/** Create and change tasks in a project: the people working in it, not everyone who may look. */
+export function canContributeToProject(viewer: WorkViewer, project: ProjectFacts): boolean {
+  if (viewer.projectRoles.has(project.id) || canManageProject(viewer, project)) return true;
+  return project.visibility !== "private" && viewer.teamRoles.has(project.team.id);
+}
+
+/** Tasks outside any project sit in the team's own backlog. */
+export function canContributeToTeam(viewer: WorkViewer, team: TeamFacts): boolean {
+  return viewer.teamRoles.has(team.id) || canAdminTeam(viewer, team);
+}
+
+const isParty = (viewer: WorkViewer, task: TaskFacts): boolean => {
+  const self = viewer.principal.personId;
+  return !!self && (task.assigneePersonId === self || task.requesterPersonId === self || task.createdByPersonId === self || task.peopleIds.includes(self));
+};
+
+/** Tasks outside any project are as open as a new project of the team would be. */
+export function canViewTeamBacklog(viewer: WorkViewer, team: TeamFacts): boolean {
+  return seesByVisibility(viewer, team.defaultVisibility, team.entityId, team);
+}
+
+export function canViewTask(viewer: WorkViewer, task: TaskFacts): boolean {
+  if (isParty(viewer, task)) return true;
+  return task.project ? canViewProject(viewer, task.project) : canViewTeamBacklog(viewer, task.team);
+}
+
+export function canEditTask(viewer: WorkViewer, task: TaskFacts): boolean {
+  const self = viewer.principal.personId;
+  // The requester and the creator watch; the assignee and the collaborators do the work.
+  if (self && (task.assigneePersonId === self || task.peopleIds.includes(self))) return true;
+  return task.project ? canContributeToProject(viewer, task.project) : canContributeToTeam(viewer, task.team);
+}
+
+/** Deleting is for whoever runs the project (or team), and for the creator's own mistake. */
+export function canDeleteTask(viewer: WorkViewer, task: TaskFacts): boolean {
+  const self = viewer.principal.personId;
+  if (self && task.createdByPersonId === self && canEditTask(viewer, task)) return true;
+  return task.project ? canManageProject(viewer, task.project) : canAdminTeam(viewer, task.team);
+}

@@ -3,7 +3,13 @@
 import { can, type Principal } from "../rbac/policy";
 import type { Permission } from "../rbac/roles";
 
-export const KIND_MANAGE_PERMISSION: Record<string, Exclude<Permission, "*">> = { checklist: "person:manage" };
+export const KIND_MANAGE_PERMISSION: Record<string, Exclude<Permission, "*">> = { checklist: "person:manage", work: "work:manage", obligation: "ops:manage" };
+
+// Kinds whose tasks move through the engine's own generic actions (task.status, task.reassign).
+// A work task carries a workflow state and an obligation cannot close without its evidence, so
+// those kinds are moved by their own module's actions only.
+export const GENERIC_ACTION_KINDS: readonly string[] = ["checklist"];
+export const movesThroughEngine = (task: { kind: string }): boolean => GENERIC_ACTION_KINDS.includes(task.kind);
 
 export type TaskParties = { kind: string; entityId: string | null; assigneePersonId: string | null; subjectPersonId: string | null; createdByPersonId: string | null };
 

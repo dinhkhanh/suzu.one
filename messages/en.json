@@ -654,6 +654,10 @@
       "attendance_nudge": {
         "title": "Please check your attendance for {month}",
         "body": "HR asks you to review your attendance for {month}: fix missing punches or file the requests that are still open."
+      },
+      "tasks_work_assigned": {
+        "title": "{key} is yours: {title}",
+        "body": "You were put on the task {key} “{title}”. Open it to see the brief, the due date and who else is on it."
       }
     },
     "errors": {
