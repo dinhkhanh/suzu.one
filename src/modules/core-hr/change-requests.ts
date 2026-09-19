@@ -43,6 +43,9 @@ export const profileChangeRequest = defineRequestType({
   // One step; any HR person with authority over the employee may answer.
   flow: { steps: [{ key: "hr", mode: "any", approvers: [{ rule: "permission", permission: "person:manage" }] }] },
   canView: (viewer, subject) => !!subject && can(viewer, "person:manage", subject),
+  // Restricted values and bank accounts are looked at one by one (a new account needs the
+  // second-channel check); plain contact details may be approved from the inbox.
+  bulkApprovable: (request) => ((request.payload as ProfileChangePayload).restricted ?? []).length === 0,
 });
 
 // Request summaries are read in inboxes and emails by HR: written in Vietnamese, like the emails.

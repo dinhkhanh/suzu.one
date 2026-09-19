@@ -8,7 +8,7 @@ import { getProfileChange } from "@/modules/core-hr/change-requests";
 import { getPersonView } from "@/modules/core-hr/service";
 import { ChangeRequestForm, ChangeRequestReveal } from "@/modules/core-hr/ui/change-request-forms";
 import { DecisionForm, WithdrawForm } from "@/modules/platform/approvals/ui/decision-form";
-import { RequestHistory, RequestStatusBadge } from "@/modules/platform/approvals/ui/request-views";
+import { RequestHistory, RequestStatusBadge, RequestTools } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
 
 export const metadata: Metadata = { title: "Change request" };
@@ -107,6 +107,7 @@ export default async function ProfileChangePage(props: PageProps<"/approvals/pro
       ) : null}
       {canWithdraw ? <WithdrawForm requestId={request.id} /> : null}
 
+      <RequestTools view={view} viewerPersonId={user.person.id} />
       <RequestHistory view={view} />
     </div>
   );

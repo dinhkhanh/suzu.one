@@ -127,6 +127,13 @@
       "when": 1789834801072,
       "tag": "0017_lifecycle_events",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789836442496,
+      "tag": "0018_approvals_flows_delegation",
+      "breakpoints": true
     }
   ]
 }

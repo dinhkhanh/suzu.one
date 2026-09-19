@@ -40,7 +40,8 @@
     "approvals": "Phê duyệt",
     "tasks": "Việc của tôi",
     "checklists": "Mẫu checklist",
-    "reports": "Báo cáo"
+    "reports": "Báo cáo",
+    "approvalFlows": "Luồng phê duyệt"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -617,6 +618,14 @@
       "hr_resignation_approved": {
         "title": "Đơn nghỉ việc của {name} đã được duyệt",
         "body": "Quản lý đã duyệt đơn xin nghỉ việc của {name}, ngày làm việc cuối dự kiến {date}. Mở hồ sơ để thực hiện thủ tục thôi việc."
+      },
+      "approvals_commented": {
+        "title": "{author} góp ý về yêu cầu: {requestType}",
+        "body": "{author} đã để lại ý kiến trong một yêu cầu ({requestType})."
+      },
+      "approvals_delegated_to_you": {
+        "title": "{delegator} ủy quyền phê duyệt cho bạn",
+        "body": "Từ {from} đến {to}, các yêu cầu lẽ ra gửi tới {delegator} sẽ được chuyển cho bạn."
       }
     },
     "errors": {
@@ -827,7 +836,9 @@
     "history": {
       "title": "Lịch sử",
       "step": "Bước {number} ({mode, select, all {tất cả phải duyệt} other {một người duyệt là đủ}}):",
-      "verified": "Đã xác minh qua kênh thứ hai"
+      "verified": "Đã xác minh qua kênh thứ hai",
+      "parallel": "· cùng lúc với bước trước",
+      "standingInFor": "thay {name}"
     },
     "decide": {
       "title": "Quyết định của bạn",
@@ -848,7 +859,115 @@
       "approval_own_request": "Bạn không thể tự duyệt yêu cầu của mình.",
       "approval_comment_required": "Vui lòng nêu lý do trong phần ý kiến.",
       "approval_no_approver": "Không có ai để duyệt yêu cầu này. Vui lòng liên hệ Nhân sự.",
-      "change_request_verification_required": "Hãy xác nhận rằng bạn đã xác minh tài khoản ngân hàng mới với nhân viên qua kênh thứ hai."
+      "change_request_verification_required": "Hãy xác nhận rằng bạn đã xác minh tài khoản ngân hàng mới với nhân viên qua kênh thứ hai.",
+      "approval_delegate_refused": "Không thể chuyển yêu cầu này cho người đó: chưa đến lượt bạn, hoặc họ đã được hỏi.",
+      "approval_open_to_decide": "Hãy mở yêu cầu này để quyết định.",
+      "delegation_self": "Bạn không thể ủy quyền cho chính mình.",
+      "delegation_dates": "Ngày kết thúc trước ngày bắt đầu.",
+      "delegation_past": "Thời gian ủy quyền đã qua.",
+      "delegation_person_unknown": "Người này không còn làm việc.",
+      "delegation_not_found": "Không tìm thấy ủy quyền."
+    },
+    "tools": {
+      "comment": "Thêm ý kiến",
+      "commentHint": "Câu hỏi hoặc ghi chú, chưa quyết định",
+      "send": "Gửi",
+      "delegate": "Chuyển yêu cầu này cho người khác",
+      "delegateHint": "Người được chọn sẽ trả lời thay bạn. Các điều kiện để quyết định loại yêu cầu này (ví dụ quyền nhân sự) vẫn áp dụng với họ.",
+      "delegateTo": "Chuyển cho",
+      "delegateNote": "Ghi chú",
+      "delegateSubmit": "Chuyển"
+    },
+    "bulk": {
+      "all": "Chọn tất cả ({count})",
+      "none": "Bỏ chọn",
+      "approve": "Duyệt mục đã chọn ({count})",
+      "hint": "Yêu cầu cần đọc trước khi quyết định thì không chọn được.",
+      "confirm": "Duyệt {count} yêu cầu?",
+      "tick": "Chọn",
+      "openIt": "Mở để quyết định"
+    },
+    "delegation": {
+      "link": "Ủy quyền phê duyệt",
+      "title": "Ủy quyền",
+      "description": "Khi bạn vắng mặt, các yêu cầu mới lẽ ra chờ bạn sẽ được chuyển tới người bạn chỉ định. Bạn có thể kết thúc ủy quyền bất cứ lúc nào.",
+      "to": "Ủy quyền cho",
+      "types": "Loại yêu cầu",
+      "allTypes": "Mọi loại yêu cầu",
+      "from": "Từ ngày",
+      "until": "Đến ngày",
+      "reason": "Lý do",
+      "includePending": "Chuyển luôn các yêu cầu đang chờ tôi",
+      "submit": "Ủy quyền",
+      "saved": "Đã lưu.",
+      "revoke": "Kết thúc ngay",
+      "given": "Ủy quyền của tôi",
+      "received": "Được ủy quyền cho tôi",
+      "none": "Chưa có.",
+      "state": {
+        "active": "Đang hiệu lực",
+        "upcoming": "Sắp tới",
+        "ended": "Đã hết hạn",
+        "revoked": "Đã kết thúc sớm"
+      }
+    },
+    "flows": {
+      "title": "Luồng phê duyệt",
+      "description": "Ai duyệt từng loại yêu cầu. Luồng lưu tại đây thay cho luồng mặc định của một pháp nhân hoặc cả tập đoàn; yêu cầu đã gửi giữ nguyên luồng lúc gửi.",
+      "defaults": "Mặc định",
+      "configured": "Luồng đã cấu hình",
+      "none": "Chưa có luồng cấu hình: mọi loại yêu cầu theo mặc định.",
+      "add": "Thêm hoặc thay luồng",
+      "group": "Cả tập đoàn",
+      "off": "Tắt",
+      "requestType": "Loại yêu cầu",
+      "entity": "Áp dụng cho",
+      "active": "Đang dùng",
+      "stepKey": "Bước {number} — mã",
+      "mode": "Ai phải trả lời",
+      "modeAny": "Một người duyệt bất kỳ",
+      "modeAll": "Tất cả người duyệt",
+      "parallel": "Mở cùng lúc với bước trước",
+      "approvers": "Người duyệt",
+      "addApprover": "Thêm người duyệt",
+      "remove": "Xóa",
+      "condition": "Chỉ khi",
+      "addStep": "Thêm bước",
+      "removeStep": "Xóa bước",
+      "save": "Lưu luồng",
+      "saved": "Đã lưu.",
+      "delete": "Về mặc định",
+      "deleteConfirm": "Xóa luồng này? Yêu cầu mới sẽ theo mặc định.",
+      "rules": {
+        "line_manager": "Quản lý trực tiếp",
+        "department_head": "Trưởng phòng",
+        "manager_level": "Quản lý cấp trên N bậc",
+        "permission": "Người có quyền",
+        "role": "Người giữ vai trò",
+        "person": "Một người cụ thể"
+      },
+      "ops": {
+        "eq": "=",
+        "ne": "≠",
+        "gt": ">",
+        "gte": "≥",
+        "lt": "<",
+        "lte": "≤",
+        "in": "thuộc"
+      },
+      "errors": {
+        "generic": "Không lưu được luồng.",
+        "forbidden": "Bạn không được quản lý luồng này.",
+        "invalid": "Vui lòng kiểm tra các bước: mã là chữ thường, mỗi bước cần người duyệt.",
+        "flow_no_steps": "Luồng cần ít nhất một bước.",
+        "flow_too_many_steps": "Luồng có tối đa tám bước.",
+        "flow_duplicate_key": "Mã các bước phải khác nhau.",
+        "flow_no_approvers": "Mỗi bước cần người duyệt.",
+        "flow_first_step_parallel": "Bước đầu tiên không thể mở cùng bước trước.",
+        "flow_no_unconditional_step": "Cần ít nhất một bước áp dụng cho mọi yêu cầu, nếu không sẽ có yêu cầu không ai duyệt.",
+        "flow_bad_level": "Bậc quản lý từ 1 đến 6.",
+        "flow_person_unknown": "Người duyệt được chỉ định không còn làm việc."
+      }
     }
   },
   "changeRequests": {

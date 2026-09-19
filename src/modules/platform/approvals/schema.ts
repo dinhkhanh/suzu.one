@@ -1,7 +1,7 @@
 // The approval engine's tables (SRS §3.1, FR-PLT-20..22). One request walks through ordered steps;
 // each step has its own approvers. Leave, OT, change requests, payroll sign-off and purchase
 // requests all store their requests here and keep only their own business data elsewhere.
-import { index, integer, jsonb, pgEnum, pgTable, smallint, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, jsonb, pgEnum, pgTable, smallint, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { entity } from "../org/schema";
 import { person } from "../people/schema";
 
@@ -57,6 +57,8 @@ export const approvalStep = pgTable(
     // any = the first approver to answer decides the step; all = everyone must approve.
     mode: approvalStepMode("mode").notNull(),
     status: approvalStepStatus("status").notNull(),
+    // Opens together with the step before it (FR-PLT-20: parallel steps).
+    parallel: boolean("parallel").notNull().default(false),
   },
   (t) => [unique("approval_step_request_index_key").on(t.requestId, t.stepIndex)],
 ).enableRLS();
@@ -101,4 +103,47 @@ export const approvalEvent = pgTable(
     at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("approval_event_request_idx").on(t.requestId, t.id)],
+).enableRLS();
+
+// A flow kept as configuration (FR-PLT-20): overrides the default a request type ships in code.
+// `entity_id` null = the group's flow for the type; an entity's own flow wins over it.
+export const approvalFlow = pgTable(
+  "approval_flow",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    requestType: text("request_type").notNull(),
+    entityId: uuid("entity_id").references(() => entity.id),
+    // A FlowDefinition (engine/flow.ts), validated when it is saved.
+    definition: jsonb("definition").notNull(),
+    // Switched off = kept for later, not used.
+    active: boolean("active").notNull().default(true),
+    updatedByPersonId: uuid("updated_by_person_id").references(() => person.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("approval_flow_type_entity_key").on(t.requestType, t.entityId).nullsNotDistinct()],
+).enableRLS();
+
+// A standing delegation (FR-PLT-22): while it runs, requests that would reach `from` go to `to`.
+// Applied when a request's approvers are resolved; requests already waiting are handed over one
+// by one (the ad-hoc delegate action).
+export const approvalDelegation = pgTable(
+  "approval_delegation",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    fromPersonId: uuid("from_person_id")
+      .notNull()
+      .references(() => person.id),
+    toPersonId: uuid("to_person_id")
+      .notNull()
+      .references(() => person.id),
+    validFrom: date("valid_from").notNull(),
+    validTo: date("valid_to").notNull(),
+    // null = every request type.
+    requestTypes: text("request_types").array(),
+    reason: text("reason"),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("approval_delegation_from_idx").on(t.fromPersonId, t.validFrom, t.validTo)],
 ).enableRLS();

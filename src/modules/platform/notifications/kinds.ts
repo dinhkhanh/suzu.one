@@ -32,6 +32,8 @@ export const KINDS = {
   "hr.resignation_approved": "hr",
   "approvals.requested": "approvals",
   "approvals.decided": "approvals",
+  "approvals.commented": "approvals",
+  "approvals.delegated_to_you": "approvals",
   "tasks.assigned": "tasks",
 } as const satisfies Record<string, Category>;
 export type Kind = keyof typeof KINDS;

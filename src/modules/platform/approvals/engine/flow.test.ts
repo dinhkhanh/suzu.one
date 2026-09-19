@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyDecision, conditionHolds, delegate, type RequestState, type ResolvedStep, resubmit, startFlow, waitingFor } from "./flow";
+import { applyDecision, conditionHolds, delegate, type FlowDefinition, flowProblems, type RequestState, type ResolvedStep, resubmit, startFlow, waitingFor } from "./flow";
 
 const step = (key: string, approverIds: string[], mode: "any" | "all" = "any", applies = true): ResolvedStep => ({ key, mode, applies, approverIds });
 const decide = (state: RequestState, actorId: string, action: "approve" | "reject" | "return" | "withdraw") => {
@@ -134,5 +134,95 @@ describe("conditionHolds", () => {
     expect(conditionHolds({ field: "kind", op: "in", value: ["bank", "id"] }, { kind: "bank" })).toBe(true);
     expect(conditionHolds({ field: "kind", op: "ne", value: "bank" }, { kind: "bank" })).toBe(false);
     expect(conditionHolds({ field: "kind", op: "eq", value: "bank" }, {})).toBe(false);
+  });
+});
+
+describe("parallel steps", () => {
+  // manager → (HR ‖ finance) → director: the middle two open together.
+  const resolved: ResolvedStep[] = [
+    { key: "manager", mode: "any", applies: true, approverIds: ["m"] },
+    { key: "hr", mode: "any", applies: true, approverIds: ["h1", "h2"] },
+    { key: "finance", mode: "all", applies: true, approverIds: ["f1", "f2"], parallel: true },
+    { key: "director", mode: "any", applies: true, approverIds: ["d"] },
+  ];
+  const approve = (state: RequestState, actorId: string) => {
+    const result = applyDecision(state, { actorId, action: "approve" });
+    if (!result.ok) throw new Error(result.reason);
+    return result;
+  };
+
+  it("opens the steps of a group together and moves on only when all of them are done", () => {
+    let result = approve(startFlow("r", resolved), "m");
+    expect(result.nowWaitingFor.sort()).toEqual(["f1", "f2", "h1", "h2"]);
+    expect(result.state.steps.map((step) => step.status)).toEqual(["approved", "pending", "pending", "waiting"]);
+
+    result = approve(result.state, "f1");
+    expect(result.outcome).toBe("pending");
+    result = approve(result.state, "h2");
+    expect(result.state.steps[1].status).toBe("approved");
+    expect(waitingFor(result.state)).toEqual(["f2"]);
+    // HR's step is done: a second HR answer is nobody's turn.
+    expect(applyDecision(result.state, { actorId: "h1", action: "approve" })).toEqual({ ok: false, reason: "not_assignee" });
+
+    result = approve(result.state, "f2");
+    expect(result.nowWaitingFor).toEqual(["d"]);
+    expect(result.state.currentStep).toBe(3);
+    expect(approve(result.state, "d").outcome).toBe("approved");
+  });
+
+  it("skips a conditional step inside a group, and a group whose every step is skipped", () => {
+    const state = startFlow("r", [resolved[0], { ...resolved[1], applies: false, approverIds: [] }, resolved[2], resolved[3]]);
+    const afterManager = approve(state, "m");
+    expect(afterManager.nowWaitingFor.sort()).toEqual(["f1", "f2"]);
+
+    const bothSkipped = startFlow("r", [resolved[0], { ...resolved[1], applies: false, approverIds: [] }, { ...resolved[2], applies: false, approverIds: [] }, resolved[3]]);
+    expect(approve(bothSkipped, "m").nowWaitingFor).toEqual(["d"]);
+  });
+
+  it("one answer covers both steps when the same person sits on two open steps", () => {
+    const state = startFlow("r", [
+      { key: "a", mode: "any", applies: true, approverIds: ["x"] },
+      { key: "b", mode: "any", applies: true, approverIds: ["x", "y"], parallel: true },
+    ]);
+    expect(approve(state, "x").outcome).toBe("approved");
+  });
+
+  it("a return closes the whole group and a resubmit reopens the flow from the start", () => {
+    const open = approve(startFlow("r", resolved), "m").state;
+    const returned = applyDecision(open, { actorId: "h1", action: "return" });
+    if (!returned.ok) throw new Error(returned.reason);
+    expect(returned.state.status).toBe("returned");
+    expect(returned.state.steps.map((step) => step.status)).toEqual(["approved", "waiting", "waiting", "waiting"]);
+    const again = resubmit(returned.state, "r");
+    if (!again.ok) throw new Error(again.reason);
+    expect(again.nowWaitingFor).toEqual(["m"]);
+    expect(again.state.steps.map((step) => step.status)).toEqual(["pending", "waiting", "waiting", "waiting"]);
+  });
+
+  it("delegates a turn on a parallel step", () => {
+    const open = approve(startFlow("r", resolved), "m").state;
+    const handed = delegate(open, "f2", "z");
+    if (!handed.ok) throw new Error(handed.reason);
+    expect(handed.state.steps[2].assignees[1]).toEqual({ personId: "z", status: "pending", delegatedFrom: "f2" });
+    expect(delegate(open, "f2", "f1")).toEqual({ ok: false, reason: "not_assignee" });
+  });
+
+  it("keeps who a standing delegation replaced", () => {
+    const state = startFlow("r", [{ key: "manager", mode: "any", applies: true, approverIds: ["deputy"], delegatedFrom: { deputy: "m" } }]);
+    expect(state.steps[0].assignees).toEqual([{ personId: "deputy", status: "pending", delegatedFrom: "m" }]);
+  });
+});
+
+describe("flowProblems", () => {
+  const step = (key: string, extra: Partial<FlowDefinition["steps"][number]> = {}) => ({ key, mode: "any" as const, approvers: [{ rule: "line_manager" as const }], ...extra });
+  it("accepts a plain flow", () => {
+    expect(flowProblems({ steps: [step("manager"), step("head", { condition: { field: "days", op: "gt", value: 3 } })] })).toEqual([]);
+  });
+  it("names what is wrong", () => {
+    expect(flowProblems({ steps: [] })).toEqual(["no_steps"]);
+    expect(flowProblems({ steps: [step("a", { parallel: true }), step("a")] }).sort()).toEqual(["duplicate_key", "first_step_parallel"]);
+    expect(flowProblems({ steps: [step("a", { condition: { field: "days", op: "gt", value: 3 } })] })).toEqual(["no_unconditional_step"]);
+    expect(flowProblems({ steps: [step("a", { approvers: [] })] })).toEqual(["no_approvers"]);
+    expect(flowProblems({ steps: [step("a", { approvers: [{ rule: "manager_level", level: 0 }] })] })).toEqual(["bad_level"]);
   });
 });

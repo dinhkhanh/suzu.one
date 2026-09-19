@@ -22,6 +22,7 @@ export function navFor(principal: Principal, open: { people: boolean }): { main:
     ...(can(principal, "org:read") ? [{ key: "entities", href: "/admin/entities" }, { key: "org", href: "/admin/org" }] : []),
     ...(can(principal, "org:manage", {}) ? [{ key: "flags", href: "/admin/flags" }] : []),
     ...(can(principal, "person:manage") ? [{ key: "checklists", href: "/admin/checklists" }] : []),
+    ...(can(principal, "org:manage") ? [{ key: "approvalFlows", href: "/admin/approval-flows" }] : []),
     ...(can(principal, "rbac:manage") ? [{ key: "roles", href: "/admin/roles" }] : []),
     ...(can(principal, "rules:propose", {}) || can(principal, "payroll:rules", {}) || can(principal, "payroll:read", {}) ? [{ key: "rules", href: "/admin/rules" }] : []),
     ...(can(principal, "audit:read") ? [{ key: "audit", href: "/admin/audit" }] : []),

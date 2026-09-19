@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { decideResignationAction } from "@/modules/core-hr/lifecycle-actions";
 import { getResignation } from "@/modules/core-hr/resignation";
 import { DecisionForm, WithdrawForm } from "@/modules/platform/approvals/ui/decision-form";
-import { RequestHistory, RequestStatusBadge } from "@/modules/platform/approvals/ui/request-views";
+import { RequestHistory, RequestStatusBadge, RequestTools } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
 
 export const metadata: Metadata = { title: "Resignation" };
@@ -47,6 +47,7 @@ export default async function ResignationPage(props: PageProps<"/approvals/resig
       {request.status === "approved" ? <p className="text-sm text-muted-foreground">{t("resign.approvedNote")}</p> : null}
       {view.canDecide ? <DecisionForm requestId={request.id} action={decideResignationAction} /> : null}
       {canWithdraw ? <WithdrawForm requestId={request.id} /> : null}
+      <RequestTools view={view} viewerPersonId={user.person.id} />
       <RequestHistory view={view} />
     </div>
   );

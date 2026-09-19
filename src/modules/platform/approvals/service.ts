@@ -13,8 +13,10 @@ import { notify } from "../notifications/service";
 import type { Principal, Target } from "../rbac/policy";
 import { type Permission, type Role, ROLES } from "../rbac/roles";
 import { listOwnerPersonIds, listPeopleHolding, listPeopleWithRole } from "../rbac/service";
+import { standIns } from "./delegations";
+import { effectiveFlow } from "./flows";
 import { canOpenRequest } from "./policy";
-import { applyDecision, type ApproverRule, conditionHolds, type DecisionAction, type DecisionResult, type FlowDefinition, type RequestState, type RequestStatus, type ResolvedStep, resubmit, startFlow, waitingFor } from "./engine/flow";
+import { applyDecision, type ApproverRule, conditionHolds, type DecisionAction, type DecisionResult, delegate, type FlowDefinition, type RequestState, type RequestStatus, type ResolvedStep, resubmit, startFlow, waitingFor } from "./engine/flow";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type ApprovalRequestRow = typeof schema.approvalRequest.$inferSelect;
@@ -23,7 +25,12 @@ export type SubjectTarget = Target & { personId: string };
 export type RequestTypeDefinition = {
   /** Stored on every request; also the key of its name in messages (`approvals.types.<type>`). */
   type: string;
+  /** The default flow; `approval_flow` rows override it per entity or for the group (FR-PLT-20). */
   flow: FlowDefinition;
+  /** Fields of the condition data an administrator can test in a configured flow, e.g. ["days"]. */
+  conditionFields?: readonly string[];
+  /** May this request be approved from the inbox without opening it? Default: no. */
+  bulkApprovable?: (request: ApprovalRequestRow) => boolean;
   /** Who may open a request of this type besides its requester and its approvers. */
   canView?: (viewer: Principal, subject: SubjectTarget | null) => boolean;
 };
@@ -69,11 +76,11 @@ async function peopleFor(executor: Executor, rule: ApproverRule, subject: Subjec
   }
 }
 
-async function resolveFlow(executor: Executor, flow: FlowDefinition, context: { requesterId: string; subject: SubjectTarget | null; data: Record<string, unknown> }): Promise<ResolvedStep[]> {
+async function resolveFlow(executor: Executor, flow: FlowDefinition, context: { requestType: string; requesterId: string; subject: SubjectTarget | null; data: Record<string, unknown> }): Promise<ResolvedStep[]> {
   const resolved: ResolvedStep[] = [];
   for (const step of flow.steps) {
     if (!conditionHolds(step.condition, context.data)) {
-      resolved.push({ key: step.key, mode: step.mode, applies: false, approverIds: [] });
+      resolved.push({ key: step.key, mode: step.mode, applies: false, approverIds: [], ...(step.parallel ? { parallel: true } : {}) });
       continue;
     }
     const named = (await Promise.all(step.approvers.map((rule) => peopleFor(executor, rule, context.subject)))).flat();
@@ -87,7 +94,20 @@ async function resolveFlow(executor: Executor, flow: FlowDefinition, context: { 
     let approverIds = await usable(named);
     if (approverIds.length === 0) approverIds = await usable(await listOwnerPersonIds(executor));
     if (approverIds.length === 0) throw new ActionError("approval_no_approver");
-    resolved.push({ key: step.key, mode: step.mode, applies: true, approverIds });
+    // Standing delegations: whoever stands in for an approver today is asked instead.
+    const substitutes = await standIns(executor, approverIds, { requestType: context.requestType, requesterId: context.requesterId });
+    const delegatedFrom: Record<string, string> = {};
+    const asked: string[] = [];
+    for (const approverId of approverIds) {
+      const standIn = substitutes.get(approverId);
+      // Already on the step in their own right: nothing to hand over.
+      if (standIn && !approverIds.includes(standIn) && !asked.includes(standIn)) {
+        asked.push(standIn);
+        delegatedFrom[standIn] = approverId;
+      } else if (!standIn && !asked.includes(approverId)) asked.push(approverId);
+    }
+    if (asked.length === 0) asked.push(...approverIds);
+    resolved.push({ key: step.key, mode: step.mode, applies: true, approverIds: asked, ...(step.parallel ? { parallel: true } : {}), ...(Object.keys(delegatedFrom).length ? { delegatedFrom } : {}) });
   }
   return resolved;
 }
@@ -111,7 +131,7 @@ async function load(tx: Tx, requestId: string, type: string): Promise<Loaded> {
       requesterId: request.requesterPersonId,
       status: request.status,
       currentStep: request.currentStep,
-      steps: steps.map((step, index) => ({ key: step.key, mode: step.mode, status: step.status, assignees: perStep[index].map((row) => ({ personId: row.approverPersonId, status: row.status, delegatedFrom: row.delegatedFromPersonId })) })),
+      steps: steps.map((step, index) => ({ key: step.key, mode: step.mode, status: step.status, ...(step.parallel ? { parallel: true } : {}), assignees: perStep[index].map((row) => ({ personId: row.approverPersonId, status: row.status, delegatedFrom: row.delegatedFromPersonId })) })),
     },
   };
 }
@@ -180,7 +200,8 @@ export type SubmitInput = {
 export async function submitRequest(tx: Tx, definition: RequestTypeDefinition, input: SubmitInput): Promise<{ request: ApprovalRequestRow; outcome: RequestStatus; approverIds: string[] }> {
   const id = input.id ?? randomUUID();
   const subject = await subjectTarget(tx, input.subjectPersonId);
-  const resolved = await resolveFlow(tx, definition.flow, { requesterId: input.requesterPersonId, subject, data: input.conditionData ?? input.payload ?? {} });
+  const { flow, source } = await effectiveFlow(tx, definition.type, input.entityId, definition.flow);
+  const resolved = await resolveFlow(tx, flow, { requestType: definition.type, requesterId: input.requesterPersonId, subject, data: input.conditionData ?? input.payload ?? {} });
   const state = startFlow(input.requesterPersonId, resolved);
 
   const [request] = await tx
@@ -198,14 +219,14 @@ export async function submitRequest(tx: Tx, definition: RequestTypeDefinition, i
       payloadEnc: input.payloadEnc ?? null,
       status: state.status,
       currentStep: state.currentStep,
-      flowSnapshot: { definition: definition.flow, resolved },
+      flowSnapshot: { definition: flow, source, resolved },
       link: typeof input.link === "function" ? input.link(id) : (input.link ?? null),
       decidedAt: state.status === "pending" ? null : new Date(),
     })
     .returning();
   for (const [index, step] of state.steps.entries()) {
-    const [row] = await tx.insert(schema.approvalStep).values({ requestId: id, stepIndex: index, key: step.key, mode: step.mode, status: step.status }).returning({ id: schema.approvalStep.id });
-    if (step.assignees.length) await tx.insert(schema.approvalAssignee).values(step.assignees.map((assignee) => ({ stepId: row.id, requestId: id, approverPersonId: assignee.personId })));
+    const [row] = await tx.insert(schema.approvalStep).values({ requestId: id, stepIndex: index, key: step.key, mode: step.mode, status: step.status, parallel: !!step.parallel }).returning({ id: schema.approvalStep.id });
+    if (step.assignees.length) await tx.insert(schema.approvalAssignee).values(step.assignees.map((assignee) => ({ stepId: row.id, requestId: id, approverPersonId: assignee.personId, delegatedFromPersonId: assignee.delegatedFrom ?? null })));
   }
   await tx.insert(schema.approvalEvent).values({ requestId: id, type: "submitted", actorPersonId: input.requesterPersonId, stepIndex: state.currentStep });
   const approverIds = waitingFor(state);
@@ -260,6 +281,58 @@ export async function resubmitRequest(tx: Tx, definition: RequestTypeDefinition,
   await tx.insert(schema.approvalEvent).values({ requestId, type: "resubmitted", actorPersonId, stepIndex: result.state.currentStep });
   await askApprovers(tx, request, result.nowWaitingFor);
   return { request, before: loaded.request };
+}
+
+/**
+ * Hands the actor's turn on one request to someone else (FR-PLT-22). The same for every type; what
+ * the new approver needs besides the turn (a permission, a tier) stays the owning module's rule.
+ */
+export async function delegateRequest(tx: Tx, requestId: string, actorPersonId: string, input: { toPersonId: string; comment?: string | null }): Promise<{ request: ApprovalRequestRow; toName: string }> {
+  const [row] = await tx.select({ type: schema.approvalRequest.type }).from(schema.approvalRequest).where(eq(schema.approvalRequest.id, requestId)).limit(1);
+  if (!row) throw new ActionError("approval_not_found");
+  const loaded = await load(tx, requestId, row.type);
+  const [to] = await tx.select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(and(eq(schema.person.id, input.toPersonId), eq(schema.person.status, "active"))).limit(1);
+  if (!to) throw new ActionError("delegation_person_unknown");
+  const result = delegate(loaded.state, actorPersonId, input.toPersonId);
+  if (!result.ok) throw new ActionError(result.reason === "not_assignee" ? "approval_delegate_refused" : REFUSALS[result.reason]);
+  const request = await persist(tx, loaded, result.state, { personId: actorPersonId, comment: null });
+  await tx.insert(schema.approvalEvent).values({ requestId, type: "delegated", actorPersonId, stepIndex: loaded.state.currentStep, comment: input.comment?.trim() || null, meta: { toPersonId: to.id, toName: to.fullName } });
+  await askApprovers(tx, request, [to.id]);
+  return { request, toName: to.fullName };
+}
+
+/** A remark without a decision, from the requester or anyone asked to approve. The other side is told. */
+export async function commentOnRequest(tx: Tx, requestId: string, actorPersonId: string, comment: string): Promise<{ request: ApprovalRequestRow }> {
+  const [request] = await tx.select().from(schema.approvalRequest).where(eq(schema.approvalRequest.id, requestId)).limit(1);
+  if (!request) throw new ActionError("approval_not_found");
+  const assignees = await tx.select().from(schema.approvalAssignee).where(eq(schema.approvalAssignee.requestId, requestId));
+  const isParty = request.requesterPersonId === actorPersonId || assignees.some((row) => row.approverPersonId === actorPersonId || row.delegatedFromPersonId === actorPersonId);
+  if (!isParty) throw new ActionError("approval_not_found");
+  await tx.insert(schema.approvalEvent).values({ requestId, type: "commented", actorPersonId, stepIndex: request.currentStep, comment: comment.trim() });
+  const others = request.requesterPersonId === actorPersonId ? assignees.filter((row) => row.status === "pending").map((row) => row.approverPersonId) : [request.requesterPersonId];
+  await notify({ recipients: [...new Set(others)].filter((id) => id !== actorPersonId), kind: "approvals.commented", params: { author: await personName(tx, actorPersonId), requestType: request.type }, link: request.link }, tx);
+  return { request };
+}
+
+/** Is this person a party to the request (requester, approver, or someone who handed their turn on)? */
+export async function isRequestParty(requestId: string, personId: string): Promise<{ party: boolean; canDelegate: boolean }> {
+  const [request] = await db().select().from(schema.approvalRequest).where(eq(schema.approvalRequest.id, requestId)).limit(1);
+  if (!request) return { party: false, canDelegate: false };
+  const rows = await db()
+    .select({ approver: schema.approvalAssignee.approverPersonId, from: schema.approvalAssignee.delegatedFromPersonId, status: schema.approvalAssignee.status, stepStatus: schema.approvalStep.status })
+    .from(schema.approvalAssignee)
+    .innerJoin(schema.approvalStep, eq(schema.approvalStep.id, schema.approvalAssignee.stepId))
+    .where(eq(schema.approvalAssignee.requestId, requestId));
+  return {
+    party: request.requesterPersonId === personId || rows.some((row) => row.approver === personId || row.from === personId),
+    canDelegate: request.status === "pending" && request.requesterPersonId !== personId && rows.some((row) => row.approver === personId && row.status === "pending" && row.stepStatus === "pending"),
+  };
+}
+
+/** The rows behind a bulk action: type and everything a type's `bulkApprovable` looks at. */
+export async function getRequestRows(requestIds: readonly string[]): Promise<ApprovalRequestRow[]> {
+  if (requestIds.length === 0) return [];
+  return db().select().from(schema.approvalRequest).where(inArray(schema.approvalRequest.id, [...requestIds]));
 }
 
 // ── Reading ─────────────────────────────────────────────────────────────────────────────────
@@ -322,7 +395,7 @@ export type RequestView = {
   requesterName: string;
   subjectName: string | null;
   subject: SubjectTarget | null;
-  steps: { key: string; mode: "any" | "all"; status: string; assignees: { personId: string; name: string; status: string; comment: string | null; decidedAt: Date | null }[] }[];
+  steps: { key: string; mode: "any" | "all"; status: string; parallel: boolean; assignees: { personId: string; name: string; status: string; comment: string | null; decidedAt: Date | null; delegatedFromName: string | null }[] }[];
   events: { id: number; type: string; actorName: string | null; comment: string | null; meta: Record<string, unknown> | null; at: Date }[];
   isRequester: boolean;
   /** It is this viewer's turn to answer. */
@@ -334,12 +407,14 @@ export async function getRequest(viewer: { personId: string; principal: Principa
   const [request] = await db().select().from(schema.approvalRequest).where(and(eq(schema.approvalRequest.id, requestId), eq(schema.approvalRequest.type, definition.type))).limit(1);
   if (!request) return null;
   const actor = alias(schema.person, "actor");
+  const delegator = alias(schema.person, "delegator");
   const [steps, assignees, events, target, names] = await Promise.all([
     db().select().from(schema.approvalStep).where(eq(schema.approvalStep.requestId, requestId)).orderBy(asc(schema.approvalStep.stepIndex)),
     db()
-      .select({ row: schema.approvalAssignee, name: schema.person.fullName })
+      .select({ row: schema.approvalAssignee, name: schema.person.fullName, delegatedFromName: delegator.fullName })
       .from(schema.approvalAssignee)
       .innerJoin(schema.person, eq(schema.person.id, schema.approvalAssignee.approverPersonId))
+      .leftJoin(delegator, eq(delegator.id, schema.approvalAssignee.delegatedFromPersonId))
       .where(eq(schema.approvalAssignee.requestId, requestId))
       .orderBy(asc(schema.approvalAssignee.id)),
     db()
@@ -356,7 +431,8 @@ export async function getRequest(viewer: { personId: string; principal: Principa
   const isApprover = assignees.some(({ row }) => row.approverPersonId === viewer.personId || row.delegatedFromPersonId === viewer.personId);
   if (!canOpenRequest(request, { personId: viewer.personId, isApprover, typeAllows: !!definition.canView?.(viewer.principal, target) })) return null;
 
-  const openStep = steps.find((step) => step.stepIndex === request.currentStep && step.status === "pending");
+  // Steps that are open together are all "pending"; the viewer's turn may be on any of them.
+  const openStepIds = new Set(steps.filter((step) => step.status === "pending").map((step) => step.id));
   return {
     request,
     requesterName: names.find((row) => row.id === request.requesterPersonId)?.fullName ?? "—",
@@ -366,10 +442,11 @@ export async function getRequest(viewer: { personId: string; principal: Principa
       key: step.key,
       mode: step.mode,
       status: step.status,
-      assignees: assignees.filter(({ row }) => row.stepId === step.id).map(({ row, name }) => ({ personId: row.approverPersonId, name, status: row.status, comment: row.comment, decidedAt: row.decidedAt })),
+      parallel: step.parallel,
+      assignees: assignees.filter(({ row }) => row.stepId === step.id).map(({ row, name, delegatedFromName }) => ({ personId: row.approverPersonId, name, status: row.status, comment: row.comment, decidedAt: row.decidedAt, delegatedFromName })),
     })),
     events,
     isRequester,
-    canDecide: request.status === "pending" && !isRequester && !!openStep && assignees.some(({ row }) => row.stepId === openStep.id && row.approverPersonId === viewer.personId && row.status === "pending"),
+    canDecide: request.status === "pending" && !isRequester && assignees.some(({ row }) => openStepIds.has(row.stepId) && row.approverPersonId === viewer.personId && row.status === "pending"),
   };
 }

@@ -40,7 +40,8 @@
     "approvals": "Approvals",
     "tasks": "My tasks",
     "checklists": "Checklist templates",
-    "reports": "Reports"
+    "reports": "Reports",
+    "approvalFlows": "Approval flows"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -617,6 +618,14 @@
       "hr_resignation_approved": {
         "title": "{name}'s resignation was approved",
         "body": "The manager approved {name}'s resignation; planned last working day {date}. Open the record to process the termination."
+      },
+      "approvals_commented": {
+        "title": "{author} commented on a request: {requestType}",
+        "body": "{author} left a comment on a request ({requestType})."
+      },
+      "approvals_delegated_to_you": {
+        "title": "{delegator} delegated their approvals to you",
+        "body": "From {from} to {to}, requests that would go to {delegator} come to you instead."
       }
     },
     "errors": {
@@ -827,7 +836,9 @@
     "history": {
       "title": "History",
       "step": "Step {number} ({mode, select, all {everyone must approve} other {any one approver}}):",
-      "verified": "Verified through a second channel"
+      "verified": "Verified through a second channel",
+      "parallel": "· together with the previous step",
+      "standingInFor": "for {name}"
     },
     "decide": {
       "title": "Your decision",
@@ -848,7 +859,115 @@
       "approval_own_request": "You cannot decide your own request.",
       "approval_comment_required": "Please say why in the comment.",
       "approval_no_approver": "Nobody is available to approve this request. Please contact HR.",
-      "change_request_verification_required": "Confirm that you verified the new bank account with the employee through a second channel."
+      "change_request_verification_required": "Confirm that you verified the new bank account with the employee through a second channel.",
+      "approval_delegate_refused": "This request cannot be handed to that person: it is not your turn, or they are already asked.",
+      "approval_open_to_decide": "Open this request to decide it.",
+      "delegation_self": "You cannot delegate to yourself.",
+      "delegation_dates": "The end date is before the start date.",
+      "delegation_past": "The delegation would already be over.",
+      "delegation_person_unknown": "That person is not active.",
+      "delegation_not_found": "The delegation was not found."
+    },
+    "tools": {
+      "comment": "Add a comment",
+      "commentHint": "A question or a remark, without deciding",
+      "send": "Send",
+      "delegate": "Hand this request to someone else",
+      "delegateHint": "The person you choose answers instead of you. What they need to decide this kind of request (for example HR rights) still applies to them.",
+      "delegateTo": "Hand over to",
+      "delegateNote": "Note",
+      "delegateSubmit": "Hand over"
+    },
+    "bulk": {
+      "all": "Select all ({count})",
+      "none": "Clear selection",
+      "approve": "Approve selected ({count})",
+      "hint": "Requests that must be read before deciding cannot be ticked.",
+      "confirm": "Approve {count, plural, one {# request} other {# requests}}?",
+      "tick": "Select",
+      "openIt": "Open to decide"
+    },
+    "delegation": {
+      "link": "Delegate my approvals",
+      "title": "Delegation",
+      "description": "While you are away, new requests that would wait for you go to the person you name. You can end a delegation at any time.",
+      "to": "Delegate to",
+      "types": "Request types",
+      "allTypes": "All request types",
+      "from": "From",
+      "until": "Until",
+      "reason": "Reason",
+      "includePending": "Also hand over the requests waiting for me now",
+      "submit": "Delegate",
+      "saved": "Saved.",
+      "revoke": "End now",
+      "given": "My delegations",
+      "received": "Delegated to me",
+      "none": "None.",
+      "state": {
+        "active": "Active",
+        "upcoming": "Upcoming",
+        "ended": "Ended",
+        "revoked": "Ended early"
+      }
+    },
+    "flows": {
+      "title": "Approval flows",
+      "description": "Who approves each kind of request. A flow saved here replaces the default for one entity or for the whole group; requests already sent keep the flow they started with.",
+      "defaults": "Defaults",
+      "configured": "Configured flows",
+      "none": "No configured flows: every request type follows its default.",
+      "add": "Add or replace a flow",
+      "group": "Whole group",
+      "off": "Off",
+      "requestType": "Request type",
+      "entity": "Applies to",
+      "active": "In use",
+      "stepKey": "Step {number} — key",
+      "mode": "Who must answer",
+      "modeAny": "Any one approver",
+      "modeAll": "Every approver",
+      "parallel": "Opens together with the previous step",
+      "approvers": "Approvers",
+      "addApprover": "Add approver",
+      "remove": "Remove",
+      "condition": "Only when",
+      "addStep": "Add step",
+      "removeStep": "Remove step",
+      "save": "Save flow",
+      "saved": "Saved.",
+      "delete": "Back to the default",
+      "deleteConfirm": "Delete this flow? New requests will follow the default.",
+      "rules": {
+        "line_manager": "Line manager",
+        "department_head": "Department head",
+        "manager_level": "Manager N levels up",
+        "permission": "Holders of a permission",
+        "role": "Holders of a role",
+        "person": "A named person"
+      },
+      "ops": {
+        "eq": "=",
+        "ne": "≠",
+        "gt": ">",
+        "gte": "≥",
+        "lt": "<",
+        "lte": "≤",
+        "in": "is one of"
+      },
+      "errors": {
+        "generic": "Could not save the flow.",
+        "forbidden": "You may not manage this flow.",
+        "invalid": "Please check the steps: keys are lowercase words, every step needs an approver.",
+        "flow_no_steps": "A flow needs at least one step.",
+        "flow_too_many_steps": "A flow can have at most eight steps.",
+        "flow_duplicate_key": "Step keys must be different.",
+        "flow_no_approvers": "Every step needs an approver.",
+        "flow_first_step_parallel": "The first step cannot open together with a previous one.",
+        "flow_no_unconditional_step": "At least one step must apply to every request, or some requests would be approved by nobody.",
+        "flow_bad_level": "Manager level must be between 1 and 6.",
+        "flow_person_unknown": "A named approver is not an active person."
+      }
     }
   },
   "changeRequests": {
