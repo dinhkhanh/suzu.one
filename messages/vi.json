@@ -3003,8 +3003,8 @@
       "projectName": "Tên dự án",
       "anchorMode": "Cách tính ngày",
       "anchor": {
-        "start": "Tính tới từ ngày bắt đầu",
-        "end": "Tính lùi từ ngày kết thúc"
+        "start": "Ngày 0 là ngày này",
+        "end": "Bước cuối rơi vào ngày này"
       },
       "anchorDate": "Ngày",
       "whoPlays": "Ai đảm nhận từng vai trò",

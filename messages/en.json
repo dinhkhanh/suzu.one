@@ -3003,8 +3003,8 @@
       "projectName": "Project name",
       "anchorMode": "Dates count",
       "anchor": {
-        "start": "Forward from the start date",
-        "end": "Back from the end date"
+        "start": "Day 0 is this date",
+        "end": "The last step falls on this date"
       },
       "anchorDate": "Date",
       "whoPlays": "Who plays each role",

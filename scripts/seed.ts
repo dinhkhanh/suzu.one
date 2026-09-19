@@ -5,12 +5,13 @@
 import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { between } from "drizzle-orm";
+import { and, between, inArray, isNull } from "drizzle-orm";
 import { attendancePolicy, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
 import { PROFILE_SEED } from "../src/modules/attendance/engine/device-log";
 import { CALENDAR_SEED, DEFAULT_POLICY_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 import { leaveSeedRows } from "../src/modules/leave/seed-types";
 import { TEMPLATE_SEED } from "../src/modules/platform/tasks-engine/seed-templates";
+import { WORK_TEMPLATE_SEED } from "../src/modules/work/seed-templates";
 import { STATUTORY_SEED } from "../src/modules/platform/statutory/seed-values";
 
 config({ path: ".env.local" });
@@ -61,6 +62,20 @@ async function main() {
     templates++;
   }
   console.log(`Seeded ${templates} checklist templates (purposes that already have one skipped).`);
+
+  // Starter work templates (FR-WRK-10), shared by every team: only names that do not exist yet.
+  const workNames = new Set((await db.select({ name: taskTemplate.name }).from(taskTemplate).where(and(inArray(taskTemplate.purpose, ["work_project", "work_task"]), isNull(taskTemplate.ownerId)))).map((row) => row.name));
+  let workTemplates = 0;
+  for (const seed of WORK_TEMPLATE_SEED.filter((template) => !workNames.has(template.name))) {
+    const [created] = await db.insert(taskTemplate).values({ purpose: seed.purpose, name: seed.name, description: seed.description }).returning();
+    for (const [index, step] of seed.steps.entries()) {
+      const item = (row: Omit<typeof step, "steps">, sortOrder: number, parentItemId: string | null) => ({ templateId: created.id, title: row.title, description: row.description ?? null, assigneeRule: row.role ? `role:${row.role}` : "none", roleKey: row.role ?? null, dueOffsetDays: row.day, estimateMinutes: row.hours ? row.hours * 60 : null, sortOrder, parentItemId });
+      const [parent] = await db.insert(taskTemplateItem).values(item(step, index, null)).returning();
+      if (step.steps?.length) await db.insert(taskTemplateItem).values(step.steps.map((child, childIndex) => item(child, childIndex, parent.id)));
+    }
+    workTemplates++;
+  }
+  console.log(`Seeded ${workTemplates} work templates (names that already exist skipped).`);
 
   // Leave types and their starter policies: only when there is no leave type at all.
   const [anyLeaveType] = await db.select({ id: leaveType.id }).from(leaveType).limit(1);

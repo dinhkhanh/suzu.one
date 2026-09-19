@@ -196,7 +196,7 @@ export function TemplateUseForm({
         {teams ? (
           <>
             <Input name="name" required maxLength={120} placeholder={t("projectName")} aria-label={t("projectName")} className="min-w-48 flex-1" />
-            <Select name="visibility" aria-label={tWork("projects.visibility")} className="w-40" key={teamId} defaultValue={teams.find((team) => team.id === teamId)?.defaultVisibility ?? "team"}>
+            <Select name="visibility" aria-label={tWork("projects.fields.visibility")} className="w-40" key={teamId} defaultValue={teams.find((team) => team.id === teamId)?.defaultVisibility ?? "team"}>
               {(["entity", "team", "private"] as const).map((value) => (
                 <option key={value} value={value}>
                   {tWork(`visibility.${value}`)}
