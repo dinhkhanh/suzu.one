@@ -6,6 +6,7 @@ import { findPersonByEmail, type PersonRow } from "../people/service";
 import type { Principal } from "../rbac/policy";
 import { loadGrants } from "../rbac/service";
 import { auth } from "./auth";
+import { clientIpFrom } from "./client-ip";
 
 export type CurrentUser = {
   userId: string;
@@ -44,7 +45,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
       grants: await loadGrants(person.id),
     },
     request: {
-      ipAddress: requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+      ipAddress: clientIpFrom(requestHeaders),
       userAgent: requestHeaders.get("user-agent"),
     },
   };

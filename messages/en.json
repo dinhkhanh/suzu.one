@@ -41,7 +41,8 @@
     "tasks": "My tasks",
     "checklists": "Checklist templates",
     "reports": "Reports",
-    "approvalFlows": "Approval flows"
+    "approvalFlows": "Approval flows",
+    "checkIn": "Check in / out"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -1307,7 +1308,7 @@
   },
   "attendance": {
     "title": "Attendance",
-    "description": "Your working days. Check-in and your timesheet will appear here.",
+    "description": "Check in, see who's in, and your working days.",
     "mySchedule": "My next two weeks",
     "dayKinds": {
       "working": "Working day",
@@ -1324,7 +1325,8 @@
       "tabs": {
         "calendar": "Working calendar",
         "schedules": "Schedules",
-        "shifts": "Shifts & roster"
+        "shifts": "Shifts & roster",
+        "locations": "Work locations"
       },
       "appliesTo": "Applies to",
       "everyEntity": "Every entity",
@@ -1468,7 +1470,131 @@
         "pattern_break_too_long": "The break is as long as the working time.",
         "pattern_bad_credit": "Credited minutes must be between 0 and 1440.",
         "pattern_bad_required": "Flexible days need the required minutes.",
-        "pattern_no_working_day": "The week has no working day."
+        "pattern_no_working_day": "The week has no working day.",
+        "location_not_found": "The location was not found.",
+        "location_entity_fixed": "A location stays with its entity.",
+        "location_position_incomplete": "Give both latitude and longitude.",
+        "location_position_invalid": "The coordinates are out of range.",
+        "location_radius_invalid": "The radius must be positive.",
+        "location_ip_invalid": "One of the networks is not a valid address or CIDR block.",
+        "location_needs_position": "This rule needs coordinates and a radius.",
+        "location_needs_ip": "This rule needs at least one office network.",
+        "location_needs_rule": "Give coordinates with a radius, an office network, or both."
+      },
+      "locations": {
+        "title": "Work locations",
+        "hint": "Where people may check in: a circle on the map, the office network, or both. Browsers cannot read the Wi-Fi name, so the office network is recognised by its public IP address.",
+        "empty": "No work locations yet: check-ins are accepted anywhere.",
+        "add": "Add a work location",
+        "name": "Name",
+        "entity": "Entity",
+        "address": "Address",
+        "latitude": "Latitude",
+        "longitude": "Longitude",
+        "radius": "Radius (m)",
+        "radiusValue": "{metres} m",
+        "networks": "{count, plural, one {# network} other {# networks}}",
+        "accuracyLimit": "Ignore readings less precise than (m)",
+        "ipAllowlist": "Office networks (public IP addresses or CIDR blocks, one per line)",
+        "ipHint": "Ask IT for the office's public address (what whatismyip shows on the office Wi-Fi), e.g. 203.0.113.0/24.",
+        "rule": "A check-in passes when",
+        "mode": "Otherwise",
+        "rules": {
+          "gps_or_ip": "Inside the circle or on the office network",
+          "gps": "Inside the circle",
+          "ip": "On the office network",
+          "gps_and_ip": "Inside the circle and on the office network"
+        },
+        "modes": {
+          "flag": "Accept and flag for review",
+          "block": "Refuse the check-in"
+        }
+      }
+    },
+    "checkIn": {
+      "title": "Check in",
+      "checkIn": "Check in",
+      "checkOut": "Check out",
+      "locating": "Finding you…",
+      "sending": "Sending…",
+      "in": "In",
+      "out": "Out",
+      "doneIn": "Checked in at {time}",
+      "doneOut": "Checked out at {time}",
+      "duplicate": "Already recorded a moment ago — nothing new was saved.",
+      "flagged": "Recorded, and flagged for your manager to review:",
+      "note": "Note (optional)",
+      "notePlaceholder": "e.g. at the client's office this morning",
+      "notExpected": "No punch is needed today — you can still record one.",
+      "untracked": "Today is a working day without attendance tracking (working from home). It is credited automatically; no check-in is needed.",
+      "onLeaveFull": "You are on approved leave today. You can still check in if plans changed — tell HR so the leave can be cancelled.",
+      "onLeavePart": "You have approved leave for part of today.",
+      "noLocations": "Your company has not set up work locations yet, so check-ins are not location-checked.",
+      "today": "Today's punches",
+      "noPunches": "Nothing recorded yet today.",
+      "flags": {
+        "outside_geofence": "Outside the work location ({distance} m from it)",
+        "low_accuracy": "The phone's position was too imprecise",
+        "no_position": "No position — location access was off or unavailable",
+        "ip_not_allowed": "Not on the office network",
+        "off_site_declared": "At the declared off-site location"
+      },
+      "review": {
+        "pending": "To review",
+        "accepted": "Accepted",
+        "rejected": "Rejected"
+      },
+      "install": {
+        "offer": "Install Suzu One on this device for one-tap check-in.",
+        "ios": "For one-tap check-in: tap Share, then “Add to Home Screen”.",
+        "generic": "Tip: add this app to your home screen from the browser menu.",
+        "button": "Install"
+      },
+      "errors": {
+        "generic": "Could not record the punch. Try again.",
+        "unauthenticated": "Please sign in again.",
+        "invalid": "The phone sent a reading the server could not use. Try again.",
+        "punch_blocked": "Check-in is only allowed at a work location:",
+        "punch_already_in": "You are already checked in today. Check out first.",
+        "punch_not_employed": "Check-in is for active employees with an entity."
+      }
+    },
+    "today": {
+      "title": "Who's in today",
+      "everyone": "Everyone",
+      "you": "you",
+      "partLeave": "Half-day leave",
+      "flagged": "To review",
+      "status": {
+        "in": "In",
+        "out": "Out",
+        "not_yet": "Not yet",
+        "on_leave": "On leave",
+        "off_site": "Off-site",
+        "untracked": "Working — no punches",
+        "rest": "Rest day",
+        "holiday": "Day off",
+        "unscheduled": "No schedule"
+      }
+    },
+    "review": {
+      "title": "Flagged check-ins",
+      "description": "Check-ins that were outside the rules of the work location. Accept the ones you can vouch for; a rejected punch no longer counts.",
+      "waiting": "Waiting for review ({count})",
+      "decided": "Reviewed in the last month",
+      "empty": "Nothing to review.",
+      "note": "Note (required to reject)",
+      "accept": "Accept",
+      "reject": "Reject",
+      "distance": "{metres} m from {location}",
+      "accuracy": "±{metres} m",
+      "errors": {
+        "generic": "Could not save.",
+        "forbidden": "You may not review this check-in.",
+        "punch_not_found": "The check-in was not found.",
+        "punch_not_pending": "This check-in was already reviewed.",
+        "punch_own": "You cannot review your own check-in.",
+        "punch_review_note_required": "Say why you reject it."
       }
     }
   },

@@ -1,10 +1,11 @@
 // Attendance tables, first slice (FR-ATT-01, 02, 17): the working calendar, shifts, work schedules,
 // who follows which schedule, and the shift roster. Holidays are rows, never constants: the
 // government announces Tết and the swap days year by year.
-import { boolean, date, index, jsonb, pgEnum, pgTable, smallint, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, doublePrecision, index, integer, jsonb, pgEnum, pgTable, smallint, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { department, entity } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
 import type { SchedulePattern, Segment } from "./engine/calendar";
+import type { PunchFlag } from "./engine/geofence";
 
 export const calendarDayKind = pgEnum("calendar_day_kind", ["public_holiday", "compensatory_off", "company_off", "working_override"]);
 
@@ -106,4 +107,76 @@ export const shiftRoster = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [unique("shift_roster_person_date_key").on(t.personId, t.date)],
+).enableRLS();
+
+// ── Check-in (FR-ATT-03, 04) ────────────────────────────────────────────────────────────────
+
+export const locationRule = pgEnum("work_location_rule", ["gps_or_ip", "gps", "ip", "gps_and_ip"]);
+export const locationMode = pgEnum("work_location_mode", ["flag", "block"]);
+
+// Where an entity's people may check in: a circle on the map and/or the office's public IP ranges
+// (browsers cannot read the Wi-Fi name, so the office network is recognised by the address it
+// leaves through). `mode`: out-of-policy check-ins are flagged for review, or refused.
+export const workLocation = pgTable(
+  "work_location",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    name: text("name").notNull(),
+    address: text("address"),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
+    radiusM: integer("radius_m"),
+    // A position reading less certain than this proves nothing.
+    accuracyLimitM: integer("accuracy_limit_m").notNull().default(100),
+    ipAllowlist: jsonb("ip_allowlist").$type<string[]>().notNull().default([]),
+    rule: locationRule("rule").notNull().default("gps_or_ip"),
+    mode: locationMode("mode").notNull().default("flag"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("work_location_entity_idx").on(t.entityId)],
+).enableRLS();
+
+export const punchDirection = pgEnum("punch_direction", ["in", "out"]);
+export const punchSource = pgEnum("punch_source", ["app", "device", "manual", "request"]);
+export const punchReview = pgEnum("punch_review", ["none", "pending", "accepted", "rejected"]);
+
+// One clock event. `at` is always the server's time, never the phone's. App check-ins carry where
+// and how they were made; device imports (week 4) and approved corrections (week 5) write here too
+// with their own source. Position, address and device are personal-tier: the person, their line
+// manager and HR — never colleagues. A punch whose review ended in "rejected" does not count.
+export const punch = pgTable(
+  "punch",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    entityId: uuid("entity_id").references(() => entity.id),
+    at: timestamp("at", { withTimezone: true }).notNull(),
+    direction: punchDirection("direction").notNull(),
+    source: punchSource("source").notNull(),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
+    accuracyM: integer("accuracy_m"),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    // What the browser says about itself: platform, language, screen, installed app or tab.
+    deviceInfo: jsonb("device_info").$type<Record<string, string | number | boolean>>(),
+    locationId: uuid("location_id").references(() => workLocation.id),
+    distanceM: integer("distance_m"),
+    flags: jsonb("flags").$type<PunchFlag[]>().notNull().default([]),
+    reviewStatus: punchReview("review_status").notNull().default("none"),
+    reviewedByPersonId: uuid("reviewed_by_person_id").references(() => person.id),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewNote: text("review_note"),
+    // The person's own words ("at the client's office this morning").
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("punch_person_at_idx").on(t.personId, t.at), index("punch_entity_at_idx").on(t.entityId, t.at), index("punch_review_idx").on(t.reviewStatus)],
 ).enableRLS();

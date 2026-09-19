@@ -7,6 +7,7 @@ export type NavItem = { key: string; href?: string; phase?: number };
 export function navFor(principal: Principal, open: { people: boolean }): { main: NavItem[]; admin: NavItem[] } {
   const main: NavItem[] = [
     { key: "home", href: "/home" },
+    { key: "checkIn", href: "/attendance/check-in" },
     { key: "me", href: "/me" },
     ...(open.people ? [{ key: "people", href: "/people" }] : []),
     ...(can(principal, "report:read") ? [{ key: "reports", href: "/reports/headcount" }] : []),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
-import { canAssignSchedule, canManageAttendanceConfig, canOpenAttendanceSettings } from "./policy";
+import { canAssignSchedule, canManageAttendanceConfig, canManageLocation, canOpenAttendanceSettings, canReviewPunchOf, canSeePunchDetailOf } from "./policy";
 
 const principal = (grants: Grant[]): Principal => ({ personId: "me", workforceType: "employee", grants });
 const hrAdmin = principal([{ role: "hr_admin", scope: { type: "group" } }]);
@@ -38,5 +38,35 @@ describe("attendance configuration", () => {
   it("gives a line manager or department head no say over schedules", () => {
     expect(canAssignSchedule(head, { scope: "person", entityId: null, departmentId: null }, huy)).toBe(false);
     expect(canAssignSchedule(principal([]), { scope: "person", entityId: null, departmentId: null }, { ...huy, managerId: "me" })).toBe(false);
+  });
+});
+
+describe("check-in data", () => {
+  const manager = principal([]);
+  const myReport = { ...huy, managerId: "me" };
+  const myself = { ...huy, personId: "me" };
+
+  it("keeps work locations with the entity's HR", () => {
+    expect([hrAdmin, mediaHr, head, employee].map((who) => canManageLocation(who, "media"))).toEqual([true, true, false, false]);
+    expect(canManageLocation(mediaHr, "creative")).toBe(false);
+  });
+
+  it("shows where someone checked in to the person, the line manager and HR in scope — not to colleagues or a department head", () => {
+    expect(canSeePunchDetailOf(employee, myself)).toBe(true);
+    expect(canSeePunchDetailOf(manager, myReport)).toBe(true);
+    expect(canSeePunchDetailOf(mediaHr, huy)).toBe(true);
+    expect(canSeePunchDetailOf(mediaHr, lan)).toBe(false);
+    expect(canSeePunchDetailOf(employee, huy)).toBe(false);
+    expect(canSeePunchDetailOf(head, huy)).toBe(false);
+  });
+
+  it("lets the line manager or HR review a flagged punch, never the person themselves", () => {
+    expect(canReviewPunchOf(manager, myReport)).toBe(true);
+    expect(canReviewPunchOf(mediaHr, huy)).toBe(true);
+    expect(canReviewPunchOf(hrAdmin, lan)).toBe(true);
+    expect(canReviewPunchOf(mediaHr, lan)).toBe(false);
+    expect(canReviewPunchOf(employee, huy)).toBe(false);
+    expect(canReviewPunchOf(head, huy)).toBe(false);
+    expect(canReviewPunchOf(hrAdmin, { ...myself, entityId: "media" })).toBe(false);
   });
 });

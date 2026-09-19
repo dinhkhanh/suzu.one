@@ -19,3 +19,19 @@ export function canAssignSchedule(principal: Principal, assignment: AssignmentSc
   if (assignment.scope === "department") return can(principal, "attendance:manage", assignment.entityId ? { entityId: assignment.entityId, departmentId: assignment.departmentId } : { departmentId: assignment.departmentId });
   return can(principal, "attendance:manage", { entityId: assignment.entityId });
 }
+
+type PersonTarget = Target & { personId: string };
+
+/** Work locations belong to one entity. */
+export const canManageLocation = (principal: Principal, entityId: string): boolean => can(principal, "attendance:manage", { entityId });
+
+/**
+ * Where, from which address and on which device someone checked in is personal-tier: the person,
+ * their line manager and the HR who keep their attendance. Colleagues see a status, nothing more.
+ */
+export const canSeePunchDetailOf = (principal: Principal, person: PersonTarget): boolean =>
+  principal.personId === person.personId || (!!principal.personId && person.managerId === principal.personId) || can(principal, "attendance:manage", person);
+
+/** Accepting or rejecting a flagged check-in: the line manager or HR — never the person themselves. */
+export const canReviewPunchOf = (principal: Principal, person: PersonTarget): boolean =>
+  principal.personId !== person.personId && ((!!principal.personId && person.managerId === principal.personId) || can(principal, "attendance:manage", person));

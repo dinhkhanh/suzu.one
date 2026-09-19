@@ -17,7 +17,7 @@ export default async function AttendanceSettingsLayout({ children }: { children:
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
       <nav className="flex flex-wrap gap-4 border-b pb-2 text-sm">
-        {(["calendar", "schedules", "shifts"] as const).map((tab) => (
+        {(["calendar", "schedules", "shifts", "locations"] as const).map((tab) => (
           <Link key={tab} href={`/attendance/settings/${tab}`} className="underline-offset-4 hover:underline">
             {t(`tabs.${tab}`)}
           </Link>

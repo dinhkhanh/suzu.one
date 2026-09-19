@@ -2,7 +2,7 @@
 // looks for what it would create. August 2026 is the full demo month, September the running one.
 import { and, eq, isNull } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
-import { calendarDay, department, entity, person, scheduleAssignment, shift, shiftRoster, workSchedule } from "../src/lib/db/schema";
+import { calendarDay, department, entity, person, scheduleAssignment, shift, shiftRoster, workLocation, workSchedule } from "../src/lib/db/schema";
 import type { DayRule, SchedulePattern } from "../src/modules/attendance/engine/calendar";
 import { DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 
@@ -84,5 +84,24 @@ export async function seedAttendance(db: Db): Promise<string> {
   const [teamDay] = await db.select({ id: calendarDay.id }).from(calendarDay).where(and(eq(calendarDay.entityId, creative.id), eq(calendarDay.date, "2026-08-21"))).limit(1);
   if (!teamDay) await db.insert(calendarDay).values({ entityId: creative.id, date: "2026-08-21", kind: "company_off", name: "Team building Suzu Creative" });
 
-  return `attendance: ${assignments} schedule assignments, ${rostered} roster days (existing ones skipped)`;
+  // Work locations (FR-ATT-04): one office per entity in Ho Chi Minh City. The loopback addresses
+  // stand in for the office network so a check-in from this machine passes; Media also has a
+  // studio that accepts the position only.
+  const offices: { code: string; name: string; address: string; latitude: number; longitude: number; radiusM: number; ipAllowlist: string[]; rule: "gps_or_ip" | "gps" }[] = [
+    { code: "SZG", name: "Văn phòng Suzu Group", address: "2 Hải Triều, Bến Nghé, Quận 1, TP.HCM", latitude: 10.771595, longitude: 106.704758, radiusM: 150, ipAllowlist: ["127.0.0.1", "::1"], rule: "gps_or_ip" },
+    { code: "SZM", name: "Văn phòng Suzu Media", address: "72 Lê Thánh Tôn, Bến Nghé, Quận 1, TP.HCM", latitude: 10.778203, longitude: 106.702143, radiusM: 120, ipAllowlist: ["127.0.0.1", "::1"], rule: "gps_or_ip" },
+    { code: "SZM", name: "Studio Thảo Điền", address: "Xuân Thuỷ, Thảo Điền, TP. Thủ Đức", latitude: 10.803512, longitude: 106.733418, radiusM: 200, ipAllowlist: [], rule: "gps" },
+    { code: "SZC", name: "Văn phòng Suzu Creative", address: "Võ Văn Tần, Phường 6, Quận 3, TP.HCM", latitude: 10.776889, longitude: 106.690102, radiusM: 120, ipAllowlist: ["127.0.0.1", "::1"], rule: "gps_or_ip" },
+  ];
+  let locations = 0;
+  for (const office of offices) {
+    const owner = entities.get(office.code);
+    if (!owner) continue;
+    const [existing] = await db.select({ id: workLocation.id }).from(workLocation).where(and(eq(workLocation.entityId, owner.id), eq(workLocation.name, office.name))).limit(1);
+    if (existing) continue;
+    await db.insert(workLocation).values({ entityId: owner.id, name: office.name, address: office.address, latitude: office.latitude, longitude: office.longitude, radiusM: office.radiusM, ipAllowlist: office.ipAllowlist, rule: office.rule });
+    locations++;
+  }
+
+  return `attendance: ${assignments} schedule assignments, ${rostered} roster days, ${locations} work locations (existing ones skipped)`;
 }

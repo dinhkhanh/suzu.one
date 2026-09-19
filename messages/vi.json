@@ -41,7 +41,8 @@
     "tasks": "Việc của tôi",
     "checklists": "Mẫu checklist",
     "reports": "Báo cáo",
-    "approvalFlows": "Luồng phê duyệt"
+    "approvalFlows": "Luồng phê duyệt",
+    "checkIn": "Vào / ra ca"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -1307,7 +1308,7 @@
   },
   "attendance": {
     "title": "Chấm công",
-    "description": "Các ngày làm việc của bạn. Chấm công và bảng công sẽ xuất hiện tại đây.",
+    "description": "Chấm công, xem ai đang có mặt và lịch làm việc của bạn.",
     "mySchedule": "Hai tuần tới của tôi",
     "dayKinds": {
       "working": "Ngày làm việc",
@@ -1324,7 +1325,8 @@
       "tabs": {
         "calendar": "Lịch làm việc",
         "schedules": "Lịch làm việc theo tuần",
-        "shifts": "Ca & phân ca"
+        "shifts": "Ca & phân ca",
+        "locations": "Địa điểm làm việc"
       },
       "appliesTo": "Áp dụng cho",
       "everyEntity": "Mọi pháp nhân",
@@ -1468,7 +1470,131 @@
         "pattern_break_too_long": "Giờ nghỉ dài bằng thời gian làm việc.",
         "pattern_bad_credit": "Số phút ghi nhận từ 0 đến 1440.",
         "pattern_bad_required": "Ngày linh hoạt cần số phút yêu cầu.",
-        "pattern_no_working_day": "Tuần không có ngày làm việc nào."
+        "pattern_no_working_day": "Tuần không có ngày làm việc nào.",
+        "location_not_found": "Không tìm thấy địa điểm.",
+        "location_entity_fixed": "Địa điểm gắn cố định với pháp nhân của nó.",
+        "location_position_incomplete": "Cần nhập cả vĩ độ và kinh độ.",
+        "location_position_invalid": "Toạ độ nằm ngoài phạm vi hợp lệ.",
+        "location_radius_invalid": "Bán kính phải lớn hơn 0.",
+        "location_ip_invalid": "Có một mạng không phải địa chỉ IP hoặc dải CIDR hợp lệ.",
+        "location_needs_position": "Quy tắc này cần toạ độ và bán kính.",
+        "location_needs_ip": "Quy tắc này cần ít nhất một mạng văn phòng.",
+        "location_needs_rule": "Hãy nhập toạ độ kèm bán kính, mạng văn phòng, hoặc cả hai."
+      },
+      "locations": {
+        "title": "Địa điểm làm việc",
+        "hint": "Nơi nhân viên được chấm công: một vòng tròn trên bản đồ, mạng văn phòng, hoặc cả hai. Trình duyệt không đọc được tên Wi-Fi nên mạng văn phòng được nhận biết qua địa chỉ IP công cộng.",
+        "empty": "Chưa có địa điểm làm việc: chấm công ở đâu cũng được chấp nhận.",
+        "add": "Thêm địa điểm làm việc",
+        "name": "Tên",
+        "entity": "Pháp nhân",
+        "address": "Địa chỉ",
+        "latitude": "Vĩ độ",
+        "longitude": "Kinh độ",
+        "radius": "Bán kính (m)",
+        "radiusValue": "{metres} m",
+        "networks": "{count} mạng",
+        "accuracyLimit": "Bỏ qua vị trí kém chính xác hơn (m)",
+        "ipAllowlist": "Mạng văn phòng (địa chỉ IP công cộng hoặc dải CIDR, mỗi dòng một mục)",
+        "ipHint": "Hỏi bộ phận IT địa chỉ công cộng của văn phòng (kết quả whatismyip khi dùng Wi-Fi văn phòng), VD: 203.0.113.0/24.",
+        "rule": "Lần chấm hợp lệ khi",
+        "mode": "Nếu không",
+        "rules": {
+          "gps_or_ip": "Trong vòng tròn hoặc dùng mạng văn phòng",
+          "gps": "Trong vòng tròn",
+          "ip": "Dùng mạng văn phòng",
+          "gps_and_ip": "Trong vòng tròn và dùng mạng văn phòng"
+        },
+        "modes": {
+          "flag": "Chấp nhận và chuyển xem xét",
+          "block": "Từ chối lần chấm"
+        }
+      }
+    },
+    "checkIn": {
+      "title": "Chấm công",
+      "checkIn": "Vào ca",
+      "checkOut": "Ra ca",
+      "locating": "Đang định vị…",
+      "sending": "Đang gửi…",
+      "in": "Vào",
+      "out": "Ra",
+      "doneIn": "Đã chấm vào lúc {time}",
+      "doneOut": "Đã chấm ra lúc {time}",
+      "duplicate": "Vừa ghi nhận cách đây ít phút — không lưu thêm.",
+      "flagged": "Đã ghi nhận và chuyển cho quản lý xem xét:",
+      "note": "Ghi chú (không bắt buộc)",
+      "notePlaceholder": "VD: sáng nay làm việc tại văn phòng khách hàng",
+      "notExpected": "Hôm nay không cần chấm công — bạn vẫn có thể ghi nhận nếu muốn.",
+      "untracked": "Hôm nay là ngày làm việc không chấm công (làm việc tại nhà). Ngày công được tính tự động, không cần chấm.",
+      "onLeaveFull": "Hôm nay bạn có đơn nghỉ phép đã duyệt. Nếu kế hoạch thay đổi bạn vẫn có thể chấm công — hãy báo Nhân sự để huỷ đơn nghỉ.",
+      "onLeavePart": "Hôm nay bạn có đơn nghỉ phép đã duyệt cho một phần ngày.",
+      "noLocations": "Công ty chưa thiết lập địa điểm làm việc nên việc chấm công chưa được kiểm tra vị trí.",
+      "today": "Các lần chấm hôm nay",
+      "noPunches": "Hôm nay chưa có lần chấm nào.",
+      "flags": {
+        "outside_geofence": "Ngoài phạm vi địa điểm làm việc (cách {distance} m)",
+        "low_accuracy": "Vị trí điện thoại báo về quá kém chính xác",
+        "no_position": "Không có vị trí — quyền truy cập vị trí bị tắt hoặc không khả dụng",
+        "ip_not_allowed": "Không dùng mạng văn phòng",
+        "off_site_declared": "Tại địa điểm làm việc bên ngoài đã đăng ký"
+      },
+      "review": {
+        "pending": "Chờ xem xét",
+        "accepted": "Đã chấp nhận",
+        "rejected": "Đã từ chối"
+      },
+      "install": {
+        "offer": "Cài Suzu One lên thiết bị để chấm công bằng một chạm.",
+        "ios": "Để chấm công bằng một chạm: bấm Chia sẻ rồi chọn “Thêm vào MH chính”.",
+        "generic": "Mẹo: thêm ứng dụng này vào màn hình chính từ trình đơn của trình duyệt.",
+        "button": "Cài đặt"
+      },
+      "errors": {
+        "generic": "Không ghi nhận được. Vui lòng thử lại.",
+        "unauthenticated": "Vui lòng đăng nhập lại.",
+        "invalid": "Dữ liệu điện thoại gửi lên không dùng được. Vui lòng thử lại.",
+        "punch_blocked": "Chỉ được chấm công tại địa điểm làm việc:",
+        "punch_already_in": "Hôm nay bạn đã chấm vào. Hãy chấm ra trước.",
+        "punch_not_employed": "Chấm công dành cho nhân sự đang làm việc và thuộc một pháp nhân."
+      }
+    },
+    "today": {
+      "title": "Hôm nay ai có mặt",
+      "everyone": "Tất cả",
+      "you": "bạn",
+      "partLeave": "Nghỉ nửa ngày",
+      "flagged": "Chờ xem xét",
+      "status": {
+        "in": "Có mặt",
+        "out": "Đã về",
+        "not_yet": "Chưa đến",
+        "on_leave": "Nghỉ phép",
+        "off_site": "Làm việc bên ngoài",
+        "untracked": "Làm việc — không chấm công",
+        "rest": "Ngày nghỉ",
+        "holiday": "Nghỉ lễ",
+        "unscheduled": "Chưa có lịch"
+      }
+    },
+    "review": {
+      "title": "Chấm công cần xem xét",
+      "description": "Các lần chấm công không đúng quy định của địa điểm làm việc. Chấp nhận những lần bạn xác nhận được; lần chấm bị từ chối sẽ không được tính.",
+      "waiting": "Chờ xem xét ({count})",
+      "decided": "Đã xem xét trong tháng qua",
+      "empty": "Không có gì cần xem xét.",
+      "note": "Ghi chú (bắt buộc khi từ chối)",
+      "accept": "Chấp nhận",
+      "reject": "Từ chối",
+      "distance": "cách {location} {metres} m",
+      "accuracy": "±{metres} m",
+      "errors": {
+        "generic": "Không lưu được.",
+        "forbidden": "Bạn không có quyền xem xét lần chấm công này.",
+        "punch_not_found": "Không tìm thấy lần chấm công.",
+        "punch_not_pending": "Lần chấm công này đã được xem xét.",
+        "punch_own": "Bạn không thể tự xem xét lần chấm công của mình.",
+        "punch_review_note_required": "Hãy nêu lý do từ chối."
       }
     }
   },

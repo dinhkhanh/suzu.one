@@ -3,3 +3,4 @@
 export type { CalendarDay, DayExpectation, DayPlan, DayPlanKind, PlannedSegment } from "./engine/calendar";
 export { getDayPlans, type PersonDayPlans } from "./schedules";
 export { requestTimesheetRecompute } from "./recompute";
+export { listPunches, type PunchFact } from "./punches";
