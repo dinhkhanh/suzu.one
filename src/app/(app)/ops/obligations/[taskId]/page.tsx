@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { todayInVietnam } from "@/lib/dates";
-import { canManageInstance, canViewInstance, canWorkInstance, listEvidenceFiles, loadInstance, periodLabel, statusColour } from "@/modules/ops/service";
+import { canManageInstance, canReadOps, canViewInstance, canWorkInstance, escalationLevelOf, listEvidenceFiles, loadInstance, periodLabel, statusColour } from "@/modules/ops/service";
 import { InstancePanel, ReassignForm } from "@/modules/ops/ui/instance-panel";
 import { StatusBadge } from "@/modules/ops/ui/status-badge";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -28,7 +28,8 @@ export default async function ObligationPage({ params }: PageProps<"/ops/obligat
   const canWork = canWorkInstance(user.principal, loaded.parties);
   const canManage = canManageInstance(user.principal, loaded.parties);
   const open = task.status === "todo" || task.status === "in_progress";
-  const [files, entity, owner, reviewer, subject, completedBy, people] = await Promise.all([
+  const [level, files, entity, owner, reviewer, subject, completedBy, people] = await Promise.all([
+    open ? escalationLevelOf(instance.id) : 0,
     listEvidenceFiles(instance.id),
     findEntity(instance.entityId),
     task.assigneePersonId ? findPersonById(task.assigneePersonId) : undefined,
@@ -64,7 +65,13 @@ export default async function ObligationPage({ params }: PageProps<"/ops/obligat
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge colour={colour} label={t(`enums.colour.${colour}`)} />
           <Badge variant="outline">{t(`enums.category.${template.category}`)}</Badge>
+          {level > 0 ? <Badge variant="destructive">{t(`escalation.level${level}`)}</Badge> : null}
           {template.reviewStatus !== "reviewed" ? <Badge variant="outline">{t("unreviewed")}</Badge> : null}
+          {canReadOps(user.principal, instance.entityId) ? (
+            <Link href={`/ops/history?template=${template.id}&entity=${instance.entityId}&year=all`} className="text-xs underline">
+              {t("history.ofThis")}
+            </Link>
+          ) : null}
         </div>
         {template.reviewStatus !== "reviewed" ? <p className="text-xs text-muted-foreground">{t("unreviewedNote")}</p> : null}
       </header>

@@ -1,101 +1,110 @@
 import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
+import { redirect } from "next/navigation";
 import { todayInVietnam } from "@/lib/dates";
-import { canManageLibrary, canManageOps, canReadOps, listInstances, opsReach } from "@/modules/ops/service";
+import { canManageOps, canReadOps, COLOUR_SEVERITY, getDashboard, worstColour } from "@/modules/ops/service";
 import { SyncButton } from "@/modules/ops/ui/library";
+import { OpsNav, OverviewFilters, overviewParams, overviewQuery } from "@/modules/ops/ui/overview";
 import { StatusBadge } from "@/modules/ops/ui/status-badge";
 import { requireUser } from "@/modules/platform/auth/session";
-import { listEntities } from "@/modules/platform/org/service";
 
 export const metadata: Metadata = { title: "Compliance" };
 
-// Open obligations by due date (FR-OPS-02). The entity × month dashboard and the calendar come on top of this list.
-export default async function OpsPage({ searchParams }: PageProps<"/ops">) {
-  const user = await requireUser();
-  const params = await searchParams;
-  const show = params.show === "closed" ? "closed" : "open";
-  const entityId = typeof params.entity === "string" && /^[0-9a-f-]{36}$/.test(params.entity) ? params.entity : null;
-  const today = todayInVietnam();
-  const reads = canReadOps(user.principal);
-  const [items, entities] = await Promise.all([listInstances({ principal: user.principal, personId: user.person.id }, { open: show === "open", entityId }, today), listEntities()]);
-  // Someone without an ops role still sees what is theirs to do or review — and nothing else.
-  if (!reads && items.length === 0 && show === "open" && !entityId) notFound();
+const CELL_TONE: Record<string, string> = {
+  overdue: "border-destructive/50 bg-destructive/5",
+  due_soon: "border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40",
+  done_late: "border-orange-200 bg-orange-50/60 dark:border-orange-900 dark:bg-orange-950/30",
+  upcoming: "",
+  done: "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/30",
+};
 
+// The compliance dashboard (FR-OPS-07): entity × month, every entity the viewer reads at once.
+// Someone without an ops role has no dashboard — only the list of what is theirs to do.
+export default async function OpsDashboardPage({ searchParams }: PageProps<"/ops">) {
+  const user = await requireUser();
+  if (!canReadOps(user.principal)) redirect("/ops/list");
+  const query = overviewQuery(await searchParams);
+  const today = todayInVietnam();
+  const dashboard = await getDashboard({ principal: user.principal, personId: user.person.id }, query, today);
   const t = await getTranslations("ops");
   const format = await getFormatter();
-  const reach = opsReach(user.principal);
-  const visibleEntities = entities.filter((entity) => entity.isActive && (reach.all || reach.entityIds.includes(entity.id)));
-  const href = (next: { show?: string; entity?: string | null }) => {
-    const query = new URLSearchParams();
-    if ((next.show ?? show) === "closed") query.set("show", "closed");
-    const entity = next.entity === undefined ? entityId : next.entity;
-    if (entity) query.set("entity", entity);
-    return `/ops${query.size ? `?${query}` : ""}`;
-  };
-  const counts = { overdue: items.filter((item) => item.colour === "overdue").length, dueSoon: items.filter((item) => item.colour === "due_soon").length };
-  const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted"}`;
+  const monthName = (month: string) => format.dateTime(new Date(`${month}-01T00:00:00`), { month: "short", year: "numeric" });
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
+    <div className="flex max-w-6xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
+          <p className="text-sm text-muted-foreground">{t("dashboard.description")}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {reads ? (
-            <Link href="/ops/templates" className="text-sm underline">
-              {t("library.title")}
-            </Link>
-          ) : null}
-          {canManageOps(user.principal) ? <SyncButton /> : null}
-        </div>
+        {canManageOps(user.principal) ? <SyncButton /> : null}
       </header>
+      <OpsNav active="dashboard" reads />
+      <OverviewFilters action="/ops" query={query} owners={dashboard.owners} />
 
-      <nav className="flex flex-wrap items-center gap-1">
-        <Link href={href({ show: "open" })} className={tab(show === "open")}>
-          {t("tabs.open")}
-        </Link>
-        <Link href={href({ show: "closed" })} className={tab(show === "closed")}>
-          {t("tabs.closed")}
-        </Link>
-        <span className="mx-2 h-4 border-l" />
-        <Link href={href({ entity: null })} className={tab(!entityId)}>
-          {t("allEntities")}
-        </Link>
-        {visibleEntities.map((entity) => (
-          <Link key={entity.id} href={href({ entity: entity.id })} className={tab(entityId === entity.id)}>
-            {entity.code}
+      <p className="text-sm text-muted-foreground">
+        {t("dashboard.totals", dashboard.totals)}{" "}
+        {dashboard.totals.overdue > 0 ? (
+          <Link href={`/ops/list${overviewParams(query, { colour: "overdue" })}`} className="underline">
+            {t("dashboard.seeOverdue")}
           </Link>
-        ))}
-      </nav>
+        ) : null}
+      </p>
 
-      {show === "open" ? <p className="text-sm text-muted-foreground">{t("summary", { total: items.length, overdue: counts.overdue, dueSoon: counts.dueSoon })}</p> : null}
-
-      {items.length === 0 ? (
+      {dashboard.rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
       ) : (
-        <ul className="flex flex-col divide-y rounded-xl border">
-          {items.map((item) => (
-            <li key={item.taskId} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm">
-              <div className="min-w-0 flex-1">
-                <Link href={`/ops/obligations/${item.taskId}`} className="font-medium hover:underline">
-                  {item.title}
-                </Link>
-                <p className="text-xs text-muted-foreground">
-                  {[t(`enums.authority.${item.authority}`), item.assigneeName ?? t("unassigned"), item.dueDate ? t("due", { date: format.dateTime(new Date(`${item.dueDate}T00:00:00`), { dateStyle: "medium" }) }) : null, item.dueDate && item.dueDate !== item.nominalDueDate ? t("shifted") : null].filter(Boolean).join(" · ")}
-                </p>
-              </div>
-              {item.unreviewed ? <Badge variant="outline">{t("unreviewed")}</Badge> : null}
-              <StatusBadge colour={item.colour} label={t(`enums.colour.${item.colour}`)} />
-            </li>
-          ))}
-        </ul>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] border-separate border-spacing-1 text-sm">
+            <thead>
+              <tr>
+                <th className="w-32 px-2 text-left text-xs font-medium text-muted-foreground">{t("dashboard.entity")}</th>
+                {dashboard.months.map((month) => (
+                  <th key={month} className={`px-2 text-left text-xs font-medium ${month === today.slice(0, 7) ? "text-foreground" : "text-muted-foreground"}`}>
+                    <Link href={`/ops/calendar${overviewParams(query, { month })}`} className="hover:underline">
+                      {monthName(month)}
+                    </Link>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {dashboard.rows.map((row) => (
+                <tr key={row.entity.id}>
+                  <th scope="row" className="px-2 text-left align-top">
+                    <Link href={`/ops/list${overviewParams(query, { entity: row.entity.id })}`} className="font-medium hover:underline">
+                      {row.entity.code}
+                    </Link>
+                    <p className="text-xs font-normal text-muted-foreground">{row.entity.shortName}</p>
+                  </th>
+                  {row.cells.map((cell) => {
+                    const worst = worstColour(cell);
+                    return (
+                      <td key={cell.month} className={`rounded-lg border p-2 align-top ${worst ? CELL_TONE[worst] : ""}`}>
+                        {cell.total === 0 ? (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            {COLOUR_SEVERITY.filter((colour) => (cell.counts[colour] ?? 0) > 0).map((colour) => (
+                              <Link key={colour} href={`/ops/list${overviewParams(query, { entity: row.entity.id, month: cell.month, colour })}`} className="flex items-center gap-1.5 hover:underline">
+                                <StatusBadge colour={colour} label={String(cell.counts[colour])} />
+                                <span className="text-xs">{t(`enums.colour.${colour}`)}</span>
+                              </Link>
+                            ))}
+                            {cell.escalated > 0 ? <span className="text-xs font-medium text-destructive">{t("dashboard.escalated", { count: cell.escalated })}</span> : null}
+                          </div>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
-      {canManageLibrary(user.principal) && items.some((item) => item.unreviewed) ? <p className="text-xs text-muted-foreground">{t("unreviewedHint")}</p> : null}
+      <p className="text-xs text-muted-foreground">{t("dashboard.legend")}</p>
     </div>
   );
 }

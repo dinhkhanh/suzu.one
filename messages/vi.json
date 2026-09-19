@@ -695,6 +695,18 @@
       "ops_assigned": {
         "title": "{count, plural, =1 {Nghĩa vụ giao cho bạn: {title}} other {Bạn phụ trách # nghĩa vụ tuân thủ mới}}",
         "body": "{count, plural, =1 {Bạn phụ trách nghĩa vụ “{title}”.} other {Bạn phụ trách # nghĩa vụ mới, bắt đầu bằng “{title}”.}} Mở Lịch nghĩa vụ để xem hạn, các bước và chứng từ cần có."
+      },
+      "ops_reminder": {
+        "title": "{count, plural, =1 {Đến hạn {dueDate}: {title}} other {# nghĩa vụ sắp đến hạn}}",
+        "body": "{count, plural, =1 {“{title}” đến hạn ngày {dueDate}{days, plural, =0 { — hôm nay} =1 { — ngày mai} other { — còn # ngày}}.} other {# nghĩa vụ của bạn sắp đến hạn, sớm nhất là “{title}” vào ngày {dueDate}.}} Hãy kiểm tra các bước và chứng từ cần có."
+      },
+      "ops_overdue": {
+        "title": "{count, plural, =1 {Quá hạn: {title}} other {# nghĩa vụ đã quá hạn}}",
+        "body": "{count, plural, =1 {“{title}” đến hạn ngày {dueDate} và vẫn chưa hoàn thành.} other {# nghĩa vụ đã quá hạn, lâu nhất là “{title}” ({dueDate}).}} Hãy hoàn thành kèm chứng từ; nếu tiếp tục để mở, việc sẽ được báo lên cấp trên."
+      },
+      "ops_escalated": {
+        "title": "{count, plural, =1 {Báo lên cấp trên: {title}} other {# nghĩa vụ quá hạn được báo lên bạn}}",
+        "body": "{count, plural, =1 {“{title}” (phụ trách: {owner}) đến hạn ngày {dueDate} và đã trễ {days} ngày.} other {# nghĩa vụ đã trễ và được báo lên bạn, lâu nhất là “{title}” (phụ trách: {owner}, hạn {dueDate}).}} Vui lòng đôn đốc xử lý."
       }
     },
     "errors": {
@@ -3329,6 +3341,73 @@
       "template_owner_person_required": "Hãy chọn người phụ trách.",
       "template_reviewer_rule_invalid": "Hãy chọn vai trò hoặc quyền có thật cho người kiểm tra.",
       "template_reviewer_person_required": "Hãy chọn người kiểm tra."
+    },
+    "nav": {
+      "dashboard": "Tổng quan",
+      "list": "Danh sách",
+      "calendar": "Lịch",
+      "history": "Lưu trữ",
+      "library": "Thư viện"
+    },
+    "filters": {
+      "authority": "Cơ quan",
+      "category": "Phân loại",
+      "owner": "Người phụ trách",
+      "all": "Tất cả",
+      "apply": "Lọc",
+      "clear": "Bỏ lọc"
+    },
+    "list": {
+      "narrowed": "{count, plural, =0 {Không có nghĩa vụ nào} other {# nghĩa vụ}}{hasMonth, select, yes { đến hạn trong {month}} other {}}{hasColour, select, yes { · {colour}} other {}}."
+    },
+    "escalation": {
+      "level1": "Đã báo lên quản lý",
+      "level2": "Đã báo lên ban lãnh đạo"
+    },
+    "dashboard": {
+      "description": "Mọi pháp nhân bạn được xem, theo từng tháng: việc sắp đến hạn, việc trễ và việc đã nộp.",
+      "entity": "Pháp nhân",
+      "totals": "{overdue, plural, =0 {Không có việc quá hạn} other {# việc quá hạn}} · {dueSoon, plural, =0 {không có việc đến hạn trong tuần} other {# việc đến hạn trong tuần}} · {escalated, plural, =0 {chưa việc nào bị báo lên cấp trên} other {# việc đã báo lên cấp trên}}.",
+      "seeOverdue": "Xem các việc quá hạn",
+      "escalated": "{count} việc đã báo lên cấp trên",
+      "legend": "Mỗi ô mang màu của việc nghiêm trọng nhất. Bấm vào con số để mở các nghĩa vụ đó; bấm vào tháng để mở lịch của tháng. Các việc \"không áp dụng\" không được tính."
+    },
+    "calendar": {
+      "title": "Lịch tuân thủ",
+      "description": "Mỗi nghĩa vụ nằm ở ngày đến hạn — sau khi đã dời vì cuối tuần và ngày lễ.",
+      "previous": "Tháng trước",
+      "next": "Tháng sau",
+      "today": "Tháng này",
+      "more": "còn {count} việc nữa",
+      "legend": "Ngày tô xám là cuối tuần và ngày nghỉ. Khi chọn một pháp nhân, lịch hiển thị ngày nghỉ riêng của pháp nhân đó; nếu không thì theo lịch của tập đoàn."
+    },
+    "history": {
+      "title": "Lưu trữ tuân thủ",
+      "description": "Các kỳ đã qua của từng nghĩa vụ: ai hoàn thành, số tham chiếu, số tiền và chứng từ đã nộp — hồ sơ phục vụ thanh tra thuế, bảo hiểm.",
+      "obligation": "Nghĩa vụ",
+      "year": "Đến hạn trong năm",
+      "export": "Xuất CSV",
+      "exportFailed": "Không xuất được tệp.",
+      "exportTruncated": "Chỉ xuất 5.000 dòng đầu tiên.",
+      "summary": "{count, plural, =0 {Chưa có kỳ nào đã qua} other {# kỳ đã qua}}{late, plural, =0 {} other {, # kỳ trễ hoặc còn mở}}.",
+      "empty": "Chưa có dữ liệu cho lựa chọn này.",
+      "openFailed": "Không mở được tệp.",
+      "ofThis": "Các kỳ trước",
+      "columns": {
+        "entity": "Pháp nhân",
+        "code": "Mã",
+        "obligation": "Nghĩa vụ",
+        "period": "Kỳ",
+        "dueDate": "Hạn",
+        "status": "Trạng thái",
+        "owner": "Người phụ trách",
+        "completedBy": "Người hoàn thành",
+        "completedOn": "Ngày hoàn thành",
+        "submittedDate": "Ngày nộp",
+        "reference": "Số tham chiếu",
+        "amount": "Số tiền (VND)",
+        "files": "Chứng từ"
+      }
     }
   }
 }

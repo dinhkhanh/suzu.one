@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { canManageLibrary, canReadOps, DEFAULT_ESCALATION, DEFAULT_REMINDER_LEAD_DAYS, listTemplates, NO_EVIDENCE, type ObligationTemplateRow } from "@/modules/ops/service";
 import { ReviewButton, TemplateForm, type TemplateFormValue } from "@/modules/ops/ui/library";
+import { OpsNav } from "@/modules/ops/ui/overview";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
@@ -47,6 +48,7 @@ export default async function ObligationLibraryPage() {
         <p className="text-sm text-muted-foreground">{t("library.description")}</p>
         {unreviewed > 0 ? <p className="text-sm text-amber-700 dark:text-amber-300">{t("library.unreviewedCount", { count: unreviewed, total: templates.length })}</p> : null}
       </header>
+      <OpsNav active="library" reads />
 
       {(["internal", "external"] as const).map((category) => (
         <section key={category} className="flex flex-col gap-2">

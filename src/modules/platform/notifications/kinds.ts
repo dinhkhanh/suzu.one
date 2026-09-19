@@ -59,6 +59,9 @@ export const KINDS = {
   "attendance.adjusted": "attendance",
   "attendance.nudge": "attendance",
   "ops.assigned": "ops",
+  "ops.reminder": "ops",
+  "ops.overdue": "ops",
+  "ops.escalated": "ops",
 } as const satisfies Record<string, Category>;
 export type Kind = keyof typeof KINDS;
 

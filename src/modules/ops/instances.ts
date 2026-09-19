@@ -10,9 +10,11 @@ import { db, schema, type Tx } from "@/lib/db";
 import { beginUpload, completeUpload, createDownloadLink, findFile, listFilesOf, softDeleteFile, type StoredFileRow } from "../platform/files/service";
 import { notify } from "../platform/notifications/service";
 import type { Principal } from "../platform/rbac/policy";
+import { escalationLevel } from "./engine/escalation";
 import { isCompletedLate, missingEvidence, statusColour } from "./engine/status";
 import { type ChecklistState, type EvidenceKey, OBLIGATION_FILE_OWNER, OBLIGATION_KIND, type StatusColour } from "./enums";
 import { type InstanceParties, opsReach } from "./policy";
+import { sentKeysOf } from "./reminders";
 import type { ObligationTemplateRow } from "./templates";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -57,9 +59,16 @@ export type InstanceListItem = {
   subjectName: string | null;
   completedAt: Date | null;
   completedLate: boolean | null;
+  completedByName: string | null;
+  referenceNumber: string | null;
+  submittedDate: IsoDate | null;
+  amountPaid: number | null;
+  /** 0 = nobody above the owner was told, 1 = the manager, 2 = the executives (FR-OPS-08). */
+  escalationLevel: 0 | 1 | 2;
+  instanceId: string;
 };
 
-export type InstanceFilter = { open?: boolean; entityId?: string | null; dueFrom?: IsoDate; dueTo?: IsoDate; templateId?: string; limit?: number };
+export type InstanceFilter = { open?: boolean; entityId?: string | null; dueFrom?: IsoDate; dueTo?: IsoDate; templateId?: string; authority?: string | null; category?: string | null; ownerId?: string | null; limit?: number };
 
 /** The SQL list form of `canViewInstance`: the entities the viewer reads, plus what is theirs to do or review. */
 function visibleTo(viewer: { principal: Principal; personId: string }): SQL | undefined {
@@ -71,14 +80,16 @@ function visibleTo(viewer: { principal: Principal; personId: string }): SQL | un
 export async function listInstances(viewer: { principal: Principal; personId: string }, filter: InstanceFilter = {}, today: IsoDate = todayInVietnam()): Promise<InstanceListItem[]> {
   const assignee = alias(schema.person, "assignee");
   const subject = alias(schema.person, "subject");
+  const completer = alias(schema.person, "completer");
   const rows = await db()
-    .select({ instance: schema.obligationInstance, task: schema.task, template: schema.obligationTemplate, entityCode: schema.entity.code, assigneeName: assignee.fullName, subjectName: subject.fullName })
+    .select({ instance: schema.obligationInstance, task: schema.task, template: schema.obligationTemplate, entityCode: schema.entity.code, assigneeName: assignee.fullName, subjectName: subject.fullName, completedByName: completer.fullName })
     .from(schema.obligationInstance)
     .innerJoin(schema.task, eq(schema.task.id, schema.obligationInstance.taskId))
     .innerJoin(schema.obligationTemplate, eq(schema.obligationTemplate.id, schema.obligationInstance.templateId))
     .innerJoin(schema.entity, eq(schema.entity.id, schema.obligationInstance.entityId))
     .leftJoin(assignee, eq(assignee.id, schema.task.assigneePersonId))
     .leftJoin(subject, eq(subject.id, schema.task.subjectPersonId))
+    .leftJoin(completer, eq(completer.id, schema.task.completedByPersonId))
     .where(
       and(
         isNull(schema.task.deletedAt),
@@ -86,13 +97,17 @@ export async function listInstances(viewer: { principal: Principal; personId: st
         filter.open === undefined ? undefined : filter.open ? inArray(schema.task.status, ["todo", "in_progress"]) : inArray(schema.task.status, ["done", "cancelled"]),
         filter.entityId ? eq(schema.obligationInstance.entityId, filter.entityId) : undefined,
         filter.templateId ? eq(schema.obligationInstance.templateId, filter.templateId) : undefined,
+        filter.authority ? eq(schema.obligationTemplate.authority, filter.authority) : undefined,
+        filter.category ? eq(schema.obligationTemplate.category, filter.category) : undefined,
+        filter.ownerId ? eq(schema.task.assigneePersonId, filter.ownerId) : undefined,
         filter.dueFrom ? gte(schema.task.dueDate, filter.dueFrom) : undefined,
         filter.dueTo ? lte(schema.task.dueDate, filter.dueTo) : undefined,
       ),
     )
     .orderBy(filter.open === false ? desc(schema.task.dueDate) : sql`${schema.task.dueDate} asc nulls last`, asc(schema.entity.code), asc(schema.obligationTemplate.sortOrder))
     .limit(filter.limit ?? 500);
-  return rows.map(({ instance, task, template, entityCode, assigneeName, subjectName }) => ({
+  const sentKeys = await sentKeysOf(rows.filter((row) => row.task.status === "todo" || row.task.status === "in_progress").map((row) => row.instance.id));
+  return rows.map(({ instance, task, template, entityCode, assigneeName, subjectName, completedByName }) => ({
     taskId: task.id,
     title: task.title,
     templateId: template.id,
@@ -113,6 +128,12 @@ export async function listInstances(viewer: { principal: Principal; personId: st
     subjectName,
     completedAt: task.completedAt,
     completedLate: instance.completedLate,
+    completedByName,
+    referenceNumber: instance.referenceNumber,
+    submittedDate: instance.submittedDate,
+    amountPaid: instance.amountPaid,
+    escalationLevel: escalationLevel(sentKeys.get(instance.id) ?? []),
+    instanceId: instance.id,
   }));
 }
 

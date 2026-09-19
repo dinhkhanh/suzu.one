@@ -6,7 +6,8 @@ import { todayInVietnam } from "@/lib/dates";
 import type { DueRule } from "./engine/due-rule";
 import { AUTHORITIES, EVENT_TYPES, OBLIGATION_CATEGORIES, RECURRENCES, SHIFTS } from "./enums";
 import { beginEvidenceUpload, cancelInstance, completeEvidenceUpload, completeInstance, evidenceFileLink, findEvidenceFile, loadInstance, reassignInstance, removeEvidenceFile, reopenInstance, saveProgress } from "./instances";
-import { canManageInstance, canManageLibrary, canManageOps, canViewInstance, canWorkInstance } from "./policy";
+import { buildHistoryExport } from "./overview";
+import { canManageInstance, canManageLibrary, canManageOps, canReadOps, canViewInstance, canWorkInstance } from "./policy";
 import { generateInstances } from "./scheduler";
 import { saveTemplate, setReviewStatus } from "./templates";
 
@@ -301,4 +302,21 @@ const removeFilePipeline = createAction({
 });
 export async function removeEvidenceFileAction(input: unknown) {
   return removeFilePipeline(input);
+}
+
+// ── Archive export (FR-OPS-09, FR-PLT-37) ───────────────────────────────────────────────────
+
+const historyExportPipeline = createAction({
+  name: "ops.history.export",
+  input: z.object({ templateId: optional(z.uuid()), entityId: optional(z.uuid()), year: optional(z.coerce.number().int().min(2000).max(2100)), locale: z.enum(["vi", "en"]).default("vi") }),
+  // The file is built by the archive's own query with the viewer's reach, so it holds what the screen shows; an entity filter must be one the viewer reads.
+  authorize: (user, input) => (input.entityId ? canReadOps(user.principal, input.entityId) : canReadOps(user.principal)),
+  run: async ({ user, input }) => {
+    const { locale, ...filter } = input;
+    const file = await buildHistoryExport({ principal: user.principal, personId: user.person.id }, { templateId: filter.templateId ?? undefined, entityId: filter.entityId, year: filter.year }, locale);
+    return { data: file, audit: { resource: { type: "export:ops_history", entityId: filter.entityId }, summary: `${file.rowCount} rows`, after: { filter, rowCount: file.rowCount } } };
+  },
+});
+export async function exportHistoryAction(input: unknown) {
+  return historyExportPipeline(input);
 }

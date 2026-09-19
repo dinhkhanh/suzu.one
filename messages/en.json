@@ -695,6 +695,18 @@
       "ops_assigned": {
         "title": "{count, plural, =1 {Obligation for you: {title}} other {# compliance obligations are yours}}",
         "body": "{count, plural, =1 {You own the obligation “{title}”.} other {You own # new obligations, starting with “{title}”.}} Open Compliance to see due dates, the steps and the evidence each one needs."
+      },
+      "ops_reminder": {
+        "title": "{count, plural, =1 {Due {dueDate}: {title}} other {# obligations are coming due}}",
+        "body": "{count, plural, =1 {“{title}” is due on {dueDate}{days, plural, =0 { — today} =1 { — tomorrow} other { — in # days}}.} other {# of your obligations are coming due, the first being “{title}” on {dueDate}.}} Check the steps and the evidence it needs."
+      },
+      "ops_overdue": {
+        "title": "{count, plural, =1 {Overdue: {title}} other {# obligations are overdue}}",
+        "body": "{count, plural, =1 {“{title}” was due on {dueDate} and is still open.} other {# obligations are past their due date, the oldest being “{title}” ({dueDate}).}} Close it with its evidence; if it stays open it is escalated."
+      },
+      "ops_escalated": {
+        "title": "{count, plural, =1 {Escalated: {title}} other {# overdue obligations escalated to you}}",
+        "body": "{count, plural, =1 {“{title}” (owner: {owner}) was due on {dueDate} and is {days, plural, =1 {1 day} other {# days}} late.} other {# obligations are late and have been escalated to you, the oldest being “{title}” (owner: {owner}, due {dueDate}).}} Please follow up."
       }
     },
     "errors": {
@@ -3329,6 +3341,73 @@
       "template_owner_person_required": "Choose the owner.",
       "template_reviewer_rule_invalid": "Choose a role or permission that exists for the reviewer.",
       "template_reviewer_person_required": "Choose the reviewer."
+    },
+    "nav": {
+      "dashboard": "Dashboard",
+      "list": "List",
+      "calendar": "Calendar",
+      "history": "Archive",
+      "library": "Library"
+    },
+    "filters": {
+      "authority": "Authority",
+      "category": "Category",
+      "owner": "Owner",
+      "all": "All",
+      "apply": "Apply",
+      "clear": "Clear filters"
+    },
+    "list": {
+      "narrowed": "{count, plural, =0 {Nothing} =1 {1 obligation} other {# obligations}}{hasMonth, select, yes { due in {month}} other {}}{hasColour, select, yes { · {colour}} other {}}."
+    },
+    "escalation": {
+      "level1": "Escalated to the manager",
+      "level2": "Escalated to the executives"
+    },
+    "dashboard": {
+      "description": "Every entity you read, month by month: what is coming, what is late and what was filed.",
+      "entity": "Entity",
+      "totals": "{overdue, plural, =0 {Nothing overdue} =1 {1 overdue} other {# overdue}} · {dueSoon, plural, =0 {nothing due this week} =1 {1 due this week} other {# due this week}} · {escalated, plural, =0 {none escalated} =1 {1 escalated} other {# escalated}}.",
+      "seeOverdue": "See what is overdue",
+      "escalated": "{count, plural, =1 {1 escalated} other {# escalated}}",
+      "legend": "A cell takes the colour of its worst item. Click a count to open those obligations; click a month to open its calendar. Items marked \"not applicable\" are not counted."
+    },
+    "calendar": {
+      "title": "Compliance calendar",
+      "description": "Each obligation on its due date — after weekends and holidays have moved it.",
+      "previous": "Previous month",
+      "next": "Next month",
+      "today": "This month",
+      "more": "{count} more",
+      "legend": "Shaded days are weekends and days off. With one entity chosen, its own days off are shown; otherwise the group's."
+    },
+    "history": {
+      "title": "Compliance archive",
+      "description": "Past periods of every obligation with who closed them, the reference number, the amount and the filed papers — the trail for a tax or insurance inspection.",
+      "obligation": "Obligation",
+      "year": "Due in",
+      "export": "Export CSV",
+      "exportFailed": "The export failed.",
+      "exportTruncated": "Only the first 5,000 rows were exported.",
+      "summary": "{count, plural, =0 {No past periods} =1 {1 past period} other {# past periods}}{late, plural, =0 {} =1 {, 1 late or still open} other {, # late or still open}}.",
+      "empty": "Nothing here yet for this choice.",
+      "openFailed": "The file could not be opened.",
+      "ofThis": "Past periods",
+      "columns": {
+        "entity": "Entity",
+        "code": "Code",
+        "obligation": "Obligation",
+        "period": "Period",
+        "dueDate": "Due",
+        "status": "Status",
+        "owner": "Owner",
+        "completedBy": "Closed by",
+        "completedOn": "Closed on",
+        "submittedDate": "Submitted",
+        "reference": "Reference no.",
+        "amount": "Amount (VND)",
+        "files": "Evidence"
+      }
     }
   }
 }
