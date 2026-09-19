@@ -3154,7 +3154,7 @@
       "weekOf": "Week of {date}",
       "later": "Later",
       "unscheduled": "No due date",
-      "hours": "{hours} h",
+      "hours": "{hours, number} h",
       "tasks": "{count, plural, =0 {no tasks} =1 {1 task} other {# tasks}}",
       "unestimated": "{count} without an estimate",
       "away": "Away {days, plural, =1 {1 day} other {# days}}",
