@@ -87,6 +87,26 @@ describe("work and ops permissions (Phase 3)", () => {
     }
     expect(can(principal([{ role: "hr_staff", scope: { type: "entity", id: ENTITY_A } }]), "ops:manage", { entityId: ENTITY_B })).toBe(false);
   });
+
+  it("lets HR run performance, leaders set unit goals and read their people, the auditor only read", () => {
+    const group = { type: "group" } as const;
+    for (const role of ["hr_admin", "hr_staff"] as const) expect(can(principal([{ role, scope: group }]), "performance:manage")).toBe(true);
+    for (const role of ["c_level", "entity_director", "department_head"] as const) {
+      expect(can(principal([{ role, scope: group }]), "performance:goals")).toBe(true);
+      expect(can(principal([{ role, scope: group }]), "performance:read")).toBe(true);
+      expect(can(principal([{ role, scope: group }]), "performance:manage")).toBe(false);
+    }
+    expect(can(principal([{ role: "auditor", scope: group }]), "performance:read")).toBe(true);
+    expect(can(principal([{ role: "auditor", scope: group }]), "performance:goals")).toBe(false);
+    for (const role of ["payroll", "finance", "recruiter", "asset_admin"] as const) {
+      for (const permission of ["performance:manage", "performance:goals", "performance:read"] as const) expect(can(principal([{ role, scope: group }]), permission)).toBe(false);
+    }
+    // A department head's grant covers the department's goal, not the group's or another department's.
+    const head = principal([{ role: "department_head", scope: { type: "department", id: DESIGN } }]);
+    expect(can(head, "performance:goals", { departmentId: DESIGN, entityId: ENTITY_A })).toBe(true);
+    expect(can(head, "performance:goals", {})).toBe(false);
+    expect(can(head, "performance:goals", { departmentId: "dept-other" })).toBe(false);
+  });
 });
 
 describe("readableTier", () => {

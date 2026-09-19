@@ -239,6 +239,13 @@
       "when": 1789854311796,
       "tag": "0033_work_intake_audience",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1789855183318,
+      "tag": "0034_performance_goals",
+      "breakpoints": true
     }
   ]
 }

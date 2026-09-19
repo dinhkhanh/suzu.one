@@ -26,6 +26,9 @@ const PERMISSIONS = [
   "work:manage",
   "ops:manage",
   "ops:read",
+  "performance:manage",
+  "performance:goals",
+  "performance:read",
 ] as const satisfies readonly Exclude<Permission, "*">[];
 
 const ENTITY = "entity-a";
