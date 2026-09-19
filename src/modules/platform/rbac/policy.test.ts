@@ -107,6 +107,23 @@ describe("work and ops permissions (Phase 3)", () => {
     expect(can(head, "performance:goals", {})).toBe(false);
     expect(can(head, "performance:goals", { departmentId: "dept-other" })).toBe(false);
   });
+
+  it("lets HR run the knowledge base, and leaders and HR post announcements within their scope", () => {
+    const group = { type: "group" } as const;
+    for (const role of ["hr_admin", "hr_staff"] as const) expect(can(principal([{ role, scope: group }]), "kb:manage")).toBe(true);
+    for (const role of ["c_level", "entity_director", "department_head", "payroll", "finance", "recruiter", "asset_admin", "auditor"] as const) expect(can(principal([{ role, scope: group }]), "kb:manage")).toBe(false);
+    for (const role of ["c_level", "entity_director", "hr_admin", "hr_staff", "department_head"] as const) expect(can(principal([{ role, scope: group }]), "comms:manage")).toBe(true);
+    for (const role of ["payroll", "finance", "recruiter", "asset_admin", "auditor"] as const) expect(can(principal([{ role, scope: group }]), "comms:manage")).toBe(false);
+    // An entity's HR runs that entity's spaces, not the group-wide ones and not another entity's.
+    const hr = principal([{ role: "hr_staff", scope: { type: "entity", id: ENTITY_A } }]);
+    expect(can(hr, "kb:manage", { entityId: ENTITY_A })).toBe(true);
+    expect(can(hr, "kb:manage", { entityId: null })).toBe(false);
+    expect(can(hr, "kb:manage", { entityId: ENTITY_B })).toBe(false);
+    // A department head announces to the department, not to the entity.
+    const head = principal([{ role: "department_head", scope: { type: "department", id: DESIGN } }]);
+    expect(can(head, "comms:manage", { departmentId: DESIGN })).toBe(true);
+    expect(can(head, "comms:manage", { entityId: ENTITY_A })).toBe(false);
+  });
 });
 
 describe("readableTier", () => {

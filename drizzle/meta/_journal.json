@@ -260,6 +260,13 @@
       "when": 1789856727746,
       "tag": "0036_kpi_score_current",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1789858982247,
+      "tag": "0037_kb_spaces_pages",
+      "breakpoints": true
     }
   ]
 }
