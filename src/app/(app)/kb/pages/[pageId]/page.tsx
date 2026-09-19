@@ -8,9 +8,9 @@ import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { setPageAccessAction } from "@/modules/kb/actions";
 import { parseSubjectKey } from "@/modules/kb/enums";
-import { atLeast, breadcrumbOf, canOrganisePages, canPublishDirectly, getReadingView, kbViewerOf, levelOf, listPageAccess, listTree, loadPage, moveTargets, outlineOf, recordView, subjectNames, subjectOptions } from "@/modules/kb/service";
+import { atLeast, breadcrumbOf, canOrganisePages, canPublishDirectly, getReadingView, kbViewerOf, levelOf, listPageAccess, listTree, loadPage, moveTargets, outlineOf, recordView, subjectNames, subjectOptions, syncReviewState } from "@/modules/kb/service";
 import { AccessForm } from "@/modules/kb/ui/access-form";
-import { MovePageForm, PageLifecycleButtons, PageMetaForm, PublishDraftButton } from "@/modules/kb/ui/page-forms";
+import { MovePageForm, PageLifecycleButtons, PageMetaForm, PublishDraftButton, SubmitReviewButton } from "@/modules/kb/ui/page-forms";
 import { PageTree } from "@/modules/kb/ui/page-tree";
 import { RenderDoc } from "@/modules/kb/ui/render-doc";
 
@@ -23,7 +23,9 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
   const { pageId } = await props.params;
   const query = await props.searchParams;
   const viewer = kbViewerOf(user);
-  const loaded = UUID.test(pageId) ? await loadPage(pageId) : null;
+  let loaded = UUID.test(pageId) ? await loadPage(pageId) : null;
+  // A review that was withdrawn through the generic approvals screen leaves the page to be released here.
+  if (loaded && loaded.page.status === "in_review" && (await syncReviewState(loaded.page))) loaded = await loadPage(pageId);
   const level = loaded ? levelOf(viewer, loaded) : null;
   if (!loaded || !level) notFound();
 
@@ -112,13 +114,21 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
             <Link href={view.showing === "draft" ? `/kb/pages/${page.id}` : `/kb/pages/${page.id}?draft=1`} className="underline underline-offset-2">
               {view.showing === "draft" ? t("page.viewPublished") : t("page.viewDraft")}
             </Link>
-            {publishes && page.status !== "in_review" ? <PublishDraftButton pageId={page.id} /> : null}
+            {page.status === "in_review" ? null : publishes ? <PublishDraftButton pageId={page.id} /> : space.kind === "controlled" ? <SubmitReviewButton pageId={page.id} /> : null}
           </div>
         ) : null}
-        {editor && !page.publishedVersionId && publishes ? (
+        {editor && !page.publishedVersionId && page.status !== "in_review" && (publishes || space.kind === "controlled") ? (
           <div className="flex flex-wrap items-center gap-3 rounded-md border p-3 text-sm">
             <span>{t("page.neverPublished")}</span>
-            <PublishDraftButton pageId={page.id} />
+            {publishes ? <PublishDraftButton pageId={page.id} /> : <SubmitReviewButton pageId={page.id} />}
+          </div>
+        ) : null}
+        {editor && page.status === "in_review" && page.reviewRequestId ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-md border p-3 text-sm">
+            <span>{t("review.waiting")}</span>
+            <Link href={`/approvals/kb-publish/${page.reviewRequestId}`} className="underline underline-offset-2">
+              {t("review.open")}
+            </Link>
           </div>
         ) : null}
 

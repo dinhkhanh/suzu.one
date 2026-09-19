@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
-import { beginPageUploadAction, completePageUploadAction, publishPageAction, savePageDraftAction } from "../actions";
+import { beginPageUploadAction, completePageUploadAction, publishPageAction, savePageDraftAction, submitPageReviewAction } from "../actions";
 import { CALLOUT_KINDS, type CalloutKind } from "../engine/callouts";
 import { normalizeEmbed, safeHref } from "../engine/embed";
 import { Attachment, Callout, Embed, KbImage } from "./editor-nodes";
@@ -178,7 +178,8 @@ export function PageEditor({ pageId, initialTitle, initialContent, canPublish, c
     if (!editor) return;
     startTransition(async () => {
       const content = editor.getJSON();
-      const result = publish ? await publishPageAction({ pageId, title, content, changeNote, isMajor }) : await savePageDraftAction({ pageId, title, content });
+      // In a controlled space an editor's "publish" is a request to the space's reviewers.
+      const result = !publish ? await savePageDraftAction({ pageId, title, content }) : canPublish ? await publishPageAction({ pageId, title, content, changeNote, isMajor }) : await submitPageReviewAction({ pageId, title, content, changeNote, isMajor });
       setErrorKey(keyOf(result));
       if (!result.ok) return;
       if (publish) router.push(`/kb/pages/${pageId}`);
@@ -202,7 +203,8 @@ export function PageEditor({ pageId, initialTitle, initialContent, canPublish, c
         </p>
       ) : null}
       <div className="flex flex-col gap-3 rounded-md border p-3">
-        {canPublish ? (
+        {!canPublish ? <p className="text-sm text-muted-foreground">{controlled ? t("editor.controlledNote") : t("editor.cannotPublish")}</p> : null}
+        {canPublish || controlled ? (
           <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
             <Input aria-label={t("fields.changeNote")} value={changeNote} onChange={(event) => setChangeNote(event.target.value)} maxLength={300} placeholder={t("fields.changeNote")} />
             <label className="flex items-center gap-2 text-sm">
@@ -210,16 +212,14 @@ export function PageEditor({ pageId, initialTitle, initialContent, canPublish, c
               {t("fields.isMajor")}
             </label>
           </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">{controlled ? t("editor.controlledNote") : t("editor.cannotPublish")}</p>
-        )}
+        ) : null}
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant="outline" disabled={pending || uploading || !editor} onClick={() => save(false)}>
             {t("editor.saveDraft")}
           </Button>
-          {canPublish ? (
+          {canPublish || controlled ? (
             <Button type="button" disabled={pending || uploading || !editor} onClick={() => save(true)}>
-              {t("editor.publish")}
+              {canPublish ? t("editor.publish") : t("editor.submitReview")}
             </Button>
           ) : null}
           {savedAt ? <span className="text-xs text-muted-foreground">{t("editor.savedAt", { time: savedAt })}</span> : null}

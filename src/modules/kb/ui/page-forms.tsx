@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
-import { archivePageAction, createPageAction, deletePageAction, movePageAction, publishPageAction, restoreVersionAction, setPageMetaAction, unpublishPageAction } from "../actions";
+import { archivePageAction, createPageAction, deletePageAction, movePageAction, publishPageAction, restoreVersionAction, setPageMetaAction, submitPageReviewAction, unpublishPageAction } from "../actions";
 
 type ParentOption = { id: string; title: string; depth: number };
 const indent = (option: ParentOption) => `${"— ".repeat(option.depth)}${option.title}`;
@@ -73,6 +73,20 @@ export function PublishDraftButton({ pageId }: { pageId: string }) {
     <span className="inline-flex items-center gap-2">
       <Button type="button" size="sm" disabled={pending} onClick={() => run(() => publishPageAction({ pageId }))}>
         {t("editor.publish")}
+      </Button>
+      <RunError errorKey={errorKey} />
+    </span>
+  );
+}
+
+/** Controlled space, from the reading view: send the working copy to the reviewers as it stands. */
+export function SubmitReviewButton({ pageId }: { pageId: string }) {
+  const t = useTranslations("kb");
+  const { run, pending, errorKey } = useRun();
+  return (
+    <span className="inline-flex items-center gap-2">
+      <Button type="button" size="sm" disabled={pending} onClick={() => run(() => submitPageReviewAction({ pageId }))}>
+        {t("review.submit")}
       </Button>
       <RunError errorKey={errorKey} />
     </span>

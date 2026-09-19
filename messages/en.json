@@ -938,7 +938,8 @@
       "attendance_correction": "Punch correction",
       "remote_work": "Remote / off-site work",
       "overtime": "Overtime",
-      "holiday_work": "Holiday / rest-day work"
+      "holiday_work": "Holiday / rest-day work",
+      "kb_publish": "Knowledge-base page review"
     },
     "status": {
       "pending": "Waiting for approval",
@@ -4006,7 +4007,7 @@
       "publish": "Publish",
       "savedAt": "Draft saved at {time}",
       "uploading": "Uploading…",
-      "controlledNote": "This is a controlled space: you save drafts, the space's managers publish.",
+      "controlledNote": "This is a controlled space: your revision goes to its knowledge-base managers for review before it is published.",
       "cannotPublish": "You can save drafts; the space's editors publish.",
       "h1": "Heading 1",
       "h2": "Heading 2",
@@ -4040,7 +4041,8 @@
       "linkPrompt": "Link address (leave empty to remove). In-app page: /kb/pages/…",
       "linkRefused": "Only http(s), mailto or an in-app path starting with / is accepted.",
       "embedPrompt": "Paste a YouTube, Google Drive / Docs / Sheets / Slides, Figma or Canva address",
-      "embedRefused": "Only YouTube, Google Drive / Docs, Figma and Canva can be embedded (https addresses)."
+      "embedRefused": "Only YouTube, Google Drive / Docs, Figma and Canva can be embedded (https addresses).",
+      "submitReview": "Submit for review"
     },
     "access": {
       "title": "Who may enter this space",
@@ -4109,7 +4111,20 @@
       "file_not_uploaded": "The file has not arrived.",
       "file_content_mismatch": "The file's content does not match its type.",
       "file_not_found": "File not found.",
-      "storage_not_configured": "File storage is not configured."
+      "storage_not_configured": "File storage is not configured.",
+      "kb_page_archived": "The page is archived. Restore it before submitting.",
+      "approval_no_approver": "Nobody can review this yet. Tell an administrator."
+    },
+    "review": {
+      "title": "Publish review",
+      "page": "Page",
+      "submitted": "Submitted content",
+      "changesSince": "Changes since published version {n}",
+      "newPage": "New page — nothing published yet",
+      "returnedNote": "The revision was returned for changes. Edit the page and submit it again.",
+      "waiting": "Waiting for review.",
+      "open": "Open the review request",
+      "submit": "Submit for review"
     }
   }
 }

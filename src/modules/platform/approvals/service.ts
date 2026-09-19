@@ -54,7 +54,7 @@ async function managerAt(executor: Executor, personId: string, level: number): P
   return cursor === personId ? null : cursor;
 }
 
-async function peopleFor(executor: Executor, rule: ApproverRule, subject: SubjectTarget | null): Promise<string[]> {
+async function peopleFor(executor: Executor, rule: ApproverRule, subject: SubjectTarget | null, where: Target = subject ?? {}): Promise<string[]> {
   switch (rule.rule) {
     case "person":
       return [rule.personId];
@@ -68,22 +68,22 @@ async function peopleFor(executor: Executor, rule: ApproverRule, subject: Subjec
       return subject ? listPeopleWithRole("department_head", subject, executor) : [];
     case "role":
       if (!(ROLES as readonly string[]).includes(rule.role)) throw new Error(`unknown role in approval flow: ${rule.role}`);
-      return listPeopleWithRole(rule.role as Role, subject ?? {}, executor);
+      return listPeopleWithRole(rule.role as Role, where, executor);
     case "permission":
       // Owners hold everything; routine requests go to the people whose job it is, and reach the
       // owners only when there is nobody else (below).
-      return listPeopleHolding(rule.permission as Exclude<Permission, "*">, subject ?? {}, { includeWildcard: false, executor });
+      return listPeopleHolding(rule.permission as Exclude<Permission, "*">, where, { includeWildcard: false, executor });
   }
 }
 
-async function resolveFlow(executor: Executor, flow: FlowDefinition, context: { requestType: string; requesterId: string; subject: SubjectTarget | null; data: Record<string, unknown> }): Promise<ResolvedStep[]> {
+async function resolveFlow(executor: Executor, flow: FlowDefinition, context: { requestType: string; requesterId: string; subject: SubjectTarget | null; /** Where the request sits when it is about no person (a page of an entity's space). */ target?: Target; data: Record<string, unknown> }): Promise<ResolvedStep[]> {
   const resolved: ResolvedStep[] = [];
   for (const step of flow.steps) {
     if (!conditionHolds(step.condition, context.data)) {
       resolved.push({ key: step.key, mode: step.mode, applies: false, approverIds: [], ...(step.parallel ? { parallel: true } : {}) });
       continue;
     }
-    const named = (await Promise.all(step.approvers.map((rule) => peopleFor(executor, rule, context.subject)))).flat();
+    const named = (await Promise.all(step.approvers.map((rule) => peopleFor(executor, rule, context.subject, context.subject ?? context.target ?? {})))).flat();
     const usable = async (ids: string[]) => {
       const candidates = [...new Set(ids)].filter((id) => id !== context.requesterId);
       if (candidates.length === 0) return [];
@@ -201,13 +201,15 @@ export type SubmitInput = {
   link?: string | ((requestId: string) => string);
   /** What the flow's conditions are tested against; defaults to the payload. */
   conditionData?: Record<string, unknown>;
+  /** For a request about no person: where it sits, so "permission" and "role" rules find the people whose scope covers it. Ignored when there is a subject person. */
+  target?: Target;
 };
 
 export async function submitRequest(tx: Tx, definition: RequestTypeDefinition, input: SubmitInput): Promise<{ request: ApprovalRequestRow; outcome: RequestStatus; approverIds: string[] }> {
   const id = input.id ?? randomUUID();
   const subject = await subjectTarget(tx, input.subjectPersonId);
   const { flow, source } = await effectiveFlow(tx, definition.type, input.entityId, definition.flow);
-  const resolved = await resolveFlow(tx, flow, { requestType: definition.type, requesterId: input.requesterPersonId, subject, data: input.conditionData ?? input.payload ?? {} });
+  const resolved = await resolveFlow(tx, flow, { requestType: definition.type, requesterId: input.requesterPersonId, subject, target: input.target, data: input.conditionData ?? input.payload ?? {} });
   const state = startFlow(input.requesterPersonId, resolved);
 
   const [request] = await tx

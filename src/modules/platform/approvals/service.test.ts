@@ -108,6 +108,18 @@ describe("configured flows", () => {
   });
 });
 
+describe("requests about no person", () => {
+  const pagePublish = defineRequestType({ type: "test_page", flow: { steps: [{ key: "review", mode: "any", approvers: [{ rule: "permission", permission: "person:manage" }] }] } });
+  const submitPage = (target?: { entityId: string }) => db().transaction((tx) => submitRequest(tx, pagePublish, { entityId: target?.entityId ?? null, requesterPersonId: ids.huy, subjectPersonId: null, subjectType: "page", subjectId: null, summary: "A page", target }));
+
+  it("asks the people whose scope covers the target, and the owners when nothing says where it sits", async () => {
+    expect((await submitPage({ entityId: ids.media })).approverIds).toEqual([ids.hr]);
+    // Another entity: the media HR grant does not cover it.
+    expect((await submitPage({ entityId: ids.creative })).approverIds).toEqual([ids.owner]);
+    expect((await submitPage()).approverIds).toEqual([ids.owner]);
+  });
+});
+
 describe("delegation", () => {
   const today = todayInVietnam();
 

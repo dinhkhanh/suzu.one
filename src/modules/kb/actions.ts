@@ -7,6 +7,7 @@ import { ACCESS_LEVELS, parseSubjectKey, SPACE_KEY, SPACE_KINDS } from "./enums"
 import { beginPageUpload, completePageUpload, findPageFile, removePageFile } from "./files";
 import { createPage, deletePage, type LoadedPage, loadPage, movePage, type PageRow, publishPage, restoreVersion, saveDraft, setPageAccess, setPageArchived, setPageMeta, unpublishPage } from "./pages";
 import { canCreatePage, canEditPage, canManageSpace, canOrganisePages, canPublishDirectly, kbViewerOf } from "./policy";
+import { decidePageReview, getPublishReview, submitPageForReview, withdrawPageReview } from "./publishing";
 import { createSpace, loadSpace, setSpaceAccess, setSpaceArchived, type SpaceRow, updateSpace } from "./spaces";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -192,6 +193,65 @@ const publishPipeline = createAction({
 });
 export async function publishPageAction(input: unknown) {
   return publishPipeline(input);
+}
+
+// ── Review before publishing (controlled spaces) ────────────────────────────────────────────
+
+const submitReviewPipeline = createAction({
+  name: "kb.page.submit_review",
+  input: z.object({ pageId: z.uuid(), title: title.optional(), content: content.optional(), changeNote: optional(z.string().trim().max(300)), isMajor: checkbox }),
+  // Any editor of the page, in a controlled space. Whoever may publish directly has no need to ask.
+  authorize: async (user, input) => {
+    const loaded = await pageFor(user, input.pageId);
+    return !!loaded && loaded.space.kind === "controlled" && canEditPage(kbViewerOf(user), loaded.facts, loaded.pageFacts);
+  },
+  run: async ({ user, input }) => {
+    const loaded = await must(user, input.pageId);
+    const draft = input.title !== undefined && input.content !== undefined ? { title: input.title, content: input.content } : undefined;
+    const { page, requestId, resubmitted } = await submitPageForReview(input.pageId, { personId: user.person.id }, { changeNote: input.changeNote, isMajor: input.isMajor, draft });
+    refresh(loaded.space.key, page.id);
+    revalidatePath("/approvals");
+    return { data: { id: page.id, requestId }, audit: { resource: auditPage(loaded), summary: `${page.title}: ${resubmitted ? "resubmitted for review" : "submitted for review"}`, before: { status: loaded.page.status }, after: { status: page.status, requestId, isMajor: input.isMajor, changeNote: input.changeNote } } };
+  },
+});
+export async function submitPageReviewAction(input: unknown) {
+  return submitReviewPipeline(input);
+}
+
+const decideReviewPipeline = createAction({
+  name: "kb.page.review_decide",
+  input: z.object({ requestId: z.uuid(), decision: z.enum(["approve", "reject", "return"]), comment: optional(z.string().trim().max(1000)) }),
+  // Whose turn it is comes from the flow; the people asked hold `kb:manage` over the space (or are the owners).
+  authorize: async (user, input) => !!(await getPublishReview({ personId: user.person.id, principal: user.principal }, input.requestId))?.canDecide,
+  run: async ({ user, input }) => {
+    const { request, before, outcome, page, version, payload } = await decidePageReview(user.person.id, input.requestId, { action: input.decision, comment: input.comment });
+    refresh(undefined, payload.pageId);
+    revalidatePath("/approvals");
+    revalidatePath(`/approvals/kb-publish/${request.id}`);
+    return { data: { outcome }, audit: { resource: { type: "kb_page", id: payload.pageId, entityId: request.entityId }, summary: `${input.decision}: ${payload.title}`, before: { status: before.status }, after: { status: request.status, requestId: request.id, pageStatus: page?.status ?? null, versionNo: version?.versionNo ?? null } } };
+  },
+});
+export async function decidePageReviewAction(input: unknown) {
+  return decideReviewPipeline(input);
+}
+
+const withdrawReviewPipeline = createAction({
+  name: "kb.page.review_withdraw",
+  input: z.object({ requestId: z.uuid() }),
+  authorize: async (user, input) => {
+    const view = await getPublishReview({ personId: user.person.id, principal: user.principal }, input.requestId);
+    return !!view && view.isRequester && (view.request.status === "pending" || view.request.status === "returned");
+  },
+  run: async ({ user, input }) => {
+    const { request, before, payload } = await withdrawPageReview(user.person.id, input.requestId);
+    refresh(undefined, payload.pageId);
+    revalidatePath("/approvals");
+    revalidatePath(`/approvals/kb-publish/${request.id}`);
+    return { data: { id: request.id }, audit: { resource: { type: "kb_page", id: payload.pageId, entityId: request.entityId }, summary: `withdrawn: ${payload.title}`, before: { status: before.status }, after: { status: request.status, requestId: request.id } } };
+  },
+});
+export async function withdrawPageReviewAction(input: unknown) {
+  return withdrawReviewPipeline(input);
 }
 
 const unpublishPipeline = createAction({

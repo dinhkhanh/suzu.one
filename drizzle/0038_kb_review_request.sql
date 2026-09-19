@@ -1,0 +1,1 @@
+ALTER TABLE "kb_page" ADD COLUMN "review_request_id" uuid;

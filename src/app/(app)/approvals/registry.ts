@@ -11,6 +11,8 @@ import { profileChangeRequest } from "@/modules/core-hr/change-requests";
 import { decideProfileChangeAction } from "@/modules/core-hr/change-request-actions";
 import { decideResignationAction } from "@/modules/core-hr/lifecycle-actions";
 import { resignationRequest } from "@/modules/core-hr/resignation";
+import { decidePageReviewAction } from "@/modules/kb/actions";
+import { kbPublishRequest } from "@/modules/kb/service";
 import { decideLeaveAction } from "@/modules/leave/actions";
 import { leaveRequestType } from "@/modules/leave/requests";
 import type { RequestTypeDefinition } from "@/modules/platform/approvals/service";
@@ -26,6 +28,8 @@ const REGISTERED: RegisteredRequestType[] = [
   { definition: leaveRequestType, approve: (requestId) => decideLeaveAction({ requestId, decision: "approve", comment: null }) },
   ...Object.values(ATTENDANCE_REQUESTS).map((definition) => ({ definition, approve: (requestId: string) => decideAttendanceRequestAction({ requestId, decision: "approve", comment: null }) })),
   { definition: resignationRequest, approve: (requestId) => decideResignationAction({ requestId, decision: "approve", comment: null }) },
+  // Never bulk-approvable (a reviewer reads the revision first); registered for the flow administration.
+  { definition: kbPublishRequest, approve: (requestId) => decidePageReviewAction({ requestId, decision: "approve", comment: null }) },
 ];
 
 export const REQUEST_TYPES: ReadonlyMap<string, RegisteredRequestType> = new Map(REGISTERED.map((entry) => [entry.definition.type, entry]));

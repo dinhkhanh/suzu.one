@@ -169,6 +169,8 @@ export async function publishPage(pageId: string, actor: Actor, options: Publish
     const [before] = await tx.select().from(schema.kbPage).where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt))).limit(1).for("update");
     if (!before) throw new ActionError("kb_page_not_found");
     if (before.publishedVersionId && !before.hasUnpublishedChanges && before.status === "published") throw new ActionError("kb_nothing_to_publish");
+    // A revision that waits for its reviewers is published by their answer, not around it.
+    if (before.status === "in_review" && !options.approvalRequestId) throw new ActionError("kb_page_in_review");
     const content = checkedDoc(before.content);
     const [last] = await tx.select({ versionNo: max(schema.kbPageVersion.versionNo) }).from(schema.kbPageVersion).where(eq(schema.kbPageVersion.pageId, pageId));
     const [version] = await tx

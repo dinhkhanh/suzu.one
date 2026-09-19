@@ -58,6 +58,9 @@ export const kbPage = pgTable(
     // space's rules alone. Kept in step when a restriction is set or cleared and when a page moves,
     // so a restriction covers the whole subtree and a list query can test it without walking the tree.
     accessRootId: uuid("access_root_id"),
+    // The open `kb_publish` request while the page is in review — and after a "return for changes",
+    // so the editor's next submission goes round on the same request. No foreign key: a plain reference.
+    reviewRequestId: uuid("review_request_id"),
     ownerPersonId: uuid("owner_person_id").references(() => person.id),
     reviewBy: date("review_by"),
     // Search reads the published version only: accent-stripped (`toSearchKey`), so "nghi phep" finds "nghỉ phép".

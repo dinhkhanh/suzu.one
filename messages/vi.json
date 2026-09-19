@@ -938,7 +938,8 @@
       "attendance_correction": "Bổ sung công",
       "remote_work": "Làm việc từ xa / ngoài văn phòng",
       "overtime": "Làm thêm giờ",
-      "holiday_work": "Làm việc ngày nghỉ, ngày lễ"
+      "holiday_work": "Làm việc ngày nghỉ, ngày lễ",
+      "kb_publish": "Duyệt xuất bản trang tri thức"
     },
     "status": {
       "pending": "Đang chờ duyệt",
@@ -4006,7 +4007,7 @@
       "publish": "Xuất bản",
       "savedAt": "Đã lưu nháp lúc {time}",
       "uploading": "Đang tải tệp lên…",
-      "controlledNote": "Đây là không gian có kiểm soát: bạn lưu bản nháp, người quản lý không gian xuất bản.",
+      "controlledNote": "Không gian này có kiểm soát: bản sửa của bạn được gửi cho người quản lý tri thức duyệt trước khi xuất bản.",
       "cannotPublish": "Bạn có thể lưu bản nháp; việc xuất bản do người biên tập của không gian thực hiện.",
       "h1": "Tiêu đề 1",
       "h2": "Tiêu đề 2",
@@ -4040,7 +4041,8 @@
       "linkPrompt": "Địa chỉ liên kết (để trống để gỡ). Trang nội bộ: /kb/pages/…",
       "linkRefused": "Chỉ nhận liên kết http(s), mailto hoặc đường dẫn nội bộ bắt đầu bằng /.",
       "embedPrompt": "Dán địa chỉ YouTube, Google Drive / Docs / Sheets / Slides, Figma hoặc Canva",
-      "embedRefused": "Chỉ nhúng được YouTube, Google Drive / Docs, Figma và Canva (địa chỉ https)."
+      "embedRefused": "Chỉ nhúng được YouTube, Google Drive / Docs, Figma và Canva (địa chỉ https).",
+      "submitReview": "Gửi duyệt"
     },
     "access": {
       "title": "Ai được vào không gian này",
@@ -4109,7 +4111,20 @@
       "file_not_uploaded": "Tệp chưa được tải lên.",
       "file_content_mismatch": "Nội dung tệp không khớp với loại tệp.",
       "file_not_found": "Không tìm thấy tệp.",
-      "storage_not_configured": "Kho lưu trữ tệp chưa được cấu hình."
+      "storage_not_configured": "Kho lưu trữ tệp chưa được cấu hình.",
+      "kb_page_archived": "Trang đã lưu trữ. Khôi phục trước khi gửi duyệt.",
+      "approval_no_approver": "Chưa có ai có quyền duyệt. Hãy báo quản trị viên."
+    },
+    "review": {
+      "title": "Duyệt xuất bản",
+      "page": "Trang",
+      "submitted": "Nội dung gửi duyệt",
+      "changesSince": "Thay đổi so với phiên bản {n} đang xuất bản",
+      "newPage": "Trang mới — chưa có phiên bản nào được xuất bản",
+      "returnedNote": "Bản sửa được trả lại để chỉnh. Sửa trang rồi gửi duyệt lại.",
+      "waiting": "Đang chờ duyệt.",
+      "open": "Xem yêu cầu duyệt",
+      "submit": "Gửi duyệt"
     }
   }
 }
