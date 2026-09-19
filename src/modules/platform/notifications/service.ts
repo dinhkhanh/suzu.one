@@ -6,6 +6,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
 import vi from "../../../../messages/vi.json";
 import { sendEmail } from "./email";
+import { pushDriver } from "./push";
 import { CATEGORIES, CATEGORY_DEFINITIONS, type Category, type ChannelChoice, effectiveChoice, type Kind, KINDS, messageKey, resolveParams } from "./kinds";
 
 export type NotificationRow = typeof schema.notification.$inferSelect;
@@ -41,17 +42,19 @@ export async function notify(input: NotifyInput, executor: Tx | ReturnType<typeo
   const category: Category = KINDS[input.kind];
   const params = input.params ?? {};
 
-  const [people, preferences] = await Promise.all([
+  const [people, preferences, devices] = await Promise.all([
     executor.select({ id: schema.person.id, workEmail: schema.person.workEmail, status: schema.person.status }).from(schema.person).where(inArray(schema.person.id, recipientIds)),
     executor
       .select()
       .from(schema.notificationPreference)
       .where(and(inArray(schema.notificationPreference.personId, recipientIds), eq(schema.notificationPreference.category, category))),
+    executor.select({ id: schema.pushSubscription.id, personId: schema.pushSubscription.personId }).from(schema.pushSubscription).where(inArray(schema.pushSubscription.personId, recipientIds)),
   ]);
 
   const now = new Date();
   const rows: (typeof schema.notification.$inferInsert)[] = [];
   const emails: (typeof schema.emailOutbox.$inferInsert)[] = [];
+  const pushes: (typeof schema.pushDelivery.$inferInsert)[] = [];
   for (const person of people) {
     if (person.status === "offboarded") continue;
     const choice = effectiveChoice(category, preferences.find((row) => row.personId === person.id));
@@ -60,12 +63,16 @@ export async function notify(input: NotifyInput, executor: Tx | ReturnType<typeo
       rows.push({ recipientPersonId: person.id, kind: input.kind, params, link: input.link ?? null, readAt: choice.inApp ? null : now, digestedAt: wantsDigest ? null : now });
     }
     if (choice.email === "instant" && person.workEmail) emails.push(composeEmail(person.workEmail, input.kind, params, input.link ?? null));
+    if (choice.push) {
+      // Lock-screen text, in Vietnamese like the emails. One row per subscribed device.
+      const { title, body } = wording(input.kind, params);
+      for (const device of devices.filter((row) => row.personId === person.id)) pushes.push({ subscriptionId: device.id, personId: person.id, kind: input.kind, title, body, link: input.link ?? null });
+    }
   }
   if (rows.length) await executor.insert(schema.notification).values(rows);
-  if (emails.length) {
-    await executor.insert(schema.emailOutbox).values(emails);
-    deliverSoon();
-  }
+  if (emails.length) await executor.insert(schema.emailOutbox).values(emails);
+  if (pushes.length) await executor.insert(schema.pushDelivery).values(pushes);
+  if (emails.length || pushes.length) deliverSoon();
 }
 
 function composeEmail(to: string, kind: string, params: Params, link: string | null): typeof schema.emailOutbox.$inferInsert {
@@ -82,7 +89,9 @@ export async function queueEmail(to: string, kind: Kind, params: Params, executo
 // Send once the response is out; outside a request (jobs, tests) the daily sweep picks it up.
 function deliverSoon(): void {
   try {
-    after(() => deliverPendingEmails().catch((error) => console.error(JSON.stringify({ level: "error", event: "email.delivery_failed", message: String(error) }))));
+    after(() =>
+      Promise.all([deliverPendingEmails(), deliverPendingPushes()]).catch((error) => console.error(JSON.stringify({ level: "error", event: "notification.delivery_failed", message: String(error) }))),
+    );
   } catch {
     // Not in a request.
   }
@@ -110,6 +119,79 @@ export async function deliverPendingEmails(limit = 50): Promise<{ sent: number; 
       await db().update(outbox).set({ status: result.status, sentAt: result.status === "sent" ? new Date() : null, lastError: null }).where(eq(outbox.id, email.id));
       tally[result.status]++;
     }
+  }
+  return tally;
+}
+
+// ── Web push ────────────────────────────────────────────────────────────────────────────────
+
+export type PushSubscriptionInput = { endpoint: string; p256dh: string; auth: string; userAgent: string | null };
+
+/** This device wants pushes for this person. An endpoint belongs to one person: whoever subscribed last on the device. */
+export async function savePushSubscription(personId: string, input: PushSubscriptionInput): Promise<{ id: string }> {
+  const [row] = await db()
+    .insert(schema.pushSubscription)
+    .values({ personId, ...input })
+    .onConflictDoUpdate({ target: schema.pushSubscription.endpoint, set: { personId, p256dh: input.p256dh, auth: input.auth, userAgent: input.userAgent, createdAt: new Date(), lastSuccessAt: null } })
+    .returning({ id: schema.pushSubscription.id });
+  return row;
+}
+
+/** Removes one of the caller's own subscriptions (or all of them). */
+export async function removePushSubscription(personId: string, endpoint: string | null): Promise<number> {
+  const rows = await db()
+    .delete(schema.pushSubscription)
+    .where(and(eq(schema.pushSubscription.personId, personId), endpoint ? eq(schema.pushSubscription.endpoint, endpoint) : sql`true`))
+    .returning({ id: schema.pushSubscription.id });
+  return rows.length;
+}
+
+export async function listPushSubscriptions(personId: string): Promise<{ id: string; endpoint: string; userAgent: string | null; createdAt: Date; lastSuccessAt: Date | null }[]> {
+  return db()
+    .select({ id: schema.pushSubscription.id, endpoint: schema.pushSubscription.endpoint, userAgent: schema.pushSubscription.userAgent, createdAt: schema.pushSubscription.createdAt, lastSuccessAt: schema.pushSubscription.lastSuccessAt })
+    .from(schema.pushSubscription)
+    .where(eq(schema.pushSubscription.personId, personId))
+    .orderBy(desc(schema.pushSubscription.createdAt));
+}
+
+/** A push to every device of one person, outside the catalogue of kinds — the "send me a test" button. */
+export async function queueTestPush(personId: string, message: { title: string; body: string; link: string | null }): Promise<number> {
+  const devices = await db().select({ id: schema.pushSubscription.id }).from(schema.pushSubscription).where(eq(schema.pushSubscription.personId, personId));
+  if (devices.length) await db().insert(schema.pushDelivery).values(devices.map((device) => ({ subscriptionId: device.id, personId, kind: "test", ...message })));
+  return devices.length;
+}
+
+export async function deliverPendingPushes(limit = 100): Promise<{ sent: number; simulated: number; failed: number; gone: number }> {
+  const outbox = schema.pushDelivery;
+  const driver = pushDriver();
+  const pending = await db()
+    .select({ delivery: outbox, device: schema.pushSubscription })
+    .from(outbox)
+    .leftJoin(schema.pushSubscription, eq(schema.pushSubscription.id, outbox.subscriptionId))
+    .where(and(eq(outbox.status, "pending"), lt(outbox.attempts, MAX_ATTEMPTS)))
+    .orderBy(asc(outbox.createdAt))
+    .limit(limit);
+  const tally = { sent: 0, simulated: 0, failed: 0, gone: 0 };
+  for (const { delivery, device } of pending) {
+    // Claim it, as the email deliverer does.
+    const [claimed] = await db()
+      .update(outbox)
+      .set({ attempts: delivery.attempts + 1 })
+      .where(and(eq(outbox.id, delivery.id), eq(outbox.status, "pending"), eq(outbox.attempts, delivery.attempts)))
+      .returning({ id: outbox.id });
+    if (!claimed) continue;
+    // The device unsubscribed between the event and now.
+    const result = device ? await driver.send({ endpoint: device.endpoint, p256dh: device.p256dh, auth: device.auth }, { title: delivery.title, body: delivery.body, link: delivery.link, tag: delivery.kind }) : ({ status: "gone" } as const);
+
+    if (result.status === "failed") {
+      const givenUp = delivery.attempts + 1 >= MAX_ATTEMPTS;
+      await db().update(outbox).set({ status: givenUp ? "failed" : "pending", lastError: result.error }).where(eq(outbox.id, delivery.id));
+    } else {
+      await db().update(outbox).set({ status: result.status, sentAt: result.status === "gone" ? null : new Date(), lastError: null }).where(eq(outbox.id, delivery.id));
+      if (result.status === "gone" && device) await db().delete(schema.pushSubscription).where(eq(schema.pushSubscription.id, device.id));
+      if (result.status === "sent" && device) await db().update(schema.pushSubscription).set({ lastSuccessAt: new Date() }).where(eq(schema.pushSubscription.id, device.id));
+    }
+    tally[result.status]++;
   }
   return tally;
 }
@@ -173,8 +255,7 @@ export async function getPreferences(personId: string): Promise<Record<Category,
   const stored = await db().select().from(schema.notificationPreference).where(eq(schema.notificationPreference.personId, personId));
   return Object.fromEntries(
     CATEGORIES.map((category) => {
-      const { inApp, email } = effectiveChoice(category, stored.find((row) => row.category === category));
-      return [category, { inApp, email }];
+      return [category, effectiveChoice(category, stored.find((row) => row.category === category))];
     }),
   ) as Record<Category, ChannelChoice>;
 }

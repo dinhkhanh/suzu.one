@@ -570,7 +570,8 @@
         "hr": "Hạn nhân sự",
         "approvals": "Phê duyệt",
         "tasks": "Công việc được giao"
-      }
+      },
+      "push": "Đẩy"
     },
     "kinds": {
       "security_work_email_changed": {
@@ -638,6 +639,21 @@
       "forbidden": "Bạn không có quyền thực hiện thao tác này.",
       "invalid": "Vui lòng kiểm tra lại thông tin.",
       "generic": "Có lỗi xảy ra. Vui lòng thử lại."
+    },
+    "push": {
+      "title": "Thông báo đẩy trên thiết bị này",
+      "notConfigured": "Máy chủ chưa được cấu hình thông báo đẩy.",
+      "unsupported": "Trình duyệt này không hỗ trợ thông báo đẩy. Trên iPhone, hãy thêm Suzu One vào màn hình chính trước.",
+      "denied": "Thông báo của trang này đang bị chặn trong cài đặt trình duyệt.",
+      "off": "Nhận yêu cầu phê duyệt và công việc ngay trên màn hình khoá, kể cả khi đã đóng ứng dụng.",
+      "on": "Thiết bị này đang nhận thông báo đẩy.",
+      "devices": "{count, plural, =0 {Chưa có thiết bị nào đăng ký.} other {# thiết bị đã đăng ký.}}",
+      "turnOn": "Bật",
+      "turnOff": "Tắt trên thiết bị này",
+      "test": "Gửi thử",
+      "testSent": "Đã gửi thử tới {count} thiết bị.",
+      "testSimulated": "Đã ghi nhận cho {count} thiết bị — máy chủ này chỉ mô phỏng thông báo đẩy.",
+      "failed": "Không thực hiện được. Vui lòng thử lại."
     }
   },
   "jobs": {

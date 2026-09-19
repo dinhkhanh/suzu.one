@@ -16,6 +16,7 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
     "db:seed:demo": "tsx scripts/seed-demo.ts",
+    "push:keys": "tsx scripts/push-keys.ts",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "db:down": "supabase stop",
     "vercel-build": "if [ \"$VERCEL_ENV\" = \"production\" ]; then drizzle-kit migrate; fi && next build"

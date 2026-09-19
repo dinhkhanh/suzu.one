@@ -169,6 +169,13 @@
       "when": 1789840858123,
       "tag": "0023_attendance_checkin",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1789841762674,
+      "tag": "0024_web_push",
+      "breakpoints": true
     }
   ]
 }

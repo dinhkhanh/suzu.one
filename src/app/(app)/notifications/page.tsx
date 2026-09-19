@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/modules/platform/auth/session";
 import { messageKey, resolveParams } from "@/modules/platform/notifications/kinds";
-import { getPreferences, listNotifications, NOTIFICATIONS_PAGE_SIZE } from "@/modules/platform/notifications/service";
+import { vapidPublicKey } from "@/modules/platform/notifications/push";
+import { getPreferences, listNotifications, listPushSubscriptions, NOTIFICATIONS_PAGE_SIZE } from "@/modules/platform/notifications/service";
 import { MarkAllReadButton, OpenNotificationButton, PreferencesForm } from "@/modules/platform/notifications/ui/notification-centre";
+import { PushToggle } from "@/modules/platform/notifications/ui/push-toggle";
 
 export const metadata: Metadata = { title: "Notifications" };
 
@@ -16,7 +18,7 @@ export default async function NotificationsPage(props: PageProps<"/notifications
   const query = await props.searchParams;
   const page = Number.parseInt(typeof query.page === "string" ? query.page : "1", 10) || 1;
 
-  const [{ rows, total }, preferences] = await Promise.all([listNotifications(user.person.id, page), getPreferences(user.person.id)]);
+  const [{ rows, total }, preferences, devices] = await Promise.all([listNotifications(user.person.id, page), getPreferences(user.person.id), listPushSubscriptions(user.person.id)]);
   const pageCount = Math.max(1, Math.ceil(total / NOTIFICATIONS_PAGE_SIZE));
   const now = new Date();
 
@@ -68,6 +70,7 @@ export default async function NotificationsPage(props: PageProps<"/notifications
         </nav>
       ) : null}
 
+      <PushToggle vapidPublicKey={vapidPublicKey()} deviceCount={devices.length} />
       <PreferencesForm preferences={preferences} />
     </div>
   );

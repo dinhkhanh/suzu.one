@@ -4,6 +4,8 @@ vi.mock("@/lib/db", () => import("../../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({ env: () => ({ BETTER_AUTH_URL: "https://suzu.one" }) }));
 const sendEmail = vi.hoisted(() => vi.fn());
 vi.mock("./email", () => ({ sendEmail }));
+const pushSend = vi.hoisted(() => vi.fn());
+vi.mock("./push", () => ({ pushDriver: () => ({ name: "web-push", send: pushSend }) }));
 
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
@@ -11,7 +13,7 @@ import en from "../../../../messages/en.json";
 import vi_ from "../../../../messages/vi.json";
 import { migrateTestDb } from "../../../../tests/helpers/db";
 import { KINDS, messageKey } from "./kinds";
-import { countUnread, deliverPendingEmails, getPreferences, listNotifications, markRead, notify, sendDigests, setPreferences } from "./service";
+import { countUnread, deliverPendingEmails, deliverPendingPushes, getPreferences, listNotifications, listPushSubscriptions, markRead, notify, queueTestPush, removePushSubscription, savePushSubscription, sendDigests, setPreferences } from "./service";
 
 const people = {} as Record<"an" | "binh" | "ctv" | "gone", string>;
 
@@ -31,7 +33,10 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   sendEmail.mockReset().mockResolvedValue({ status: "sent" });
+  pushSend.mockReset().mockResolvedValue({ status: "sent" });
   await db().delete(schema.emailOutbox);
+  await db().delete(schema.pushDelivery);
+  await db().delete(schema.pushSubscription);
   await db().delete(schema.notification);
 });
 
@@ -61,9 +66,9 @@ describe("notify", () => {
   });
 
   it("follows each person's preferences, except for mandatory categories", async () => {
-    await setPreferences(people.an, { system: { inApp: false, email: "off" }, security: { inApp: false, email: "off" } });
-    await setPreferences(people.binh, { system: { inApp: true, email: "digest" } });
-    expect((await getPreferences(people.an)).security).toEqual({ inApp: true, email: "instant" });
+    await setPreferences(people.an, { system: { inApp: false, email: "off", push: false }, security: { inApp: false, email: "off", push: false } });
+    await setPreferences(people.binh, { system: { inApp: true, email: "digest", push: false } });
+    expect((await getPreferences(people.an)).security).toEqual({ inApp: true, email: "instant", push: true });
 
     await jobFailed([people.an, people.binh]);
     expect(await countUnread(people.an)).toBe(0);
@@ -77,7 +82,7 @@ describe("notify", () => {
   });
 
   it("sends nothing when the surrounding transaction rolls back", async () => {
-    await setPreferences(people.an, { system: { inApp: true, email: "instant" } });
+    await setPreferences(people.an, { system: { inApp: true, email: "instant", push: false } });
     await db()
       .transaction(async (tx) => {
         // PGlite and postgres-js transactions differ only in type.
@@ -129,5 +134,63 @@ describe("the notification centre", () => {
     expect(await markRead(people.ctv, rows[0].id)).toBe(1);
     expect(await markRead(people.an, null)).toBe(1);
     expect(await db().$count(schema.notification, eq(schema.notification.recipientPersonId, people.ctv))).toBe(1);
+  });
+});
+
+describe("web push", () => {
+  const device = (name: string) => ({ endpoint: `https://push.example/${name}`, p256dh: "p".repeat(87), auth: "a".repeat(22), userAgent: name });
+  const approval = (recipients: string[]) => notify({ recipients, kind: "approvals.requested", params: { requester: "Huy", requestType: "leave" }, link: "/approvals" });
+
+  it("queues one push per subscribed device, in Vietnamese, for categories that push by default", async () => {
+    await savePushSubscription(people.an, device("phone"));
+    await savePushSubscription(people.an, device("laptop"));
+    await approval([people.an, people.binh]);
+    // "system" does not push unless the person asks for it.
+    await jobFailed([people.an]);
+    const queued = await db().select().from(schema.pushDelivery);
+    expect(queued).toHaveLength(2);
+    expect(queued[0]).toMatchObject({ personId: people.an, kind: "approvals.requested", link: "/approvals", status: "pending" });
+    expect(queued[0].title).toContain("Huy");
+
+    expect(await deliverPendingPushes()).toEqual({ sent: 2, simulated: 0, failed: 0, gone: 0 });
+    expect(pushSend).toHaveBeenCalledWith({ endpoint: "https://push.example/phone", p256dh: "p".repeat(87), auth: "a".repeat(22) }, expect.objectContaining({ link: "/approvals", tag: "approvals.requested" }));
+    expect((await listPushSubscriptions(people.an)).every((row) => row.lastSuccessAt)).toBe(true);
+    expect(await deliverPendingPushes()).toEqual({ sent: 0, simulated: 0, failed: 0, gone: 0 });
+  });
+
+  it("follows the person's push preference", async () => {
+    await savePushSubscription(people.binh, device("binh-phone"));
+    await setPreferences(people.binh, { approvals: { inApp: true, email: "off", push: false }, system: { inApp: true, email: "off", push: true } });
+    await approval([people.binh]);
+    await jobFailed([people.binh]);
+    expect((await db().select().from(schema.pushDelivery)).map((row) => row.kind)).toEqual(["system.job_failed"]);
+    await db().delete(schema.notificationPreference);
+  });
+
+  it("forgets a subscription the push service no longer knows, and retries failures up to five times", async () => {
+    await savePushSubscription(people.an, device("old-phone"));
+    await approval([people.an]);
+    pushSend.mockResolvedValue({ status: "gone" });
+    expect((await deliverPendingPushes()).gone).toBe(1);
+    expect(await listPushSubscriptions(people.an)).toEqual([]);
+
+    await savePushSubscription(people.an, device("phone"));
+    await approval([people.an]);
+    pushSend.mockResolvedValue({ status: "failed", error: "503" });
+    for (let attempt = 0; attempt < 6; attempt++) await deliverPendingPushes();
+    expect(pushSend).toHaveBeenCalledTimes(1 + 5);
+    const [row] = await db().select().from(schema.pushDelivery).where(eq(schema.pushDelivery.status, "failed"));
+    expect(row).toMatchObject({ attempts: 5, lastError: "503" });
+  });
+
+  it("moves an endpoint to whoever subscribed last, and removes only the caller's own", async () => {
+    await savePushSubscription(people.an, device("shared-tablet"));
+    await savePushSubscription(people.binh, device("shared-tablet"));
+    expect(await listPushSubscriptions(people.an)).toEqual([]);
+    expect(await removePushSubscription(people.an, "https://push.example/shared-tablet")).toBe(0);
+    expect(await queueTestPush(people.binh, { title: "t", body: "b", link: null })).toBe(1);
+    expect(await removePushSubscription(people.binh, null)).toBe(1);
+    // The queued push finds its device gone.
+    expect((await deliverPendingPushes()).gone).toBe(1);
   });
 });

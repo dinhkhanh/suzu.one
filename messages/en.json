@@ -570,7 +570,8 @@
         "hr": "HR deadlines",
         "approvals": "Approvals",
         "tasks": "Tasks assigned to you"
-      }
+      },
+      "push": "Push"
     },
     "kinds": {
       "security_work_email_changed": {
@@ -638,6 +639,21 @@
       "forbidden": "You do not have permission to do this.",
       "invalid": "Please check the information.",
       "generic": "Something went wrong. Please try again."
+    },
+    "push": {
+      "title": "Push notifications on this device",
+      "notConfigured": "Push notifications are not set up on this server yet.",
+      "unsupported": "This browser does not support push notifications. On an iPhone, add Suzu One to the home screen first.",
+      "denied": "Notifications are blocked for this site in the browser's settings.",
+      "off": "Get approvals and tasks on this device's lock screen, even when the app is closed.",
+      "on": "This device receives push notifications.",
+      "devices": "{count, plural, =0 {No device is subscribed.} one {# device is subscribed.} other {# devices are subscribed.}}",
+      "turnOn": "Turn on",
+      "turnOff": "Turn off on this device",
+      "test": "Send a test",
+      "testSent": "Test sent to {count, plural, one {# device} other {# devices}}.",
+      "testSimulated": "Recorded for {count, plural, one {# device} other {# devices}} — this server only simulates push.",
+      "failed": "That did not work. Try again."
     }
   },
   "jobs": {

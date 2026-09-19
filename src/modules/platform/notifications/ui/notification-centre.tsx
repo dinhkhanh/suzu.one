@@ -54,7 +54,7 @@ export function PreferencesForm({ preferences }: { preferences: Record<Category,
         {CATEGORIES.map((category) => {
           const locked = CATEGORY_DEFINITIONS[category].mandatory;
           return (
-            <fieldset key={category} disabled={locked} className="grid gap-3 py-3 sm:grid-cols-[1fr_auto_auto] sm:items-center">
+            <fieldset key={category} disabled={locked} className="grid gap-3 py-3 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center">
               <legend className="contents">
                 <span className="text-sm">
                   {t(`category.${category}`)}
@@ -64,6 +64,10 @@ export function PreferencesForm({ preferences }: { preferences: Record<Category,
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" name={`choices.${category}.inApp`} defaultChecked={preferences[category].inApp} className="size-4" />
                 {t("inApp")}
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name={`choices.${category}.push`} defaultChecked={preferences[category].push} className="size-4" />
+                {t("push")}
               </label>
               <label className="flex items-center gap-2 text-sm">
                 {t("email")}

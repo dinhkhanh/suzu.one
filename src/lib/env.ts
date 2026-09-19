@@ -27,6 +27,11 @@ const schema = z.object({
   // Outgoing email (Resend). Unset = emails are written to the outbox and marked "skipped".
   RESEND_API_KEY: z.string().min(1).optional(),
   EMAIL_FROM: z.string().default("Suzu One <no-reply@suzu.one>"),
+  // Web push (VAPID, RFC 8292). Generate a pair with: pnpm push:keys. Unset = pushes are recorded as
+  // "simulated" and nothing leaves the machine; browsers cannot subscribe without the public key.
+  VAPID_PUBLIC_KEY: z.string().min(80).optional(),
+  VAPID_PRIVATE_KEY: z.string().min(40).optional(),
+  VAPID_SUBJECT: z.string().default("mailto:it@suzu.one"),
   // Shared with Vercel Cron, which sends it as a bearer token. Unset = scheduled jobs refuse to run.
   CRON_SECRET: z.string().min(16).optional(),
 });

@@ -7,17 +7,17 @@ export type Category = (typeof CATEGORIES)[number];
 export const EMAIL_CHANNELS = ["instant", "digest", "off"] as const;
 export type EmailChannel = (typeof EMAIL_CHANNELS)[number];
 
-export type ChannelChoice = { inApp: boolean; email: EmailChannel };
+export type ChannelChoice = { inApp: boolean; email: EmailChannel; /** Web push to the devices the person subscribed. */ push: boolean };
 
 export const CATEGORY_DEFINITIONS: Record<Category, { defaults: ChannelChoice; /** Cannot be turned down by the recipient. */ mandatory: boolean }> = {
-  security: { defaults: { inApp: true, email: "instant" }, mandatory: true },
-  system: { defaults: { inApp: true, email: "instant" }, mandatory: false },
+  security: { defaults: { inApp: true, email: "instant", push: true }, mandatory: true },
+  system: { defaults: { inApp: true, email: "instant", push: false }, mandatory: false },
   // Deadlines HR and managers act on: contracts running out, probation ending, documents expiring.
-  hr: { defaults: { inApp: true, email: "digest" }, mandatory: false },
+  hr: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false },
   // A request waits for you, or yours was answered: worth an email straight away.
-  approvals: { defaults: { inApp: true, email: "instant" }, mandatory: false },
+  approvals: { defaults: { inApp: true, email: "instant", push: true }, mandatory: false },
   // Work handed to you. In the app at once; by email once a day, so a checklist is one email.
-  tasks: { defaults: { inApp: true, email: "digest" }, mandatory: false },
+  tasks: { defaults: { inApp: true, email: "digest", push: true }, mandatory: false },
 };
 
 export const KINDS = {
@@ -43,9 +43,11 @@ export type Kind = keyof typeof KINDS;
 export const messageKey = (kind: string) => kind.replaceAll(".", "_");
 
 /** What the person chose, unless the category is mandatory or they chose nothing. */
-export function effectiveChoice(category: Category, stored: ChannelChoice | undefined): ChannelChoice {
+export function effectiveChoice(category: Category, stored: { inApp: boolean; email: EmailChannel; push?: boolean | null } | undefined): ChannelChoice {
   const definition = CATEGORY_DEFINITIONS[category];
-  return definition.mandatory || !stored ? definition.defaults : stored;
+  if (definition.mandatory || !stored) return definition.defaults;
+  // Choices saved before push existed say nothing about it: the category's default applies.
+  return { inApp: stored.inApp, email: stored.email, push: stored.push ?? definition.defaults.push };
 }
 
 /**
