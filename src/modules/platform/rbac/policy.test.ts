@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { can, canReadTier, readableTier, type Grant, type Principal } from "./policy";
+import { can, canReadTier, matchesReach, readableTier, tierReach, type Grant, type Principal } from "./policy";
+import { ROLES, TIERS } from "./roles";
 
 const ENTITY_A = "entity-a";
 const ENTITY_B = "entity-b";
@@ -103,5 +104,45 @@ describe("readableTier", () => {
     expect(readableTier(freelancer, lan)).toBeNull();
     expect(canReadTier(freelancer, lan, "public_internal")).toBe(false);
     expect(readableTier(freelancer, { personId: "ctv" })).toBe("compensation");
+  });
+});
+
+describe("tierReach", () => {
+  it("agrees with canReadTier for every role, scope, tier and target", () => {
+    const TEAM = "team-ui";
+    const scopes = [
+      { type: "group" },
+      { type: "entity", id: ENTITY_A },
+      { type: "department", id: DESIGN },
+      { type: "team", id: TEAM },
+    ] as const;
+    const principals = [
+      principal([]),
+      principal([], { personId: "manager-1" }),
+      principal([], { personId: "ctv", workforceType: "collaborator" }),
+      principal([], { personId: "manager-1", workforceType: "collaborator" }),
+      ...ROLES.flatMap((role) => scopes.map((scope) => principal([{ role, scope }]))),
+    ];
+    const targets = [
+      lan,
+      { ...lan, teamId: TEAM },
+      { ...lan, entityId: ENTITY_B, departmentId: "dept-video", managerId: null },
+      { personId: "loose", entityId: null, departmentId: null, teamId: null, managerId: null },
+    ];
+    for (const who of principals) {
+      for (const tier of TIERS) {
+        const reach = tierReach(who, tier);
+        for (const target of targets) {
+          expect(matchesReach(reach, target), `${JSON.stringify(who)} ${tier} ${target.personId}`).toBe(canReadTier(who, target, tier));
+        }
+      }
+    }
+  });
+
+  it("never reaches compensation through the manager line", () => {
+    const manager = principal([], { personId: "manager-1" });
+    expect(tierReach(manager, "personal")).toMatchObject({ all: false, managerOf: "manager-1" });
+    expect(tierReach(manager, "restricted")).toMatchObject({ all: false, managerOf: null });
+    expect(tierReach(manager, "compensation")).toMatchObject({ all: false, managerOf: null });
   });
 });

@@ -1,0 +1,31 @@
+// Authorization rules for Core HR, built on the central policy layer. Pure.
+import { can, type Principal, type Target, tierReach } from "@/modules/platform/rbac/policy";
+
+/** The people list. Collaborators have no directory access (FR-PLT-07) unless a role gives it. */
+export function canBrowsePeople(principal: Principal): boolean {
+  return principal.workforceType !== "collaborator" || can(principal, "person:read");
+}
+
+/** Filters and columns for personal-tier facts (workforce type, status): only for roles that read that tier. */
+export function canFilterByPersonalFacts(principal: Principal): boolean {
+  const reach = tierReach({ ...principal, personId: null }, "personal");
+  return reach.all || reach.entityIds.length + reach.departmentIds.length + reach.teamIds.length > 0;
+}
+
+export function canHireInto(principal: Principal, placement: Target): boolean {
+  return can(principal, "person:manage", placement);
+}
+
+/** Moving someone needs authority over where they are and over where they are going. */
+export function canReassign(principal: Principal, from: Target, to: Target): boolean {
+  return can(principal, "person:manage", from) && can(principal, "person:manage", to);
+}
+
+/**
+ * The work email is the sign-in identity. Re-pointing the email of someone who holds role grants
+ * would hand those grants to whoever owns the new address, so it takes `rbac:manage` as well.
+ */
+export function canEditPerson(principal: Principal, target: Target, change: { changesWorkEmail: boolean; targetHoldsRoles: boolean }): boolean {
+  if (!can(principal, "person:manage", target)) return false;
+  return !(change.changesWorkEmail && change.targetHoldsRoles) || can(principal, "rbac:manage", target);
+}

@@ -10,6 +10,17 @@ export async function listEntities(): Promise<EntityRow[]> {
   return db().select().from(schema.entity).orderBy(asc(schema.entity.code));
 }
 
+export type TeamRow = typeof schema.team.$inferSelect;
+export type BranchRow = typeof schema.branch.$inferSelect;
+
+export async function listTeams(): Promise<TeamRow[]> {
+  return db().select().from(schema.team).orderBy(asc(schema.team.name));
+}
+
+export async function listBranches(): Promise<BranchRow[]> {
+  return db().select().from(schema.branch).orderBy(asc(schema.branch.name));
+}
+
 export async function listDepartments(): Promise<DepartmentRow[]> {
   return db().select().from(schema.department).orderBy(asc(schema.department.name));
 }

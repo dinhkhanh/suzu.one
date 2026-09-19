@@ -29,6 +29,20 @@
       "when": 1789812529245,
       "tag": "0003_revoke_api_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789826409749,
+      "tag": "0004_core_hr",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789826414844,
+      "tag": "0005_core_hr_no_overlap",
+      "breakpoints": true
     }
   ]
 }

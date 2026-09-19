@@ -7,7 +7,6 @@ import { requireUser } from "@/modules/platform/auth/session";
 export const metadata: Metadata = { title: "Home" };
 
 const ROADMAP = [
-  { key: "people", phase: 1 },
   { key: "attendance", phase: 2 },
   { key: "leave", phase: 2 },
   { key: "work", phase: 3 },

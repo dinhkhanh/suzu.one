@@ -21,7 +21,8 @@ export const person = pgTable(
     // Accent-stripped, lower-cased name for search and Vietnamese given-name sorting.
     searchName: text("search_name").notNull(),
     // Always stored lower-cased; matched against the Google account email at sign-in.
-    workEmail: text("work_email").notNull().unique(),
+    // null = on the books but without app access (e.g. a collaborator HR has not given a mailbox, SRS D14).
+    workEmail: text("work_email").unique(),
     workforceType: workforceType("workforce_type").notNull().default("employee"),
     status: personStatus("status").notNull().default("active"),
     primaryEntityId: uuid("primary_entity_id").references(() => entity.id),

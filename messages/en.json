@@ -70,5 +70,135 @@
       "invalid": "Please check the form.",
       "generic": "Something went wrong. Please try again."
     }
+  },
+  "people": {
+    "title": "People",
+    "count": "{count, plural, =0 {No one matches} one {# person} other {# people}}",
+    "empty": "No one matches these filters.",
+    "save": "Save",
+    "saving": "Saving…",
+    "filters": {
+      "search": "Name, email or employee code",
+      "allEntities": "All entities",
+      "allDepartments": "All departments",
+      "allTypes": "All workforce types",
+      "apply": "Filter",
+      "clear": "Clear"
+    },
+    "views": {
+      "save": "Save view",
+      "namePlaceholder": "Name this view",
+      "delete": "Delete view {name}"
+    },
+    "pager": {
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {page} of {pageCount}"
+    },
+    "sections": {
+      "identity": "Person",
+      "employment": "Employment",
+      "placement": "Position and reporting line",
+      "personal": "Personal details",
+      "history": "Assignment history"
+    },
+    "hire": {
+      "title": "Add person",
+      "description": "Creates the person, their employment with an entity and their first assignment. A work email lets them sign in.",
+      "submit": "Add person"
+    },
+    "edit": {
+      "title": "Edit person and personal details"
+    },
+    "assignment": {
+      "change": "Change assignment",
+      "hint": "A change starts on its effective date and closes the current assignment the day before. Using the current assignment's start date corrects it instead.",
+      "period": "Period",
+      "ongoing": "now",
+      "current": "Current",
+      "empty": "No assignments yet."
+    },
+    "fields": {
+      "fullName": "Full name",
+      "workEmail": "Work email",
+      "workEmailHint": "Blank = no app access",
+      "phone": "Phone",
+      "dateOfBirth": "Date of birth",
+      "gender": "Gender",
+      "maritalStatus": "Marital status",
+      "nationality": "Nationality",
+      "personalEmail": "Personal email",
+      "permanentAddress": "Permanent address",
+      "currentAddress": "Current address",
+      "entity": "Entity",
+      "employeeCode": "Employee code",
+      "employeeCodeHint": "Blank = next number",
+      "startDate": "Start date",
+      "seniorityDate": "Seniority date",
+      "endDate": "End date",
+      "workforceType": "Workforce type",
+      "status": "Status",
+      "department": "Department",
+      "team": "Team",
+      "branch": "Branch",
+      "position": "Position",
+      "jobLevel": "Job level",
+      "managerId": "Line manager",
+      "dottedManagerId": "Dotted-line manager",
+      "workLocation": "Work location",
+      "validFrom": "Effective from",
+      "changeReason": "Reason"
+    },
+    "workforceType": {
+      "employee": "Employee",
+      "probation": "Probation",
+      "intern": "Intern",
+      "part_time": "Part-time",
+      "collaborator": "Collaborator (CTV)",
+      "advisor": "Advisor"
+    },
+    "status": {
+      "active": "Active",
+      "preboarding": "Pre-boarding",
+      "suspended": "Suspended",
+      "offboarded": "Offboarded",
+      "all": "All statuses"
+    },
+    "gender": {
+      "male": "Male",
+      "female": "Female",
+      "other": "Other"
+    },
+    "maritalStatus": {
+      "single": "Single",
+      "married": "Married",
+      "divorced": "Divorced",
+      "widowed": "Widowed"
+    },
+    "errors": {
+      "forbidden": "You do not have permission to do this.",
+      "invalid": "Please check the form.",
+      "unauthenticated": "Your session has ended. Sign in again.",
+      "generic": "Something went wrong. Please try again.",
+      "work_email_domain": "The work email must be on a company Google Workspace domain.",
+      "work_email_taken": "Another person already has that work email.",
+      "work_email_reserved": "That address is reserved for an owner who has not signed in yet.",
+      "employee_code_taken": "That employee code is already used in this entity.",
+      "employee_code_exhausted": "Could not find a free employee code. Enter one by hand.",
+      "entity_not_found": "That entity does not exist or is inactive.",
+      "person_not_found": "That person no longer exists.",
+      "employment_overlap": "This person already has an employment in that period.",
+      "assignment_conflict": "Someone else changed this person's assignment at the same time. Reload and try again.",
+      "no_employment": "This person has no employment to assign.",
+      "team_not_in_department": "That team does not belong to the chosen department.",
+      "department_not_in_entity": "That department belongs to another entity.",
+      "branch_not_in_entity": "That branch belongs to another entity.",
+      "manager_is_self": "A person cannot be their own manager.",
+      "manager_not_found": "That manager does not exist.",
+      "manager_loop": "That would make the reporting line loop back on itself.",
+      "assignment_before_employment_start": "The effective date is before the employment started.",
+      "assignment_after_employment_end": "The effective date is after the employment ended.",
+      "assignment_before_current_assignment": "The effective date is before the current assignment started. Past assignments cannot be rewritten."
+    }
   }
 }

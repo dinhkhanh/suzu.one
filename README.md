@@ -18,6 +18,7 @@ pnpm install
 cp .env.example .env.local        # then fill in the values (see below)
 pnpm db:up                        # start local Supabase (first run downloads images)
 pnpm db:migrate && pnpm db:seed   # apply migrations; placeholder entities + shared departments
+pnpm db:seed:demo                 # optional, local database only: a small fake company with role grants
 pnpm dev
 ```
 

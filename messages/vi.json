@@ -70,5 +70,135 @@
       "invalid": "Vui lòng kiểm tra lại thông tin.",
       "generic": "Có lỗi xảy ra. Vui lòng thử lại."
     }
+  },
+  "people": {
+    "title": "Nhân sự",
+    "count": "{count, plural, =0 {Không có ai phù hợp} other {# người}}",
+    "empty": "Không có ai phù hợp với bộ lọc này.",
+    "save": "Lưu",
+    "saving": "Đang lưu…",
+    "filters": {
+      "search": "Tên, email hoặc mã nhân viên",
+      "allEntities": "Tất cả pháp nhân",
+      "allDepartments": "Tất cả phòng ban",
+      "allTypes": "Tất cả loại lao động",
+      "apply": "Lọc",
+      "clear": "Xóa lọc"
+    },
+    "views": {
+      "save": "Lưu bộ lọc",
+      "namePlaceholder": "Đặt tên cho bộ lọc",
+      "delete": "Xóa bộ lọc {name}"
+    },
+    "pager": {
+      "previous": "Trước",
+      "next": "Sau",
+      "page": "Trang {page}/{pageCount}"
+    },
+    "sections": {
+      "identity": "Thông tin cá nhân",
+      "employment": "Quan hệ lao động",
+      "placement": "Vị trí và tuyến báo cáo",
+      "personal": "Chi tiết cá nhân",
+      "history": "Lịch sử công tác"
+    },
+    "hire": {
+      "title": "Thêm nhân sự",
+      "description": "Tạo hồ sơ nhân sự, quan hệ lao động với pháp nhân và vị trí công tác đầu tiên. Có email công ty thì người này đăng nhập được.",
+      "submit": "Thêm nhân sự"
+    },
+    "edit": {
+      "title": "Sửa hồ sơ và thông tin cá nhân"
+    },
+    "assignment": {
+      "change": "Thay đổi vị trí công tác",
+      "hint": "Thay đổi có hiệu lực từ ngày đã chọn và đóng vị trí hiện tại vào ngày liền trước. Nếu chọn đúng ngày bắt đầu của vị trí hiện tại thì hệ thống sửa vị trí đó thay vì tạo mới.",
+      "period": "Thời gian",
+      "ongoing": "nay",
+      "current": "Hiện tại",
+      "empty": "Chưa có vị trí công tác."
+    },
+    "fields": {
+      "fullName": "Họ và tên",
+      "workEmail": "Email công ty",
+      "workEmailHint": "Để trống = không dùng ứng dụng",
+      "phone": "Điện thoại",
+      "dateOfBirth": "Ngày sinh",
+      "gender": "Giới tính",
+      "maritalStatus": "Tình trạng hôn nhân",
+      "nationality": "Quốc tịch",
+      "personalEmail": "Email cá nhân",
+      "permanentAddress": "Địa chỉ thường trú",
+      "currentAddress": "Chỗ ở hiện tại",
+      "entity": "Pháp nhân",
+      "employeeCode": "Mã nhân viên",
+      "employeeCodeHint": "Để trống = số kế tiếp",
+      "startDate": "Ngày vào làm",
+      "seniorityDate": "Ngày tính thâm niên",
+      "endDate": "Ngày nghỉ việc",
+      "workforceType": "Loại lao động",
+      "status": "Trạng thái",
+      "department": "Phòng ban",
+      "team": "Nhóm",
+      "branch": "Chi nhánh",
+      "position": "Chức danh",
+      "jobLevel": "Cấp bậc",
+      "managerId": "Quản lý trực tiếp",
+      "dottedManagerId": "Quản lý gián tiếp",
+      "workLocation": "Nơi làm việc",
+      "validFrom": "Hiệu lực từ",
+      "changeReason": "Lý do"
+    },
+    "workforceType": {
+      "employee": "Chính thức",
+      "probation": "Thử việc",
+      "intern": "Thực tập",
+      "part_time": "Bán thời gian",
+      "collaborator": "Cộng tác viên",
+      "advisor": "Cố vấn"
+    },
+    "status": {
+      "active": "Đang làm việc",
+      "preboarding": "Chờ nhận việc",
+      "suspended": "Tạm khóa",
+      "offboarded": "Đã nghỉ việc",
+      "all": "Tất cả trạng thái"
+    },
+    "gender": {
+      "male": "Nam",
+      "female": "Nữ",
+      "other": "Khác"
+    },
+    "maritalStatus": {
+      "single": "Độc thân",
+      "married": "Đã kết hôn",
+      "divorced": "Đã ly hôn",
+      "widowed": "Góa"
+    },
+    "errors": {
+      "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+      "invalid": "Vui lòng kiểm tra lại thông tin.",
+      "unauthenticated": "Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.",
+      "generic": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+      "work_email_domain": "Email công ty phải thuộc tên miền Google Workspace của công ty.",
+      "work_email_taken": "Email công ty này đã thuộc về người khác.",
+      "work_email_reserved": "Địa chỉ này được dành cho chủ sở hữu chưa đăng nhập lần đầu.",
+      "employee_code_taken": "Mã nhân viên này đã được dùng trong pháp nhân.",
+      "employee_code_exhausted": "Không tìm được mã nhân viên trống. Vui lòng nhập mã thủ công.",
+      "entity_not_found": "Pháp nhân không tồn tại hoặc đã ngừng hoạt động.",
+      "person_not_found": "Hồ sơ này không còn tồn tại.",
+      "employment_overlap": "Người này đã có quan hệ lao động trong khoảng thời gian đó.",
+      "assignment_conflict": "Có người khác vừa thay đổi vị trí công tác của người này. Vui lòng tải lại và thử lại.",
+      "no_employment": "Người này chưa có quan hệ lao động để phân công.",
+      "team_not_in_department": "Nhóm không thuộc phòng ban đã chọn.",
+      "department_not_in_entity": "Phòng ban thuộc pháp nhân khác.",
+      "branch_not_in_entity": "Chi nhánh thuộc pháp nhân khác.",
+      "manager_is_self": "Một người không thể là quản lý của chính mình.",
+      "manager_not_found": "Không tìm thấy người quản lý.",
+      "manager_loop": "Thay đổi này khiến tuyến báo cáo bị vòng lặp.",
+      "assignment_before_employment_start": "Ngày hiệu lực sớm hơn ngày vào làm.",
+      "assignment_after_employment_end": "Ngày hiệu lực muộn hơn ngày nghỉ việc.",
+      "assignment_before_current_assignment": "Ngày hiệu lực sớm hơn ngày bắt đầu của vị trí hiện tại. Không thể sửa lịch sử đã qua."
+    }
   }
 }

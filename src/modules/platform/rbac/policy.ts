@@ -83,3 +83,38 @@ export function canReadTier(principal: Principal, person: Target & { personId: s
   const readable = readableTier(principal, person);
   return readable !== null && tierRank(readable) >= tierRank(tier);
 }
+
+// The set form of `readableTier`, for list queries: which people can the principal read at `tier`
+// or above, other than themselves? Services turn this into a WHERE clause; `matchesReach` is the
+// reference semantics and a test keeps both in step with `canReadTier`.
+export type TierReach =
+  | { all: true }
+  | { all: false; entityIds: string[]; departmentIds: string[]; teamIds: string[]; managerOf: string | null };
+
+export function tierReach(principal: Principal, tier: Tier): TierReach {
+  if (tier === "public_internal" && principal.workforceType !== "collaborator") return { all: true };
+
+  const reach = { all: false as const, entityIds: [] as string[], departmentIds: [] as string[], teamIds: [] as string[], managerOf: null as string | null };
+  if (tierRank(tier) <= tierRank("personal")) reach.managerOf = principal.personId;
+
+  for (const grant of principal.grants) {
+    const definition = ROLE_DEFINITIONS[grant.role];
+    const readsPeople = definition.permissions.includes("*") || definition.permissions.includes("person:read");
+    if (!readsPeople || tierRank(definition.maxTier) < tierRank(tier)) continue;
+    if (grant.scope.type === "group") return { all: true };
+    if (grant.scope.type === "entity") reach.entityIds.push(grant.scope.id);
+    if (grant.scope.type === "department") reach.departmentIds.push(grant.scope.id);
+    if (grant.scope.type === "team") reach.teamIds.push(grant.scope.id);
+  }
+  return reach;
+}
+
+export function matchesReach(reach: TierReach, person: Target): boolean {
+  if (reach.all) return true;
+  return (
+    (!!person.entityId && reach.entityIds.includes(person.entityId)) ||
+    (!!person.departmentId && reach.departmentIds.includes(person.departmentId)) ||
+    (!!person.teamId && reach.teamIds.includes(person.teamId)) ||
+    (!!reach.managerOf && person.managerId === reach.managerOf)
+  );
+}
