@@ -43,7 +43,8 @@
     "reports": "Báo cáo",
     "approvalFlows": "Luồng phê duyệt",
     "checkIn": "Vào / ra ca",
-    "menu": "Menu"
+    "menu": "Menu",
+    "performance": "Mục tiêu & KPI"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -3492,6 +3493,186 @@
         "amount": "Số tiền (VND)",
         "files": "Chứng từ"
       }
+    }
+  },
+  "performance": {
+    "title": "Mục tiêu của tôi",
+    "description": "OKR: mục tiêu, kết quả then chốt và cập nhật hằng tuần.",
+    "newGoal": "Mục tiêu mới",
+    "notMeasured": "chưa đo",
+    "stale": "cần cập nhật tuần này",
+    "hiddenChildren": "{count, plural, other {# mục tiêu cá nhân bạn không xem được}}",
+    "nav": {
+      "mine": "Của tôi",
+      "alignment": "Cây mục tiêu"
+    },
+    "period": {
+      "annual": "Năm {year}",
+      "quarter": "Quý {quarter}/{year}"
+    },
+    "mine": {
+      "title": "Mục tiêu tôi phụ trách",
+      "due": "{count, plural, other {# mục tiêu đang chờ cập nhật tuần này.}}",
+      "empty": "Bạn chưa có mục tiêu nào trong năm {year}.",
+      "rollsUp": "Không có kết quả then chốt riêng: tiến độ lấy từ các mục tiêu con.",
+      "noKeyResults": "Chưa có kết quả then chốt nên chưa đo được tiến độ."
+    },
+    "company": {
+      "title": "Mục tiêu của công ty",
+      "all": "Xem cả cây mục tiêu",
+      "empty": "Chưa có mục tiêu cấp tập đoàn hay pháp nhân cho năm {year}."
+    },
+    "alignment": {
+      "title": "Cây mục tiêu",
+      "description": "Tập đoàn → pháp nhân → phòng ban → nhóm → cá nhân. Mục tiêu cá nhân chỉ hiện với chính người đó, cấp quản lý của họ và Nhân sự.",
+      "allPeriods": "Cả năm",
+      "empty": "Chưa có mục tiêu nào cho năm {year}.",
+      "unaligned": "Chưa gắn với mục tiêu cấp trên",
+      "unalignedHint": "Những mục tiêu này chưa chỉ ra chúng đóng góp cho mục tiêu nào."
+    },
+    "form": {
+      "intro": "Đặt mục tiêu cho chính mình, cho nhân viên dưới quyền, hoặc — nếu có quyền — cho một đơn vị. Thêm kết quả then chốt ở bước sau.",
+      "level": "Cấp",
+      "period": "Kỳ",
+      "entity": "Pháp nhân",
+      "department": "Phòng ban",
+      "team": "Nhóm",
+      "forEntity": "Áp dụng cho pháp nhân",
+      "everyEntity": "Mọi pháp nhân",
+      "person": "Của ai",
+      "owner": "Người chịu trách nhiệm",
+      "title": "Mục tiêu",
+      "description": "Mô tả",
+      "parent": "Đóng góp cho mục tiêu",
+      "noParent": "— Không gắn —",
+      "weight": "Trọng số",
+      "weightHint": "Trọng số dùng khi mục tiêu cấp trên không có kết quả then chốt riêng và lấy trung bình các mục tiêu con.",
+      "activate": "Bắt đầu theo dõi ngay (bỏ chọn để lưu nháp)",
+      "create": "Tạo mục tiêu",
+      "save": "Lưu",
+      "saved": "Đã lưu.",
+      "align": "Gắn lại"
+    },
+    "moves": {
+      "activate": "Bắt đầu theo dõi",
+      "close": "Chốt mục tiêu",
+      "cancel": "Huỷ mục tiêu",
+      "reopen": "Mở lại",
+      "reason": "Lý do mở lại",
+      "closeConfirm": "Chốt mục tiêu? Tiến độ lúc này được đóng băng và không thay đổi nữa.",
+      "cancelConfirm": "Huỷ mục tiêu? Nó sẽ không còn được tính vào bất kỳ con số nào."
+    },
+    "kr": {
+      "heading": "Kết quả then chốt",
+      "title": "Kết quả then chốt",
+      "metricType": "Loại chỉ số",
+      "start": "Giá trị ban đầu",
+      "target": "Mục tiêu",
+      "milestones": "Các mốc (mỗi dòng một mốc)",
+      "valueHint": "Số thập phân tối đa hai chữ số (12,5). Tiền là số đồng nguyên. Mục tiêu thấp hơn giá trị ban đầu nghĩa là chỉ số cần giảm.",
+      "milestonesHint": "Tiến độ = số mốc đã xong / tổng số mốc.",
+      "add": "Thêm kết quả then chốt",
+      "edit": "Sửa kết quả then chốt",
+      "remove": "Xoá",
+      "removeConfirm": "Xoá kết quả then chốt này?",
+      "keptForTrace": "Đã có cập nhật nên không xoá được — lịch sử phải còn để truy vết. Hãy sửa thay vì xoá.",
+      "fromTo": "{start} → {current} / {target}",
+      "lastCheckIn": "cập nhật {date}",
+      "noCheckIn": "chưa cập nhật lần nào"
+    },
+    "checkIn": {
+      "open": "Cập nhật tuần này",
+      "dueNow": "Cập nhật tuần này (đã quá một tuần)",
+      "value": "Giá trị hiện tại",
+      "confidence": "Mức tự tin",
+      "note": "Ghi chú",
+      "submit": "Ghi nhận",
+      "saved": "Đã ghi nhận.",
+      "history": "Lịch sử cập nhật",
+      "none": "Chưa có cập nhật nào.",
+      "week": "tuần {date}"
+    },
+    "trace": {
+      "heading": "Tiến độ được tính thế nào",
+      "line": "Thành phần",
+      "progress": "Tiến độ",
+      "result": "Kết quả (trung bình theo trọng số)",
+      "private": "Mục tiêu cá nhân (không hiển thị)",
+      "source": {
+        "frozen": "Con số đã được đóng băng khi chốt mục tiêu; các thay đổi sau đó không ảnh hưởng.",
+        "key_results": "Trung bình theo trọng số của các kết quả then chốt của chính mục tiêu này. Mục tiêu con không tham gia vào con số.",
+        "children": "Mục tiêu này không có kết quả then chốt riêng: lấy trung bình theo trọng số của các mục tiêu con đang chạy hoặc đã chốt.",
+        "none": "Chưa có gì để đo: thêm kết quả then chốt hoặc gắn mục tiêu con."
+      },
+      "skipped": {
+        "cancelled": "đã huỷ — không tính",
+        "draft": "nháp — không tính",
+        "not_measured": "chưa đo — không tính",
+        "cycle": "vòng lặp — không tính"
+      }
+    },
+    "detail": {
+      "alignedTo": "Đóng góp cho:",
+      "owner": "phụ trách: {name}",
+      "weight": "trọng số {weight}",
+      "frozen": "Đã chốt lúc {date}. Con số này là căn cứ cho đánh giá cuối năm.",
+      "children": "Mục tiêu con",
+      "addChild": "Thêm mục tiêu con",
+      "noChildren": "Chưa có mục tiêu nào gắn vào đây.",
+      "edit": "Sửa mục tiêu"
+    },
+    "enums": {
+      "level": {
+        "group": "Tập đoàn",
+        "entity": "Pháp nhân",
+        "department": "Phòng ban",
+        "team": "Nhóm",
+        "individual": "Cá nhân"
+      },
+      "status": {
+        "draft": "Nháp",
+        "active": "Đang chạy",
+        "closed": "Đã chốt",
+        "cancelled": "Đã huỷ"
+      },
+      "metric": {
+        "number": "Số",
+        "percent": "Phần trăm",
+        "currency": "Tiền (VND)",
+        "milestone": "Các mốc"
+      },
+      "confidence": {
+        "on_track": "Đúng tiến độ",
+        "at_risk": "Có rủi ro",
+        "off_track": "Chệch hướng"
+      }
+    },
+    "errors": {
+      "generic": "Không thực hiện được. Hãy thử lại.",
+      "forbidden": "Bạn không có quyền làm việc này.",
+      "invalid": "Hãy kiểm tra các ô được đánh dấu.",
+      "unauthenticated": "Phiên đăng nhập đã hết.",
+      "not_found": "Không tìm thấy.",
+      "bad_period": "Kỳ không hợp lệ, hoặc không cùng năm với mục tiêu.",
+      "unit_not_found": "Không tìm thấy đơn vị hoặc người được chọn.",
+      "owner_not_found": "Không tìm thấy người chịu trách nhiệm.",
+      "parent_not_found": "Không tìm thấy mục tiêu cấp trên trong năm này.",
+      "parent_cancelled": "Mục tiêu cấp trên đã bị huỷ.",
+      "parent_below_child": "Mục tiêu cấp trên phải ở cùng cấp hoặc cấp cao hơn.",
+      "parent_other_period": "Mục tiêu cấp trên phải là mục tiêu năm hoặc cùng quý.",
+      "parent_is_descendant": "Không thể gắn vào chính nó hoặc mục tiêu con của nó.",
+      "children_other_period": "Có mục tiêu con thuộc quý khác.",
+      "goal_not_open": "Mục tiêu đã chốt hoặc đã huỷ nên không sửa được.",
+      "goal_not_active": "Chỉ cập nhật được mục tiêu đang chạy.",
+      "bad_transition": "Trạng thái hiện tại không cho phép thao tác này.",
+      "nothing_to_freeze": "Mục tiêu chưa có gì để đo nên không chốt được — hãy huỷ nếu không còn cần.",
+      "reason_required": "Cần ghi lý do mở lại.",
+      "metric_type_fixed": "Đã có cập nhật nên không đổi được loại chỉ số.",
+      "milestones_required": "Cần ít nhất một mốc.",
+      "bad_start_value": "Giá trị ban đầu không hợp lệ.",
+      "bad_target_value": "Giá trị mục tiêu không hợp lệ.",
+      "bad_value": "Giá trị không hợp lệ.",
+      "key_result_has_check_ins": "Đã có cập nhật nên không xoá được."
     }
   }
 }

@@ -43,7 +43,8 @@
     "reports": "Reports",
     "approvalFlows": "Approval flows",
     "checkIn": "Check in / out",
-    "menu": "Menu"
+    "menu": "Menu",
+    "performance": "Goals & KPIs"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -3492,6 +3493,186 @@
         "amount": "Amount (VND)",
         "files": "Evidence"
       }
+    }
+  },
+  "performance": {
+    "title": "My goals",
+    "description": "OKRs: goals, key results and the weekly check-in.",
+    "newGoal": "New goal",
+    "notMeasured": "not measured",
+    "stale": "check-in due",
+    "hiddenChildren": "{count, plural, one {# individual goal you cannot see} other {# individual goals you cannot see}}",
+    "nav": {
+      "mine": "Mine",
+      "alignment": "Alignment"
+    },
+    "period": {
+      "annual": "{year}",
+      "quarter": "Q{quarter} {year}"
+    },
+    "mine": {
+      "title": "Goals I answer for",
+      "due": "{count, plural, one {# goal is waiting for this week's check-in.} other {# goals are waiting for this week's check-in.}}",
+      "empty": "You have no goals in {year} yet.",
+      "rollsUp": "No key results of its own: the figure comes from the goals below it.",
+      "noKeyResults": "No key results yet, so there is nothing to measure."
+    },
+    "company": {
+      "title": "Company goals",
+      "all": "See the whole tree",
+      "empty": "No group or entity goals for {year} yet."
+    },
+    "alignment": {
+      "title": "Alignment",
+      "description": "Group → entity → department → team → individual. Individual goals show only to the person, the managers above them and HR.",
+      "allPeriods": "Whole year",
+      "empty": "No goals for {year} yet.",
+      "unaligned": "Not aligned to a higher goal",
+      "unalignedHint": "These goals do not yet say which goal they contribute to."
+    },
+    "form": {
+      "intro": "Set a goal for yourself, for someone in your reporting line or — with the permission — for a unit. Key results come next.",
+      "level": "Level",
+      "period": "Period",
+      "entity": "Entity",
+      "department": "Department",
+      "team": "Team",
+      "forEntity": "For entity",
+      "everyEntity": "Every entity",
+      "person": "Whose goal",
+      "owner": "Accountable",
+      "title": "Goal",
+      "description": "Description",
+      "parent": "Contributes to",
+      "noParent": "— Not aligned —",
+      "weight": "Weight",
+      "weightHint": "The weight counts when the goal above has no key results of its own and averages its children.",
+      "activate": "Start tracking now (untick to save a draft)",
+      "create": "Create goal",
+      "save": "Save",
+      "saved": "Saved.",
+      "align": "Re-align"
+    },
+    "moves": {
+      "activate": "Start tracking",
+      "close": "Close goal",
+      "cancel": "Cancel goal",
+      "reopen": "Reopen",
+      "reason": "Reason for reopening",
+      "closeConfirm": "Close this goal? Its progress is frozen as of now and will not change again.",
+      "cancelConfirm": "Cancel this goal? It will no longer count towards any figure."
+    },
+    "kr": {
+      "heading": "Key results",
+      "title": "Key result",
+      "metricType": "Metric",
+      "start": "Start value",
+      "target": "Target",
+      "milestones": "Milestones (one per line)",
+      "valueHint": "Up to two decimals (12.5). Money is whole VND. A target below the start means the metric has to come down.",
+      "milestonesHint": "Progress = milestones done / milestones in total.",
+      "add": "Add a key result",
+      "edit": "Edit key result",
+      "remove": "Remove",
+      "removeConfirm": "Remove this key result?",
+      "keptForTrace": "It has check-ins, so it cannot be removed — the history has to stay traceable. Edit it instead.",
+      "fromTo": "{start} → {current} / {target}",
+      "lastCheckIn": "checked in {date}",
+      "noCheckIn": "never checked in"
+    },
+    "checkIn": {
+      "open": "Check in this week",
+      "dueNow": "Check in this week (over a week old)",
+      "value": "Current value",
+      "confidence": "Confidence",
+      "note": "Note",
+      "submit": "Check in",
+      "saved": "Recorded.",
+      "history": "Check-in history",
+      "none": "No check-ins yet.",
+      "week": "week of {date}"
+    },
+    "trace": {
+      "heading": "How the figure is made",
+      "line": "Part",
+      "progress": "Progress",
+      "result": "Result (weighted average)",
+      "private": "Individual goal (not shown)",
+      "source": {
+        "frozen": "The figure was frozen when the goal was closed; later changes do not affect it.",
+        "key_results": "The weighted average of this goal's own key results. Goals below it do not enter the figure.",
+        "children": "This goal has no key results of its own: it takes the weighted average of the running or closed goals below it.",
+        "none": "Nothing to measure yet: add key results or align goals under it."
+      },
+      "skipped": {
+        "cancelled": "cancelled — left out",
+        "draft": "draft — left out",
+        "not_measured": "not measured — left out",
+        "cycle": "loop — left out"
+      }
+    },
+    "detail": {
+      "alignedTo": "Contributes to:",
+      "owner": "accountable: {name}",
+      "weight": "weight {weight}",
+      "frozen": "Closed on {date}. This figure is what the year-end review reads.",
+      "children": "Goals below",
+      "addChild": "Add a goal below",
+      "noChildren": "Nothing is aligned to this goal yet.",
+      "edit": "Edit goal"
+    },
+    "enums": {
+      "level": {
+        "group": "Group",
+        "entity": "Entity",
+        "department": "Department",
+        "team": "Team",
+        "individual": "Individual"
+      },
+      "status": {
+        "draft": "Draft",
+        "active": "Active",
+        "closed": "Closed",
+        "cancelled": "Cancelled"
+      },
+      "metric": {
+        "number": "Number",
+        "percent": "Percentage",
+        "currency": "Money (VND)",
+        "milestone": "Milestones"
+      },
+      "confidence": {
+        "on_track": "On track",
+        "at_risk": "At risk",
+        "off_track": "Off track"
+      }
+    },
+    "errors": {
+      "generic": "That did not work. Try again.",
+      "forbidden": "You may not do this.",
+      "invalid": "Check the highlighted fields.",
+      "unauthenticated": "Your session has ended.",
+      "not_found": "Not found.",
+      "bad_period": "The period is not valid, or not in the goal's year.",
+      "unit_not_found": "The unit or person was not found.",
+      "owner_not_found": "The accountable person was not found.",
+      "parent_not_found": "No such higher goal in this year.",
+      "parent_cancelled": "The higher goal has been cancelled.",
+      "parent_below_child": "The higher goal must sit at the same level or above.",
+      "parent_other_period": "The higher goal must be annual or in the same quarter.",
+      "parent_is_descendant": "A goal cannot be aligned to itself or to a goal below it.",
+      "children_other_period": "Some goals below it belong to another quarter.",
+      "goal_not_open": "The goal is closed or cancelled and cannot be changed.",
+      "goal_not_active": "Only an active goal takes check-ins.",
+      "bad_transition": "The goal's current status does not allow this.",
+      "nothing_to_freeze": "There is nothing to measure yet, so the goal cannot be closed — cancel it if it is no longer needed.",
+      "reason_required": "Give a reason for reopening.",
+      "metric_type_fixed": "It has check-ins, so the metric type cannot change.",
+      "milestones_required": "At least one milestone is needed.",
+      "bad_start_value": "The start value is not valid.",
+      "bad_target_value": "The target is not valid.",
+      "bad_value": "The value is not valid.",
+      "key_result_has_check_ins": "It has check-ins, so it cannot be removed."
     }
   }
 }

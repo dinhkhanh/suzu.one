@@ -157,7 +157,10 @@ describe("check-ins and the roll-up", () => {
     expect((await loadGoal(viewers.linh, goals.vid))?.goal.progress.progressBp).toBe(3125);
     expect((await loadGoal(viewers.linh, goals.szm))?.goal.progress).toMatchObject({ progressBp: 0, source: "key_results" });
     // The colleague sees the department's number, never what it is made of.
-    expect((await loadGoal(viewers.linh, goals.crew))?.lineTitles).toEqual({});
+    const asColleague = await loadGoal(viewers.linh, goals.crew);
+    expect(asColleague?.lineTitles).toEqual({});
+    expect(asColleague?.goal.progress.lines).toEqual([{ kind: "goal", id: "hidden-0", weight: 1, progressBp: null, skipped: null, redacted: true }]);
+    expect((await loadGoal(viewers.tam, goals.crew))?.goal.progress.lines).toEqual([{ kind: "goal", id: goals.huy, weight: 1, progressBp: 3125, skipped: null, redacted: false }]);
   });
 
   it("refuses values it cannot read, check-ins on goals that are not running, and any change to the log", async () => {

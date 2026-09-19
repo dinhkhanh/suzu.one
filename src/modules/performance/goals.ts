@@ -7,7 +7,7 @@ import { ActionError } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import type { Principal } from "../platform/rbac/policy";
-import { type GoalInput, type GoalProgress, goalProgress, isStale, keyResultProgressBp, weekStartOf, weightedAverageBp } from "./engine/progress";
+import { type GoalInput, type GoalProgress, goalProgress, type ProgressLine, isStale, keyResultProgressBp, weekStartOf, weightedAverageBp } from "./engine/progress";
 import { type Confidence, type GoalLevel, type GoalStatus, isAnnual, isPeriodKey, levelRank, type MetricType, type Milestone, parseMetricValue, STALE_AFTER_DAYS, yearOfPeriod } from "./enums";
 import { type Directory, loadDirectory, reportsBelow } from "./people";
 import { canCheckIn, canCloseGoal, canEditGoal, canManagePerformanceOf, canReopenGoal, canSeeGoal, type GoalParties, readablePeople } from "./policy";
@@ -25,7 +25,8 @@ export type GoalView = Omit<GoalRow, "level" | "status"> & {
   ownerName: string;
   /** The entity, department, team or person the goal belongs to; null for the group. */
   unitName: string | null;
-  progress: GoalProgress;
+  /** Lines of children the viewer may not see keep their weight and lose their id and figure. */
+  progress: Omit<GoalProgress, "lines"> & { lines: (ProgressLine & { redacted: boolean })[] };
   keyResults: KeyResultView[];
   /** Children the viewer may see. Individual goals of people they do not read are only counted. */
   childIds: string[];
@@ -101,13 +102,16 @@ function unitNameOf(goal: GoalRow, names: UnitNames, directory: Directory): stri
 function toView(goal: GoalRow, year: Year, names: UnitNames, directory: Directory, visible: (goal: GoalRow) => boolean, now: Date): GoalView {
   const children = (year.inputs.get(goal.id)?.childIds ?? []).map((id) => year.goals.get(id)!);
   const seen = children.filter(visible);
+  const seenIds = new Set(seen.map((child) => child.id));
+  const progress = goalProgress(goal.id, year.inputs);
   return {
     ...goal,
     level: goal.level as GoalLevel,
     status: goal.status as GoalStatus,
     ownerName: directory.get(goal.ownerPersonId)?.fullName ?? "—",
     unitName: unitNameOf(goal, names, directory),
-    progress: goalProgress(goal.id, year.inputs),
+    // The unit's figure is everyone's to see; what one colleague contributed to it is not.
+    progress: { ...progress, lines: progress.lines.map((line, index) => (line.kind === "goal" && !seenIds.has(line.id) ? { ...line, id: `hidden-${index}`, progressBp: null, redacted: true } : { ...line, redacted: false })) },
     keyResults: (year.keyResults.get(goal.id) ?? []).map((row) => ({
       ...row,
       metricType: row.metricType as MetricType,

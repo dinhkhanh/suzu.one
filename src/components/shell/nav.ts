@@ -16,6 +16,8 @@ export function navFor(principal: Principal, open: { people: boolean }): { main:
     { key: "work", href: "/work" },
     // Compliance: people with an ops role. Anyone else reaches their own obligations through My work.
     ...(can(principal, "ops:read") || can(principal, "ops:manage") ? [{ key: "ops", href: "/ops" }] : []),
+    // Goals and KPIs: everyone has their own; what else they see is decided on the pages.
+    { key: "performance", href: "/performance" },
     { key: "kb", phase: 4 },
     { key: "payroll", phase: 5 },
   ];
