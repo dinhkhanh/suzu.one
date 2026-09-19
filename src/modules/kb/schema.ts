@@ -2,7 +2,7 @@
 // (what editors see) and immutable published versions (what readers see). Who sees what is decided
 // by `kb_access` rows keyed by one text `subject_key`, so list queries filter in SQL.
 import { sql } from "drizzle-orm";
-import { type AnyPgColumn, boolean, customType, date, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, boolean, customType, date, index, integer, jsonb, pgEnum, pgTable, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { entity } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
 
@@ -223,4 +223,32 @@ export const kbTemplate = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   () => [],
+).enableRLS();
+
+// Passages of the PUBLISHED version of each page, for the Phase 9 assistant (FR-KB-11). Rebuilt
+// inside `publishPage`; gone when the page is unpublished, archived or deleted.
+// Decision: the vector is `real[]`, not pgvector's `vector(n)`. The local Supabase image ships
+// pgvector 0.8.2 (not installed), but PGlite — every test — has none, and `n` depends on a model
+// nobody has chosen. Phase 9 adds `vector(n)` + an HNSW index in its own migration when it
+// re-embeds with the real model; until then a company-sized table is ranked in the application.
+export const kbPageChunk = pgTable(
+  "kb_page_chunk",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => kbPage.id, { onDelete: "cascade" }),
+    versionId: uuid("version_id").notNull(),
+    chunkIndex: integer("chunk_index").notNull(),
+    headingPath: text("heading_path").notNull().default(""),
+    content: text("content").notNull(),
+    // sha256 of heading path + content: an unchanged passage keeps its vector across versions.
+    contentHash: text("content_hash").notNull(),
+    tokenEstimate: integer("token_estimate").notNull().default(0),
+    embedding: real("embedding").array(),
+    embeddingModel: text("embedding_model"),
+    embeddedAt: timestamp("embedded_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("kb_page_chunk_page_index_idx").on(t.pageId, t.chunkIndex), index("kb_page_chunk_model_idx").on(t.embeddingModel)],
 ).enableRLS();

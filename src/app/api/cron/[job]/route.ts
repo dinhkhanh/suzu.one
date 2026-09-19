@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { env } from "@/lib/env";
 import { timesheetMonthReadyJob, timesheetRecomputeJob } from "@/modules/attendance/recompute";
 import { fieldKeysRewrapJob, hrAlertsJob, peopleRollOverJob } from "@/modules/core-hr/jobs";
-import { kbAckRemindersJob } from "@/modules/kb/jobs";
+import { kbAckRemindersJob, kbEmbeddingsJob } from "@/modules/kb/jobs";
 import { filesCleanupJob } from "@/modules/platform/files/jobs";
 import { leaveAccrualJob } from "@/modules/leave/jobs";
 import { opsBackfillJob, opsRemindersJob, opsSchedulerJob } from "@/modules/ops/jobs";
@@ -15,9 +15,9 @@ import { workRecurringJob, workRemindersJob } from "@/modules/work/jobs";
 const SCHEDULES: Record<string, JobDefinition[]> = {
   // Leave after the roll-over: a new starter accrues from the day they become active. The timesheet
   // last: it closes yesterday with the leave and the employment facts of today.
-  midnight: [peopleRollOverJob, leaveAccrualJob, timesheetRecomputeJob, workRecurringJob, opsSchedulerJob],
+  midnight: [peopleRollOverJob, leaveAccrualJob, timesheetRecomputeJob, workRecurringJob, opsSchedulerJob, kbEmbeddingsJob],
   // Alerts (and, on the 1st, "your month is ready to confirm") first, so the digest that follows carries them.
-  morning: [hrAlertsJob, timesheetMonthReadyJob, opsSchedulerJob, opsRemindersJob, workRemindersJob, kbAckRemindersJob, notificationsDailyJob, filesCleanupJob],
+  morning: [hrAlertsJob, timesheetMonthReadyJob, opsSchedulerJob, opsRemindersJob, workRemindersJob, kbAckRemindersJob, kbEmbeddingsJob, notificationsDailyJob, filesCleanupJob],
 };
 
 // Run by hand only: /api/cron/<job name>.

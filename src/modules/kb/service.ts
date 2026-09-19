@@ -5,7 +5,7 @@ import "server-only";
 
 export { pagePublishedVisibleSql, pageVisibleSql, spaceEditableSql, spaceManagedSql, spaceVisibleSql } from "./access-sql";
 export { type Doc, type DocNode, docToPlainText, EMPTY_DOC, fileIdsOf, outlineOf, validateDoc } from "./engine/doc";
-export { findPageFile, listPageFiles, PAGE_FILE_OWNER, pageFileLink } from "./files";
+export { findPageFile, listPageFiles, mayOpenPageFile, PAGE_FILE_OWNER, pageFileLink } from "./files";
 export * from "./pages";
 export { atLeast, canCreatePage, canEditPage, canManageAnySpace, canManageSpace, canOrganisePages, canPublishDirectly, canViewPage, type KbLevel, type KbViewer, kbViewerOf, pageLevel, spaceLevel, viewerKeys } from "./policy";
 export * from "./spaces";
@@ -13,3 +13,5 @@ export { getPublishReview, kbPublishRequest, type PublishReviewView, syncReviewS
 export * from "./acknowledgements";
 export * from "./search";
 export * from "./templates";
+export { chunkStats, embedPendingChunks, type RetrievedChunk, retrieveKbChunks } from "./chunks";
+export { embeddingDriver, embedTexts } from "./embeddings";

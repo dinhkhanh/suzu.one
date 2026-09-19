@@ -32,6 +32,10 @@ const schema = z.object({
   VAPID_PUBLIC_KEY: z.string().min(80).optional(),
   VAPID_PRIVATE_KEY: z.string().min(40).optional(),
   VAPID_SUBJECT: z.string().default("mailto:it@suzu.one"),
+  // Embeddings for the knowledge base (Voyage AI). Unset = a deterministic local fake: chunks are
+  // still cut, stored and ranked, but the vectors mean nothing outside this machine.
+  EMBEDDINGS_API_KEY: z.string().min(1).optional(),
+  EMBEDDINGS_MODEL: z.string().min(1).default("voyage-3.5"),
   // Shared with Vercel Cron, which sends it as a bearer token. Unset = scheduled jobs refuse to run.
   CRON_SECRET: z.string().min(16).optional(),
 });

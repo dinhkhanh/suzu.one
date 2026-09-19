@@ -27,6 +27,7 @@ import { type KbViewer, viewerKeys } from "./policy";
 import { decidePageReview, getPublishReview, submitPageForReview, syncReviewState, withdrawPageReview } from "./publishing";
 import { listPopularPages, listRecentlyPublished, listRecentlyViewed, searchKb } from "./search";
 import { createSpace } from "./spaces";
+import { chunkStats, chunkUnchunkedPages, embedPendingChunks, retrieveKbChunks } from "./chunks";
 import { importMarkdownPage, listTemplates, saveAsTemplate, setTemplateActive, templateContent } from "./templates";
 import { kbTemplateSeedRows } from "./seed-templates";
 import { validateDoc } from "./engine/doc";
@@ -365,5 +366,87 @@ describe("templates and imports", () => {
     expect((await importMarkdownPage({ spaceId: spaces.tools, parentId: null, markdown: "Không có tiêu đề.", fileName: "quy_trinh-mua-sam.md" }, actor)).page.title).toBe("quy trinh mua sam");
     expect((await importMarkdownPage({ spaceId: spaces.tools, parentId: fromHeading.page.id, markdown: "# A", title: "Tên tự đặt" }, actor)).page).toMatchObject({ title: "Tên tự đặt", parentId: fromHeading.page.id });
     expect(await fails(importMarkdownPage({ spaceId: spaces.tools, parentId: null, markdown: "   " }, actor))).toBe("kb_import_empty");
+  });
+});
+
+describe("chunks and retrieval", () => {
+  const chunksOf = (pageId: string) => db().select().from(schema.kbPageChunk).where(eq(schema.kbPageChunk.pageId, pageId)).orderBy(schema.kbPageChunk.chunkIndex);
+  let expenses = "";
+
+  it("rebuilds the chunks with every publish, keeps the vector of a passage that did not change, and drops them with the page", async () => {
+    const hr = { personId: ids.hrGroup };
+    const v1 = doc(heading(1, "Tạm ứng"), paragraph("Lập đề nghị tạm ứng trước chuyến công tác."), heading(1, "Hoàn ứng"), paragraph("Nộp chứng từ trong 5 ngày làm việc."));
+    const page = await createPage({ spaceId: spaces.tools, parentId: null, title: "Công tác phí", content: v1 }, hr);
+    expenses = page.id;
+    expect(await chunksOf(page.id)).toHaveLength(0);
+    const first = await publishPage(page.id, hr);
+    const cut = await chunksOf(page.id);
+    expect(cut.map((chunk) => [chunk.headingPath, chunk.versionId === first.version.id, chunk.embedding])).toEqual([["Công tác phí › Tạm ứng", true, null], ["Công tác phí › Hoàn ứng", true, null]]);
+
+    expect(await embedPendingChunks()).toMatchObject({ model: "fake-hash-256", remaining: 0 });
+    expect(await embedPendingChunks()).toMatchObject({ embedded: 0 });
+    const embedded = await chunksOf(page.id);
+    expect(embedded.every((chunk) => chunk.embedding?.length === 256 && chunk.embeddingModel === "fake-hash-256")).toBe(true);
+
+    await saveDraft(page.id, { title: "Công tác phí", content: doc(heading(1, "Tạm ứng"), paragraph("Lập đề nghị tạm ứng trước chuyến công tác."), heading(1, "Hoàn ứng"), paragraph("Nộp chứng từ trong 7 ngày làm việc.")) }, hr);
+    const second = await publishPage(page.id, hr);
+    const recut = await chunksOf(page.id);
+    expect(recut.map((chunk) => [chunk.versionId === second.version.id, chunk.embedding !== null])).toEqual([[true, true], [true, false]]);
+    expect(recut[0].embeddedAt).toEqual(embedded[0].embeddedAt);
+    await embedPendingChunks();
+
+    const { setPageArchived, unpublishPage } = await import("./pages");
+    await setPageArchived(page.id, true);
+    expect(await chunksOf(page.id)).toHaveLength(0);
+    await setPageArchived(page.id, false);
+    expect(await chunksOf(page.id)).toHaveLength(2);
+    await unpublishPage(page.id);
+    expect(await chunksOf(page.id)).toHaveLength(0);
+    await publishPage(page.id, hr);
+    // A page whose chunks went missing is cut again by the job.
+    await db().delete(schema.kbPageChunk).where(eq(schema.kbPageChunk.pageId, page.id));
+    expect((await chunkUnchunkedPages()).pages).toBeGreaterThanOrEqual(1);
+    expect(await chunksOf(page.id)).toHaveLength(2);
+    await embedPendingChunks();
+    const stats = await chunkStats();
+    expect(stats.embedded).toBe(stats.chunks);
+  });
+
+  it("retrieves the closest passages of pages the viewer may read — filtered in SQL, never after", async () => {
+    await chunkUnchunkedPages();
+    await embedPendingChunks();
+    const ask = async (who: Who, query: string, limit = 5) => (await retrieveKbChunks(viewers[who], { query, limit })).map((chunk) => chunk.pageTitle);
+    const [best] = await retrieveKbChunks(viewers.huy, { query: "nộp chứng từ hoàn ứng trong mấy ngày?", limit: 3 });
+    expect(best).toMatchObject({ pageId: expenses, pageTitle: "Công tác phí", headingPath: "Công tác phí › Hoàn ứng", spaceKey: "tools" });
+    expect(best.score).toBeGreaterThan(0.2);
+
+    // The managers' restricted page: its reader gets it, a plain employee and another entity's never do.
+    expect(await ask("hrSzm", "ngày nghỉ phép thâm niên của quản lý cấp cao")).toContain("Khung nghỉ phép của quản lý");
+    expect(await ask("huy", "ngày nghỉ phép thâm niên của quản lý cấp cao", 50)).not.toContain("Khung nghỉ phép của quản lý");
+    expect(await ask("khoi", "quy định nghỉ phép bù của Suzu Media", 50)).not.toContain("Nghỉ phép bù tại SZM");
+    expect(await ask("huy", "quy định nghỉ phép bù của Suzu Media")).toContain("Nghỉ phép bù tại SZM");
+    expect(await ask("ngo", "nghỉ phép", 50)).toEqual([]);
+    // Drafts and archived pages have no passages at all.
+    expect(await ask("owner", "nghỉ phép không lương bản nháp", 50)).not.toContain("Nghỉ phép không lương (nháp)");
+    expect(await ask("owner", "mẹo cũ", 50)).not.toContain("Nghỉ phép: mẹo cũ");
+    expect(await retrieveKbChunks(viewers.huy, { query: "  ?? " })).toEqual([]);
+  });
+});
+
+describe("files of a page", () => {
+  it("lets a reader fetch only what the published version shows; editors fetch the draft's files too", async () => {
+    const { mayOpenPageFile } = await import("./files");
+    const shown = "11111111-1111-4111-8111-111111111111";
+    const drafted = "22222222-2222-4222-8222-222222222222";
+    const attachment = (fileId: string) => ({ type: "attachment", attrs: { fileId, fileName: "bieu-mau.pdf", sizeBytes: 10 } });
+    const page = await createPage({ spaceId: spaces.handbook, parentId: null, title: "Biểu mẫu", content: doc(paragraph("Tải biểu mẫu:"), attachment(shown)) }, { personId: ids.hrGroup });
+    const loadedDraft = (await loadPage(page.id))!;
+    expect(await mayOpenPageFile(viewers.huy, loadedDraft, shown)).toBe(false);
+    await publishPage(page.id, { personId: ids.hrGroup });
+    await saveDraft(page.id, { title: "Biểu mẫu", content: doc(paragraph("Bản mới:"), attachment(shown), attachment(drafted)) }, { personId: ids.editor });
+    const loaded = (await loadPage(page.id))!;
+    expect([await mayOpenPageFile(viewers.huy, loaded, shown), await mayOpenPageFile(viewers.huy, loaded, drafted)]).toEqual([true, false]);
+    expect([await mayOpenPageFile(viewers.editor, loaded, drafted), await mayOpenPageFile(viewers.hrGroup, loaded, drafted)]).toEqual([true, true]);
+    expect(await mayOpenPageFile(viewers.ngo, loaded, shown)).toBe(false);
   });
 });

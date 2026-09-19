@@ -7,6 +7,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import { toSearchKey } from "@/lib/text";
 import { pageVisibleSql } from "./access-sql";
 import { ackOnPublish } from "./acknowledgements";
+import { rebuildChunks, removeChunks } from "./chunks";
 import { type DiffLine, diffLines } from "./engine/diff";
 import { type Doc, docToPlainText, EMPTY_DOC, validateDoc } from "./engine/doc";
 import { type AccessRow, atLeast, type KbLevel, type KbViewer, type PageFacts, pageLevel, spaceLevel } from "./policy";
@@ -183,6 +184,8 @@ export async function publishPage(pageId: string, actor: Actor, options: Publish
       .set({ status: "published", publishedVersionId: version.id, publishedTitle: version.title, publishedAt: new Date(), hasUnpublishedChanges: false, searchTitle: toSearchKey(version.title), searchBody: toSearchKey(version.contentText), updatedAt: new Date() })
       .where(eq(schema.kbPage.id, pageId))
       .returning();
+    // The assistant quotes what readers read: the passages follow the published version.
+    await rebuildChunks(tx, page, version);
     // "Must read": the first publication, or a major revision, (re)starts the confirmation.
     return { page: await ackOnPublish(tx, page, version), version, before };
   };
@@ -196,6 +199,7 @@ export async function unpublishPage(pageId: string): Promise<{ before: PageRow; 
     if (!before) throw new ActionError("kb_page_not_found");
     if (!before.publishedVersionId) throw new ActionError("kb_not_published");
     const [after] = await tx.update(schema.kbPage).set({ status: "draft", publishedVersionId: null, publishedTitle: null, publishedAt: null, hasUnpublishedChanges: true, searchTitle: "", searchBody: "", updatedAt: new Date() }).where(eq(schema.kbPage.id, pageId)).returning();
+    await removeChunks(tx, pageId);
     return { before, after };
   });
 }
@@ -208,6 +212,11 @@ export async function setPageArchived(pageId: string, archived: boolean): Promis
     if (before.status === "in_review") throw new ActionError("kb_page_in_review");
     const status = archived ? "archived" : before.publishedVersionId ? "published" : "draft";
     const [after] = await tx.update(schema.kbPage).set({ status, updatedAt: new Date() }).where(eq(schema.kbPage.id, pageId)).returning();
+    if (archived) await removeChunks(tx, pageId);
+    else if (after.publishedVersionId) {
+      const [version] = await tx.select().from(schema.kbPageVersion).where(eq(schema.kbPageVersion.id, after.publishedVersionId)).limit(1);
+      if (version) await rebuildChunks(tx, after, version);
+    }
     return { before, after };
   });
 }
@@ -221,6 +230,7 @@ export async function deletePage(pageId: string): Promise<PageRow> {
     const [children] = await tx.select({ n: count() }).from(schema.kbPage).where(and(eq(schema.kbPage.parentId, pageId), isNull(schema.kbPage.deletedAt)));
     if (children.n > 0) throw new ActionError("kb_page_has_children");
     await tx.delete(schema.kbAccess).where(eq(schema.kbAccess.pageId, pageId));
+    await removeChunks(tx, pageId);
     const [deleted] = await tx.update(schema.kbPage).set({ deletedAt: new Date(), searchTitle: "", searchBody: "", accessRootId: null }).where(eq(schema.kbPage.id, pageId)).returning();
     return deleted;
   });

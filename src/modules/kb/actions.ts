@@ -5,6 +5,8 @@ import { ActionError, createAction } from "@/lib/action";
 import type { CurrentUser } from "@/modules/platform/auth/session";
 import { toCsv } from "@/modules/platform/export/csv";
 import { acknowledgePage, getAckReport, remindPendingNow, setAckRequirement } from "./acknowledgements";
+import { embedPendingChunks } from "./chunks";
+import { embeddingDriver } from "./embeddings";
 import { ACCESS_LEVELS, parseSubjectKey, SPACE_KEY, SPACE_KINDS } from "./enums";
 import { beginPageUpload, completePageUpload, findPageFile, removePageFile } from "./files";
 import { createPage, deletePage, type LoadedPage, loadPage, movePage, type PageRow, publishPage, restoreVersion, saveDraft, setPageAccess, setPageArchived, setPageMeta, unpublishPage } from "./pages";
@@ -32,6 +34,12 @@ const auditPage = (loaded: { page: Pick<PageRow, "id">; space: Pick<SpaceRow, "e
 const spaceFactsForAudit = (space: SpaceRow) => ({ key: space.key, name: space.name, kind: space.kind, entityId: space.entityId, sortOrder: space.sortOrder, archivedAt: space.archivedAt });
 // What the audit log keeps of a page: what happened to it, none of the prose.
 const pageFactsForAudit = (page: PageRow) => ({ title: page.title, status: page.status, parentId: page.parentId, sortOrder: page.sortOrder, publishedVersionId: page.publishedVersionId, hasUnpublishedChanges: page.hasUnpublishedChanges, ownerPersonId: page.ownerPersonId, reviewBy: page.reviewBy });
+
+/** With the local fake there is no network call to wait for: a freshly published page is ready for retrieval at once. The real driver is the job's business. */
+async function embedAfterPublish() {
+  if (!embeddingDriver().isFake) return;
+  await embedPendingChunks(500).catch(() => undefined);
+}
 
 function refresh(spaceKey?: string, pageId?: string) {
   revalidatePath("/kb", "layout");
@@ -190,6 +198,7 @@ const publishPipeline = createAction({
     const actor = { personId: user.person.id };
     if (input.title !== undefined && input.content !== undefined) await saveDraft(input.pageId, { title: input.title, content: input.content }, actor);
     const { page, version, before } = await publishPage(input.pageId, actor, { changeNote: input.changeNote, isMajor: input.isMajor });
+    await embedAfterPublish();
     refresh(loaded.space.key, page.id);
     return { data: { id: page.id, versionNo: version.versionNo }, audit: { resource: auditPage(loaded), summary: `${page.title}: v${version.versionNo}`, before: pageFactsForAudit(before), after: { ...pageFactsForAudit(page), versionNo: version.versionNo, isMajor: version.isMajor, changeNote: version.changeNote } } };
   },
@@ -228,6 +237,7 @@ const decideReviewPipeline = createAction({
   authorize: async (user, input) => !!(await getPublishReview({ personId: user.person.id, principal: user.principal }, input.requestId))?.canDecide,
   run: async ({ user, input }) => {
     const { request, before, outcome, page, version, payload } = await decidePageReview(user.person.id, input.requestId, { action: input.decision, comment: input.comment });
+    if (outcome === "approved") await embedAfterPublish();
     refresh(undefined, payload.pageId);
     revalidatePath("/approvals");
     revalidatePath(`/approvals/kb-publish/${request.id}`);

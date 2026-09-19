@@ -6,7 +6,9 @@ import { and, eq } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema } from "@/lib/db";
 import { beginUpload, completeUpload, createDownloadLink, findFile, listFilesOf, softDeleteFile, type StoredFileRow } from "../platform/files/service";
-import { type LoadedPage, loadPage } from "./pages";
+import { type Doc, fileIdsOf } from "./engine/doc";
+import { levelOf, type LoadedPage, loadPage } from "./pages";
+import { atLeast, type KbViewer } from "./policy";
 
 export const PAGE_FILE_OWNER = "kb_page";
 type Actor = { personId: string; email?: string | null };
@@ -36,4 +38,18 @@ export async function removePageFile(fileId: string): Promise<StoredFileRow> {
   const file = await softDeleteFile(fileId);
   if (!file) throw new ActionError("file_not_found");
   return file;
+}
+
+/**
+ * Editors open every file of a page they edit. A reader opens only what the PUBLISHED version
+ * shows: a file uploaded to a draft (or to a revision waiting for review) is not theirs to fetch
+ * by guessing its address.
+ */
+export async function mayOpenPageFile(viewer: KbViewer, loaded: LoadedPage, fileId: string): Promise<boolean> {
+  const level = levelOf(viewer, loaded);
+  if (!level) return false;
+  if (atLeast(level, "edit")) return true;
+  if (!loaded.page.publishedVersionId) return false;
+  const [version] = await db().select({ content: schema.kbPageVersion.content }).from(schema.kbPageVersion).where(eq(schema.kbPageVersion.id, loaded.page.publishedVersionId)).limit(1);
+  return !!version && fileIdsOf(version.content as Doc).includes(fileId.toLowerCase());
 }
