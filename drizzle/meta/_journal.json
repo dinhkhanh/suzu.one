@@ -176,6 +176,20 @@
       "when": 1789841762674,
       "tag": "0024_web_push",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1789842357239,
+      "tag": "0025_attendance_devices_timesheet",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1789842358113,
+      "tag": "0026_attendance_policy_no_overlap",
+      "breakpoints": true
     }
   ]
 }

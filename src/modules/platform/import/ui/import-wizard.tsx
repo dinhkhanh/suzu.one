@@ -1,6 +1,6 @@
 "use client";
 import { useTranslations } from "next-intl";
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, type ReactNode, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ActionResult } from "@/lib/action";
@@ -9,13 +9,17 @@ import type { StagedImport } from "../service";
 type Props = {
   title: string;
   /** The starter CSV (headers + one example row), built on the server from the import's columns. */
-  template: { fileName: string; csv: string };
+  template?: { fileName: string; csv: string };
+  /** File types offered by the picker; default spreadsheets. */
+  accept?: string;
+  /** Fields posted with the file (which device the log came from). */
+  children?: ReactNode;
   stageAction: (input: unknown) => Promise<ActionResult<StagedImport>>;
   commitAction: (input: unknown) => Promise<ActionResult<Record<string, number>>>;
 };
 
 /** Upload → see exactly what will be written and every problem → confirm. Nothing is saved before the last step. */
-export function ImportWizard({ title, template, stageAction, commitAction }: Props) {
+export function ImportWizard({ title, template, accept = ".xlsx,.csv", children, stageAction, commitAction }: Props) {
   const t = useTranslations("imports");
   const [pending, startTransition] = useTransition();
   const [staged, setStaged] = useState<StagedImport | null>(null);
@@ -54,13 +58,16 @@ export function ImportWizard({ title, template, stageAction, commitAction }: Pro
     <section className="flex flex-col gap-4 rounded-xl border p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-medium">{title}</h2>
-        <a className="text-sm underline" download={template.fileName} href={`data:text/csv;charset=utf-8,${encodeURIComponent(template.csv)}`}>
-          {t("template")}
-        </a>
+        {template ? (
+          <a className="text-sm underline" download={template.fileName} href={`data:text/csv;charset=utf-8,${encodeURIComponent(template.csv)}`}>
+            {t("template")}
+          </a>
+        ) : null}
       </div>
 
-      <form onSubmit={upload} className="flex flex-wrap items-center gap-3">
-        <input type="file" name="file" required accept=".xlsx,.csv" className="text-sm" aria-label={t("file")} />
+      <form onSubmit={upload} className="flex flex-wrap items-end gap-3">
+        {children}
+        <input type="file" name="file" required accept={accept} className="text-sm" aria-label={t("file")} />
         <Button type="submit" variant="outline" disabled={pending}>
           {pending && !staged ? t("checking") : t("check")}
         </Button>
@@ -75,14 +82,18 @@ export function ImportWizard({ title, template, stageAction, commitAction }: Pro
 
       {staged ? (
         <div className="flex flex-col gap-4">
-          <p className="text-sm">{t("summary", { rows: staged.rowCount, problems: staged.problemCount })}</p>
+          <p className="text-sm">
+            {t("summary", { rows: staged.rowCount, problems: staged.problemCount })}
+            {staged.warningCount > 0 ? ` · ${t("warnings", { count: staged.warningCount })}` : ""}
+          </p>
 
           {staged.problems.length > 0 ? (
             <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-md border p-3 text-sm">
               {staged.problems.map((problem, index) => (
-                <li key={index} className={problem.code === "column_unknown" ? "text-muted-foreground" : "text-destructive"}>
+                <li key={index} className={problem.code === "column_unknown" ? "text-muted-foreground" : problem.severity === "warning" ? "text-amber-700 dark:text-amber-400" : "text-destructive"}>
                   {t("problemAt", { row: problem.row })}
                   {problem.column ? ` · ${problem.column}` : ""}: {t.has(`problems.${problem.code}`) ? t(`problems.${problem.code}`) : problem.code}
+                  {problem.detail ? ` — ${problem.detail}` : ""}
                 </li>
               ))}
             </ul>

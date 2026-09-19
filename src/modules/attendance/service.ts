@@ -4,3 +4,6 @@ export type { CalendarDay, DayExpectation, DayPlan, DayPlanKind, PlannedSegment 
 export { getDayPlans, type PersonDayPlans } from "./schedules";
 export { requestTimesheetRecompute } from "./recompute";
 export { listPunches, type PunchFact } from "./punches";
+export { getAttendancePolicy, type ResolvedPolicy } from "./attendance-policies";
+export type { MonthSummary } from "./engine/timesheet";
+export { getTimesheetDays, recomputeDays, summariseMonth, type TimesheetDayRow } from "./timesheets";

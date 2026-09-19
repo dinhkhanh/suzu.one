@@ -18,6 +18,8 @@ export const importBatch = pgTable(
     rows: jsonb("rows").notNull(),
     problems: jsonb("problems").notNull(),
     result: jsonb("result"),
+    // What was chosen beside the file (which device a log came from); null for imports that take none.
+    params: jsonb("params"),
     createdByPersonId: uuid("created_by_person_id")
       .notNull()
       .references(() => person.id),

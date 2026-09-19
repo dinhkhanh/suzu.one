@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { canOpenAttendanceSettings } from "@/modules/attendance/policy";
 import { countPunchesToReview } from "@/modules/attendance/punches";
 import { getDayPlans } from "@/modules/attendance/schedules";
+import { getPersonMonth, timesheetTargetFor } from "@/modules/attendance/timesheets";
+import { MonthDays, MonthNav, SummaryTiles } from "@/modules/attendance/ui/timesheet-views";
 import { hoursText, planHours } from "@/modules/attendance/ui/day-plan";
 import { requireUser } from "@/modules/platform/auth/session";
 
@@ -14,13 +17,21 @@ export const metadata: Metadata = { title: "Attendance" };
 
 // The signed-in person's working days for the next two weeks, as their schedule, the roster and
 // the calendar see them. Check-in and the timesheet join this page in the following slices.
-export default async function AttendancePage() {
+export default async function AttendancePage({ searchParams }: PageProps<"/attendance">) {
   const user = await requireUser();
+  const query = await searchParams;
   const t = await getTranslations("attendance");
   const format = await getFormatter();
   const today = todayInVietnam();
   const [allPlans, toReview] = await Promise.all([getDayPlans([user.person.id], today, addDays(today, 13)), countPunchesToReview({ personId: user.person.id, principal: user.principal })]);
   const plans = allPlans.get(user.person.id);
+  // The month on screen: mine, or — for a manager, department head or HR — someone else's.
+  const month = typeof query.month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(query.month) && query.month <= today.slice(0, 7) ? query.month : today.slice(0, 7);
+  const personId = typeof query.person === "string" && /^[0-9a-f-]{36}$/.test(query.person) ? query.person : user.person.id;
+  const subject = personId === user.person.id ? null : await timesheetTargetFor(user.principal, personId);
+  if (personId !== user.person.id && !subject) notFound();
+  const personMonth = await getPersonMonth(personId, month);
+  const monthHref = (value: string) => `/attendance?${personId === user.person.id ? "" : `person=${personId}&`}month=${value}`;
 
   return (
     <div className="flex max-w-3xl flex-col gap-8">
@@ -42,6 +53,9 @@ export default async function AttendancePage() {
         <Link href="/attendance/today" className={buttonVariants({ variant: "outline", size: "lg" })}>
           {t("today.title")}
         </Link>
+        <Link href="/attendance/team" className={buttonVariants({ variant: "outline", size: "lg" })}>
+          {t("timesheet.team.title")}
+        </Link>
         {toReview > 0 ? (
           <Link href="/attendance/review" className={buttonVariants({ variant: "outline", size: "lg" })}>
             {t("review.title")} <Badge className="text-[10px]">{toReview}</Badge>
@@ -53,6 +67,15 @@ export default async function AttendancePage() {
         )}
       </nav>
       <section className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-medium text-muted-foreground">{subject ? t("timesheet.monthOf", { name: subject.fullName }) : t("timesheet.myMonth")}</h2>
+          <MonthNav month={month} hrefFor={monthHref} thisMonth={today.slice(0, 7)} />
+        </div>
+        <SummaryTiles summary={personMonth.summary} />
+        <p className="text-xs text-muted-foreground">{t("timesheet.tapHint")}</p>
+        <MonthDays days={[...personMonth.days].reverse()} />
+      </section>
+      <section className={subject ? "hidden" : "flex flex-col gap-3"}>
         <h2 className="text-sm font-medium text-muted-foreground">{t("mySchedule")}</h2>
         <ul className="flex flex-col divide-y rounded-xl border">
           {(plans?.days ?? []).map((plan) => (

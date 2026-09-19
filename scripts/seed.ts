@@ -6,8 +6,9 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { between } from "drizzle-orm";
-import { calendarDay, department, entity, leavePolicy, leaveType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
-import { CALENDAR_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
+import { attendancePolicy, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
+import { PROFILE_SEED } from "../src/modules/attendance/engine/device-log";
+import { CALENDAR_SEED, DEFAULT_POLICY_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 import { leaveSeedRows } from "../src/modules/leave/seed-types";
 import { TEMPLATE_SEED } from "../src/modules/platform/tasks-engine/seed-templates";
 import { STATUTORY_SEED } from "../src/modules/platform/statutory/seed-values";
@@ -88,6 +89,14 @@ async function main() {
   const [anySchedule] = await db.select({ id: workSchedule.id }).from(workSchedule).limit(1);
   if (!anySchedule) await db.insert(workSchedule).values({ ...DEFAULT_SCHEDULE_SEED, entityId: null, isDefault: true });
   console.log(`Seeded ${anySchedule ? 0 : 1} default work schedule.`);
+
+  // The group's attendance policy (company practice, HR edits it) and two starter mapping profiles
+  // for device logs: each only when there is none at all.
+  const [anyPolicy] = await db.select({ id: attendancePolicy.id }).from(attendancePolicy).limit(1);
+  if (!anyPolicy) await db.insert(attendancePolicy).values(DEFAULT_POLICY_SEED);
+  const [anyProfile] = await db.select({ id: deviceMappingProfile.id }).from(deviceMappingProfile).limit(1);
+  if (!anyProfile) await db.insert(deviceMappingProfile).values(PROFILE_SEED.map((profile) => ({ ...profile, entityId: null })));
+  console.log(`Seeded ${anyPolicy ? 0 : 1} attendance policy and ${anyProfile ? 0 : PROFILE_SEED.length} device mapping profiles.`);
 
   await client.end();
 }

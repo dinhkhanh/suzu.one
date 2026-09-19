@@ -709,7 +709,8 @@
       "leave_annual": "Annual leave",
       "probation_limits": "Probation",
       "contract_fixed_term": "Fixed-term contracts",
-      "hr_alert_thresholds": "HR alert countdowns (days ahead)"
+      "hr_alert_thresholds": "HR alert countdowns (days ahead)",
+      "work_night_window": "Night work hours"
     },
     "errors": {
       "parameter_unknown": "Unknown parameter.",
@@ -760,7 +761,11 @@
       "created": "people added",
       "updated": "Updated",
       "withRestricted": "with restricted details",
-      "managersLinked": "manager links inside the file"
+      "managersLinked": "manager links inside the file",
+      "punches": "new punches",
+      "skipped": "lines already imported or repeated",
+      "unmapped": "lines waiting for an ID to be mapped",
+      "people": "people"
     },
     "problems": {
       "column_missing": "This required column is missing",
@@ -795,7 +800,10 @@
       "leave_type_not_found": "No leave type has this code",
       "leave_type_keeps_no_balance": "This leave type keeps no balance",
       "as_of_outside_year": "The date must fall in the stated year",
-      "opening_exists": "This person already has an opening balance for this type and year"
+      "opening_exists": "This person already has an opening balance for this type and year",
+      "bad_timestamp": "The time does not fit the profile's format",
+      "timestamp_in_future": "This time is in the future — wrong clock or wrong file?",
+      "device_user_unmapped": "Nobody is mapped to this ID yet; its lines are kept and become punches once it is mapped"
     },
     "errors": {
       "import_file_type": "Only .xlsx and .csv files are accepted.",
@@ -806,8 +814,10 @@
       "import_stale": "The system's data changed since the check. Check the file again.",
       "forbidden": "You do not have permission to do this.",
       "invalid": "Please choose a file.",
-      "generic": "Something went wrong. Please try again."
-    }
+      "generic": "Something went wrong. Please try again.",
+      "profile_not_found": "The device has no usable mapping profile."
+    },
+    "warnings": "{count, plural, one {# warning} other {# warnings}} (do not stop the import)"
   },
   "errors": {
     "title": "Something went wrong",
@@ -1343,7 +1353,9 @@
         "calendar": "Working calendar",
         "schedules": "Schedules",
         "shifts": "Shifts & roster",
-        "locations": "Work locations"
+        "locations": "Work locations",
+        "policy": "Policy",
+        "devices": "Time clocks"
       },
       "appliesTo": "Applies to",
       "everyEntity": "Every entity",
@@ -1612,6 +1624,249 @@
         "punch_not_pending": "This check-in was already reviewed.",
         "punch_own": "You cannot review your own check-in.",
         "punch_review_note_required": "Say why you reject it."
+      }
+    },
+    "devices": {
+      "title": "Time clocks",
+      "description": "Fingerprint and card clocks, how their exports are read, whose ID is whose, and log imports.",
+      "tabs": {
+        "devices": "Clocks",
+        "import": "Import logs",
+        "profiles": "Mapping profiles"
+      },
+      "appliesTo": "Applies to",
+      "everyEntity": "Every entity",
+      "active": "In use",
+      "inactive": "Not in use",
+      "save": "Save",
+      "saved": "Saved.",
+      "device": {
+        "name": "Name",
+        "entity": "Entity",
+        "profile": "Mapping profile",
+        "model": "Model",
+        "serialNumber": "Serial number",
+        "location": "Installed at",
+        "empty": "No clock yet.",
+        "add": "Add a clock",
+        "edit": "Edit",
+        "mapped": "{count, plural, one {# ID mapped} other {# IDs mapped}}",
+        "unmapped": "{count, plural, one {# ID without a person} other {# IDs without a person}}",
+        "lastPunch": "last punch {at}",
+        "noPunches": "no punches yet"
+      },
+      "profile": {
+        "hint": "A profile describes one device model's export: which column holds the user ID, the time and the in/out code. Columns are found by header, or by position when the file has no header row (ZKTeco attlog.dat).",
+        "add": "Add a profile",
+        "groupOnly": "Shared by every entity; only group HR edits it.",
+        "name": "Name",
+        "deviceModel": "Device model",
+        "fileKind": "File type",
+        "fileKinds": {
+          "csv": "CSV",
+          "xlsx": "Excel",
+          "dat": "DAT / text"
+        },
+        "hasHeader": "The first row holds column names",
+        "columnsHint": "For each column give its header, or its position counted from 1.",
+        "position": "Position",
+        "userIdHeader": "User ID column",
+        "timestampHeader": "Date/time column",
+        "timeHeader": "Separate time column (optional)",
+        "directionHeader": "In/out column (optional)",
+        "timestampFormat": "Time format (YYYY MM DD HH mm ss)",
+        "directionCodes": "In/out codes, e.g. 0=in, 1=out",
+        "inferDirection": "Without a code, a person's punches of a day alternate in, out, in…"
+      },
+      "map": {
+        "title": "{count, plural, =0 {No ID mapped} one {# ID mapped} other {# IDs mapped}}",
+        "empty": "Map each ID on the clock to a person before importing.",
+        "deviceUserId": "ID on the clock",
+        "person": "Person",
+        "personFor": "Who is ID {id}?",
+        "save": "Map",
+        "remove": "Remove",
+        "removeConfirm": "Remove this mapping? Punches already imported stay.",
+        "unmappedTitle": "{count, plural, one {# ID nobody is mapped to} other {# IDs nobody is mapped to}}",
+        "unmappedHint": "Their log lines are kept. Map the ID and they become punches at once.",
+        "lines": "{count, plural, one {# line} other {# lines}}",
+        "export": "Download the lines (CSV)",
+        "exportTruncated": "Only the first 5,000 lines are in the file.",
+        "bulkTitle": "Map many at once by employee code",
+        "bulkHint": "One per line: ID on the clock, employee code. Nothing is saved unless every line is right.",
+        "bulkSave": "Map all",
+        "line": "Line {line}"
+      },
+      "import": {
+        "description": "Upload the raw export of a clock. You see every problem and what will be written before anything is saved.",
+        "notes": {
+          "idempotent": "Importing an overlapping export again adds only what is new.",
+          "unmapped": "Lines of IDs nobody is mapped to do not stop the import; they wait until the ID is mapped.",
+          "recompute": "The timesheet days the punches touch are recomputed at once (locked months are left alone)."
+        },
+        "wizard": "Import a device log",
+        "device": "Clock",
+        "noDevice": "Add a clock first:",
+        "history": "Recent imports",
+        "historyEmpty": "Nothing imported yet.",
+        "statuses": {
+          "invalid": "Had problems",
+          "ready": "Checked, not written",
+          "committed": "Written"
+        },
+        "result": "{punches} new · {skipped} skipped · {unmapped} waiting",
+        "rows": "{count, plural, one {# row} other {# rows}}"
+      },
+      "errors": {
+        "generic": "Could not save. Please try again.",
+        "forbidden": "You may not change this.",
+        "invalid": "Check the fields.",
+        "not_found": "Not found.",
+        "mapping_user_column": "Say which column holds the user ID.",
+        "mapping_time_column": "Say which column holds the date and time.",
+        "mapping_format": "The time format needs YYYY, MM, DD, HH and mm.",
+        "profile_name_taken": "A profile with this name exists already.",
+        "profile_not_found": "Choose a mapping profile this entity may use.",
+        "location_not_found": "The location belongs to another entity.",
+        "device_name_taken": "This entity already has a clock with this name.",
+        "device_user_taken": "This ID is already mapped on this clock.",
+        "bulk_map_problems": "Nothing was saved. Fix these lines:",
+        "bulk_map_empty": "No lines to map.",
+        "bad_line": "expected: ID, employee code",
+        "employee_not_found": "no such employee code in this entity",
+        "duplicate_in_list": "this ID appears twice"
+      }
+    },
+    "policy": {
+      "hint": "Company practice the timesheet follows. A change starts a new version from its date; earlier days keep the version that was in force (until recomputed, locked months never change). Legal values — night hours, overtime multipliers and caps — are statutory parameters, not set here.",
+      "empty": "No policy yet: punches count to the minute, nothing is forgiven, overtime needs approval.",
+      "add": "Add a policy",
+      "appliesTo": "Applies to",
+      "everyEntity": "Every entity (group default)",
+      "inForce": "In force",
+      "save": "Save as a new version",
+      "saved": "Saved.",
+      "versionHint": "Saving with a later start date closes the current version the day before.",
+      "summary": "grace {late}′/{early}′ · rounding {rounding}′ · overtime from {ot}′",
+      "mergeRules": {
+        "first_in_last_out": "First in, last out across app and clock",
+        "prefer_device": "Clock first, app when the clock has nothing",
+        "prefer_app": "App first, clock when the app has nothing"
+      },
+      "fields": {
+        "validFrom": "From",
+        "mergeRule": "When both sources have punches",
+        "graceLateMinutes": "Grace, late (min)",
+        "graceEarlyMinutes": "Grace, early (min)",
+        "roundingMinutes": "Round punches to (min, 0 = none)",
+        "otMinMinutes": "Shortest overtime that counts (min)",
+        "duplicateWindowMinutes": "Punches this close are one (min)",
+        "monthlyCorrectionCap": "Correction requests per month (blank = no cap)",
+        "breakStart": "Unpaid break starts",
+        "dayBoundary": "A departure before this closes the day before",
+        "otRequiresApproval": "Overtime counts only with an approved request"
+      },
+      "errors": {
+        "generic": "Could not save. Please try again.",
+        "forbidden": "You may not change this policy.",
+        "invalid": "Check the fields.",
+        "attendance_policy_invalid": "Check the numbers.",
+        "attendance_policy_before_current": "The current version starts later than this date. Pick a later date."
+      }
+    },
+    "timesheet": {
+      "myMonth": "My month",
+      "monthOf": "Month of {name}",
+      "tapHint": "Tap a day to see how it was computed.",
+      "empty": "No timesheet days yet.",
+      "why": "How this day was computed",
+      "locked": "Locked",
+      "overtimeBadge": "OT {hours}",
+      "statuses": {
+        "present": "Present",
+        "partial": "Partly",
+        "absent": "Absent",
+        "leave": "Leave",
+        "holiday": "Holiday",
+        "day_off": "Day off",
+        "rest": "Rest day",
+        "untracked": "WFH (no punches)",
+        "remote": "Remote / off-site",
+        "unscheduled": "No schedule",
+        "in_progress": "Today"
+      },
+      "anomalies": {
+        "late": "Late",
+        "early": "Left early",
+        "missing_in": "No check-in",
+        "missing_out": "No check-out",
+        "absent": "Absent",
+        "short_hours": "Short hours",
+        "ot_unapproved": "Overtime not approved",
+        "worked_on_leave": "Punches on a leave day",
+        "worked_on_day_off": "Worked on a day off",
+        "no_schedule": "No schedule"
+      },
+      "fields": {
+        "required": "Required",
+        "worked": "Worked",
+        "credited": "Credited",
+        "late": "Late",
+        "early": "Early",
+        "absence": "Unaccounted",
+        "leavePaid": "Paid leave",
+        "leaveUnpaid": "Unpaid leave",
+        "holiday": "Paid day off",
+        "night": "Night hours",
+        "overtime": "Overtime",
+        "otUnapproved": "Extra, not approved"
+      },
+      "summary": {
+        "paidDays": "Paid days / standard",
+        "worked": "Worked",
+        "leave": "Leave",
+        "late": "Late (times · min)",
+        "early": "Early (times · min)",
+        "missing": "Missing punch days",
+        "absent": "Absent days",
+        "overtime": "Overtime"
+      },
+      "trace": {
+        "plan": "Plan",
+        "merge": "Punch sources",
+        "punches": "Punches",
+        "rounding": "Rounding",
+        "leave": "Leave",
+        "late": "Late",
+        "early": "Early",
+        "ot": "Overtime",
+        "untracked": "Untracked day",
+        "holiday": "Public holiday",
+        "company_off": "Company day off",
+        "compensatory_off": "Compensatory day off",
+        "remote": "Remote work",
+        "flexible": "Flexible hours",
+        "no_punches": "No punches",
+        "night_window": "Night hours",
+        "presence": "Presence"
+      },
+      "team": {
+        "title": "Team timesheet",
+        "description": "The month of the people whose attendance you look after. Click a name for the days and the explanation.",
+        "empty": "Nobody to show.",
+        "person": "Person",
+        "allDepartments": "All",
+        "columns": {
+          "paidDays": "Paid / std",
+          "late": "Late",
+          "missing": "Missing",
+          "absent": "Absent",
+          "overtime": "OT"
+        },
+        "legend": "✓ present · ½ partly · ✗ absent · P leave · L holiday · N day off · R remote · · WFH no punches · … today. A red ring = something to look at.",
+        "recompute": "Recompute",
+        "recomputeDone": "{written} days rewritten, {locked} locked days left alone.",
+        "recomputeFailed": "Could not recompute."
       }
     }
   },

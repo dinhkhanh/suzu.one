@@ -24,6 +24,8 @@ export const PARAMETERS = {
     .refine((brackets) => brackets.at(-1)?.upTo === null && brackets.slice(0, -1).every((bracket, index) => bracket.upTo !== null && (index === 0 || bracket.upTo > (brackets[index - 1].upTo ?? 0))), "brackets must ascend and end with an open bracket"),
   "pit.flat_rates": z.object({ nonResident: basisPoints, withoutContract: basisPoints, withoutContractThreshold: vnd }),
   "overtime.multipliers": z.object({ weekday: percent, restDay: percent, holiday: percent, nightPremium: percent, nightOvertimeExtra: percent }),
+  // Night work (night premium, night overtime): local clock times, the window runs past midnight.
+  "work.night_window": z.object({ start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), end: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/) }),
   "overtime.caps": z.object({ monthlyHours: count, yearlyHours: count, yearlyHoursExtended: count }),
   "leave.annual": z.object({ baseDays: count, yearsOfServicePerExtraDay: count }),
   "probation.limits": z.object({ managerDays: count, professionalDays: count, intermediateDays: count, otherDays: count, minimumPayPercent: percent }),

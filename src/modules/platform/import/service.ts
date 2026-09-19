@@ -15,15 +15,24 @@ const MAX_ROWS = 5000;
 const PREVIEW_ROWS = 50;
 const SHOWN_PROBLEMS = 200;
 
-export type ImportDefinition<C extends Columns> = {
+/** What was uploaded, for an import that reads its own format (a clock's `attlog.dat`). */
+export type UploadedFile = { name: string; extension: string; bytes: Buffer };
+
+export type ImportDefinition<C extends Columns, P = void> = {
   /** Also the audit resource type: "import:<kind>". */
   kind: string;
   columns: C;
-  authorize: (user: CurrentUser) => boolean | Promise<boolean>;
-  /** Checks that need the database: duplicates, references to things that must exist. */
-  validate?: (rows: ParsedRow<C>[], user: CurrentUser) => Promise<Problem[]>;
+  /** What is chosen beside the file (which device a log came from): the form's other fields. Kept with the batch. */
+  params?: z.ZodType<P>;
+  /** File types this import takes; default .xlsx and .csv. Anything else must be text and needs `readTable`. */
+  extensions?: readonly string[];
+  /** Turns the upload into a table whose first row carries this import's headers. Default: the sheet or CSV as it is. */
+  readTable?: (file: UploadedFile, params: P, user: CurrentUser) => Promise<{ table: Cell[][]; headerless?: boolean }>;
+  authorize: (user: CurrentUser, params: P | undefined) => boolean | Promise<boolean>;
+  /** Checks that need the database: duplicates, references to things that must exist. A problem with `severity: "warning"` is shown but does not stop the commit. */
+  validate?: (rows: ParsedRow<C>[], user: CurrentUser, params: P) => Promise<Problem[]>;
   /** Writes every row inside one transaction: an import lands completely or not at all. */
-  commit: (rows: ParsedRow<C>[], tx: Tx, user: CurrentUser) => Promise<Record<string, number>>;
+  commit: (rows: ParsedRow<C>[], tx: Tx, user: CurrentUser, params: P, batchId?: string) => Promise<Record<string, number>>;
   onCommitted?: () => void;
 };
 
@@ -32,6 +41,7 @@ export type StagedImport = {
   status: "invalid" | "ready";
   rowCount: number;
   problemCount: number;
+  warningCount: number;
   problems: Problem[];
   headers: string[];
   preview: { row: number; cells: string[] }[];
@@ -52,15 +62,24 @@ function transformSensitive<C extends Columns>(columns: C, rows: ParsedRow<C>[],
   });
 }
 
-async function readTable(file: File): Promise<Cell[][]> {
-  const fileName = cleanFileName(file.name);
-  const extension = fileName.split(".").pop()?.toLowerCase();
-  if (extension !== "xlsx" && extension !== "csv") throw new ActionError("import_file_type");
+const blocks = (problem: Problem) => problem.code !== "column_unknown" && problem.severity !== "warning";
+
+async function readUpload(file: File, extensions: readonly string[]): Promise<UploadedFile> {
+  const name = cleanFileName(file.name);
+  const extension = name.split(".").pop()?.toLowerCase() ?? "";
+  if (!extensions.includes(extension)) throw new ActionError("import_file_type");
   if (file.size === 0 || file.size > MAX_IMPORT_BYTES) throw new ActionError("import_file_size");
   const bytes = Buffer.from(await file.arrayBuffer());
-  if (!matchesSignature(fileName, bytes.subarray(0, 512))) throw new ActionError("import_file_type");
+  // Spreadsheets must look like their type; every other accepted type is text and may hold no NUL byte.
+  const genuine = extension === "xlsx" || extension === "csv" ? matchesSignature(name, bytes.subarray(0, 512)) : !bytes.subarray(0, 4096).includes(0);
+  if (!genuine) throw new ActionError("import_file_type");
+  return { name, extension, bytes };
+}
+
+/** The sheet or CSV as rows of cells. Exported for imports whose `readTable` starts from it. */
+export async function readSpreadsheet(file: UploadedFile): Promise<Cell[][]> {
   try {
-    return extension === "csv" ? parseCsv(bytes.toString("utf8")) : ((await readSheet(bytes)) as Cell[][]);
+    return file.extension === "xlsx" ? ((await readSheet(file.bytes)) as Cell[][]) : parseCsv(file.bytes.toString("utf8"));
   } catch {
     throw new ActionError("import_unreadable");
   }
@@ -71,33 +90,48 @@ async function readTable(file: File): Promise<Cell[][]> {
  * file: `stage` parses and checks an uploaded file and stores the result; `commit` applies a
  * staged batch that had no problems. Both run the usual pipeline (authorize, audit).
  */
-export function defineImport<C extends Columns>(definition: ImportDefinition<C>) {
+export function defineImport<C extends Columns, P = void>(definition: ImportDefinition<C, P>) {
   const headers = Object.values(definition.columns).map((column) => column.headers[0]);
+  const extensions = definition.extensions ?? ["xlsx", "csv"];
+  const paramsOf = (raw: unknown): P => (definition.params ? definition.params.parse(raw) : (undefined as P));
+  const formInput = z.instanceof(FormData).transform((form, context) => {
+    const file = form.get("file");
+    const fields = Object.fromEntries([...form.entries()].filter(([key, value]) => key !== "file" && typeof value === "string"));
+    const params = definition.params ? definition.params.safeParse(fields) : { success: true as const, data: undefined as P };
+    if (!(file instanceof File) || !params.success) {
+      context.addIssue({ code: "custom", message: "invalid", path: [file instanceof File ? "params" : "file"] });
+      return z.NEVER;
+    }
+    return { file, params: params.data };
+  });
 
   const stage = createAction({
     name: `import.${definition.kind}.stage`,
-    input: z.instanceof(FormData).transform((form) => form.get("file")).pipe(z.instanceof(File)),
-    authorize: (user) => definition.authorize(user),
-    run: async ({ user, input: file }) => {
-      const { rows, problems } = parseTable(await readTable(file), definition.columns);
+    input: formInput,
+    authorize: (user, input) => definition.authorize(user, input.params),
+    run: async ({ user, input: { file, params } }) => {
+      const upload = await readUpload(file, extensions);
+      const read = definition.readTable ? await definition.readTable(upload, params, user) : { table: await readSpreadsheet(upload) };
+      const { rows, problems } = parseTable(read.table, definition.columns, { headerless: read.headerless });
       if (rows.length > MAX_ROWS) throw new ActionError("import_too_many_rows");
       // Everything wrong is reported in one go, so the file is fixed once, not once per kind of mistake.
-      if (rows.length > 0 && definition.validate) problems.push(...(await definition.validate(rows, user)));
+      if (rows.length > 0 && definition.validate) problems.push(...(await definition.validate(rows, user, params)));
       problems.sort((a, b) => a.row - b.row);
-      const blocking = problems.filter((problem) => problem.code !== "column_unknown");
+      const blocking = problems.filter(blocks);
       const status = blocking.length > 0 || rows.length === 0 ? "invalid" : "ready";
 
       const batchId = randomUUID();
       const stored = transformSensitive(definition.columns, rows, (value, field) => fieldCipher().encrypt(value, cellContext(batchId, field)));
       const [batch] = await db()
         .insert(schema.importBatch)
-        .values({ id: batchId, kind: definition.kind, fileName: cleanFileName(file.name), status, rowCount: rows.length, rows: stored, problems, createdByPersonId: user.person.id })
+        .values({ id: batchId, kind: definition.kind, fileName: upload.name, status, rowCount: rows.length, rows: stored, problems, params: params ?? null, createdByPersonId: user.person.id })
         .returning({ id: schema.importBatch.id });
       const data: StagedImport = {
         batchId: batch.id,
         status,
         rowCount: rows.length,
         problemCount: blocking.length,
+        warningCount: problems.filter((problem) => problem.severity === "warning").length,
         problems: problems.slice(0, SHOWN_PROBLEMS),
         headers,
         preview: rows.slice(0, PREVIEW_ROWS).map(({ row, values }) => ({ row, cells: Object.entries(definition.columns).map(([field, column]) => {
@@ -105,14 +139,15 @@ export function defineImport<C extends Columns>(definition: ImportDefinition<C>)
           return column.sensitive && value !== "" ? MASK : String(value);
         }) })),
       };
-      return { data, audit: { resource: { type: `import:${definition.kind}`, id: batch.id }, summary: `${cleanFileName(file.name)}: ${rows.length} rows, ${blocking.length} problems` } };
+      return { data, audit: { resource: { type: `import:${definition.kind}`, id: batch.id }, summary: `${upload.name}: ${rows.length} rows, ${blocking.length} problems` } };
     },
   });
 
   const commit = createAction({
     name: `import.${definition.kind}.commit`,
     input: z.object({ batchId: z.uuid() }),
-    authorize: (user) => definition.authorize(user),
+    // Whether this person may commit *this* batch is decided below, against the batch's own parameters.
+    authorize: (user) => definition.authorize(user, undefined),
     run: async ({ user, input }) => {
       const batches = schema.importBatch;
       const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -125,10 +160,12 @@ export function defineImport<C extends Columns>(definition: ImportDefinition<C>)
           .limit(1)
           .for("update");
         if (!batch) throw new ActionError("import_batch_not_found");
+        const params = paramsOf(batch.params);
+        if (definition.params && !(await definition.authorize(user, params))) throw new ActionError("import_batch_not_found");
         const rows = transformSensitive(definition.columns, batch.rows as ParsedRow<C>[], (value, field) => fieldCipher().decrypt(value, cellContext(batch.id, field)));
         // The database may have moved on since the preview.
-        if (definition.validate && (await definition.validate(rows, user)).length > 0) throw new ActionError("import_stale");
-        const counts = await definition.commit(rows, tx as Tx, user);
+        if (definition.validate && (await definition.validate(rows, user, params)).some(blocks)) throw new ActionError("import_stale");
+        const counts = await definition.commit(rows, tx as Tx, user, params, batch.id);
         await tx.update(batches).set({ status: "committed", committedAt: new Date(), result: counts }).where(eq(batches.id, batch.id));
         return { fileName: batch.fileName, counts };
       });

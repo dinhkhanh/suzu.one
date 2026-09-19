@@ -6,6 +6,7 @@ import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import { canAssignSchedule, canManageAttendanceConfig } from "./policy";
+import { requestScopeRecompute, requestTimesheetRecompute } from "./recompute";
 import { assignSchedule, confirmCalendarDay, deleteCalendarDay, getAssignment, getCalendarDay, getSchedule, getShift, removeAssignment, saveCalendarDay, saveSchedule, saveShift, setRoster } from "./schedules";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -34,6 +35,8 @@ const saveDayPipeline = createAction({
   authorize: (user, input) => canManageAttendanceConfig(user.principal, input.entityId),
   run: async ({ input }) => {
     const { before, after } = await saveCalendarDay(input);
+    // The timesheet days the change touches (FR-ATT-09). Wide changes wait for the nightly job.
+    await requestScopeRecompute({ entityId: after.entityId }, after.date);
     refresh();
     return { data: { id: after.id }, audit: { resource: { type: "calendar_day", id: after.id, entityId: after.entityId }, summary: `${after.date} ${after.kind}: ${after.name}`, before: before ? { kind: before.kind, name: before.name, isConfirmed: before.isConfirmed } : null, after: { kind: after.kind, name: after.name, isConfirmed: true } } };
   },
@@ -67,6 +70,7 @@ const deleteDayPipeline = createAction({
   authorize: (user, input) => dayById(user, input.id),
   run: async ({ input }) => {
     const row = await deleteCalendarDay(input.id);
+    await requestScopeRecompute({ entityId: row.entityId }, row.date);
     refresh();
     return { data: { id: row.id }, audit: { resource: { type: "calendar_day", id: row.id, entityId: row.entityId }, summary: `${row.date} removed: ${row.name}`, before: { kind: row.kind, name: row.name } } };
   },
@@ -101,6 +105,7 @@ const saveShiftPipeline = createAction({
     if (!!input.start2 !== !!input.end2) throw new ActionError("pattern_bad_time");
     const segments = [{ start: input.start, end: input.end }, ...(input.start2 && input.end2 ? [{ start: input.start2, end: input.end2 }] : [])];
     const { before, after } = await saveShift({ id: input.id, entityId: input.entityId, code: input.code, name: input.name, segments, breakMinutes: input.breakMinutes, isActive: input.isActive });
+    if (before) await requestScopeRecompute({ entityId: after.entityId }, "0000-01-01");
     refresh();
     const facts = (row: typeof after) => ({ code: row.code, name: row.name, segments: row.segments, breakMinutes: row.breakMinutes, isActive: row.isActive });
     return { data: { id: after.id }, audit: { resource: { type: "shift", id: after.id, entityId: after.entityId }, summary: `${after.code} ${after.name}`, before: before ? facts(before) : null, after: facts(after) } };
@@ -133,6 +138,7 @@ const saveSchedulePipeline = createAction({
   },
   run: async ({ input }) => {
     const { before, after } = await saveSchedule(input);
+    if (before) await requestScopeRecompute({ entityId: after.entityId }, "0000-01-01");
     refresh();
     const facts = (row: typeof after) => ({ name: row.name, kind: row.kind, pattern: row.pattern, isDefault: row.isDefault, isActive: row.isActive });
     return { data: { id: after.id }, audit: { resource: { type: "work_schedule", id: after.id, entityId: after.entityId }, summary: after.name, before: before ? facts(before) : null, after: facts(after) } };
@@ -152,6 +158,8 @@ const assignPipeline = createAction({
     // Only the columns of the chosen scope count, whatever else the form posted.
     const scoped = { ...input, entityId: input.scope === "person" ? null : input.entityId, departmentId: input.scope === "department" ? input.departmentId : null, personId: input.scope === "person" ? input.personId : null };
     const { assignment, closed } = await assignSchedule(scoped, user.person.id);
+    if (assignment.personId) await requestTimesheetRecompute([assignment.personId], assignment.validFrom, assignment.validTo ?? "9999-12-31");
+    else await requestScopeRecompute({ entityId: assignment.entityId, departmentId: assignment.departmentId }, assignment.validFrom);
     refresh();
     return { data: { id: assignment.id }, audit: { resource: { type: "schedule_assignment", id: assignment.id, entityId: assignment.entityId }, summary: `${assignment.scope} → schedule ${assignment.scheduleId} from ${assignment.validFrom}`, before: closed ? { closedAssignmentId: closed.id, validTo: closed.validTo } : null, after: scoped } };
   },
@@ -169,6 +177,8 @@ const removeAssignmentPipeline = createAction({
   },
   run: async ({ input }) => {
     const row = await removeAssignment(input.id);
+    if (row.personId) await requestTimesheetRecompute([row.personId], row.validFrom, row.validTo ?? "9999-12-31");
+    else await requestScopeRecompute({ entityId: row.entityId, departmentId: row.departmentId }, row.validFrom);
     refresh();
     return { data: { id: row.id }, audit: { resource: { type: "schedule_assignment", id: row.id, entityId: row.entityId }, summary: `${row.scope} assignment removed`, before: { scheduleId: row.scheduleId, personId: row.personId, departmentId: row.departmentId, validFrom: row.validFrom, validTo: row.validTo } } };
   },
@@ -185,6 +195,7 @@ const rosterPipeline = createAction({
   authorize: async (user, input) => canAssignSchedule(user.principal, { scope: "person", entityId: null, departmentId: null }, await getPersonTarget(input.personId)),
   run: async ({ input }) => {
     const { dates } = await setRoster(input);
+    await requestTimesheetRecompute([input.personId], input.from, input.to);
     refresh();
     const target = await getPersonTarget(input.personId);
     return { data: { dates }, audit: { resource: { type: "person", id: input.personId, entityId: target?.entityId ?? null }, summary: `roster ${input.from} → ${input.to}: ${input.shiftId}`, after: { shiftId: input.shiftId, dates } } };

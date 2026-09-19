@@ -27,6 +27,7 @@ export const STATUTORY_SEED: Seed[] = [
   },
   { key: "pit.flat_rates", validFrom: "2026-01-01", value: { nonResident: 2000, withoutContract: 1000, withoutContractThreshold: 2_000_000 }, legalReference: "Luật Thuế TNCN", note: "Verify the current per-payment threshold for the 10% withholding." },
   { key: "overtime.multipliers", validFrom: "2021-01-01", value: { weekday: 150, restDay: 200, holiday: 300, nightPremium: 30, nightOvertimeExtra: 20 }, legalReference: "Bộ luật Lao động 2019, Điều 98" },
+  { key: "work.night_window", validFrom: "2021-01-01", value: { start: "22:00", end: "06:00" }, legalReference: "Bộ luật Lao động 2019, Điều 106" },
   { key: "overtime.caps", validFrom: "2021-01-01", value: { monthlyHours: 40, yearlyHours: 200, yearlyHoursExtended: 300 }, legalReference: "Bộ luật Lao động 2019, Điều 107" },
   { key: "leave.annual", validFrom: "2021-01-01", value: { baseDays: 12, yearsOfServicePerExtraDay: 5 }, legalReference: "Bộ luật Lao động 2019, Điều 113–114" },
   { key: "probation.limits", validFrom: "2021-01-01", value: { managerDays: 180, professionalDays: 60, intermediateDays: 30, otherDays: 6, minimumPayPercent: 85 }, legalReference: "Bộ luật Lao động 2019, Điều 25–26" },

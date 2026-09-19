@@ -5,7 +5,7 @@ import { toSearchKey } from "@/lib/text";
 export type Cell = string | number | boolean | Date | null | undefined;
 
 /** A problem with one cell, as a message key (`imports.problems.<code>`) and what it is about. */
-export type Problem = { row: number; column: string | null; code: string };
+export type Problem = { row: number; column: string | null; code: string; /** "warning": shown, but the batch may still be committed. */ severity?: "warning"; /** What the message is about, e.g. the unmapped device ID. */ detail?: string };
 
 export type CellResult<Value> = { ok: true; value: Value } | { ok: false; code: string };
 
@@ -32,7 +32,8 @@ function cellText(cell: Cell): string {
   return String(cell).trim();
 }
 
-export function parseTable<C extends Columns>(table: readonly (readonly Cell[])[], columns: C): { rows: ParsedRow<C>[]; problems: Problem[] } {
+/** `headerless`: the header row was added by the reader (a clock's log has none), so the file's first line is row 1. */
+export function parseTable<C extends Columns>(table: readonly (readonly Cell[])[], columns: C, options: { headerless?: boolean } = {}): { rows: ParsedRow<C>[]; problems: Problem[] } {
   const problems: Problem[] = [];
   const [header = [], ...body] = table;
 
@@ -57,7 +58,7 @@ export function parseTable<C extends Columns>(table: readonly (readonly Cell[])[
   const rows: ParsedRow<C>[] = [];
   body.forEach((cells, offset) => {
     if (cells.every((cell) => cellText(cell) === "")) return;
-    const row = offset + 2; // as shown in the spreadsheet: 1-based, after the header
+    const row = offset + (options.headerless ? 1 : 2); // as shown in the spreadsheet: 1-based, after the header
     const values: Record<string, unknown> = {};
     for (const [field, column] of Object.entries(columns)) {
       const index = position.get(field);

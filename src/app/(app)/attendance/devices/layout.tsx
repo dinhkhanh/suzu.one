@@ -5,11 +5,11 @@ import type { ReactNode } from "react";
 import { canOpenAttendanceSettings } from "@/modules/attendance/policy";
 import { requireUser } from "@/modules/platform/auth/session";
 
-// HR's attendance configuration. Every page and action checks again what the viewer may change.
-export default async function AttendanceSettingsLayout({ children }: { children: ReactNode }) {
+// Time clocks and their logs (FR-ATT-06). HR only; every page and action checks the entity again.
+export default async function DevicesLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
   if (!canOpenAttendanceSettings(user.principal)) notFound();
-  const t = await getTranslations("attendance.settings");
+  const t = await getTranslations("attendance.devices");
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <header>
@@ -17,14 +17,11 @@ export default async function AttendanceSettingsLayout({ children }: { children:
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
       <nav className="flex flex-wrap gap-4 border-b pb-2 text-sm">
-        {(["calendar", "schedules", "shifts", "locations", "policy"] as const).map((tab) => (
-          <Link key={tab} href={`/attendance/settings/${tab}`} className="underline-offset-4 hover:underline">
+        {(["devices", "import", "profiles"] as const).map((tab) => (
+          <Link key={tab} href={tab === "devices" ? "/attendance/devices" : `/attendance/devices/${tab}`} className="underline-offset-4 hover:underline">
             {t(`tabs.${tab}`)}
           </Link>
         ))}
-        <Link href="/attendance/devices" className="underline-offset-4 hover:underline">
-          {t("tabs.devices")}
-        </Link>
       </nav>
       {children}
     </div>

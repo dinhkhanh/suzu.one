@@ -709,7 +709,8 @@
       "leave_annual": "Phép năm",
       "probation_limits": "Thử việc",
       "contract_fixed_term": "Hợp đồng xác định thời hạn",
-      "hr_alert_thresholds": "Số ngày nhắc trước các hạn nhân sự"
+      "hr_alert_thresholds": "Số ngày nhắc trước các hạn nhân sự",
+      "work_night_window": "Giờ làm việc ban đêm"
     },
     "errors": {
       "parameter_unknown": "Tham số không tồn tại.",
@@ -760,7 +761,11 @@
       "created": "người được thêm",
       "updated": "Cập nhật",
       "withRestricted": "có thông tin hạn chế",
-      "managersLinked": "liên kết quản lý trong tệp"
+      "managersLinked": "liên kết quản lý trong tệp",
+      "punches": "lượt chấm mới",
+      "skipped": "dòng đã nhập trước đó hoặc lặp lại",
+      "unmapped": "dòng chờ gán mã",
+      "people": "người"
     },
     "problems": {
       "column_missing": "Thiếu cột bắt buộc này",
@@ -795,7 +800,10 @@
       "leave_type_not_found": "Không có loại phép mang mã này",
       "leave_type_keeps_no_balance": "Loại phép này không theo dõi số dư",
       "as_of_outside_year": "Ngày phải nằm trong năm đã ghi",
-      "opening_exists": "Người này đã có số dư đầu kỳ cho loại phép và năm này"
+      "opening_exists": "Người này đã có số dư đầu kỳ cho loại phép và năm này",
+      "bad_timestamp": "Thời điểm không đúng định dạng của hồ sơ ánh xạ",
+      "timestamp_in_future": "Thời điểm ở tương lai — sai đồng hồ máy hay sai tệp?",
+      "device_user_unmapped": "Chưa gán mã này cho ai; các dòng được giữ lại và thành lượt chấm khi gán mã"
     },
     "errors": {
       "import_file_type": "Chỉ nhận file .xlsx hoặc .csv.",
@@ -806,8 +814,10 @@
       "import_stale": "Dữ liệu hệ thống đã thay đổi từ lúc kiểm tra. Hãy kiểm tra lại file.",
       "forbidden": "Bạn không có quyền thực hiện thao tác này.",
       "invalid": "Vui lòng chọn một file.",
-      "generic": "Có lỗi xảy ra. Vui lòng thử lại."
-    }
+      "generic": "Có lỗi xảy ra. Vui lòng thử lại.",
+      "profile_not_found": "Máy chấm công chưa có hồ sơ ánh xạ dùng được."
+    },
+    "warnings": "{count} cảnh báo (không chặn việc nhập)"
   },
   "errors": {
     "title": "Đã có lỗi xảy ra",
@@ -1343,7 +1353,9 @@
         "calendar": "Lịch làm việc",
         "schedules": "Lịch làm việc theo tuần",
         "shifts": "Ca & phân ca",
-        "locations": "Địa điểm làm việc"
+        "locations": "Địa điểm làm việc",
+        "policy": "Quy định",
+        "devices": "Máy chấm công"
       },
       "appliesTo": "Áp dụng cho",
       "everyEntity": "Mọi pháp nhân",
@@ -1612,6 +1624,249 @@
         "punch_not_pending": "Lần chấm công này đã được xem xét.",
         "punch_own": "Bạn không thể tự xem xét lần chấm công của mình.",
         "punch_review_note_required": "Hãy nêu lý do từ chối."
+      }
+    },
+    "devices": {
+      "title": "Máy chấm công",
+      "description": "Máy vân tay / thẻ, cách đọc tệp xuất, mã nào của ai và nhập nhật ký chấm công.",
+      "tabs": {
+        "devices": "Máy",
+        "import": "Nhập nhật ký",
+        "profiles": "Hồ sơ ánh xạ"
+      },
+      "appliesTo": "Áp dụng cho",
+      "everyEntity": "Mọi pháp nhân",
+      "active": "Đang dùng",
+      "inactive": "Ngừng dùng",
+      "save": "Lưu",
+      "saved": "Đã lưu.",
+      "device": {
+        "name": "Tên",
+        "entity": "Pháp nhân",
+        "profile": "Hồ sơ ánh xạ",
+        "model": "Dòng máy",
+        "serialNumber": "Số sê-ri",
+        "location": "Đặt tại",
+        "empty": "Chưa có máy nào.",
+        "add": "Thêm máy",
+        "edit": "Sửa",
+        "mapped": "{count} mã đã gán",
+        "unmapped": "{count} mã chưa gán người",
+        "lastPunch": "lượt chấm gần nhất {at}",
+        "noPunches": "chưa có lượt chấm"
+      },
+      "profile": {
+        "hint": "Hồ sơ mô tả tệp xuất của một dòng máy: cột nào là mã người dùng, thời điểm và mã vào/ra. Tìm cột theo tiêu đề, hoặc theo vị trí khi tệp không có dòng tiêu đề (ZKTeco attlog.dat).",
+        "add": "Thêm hồ sơ",
+        "groupOnly": "Dùng chung cho mọi pháp nhân; chỉ nhân sự tập đoàn được sửa.",
+        "name": "Tên",
+        "deviceModel": "Dòng máy",
+        "fileKind": "Loại tệp",
+        "fileKinds": {
+          "csv": "CSV",
+          "xlsx": "Excel",
+          "dat": "DAT / văn bản"
+        },
+        "hasHeader": "Dòng đầu là tên cột",
+        "columnsHint": "Với mỗi cột, nhập tiêu đề hoặc vị trí (tính từ 1).",
+        "position": "Vị trí",
+        "userIdHeader": "Cột mã người dùng",
+        "timestampHeader": "Cột ngày giờ",
+        "timeHeader": "Cột giờ riêng (nếu có)",
+        "directionHeader": "Cột vào/ra (nếu có)",
+        "timestampFormat": "Định dạng thời điểm (YYYY MM DD HH mm ss)",
+        "directionCodes": "Mã vào/ra, ví dụ 0=in, 1=out",
+        "inferDirection": "Không có mã thì các lượt trong ngày lần lượt là vào, ra, vào…"
+      },
+      "map": {
+        "title": "{count, plural, =0 {Chưa gán mã nào} other {# mã đã gán}}",
+        "empty": "Gán từng mã trên máy cho một người trước khi nhập.",
+        "deviceUserId": "Mã trên máy",
+        "person": "Nhân sự",
+        "personFor": "Mã {id} là ai?",
+        "save": "Gán",
+        "remove": "Gỡ",
+        "removeConfirm": "Gỡ mã này? Các lượt chấm đã nhập vẫn giữ nguyên.",
+        "unmappedTitle": "{count} mã chưa gán cho ai",
+        "unmappedHint": "Các dòng nhật ký được giữ lại. Gán mã là chúng thành lượt chấm ngay.",
+        "lines": "{count} dòng",
+        "export": "Tải các dòng (CSV)",
+        "exportTruncated": "Tệp chỉ chứa 5.000 dòng đầu.",
+        "bulkTitle": "Gán nhiều mã theo mã nhân viên",
+        "bulkHint": "Mỗi dòng: mã trên máy, mã nhân viên. Chỉ lưu khi mọi dòng đều đúng.",
+        "bulkSave": "Gán tất cả",
+        "line": "Dòng {line}"
+      },
+      "import": {
+        "description": "Tải lên tệp xuất thô của máy chấm công. Bạn thấy mọi lỗi và những gì sẽ được ghi trước khi lưu.",
+        "notes": {
+          "idempotent": "Nhập lại tệp trùng khoảng thời gian chỉ thêm những dòng mới.",
+          "unmapped": "Dòng của mã chưa gán không chặn việc nhập; chúng chờ đến khi mã được gán.",
+          "recompute": "Các ngày công liên quan được tính lại ngay (tháng đã khóa giữ nguyên)."
+        },
+        "wizard": "Nhập nhật ký máy chấm công",
+        "device": "Máy",
+        "noDevice": "Hãy thêm máy trước:",
+        "history": "Các lần nhập gần đây",
+        "historyEmpty": "Chưa nhập lần nào.",
+        "statuses": {
+          "invalid": "Có lỗi",
+          "ready": "Đã kiểm tra, chưa ghi",
+          "committed": "Đã ghi"
+        },
+        "result": "{punches} mới · {skipped} bỏ qua · {unmapped} chờ gán",
+        "rows": "{count} dòng"
+      },
+      "errors": {
+        "generic": "Không lưu được. Vui lòng thử lại.",
+        "forbidden": "Bạn không được thay đổi mục này.",
+        "invalid": "Kiểm tra lại các trường.",
+        "not_found": "Không tìm thấy.",
+        "mapping_user_column": "Cho biết cột nào là mã người dùng.",
+        "mapping_time_column": "Cho biết cột nào là ngày giờ.",
+        "mapping_format": "Định dạng thời điểm cần có YYYY, MM, DD, HH và mm.",
+        "profile_name_taken": "Đã có hồ sơ trùng tên.",
+        "profile_not_found": "Chọn hồ sơ ánh xạ mà pháp nhân này được dùng.",
+        "location_not_found": "Địa điểm thuộc pháp nhân khác.",
+        "device_name_taken": "Pháp nhân này đã có máy trùng tên.",
+        "device_user_taken": "Mã này đã được gán trên máy này.",
+        "bulk_map_problems": "Chưa lưu gì. Hãy sửa các dòng sau:",
+        "bulk_map_empty": "Không có dòng nào để gán.",
+        "bad_line": "cần: mã trên máy, mã nhân viên",
+        "employee_not_found": "không có mã nhân viên này trong pháp nhân",
+        "duplicate_in_list": "mã này xuất hiện hai lần"
+      }
+    },
+    "policy": {
+      "hint": "Quy định nội bộ mà bảng công tuân theo. Mỗi thay đổi tạo một phiên bản mới từ ngày hiệu lực; các ngày trước giữ phiên bản cũ (tháng đã khóa không bao giờ đổi). Các giá trị theo luật — giờ làm đêm, hệ số và giới hạn làm thêm — là tham số pháp định, không đặt ở đây.",
+      "empty": "Chưa có quy định: tính đến từng phút, không châm chước, làm thêm phải được duyệt.",
+      "add": "Thêm quy định",
+      "appliesTo": "Áp dụng cho",
+      "everyEntity": "Mọi pháp nhân (mặc định tập đoàn)",
+      "inForce": "Đang hiệu lực",
+      "save": "Lưu thành phiên bản mới",
+      "saved": "Đã lưu.",
+      "versionHint": "Lưu với ngày bắt đầu muộn hơn sẽ đóng phiên bản hiện tại vào ngày liền trước.",
+      "summary": "châm chước {late}′/{early}′ · làm tròn {rounding}′ · làm thêm từ {ot}′",
+      "mergeRules": {
+        "first_in_last_out": "Vào sớm nhất, ra muộn nhất giữa app và máy",
+        "prefer_device": "Ưu tiên máy, dùng app khi máy không có",
+        "prefer_app": "Ưu tiên app, dùng máy khi app không có"
+      },
+      "fields": {
+        "validFrom": "Từ ngày",
+        "mergeRule": "Khi cả hai nguồn đều có lượt chấm",
+        "graceLateMinutes": "Châm chước đi muộn (phút)",
+        "graceEarlyMinutes": "Châm chước về sớm (phút)",
+        "roundingMinutes": "Làm tròn lượt chấm (phút, 0 = không)",
+        "otMinMinutes": "Làm thêm tối thiểu được tính (phút)",
+        "duplicateWindowMinutes": "Hai lượt gần nhau coi là một (phút)",
+        "monthlyCorrectionCap": "Số đơn bổ sung công mỗi tháng (trống = không giới hạn)",
+        "breakStart": "Giờ nghỉ không lương bắt đầu",
+        "dayBoundary": "Lượt ra trước giờ này tính cho ngày hôm trước",
+        "otRequiresApproval": "Làm thêm chỉ tính khi có đơn được duyệt"
+      },
+      "errors": {
+        "generic": "Không lưu được. Vui lòng thử lại.",
+        "forbidden": "Bạn không được thay đổi quy định này.",
+        "invalid": "Kiểm tra lại các trường.",
+        "attendance_policy_invalid": "Kiểm tra lại các con số.",
+        "attendance_policy_before_current": "Phiên bản hiện tại bắt đầu sau ngày này. Hãy chọn ngày muộn hơn."
+      }
+    },
+    "timesheet": {
+      "myMonth": "Tháng của tôi",
+      "monthOf": "Bảng công của {name}",
+      "tapHint": "Chạm vào một ngày để xem cách tính.",
+      "empty": "Chưa có ngày công nào.",
+      "why": "Ngày này được tính thế nào",
+      "locked": "Đã khóa",
+      "overtimeBadge": "Làm thêm {hours}",
+      "statuses": {
+        "present": "Đủ công",
+        "partial": "Một phần",
+        "absent": "Vắng",
+        "leave": "Nghỉ phép",
+        "holiday": "Nghỉ lễ",
+        "day_off": "Ngày nghỉ",
+        "rest": "Nghỉ tuần",
+        "untracked": "WFH (không chấm)",
+        "remote": "Từ xa / ngoài văn phòng",
+        "unscheduled": "Chưa có lịch",
+        "in_progress": "Hôm nay"
+      },
+      "anomalies": {
+        "late": "Đi muộn",
+        "early": "Về sớm",
+        "missing_in": "Thiếu lượt vào",
+        "missing_out": "Thiếu lượt ra",
+        "absent": "Vắng",
+        "short_hours": "Thiếu giờ",
+        "ot_unapproved": "Làm thêm chưa duyệt",
+        "worked_on_leave": "Có chấm công trong ngày phép",
+        "worked_on_day_off": "Làm vào ngày nghỉ",
+        "no_schedule": "Chưa có lịch"
+      },
+      "fields": {
+        "required": "Phải làm",
+        "worked": "Đã làm",
+        "credited": "Được tính công",
+        "late": "Đi muộn",
+        "early": "Về sớm",
+        "absence": "Chưa giải trình",
+        "leavePaid": "Phép có lương",
+        "leaveUnpaid": "Nghỉ không lương",
+        "holiday": "Nghỉ hưởng lương",
+        "night": "Giờ đêm",
+        "overtime": "Làm thêm",
+        "otUnapproved": "Ngoài giờ chưa duyệt"
+      },
+      "summary": {
+        "paidDays": "Công hưởng lương / chuẩn",
+        "worked": "Đã làm",
+        "leave": "Nghỉ phép",
+        "late": "Đi muộn (lần · phút)",
+        "early": "Về sớm (lần · phút)",
+        "missing": "Ngày thiếu lượt chấm",
+        "absent": "Ngày vắng",
+        "overtime": "Làm thêm"
+      },
+      "trace": {
+        "plan": "Lịch",
+        "merge": "Nguồn chấm công",
+        "punches": "Lượt chấm",
+        "rounding": "Làm tròn",
+        "leave": "Nghỉ phép",
+        "late": "Đi muộn",
+        "early": "Về sớm",
+        "ot": "Làm thêm",
+        "untracked": "Ngày không chấm công",
+        "holiday": "Ngày lễ",
+        "company_off": "Ngày nghỉ của công ty",
+        "compensatory_off": "Ngày nghỉ bù",
+        "remote": "Làm từ xa",
+        "flexible": "Giờ linh hoạt",
+        "no_punches": "Không có lượt chấm",
+        "night_window": "Giờ đêm",
+        "presence": "Thời gian có mặt"
+      },
+      "team": {
+        "title": "Bảng công của nhóm",
+        "description": "Tháng của những người bạn phụ trách chấm công. Bấm vào tên để xem từng ngày và cách tính.",
+        "empty": "Không có ai để hiển thị.",
+        "person": "Nhân sự",
+        "allDepartments": "Tất cả",
+        "columns": {
+          "paidDays": "Công / chuẩn",
+          "late": "Muộn",
+          "missing": "Thiếu",
+          "absent": "Vắng",
+          "overtime": "Làm thêm"
+        },
+        "legend": "✓ đủ công · ½ một phần · ✗ vắng · P phép · L lễ · N ngày nghỉ · R từ xa · · WFH không chấm · … hôm nay. Viền đỏ = cần xem.",
+        "recompute": "Tính lại",
+        "recomputeDone": "Đã ghi lại {written} ngày, giữ nguyên {locked} ngày đã khóa.",
+        "recomputeFailed": "Không tính lại được."
       }
     }
   },

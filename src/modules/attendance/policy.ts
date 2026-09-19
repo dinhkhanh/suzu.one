@@ -1,6 +1,6 @@
 // Who may change attendance configuration. Pure. Everything here is `attendance:manage` (HR);
 // what differs is where the thing being changed sits.
-import { can, type Principal, type Target } from "@/modules/platform/rbac/policy";
+import { can, canReadTier, type Principal, type Target } from "@/modules/platform/rbac/policy";
 
 /** Sees the attendance settings at all: holds `attendance:manage` somewhere. */
 export const canOpenAttendanceSettings = (principal: Principal): boolean => can(principal, "attendance:manage");
@@ -35,3 +35,14 @@ export const canSeePunchDetailOf = (principal: Principal, person: PersonTarget):
 /** Accepting or rejecting a flagged check-in: the line manager or HR — never the person themselves. */
 export const canReviewPunchOf = (principal: Principal, person: PersonTarget): boolean =>
   principal.personId !== person.personId && ((!!principal.personId && person.managerId === principal.personId) || can(principal, "attendance:manage", person));
+
+/**
+ * A person's timesheet (hours, lateness, absences — no positions) is personal-tier: the person,
+ * whoever reads their personal tier (line manager, department head, HR) and the HR who keep their
+ * attendance. Colleagues never.
+ */
+export const canSeeTimesheetOf = (principal: Principal, person: PersonTarget): boolean =>
+  principal.personId === person.personId || canReadTier(principal, person, "personal") || can(principal, "attendance:manage", person);
+
+/** Recomputing on demand, device logs and the ID map: HR over the entity. */
+export const canManageDevices = (principal: Principal, entityId: string): boolean => can(principal, "attendance:manage", { entityId });

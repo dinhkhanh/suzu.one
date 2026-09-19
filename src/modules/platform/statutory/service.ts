@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import type { IsoDate } from "@/lib/dates";
-import { db, schema } from "@/lib/db";
+import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../notifications/service";
 import { listOwnerPersonIds } from "../rbac/service";
 import { isParameterKey, type ParameterKey, PARAMETERS, type ParameterValue } from "./catalogue";
@@ -14,8 +14,8 @@ export type ParameterRow = typeof schema.statutoryParameter.$inferSelect;
  * The approved value of `key` in force on `date`. Engines never call this: their callers load the
  * parameters for the period and pass them in, so the engines stay pure.
  */
-export async function getParameter<Key extends ParameterKey>(key: Key, date: IsoDate): Promise<ParameterValue<Key>> {
-  const approved = await db().select().from(schema.statutoryParameter).where(and(eq(schema.statutoryParameter.key, key), eq(schema.statutoryParameter.status, "approved")));
+export async function getParameter<Key extends ParameterKey>(key: Key, date: IsoDate, executor: Tx | ReturnType<typeof db> = db()): Promise<ParameterValue<Key>> {
+  const approved = await executor.select().from(schema.statutoryParameter).where(and(eq(schema.statutoryParameter.key, key), eq(schema.statutoryParameter.status, "approved")));
   const version = versionOn(approved, date);
   if (!version) throw new Error(`No approved statutory parameter "${key}" on ${date}`);
   return PARAMETERS[key].parse(version.value) as ParameterValue<Key>;
