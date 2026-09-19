@@ -3,6 +3,7 @@
 // whole directory is a few columns of at most a thousand rows (NFR-PRF-05) — walking it in memory
 // is simpler, and testable, where a recursive query per person would not be.
 import "server-only";
+import { eq } from "drizzle-orm";
 import { db, schema, type Tx } from "@/lib/db";
 import { chainAbove, type PersonContext } from "./policy";
 
@@ -21,3 +22,9 @@ export async function loadDirectory(executor: Executor = db()): Promise<Director
 
 /** Everyone below `managerId`, at any depth. */
 export const reportsBelow = (directory: Directory, managerId: string): DirectoryPerson[] => [...directory.values()].filter((person) => person.chainAbove.includes(managerId));
+
+/** Does anyone report to this person? Decides whether the team tab is worth showing — navigation only. */
+export async function hasReports(personId: string, executor: Executor = db()): Promise<boolean> {
+  const [row] = await executor.select({ id: schema.person.id }).from(schema.person).where(eq(schema.person.managerId, personId)).limit(1);
+  return !!row;
+}

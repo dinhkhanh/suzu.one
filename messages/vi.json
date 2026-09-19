@@ -844,7 +844,9 @@
       "punches": "lượt chấm mới",
       "skipped": "dòng đã nhập trước đó hoặc lặp lại",
       "unmapped": "dòng chờ gán mã",
-      "people": "người"
+      "people": "người",
+      "saved": "đã lưu",
+      "unchanged": "không đổi"
     },
     "problems": {
       "column_missing": "Thiếu cột bắt buộc này",
@@ -882,7 +884,14 @@
       "opening_exists": "Người này đã có số dư đầu kỳ cho loại phép và năm này",
       "bad_timestamp": "Thời điểm không đúng định dạng của hồ sơ ánh xạ",
       "timestamp_in_future": "Thời điểm ở tương lai — sai đồng hồ máy hay sai tệp?",
-      "device_user_unmapped": "Chưa gán mã này cho ai; các dòng được giữ lại và thành lượt chấm khi gán mã"
+      "device_user_unmapped": "Chưa gán mã này cho ai; các dòng được giữ lại và thành lượt chấm khi gán mã",
+      "bad_kpi_period": "Kỳ phải là YYYY-MM hoặc YYYY-Qn",
+      "bad_kpi_value": "Số thực đạt không hợp lệ",
+      "kpi_unknown": "Không có KPI mang mã này",
+      "kpi_period_must_be_month": "KPI tháng: kỳ phải là YYYY-MM",
+      "kpi_period_must_be_quarter": "KPI quý: kỳ phải là YYYY-Qn",
+      "kpi_not_assigned": "Người này không được gán KPI đó trong kỳ",
+      "kpi_month_closed": "Tháng đã chốt"
     },
     "errors": {
       "import_file_type": "Chỉ nhận file .xlsx hoặc .csv.",
@@ -3504,7 +3513,11 @@
     "hiddenChildren": "{count, plural, other {# mục tiêu cá nhân bạn không xem được}}",
     "nav": {
       "mine": "Của tôi",
-      "alignment": "Cây mục tiêu"
+      "alignment": "Cây mục tiêu",
+      "kpis": "KPI của tôi",
+      "team": "Đội của tôi",
+      "overview": "Toàn cảnh",
+      "admin": "Quản trị KPI"
     },
     "period": {
       "annual": "Năm {year}",
@@ -3621,6 +3634,211 @@
       "noChildren": "Chưa có mục tiêu nào gắn vào đây.",
       "edit": "Sửa mục tiêu"
     },
+    "kpi": {
+      "mineTitle": "KPI của tôi",
+      "mineDescription": "Những chỉ số bạn được đo trong tháng, điểm và cách tính. Số thực đạt do quản lý hoặc Nhân sự nhập.",
+      "personTitle": "KPI của {name}",
+      "personDescription": "Dữ liệu cá nhân: chỉ người đó, các cấp quản lý phía trên, Nhân sự và lãnh đạo trong phạm vi được xem.",
+      "previousMonth": "Tháng trước",
+      "nextMonth": "Tháng sau",
+      "state": {
+        "closed": "Đã chốt",
+        "open": "Tạm tính"
+      },
+      "storedNote": "Điểm đã chốt (lần {revision}) ngày {date}; mã kiểm tra dữ liệu đầu vào {hash}. Điểm này không thay đổi trừ khi Nhân sự mở lại kỳ, có ghi lý do.",
+      "nothingDue": "Không có KPI nào đến hạn trong tháng {month}.",
+      "provisionalNote": "{missing, plural, =0 {Đã đủ số liệu; điểm là tạm tính cho tới khi Nhân sự chốt tháng.} other {Còn thiếu # số thực đạt; điểm tạm tính chỉ gồm các dòng đã có số.}}",
+      "superseded": "Các lần chốt trước (đã thay thế)",
+      "supersededLine": "Lần {revision}: {score} — thay thế ngày {date}",
+      "noLines": "Chưa có KPI nào.",
+      "columns": {
+        "kpi": "KPI",
+        "target": "Chỉ tiêu",
+        "actual": "Thực đạt",
+        "attainment": "Mức đạt",
+        "weight": "Trọng số",
+        "contribution": "Đóng góp"
+      },
+      "direction": {
+        "higher_better": "càng cao càng tốt",
+        "lower_better": "càng thấp càng tốt"
+      },
+      "unit": {
+        "number": "Số",
+        "percent": "Phần trăm",
+        "currency": "Tiền (VND)"
+      },
+      "frequency": {
+        "monthly": "hằng tháng",
+        "quarterly": "hằng quý"
+      },
+      "flags": {
+        "missing": "thiếu số liệu",
+        "not_applicable": "không áp dụng",
+        "capped": "chạm trần",
+        "floored": "dưới sàn → 0",
+        "invalid_target": "chỉ tiêu không hợp lệ"
+      },
+      "notApplicableShort": "K/AD",
+      "raw": "trước trần/sàn: {value}",
+      "formula": "Điểm tháng = Σ (trọng số × mức đạt) ÷ Σ trọng số",
+      "notes": {
+        "not_applicable_renormalised": "Dòng không áp dụng được bỏ ra; trọng số của nó chia lại cho các dòng còn lại.",
+        "missing_scored_zero": "Tháng được chốt khi còn thiếu số liệu: các dòng thiếu tính 0 điểm.",
+        "missing_left_out": "Dòng chưa có số thực đạt tạm thời chưa tính.",
+        "invalid_line_left_out": "Dòng có chỉ tiêu không hợp lệ bị bỏ ra — cần sửa phân bổ KPI.",
+        "nothing_to_score": "Không có dòng nào để tính điểm."
+      },
+      "year": {
+        "title": "Cả năm {year}",
+        "none": "Chưa có tháng nào được chốt trong năm.",
+        "summary": "Điểm KPI năm đến nay: {score} — {closed} tháng đã chốt, {open} tháng chưa chốt.",
+        "final": "Đã là điểm cuối cùng.",
+        "periods": "Các kỳ",
+        "weightMonths": "Trọng số × tháng",
+        "average": "Mức đạt bình quân",
+        "formula": "Điểm năm = Σ (trọng số × số tháng × mức đạt) ÷ Σ (trọng số × số tháng), chỉ tính từ các tháng đã chốt; KPI quý tính 3 tháng."
+      }
+    },
+    "entry": {
+      "title": "Nhập số thực đạt",
+      "description": "Nhập cho những người bạn quản lý (hoặc trong phạm vi Nhân sự của bạn). Không ai tự nhập số của chính mình.",
+      "back": "Về bảng của đội",
+      "empty": "Không có KPI nào đến hạn trong tháng này.",
+      "closed": "Tháng đã chốt — chỉ xem",
+      "target": "Chỉ tiêu: {value}",
+      "actual": "Thực đạt",
+      "notApplicable": "Không áp dụng",
+      "note": "Ghi chú",
+      "save": "Lưu số liệu",
+      "saved": "Đã lưu.",
+      "hint": "Để trống = chưa có số. “Không áp dụng” cần ghi chú lý do; dòng đó được bỏ ra và trọng số chia lại. Số thập phân dùng dấu phẩy hoặc dấu chấm."
+    },
+    "team": {
+      "title": "Hiệu suất của đội",
+      "description": "Điểm KPI trong tháng, số liệu còn thiếu và tiến độ mục tiêu của từng người.",
+      "enter": "Nhập số thực đạt",
+      "summary": "{people} người · {measured} người có KPI hoặc mục tiêu · còn thiếu {missing} số liệu",
+      "person": "Nhân sự",
+      "kpiScore": "Điểm KPI",
+      "missing": "Thiếu",
+      "goals": "Mục tiêu",
+      "stale": "KR chưa cập nhật",
+      "noKpis": "chưa gán KPI",
+      "noGoals": "chưa có mục tiêu",
+      "goalCount": "{count} mục tiêu",
+      "hint": "Điểm “tạm tính” chỉ gồm các dòng đã có số; điểm “đã chốt” là điểm lưu khi Nhân sự chốt tháng."
+    },
+    "overview": {
+      "title": "Toàn cảnh hiệu suất",
+      "description": "Theo pháp nhân và phòng ban: số người được chấm, điểm bình quân và độ phân tán, tháng nào đã chốt; cùng tiến độ các mục tiêu cấp cao.",
+      "kpiTitle": "Điểm KPI tháng {month}",
+      "people": "{count} người được chấm",
+      "missing": "còn thiếu {count} số liệu",
+      "nobody": "Chưa ai có KPI đến hạn trong tháng này.",
+      "department": "Phòng ban",
+      "scored": "Số người",
+      "average": "Bình quân",
+      "spreadHeading": "Thấp nhất · trung vị · cao nhất",
+      "spread": "{min} · {median} · {max}",
+      "noDepartment": "(chưa có phòng ban)",
+      "hint": "Tháng đã chốt: điểm lưu. Tháng chưa chốt: điểm tạm tính trên số liệu đã nhập. Dấu * = chốt khi còn thiếu số liệu.",
+      "goalsTitle": "Mục tiêu cấp tập đoàn và pháp nhân {year}"
+    },
+    "admin": {
+      "title": "Quản trị KPI",
+      "description": "Thư viện KPI, bộ KPI theo vị trí, phân bổ cho từng người, chốt kỳ và nhập số liệu từ tệp.",
+      "tabs": {
+        "periods": "Chốt kỳ",
+        "assignments": "Phân bổ",
+        "positions": "Theo vị trí",
+        "library": "Thư viện",
+        "import": "Nhập từ tệp"
+      }
+    },
+    "library": {
+      "description": "Thư viện KPI dùng chung cho cả tập đoàn. Khi KPI đã được gán cho ai đó thì không đổi được mã, đơn vị, chiều tốt và tần suất — hãy tạo KPI mới.",
+      "code": "Mã",
+      "name": "Tên KPI",
+      "unit": "Đơn vị",
+      "direction": "Chiều tốt",
+      "frequency": "Tần suất",
+      "cap": "Trần mức đạt (%)",
+      "floor": "Sàn mức đạt (%)",
+      "active": "Đang dùng",
+      "descriptionField": "Mô tả / cách đo",
+      "save": "Lưu",
+      "add": "Thêm KPI",
+      "new": "KPI mới",
+      "empty": "Thư viện còn trống. Chạy pnpm db:seed để có bộ khởi đầu.",
+      "readOnly": "Chỉ Nhân sự cấp tập đoàn mới sửa được thư viện.",
+      "capFloor": "trần {cap}, sàn {floor}"
+    },
+    "positions": {
+      "description": "Mỗi vị trí được đo bằng những KPI nào, trọng số và chỉ tiêu mặc định. Bộ riêng của một pháp nhân thay cho bộ chung của tập đoàn. “Áp dụng” không đụng tới KPI mà người đó đang có.",
+      "empty": "Chưa có bộ KPI nào theo vị trí.",
+      "position": "Vị trí",
+      "entity": "Pháp nhân",
+      "everyEntity": "Mọi pháp nhân",
+      "kpi": "KPI",
+      "weight": "Trọng số",
+      "target": "Chỉ tiêu",
+      "order": "Thứ tự",
+      "saveHint": "Lưu lại một KPI đã có trong bộ sẽ cập nhật trọng số và chỉ tiêu của dòng đó.",
+      "save": "Lưu dòng",
+      "remove": "Bỏ",
+      "removeConfirm": "Bỏ KPI này khỏi bộ của vị trí? Các phân bổ đã tạo không bị ảnh hưởng.",
+      "from": "Từ tháng",
+      "apply": "Áp dụng cho người giữ vị trí",
+      "applyOne": "Áp dụng bộ KPI của vị trí",
+      "applied": "{holders} người · tạo {created} phân bổ · giữ nguyên {skipped} · {withoutTemplate} người chưa có bộ KPI",
+      "addLine": "Thêm / cập nhật một dòng",
+      "entityOnly": "Bạn chỉ sửa được bộ KPI riêng của pháp nhân mình phụ trách."
+    },
+    "assignments": {
+      "manage": "Phân bổ KPI",
+      "back": "← Danh sách",
+      "scorecard": "Xem bảng điểm",
+      "none": "Chưa có KPI nào.",
+      "range": "{from} → {to}",
+      "weight": "trọng số {weight}",
+      "change": "Sửa trọng số, chỉ tiêu hoặc kết thúc",
+      "closedHint": "Khi đã có tháng được chốt, trọng số và chỉ tiêu của phân bổ đó không sửa được nữa: hãy kết thúc nó và tạo phân bổ mới từ tháng chưa chốt kế tiếp.",
+      "fromTemplate": "Từ bộ KPI của vị trí",
+      "addTitle": "Thêm một KPI",
+      "description": "Ai được đo bằng gì. Người chưa có KPI nào trong tháng hiện tại được tô vàng.",
+      "noneNow": "chưa có KPI",
+      "count": "{count} KPI · tổng trọng số {weight}",
+      "from": "Từ tháng",
+      "add": "Gán KPI",
+      "lastMonth": "Tháng cuối",
+      "end": "Kết thúc sau tháng này"
+    },
+    "periods": {
+      "description": "Chốt tháng sẽ tính và lưu điểm của mọi người trong pháp nhân. Điểm đã lưu không thay đổi; mở lại kỳ (Nhân sự tập đoàn, có lý do) sẽ giữ điểm cũ ở trạng thái “đã thay thế” và lần chốt sau tạo bản mới.",
+      "notOver": "Tháng {month} chưa kết thúc nên chưa chốt được.",
+      "closedOn": "chốt ngày {date}",
+      "overridden": "Chốt khi còn thiếu {count} số liệu (tính 0 điểm). Lý do: {reason}",
+      "reopened": "Đã mở lại. Lý do: {reason}",
+      "reopenGroupOnly": "Chỉ Nhân sự cấp tập đoàn mới mở lại được kỳ đã chốt.",
+      "blocked": "{count, plural, other {Còn thiếu # số thực đạt}}",
+      "overrideReason": "Lý do chốt khi còn thiếu số liệu (các dòng thiếu tính 0 điểm)",
+      "close": "Chốt tháng",
+      "closeOverride": "Chốt dù còn thiếu",
+      "closeConfirm": "Chốt tháng này? Điểm sẽ được lưu và không sửa được số liệu nữa.",
+      "reopenReason": "Lý do mở lại",
+      "reopen": "Mở lại kỳ",
+      "reopenConfirm": "Mở lại kỳ này? Điểm đã lưu sẽ chuyển sang “đã thay thế”."
+    },
+    "import": {
+      "description": "Nhập số thực đạt hàng loạt từ bảng tính: mỗi dòng là một người, một KPI, một kỳ.",
+      "notes": {
+        "period": "Kỳ: KPI tháng ghi YYYY-MM (2027-01); KPI quý ghi YYYY-Qn (2027-Q1).",
+        "overwrite": "Nhập lại sẽ ghi đè số của tháng chưa chốt.",
+        "closed": "Tệp có dòng thuộc tháng đã chốt sẽ bị từ chối toàn bộ."
+      },
+      "wizard": "Nhập số thực đạt KPI"
+    },
     "enums": {
       "level": {
         "group": "Tập đoàn",
@@ -3672,7 +3890,29 @@
       "bad_start_value": "Giá trị ban đầu không hợp lệ.",
       "bad_target_value": "Giá trị mục tiêu không hợp lệ.",
       "bad_value": "Giá trị không hợp lệ.",
-      "key_result_has_check_ins": "Đã có cập nhật nên không xoá được."
+      "key_result_has_check_ins": "Đã có cập nhật nên không xoá được.",
+      "kpi_floor_above_cap": "Sàn không được cao hơn trần.",
+      "kpi_code_taken": "Mã KPI này đã có.",
+      "kpi_not_found": "Không tìm thấy.",
+      "kpi_in_use": "KPI đã được gán cho người khác: không đổi được mã, đơn vị, chiều tốt, tần suất. Hãy tạo KPI mới.",
+      "kpi_bad_value": "Giá trị không hợp lệ.",
+      "target_must_be_positive": "Chỉ tiêu phải lớn hơn 0.",
+      "target_must_not_be_negative": "Chỉ tiêu không được âm.",
+      "kpi_inactive": "KPI này đã ngừng dùng.",
+      "kpi_assignment_overlaps": "Người này đã có KPI đó trong khoảng thời gian trùng.",
+      "kpi_month_closed": "Tháng đã chốt: không thay đổi được nữa.",
+      "kpi_assignment_has_closed_months": "Phân bổ này đã có tháng được chốt. Hãy kết thúc nó và tạo phân bổ mới từ tháng chưa chốt.",
+      "kpi_bad_period": "Kỳ không hợp lệ.",
+      "kpi_actuals_after_end": "Đã có số thực đạt sau tháng đó.",
+      "kpi_duplicate_entry": "Một KPI bị nhập hai lần cho cùng kỳ.",
+      "kpi_wrong_period_kind": "Kỳ không khớp tần suất của KPI.",
+      "kpi_not_assigned_then": "KPI không được gán trong kỳ đó.",
+      "kpi_not_applicable_needs_note": "“Không áp dụng” cần ghi chú lý do.",
+      "kpi_month_not_over": "Tháng chưa kết thúc.",
+      "kpi_month_already_closed": "Tháng này đã chốt rồi.",
+      "kpi_nothing_to_close": "Không có KPI nào đến hạn trong tháng này.",
+      "kpi_month_blocked": "Còn thiếu số thực đạt. Bổ sung, hoặc chốt kèm lý do.",
+      "kpi_month_not_closed": "Tháng này chưa chốt."
     }
   }
 }

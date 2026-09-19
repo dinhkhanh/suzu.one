@@ -844,7 +844,9 @@
       "punches": "new punches",
       "skipped": "lines already imported or repeated",
       "unmapped": "lines waiting for an ID to be mapped",
-      "people": "people"
+      "people": "people",
+      "saved": "saved",
+      "unchanged": "unchanged"
     },
     "problems": {
       "column_missing": "This required column is missing",
@@ -882,7 +884,14 @@
       "opening_exists": "This person already has an opening balance for this type and year",
       "bad_timestamp": "The time does not fit the profile's format",
       "timestamp_in_future": "This time is in the future — wrong clock or wrong file?",
-      "device_user_unmapped": "Nobody is mapped to this ID yet; its lines are kept and become punches once it is mapped"
+      "device_user_unmapped": "Nobody is mapped to this ID yet; its lines are kept and become punches once it is mapped",
+      "bad_kpi_period": "The period must be YYYY-MM or YYYY-Qn",
+      "bad_kpi_value": "Not a valid actual",
+      "kpi_unknown": "No KPI has this code",
+      "kpi_period_must_be_month": "Monthly KPI: the period must be YYYY-MM",
+      "kpi_period_must_be_quarter": "Quarterly KPI: the period must be YYYY-Qn",
+      "kpi_not_assigned": "The person does not have this KPI in that period",
+      "kpi_month_closed": "The month is closed"
     },
     "errors": {
       "import_file_type": "Only .xlsx and .csv files are accepted.",
@@ -3504,7 +3513,11 @@
     "hiddenChildren": "{count, plural, one {# individual goal you cannot see} other {# individual goals you cannot see}}",
     "nav": {
       "mine": "Mine",
-      "alignment": "Alignment"
+      "alignment": "Alignment",
+      "kpis": "My KPIs",
+      "team": "My team",
+      "overview": "Overview",
+      "admin": "KPI admin"
     },
     "period": {
       "annual": "{year}",
@@ -3621,6 +3634,211 @@
       "noChildren": "Nothing is aligned to this goal yet.",
       "edit": "Edit goal"
     },
+    "kpi": {
+      "mineTitle": "My KPIs",
+      "mineDescription": "What you are measured on this month, the score and how it is worked out. Actuals are entered by your manager or HR.",
+      "personTitle": "KPIs of {name}",
+      "personDescription": "Personal data: only the person, the managers above them, HR and leaders in scope see this.",
+      "previousMonth": "Previous month",
+      "nextMonth": "Next month",
+      "state": {
+        "closed": "Closed",
+        "open": "Provisional"
+      },
+      "storedNote": "Stored score (revision {revision}) of {date}; input check code {hash}. It does not change unless HR reopens the month, with a recorded reason.",
+      "nothingDue": "No KPI is due in {month}.",
+      "provisionalNote": "{missing, plural, =0 {All actuals are in; the score stays provisional until HR closes the month.} one {# actual is missing; the provisional score covers the lines that have one.} other {# actuals are missing; the provisional score covers the lines that have one.}}",
+      "superseded": "Earlier closes (superseded)",
+      "supersededLine": "Revision {revision}: {score} — superseded on {date}",
+      "noLines": "No KPIs yet.",
+      "columns": {
+        "kpi": "KPI",
+        "target": "Target",
+        "actual": "Actual",
+        "attainment": "Attainment",
+        "weight": "Weight",
+        "contribution": "Contribution"
+      },
+      "direction": {
+        "higher_better": "higher is better",
+        "lower_better": "lower is better"
+      },
+      "unit": {
+        "number": "Number",
+        "percent": "Percent",
+        "currency": "Money (VND)"
+      },
+      "frequency": {
+        "monthly": "monthly",
+        "quarterly": "quarterly"
+      },
+      "flags": {
+        "missing": "no actual",
+        "not_applicable": "not applicable",
+        "capped": "capped",
+        "floored": "under the floor → 0",
+        "invalid_target": "invalid target"
+      },
+      "notApplicableShort": "n/a",
+      "raw": "before cap/floor: {value}",
+      "formula": "Month score = Σ (weight × attainment) ÷ Σ weight",
+      "notes": {
+        "not_applicable_renormalised": "A not-applicable line is left out; its weight is shared among the others.",
+        "missing_scored_zero": "The month was closed with actuals missing: those lines score zero.",
+        "missing_left_out": "Lines without an actual are left out for now.",
+        "invalid_line_left_out": "A line with an invalid target is left out — the assignment needs fixing.",
+        "nothing_to_score": "There is nothing to score."
+      },
+      "year": {
+        "title": "Year {year}",
+        "none": "No month of the year is closed yet.",
+        "summary": "KPI score for the year so far: {score} — {closed} months closed, {open} still open.",
+        "final": "This is the final figure.",
+        "periods": "Periods",
+        "weightMonths": "Weight × months",
+        "average": "Average attainment",
+        "formula": "Year score = Σ (weight × months × attainment) ÷ Σ (weight × months), from closed months only; a quarterly KPI counts three months."
+      }
+    },
+    "entry": {
+      "title": "Enter actuals",
+      "description": "For the people you manage (or in your HR scope). Nobody enters their own figures.",
+      "back": "Back to the team",
+      "empty": "No KPI is due this month.",
+      "closed": "Month closed — read only",
+      "target": "Target: {value}",
+      "actual": "Actual",
+      "notApplicable": "Not applicable",
+      "note": "Note",
+      "save": "Save actuals",
+      "saved": "Saved.",
+      "hint": "Blank = no figure yet. “Not applicable” needs a note; the line is left out and its weight shared. Decimals take a comma or a point."
+    },
+    "team": {
+      "title": "Team performance",
+      "description": "This month's KPI score, what is still missing and where each person's goals stand.",
+      "enter": "Enter actuals",
+      "summary": "{people} people · {measured} with KPIs or goals · {missing} actuals missing",
+      "person": "Person",
+      "kpiScore": "KPI score",
+      "missing": "Missing",
+      "goals": "Goals",
+      "stale": "Stale key results",
+      "noKpis": "no KPIs assigned",
+      "noGoals": "no goals",
+      "goalCount": "{count, plural, one {# goal} other {# goals}}",
+      "hint": "A provisional score covers the lines that have an actual; a closed score is the one stored when HR closed the month."
+    },
+    "overview": {
+      "title": "Performance overview",
+      "description": "Per entity and department: people scored, average and spread, which months are closed — and where the top goals stand.",
+      "kpiTitle": "KPI scores for {month}",
+      "people": "{count, plural, one {# person scored} other {# people scored}}",
+      "missing": "{count} actuals missing",
+      "nobody": "Nobody has a KPI due this month.",
+      "department": "Department",
+      "scored": "People",
+      "average": "Average",
+      "spreadHeading": "Lowest · median · highest",
+      "spread": "{min} · {median} · {max}",
+      "noDepartment": "(no department)",
+      "hint": "Closed month: stored scores. Open month: provisional scores over what has been entered. * = closed with actuals missing.",
+      "goalsTitle": "Group and entity goals {year}"
+    },
+    "admin": {
+      "title": "KPI administration",
+      "description": "The KPI library, templates per position, who is measured on what, closing months and importing actuals.",
+      "tabs": {
+        "periods": "Close months",
+        "assignments": "Assignments",
+        "positions": "By position",
+        "library": "Library",
+        "import": "Import"
+      }
+    },
+    "library": {
+      "description": "One KPI library for the whole group. Once a KPI is assigned to someone its code, unit, direction and frequency cannot change — make a new KPI instead.",
+      "code": "Code",
+      "name": "KPI name",
+      "unit": "Unit",
+      "direction": "Direction",
+      "frequency": "Frequency",
+      "cap": "Attainment cap (%)",
+      "floor": "Attainment floor (%)",
+      "active": "In use",
+      "descriptionField": "Description / how it is measured",
+      "save": "Save",
+      "add": "Add KPI",
+      "new": "New KPI",
+      "empty": "The library is empty. Run pnpm db:seed for the starter set.",
+      "readOnly": "Only group-wide HR changes the library.",
+      "capFloor": "cap {cap}, floor {floor}"
+    },
+    "positions": {
+      "description": "What each position is measured on, with default weights and targets. An entity's own set replaces the group's. “Apply” never touches a KPI someone already carries.",
+      "empty": "No position has a KPI template yet.",
+      "position": "Position",
+      "entity": "Entity",
+      "everyEntity": "Every entity",
+      "kpi": "KPI",
+      "weight": "Weight",
+      "target": "Target",
+      "order": "Order",
+      "saveHint": "Saving a KPI that is already in the set updates that line's weight and target.",
+      "save": "Save line",
+      "remove": "Remove",
+      "removeConfirm": "Remove this KPI from the position's set? Assignments already made stay as they are.",
+      "from": "From month",
+      "apply": "Apply to holders",
+      "applyOne": "Apply the position's template",
+      "applied": "{holders} people · {created} assignments created · {skipped} kept · {withoutTemplate} without a template",
+      "addLine": "Add / update a line",
+      "entityOnly": "You can change the sets of your own entity only."
+    },
+    "assignments": {
+      "manage": "KPI assignments",
+      "back": "← List",
+      "scorecard": "Open scorecard",
+      "none": "No KPIs yet.",
+      "range": "{from} → {to}",
+      "weight": "weight {weight}",
+      "change": "Change weight, target or end it",
+      "closedHint": "Once a month is closed, the weight and target of that assignment can no longer change: end it and start a new one from the next open month.",
+      "fromTemplate": "From the position's template",
+      "addTitle": "Add one KPI",
+      "description": "Who is measured on what. People without a KPI this month are highlighted.",
+      "noneNow": "no KPIs",
+      "count": "{count} KPIs · total weight {weight}",
+      "from": "From month",
+      "add": "Assign KPI",
+      "lastMonth": "Last month",
+      "end": "End after this month"
+    },
+    "periods": {
+      "description": "Closing a month computes and stores the score of everyone in the entity. Stored scores do not change; a reopen (group HR, with a reason) keeps the old scores as superseded and the next close writes a new revision.",
+      "notOver": "{month} is not over yet, so it cannot be closed.",
+      "closedOn": "closed on {date}",
+      "overridden": "Closed with {count} actuals missing (scored zero). Reason: {reason}",
+      "reopened": "Reopened. Reason: {reason}",
+      "reopenGroupOnly": "Only group-wide HR reopens a closed month.",
+      "blocked": "{count, plural, one {# actual is missing} other {# actuals are missing}}",
+      "overrideReason": "Reason for closing with actuals missing (those lines score zero)",
+      "close": "Close month",
+      "closeOverride": "Close anyway",
+      "closeConfirm": "Close this month? The scores are stored and the actuals can no longer change.",
+      "reopenReason": "Reason for reopening",
+      "reopen": "Reopen",
+      "reopenConfirm": "Reopen this month? The stored scores become superseded."
+    },
+    "import": {
+      "description": "Actuals in bulk from a spreadsheet: one line per person, KPI and period.",
+      "notes": {
+        "period": "Period: YYYY-MM for a monthly KPI (2027-01), YYYY-Qn for a quarterly one (2027-Q1).",
+        "overwrite": "A re-import overwrites the figures of an open month.",
+        "closed": "A file with a line in a closed month is refused as a whole."
+      },
+      "wizard": "Import KPI actuals"
+    },
     "enums": {
       "level": {
         "group": "Group",
@@ -3672,7 +3890,29 @@
       "bad_start_value": "The start value is not valid.",
       "bad_target_value": "The target is not valid.",
       "bad_value": "The value is not valid.",
-      "key_result_has_check_ins": "It has check-ins, so it cannot be removed."
+      "key_result_has_check_ins": "It has check-ins, so it cannot be removed.",
+      "kpi_floor_above_cap": "The floor cannot be above the cap.",
+      "kpi_code_taken": "This KPI code is taken.",
+      "kpi_not_found": "Not found.",
+      "kpi_in_use": "The KPI is already assigned: its code, unit, direction and frequency cannot change. Make a new KPI.",
+      "kpi_bad_value": "Not a valid value.",
+      "target_must_be_positive": "The target must be above zero.",
+      "target_must_not_be_negative": "The target cannot be negative.",
+      "kpi_inactive": "This KPI is no longer in use.",
+      "kpi_assignment_overlaps": "The person already has this KPI in an overlapping period.",
+      "kpi_month_closed": "The month is closed: this can no longer change.",
+      "kpi_assignment_has_closed_months": "A month of this assignment is closed. End it and start a new one from the next open month.",
+      "kpi_bad_period": "Not a valid period.",
+      "kpi_actuals_after_end": "There are actuals after that month.",
+      "kpi_duplicate_entry": "A KPI was entered twice for the same period.",
+      "kpi_wrong_period_kind": "The period does not fit the KPI's frequency.",
+      "kpi_not_assigned_then": "The KPI is not assigned in that period.",
+      "kpi_not_applicable_needs_note": "“Not applicable” needs a note.",
+      "kpi_month_not_over": "The month is not over yet.",
+      "kpi_month_already_closed": "This month is already closed.",
+      "kpi_nothing_to_close": "No KPI is due this month.",
+      "kpi_month_blocked": "Actuals are missing. Enter them, or close with a reason.",
+      "kpi_month_not_closed": "This month is not closed."
     }
   }
 }
