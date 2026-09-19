@@ -9,6 +9,13 @@ import { env } from "@/lib/env";
 import { recordAudit } from "../audit/service";
 import { accessStateOf, createBootstrapOwner, findPersonByEmail } from "../people/service";
 import { decideSignIn, emailDomain } from "./sign-in-policy";
+import { USER_ADDITIONAL_FIELDS } from "./user-fields";
+
+// Better Auth only turns an error into a redirect to the sign-in page when it carries a `code`;
+// without one the browser is left on a raw JSON response.
+function reject(reason: string) {
+  return new APIError("FORBIDDEN", { code: reason, message: reason });
+}
 
 function create() {
   const config = env();
@@ -31,11 +38,7 @@ function create() {
       },
     },
 
-    user: {
-      additionalFields: {
-        hostedDomain: { type: "string", required: false, input: false },
-      },
-    },
+    user: { additionalFields: USER_ADDITIONAL_FIELDS },
 
     session: {
       expiresIn: 60 * 60 * 24 * 7,
@@ -59,8 +62,17 @@ function create() {
                 actor: { email: user.email },
                 summary: "domain_not_allowed",
               });
-              throw new APIError("FORBIDDEN", { message: "domain_not_allowed" });
+              throw reject("domain_not_allowed");
             }
+          },
+        },
+        update: {
+          // The hosted domain is set once, from Google's verified claim; nobody may change it later.
+          before: async (changes) => {
+            if (!("hostedDomain" in changes)) return;
+            const rest = { ...changes };
+            delete rest.hostedDomain;
+            return { data: rest };
           },
         },
       },
@@ -69,7 +81,7 @@ function create() {
           // Runs on every sign-in: the account must map to a person who currently has access.
           before: async (session) => {
             const [account] = await db().select().from(schema.user).where(eq(schema.user.id, session.userId)).limit(1);
-            if (!account) throw new APIError("UNAUTHORIZED", { message: "unknown_user" });
+            if (!account) throw reject("unknown_user");
 
             const person = await findPersonByEmail(account.email);
             const decision = decideSignIn({
@@ -90,7 +102,7 @@ function create() {
                 summary: decision.reason,
                 request: { ipAddress: session.ipAddress, userAgent: session.userAgent },
               });
-              throw new APIError("FORBIDDEN", { message: decision.reason });
+              throw reject(decision.reason);
             }
 
             const signedIn = person ?? (await createBootstrapOwner({ email: account.email, name: account.name }));
@@ -109,9 +121,12 @@ function create() {
 }
 
 type Auth = ReturnType<typeof create>;
-const globalForAuth = globalThis as unknown as { __suzuAuth?: Auth };
+
+// Cached per module instance, not on globalThis: a hot reload of this file must rebuild the
+// instance so configuration edits take effect. (The database pool in lib/db is the global one.)
+let cached: Auth | undefined;
 
 // Lazy for the same reason as `env()`: importing this module must not require runtime secrets.
 export function auth(): Auth {
-  return (globalForAuth.__suzuAuth ??= create());
+  return (cached ??= create());
 }
