@@ -42,7 +42,7 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
   const nameOf = new Map(overview?.people.map((person) => [person.personId, person.fullName]));
   const locked = overview?.period?.status === "locked";
   const blocking = overview?.issues.filter((issue) => issue.blocking) ?? [];
-  const unconfirmed = toConfirm.filter((row) => row.confirmedMinutes === null);
+  const unconfirmed = toConfirm;
 
   return (
     <div className="flex max-w-4xl flex-col gap-8">

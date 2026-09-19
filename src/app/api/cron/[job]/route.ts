@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { env } from "@/lib/env";
-import { timesheetRecomputeJob } from "@/modules/attendance/recompute";
+import { timesheetMonthReadyJob, timesheetRecomputeJob } from "@/modules/attendance/recompute";
 import { fieldKeysRewrapJob, hrAlertsJob, peopleRollOverJob } from "@/modules/core-hr/jobs";
 import { filesCleanupJob } from "@/modules/platform/files/jobs";
 import { leaveAccrualJob } from "@/modules/leave/jobs";
@@ -13,8 +13,8 @@ const SCHEDULES: Record<string, JobDefinition[]> = {
   // Leave after the roll-over: a new starter accrues from the day they become active. The timesheet
   // last: it closes yesterday with the leave and the employment facts of today.
   midnight: [peopleRollOverJob, leaveAccrualJob, timesheetRecomputeJob],
-  // Alerts first, so the digest that follows carries them.
-  morning: [hrAlertsJob, notificationsDailyJob, filesCleanupJob],
+  // Alerts (and, on the 1st, "your month is ready to confirm") first, so the digest that follows carries them.
+  morning: [hrAlertsJob, timesheetMonthReadyJob, notificationsDailyJob, filesCleanupJob],
 };
 
 // Run by hand only: /api/cron/<job name>.

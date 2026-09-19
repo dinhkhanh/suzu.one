@@ -29,6 +29,8 @@ const DAY_KINDS: Record<string, { kind: AnomalyKind; fix: AnomalyFix; blocking: 
   no_schedule: { kind: "no_schedule", fix: "schedule", blocking: false },
 };
 
+const DAYS_OFF = ["rest", "holiday", "compensatory_off", "company_off"];
+
 const targetOf = (person: typeof schema.person.$inferSelect): Target & { personId: string } => ({ personId: person.id, entityId: person.primaryEntityId, departmentId: person.departmentId, teamId: person.teamId, managerId: person.managerId });
 
 export type AnomalyFilters = { entityId?: string | null; departmentId?: string | null; personId?: string | null; kind?: AnomalyKind | null; /** Late / early days below this many minutes are left out. */ minMinutes?: number };
@@ -74,8 +76,13 @@ export async function listAnomalies(viewer: Principal, month: string, filters: A
     if (day.lockedAt) continue;
     const seen = new Set<AnomalyKind>();
     for (const code of day.anomalies) {
-      const known = DAY_KINDS[code];
+      let known = DAY_KINDS[code];
       if (!known || seen.has(known.kind)) continue;
+      // Extra time on a day off is the same fact as "worked on a day off", and its form is holiday work.
+      if (code === "ot_unapproved" && DAYS_OFF.includes(day.planKind)) {
+        if (day.anomalies.includes("worked_on_day_off")) continue;
+        known = { ...known, fix: "holiday_work" };
+      }
       const minutes = code === "late" ? day.lateMinutes : code === "early" ? day.earlyMinutes : code === "ot_unapproved" ? day.otUnapprovedMinutes : code === "absent" || code === "short_hours" ? day.absenceMinutes : null;
       if ((code === "late" || code === "early") && (minutes ?? 0) < minMinutes) continue;
       seen.add(known.kind);
@@ -126,5 +133,7 @@ async function holidayOvertimeOn(personId: string, date: IsoDate): Promise<numbe
 /** The person's own open anomalies of a month — for "my attendance", each with the form that fixes it. */
 export async function listOwnAnomalies(personId: string, month: string): Promise<{ date: IsoDate; code: string; fix: AnomalyFix }[]> {
   const days = await db().select().from(schema.timesheetDay).where(and(eq(schema.timesheetDay.personId, personId), gte(schema.timesheetDay.date, monthStart(month)), lte(schema.timesheetDay.date, monthEnd(month)), sql`jsonb_array_length(${schema.timesheetDay.anomalies}) > 0`)).orderBy(schema.timesheetDay.date);
-  return days.filter((day) => !day.lockedAt).flatMap((day) => day.anomalies.filter((code) => DAY_KINDS[code]).map((code) => ({ date: day.date, code, fix: DAY_KINDS[code].fix })));
+  return days
+    .filter((day) => !day.lockedAt)
+    .flatMap((day) => day.anomalies.filter((code) => DAY_KINDS[code] && !(code === "ot_unapproved" && day.anomalies.includes("worked_on_day_off"))).map((code) => ({ date: day.date, code, fix: code === "ot_unapproved" && DAYS_OFF.includes(day.planKind) ? ("holiday_work" as const) : DAY_KINDS[code].fix })));
 }

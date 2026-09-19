@@ -27,7 +27,7 @@ import { listAnomalies } from "./anomalies";
 import { savePolicy } from "./attendance-policies";
 import type { SchedulePattern } from "./engine/calendar";
 import { eachDate, isoWeekday } from "./engine/calendar";
-import { approveMonth, confirmMonth, createAdjustment, getLockedTimesheets, getPeriodOverview, isPeriodLocked, listAdjustmentsForPayroll, listMonthsToApprove, lockPeriod, markAdjustmentsTaken, reopenMonth, voidAdjustment } from "./months";
+import { approveMonth, confirmMonth, createAdjustment, getLockedTimesheets, getPeriodOverview, isPeriodLocked, listAdjustmentsForPayroll, listMonthsToApprove, lockPeriod, markAdjustmentsTaken, remindMonthReady, reopenMonth, voidAdjustment } from "./months";
 import { declaredOffSiteLocations } from "./request-inputs";
 import { type AttendanceRequestInput, cancelAttendanceRequest, confirmWorkedMinutes, decideAttendanceRequest, submitAttendanceRequest } from "./requests";
 import { saveSchedule } from "./schedules";
@@ -295,5 +295,15 @@ describe("HR anomaly console (FR-ATT-15)", () => {
     const group = await listAnomalies(principal(ids.owner, [{ role: "owner", scope: { type: "group" } }]), MONTH);
     expect(group.lines.map((row) => [row.fullName, row.kind, row.blocking])).toEqual([["Lan", "punch_to_review", true], ["Lan", "month_not_confirmed", true]]);
     expect((await listAnomalies(principal(ids.huy), MONTH)).lines).toEqual([]);
+  });
+});
+
+describe("month-ready reminder", () => {
+  it("speaks on the 1st only, and only to people whose month is still open", async () => {
+    expect(await remindMonthReady("2026-09-02")).toEqual({ told: 0 });
+    // Media's August is locked; in Creative, Lan has days and an open month.
+    expect(await remindMonthReady("2026-09-01")).toEqual({ told: 1 });
+    const [notice] = await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.lan), eq(schema.notification.kind, "attendance.month_ready")));
+    expect(notice).toMatchObject({ link: "/attendance?month=2026-08" });
   });
 });

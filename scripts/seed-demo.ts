@@ -11,6 +11,7 @@ import { planChecklist } from "../src/modules/platform/tasks-engine/engine/check
 import { toSearchKey } from "../src/lib/text";
 import { seedAttendance, seedPunches } from "./seed-demo-attendance";
 import { seedLeave } from "./seed-demo-leave";
+import { seedAttendanceRequests } from "./seed-demo-requests";
 import { changeRequestContext, contractTermsContext, dependentContext, NATIONAL_ID_INDEX_CONTEXT, normalizeIdNumber, sensitiveContext } from "../src/modules/core-hr/field-contexts";
 
 config({ path: ".env.local" });
@@ -125,6 +126,8 @@ async function main() {
   console.log(`Seeded ${await seedLeave(db, today)}.`);
   // After leave: nobody punches on a day of approved leave.
   console.log(`Seeded ${await seedPunches(db)}.`);
+  // After the punches: approved corrections add theirs, a day worked from home loses its clock rows.
+  console.log(`Seeded ${await seedAttendanceRequests(db)}.`);
   await client.end();
 }
 

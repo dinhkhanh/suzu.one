@@ -373,3 +373,20 @@ export async function remindToConfirm(entityId: string, month: string): Promise<
   if (active.length) await notify({ recipients: active.map((row) => row.id), kind: "attendance.month_ready", params: { month }, link: `/attendance?month=${month}` });
   return active.length;
 }
+
+/**
+ * Morning of the 1st: everyone with days in the month that just ended is told it is ready to
+ * confirm. Any other day the job does nothing; months already confirmed or locked are skipped.
+ */
+export async function remindMonthReady(today: IsoDate): Promise<{ told: number }> {
+  if (today.slice(8) !== "01") return { told: 0 };
+  const month = monthOfPrevious(today);
+  const people = await db().selectDistinct({ personId: schema.timesheetDay.personId }).from(schema.timesheetDay).innerJoin(schema.person, eq(schema.person.id, schema.timesheetDay.personId)).where(and(gte(schema.timesheetDay.date, monthStart(month)), lte(schema.timesheetDay.date, monthEnd(month)), eq(schema.person.status, "active")));
+  const done = await db().select({ personId: schema.timesheetMonth.personId }).from(schema.timesheetMonth).where(and(eq(schema.timesheetMonth.month, month), inArray(schema.timesheetMonth.status, ["confirmed", "approved", "locked"])));
+  const skip = new Set(done.map((row) => row.personId));
+  const recipients = people.map((row) => row.personId).filter((personId) => !skip.has(personId));
+  if (recipients.length) await notify({ recipients, kind: "attendance.month_ready", params: { month }, link: `/attendance?month=${month}` });
+  return { told: recipients.length };
+}
+
+const monthOfPrevious = (today: IsoDate): string => new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 2, 1)).toISOString().slice(0, 7);

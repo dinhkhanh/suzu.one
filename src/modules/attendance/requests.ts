@@ -373,12 +373,14 @@ export async function listAttendanceRequestsOf(personId: string, options: { from
   return rows.map(({ row, approvalStatus }) => ({ ...row, approvalStatus }));
 }
 
-/** Approved overtime / holiday work of these people whose hours the manager may still confirm. */
+/** Approved overtime / holiday work whose hours nobody knows yet: the day is here, punches show no overtime, and the manager has not confirmed any. */
 export async function listHoursToConfirm(personIds: readonly string[], from: IsoDate, to: IsoDate, executor: Executor = db()): Promise<AttendanceRequestRow[]> {
-  if (personIds.length === 0) return [];
-  return executor
-    .select()
+  if (personIds.length === 0 || to < from) return [];
+  const rows = await executor
+    .select({ row: schema.attendanceRequest, day: schema.timesheetDay })
     .from(schema.attendanceRequest)
+    .leftJoin(schema.timesheetDay, and(eq(schema.timesheetDay.personId, schema.attendanceRequest.personId), eq(schema.timesheetDay.date, schema.attendanceRequest.startDate)))
     .where(and(inArray(schema.attendanceRequest.personId, [...personIds]), inArray(schema.attendanceRequest.type, ["overtime", "holiday_work"]), eq(schema.attendanceRequest.status, "approved"), gte(schema.attendanceRequest.startDate, from), lte(schema.attendanceRequest.startDate, to)))
     .orderBy(schema.attendanceRequest.startDate);
+  return rows.filter(({ row, day }) => row.confirmedMinutes === null && !day?.lockedAt && (!day || day.otWeekdayMinutes + day.otWeekdayNightMinutes + day.otRestDayMinutes + day.otRestDayNightMinutes + day.otHolidayMinutes + day.otHolidayNightMinutes === 0)).map(({ row }) => row);
 }

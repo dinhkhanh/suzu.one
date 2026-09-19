@@ -53,3 +53,10 @@ export const timesheetRecomputeJob: JobDefinition = {
   name: "timesheet-recompute",
   run: ({ today }) => recomputeOpenMonths(today),
 };
+
+// Morning of the 1st: last month is ready to confirm. (Lives in months.ts; imported lazily so the
+// recompute door stays free of the monthly timesheet's imports.)
+export const timesheetMonthReadyJob: JobDefinition = {
+  name: "timesheet-month-ready",
+  run: async ({ today }) => (await import("./months")).remindMonthReady(today),
+};
