@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
-import { canAssignSchedule, canManageAttendanceConfig, canManageLocation, canOpenAttendanceSettings, canManageDevices, canReviewPunchOf, canSeePunchDetailOf, canSeeTimesheetOf } from "./policy";
+import { canAssignSchedule, canManageAttendanceConfig, canManageLocation, canOpenAttendanceSettings, canManageDevices, canReviewPunchOf, canSeePunchDetailOf, canSeeTimesheetOf, canApproveMonthOf, canConfirmHoursOf, canFileAttendanceRequestFor, canLockPeriod, canManageAttendanceOf } from "./policy";
 
 const principal = (grants: Grant[]): Principal => ({ personId: "me", workforceType: "employee", grants });
 const hrAdmin = principal([{ role: "hr_admin", scope: { type: "group" } }]);
@@ -88,5 +88,34 @@ describe("timesheets and time clocks", () => {
   it("keeps clocks, ID maps, log imports and the recompute with the entity's HR", () => {
     expect([hrAdmin, mediaHr, head, employee].map((viewer) => canManageDevices(viewer, "media"))).toEqual([true, true, false, false]);
     expect(canManageDevices(mediaHr, "creative")).toBe(false);
+  });
+});
+
+describe("requests, the monthly timesheet and the lock", () => {
+  const as = (personId: string, grants: Grant[] = []): Principal => ({ personId, workforceType: "employee", grants });
+  const me = as("huy");
+  const long = as("long");
+  const colleague = as("nhu");
+  const hrHerself = as("huy", [{ role: "hr_staff", scope: { type: "entity", id: "media" } }]);
+
+  it("lets a person file their own requests and HR file for the people in their scope — nobody else", () => {
+    expect([me, mediaHr, hrAdmin].map((viewer) => canFileAttendanceRequestFor(viewer, huy))).toEqual([true, true, true]);
+    expect([long, colleague, head, employee].map((viewer) => canFileAttendanceRequestFor(viewer, huy))).toEqual([false, false, false, false]);
+    expect(canFileAttendanceRequestFor(mediaHr, lan)).toBe(false);
+  });
+
+  it("gives hour confirmations and month approvals to the line manager or HR, never to oneself", () => {
+    for (const check of [canConfirmHoursOf, canApproveMonthOf]) {
+      expect([long, mediaHr, hrAdmin].map((viewer) => check(viewer, huy))).toEqual([true, true, true]);
+      expect([me, hrHerself, colleague, head, employee].map((viewer) => check(viewer, huy))).toEqual([false, false, false, false, false]);
+      expect(check(mediaHr, lan)).toBe(false);
+    }
+  });
+
+  it("keeps the lock, adjustments and the console's actions with HR over the entity or person", () => {
+    expect([hrAdmin, mediaHr, head, long, employee].map((viewer) => canLockPeriod(viewer, "media"))).toEqual([true, true, false, false, false]);
+    expect(canLockPeriod(mediaHr, "creative")).toBe(false);
+    expect([hrAdmin, mediaHr, head, long].map((viewer) => canManageAttendanceOf(viewer, huy))).toEqual([true, true, false, false]);
+    expect(canManageAttendanceOf(mediaHr, lan)).toBe(false);
   });
 });

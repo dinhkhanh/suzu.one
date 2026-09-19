@@ -5,6 +5,8 @@
 // A new request type is registered here when its module adds it.
 import "server-only";
 import type { ActionResult } from "@/lib/action";
+import { decideAttendanceRequestAction } from "@/modules/attendance/request-actions";
+import { REQUEST_DEFINITIONS as ATTENDANCE_REQUESTS } from "@/modules/attendance/requests";
 import { profileChangeRequest } from "@/modules/core-hr/change-requests";
 import { decideProfileChangeAction } from "@/modules/core-hr/change-request-actions";
 import { decideResignationAction } from "@/modules/core-hr/lifecycle-actions";
@@ -22,6 +24,7 @@ export type RegisteredRequestType = {
 const REGISTERED: RegisteredRequestType[] = [
   { definition: profileChangeRequest, approve: (requestId) => decideProfileChangeAction({ requestId, decision: "approve", comment: null }) },
   { definition: leaveRequestType, approve: (requestId) => decideLeaveAction({ requestId, decision: "approve", comment: null }) },
+  ...Object.values(ATTENDANCE_REQUESTS).map((definition) => ({ definition, approve: (requestId: string) => decideAttendanceRequestAction({ requestId, decision: "approve", comment: null }) })),
   { definition: resignationRequest, approve: (requestId) => decideResignationAction({ requestId, decision: "approve", comment: null }) },
 ];
 

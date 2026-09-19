@@ -11,6 +11,7 @@ import type { DayPlan } from "./engine/calendar";
 import { evaluatePunch, type Position, type PunchFlag, type WorkLocationRule } from "./engine/geofence";
 import { canSeePunchDetailOf } from "./policy";
 import { requestTimesheetRecompute } from "./recompute";
+import { declaredOffSiteLocations } from "./request-inputs";
 import { getDayPlans } from "./schedules";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -27,14 +28,7 @@ export const startOfVietnamDay = (date: IsoDate): Date => new Date(`${date}T00:0
 
 const asRule = (row: typeof schema.workLocation.$inferSelect): WorkLocationRule => ({ id: row.id, latitude: row.latitude, longitude: row.longitude, radiusM: row.radiusM, accuracyLimitM: row.accuracyLimitM, ipAllowlist: row.ipAllowlist, rule: row.rule, mode: row.mode });
 
-/**
- * Places declared for one person and day by an approved off-site request (FR-ATT-11). The request
- * type arrives in week 5 of Phase 2; it returns its locations here with `offSite: true`.
- */
-async function offSiteLocationsFor(executor: Executor, personId: string, date: IsoDate): Promise<WorkLocationRule[]> {
-  void [executor, personId, date];
-  return [];
-}
+const offSiteLocationsFor = declaredOffSiteLocations;
 
 // A rejected punch does not count, anywhere.
 const counted = ne(schema.punch.reviewStatus, "rejected");

@@ -569,7 +569,8 @@
         "system": "Hệ thống",
         "hr": "Hạn nhân sự",
         "approvals": "Phê duyệt",
-        "tasks": "Công việc được giao"
+        "tasks": "Công việc được giao",
+        "attendance": "Chấm công & bảng công"
       },
       "push": "Đẩy"
     },
@@ -633,6 +634,26 @@
       "approvals_leave_cancelled": {
         "title": "Nhân sự đã huỷ đơn nghỉ của bạn",
         "body": "Nhân sự đã huỷ đơn nghỉ đã duyệt của bạn ({range}). Số ngày đã được cộng lại vào số dư."
+      },
+      "attendance_month_ready": {
+        "title": "Bảng công tháng {month} đã sẵn sàng để xác nhận",
+        "body": "Vui lòng kiểm tra chấm công tháng {month}, bổ sung những gì còn thiếu và xác nhận để quản lý duyệt."
+      },
+      "attendance_month_waiting": {
+        "title": "{name} đã xác nhận bảng công tháng {month}",
+        "body": "Bảng công tháng {month} của {name} đang chờ bạn duyệt."
+      },
+      "attendance_month_reopened": {
+        "title": "Bảng công tháng {month} của bạn bị trả lại",
+        "body": "Bảng công tháng {month} được trả lại cho bạn: {comment}"
+      },
+      "attendance_adjusted": {
+        "title": "Nhân sự điều chỉnh bảng công đã khoá tháng {month}",
+        "body": "Nhân sự ghi nhận một điều chỉnh cho bảng công đã khoá tháng {month}: {reason}. Khoản này sẽ được tính vào kỳ lương kế tiếp."
+      },
+      "attendance_nudge": {
+        "title": "Vui lòng kiểm tra chấm công tháng {month}",
+        "body": "Nhân sự đề nghị bạn xem lại chấm công tháng {month}: bổ sung lần chấm còn thiếu hoặc gửi các đơn còn mở."
       }
     },
     "errors": {
@@ -846,7 +867,11 @@
     "types": {
       "profile_change": "Thay đổi thông tin cá nhân",
       "resignation": "Đơn xin nghỉ việc",
-      "leave": "Nghỉ phép"
+      "leave": "Nghỉ phép",
+      "attendance_correction": "Bổ sung công",
+      "remote_work": "Làm việc từ xa / ngoài văn phòng",
+      "overtime": "Làm thêm giờ",
+      "holiday_work": "Làm việc ngày nghỉ, ngày lễ"
     },
     "status": {
       "pending": "Đang chờ duyệt",
@@ -1867,6 +1892,292 @@
         "recompute": "Tính lại",
         "recomputeDone": "Đã ghi lại {written} ngày, giữ nguyên {locked} ngày đã khóa.",
         "recomputeFailed": "Không tính lại được."
+      }
+    },
+    "requests": {
+      "newTitle": "Tạo đơn chấm công",
+      "newDescription": "Bổ sung công, xin làm từ xa, làm thêm giờ hoặc làm việc ngày nghỉ. Quản lý trực tiếp sẽ duyệt.",
+      "resubmitTitle": "Sửa và gửi lại",
+      "onBehalf": "Tạo thay cho {name}",
+      "mine": "Đơn của tôi trong tháng",
+      "submit": "Gửi đơn",
+      "resubmit": "Gửi lại",
+      "withdraw": "Rút đơn",
+      "cancel": "Huỷ đơn",
+      "cancelConfirm": "Kết thúc đơn này?",
+      "filedBy": "người tạo: {name}",
+      "openEvidence": "Mở tệp",
+      "fixAndResubmit": "Sửa và gửi lại",
+      "dayNow": "Ngày công hiện tại",
+      "dayNowLine": "Vào {first} · ra {last} · làm {worked} giờ · tăng ca {overtime} giờ · làm thêm chưa duyệt {unapproved} giờ",
+      "dayLocked": "Ngày này đã khoá công.",
+      "hoursCount": "{hours} giờ",
+      "capStatus": "Đã dùng {used}/{cap} lần bổ sung công trong tháng",
+      "capHint": "Mỗi tháng tối đa {cap} lần bổ sung công. Nếu do máy chấm công, nhân sự có thể tạo đơn thay bạn.",
+      "types": {
+        "attendance_correction": "Bổ sung công",
+        "remote_work": "Làm việc từ xa / ngoài văn phòng",
+        "overtime": "Làm thêm giờ",
+        "holiday_work": "Làm việc ngày nghỉ, ngày lễ"
+      },
+      "typeHints": {
+        "attendance_correction": "Quên chấm công hoặc máy lỗi? Ghi giờ vào/ra thực tế.",
+        "remote_work": "Làm việc tại nhà, hoặc ngoài văn phòng (quay phim, gặp khách, sự kiện). Nếu có toạ độ, chấm công tại đó sẽ không bị gắn cờ.",
+        "overtime": "Xin trước khi ở lại: tăng ca chỉ được tính trong khung giờ đã duyệt và theo giờ chấm công thực tế.",
+        "holiday_work": "Làm việc vào ngày lễ hoặc ngày nghỉ. Số giờ lấy từ chấm công, hoặc do quản lý xác nhận khi không có chấm công."
+      },
+      "status": {
+        "pending": "Đang chờ",
+        "approved": "Đã duyệt",
+        "rejected": "Từ chối",
+        "withdrawn": "Đã rút",
+        "cancelled": "Đã huỷ",
+        "returned": "Trả lại"
+      },
+      "causes": {
+        "forgot": "Quên chấm công",
+        "device_error": "Lỗi máy hoặc ứng dụng",
+        "other": "Khác"
+      },
+      "kinds": {
+        "wfh": "Làm việc tại nhà",
+        "off_site": "Ngoài văn phòng (quay, gặp khách, sự kiện)",
+        "business_trip": "Công tác"
+      },
+      "portions": {
+        "full": "Cả ngày",
+        "am": "Buổi sáng",
+        "pm": "Buổi chiều"
+      },
+      "compensation": {
+        "pay": "Trả lương theo hệ số luật định",
+        "time_off": "Nghỉ bù"
+      },
+      "fields": {
+        "date": "Ngày",
+        "dates": "Ngày",
+        "from": "Từ ngày",
+        "to": "Đến ngày",
+        "inTime": "Giờ vào",
+        "outTime": "Giờ ra",
+        "outNextDay": "Giờ ra sau nửa đêm (hôm sau)",
+        "nextDay": "hôm sau",
+        "cause": "Nguyên nhân",
+        "evidence": "Minh chứng (không bắt buộc)",
+        "kind": "Hình thức",
+        "portion": "Thời gian trong ngày",
+        "locationName": "Địa điểm",
+        "positionHint": "Không bắt buộc: toạ độ địa điểm để chấm công tại đó được chấp nhận.",
+        "latitude": "Vĩ độ",
+        "longitude": "Kinh độ",
+        "radius": "Bán kính (m)",
+        "position": "Vị trí",
+        "otFrom": "Từ",
+        "otTo": "Đến",
+        "window": "Khung giờ",
+        "compensation": "Hình thức bù",
+        "reason": "Lý do",
+        "capUsed": "Giới hạn tháng"
+      },
+      "confirmHours": {
+        "title": "Xác nhận số giờ đã làm",
+        "hint": "Dành cho công việc không thể hiện qua chấm công (thứ Bảy không chấm công, quay ngoại cảnh). Chỉ tính khi ngày đó không có chấm công.",
+        "minutes": "phút",
+        "save": "Xác nhận",
+        "saved": "Đã lưu.",
+        "confirmed": "Số giờ quản lý xác nhận"
+      },
+      "warnings": {
+        "ot_month_near": "Tăng ca tháng này sẽ là {total} giờ — gần giới hạn luật định {limit} giờ.",
+        "ot_month_cap": "Tăng ca tháng này sẽ là {total} giờ — vượt giới hạn luật định {limit} giờ.",
+        "ot_year_near": "Tăng ca năm nay sẽ là {total} giờ — gần giới hạn luật định {limit} giờ.",
+        "ot_year_cap": "Tăng ca năm nay sẽ là {total} giờ — vượt giới hạn chung {limit} giờ.",
+        "ot_year_cap_extended": "Tăng ca năm nay sẽ là {total} giờ — vượt giới hạn mở rộng {limit} giờ."
+      },
+      "errors": {
+        "generic": "Không thực hiện được. Vui lòng thử lại.",
+        "forbidden": "Bạn không có quyền thực hiện.",
+        "invalid": "Một số trường chưa hợp lệ.",
+        "unauthenticated": "Vui lòng đăng nhập lại.",
+        "no_employment": "Người này chưa có quan hệ lao động hiện hành.",
+        "attendance_request_invalid": "Đơn không hợp lệ.",
+        "attendance_request_dates": "Ngày kết thúc trước ngày bắt đầu.",
+        "attendance_request_one_day": "Đơn này chỉ cho một ngày.",
+        "attendance_request_too_long": "Một đơn tối đa 31 ngày.",
+        "attendance_period_locked": "Bảng công tháng này đã khoá. Hãy đề nghị nhân sự điều chỉnh.",
+        "attendance_request_duplicate": "Đã có đơn cùng loại cho ngày đó.",
+        "attendance_request_not_found": "Không tìm thấy đơn.",
+        "attendance_request_not_open": "Đơn này không còn thay đổi được.",
+        "attendance_cancel_not_allowed": "Chỉ người tạo đơn hoặc nhân sự mới kết thúc được đơn.",
+        "attendance_cancel_started": "Đã đến ngày: chỉ nhân sự mới huỷ được.",
+        "correction_future": "Chỉ bổ sung công cho ngày đã qua.",
+        "correction_needs_time": "Nhập giờ vào, giờ ra, hoặc cả hai.",
+        "correction_out_before_in": "Giờ ra trước giờ vào.",
+        "correction_cap_reached": "Bạn đã dùng hết số lần bổ sung công trong tháng.",
+        "file_not_found": "Tệp bị thiếu hoặc chưa sẵn sàng.",
+        "remote_position_incomplete": "Nhập cả vĩ độ và kinh độ, hoặc để trống cả hai.",
+        "remote_needs_location": "Hãy cho biết nơi làm việc.",
+        "remote_half_day_one_day": "Nửa ngày chỉ áp dụng cho một ngày.",
+        "remote_no_working_day": "Không có ngày làm việc trong khoảng này.",
+        "overtime_window_invalid": "Khung giờ không hợp lệ.",
+        "overtime_compensation_required": "Chọn trả lương hoặc nghỉ bù.",
+        "overtime_use_holiday_work": "Đó là ngày nghỉ: hãy dùng đơn làm việc ngày nghỉ, ngày lễ.",
+        "holiday_work_not_day_off": "Đó là ngày làm việc: hãy dùng đơn làm thêm giờ.",
+        "confirm_own_hours": "Bạn không thể tự xác nhận giờ của mình.",
+        "confirm_hours_future": "Chỉ xác nhận giờ khi đã đến ngày.",
+        "approval_not_pending": "Đơn không còn chờ duyệt.",
+        "approval_not_assignee": "Chưa đến lượt bạn duyệt.",
+        "approval_comment_required": "Vui lòng nêu lý do.",
+        "approval_no_approver": "Không có ai duyệt được đơn này. Liên hệ nhân sự.",
+        "timesheet_not_open": "Bảng công không ở bước này.",
+        "timesheet_not_confirmed": "Nhân viên chưa xác nhận tháng này.",
+        "timesheet_month_not_over": "Tháng chưa kết thúc.",
+        "timesheet_empty": "Không có ngày công nào trong tháng.",
+        "timesheet_missing_punches": "Còn ngày thiếu chấm công. Hãy bổ sung công trước.",
+        "timesheet_period_locked": "Tháng này đã khoá.",
+        "timesheet_lock_blocked": "Còn mục chặn việc khoá công. Xử lý, hoặc khoá kèm lý do.",
+        "timesheet_override_reason_short": "Nhập lý do ít nhất 10 ký tự.",
+        "leave_no_compensatory_type": "Chưa có loại nghỉ bù để ghi nhận. Thêm tại Nghỉ phép → Loại nghỉ.",
+        "adjustment_month_not_locked": "Chỉ điều chỉnh tháng đã khoá. Trước khi khoá, hãy sửa trực tiếp ngày công.",
+        "adjustment_date_outside_month": "Ngày nằm ngoài tháng.",
+        "adjustment_empty": "Nhập ít nhất một chênh lệch.",
+        "adjustment_not_found": "Không tìm thấy điều chỉnh.",
+        "adjustment_not_active": "Điều chỉnh này đã bị huỷ.",
+        "adjustment_in_payroll": "Kỳ lương đã ghi nhận điều chỉnh này.",
+        "person_not_found": "Không tìm thấy người này."
+      }
+    },
+    "months": {
+      "title": "Bảng công tháng",
+      "description": "Nhân viên xác nhận, quản lý duyệt, nhân sự khoá. Tháng đã khoá được chuyển sang tính lương.",
+      "confirm": "Xác nhận bảng công",
+      "confirmAsk": "Xác nhận bảng công tháng này là đúng? Quản lý sẽ duyệt sau đó.",
+      "reopened": "Bị trả lại: {comment}",
+      "toFix": "{count} mục cần xử lý",
+      "approveSelected": "Duyệt mục đã chọn",
+      "approvedCount": "Đã duyệt {approved}/{total}",
+      "status": {
+        "open": "Đang mở",
+        "confirmed": "Đã xác nhận",
+        "approved": "Đã duyệt",
+        "locked": "Đã khoá"
+      },
+      "statusHint": {
+        "open": "Chưa xác nhận.",
+        "confirmed": "Đã xác nhận — chờ quản lý duyệt.",
+        "approved": "Đã duyệt — chờ nhân sự khoá.",
+        "locked": "Đã khoá để tính lương. Thay đổi cần nhân sự điều chỉnh."
+      },
+      "team": {
+        "title": "Nhóm của tôi",
+        "empty": "Không có bảng công nào chờ bạn.",
+        "line": "{paid} / {standard} công · tăng ca {overtime} giờ · {anomalies} ngày bất thường",
+        "sendBack": "Trả lại",
+        "sendBackWhy": "Cần kiểm tra điều gì?",
+        "hoursToConfirm": "Số giờ chờ bạn xác nhận"
+      },
+      "period": {
+        "title": "{entity} — tháng công",
+        "lockedOn": "Đã khoá lúc {date}",
+        "override": "Khoá khi còn {count} mục mở: {reason}",
+        "issues": "{blocking} mục chặn trên {total} mục còn mở",
+        "openConsole": "Mở bảng bất thường",
+        "remind": "Nhắc {count} người xác nhận",
+        "empty": "Không có ngày công nào trong tháng.",
+        "notOver": "Tháng chưa kết thúc."
+      },
+      "issues": {
+        "not_approved": "bảng công chưa được duyệt",
+        "missing_punch": "{count} ngày thiếu chấm công",
+        "punch_to_review": "{count} lần chấm công gắn cờ chờ xem",
+        "request_pending": "{count} đơn đang chờ",
+        "holiday_work_unconfirmed": "{count} đơn làm ngày nghỉ chưa có số giờ",
+        "absent": "{count} ngày vắng (cảnh báo)",
+        "ot_unapproved": "{count} ngày làm thêm chưa duyệt (cảnh báo)"
+      },
+      "lock": {
+        "title": "Khoá công tháng",
+        "readyHint": "Mọi bảng công đã duyệt. Khoá sẽ cố định ngày công, ghi nhận nghỉ bù và chuyển tháng sang tính lương.",
+        "blockedHint": "Còn mục chặn. Bạn vẫn có thể khoá kèm lý do; các mục còn mở sẽ được ghi lại.",
+        "overrideReason": "Vì sao vẫn khoá? (ít nhất 10 ký tự)",
+        "button": "Khoá công",
+        "override": "Vẫn khoá",
+        "confirm": "Khoá tháng này? Không mở lại được; thay đổi sau đó là điều chỉnh."
+      },
+      "adjust": {
+        "listTitle": "Điều chỉnh sau khi khoá",
+        "none": "Chưa có điều chỉnh.",
+        "title": "Điều chỉnh mới",
+        "hint": "Ngày công đã khoá giữ nguyên. Nhập chênh lệch (+/−); kỳ lương kế tiếp sẽ truy lĩnh/truy thu.",
+        "person": "Nhân viên",
+        "date": "Ngày (không bắt buộc)",
+        "reason": "Lý do",
+        "save": "Ghi nhận điều chỉnh",
+        "saved": "Đã ghi nhận.",
+        "void": "Huỷ",
+        "voidWhy": "Vì sao huỷ?",
+        "voided": "Đã huỷ",
+        "waiting": "Chờ kỳ lương",
+        "inPayroll": "Đã vào kỳ lương {month}",
+        "fields": {
+          "workedMinutes": "Giờ làm (phút)",
+          "paidDaysCenti": "Ngày công hưởng lương (phần trăm ngày)",
+          "leavePaidMinutes": "Nghỉ có lương (phút)",
+          "leaveUnpaidMinutes": "Nghỉ không lương (phút)",
+          "absenceMinutes": "Vắng (phút)",
+          "lateMinutes": "Đi muộn (phút)",
+          "earlyMinutes": "Về sớm (phút)",
+          "nightMinutes": "Giờ làm đêm (phút)",
+          "otWeekdayMinutes": "Tăng ca ngày thường (phút)",
+          "otWeekdayNightMinutes": "Tăng ca đêm ngày thường (phút)",
+          "otRestDayMinutes": "Tăng ca ngày nghỉ (phút)",
+          "otRestDayNightMinutes": "Tăng ca đêm ngày nghỉ (phút)",
+          "otHolidayMinutes": "Tăng ca ngày lễ (phút)",
+          "otHolidayNightMinutes": "Tăng ca đêm ngày lễ (phút)"
+        }
+      }
+    },
+    "console": {
+      "title": "Bảng bất thường chấm công",
+      "description": "Những gì còn mở trong tháng của những người bạn phụ trách chấm công. Mục đỏ chặn việc khoá công.",
+      "allEntities": "Tất cả pháp nhân",
+      "allKinds": "Tất cả",
+      "toTimesheets": "Bảng công tháng",
+      "export": "Xuất CSV",
+      "exportFailed": "Xuất tệp không thành công.",
+      "exportTruncated": "Tệp bị cắt ở giới hạn số dòng.",
+      "clearPerson": "xem tất cả",
+      "empty": "Không còn mục nào mở.",
+      "minutes": "{minutes} phút",
+      "lines": "{count} dòng",
+      "nudge": "Nhắc",
+      "kinds": {
+        "missing_punch": "Thiếu chấm công",
+        "absent": "Vắng",
+        "late": "Đi muộn",
+        "early": "Về sớm",
+        "short_hours": "Thiếu giờ",
+        "ot_unapproved": "Làm thêm chưa duyệt",
+        "worked_on_day_off": "Làm ngày nghỉ",
+        "worked_on_leave": "Chấm công khi nghỉ phép",
+        "no_schedule": "Chưa có lịch làm việc",
+        "punch_to_review": "Chấm công gắn cờ",
+        "holiday_work_unconfirmed": "Làm ngày nghỉ chưa có giờ",
+        "request_pending": "Đơn đang chờ",
+        "month_not_confirmed": "Chưa xác nhận tháng",
+        "month_not_approved": "Chưa duyệt tháng",
+        "unmapped_device_id": "Mã máy chưa gán"
+      },
+      "fix": {
+        "correction": "Tạo đơn bổ sung công",
+        "overtime": "Tạo đơn tăng ca",
+        "holiday_work": "Tạo đơn làm ngày nghỉ",
+        "review": "Xem xét",
+        "device": "Gán mã",
+        "request": "Mở đơn",
+        "timesheets": "Bảng công",
+        "schedule": "Lịch làm việc",
+        "none": "Mở ngày công"
       }
     }
   },

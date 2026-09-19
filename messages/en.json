@@ -569,7 +569,8 @@
         "system": "System",
         "hr": "HR deadlines",
         "approvals": "Approvals",
-        "tasks": "Tasks assigned to you"
+        "tasks": "Tasks assigned to you",
+        "attendance": "Attendance & timesheets"
       },
       "push": "Push"
     },
@@ -633,6 +634,26 @@
       "approvals_leave_cancelled": {
         "title": "Your leave was cancelled by HR",
         "body": "HR cancelled your approved leave ({range}). The days are back in your balance."
+      },
+      "attendance_month_ready": {
+        "title": "Your {month} timesheet is ready to confirm",
+        "body": "Please check your attendance for {month}, fix what is missing and confirm it so your manager can approve it."
+      },
+      "attendance_month_waiting": {
+        "title": "{name} confirmed the {month} timesheet",
+        "body": "{name}'s timesheet for {month} is waiting for your approval."
+      },
+      "attendance_month_reopened": {
+        "title": "Your {month} timesheet was sent back",
+        "body": "Your timesheet for {month} was sent back to you: {comment}"
+      },
+      "attendance_adjusted": {
+        "title": "HR adjusted your locked {month} timesheet",
+        "body": "HR recorded an adjustment to your locked timesheet for {month}: {reason}. It will be settled in the next payroll."
+      },
+      "attendance_nudge": {
+        "title": "Please check your attendance for {month}",
+        "body": "HR asks you to review your attendance for {month}: fix missing punches or file the requests that are still open."
       }
     },
     "errors": {
@@ -846,7 +867,11 @@
     "types": {
       "profile_change": "Personal data change",
       "resignation": "Resignation",
-      "leave": "Leave"
+      "leave": "Leave",
+      "attendance_correction": "Punch correction",
+      "remote_work": "Remote / off-site work",
+      "overtime": "Overtime",
+      "holiday_work": "Holiday / rest-day work"
     },
     "status": {
       "pending": "Waiting for approval",
@@ -1867,6 +1892,292 @@
         "recompute": "Recompute",
         "recomputeDone": "{written} days rewritten, {locked} locked days left alone.",
         "recomputeFailed": "Could not recompute."
+      }
+    },
+    "requests": {
+      "newTitle": "New attendance request",
+      "newDescription": "Correct a punch, or ask for remote work, overtime or work on a day off. Your line manager answers.",
+      "resubmitTitle": "Correct and send again",
+      "onBehalf": "Filed on behalf of {name}",
+      "mine": "My requests this month",
+      "submit": "Send request",
+      "resubmit": "Send again",
+      "withdraw": "Withdraw",
+      "cancel": "Cancel request",
+      "cancelConfirm": "End this request?",
+      "filedBy": "filed by {name}",
+      "openEvidence": "Open file",
+      "fixAndResubmit": "Correct and send again",
+      "dayNow": "The day as it stands",
+      "dayNowLine": "In {first} · out {last} · worked {worked} h · overtime {overtime} h · unapproved extra {unapproved} h",
+      "dayLocked": "This day is locked.",
+      "hoursCount": "{hours} h",
+      "capStatus": "{used} of {cap} corrections used this month",
+      "capHint": "The monthly limit is {cap} corrections. HR can file one for you when the clock was at fault.",
+      "types": {
+        "attendance_correction": "Punch correction",
+        "remote_work": "Remote / off-site work",
+        "overtime": "Overtime",
+        "holiday_work": "Holiday / rest-day work"
+      },
+      "typeHints": {
+        "attendance_correction": "Forgot to punch, or the clock failed? Give the time(s) you really arrived or left.",
+        "remote_work": "Work from home, or off-site at a shoot, a client or an event. With coordinates, a check-in at that place is not flagged.",
+        "overtime": "Ask before you stay: overtime counts only inside an approved window, confirmed by your punches.",
+        "holiday_work": "Work on a public holiday or a rest day. Hours come from your punches, or from your manager's confirmation when there are none."
+      },
+      "status": {
+        "pending": "Waiting",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "withdrawn": "Withdrawn",
+        "cancelled": "Cancelled",
+        "returned": "Sent back"
+      },
+      "causes": {
+        "forgot": "Forgot to punch",
+        "device_error": "Clock or app error",
+        "other": "Other"
+      },
+      "kinds": {
+        "wfh": "Work from home",
+        "off_site": "Off-site (shoot, client, event)",
+        "business_trip": "Business trip"
+      },
+      "portions": {
+        "full": "Whole day",
+        "am": "Morning",
+        "pm": "Afternoon"
+      },
+      "compensation": {
+        "pay": "Paid at the statutory rate",
+        "time_off": "Time off in lieu"
+      },
+      "fields": {
+        "date": "Date",
+        "dates": "Dates",
+        "from": "From",
+        "to": "To",
+        "inTime": "Check-in time",
+        "outTime": "Check-out time",
+        "outNextDay": "Checked out after midnight (next day)",
+        "nextDay": "next day",
+        "cause": "Cause",
+        "evidence": "Evidence (optional)",
+        "kind": "Kind",
+        "portion": "Part of the day",
+        "locationName": "Place",
+        "positionHint": "Optional: coordinates of the place, so a check-in there is accepted.",
+        "latitude": "Latitude",
+        "longitude": "Longitude",
+        "radius": "Radius (m)",
+        "position": "Position",
+        "otFrom": "From",
+        "otTo": "To",
+        "window": "Hours",
+        "compensation": "Compensation",
+        "reason": "Reason",
+        "capUsed": "Monthly limit"
+      },
+      "confirmHours": {
+        "title": "Confirm the hours worked",
+        "hint": "For work that punches cannot show (an untracked Saturday, a shoot off-site). Counts only when the day has no punches of its own.",
+        "minutes": "minutes",
+        "save": "Confirm",
+        "saved": "Saved.",
+        "confirmed": "Hours confirmed by the manager"
+      },
+      "warnings": {
+        "ot_month_near": "Overtime this month would reach {total} h — close to the legal limit of {limit} h.",
+        "ot_month_cap": "Overtime this month would reach {total} h — above the legal limit of {limit} h.",
+        "ot_year_near": "Overtime this year would reach {total} h — close to the legal limit of {limit} h.",
+        "ot_year_cap": "Overtime this year would reach {total} h — above the general legal limit of {limit} h.",
+        "ot_year_cap_extended": "Overtime this year would reach {total} h — above the extended legal limit of {limit} h."
+      },
+      "errors": {
+        "generic": "That did not work. Please try again.",
+        "forbidden": "You are not allowed to do this.",
+        "invalid": "Some fields are not valid.",
+        "unauthenticated": "Please sign in again.",
+        "no_employment": "This person has no current employment.",
+        "attendance_request_invalid": "The request is not valid.",
+        "attendance_request_dates": "The end date is before the start date.",
+        "attendance_request_one_day": "This request is for a single day.",
+        "attendance_request_too_long": "A request can cover at most 31 days.",
+        "attendance_period_locked": "This month's timesheet is locked. Ask HR for an adjustment.",
+        "attendance_request_duplicate": "There is already a request of this kind for that day.",
+        "attendance_request_not_found": "Request not found.",
+        "attendance_request_not_open": "This request can no longer be changed.",
+        "attendance_cancel_not_allowed": "Only the requester or HR can end this request.",
+        "attendance_cancel_started": "The day has come: only HR can cancel it now.",
+        "correction_future": "A correction is for a day that has passed.",
+        "correction_needs_time": "Give a check-in time, a check-out time, or both.",
+        "correction_out_before_in": "The check-out is before the check-in.",
+        "correction_cap_reached": "You have used this month's corrections.",
+        "file_not_found": "The file is missing or not ready.",
+        "remote_position_incomplete": "Give both latitude and longitude, or neither.",
+        "remote_needs_location": "Say where you will be working.",
+        "remote_half_day_one_day": "A half day can only be asked for a single date.",
+        "remote_no_working_day": "There is no working day in these dates.",
+        "overtime_window_invalid": "The hours are not valid.",
+        "overtime_compensation_required": "Choose pay or time off in lieu.",
+        "overtime_use_holiday_work": "That is a day off: use the holiday / rest-day work request.",
+        "holiday_work_not_day_off": "That is a working day: use the overtime request.",
+        "confirm_own_hours": "You cannot confirm your own hours.",
+        "confirm_hours_future": "Hours can be confirmed once the day has come.",
+        "approval_not_pending": "This request is no longer waiting.",
+        "approval_not_assignee": "It is not your turn to answer.",
+        "approval_comment_required": "Please say why.",
+        "approval_no_approver": "Nobody can approve this request. Contact HR.",
+        "timesheet_not_open": "This timesheet is not at that step.",
+        "timesheet_not_confirmed": "The employee has not confirmed this month yet.",
+        "timesheet_month_not_over": "The month is not over yet.",
+        "timesheet_empty": "There are no attendance days in this month.",
+        "timesheet_missing_punches": "Some days have a missing punch. File corrections first.",
+        "timesheet_period_locked": "This month is already locked.",
+        "timesheet_lock_blocked": "Something still blocks the lock. Resolve it, or lock with a reason.",
+        "timesheet_override_reason_short": "Give a reason of at least 10 characters.",
+        "leave_no_compensatory_type": "No compensatory leave type exists for time off in lieu. Add one under Leave → Types.",
+        "adjustment_month_not_locked": "Adjustments are for locked months. Before the lock, fix the day itself.",
+        "adjustment_date_outside_month": "The date is outside the month.",
+        "adjustment_empty": "Enter at least one difference.",
+        "adjustment_not_found": "Adjustment not found.",
+        "adjustment_not_active": "This adjustment was already voided.",
+        "adjustment_in_payroll": "Payroll has already taken this adjustment.",
+        "person_not_found": "Person not found."
+      }
+    },
+    "months": {
+      "title": "Monthly timesheets",
+      "description": "The employee confirms, the manager approves, HR locks. A locked month goes to payroll.",
+      "confirm": "Confirm my month",
+      "confirmAsk": "Confirm this month as correct? Your manager will then approve it.",
+      "reopened": "Sent back: {comment}",
+      "toFix": "{count, plural, =1 {1 thing to fix} other {# things to fix}}",
+      "approveSelected": "Approve selected",
+      "approvedCount": "{approved} of {total} approved",
+      "status": {
+        "open": "Open",
+        "confirmed": "Confirmed",
+        "approved": "Approved",
+        "locked": "Locked"
+      },
+      "statusHint": {
+        "open": "Not confirmed yet.",
+        "confirmed": "Confirmed — waiting for the manager.",
+        "approved": "Approved — waiting for HR to lock.",
+        "locked": "Locked for payroll. Changes need an HR adjustment."
+      },
+      "team": {
+        "title": "My team",
+        "empty": "Nobody's timesheet waits for you.",
+        "line": "{paid} / {standard} days · OT {overtime} h · {anomalies} day(s) with anomalies",
+        "sendBack": "Send back",
+        "sendBackWhy": "What should be checked?",
+        "hoursToConfirm": "Hours waiting for your confirmation"
+      },
+      "period": {
+        "title": "{entity} — the month",
+        "lockedOn": "Locked on {date}",
+        "override": "Locked with open items ({count}): {reason}",
+        "issues": "{blocking} blocking of {total} open items",
+        "openConsole": "Open the anomaly console",
+        "remind": "Remind {count} people to confirm",
+        "empty": "No attendance days in this month.",
+        "notOver": "The month is not over yet."
+      },
+      "issues": {
+        "not_approved": "month not approved",
+        "missing_punch": "{count} day(s) with a missing punch",
+        "punch_to_review": "{count} flagged punch(es) to review",
+        "request_pending": "{count} request(s) waiting",
+        "holiday_work_unconfirmed": "{count} holiday work without hours",
+        "absent": "{count} day(s) absent (warning)",
+        "ot_unapproved": "{count} day(s) with unapproved overtime (warning)"
+      },
+      "lock": {
+        "title": "Lock the month",
+        "readyHint": "Everything is approved. Locking freezes the days, posts time off in lieu and hands the month to payroll.",
+        "blockedHint": "Blocking items remain. You can still lock with a reason; the open items are recorded with it.",
+        "overrideReason": "Why lock anyway? (at least 10 characters)",
+        "button": "Lock",
+        "override": "Lock anyway",
+        "confirm": "Lock this month? It cannot be reopened; later changes are adjustments."
+      },
+      "adjust": {
+        "listTitle": "Adjustments after the lock",
+        "none": "No adjustments.",
+        "title": "New adjustment",
+        "hint": "The locked days stay as they are. Enter the difference (+/−); payroll settles it as a retro item in its next month.",
+        "person": "Person",
+        "date": "Day (optional)",
+        "reason": "Reason",
+        "save": "Record adjustment",
+        "saved": "Recorded.",
+        "void": "Void",
+        "voidWhy": "Why void it?",
+        "voided": "Voided",
+        "waiting": "Waiting for payroll",
+        "inPayroll": "In payroll {month}",
+        "fields": {
+          "workedMinutes": "Worked (min)",
+          "paidDaysCenti": "Paid days (hundredths)",
+          "leavePaidMinutes": "Paid leave (min)",
+          "leaveUnpaidMinutes": "Unpaid leave (min)",
+          "absenceMinutes": "Absence (min)",
+          "lateMinutes": "Late (min)",
+          "earlyMinutes": "Early out (min)",
+          "nightMinutes": "Night hours (min)",
+          "otWeekdayMinutes": "OT weekday (min)",
+          "otWeekdayNightMinutes": "OT weekday night (min)",
+          "otRestDayMinutes": "OT rest day (min)",
+          "otRestDayNightMinutes": "OT rest day night (min)",
+          "otHolidayMinutes": "OT holiday (min)",
+          "otHolidayNightMinutes": "OT holiday night (min)"
+        }
+      }
+    },
+    "console": {
+      "title": "Anomaly console",
+      "description": "What is still open this month for the people you keep attendance for. Red items block the lock.",
+      "allEntities": "All entities",
+      "allKinds": "All",
+      "toTimesheets": "Monthly timesheets",
+      "export": "Export CSV",
+      "exportFailed": "The export failed.",
+      "exportTruncated": "The file was cut at the row limit.",
+      "clearPerson": "show everyone",
+      "empty": "Nothing open. ",
+      "minutes": "{minutes} min",
+      "lines": "{count} line(s)",
+      "nudge": "Nudge",
+      "kinds": {
+        "missing_punch": "Missing punch",
+        "absent": "Absent",
+        "late": "Late",
+        "early": "Left early",
+        "short_hours": "Short hours",
+        "ot_unapproved": "Unapproved overtime",
+        "worked_on_day_off": "Worked on a day off",
+        "worked_on_leave": "Punches on leave",
+        "no_schedule": "No schedule",
+        "punch_to_review": "Flagged punch",
+        "holiday_work_unconfirmed": "Holiday work without hours",
+        "request_pending": "Request waiting",
+        "month_not_confirmed": "Month not confirmed",
+        "month_not_approved": "Month not approved",
+        "unmapped_device_id": "Unmapped clock ID"
+      },
+      "fix": {
+        "correction": "File a correction",
+        "overtime": "File overtime",
+        "holiday_work": "File holiday work",
+        "review": "Review",
+        "device": "Map the ID",
+        "request": "Open request",
+        "timesheets": "Timesheets",
+        "schedule": "Schedules",
+        "none": "Open the day"
       }
     }
   },

@@ -2,7 +2,8 @@
 // who follows which schedule, and the shift roster. Holidays are rows, never constants: the
 // government announces Tết and the swap days year by year.
 import { sql } from "drizzle-orm";
-import { type AnyPgColumn, boolean, date, doublePrecision, index, integer, jsonb, pgEnum, pgTable, smallint, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, boolean, check, date, doublePrecision, index, integer, jsonb, pgEnum, pgTable, smallint, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { approvalRequest } from "../platform/approvals/schema";
 import { department, entity } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
 import type { SchedulePattern, Segment } from "./engine/calendar";
@@ -357,4 +358,157 @@ export const timesheetDay = pgTable(
     lockedAt: timestamp("locked_at", { withTimezone: true }),
   },
   (t) => [unique("timesheet_day_person_date_key").on(t.personId, t.date), index("timesheet_day_entity_date_idx").on(t.entityId, t.date)],
+).enableRLS();
+
+// ── Week 5: attendance requests, the monthly timesheet and its lock (FR-ATT-10, 11, 12, 14, 18) ──
+
+export const attendanceRequestType = pgEnum("attendance_request_type", ["attendance_correction", "remote_work", "overtime", "holiday_work"]);
+export const attendanceRequestStatus = pgEnum("attendance_request_status", ["pending", "approved", "rejected", "withdrawn", "cancelled"]);
+
+/** What each request type keeps beside its dates. Times are "HH:mm" local clock. */
+export type AttendanceRequestDetails =
+  | { type: "attendance_correction"; cause: "forgot" | "device_error" | "other"; inTime: string | null; outTime: string | null; /** The departure was after midnight (night shift). */ outNextDay: boolean }
+  | { type: "remote_work"; kind: "wfh" | "off_site" | "business_trip"; portion: "full" | "am" | "pm"; locationName: string | null; latitude: number | null; longitude: number | null; radiusM: number | null }
+  | { type: "overtime"; from: string; to: string }
+  | { type: "holiday_work"; from: string | null; to: string | null };
+
+// One table for the four attendance request types: they share dates, a reason, an approval and —
+// for overtime and holiday work — the choice between pay and time off and a manager's confirmation
+// of the hours. The approval itself lives in `approval_request`; `status` follows it.
+export const attendanceRequest = pgTable(
+  "attendance_request",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    type: attendanceRequestType("type").notNull(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    entityId: uuid("entity_id").references(() => entity.id),
+    filedByPersonId: uuid("filed_by_person_id")
+      .notNull()
+      .references(() => person.id),
+    approvalRequestId: uuid("approval_request_id").references(() => approvalRequest.id),
+    status: attendanceRequestStatus("status").notNull().default("pending"),
+    startDate: date("start_date").notNull(),
+    endDate: date("end_date").notNull(),
+    details: jsonb("details").$type<AttendanceRequestDetails>().notNull(),
+    reason: text("reason"),
+    evidenceFileId: uuid("evidence_file_id"),
+    // Overtime and holiday work: paid at the statutory multiplier, or taken as time off in lieu.
+    compensation: text("compensation").$type<"pay" | "time_off">(),
+    // Hours the line manager confirmed where punches cannot (untracked day, off-site work).
+    confirmedMinutes: integer("confirmed_minutes"),
+    confirmedByPersonId: uuid("confirmed_by_person_id").references(() => person.id),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("attendance_request_person_idx").on(t.personId, t.startDate), index("attendance_request_approval_idx").on(t.approvalRequestId), index("attendance_request_entity_idx").on(t.entityId, t.startDate)],
+).enableRLS();
+
+export const timesheetMonthStatus = pgEnum("timesheet_month_status", ["open", "confirmed", "approved", "locked"]);
+
+// One person's month on its way to payroll: the employee confirms, the line manager approves, HR
+// locks (FR-ATT-14). `summary` is the month's totals as they stood at the last step taken; after
+// the lock it is the frozen snapshot payroll reads.
+export const timesheetMonth = pgTable(
+  "timesheet_month",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    entityId: uuid("entity_id").references(() => entity.id),
+    month: text("month").notNull(),
+    status: timesheetMonthStatus("status").notNull().default("open"),
+    summary: jsonb("summary").$type<Record<string, unknown>>(),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    confirmedByPersonId: uuid("confirmed_by_person_id").references(() => person.id),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    approvedByPersonId: uuid("approved_by_person_id").references(() => person.id),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    lockedByPersonId: uuid("locked_by_person_id").references(() => person.id),
+    // Why it was sent back to the person, by whom.
+    reopenedComment: text("reopened_comment"),
+    reopenedByPersonId: uuid("reopened_by_person_id").references(() => person.id),
+    reopenedAt: timestamp("reopened_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("timesheet_month_person_month_key").on(t.personId, t.month), index("timesheet_month_entity_idx").on(t.entityId, t.month), check("timesheet_month_format", sql`${t.month} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`)],
+).enableRLS();
+
+export const timesheetPeriodStatus = pgEnum("timesheet_period_status", ["open", "locked"]);
+
+// An entity's month. Locked by HR; from then on its days are payroll's input and never recomputed.
+export const timesheetPeriod = pgTable(
+  "timesheet_period",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    month: text("month").notNull(),
+    status: timesheetPeriodStatus("status").notNull().default("open"),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    lockedByPersonId: uuid("locked_by_person_id").references(() => person.id),
+    // Locked although blockers remained: HR's reason and what the blockers were.
+    overrideReason: text("override_reason"),
+    exceptions: jsonb("exceptions").$type<{ personId: string; code: string; count: number }[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("timesheet_period_entity_month_key").on(t.entityId, t.month), check("timesheet_period_month_format", sql`${t.month} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`)],
+).enableRLS();
+
+export const timesheetAdjustmentStatus = pgEnum("timesheet_adjustment_status", ["active", "voided"]);
+
+/** Signed minutes per timesheet column an adjustment corrects. */
+export type AdjustmentDeltas = Partial<Record<"workedMinutes" | "leavePaidMinutes" | "leaveUnpaidMinutes" | "absenceMinutes" | "lateMinutes" | "earlyMinutes" | "otWeekdayMinutes" | "otWeekdayNightMinutes" | "otRestDayMinutes" | "otRestDayNightMinutes" | "otHolidayMinutes" | "otHolidayNightMinutes" | "nightMinutes", number>> & { paidDaysCenti?: number };
+
+// A correction to a month that is already locked (FR-ATT-14). The locked days are never edited:
+// the difference is written here and payroll picks it up as a retro item in its next open month.
+export const timesheetAdjustment = pgTable(
+  "timesheet_adjustment",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    /** The locked month being corrected. */
+    month: text("month").notNull(),
+    date: date("date"),
+    deltas: jsonb("deltas").$type<AdjustmentDeltas>().notNull(),
+    reason: text("reason").notNull(),
+    status: timesheetAdjustmentStatus("status").notNull().default("active"),
+    createdByPersonId: uuid("created_by_person_id")
+      .notNull()
+      .references(() => person.id),
+    voidedByPersonId: uuid("voided_by_person_id").references(() => person.id),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    voidReason: text("void_reason"),
+    /** Set by payroll (Phase 5) when a payroll month has taken the adjustment in. */
+    payrollMonth: text("payroll_month"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("timesheet_adjustment_entity_idx").on(t.entityId, t.month), index("timesheet_adjustment_person_idx").on(t.personId, t.month)],
+).enableRLS();
+
+// Time off in lieu posted at the lock, so a second lock attempt (or a re-run) posts nothing twice.
+export const attendanceToilPosting = pgTable(
+  "attendance_toil_posting",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    month: text("month").notNull(),
+    minutes: integer("minutes").notNull(),
+    amountCenti: integer("amount_centi").notNull(),
+    postedAt: timestamp("posted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("attendance_toil_posting_person_month_key").on(t.personId, t.month)],
 ).enableRLS();

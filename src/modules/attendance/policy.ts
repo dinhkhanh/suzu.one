@@ -46,3 +46,22 @@ export const canSeeTimesheetOf = (principal: Principal, person: PersonTarget): b
 
 /** Recomputing on demand, device logs and the ID map: HR over the entity. */
 export const canManageDevices = (principal: Principal, entityId: string): boolean => can(principal, "attendance:manage", { entityId });
+
+// ── Week 5: requests, the monthly timesheet, the anomaly console ────────────────────────────
+
+/** An attendance request is one's own; HR files on behalf of the people they keep attendance for. */
+export const canFileAttendanceRequestFor = (principal: Principal, person: PersonTarget): boolean => principal.personId === person.personId || can(principal, "attendance:manage", person);
+
+/** HR over the person — the anomaly console's actions, cancelling a request that has started, adjustments after the lock. */
+export const canManageAttendanceOf = (principal: Principal, person: PersonTarget): boolean => can(principal, "attendance:manage", person);
+
+/** Confirming the hours of approved overtime or holiday work: the line manager or HR — never one's own. */
+export const canConfirmHoursOf = (principal: Principal, person: PersonTarget): boolean =>
+  principal.personId !== person.personId && ((!!principal.personId && person.managerId === principal.personId) || can(principal, "attendance:manage", person));
+
+/** Approving (or sending back) someone's monthly timesheet: the line manager or HR — never one's own. */
+export const canApproveMonthOf = (principal: Principal, person: PersonTarget): boolean =>
+  principal.personId !== person.personId && ((!!principal.personId && person.managerId === principal.personId) || can(principal, "attendance:manage", person));
+
+/** Locking an entity's month, and reading its progress: HR over the entity. */
+export const canLockPeriod = (principal: Principal, entityId: string): boolean => can(principal, "attendance:manage", { entityId });

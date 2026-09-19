@@ -1,7 +1,7 @@
 // The catalogue of notifications. Plain module: shared by the server and the preferences screen.
 // Wording lives in messages/*.json under `notifications.kinds.<kind>` (dots become underscores).
 
-export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks"] as const;
+export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks", "attendance"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const EMAIL_CHANNELS = ["instant", "digest", "off"] as const;
@@ -18,6 +18,8 @@ export const CATEGORY_DEFINITIONS: Record<Category, { defaults: ChannelChoice; /
   approvals: { defaults: { inApp: true, email: "instant", push: true }, mandatory: false },
   // Work handed to you. In the app at once; by email once a day, so a checklist is one email.
   tasks: { defaults: { inApp: true, email: "digest", push: true }, mandatory: false },
+  // The monthly timesheet: ready to confirm, waiting for the manager, sent back, corrected after the lock.
+  attendance: { defaults: { inApp: true, email: "digest", push: true }, mandatory: false },
 };
 
 export const KINDS = {
@@ -37,6 +39,11 @@ export const KINDS = {
   // HR called off someone's approved leave: the person is told, the days are back in the balance.
   "approvals.leave_cancelled": "approvals",
   "tasks.assigned": "tasks",
+  "attendance.month_ready": "attendance",
+  "attendance.month_waiting": "attendance",
+  "attendance.month_reopened": "attendance",
+  "attendance.adjusted": "attendance",
+  "attendance.nudge": "attendance",
 } as const satisfies Record<string, Category>;
 export type Kind = keyof typeof KINDS;
 
