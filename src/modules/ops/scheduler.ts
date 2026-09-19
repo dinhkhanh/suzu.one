@@ -133,7 +133,7 @@ async function generateIn(tx: Executor, today: IsoDate, options: GenerateOptions
     const owner = (await candidates(template.ownerRule, template.ownerPersonId, plan.entityId)).find((id) => id !== plan.subjectPersonId) ?? null;
     const reviewer = (await candidates(template.reviewerRule, template.reviewerPersonId, plan.entityId)).find((id) => id !== owner && id !== plan.subjectPersonId) ?? null;
     const dueDate = shiftDueDate(plan.nominal, template.shift as Shift, await daysOffOf(plan.entityId));
-    const [task] = await createTasks(tx, [{ kind: OBLIGATION_KIND, title: plan.title, description: template.guidance, assigneePersonId: owner, dueDate, entityId: plan.entityId, subjectPersonId: plan.subjectPersonId, context: { type: "obligation_template", id: template.id } }], options.actorId ?? null, { notify: false });
+    const [task] = await createTasks(tx, [{ kind: OBLIGATION_KIND, title: plan.title, assigneePersonId: owner, dueDate, entityId: plan.entityId, subjectPersonId: plan.subjectPersonId, context: { type: "obligation_template", id: template.id } }], options.actorId ?? null, { notify: false });
     await tx.insert(schema.obligationInstance).values({ taskId: task.id, templateId: template.id, entityId: plan.entityId, periodKey: plan.periodKey, periodStart: plan.period?.start ?? null, periodEnd: plan.period?.end ?? null, nominalDueDate: plan.nominal, sourceType: plan.source?.type ?? null, sourceId: plan.source?.id ?? null, reviewerPersonId: reviewer });
     if (!owner) unassigned++;
     else if (owner !== options.actorId) told.set(owner, { count: (told.get(owner)?.count ?? 0) + 1, title: told.get(owner)?.title ?? plan.title });

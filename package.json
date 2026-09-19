@@ -17,6 +17,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:seed:demo": "tsx scripts/seed-demo.ts",
     "db:recompute": "tsx scripts/recompute-timesheets.ts",
+    "db:seed:demo:ops": "tsx scripts/seed-demo-ops.ts",
     "push:keys": "tsx scripts/push-keys.ts",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "db:down": "supabase stop",

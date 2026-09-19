@@ -4,7 +4,7 @@ import { timesheetMonthReadyJob, timesheetRecomputeJob } from "@/modules/attenda
 import { fieldKeysRewrapJob, hrAlertsJob, peopleRollOverJob } from "@/modules/core-hr/jobs";
 import { filesCleanupJob } from "@/modules/platform/files/jobs";
 import { leaveAccrualJob } from "@/modules/leave/jobs";
-import { opsSchedulerJob } from "@/modules/ops/jobs";
+import { opsBackfillJob, opsSchedulerJob } from "@/modules/ops/jobs";
 import { type JobDefinition, runJob } from "@/modules/platform/jobs/service";
 import { notificationsDailyJob } from "@/modules/platform/notifications/jobs";
 import { workRecurringJob, workRemindersJob } from "@/modules/work/jobs";
@@ -20,7 +20,7 @@ const SCHEDULES: Record<string, JobDefinition[]> = {
 };
 
 // Run by hand only: /api/cron/<job name>.
-const ON_DEMAND: JobDefinition[] = [fieldKeysRewrapJob];
+const ON_DEMAND: JobDefinition[] = [fieldKeysRewrapJob, opsBackfillJob];
 
 export const maxDuration = 300;
 
