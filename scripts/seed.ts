@@ -6,12 +6,13 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { and, between, inArray, isNull } from "drizzle-orm";
-import { attendancePolicy, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
+import { attendancePolicy, kpiDefinition, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
 import { PROFILE_SEED } from "../src/modules/attendance/engine/device-log";
 import { CALENDAR_SEED, DEFAULT_POLICY_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 import { leaveSeedRows } from "../src/modules/leave/seed-types";
 import { TEMPLATE_SEED } from "../src/modules/platform/tasks-engine/seed-templates";
 import { obligationSeedRows } from "../src/modules/ops/seed-library";
+import { kpiSeedRows } from "../src/modules/performance/seed-kpis";
 import { WORK_TEMPLATE_SEED } from "../src/modules/work/seed-templates";
 import { STATUTORY_SEED } from "../src/modules/platform/statutory/seed-values";
 
@@ -118,6 +119,12 @@ async function main() {
   const [anyProfile] = await db.select({ id: deviceMappingProfile.id }).from(deviceMappingProfile).limit(1);
   if (!anyProfile) await db.insert(deviceMappingProfile).values(PROFILE_SEED.map((profile) => ({ ...profile, entityId: null })));
   console.log(`Seeded ${anyPolicy ? 0 : 1} attendance policy and ${anyProfile ? 0 : PROFILE_SEED.length} device mapping profiles.`);
+
+  // The starter KPI library (FR-PRF-02): only codes that do not exist — an edited or switched-off KPI stays as HR left it.
+  const kpiCodes = new Set((await db.select({ code: kpiDefinition.code }).from(kpiDefinition)).map((row) => row.code));
+  const newKpis = kpiSeedRows().filter((row) => !kpiCodes.has(row.code));
+  if (newKpis.length) await db.insert(kpiDefinition).values(newKpis);
+  console.log(`Seeded ${newKpis.length} KPI definitions (existing codes left untouched).`);
 
   await client.end();
 }

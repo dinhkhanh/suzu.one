@@ -134,6 +134,8 @@ describe("KPIs", () => {
     expect(canManageAssignmentsOf(hrSzm, huy)).toBe(true);
     expect(canManageAssignmentsOf(hrSzm, khoi)).toBe(false);
     expect(canManageAssignmentsOf(headVid, huy)).toBe(false);
+    expect(canManageAssignmentsOf(hrSzm, person("bao", SZM, "dept-hr"))).toBe(false); // not one's own weights and targets
+    expect(canManageAssignmentsOf(owner, person("bao", SZM, "dept-hr"))).toBe(true);
     expect(canManageKpiLibrary(hrAdmin)).toBe(true);
     expect(canManageKpiLibrary(hrSzm)).toBe(false); // the library is the group's
     expect(canManagePositionKpis(hrSzm, SZM)).toBe(true);

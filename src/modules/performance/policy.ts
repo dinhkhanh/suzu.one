@@ -105,8 +105,8 @@ export const canManageKpiLibrary = (principal: Principal): boolean => can(princi
 /** A position's template: the group's set (entity null) or one entity's own. */
 export const canManagePositionKpis = (principal: Principal, entityId: string | null): boolean => can(principal, "performance:manage", entityId ? { entityId } : {});
 
-/** Which KPIs someone is measured on, with what weight and target: HR over that person. */
-export const canManageAssignmentsOf = (principal: Principal, person: PersonContext): boolean => canManagePerformanceOf(principal, person);
+/** Which KPIs someone is measured on, with what weight and target: HR over that person — and, like the actuals, never one's own. */
+export const canManageAssignmentsOf = (principal: Principal, person: PersonContext): boolean => !isSelf(principal, person) && canManagePerformanceOf(principal, person);
 
 /**
  * Entering an actual: a manager above the person, or HR over them — and never the person
