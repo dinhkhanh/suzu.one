@@ -221,6 +221,178 @@
       "assignment_before_current_assignment": "Ngày hiệu lực sớm hơn ngày bắt đầu của vị trí hiện tại. Không thể sửa lịch sử đã qua."
     }
   },
+  "records": {
+    "sections": {
+      "contracts": "Hợp đồng",
+      "dependents": "Người phụ thuộc (giảm trừ gia cảnh)",
+      "documents": "Hồ sơ, giấy tờ",
+      "sensitive": "Thông tin hạn chế",
+      "emergencyContacts": "Liên hệ khẩn cấp"
+    },
+    "save": "Lưu",
+    "saving": "Đang lưu…",
+    "delete": "Xóa",
+    "confirmDelete": "Xóa mục này? Không thể hoàn tác tại đây.",
+    "show": "Hiện",
+    "hide": "Ẩn",
+    "tierNote": {
+      "personal": "Hiển thị với chính nhân viên, quản lý trực tiếp và Nhân sự.",
+      "restricted": "Chỉ nhân viên và bộ phận Nhân sự xem được — quản lý trực tiếp không bao giờ thấy.",
+      "compensation": "Chỉ nhân viên, quản trị Nhân sự và bộ phận tính lương xem được."
+    },
+    "sensitive": {
+      "audited": "Mỗi lần xem đều được ghi vào nhật ký hệ thống.",
+      "edit": "Sửa thông tin hạn chế",
+      "dependentIds": "Số giấy tờ và mã số thuế của người phụ thuộc",
+      "fields": {
+        "nationalId": "Số CCCD",
+        "nationalIdIssuedOn": "Ngày cấp CCCD",
+        "nationalIdIssuedAt": "Nơi cấp CCCD",
+        "passportNumber": "Số hộ chiếu",
+        "taxCode": "Mã số thuế cá nhân",
+        "socialInsuranceNumber": "Số sổ BHXH",
+        "healthInsuranceHospital": "Nơi đăng ký KCB (BHYT)",
+        "bankAccounts": "Tài khoản ngân hàng"
+      },
+      "bank": {
+        "account": "Tài khoản ngân hàng {number}",
+        "bankName": "Ngân hàng",
+        "accountNumber": "Số tài khoản",
+        "accountHolder": "Chủ tài khoản",
+        "branch": "Chi nhánh"
+      }
+    },
+    "contracts": {
+      "empty": "Chưa có hợp đồng nào.",
+      "add": "Thêm hợp đồng",
+      "type": "Loại",
+      "number": "Số hợp đồng",
+      "signDate": "Ngày ký",
+      "startDate": "Hiệu lực từ",
+      "endDate": "Đến ngày",
+      "jobCategory": "Nhóm công việc (quyết định thời gian thử việc tối đa)",
+      "parent": "Phụ lục của",
+      "salaryTerms": "Điều khoản lương",
+      "salaryTermsHint": "VD: lương gộp 25.000.000 đ/tháng",
+      "note": "Ghi chú",
+      "openEnded": "không thời hạn",
+      "signedOn": "ký ngày {date}",
+      "terminated": "Chấm dứt sớm ngày {date}",
+      "terminate": "Chấm dứt sớm",
+      "terminatedOn": "Ngày hiệu lực cuối",
+      "attach": "Đính kèm bản đã ký",
+      "showTerms": "Xem điều khoản lương",
+      "state": {
+        "active": "Đang hiệu lực",
+        "upcoming": "Chưa bắt đầu",
+        "ended": "Đã hết hạn"
+      },
+      "types": {
+        "probation": "Hợp đồng thử việc",
+        "fixed_term": "HĐLĐ xác định thời hạn",
+        "indefinite": "HĐLĐ không xác định thời hạn",
+        "service": "Hợp đồng dịch vụ / cộng tác viên",
+        "internship": "Thỏa thuận thực tập",
+        "nda": "Cam kết bảo mật (NDA)",
+        "appendix": "Phụ lục hợp đồng"
+      },
+      "jobCategories": {
+        "manager": "Người quản lý doanh nghiệp (tối đa 180 ngày)",
+        "professional": "Cần trình độ cao đẳng trở lên (tối đa 60 ngày)",
+        "intermediate": "Trung cấp, công nhân kỹ thuật, nghiệp vụ (tối đa 30 ngày)",
+        "other": "Công việc khác (tối đa 6 ngày làm việc)"
+      }
+    },
+    "dependents": {
+      "empty": "Chưa đăng ký người phụ thuộc.",
+      "add": "Thêm người phụ thuộc",
+      "fullName": "Họ và tên",
+      "relationship": "Quan hệ",
+      "dateOfBirth": "Ngày sinh",
+      "idNumber": "Số CCCD / giấy khai sinh",
+      "taxCode": "Mã số thuế",
+      "deductionFrom": "Giảm trừ từ tháng",
+      "deductionTo": "Giảm trừ đến tháng",
+      "months": "giảm trừ {from} → {to}",
+      "open": "chưa kết thúc",
+      "endDeduction": "Đặt tháng cuối",
+      "attach": "Đính kèm hồ sơ chứng minh",
+      "note": "Ghi chú",
+      "relationships": {
+        "child": "Con",
+        "spouse": "Vợ / chồng",
+        "parent": "Cha / mẹ",
+        "parent_in_law": "Cha / mẹ vợ (chồng)",
+        "sibling": "Anh chị em ruột",
+        "grandparent": "Ông / bà",
+        "other": "Khác"
+      }
+    },
+    "documents": {
+      "empty": "Chưa có giấy tờ nào bạn được xem.",
+      "add": "Tải giấy tờ lên",
+      "category": "Loại",
+      "title": "Tên giấy tờ",
+      "expiresOn": "Ngày hết hạn",
+      "file": "Tệp",
+      "upload": "Tải lên",
+      "uploading": "Đang tải lên…",
+      "expired": "Đã hết hạn",
+      "categories": {
+        "id_scan": "Bản chụp CCCD / hộ chiếu",
+        "degree": "Bằng cấp",
+        "certificate": "Chứng chỉ",
+        "health_check": "Giấy khám sức khỏe",
+        "contract": "Hợp đồng đã ký",
+        "decision": "Quyết định",
+        "other": "Khác"
+      }
+    },
+    "contacts": {
+      "empty": "Chưa có liên hệ khẩn cấp.",
+      "add": "Thêm liên hệ khẩn cấp",
+      "fullName": "Họ và tên",
+      "relationship": "Quan hệ",
+      "phone": "Số điện thoại",
+      "note": "Ghi chú"
+    },
+    "errors": {
+      "forbidden": "Bạn không có quyền thực hiện việc này.",
+      "invalid": "Vui lòng kiểm tra lại thông tin.",
+      "unauthenticated": "Phiên đăng nhập đã hết. Hãy đăng nhập lại.",
+      "generic": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+      "person_not_found": "Nhân sự này không còn tồn tại.",
+      "no_employment": "Nhân sự này chưa có quan hệ lao động để gắn hợp đồng.",
+      "contract_number_taken": "Số hợp đồng này đã được dùng trong pháp nhân.",
+      "contract_not_found": "Hợp đồng này không còn tồn tại.",
+      "contract_end_before_start": "Ngày kết thúc trước ngày bắt đầu.",
+      "contract_indefinite_has_end": "Hợp đồng không xác định thời hạn không có ngày kết thúc.",
+      "contract_end_required": "Loại hợp đồng này cần có ngày kết thúc.",
+      "contract_fixed_term_too_long": "Hợp đồng xác định thời hạn tối đa 36 tháng.",
+      "contract_must_be_indefinite": "Hợp đồng xác định thời hạn chỉ được ký thêm một lần; hợp đồng tiếp theo phải là không xác định thời hạn.",
+      "contract_job_category_required": "Chọn nhóm công việc: đây là căn cứ tính thời gian thử việc tối đa.",
+      "contract_probation_too_long": "Thời gian thử việc dài hơn mức luật cho phép với nhóm công việc này.",
+      "contract_probation_repeated": "Quan hệ lao động này đã có một lần thử việc; luật chỉ cho phép thử việc một lần cho một công việc.",
+      "contract_appendix_needs_parent": "Chọn hợp đồng mà phụ lục này thuộc về.",
+      "contract_parent_not_found": "Hợp đồng được chọn không thuộc quan hệ lao động này.",
+      "contract_overlap": "Đang có một hợp đồng lao động khác hiệu lực trong giai đoạn đó. Hãy chấm dứt hợp đồng đó trước.",
+      "contract_termination_outside_term": "Ngày này nằm ngoài thời hạn hợp đồng.",
+      "contract_salary_terms_forbidden": "Chỉ người được xem thông tin lương mới được ghi điều khoản lương.",
+      "dependent_months": "Tháng kết thúc giảm trừ trước tháng bắt đầu.",
+      "dependent_not_found": "Người phụ thuộc này không còn tồn tại.",
+      "contact_not_found": "Liên hệ này không còn tồn tại.",
+      "document_not_found": "Giấy tờ này không còn tồn tại.",
+      "file_empty": "Hãy chọn một tệp.",
+      "file_too_large": "Tệp lớn hơn 20 MB.",
+      "file_type_not_allowed": "Loại tệp này không được phép. Hãy dùng PDF, JPG, PNG, WEBP, DOCX, XLSX hoặc CSV.",
+      "file_name_invalid": "Tên tệp không hợp lệ.",
+      "file_not_found": "Không tìm thấy lượt tải lên. Hãy thử lại.",
+      "file_not_uploaded": "Tệp chưa được tải lên. Hãy thử lại.",
+      "file_content_mismatch": "Nội dung tệp không khớp với loại tệp; tệp đã bị xóa.",
+      "file_upload_failed": "Tải lên thất bại. Kiểm tra kết nối và thử lại.",
+      "file_owner_not_found": "Bản ghi chứa tệp này không còn tồn tại."
+    }
+  },
   "org": {
     "title": "Phòng ban & nhóm",
     "description": "Phòng ban mặc định dùng chung cho mọi pháp nhân; nhóm thuộc về một phòng ban.",
@@ -344,7 +516,8 @@
       },
       "category": {
         "security": "Bảo mật & quyền truy cập",
-        "system": "Hệ thống"
+        "system": "Hệ thống",
+        "hr": "Hạn nhân sự"
       }
     },
     "kinds": {
@@ -367,6 +540,18 @@
       "system_rule_proposed": {
         "title": "Có đề xuất thay đổi tham số pháp định",
         "body": "Tham số {parameter} được đề xuất giá trị mới, hiệu lực từ {validFrom}. Đề xuất chỉ có hiệu lực sau khi bạn phê duyệt."
+      },
+      "hr_contract_expiring": {
+        "title": "Hợp đồng của {person} hết hạn {days, plural, =0 {hôm nay} other {sau # ngày}}",
+        "body": "Hợp đồng {label} của {person} hết hạn ngày {date}. Hãy gia hạn, chuyển loại hợp đồng hoặc chuẩn bị chấm dứt."
+      },
+      "hr_probation_ending": {
+        "title": "{person} hết thử việc {days, plural, =0 {hôm nay} other {sau # ngày}}",
+        "body": "Thời gian thử việc của {person} ({label}) kết thúc ngày {date}. Cần thông báo kết quả trước khi hết thời gian thử việc."
+      },
+      "hr_document_expiring": {
+        "title": "Giấy tờ của {person} hết hạn {days, plural, =0 {hôm nay} other {sau # ngày}}",
+        "body": "\"{label}\" trong hồ sơ của {person} hết hạn ngày {date}."
       }
     },
     "errors": {
@@ -427,7 +612,8 @@
       "overtime_caps": "Giới hạn giờ tăng ca",
       "leave_annual": "Phép năm",
       "probation_limits": "Thử việc",
-      "contract_fixed_term": "Hợp đồng xác định thời hạn"
+      "contract_fixed_term": "Hợp đồng xác định thời hạn",
+      "hr_alert_thresholds": "Số ngày nhắc trước các hạn nhân sự"
     },
     "errors": {
       "parameter_unknown": "Tham số không tồn tại.",

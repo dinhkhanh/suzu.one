@@ -221,6 +221,178 @@
       "assignment_before_current_assignment": "The effective date is before the current assignment started. Past assignments cannot be rewritten."
     }
   },
+  "records": {
+    "sections": {
+      "contracts": "Contracts",
+      "dependents": "Dependents (family deduction)",
+      "documents": "Documents",
+      "sensitive": "Restricted details",
+      "emergencyContacts": "Emergency contacts"
+    },
+    "save": "Save",
+    "saving": "Saving…",
+    "delete": "Delete",
+    "confirmDelete": "Delete this? It cannot be undone from here.",
+    "show": "Show",
+    "hide": "Hide",
+    "tierNote": {
+      "personal": "Visible to the person, their line manager and HR.",
+      "restricted": "Visible to the person and HR only — never to line managers.",
+      "compensation": "Visible to the person, HR administrators and payroll only."
+    },
+    "sensitive": {
+      "audited": "Every viewing is written to the audit log.",
+      "edit": "Edit restricted details",
+      "dependentIds": "Dependents' ID numbers and tax codes",
+      "fields": {
+        "nationalId": "Citizen ID (CCCD)",
+        "nationalIdIssuedOn": "ID issue date",
+        "nationalIdIssuedAt": "ID issued by",
+        "passportNumber": "Passport number",
+        "taxCode": "Personal tax code",
+        "socialInsuranceNumber": "Social insurance number",
+        "healthInsuranceHospital": "Registered hospital (health insurance)",
+        "bankAccounts": "Bank accounts"
+      },
+      "bank": {
+        "account": "Bank account {number}",
+        "bankName": "Bank",
+        "accountNumber": "Account number",
+        "accountHolder": "Account holder",
+        "branch": "Branch"
+      }
+    },
+    "contracts": {
+      "empty": "No contracts on file.",
+      "add": "Add contract",
+      "type": "Type",
+      "number": "Contract number",
+      "signDate": "Signed on",
+      "startDate": "Starts",
+      "endDate": "Ends",
+      "jobCategory": "Job category (sets the longest probation)",
+      "parent": "Appendix to",
+      "salaryTerms": "Salary terms",
+      "salaryTermsHint": "e.g. gross 25,000,000 VND / month",
+      "note": "Note",
+      "openEnded": "open-ended",
+      "signedOn": "signed {date}",
+      "terminated": "Ended early on {date}",
+      "terminate": "End early",
+      "terminatedOn": "Last day in force",
+      "attach": "Attach signed copy",
+      "showTerms": "Show salary terms",
+      "state": {
+        "active": "In force",
+        "upcoming": "Not started",
+        "ended": "Ended"
+      },
+      "types": {
+        "probation": "Probation agreement",
+        "fixed_term": "Fixed-term labour contract",
+        "indefinite": "Indefinite-term labour contract",
+        "service": "Service / collaborator contract",
+        "internship": "Internship agreement",
+        "nda": "Non-disclosure agreement",
+        "appendix": "Contract appendix"
+      },
+      "jobCategories": {
+        "manager": "Enterprise manager (up to 180 days)",
+        "professional": "College degree or higher required (up to 60 days)",
+        "intermediate": "Intermediate / technical (up to 30 days)",
+        "other": "Other work (up to 6 working days)"
+      }
+    },
+    "dependents": {
+      "empty": "No dependents registered.",
+      "add": "Add dependent",
+      "fullName": "Full name",
+      "relationship": "Relationship",
+      "dateOfBirth": "Date of birth",
+      "idNumber": "ID / birth certificate number",
+      "taxCode": "Tax code",
+      "deductionFrom": "Deduction from (month)",
+      "deductionTo": "Deduction to (month)",
+      "months": "deduction {from} → {to}",
+      "open": "ongoing",
+      "endDeduction": "Set last month",
+      "attach": "Attach supporting document",
+      "note": "Note",
+      "relationships": {
+        "child": "Child",
+        "spouse": "Spouse",
+        "parent": "Parent",
+        "parent_in_law": "Parent-in-law",
+        "sibling": "Sibling",
+        "grandparent": "Grandparent",
+        "other": "Other"
+      }
+    },
+    "documents": {
+      "empty": "No documents you can see.",
+      "add": "Upload document",
+      "category": "Category",
+      "title": "Title",
+      "expiresOn": "Expires",
+      "file": "File",
+      "upload": "Upload",
+      "uploading": "Uploading…",
+      "expired": "Expired",
+      "categories": {
+        "id_scan": "ID scan",
+        "degree": "Degree",
+        "certificate": "Certificate",
+        "health_check": "Health check",
+        "contract": "Signed contract",
+        "decision": "Decision",
+        "other": "Other"
+      }
+    },
+    "contacts": {
+      "empty": "No emergency contact on file.",
+      "add": "Add emergency contact",
+      "fullName": "Name",
+      "relationship": "Relationship",
+      "phone": "Phone",
+      "note": "Note"
+    },
+    "errors": {
+      "forbidden": "You do not have permission to do this.",
+      "invalid": "Please check the form.",
+      "unauthenticated": "Your session has ended. Sign in again.",
+      "generic": "Something went wrong. Please try again.",
+      "person_not_found": "That person no longer exists.",
+      "no_employment": "This person has no employment to attach a contract to.",
+      "contract_number_taken": "That contract number is already used in this entity.",
+      "contract_not_found": "That contract no longer exists.",
+      "contract_end_before_start": "The end date is before the start date.",
+      "contract_indefinite_has_end": "An indefinite-term contract has no end date.",
+      "contract_end_required": "This type of contract needs an end date.",
+      "contract_fixed_term_too_long": "A fixed-term contract may run for 36 months at most.",
+      "contract_must_be_indefinite": "A fixed-term contract can be renewed only once; the next contract must be indefinite-term.",
+      "contract_job_category_required": "Choose the job category: it sets the longest probation allowed.",
+      "contract_probation_too_long": "The probation is longer than the law allows for this job category.",
+      "contract_probation_repeated": "This employment already had a probation; the law allows one per job.",
+      "contract_appendix_needs_parent": "Choose the contract this appendix belongs to.",
+      "contract_parent_not_found": "The chosen contract does not belong to this employment.",
+      "contract_overlap": "Another labour contract is in force during that period. End it first.",
+      "contract_termination_outside_term": "That date is outside the contract's term.",
+      "contract_salary_terms_forbidden": "Only people who may see pay can record salary terms.",
+      "dependent_months": "The last deduction month is before the first.",
+      "dependent_not_found": "That dependent no longer exists.",
+      "contact_not_found": "That contact no longer exists.",
+      "document_not_found": "That document no longer exists.",
+      "file_empty": "Choose a file.",
+      "file_too_large": "The file is larger than 20 MB.",
+      "file_type_not_allowed": "That file type is not allowed. Use PDF, JPG, PNG, WEBP, DOCX, XLSX or CSV.",
+      "file_name_invalid": "The file name is not valid.",
+      "file_not_found": "The upload was not found. Try again.",
+      "file_not_uploaded": "The file did not arrive. Try again.",
+      "file_content_mismatch": "The file's contents do not match its type; it was removed.",
+      "file_upload_failed": "The upload failed. Check your connection and try again.",
+      "file_owner_not_found": "The record this file belongs to no longer exists."
+    }
+  },
   "org": {
     "title": "Departments & teams",
     "description": "Departments are shared across all entities by default; a team belongs to one department.",
@@ -344,7 +516,8 @@
       },
       "category": {
         "security": "Security & access",
-        "system": "System"
+        "system": "System",
+        "hr": "HR deadlines"
       }
     },
     "kinds": {
@@ -367,6 +540,18 @@
       "system_rule_proposed": {
         "title": "A statutory parameter change needs your decision",
         "body": "A new value was proposed for {parameter}, in force from {validFrom}. It takes effect only once you approve it."
+      },
+      "hr_contract_expiring": {
+        "title": "Contract of {person} {days, plural, =0 {ends today} one {ends in # day} other {ends in # days}}",
+        "body": "Contract {label} of {person} ends on {date}. Renew it, convert it or prepare the end of employment."
+      },
+      "hr_probation_ending": {
+        "title": "Probation of {person} {days, plural, =0 {ends today} one {ends in # day} other {ends in # days}}",
+        "body": "The probation of {person} ({label}) ends on {date}. The result must be announced before it ends."
+      },
+      "hr_document_expiring": {
+        "title": "A document of {person} {days, plural, =0 {expires today} one {expires in # day} other {expires in # days}}",
+        "body": "\"{label}\" in the document vault of {person} expires on {date}."
       }
     },
     "errors": {
@@ -427,7 +612,8 @@
       "overtime_caps": "Overtime limits",
       "leave_annual": "Annual leave",
       "probation_limits": "Probation",
-      "contract_fixed_term": "Fixed-term contracts"
+      "contract_fixed_term": "Fixed-term contracts",
+      "hr_alert_thresholds": "HR alert countdowns (days ahead)"
     },
     "errors": {
       "parameter_unknown": "Unknown parameter.",

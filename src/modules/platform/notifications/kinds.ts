@@ -1,7 +1,7 @@
 // The catalogue of notifications. Plain module: shared by the server and the preferences screen.
 // Wording lives in messages/*.json under `notifications.kinds.<kind>` (dots become underscores).
 
-export const CATEGORIES = ["security", "system"] as const;
+export const CATEGORIES = ["security", "system", "hr"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const EMAIL_CHANNELS = ["instant", "digest", "off"] as const;
@@ -12,6 +12,8 @@ export type ChannelChoice = { inApp: boolean; email: EmailChannel };
 export const CATEGORY_DEFINITIONS: Record<Category, { defaults: ChannelChoice; /** Cannot be turned down by the recipient. */ mandatory: boolean }> = {
   security: { defaults: { inApp: true, email: "instant" }, mandatory: true },
   system: { defaults: { inApp: true, email: "instant" }, mandatory: false },
+  // Deadlines HR and managers act on: contracts running out, probation ending, documents expiring.
+  hr: { defaults: { inApp: true, email: "digest" }, mandatory: false },
 };
 
 export const KINDS = {
@@ -20,6 +22,9 @@ export const KINDS = {
   "security.role_revoked": "security",
   "system.job_failed": "system",
   "system.rule_proposed": "system",
+  "hr.contract_expiring": "hr",
+  "hr.probation_ending": "hr",
+  "hr.document_expiring": "hr",
 } as const satisfies Record<string, Category>;
 export type Kind = keyof typeof KINDS;
 

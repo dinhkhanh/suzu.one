@@ -1,11 +1,14 @@
 // Seeds a small fake company for local development: people, employments, assignments and role grants.
 // Refuses to run against anything but a local database. Run `pnpm db:seed` first, then `pnpm db:seed:demo`.
 import { config } from "dotenv";
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { assignment, department, employeeCodeScheme, employment, entity, person, personProfile, position, roleAssignment } from "../src/lib/db/schema";
+import { blindIndex, createFieldCipher, parseKeyRing } from "../src/lib/crypto/field-cipher";
+import { assignment, contract, department, dependent, emergencyContact, employeeCodeScheme, employment, entity, person, personProfile, personSensitive, position, roleAssignment } from "../src/lib/db/schema";
 import { toSearchKey } from "../src/lib/text";
+import { contractTermsContext, dependentContext, NATIONAL_ID_INDEX_CONTEXT, normalizeIdNumber, sensitiveContext } from "../src/modules/core-hr/field-contexts";
 
 config({ path: ".env.local" });
 
@@ -112,7 +115,83 @@ async function main() {
   });
 
   console.log(`Seeded ${created} demo people (existing people skipped).`);
+  console.log(`Seeded ${await seedRecords(db, today)} contracts, restricted details and dependents (existing ones skipped).`);
   await client.end();
+}
+
+// Week 2 records: contracts (one about to expire, one probation about to end, so the daily alerts
+// have something to say), restricted details and a dependent. Encrypted exactly as the app does it.
+const day = (from: string, days: number) => new Date(Date.parse(`${from}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+
+async function seedRecords(db: ReturnType<typeof drizzle>, today: string): Promise<number> {
+  const keys = process.env.DATA_ENCRYPTION_KEYS;
+  const indexKey = process.env.DATA_BLIND_INDEX_KEY;
+  if (!keys || !indexKey) {
+    console.log("DATA_ENCRYPTION_KEYS / DATA_BLIND_INDEX_KEY are not set: skipping encrypted demo records.");
+    return 0;
+  }
+  const cipher = createFieldCipher(parseKeyRing(keys));
+  const find = async (email: string) => {
+    const [row] = await db.select({ person, job: employment }).from(person).innerJoin(employment, eq(employment.personId, person.id)).where(eq(person.workEmail, email)).limit(1);
+    return row;
+  };
+
+  const CONTRACTS = [
+    { email: "long.dang@suzu.group", number: "SZM-HDLD-2020-006", type: "indefinite" as const, start: "2020-09-14", end: null, terms: "Lương gộp 45.000.000 đ/tháng" },
+    { email: "tam.bui@suzu.group", number: "SZM-HDLD-2021-007", type: "indefinite" as const, start: "2021-03-01", end: null, terms: "Lương gộp 32.000.000 đ/tháng" },
+    // Ends in 30 days: on the contract-expiry countdown.
+    { email: "huy.ho@suzu.group", number: "SZM-HDLD-2025-008", type: "fixed_term" as const, start: day(today, -334), end: day(today, 30), terms: "Lương gộp 22.000.000 đ/tháng" },
+    // Probation ends in 10 days.
+    { email: "linh.do@suzu.group", number: "SZM-HDTV-2026-009", type: "probation" as const, start: day(today, -47), end: day(today, 10), terms: "85% của 18.000.000 đ/tháng", jobCategory: "professional" as const },
+  ];
+  let written = 0;
+  for (const demo of CONTRACTS) {
+    const found = await find(demo.email);
+    if (!found) continue;
+    const id = randomUUID();
+    const rows = await db
+      .insert(contract)
+      .values({ id, employmentId: found.job.id, personId: found.person.id, entityId: found.job.entityId, number: demo.number, type: demo.type, jobCategory: demo.jobCategory ?? null, signDate: demo.start, startDate: demo.start, endDate: demo.end, salaryTerms: cipher.encrypt(demo.terms, contractTermsContext(id)) })
+      .onConflictDoNothing()
+      .returning();
+    written += rows.length;
+  }
+
+  const SENSITIVE = [
+    { email: "huy.ho@suzu.group", nationalId: "079098001234", taxCode: "8456712390", socialInsuranceNumber: "7916021234", bank: { bankName: "Vietcombank", accountNumber: "0071000456789", accountHolder: "HO GIA HUY", branch: "TP.HCM" } },
+    { email: "tam.bui@suzu.group", nationalId: "079095004321", taxCode: "8345612987", socialInsuranceNumber: "7914025678", bank: { bankName: "ACB", accountNumber: "218834509", accountHolder: "BUI THANH TAM", branch: "Sài Gòn" } },
+    { email: "linh.do@suzu.group", nationalId: "001301009876", taxCode: null, socialInsuranceNumber: null, bank: { bankName: "Vietcombank", accountNumber: "0451000987654", accountHolder: "DO KHANH LINH", branch: "Hà Nội" } },
+  ];
+  for (const demo of SENSITIVE) {
+    const found = await find(demo.email);
+    if (!found) continue;
+    const personId = found.person.id;
+    const seal = (field: string, value: string | null) => (value === null ? null : cipher.encrypt(value, sensitiveContext(field, personId)));
+    const rows = await db
+      .insert(personSensitive)
+      .values({
+        personId,
+        nationalId: seal("nationalId", demo.nationalId),
+        nationalIdIndex: blindIndex(Buffer.from(indexKey, "base64"), normalizeIdNumber(demo.nationalId), NATIONAL_ID_INDEX_CONTEXT),
+        nationalIdIssuedOn: seal("nationalIdIssuedOn", "2021-08-16"),
+        nationalIdIssuedAt: seal("nationalIdIssuedAt", "Cục Cảnh sát QLHC về TTXH"),
+        taxCode: seal("taxCode", demo.taxCode),
+        socialInsuranceNumber: seal("socialInsuranceNumber", demo.socialInsuranceNumber),
+        bankAccounts: seal("bankAccounts", JSON.stringify([demo.bank])),
+      })
+      .onConflictDoNothing()
+      .returning();
+    written += rows.length;
+  }
+
+  const huy = await find("huy.ho@suzu.group");
+  if (huy && (await db.select().from(dependent).where(eq(dependent.personId, huy.person.id))).length === 0) {
+    const id = randomUUID();
+    await db.insert(dependent).values({ id, personId: huy.person.id, fullName: "Hồ Gia Bảo", relationship: "child", dateOfBirth: "2022-04-09", idNumber: cipher.encrypt("079222003344", dependentContext("idNumber", id)), deductionFrom: "2023-07-01" });
+    await db.insert(emergencyContact).values({ personId: huy.person.id, fullName: "Trần Thị Hoa", relationship: "Vợ", phone: "0903123456" });
+    written += 2;
+  }
+  return written;
 }
 
 main().catch((error) => {

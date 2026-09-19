@@ -31,4 +31,5 @@ export const STATUTORY_SEED: Seed[] = [
   { key: "leave.annual", validFrom: "2021-01-01", value: { baseDays: 12, yearsOfServicePerExtraDay: 5 }, legalReference: "Bộ luật Lao động 2019, Điều 113–114" },
   { key: "probation.limits", validFrom: "2021-01-01", value: { managerDays: 180, professionalDays: 60, intermediateDays: 30, otherDays: 6, minimumPayPercent: 85 }, legalReference: "Bộ luật Lao động 2019, Điều 25–26" },
   { key: "contract.fixed_term", validFrom: "2021-01-01", value: { maxMonths: 36, maxFixedTermRenewals: 1 }, legalReference: "Bộ luật Lao động 2019, Điều 20" },
+  { key: "hr.alert_thresholds", validFrom: "2021-01-01", value: { contractExpiryDays: [45, 30, 15], probationEndDays: [10, 3], documentExpiryDays: [30] }, legalReference: "SRS FR-CHR-05 (company practice, not law)", note: "Probation results must be announced before the period ends (Điều 27)." },
 ];

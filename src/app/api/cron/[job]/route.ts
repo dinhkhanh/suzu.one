@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { env } from "@/lib/env";
-import { peopleRollOverJob } from "@/modules/core-hr/jobs";
+import { fieldKeysRewrapJob, hrAlertsJob, peopleRollOverJob } from "@/modules/core-hr/jobs";
 import { filesCleanupJob } from "@/modules/platform/files/jobs";
 import { type JobDefinition, runJob } from "@/modules/platform/jobs/service";
 import { notificationsDailyJob } from "@/modules/platform/notifications/jobs";
@@ -9,8 +9,12 @@ import { notificationsDailyJob } from "@/modules/platform/notifications/jobs";
 // allows; jobs that share a time of day share a URL but are still recorded (and fail) one by one.
 const SCHEDULES: Record<string, JobDefinition[]> = {
   midnight: [peopleRollOverJob],
-  morning: [notificationsDailyJob, filesCleanupJob],
+  // Alerts first, so the digest that follows carries them.
+  morning: [hrAlertsJob, notificationsDailyJob, filesCleanupJob],
 };
+
+// Run by hand only: /api/cron/<job name>.
+const ON_DEMAND: JobDefinition[] = [fieldKeysRewrapJob];
 
 export const maxDuration = 300;
 
@@ -28,7 +32,7 @@ export async function GET(request: Request, context: RouteContext<"/api/cron/[jo
   if (!authorized(request)) return new Response("Unauthorized", { status: 401 });
 
   const { job } = await context.params;
-  const definitions = SCHEDULES[job] ?? Object.values(SCHEDULES).flat().filter((candidate) => candidate.name === job);
+  const definitions = SCHEDULES[job] ?? [...Object.values(SCHEDULES).flat(), ...ON_DEMAND].filter((candidate) => candidate.name === job);
   if (definitions.length === 0) return new Response("Unknown job", { status: 404 });
 
   const outcomes = [];

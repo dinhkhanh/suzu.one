@@ -14,7 +14,7 @@ Format: `id:base64key,id:base64key` — the **first** key encrypts new values; a
 
 1. Generate a key: `openssl rand -base64 32`. Pick a new id, e.g. `k2026`.
 2. Put it **first**: `DATA_ENCRYPTION_KEYS=k2026:<new>,k2025:<old>`. Redeploy. New writes use `k2026`; everything stays readable.
-3. Re-wrap existing values with the re-wrap job (added with the first encrypted table in Phase 1 week 2). It calls `rewrap()` on every value whose key id is not the active one, and reports how many are left.
+3. Re-wrap existing values: `curl -H "Authorization: Bearer $CRON_SECRET" https://suzu.one/api/cron/field-keys-rewrap` (job `field-keys-rewrap`, `src/modules/core-hr/rewrap.ts`). It calls `rewrap()` on every value whose key id is not the active one and reports `rewrapped` / `alreadyCurrent`; run it again until `rewrapped` is 0. A module that adds encrypted columns adds them to its re-wrap list.
 4. When the job reports zero values on the old key, remove the old key from the variable and redeploy. Keep the old key in the offline copy for as long as any database backup from before step 3 is retained (≥ 1 year, NFR-OPS-02).
 
 ### `DATA_BLIND_INDEX_KEY`

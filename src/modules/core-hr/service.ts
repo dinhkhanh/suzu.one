@@ -360,9 +360,10 @@ const CONSTRAINT_ERRORS: Record<string, string> = {
   employment_entity_code_key: "employee_code_taken",
   employment_no_overlap: "employment_overlap",
   assignment_primary_no_overlap: "assignment_conflict",
+  contract_entity_number_key: "contract_number_taken",
 };
 
-async function inTransaction<T>(work: (tx: Tx) => Promise<T>): Promise<T> {
+export async function inTransaction<T>(work: (tx: Tx) => Promise<T>): Promise<T> {
   try {
     return await db().transaction(work);
   } catch (error) {

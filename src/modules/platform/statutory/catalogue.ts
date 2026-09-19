@@ -28,6 +28,9 @@ export const PARAMETERS = {
   "leave.annual": z.object({ baseDays: count, yearsOfServicePerExtraDay: count }),
   "probation.limits": z.object({ managerDays: count, professionalDays: count, intermediateDays: count, otherDays: count, minimumPayPercent: percent }),
   "contract.fixed_term": z.object({ maxMonths: count, maxFixedTermRenewals: count }),
+  // Not law but company practice, kept here so it is effective-dated and owner-approved like the rest:
+  // how many days ahead HR and managers are warned. Each list is a countdown, e.g. [45, 30, 15].
+  "hr.alert_thresholds": z.object({ contractExpiryDays: z.array(count).min(1), probationEndDays: z.array(count).min(1), documentExpiryDays: z.array(count).min(1) }),
 } as const;
 
 export type ParameterKey = keyof typeof PARAMETERS;

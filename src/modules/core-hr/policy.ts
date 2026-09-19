@@ -1,5 +1,6 @@
 // Authorization rules for Core HR, built on the central policy layer. Pure.
-import { can, type Principal, type Target, tierReach } from "@/modules/platform/rbac/policy";
+import { can, canReadTier, type Principal, type Target, tierReach } from "@/modules/platform/rbac/policy";
+import type { Tier } from "@/modules/platform/rbac/roles";
 
 /** The people list. Collaborators have no directory access (FR-PLT-07) unless a role gives it. */
 export function canBrowsePeople(principal: Principal): boolean {
@@ -28,4 +29,20 @@ export function canReassign(principal: Principal, from: Target, to: Target): boo
 export function canEditPerson(principal: Principal, target: Target, change: { changesWorkEmail: boolean; targetHoldsRoles: boolean }): boolean {
   if (!can(principal, "person:manage", target)) return false;
   return !(change.changesWorkEmail && change.targetHoldsRoles) || can(principal, "rbac:manage", target);
+}
+
+type PersonTarget = Target & { personId: string };
+
+/** Records above the directory tier — contracts, dependents, vault documents, restricted fields — are read by tier alone. */
+export function canReadRecords(principal: Principal, person: PersonTarget | null, tier: Tier): boolean {
+  return !!person && canReadTier(principal, person, tier);
+}
+
+/**
+ * Writing takes HR authority over the person *and* the right to read what is being written: entity
+ * HR staff keep the restricted records, but cannot attach a signed contract or salary terms
+ * (compensation). Being the person is not enough — employees change their data through change requests.
+ */
+export function canManageRecords(principal: Principal, person: PersonTarget | null, tier: Tier): boolean {
+  return !!person && can(principal, "person:manage", person) && canReadTier(principal, person, tier);
 }

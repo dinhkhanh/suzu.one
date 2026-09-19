@@ -9,6 +9,7 @@ import { todayInVietnam } from "@/lib/dates";
 import { getPersonView, loadPlacementOptions, peopleModuleOpen } from "@/modules/core-hr/service";
 import { AssignmentForm } from "@/modules/core-hr/ui/assignment-form";
 import { EditPersonForm } from "@/modules/core-hr/ui/edit-person-form";
+import { RecordSections } from "@/modules/core-hr/ui/record-sections";
 import { requireUser } from "@/modules/platform/auth/session";
 
 export const metadata: Metadata = { title: "Person" };
@@ -87,6 +88,8 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
           </section>
 
           {person.canManage ? <EditPersonForm person={person} /> : null}
+
+          <RecordSections principal={user.principal} personId={person.id} />
 
           <section className="flex flex-col gap-3">
             <h2 className="text-sm font-medium text-muted-foreground">{t("sections.history")}</h2>

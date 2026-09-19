@@ -5,8 +5,8 @@ import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { notify } from "../notifications/service";
-import type { Grant, Scope } from "./policy";
-import { ROLES, type Role } from "./roles";
+import { can, type Grant, type Scope, type Target } from "./policy";
+import { type Permission, ROLES, type Role } from "./roles";
 
 export type RoleAssignmentRow = typeof schema.roleAssignment.$inferSelect;
 export type ScopeType = RoleAssignmentRow["scopeType"];
@@ -173,4 +173,22 @@ export async function listOwnerPersonIds(): Promise<string[]> {
     .from(schema.roleAssignment)
     .where(and(eq(schema.roleAssignment.role, "owner"), eq(schema.roleAssignment.scopeType, "group"), lte(schema.roleAssignment.validFrom, today), notEnded(today)));
   return rows.map((row) => row.personId);
+}
+
+/**
+ * Who holds `permission` over `target` today — e.g. the HR people to warn about someone's contract.
+ * Reads every grant in force: fine for a company-sized table, and it keeps `can()` the one rule.
+ */
+export async function listPeopleHolding(permission: Exclude<Permission, "*">, target: Target, today: IsoDate = todayInVietnam()): Promise<string[]> {
+  const rows = await db()
+    .select()
+    .from(schema.roleAssignment)
+    .where(and(lte(schema.roleAssignment.validFrom, today), notEnded(today)));
+  const grantsByPerson = new Map<string, Grant[]>();
+  for (const row of rows) {
+    const scope = toScope(row.scopeType, row.scopeId);
+    if (!scope || !(ROLES as readonly string[]).includes(row.role)) continue;
+    grantsByPerson.set(row.personId, [...(grantsByPerson.get(row.personId) ?? []), { role: row.role as Role, scope }]);
+  }
+  return [...grantsByPerson].filter(([personId, grants]) => can({ personId, workforceType: null, grants }, permission, target)).map(([personId]) => personId);
 }
