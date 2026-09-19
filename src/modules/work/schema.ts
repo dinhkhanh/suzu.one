@@ -8,6 +8,7 @@ import { department, entity } from "../platform/org/schema";
 import { storedFile } from "../platform/files/schema";
 import { person } from "../platform/people/schema";
 import { task } from "../platform/tasks-engine/schema";
+import type { IntakeField } from "./engine/intake";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -173,6 +174,8 @@ export const workTask = pgTable(
     // Recurring tasks (FR-WRK-11, week 3): which rule made this task, and for which date.
     recurrenceId: uuid("recurrence_id"),
     occurrenceDate: date("occurrence_date"),
+    // Came in through an intake form (FR-WRK-16, week 5). No foreign key: the form may be retired, the task stays.
+    intakeFormId: uuid("intake_form_id"),
   },
   (t) => [
     unique("work_task_number_unique").on(t.teamId, t.number),
@@ -374,4 +377,27 @@ export const workRecurrence = pgTable(
     ...timestamps,
   },
   (t) => [index("work_recurrence_project_idx").on(t.projectId)],
+).enableRLS();
+
+// Intake forms (FR-WRK-16): a team publishes a request form ("Design request"); a submission becomes
+// a task in the team's backlog with the requester set. `fields` is the form's definition.
+
+export const workIntakeForm = pgTable(
+  "work_intake_form",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => workTeam.id),
+    // Where submissions land; null = the team's backlog without a project.
+    projectId: uuid("project_id").references(() => workProject.id),
+    name: text("name").notNull(),
+    description: text("description"),
+    fields: jsonb("fields").$type<IntakeField[]>().notNull().default([]),
+    isActive: boolean("is_active").notNull().default(true),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("work_intake_form_team_idx").on(t.teamId)],
 ).enableRLS();

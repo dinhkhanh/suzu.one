@@ -53,6 +53,7 @@ export const KINDS = {
   "tasks.review_requested": "tasks",
   "tasks.review_decided": "tasks",
   "tasks.nudge": "tasks",
+  "tasks.intake_submitted": "tasks",
   "attendance.month_ready": "attendance",
   "attendance.month_waiting": "attendance",
   "attendance.month_reopened": "attendance",

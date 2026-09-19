@@ -707,6 +707,10 @@
       "ops_escalated": {
         "title": "{count, plural, =1 {Escalated: {title}} other {# overdue obligations escalated to you}}",
         "body": "{count, plural, =1 {“{title}” (owner: {owner}) was due on {dueDate} and is {days, plural, =1 {1 day} other {# days}} late.} other {# obligations are late and have been escalated to you, the oldest being “{title}” (owner: {owner}, due {dueDate}).}} Please follow up."
+      },
+      "tasks_intake_submitted": {
+        "title": "New request: {title}",
+        "body": "{name} sent “{title}” through the form “{form}”. It is in the backlog as {key}, waiting for triage."
       }
     },
     "errors": {
@@ -2865,7 +2869,15 @@
       "dependency_cycle": "That would make the tasks wait for each other in a circle.",
       "dependency_not_found": "That link no longer exists.",
       "view_limit": "You already keep 30 saved filters here. Delete one first.",
-      "view_not_found": "That saved filter no longer exists."
+      "view_not_found": "That saved filter no longer exists.",
+      "intake_form_not_found": "This request form is closed or does not exist.",
+      "intake_answers_invalid": "Some answers need another look.",
+      "intake_fields_required": "Add at least one question.",
+      "intake_too_many_fields": "A form takes at most 12 questions.",
+      "intake_field_label_required": "Every question needs wording.",
+      "intake_field_key_duplicate": "Two questions collide; save again.",
+      "intake_field_type_invalid": "Unknown answer type.",
+      "intake_select_needs_options": "A list question needs at least two choices."
     },
     "views": {
       "list": "List",
@@ -3131,6 +3143,73 @@
         "nudge_nobody": "Nobody else is assigned.",
         "nudge_task_closed": "This task is closed.",
         "task_not_found": "Task not found."
+      }
+    },
+    "workload": {
+      "title": "Workload",
+      "description": "Open tasks and estimated hours per person for the next six weeks, against a 40-hour week less approved leave and public holidays. Every open work task of a member counts, whichever project it belongs to.",
+      "allTeams": "All my teams",
+      "person": "Person",
+      "thisWeek": "This week",
+      "weekOf": "Week of {date}",
+      "later": "Later",
+      "unscheduled": "No due date",
+      "hours": "{hours} h",
+      "tasks": "{count, plural, =0 {no tasks} =1 {1 task} other {# tasks}}",
+      "unestimated": "{count} without an estimate",
+      "away": "Away {days, plural, =1 {1 day} other {# days}}",
+      "holiday": "{days, plural, =1 {1 public holiday} other {# public holidays}}",
+      "over": "Over capacity",
+      "daysOff": "Days off in this period: {list}.",
+      "empty": "These teams have no members yet.",
+      "legend": "A task's hours are spread over the working days between its start and due date; late work counts from today. \"Away\" is approved leave — the kind of leave is not shown here."
+    },
+    "intake": {
+      "title": "Request forms",
+      "indexDescription": "Ask a team for work. Your request lands in the team's backlog; you can follow it from My work.",
+      "noneOpen": "No team has published a request form you can use.",
+      "myRequests": "My requests",
+      "none": "This team has no request forms yet.",
+      "new": "New request form",
+      "name": "Form name",
+      "description": "Shown above the form",
+      "noDescription": "No description.",
+      "project": "Requests go to",
+      "backlogOnly": "The team backlog (no project)",
+      "fields": "Questions",
+      "fieldLabel": "Question",
+      "fieldType": "Answer type",
+      "fieldOptions": "Choices, one per line (for a list)",
+      "fieldRequired": "Required",
+      "addField": "Add a question",
+      "active": "Open for requests",
+      "retired": "Closed",
+      "save": "Save form",
+      "create": "Create form",
+      "saved": "Saved.",
+      "open": "Open the form",
+      "submissions": "{count, plural, =0 {no requests yet} =1 {1 request} other {# requests}}",
+      "types": {
+        "text": "Short text",
+        "long_text": "Long text",
+        "select": "Choose from a list",
+        "date": "Date",
+        "url": "Link (https)"
+      },
+      "requestTitle": "What do you need?",
+      "requestTitleHint": "One line, e.g. \"Banner for the 9.9 sale\"",
+      "choose": "Choose…",
+      "submit": "Send request",
+      "submitted": "Request {key} sent.",
+      "submittedHint": "The team's leads have been told. You will be notified when its status changes.",
+      "openRequest": "Open the request",
+      "another": "Send another",
+      "problems": {
+        "required": "Please answer this.",
+        "too_long": "This answer is too long.",
+        "not_an_option": "Choose one of the listed options.",
+        "not_a_date": "Enter a date.",
+        "not_a_url": "Enter a link starting with https://."
       }
     }
   },

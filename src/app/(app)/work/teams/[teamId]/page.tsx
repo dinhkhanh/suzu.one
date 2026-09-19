@@ -8,8 +8,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listDepartments, listEntities } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { FILTER_KEYS, GROUPINGS, type Grouping, type TaskFilters } from "@/modules/work/engine/filter";
-import { canAdminTeam, canContributeToTeam, canManageWorkspace, canViewTeam, canViewTeamBacklog, findTeam, listAssignable, listClients, listLabels, listStates, listTeamBacklog, listTeamMembers, loadViewer, teamFacts, visibleProjects } from "@/modules/work/service";
+import { canAdminTeam, canContributeToTeam, canManageWorkspace, canViewTeam, canViewTeamBacklog, findTeam, listAssignable, listClients, listTeamIntakeForms, listLabels, listStates, listTeamBacklog, listTeamMembers, loadViewer, teamFacts, visibleProjects } from "@/modules/work/service";
 import { TaskListView } from "@/modules/work/ui/task-list-view";
+import { IntakeFormManager } from "@/modules/work/ui/intake-forms";
 import { LabelManager, MemberManager, StateManager, TeamForm } from "@/modules/work/ui/team-forms";
 
 export const metadata: Metadata = { title: "Team" };
@@ -36,6 +37,8 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
     listClients({ activeOnly: true }),
     listAssignable(team.id, null),
   ]);
+  const intakeForms = await listTeamIntakeForms(team.id);
+  const intakeProjects = projects.filter((project) => project.teamId === team.id && project.status !== "archived" && project.status !== "done").map(({ id, name }) => ({ id, name }));
   const [people, entities, departments] = admin ? await Promise.all([listPersonNames(), listEntities(), listDepartments()]) : [[], [], []];
   const filters: TaskFilters = Object.fromEntries(FILTER_KEYS.flatMap((key) => (typeof query[key] === "string" ? [[key, query[key]]] : [])));
   const grouping = GROUPINGS.includes(query.group as Grouping) ? (query.group as Grouping) : "none";
@@ -103,6 +106,11 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">{t("labels.title")}</h2>
         <LabelManager teamId={team.id} labels={labels.map(({ id, teamId: owner, name, color }) => ({ id, teamId: owner, name, color }))} canManage={admin} />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-medium text-muted-foreground">{t("intake.title")}</h2>
+        <IntakeFormManager teamId={team.id} forms={intakeForms.map(({ id, name, description, projectId, fields, isActive, submissions }) => ({ id, name, description, projectId, fields, isActive, submissions }))} projects={intakeProjects} canManage={admin} />
       </section>
 
       {admin ? (

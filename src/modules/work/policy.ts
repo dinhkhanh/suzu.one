@@ -137,3 +137,14 @@ export function canNudgeTask(viewer: WorkViewer, task: TaskFacts): boolean {
 export function canManageTemplate(viewer: WorkViewer, ownerTeam: TeamFacts | null): boolean {
   return ownerTeam ? canAdminTeam(viewer, ownerTeam) : canManageWorkspace(viewer, { entityId: null, departmentId: null });
 }
+
+/**
+ * Intake forms (FR-WRK-16) are a team's front door: open to anyone in the team's entity (or the
+ * whole group for a group team) — never to collaborators, who only work inside their projects —
+ * and to the team's own members. Asking for work gives no right to see the team's other work.
+ */
+export function canSubmitIntake(viewer: WorkViewer, team: TeamFacts): boolean {
+  if (viewer.teamRoles.has(team.id)) return true;
+  if (isCollaborator(viewer) || !viewer.principal.personId) return false;
+  return team.entityId === null || team.entityId === viewer.entityId || canManageWorkspace(viewer, team);
+}

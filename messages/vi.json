@@ -707,6 +707,10 @@
       "ops_escalated": {
         "title": "{count, plural, =1 {Báo lên cấp trên: {title}} other {# nghĩa vụ quá hạn được báo lên bạn}}",
         "body": "{count, plural, =1 {“{title}” (phụ trách: {owner}) đến hạn ngày {dueDate} và đã trễ {days} ngày.} other {# nghĩa vụ đã trễ và được báo lên bạn, lâu nhất là “{title}” (phụ trách: {owner}, hạn {dueDate}).}} Vui lòng đôn đốc xử lý."
+      },
+      "tasks_intake_submitted": {
+        "title": "Yêu cầu mới: {title}",
+        "body": "{name} đã gửi “{title}” qua biểu mẫu “{form}”. Yêu cầu đang ở danh sách chờ với mã {key}, chờ phân loại."
       }
     },
     "errors": {
@@ -2865,7 +2869,15 @@
       "dependency_cycle": "Như vậy các công việc sẽ chờ nhau thành vòng tròn.",
       "dependency_not_found": "Liên kết này không còn tồn tại.",
       "view_limit": "Bạn đã lưu 30 bộ lọc ở đây. Hãy xóa bớt trước.",
-      "view_not_found": "Bộ lọc đã lưu này không còn tồn tại."
+      "view_not_found": "Bộ lọc đã lưu này không còn tồn tại.",
+      "intake_form_not_found": "Biểu mẫu này đã đóng hoặc không tồn tại.",
+      "intake_answers_invalid": "Một số câu trả lời cần xem lại.",
+      "intake_fields_required": "Hãy thêm ít nhất một câu hỏi.",
+      "intake_too_many_fields": "Mỗi biểu mẫu tối đa 12 câu hỏi.",
+      "intake_field_label_required": "Mỗi câu hỏi cần có nội dung.",
+      "intake_field_key_duplicate": "Hai câu hỏi bị trùng; hãy lưu lại.",
+      "intake_field_type_invalid": "Kiểu trả lời không hợp lệ.",
+      "intake_select_needs_options": "Câu hỏi dạng danh sách cần ít nhất hai lựa chọn."
     },
     "views": {
       "list": "Danh sách",
@@ -3131,6 +3143,73 @@
         "nudge_nobody": "Chưa có ai khác phụ trách.",
         "nudge_task_closed": "Việc này đã đóng.",
         "task_not_found": "Không tìm thấy công việc."
+      }
+    },
+    "workload": {
+      "title": "Khối lượng công việc",
+      "description": "Số việc đang mở và số giờ ước tính của từng người trong sáu tuần tới, so với tuần làm việc 40 giờ đã trừ ngày nghỉ phép được duyệt và ngày lễ. Mọi việc đang mở của thành viên đều được tính, dù thuộc dự án nào.",
+      "allTeams": "Tất cả nhóm của tôi",
+      "person": "Nhân sự",
+      "thisWeek": "Tuần này",
+      "weekOf": "Tuần từ {date}",
+      "later": "Sau đó",
+      "unscheduled": "Chưa có hạn",
+      "hours": "{hours} giờ",
+      "tasks": "{count, plural, =0 {không có việc} other {# việc}}",
+      "unestimated": "{count} việc chưa ước tính",
+      "away": "Vắng {days} ngày",
+      "holiday": "{days} ngày lễ",
+      "over": "Quá tải",
+      "daysOff": "Ngày nghỉ trong giai đoạn này: {list}.",
+      "empty": "Các nhóm này chưa có thành viên.",
+      "legend": "Số giờ của một việc được chia đều cho các ngày làm việc từ ngày bắt đầu đến hạn; việc trễ hạn được tính từ hôm nay. \"Vắng\" là ngày nghỉ phép đã duyệt — loại phép không hiển thị ở đây."
+    },
+    "intake": {
+      "title": "Biểu mẫu yêu cầu",
+      "indexDescription": "Gửi yêu cầu công việc cho một nhóm. Yêu cầu sẽ vào danh sách chờ của nhóm; bạn theo dõi được trong Việc của tôi.",
+      "noneOpen": "Chưa có nhóm nào mở biểu mẫu yêu cầu cho bạn.",
+      "myRequests": "Yêu cầu của tôi",
+      "none": "Nhóm này chưa có biểu mẫu yêu cầu.",
+      "new": "Biểu mẫu mới",
+      "name": "Tên biểu mẫu",
+      "description": "Hướng dẫn hiển thị phía trên biểu mẫu",
+      "noDescription": "Chưa có mô tả.",
+      "project": "Yêu cầu được đưa vào",
+      "backlogOnly": "Danh sách chờ của nhóm (không thuộc dự án)",
+      "fields": "Câu hỏi",
+      "fieldLabel": "Câu hỏi",
+      "fieldType": "Kiểu trả lời",
+      "fieldOptions": "Các lựa chọn, mỗi dòng một lựa chọn (cho danh sách)",
+      "fieldRequired": "Bắt buộc",
+      "addField": "Thêm câu hỏi",
+      "active": "Đang nhận yêu cầu",
+      "retired": "Đã đóng",
+      "save": "Lưu biểu mẫu",
+      "create": "Tạo biểu mẫu",
+      "saved": "Đã lưu.",
+      "open": "Mở biểu mẫu",
+      "submissions": "{count, plural, =0 {chưa có yêu cầu} other {# yêu cầu}}",
+      "types": {
+        "text": "Văn bản ngắn",
+        "long_text": "Văn bản dài",
+        "select": "Chọn trong danh sách",
+        "date": "Ngày",
+        "url": "Đường dẫn (https)"
+      },
+      "requestTitle": "Bạn cần gì?",
+      "requestTitleHint": "Một dòng, ví dụ \"Banner cho đợt sale 9.9\"",
+      "choose": "Chọn…",
+      "submit": "Gửi yêu cầu",
+      "submitted": "Đã gửi yêu cầu {key}.",
+      "submittedHint": "Trưởng nhóm đã được thông báo. Bạn sẽ nhận thông báo khi trạng thái thay đổi.",
+      "openRequest": "Mở yêu cầu",
+      "another": "Gửi yêu cầu khác",
+      "problems": {
+        "required": "Vui lòng trả lời câu này.",
+        "too_long": "Câu trả lời quá dài.",
+        "not_an_option": "Hãy chọn một trong các lựa chọn.",
+        "not_a_date": "Hãy nhập ngày.",
+        "not_a_url": "Hãy nhập đường dẫn bắt đầu bằng https://."
       }
     }
   },

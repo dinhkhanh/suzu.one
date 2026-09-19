@@ -56,6 +56,14 @@ export default async function WorkPage() {
           <Link href="/work/leader" className="underline">
             {t("leader.title")}
           </Link>
+          {[...viewer.teamRoles.values()].includes("lead") || canManageWorkspace(viewer) ? (
+            <Link href="/work/workload" className="underline">
+              {t("workload.title")}
+            </Link>
+          ) : null}
+          <Link href="/work/intake" className="underline">
+            {t("intake.title")}
+          </Link>
           <Link href="/work/templates" className="underline">
             {t("templates.title")}
           </Link>

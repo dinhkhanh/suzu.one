@@ -116,6 +116,11 @@ async function main() {
   }
   console.log(`Dressed the instances: ${closed} closed with evidence (${late} late, ${files} receipts), ${overdue} left overdue, ${inProgress} in progress.`);
   await client.end();
+
+  // Week 5: let the reminder job catch up on what was left overdue, so the dashboard shows the
+  // escalation chain at work (owner and reviewer → manager → executives) and people have notices.
+  const reminders = await fetch(`${base}/api/cron/ops-reminders`, { headers: { authorization: `Bearer ${secret}` } }).catch(() => null);
+  console.log(`Reminders: ${reminders ? `${reminders.status} ${await reminders.text()}` : "the server did not answer"}`);
 }
 
 main().catch((error) => {
