@@ -9,6 +9,7 @@ export function navFor(principal: Principal, open: { people: boolean }): { main:
     { key: "home", href: "/home" },
     { key: "me", href: "/me" },
     ...(open.people ? [{ key: "people", href: "/people" }] : []),
+    ...(can(principal, "report:read") ? [{ key: "reports", href: "/reports/headcount" }] : []),
     { key: "attendance", phase: 2 },
     { key: "leave", phase: 2 },
     { key: "work", phase: 3 },

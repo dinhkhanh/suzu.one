@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { can, canReadTier, entityReach, matchesReach, readableTier, tierReach, type Grant, type Principal } from "./policy";
+import { can, canReadTier, entityReach, matchesReach, permissionReach, reachesNothing, readableTier, tierReach, type Grant, type Principal } from "./policy";
 import { ROLES, TIERS } from "./roles";
 
 const ENTITY_A = "entity-a";
@@ -184,5 +184,30 @@ describe("rule governance (FR-PLT-39)", () => {
 
   it("treats the rules as group-wide: an entity-scoped grant cannot touch them", () => {
     expect(can(holder("hr_admin", { type: "entity", id: ENTITY_A }), "rules:propose", {})).toBe(false);
+  });
+});
+
+describe("permissionReach", () => {
+  it("agrees with can() for every role, scope, permission and target", () => {
+    const TEAM = "team-ui";
+    const scopes = [{ type: "group" }, { type: "entity", id: ENTITY_A }, { type: "department", id: DESIGN }, { type: "team", id: TEAM }] as const;
+    const permissions = ["report:read", "person:manage", "person:read", "audit:read", "payroll:read"] as const;
+    const targets = [lan, { ...lan, teamId: TEAM }, { ...lan, entityId: ENTITY_B, departmentId: "dept-video" }, { personId: "loose", entityId: null, departmentId: null, teamId: null, managerId: null }];
+    for (const role of ROLES) {
+      for (const scope of scopes) {
+        // The viewer is also lan's line manager: that must never widen a permission.
+        const who = principal([{ role, scope }], { personId: lan.managerId });
+        for (const permission of permissions) {
+          const reach = permissionReach(who, permission);
+          for (const target of targets) expect(matchesReach(reach, target), `${role} ${scope.type} ${permission} ${target.personId}`).toBe(can(who, permission, target));
+        }
+      }
+    }
+  });
+
+  it("is empty without a grant that carries the permission", () => {
+    expect(reachesNothing(permissionReach(principal([]), "report:read"))).toBe(true);
+    expect(reachesNothing(permissionReach(principal([{ role: "recruiter", scope: { type: "group" } }]), "report:read"))).toBe(true);
+    expect(permissionReach(principal([{ role: "department_head", scope: { type: "department", id: DESIGN } }]), "report:read")).toMatchObject({ all: false, departmentIds: [DESIGN], entityIds: [] });
   });
 });

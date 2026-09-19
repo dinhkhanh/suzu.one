@@ -98,7 +98,8 @@ export type PeopleListRow = {
   status: PersonStatus | null;
 };
 
-export async function listPeople(principal: Principal, filters: PeopleFilters): Promise<{ rows: PeopleListRow[]; total: number; pageSize: number }> {
+export async function listPeople(principal: Principal, filters: PeopleFilters, options: { /** The export asks for everything at once; screens page. */ pageSize?: number } = {}): Promise<{ rows: PeopleListRow[]; total: number; pageSize: number }> {
+  const pageSize = options.pageSize ?? PAGE_SIZE;
   const placement = placementOn(todayInVietnam());
   const { e, a } = placement;
   const manager = alias(schema.person, "manager");
@@ -149,14 +150,14 @@ export async function listPeople(principal: Principal, filters: PeopleFilters): 
       .where(where)
       // Vietnamese convention: sort by given name, the last word (DR-08).
       .orderBy(sql`substring(${schema.person.searchName} from '[^ ]+$')`, asc(schema.person.searchName))
-      .limit(PAGE_SIZE)
-      .offset((page - 1) * PAGE_SIZE),
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
     db().select({ total: count() }).from(schema.person).leftJoinLateral(e, sql`true`).leftJoinLateral(a, sql`true`).where(where),
   ]);
 
   return {
     total,
-    pageSize: PAGE_SIZE,
+    pageSize,
     rows: rows.map((row) => {
       const personal = row.id === principal.personId || matchesReach(personalReach, row);
       return {

@@ -1093,5 +1093,83 @@
       "resignation_open": "Bạn đang có một đơn xin nghỉ việc chưa xử lý.",
       "resignation_date_past": "Ngày làm việc cuối không được ở quá khứ."
     }
+  },
+  "exports": {
+    "button": "Xuất CSV",
+    "failed": "Không xuất được.",
+    "truncated": "Danh sách quá dài: tệp chỉ chứa 5.000 dòng đầu."
+  },
+  "reports": {
+    "headcount": {
+      "title": "Báo cáo nhân sự",
+      "description": "Quân số, biến động và các hợp đồng sắp đến hạn. Bạn chỉ thấy phạm vi mình được xem báo cáo.",
+      "scoped": "Số liệu trong phạm vi của bạn, không phải toàn tập đoàn.",
+      "asOf": "Tính đến ngày",
+      "from": "Biến động từ",
+      "to": "đến",
+      "allEntities": "Tất cả pháp nhân",
+      "apply": "Xem",
+      "total": "Tổng quân số",
+      "unknown": "Chưa rõ",
+      "count": "Số người",
+      "share": "Tỷ lệ",
+      "groups": {
+        "byEntity": "Theo pháp nhân",
+        "byDepartment": "Theo phòng ban",
+        "byWorkforceType": "Theo loại nhân sự",
+        "byGender": "Theo giới tính",
+        "byAge": "Theo độ tuổi",
+        "bySeniority": "Theo thâm niên"
+      },
+      "keys": {
+        "byGender": {
+          "male": "Nam",
+          "female": "Nữ",
+          "other": "Khác"
+        },
+        "byAge": {
+          "under_25": "Dưới 25",
+          "25_34": "25–34",
+          "35_44": "35–44",
+          "45_54": "45–54",
+          "55_plus": "Từ 55"
+        },
+        "bySeniority": {
+          "under_1": "Dưới 1 năm",
+          "1_3": "1–3 năm",
+          "3_5": "3–5 năm",
+          "5_10": "5–10 năm",
+          "10_plus": "Từ 10 năm"
+        },
+        "byWorkforceType": {
+          "employee": "Chính thức",
+          "probation": "Thử việc",
+          "intern": "Thực tập",
+          "part_time": "Bán thời gian",
+          "collaborator": "Cộng tác viên",
+          "advisor": "Cố vấn"
+        }
+      },
+      "movement": "Biến động trong kỳ",
+      "opening": "Đầu kỳ",
+      "joiners": "Vào",
+      "leavers": "Nghỉ",
+      "closing": "Cuối kỳ",
+      "turnover": "Tỷ lệ nghỉ việc",
+      "turnoverHint": "Số người nghỉ ÷ quân số bình quân (đầu kỳ + cuối kỳ) ÷ 2",
+      "joinersByDepartment": "Người vào theo phòng ban",
+      "leaversByDepartment": "Người nghỉ theo phòng ban",
+      "none": "Không có.",
+      "contractsExpiring": "Hợp đồng hết hạn trong 90 ngày",
+      "probations": "Đang thử việc",
+      "endDate": "Ngày hết hạn",
+      "person": "Nhân sự",
+      "contractType": "Loại hợp đồng",
+      "columns": {
+        "section": "Mục",
+        "group": "Nhóm",
+        "value": "Giá trị"
+      }
+    }
   }
 }

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import Form from "next/form";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -12,6 +12,8 @@ import { PERSON_STATUSES, WORKFORCE_TYPES } from "@/modules/core-hr/enums";
 import { canBrowsePeople, canFilterByPersonalFacts } from "@/modules/core-hr/policy";
 import { listPeople, listSavedViews, type PeopleFilters, peopleModuleOpen } from "@/modules/core-hr/service";
 import { SavedViews } from "@/modules/core-hr/ui/saved-views";
+import { exportPeopleAction } from "@/modules/core-hr/export-actions";
+import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listDepartments, listEntities } from "@/modules/platform/org/service";
 import { can } from "@/modules/platform/rbac/policy";
@@ -52,6 +54,7 @@ export default async function PeoplePage(props: PageProps<"/people">) {
     listSavedViews(user.person.id, "people"),
   ]);
   const page = filters.page ?? 1;
+  const [te, locale] = await Promise.all([getTranslations("exports"), getLocale()]);
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const pageHref = (target: number) => `/people?${new URLSearchParams({ ...activeFilters, page: String(target) })}`;
 
@@ -63,6 +66,7 @@ export default async function PeoplePage(props: PageProps<"/people">) {
           <p className="text-sm text-muted-foreground">{t("count", { count: total })}</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <ExportButton action={exportPeopleAction} input={{ ...activeFilters, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />
           <Link href="/people/org-chart" className={buttonVariants({ variant: "outline" })}>
             {t("orgChart.title")}
           </Link>

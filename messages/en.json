@@ -1093,5 +1093,83 @@
       "resignation_open": "You already have an open resignation request.",
       "resignation_date_past": "The last working day cannot be in the past."
     }
+  },
+  "exports": {
+    "button": "Export CSV",
+    "failed": "The export failed.",
+    "truncated": "The list is too long: the file holds the first 5,000 rows."
+  },
+  "reports": {
+    "headcount": {
+      "title": "Headcount report",
+      "description": "Headcount, joiners and leavers, and contracts coming up. You see the part of the company you may read reports for.",
+      "scoped": "Figures for your scope, not the whole group.",
+      "asOf": "As of",
+      "from": "Movement from",
+      "to": "to",
+      "allEntities": "All entities",
+      "apply": "Show",
+      "total": "Total headcount",
+      "unknown": "Unknown",
+      "count": "People",
+      "share": "Share",
+      "groups": {
+        "byEntity": "By entity",
+        "byDepartment": "By department",
+        "byWorkforceType": "By workforce type",
+        "byGender": "By gender",
+        "byAge": "By age",
+        "bySeniority": "By seniority"
+      },
+      "keys": {
+        "byGender": {
+          "male": "Male",
+          "female": "Female",
+          "other": "Other"
+        },
+        "byAge": {
+          "under_25": "Under 25",
+          "25_34": "25–34",
+          "35_44": "35–44",
+          "45_54": "45–54",
+          "55_plus": "55 and over"
+        },
+        "bySeniority": {
+          "under_1": "Under 1 year",
+          "1_3": "1–3 years",
+          "3_5": "3–5 years",
+          "5_10": "5–10 years",
+          "10_plus": "10 years and more"
+        },
+        "byWorkforceType": {
+          "employee": "Employee",
+          "probation": "Probation",
+          "intern": "Intern",
+          "part_time": "Part-time",
+          "collaborator": "Collaborator",
+          "advisor": "Advisor"
+        }
+      },
+      "movement": "Movement in the period",
+      "opening": "Opening",
+      "joiners": "Joiners",
+      "leavers": "Leavers",
+      "closing": "Closing",
+      "turnover": "Turnover rate",
+      "turnoverHint": "Leavers ÷ average headcount (opening + closing) ÷ 2",
+      "joinersByDepartment": "Joiners by department",
+      "leaversByDepartment": "Leavers by department",
+      "none": "None.",
+      "contractsExpiring": "Contracts ending within 90 days",
+      "probations": "On probation",
+      "endDate": "End date",
+      "person": "Person",
+      "contractType": "Contract type",
+      "columns": {
+        "section": "Section",
+        "group": "Group",
+        "value": "Value"
+      }
+    }
   }
 }

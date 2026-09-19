@@ -124,6 +124,26 @@ export function tierReach(principal: Principal, tier: Tier): TierReach {
   return reach;
 }
 
+/**
+ * The list form of `can`, for reports and other queries over many people: where does the principal
+ * hold `permission`? Same shape as a tier reach (and matched by `matchesReach`), minus the
+ * line-manager clause: a permission comes from grants only. A test keeps it in step with `can`.
+ */
+export function permissionReach(principal: Principal, permission: Exclude<Permission, "*">): TierReach {
+  const reach = { all: false as const, entityIds: [] as string[], departmentIds: [] as string[], teamIds: [] as string[], managerOf: null };
+  for (const grant of principal.grants) {
+    const permissions = ROLE_DEFINITIONS[grant.role].permissions;
+    if (!permissions.includes("*") && !permissions.includes(permission)) continue;
+    if (grant.scope.type === "group") return { all: true };
+    if (grant.scope.type === "entity") reach.entityIds.push(grant.scope.id);
+    if (grant.scope.type === "department") reach.departmentIds.push(grant.scope.id);
+    if (grant.scope.type === "team") reach.teamIds.push(grant.scope.id);
+  }
+  return reach;
+}
+
+export const reachesNothing = (reach: TierReach): boolean => !reach.all && reach.entityIds.length + reach.departmentIds.length + reach.teamIds.length === 0 && !reach.managerOf;
+
 export function matchesReach(reach: TierReach, person: Target): boolean {
   if (reach.all) return true;
   return (
