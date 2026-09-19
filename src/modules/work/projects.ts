@@ -6,7 +6,7 @@ import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import type { ProjectStatus, TeamRole, Visibility } from "./enums";
-import { canViewProject, type ProjectFacts, type WorkViewer } from "./policy";
+import { canContributeToProject, canContributeToTeam, canCreateProject, canViewProject, type ProjectFacts, type WorkViewer } from "./policy";
 import { teamFacts, type TeamRow } from "./teams";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -136,4 +136,29 @@ export async function setProjectMember(projectId: string, personId: string, role
     }
     return { before, after: role };
   });
+}
+
+export type CreateTargets = { teams: { id: string; key: string; name: string; defaultVisibility: string; canFileInBacklog: boolean; canCreateProject: boolean }[]; projects: { id: string; teamId: string; name: string }[] };
+
+/** Where may this viewer file a new task (quick-create) or start a project? */
+export async function listCreateTargets(viewer: WorkViewer): Promise<CreateTargets> {
+  const [teams, projects] = await Promise.all([
+    db().select().from(schema.workTeam).where(eq(schema.workTeam.isActive, true)).orderBy(asc(schema.workTeam.name)),
+    db().select({ project: schema.workProject, team: schema.workTeam }).from(schema.workProject).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId)).where(and(inArray(schema.workProject.status, ["planned", "active", "paused"]), eq(schema.workTeam.isActive, true))).orderBy(asc(schema.workProject.name)),
+  ]);
+  const open = projects.filter((row) => canContributeToProject(viewer, projectFacts(row.project, row.team))).map((row) => ({ id: row.project.id, teamId: row.project.teamId, name: row.project.name }));
+  const listed = teams
+    .map((team) => ({ id: team.id, key: team.key, name: team.name, defaultVisibility: team.defaultVisibility, canFileInBacklog: canContributeToTeam(viewer, teamFacts(team)), canCreateProject: canCreateProject(viewer, teamFacts(team)) }))
+    .filter((team) => team.canFileInBacklog || team.canCreateProject || open.some((project) => project.teamId === team.id));
+  return { teams: listed, projects: open };
+}
+
+/** Who a task here can be given to: the team and the project's members — not the whole directory. */
+export async function listAssignable(teamId: string, projectId: string | null): Promise<{ id: string; fullName: string }[]> {
+  const [team, project] = await Promise.all([
+    db().select({ id: schema.person.id, fullName: schema.person.fullName, searchName: schema.person.searchName, status: schema.person.status }).from(schema.workTeamMember).innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId)).where(eq(schema.workTeamMember.teamId, teamId)),
+    projectId ? db().select({ id: schema.person.id, fullName: schema.person.fullName, searchName: schema.person.searchName, status: schema.person.status }).from(schema.workProjectMember).innerJoin(schema.person, eq(schema.person.id, schema.workProjectMember.personId)).where(eq(schema.workProjectMember.projectId, projectId)) : [],
+  ]);
+  const byId = new Map([...team, ...project].filter((person) => person.status !== "offboarded").map((person) => [person.id, person]));
+  return [...byId.values()].sort((a, b) => a.searchName.localeCompare(b.searchName)).map(({ id, fullName }) => ({ id, fullName }));
 }

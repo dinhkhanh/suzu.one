@@ -63,7 +63,7 @@ export async function listTeamMembers(teamId: string, executor: Executor = db())
     .innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId))
     .where(eq(schema.workTeamMember.teamId, teamId))
     .orderBy(asc(schema.workTeamMember.role), asc(schema.person.searchName));
-  return rows.map(({ searchName: _searchName, ...row }) => ({ ...row, role: row.role as TeamRole }));
+  return rows.map((row) => ({ personId: row.personId, fullName: row.fullName, role: row.role as TeamRole, workforceType: row.workforceType, status: row.status }));
 }
 
 async function activePerson(tx: Executor, personId: string): Promise<void> {

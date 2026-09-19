@@ -13,7 +13,7 @@ export function navFor(principal: Principal, open: { people: boolean }): { main:
     ...(can(principal, "report:read") ? [{ key: "reports", href: "/reports/headcount" }] : []),
     { key: "attendance", href: "/attendance" },
     { key: "leave", href: "/leave" },
-    { key: "work", phase: 3 },
+    { key: "work", href: "/work" },
     { key: "ops", phase: 3 },
     { key: "kb", phase: 4 },
     { key: "payroll", phase: 5 },

@@ -10,6 +10,7 @@ import { countInbox } from "@/modules/platform/approvals/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { countUnread } from "@/modules/platform/notifications/service";
 import { countMyOpenTasks } from "@/modules/platform/tasks-engine/service";
+import { CommandPalette } from "@/modules/work/ui/command-palette";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
@@ -76,6 +77,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         </CollapsibleNav>
       </aside>
       <main className="min-w-0 flex-1 p-4 md:p-8">{children}</main>
+      <CommandPalette
+        selfId={user.person.id}
+        pages={[...nav.main, { key: "tasks", href: "/tasks" }, { key: "approvals", href: "/approvals" }, { key: "notifications", href: "/notifications" }, ...nav.admin].flatMap((item) => (item.href ? [{ label: t(`nav.${item.key}`), href: item.href }] : []))}
+      />
     </div>
   );
 }

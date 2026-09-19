@@ -247,17 +247,26 @@ export async function updateWorkTask(taskId: string, patch: WorkTaskPatch, actor
     const changes: ActivityEntry[] = [];
     const plain = (field: string, from: unknown, to: unknown) => changes.push({ type: "field_changed", field, from, to });
 
-    if (changed(patch.title, task.title)) (taskSet.title = patch.title), plain("title", task.title, patch.title);
-    if (changed(patch.description, task.description)) (taskSet.description = patch.description), plain("description", null, null);
-    if (changed(patch.priority, task.priority)) (taskSet.priority = patch.priority), plain("priority", task.priority, patch.priority);
-    if (changed(patch.estimateMinutes, task.estimateMinutes)) (taskSet.estimateMinutes = patch.estimateMinutes), plain("estimateMinutes", task.estimateMinutes, patch.estimateMinutes);
-    if (changed(patch.startDate, task.startDate)) (taskSet.startDate = patch.startDate), plain("startDate", task.startDate, patch.startDate);
-    if (changed(patch.dueDate, task.dueDate)) (taskSet.dueDate = patch.dueDate), plain("dueDate", task.dueDate, patch.dueDate);
+    const setOnTask = <Key extends keyof typeof taskSet>(key: Key, value: (typeof taskSet)[Key], from: unknown, logged = true) => {
+      taskSet[key] = value;
+      plain(key, logged ? from : null, logged ? value : null);
+    };
+    const setOnWork = <Key extends keyof typeof workSet>(key: Key, value: (typeof workSet)[Key], from: unknown) => {
+      workSet[key] = value;
+      plain(key, from, value);
+    };
+    if (changed(patch.title, task.title)) setOnTask("title", patch.title, task.title);
+    // The brief can be long: the log says that it changed, not what it said.
+    if (changed(patch.description, task.description)) setOnTask("description", patch.description, null, false);
+    if (changed(patch.priority, task.priority)) setOnTask("priority", patch.priority, task.priority);
+    if (changed(patch.estimateMinutes, task.estimateMinutes)) setOnTask("estimateMinutes", patch.estimateMinutes, task.estimateMinutes);
+    if (changed(patch.startDate, task.startDate)) setOnTask("startDate", patch.startDate, task.startDate);
+    if (changed(patch.dueDate, task.dueDate)) setOnTask("dueDate", patch.dueDate, task.dueDate);
     const startDate = patch.startDate === undefined ? task.startDate : patch.startDate;
     const dueDate = patch.dueDate === undefined ? task.dueDate : patch.dueDate;
     if (startDate && dueDate && dueDate < startDate) throw new ActionError("task_dates_invalid");
-    if (changed(patch.channel, work.channel)) (workSet.channel = patch.channel), plain("channel", work.channel, patch.channel);
-    if (changed(patch.contentFormat, work.contentFormat)) (workSet.contentFormat = patch.contentFormat), plain("contentFormat", work.contentFormat, patch.contentFormat);
+    if (changed(patch.channel, work.channel)) setOnWork("channel", patch.channel, work.channel);
+    if (changed(patch.contentFormat, work.contentFormat)) setOnWork("contentFormat", patch.contentFormat, work.contentFormat);
 
     let newAssignee: string | null = null;
     if (changed(patch.assigneePersonId, task.assigneePersonId)) {
