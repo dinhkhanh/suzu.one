@@ -3,7 +3,7 @@
 // `person` (platform) holds public_internal fields, `person_profile` holds personal ones;
 // restricted fields get their own encrypted table.
 import { sql } from "drizzle-orm";
-import { type AnyPgColumn, check, date, index, integer, jsonb, pgEnum, pgTable, smallint, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, check, date, index, integer, jsonb, pgEnum, pgTable, smallint, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { storedFile } from "../platform/files/schema";
 import { branch, department, entity, team } from "../platform/org/schema";
 import { person, workforceType } from "../platform/people/schema";
@@ -198,7 +198,8 @@ export const contract = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (t) => [
-    unique("contract_entity_number_key").on(t.entityId, t.number),
+    // Among live rows only: a contract deleted as a mistake frees its number for the right one.
+    uniqueIndex("contract_entity_number_key").on(t.entityId, t.number).where(sql`${t.deletedAt} IS NULL`),
     index("contract_person_idx").on(t.personId),
     index("contract_end_date_idx").on(t.endDate),
     check("contract_dates_check", sql`${t.endDate} IS NULL OR ${t.endDate} >= ${t.startDate}`),

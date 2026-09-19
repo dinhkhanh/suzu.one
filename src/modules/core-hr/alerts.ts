@@ -38,7 +38,8 @@ export async function sendHrAlerts(today: IsoDate): Promise<{ contractAlerts: nu
     const subject = subjects.find((candidate) => candidate.subjectId === alert.subjectId && candidate.kind === alert.kind)!;
     // Worked out before the transaction, which then only claims and tells.
     const target = await getPersonTarget(subject.personId);
-    const hr = target ? await listPeopleHolding("person:manage", target, today) : [];
+    // HR, not the owners: a countdown is routine work, and owners who want it can follow the person's page.
+    const hr = target ? await listPeopleHolding("person:manage", target, { today, includeWildcard: false }) : [];
     // The line manager plans around a contract or a probation ending. What sits in someone's
     // vault is between them and HR, so document alerts go to the person instead.
     const other = alert.kind === "hr.document_expiring" ? subject.personId : target?.managerId;

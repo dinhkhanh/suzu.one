@@ -22,7 +22,7 @@ import type { Grant, Principal } from "@/modules/platform/rbac/policy";
 import { STATUTORY_SEED } from "@/modules/platform/statutory/seed-values";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { sendHrAlerts } from "./alerts";
-import { createContract, createDependent, findPeopleByNationalId, getContractSalaryTerms, getSensitiveFields, getSensitiveSummary, listContracts, listDependents, listDocuments, type SensitiveFields, updateSensitiveFields } from "./records";
+import { createContract, createDependent, deleteContract, findPeopleByNationalId, getContractSalaryTerms, getSensitiveFields, getSensitiveSummary, listContracts, listDependents, listDocuments, type SensitiveFields, updateSensitiveFields } from "./records";
 import { rewrapEncryptedFields } from "./rewrap";
 import { hirePerson } from "./service";
 
@@ -179,6 +179,16 @@ describe("contract rules at the service", () => {
     await expect(createContract(ids.colleague, { ...base, number: "HD-X2", type: "probation", jobCategory: "professional", startDate: "2026-01-01", endDate: "2026-03-15" }, ids.hrAdmin)).rejects.toThrow("contract_probation_too_long");
     await expect(createContract(ids.huy, { ...base, number: "HD-X3", type: "indefinite", startDate: today, endDate: null }, ids.hrAdmin)).rejects.toThrow("contract_overlap");
     await expect(createContract(ids.colleague, { ...base, number: "HD-001", type: "nda", startDate: "2026-01-01", endDate: null }, ids.hrAdmin)).rejects.toThrow("contract_number_taken");
+  });
+
+
+  it("frees the number of a contract deleted as a mistake", async () => {
+    const nda = { number: "NDA-7", type: "nda" as const, parentContractId: null, jobCategory: null, signDate: null, startDate: "2026-01-01", endDate: null, salaryTerms: null, note: null };
+    const first = await createContract(ids.colleague, nda, ids.hrAdmin);
+    await expect(createContract(ids.colleague, nda, ids.hrAdmin)).rejects.toThrow("contract_number_taken");
+    await deleteContract(first.id);
+    expect((await createContract(ids.colleague, nda, ids.hrAdmin)).id).not.toBe(first.id);
+    expect((await listContracts(viewers.hrAdmin, ids.colleague))?.map((row) => row.number)).toEqual(["NDA-7"]);
   });
 });
 
