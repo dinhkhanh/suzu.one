@@ -2,11 +2,12 @@
 // Refuses to run against anything but a local database. Run `pnpm db:seed` first, then `pnpm db:seed:demo`.
 import { config } from "dotenv";
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { blindIndex, createFieldCipher, parseKeyRing } from "../src/lib/crypto/field-cipher";
-import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, assignment, contract, department, dependent, emergencyContact, employeeCodeScheme, employment, entity, person, personProfile, personSensitive, position, roleAssignment } from "../src/lib/db/schema";
+import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, assignment, contract, department, dependent, emergencyContact, employeeCodeScheme, employment, entity, lifecycleEvent, person, personProfile, personSensitive, position, roleAssignment, task, taskTemplate, taskTemplateItem } from "../src/lib/db/schema";
+import { planChecklist } from "../src/modules/platform/tasks-engine/engine/checklist";
 import { toSearchKey } from "../src/lib/text";
 import { changeRequestContext, contractTermsContext, dependentContext, NATIONAL_ID_INDEX_CONTEXT, normalizeIdNumber, sensitiveContext } from "../src/modules/core-hr/field-contexts";
 
@@ -117,6 +118,7 @@ async function main() {
   console.log(`Seeded ${created} demo people (existing people skipped).`);
   console.log(`Seeded ${await seedRecords(db, today)} contracts, restricted details and dependents (existing ones skipped).`);
   console.log(`Seeded ${await seedChangeRequests(db)} pending change requests (people who already have one skipped).`);
+  console.log(`Seeded ${await seedLifecycle(db, today)} lifecycle events, checklists and a resignation request (existing ones skipped).`);
   await client.end();
 }
 
@@ -235,6 +237,111 @@ async function seedChangeRequests(db: ReturnType<typeof drizzle>): Promise<numbe
     const [step] = await db.insert(approvalStep).values({ requestId: id, stepIndex: 0, key: "hr", mode: "any", status: "pending" }).returning();
     await db.insert(approvalAssignee).values(approverIds.map((approverPersonId) => ({ stepId: step.id, requestId: id, approverPersonId })));
     await db.insert(approvalEvent).values({ requestId: id, type: "submitted", actorPersonId: requester.id, stepIndex: 0 });
+    written++;
+  }
+  return written;
+}
+
+// Week 4: a timeline for everyone, two onboarding checklists under way, a former employee, a
+// termination that has not taken effect yet, and a resignation waiting for the line manager.
+// Written straight into the tables, the way the lifecycle use-cases write them.
+async function seedLifecycle(db: ReturnType<typeof drizzle>, today: string): Promise<number> {
+  const day = (offset: number) => {
+    const date = new Date(`${today}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + offset);
+    return date.toISOString().slice(0, 10);
+  };
+  const byEmail = async (email: string) => (await db.select().from(person).where(eq(person.workEmail, email)).limit(1))[0];
+  const jobOf = async (personId: string) => (await db.select().from(employment).where(eq(employment.personId, personId)).limit(1))[0];
+  const [hrAdmin, hrMedia] = await Promise.all([byEmail("mai.le@suzu.group"), byEmail("bao.pham@suzu.group")]);
+  if (!hrAdmin || !hrMedia) return 0;
+  let written = 0;
+
+  // Gender and date of birth, so the headcount report has something to group by.
+  const bare = await db.select({ personId: personProfile.personId, fullName: person.fullName }).from(personProfile).innerJoin(person, eq(person.id, personProfile.personId)).where(isNull(personProfile.gender));
+  for (const [index, row] of bare.entries()) {
+    const female = /Thị|Thu |Thùy|Mỹ|Ngọc|Khánh Linh|Anh Thư/.test(row.fullName);
+    await db.update(personProfile).set({ gender: female ? "female" : "male", dateOfBirth: `${1978 + ((index * 7) % 25)}-${String(1 + ((index * 5) % 12)).padStart(2, "0")}-15` }).where(eq(personProfile.personId, row.personId));
+  }
+
+  // Every employment starts with a hire event.
+  const hired = new Set((await db.select({ id: lifecycleEvent.employmentId }).from(lifecycleEvent).where(eq(lifecycleEvent.type, "hire"))).map((row) => row.id));
+  for (const job of await db.select().from(employment)) {
+    if (hired.has(job.id)) continue;
+    await db.insert(lifecycleEvent).values({ personId: job.personId, employmentId: job.id, entityId: job.entityId, type: "hire", effectiveDate: job.startDate, createdByPersonId: hrAdmin.id });
+    written++;
+  }
+
+  const checklist = async (purpose: "onboarding" | "offboarding", event: typeof lifecycleEvent.$inferSelect, subject: typeof person.$inferSelect, hrId: string, doneCount: number) => {
+    const [template] = await db.select().from(taskTemplate).where(and(eq(taskTemplate.purpose, purpose), eq(taskTemplate.isActive, true))).limit(1);
+    if (!template) return;
+    const items = await db.select().from(taskTemplateItem).where(eq(taskTemplateItem.templateId, template.id));
+    const planned = planChecklist(items, event.effectiveDate, (rule) => (rule.rule === "subject" ? subject.id : rule.rule === "line_manager" ? subject.managerId : rule.rule === "person" ? rule.personId : hrId));
+    await db.insert(task).values(
+      planned.map((row, index) => ({ ...row, kind: "checklist", entityId: event.entityId, contextType: "lifecycle_event", contextId: event.id, subjectPersonId: subject.id, createdByPersonId: hrId, ...(index < doneCount ? { status: "done" as const, completedAt: new Date(), completedByPersonId: row.assigneePersonId ?? hrId } : {}) })),
+    );
+    written += planned.length;
+  };
+  const hasTasks = async (eventId: string) => (await db.select({ id: task.id }).from(task).where(eq(task.contextId, eventId)).limit(1)).length > 0;
+
+  // Onboarding under way: the pre-boarding account executive and the probationer.
+  for (const [email, hrId, done] of [["thu.mai@suzu.group", hrAdmin.id, 1], ["linh.do@suzu.group", hrMedia.id, 4]] as const) {
+    const subject = await byEmail(email);
+    const [event] = subject ? await db.select().from(lifecycleEvent).where(and(eq(lifecycleEvent.personId, subject.id), eq(lifecycleEvent.type, "hire"))).limit(1) : [];
+    if (subject && event && !(await hasTasks(event.id))) await checklist("onboarding", event, subject, hrId, done);
+  }
+
+  // A former employee: left two months ago, offboarded, no way in.
+  const [szm] = await db.select().from(entity).where(eq(entity.code, "SZM")).limit(1);
+  const [video] = await db.select().from(department).where(eq(department.code, "VID")).limit(1);
+  const head = await byEmail("long.dang@suzu.group");
+  if (szm && video && head && !(await byEmail("dang.vu@suzu.group"))) {
+    const [gone] = await db.insert(person).values({ fullName: "Vũ Hải Đăng", searchName: toSearchKey("Vũ Hải Đăng"), workEmail: "dang.vu@suzu.group", status: "offboarded", primaryEntityId: szm.id, departmentId: video.id, managerId: head.id }).returning();
+    await db.insert(personProfile).values({ personId: gone.id, nationality: "Việt Nam", dateOfBirth: "1994-02-11", gender: "male", phone: "0933555777" });
+    const [job] = await db.insert(employment).values({ personId: gone.id, entityId: szm.id, employeeCode: "SZM-0090", startDate: "2022-05-09", seniorityDate: "2022-05-09", endDate: day(-60) }).returning();
+    await db.insert(assignment).values({ employmentId: job.id, workforceType: "employee", departmentId: video.id, managerId: head.id, validFrom: "2022-05-09", validTo: day(-60) });
+    await db.insert(lifecycleEvent).values([
+      { personId: gone.id, employmentId: job.id, entityId: szm.id, type: "hire", effectiveDate: "2022-05-09", createdByPersonId: hrMedia.id },
+      { personId: gone.id, employmentId: job.id, entityId: szm.id, type: "termination", effectiveDate: day(-60), reason: "resignation", status: "applied", createdByPersonId: hrMedia.id },
+    ]);
+    written += 3;
+  }
+
+  // Leaving in twenty days: still active until then, offboarding checklist already running.
+  const leaving = await byEmail("duyen.huynh@suzu.group");
+  const leavingJob = leaving ? await jobOf(leaving.id) : undefined;
+  if (leaving && leavingJob && leavingJob.endDate === null) {
+    const lastDay = day(20);
+    await db.update(employment).set({ endDate: lastDay }).where(eq(employment.id, leavingJob.id));
+    const open = await db.update(assignment).set({ validTo: lastDay }).where(eq(assignment.employmentId, leavingJob.id)).returning({ id: assignment.id });
+    const [event] = await db
+      .insert(lifecycleEvent)
+      .values({ personId: leaving.id, employmentId: leavingJob.id, entityId: leavingJob.entityId, type: "termination", effectiveDate: lastDay, status: "pending", reason: "contract_end", details: { closed: { assignments: open.map((row) => ({ id: row.id, validTo: null })), grants: [], contracts: [] }, droppedAssignments: 0 }, createdByPersonId: hrAdmin.id })
+      .returning();
+    await checklist("offboarding", event, leaving, hrAdmin.id, 0);
+    written++;
+  }
+
+  // A resignation waiting for the line manager (long.dang).
+  const resigning = await byEmail("tam.bui@suzu.group");
+  if (resigning?.managerId && (await db.select({ id: approvalRequest.id }).from(approvalRequest).where(and(eq(approvalRequest.subjectPersonId, resigning.id), eq(approvalRequest.type, "resignation"))).limit(1)).length === 0) {
+    const id = randomUUID();
+    const lastWorkingDay = day(45);
+    const flow = { steps: [{ key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] }] };
+    await db.insert(approvalRequest).values({
+      id,
+      type: "resignation",
+      entityId: resigning.primaryEntityId,
+      requesterPersonId: resigning.id,
+      subjectPersonId: resigning.id,
+      summary: `Ngày làm việc cuối: ${lastWorkingDay.split("-").reverse().join("/")}`,
+      payload: { lastWorkingDay, reason: "Chuyển về quê sinh sống" },
+      flowSnapshot: { definition: flow, resolved: [{ key: "manager", mode: "any", applies: true, approverIds: [resigning.managerId] }] },
+      link: `/approvals/resignation/${id}`,
+    });
+    const [step] = await db.insert(approvalStep).values({ requestId: id, stepIndex: 0, key: "manager", mode: "any", status: "pending" }).returning();
+    await db.insert(approvalAssignee).values({ stepId: step.id, requestId: id, approverPersonId: resigning.managerId });
+    await db.insert(approvalEvent).values({ requestId: id, type: "submitted", actorPersonId: resigning.id, stepIndex: 0 });
     written++;
   }
   return written;

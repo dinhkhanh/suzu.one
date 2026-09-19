@@ -140,7 +140,7 @@ export default async function HeadcountPage(props: PageProps<"/reports/headcount
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("person")}</TableHead>
-                  <TableHead>{t("groups.byDepartment")}</TableHead>
+                  <TableHead>{t("department")}</TableHead>
                   <TableHead>{t("contractType")}</TableHead>
                   <TableHead>{t("endDate")}</TableHead>
                 </TableRow>

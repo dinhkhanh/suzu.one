@@ -39,7 +39,8 @@ export async function LifecycleSection({ principal, personId, canManage, employe
               <div className="flex flex-wrap items-center gap-2">
                 <span className="whitespace-nowrap text-muted-foreground">{day(event.effectiveDate)}</span>
                 <span className={event.status === "cancelled" ? "font-medium line-through" : "font-medium"}>{t(`types.${event.type}`)}</span>
-                {event.status !== "applied" ? <Badge variant="outline">{t(`status.${event.status}`)}</Badge> : null}
+                {/* A transfer dated ahead is recorded as applied; the date says it has not happened yet. */}
+                {event.status !== "applied" || event.effectiveDate > today ? <Badge variant="outline">{t(`status.${event.status === "applied" ? "pending" : event.status}`)}</Badge> : null}
                 {event.type === "termination" && event.reason ? <span className="text-muted-foreground">{t.has(`reasons.${event.reason}`) ? t(`reasons.${event.reason}` as "reasons.other") : event.reason}</span> : null}
                 {event.approvalRequestId ? (
                   <Link href={`/approvals/resignation/${event.approvalRequestId}`} className="text-xs underline">

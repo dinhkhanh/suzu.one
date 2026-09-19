@@ -1169,7 +1169,8 @@
         "section": "Mục",
         "group": "Nhóm",
         "value": "Giá trị"
-      }
+      },
+      "department": "Phòng ban"
     }
   }
 }

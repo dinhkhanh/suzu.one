@@ -1169,7 +1169,8 @@
         "section": "Section",
         "group": "Group",
         "value": "Value"
-      }
+      },
+      "department": "Department"
     }
   }
 }

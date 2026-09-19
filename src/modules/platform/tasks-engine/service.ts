@@ -91,8 +91,11 @@ export async function instantiateTemplate(tx: Executor, input: InstantiateInput)
     const rule = parseAssigneeRule(item.assigneeRule, item.assigneePersonId);
     if (rule?.rule !== "permission" || holders.has(rule.permission)) continue;
     // The people whose job it is, not the owners' "*"; never the subject (nobody offboards themselves).
-    const people = await listPeopleHolding(rule.permission as Exclude<Permission, "*">, target, { includeWildcard: false, executor: tx });
-    holders.set(rule.permission, people.filter((id) => id !== input.subjectPersonId).sort()[0] ?? null);
+    const people = (await listPeopleHolding(rule.permission as Exclude<Permission, "*">, target, { includeWildcard: false, executor: tx })).filter((id) => id !== input.subjectPersonId).sort();
+    // Several people may hold it (entity HR and group HR): the one who works in the entity is the
+    // likelier owner of the step. One name, not a committee — a manager of the kind can reassign.
+    const local = people.length > 1 && input.entityId ? await tx.select({ id: schema.person.id }).from(schema.person).where(and(inArray(schema.person.id, people), eq(schema.person.primaryEntityId, input.entityId))).orderBy(asc(schema.person.id)) : [];
+    holders.set(rule.permission, local[0]?.id ?? people[0] ?? null);
   }
   const resolve = (rule: AssigneeRule): string | null => {
     if (rule.rule === "subject") return input.subjectPersonId;
