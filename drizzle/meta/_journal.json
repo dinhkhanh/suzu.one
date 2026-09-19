@@ -281,6 +281,13 @@
       "when": 1789860751433,
       "tag": "0039_kb_acknowledgement",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1789861536260,
+      "tag": "0040_kb_templates",
+      "breakpoints": true
     }
   ]
 }

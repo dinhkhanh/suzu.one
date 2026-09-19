@@ -4129,7 +4129,11 @@
       "approval_no_approver": "Nobody can review this yet. Tell an administrator.",
       "kb_ack_audience_required": "Choose at least one audience.",
       "kb_ack_not_required": "This page does not require confirmation.",
-      "kb_ack_not_in_audience": "You are not in this page's audience."
+      "kb_ack_not_in_audience": "You are not in this page's audience.",
+      "kb_template_not_found": "Template not found (or switched off).",
+      "kb_import_empty": "Nothing to import.",
+      "kb_import_too_large": "Too long to import in one go.",
+      "kb_import_unreadable": "This file could not be read."
     },
     "review": {
       "title": "Publish review",
@@ -4196,6 +4200,25 @@
       "popular": "Popular (30 days)",
       "updated": "Recently updated",
       "views": "{count, plural, one {# read} other {# reads}}"
+    },
+    "template": {
+      "label": "Start from a template",
+      "blank": "Blank page",
+      "saveTitle": "Keep this page as a template",
+      "name": "Template name",
+      "save": "Save as template"
+    },
+    "import": {
+      "link": "Or import from Markdown / Word / Google Docs",
+      "title": "Import a page",
+      "help": "Paste Markdown or choose a .md or .docx file. From Google Docs: File → Download → Markdown (.md), then choose that file. The result is a draft for you to check before publishing.",
+      "file": "File",
+      "fileHelp": ".md, .txt or .docx (up to 3.5 MB). Pictures inside a Word file are not imported.",
+      "docxChosen": "Importing from the Word file: {name}",
+      "markdown": "Markdown",
+      "titleField": "Page title",
+      "titleHint": "Empty = the first level-1 heading, or the file name",
+      "submit": "Import as a draft"
     }
   }
 }

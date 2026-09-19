@@ -27,6 +27,9 @@ import { type KbViewer, viewerKeys } from "./policy";
 import { decidePageReview, getPublishReview, submitPageForReview, syncReviewState, withdrawPageReview } from "./publishing";
 import { listPopularPages, listRecentlyPublished, listRecentlyViewed, searchKb } from "./search";
 import { createSpace } from "./spaces";
+import { importMarkdownPage, listTemplates, saveAsTemplate, setTemplateActive, templateContent } from "./templates";
+import { kbTemplateSeedRows } from "./seed-templates";
+import { validateDoc } from "./engine/doc";
 import { snippetOf, toTsQuery } from "./engine/search";
 import { recordView } from "./pages";
 import { canViewPage } from "./policy";
@@ -332,5 +335,35 @@ describe("search", () => {
     await setPageAccess(made.leave, [{ subjectKey: `person:${ids.khoi}`, level: "view" }]);
     expect(await listRecentlyViewed(viewers.huy)).toHaveLength(1);
     await setPageAccess(made.leave, []);
+  });
+});
+
+describe("templates and imports", () => {
+  it("seeds six valid templates, offers only the active ones, and keeps a page as a new one", async () => {
+    const rows = kbTemplateSeedRows();
+    expect(rows.map((row) => row.key)).toEqual(["sop", "policy", "meeting_notes", "campaign_post_mortem", "client_playbook", "onboarding_guide"]);
+    for (const row of rows) expect([row.key, validateDoc(row.content).ok]).toEqual([row.key, true]);
+    await db().insert(schema.kbTemplate).values(rows);
+    const [sop] = await listTemplates();
+    expect(sop).toMatchObject({ key: "sop", isSystem: true });
+    expect((await templateContent(sop.id)).content[0]).toMatchObject({ type: "heading" });
+    await setTemplateActive(sop.id, false);
+    expect(await fails(templateContent(sop.id))).toBe("kb_template_not_found");
+    expect((await listTemplates()).map((row) => row.key)).not.toContain("sop");
+    expect((await listTemplates({ includeInactive: true })).map((row) => row.key)).toContain("sop");
+    const own = await saveAsTemplate({ name: "Mẫu báo cáo tuần", description: null, content: body("x", "y") }, { personId: ids.hrGroup });
+    const again = await saveAsTemplate({ name: "Mẫu báo cáo tuần", description: null, content: body("x", "y") }, { personId: ids.hrGroup });
+    expect([own.key, again.key]).toEqual(["mau_bao_cao_tuan", "mau_bao_cao_tuan_2"]);
+    expect(await fails(saveAsTemplate({ name: "Hỏng", description: null, content: { type: "doc", content: [{ type: "script" }] } }, { personId: ids.hrGroup }))).toBe("kb_content_invalid");
+  });
+
+  it("imports Markdown as a draft: title from the heading, the file name, or what was typed", async () => {
+    const actor = { personId: ids.hrGroup };
+    const fromHeading = await importMarkdownPage({ spaceId: spaces.tools, parentId: null, markdown: "# Hướng dẫn VPN\n\nCài **WireGuard**.", fileName: "vpn.md" }, actor);
+    expect(fromHeading).toMatchObject({ titleFrom: "heading", page: { title: "Hướng dẫn VPN", status: "draft", publishedVersionId: null } });
+    expect(fromHeading.page.contentText).toContain("WireGuard");
+    expect((await importMarkdownPage({ spaceId: spaces.tools, parentId: null, markdown: "Không có tiêu đề.", fileName: "quy_trinh-mua-sam.md" }, actor)).page.title).toBe("quy trinh mua sam");
+    expect((await importMarkdownPage({ spaceId: spaces.tools, parentId: fromHeading.page.id, markdown: "# A", title: "Tên tự đặt" }, actor)).page).toMatchObject({ title: "Tên tự đặt", parentId: fromHeading.page.id });
+    expect(await fails(importMarkdownPage({ spaceId: spaces.tools, parentId: null, markdown: "   " }, actor))).toBe("kb_import_empty");
   });
 });

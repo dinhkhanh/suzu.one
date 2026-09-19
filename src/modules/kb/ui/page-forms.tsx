@@ -8,12 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
-import { archivePageAction, createPageAction, deletePageAction, movePageAction, publishPageAction, restoreVersionAction, setPageMetaAction, submitPageReviewAction, unpublishPageAction } from "../actions";
+import { archivePageAction, createPageAction, deletePageAction, movePageAction, publishPageAction, restoreVersionAction, savePageAsTemplateAction, setPageMetaAction, submitPageReviewAction, unpublishPageAction } from "../actions";
 
 type ParentOption = { id: string; title: string; depth: number };
 const indent = (option: ParentOption) => `${"— ".repeat(option.depth)}${option.title}`;
 
-export function NewPageForm({ spaceId, parents, defaultParentId }: { spaceId: string; parents: ParentOption[]; defaultParentId: string }) {
+export function NewPageForm({ spaceId, parents, defaultParentId, templates = [] }: { spaceId: string; parents: ParentOption[]; defaultParentId: string; templates?: { id: string; name: string; description: string | null }[] }) {
   const t = useTranslations("kb");
   const router = useRouter();
   const form = useActionForm(createPageAction, { extra: { spaceId }, onSuccess: (data) => router.push(`/kb/pages/${data.id}/edit`) });
@@ -33,6 +33,18 @@ export function NewPageForm({ spaceId, parents, defaultParentId }: { spaceId: st
             ))}
           </Select>
         </Field>
+        {templates.length ? (
+          <Field name="templateId" label={t("template.label")}>
+            <Select id="templateId" name="templateId" defaultValue="">
+              <option value="">{t("template.blank")}</option>
+              {templates.map((template) => (
+                <option key={template.id} value={template.id} title={template.description ?? undefined}>
+                  {template.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        ) : null}
       </FieldErrors>
       <FormError namespace="kb.errors" errorKey={form.errorKey} />
       <Button type="submit" disabled={form.pending} className="w-fit">
@@ -90,6 +102,27 @@ export function SubmitReviewButton({ pageId }: { pageId: string }) {
       </Button>
       <RunError errorKey={errorKey} />
     </span>
+  );
+}
+
+/** Managers keep a good page as a starting point for others. */
+export function SaveAsTemplateForm({ pageId, defaultName }: { pageId: string; defaultName: string }) {
+  const t = useTranslations("kb");
+  const form = useActionForm(savePageAsTemplateAction, { extra: { pageId } });
+  return (
+    <form onSubmit={form.onSubmit} className="flex flex-col gap-2">
+      <h2 className="text-sm font-medium">{t("template.saveTitle")}</h2>
+      <div className="flex flex-wrap items-end gap-2">
+        <Field name="name" label={t("template.name")}>
+          <Input id="template-name" name="name" required maxLength={120} defaultValue={defaultName} />
+        </Field>
+        <Button type="submit" variant="outline" size="sm" disabled={form.pending}>
+          {t("template.save")}
+        </Button>
+        {form.saved ? <span className="text-xs text-muted-foreground">{t("saved")}</span> : null}
+      </div>
+      <FormError namespace="kb.errors" errorKey={form.errorKey} />
+    </form>
   );
 }
 

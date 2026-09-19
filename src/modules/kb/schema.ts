@@ -204,3 +204,23 @@ export const kbAckReminder = pgTable(
   },
   (t) => [uniqueIndex("kb_ack_reminder_day_idx").on(t.pageId, t.versionId, t.personId, t.sentOn)],
 ).enableRLS();
+
+// Starting points for new pages (FR-KB-09): SOP, policy, meeting notes… The system ones come
+// from `pnpm db:seed` (re-seeding only adds keys that are missing); managers add their own.
+export const kbTemplate = pgTable(
+  "kb_template",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    key: text("key").notNull().unique(),
+    name: text("name").notNull(),
+    description: text("description"),
+    content: jsonb("content").notNull(),
+    isSystem: boolean("is_system").notNull().default(false),
+    isActive: boolean("is_active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  () => [],
+).enableRLS();

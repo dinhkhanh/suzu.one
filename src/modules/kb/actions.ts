@@ -10,6 +10,7 @@ import { beginPageUpload, completePageUpload, findPageFile, removePageFile } fro
 import { createPage, deletePage, type LoadedPage, loadPage, movePage, type PageRow, publishPage, restoreVersion, saveDraft, setPageAccess, setPageArchived, setPageMeta, unpublishPage } from "./pages";
 import { canCreatePage, canEditPage, canManageSpace, canOrganisePages, canPublishDirectly, canViewPage, kbViewerOf } from "./policy";
 import { decidePageReview, getPublishReview, submitPageForReview, withdrawPageReview } from "./publishing";
+import { docxToMarkdown, importMarkdownPage, MAX_IMPORT_CHARS, saveAsTemplate, setTemplateActive, templateContent } from "./templates";
 import { createSpace, loadSpace, setSpaceAccess, setSpaceArchived, type SpaceRow, updateSpace } from "./spaces";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -133,7 +134,7 @@ const title = z.string().trim().min(1).max(200);
 
 const createPagePipeline = createAction({
   name: "kb.page.create",
-  input: z.object({ spaceId: z.uuid(), parentId: optional(z.uuid()), title, content: content.optional() }),
+  input: z.object({ spaceId: z.uuid(), parentId: optional(z.uuid()), title, content: content.optional(), templateId: optional(z.uuid()) }),
   authorize: async (user, input) => {
     const space = await loadSpace({ id: input.spaceId });
     if (!space) return false;
@@ -143,9 +144,9 @@ const createPagePipeline = createAction({
   },
   run: async ({ user, input }) => {
     const space = (await loadSpace({ id: input.spaceId }))!;
-    const page = await createPage(input, { personId: user.person.id });
+    const page = await createPage({ ...input, content: input.templateId ? await templateContent(input.templateId) : input.content }, { personId: user.person.id });
     refresh(space.space.key);
-    return { data: { id: page.id }, audit: { resource: auditPage({ page, space: space.space }), summary: page.title, after: pageFactsForAudit(page) } };
+    return { data: { id: page.id }, audit: { resource: auditPage({ page, space: space.space }), summary: page.title, after: { ...pageFactsForAudit(page), templateId: input.templateId } } };
   },
 });
 export async function createPageAction(input: unknown) {
@@ -512,4 +513,91 @@ const exportAckPipeline = createAction({
 });
 export async function exportAckReportAction(input: unknown) {
   return exportAckPipeline(input);
+}
+
+// ── Templates and imports (FR-KB-09, 10) ────────────────────────────────────────────────────
+
+const mayCreateIn = async (user: CurrentUser, spaceId: string, parentId: string | null) => {
+  const space = await loadSpace({ id: spaceId });
+  if (!space || space.space.archivedAt) return false;
+  const parent = parentId ? await pageFor(user, parentId) : null;
+  if (parentId && (!parent || parent.page.spaceId !== spaceId)) return false;
+  return canCreatePage(kbViewerOf(user), space.facts, parent?.pageFacts ?? null);
+};
+
+const importMarkdownPipeline = createAction({
+  name: "kb.page.import_markdown",
+  input: z.object({ spaceId: z.uuid(), parentId: optional(z.uuid()), title: optional(z.string().trim().max(200)), markdown: z.string().min(1).max(MAX_IMPORT_CHARS), fileName: optional(z.string().trim().max(200)) }),
+  authorize: (user, input) => mayCreateIn(user, input.spaceId, input.parentId),
+  run: async ({ user, input }) => {
+    const space = (await loadSpace({ id: input.spaceId }))!;
+    const { page, titleFrom } = await importMarkdownPage(input, { personId: user.person.id });
+    refresh(space.space.key);
+    return { data: { id: page.id }, audit: { resource: auditPage({ page, space: space.space }), summary: `${page.title}: imported from Markdown`, after: { ...pageFactsForAudit(page), source: "markdown", fileName: input.fileName, titleFrom, characters: page.contentText.length } } };
+  },
+});
+export async function importMarkdownAction(input: unknown) {
+  return importMarkdownPipeline(input);
+}
+
+const DOCX_MAX_BYTES = 3_500_000;
+const docxForm = z.instanceof(FormData).transform((form, context) => {
+  const file = form.get("file");
+  const fields = z.object({ spaceId: z.uuid(), parentId: optional(z.uuid()), title: optional(z.string().trim().max(200)) }).safeParse(Object.fromEntries([...form.entries()].filter(([, value]) => typeof value === "string")));
+  if (!(file instanceof File) || !fields.success) {
+    context.addIssue({ code: "custom", message: "invalid", path: [file instanceof File ? "fields" : "file"] });
+    return z.NEVER;
+  }
+  return { file, ...fields.data };
+});
+
+const importDocxPipeline = createAction({
+  name: "kb.page.import_docx",
+  input: docxForm,
+  authorize: (user, input) => mayCreateIn(user, input.spaceId, input.parentId),
+  run: async ({ user, input }) => {
+    const { file } = input;
+    if (!/\.docx$/i.test(file.name)) throw new ActionError("file_type_not_allowed");
+    if (file.size === 0) throw new ActionError("file_empty");
+    if (file.size > DOCX_MAX_BYTES) throw new ActionError("file_too_large");
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    // A .docx is a zip: a renamed something-else stops here.
+    if (!(bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04)) throw new ActionError("file_content_mismatch");
+    const markdown = await docxToMarkdown(bytes);
+    const space = (await loadSpace({ id: input.spaceId }))!;
+    const { page, titleFrom } = await importMarkdownPage({ spaceId: input.spaceId, parentId: input.parentId, title: input.title, markdown, fileName: file.name }, { personId: user.person.id });
+    refresh(space.space.key);
+    return { data: { id: page.id }, audit: { resource: auditPage({ page, space: space.space }), summary: `${page.title}: imported from Word`, after: { ...pageFactsForAudit(page), source: "docx", fileName: file.name, titleFrom, characters: page.contentText.length } } };
+  },
+});
+export async function importDocxAction(input: unknown) {
+  return importDocxPipeline(input);
+}
+
+const saveTemplatePipeline = createAction({
+  name: "kb.template.create",
+  input: z.object({ pageId: z.uuid(), name: z.string().trim().min(1).max(120), description: optional(z.string().trim().max(300)) }),
+  // Templates are offered to everybody who writes: keeping them is the KB managers' job.
+  authorize: (user, input) => managesPageSpace(user, input.pageId),
+  run: async ({ user, input }) => {
+    const loaded = await must(user, input.pageId);
+    const template = await saveAsTemplate({ name: input.name, description: input.description, content: loaded.page.content }, { personId: user.person.id });
+    return { data: { id: template.id }, audit: { resource: { type: "kb_template", id: template.id, entityId: null }, summary: template.name, after: { key: template.key, name: template.name, fromPageId: loaded.page.id } } };
+  },
+});
+export async function savePageAsTemplateAction(input: unknown) {
+  return saveTemplatePipeline(input);
+}
+
+const templateActivePipeline = createAction({
+  name: "kb.template.set_active",
+  input: z.object({ templateId: z.uuid(), isActive: z.boolean() }),
+  authorize: (user) => canManageSpace(user.principal, { entityId: null }),
+  run: async ({ input }) => {
+    const { before, after } = await setTemplateActive(input.templateId, input.isActive);
+    return { data: { id: after.id }, audit: { resource: { type: "kb_template", id: after.id, entityId: null }, summary: `${after.name}: ${after.isActive ? "on" : "off"}`, before: { isActive: before.isActive }, after: { isActive: after.isActive } } };
+  },
+});
+export async function setTemplateActiveAction(input: unknown) {
+  return templateActivePipeline(input);
 }

@@ -11,7 +11,7 @@ import { parseSubjectKey } from "@/modules/kb/enums";
 import { atLeast, breadcrumbOf, canManageSpace, canOrganisePages, getAckSettings, getAckStatus, canPublishDirectly, getReadingView, kbViewerOf, levelOf, listPageAccess, listTree, loadPage, moveTargets, outlineOf, recordView, subjectNames, subjectOptions, syncReviewState } from "@/modules/kb/service";
 import { AccessForm } from "@/modules/kb/ui/access-form";
 import { AckSettingsForm, AcknowledgeButton } from "@/modules/kb/ui/ack-forms";
-import { MovePageForm, PageLifecycleButtons, PageMetaForm, PublishDraftButton, SubmitReviewButton } from "@/modules/kb/ui/page-forms";
+import { MovePageForm, PageLifecycleButtons, PageMetaForm, PublishDraftButton, SaveAsTemplateForm, SubmitReviewButton } from "@/modules/kb/ui/page-forms";
 import { PageTree } from "@/modules/kb/ui/page-tree";
 import { RenderDoc } from "@/modules/kb/ui/render-doc";
 import { KbSearchBox } from "@/modules/kb/ui/search-box";
@@ -188,6 +188,7 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
             <summary className="cursor-pointer text-sm font-medium">{t("page.manage")}</summary>
             <div className="flex flex-col gap-6 pt-4">
               <PageMetaForm pageId={page.id} ownerPersonId={page.ownerPersonId} reviewBy={page.reviewBy} people={choices?.people ?? []} />
+              {manages ? <SaveAsTemplateForm pageId={page.id} defaultName={page.title} /> : null}
               {manages && choices ? <AckSettingsForm pageId={page.id} required={page.ackRequired} dueDays={page.ackDueDays} audience={audienceRows} choices={choices} /> : null}
               {organises && choices ? (
                 <>

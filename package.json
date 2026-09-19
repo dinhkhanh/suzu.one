@@ -37,6 +37,8 @@
     "cn": "^0.3.0",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.47.0",
+    "mammoth": "^1.12.3",
+    "marked": "^18.0.13",
     "next": "16.3.5",
     "next-intl": "^4.14.5",
     "postgres": "^3.4.9",

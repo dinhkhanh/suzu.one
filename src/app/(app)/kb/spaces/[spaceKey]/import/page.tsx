@@ -3,14 +3,14 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
-import { atLeast, canCreatePage, kbViewerOf, listTemplates, listTree, loadPage, loadSpace, spaceLevel } from "@/modules/kb/service";
-import { NewPageForm } from "@/modules/kb/ui/page-forms";
+import { atLeast, canCreatePage, kbViewerOf, listTree, loadPage, loadSpace, spaceLevel } from "@/modules/kb/service";
+import { ImportPageForm } from "@/modules/kb/ui/import-form";
 
-export const metadata: Metadata = { title: "New page" };
+export const metadata: Metadata = { title: "Import a page" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export default async function NewPagePage(props: PageProps<"/kb/spaces/[spaceKey]/new">) {
+export default async function ImportPagePage(props: PageProps<"/kb/spaces/[spaceKey]/import">) {
   const user = await requireUser();
   const { spaceKey } = await props.params;
   const query = await props.searchParams;
@@ -25,7 +25,7 @@ export default async function NewPagePage(props: PageProps<"/kb/spaces/[spaceKey
   if (!spaceEditor && !(parent && parent.page.spaceId === loaded.space.id && canCreatePage(viewer, loaded.facts, parent.pageFacts))) notFound();
 
   const t = await getTranslations("kb");
-  const [tree, templates] = await Promise.all([listTree(viewer, loaded), listTemplates()]);
+  const tree = await listTree(viewer, loaded);
   const parents = spaceEditor ? tree : tree.filter((node) => node.id === parentId);
 
   return (
@@ -36,14 +36,10 @@ export default async function NewPagePage(props: PageProps<"/kb/spaces/[spaceKey
             {loaded.space.name}
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("page.new")}</h1>
-        <p className="text-sm text-muted-foreground">
-          <Link href={`/kb/spaces/${loaded.space.key}/import${parentId ? `?parent=${parentId}` : ""}`} className="underline underline-offset-2">
-            {t("import.link")}
-          </Link>
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("import.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("import.help")}</p>
       </header>
-      <NewPageForm spaceId={loaded.space.id} parents={parents.map((node) => ({ id: node.id, title: node.title, depth: node.depth }))} defaultParentId={parents.some((node) => node.id === parentId) ? parentId : ""} templates={templates} />
+      <ImportPageForm spaceId={loaded.space.id} parents={parents.map((node) => ({ id: node.id, title: node.title, depth: node.depth }))} defaultParentId={parents.some((node) => node.id === parentId) ? parentId : ""} />
     </div>
   );
 }

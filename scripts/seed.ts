@@ -6,12 +6,13 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { and, between, inArray, isNull } from "drizzle-orm";
-import { attendancePolicy, kpiDefinition, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
+import { attendancePolicy, kbTemplate, kpiDefinition, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
 import { PROFILE_SEED } from "../src/modules/attendance/engine/device-log";
 import { CALENDAR_SEED, DEFAULT_POLICY_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 import { leaveSeedRows } from "../src/modules/leave/seed-types";
 import { TEMPLATE_SEED } from "../src/modules/platform/tasks-engine/seed-templates";
 import { obligationSeedRows } from "../src/modules/ops/seed-library";
+import { kbTemplateSeedRows } from "../src/modules/kb/seed-templates";
 import { kpiSeedRows } from "../src/modules/performance/seed-kpis";
 import { WORK_TEMPLATE_SEED } from "../src/modules/work/seed-templates";
 import { STATUTORY_SEED } from "../src/modules/platform/statutory/seed-values";
@@ -125,6 +126,12 @@ async function main() {
   const newKpis = kpiSeedRows().filter((row) => !kpiCodes.has(row.code));
   if (newKpis.length) await db.insert(kpiDefinition).values(newKpis);
   console.log(`Seeded ${newKpis.length} KPI definitions (existing codes left untouched).`);
+
+  // Knowledge-base page templates (FR-KB-09): only keys that do not exist yet.
+  const templateKeys = new Set((await db.select({ key: kbTemplate.key }).from(kbTemplate)).map((row) => row.key));
+  const newTemplates = kbTemplateSeedRows().filter((row) => !templateKeys.has(row.key));
+  if (newTemplates.length) await db.insert(kbTemplate).values(newTemplates);
+  console.log(`Seeded ${newTemplates.length} knowledge-base page templates (existing keys left untouched).`);
 
   await client.end();
 }

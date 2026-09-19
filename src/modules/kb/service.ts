@@ -12,3 +12,4 @@ export * from "./spaces";
 export { getPublishReview, kbPublishRequest, type PublishReviewView, syncReviewState } from "./publishing";
 export * from "./acknowledgements";
 export * from "./search";
+export * from "./templates";

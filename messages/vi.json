@@ -4129,7 +4129,11 @@
       "approval_no_approver": "Chưa có ai có quyền duyệt. Hãy báo quản trị viên.",
       "kb_ack_audience_required": "Hãy chọn ít nhất một đối tượng phải xác nhận.",
       "kb_ack_not_required": "Trang này không yêu cầu xác nhận.",
-      "kb_ack_not_in_audience": "Bạn không thuộc đối tượng phải xác nhận trang này."
+      "kb_ack_not_in_audience": "Bạn không thuộc đối tượng phải xác nhận trang này.",
+      "kb_template_not_found": "Không tìm thấy mẫu trang (hoặc mẫu đã tắt).",
+      "kb_import_empty": "Chưa có nội dung để nhập.",
+      "kb_import_too_large": "Nội dung quá dài để nhập một lần.",
+      "kb_import_unreadable": "Không đọc được tệp này."
     },
     "review": {
       "title": "Duyệt xuất bản",
@@ -4196,6 +4200,25 @@
       "popular": "Được đọc nhiều (30 ngày)",
       "updated": "Mới cập nhật",
       "views": "{count} lượt đọc"
+    },
+    "template": {
+      "label": "Bắt đầu từ mẫu",
+      "blank": "Trang trống",
+      "saveTitle": "Lưu trang này làm mẫu",
+      "name": "Tên mẫu",
+      "save": "Lưu làm mẫu"
+    },
+    "import": {
+      "link": "Hoặc nhập từ Markdown / Word / Google Docs",
+      "title": "Nhập trang",
+      "help": "Dán Markdown hoặc chọn tệp .md, .docx. Với Google Docs: Tệp → Tải xuống → Markdown (.md) rồi chọn tệp đó. Kết quả là một bản nháp để bạn xem lại trước khi xuất bản.",
+      "file": "Tệp",
+      "fileHelp": ".md, .txt hoặc .docx (tối đa 3,5 MB). Hình ảnh trong tệp Word không được nhập.",
+      "docxChosen": "Sẽ nhập từ tệp Word: {name}",
+      "markdown": "Nội dung Markdown",
+      "titleField": "Tiêu đề trang",
+      "titleHint": "Để trống = lấy tiêu đề cấp 1 đầu tiên hoặc tên tệp",
+      "submit": "Nhập thành bản nháp"
     }
   }
 }
