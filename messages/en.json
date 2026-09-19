@@ -3210,6 +3210,11 @@
         "not_an_option": "Choose one of the listed options.",
         "not_a_date": "Enter a date.",
         "not_a_url": "Enter a link starting with https://."
+      },
+      "audience": "Who may ask",
+      "audiences": {
+        "entity": "People of this team's company",
+        "group": "Anyone in the group"
       }
     }
   },

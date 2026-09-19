@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
-import { canSubmitIntake, findIntakeForm, loadViewer, teamFacts } from "@/modules/work/service";
+import { canSubmitIntake, findIntakeForm, type IntakeAudience, loadViewer, teamFacts } from "@/modules/work/service";
 import { IntakeSubmitForm } from "@/modules/work/ui/intake-forms";
 
 export const metadata: Metadata = { title: "Request" };
@@ -13,7 +13,7 @@ export default async function IntakeFormPage({ params }: PageProps<"/work/intake
   const user = await requireUser();
   const { formId } = await params;
   const found = /^[0-9a-f-]{36}$/.test(formId) ? await findIntakeForm(formId) : undefined;
-  if (!found || !found.form.isActive || !found.team.isActive || !canSubmitIntake(await loadViewer(user), teamFacts(found.team))) notFound();
+  if (!found || !found.form.isActive || !found.team.isActive || !canSubmitIntake(await loadViewer(user), teamFacts(found.team), found.form.audience as IntakeAudience)) notFound();
   const t = await getTranslations("work.intake");
 
   return (

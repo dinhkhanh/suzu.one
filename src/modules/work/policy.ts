@@ -139,12 +139,13 @@ export function canManageTemplate(viewer: WorkViewer, ownerTeam: TeamFacts | nul
 }
 
 /**
- * Intake forms (FR-WRK-16) are a team's front door: open to anyone in the team's entity (or the
- * whole group for a group team) — never to collaborators, who only work inside their projects —
- * and to the team's own members. Asking for work gives no right to see the team's other work.
+ * Intake forms (FR-WRK-16) are a team's front door. A form says who may knock: the people of the
+ * team's entity, or anyone in the group (a studio serving its sister companies) — never
+ * collaborators, who only work inside their projects. The team's own members always may. Asking
+ * for work gives no right to see the team's other work.
  */
-export function canSubmitIntake(viewer: WorkViewer, team: TeamFacts): boolean {
+export function canSubmitIntake(viewer: WorkViewer, team: TeamFacts, audience: "entity" | "group"): boolean {
   if (viewer.teamRoles.has(team.id)) return true;
   if (isCollaborator(viewer) || !viewer.principal.personId) return false;
-  return team.entityId === null || team.entityId === viewer.entityId || canManageWorkspace(viewer, team);
+  return audience === "group" || team.entityId === null || team.entityId === viewer.entityId || canManageWorkspace(viewer, team);
 }

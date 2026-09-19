@@ -1,0 +1,1 @@
+ALTER TABLE "work_intake_form" ADD COLUMN "audience" text DEFAULT 'entity' NOT NULL;

@@ -394,6 +394,8 @@ export const workIntakeForm = pgTable(
     name: text("name").notNull(),
     description: text("description"),
     fields: jsonb("fields").$type<IntakeField[]>().notNull().default([]),
+    // Who may ask: "entity" = people of the team's entity; "group" = anyone in the group (a studio that serves its sister companies).
+    audience: text("audience").notNull().default("entity"),
     isActive: boolean("is_active").notNull().default(true),
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

@@ -14,7 +14,7 @@ import { saveIntakeFormAction, submitIntakeAction } from "../intake-actions";
 const TEXTAREA = "min-h-20 w-full rounded-md border bg-transparent px-3 py-2 text-sm";
 const FIELD_TYPES = ["text", "long_text", "select", "date", "url"] as const;
 
-export type IntakeFormValue = { id: string | null; name: string; description: string | null; projectId: string | null; fields: IntakeField[]; isActive: boolean; submissions: number };
+export type IntakeFormValue = { id: string | null; name: string; description: string | null; projectId: string | null; audience: string; fields: IntakeField[]; isActive: boolean; submissions: number };
 
 /** One form's editor. The field rows are plain inputs named "fields.<n>.<prop>"; rows left without a label are ignored by the action. */
 function IntakeFormEditor({ teamId, value, projects }: { teamId: string; value: IntakeFormValue; projects: { id: string; name: string }[] }) {
@@ -39,6 +39,12 @@ function IntakeFormEditor({ teamId, value, projects }: { teamId: string; value: 
             </Select>
           </Field>
         </div>
+        <Field name="audience" label={t("audience")}>
+          <Select id="audience" name="audience" defaultValue={value.audience} className="sm:w-1/2">
+            <option value="entity">{t("audiences.entity")}</option>
+            <option value="group">{t("audiences.group")}</option>
+          </Select>
+        </Field>
         <Field name="description" label={t("description")}>
           <textarea id="description" name="description" maxLength={1000} defaultValue={value.description ?? ""} className={TEXTAREA} />
         </Field>
@@ -89,7 +95,7 @@ function IntakeFormEditor({ teamId, value, projects }: { teamId: string; value: 
 /** A team's intake forms on the team page: everyone sees them with a link to fill one in; leads edit and add. */
 export function IntakeFormManager({ teamId, forms, projects, canManage }: { teamId: string; forms: IntakeFormValue[]; projects: { id: string; name: string }[]; canManage: boolean }) {
   const t = useTranslations("work.intake");
-  const blank: IntakeFormValue = { id: null, name: "", description: null, projectId: null, fields: [], isActive: true, submissions: 0 };
+  const blank: IntakeFormValue = { id: null, name: "", description: null, projectId: null, audience: "entity", fields: [], isActive: true, submissions: 0 };
   const shown = canManage ? forms : forms.filter((form) => form.isActive);
   return (
     <div className="flex flex-col gap-3">

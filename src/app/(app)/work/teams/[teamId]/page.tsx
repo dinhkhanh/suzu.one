@@ -110,7 +110,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">{t("intake.title")}</h2>
-        <IntakeFormManager teamId={team.id} forms={intakeForms.map(({ id, name, description, projectId, fields, isActive, submissions }) => ({ id, name, description, projectId, fields, isActive, submissions }))} projects={intakeProjects} canManage={admin} />
+        <IntakeFormManager teamId={team.id} forms={intakeForms.map(({ id, name, description, projectId, audience, fields, isActive, submissions }) => ({ id, name, description, projectId, audience, fields, isActive, submissions }))} projects={intakeProjects} canManage={admin} />
       </section>
 
       {admin ? (

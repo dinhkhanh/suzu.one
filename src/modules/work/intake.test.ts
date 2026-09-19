@@ -52,10 +52,10 @@ beforeAll(async () => {
 
 describe("intake forms", () => {
   it("a form needs sound questions and a project of its own team", async () => {
-    expect(await fails(saveIntakeForm(ids.video, null, { name: "Yêu cầu quay dựng", description: null, projectId: null, fields: [], isActive: true }, ids.long))).toMatchObject({ message: "intake_fields_required" });
-    expect(await fails(saveIntakeForm(ids.video, null, { name: "X", description: null, projectId: null, fields: [{ label: "Chọn", type: "select", required: true, options: ["một"] }], isActive: true }, ids.long))).toMatchObject({ message: "intake_select_needs_options" });
-    expect(await fails(saveIntakeForm(ids.video, null, { name: "X", description: null, projectId: "00000000-0000-4000-8000-000000000000", fields, isActive: true }, ids.long))).toMatchObject({ message: "project_not_found" });
-    const { after } = await saveIntakeForm(ids.video, null, { name: "Yêu cầu quay dựng", description: "Gửi trước ít nhất 5 ngày", projectId: ids.project, fields, isActive: true }, ids.long);
+    expect(await fails(saveIntakeForm(ids.video, null, { name: "Yêu cầu quay dựng", description: null, projectId: null, audience: "entity", fields: [], isActive: true }, ids.long))).toMatchObject({ message: "intake_fields_required" });
+    expect(await fails(saveIntakeForm(ids.video, null, { name: "X", description: null, projectId: null, audience: "entity", fields: [{ label: "Chọn", type: "select", required: true, options: ["một"] }], isActive: true }, ids.long))).toMatchObject({ message: "intake_select_needs_options" });
+    expect(await fails(saveIntakeForm(ids.video, null, { name: "X", description: null, projectId: "00000000-0000-4000-8000-000000000000", audience: "entity", fields, isActive: true }, ids.long))).toMatchObject({ message: "project_not_found" });
+    const { after } = await saveIntakeForm(ids.video, null, { name: "Yêu cầu quay dựng", description: "Gửi trước ít nhất 5 ngày", projectId: ids.project, audience: "entity", fields, isActive: true }, ids.long);
     ids.form = after.id;
     expect(after.fields.map((field) => field.key)).toEqual(["f1", "f2", "f3"]);
   });
@@ -63,7 +63,9 @@ describe("intake forms", () => {
   it("is open to the team's entity and its members — not to other entities, not to collaborators", async () => {
     const team = teamFacts((await findIntakeForm(ids.form))!.team);
     const viewers = Object.fromEntries(await Promise.all((["long", "huy", "duc", "khoi", "freelancer"] as const).map(async (key) => [key, (await viewerOfPerson(db(), ids[key]))!] as const)));
-    expect(Object.entries(viewers).map(([key, viewer]) => [key, canSubmitIntake(viewer, team)])).toEqual([["long", true], ["huy", true], ["duc", true], ["khoi", false], ["freelancer", false]]);
+    expect(Object.entries(viewers).map(([key, viewer]) => [key, canSubmitIntake(viewer, team, "entity")])).toEqual([["long", true], ["huy", true], ["duc", true], ["khoi", false], ["freelancer", false]]);
+    // A form opened to the group lets the sister company in — still not the collaborator.
+    expect(Object.entries(viewers).map(([key, viewer]) => [key, canSubmitIntake(viewer, team, "group")])).toEqual([["long", true], ["huy", true], ["duc", true], ["khoi", true], ["freelancer", false]]);
     expect((await listOpenIntakeForms(viewers.duc)).map((form) => form.name)).toEqual(["Yêu cầu quay dựng"]);
     expect(await listOpenIntakeForms(viewers.khoi)).toEqual([]);
     expect(await listOpenIntakeForms(viewers.freelancer)).toEqual([]);
@@ -96,7 +98,7 @@ describe("intake forms", () => {
   });
 
   it("a closed form takes no more requests", async () => {
-    await saveIntakeForm(ids.video, ids.form, { name: "Yêu cầu quay dựng", description: null, projectId: ids.project, fields, isActive: false }, ids.long);
+    await saveIntakeForm(ids.video, ids.form, { name: "Yêu cầu quay dựng", description: null, projectId: ids.project, audience: "group", fields, isActive: false }, ids.long);
     expect(await fails(submitIntake(ids.form, { title: "x", answers: { f1: "x", f2: "TVC" } }, { personId: ids.duc, fullName: "Duc" }))).toMatchObject({ message: "intake_form_not_found" });
   });
 });

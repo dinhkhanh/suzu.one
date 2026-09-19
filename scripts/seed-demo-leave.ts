@@ -36,6 +36,8 @@ const REQUESTS: Demo[] = [
   { who: "Lý Minh Khôi", type: "UNPAID", from: "2026-09-10", to: "2026-09-11", reason: "Việc riêng", status: "approved", filed: "2026-09-03", decided: "2026-09-04" },
   { who: "Dương Thùy Chi", type: "MATERNITY", from: "2026-09-14", to: "2027-03-13", reason: "Nghỉ thai sản 6 tháng", status: "approved", filed: "2026-08-10", decided: "2026-08-12" },
   { who: "Phan Văn Đức", type: "ANNUAL", from: "2026-09-24", to: "2026-09-25", reason: "Nghỉ ngơi", status: "rejected", filed: "2026-09-14", decided: "2026-09-15", comment: "Tuần đó chạy chiến dịch ra mắt, em dời sang đầu tháng 10 nhé." },
+  // Approved and still ahead: what the workload view (Phase 3) takes off a person's capacity.
+  { who: "Bùi Thanh Tâm", type: "ANNUAL", from: "2026-09-28", to: "2026-09-30", endPortion: "am", reason: "Đưa gia đình đi Đà Lạt", status: "approved", filed: "2026-09-10", decided: "2026-09-11" },
   { who: "Hồ Gia Huy", type: "ANNUAL", from: "2026-10-02", to: "2026-10-02", reason: "Đi đám cưới bạn", status: "pending", filed: "2026-09-18" },
   { who: "Vũ Hải Nam", type: "ANNUAL", from: "2026-10-12", to: "2026-10-16", reason: "Về quê cưới em gái", status: "pending", filed: "2026-09-17" },
 ];

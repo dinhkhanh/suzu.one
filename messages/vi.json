@@ -3210,6 +3210,11 @@
         "not_an_option": "Hãy chọn một trong các lựa chọn.",
         "not_a_date": "Hãy nhập ngày.",
         "not_a_url": "Hãy nhập đường dẫn bắt đầu bằng https://."
+      },
+      "audience": "Ai được gửi yêu cầu",
+      "audiences": {
+        "entity": "Nhân sự trong pháp nhân của nhóm",
+        "group": "Mọi người trong tập đoàn"
       }
     }
   },

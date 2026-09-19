@@ -6,6 +6,7 @@ import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
 import { checkAnswers, describeAnswers, dueDateFrom, fieldKey, formProblem, type IntakeField } from "./engine/intake";
+import type { IntakeAudience } from "./enums";
 import { canSubmitIntake, type WorkViewer } from "./policy";
 import { createWorkTaskIn, taskKey } from "./tasks";
 import { entryState, findTeam, listStates, teamFacts, type TeamRow } from "./teams";
@@ -40,7 +41,7 @@ export async function listTeamIntakeForms(teamId: string): Promise<IntakeFormVie
 /** The active forms this viewer may fill in. */
 export async function listOpenIntakeForms(viewer: WorkViewer): Promise<IntakeFormView[]> {
   const rows = await withNames(db()).where(and(eq(schema.workIntakeForm.isActive, true), eq(schema.workTeam.isActive, true))).orderBy(asc(schema.workTeam.name), asc(schema.workIntakeForm.name));
-  return rows.filter(({ team }) => canSubmitIntake(viewer, teamFacts(team))).map(({ form, team, projectName }) => ({ ...form, teamName: team.name, teamKey: team.key, projectName, submissions: 0 }));
+  return rows.filter(({ form, team }) => canSubmitIntake(viewer, teamFacts(team), form.audience as IntakeAudience)).map(({ form, team, projectName }) => ({ ...form, teamName: team.name, teamKey: team.key, projectName, submissions: 0 }));
 }
 
 export async function findIntakeForm(formId: string, executor: Executor = db()): Promise<{ form: IntakeFormRow; team: TeamRow } | undefined> {
@@ -48,7 +49,7 @@ export async function findIntakeForm(formId: string, executor: Executor = db()):
   return row;
 }
 
-export type IntakeFormInput = { name: string; description: string | null; projectId: string | null; fields: Omit<IntakeField, "key">[]; isActive: boolean };
+export type IntakeFormInput = { name: string; description: string | null; projectId: string | null; audience: IntakeAudience; fields: Omit<IntakeField, "key">[]; isActive: boolean };
 
 export async function saveIntakeForm(teamId: string, formId: string | null, input: IntakeFormInput, actorPersonId: string): Promise<{ before: IntakeFormRow | null; after: IntakeFormRow }> {
   const team = await findTeam(teamId);
@@ -61,7 +62,7 @@ export async function saveIntakeForm(teamId: string, formId: string | null, inpu
     const [project] = await db().select({ teamId: schema.workProject.teamId, status: schema.workProject.status }).from(schema.workProject).where(eq(schema.workProject.id, input.projectId)).limit(1);
     if (!project || project.teamId !== teamId || project.status === "archived") throw new ActionError("project_not_found");
   }
-  const values = { name: input.name, description: input.description, projectId: input.projectId, fields, isActive: input.isActive };
+  const values = { name: input.name, description: input.description, projectId: input.projectId, audience: input.audience, fields, isActive: input.isActive };
   if (!formId) {
     const [after] = await db().insert(schema.workIntakeForm).values({ teamId, ...values, createdByPersonId: actorPersonId }).returning();
     return { before: null, after };

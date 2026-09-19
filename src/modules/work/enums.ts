@@ -73,3 +73,6 @@ export type Reaction = (typeof REACTIONS)[number];
 /** The ways to look at a project's tasks (FR-WRK-05). */
 export const WORK_VIEWS = ["list", "board", "calendar"] as const;
 export type WorkView = (typeof WORK_VIEWS)[number];
+
+export const INTAKE_AUDIENCES = ["entity", "group"] as const;
+export type IntakeAudience = (typeof INTAKE_AUDIENCES)[number];

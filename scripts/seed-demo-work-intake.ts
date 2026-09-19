@@ -45,7 +45,7 @@ const FORMS = [
 ] as const;
 
 // Estimates by where the task stands: what is being worked on is bigger than what is still an idea.
-const ESTIMATE_BY_CATEGORY: Record<string, number[]> = { backlog: [120, 240], todo: [240, 480, 360], in_progress: [480, 720, 960], in_review: [120, 180] };
+const ESTIMATE_BY_CATEGORY: Record<string, number[]> = { backlog: [240, 480], todo: [480, 960, 720], in_progress: [960, 1440, 1920], in_review: [180, 240] };
 
 export async function seedWorkIntake(db: Db, today: string): Promise<string> {
   const [existing] = await db.select({ id: workIntakeForm.id }).from(workIntakeForm).limit(1);
@@ -61,7 +61,7 @@ export async function seedWorkIntake(db: Db, today: string): Promise<string> {
     for (const form of FORMS) {
       const team = teams.get(form.team)!;
       const [lead] = await tx.select({ id: workProject.leadPersonId }).from(workProject).where(eq(workProject.teamId, team.id)).limit(1);
-      const [row] = await tx.insert(workIntakeForm).values({ teamId: team.id, projectId: null, name: form.name, description: form.description, fields: [...form.fields], isActive: true, createdByPersonId: lead?.id ?? null }).returning();
+      const [row] = await tx.insert(workIntakeForm).values({ teamId: team.id, projectId: null, name: form.name, description: form.description, audience: "group", fields: [...form.fields], isActive: true, createdByPersonId: lead?.id ?? null }).returning();
       const backlog = states.filter((state) => state.teamId === team.id && state.isActive).sort((a, b) => a.sortOrder - b.sortOrder).find((state) => state.category === "backlog") ?? states.find((state) => state.teamId === team.id)!;
       for (const request of form.requests) {
         const requester = personId(request.by);

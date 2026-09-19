@@ -66,7 +66,8 @@ async function sendIn(tx: Executor, today: IsoDate): Promise<ReminderResult> {
       const recipients = await recipientsOf(notice, { ownerId, reviewerId: instance.reviewerPersonId, entityId: instance.entityId });
       marks.push({ instanceId: instance.id, key: notice.key });
       if (notice.kind === "reminder") for (const key of supersededLeadKeys(facts, Number(notice.key.split(":")[1]))) marks.push({ instanceId: instance.id, key });
-      for (const recipient of recipients) outgoing.push({ recipient, kind: notice.kind, taskId: task.id, title: task.title, dueDate: task.dueDate!, days: notice.days, ownerName: ownerId ? (ownerNames.get(ownerId) ?? null) : null });
+      // Catching up after days without a run, a manager who is also an executive would hear twice about one item: once is enough.
+      for (const recipient of recipients.filter((id) => !outgoing.some((item) => item.recipient === id && item.kind === notice.kind && item.taskId === task.id))) outgoing.push({ recipient, kind: notice.kind, taskId: task.id, title: task.title, dueDate: task.dueDate!, days: notice.days, ownerName: ownerId ? (ownerNames.get(ownerId) ?? null) : null });
     }
   }
 
