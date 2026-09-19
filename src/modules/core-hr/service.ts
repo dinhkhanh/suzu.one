@@ -173,6 +173,39 @@ export async function listPeople(principal: Principal, filters: PeopleFilters): 
   };
 }
 
+export type OrgChartPerson = { id: string; fullName: string; sortKey: string; managerId: string | null; positionName: string | null; departmentName: string | null; entityName: string | null; dottedManagerName: string | null };
+
+/**
+ * Active people with their reporting line today — directory-tier fields only, so the same chart is
+ * safe for every employee. With an entity, managers employed elsewhere fall outside the selection
+ * and their reports head their own branches (engine/org-tree.ts).
+ */
+export async function listOrgChartPeople(principal: Principal, entityId?: string): Promise<OrgChartPerson[]> {
+  const placement = placementOn(todayInVietnam());
+  const { e, a } = placement;
+  const dottedManager = alias(schema.person, "dotted_manager");
+  return db()
+    .select({
+      id: schema.person.id,
+      fullName: schema.person.fullName,
+      // Given name first, as in the people list (DR-08).
+      sortKey: sql<string>`substring(${schema.person.searchName} from '[^ ]+$') || ' ' || ${schema.person.searchName}`,
+      managerId: a.managerId,
+      positionName: schema.position.name,
+      departmentName: schema.department.name,
+      entityName: schema.entity.shortName,
+      dottedManagerName: dottedManager.fullName,
+    })
+    .from(schema.person)
+    .leftJoinLateral(e, sql`true`)
+    .leftJoinLateral(a, sql`true`)
+    .leftJoin(schema.entity, eq(schema.entity.id, e.entityId))
+    .leftJoin(schema.department, eq(schema.department.id, a.departmentId))
+    .leftJoin(schema.position, eq(schema.position.id, a.positionId))
+    .leftJoin(dottedManager, eq(dottedManager.id, a.dottedManagerId))
+    .where(and(reachCondition(tierReach(principal, "public_internal"), placement, principal.personId), eq(schema.person.status, "active"), entityId ? eq(e.entityId, entityId) : undefined));
+}
+
 /** Where a person sits today, as an authorization target. */
 export async function getPersonTarget(personId: string, executor: Tx | ReturnType<typeof db> = db()): Promise<(Target & { personId: string }) | null> {
   const { e, a } = placementOn(todayInVietnam());

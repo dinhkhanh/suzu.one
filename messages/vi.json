@@ -225,6 +225,24 @@
       "assignment_before_employment_start": "Ngày hiệu lực sớm hơn ngày vào làm.",
       "assignment_after_employment_end": "Ngày hiệu lực muộn hơn ngày nghỉ việc.",
       "assignment_before_current_assignment": "Ngày hiệu lực sớm hơn ngày bắt đầu của vị trí hiện tại. Không thể sửa lịch sử đã qua."
+    },
+    "orgChart": {
+      "title": "Sơ đồ tổ chức",
+      "description": "{count} người, theo quản lý trực tiếp. Con số sau tên là tổng số người bên dưới.",
+      "backToList": "Danh sách nhân sự",
+      "wholeGroup": "Toàn tập đoàn",
+      "dottedLine": "báo cáo gián tiếp cho {name}"
+    },
+    "import": {
+      "title": "Nhập danh sách nhân viên",
+      "wizard": "Tệp nhân viên",
+      "description": "Thêm nhiều nhân viên mới từ Excel hoặc CSV. Tệp được kiểm tra trước; chưa có gì được lưu cho đến khi bạn xác nhận, và khi đó hoặc tất cả các dòng được lưu, hoặc không dòng nào.",
+      "notes": {
+        "newOnly": "Chỉ dành cho người mới: người đã có trong hệ thống (trùng email công việc, mã nhân viên hoặc số CCCD) sẽ bị báo lỗi, không được cập nhật.",
+        "manager": "Quản lý trực tiếp ghi bằng mã nhân viên hoặc email công việc, và có thể nằm ở bất kỳ dòng nào trong cùng tệp.",
+        "restricted": "Số CCCD, mã số thuế, số sổ BHXH và số tài khoản ngân hàng được lưu mã hóa và được che trong bản xem trước.",
+        "phone": "Hãy định dạng cột số điện thoại là văn bản trong Excel, nếu không số 0 đầu sẽ bị mất."
+      }
     }
   },
   "records": {
@@ -676,8 +694,10 @@
     "fixAndRetry": "Hãy sửa các lỗi trên trong file rồi kiểm tra lại. Chưa có gì được ghi vào hệ thống.",
     "done": "Đã nhập xong. {summary}",
     "counts": {
-      "created": "Tạo mới",
-      "updated": "Cập nhật"
+      "created": "người được thêm",
+      "updated": "Cập nhật",
+      "withRestricted": "có thông tin hạn chế",
+      "managersLinked": "liên kết quản lý trong tệp"
     },
     "problems": {
       "column_missing": "Thiếu cột bắt buộc này",
@@ -693,7 +713,19 @@
       "duplicate_in_file": "Trùng với một dòng khác trong file",
       "entity_not_found": "Không có pháp nhân mang mã này",
       "parent_not_found": "Không có phòng ban cấp trên mang mã này",
-      "parent_loop": "Phòng ban không thể trực thuộc chính nó hoặc phòng ban con của nó"
+      "parent_loop": "Phòng ban không thể trực thuộc chính nó hoặc phòng ban con của nó",
+      "department_not_found": "Không có phòng ban nào mang mã này",
+      "department_not_in_entity": "Phòng ban này thuộc pháp nhân khác",
+      "team_not_found": "Phòng ban không có nhóm nào mang tên này",
+      "out_of_reach": "Bạn không được thêm người vào pháp nhân hoặc phòng ban này",
+      "email_domain": "Email công việc phải thuộc tên miền của công ty",
+      "email_reserved": "Địa chỉ này được dành cho lần đăng nhập đầu tiên của chủ sở hữu",
+      "already_exists": "Đã có trong hệ thống",
+      "seniority_after_start": "Ngày tính thâm niên không thể sau ngày vào làm",
+      "bank_incomplete": "Tài khoản ngân hàng cần cả tên ngân hàng và số tài khoản",
+      "manager_not_found": "Không có ai mang mã nhân viên hoặc email này, trong tệp lẫn trong hệ thống",
+      "manager_is_self": "Một người không thể tự quản lý chính mình",
+      "manager_loop": "Các quản lý này báo cáo vòng tròn cho nhau"
     },
     "errors": {
       "import_file_type": "Chỉ nhận file .xlsx hoặc .csv.",

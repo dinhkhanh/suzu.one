@@ -13,6 +13,8 @@ export type Column<Value> = {
   /** Headers this column answers to, Vietnamese first; matched without accents, case or spacing. */
   headers: readonly [string, ...string[]];
   required?: boolean;
+  /** Restricted or compensation data: encrypted while the batch waits for its commit, masked in the preview. */
+  sensitive?: boolean;
   parse: (cell: string) => CellResult<Value>;
   example?: string;
 };

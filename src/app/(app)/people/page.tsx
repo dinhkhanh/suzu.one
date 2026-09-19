@@ -62,11 +62,21 @@ export default async function PeoplePage(props: PageProps<"/people">) {
           <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("count", { count: total })}</p>
         </div>
-        {can(user.principal, "person:manage") ? (
-          <Link href="/people/new" className={buttonVariants()}>
-            {t("hire.title")}
+        <div className="flex flex-wrap gap-2">
+          <Link href="/people/org-chart" className={buttonVariants({ variant: "outline" })}>
+            {t("orgChart.title")}
           </Link>
-        ) : null}
+          {can(user.principal, "person:manage") ? (
+            <>
+              <Link href="/people/import" className={buttonVariants({ variant: "outline" })}>
+                {t("import.title")}
+              </Link>
+              <Link href="/people/new" className={buttonVariants()}>
+                {t("hire.title")}
+              </Link>
+            </>
+          ) : null}
+        </div>
       </header>
 
       <Form action="/people" className="flex flex-wrap items-end gap-2">

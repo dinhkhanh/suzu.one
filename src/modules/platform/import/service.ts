@@ -1,8 +1,10 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { and, eq, gt } from "drizzle-orm";
 import { readSheet } from "read-excel-file/node";
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
+import { fieldCipher } from "@/lib/crypto";
 import { db, schema, type Tx } from "@/lib/db";
 import type { CurrentUser } from "../auth/session";
 import { cleanFileName, matchesSignature } from "../files/rules";
@@ -19,7 +21,7 @@ export type ImportDefinition<C extends Columns> = {
   columns: C;
   authorize: (user: CurrentUser) => boolean | Promise<boolean>;
   /** Checks that need the database: duplicates, references to things that must exist. */
-  validate?: (rows: ParsedRow<C>[]) => Promise<Problem[]>;
+  validate?: (rows: ParsedRow<C>[], user: CurrentUser) => Promise<Problem[]>;
   /** Writes every row inside one transaction: an import lands completely or not at all. */
   commit: (rows: ParsedRow<C>[], tx: Tx, user: CurrentUser) => Promise<Record<string, number>>;
   onCommitted?: () => void;
@@ -34,6 +36,21 @@ export type StagedImport = {
   headers: string[];
   preview: { row: number; cells: string[] }[];
 };
+
+// A staged batch sits in the database for up to a day. Cells of `sensitive` columns wait there
+// encrypted, bound to their batch and column; validation and commit see them in the clear.
+const MASK = "••••••";
+const cellContext = (batchId: string, field: string) => `import_batch.rows:${batchId}:${field}`;
+
+function transformSensitive<C extends Columns>(columns: C, rows: ParsedRow<C>[], transform: (value: string, field: string) => string): ParsedRow<C>[] {
+  const fields = Object.entries(columns).filter(([, column]) => column.sensitive).map(([field]) => field);
+  if (fields.length === 0) return rows;
+  return rows.map((row) => {
+    const values: Record<string, unknown> = { ...row.values };
+    for (const field of fields) if (values[field] !== null && values[field] !== undefined) values[field] = transform(String(values[field]), field);
+    return { row: row.row, values: values as ParsedRow<C>["values"] };
+  });
+}
 
 async function readTable(file: File): Promise<Cell[][]> {
   const fileName = cleanFileName(file.name);
@@ -65,14 +82,16 @@ export function defineImport<C extends Columns>(definition: ImportDefinition<C>)
       const { rows, problems } = parseTable(await readTable(file), definition.columns);
       if (rows.length > MAX_ROWS) throw new ActionError("import_too_many_rows");
       // Everything wrong is reported in one go, so the file is fixed once, not once per kind of mistake.
-      if (rows.length > 0 && definition.validate) problems.push(...(await definition.validate(rows)));
+      if (rows.length > 0 && definition.validate) problems.push(...(await definition.validate(rows, user)));
       problems.sort((a, b) => a.row - b.row);
       const blocking = problems.filter((problem) => problem.code !== "column_unknown");
       const status = blocking.length > 0 || rows.length === 0 ? "invalid" : "ready";
 
+      const batchId = randomUUID();
+      const stored = transformSensitive(definition.columns, rows, (value, field) => fieldCipher().encrypt(value, cellContext(batchId, field)));
       const [batch] = await db()
         .insert(schema.importBatch)
-        .values({ kind: definition.kind, fileName: cleanFileName(file.name), status, rowCount: rows.length, rows, problems, createdByPersonId: user.person.id })
+        .values({ id: batchId, kind: definition.kind, fileName: cleanFileName(file.name), status, rowCount: rows.length, rows: stored, problems, createdByPersonId: user.person.id })
         .returning({ id: schema.importBatch.id });
       const data: StagedImport = {
         batchId: batch.id,
@@ -81,7 +100,10 @@ export function defineImport<C extends Columns>(definition: ImportDefinition<C>)
         problemCount: blocking.length,
         problems: problems.slice(0, SHOWN_PROBLEMS),
         headers,
-        preview: rows.slice(0, PREVIEW_ROWS).map(({ row, values }) => ({ row, cells: Object.keys(definition.columns).map((field) => String((values as Record<string, unknown>)[field] ?? "")) })),
+        preview: rows.slice(0, PREVIEW_ROWS).map(({ row, values }) => ({ row, cells: Object.entries(definition.columns).map(([field, column]) => {
+          const value = (values as Record<string, unknown>)[field] ?? "";
+          return column.sensitive && value !== "" ? MASK : String(value);
+        }) })),
       };
       return { data, audit: { resource: { type: `import:${definition.kind}`, id: batch.id }, summary: `${cleanFileName(file.name)}: ${rows.length} rows, ${blocking.length} problems` } };
     },
@@ -103,9 +125,9 @@ export function defineImport<C extends Columns>(definition: ImportDefinition<C>)
           .limit(1)
           .for("update");
         if (!batch) throw new ActionError("import_batch_not_found");
-        const rows = batch.rows as ParsedRow<C>[];
+        const rows = transformSensitive(definition.columns, batch.rows as ParsedRow<C>[], (value, field) => fieldCipher().decrypt(value, cellContext(batch.id, field)));
         // The database may have moved on since the preview.
-        if (definition.validate && (await definition.validate(rows)).length > 0) throw new ActionError("import_stale");
+        if (definition.validate && (await definition.validate(rows, user)).length > 0) throw new ActionError("import_stale");
         const counts = await definition.commit(rows, tx as Tx, user);
         await tx.update(batches).set({ status: "committed", committedAt: new Date(), result: counts }).where(eq(batches.id, batch.id));
         return { fileName: batch.fileName, counts };

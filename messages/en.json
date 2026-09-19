@@ -225,6 +225,24 @@
       "assignment_before_employment_start": "The effective date is before the employment started.",
       "assignment_after_employment_end": "The effective date is after the employment ended.",
       "assignment_before_current_assignment": "The effective date is before the current assignment started. Past assignments cannot be rewritten."
+    },
+    "orgChart": {
+      "title": "Org chart",
+      "description": "{count, plural, one {# person} other {# people}}, by line manager. The number after a name is everyone below them.",
+      "backToList": "People list",
+      "wholeGroup": "Whole group",
+      "dottedLine": "dotted line to {name}"
+    },
+    "import": {
+      "title": "Import employees",
+      "wizard": "Employee file",
+      "description": "Load many new employees from Excel or CSV. The file is checked first; nothing is saved until you confirm, and then every row is saved or none.",
+      "notes": {
+        "newOnly": "New people only: someone already in the system (same work email, employee code or citizen ID) is reported as a problem, not updated.",
+        "manager": "Managers are given by employee code or work email, and may appear anywhere in the same file.",
+        "restricted": "Citizen ID, tax code, social insurance number and bank account are stored encrypted and are hidden in the preview.",
+        "phone": "Format the phone column as text in Excel, or the leading zero is lost."
+      }
     }
   },
   "records": {
@@ -676,8 +694,10 @@
     "fixAndRetry": "Fix the problems above in the file, then check it again. Nothing has been written.",
     "done": "Import complete. {summary}",
     "counts": {
-      "created": "Created",
-      "updated": "Updated"
+      "created": "people added",
+      "updated": "Updated",
+      "withRestricted": "with restricted details",
+      "managersLinked": "manager links inside the file"
     },
     "problems": {
       "column_missing": "This required column is missing",
@@ -693,7 +713,19 @@
       "duplicate_in_file": "Same as another row in the file",
       "entity_not_found": "No entity has this code",
       "parent_not_found": "No department has this parent code",
-      "parent_loop": "A department cannot report into itself or one of its own sub-departments"
+      "parent_loop": "A department cannot report into itself or one of its own sub-departments",
+      "department_not_found": "No department has this code",
+      "department_not_in_entity": "This department belongs to another entity",
+      "team_not_found": "No team with this name in the department",
+      "out_of_reach": "You may not add people to this entity or department",
+      "email_domain": "Work emails must be in a company domain",
+      "email_reserved": "This address is reserved for an owner's first sign-in",
+      "already_exists": "Already in the system",
+      "seniority_after_start": "The seniority date cannot be after the start date",
+      "bank_incomplete": "A bank account needs both the bank and the account number",
+      "manager_not_found": "No person with this employee code or work email, in the file or in the system",
+      "manager_is_self": "A person cannot be their own manager",
+      "manager_loop": "These managers report to each other in a loop"
     },
     "errors": {
       "import_file_type": "Only .xlsx and .csv files are accepted.",

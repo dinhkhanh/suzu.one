@@ -110,6 +110,14 @@ export async function findPeopleByNationalId(nationalId: string, exceptPersonId?
   return rows.map((row) => row.personId).filter((id) => id !== exceptPersonId);
 }
 
+/** Which of these national IDs are already on file (normalised) — the bulk form of the check above, for imports. */
+export async function nationalIdsOnFile(nationalIds: string[]): Promise<Set<string>> {
+  const byIndex = new Map(nationalIds.map((value) => [fieldBlindIndex(normalizeIdNumber(value), NATIONAL_ID_INDEX_CONTEXT), normalizeIdNumber(value)]));
+  if (byIndex.size === 0) return new Set();
+  const rows = await db().select({ index: schema.personSensitive.nationalIdIndex }).from(schema.personSensitive).where(inArray(schema.personSensitive.nationalIdIndex, [...byIndex.keys()]));
+  return new Set(rows.flatMap((row) => (row.index && byIndex.has(row.index) ? [byIndex.get(row.index)!] : [])));
+}
+
 // ── Contracts ───────────────────────────────────────────────────────────────────────────────
 
 export type ContractRow = typeof schema.contract.$inferSelect;
