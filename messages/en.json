@@ -1,0 +1,74 @@
+{
+  "app": { "name": "Suzu One", "tagline": "Suzu Group's internal operations platform" },
+  "signIn": {
+    "title": "Sign in",
+    "subtitle": "Use your company Google Workspace account (suzu.vn or suzu.group).",
+    "google": "Sign in with Google",
+    "errors": {
+      "not_a_workspace_account": "Personal Gmail accounts are not allowed. Use your company email.",
+      "domain_not_allowed": "This email domain does not belong to Suzu Group.",
+      "not_provisioned": "Your account has no profile in the system yet. Please contact HR.",
+      "access_revoked": "Your access has been revoked. Please contact HR.",
+      "email_not_verified": "Google has not verified this email.",
+      "generic": "Could not sign in. Try again or contact HR."
+    }
+  },
+  "nav": {
+    "home": "Home",
+    "people": "People",
+    "attendance": "Attendance",
+    "leave": "Leave",
+    "payroll": "Payroll",
+    "work": "Work",
+    "ops": "Obligations",
+    "kb": "Knowledge",
+    "admin": "Admin",
+    "entities": "Entities",
+    "soon": "Soon",
+    "signOut": "Sign out"
+  },
+  "home": {
+    "greeting": "Hello, {name}",
+    "roles": "Your roles",
+    "noRoles": "Employee (no admin roles)",
+    "scopeGroup": "group-wide",
+    "roadmap": "Modules",
+    "phase": "Phase {n}"
+  },
+  "roles": {
+    "owner": "Owner",
+    "c_level": "C-level",
+    "entity_director": "Entity director",
+    "hr_admin": "HR admin",
+    "hr_staff": "HR staff",
+    "payroll": "C&B / Payroll",
+    "finance": "Finance & accounting",
+    "department_head": "Department head",
+    "recruiter": "Recruiter",
+    "asset_admin": "Asset admin",
+    "auditor": "Auditor (read-only)"
+  },
+  "entities": {
+    "title": "Legal entities",
+    "description": "The companies in the group. Departments are shared across entities.",
+    "code": "Code",
+    "legalName": "Legal name",
+    "shortName": "Short name",
+    "taxCode": "Tax code",
+    "wageRegion": "Wage region",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "empty": "No entities yet.",
+    "add": "Add entity",
+    "create": "Create",
+    "creating": "Creating…",
+    "departments": "Shared departments",
+    "errors": {
+      "entity_code_taken": "That entity code already exists.",
+      "forbidden": "You do not have permission to do this.",
+      "invalid": "Please check the form.",
+      "generic": "Something went wrong. Please try again."
+    }
+  }
+}

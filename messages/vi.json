@@ -1,0 +1,74 @@
+{
+  "app": { "name": "Suzu One", "tagline": "Nền tảng vận hành nội bộ của Suzu Group" },
+  "signIn": {
+    "title": "Đăng nhập",
+    "subtitle": "Dùng tài khoản Google Workspace của công ty (suzu.vn hoặc suzu.group).",
+    "google": "Đăng nhập bằng Google",
+    "errors": {
+      "not_a_workspace_account": "Tài khoản Gmail cá nhân không được phép. Hãy dùng email công ty.",
+      "domain_not_allowed": "Tên miền email này không thuộc Suzu Group.",
+      "not_provisioned": "Tài khoản của bạn chưa được tạo hồ sơ trong hệ thống. Vui lòng liên hệ phòng Nhân sự.",
+      "access_revoked": "Quyền truy cập của bạn đã bị khóa. Vui lòng liên hệ phòng Nhân sự.",
+      "email_not_verified": "Email chưa được Google xác minh.",
+      "generic": "Không thể đăng nhập. Vui lòng thử lại hoặc liên hệ phòng Nhân sự."
+    }
+  },
+  "nav": {
+    "home": "Trang chủ",
+    "people": "Nhân sự",
+    "attendance": "Chấm công",
+    "leave": "Nghỉ phép",
+    "payroll": "Lương",
+    "work": "Công việc",
+    "ops": "Lịch nghĩa vụ",
+    "kb": "Tri thức",
+    "admin": "Quản trị",
+    "entities": "Pháp nhân",
+    "soon": "Sắp có",
+    "signOut": "Đăng xuất"
+  },
+  "home": {
+    "greeting": "Xin chào, {name}",
+    "roles": "Vai trò của bạn",
+    "noRoles": "Nhân viên (chưa có vai trò quản trị)",
+    "scopeGroup": "toàn tập đoàn",
+    "roadmap": "Các phân hệ",
+    "phase": "Giai đoạn {n}"
+  },
+  "roles": {
+    "owner": "Chủ sở hữu",
+    "c_level": "Ban điều hành",
+    "entity_director": "Giám đốc pháp nhân",
+    "hr_admin": "Quản trị nhân sự",
+    "hr_staff": "Chuyên viên nhân sự",
+    "payroll": "C&B / Tiền lương",
+    "finance": "Tài chính – Kế toán",
+    "department_head": "Trưởng bộ phận",
+    "recruiter": "Tuyển dụng",
+    "asset_admin": "Quản lý tài sản",
+    "auditor": "Kiểm toán (chỉ xem)"
+  },
+  "entities": {
+    "title": "Pháp nhân",
+    "description": "Các công ty trong tập đoàn. Phòng ban được dùng chung giữa các pháp nhân.",
+    "code": "Mã",
+    "legalName": "Tên pháp lý",
+    "shortName": "Tên ngắn",
+    "taxCode": "Mã số thuế",
+    "wageRegion": "Vùng lương",
+    "status": "Trạng thái",
+    "active": "Hoạt động",
+    "inactive": "Ngừng",
+    "empty": "Chưa có pháp nhân nào.",
+    "add": "Thêm pháp nhân",
+    "create": "Tạo",
+    "creating": "Đang tạo…",
+    "departments": "Phòng ban dùng chung",
+    "errors": {
+      "entity_code_taken": "Mã pháp nhân đã tồn tại.",
+      "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+      "invalid": "Vui lòng kiểm tra lại thông tin.",
+      "generic": "Có lỗi xảy ra. Vui lòng thử lại."
+    }
+  }
+}

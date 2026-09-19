@@ -1,0 +1,45 @@
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import { redirect } from "next/navigation";
+import { LocaleSwitch } from "@/components/shell/locale-switch";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCurrentUser } from "@/modules/platform/auth/session";
+import { GoogleSignInButton } from "./google-sign-in-button";
+
+export const metadata: Metadata = { title: "Sign in" };
+
+const KNOWN_ERRORS = ["not_a_workspace_account", "domain_not_allowed", "not_provisioned", "access_revoked", "email_not_verified"] as const;
+
+export default async function SignInPage({ searchParams }: PageProps<"/sign-in">) {
+  if (await getCurrentUser()) redirect("/home");
+
+  const t = await getTranslations();
+  const { error } = await searchParams;
+  const code = Array.isArray(error) ? error[0] : error;
+  const known = KNOWN_ERRORS.find((item) => item === code?.toLowerCase());
+  const message = code ? t(`signIn.errors.${known ?? "generic"}`) : null;
+
+  return (
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-4">
+      <div className="text-center">
+        <p className="text-2xl font-semibold tracking-tight">{t("app.name")}</p>
+        <p className="text-sm text-muted-foreground">{t("app.tagline")}</p>
+      </div>
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle>{t("signIn.title")}</CardTitle>
+          <CardDescription>{t("signIn.subtitle")}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {message ? (
+            <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {message}
+            </p>
+          ) : null}
+          <GoogleSignInButton label={t("signIn.google")} />
+        </CardContent>
+      </Card>
+      <LocaleSwitch />
+    </main>
+  );
+}
