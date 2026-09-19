@@ -16,6 +16,18 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(self), geolocation=(self), microphone=()" },
         ],
       },
+      // The service worker: never cached (a fix must reach every phone at once), may control the
+      // whole origin, and may load nothing but this origin's own files.
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+          { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
+        ],
+      },
+      { source: "/offline.html", headers: [{ key: "Cache-Control", value: "no-cache" }] },
     ];
   },
 };

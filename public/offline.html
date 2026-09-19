@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Suzu One — ngoại tuyến</title>
+    <style>
+      body { margin: 0; min-height: 100dvh; display: grid; place-items: center; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: #fff; color: #171717; }
+      main { max-width: 22rem; padding: 2rem; text-align: center; }
+      img { width: 72px; height: 72px; border-radius: 16px; }
+      h1 { font-size: 1.25rem; margin: 1rem 0 0.5rem; }
+      p { color: #525252; line-height: 1.5; margin: 0.25rem 0; }
+      .retry { display: inline-block; margin-top: 1.25rem; padding: 0.6rem 1.2rem; text-decoration: none; border-radius: 0.6rem; background: #171717; color: #fff; font-size: 1rem; }
+      @media (prefers-color-scheme: dark) { body { background: #0a0a0a; color: #fafafa; } p { color: #a3a3a3; } .retry { background: #fafafa; color: #171717; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icons/icon-192.png" alt="" />
+      <h1>Không có kết nối mạng</h1>
+      <p>Suzu One cần mạng để chấm công và tải dữ liệu. Giờ chấm công luôn là giờ máy chủ, nên không thể chấm khi ngoại tuyến.</p>
+      <p lang="en">You are offline. Suzu One needs a connection — check-in time is always the server's time.</p>
+      <a class="retry" href="/attendance/check-in">Thử lại · Retry</a>
+    </main>
+  </body>
+</html>

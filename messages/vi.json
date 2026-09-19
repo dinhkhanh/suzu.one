@@ -42,7 +42,8 @@
     "checklists": "Mẫu checklist",
     "reports": "Báo cáo",
     "approvalFlows": "Luồng phê duyệt",
-    "checkIn": "Vào / ra ca"
+    "checkIn": "Vào / ra ca",
+    "menu": "Menu"
   },
   "home": {
     "greeting": "Xin chào, {name}",

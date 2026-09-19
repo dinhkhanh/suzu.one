@@ -42,7 +42,8 @@
     "checklists": "Checklist templates",
     "reports": "Reports",
     "approvalFlows": "Approval flows",
-    "checkIn": "Check in / out"
+    "checkIn": "Check in / out",
+    "menu": "Menu"
   },
   "home": {
     "greeting": "Hello, {name}",

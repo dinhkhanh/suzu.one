@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { CollapsibleNav } from "@/components/shell/collapsible-nav";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
 import { navFor, type NavItem } from "@/components/shell/nav";
 import { SignOutButton } from "@/components/shell/sign-out-button";
@@ -33,9 +34,14 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="flex min-h-dvh flex-col md:flex-row">
       <aside className="flex shrink-0 flex-col gap-4 border-b p-3 md:w-56 md:border-r md:border-b-0">
-        <Link href="/home" className="px-2 text-base font-semibold tracking-tight">
-          {t("app.name")}
-        </Link>
+        <CollapsibleNav
+          label={t("nav.menu")}
+          header={
+            <Link href="/home" className="px-2 text-base font-semibold tracking-tight">
+              {t("app.name")}
+            </Link>
+          }
+        >
         <nav className="flex flex-col gap-0.5">
           {nav.main.map(renderItem)}
           <Link href="/tasks" className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted">
@@ -67,6 +73,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             <SignOutButton label={t("nav.signOut")} />
           </div>
         </div>
+        </CollapsibleNav>
       </aside>
       <main className="min-w-0 flex-1 p-4 md:p-8">{children}</main>
     </div>
