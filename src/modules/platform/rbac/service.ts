@@ -210,3 +210,26 @@ export async function listPeopleWithRole(role: Role, target: Target, executor: E
     return !!scope && scopeCovers(scope, target);
   }).map((row) => row.personId))];
 }
+
+/**
+ * Ends every grant a person holds as of `lastDay` (someone leaving the company): grants in force
+ * stop after that day, grants that would only start later never start. Returns what was changed
+ * so a cancelled termination can put it back. Refuses to remove the last group owner.
+ */
+export async function endRoleGrantsOf(tx: Executor, personId: string, lastDay: IsoDate): Promise<{ ended: { id: string; validTo: IsoDate | null }[] }> {
+  const grants = await tx.select().from(schema.roleAssignment).where(and(eq(schema.roleAssignment.personId, personId), notEnded(addDays(lastDay, 1))));
+  if (grants.some((grant) => grant.role === "owner" && grant.scopeType === "group")) {
+    const owners = await tx.selectDistinct({ personId: schema.roleAssignment.personId }).from(schema.roleAssignment).where(and(eq(schema.roleAssignment.role, "owner"), eq(schema.roleAssignment.scopeType, "group"), notEnded(addDays(lastDay, 1))));
+    if (owners.every((owner) => owner.personId === personId)) throw new ActionError("last_owner");
+  }
+  for (const grant of grants) {
+    // A grant that has not started yet is closed the day before it would: never in force, history kept.
+    await tx.update(schema.roleAssignment).set({ validTo: grant.validFrom > lastDay ? addDays(grant.validFrom, -1) : lastDay }).where(eq(schema.roleAssignment.id, grant.id));
+  }
+  return { ended: grants.map((grant) => ({ id: grant.id, validTo: grant.validTo })) };
+}
+
+/** Undoes `endRoleGrantsOf` for a termination that was called off. */
+export async function restoreRoleGrants(tx: Executor, ended: { id: string; validTo: IsoDate | null }[]): Promise<void> {
+  for (const grant of ended) await tx.update(schema.roleAssignment).set({ validTo: grant.validTo }).where(eq(schema.roleAssignment.id, grant.id));
+}

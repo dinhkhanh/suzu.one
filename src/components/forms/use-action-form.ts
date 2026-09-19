@@ -27,6 +27,10 @@ export function useActionForm<T>(action: (input: unknown) => Promise<ActionResul
   const [errorKey, setErrorKey] = useState<string | null>(null);
   // For forms that stay on screen after saving and need to say that it worked.
   const [saved, setSaved] = useState(false);
+  // Which fields the server refused, by field name ("profile.phone") → zod issue codes; shown by <Field>.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+  // What the action sent along with a refusal, e.g. the likely duplicates of a new hire.
+  const [details, setDetails] = useState<unknown>(null);
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,6 +39,8 @@ export function useActionForm<T>(action: (input: unknown) => Promise<ActionResul
     setSaved(false);
     startTransition(async () => {
       const result = await action({ ...nest(formData), ...options.extra });
+      setFieldErrors(result.ok ? {} : (result.fieldErrors ?? {}));
+      setDetails(result.ok ? null : (result.details ?? null));
       if (result.ok) {
         setErrorKey(null);
         setSaved(true);
@@ -45,5 +51,5 @@ export function useActionForm<T>(action: (input: unknown) => Promise<ActionResul
     });
   }
 
-  return { onSubmit, pending, errorKey, saved };
+  return { onSubmit, pending, errorKey, saved, fieldErrors, details };
 }

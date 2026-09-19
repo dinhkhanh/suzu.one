@@ -120,6 +120,13 @@
       "when": 1789834626952,
       "tag": "0016_tasks_engine",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1789834801072,
+      "tag": "0017_lifecycle_events",
+      "breakpoints": true
     }
   ]
 }

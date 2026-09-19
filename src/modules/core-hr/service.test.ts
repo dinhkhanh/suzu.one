@@ -215,18 +215,18 @@ describe("changeAssignment", () => {
 
 describe("rollOverPlacements", () => {
   it("applies future-dated changes and activates new starters when their day comes, once", async () => {
-    expect(await rollOverPlacements(today)).toEqual({ placementsUpdated: 0, peopleActivated: 0 });
+    expect(await rollOverPlacements(today)).toEqual({ placementsUpdated: 0, peopleActivated: 0, peopleOffboarded: 0 });
 
     // Huy's manager change was dated ten days ahead by the test above.
-    expect(await rollOverPlacements(addDays(today, 10))).toEqual({ placementsUpdated: 1, peopleActivated: 0 });
+    expect(await rollOverPlacements(addDays(today, 10))).toEqual({ placementsUpdated: 1, peopleActivated: 0, peopleOffboarded: 0 });
     const [huy] = await db().select().from(schema.person).where(eqId(ids.huy));
     expect(huy.managerId).toBe(ids.tam);
 
-    expect(await rollOverPlacements(addDays(today, 29))).toEqual({ placementsUpdated: 0, peopleActivated: 0 });
-    expect(await rollOverPlacements(addDays(today, 30))).toEqual({ placementsUpdated: 0, peopleActivated: 1 });
+    expect(await rollOverPlacements(addDays(today, 29))).toEqual({ placementsUpdated: 0, peopleActivated: 0, peopleOffboarded: 0 });
+    expect(await rollOverPlacements(addDays(today, 30))).toEqual({ placementsUpdated: 0, peopleActivated: 1, peopleOffboarded: 0 });
     const [future] = await db().select().from(schema.person).where(eqId(ids.future));
     expect(future.status).toBe("active");
-    expect(await rollOverPlacements(addDays(today, 30))).toEqual({ placementsUpdated: 0, peopleActivated: 0 });
+    expect(await rollOverPlacements(addDays(today, 30))).toEqual({ placementsUpdated: 0, peopleActivated: 0, peopleOffboarded: 0 });
   });
 });
 

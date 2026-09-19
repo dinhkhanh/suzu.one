@@ -14,3 +14,10 @@ export const SENSITIVE_TEXT_FIELDS = ["nationalId", "nationalIdIssuedOn", "natio
 // birth and gender are HR's to correct; the bank account is requested as one block of its own.
 export const PERSONAL_CHANGE_FIELDS = ["phone", "personalEmail", "permanentAddress", "currentAddress", "maritalStatus"] as const;
 export const RESTRICTED_CHANGE_FIELDS = ["nationalId", "nationalIdIssuedOn", "nationalIdIssuedAt", "taxCode", "socialInsuranceNumber"] as const;
+export const LIFECYCLE_EVENT_TYPES = ["hire", "rehire", "probation_pass", "probation_fail", "contract_renewal", "transfer", "promotion", "salary_change", "discipline", "reward", "long_leave", "resignation", "termination"] as const;
+// Events HR writes down by hand with no side effects. The others are written by the use-case
+// that makes them true (hire, change of assignment, termination, an approved resignation).
+export const RECORD_ONLY_EVENT_TYPES = ["probation_pass", "probation_fail", "contract_renewal", "salary_change", "discipline", "reward", "long_leave"] as const;
+// What a change of assignment is, for the timeline. A correction fixes a mistake and is no event.
+export const ASSIGNMENT_CHANGE_KINDS = ["correction", "transfer", "promotion"] as const;
+export const TERMINATION_REASONS = ["resignation", "contract_end", "probation_fail", "mutual_agreement", "dismissal", "retirement", "other"] as const;

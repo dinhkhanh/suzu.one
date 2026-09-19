@@ -10,9 +10,13 @@ import { listProfileChanges } from "@/modules/core-hr/change-requests";
 import { getPersonView, loadPlacementOptions, peopleModuleOpen } from "@/modules/core-hr/service";
 import { AssignmentForm } from "@/modules/core-hr/ui/assignment-form";
 import { EditPersonForm } from "@/modules/core-hr/ui/edit-person-form";
+import { RehireForm } from "@/modules/core-hr/ui/lifecycle-forms";
+import { LifecycleSection } from "@/modules/core-hr/ui/lifecycle-section";
 import { RecordSections } from "@/modules/core-hr/ui/record-sections";
 import { RequestTable } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
+import { listEntities } from "@/modules/platform/org/service";
+import { can } from "@/modules/platform/rbac/policy";
 
 export const metadata: Metadata = { title: "Person" };
 
@@ -145,6 +149,18 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
             </Table>
             {options ? <AssignmentForm person={person} options={options} today={todayInVietnam()} /> : null}
           </section>
+
+          <LifecycleSection principal={user.principal} personId={person.id} canManage={person.canManage} employed={personal.endDate === null} />
+          {/* A former employee comes back on the same record (FR-CHR-16). */}
+          {person.canManage && personal.status === "offboarded" ? (
+            <RehireForm
+              personId={person.id}
+              today={todayInVietnam()}
+              defaultEntityId={person.entityId}
+              options={await loadPlacementOptions()}
+              entities={(await listEntities()).filter((entity) => entity.isActive && can(user.principal, "person:manage", { entityId: entity.id })).map((entity) => ({ id: entity.id, name: entity.shortName }))}
+            />
+          ) : null}
         </>
       ) : null}
     </div>

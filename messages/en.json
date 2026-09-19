@@ -145,7 +145,13 @@
       "period": "Period",
       "ongoing": "now",
       "current": "Current",
-      "empty": "No assignments yet."
+      "empty": "No assignments yet.",
+      "kind": "Kind of change",
+      "kinds": {
+        "correction": "Correction (no event)",
+        "transfer": "Transfer",
+        "promotion": "Promotion / appointment"
+      }
     },
     "fields": {
       "fullName": "Full name",
@@ -227,7 +233,10 @@
       "manager_loop": "That would make the reporting line loop back on itself.",
       "assignment_before_employment_start": "The effective date is before the employment started.",
       "assignment_after_employment_end": "The effective date is after the employment ended.",
-      "assignment_before_current_assignment": "The effective date is before the current assignment started. Past assignments cannot be rewritten."
+      "assignment_before_current_assignment": "The effective date is before the current assignment started. Past assignments cannot be rewritten.",
+      "possible_duplicate": "There are similar records. Check the list above, then confirm if you still want a new record.",
+      "still_employed": "This person is still employed.",
+      "last_owner": "The last Owner's access cannot be ended."
     },
     "orgChart": {
       "title": "Org chart",
@@ -245,6 +254,17 @@
         "manager": "Managers are given by employee code or work email, and may appear anywhere in the same file.",
         "restricted": "Citizen ID, tax code, social insurance number and bank account are stored encrypted and are hidden in the preview.",
         "phone": "Format the phone column as text in Excel, or the leading zero is lost."
+      }
+    },
+    "duplicates": {
+      "title": "This person may already be on file:",
+      "former": "former employee",
+      "hint": "If a former employee is coming back, open their old record and choose Rehire instead of creating a new one.",
+      "confirm": "This is someone else — create a new record anyway",
+      "reasons": {
+        "name_and_birth": "same name and date of birth",
+        "personal_email": "same personal email",
+        "phone": "same phone number"
       }
     }
   },
@@ -593,6 +613,10 @@
       "tasks_assigned": {
         "title": "You were given {count, plural, =1 {a task: {title}} other {# new tasks}}",
         "body": "You have {count, plural, =1 {a new task: {title}} other {# new tasks, starting with: {title}}}. Open My tasks to see due dates and mark them done."
+      },
+      "hr_resignation_approved": {
+        "title": "{name}'s resignation was approved",
+        "body": "The manager approved {name}'s resignation; planned last working day {date}. Open the record to process the termination."
       }
     },
     "errors": {
@@ -772,7 +796,8 @@
       "status": "Status"
     },
     "types": {
-      "profile_change": "Personal data change"
+      "profile_change": "Personal data change",
+      "resignation": "Resignation"
     },
     "status": {
       "pending": "Waiting for approval",
@@ -970,6 +995,103 @@
       "template_not_found": "Template not found.",
       "template_rule_invalid": "That assignment rule is not valid.",
       "template_person_required": "Choose the person in charge."
+    }
+  },
+  "forms": {
+    "fieldErrors": {
+      "invalid": "Not a valid value.",
+      "invalid_type": "Required.",
+      "too_small": "Too short or too small.",
+      "too_big": "Too long or too large.",
+      "invalid_format": "Wrong format.",
+      "invalid_value": "Choose one of the listed values.",
+      "custom": "Not a valid value."
+    }
+  },
+  "lifecycle": {
+    "title": "Employment timeline",
+    "empty": "No events yet.",
+    "reportsTo": "reports to {name}",
+    "checklist": "Checklist",
+    "openRequest": "Open request",
+    "cancel": "Cancel",
+    "cancelConfirm": "Cancel this event? For a termination that has not taken effect, everything it closed is reopened.",
+    "types": {
+      "hire": "Hired",
+      "rehire": "Rehired",
+      "probation_pass": "Passed probation",
+      "probation_fail": "Failed probation",
+      "contract_renewal": "Contract renewed",
+      "transfer": "Transfer",
+      "promotion": "Promotion / appointment",
+      "salary_change": "Salary change",
+      "discipline": "Disciplinary action",
+      "reward": "Reward",
+      "long_leave": "Long leave (maternity, unpaid…)",
+      "resignation": "Resignation",
+      "termination": "Termination"
+    },
+    "status": {
+      "pending": "Not in effect yet",
+      "applied": "In effect",
+      "cancelled": "Cancelled"
+    },
+    "reasons": {
+      "resignation": "Resigned",
+      "contract_end": "Contract ended",
+      "probation_fail": "Failed probation",
+      "mutual_agreement": "Mutual agreement",
+      "dismissal": "Dismissal",
+      "retirement": "Retirement",
+      "other": "Other"
+    },
+    "fields": {
+      "type": "Event",
+      "effectiveDate": "Effective date",
+      "reason": "Reason",
+      "note": "Note",
+      "lastDay": "Last working day",
+      "terminationReason": "Reason for leaving"
+    },
+    "record": {
+      "title": "Record an event",
+      "submit": "Record",
+      "noteHint": "Notes on disciplinary events are readable only by people who see restricted data. Salary changes: no amounts here."
+    },
+    "terminate": {
+      "title": "Terminate employment",
+      "fromResignation": "Carry out the approved resignation",
+      "hint": "At the end of the last working day the employment, assignments, contracts and every role end, and the offboarding checklist is created. After that day the account is locked and all sessions are deleted.",
+      "confirm": "Terminate this employment?",
+      "submit": "Terminate"
+    },
+    "rehire": {
+      "title": "Rehire",
+      "hint": "Starts a new employment period on the same record. A new employee code is issued if left blank; seniority restarts unless you enter a seniority date.",
+      "submit": "Rehire"
+    },
+    "resign": {
+      "section": "Resignation",
+      "title": "Submit a resignation",
+      "hint": "The request goes to your line manager. Once approved, HR processes the termination and sends the handover checklist.",
+      "confirm": "Submit your resignation?",
+      "submit": "Submit",
+      "detailTitle": "Resignation request",
+      "approvedNote": "Approved. HR will process the termination."
+    },
+    "errors": {
+      "generic": "Could not save.",
+      "forbidden": "You may not do this.",
+      "invalid": "Check the fields you entered.",
+      "no_employment": "This person has no employment.",
+      "already_terminated": "The employment already has an end date.",
+      "termination_before_start": "The last day must be after the start date.",
+      "termination_already_effective": "The termination has taken effect and cannot be cancelled. Use Rehire.",
+      "event_not_found": "Event not found.",
+      "event_before_start": "The effective date must be after the start date.",
+      "last_owner": "The last Owner's access cannot be ended. Grant Owner to someone else first.",
+      "resignation_open": "You already have an open resignation request.",
+      "resignation_date_past": "The last working day cannot be in the past."
     }
   }
 }

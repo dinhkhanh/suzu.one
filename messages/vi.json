@@ -145,7 +145,13 @@
       "period": "Thời gian",
       "ongoing": "nay",
       "current": "Hiện tại",
-      "empty": "Chưa có vị trí công tác."
+      "empty": "Chưa có vị trí công tác.",
+      "kind": "Loại thay đổi",
+      "kinds": {
+        "correction": "Sửa thông tin (không ghi sự kiện)",
+        "transfer": "Điều chuyển",
+        "promotion": "Thăng chức / bổ nhiệm"
+      }
     },
     "fields": {
       "fullName": "Họ và tên",
@@ -227,7 +233,10 @@
       "manager_loop": "Thay đổi này khiến tuyến báo cáo bị vòng lặp.",
       "assignment_before_employment_start": "Ngày hiệu lực sớm hơn ngày vào làm.",
       "assignment_after_employment_end": "Ngày hiệu lực muộn hơn ngày nghỉ việc.",
-      "assignment_before_current_assignment": "Ngày hiệu lực sớm hơn ngày bắt đầu của vị trí hiện tại. Không thể sửa lịch sử đã qua."
+      "assignment_before_current_assignment": "Ngày hiệu lực sớm hơn ngày bắt đầu của vị trí hiện tại. Không thể sửa lịch sử đã qua.",
+      "possible_duplicate": "Có hồ sơ giống người này. Xem danh sách bên trên rồi xác nhận nếu vẫn muốn tạo mới.",
+      "still_employed": "Người này vẫn đang có quan hệ lao động.",
+      "last_owner": "Không thể kết thúc quyền của Owner cuối cùng."
     },
     "orgChart": {
       "title": "Sơ đồ tổ chức",
@@ -245,6 +254,17 @@
         "manager": "Quản lý trực tiếp ghi bằng mã nhân viên hoặc email công việc, và có thể nằm ở bất kỳ dòng nào trong cùng tệp.",
         "restricted": "Số CCCD, mã số thuế, số sổ BHXH và số tài khoản ngân hàng được lưu mã hóa và được che trong bản xem trước.",
         "phone": "Hãy định dạng cột số điện thoại là văn bản trong Excel, nếu không số 0 đầu sẽ bị mất."
+      }
+    },
+    "duplicates": {
+      "title": "Có thể người này đã có hồ sơ:",
+      "former": "đã nghỉ việc",
+      "hint": "Nếu là nhân sự cũ quay lại, hãy mở hồ sơ cũ và chọn Tuyển lại thay vì tạo hồ sơ mới.",
+      "confirm": "Đây là người khác, vẫn tạo hồ sơ mới",
+      "reasons": {
+        "name_and_birth": "trùng họ tên và ngày sinh",
+        "personal_email": "trùng email cá nhân",
+        "phone": "trùng số điện thoại"
       }
     }
   },
@@ -593,6 +613,10 @@
       "tasks_assigned": {
         "title": "Bạn được giao {count, plural, =1 {việc: {title}} other {# việc mới}}",
         "body": "Bạn có {count, plural, =1 {một việc mới: {title}} other {# việc mới, bắt đầu bằng: {title}}}. Mở mục Việc của tôi để xem hạn và đánh dấu hoàn thành."
+      },
+      "hr_resignation_approved": {
+        "title": "Đơn nghỉ việc của {name} đã được duyệt",
+        "body": "Quản lý đã duyệt đơn xin nghỉ việc của {name}, ngày làm việc cuối dự kiến {date}. Mở hồ sơ để thực hiện thủ tục thôi việc."
       }
     },
     "errors": {
@@ -772,7 +796,8 @@
       "status": "Trạng thái"
     },
     "types": {
-      "profile_change": "Thay đổi thông tin cá nhân"
+      "profile_change": "Thay đổi thông tin cá nhân",
+      "resignation": "Đơn xin nghỉ việc"
     },
     "status": {
       "pending": "Đang chờ duyệt",
@@ -970,6 +995,103 @@
       "template_not_found": "Không tìm thấy mẫu.",
       "template_rule_invalid": "Cách giao việc không hợp lệ.",
       "template_person_required": "Chọn người phụ trách."
+    }
+  },
+  "forms": {
+    "fieldErrors": {
+      "invalid": "Giá trị không hợp lệ.",
+      "invalid_type": "Bắt buộc nhập.",
+      "too_small": "Quá ngắn hoặc quá nhỏ.",
+      "too_big": "Quá dài hoặc quá lớn.",
+      "invalid_format": "Sai định dạng.",
+      "invalid_value": "Chọn một giá trị trong danh sách.",
+      "custom": "Giá trị không hợp lệ."
+    }
+  },
+  "lifecycle": {
+    "title": "Quá trình công tác",
+    "empty": "Chưa có sự kiện nào.",
+    "reportsTo": "báo cáo cho {name}",
+    "checklist": "Checklist",
+    "openRequest": "Xem đơn",
+    "cancel": "Hủy",
+    "cancelConfirm": "Hủy sự kiện này? Với quyết định thôi việc chưa đến ngày, mọi thứ đã đóng sẽ được mở lại.",
+    "types": {
+      "hire": "Tiếp nhận",
+      "rehire": "Tuyển lại",
+      "probation_pass": "Đạt thử việc",
+      "probation_fail": "Không đạt thử việc",
+      "contract_renewal": "Gia hạn hợp đồng",
+      "transfer": "Điều chuyển",
+      "promotion": "Thăng chức / bổ nhiệm",
+      "salary_change": "Điều chỉnh lương",
+      "discipline": "Kỷ luật",
+      "reward": "Khen thưởng",
+      "long_leave": "Nghỉ dài hạn (thai sản, không lương…)",
+      "resignation": "Xin nghỉ việc",
+      "termination": "Thôi việc"
+    },
+    "status": {
+      "pending": "Chưa hiệu lực",
+      "applied": "Đã hiệu lực",
+      "cancelled": "Đã hủy"
+    },
+    "reasons": {
+      "resignation": "Nhân sự xin nghỉ",
+      "contract_end": "Hết hạn hợp đồng",
+      "probation_fail": "Không đạt thử việc",
+      "mutual_agreement": "Thỏa thuận chấm dứt",
+      "dismissal": "Sa thải / đơn phương chấm dứt",
+      "retirement": "Nghỉ hưu",
+      "other": "Khác"
+    },
+    "fields": {
+      "type": "Sự kiện",
+      "effectiveDate": "Ngày hiệu lực",
+      "reason": "Lý do",
+      "note": "Ghi chú",
+      "lastDay": "Ngày làm việc cuối cùng",
+      "terminationReason": "Lý do thôi việc"
+    },
+    "record": {
+      "title": "Ghi nhận sự kiện",
+      "submit": "Ghi nhận",
+      "noteHint": "Ghi chú của sự kiện kỷ luật chỉ người có quyền xem thông tin hạn chế mới đọc được. Điều chỉnh lương: không ghi số tiền ở đây."
+    },
+    "terminate": {
+      "title": "Cho thôi việc",
+      "fromResignation": "Thực hiện thôi việc theo đơn đã duyệt",
+      "hint": "Đến hết ngày làm việc cuối cùng: quan hệ lao động, phân công, hợp đồng và mọi vai trò kết thúc; checklist thôi việc được tạo. Sau ngày đó tài khoản bị khóa và các phiên đăng nhập bị xóa.",
+      "confirm": "Xác nhận cho thôi việc?",
+      "submit": "Cho thôi việc"
+    },
+    "rehire": {
+      "title": "Tuyển lại",
+      "hint": "Tạo một giai đoạn làm việc mới trên cùng hồ sơ. Mã nhân viên mới được cấp nếu để trống; thâm niên tính lại từ ngày bắt đầu nếu không nhập ngày tính thâm niên.",
+      "submit": "Tuyển lại"
+    },
+    "resign": {
+      "section": "Nghỉ việc",
+      "title": "Gửi đơn xin nghỉ việc",
+      "hint": "Đơn được gửi tới quản lý trực tiếp của bạn. Sau khi được duyệt, Nhân sự sẽ làm thủ tục thôi việc và gửi checklist bàn giao.",
+      "confirm": "Gửi đơn xin nghỉ việc?",
+      "submit": "Gửi đơn",
+      "detailTitle": "Đơn xin nghỉ việc",
+      "approvedNote": "Đơn đã được duyệt. Nhân sự sẽ thực hiện thủ tục thôi việc."
+    },
+    "errors": {
+      "generic": "Không lưu được.",
+      "forbidden": "Bạn không có quyền thực hiện việc này.",
+      "invalid": "Kiểm tra lại các ô đã nhập.",
+      "no_employment": "Người này chưa có quan hệ lao động.",
+      "already_terminated": "Quan hệ lao động đã có ngày kết thúc.",
+      "termination_before_start": "Ngày cuối phải sau ngày bắt đầu làm việc.",
+      "termination_already_effective": "Quyết định thôi việc đã có hiệu lực, không thể hủy. Hãy dùng Tuyển lại.",
+      "event_not_found": "Không tìm thấy sự kiện.",
+      "event_before_start": "Ngày hiệu lực phải sau ngày bắt đầu làm việc.",
+      "last_owner": "Không thể kết thúc quyền của Owner cuối cùng. Hãy trao quyền Owner cho người khác trước.",
+      "resignation_open": "Bạn đang có một đơn xin nghỉ việc chưa xử lý.",
+      "resignation_date_past": "Ngày làm việc cuối không được ở quá khứ."
     }
   }
 }

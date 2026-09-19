@@ -5,7 +5,11 @@ import type { ReactNode } from "react";
 import { listProfileChanges } from "@/modules/core-hr/change-requests";
 import { getPersonView } from "@/modules/core-hr/service";
 import { ChangeRequestForm } from "@/modules/core-hr/ui/change-request-forms";
+import { ResignationForm } from "@/modules/core-hr/ui/lifecycle-forms";
+import { LifecycleSection } from "@/modules/core-hr/ui/lifecycle-section";
 import { RecordSections } from "@/modules/core-hr/ui/record-sections";
+import { listRequestsAbout } from "@/modules/platform/approvals/service";
+import { todayInVietnam } from "@/lib/dates";
 import { RequestTable } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
 
@@ -85,6 +89,22 @@ export default async function MyProfilePage() {
       </section>
 
       <RecordSections principal={user.principal} personId={user.person.id} />
+      <LifecycleSection principal={user.principal} personId={user.person.id} canManage={false} employed />
+      <ResignationBlock personId={user.person.id} />
     </div>
+  );
+}
+
+// Last on the page on purpose. A resignation is a request like any other: the line manager answers, HR carries it out.
+async function ResignationBlock({ personId }: { personId: string }) {
+  const t = await getTranslations("lifecycle");
+  const requests = await listRequestsAbout("resignation", personId);
+  const open = requests.some((request) => request.status === "pending" || request.status === "returned" || request.status === "approved");
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-sm font-medium text-muted-foreground">{t("resign.section")}</h2>
+      {requests.length > 0 ? <RequestTable rows={requests} empty="" showRequester={false} /> : null}
+      {open ? null : <ResignationForm today={todayInVietnam()} />}
+    </section>
   );
 }

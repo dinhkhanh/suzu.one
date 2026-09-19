@@ -290,3 +290,58 @@ export const hrAlertSent = pgTable(
   },
   (t) => [unique("hr_alert_sent_key").on(t.kind, t.subjectId, t.dueOn, t.thresholdDays)],
 ).enableRLS();
+
+// ── Lifecycle events (FR-CHR-09) ────────────────────────────────────────────────────────────
+
+export const lifecycleEventType = pgEnum("lifecycle_event_type", [
+  "hire",
+  "rehire",
+  "probation_pass",
+  "probation_fail",
+  "contract_renewal",
+  "transfer",
+  "promotion",
+  "salary_change",
+  "discipline",
+  "reward",
+  "long_leave",
+  "resignation",
+  "termination",
+]);
+
+// pending: decided but not in effect yet (a future last day; an approved resignation HR has not
+// processed). applied: in effect. cancelled: called off; the row stays as history.
+export const lifecycleEventStatus = pgEnum("lifecycle_event_status", ["pending", "applied", "cancelled"]);
+
+// What happened to a person's employment, as first-class records: the timeline on the person
+// page, the anchor of onboarding/offboarding checklists, and what headcount reports count.
+// `details` holds a from → to snapshot in words and what a termination closed (so it can be
+// undone). Never compensation values: salary changes are recorded without amounts until Phase 5.
+export const lifecycleEvent = pgTable(
+  "lifecycle_event",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    employmentId: uuid("employment_id")
+      .notNull()
+      .references(() => employment.id),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    type: lifecycleEventType("type").notNull(),
+    effectiveDate: date("effective_date").notNull(),
+    status: lifecycleEventStatus("status").notNull().default("applied"),
+    reason: text("reason"),
+    // Free text. For discipline events it is restricted tier; the service withholds it below that.
+    note: text("note"),
+    details: jsonb("details").$type<Record<string, unknown>>().notNull().default({}),
+    // The approval request that led here (a resignation). No foreign key across modules' tables.
+    approvalRequestId: uuid("approval_request_id"),
+    assignmentId: uuid("assignment_id").references(() => assignment.id, { onDelete: "set null" }),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [index("lifecycle_event_person_idx").on(t.personId, t.effectiveDate), index("lifecycle_event_entity_type_idx").on(t.entityId, t.type, t.effectiveDate)],
+).enableRLS();

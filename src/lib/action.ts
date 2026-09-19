@@ -5,12 +5,20 @@ import { getCurrentUser, type CurrentUser } from "@/modules/platform/auth/sessio
 
 export type ActionResult<T> =
   | { ok: true; data: T }
-  | { ok: false; error: "unauthenticated" | "forbidden" | "invalid" | "failed"; fieldErrors?: Record<string, string[]>; message?: string };
+  | { ok: false; error: "unauthenticated" | "forbidden" | "invalid" | "failed"; fieldErrors?: Record<string, string[]>; message?: string; /** What the form needs to explain a refusal, e.g. the likely duplicates of a new hire. */ details?: unknown };
 
 type AuditDetails = Omit<AuditEntry, "actor" | "request" | "action">;
 
 /** Thrown by services for expected, user-facing failures (e.g. "code already exists"). */
-export class ActionError extends Error {}
+export class ActionError extends Error {
+  constructor(
+    message: string,
+    /** Plain data for the form; never anything the caller may not see. */
+    readonly details?: unknown,
+  ) {
+    super(message);
+  }
+}
 
 /**
  * The one pipeline every mutation goes through (development plan §2.1):
@@ -28,7 +36,8 @@ export function createAction<Schema extends z.ZodType, Output>(definition: {
     const parsed = definition.input.safeParse(rawInput);
     if (!parsed.success) {
       const fieldErrors: Record<string, string[]> = {};
-      for (const issue of parsed.error.issues) (fieldErrors[issue.path.join(".")] ??= []).push(issue.message);
+      // Issue codes, not zod's English sentences: the form puts them into the reader's language.
+      for (const issue of parsed.error.issues) (fieldErrors[issue.path.join(".")] ??= []).push(issue.code ?? "custom");
       return { ok: false, error: "invalid", fieldErrors };
     }
 
@@ -46,7 +55,7 @@ export function createAction<Schema extends z.ZodType, Output>(definition: {
       await recordAudit({ ...audit, action: definition.name, actor, request: user.request });
       return { ok: true, data };
     } catch (error) {
-      if (error instanceof ActionError) return { ok: false, error: "failed", message: error.message };
+      if (error instanceof ActionError) return { ok: false, error: "failed", message: error.message, ...(error.details === undefined ? {} : { details: error.details }) };
       throw error;
     }
   };

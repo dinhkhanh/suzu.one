@@ -11,8 +11,10 @@ import { listBranches, listDepartments, listTeams } from "@/modules/platform/org
 import { activatePerson, createPerson, listPersonNames, type PersonRow, setPersonPlacement, updatePersonIdentity, wouldCreateReportingLoop } from "@/modules/platform/people/service";
 import { can, matchesReach, type Principal, readableTier, type Target, tierReach, type TierReach } from "@/modules/platform/rbac/policy";
 import { type Tier, tierRank } from "@/modules/platform/rbac/roles";
+import { revokeSessionsOf } from "@/modules/platform/auth/service";
 import { periodOn, planAssignmentChange } from "./engine/assignment-plan";
 import { defaultCodeScheme, formatEmployeeCode, normalizeEmployeeCode } from "./engine/employee-code";
+import { describePlacement, markDueTerminationsApplied, recordLifecycleEvent, startChecklist } from "./lifecycle-events";
 
 export type WorkforceType = PersonRow["workforceType"];
 export type PersonStatus = PersonRow["status"];
@@ -442,12 +444,17 @@ export type HireInput = {
   placement: PlacementInput;
 };
 
-export async function hirePerson(input: HireInput, actorPersonId: string) {
-  return inTransaction((tx) => hireInTransaction(tx, input, actorPersonId));
+export type HireOptions = {
+  /** false = no onboarding checklist: the bulk import of people who joined long ago. */
+  onboarding?: boolean;
+};
+
+export async function hirePerson(input: HireInput, actorPersonId: string, options: HireOptions = {}) {
+  return inTransaction((tx) => hireInTransaction(tx, input, actorPersonId, options));
 }
 
 /** The one code path that puts a person on the books — the hire form and the bulk import both end here. */
-export async function hireInTransaction(tx: Tx, input: HireInput, actorPersonId: string) {
+export async function hireInTransaction(tx: Tx, input: HireInput, actorPersonId: string, options: HireOptions = {}) {
   const [entity] = await tx.select().from(schema.entity).where(eq(schema.entity.id, input.entityId)).limit(1);
   if (!entity?.isActive) throw new ActionError("entity_not_found");
   const values = await resolvePlacement(tx, input.placement, { entityId: entity.id, personId: null });
@@ -458,26 +465,49 @@ export async function hireInTransaction(tx: Tx, input: HireInput, actorPersonId:
     status: input.startDate > todayInVietnam() ? "preboarding" : "active",
   });
   await tx.insert(schema.personProfile).values({ personId: person.id, ...input.profile });
+  const opened = await openEmployment(tx, person.id, entity, input, values, actorPersonId, { type: "hire", onboarding: options.onboarding ?? true });
+  return { person, ...opened };
+}
 
+/**
+ * A new employment period with its first assignment, the hire (or rehire) event and the
+ * onboarding checklist. The person row already exists: just created, or a former employee.
+ */
+export async function openEmployment(
+  tx: Tx,
+  personId: string,
+  entity: { id: string; code: string },
+  input: Pick<HireInput, "employeeCode" | "startDate" | "seniorityDate">,
+  values: Awaited<ReturnType<typeof resolvePlacement>>,
+  actorPersonId: string,
+  options: { type: "hire" | "rehire"; onboarding: boolean },
+) {
   const employeeCode = input.employeeCode ? normalizeEmployeeCode(input.employeeCode) : await allocateEmployeeCode(tx, entity);
   if (await employeeCodeExists(tx, entity.id, employeeCode)) throw new ActionError("employee_code_taken");
   const [employment] = await tx
     .insert(schema.employment)
-    .values({ personId: person.id, entityId: entity.id, employeeCode, startDate: input.startDate, seniorityDate: input.seniorityDate ?? input.startDate })
+    .values({ personId, entityId: entity.id, employeeCode, startDate: input.startDate, seniorityDate: input.seniorityDate ?? input.startDate })
     .returning();
   const [assignment] = await tx
     .insert(schema.assignment)
     .values({ ...values, employmentId: employment.id, validFrom: input.startDate, createdByPersonId: actorPersonId })
     .returning();
 
-  await setPersonPlacement(tx, person.id, {
+  await setPersonPlacement(tx, personId, {
     workforceType: values.workforceType,
     primaryEntityId: entity.id,
     departmentId: values.departmentId,
     teamId: values.teamId,
     managerId: values.managerId,
   });
-  return { person, employment, assignment };
+
+  const event = await recordLifecycleEvent(
+    tx,
+    { personId, employmentId: employment.id, entityId: entity.id, type: options.type, effectiveDate: input.startDate, assignmentId: assignment.id, details: { to: await describePlacement(tx, assignment) } },
+    actorPersonId,
+  );
+  const checklist = options.onboarding ? await startChecklist(tx, event, "onboarding", values, actorPersonId) : { template: null, tasks: [] };
+  return { employment, assignment, event, tasks: checklist.tasks };
 }
 
 export async function updatePersonBasics(personId: string, input: { fullName: string; workEmail: string | null; profile: ProfileInput }) {
@@ -503,7 +533,9 @@ export async function updatePersonBasics(personId: string, input: { fullName: st
   });
 }
 
-export async function changeAssignment(personId: string, input: { validFrom: IsoDate; changeReason: string | null; placement: PlacementInput }, actorPersonId: string) {
+export type AssignmentChangeKind = "correction" | "transfer" | "promotion";
+
+export async function changeAssignment(personId: string, input: { validFrom: IsoDate; changeReason: string | null; placement: PlacementInput; /** A transfer or promotion is an event on the timeline; a correction only fixes the record. */ kind?: AssignmentChangeKind }, actorPersonId: string) {
   return inTransaction(async (tx) => {
     const [employment] = await tx
       .select()
@@ -554,7 +586,25 @@ export async function changeAssignment(personId: string, input: { validFrom: Iso
         managerId: inForce.managerId,
       });
     }
-    return { employment, before, after };
+    const kind = input.kind ?? "correction";
+    const event =
+      kind === "correction"
+        ? null
+        : await recordLifecycleEvent(
+            tx,
+            {
+              personId,
+              employmentId: employment.id,
+              entityId: employment.entityId,
+              type: kind,
+              effectiveDate: input.validFrom,
+              reason: input.changeReason,
+              assignmentId: after.id,
+              details: { from: before ? await describePlacement(tx, before) : null, to: await describePlacement(tx, after) },
+            },
+            actorPersonId,
+          );
+    return { employment, before, after, event };
   });
 }
 
@@ -562,7 +612,7 @@ export async function changeAssignment(personId: string, input: { validFrom: Iso
  * Brings `person` (what sign-in and RBAC read) up to date with the assignment in force on `today`:
  * future-dated changes that have now started, and new starters whose first day has come.
  */
-export async function rollOverPlacements(today: IsoDate): Promise<{ placementsUpdated: number; peopleActivated: number }> {
+export async function rollOverPlacements(today: IsoDate): Promise<{ placementsUpdated: number; peopleActivated: number; peopleOffboarded: number }> {
   const { e, a } = placementOn(today);
   const stale = await db()
     .select({
@@ -586,11 +636,35 @@ export async function rollOverPlacements(today: IsoDate): Promise<{ placementsUp
     if (row.moved) placementsUpdated++;
     if (row.activate) peopleActivated++;
   }
-  return { placementsUpdated, peopleActivated };
+  return { placementsUpdated, peopleActivated, peopleOffboarded: await offboardLeavers(today) };
+}
+
+/**
+ * Termination ends access (FR-CHR-11): anyone whose latest employment ended before `today` and
+ * who is not offboarded yet becomes so, and their sessions are deleted. Called by the daily
+ * roll-over for last days that have now passed, and by the termination itself for past dates.
+ */
+export async function offboardLeavers(today: IsoDate, onlyPersonId?: string, executor: Tx | ReturnType<typeof db> = db()): Promise<number> {
+  const { e } = placementOn(today);
+  const leavers = await executor
+    .select({ personId: schema.person.id, workEmail: schema.person.workEmail })
+    .from(schema.person)
+    .innerJoinLateral(e, sql`true`)
+    .where(and(sql`${e.endDate} < ${today}::date`, sql`${schema.person.status} <> 'offboarded'`, onlyPersonId ? eq(schema.person.id, onlyPersonId) : undefined));
+  for (const leaver of leavers) {
+    const work = async (tx: Tx | ReturnType<typeof db>) => {
+      await tx.update(schema.person).set({ status: "offboarded", updatedAt: new Date() }).where(eq(schema.person.id, leaver.personId));
+      await revokeSessionsOf(leaver.workEmail, tx);
+      await markDueTerminationsApplied(tx, leaver.personId, today);
+    };
+    if (onlyPersonId) await work(executor);
+    else await db().transaction(work);
+  }
+  return leavers.length;
 }
 
 // Checks that the pieces of a placement belong together and turns the position name into a row.
-async function resolvePlacement(tx: Tx, input: PlacementInput, context: { entityId: string; personId: string | null }) {
+export async function resolvePlacement(tx: Tx, input: PlacementInput, context: { entityId: string; personId: string | null }) {
   if (input.teamId) {
     const [team] = await tx.select().from(schema.team).where(eq(schema.team.id, input.teamId)).limit(1);
     if (!team || team.departmentId !== input.departmentId) throw new ActionError("team_not_in_department");

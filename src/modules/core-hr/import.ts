@@ -13,6 +13,7 @@ import { emailDomain } from "@/modules/platform/auth/sign-in-policy";
 import { code, type Column, day, email, oneOf, type ParsedRow, type Problem, templateCsv, text } from "@/modules/platform/import/engine/table";
 import { defineImport } from "@/modules/platform/import/service";
 import { can } from "@/modules/platform/rbac/policy";
+import { todayInVietnam } from "@/lib/dates";
 import { normalizeEmployeeCode } from "./engine/employee-code";
 import { normalizeIdNumber } from "./field-contexts";
 import { nationalIdsOnFile, updateSensitiveFields } from "./records";
@@ -209,6 +210,8 @@ export const employeeImport = defineImport({
           },
         },
         user.person.id,
+        // The import loads people who joined long ago: only those still to start get an onboarding checklist.
+        { onboarding: values.startDate! >= todayInVietnam() },
       );
       created.set(row, { personId: person.id, assignmentId: assignment.id });
 

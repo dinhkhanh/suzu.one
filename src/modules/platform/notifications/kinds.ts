@@ -29,6 +29,7 @@ export const KINDS = {
   "hr.contract_expiring": "hr",
   "hr.probation_ending": "hr",
   "hr.document_expiring": "hr",
+  "hr.resignation_approved": "hr",
   "approvals.requested": "approvals",
   "approvals.decided": "approvals",
   "tasks.assigned": "tasks",

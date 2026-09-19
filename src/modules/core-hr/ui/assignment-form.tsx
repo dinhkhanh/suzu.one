@@ -3,6 +3,8 @@ import { useTranslations } from "next-intl";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { ASSIGNMENT_CHANGE_KINDS } from "../enums";
 import { changeAssignmentAction } from "../actions";
 import type { PersonView } from "../service";
 import { Field, FormError } from "@/components/forms/field";
@@ -31,7 +33,16 @@ export function AssignmentForm({ person, options, today }: { person: PersonView;
           <Field name="validFrom" label={t("fields.validFrom")}>
             <Input id="validFrom" name="validFrom" type="date" required defaultValue={today} min={person.personal?.startDate ?? undefined} />
           </Field>
-          <div className="sm:col-span-1 lg:col-span-2">
+          <Field name="kind" label={t("assignment.kind")}>
+            <Select id="kind" name="kind" defaultValue="transfer">
+              {ASSIGNMENT_CHANGE_KINDS.map((kind) => (
+                <option key={kind} value={kind}>
+                  {t(`assignment.kinds.${kind}`)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <div className="sm:col-span-2 lg:col-span-3">
             <Field name="changeReason" label={t("fields.changeReason")}>
               <Input id="changeReason" name="changeReason" maxLength={300} />
             </Field>

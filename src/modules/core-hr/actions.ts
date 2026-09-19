@@ -1,11 +1,12 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createAction } from "@/lib/action";
+import { ActionError, createAction } from "@/lib/action";
 import { normalizeEmail } from "@/modules/platform/auth/sign-in-policy";
 import { findPersonById } from "@/modules/platform/people/service";
 import { holdsRoleGrants } from "@/modules/platform/rbac/service";
-import { GENDERS, MARITAL_STATUSES, WORKFORCE_TYPES } from "./enums";
+import { ASSIGNMENT_CHANGE_KINDS, GENDERS, MARITAL_STATUSES, WORKFORCE_TYPES } from "./enums";
+import { findLikelyDuplicates } from "./lifecycle";
 import { canBrowsePeople, canEditPerson, canHireInto, canReassign } from "./policy";
 import { changeAssignment, deleteSavedView, getPersonTarget, hirePerson, saveView, updatePersonBasics } from "./service";
 
@@ -52,9 +53,16 @@ const hirePipeline = createAction({
     startDate: day,
     seniorityDate: optional(day),
     placement: placementInput,
+    // Ticked after HR has looked at the likely duplicates and decided this is someone new.
+    confirmDuplicate: z.preprocess((value) => value === "on" || value === true, z.boolean()).default(false),
   }),
   authorize: (user, input) => canHireInto(user.principal, { entityId: input.entityId, departmentId: input.placement.departmentId, teamId: input.placement.teamId }),
   run: async ({ user, input }) => {
+    if (!input.confirmDuplicate) {
+      // One person, one record (FR-CHR-16): a returning employee is rehired from their old record.
+      const duplicates = await findLikelyDuplicates({ fullName: input.fullName, ...input.profile });
+      if (duplicates.length > 0) throw new ActionError("possible_duplicate", { duplicates });
+    }
     const { person, employment, assignment } = await hirePerson(input, user.person.id);
     revalidatePath("/people");
     return {
@@ -99,7 +107,7 @@ export async function updatePersonAction(input: unknown) {
 
 const assignmentPipeline = createAction({
   name: "person.assignment.change",
-  input: z.object({ personId: z.uuid(), validFrom: day, changeReason: text(300), placement: placementInput }),
+  input: z.object({ personId: z.uuid(), validFrom: day, changeReason: text(300), kind: z.enum(ASSIGNMENT_CHANGE_KINDS).default("correction"), placement: placementInput }),
   authorize: async (user, input) => {
     const from = await getPersonTarget(input.personId);
     if (!from) return false;
@@ -112,7 +120,7 @@ const assignmentPipeline = createAction({
     revalidatePath(`/people/${personId}`);
     return {
       data: { id: after.id },
-      audit: { resource: { type: "assignment", id: after.id, entityId: employment.entityId }, summary: `${employment.employeeCode} from ${after.validFrom}`, before, after },
+      audit: { resource: { type: "assignment", id: after.id, entityId: employment.entityId }, summary: `${employment.employeeCode} ${input.kind} from ${after.validFrom}`, before, after },
     };
   },
 });
