@@ -170,7 +170,7 @@ describe("reminders", () => {
 
     expect(await sendWorkReminders("2026-09-20")).toEqual({ dueSoon: 2, overdue: 1, people: 2 });
     expect((await noticesOf(ids.huy, "tasks.due_soon")).map((row) => row.params)).toEqual([expect.objectContaining({ count: 2, title: "Colour grade" })]);
-    expect((await noticesOf(ids.tam, "tasks.overdue")).map((row) => [row.params, row.link])).toEqual([[expect.objectContaining({ count: 1, title: "Subtitles", dueDate: "2026-09-19" }), expect.stringMatching(/^\/work\/tasks\//)]]);
+    expect((await noticesOf(ids.tam, "tasks.overdue")).map((row) => [row.params, row.link])).toEqual([[expect.objectContaining({ count: 1, title: "Subtitles", dueDate: "19/09/2026" }), expect.stringMatching(/^\/work\/tasks\//)]]);
     // A retry, or the second cron trigger of the day.
     expect(await sendWorkReminders("2026-09-20")).toEqual({ dueSoon: 0, overdue: 0, people: 0 });
     // Next day: the task two days late turns three days late and is due a reminder; finished work is left alone.

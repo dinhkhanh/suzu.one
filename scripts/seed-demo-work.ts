@@ -2,9 +2,9 @@
 // demo teams exist. Two creative teams with realistic projects — one of them private, one that
 // borrows a person from the other team — and about sixty tasks around today: overdue, due this
 // week, blocked, in review, done. Rows are written the way the work use-cases write them.
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
-import { department, entity, person, task, workActivity, workClient, workLabel, workProject, workProjectMember, workState, workTask, workTaskDependency, workTaskLabel, workTaskPerson, workTeam, workTeamMember } from "../src/lib/db/schema";
+import { department, entity, person, task, workActivity, workComment, workClient, workLabel, workProject, workProjectMember, workState, workTask, workTaskDependency, workTaskLabel, workTaskPerson, workTeam, workTeamMember } from "../src/lib/db/schema";
 import { CATEGORY_STATUS, type StateCategory, WORKFLOW_PRESETS } from "../src/modules/work/enums";
 
 type Db = ReturnType<typeof drizzle>;
@@ -235,4 +235,82 @@ export async function seedWork(db: Db, today: string): Promise<string> {
     for (const [teamKey, last] of numbers) await tx.update(workTeam).set({ taskSeq: last }).where(eq(workTeam.id, teamIds.get(teamKey)!));
     return `${TEAMS.length} work teams, ${CLIENTS.length} clients and brands, ${PROJECTS.length} projects (one private) and ${TASKS.length} tasks`;
   });
+}
+
+// ── Conversations (week 2): comments with mentions, replies and reactions; followers ─────────
+
+type CommentSeed = { by: string; text: string; /** {@email} in the text becomes a mention. */ mentions?: string[]; daysAgo: number; replyTo?: number; reactions?: Record<string, string[]> };
+const CONVERSATIONS: { title: string; followers?: string[]; comments: CommentSeed[] }[] = [
+  {
+    title: "Kịch bản phân cảnh bản 30 giây",
+    followers: [HUY],
+    comments: [
+      { by: TAM, text: "Đã gửi khách bản v2, thêm cảnh bà pha trà ở phân đoạn 3. Bản PDF: https://drive.google.com/file/d/demo-tvc-script-v2/view", daysAgo: 4, reactions: { "👍": [LONG] } },
+      { by: LONG, text: "{@} khách hẹn phản hồi thứ Sáu. Nếu trễ mình sẽ gọi trực tiếp, vì bối cảnh phải đặt trước ngày 25.", mentions: [TAM], daysAgo: 3 },
+      { by: TAM, text: "Vâng anh. {@} chuẩn bị trước danh sách cảnh quay theo v2 nhé, khả năng cao khách chỉ sửa lời thoại.", mentions: [HUY], daysAgo: 3, replyTo: 1, reactions: { "👀": [HUY] } },
+      { by: HUY, text: "Em nhận. Danh sách cảnh em để trong thư mục dự án chiều nay.", daysAgo: 2, replyTo: 1 },
+    ],
+  },
+  {
+    title: "Dựng bản 3 phút",
+    followers: [TAM],
+    comments: [
+      { by: HUY, text: "Bản dựng thô đã lên: https://drive.google.com/file/d/demo-brand-roughcut/view — còn thiếu đồ họa mở đầu của {@}.", mentions: [LINH], daysAgo: 2 },
+      { by: LINH, text: "Em gửi đồ họa trong ngày mai ạ.", daysAgo: 1, replyTo: 0, reactions: { "👍": [HUY], "🎉": [LONG] } },
+      { by: LONG, text: "Nhịp đoạn phỏng vấn thứ hai hơi chậm, cắt bớt khoảng 10 giây. Tham khảo: https://www.youtube.com/watch?v=demo-reference", daysAgo: 1 },
+    ],
+  },
+  {
+    title: "Bài FB: Mẹo pha trà lạnh tại nhà",
+    comments: [
+      { by: DUYEN, text: "Khách muốn đổi ảnh chính sang ly thủy tinh. {@} xem giúp còn ảnh nào trong buổi chụp tháng 8 không?", mentions: [KHOI], daysAgo: 2 },
+      { by: KHOI, text: "Còn 4 ảnh, mình để ở https://drive.google.com/drive/folders/demo-tra-sen-aug — chọn xong báo mình chỉnh màu.", daysAgo: 1, replyTo: 0, reactions: { "❤️": [DUYEN] } },
+      { by: DUC, text: "Lưu ý lịch đăng là thứ Ba tuần sau, cần khách duyệt trước thứ Hai.", daysAgo: 1 },
+    ],
+  },
+  {
+    title: "Bao bì hộp 110ml — 4 vị",
+    followers: [DUC],
+    comments: [
+      { by: CHI, text: "Nhà in yêu cầu file theo khuôn bế mới: https://drive.google.com/file/d/demo-kids-dieline/view. {@} {@} cập nhật trước khi làm tiếp hai vị còn lại.", mentions: [KHOI, ANH], daysAgo: 3, reactions: { "✅": [KHOI, ANH] } },
+      { by: ANH, text: "Em đã chuyển vị chuối sang khuôn mới ạ.", daysAgo: 1, replyTo: 0 },
+    ],
+  },
+];
+
+export async function seedWorkConversations(db: Db, today: string): Promise<string> {
+  const [existing] = await db.select({ id: workComment.id }).from(workComment).limit(1);
+  if (existing) return "no work conversations (comments already exist)";
+  const people = await db.select({ id: person.id, email: person.workEmail, name: person.fullName }).from(person);
+  const find = (ref: string) => {
+    const found = ref.startsWith("name:") ? people.find((row) => row.name === ref.slice(5)) : people.find((row) => row.email === ref);
+    if (!found) throw new Error(`Demo person not found: ${ref}`);
+    return found;
+  };
+  let comments = 0;
+  await db.transaction(async (tx) => {
+    for (const conversation of CONVERSATIONS) {
+      const [row] = await tx.select({ id: task.id }).from(task).where(and(eq(task.kind, "work"), eq(task.title, conversation.title))).limit(1);
+      if (!row) continue;
+      const inserted: string[] = [];
+      const following = new Set(conversation.followers ?? []);
+      for (const seed of conversation.comments) {
+        const mentioned = (seed.mentions ?? []).map(find);
+        let index = 0;
+        const body = seed.text.replaceAll("{@}", () => `@[${mentioned[index].name}](${mentioned[index++].id})`);
+        const at = new Date(Date.parse(`${addDays(today, -seed.daysAgo)}T0${2 + inserted.length}:15:00Z`));
+        const [comment] = await tx
+          .insert(workComment)
+          .values({ taskId: row.id, authorPersonId: find(seed.by).id, parentId: seed.replyTo === undefined ? null : inserted[seed.replyTo], body, mentions: mentioned.map((person) => person.id), reactions: Object.fromEntries(Object.entries(seed.reactions ?? {}).map(([emoji, who]) => [emoji, who.map((ref) => find(ref).id)])), createdAt: at })
+          .returning({ id: workComment.id });
+        inserted.push(comment.id);
+        await tx.insert(workActivity).values({ taskId: row.id, actorPersonId: find(seed.by).id, type: "commented", toValue: { id: comment.id }, createdAt: at });
+        for (const ref of [seed.by, ...(seed.mentions ?? [])]) following.add(ref);
+        comments += 1;
+      }
+      // Commenters and mentioned people follow; someone already on the task keeps their role.
+      await tx.insert(workTaskPerson).values([...following].map((ref) => ({ taskId: row.id, personId: find(ref).id, role: "follower" }))).onConflictDoNothing();
+    }
+  });
+  return `${comments} comments on ${CONVERSATIONS.length} tasks (mentions, replies, reactions, followers)`;
 }

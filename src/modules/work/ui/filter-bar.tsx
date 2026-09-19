@@ -6,11 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { FILTER_KEYS, type TaskFilters } from "../engine/filter";
-import { PRIORITIES } from "../enums";
+import { PRIORITIES, WORK_VIEWS, type WorkView } from "../enums";
 import type { ListOptions } from "./task-list-view";
-
-export const WORK_VIEWS = ["list", "board", "calendar"] as const;
-export type WorkView = (typeof WORK_VIEWS)[number];
 
 /** Filters live in the URL (shareable, survive a reload and a change of view) without a server round trip. */
 export function useUrlFilters(initial: TaskFilters) {

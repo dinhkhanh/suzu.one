@@ -34,7 +34,7 @@ export async function sendWorkReminders(today: IsoDate): Promise<{ dueSoon: numb
       const tasks = own.filter((row) => fresh.some((mark) => mark.taskId === row.id));
       if (tasks.length === 0) return;
       const [first] = tasks;
-      await notify({ recipients: [assigneeId], kind: kind === "due_soon" ? "tasks.due_soon" : "tasks.overdue", params: { count: tasks.length, key: taskKey(first.teamKey, first.number), title: first.title, dueDate: first.dueDate! }, link: tasks.length === 1 ? `/work/tasks/${first.id}` : "/tasks" }, tx);
+      await notify({ recipients: [assigneeId], kind: kind === "due_soon" ? "tasks.due_soon" : "tasks.overdue", params: { count: tasks.length, key: taskKey(first.teamKey, first.number), title: first.title, dueDate: first.dueDate!.split("-").reverse().join("/") }, link: tasks.length === 1 ? `/work/tasks/${first.id}` : "/tasks" }, tx);
       sent[kind] += tasks.length;
       people.add(assigneeId);
     });
