@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseAssigneeRule, pickTemplate, planChecklist, summarize, type TemplateItem } from "./checklist";
+import { ASSIGNEE_RULES, parseAssigneeRule, pickTemplate, planChecklist, summarize, type TemplateItem } from "./checklist";
 
 const template = (id: string, scope: Partial<{ entityId: string; departmentId: string; positionId: string; isActive: boolean }> = {}) => ({ id, entityId: null, departmentId: null, positionId: null, isActive: true, ...scope });
 
@@ -54,5 +54,17 @@ describe("summarize", () => {
     expect(summarize(tasks, "2026-02-01")).toEqual({ total: 4, done: 1, open: 3, overdue: 1, complete: false });
     expect(summarize([{ status: "done", dueDate: null }, { status: "cancelled", dueDate: null }], "2026-02-01").complete).toBe(true);
     expect(summarize([], "2026-02-01").complete).toBe(false);
+  });
+});
+
+describe("role rule (work templates)", () => {
+  it("parses role:<key> and refuses a malformed key", () => {
+    expect(parseAssigneeRule("role:designer", null)).toEqual({ rule: "role", roleKey: "designer" });
+    expect(parseAssigneeRule("role:media_buyer", null)).toEqual({ rule: "role", roleKey: "media_buyer" });
+    expect(parseAssigneeRule("role:", null)).toBeNull();
+    expect(parseAssigneeRule("role:Designer!", null)).toBeNull();
+  });
+  it("is not offered by the checklist form", () => {
+    expect(ASSIGNEE_RULES).toEqual(["subject", "line_manager", "person", "permission"]);
   });
 });

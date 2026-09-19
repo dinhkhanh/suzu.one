@@ -226,6 +226,10 @@ export function TaskDiscussion({ taskId, comments, activity, people, selfId, can
       if (entry.field === "priority") return tTask("activity.changed", { field, from: entry.fromValue ? tWork(`priority.${entry.fromValue}`) : "—", to: entry.toValue ? tWork(`priority.${entry.toValue}`) : "—" });
       return tTask("activity.changed", { field, from: name(entry.fromValue), to: name(entry.toValue) });
     }
+    if (entry.type.startsWith("review_")) {
+      const value = (entry.toValue ?? {}) as { version?: number; name?: string };
+      return tTask(`activity.${entry.type}`, { version: value.version ?? 0, name: value.name ?? "" });
+    }
     const subject = name(entry.toValue ?? entry.fromValue);
     return tTask.has(`activity.${entry.type}`) ? tTask(`activity.${entry.type}`, { name: subject }) : entry.type;
   };

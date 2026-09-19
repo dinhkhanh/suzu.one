@@ -9,10 +9,11 @@ import { listPersonNames } from "@/modules/platform/people/service";
 import { getDaysOff } from "@/modules/attendance/service";
 import { isMonthKey, monthGrid } from "@/modules/work/engine/calendar";
 import { FILTER_KEYS, GROUPINGS, type Grouping, type TaskFilters } from "@/modules/work/engine/filter";
-import { canContributeToProject, canManageProject, canViewProject, findProject, listAssignable, listClients, listLabels, listProjectMembers, listProjectTasks, listSavedViews, listStates, loadViewer, projectFacts, withEditable, WORK_VIEWS, type WorkView } from "@/modules/work/service";
+import { canContributeToProject, canManageProject, canViewProject, findProject, listAssignable, listClients, listLabels, listProjectMembers, listProjectTasks, listRecurrences, listSavedViews, listStates, listWorkTemplates, loadViewer, projectFacts, withEditable, WORK_VIEWS, type WorkView } from "@/modules/work/service";
 import { BoardView } from "@/modules/work/ui/board-view";
 import { CalendarView } from "@/modules/work/ui/calendar-view";
 import { ViewTabs } from "@/modules/work/ui/filter-bar";
+import { RecurrenceManager, TemplateUseForm } from "@/modules/work/ui/planning-forms";
 import { ProjectForm } from "@/modules/work/ui/project-forms";
 import { TaskListView } from "@/modules/work/ui/task-list-view";
 import { MemberManager } from "@/modules/work/ui/team-forms";
@@ -33,7 +34,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const manage = canManageProject(viewer, facts);
   const today = todayInVietnam();
 
-  const [views, tasks, states, labels, clients, members, assignable, people] = await Promise.all([
+  const [views, tasks, states, labels, clients, members, assignable, people, recurrences, templates] = await Promise.all([
     listSavedViews(project.id, user.person.id),
     listProjectTasks(project.id),
     listStates([team.id]),
@@ -42,6 +43,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
     listProjectMembers(project.id),
     listAssignable(team.id, project.id),
     manage ? listPersonNames() : [],
+    listRecurrences(project.id, today),
+    listWorkTemplates([team.id], { activeOnly: true }),
   ]);
   const filters: TaskFilters = Object.fromEntries(FILTER_KEYS.flatMap((key) => (typeof query[key] === "string" ? [[key, query[key]]] : [])));
   const grouping = GROUPINGS.includes(query.group as Grouping) ? (query.group as Grouping) : "none";
@@ -100,6 +103,28 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           savedViews={views.map((view) => ({ id: view.id, name: view.name, isShared: view.isShared, mine: view.ownerPersonId === user.person.id, canDelete: view.ownerPersonId === user.person.id || manage, filters: view.filters }))}
         />
       )}
+
+      <details className="rounded-xl border p-4" open={recurrences.length > 0 && typeof query.planning === "string"}>
+        <summary className="cursor-pointer text-sm font-medium">{t("projects.planning", { count: recurrences.filter((row) => row.isActive).length })}</summary>
+        <div className="flex flex-col gap-6 pt-4">
+          <section className="flex flex-col gap-2">
+            <h2 className="text-sm font-medium text-muted-foreground">{t("recurrence.heading")}</h2>
+            <RecurrenceManager
+              projectId={project.id}
+              recurrences={recurrences.map(({ id, title, rule, startDate, endDate, isActive, assigneeName, nextDate, made }) => ({ id, title, rule, startDate, endDate, isActive, assigneeName, nextDate, made }))}
+              people={assignable}
+              canManage={canContribute}
+              today={today}
+            />
+          </section>
+          {canContribute ? (
+            <section className="flex flex-col gap-2">
+              <h2 className="text-sm font-medium text-muted-foreground">{t("templates.addToProject")}</h2>
+              <TemplateUseForm templates={templates.filter((template) => template.items.length > 0).map(({ id, name, ownerId, roleKeys }) => ({ id, name, ownerId, roleKeys }))} projectId={project.id} peopleByTeam={{ "": assignable }} today={today} />
+            </section>
+          ) : null}
+        </div>
+      </details>
 
       <details className="rounded-xl border p-4">
         <summary className="cursor-pointer text-sm font-medium">{t("projects.membersAndSettings", { count: members.length })}</summary>

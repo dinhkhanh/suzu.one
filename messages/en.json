@@ -678,6 +678,18 @@
       "tasks_overdue": {
         "title": "Overdue: {count, plural, =1 {{title}} other {# tasks}}",
         "body": "{count, plural, =1 {{key} “{title}” was due on {dueDate} and is still open.} other {# of your tasks are past their due date, the oldest being {key} “{title}” ({dueDate}).}} Finish it, or move the date and say why."
+      },
+      "tasks_review_requested": {
+        "title": "{key}: version {version} is ready for review",
+        "body": "{name} handed in version {version} of {key} “{title}” for review."
+      },
+      "tasks_review_decided": {
+        "title": "{key}: {decision, select, approved {version {version} approved} other {changes requested on version {version}}}",
+        "body": "{name} {decision, select, approved {approved} other {asked for changes on}} version {version} of {key} “{title}”."
+      },
+      "tasks_nudge": {
+        "title": "{name} is asking about {key}",
+        "body": "{name} is asking for an update on {key} “{title}”{dueDate, select, none {} other { (due {dueDate})}}."
       }
     },
     "errors": {
@@ -1130,8 +1142,8 @@
     }
   },
   "tasks": {
-    "title": "My tasks",
-    "description": "Everything waiting for you, overdue first.",
+    "title": "My work",
+    "description": "Everything waiting for you in one place: reviews, approvals, work tasks, obligations and checklist steps — overdue first.",
     "open": "Open ({count})",
     "openEmpty": "Nothing is waiting for you.",
     "recentlyDone": "Recently done",
@@ -1158,7 +1170,21 @@
       "forbidden": "You may not change this task.",
       "task_not_found": "Task not found.",
       "task_assignee_not_found": "That person was not found or has left."
-    }
+    },
+    "sections": {
+      "reviews": "Deliverables to review ({count})",
+      "approvals": "Requests to approve ({count})",
+      "work": "Work tasks ({count})",
+      "obligations": "Compliance obligations ({count})",
+      "checklist": "Checklist steps ({count})"
+    },
+    "reviewFrom": "version {version} from {name}",
+    "toReview": "To review",
+    "toApprove": "To approve",
+    "openApprovals": "Open the approvals inbox",
+    "blocked": "blocked by {count}",
+    "changesRequested": "Changes requested",
+    "urgent": "Urgent"
   },
   "checklists": {
     "title": "Checklist templates",
@@ -2638,7 +2664,8 @@
         "startDate": "Start",
         "dueDate": "Due",
         "description": "Description"
-      }
+      },
+      "planning": "Recurring tasks and templates ({count} active)"
     },
     "clients": {
       "title": "Clients and brands",
@@ -2724,7 +2751,8 @@
         "collaborators": "Collaborators",
         "parent": "Parent task",
         "checklist": "Checklist",
-        "links": "Links"
+        "links": "Links",
+        "reviewer": "Reviewer"
       },
       "descriptionPlaceholder": "Brief, references, what done looks like…",
       "checklist": "Checklist",
@@ -2766,7 +2794,11 @@
         "commented": "commented",
         "comment_deleted": "deleted a comment",
         "attachment_added": "attached {name}",
-        "attachment_removed": "removed the file {name}"
+        "attachment_removed": "removed the file {name}",
+        "review_submitted": "handed in version {version} for review: {name}",
+        "review_approved": "approved version {version}",
+        "review_changes_requested": "asked for changes on version {version}",
+        "nudged": "asked for an update"
       }
     },
     "palette": {
@@ -2886,6 +2918,202 @@
         "file_not_uploaded": "The upload did not arrive. Try again.",
         "file_content_mismatch": "The file's content does not match its type.",
         "file_not_found": "File not found."
+      }
+    },
+    "review": {
+      "title": "Review",
+      "status": {
+        "none": "No review",
+        "submitted": "Waiting for review",
+        "approved": "Approved",
+        "changes_requested": "Changes requested"
+      },
+      "rounds": "{count, plural, one {# revision round} other {# revision rounds}}",
+      "reviewer": "Reviewer",
+      "reviewerDefault": "Project lead (default)",
+      "decideTitle": "Version {version} is waiting for your decision",
+      "comment": "Comment",
+      "commentPlaceholder": "What is good, what has to change (required when asking for changes)",
+      "approve": "Approve",
+      "requestChanges": "Request changes",
+      "submitTitle": "Hand in version {version} for review",
+      "submitAgainTitle": "Replace the waiting version with version {version}",
+      "source": "Deliverable",
+      "sourceFile": "File",
+      "sourceLink": "Link",
+      "noFiles": "Attach the file to the task first.",
+      "note": "Note",
+      "notePlaceholder": "Note for the reviewer (optional)",
+      "submit": "Hand in",
+      "decision": {
+        "pending": "Waiting",
+        "approved": "Approved",
+        "changes_requested": "Changes requested",
+        "superseded": "Replaced"
+      },
+      "submittedBy": "{name} · {when}",
+      "decidedBy": "Decided by {name} · {when}",
+      "errors": {
+        "generic": "That did not work.",
+        "forbidden": "You may not do that.",
+        "invalid": "Check the link (https only) or pick a file.",
+        "task_not_found": "Task not found.",
+        "file_not_found": "That file is not on this task any more.",
+        "review_no_reviewer": "Nobody can review this: set a reviewer or a project lead other than yourself.",
+        "review_not_pending": "No version is waiting for review.",
+        "review_own_work": "You cannot review your own deliverable.",
+        "review_comment_required": "Say what has to change.",
+        "review_task_closed": "This task was cancelled.",
+        "person_not_found": "That person was not found or has left."
+      }
+    },
+    "templates": {
+      "title": "Templates",
+      "description": "Task trees with days from a start or end date and a role per step. Using one asks who plays each role.",
+      "newProject": "New project from a template",
+      "newTemplate": "New template",
+      "library": "Library ({count})",
+      "empty": "No templates yet. Run the seed, or write the first one below.",
+      "name": "Template name",
+      "purpose": "Kind",
+      "purposes": {
+        "work_project": "Project template",
+        "work_task": "Task template"
+      },
+      "owner": "Belongs to",
+      "shared": "Shared by every team",
+      "descriptionField": "What it is for",
+      "create": "Create template",
+      "inactive": "Retired",
+      "retire": "Retire",
+      "restore": "Restore",
+      "noItems": "No steps yet.",
+      "itemTitle": "Step",
+      "parent": "Under",
+      "topLevel": "Top level",
+      "role": "Role (e.g. designer)",
+      "offset": "{days, plural, =0 {day 0} other {day {days}}}",
+      "offsetField": "Days from the anchor date",
+      "hours": "{hours} h",
+      "estimate": "Hours",
+      "addItem": "Add step",
+      "removeItem": "Remove {title}",
+      "team": "Team",
+      "template": "Template",
+      "projectName": "Project name",
+      "anchorMode": "Dates count",
+      "anchor": {
+        "start": "Forward from the start date",
+        "end": "Back from the end date"
+      },
+      "anchorDate": "Date",
+      "whoPlays": "Who plays each role",
+      "unassigned": "Nobody yet",
+      "createProject": "Create project",
+      "addTasks": "Add the tasks",
+      "addToProject": "Add tasks from a template",
+      "made": "{count} tasks added.",
+      "nothingToUse": "No template to use yet.",
+      "errors": {
+        "generic": "That did not work.",
+        "forbidden": "You may not do that.",
+        "invalid": "Check the fields.",
+        "template_not_found": "Template not found or retired.",
+        "template_other_team": "That template belongs to another team.",
+        "template_empty": "This template has no steps.",
+        "template_role_invalid": "A role is a short key: letters, digits and _.",
+        "template_parent_invalid": "That parent step is not in this template.",
+        "template_too_deep": "Steps go two levels deep: task and sub-task.",
+        "person_not_found": "A chosen person was not found or has left.",
+        "team_not_found": "Team not found.",
+        "project_not_found": "Project not found.",
+        "project_archived": "This project is archived.",
+        "state_not_found": "The team has no state for new tasks."
+      }
+    },
+    "recurrence": {
+      "heading": "Recurring tasks",
+      "empty": "Nothing recurs in this project yet.",
+      "title": "Task title",
+      "assignee": "Assignee",
+      "unassigned": "Unassigned",
+      "every": "Every",
+      "interval": "Interval",
+      "frequency": "Frequency",
+      "freq": {
+        "daily": "day(s)",
+        "weekly": "week(s)",
+        "monthly": "month(s)"
+      },
+      "weekdays": {
+        "1": "Mon",
+        "2": "Tue",
+        "3": "Wed",
+        "4": "Thu",
+        "5": "Fri",
+        "6": "Sat",
+        "7": "Sun"
+      },
+      "monthDay": "Day of the month",
+      "onDay": "on day {day}",
+      "lastDay": "on the last day",
+      "from": "From",
+      "until": "Until",
+      "lead": "Create days ahead",
+      "create": "Add recurring task",
+      "active": "Active",
+      "paused": "Paused",
+      "ended": "Ended",
+      "pause": "Pause",
+      "resume": "Resume",
+      "end": "End",
+      "madeSoFar": "{count} made",
+      "next": "next {date}",
+      "rule": {
+        "daily": "{interval, plural, one {every day} other {every # days}}",
+        "weekly": "{interval, plural, one {every week} other {every # weeks}} on {days}",
+        "monthly": "{interval, plural, one {every month} other {every # months}} on day {day}",
+        "monthlyLast": "{interval, plural, one {every month} other {every # months}} on the last day"
+      },
+      "errors": {
+        "generic": "That did not work.",
+        "forbidden": "You may not do that.",
+        "invalid": "Check the fields: pick at least one weekday.",
+        "recurrence_rule_invalid": "That rule is not valid.",
+        "recurrence_dates_invalid": "The end date is before the start date.",
+        "recurrence_not_found": "Not found.",
+        "project_not_found": "Project not found.",
+        "project_archived": "This project is archived."
+      }
+    },
+    "leader": {
+      "title": "Leader view",
+      "description": "Open work other people are doing for you: what you asked for, and the teams and projects you lead.",
+      "empty": "Nobody is working on anything for you right now.",
+      "open": "{count} open",
+      "overdue": "{count} overdue",
+      "atRisk": "{count} at risk",
+      "unassigned": "Unassigned",
+      "counts": "{todo} to do · {in_progress} in progress · {in_review} in review",
+      "due": "due {date}",
+      "blocked": "blocked by {count}",
+      "mine": {
+        "requested": "you asked",
+        "led": "you lead"
+      },
+      "risk": {
+        "overdue": "Overdue",
+        "at_risk": "At risk"
+      },
+      "nudge": "Nudge",
+      "nudged": "Nudged",
+      "errors": {
+        "generic": "Could not nudge.",
+        "forbidden": "You may not nudge this task.",
+        "nudge_already_sent": "Already nudged today.",
+        "nudge_nobody": "Nobody else is assigned.",
+        "nudge_task_closed": "This task is closed.",
+        "task_not_found": "Task not found."
       }
     }
   }

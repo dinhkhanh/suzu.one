@@ -303,6 +303,7 @@ const updateTaskPipeline = createAction({
     stateId: z.uuid().optional(),
     assigneePersonId: patchable(z.uuid()),
     requesterPersonId: patchable(z.uuid()),
+    reviewerPersonId: patchable(z.uuid()),
     priority: patchable(z.coerce.number().int().min(1).max(4)),
     startDate: patchable(isoDate),
     dueDate: patchable(isoDate),

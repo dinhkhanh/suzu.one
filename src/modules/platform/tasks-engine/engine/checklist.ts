@@ -1,14 +1,22 @@
 // Checklists: which template applies, which tasks it becomes, and how far along they are. Pure.
 import { addDays, type IsoDate } from "@/lib/dates";
 
+/** The rules a checklist offers. Work templates add "role:<key>", which no checklist form shows. */
 export const ASSIGNEE_RULES = ["subject", "line_manager", "person", "permission"] as const;
-export type AssigneeRule = { rule: "subject" | "line_manager" } | { rule: "person"; personId: string | null } | { rule: "permission"; permission: string };
+export type AssigneeRule = { rule: "subject" | "line_manager" } | { rule: "person"; personId: string | null } | { rule: "permission"; permission: string } | { rule: "role"; roleKey: string };
 
-/** Stored as text: "subject" | "line_manager" | "person" | "permission:<permission>". */
+/** Templates whose purpose starts with "work_" belong to work management and its own screens and rules; the checklist screens leave them alone. */
+export const isChecklistPurpose = (purpose: string): boolean => !purpose.startsWith("work_");
+
+export const ROLE_KEY = /^[a-z][a-z0-9_]{1,30}$/;
+
+/** Stored as text: "subject" | "line_manager" | "person" | "permission:<permission>" | "role:<key>". */
 export function parseAssigneeRule(stored: string, assigneePersonId: string | null): AssigneeRule | null {
   if (stored === "subject" || stored === "line_manager") return { rule: stored };
   if (stored === "person") return { rule: "person", personId: assigneePersonId };
   if (stored.startsWith("permission:") && stored.length > "permission:".length) return { rule: "permission", permission: stored.slice("permission:".length) };
+  // A role in a project ("designer", "account"): who plays it is said when the template is used.
+  if (stored.startsWith("role:") && ROLE_KEY.test(stored.slice("role:".length))) return { rule: "role", roleKey: stored.slice("role:".length) };
   return null;
 }
 

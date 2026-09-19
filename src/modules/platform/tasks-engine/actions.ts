@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
-import { ASSIGNEE_RULES } from "./engine/checklist";
+import { ASSIGNEE_RULES, isChecklistPurpose } from "./engine/checklist";
 import { canManageTask, canManageTemplates, canMoveTask, movesThroughEngine } from "./policy";
 import { addTemplateItem, findTask, findTemplate, findTemplateItem, reassignTask, removeTemplateItem, saveTemplate, setTaskStatus } from "./service";
 
@@ -70,6 +70,8 @@ const templatePipeline = createAction({
     // Authority over where the template is now *and* over where it is being moved to.
     const existing = input.templateId ? await findTemplate(input.templateId) : null;
     if (input.templateId && !existing) return false;
+    // Work templates have their own keepers (team leads), not HR.
+    if (!isChecklistPurpose(input.purpose) || (existing && !isChecklistPurpose(existing.purpose))) return false;
     return (!existing || canManageTemplates(user.principal, existing)) && canManageTemplates(user.principal, { entityId: input.entityId });
   },
   run: async ({ input }) => {
@@ -98,7 +100,7 @@ const addItemPipeline = createAction({
   }),
   authorize: async (user, input) => {
     const template = await findTemplate(input.templateId);
-    return !!template && canManageTemplates(user.principal, template);
+    return !!template && isChecklistPurpose(template.purpose) && canManageTemplates(user.principal, template);
   },
   run: async ({ input }) => {
     const { templateId, rule, permission, ...rest } = input;
@@ -117,7 +119,7 @@ const removeItemPipeline = createAction({
   input: z.object({ itemId: z.uuid() }),
   authorize: async (user, input) => {
     const found = await findTemplateItem(input.itemId);
-    return !!found && canManageTemplates(user.principal, found.template);
+    return !!found && isChecklistPurpose(found.template.purpose) && canManageTemplates(user.principal, found.template);
   },
   run: async ({ input }) => {
     const item = await removeTemplateItem(input.itemId);

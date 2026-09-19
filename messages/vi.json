@@ -678,6 +678,18 @@
       "tasks_overdue": {
         "title": "Quá hạn: {count, plural, =1 {{title}} other {# công việc}}",
         "body": "{count, plural, =1 {{key} “{title}” đã đến hạn từ {dueDate} và vẫn chưa xong.} other {Bạn có # công việc đã quá hạn, lâu nhất là {key} “{title}” ({dueDate}).}} Hãy hoàn thành, hoặc dời hạn và nêu lý do."
+      },
+      "tasks_review_requested": {
+        "title": "{key}: phiên bản {version} chờ duyệt",
+        "body": "{name} đã nộp phiên bản {version} của {key} “{title}” để duyệt."
+      },
+      "tasks_review_decided": {
+        "title": "{key}: {decision, select, approved {phiên bản {version} đã được duyệt} other {phiên bản {version} cần chỉnh sửa}}",
+        "body": "{name} {decision, select, approved {đã duyệt} other {yêu cầu chỉnh sửa}} phiên bản {version} của {key} “{title}”."
+      },
+      "tasks_nudge": {
+        "title": "{name} hỏi về {key}",
+        "body": "{name} muốn biết tiến độ của {key} “{title}”{dueDate, select, none {} other { (hạn {dueDate})}}."
       }
     },
     "errors": {
@@ -1131,7 +1143,7 @@
   },
   "tasks": {
     "title": "Việc của tôi",
-    "description": "Mọi việc đang chờ bạn làm, việc quá hạn xếp trước.",
+    "description": "Mọi việc đang chờ bạn ở một nơi: sản phẩm cần duyệt, yêu cầu cần phê duyệt, công việc, nghĩa vụ tuân thủ và các bước checklist — việc quá hạn xếp trước.",
     "open": "Đang mở ({count})",
     "openEmpty": "Không có việc nào đang chờ bạn.",
     "recentlyDone": "Hoàn thành gần đây",
@@ -1158,7 +1170,21 @@
       "forbidden": "Bạn không có quyền với việc này.",
       "task_not_found": "Không tìm thấy việc này.",
       "task_assignee_not_found": "Không tìm thấy người được giao, hoặc người đó đã nghỉ việc."
-    }
+    },
+    "sections": {
+      "reviews": "Sản phẩm chờ bạn duyệt ({count})",
+      "approvals": "Yêu cầu chờ bạn phê duyệt ({count})",
+      "work": "Công việc ({count})",
+      "obligations": "Nghĩa vụ tuân thủ ({count})",
+      "checklist": "Bước checklist ({count})"
+    },
+    "reviewFrom": "phiên bản {version} từ {name}",
+    "toReview": "Cần duyệt",
+    "toApprove": "Cần phê duyệt",
+    "openApprovals": "Mở hộp phê duyệt",
+    "blocked": "bị chặn bởi {count} việc",
+    "changesRequested": "Cần chỉnh sửa",
+    "urgent": "Khẩn"
   },
   "checklists": {
     "title": "Mẫu checklist",
@@ -2638,7 +2664,8 @@
         "startDate": "Bắt đầu",
         "dueDate": "Hạn",
         "description": "Mô tả"
-      }
+      },
+      "planning": "Việc lặp lại và mẫu ({count} đang chạy)"
     },
     "clients": {
       "title": "Khách hàng và nhãn hàng",
@@ -2724,7 +2751,8 @@
         "collaborators": "Người cùng làm",
         "parent": "Việc cha",
         "checklist": "Checklist",
-        "links": "Liên kết"
+        "links": "Liên kết",
+        "reviewer": "Người duyệt"
       },
       "descriptionPlaceholder": "Brief, tài liệu tham khảo, thế nào là hoàn thành…",
       "checklist": "Checklist",
@@ -2766,7 +2794,11 @@
         "commented": "đã bình luận",
         "comment_deleted": "đã xóa một bình luận",
         "attachment_added": "đã đính kèm {name}",
-        "attachment_removed": "đã gỡ tệp {name}"
+        "attachment_removed": "đã gỡ tệp {name}",
+        "review_submitted": "đã nộp phiên bản {version} để duyệt: {name}",
+        "review_approved": "đã duyệt phiên bản {version}",
+        "review_changes_requested": "yêu cầu chỉnh sửa phiên bản {version}",
+        "nudged": "đã hỏi tiến độ"
       }
     },
     "palette": {
@@ -2886,6 +2918,202 @@
         "file_not_uploaded": "Tệp chưa được tải lên. Hãy thử lại.",
         "file_content_mismatch": "Nội dung tệp không khớp với loại tệp.",
         "file_not_found": "Không tìm thấy tệp."
+      }
+    },
+    "review": {
+      "title": "Duyệt sản phẩm",
+      "status": {
+        "none": "Chưa duyệt",
+        "submitted": "Chờ duyệt",
+        "approved": "Đã duyệt",
+        "changes_requested": "Cần chỉnh sửa"
+      },
+      "rounds": "{count} vòng chỉnh sửa",
+      "reviewer": "Người duyệt",
+      "reviewerDefault": "Trưởng dự án (mặc định)",
+      "decideTitle": "Phiên bản {version} đang chờ bạn quyết định",
+      "comment": "Nhận xét",
+      "commentPlaceholder": "Điểm tốt, điểm cần sửa (bắt buộc khi yêu cầu chỉnh sửa)",
+      "approve": "Duyệt",
+      "requestChanges": "Yêu cầu chỉnh sửa",
+      "submitTitle": "Nộp phiên bản {version} để duyệt",
+      "submitAgainTitle": "Thay phiên bản đang chờ bằng phiên bản {version}",
+      "source": "Sản phẩm",
+      "sourceFile": "Tệp",
+      "sourceLink": "Đường dẫn",
+      "noFiles": "Hãy đính kèm tệp vào công việc trước.",
+      "note": "Ghi chú",
+      "notePlaceholder": "Ghi chú cho người duyệt (không bắt buộc)",
+      "submit": "Nộp",
+      "decision": {
+        "pending": "Đang chờ",
+        "approved": "Đã duyệt",
+        "changes_requested": "Cần chỉnh sửa",
+        "superseded": "Đã thay thế"
+      },
+      "submittedBy": "{name} · {when}",
+      "decidedBy": "{name} quyết định · {when}",
+      "errors": {
+        "generic": "Không thực hiện được.",
+        "forbidden": "Bạn không có quyền làm việc này.",
+        "invalid": "Kiểm tra đường dẫn (chỉ https) hoặc chọn một tệp.",
+        "task_not_found": "Không tìm thấy công việc.",
+        "file_not_found": "Tệp này không còn trên công việc.",
+        "review_no_reviewer": "Chưa có ai duyệt được: hãy chọn người duyệt hoặc trưởng dự án khác bạn.",
+        "review_not_pending": "Không có phiên bản nào đang chờ duyệt.",
+        "review_own_work": "Bạn không thể tự duyệt sản phẩm của mình.",
+        "review_comment_required": "Hãy nói rõ cần sửa gì.",
+        "review_task_closed": "Công việc này đã bị hủy.",
+        "person_not_found": "Không tìm thấy người này hoặc họ đã nghỉ việc."
+      }
+    },
+    "templates": {
+      "title": "Mẫu công việc",
+      "description": "Cây công việc với số ngày tính từ ngày bắt đầu hoặc ngày kết thúc và vai trò cho từng bước. Khi dùng mẫu, bạn chọn ai đảm nhận từng vai trò.",
+      "newProject": "Tạo dự án từ mẫu",
+      "newTemplate": "Mẫu mới",
+      "library": "Thư viện mẫu ({count})",
+      "empty": "Chưa có mẫu nào. Hãy chạy seed hoặc tạo mẫu đầu tiên bên dưới.",
+      "name": "Tên mẫu",
+      "purpose": "Loại",
+      "purposes": {
+        "work_project": "Mẫu dự án",
+        "work_task": "Mẫu công việc"
+      },
+      "owner": "Thuộc về",
+      "shared": "Dùng chung cho mọi nhóm",
+      "descriptionField": "Dùng để làm gì",
+      "create": "Tạo mẫu",
+      "inactive": "Ngừng dùng",
+      "retire": "Ngừng dùng",
+      "restore": "Dùng lại",
+      "noItems": "Chưa có bước nào.",
+      "itemTitle": "Bước",
+      "parent": "Thuộc bước",
+      "topLevel": "Cấp cao nhất",
+      "role": "Vai trò (vd. designer)",
+      "offset": "{days, plural, =0 {ngày 0} other {ngày {days}}}",
+      "offsetField": "Số ngày tính từ ngày mốc",
+      "hours": "{hours} giờ",
+      "estimate": "Số giờ",
+      "addItem": "Thêm bước",
+      "removeItem": "Xóa {title}",
+      "team": "Nhóm",
+      "template": "Mẫu",
+      "projectName": "Tên dự án",
+      "anchorMode": "Cách tính ngày",
+      "anchor": {
+        "start": "Tính tới từ ngày bắt đầu",
+        "end": "Tính lùi từ ngày kết thúc"
+      },
+      "anchorDate": "Ngày",
+      "whoPlays": "Ai đảm nhận từng vai trò",
+      "unassigned": "Chưa có ai",
+      "createProject": "Tạo dự án",
+      "addTasks": "Thêm công việc",
+      "addToProject": "Thêm công việc từ mẫu",
+      "made": "Đã thêm {count} công việc.",
+      "nothingToUse": "Chưa có mẫu nào để dùng.",
+      "errors": {
+        "generic": "Không thực hiện được.",
+        "forbidden": "Bạn không có quyền làm việc này.",
+        "invalid": "Kiểm tra lại các trường.",
+        "template_not_found": "Không tìm thấy mẫu hoặc mẫu đã ngừng dùng.",
+        "template_other_team": "Mẫu này thuộc nhóm khác.",
+        "template_empty": "Mẫu này chưa có bước nào.",
+        "template_role_invalid": "Vai trò là một khóa ngắn: chữ cái, chữ số và dấu _.",
+        "template_parent_invalid": "Bước cha không thuộc mẫu này.",
+        "template_too_deep": "Mẫu chỉ có hai cấp: công việc và công việc con.",
+        "person_not_found": "Không tìm thấy một người đã chọn hoặc họ đã nghỉ việc.",
+        "team_not_found": "Không tìm thấy nhóm.",
+        "project_not_found": "Không tìm thấy dự án.",
+        "project_archived": "Dự án này đã lưu trữ.",
+        "state_not_found": "Nhóm chưa có trạng thái cho việc mới."
+      }
+    },
+    "recurrence": {
+      "heading": "Việc lặp lại",
+      "empty": "Dự án này chưa có việc lặp lại.",
+      "title": "Tên công việc",
+      "assignee": "Người phụ trách",
+      "unassigned": "Chưa giao",
+      "every": "Mỗi",
+      "interval": "Chu kỳ",
+      "frequency": "Tần suất",
+      "freq": {
+        "daily": "ngày",
+        "weekly": "tuần",
+        "monthly": "tháng"
+      },
+      "weekdays": {
+        "1": "T2",
+        "2": "T3",
+        "3": "T4",
+        "4": "T5",
+        "5": "T6",
+        "6": "T7",
+        "7": "CN"
+      },
+      "monthDay": "Ngày trong tháng",
+      "onDay": "vào ngày {day}",
+      "lastDay": "vào ngày cuối tháng",
+      "from": "Từ",
+      "until": "Đến",
+      "lead": "Tạo trước (ngày)",
+      "create": "Thêm việc lặp lại",
+      "active": "Đang chạy",
+      "paused": "Tạm dừng",
+      "ended": "Đã kết thúc",
+      "pause": "Tạm dừng",
+      "resume": "Chạy tiếp",
+      "end": "Kết thúc",
+      "madeSoFar": "đã tạo {count}",
+      "next": "lần tới {date}",
+      "rule": {
+        "daily": "{interval, plural, =1 {mỗi ngày} other {mỗi # ngày}}",
+        "weekly": "{interval, plural, =1 {mỗi tuần} other {mỗi # tuần}} vào {days}",
+        "monthly": "{interval, plural, =1 {mỗi tháng} other {mỗi # tháng}} vào ngày {day}",
+        "monthlyLast": "{interval, plural, =1 {mỗi tháng} other {mỗi # tháng}} vào ngày cuối tháng"
+      },
+      "errors": {
+        "generic": "Không thực hiện được.",
+        "forbidden": "Bạn không có quyền làm việc này.",
+        "invalid": "Kiểm tra lại: chọn ít nhất một ngày trong tuần.",
+        "recurrence_rule_invalid": "Quy tắc lặp không hợp lệ.",
+        "recurrence_dates_invalid": "Ngày kết thúc trước ngày bắt đầu.",
+        "recurrence_not_found": "Không tìm thấy.",
+        "project_not_found": "Không tìm thấy dự án.",
+        "project_archived": "Dự án này đã lưu trữ."
+      }
+    },
+    "leader": {
+      "title": "Góc nhìn trưởng nhóm",
+      "description": "Việc người khác đang làm cho bạn: việc bạn giao và việc của các nhóm, dự án bạn phụ trách.",
+      "empty": "Hiện không ai đang làm việc gì cho bạn.",
+      "open": "{count} việc đang mở",
+      "overdue": "{count} quá hạn",
+      "atRisk": "{count} có rủi ro",
+      "unassigned": "Chưa giao",
+      "counts": "{todo} chưa làm · {in_progress} đang làm · {in_review} chờ duyệt",
+      "due": "hạn {date}",
+      "blocked": "bị chặn bởi {count} việc",
+      "mine": {
+        "requested": "bạn giao",
+        "led": "bạn phụ trách"
+      },
+      "risk": {
+        "overdue": "Quá hạn",
+        "at_risk": "Có rủi ro"
+      },
+      "nudge": "Nhắc",
+      "nudged": "Đã nhắc",
+      "errors": {
+        "generic": "Không nhắc được.",
+        "forbidden": "Bạn không có quyền nhắc việc này.",
+        "nudge_already_sent": "Hôm nay đã nhắc rồi.",
+        "nudge_nobody": "Chưa có ai khác phụ trách.",
+        "nudge_task_closed": "Việc này đã đóng.",
+        "task_not_found": "Không tìm thấy công việc."
       }
     }
   }

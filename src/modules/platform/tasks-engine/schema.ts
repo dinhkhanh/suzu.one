@@ -23,6 +23,9 @@ export const taskTemplate = pgTable(
     departmentId: uuid("department_id").references(() => department.id),
     // A core-hr position. No foreign key: the platform does not depend on feature modules' tables.
     positionId: uuid("position_id"),
+    // The record of a feature module that owns the template (a work team); null = shared. No foreign key, as above.
+    ownerId: uuid("owner_id"),
+    description: text("description"),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -39,12 +42,17 @@ export const taskTemplateItem = pgTable(
       .references(() => taskTemplate.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     description: text("description"),
-    // Who gets the task: "subject" | "line_manager" | "person" | "permission:<permission>".
+    // Who gets the task: "subject" | "line_manager" | "person" | "permission:<permission>" | "role:<key>" (work templates).
     assigneeRule: text("assignee_rule").notNull(),
     assigneePersonId: uuid("assignee_person_id").references(() => person.id),
     // Days from the anchor date (first day, last day…); negative = before it.
     dueOffsetDays: integer("due_offset_days").notNull().default(0),
     sortOrder: integer("sort_order").notNull().default(0),
+    // Project templates are trees (FR-WRK-10): an item under another becomes a sub-task.
+    parentItemId: uuid("parent_item_id").references((): AnyPgColumn => taskTemplateItem.id, { onDelete: "cascade" }),
+    // For the rule "role:<key>": who plays the role is said when the template is used.
+    roleKey: text("role_key"),
+    estimateMinutes: integer("estimate_minutes"),
   },
   (t) => [index("task_template_item_template_idx").on(t.templateId)],
 ).enableRLS();

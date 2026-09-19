@@ -79,8 +79,10 @@ async function checkProjectInput(tx: Executor, input: ProjectInput): Promise<voi
 }
 
 /** The creator and the named lead become members, so a private project is never out of everyone's reach. */
-export async function createProject(input: ProjectInput, actorPersonId: string): Promise<ProjectRow> {
-  return db().transaction(async (tx) => {
+export const createProject = (input: ProjectInput, actorPersonId: string): Promise<ProjectRow> => db().transaction((tx) => createProjectIn(tx, input, actorPersonId));
+
+export async function createProjectIn(tx: Executor, input: ProjectInput, actorPersonId: string): Promise<ProjectRow> {
+  {
     const [team] = await tx.select().from(schema.workTeam).where(eq(schema.workTeam.id, input.teamId)).limit(1);
     if (!team || !team.isActive) throw new ActionError("team_not_found");
     await checkProjectInput(tx, input);
@@ -89,7 +91,7 @@ export async function createProject(input: ProjectInput, actorPersonId: string):
     const members = new Map<string, TeamRole>([[actorPersonId, "member"], [leadPersonId, "lead"]]);
     await tx.insert(schema.workProjectMember).values([...members].map(([personId, role]) => ({ projectId: project.id, personId, role })));
     return project;
-  });
+  }
 }
 
 /** The team stays: task numbers and workflow states belong to it. */

@@ -47,6 +47,10 @@ export const KINDS = {
   "tasks.status_changed": "tasks",
   "tasks.due_soon": "tasks",
   "tasks.overdue": "tasks",
+  // The review step and the leader's nudge (FR-WRK-07, 08).
+  "tasks.review_requested": "tasks",
+  "tasks.review_decided": "tasks",
+  "tasks.nudge": "tasks",
   "attendance.month_ready": "attendance",
   "attendance.month_waiting": "attendance",
   "attendance.month_reopened": "attendance",

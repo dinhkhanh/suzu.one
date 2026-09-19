@@ -10,13 +10,16 @@ import { countInbox } from "@/modules/platform/approvals/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { countUnread } from "@/modules/platform/notifications/service";
 import { countMyOpenTasks } from "@/modules/platform/tasks-engine/service";
+import { countReviewsWaitingFor } from "@/modules/work/service";
 import { CommandPalette } from "@/modules/work/ui/command-palette";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
   const t = await getTranslations();
   const nav = navFor(user.principal, { people: await peopleModuleOpen(user) });
-  const [unread, waiting, tasks] = await Promise.all([countUnread(user.person.id), countInbox(user.person.id), countMyOpenTasks(user.person.id)]);
+  const [unread, waiting, openTasks, reviews] = await Promise.all([countUnread(user.person.id), countInbox(user.person.id), countMyOpenTasks(user.person.id), countReviewsWaitingFor(user.person.id)]);
+  // "My work" is one inbox (FR-WRK-06): tasks of every kind, deliverables to review, requests to approve.
+  const tasks = openTasks + reviews + waiting;
 
   const renderItem = (item: NavItem) =>
     item.href ? (

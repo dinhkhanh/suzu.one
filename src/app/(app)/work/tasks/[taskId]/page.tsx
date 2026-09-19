@@ -4,9 +4,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
-import { canDeleteTask, canEditTask, canModerateTask, followersOf, followStateOf, getTaskDetail, listActivity, listComments, listMentionable, listTaskFiles, listAssignable, listClients, listLabels, listProjectTasks, listStates, listTeamBacklog, loadViewer, visibleProjects } from "@/modules/work/service";
+import { canDecideReview, canDeleteTask, canEditTask, canModerateTask, canSubmitDeliverable, listDeliverables, followersOf, followStateOf, getTaskDetail, listActivity, listComments, listMentionable, listTaskFiles, listAssignable, listClients, listLabels, listProjectTasks, listStates, listTeamBacklog, loadViewer, visibleProjects } from "@/modules/work/service";
 import { TaskDetailView } from "@/modules/work/ui/task-detail";
 import { FollowButton, TaskDiscussion, TaskFiles } from "@/modules/work/ui/task-discussion";
+import { TaskReview } from "@/modules/work/ui/task-review";
 
 export const metadata: Metadata = { title: "Task" };
 
@@ -22,7 +23,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
   const canEdit = canEditTask(viewer, detail.facts);
 
   const moderate = canModerateTask(viewer, detail.facts);
-  const [states, labels, clients, assignable, projects, siblings, activity, comments, files, mentionable] = await Promise.all([
+  const [states, labels, clients, assignable, projects, siblings, activity, comments, files, mentionable, deliverables] = await Promise.all([
     listStates([team.id]),
     listLabels([team.id]),
     listClients({ activeOnly: true }),
@@ -33,6 +34,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
     listComments(task.id),
     listTaskFiles(task.id),
     listMentionable(detail),
+    listDeliverables(task.id),
   ]);
   const linkedIds = new Set([task.id, ...detail.linked.map((link) => link.id)]);
   const people = [...assignable];
@@ -107,6 +109,18 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
           files={files.map((file) => ({ id: file.id, fileName: file.fileName, sizeBytes: file.sizeBytes, uploadedByName: file.uploadedByName, createdAt: file.createdAt.toISOString(), canRemove: moderate || (canEdit && file.uploadedByPersonId === user.person.id) }))}
           canAdd={canEdit}
           accept={ACCEPT_ATTRIBUTE}
+        />
+        <TaskReview
+          taskId={task.id}
+          status={work.reviewStatus}
+          rounds={work.revisionRounds}
+          reviewerPersonId={work.reviewerPersonId}
+          deliverables={deliverables.map(({ submittedAt, decidedAt, ...item }) => ({ ...item, submittedAt: submittedAt.toISOString(), decidedAt: decidedAt?.toISOString() ?? null }))}
+          files={files.map(({ id, fileName }) => ({ id, fileName }))}
+          people={people}
+          canSubmit={canSubmitDeliverable(viewer, detail.facts) && task.status !== "cancelled"}
+          canDecide={canDecideReview(viewer, detail.facts, { reviewerPersonId: work.reviewerPersonId, submittedByPersonId: deliverables.find((item) => item.decision === "pending")?.submittedByPersonId ?? null })}
+          canEdit={canEdit}
         />
         <FollowButton taskId={task.id} state={followStateOf(detail, user.person.id)} followers={followersOf(detail).length} />
         <TaskDiscussion

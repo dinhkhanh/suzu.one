@@ -11,7 +11,7 @@ import { notify } from "../notifications/service";
 import type { Principal } from "../rbac/policy";
 import type { Permission } from "../rbac/roles";
 import { listPeopleHolding } from "../rbac/service";
-import { type AssigneeRule, parseAssigneeRule, pickTemplate, planChecklist } from "./engine/checklist";
+import { type AssigneeRule, isChecklistPurpose, parseAssigneeRule, pickTemplate, planChecklist } from "./engine/checklist";
 import { canManageTask, canMoveTask, movesThroughEngine } from "./policy";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -203,12 +203,13 @@ export type TemplateView = TaskTemplateRow & { items: TaskTemplateItemRow[] };
 export type TemplateInput = { purpose: string; name: string; entityId: string | null; departmentId: string | null; positionId: string | null; isActive: boolean };
 export type TemplateItemInput = { title: string; description: string | null; assigneeRule: string; assigneePersonId: string | null; dueOffsetDays: number; sortOrder: number };
 
+/** Checklist templates; work management lists its own. */
 export async function listTemplates(): Promise<TemplateView[]> {
   const [templates, items] = await Promise.all([
     db().select().from(schema.taskTemplate).orderBy(asc(schema.taskTemplate.purpose), asc(schema.taskTemplate.name)),
     db().select().from(schema.taskTemplateItem).orderBy(asc(schema.taskTemplateItem.sortOrder), asc(schema.taskTemplateItem.dueOffsetDays)),
   ]);
-  return templates.map((template) => ({ ...template, items: items.filter((item) => item.templateId === template.id) }));
+  return templates.filter((template) => isChecklistPurpose(template.purpose)).map((template) => ({ ...template, items: items.filter((item) => item.templateId === template.id) }));
 }
 
 export async function findTemplate(templateId: string): Promise<TaskTemplateRow | undefined> {

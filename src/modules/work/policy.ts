@@ -113,3 +113,27 @@ export function canDeleteTask(viewer: WorkViewer, task: TaskFacts): boolean {
 export function canModerateTask(viewer: WorkViewer, task: TaskFacts): boolean {
   return task.project ? canManageProject(viewer, task.project) : canAdminTeam(viewer, task.team);
 }
+
+/** Handing in a deliverable for review (FR-WRK-08): the people doing the work. */
+export function canSubmitDeliverable(viewer: WorkViewer, task: TaskFacts): boolean {
+  const self = viewer.principal.personId;
+  return !!self && (task.assigneePersonId === self || task.peopleIds.includes(self));
+}
+
+/** Deciding a review: the named reviewer or whoever runs the project — never the person who handed the work in. */
+export function canDecideReview(viewer: WorkViewer, task: TaskFacts, review: { reviewerPersonId: string | null; submittedByPersonId: string | null }): boolean {
+  const self = viewer.principal.personId;
+  if (!self || self === review.submittedByPersonId) return false;
+  return review.reviewerPersonId === self || canModerateTask(viewer, task);
+}
+
+/** Asking "how is this going?" (FR-WRK-07): whoever asked for the task, and whoever runs the project or team. */
+export function canNudgeTask(viewer: WorkViewer, task: TaskFacts): boolean {
+  const self = viewer.principal.personId;
+  return (!!self && (task.requesterPersonId === self || task.createdByPersonId === self)) || canModerateTask(viewer, task);
+}
+
+/** A team's templates are kept by whoever runs the team; shared ones (no owner) by `work:manage` over the whole group. */
+export function canManageTemplate(viewer: WorkViewer, ownerTeam: TeamFacts | null): boolean {
+  return ownerTeam ? canAdminTeam(viewer, ownerTeam) : canManageWorkspace(viewer, { entityId: null, departmentId: null });
+}

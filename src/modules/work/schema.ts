@@ -5,6 +5,7 @@
 import { sql } from "drizzle-orm";
 import { type AnyPgColumn, boolean, date, doublePrecision, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { department, entity } from "../platform/org/schema";
+import { storedFile } from "../platform/files/schema";
 import { person } from "../platform/people/schema";
 import { task } from "../platform/tasks-engine/schema";
 
@@ -310,4 +311,67 @@ export const workSavedView = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("work_saved_view_project_idx").on(t.projectId)],
+).enableRLS();
+
+// A deliverable handed in for review (FR-WRK-08): every hand-in is a new version and stays on the
+// record with its decision, so the task page shows the whole back-and-forth and counts the rounds.
+export const workDeliverable = pgTable(
+  "work_deliverable",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    // file | link
+    kind: text("kind").notNull(),
+    fileId: uuid("file_id").references(() => storedFile.id),
+    url: text("url"),
+    note: text("note"),
+    submittedByPersonId: uuid("submitted_by_person_id")
+      .notNull()
+      .references(() => person.id),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+    // pending | approved | changes_requested
+    decision: text("decision").notNull().default("pending"),
+    decidedByPersonId: uuid("decided_by_person_id").references(() => person.id),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decisionComment: text("decision_comment"),
+  },
+  (t) => [unique("work_deliverable_version_unique").on(t.taskId, t.version)],
+).enableRLS();
+
+/** engine/recurrence.ts reads this. */
+export type RecurrenceRuleJson =
+  | { freq: "daily"; interval: number }
+  | { freq: "weekly"; interval: number; weekdays: number[] }
+  | { freq: "monthly"; interval: number; monthDay: number | "last" };
+
+/** What each occurrence starts with; people and labels that no longer fit are dropped when it is made. */
+export type RecurrenceDraft = { description?: string | null; assigneePersonId?: string | null; priority?: number | null; estimateMinutes?: number | null; clientId?: string | null; channel?: string | null; contentFormat?: string | null; labelIds?: string[] };
+
+// A task that comes back (FR-WRK-11): the daily job makes each occurrence once, `leadDays` before
+// its date (work_task's unique recurrence + occurrence date is the guard).
+export const workRecurrence = pgTable(
+  "work_recurrence",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => workTeam.id),
+    projectId: uuid("project_id").references(() => workProject.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    draft: jsonb("draft").$type<RecurrenceDraft>().notNull().default({}),
+    rule: jsonb("rule").$type<RecurrenceRuleJson>().notNull(),
+    startDate: date("start_date").notNull(),
+    endDate: date("end_date"),
+    // The occurrence's date is the task's due date; the task appears this many days before it.
+    leadDays: integer("lead_days").notNull().default(7),
+    // Occurrences up to and including this date have been made.
+    generatedThrough: date("generated_through"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [index("work_recurrence_project_idx").on(t.projectId)],
 ).enableRLS();

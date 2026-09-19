@@ -153,6 +153,9 @@ export type NewWorkTask = {
   parentTaskId?: string | null;
   labelIds?: string[];
   collaboratorIds?: string[];
+  /** Made from a template item or by a recurrence. */
+  templateItemId?: string | null;
+  recurrence?: { id: string; occurrenceDate: string } | null;
 };
 
 export async function createWorkTaskIn(tx: Executor, input: NewWorkTask, actorPersonId: string | null, options: { notify?: boolean } = {}): Promise<{ task: TaskRow; work: WorkTaskRow; key: string }> {
@@ -188,6 +191,7 @@ export async function createWorkTaskIn(tx: Executor, input: NewWorkTask, actorPe
       entityId: project?.entityId ?? team.entityId,
       parentTaskId: parent?.task.id ?? null,
       context: project ? { type: PROJECT_CONTEXT, id: project.id } : null,
+      templateItemId: input.templateItemId ?? null,
     },
     actorPersonId,
     { notify: false },
@@ -197,7 +201,7 @@ export async function createWorkTaskIn(tx: Executor, input: NewWorkTask, actorPe
 
   const [work] = await tx
     .insert(schema.workTask)
-    .values({ taskId: task.id, teamId: team.id, projectId: project?.id ?? null, number: team.taskSeq, stateId: state.id, clientId: clientId ?? project?.clientId ?? null, channel: input.channel ?? null, contentFormat: input.contentFormat ?? null, boardRank: await nextRank(tx, state.id) })
+    .values({ taskId: task.id, teamId: team.id, projectId: project?.id ?? null, number: team.taskSeq, stateId: state.id, clientId: clientId ?? project?.clientId ?? null, channel: input.channel ?? null, contentFormat: input.contentFormat ?? null, boardRank: await nextRank(tx, state.id), recurrenceId: input.recurrence?.id ?? null, occurrenceDate: input.recurrence?.occurrenceDate ?? null })
     .returning();
   if (labels.length) await tx.insert(schema.workTaskLabel).values(labels.map((label) => ({ taskId: task.id, labelId: label.id })));
   const collaborators = [...new Set(input.collaboratorIds ?? [])].filter((id) => id !== input.assigneePersonId);
@@ -223,6 +227,7 @@ export type WorkTaskPatch = Partial<{
   stateId: string;
   assigneePersonId: string | null;
   requesterPersonId: string | null;
+  reviewerPersonId: string | null;
   priority: number | null;
   startDate: string | null;
   dueDate: string | null;
@@ -242,8 +247,11 @@ export type WorkTaskPatch = Partial<{
 
 const changed = <T>(next: T | undefined, current: T): next is T => next !== undefined && next !== current;
 
-export async function updateWorkTask(taskId: string, patch: WorkTaskPatch, actorPersonId: string): Promise<{ before: LoadedTask; changes: ActivityEntry[] }> {
-  return db().transaction(async (tx) => {
+export const updateWorkTask = (taskId: string, patch: WorkTaskPatch, actorPersonId: string) => db().transaction((tx) => updateWorkTaskIn(tx, taskId, patch, actorPersonId));
+
+/** Inside someone else's transaction: the review step moves a task as part of handing in a deliverable. */
+export async function updateWorkTaskIn(tx: Executor, taskId: string, patch: WorkTaskPatch, actorPersonId: string, options: { /** The caller sends its own, more specific notice about the move. */ quiet?: boolean } = {}): Promise<{ before: LoadedTask; changes: ActivityEntry[] }> {
+  {
     const before = await loadTask(taskId, tx);
     if (!before) throw new ActionError("task_not_found");
     const { task, work, team } = before;
@@ -284,6 +292,11 @@ export async function updateWorkTask(taskId: string, patch: WorkTaskPatch, actor
       const [from, to] = [await personNamed(tx, task.requesterPersonId), await personNamed(tx, patch.requesterPersonId)];
       taskSet.requesterPersonId = patch.requesterPersonId;
       plain("requester", from, to);
+    }
+    if (changed(patch.reviewerPersonId, work.reviewerPersonId)) {
+      const [from, to] = [await personNamed(tx, work.reviewerPersonId), await personNamed(tx, patch.reviewerPersonId, { mustBeActive: true })];
+      workSet.reviewerPersonId = patch.reviewerPersonId;
+      plain("reviewer", from, to);
     }
     if (changed(patch.clientId, work.clientId)) {
       const [from, to] = [await clientNamed(tx, work.clientId), await clientNamed(tx, patch.clientId)];
@@ -372,13 +385,13 @@ export async function updateWorkTask(taskId: string, patch: WorkTaskPatch, actor
     // A move to another state reaches everyone following the task (FR-WRK-17) — except whoever was
     // just handed it: one notice per event per person.
     const stateChange = changes.find((change) => change.field === "state");
-    if (stateChange) {
+    if (stateChange && !options.quiet) {
       const after = await loadTask(taskId, tx);
       const [actor] = actorPersonId ? await tx.select({ name: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, actorPersonId)).limit(1) : [];
       if (after) await notifyFollowers(tx, after, actorPersonId, "tasks.status_changed", { name: actor?.name ?? "", state: (stateChange.to as { name: string }).name }, recipients);
     }
     return { before, changes };
-  });
+  }
 }
 
 /** Soft delete, sub-tasks included. */

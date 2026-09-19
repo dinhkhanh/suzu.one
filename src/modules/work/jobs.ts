@@ -6,6 +6,7 @@ import { db, schema } from "@/lib/db";
 import type { JobDefinition } from "../platform/jobs/service";
 import { notify } from "../platform/notifications/service";
 import { type ReminderKind, reminderFor } from "./engine/reminders";
+import { generateOccurrences } from "./recurrences";
 import { taskKey, WORK_KIND } from "./tasks";
 
 /**
@@ -43,3 +44,6 @@ export async function sendWorkReminders(today: IsoDate): Promise<{ dueSoon: numb
 }
 
 export const workRemindersJob: JobDefinition = { name: "work-reminders", run: ({ today }) => sendWorkReminders(today) };
+
+/** Recurring tasks (FR-WRK-11): at midnight, so the morning's reminders and digest already know them. */
+export const workRecurringJob: JobDefinition = { name: "work-recurring", run: ({ today }) => generateOccurrences(today) };
