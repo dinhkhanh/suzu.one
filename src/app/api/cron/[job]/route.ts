@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { env } from "@/lib/env";
 import { timesheetMonthReadyJob, timesheetRecomputeJob } from "@/modules/attendance/recompute";
 import { fieldKeysRewrapJob, hrAlertsJob, peopleRollOverJob } from "@/modules/core-hr/jobs";
+import { kbAckRemindersJob } from "@/modules/kb/jobs";
 import { filesCleanupJob } from "@/modules/platform/files/jobs";
 import { leaveAccrualJob } from "@/modules/leave/jobs";
 import { opsBackfillJob, opsRemindersJob, opsSchedulerJob } from "@/modules/ops/jobs";
@@ -16,7 +17,7 @@ const SCHEDULES: Record<string, JobDefinition[]> = {
   // last: it closes yesterday with the leave and the employment facts of today.
   midnight: [peopleRollOverJob, leaveAccrualJob, timesheetRecomputeJob, workRecurringJob, opsSchedulerJob],
   // Alerts (and, on the 1st, "your month is ready to confirm") first, so the digest that follows carries them.
-  morning: [hrAlertsJob, timesheetMonthReadyJob, opsSchedulerJob, opsRemindersJob, workRemindersJob, notificationsDailyJob, filesCleanupJob],
+  morning: [hrAlertsJob, timesheetMonthReadyJob, opsSchedulerJob, opsRemindersJob, workRemindersJob, kbAckRemindersJob, notificationsDailyJob, filesCleanupJob],
 };
 
 // Run by hand only: /api/cron/<job name>.

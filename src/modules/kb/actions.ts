@@ -3,10 +3,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
 import type { CurrentUser } from "@/modules/platform/auth/session";
+import { toCsv } from "@/modules/platform/export/csv";
+import { acknowledgePage, getAckReport, remindPendingNow, setAckRequirement } from "./acknowledgements";
 import { ACCESS_LEVELS, parseSubjectKey, SPACE_KEY, SPACE_KINDS } from "./enums";
 import { beginPageUpload, completePageUpload, findPageFile, removePageFile } from "./files";
 import { createPage, deletePage, type LoadedPage, loadPage, movePage, type PageRow, publishPage, restoreVersion, saveDraft, setPageAccess, setPageArchived, setPageMeta, unpublishPage } from "./pages";
-import { canCreatePage, canEditPage, canManageSpace, canOrganisePages, canPublishDirectly, kbViewerOf } from "./policy";
+import { canCreatePage, canEditPage, canManageSpace, canOrganisePages, canPublishDirectly, canViewPage, kbViewerOf } from "./policy";
 import { decidePageReview, getPublishReview, submitPageForReview, withdrawPageReview } from "./publishing";
 import { createSpace, loadSpace, setSpaceAccess, setSpaceArchived, type SpaceRow, updateSpace } from "./spaces";
 
@@ -425,4 +427,89 @@ const removeFilePipeline = createAction({
 });
 export async function removePageFileAction(input: unknown) {
   return removeFilePipeline(input);
+}
+
+// ── Policy acknowledgement (FR-KB-05) ───────────────────────────────────────────────────────
+
+const managesPageSpace = async (user: CurrentUser, pageId: string) => {
+  const loaded = await pageFor(user, pageId);
+  return !!loaded && !loaded.page.deletedAt && canManageSpace(user.principal, loaded.space);
+};
+
+const ackSettingsPipeline = createAction({
+  name: "kb.page.ack_settings",
+  input: z.object({ pageId: z.uuid(), required: checkbox, dueDays: z.coerce.number().int().min(1).max(365).default(14), audience: z.array(z.string().max(80).refine((key) => parseSubjectKey(key) !== null)).max(100).default([]) }),
+  // Who must read what is the space's managers' call, not an editor's.
+  authorize: (user, input) => managesPageSpace(user, input.pageId),
+  run: async ({ user, input }) => {
+    const loaded = await must(user, input.pageId);
+    const { before, after, audienceBefore, audience, notified } = await setAckRequirement(input.pageId, input);
+    refresh(loaded.space.key, after.id);
+    return { data: { id: after.id, notified }, audit: { resource: auditPage(loaded), summary: `${after.title}: must read ${after.ackRequired ? "on" : "off"}`, before: { ackRequired: before.ackRequired, ackDueDays: before.ackDueDays, audience: audienceBefore }, after: { ackRequired: after.ackRequired, ackDueDays: after.ackDueDays, ackVersionId: after.ackVersionId, audience, notified } } };
+  },
+});
+export async function setAckRequirementAction(input: unknown) {
+  return ackSettingsPipeline(input);
+}
+
+const acknowledgePipeline = createAction({
+  name: "kb.page.acknowledge",
+  input: z.object({ pageId: z.uuid() }),
+  // Reading comes first: someone who cannot open the page cannot confirm it. Whether they are in the audience is the use-case's question.
+  authorize: async (user, input) => {
+    const loaded = await pageFor(user, input.pageId);
+    return !!loaded && canViewPage(kbViewerOf(user), loaded.facts, loaded.pageFacts);
+  },
+  run: async ({ user, input }) => {
+    const loaded = await must(user, input.pageId);
+    const { versionId, acknowledgedAt, already } = await acknowledgePage(input.pageId, user.person.id);
+    refresh(loaded.space.key, input.pageId);
+    revalidatePath("/home");
+    return { data: { acknowledgedAt: acknowledgedAt.toISOString(), already }, audit: { resource: auditPage(loaded), summary: `${loaded.page.publishedTitle ?? loaded.page.title}: acknowledged${already ? " (again)" : ""}`, after: { versionId, personId: user.person.id, acknowledgedAt: acknowledgedAt.toISOString() } } };
+  },
+});
+export async function acknowledgePageAction(input: unknown) {
+  return acknowledgePipeline(input);
+}
+
+const remindAckPipeline = createAction({
+  name: "kb.page.ack_remind",
+  input: z.object({ pageId: z.uuid() }),
+  authorize: (user, input) => managesPageSpace(user, input.pageId),
+  run: async ({ user, input }) => {
+    const loaded = await must(user, input.pageId);
+    const { reminded, pending } = await remindPendingNow(input.pageId);
+    refresh(loaded.space.key, input.pageId);
+    return { data: { reminded, pending }, audit: { resource: auditPage(loaded), summary: `${loaded.page.title}: reminded ${reminded} of ${pending} pending`, after: { reminded, pending } } };
+  },
+});
+export async function remindAckAction(input: unknown) {
+  return remindAckPipeline(input);
+}
+
+const exportAckPipeline = createAction({
+  name: "kb.page.ack_export",
+  input: z.object({ pageId: z.uuid() }),
+  authorize: (user, input) => managesPageSpace(user, input.pageId),
+  run: async ({ user, input }) => {
+    const loaded = await must(user, input.pageId);
+    const report = await getAckReport(loaded.page);
+    const date = (value: Date | null) => (value ? value.toISOString().slice(0, 16).replace("T", " ") : "");
+    const csv = toCsv(
+      [
+        { header: "Họ tên", value: (row) => row.fullName },
+        { header: "Pháp nhân", value: (row) => row.entityName },
+        { header: "Phòng ban", value: (row) => row.departmentName },
+        { header: "Đã xác nhận (UTC)", value: (row) => date(row.acknowledgedAt) },
+        { header: "Hạn", value: (row) => row.dueOn },
+        { header: "Quá hạn", value: (row) => (row.overdue ? "x" : "") },
+        { header: "Số lần nhắc", value: (row) => row.notices },
+      ],
+      report.rows,
+    );
+    return { data: { fileName: `xac-nhan-${loaded.page.id.slice(0, 8)}.csv`, csv, rowCount: report.rows.length }, audit: { resource: auditPage(loaded), summary: `${loaded.page.title}: acknowledgement export, ${report.rows.length} rows`, after: { rows: report.rows.length, versionNo: report.versionNo } } };
+  },
+});
+export async function exportAckReportAction(input: unknown) {
+  return exportAckPipeline(input);
 }

@@ -10,3 +10,4 @@ export * from "./pages";
 export { atLeast, canCreatePage, canEditPage, canManageAnySpace, canManageSpace, canOrganisePages, canPublishDirectly, canViewPage, type KbLevel, type KbViewer, kbViewerOf, pageLevel, spaceLevel, viewerKeys } from "./policy";
 export * from "./spaces";
 export { getPublishReview, kbPublishRequest, type PublishReviewView, syncReviewState } from "./publishing";
+export * from "./acknowledgements";

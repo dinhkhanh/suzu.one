@@ -572,7 +572,8 @@
         "approvals": "Approvals",
         "tasks": "Tasks assigned to you",
         "attendance": "Attendance & timesheets",
-        "ops": "Compliance obligations"
+        "ops": "Compliance obligations",
+        "kb": "Knowledge base & policies"
       },
       "push": "Push"
     },
@@ -712,6 +713,18 @@
       "tasks_intake_submitted": {
         "title": "New request: {title}",
         "body": "{name} sent “{title}” through the form “{form}”. It is in the backlog as {key}, waiting for triage."
+      },
+      "kb_ack_requested": {
+        "title": "Read and confirm: {title}",
+        "body": "You need to read and confirm “{title}” by {dueDate}."
+      },
+      "kb_ack_reminder": {
+        "title": "{overdue, select, yes {Overdue: confirm {title}} other {Reminder: confirm {title}}}",
+        "body": "{overdue, select, yes {You have not confirmed “{title}”. It was due on {dueDate} — please read and confirm it now.} other {You have not confirmed “{title}” yet. Due: {dueDate}.}}"
+      },
+      "kb_review_due": {
+        "title": "Review due: {title}",
+        "body": "The page “{title}” you own reached its review date ({date}). Check that it is still right and set a new review date."
       }
     },
     "errors": {
@@ -4113,7 +4126,10 @@
       "file_not_found": "File not found.",
       "storage_not_configured": "File storage is not configured.",
       "kb_page_archived": "The page is archived. Restore it before submitting.",
-      "approval_no_approver": "Nobody can review this yet. Tell an administrator."
+      "approval_no_approver": "Nobody can review this yet. Tell an administrator.",
+      "kb_ack_audience_required": "Choose at least one audience.",
+      "kb_ack_not_required": "This page does not require confirmation.",
+      "kb_ack_not_in_audience": "You are not in this page's audience."
     },
     "review": {
       "title": "Publish review",
@@ -4125,6 +4141,44 @@
       "waiting": "Waiting for review.",
       "open": "Open the review request",
       "submit": "Submit for review"
+    },
+    "ack": {
+      "confirm": "I have read and understood",
+      "confirmHelp": "Read everything above, then confirm.",
+      "banner": "You need to read and confirm this page by {date}.",
+      "bannerOverdue": "You need to read and confirm this page — it was due on {date}.",
+      "done": "You confirmed version {n} on {date}.",
+      "reportLink": "See who has confirmed",
+      "settingsTitle": "Must read and confirm",
+      "settingsHelp": "People in the audience must confirm the published version. Only a revision marked “major” asks everyone to confirm again. People who join later owe it automatically.",
+      "required": "This page must be read and confirmed",
+      "dueDays": "Days to confirm",
+      "savedNotified": "Saved. {count, plural, one {# person was} other {# people were}} notified.",
+      "remindNow": "Remind everyone pending",
+      "reminded": "{count, plural, one {# person} other {# people}} reminded (at most once a day each).",
+      "export": "Download CSV",
+      "mineTitle": "My acknowledgements",
+      "mineHelp": "Policies and rules you need to read and confirm.",
+      "pending": "To confirm ({count})",
+      "nothingPending": "Nothing left to confirm.",
+      "doneTitle": "Confirmed",
+      "nothingDone": "No confirmations yet.",
+      "version": "Version",
+      "confirmedAt": "Confirmed at",
+      "superseded": "a newer version exists",
+      "dueOn": "Due {date}",
+      "overdueSince": "Overdue since {date}",
+      "confirmedOn": "Confirmed {date}",
+      "reportTitle": "Acknowledgement report",
+      "reportLine": "Version {n}: {done}/{total} confirmed ({percent}%), {overdue} overdue. Time to confirm: {days} days.",
+      "notPublishedYet": "The page is not published yet: confirmation starts when it is.",
+      "notRequired": "This page does not require confirmation.",
+      "byEntity": "By company",
+      "byDepartment": "By department",
+      "person": "Person",
+      "status": "Status",
+      "lastNotice": "Last notice (count)",
+      "myLink": "My acknowledgements"
     }
   }
 }

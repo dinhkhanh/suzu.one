@@ -20,8 +20,9 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { Grant, Principal } from "../platform/rbac/policy";
+import { acknowledgePage, getAckReport, getAckStatus, listMyAcknowledgements, listMyPendingAcks, remindPendingNow, sendAckReminders, sendReviewDueNotices, setAckRequirement } from "./acknowledgements";
 import { doc, heading, paragraph } from "./engine/build";
-import { createPage, loadPage, publishPage, saveDraft } from "./pages";
+import { createPage, loadPage, publishPage, saveDraft, setPageAccess, setPageMeta } from "./pages";
 import { type KbViewer, viewerKeys } from "./policy";
 import { decidePageReview, getPublishReview, submitPageForReview, syncReviewState, withdrawPageReview } from "./publishing";
 import { createSpace } from "./spaces";
@@ -139,5 +140,108 @@ describe("review before publishing", () => {
     expect(stale.status).toBe("in_review");
     expect(await syncReviewState(stale)).toBe(true);
     expect((await loadPage(page.id))!.page).toMatchObject({ status: "draft", reviewRequestId: null });
+  });
+});
+
+describe("policy acknowledgement", () => {
+  const notices = async (kind: string, personId?: string) => (await db().select().from(schema.notification).where(eq(schema.notification.kind, kind))).filter((row) => !personId || row.recipientPersonId === personId).length;
+  let policy = "";
+
+  it("asks the audience when switched on — staff by 'all', a collaborator only by name — and never someone who cannot open the page", async () => {
+    const page = await createPage({ spaceId: spaces.handbook, parentId: null, title: "Bảo mật thông tin", content: body("Bảo mật thông tin", "Không chia sẻ mật khẩu.") }, { personId: ids.hrGroup });
+    policy = page.id;
+    expect(await fails(setAckRequirement(policy, { required: true, dueDays: 14, audience: [] }))).toBe("kb_ack_audience_required");
+    expect(await fails(setAckRequirement(policy, { required: true, dueDays: 14, audience: ["role:hr_staff"] }))).toBe("kb_subject_unknown");
+
+    // Not published yet: nothing to confirm, nobody is told.
+    const early = await setAckRequirement(policy, { required: true, dueDays: 14, audience: ["all", `person:${ids.ngo}`] });
+    expect(early).toMatchObject({ notified: 0, after: { ackRequired: true, ackVersionId: null } });
+    const { page: published, version } = await publishPage(policy, { personId: ids.hrGroup });
+    expect(published.ackVersionId).toBe(version.id);
+    // Six staff; the collaborator is named but cannot open the handbook, so is not nagged.
+    expect(await notices("kb.ack_requested")).toBe(6);
+    expect(await notices("kb.ack_requested", ids.ngo)).toBe(0);
+
+    expect((await listMyPendingAcks(viewers.huy)).map((row) => row.pageId)).toEqual([policy]);
+    expect(await listMyPendingAcks(viewers.ngo)).toEqual([]);
+    const report = await getAckReport(published);
+    expect(report).toMatchObject({ versionNo: 1, total: 7, done: 0 });
+    expect(report.byEntity).toEqual([{ name: "Creative", total: 1, done: 0 }, { name: "Media", total: 6, done: 0 }]);
+  });
+
+  it("confirms once, only for the audience, and reports it", async () => {
+    const first = await acknowledgePage(policy, ids.huy);
+    const again = await acknowledgePage(policy, ids.huy);
+    expect(first.already).toBe(false);
+    expect(again).toMatchObject({ already: true, acknowledgedAt: first.acknowledgedAt });
+    const loaded = (await loadPage(policy))!.page;
+    expect(await getAckStatus(loaded, ids.huy)).toMatchObject({ inAudience: true, versionNo: 1, overdue: false });
+    expect((await getAckStatus(loaded, ids.huy)).acknowledgedAt).not.toBeNull();
+    expect(await listMyPendingAcks(viewers.huy)).toEqual([]);
+    expect((await listMyAcknowledgements(ids.huy))[0]).toMatchObject({ pageId: policy, versionNo: 1, current: true });
+
+    await setAckRequirement(policy, { required: true, dueDays: 14, audience: [`entity:${ids.szm}`] });
+    expect(await fails(acknowledgePage(policy, ids.khoi))).toBe("kb_ack_not_in_audience");
+    expect((await getAckReport((await loadPage(policy))!.page)).total).toBe(5);
+    await setAckRequirement(policy, { required: true, dueDays: 14, audience: ["all"] });
+    // A confirmation is evidence: the database keeps it as it is.
+    await expect(db().delete(schema.kbAcknowledgement)).rejects.toThrow();
+    await expect(db().update(schema.kbAcknowledgement).set({ acknowledgedAt: new Date() })).rejects.toThrow();
+  });
+
+  it("reminds every three days, once a day at most, with the overdue wording after the due date", async () => {
+    const today = (await import("@/lib/dates")).todayInVietnam();
+    const { addDays } = await import("@/lib/dates");
+    expect(await sendAckReminders(today)).toMatchObject({ requested: 0, reminded: 0 });
+    expect(await sendAckReminders(addDays(today, 2))).toMatchObject({ reminded: 0 });
+    // Five staff still pending (huy confirmed).
+    expect(await sendAckReminders(addDays(today, 3))).toMatchObject({ reminded: 5 });
+    expect(await sendAckReminders(addDays(today, 3))).toMatchObject({ reminded: 0 });
+    expect(await remindPendingNow(policy, addDays(today, 3))).toMatchObject({ reminded: 0, pending: 5 });
+    expect(await remindPendingNow(policy, addDays(today, 4))).toMatchObject({ reminded: 5, pending: 5 });
+
+    await sendAckReminders(addDays(today, 20));
+    const overdue = await db().select().from(schema.kbAckReminder).where(eq(schema.kbAckReminder.kind, "overdue"));
+    expect(overdue).toHaveLength(5);
+    const [last] = (await db().select().from(schema.notification).where(eq(schema.notification.kind, "kb.ack_reminder"))).slice(-1);
+    expect(last.params).toMatchObject({ overdue: "yes" });
+
+    // Someone who joins later owes it from their first day, and is told by the job.
+    const [newbie] = await db().insert(schema.person).values({ fullName: "Người mới", searchName: "nguoi moi", workEmail: "moi@suzu.group", status: "active", primaryEntityId: ids.szm, departmentId: ids.vid }).returning();
+    expect(await sendAckReminders(addDays(today, 20))).toMatchObject({ requested: 1, reminded: 0 });
+    expect(await notices("kb.ack_requested", newbie.id)).toBe(1);
+    await db().update(schema.person).set({ status: "offboarded" }).where(eq(schema.person.id, newbie.id));
+  });
+
+  it("asks everyone again after a major revision, and nobody after a minor one", async () => {
+    await saveDraft(policy, { title: "Bảo mật thông tin", content: body("Bảo mật thông tin", "Sửa lỗi chính tả.") }, { personId: ids.hrGroup });
+    const minor = await publishPage(policy, { personId: ids.hrGroup }, { isMajor: false });
+    expect(minor.page.ackVersionId).not.toBe(minor.version.id);
+    expect(await listMyPendingAcks(viewers.huy)).toEqual([]);
+
+    await saveDraft(policy, { title: "Bảo mật thông tin", content: body("Bảo mật thông tin", "Bắt buộc xác thực hai lớp.") }, { personId: ids.hrGroup });
+    const before = await notices("kb.ack_requested");
+    const major = await publishPage(policy, { personId: ids.hrGroup }, { isMajor: true });
+    expect(major.page.ackVersionId).toBe(major.version.id);
+    expect(await notices("kb.ack_requested")).toBe(before + 6);
+    expect((await listMyPendingAcks(viewers.huy)).map((row) => row.versionNo)).toEqual([3]);
+    expect((await listMyAcknowledgements(ids.huy))[0]).toMatchObject({ versionNo: 1, current: false });
+  });
+
+  it("leaves out of 'my pending' a page in a subtree the person cannot open", async () => {
+    await setPageAccess(policy, [{ subjectKey: `person:${ids.khoi}`, level: "view" }]);
+    expect(await listMyPendingAcks(viewers.huy)).toEqual([]);
+    expect((await listMyPendingAcks(viewers.khoi)).map((row) => row.pageId)).toEqual([policy]);
+    await setPageAccess(policy, []);
+  });
+
+  it("tells a page's owner once that its review date has passed, and again after a new date", async () => {
+    const today = (await import("@/lib/dates")).todayInVietnam();
+    await setPageMeta(policy, { ownerPersonId: ids.hrSzm, reviewBy: today });
+    expect(await sendReviewDueNotices(today)).toEqual({ notified: 1 });
+    expect(await sendReviewDueNotices(today)).toEqual({ notified: 0 });
+    await setPageMeta(policy, { ownerPersonId: ids.hrSzm, reviewBy: "2020-01-01" });
+    expect(await sendReviewDueNotices(today)).toEqual({ notified: 1 });
+    expect(await notices("kb.review_due", ids.hrSzm)).toBe(2);
   });
 });

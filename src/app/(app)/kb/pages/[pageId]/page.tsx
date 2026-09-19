@@ -8,8 +8,9 @@ import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { setPageAccessAction } from "@/modules/kb/actions";
 import { parseSubjectKey } from "@/modules/kb/enums";
-import { atLeast, breadcrumbOf, canOrganisePages, canPublishDirectly, getReadingView, kbViewerOf, levelOf, listPageAccess, listTree, loadPage, moveTargets, outlineOf, recordView, subjectNames, subjectOptions, syncReviewState } from "@/modules/kb/service";
+import { atLeast, breadcrumbOf, canManageSpace, canOrganisePages, getAckSettings, getAckStatus, canPublishDirectly, getReadingView, kbViewerOf, levelOf, listPageAccess, listTree, loadPage, moveTargets, outlineOf, recordView, subjectNames, subjectOptions, syncReviewState } from "@/modules/kb/service";
 import { AccessForm } from "@/modules/kb/ui/access-form";
+import { AckSettingsForm, AcknowledgeButton } from "@/modules/kb/ui/ack-forms";
 import { MovePageForm, PageLifecycleButtons, PageMetaForm, PublishDraftButton, SubmitReviewButton } from "@/modules/kb/ui/page-forms";
 import { PageTree } from "@/modules/kb/ui/page-tree";
 import { RenderDoc } from "@/modules/kb/ui/render-doc";
@@ -47,6 +48,13 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
     const subject = parseSubjectKey(row.subjectKey);
     const name = subject?.type === "role" ? tRoles(subject.id as "owner") : (names.get(row.subjectKey) ?? "");
     return { ...row, label: !subject || subject.type === "all" ? t("access.subject.all") : `${t(`access.subject.${subject.type}`)}: ${name}` };
+  });
+  const manages = canManageSpace(user.principal, space);
+  const [ack, ackAudience] = await Promise.all([getAckStatus(page, user.person.id), manages ? getAckSettings(page.id) : []]);
+  const audienceNames = manages ? await subjectNames(ackAudience) : new Map<string, string>();
+  const audienceRows = ackAudience.map((key) => {
+    const subject = parseSubjectKey(key);
+    return { subjectKey: key, label: !subject || subject.type === "all" ? t("access.subject.all") : `${t(`access.subject.${subject.type}`)}: ${audienceNames.get(key) ?? ""}` };
   });
   const siblings = tree.filter((node) => node.parentId === (page.parentId ?? null) && node.id !== page.id);
   const hasChildren = tree.some((node) => node.parentId === page.id);
@@ -132,6 +140,23 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
           </div>
         ) : null}
 
+        {ack.inAudience && view.showing === "published" ? (
+          ack.acknowledgedAt ? (
+            <p className="rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm dark:border-emerald-800 dark:bg-emerald-950/40">{t("ack.done", { n: ack.versionNo ?? 0, date: format.dateTime(ack.acknowledgedAt, { dateStyle: "medium" }) })}</p>
+          ) : (
+            <div className={`flex flex-wrap items-center gap-3 rounded-md border p-3 text-sm ${ack.overdue ? "border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/40" : "border-sky-300 bg-sky-50 dark:border-sky-800 dark:bg-sky-950/40"}`}>
+              <span>{ack.overdue ? t("ack.bannerOverdue", { date: format.dateTime(new Date(`${ack.dueOn}T00:00:00`), { dateStyle: "medium" }) }) : t("ack.banner", { date: format.dateTime(new Date(`${ack.dueOn}T00:00:00`), { dateStyle: "medium" }) })}</span>
+            </div>
+          )
+        ) : null}
+        {manages && page.ackRequired ? (
+          <p className="text-sm">
+            <Link href={`/kb/pages/${page.id}/acknowledgements`} className="underline underline-offset-2">
+              {t("ack.reportLink")}
+            </Link>
+          </p>
+        ) : null}
+
         {outline.length > 2 ? (
           <nav aria-label={t("page.contents")} className="rounded-md border p-3 text-sm">
             <p className="mb-1 text-xs font-medium text-muted-foreground">{t("page.contents")}</p>
@@ -149,11 +174,19 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
 
         <RenderDoc doc={view.content} />
 
+        {ack.inAudience && !ack.acknowledgedAt && view.showing === "published" ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-md border p-4 text-sm">
+            <span>{t("ack.confirmHelp")}</span>
+            <AcknowledgeButton pageId={page.id} />
+          </div>
+        ) : null}
+
         {organises || editor ? (
           <details className="rounded-md border p-4">
             <summary className="cursor-pointer text-sm font-medium">{t("page.manage")}</summary>
             <div className="flex flex-col gap-6 pt-4">
               <PageMetaForm pageId={page.id} ownerPersonId={page.ownerPersonId} reviewBy={page.reviewBy} people={choices?.people ?? []} />
+              {manages && choices ? <AckSettingsForm pageId={page.id} required={page.ackRequired} dueDays={page.ackDueDays} audience={audienceRows} choices={choices} /> : null}
               {organises && choices ? (
                 <>
                   <MovePageForm pageId={page.id} parents={moveTargets(tree, page.id).map((node) => ({ id: node.id, title: node.title, depth: node.depth }))} parentId={page.parentId} siblingCount={siblings.length} />

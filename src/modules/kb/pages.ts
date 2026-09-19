@@ -6,6 +6,7 @@ import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { toSearchKey } from "@/lib/text";
 import { pageVisibleSql } from "./access-sql";
+import { ackOnPublish } from "./acknowledgements";
 import { type DiffLine, diffLines } from "./engine/diff";
 import { type Doc, docToPlainText, EMPTY_DOC, validateDoc } from "./engine/doc";
 import { type AccessRow, atLeast, type KbLevel, type KbViewer, type PageFacts, pageLevel, spaceLevel } from "./policy";
@@ -182,7 +183,8 @@ export async function publishPage(pageId: string, actor: Actor, options: Publish
       .set({ status: "published", publishedVersionId: version.id, publishedTitle: version.title, publishedAt: new Date(), hasUnpublishedChanges: false, searchTitle: toSearchKey(version.title), searchBody: toSearchKey(version.contentText), updatedAt: new Date() })
       .where(eq(schema.kbPage.id, pageId))
       .returning();
-    return { page, version, before };
+    // "Must read": the first publication, or a major revision, (re)starts the confirmation.
+    return { page: await ackOnPublish(tx, page, version), version, before };
   };
   return executor ? run(executor) : db().transaction(run);
 }
@@ -271,7 +273,8 @@ export const listPageAccess = (pageId: string): Promise<AccessRow[]> => pageAcce
 export async function setPageMeta(pageId: string, values: { ownerPersonId: string | null; reviewBy: IsoDate | null }): Promise<{ before: PageRow; after: PageRow }> {
   const [before] = await db().select().from(schema.kbPage).where(and(eq(schema.kbPage.id, pageId), isNull(schema.kbPage.deletedAt))).limit(1);
   if (!before) throw new ActionError("kb_page_not_found");
-  const [after] = await db().update(schema.kbPage).set({ ...values, updatedAt: new Date() }).where(eq(schema.kbPage.id, pageId)).returning();
+  // A new review date is a new promise: the owner is reminded again when it passes.
+  const [after] = await db().update(schema.kbPage).set({ ...values, ...(values.reviewBy !== before.reviewBy ? { reviewRemindedOn: null } : {}), updatedAt: new Date() }).where(eq(schema.kbPage.id, pageId)).returning();
   return { before, after };
 }
 

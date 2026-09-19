@@ -63,6 +63,15 @@ export const kbPage = pgTable(
     reviewRequestId: uuid("review_request_id"),
     ownerPersonId: uuid("owner_person_id").references(() => person.id),
     reviewBy: date("review_by"),
+    // The owner was told once that `review_by` has passed; a new date asks again (FR-KB-07).
+    reviewRemindedOn: date("review_reminded_on"),
+    // "Must read" (FR-KB-05): the audience confirms `ack_version_id` — the version published when
+    // the requirement was switched on, moved forward only by a MAJOR revision (everyone confirms
+    // again). Due `ack_due_days` after `ack_since`, or after the person came onto the books if later.
+    ackRequired: boolean("ack_required").notNull().default(false),
+    ackVersionId: uuid("ack_version_id"),
+    ackSince: timestamp("ack_since", { withTimezone: true }),
+    ackDueDays: integer("ack_due_days").notNull().default(14),
     // Search reads the published version only: accent-stripped (`toSearchKey`), so "nghi phep" finds "nghỉ phép".
     searchTitle: text("search_title").notNull().default(""),
     searchBody: text("search_body").notNull().default(""),
@@ -141,4 +150,57 @@ export const kbPageView = pgTable(
     viewedAt: timestamp("viewed_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("kb_page_view_day_idx").on(t.pageId, t.personId, t.viewedOn), index("kb_page_view_person_idx").on(t.personId, t.viewedAt)],
+).enableRLS();
+
+// Who must confirm a "must read" page: subject keys as in `kb_access`, without roles.
+export const kbAckAudience = pgTable(
+  "kb_ack_audience",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => kbPage.id, { onDelete: "cascade" }),
+    subjectKey: text("subject_key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("kb_ack_audience_page_subject_idx").on(t.pageId, t.subjectKey)],
+).enableRLS();
+
+// "I have read and understood version n": append-only (database trigger).
+export const kbAcknowledgement = pgTable(
+  "kb_acknowledgement",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => kbPage.id),
+    versionId: uuid("version_id")
+      .notNull()
+      .references(() => kbPageVersion.id),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("kb_acknowledgement_once_idx").on(t.pageId, t.versionId, t.personId), index("kb_acknowledgement_person_idx").on(t.personId)],
+).enableRLS();
+
+// Every notice about a pending confirmation: the first one ("requested"), the reminders, the
+// overdue ones. At most one per person, version and day — a second run of the job sends nothing.
+export const kbAckReminder = pgTable(
+  "kb_ack_reminder",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => kbPage.id, { onDelete: "cascade" }),
+    versionId: uuid("version_id").notNull(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id, { onDelete: "cascade" }),
+    sentOn: date("sent_on").notNull(),
+    kind: text("kind").notNull().default("reminder"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("kb_ack_reminder_day_idx").on(t.pageId, t.versionId, t.personId, t.sentOn)],
 ).enableRLS();

@@ -572,7 +572,8 @@
         "approvals": "Phê duyệt",
         "tasks": "Công việc được giao",
         "attendance": "Chấm công & bảng công",
-        "ops": "Nghĩa vụ tuân thủ"
+        "ops": "Nghĩa vụ tuân thủ",
+        "kb": "Tri thức & chính sách"
       },
       "push": "Đẩy"
     },
@@ -712,6 +713,18 @@
       "tasks_intake_submitted": {
         "title": "Yêu cầu mới: {title}",
         "body": "{name} đã gửi “{title}” qua biểu mẫu “{form}”. Yêu cầu đang ở danh sách chờ với mã {key}, chờ phân loại."
+      },
+      "kb_ack_requested": {
+        "title": "Cần đọc và xác nhận: {title}",
+        "body": "Bạn cần đọc và xác nhận “{title}” trước ngày {dueDate}."
+      },
+      "kb_ack_reminder": {
+        "title": "{overdue, select, yes {Quá hạn xác nhận: {title}} other {Nhắc xác nhận: {title}}}",
+        "body": "{overdue, select, yes {Bạn chưa xác nhận “{title}”. Hạn là ngày {dueDate} — vui lòng đọc và xác nhận ngay.} other {Bạn chưa xác nhận “{title}”. Hạn xác nhận: {dueDate}.}}"
+      },
+      "kb_review_due": {
+        "title": "Đến hạn rà soát: {title}",
+        "body": "Trang “{title}” do bạn phụ trách đã đến hạn rà soát ({date}). Hãy kiểm tra nội dung còn đúng không và đặt hạn rà soát mới."
       }
     },
     "errors": {
@@ -4113,7 +4126,10 @@
       "file_not_found": "Không tìm thấy tệp.",
       "storage_not_configured": "Kho lưu trữ tệp chưa được cấu hình.",
       "kb_page_archived": "Trang đã lưu trữ. Khôi phục trước khi gửi duyệt.",
-      "approval_no_approver": "Chưa có ai có quyền duyệt. Hãy báo quản trị viên."
+      "approval_no_approver": "Chưa có ai có quyền duyệt. Hãy báo quản trị viên.",
+      "kb_ack_audience_required": "Hãy chọn ít nhất một đối tượng phải xác nhận.",
+      "kb_ack_not_required": "Trang này không yêu cầu xác nhận.",
+      "kb_ack_not_in_audience": "Bạn không thuộc đối tượng phải xác nhận trang này."
     },
     "review": {
       "title": "Duyệt xuất bản",
@@ -4125,6 +4141,44 @@
       "waiting": "Đang chờ duyệt.",
       "open": "Xem yêu cầu duyệt",
       "submit": "Gửi duyệt"
+    },
+    "ack": {
+      "confirm": "Tôi đã đọc và hiểu",
+      "confirmHelp": "Đọc hết nội dung ở trên rồi xác nhận.",
+      "banner": "Bạn cần đọc và xác nhận trang này trước ngày {date}.",
+      "bannerOverdue": "Bạn cần đọc và xác nhận trang này — đã quá hạn từ ngày {date}.",
+      "done": "Bạn đã xác nhận phiên bản {n} vào ngày {date}.",
+      "reportLink": "Xem ai đã xác nhận",
+      "settingsTitle": "Bắt buộc đọc và xác nhận",
+      "settingsHelp": "Người thuộc đối tượng phải xác nhận phiên bản đang xuất bản. Chỉ bản sửa đánh dấu “thay đổi lớn” mới yêu cầu mọi người xác nhận lại. Người vào công ty sau cũng tự động phải xác nhận.",
+      "required": "Trang này bắt buộc đọc và xác nhận",
+      "dueDays": "Số ngày để xác nhận",
+      "savedNotified": "Đã lưu. Đã gửi thông báo cho {count} người.",
+      "remindNow": "Nhắc những người chưa xác nhận",
+      "reminded": "Đã nhắc {count} người (mỗi người tối đa một lần mỗi ngày).",
+      "export": "Tải CSV",
+      "mineTitle": "Xác nhận của tôi",
+      "mineHelp": "Chính sách và quy định bạn cần đọc và xác nhận.",
+      "pending": "Cần xác nhận ({count})",
+      "nothingPending": "Bạn không còn gì phải xác nhận.",
+      "doneTitle": "Đã xác nhận",
+      "nothingDone": "Chưa có xác nhận nào.",
+      "version": "Phiên bản",
+      "confirmedAt": "Thời điểm xác nhận",
+      "superseded": "đã có bản mới",
+      "dueOn": "Hạn {date}",
+      "overdueSince": "Quá hạn từ {date}",
+      "confirmedOn": "Đã xác nhận {date}",
+      "reportTitle": "Tình hình xác nhận",
+      "reportLine": "Phiên bản {n}: {done}/{total} người đã xác nhận ({percent}%), {overdue} người quá hạn. Hạn xác nhận: {days} ngày.",
+      "notPublishedYet": "Trang chưa được xuất bản: việc xác nhận bắt đầu khi trang được xuất bản.",
+      "notRequired": "Trang này không bắt buộc xác nhận.",
+      "byEntity": "Theo công ty",
+      "byDepartment": "Theo phòng ban",
+      "person": "Nhân viên",
+      "status": "Trạng thái",
+      "lastNotice": "Nhắc gần nhất (số lần)",
+      "myLink": "Xác nhận của tôi"
     }
   }
 }
