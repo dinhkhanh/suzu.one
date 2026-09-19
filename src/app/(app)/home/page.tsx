@@ -11,7 +11,6 @@ const ROADMAP = [
   { key: "leave", phase: 2 },
   { key: "work", phase: 3 },
   { key: "ops", phase: 3 },
-  { key: "kb", phase: 4 },
   { key: "payroll", phase: 5 },
 ] as const;
 

@@ -18,7 +18,8 @@ export function navFor(principal: Principal, open: { people: boolean }): { main:
     ...(can(principal, "ops:read") || can(principal, "ops:manage") ? [{ key: "ops", href: "/ops" }] : []),
     // Goals and KPIs: everyone has their own; what else they see is decided on the pages.
     { key: "performance", href: "/performance" },
-    { key: "kb", phase: 4 },
+    // The knowledge base: which spaces open is decided by their access rows, on the pages.
+    { key: "kb", href: "/kb" },
     { key: "payroll", phase: 5 },
   ];
   // Navigation visibility only. Every page and action re-checks permissions itself.

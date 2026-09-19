@@ -1,0 +1,164 @@
+import type { Metadata } from "next";
+import { getFormatter, getTranslations } from "next-intl/server";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { todayInVietnam } from "@/lib/dates";
+import { requireUser } from "@/modules/platform/auth/session";
+import { setPageAccessAction } from "@/modules/kb/actions";
+import { parseSubjectKey } from "@/modules/kb/enums";
+import { atLeast, breadcrumbOf, canOrganisePages, canPublishDirectly, getReadingView, kbViewerOf, levelOf, listPageAccess, listTree, loadPage, moveTargets, outlineOf, recordView, subjectNames, subjectOptions } from "@/modules/kb/service";
+import { AccessForm } from "@/modules/kb/ui/access-form";
+import { MovePageForm, PageLifecycleButtons, PageMetaForm, PublishDraftButton } from "@/modules/kb/ui/page-forms";
+import { PageTree } from "@/modules/kb/ui/page-tree";
+import { RenderDoc } from "@/modules/kb/ui/render-doc";
+
+export const metadata: Metadata = { title: "Knowledge base" };
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
+  const user = await requireUser();
+  const { pageId } = await props.params;
+  const query = await props.searchParams;
+  const viewer = kbViewerOf(user);
+  const loaded = UUID.test(pageId) ? await loadPage(pageId) : null;
+  const level = loaded ? levelOf(viewer, loaded) : null;
+  if (!loaded || !level) notFound();
+
+  const t = await getTranslations("kb");
+  const tRoles = await getTranslations("roles");
+  const format = await getFormatter();
+  const { page, space } = loaded;
+  const editor = atLeast(level, "edit");
+  const [view, tree] = await Promise.all([getReadingView(loaded, level, query.draft === "1"), listTree(viewer, loaded)]);
+  if (view.showing === "published") await recordView(page.id, user.person.id, todayInVietnam());
+
+  const trail = breadcrumbOf(tree, page.id);
+  const outline = outlineOf(view.content);
+  const organises = canOrganisePages(viewer, loaded.facts);
+  const publishes = canPublishDirectly(viewer, loaded.facts, loaded.pageFacts);
+  const [ownRows, choices] = await Promise.all([organises ? listPageAccess(page.id) : [], editor ? subjectOptions() : null]);
+  const names = organises ? await subjectNames(ownRows.map((row) => row.subjectKey)) : new Map<string, string>();
+  const accessRows = ownRows.map((row) => {
+    const subject = parseSubjectKey(row.subjectKey);
+    const name = subject?.type === "role" ? tRoles(subject.id as "owner") : (names.get(row.subjectKey) ?? "");
+    return { ...row, label: !subject || subject.type === "all" ? t("access.subject.all") : `${t(`access.subject.${subject.type}`)}: ${name}` };
+  });
+  const siblings = tree.filter((node) => node.parentId === (page.parentId ?? null) && node.id !== page.id);
+  const hasChildren = tree.some((node) => node.parentId === page.id);
+
+  return (
+    <div className="grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]">
+      <aside className="order-2 flex flex-col gap-3 lg:order-1">
+        <Link href={`/kb/spaces/${space.key}`} className="text-sm font-medium hover:underline">
+          <span aria-hidden>{space.icon ?? "📄"}</span> {space.name}
+        </Link>
+        <PageTree tree={tree} currentId={page.id} compact />
+      </aside>
+
+      <article className="order-1 flex min-w-0 max-w-3xl flex-col gap-6 lg:order-2">
+        <header className="flex flex-col gap-2">
+          <nav aria-label={t("page.breadcrumb")} className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+            <Link href="/kb" className="hover:underline">
+              {t("title")}
+            </Link>
+            <span aria-hidden>/</span>
+            <Link href={`/kb/spaces/${space.key}`} className="hover:underline">
+              {space.name}
+            </Link>
+            {trail.map((node) => (
+              <span key={node.id} className="flex items-center gap-1">
+                <span aria-hidden>/</span>
+                <Link href={`/kb/pages/${node.id}`} className="hover:underline">
+                  {node.title}
+                </Link>
+              </span>
+            ))}
+          </nav>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">{view.title}</h1>
+            {view.showing === "draft" ? <Badge variant="outline">{t("status.draft")}</Badge> : null}
+            {page.status === "archived" || page.status === "in_review" ? <Badge variant="secondary">{t(`status.${page.status}`)}</Badge> : null}
+            {page.accessRootId ? <Badge variant="outline">🔒 {t("page.restricted")}</Badge> : null}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {view.version ? t("page.versionLine", { n: view.version.versionNo, date: format.dateTime(view.version.createdAt, { dateStyle: "medium" }), name: view.version.authorName ?? "—" }) : t("page.neverPublished")}
+            {page.reviewBy ? ` · ${t("page.reviewByLine", { date: format.dateTime(new Date(`${page.reviewBy}T00:00:00`), { dateStyle: "medium" }) })}` : ""}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {editor ? (
+              <Link href={`/kb/pages/${page.id}/edit`} className={buttonVariants({ size: "sm", variant: "outline" })}>
+                {t("page.edit")}
+              </Link>
+            ) : null}
+            {page.publishedVersionId ? (
+              <Link href={`/kb/pages/${page.id}/history`} className={buttonVariants({ size: "sm", variant: "ghost" })}>
+                {t("history.title")}
+              </Link>
+            ) : null}
+            {editor && !space.archivedAt ? (
+              <Link href={`/kb/spaces/${space.key}/new?parent=${page.id}`} className={buttonVariants({ size: "sm", variant: "ghost" })}>
+                {t("page.newChild")}
+              </Link>
+            ) : null}
+          </div>
+        </header>
+
+        {editor && page.publishedVersionId && page.hasUnpublishedChanges ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/40">
+            <span>{view.showing === "draft" ? t("page.showingDraft") : t("page.hasDraft")}</span>
+            <Link href={view.showing === "draft" ? `/kb/pages/${page.id}` : `/kb/pages/${page.id}?draft=1`} className="underline underline-offset-2">
+              {view.showing === "draft" ? t("page.viewPublished") : t("page.viewDraft")}
+            </Link>
+            {publishes && page.status !== "in_review" ? <PublishDraftButton pageId={page.id} /> : null}
+          </div>
+        ) : null}
+        {editor && !page.publishedVersionId && publishes ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-md border p-3 text-sm">
+            <span>{t("page.neverPublished")}</span>
+            <PublishDraftButton pageId={page.id} />
+          </div>
+        ) : null}
+
+        {outline.length > 2 ? (
+          <nav aria-label={t("page.contents")} className="rounded-md border p-3 text-sm">
+            <p className="mb-1 text-xs font-medium text-muted-foreground">{t("page.contents")}</p>
+            <ul className="flex flex-col gap-0.5">
+              {outline.map((item) => (
+                <li key={item.id} style={{ paddingLeft: `${(item.level - 1) * 0.75}rem` }}>
+                  <a href={`#${item.id}`} className="hover:underline">
+                    {item.text}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ) : null}
+
+        <RenderDoc doc={view.content} />
+
+        {organises || editor ? (
+          <details className="rounded-md border p-4">
+            <summary className="cursor-pointer text-sm font-medium">{t("page.manage")}</summary>
+            <div className="flex flex-col gap-6 pt-4">
+              <PageMetaForm pageId={page.id} ownerPersonId={page.ownerPersonId} reviewBy={page.reviewBy} people={choices?.people ?? []} />
+              {organises && choices ? (
+                <>
+                  <MovePageForm pageId={page.id} parents={moveTargets(tree, page.id).map((node) => ({ id: node.id, title: node.title, depth: node.depth }))} parentId={page.parentId} siblingCount={siblings.length} />
+                  <section className="flex flex-col gap-2">
+                    <h2 className="text-sm font-medium">{t("access.pageTitle")}</h2>
+                    <p className="text-xs text-muted-foreground">{page.accessRootId && page.accessRootId !== page.id ? t("access.inherited") : t("access.pageHelp")}</p>
+                    <AccessForm target={{ pageId: page.id }} rows={accessRows} choices={choices} action={setPageAccessAction} />
+                  </section>
+                </>
+              ) : null}
+              <PageLifecycleButtons pageId={page.id} spaceKey={space.key} status={page.status} published={!!page.publishedVersionId} canPublish={publishes} canDelete={!hasChildren && (page.publishedVersionId ? publishes && organises : editor)} />
+            </div>
+          </details>
+        ) : null}
+      </article>
+    </div>
+  );
+}

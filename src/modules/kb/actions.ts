@@ -254,11 +254,11 @@ export async function deletePageAction(input: unknown) {
 
 const movePagePipeline = createAction({
   name: "kb.page.move",
-  input: z.object({ pageId: z.uuid(), parentId: optional(z.uuid()), position: optional(z.coerce.number().int().min(0).max(10_000)) }),
+  input: z.object({ pageId: z.uuid(), parentId: optional(z.uuid()), /** 1 = first among its new siblings; blank = last. */ position: optional(z.coerce.number().int().min(1).max(10_000)) }),
   authorize: (user, input) => organisesPage(user, input.pageId),
   run: async ({ user, input }) => {
     const loaded = await must(user, input.pageId);
-    const { before, after } = await movePage(input.pageId, { parentId: input.parentId, position: input.position });
+    const { before, after } = await movePage(input.pageId, { parentId: input.parentId, position: input.position === null ? null : input.position - 1 });
     refresh(loaded.space.key, after.id);
     return { data: { id: after.id }, audit: { resource: auditPage(loaded), summary: `${after.title}: moved`, before: { parentId: before.parentId, sortOrder: before.sortOrder, accessRootId: before.accessRootId }, after: { parentId: after.parentId, sortOrder: after.sortOrder, accessRootId: after.accessRootId } } };
   },
