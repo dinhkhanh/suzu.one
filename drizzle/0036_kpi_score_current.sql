@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "kpi_score_current_idx" ON "kpi_score" USING btree ("person_id","month") WHERE "kpi_score"."superseded_at" IS NULL;

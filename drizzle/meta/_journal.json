@@ -246,6 +246,20 @@
       "when": 1789855183318,
       "tag": "0034_performance_goals",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1789856704888,
+      "tag": "0035_performance_kpis",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1789856727746,
+      "tag": "0036_kpi_score_current",
+      "breakpoints": true
     }
   ]
 }

@@ -2,7 +2,7 @@
 // in one read: where they sit, since when, on probation or not. Re-exported by service.ts, the
 // only door into this module. Nothing here is above the personal tier; the caller decides who sees it.
 import "server-only";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, or } from "drizzle-orm";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { recordLifecycleEvent } from "./lifecycle-events";
@@ -72,6 +72,25 @@ export async function listEmploymentFacts(filter: { personIds?: readonly string[
       endDate: latest?.endDate ?? null,
       probation: contracts.filter((row) => row.personId === person.id && (!latest || row.employmentId === latest.id)).map((row) => ({ start: row.startDate, end: row.terminatedOn ?? row.endDate })),
     };
+  });
+}
+
+/**
+ * Who holds which position on a day (the primary assignment of the employment running then) —
+ * for modules that key on the position: the KPI templates of the performance module.
+ */
+export async function listPositionHolders(onDate: IsoDate, executor: Executor = db()): Promise<{ personId: string; entityId: string; positionId: string; employeeCode: string | null }[]> {
+  const rows = await executor
+    .select({ personId: schema.employment.personId, entityId: schema.employment.entityId, positionId: schema.assignment.positionId, employeeCode: schema.employment.employeeCode, validFrom: schema.assignment.validFrom })
+    .from(schema.assignment)
+    .innerJoin(schema.employment, eq(schema.employment.id, schema.assignment.employmentId))
+    .where(and(eq(schema.assignment.kind, "primary"), isNotNull(schema.assignment.positionId), lte(schema.assignment.validFrom, onDate), or(isNull(schema.assignment.validTo), gte(schema.assignment.validTo, onDate)), or(isNull(schema.employment.endDate), gte(schema.employment.endDate, onDate))))
+    .orderBy(desc(schema.assignment.validFrom));
+  const seen = new Set<string>();
+  return rows.flatMap((row) => {
+    if (seen.has(row.personId) || !row.positionId) return [];
+    seen.add(row.personId);
+    return [{ personId: row.personId, entityId: row.entityId, positionId: row.positionId, employeeCode: row.employeeCode }];
   });
 }
 

@@ -56,3 +56,42 @@ export const periodsOfYear = (year: number): string[] => [String(year), `${year}
 
 /** A check-in that is a week old is due again. */
 export const STALE_AFTER_DAYS = 7;
+
+// ── KPIs (FR-PRF-02) ────────────────────────────────────────────────────────────────────────
+
+/** Same scale rule as key results: numbers and percentages in hundredths, money in whole VND. */
+export const KPI_UNITS = ["number", "percent", "currency"] as const;
+export type KpiUnit = (typeof KPI_UNITS)[number];
+
+export const KPI_DIRECTIONS = ["higher_better", "lower_better"] as const;
+export type KpiDirection = (typeof KPI_DIRECTIONS)[number];
+
+export const KPI_FREQUENCIES = ["monthly", "quarterly"] as const;
+export type KpiFrequency = (typeof KPI_FREQUENCIES)[number];
+
+/** Attainment is capped at 120 % unless the KPI says otherwise; nothing is floored by default. */
+export const DEFAULT_CAP_BP = 12000;
+export const DEFAULT_FLOOR_BP = 0;
+
+export const MONTH_KEY = /^(\d{4})-(0[1-9]|1[0-2])$/;
+export const QUARTER_KEY = /^(\d{4})-Q([1-4])$/;
+export const isKpiMonth = (value: unknown): value is string => typeof value === "string" && MONTH_KEY.test(value);
+
+/** "2027-03" → "2027-Q1". */
+export const quarterOfMonth = (month: string): string => `${month.slice(0, 4)}-Q${Math.ceil(Number(month.slice(5, 7)) / 3)}`;
+/** Only months are closed: a quarterly KPI is scored in its quarter's last month (Mar, Jun, Sep, Dec). */
+export const isQuarterEnd = (month: string): boolean => Number(month.slice(5, 7)) % 3 === 0;
+/** "2027-Q1" → "2027-03"; a month is its own scoring month. */
+export const scoringMonthOf = (periodKey: string): string => {
+  const quarter = QUARTER_KEY.exec(periodKey);
+  return quarter ? `${quarter[1]}-${String(Number(quarter[2]) * 3).padStart(2, "0")}` : periodKey;
+};
+/** The period a KPI of this frequency reports for when `month` is scored; null when it is not due then. */
+export const periodDueIn = (frequency: KpiFrequency, month: string): string | null => (frequency === "monthly" ? month : isQuarterEnd(month) ? quarterOfMonth(month) : null);
+export const periodFits = (frequency: KpiFrequency, periodKey: string): boolean => (frequency === "monthly" ? MONTH_KEY.test(periodKey) : QUARTER_KEY.test(periodKey));
+export const monthsOfYear = (year: number): string[] => Array.from({ length: 12 }, (_, index) => `${year}-${String(index + 1).padStart(2, "0")}`);
+/** Does an assignment running from `from` to `to` (open when null) cover `month`? Month keys sort as text. */
+export const coversMonth = (assignment: { fromPeriod: string; toPeriod: string | null }, month: string): boolean => assignment.fromPeriod <= month && (assignment.toPeriod === null || month <= assignment.toPeriod);
+
+export const KPI_PERIOD_STATUSES = ["open", "closed"] as const;
+export type KpiPeriodStatus = (typeof KPI_PERIOD_STATUSES)[number];

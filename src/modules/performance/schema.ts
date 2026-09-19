@@ -2,9 +2,12 @@
 // log. Scores must be reproducible (SRS D13 — the year-end bonus is computed from them): current
 // values only ever change through a check-in row, and closing a goal freezes its figure.
 // Value lists are in enums.ts.
-import { type AnyPgColumn, bigint, date, index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, bigint, boolean, date, index, integer, jsonb, pgTable, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { position } from "../core-hr/schema";
 import { department, entity, team } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
+import type { KpiTrace } from "./engine/kpi-score";
 import type { Milestone } from "./enums";
 
 const timestamps = {
@@ -98,4 +101,154 @@ export const goalCheckIn = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("goal_check_in_key_result_idx").on(t.keyResultId, t.createdAt), index("goal_check_in_goal_idx").on(t.goalId, t.createdAt)],
+).enableRLS();
+
+// ── KPIs (FR-PRF-02, week 2) ────────────────────────────────────────────────────────────────
+// The library, templates per position, what each person is measured on (effective-dated by
+// month), the actuals, and — once HR closes a month — the stored score with everything it was
+// computed from. The bonus (SRS D13) reads the stored scores only.
+
+export const kpiDefinition = pgTable("kpi_definition", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  // number | percent | currency — hundredths for the first two, whole VND for money.
+  unit: text("unit").notNull(),
+  // higher_better | lower_better
+  direction: text("direction").notNull().default("higher_better"),
+  // monthly | quarterly
+  frequency: text("frequency").notNull().default("monthly"),
+  capBp: integer("cap_bp").notNull().default(12000),
+  floorBp: integer("floor_bp").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  // Set on the first edit through the screen: re-seeding the starter library leaves such rows alone.
+  editedAt: timestamp("edited_at", { withTimezone: true }),
+  ...timestamps,
+}).enableRLS();
+
+// What a position is measured on. entity_id null = every entity; an entity's own rows replace the
+// group's set for that position.
+export const positionKpi = pgTable(
+  "position_kpi",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    positionId: uuid("position_id")
+      .notNull()
+      .references(() => position.id),
+    entityId: uuid("entity_id").references(() => entity.id),
+    kpiId: uuid("kpi_id")
+      .notNull()
+      .references(() => kpiDefinition.id),
+    weight: integer("weight").notNull(),
+    targetValue: bigint("target_value", { mode: "number" }).notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    ...timestamps,
+  },
+  (t) => [unique("position_kpi_unique").on(t.positionId, t.entityId, t.kpiId).nullsNotDistinct(), index("position_kpi_position_idx").on(t.positionId)],
+).enableRLS();
+
+// One KPI of one person from a month on. Months are 'YYYY-MM'; to_period null = still running.
+// The use-case refuses two overlapping rows of one KPI for one person.
+export const kpiAssignment = pgTable(
+  "kpi_assignment",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    kpiId: uuid("kpi_id")
+      .notNull()
+      .references(() => kpiDefinition.id),
+    weight: integer("weight").notNull(),
+    targetValue: bigint("target_value", { mode: "number" }).notNull(),
+    fromPeriod: text("from_period").notNull(),
+    toPeriod: text("to_period"),
+    sourcePositionId: uuid("source_position_id").references(() => position.id),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [index("kpi_assignment_person_idx").on(t.personId), index("kpi_assignment_entity_idx").on(t.entityId, t.fromPeriod)],
+).enableRLS();
+
+// period_key: 'YYYY-MM' for a monthly KPI, 'YYYY-Qn' for a quarterly one.
+export const kpiActual = pgTable(
+  "kpi_actual",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    assignmentId: uuid("assignment_id")
+      .notNull()
+      .references(() => kpiAssignment.id),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    kpiId: uuid("kpi_id")
+      .notNull()
+      .references(() => kpiDefinition.id),
+    periodKey: text("period_key").notNull(),
+    actualValue: bigint("actual_value", { mode: "number" }),
+    // "Did not apply this period" (no campaign ran): left out, the other weights renormalised. Needs a note.
+    notApplicable: boolean("not_applicable").notNull().default(false),
+    note: text("note"),
+    // manual | import
+    source: text("source").notNull().default("manual"),
+    enteredByPersonId: uuid("entered_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [unique("kpi_actual_unique").on(t.assignmentId, t.periodKey), index("kpi_actual_person_idx").on(t.personId, t.periodKey)],
+).enableRLS();
+
+// HR closes a month per entity. No row = open.
+export const kpiPeriod = pgTable(
+  "kpi_period",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    month: text("month").notNull(),
+    status: text("status").notNull().default("open"),
+    closedByPersonId: uuid("closed_by_person_id").references(() => person.id),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    // Closed although actuals were missing: why, and which lines were scored as zero.
+    overrideReason: text("override_reason"),
+    exceptions: jsonb("exceptions").$type<{ personId: string; kpiCode: string; periodKey: string }[]>(),
+    reopenedByPersonId: uuid("reopened_by_person_id").references(() => person.id),
+    reopenedAt: timestamp("reopened_at", { withTimezone: true }),
+    reopenReason: text("reopen_reason"),
+    ...timestamps,
+  },
+  (t) => [unique("kpi_period_unique").on(t.entityId, t.month)],
+).enableRLS();
+
+// The snapshot a close writes. Rows are never updated except to mark them superseded by a reopen;
+// the next close writes revision n + 1.
+export const kpiScore = pgTable(
+  "kpi_score",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    month: text("month").notNull(),
+    revision: integer("revision").notNull(),
+    // null = nothing to score (every line not applicable).
+    scoreBp: integer("score_bp"),
+    trace: jsonb("trace").$type<KpiTrace>().notNull(),
+    inputsHash: text("inputs_hash").notNull(),
+    computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+    supersededAt: timestamp("superseded_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("kpi_score_unique").on(t.personId, t.month, t.revision),
+    // One current score per person and month, whatever the code does.
+    uniqueIndex("kpi_score_current_idx").on(t.personId, t.month).where(sql`${t.supersededAt} IS NULL`),
+    index("kpi_score_entity_month_idx").on(t.entityId, t.month),
+  ],
 ).enableRLS();

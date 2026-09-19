@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Grant, Principal } from "../platform/rbac/policy";
-import { canCheckIn, canCloseGoal, canEditGoal, canReadPerformanceOf, canReopenGoal, canSeeGoal, chainAbove, type GoalParties, type PersonContext, readablePeople, unitTarget } from "./policy";
+import { canCheckIn, canCloseGoal, canCloseKpiMonth, canEditGoal, canEnterActualsFor, canManageAssignmentsOf, canManageKpiLibrary, canManagePositionKpis, canOpenOverview, canReadPerformanceOf, canReopenGoal, canReopenKpiMonth, canSeeGoal, chainAbove, type GoalParties, overviewReach, type PersonContext, readablePeople, unitTarget } from "./policy";
 
 const SZM = "entity-szm";
 const SZC = "entity-szc";
@@ -108,5 +108,51 @@ describe("changing", () => {
     expect(canReopenGoal(headVid, unit("department", { departmentId: VID }))).toBe(false);
     expect(canReopenGoal(hrSzm, individual(huy))).toBe(true);
     expect(canReopenGoal(owner, unit("group"))).toBe(true);
+  });
+});
+
+describe("KPIs", () => {
+  const hrAdmin = principal("mai", [{ role: "hr_admin", scope: { type: "group" } }]);
+  const director = principal("dir", [{ role: "entity_director", scope: { type: "entity", id: SZC } }]);
+
+  it("lets managers above and HR in scope enter actuals — never the person themself", () => {
+    expect(canEnterActualsFor(principal("tam"), huy)).toBe(true);
+    expect(canEnterActualsFor(headVid, huy)).toBe(true); // skip-level
+    expect(canEnterActualsFor(hrSzm, huy)).toBe(true);
+    expect(canEnterActualsFor(principal("huy"), huy)).toBe(false);
+    expect(canEnterActualsFor(principal("linh"), huy)).toBe(false); // a colleague
+    expect(canEnterActualsFor(headDes, huy)).toBe(false);
+    expect(canEnterActualsFor(hrSzm, khoi)).toBe(false); // another entity's HR
+    expect(canEnterActualsFor(auditor, huy)).toBe(false); // reads, never writes
+    // Holding HR, or everything, changes nothing about one's own row.
+    expect(canEnterActualsFor(hrSzm, person("bao", SZM, "dept-hr"))).toBe(false);
+    expect(canEnterActualsFor(owner, person("owner", SZM, "dept-bod"))).toBe(false);
+    expect(canEnterActualsFor(owner, huy)).toBe(true);
+  });
+
+  it("keeps assignments, the library and the close with HR", () => {
+    expect(canManageAssignmentsOf(hrSzm, huy)).toBe(true);
+    expect(canManageAssignmentsOf(hrSzm, khoi)).toBe(false);
+    expect(canManageAssignmentsOf(headVid, huy)).toBe(false);
+    expect(canManageKpiLibrary(hrAdmin)).toBe(true);
+    expect(canManageKpiLibrary(hrSzm)).toBe(false); // the library is the group's
+    expect(canManagePositionKpis(hrSzm, SZM)).toBe(true);
+    expect(canManagePositionKpis(hrSzm, null)).toBe(false);
+    expect(canManagePositionKpis(hrSzm, SZC)).toBe(false);
+    expect(canCloseKpiMonth(hrSzm, SZM)).toBe(true);
+    expect(canCloseKpiMonth(hrSzm, SZC)).toBe(false);
+    expect(canCloseKpiMonth(headVid, SZM)).toBe(false);
+    expect(canReopenKpiMonth(hrAdmin)).toBe(true);
+    expect(canReopenKpiMonth(hrSzm)).toBe(false);
+    expect(canReopenKpiMonth(owner)).toBe(true);
+  });
+
+  it("opens the overview to whole entities only", () => {
+    expect(overviewReach(owner)).toEqual({ all: true });
+    expect(overviewReach(auditor)).toEqual({ all: true });
+    expect(overviewReach(hrSzm)).toEqual({ all: false, entityIds: [SZM] });
+    expect(overviewReach(director)).toEqual({ all: false, entityIds: [SZC] });
+    expect(canOpenOverview(headVid)).toBe(false); // a department is not an entity: the team view is theirs
+    expect(canOpenOverview(principal("huy"))).toBe(false);
   });
 });

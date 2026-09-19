@@ -5,7 +5,7 @@
 // An individual's goals and scores are **personal tier**: the person, every manager above them in
 // the reporting line (direct or skip-level, FR-PRF-08), holders of `performance:read` or
 // `performance:manage` whose grant covers the person — and never colleagues.
-import { can, matchesReach, permissionReach, type Principal, type Target } from "../platform/rbac/policy";
+import { can, entityReach, matchesReach, permissionReach, type Principal, type Target } from "../platform/rbac/policy";
 import type { GoalLevel } from "./enums";
 
 /** A person as the policy needs them: where they sit and who is above them, nearest manager first. */
@@ -94,3 +94,44 @@ export function readablePeople(principal: Principal, people: Iterable<PersonCont
 
 /** The units the principal may set goals for — what the "new goal" form offers. Navigation only; the action re-checks. */
 export const canSetUnitGoals = (principal: Principal): boolean => can(principal, "performance:goals") || can(principal, "performance:manage");
+
+// ── KPIs (week 2) ───────────────────────────────────────────────────────────────────────────
+// Targets, actuals and scores are personal tier, read like individual goals
+// (`canReadPerformanceOf`). What differs is who writes: the figures decide a bonus (SRS D13).
+
+/** The library and the group-wide position templates are shared by every entity: a group-wide grant only. */
+export const canManageKpiLibrary = (principal: Principal): boolean => can(principal, "performance:manage", {});
+
+/** A position's template: the group's set (entity null) or one entity's own. */
+export const canManagePositionKpis = (principal: Principal, entityId: string | null): boolean => can(principal, "performance:manage", entityId ? { entityId } : {});
+
+/** Which KPIs someone is measured on, with what weight and target: HR over that person. */
+export const canManageAssignmentsOf = (principal: Principal, person: PersonContext): boolean => canManagePerformanceOf(principal, person);
+
+/**
+ * Entering an actual: a manager above the person, or HR over them — and never the person
+ * themself, whatever they hold (HR, a department head, even the owner's "*"): nobody marks their
+ * own work. Someone without a manager gets their figures from HR.
+ */
+export const canEnterActualsFor = (principal: Principal, person: PersonContext): boolean => !isSelf(principal, person) && (isAbove(principal, person) || canManagePerformanceOf(principal, person));
+
+/** Closing a month stores the scores of one entity. */
+export const canCloseKpiMonth = (principal: Principal, entityId: string): boolean => can(principal, "performance:manage", { entityId });
+
+/** Taking stored scores back: group-wide HR only, with a reason. */
+export const canReopenKpiMonth = (principal: Principal): boolean => can(principal, "performance:manage", {});
+
+/** HR's KPI administration — navigation only; each screen re-checks. */
+export const canOpenKpiAdmin = (principal: Principal): boolean => can(principal, "performance:manage");
+
+/** The owner dashboard: whole entities (or the group), not a department or a reporting line. */
+export function overviewReach(principal: Principal): { all: true } | { all: false; entityIds: string[] } {
+  const read = entityReach(principal, "performance:read");
+  const manage = entityReach(principal, "performance:manage");
+  if (read.all || manage.all) return { all: true };
+  return { all: false, entityIds: [...new Set([...read.entityIds, ...manage.entityIds])] };
+}
+export const canOpenOverview = (principal: Principal): boolean => {
+  const reach = overviewReach(principal);
+  return reach.all || reach.entityIds.length > 0;
+};
