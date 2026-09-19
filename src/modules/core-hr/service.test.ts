@@ -11,7 +11,7 @@ vi.mock("@/lib/db", async () => {
   return { db: () => database, schema };
 });
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: ["chairman@suzu.vn"] }),
+  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: ["chairman@suzu.vn"], BETTER_AUTH_URL: "https://suzu.one" }),
 }));
 // The real module pulls in the auth stack; services only need the error class.
 vi.mock("@/lib/action", () => ({ ActionError: class ActionError extends Error {} }));
@@ -21,7 +21,7 @@ import { migrate } from "drizzle-orm/pglite/migrator";
 import { db, schema } from "@/lib/db";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { canReadTier, type Grant, type Principal } from "@/modules/platform/rbac/policy";
-import { changeAssignment, getPersonTarget, getPersonView, hirePerson, type HireInput, listPeople, updatePersonBasics } from "./service";
+import { changeAssignment, getPersonTarget, getPersonView, hirePerson, type HireInput, listPeople, rollOverPlacements, updatePersonBasics } from "./service";
 
 const NO_PROFILE = { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null };
 const today = todayInVietnam();
@@ -210,6 +210,23 @@ describe("changeAssignment", () => {
     await expect(change(ids.tam, "2023-01-01", {})).rejects.toThrow("assignment_before_employment_start");
     const [team] = await db().insert(schema.team).values({ departmentId: ids.design, name: "UI" }).returning();
     await expect(change(ids.tam, today, { teamId: team.id })).rejects.toThrow("team_not_in_department");
+  });
+});
+
+describe("rollOverPlacements", () => {
+  it("applies future-dated changes and activates new starters when their day comes, once", async () => {
+    expect(await rollOverPlacements(today)).toEqual({ placementsUpdated: 0, peopleActivated: 0 });
+
+    // Huy's manager change was dated ten days ahead by the test above.
+    expect(await rollOverPlacements(addDays(today, 10))).toEqual({ placementsUpdated: 1, peopleActivated: 0 });
+    const [huy] = await db().select().from(schema.person).where(eqId(ids.huy));
+    expect(huy.managerId).toBe(ids.tam);
+
+    expect(await rollOverPlacements(addDays(today, 29))).toEqual({ placementsUpdated: 0, peopleActivated: 0 });
+    expect(await rollOverPlacements(addDays(today, 30))).toEqual({ placementsUpdated: 0, peopleActivated: 1 });
+    const [future] = await db().select().from(schema.person).where(eqId(ids.future));
+    expect(future.status).toBe("active");
+    expect(await rollOverPlacements(addDays(today, 30))).toEqual({ placementsUpdated: 0, peopleActivated: 0 });
   });
 });
 

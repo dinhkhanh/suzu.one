@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { can, canReadTier, matchesReach, readableTier, tierReach, type Grant, type Principal } from "./policy";
+import { can, canReadTier, entityReach, matchesReach, readableTier, tierReach, type Grant, type Principal } from "./policy";
 import { ROLES, TIERS } from "./roles";
 
 const ENTITY_A = "entity-a";
@@ -144,5 +144,45 @@ describe("tierReach", () => {
     expect(tierReach(manager, "personal")).toMatchObject({ all: false, managerOf: "manager-1" });
     expect(tierReach(manager, "restricted")).toMatchObject({ all: false, managerOf: null });
     expect(tierReach(manager, "compensation")).toMatchObject({ all: false, managerOf: null });
+  });
+});
+
+describe("entityReach", () => {
+  const grants = (...list: Grant[]): Principal => ({ personId: "viewer", workforceType: "employee", grants: list });
+
+  it("agrees with can() for every role, scope and entity", () => {
+    const scopes: Grant["scope"][] = [{ type: "group" }, { type: "entity", id: ENTITY_A }, { type: "department", id: DESIGN }, { type: "team", id: "team-1" }];
+    for (const role of ROLES) {
+      for (const scope of scopes) {
+        const principal = grants({ role, scope });
+        const reach = entityReach(principal, "audit:read");
+        for (const entityId of [ENTITY_A, ENTITY_B]) {
+          const reached = reach.all || reach.entityIds.includes(entityId);
+          // Only the entity is known about an audit entry, so that is all can() is told.
+          expect(reached, `${role} ${scope.type} ${entityId}`).toBe(can(principal, "audit:read", { entityId }));
+        }
+      }
+    }
+  });
+
+  it("gives an entity HR admin their entity only, and someone without the permission nothing", () => {
+    expect(entityReach(grants({ role: "hr_admin", scope: { type: "entity", id: ENTITY_A } }), "audit:read")).toEqual({ all: false, entityIds: [ENTITY_A] });
+    expect(entityReach(grants({ role: "hr_staff", scope: { type: "group" } }), "audit:read")).toEqual({ all: false, entityIds: [] });
+    expect(entityReach(grants({ role: "auditor", scope: { type: "group" } }), "audit:read")).toEqual({ all: true });
+  });
+});
+
+describe("rule governance (FR-PLT-39)", () => {
+  const holder = (role: Grant["role"], scope: Grant["scope"] = { type: "group" }): Principal => ({ personId: "viewer", workforceType: "employee", grants: [{ role, scope }] });
+
+  it("lets HR and C&B propose rule changes but only the owner decide them", () => {
+    for (const role of ROLES) {
+      expect(can(holder(role), "payroll:rules", {}), role).toBe(role === "owner");
+      expect(can(holder(role), "rules:propose", {}), role).toBe(["owner", "hr_admin", "payroll"].includes(role));
+    }
+  });
+
+  it("treats the rules as group-wide: an entity-scoped grant cannot touch them", () => {
+    expect(can(holder("hr_admin", { type: "entity", id: ENTITY_A }), "rules:propose", {})).toBe(false);
   });
 });

@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { changeAssignmentAction } from "../actions";
 import type { PersonView } from "../service";
-import { Field, FormError, PlacementFields, type PlacementOptions } from "./fields";
-import { useActionForm } from "./use-action-form";
+import { Field, FormError } from "@/components/forms/field";
+import { PlacementFields, type PlacementOptions } from "./fields";
+import { useActionForm } from "@/components/forms/use-action-form";
 
 export function AssignmentForm({ person, options, today }: { person: PersonView; options: PlacementOptions; today: string }) {
   const t = useTranslations("people");
@@ -38,7 +39,7 @@ export function AssignmentForm({ person, options, today }: { person: PersonView;
         </div>
         {/* Keyed so the defaults follow the assignment once it changes. */}
         <PlacementFields key={current?.id} options={options} defaults={current ?? undefined} exceptPersonId={person.id} />
-        <FormError errorKey={errorKey} />
+        <FormError namespace="people.errors" errorKey={errorKey} />
         <div>
           <Button type="submit" disabled={pending}>
             {pending ? t("saving") : t("save")}

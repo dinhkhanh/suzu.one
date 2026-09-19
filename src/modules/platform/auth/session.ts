@@ -1,12 +1,10 @@
 import "server-only";
-import { and, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import { db, schema } from "@/lib/db";
 import { findPersonByEmail, type PersonRow } from "../people/service";
-import type { Grant, Principal, Scope } from "../rbac/policy";
-import { ROLES, type Role } from "../rbac/roles";
+import type { Principal } from "../rbac/policy";
+import { loadGrants } from "../rbac/service";
 import { auth } from "./auth";
 
 export type CurrentUser = {
@@ -18,30 +16,6 @@ export type CurrentUser = {
   principal: Principal;
   request: { ipAddress: string | null; userAgent: string | null };
 };
-
-function toScope(scopeType: "group" | "entity" | "department" | "team", scopeId: string | null): Scope | null {
-  if (scopeType === "group") return { type: "group" };
-  return scopeId ? { type: scopeType, id: scopeId } : null;
-}
-
-async function loadGrants(personId: string): Promise<Grant[]> {
-  const today = sql`current_date`;
-  const rows = await db()
-    .select()
-    .from(schema.roleAssignment)
-    .where(
-      and(
-        eq(schema.roleAssignment.personId, personId),
-        lte(schema.roleAssignment.validFrom, today),
-        or(isNull(schema.roleAssignment.validTo), gte(schema.roleAssignment.validTo, today)),
-      ),
-    );
-  return rows.flatMap((row) => {
-    const scope = toScope(row.scopeType, row.scopeId);
-    const known = (ROLES as readonly string[]).includes(row.role);
-    return scope && known ? [{ role: row.role as Role, scope }] : [];
-  });
-}
 
 /**
  * The signed-in person with their grants, or null. Re-checks the person's status on every

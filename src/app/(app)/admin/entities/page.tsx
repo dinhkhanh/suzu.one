@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
-import { listDepartments, listEntities } from "@/modules/platform/org/service";
+import { listEntities } from "@/modules/platform/org/service";
+import { CreateEntityForm } from "@/modules/platform/org/ui/entity-forms";
 import { can } from "@/modules/platform/rbac/policy";
-import { CreateEntityForm } from "./create-entity-form";
 
 export const metadata: Metadata = { title: "Entities" };
 
@@ -15,10 +16,8 @@ export default async function EntitiesPage() {
   if (!can(user.principal, "org:read")) notFound();
 
   const t = await getTranslations("entities");
-  const [allEntities, departments] = await Promise.all([listEntities(), listDepartments()]);
   // Entity-scoped admins only see the entities their grants cover.
-  const entities = allEntities.filter((entity) => can(user.principal, "org:read", { entityId: entity.id }));
-  const sharedDepartments = departments.filter((department) => department.entityId === null);
+  const entities = (await listEntities()).filter((entity) => can(user.principal, "org:read", { entityId: entity.id }));
 
   return (
     <div className="flex max-w-5xl flex-col gap-8">
@@ -49,7 +48,9 @@ export default async function EntitiesPage() {
               <TableRow key={entity.id}>
                 <TableCell className="font-mono text-xs">{entity.code}</TableCell>
                 <TableCell>
-                  <p className="font-medium">{entity.shortName}</p>
+                  <Link href={`/admin/entities/${entity.id}`} className="font-medium hover:underline">
+                    {entity.shortName}
+                  </Link>
                   <p className="text-xs text-muted-foreground">{entity.legalName}</p>
                 </TableCell>
                 <TableCell>{entity.taxCode ?? "—"}</TableCell>
@@ -65,16 +66,6 @@ export default async function EntitiesPage() {
 
       {can(user.principal, "org:manage", {}) ? <CreateEntityForm /> : null}
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("departments")}</h2>
-        <div className="flex flex-wrap gap-2">
-          {sharedDepartments.map((department) => (
-            <Badge key={department.id} variant="outline">
-              {department.name}
-            </Badge>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }

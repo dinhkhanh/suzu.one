@@ -16,6 +16,19 @@ const schema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   ALLOWED_WORKSPACE_DOMAINS: z.string().default("suzu.vn,suzu.group"),
   BOOTSTRAP_OWNER_EMAILS: z.string().default(""),
+  // Field encryption for restricted/compensation data: "k2:<base64 32 bytes>,k1:<...>", active key
+  // first (docs/KEY_ROTATION.md). Losing these keys loses the data; they live only in the secret store.
+  DATA_ENCRYPTION_KEYS: z.string().min(1).optional(),
+  DATA_BLIND_INDEX_KEY: z.string().min(1).optional(),
+  // Private file storage (Supabase Storage). On Vercel the Supabase integration provides both.
+  SUPABASE_URL: z.url().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+  STORAGE_BUCKET: z.string().regex(/^[a-z0-9-]+$/).default("suzu-private"),
+  // Outgoing email (Resend). Unset = emails are written to the outbox and marked "skipped".
+  RESEND_API_KEY: z.string().min(1).optional(),
+  EMAIL_FROM: z.string().default("Suzu One <no-reply@suzu.one>"),
+  // Shared with Vercel Cron, which sends it as a bearer token. Unset = scheduled jobs refuse to run.
+  CRON_SECRET: z.string().min(16).optional(),
 });
 
 function load() {

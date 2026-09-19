@@ -4,10 +4,10 @@ import { can } from "@/modules/platform/rbac/policy";
 export type NavItem = { key: string; href?: string; phase?: number };
 
 // Modules without an href are not built yet; they show with the phase they arrive in.
-export function navFor(principal: Principal): { main: NavItem[]; admin: NavItem[] } {
+export function navFor(principal: Principal, open: { people: boolean }): { main: NavItem[]; admin: NavItem[] } {
   const main: NavItem[] = [
     { key: "home", href: "/home" },
-    { key: "people", href: "/people" },
+    ...(open.people ? [{ key: "people", href: "/people" }] : []),
     { key: "attendance", phase: 2 },
     { key: "leave", phase: 2 },
     { key: "work", phase: 3 },
@@ -16,6 +16,13 @@ export function navFor(principal: Principal): { main: NavItem[]; admin: NavItem[
     { key: "payroll", phase: 5 },
   ];
   // Navigation visibility only. Every page and action re-checks permissions itself.
-  const admin: NavItem[] = can(principal, "org:read") ? [{ key: "entities", href: "/admin/entities" }] : [];
+  const admin: NavItem[] = [
+    ...(can(principal, "org:read") ? [{ key: "entities", href: "/admin/entities" }, { key: "org", href: "/admin/org" }] : []),
+    ...(can(principal, "org:manage", {}) ? [{ key: "flags", href: "/admin/flags" }] : []),
+    ...(can(principal, "rbac:manage") ? [{ key: "roles", href: "/admin/roles" }] : []),
+    ...(can(principal, "rules:propose", {}) || can(principal, "payroll:rules", {}) || can(principal, "payroll:read", {}) ? [{ key: "rules", href: "/admin/rules" }] : []),
+    ...(can(principal, "audit:read") ? [{ key: "audit", href: "/admin/audit" }] : []),
+    ...(can(principal, "audit:read", {}) ? [{ key: "jobs", href: "/admin/jobs" }] : []),
+  ];
   return { main, admin };
 }

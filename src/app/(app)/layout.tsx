@@ -4,12 +4,15 @@ import { LocaleSwitch } from "@/components/shell/locale-switch";
 import { navFor, type NavItem } from "@/components/shell/nav";
 import { SignOutButton } from "@/components/shell/sign-out-button";
 import { Badge } from "@/components/ui/badge";
+import { peopleModuleOpen } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
+import { countUnread } from "@/modules/platform/notifications/service";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
   const t = await getTranslations();
-  const nav = navFor(user.principal);
+  const nav = navFor(user.principal, { people: await peopleModuleOpen(user) });
+  const unread = await countUnread(user.person.id);
 
   const renderItem = (item: NavItem) =>
     item.href ? (
@@ -31,7 +34,13 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         <Link href="/home" className="px-2 text-base font-semibold tracking-tight">
           {t("app.name")}
         </Link>
-        <nav className="flex flex-col gap-0.5">{nav.main.map(renderItem)}</nav>
+        <nav className="flex flex-col gap-0.5">
+          {nav.main.map(renderItem)}
+          <Link href="/notifications" className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+            {t("nav.notifications")}
+            {unread > 0 ? <Badge className="text-[10px]">{unread > 99 ? "99+" : unread}</Badge> : null}
+          </Link>
+        </nav>
         {nav.admin.length > 0 ? (
           <nav className="flex flex-col gap-0.5">
             <p className="px-2 text-xs font-medium text-muted-foreground uppercase">{t("nav.admin")}</p>

@@ -43,6 +43,55 @@
       "when": 1789826414844,
       "tag": "0005_core_hr_no_overlap",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789828158955,
+      "tag": "0006_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789828866397,
+      "tag": "0007_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789829275644,
+      "tag": "0008_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789829471235,
+      "tag": "0009_statutory",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789829472001,
+      "tag": "0010_statutory_no_overlap",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789829768476,
+      "tag": "0011_feature_flags",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789829996537,
+      "tag": "0012_import_batch",
+      "breakpoints": true
     }
   ]
 }

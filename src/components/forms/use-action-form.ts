@@ -9,7 +9,10 @@ function nest(formData: FormData): Record<string, unknown> {
     const path = name.split(".");
     let node = result;
     for (const key of path.slice(0, -1)) node = (node[key] ??= {}) as Record<string, unknown>;
-    node[path.at(-1)!] = value;
+    const last = path.at(-1)!;
+    // "entityIds[]" collects every value posted under that name (checkbox groups, multi-selects).
+    if (last.endsWith("[]")) ((node[last.slice(0, -2)] ??= []) as unknown[]).push(value);
+    else node[last] = value;
   }
   return result;
 }
@@ -19,17 +22,22 @@ function nest(formData: FormData): Record<string, unknown> {
  * Wired to `onSubmit`, not `action`: React resets a form's fields once its `action` finishes, even
  * when the server said no, and nobody should retype a whole hire form because of one bad field.
  */
-export function useActionForm<T>(action: (input: unknown) => Promise<ActionResult<T>>, options: { extra?: Record<string, unknown>; onSuccess?: (data: T) => void }) {
+export function useActionForm<T>(action: (input: unknown) => Promise<ActionResult<T>>, options: { extra?: Record<string, unknown>; onSuccess?: (data: T) => void } = {}) {
   const [pending, startTransition] = useTransition();
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  // For forms that stay on screen after saving and need to say that it worked.
+  const [saved, setSaved] = useState(false);
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+    // The clicked button counts as a field, so a form can offer several outcomes (approve / reject).
+    const formData = new FormData(event.currentTarget, (event.nativeEvent as SubmitEvent).submitter);
+    setSaved(false);
     startTransition(async () => {
       const result = await action({ ...nest(formData), ...options.extra });
       if (result.ok) {
         setErrorKey(null);
+        setSaved(true);
         options.onSuccess?.(result.data);
         return;
       }
@@ -37,5 +45,5 @@ export function useActionForm<T>(action: (input: unknown) => Promise<ActionResul
     });
   }
 
-  return { onSubmit, pending, errorKey };
+  return { onSubmit, pending, errorKey, saved };
 }

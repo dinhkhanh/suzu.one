@@ -4,8 +4,9 @@ import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { updatePersonAction } from "../actions";
 import type { PersonView } from "../service";
-import { FormError, IdentityFields } from "./fields";
-import { useActionForm } from "./use-action-form";
+import { FormError } from "@/components/forms/field";
+import { IdentityFields } from "./fields";
+import { useActionForm } from "@/components/forms/use-action-form";
 
 export function EditPersonForm({ person }: { person: PersonView }) {
   const t = useTranslations("people");
@@ -20,7 +21,7 @@ export function EditPersonForm({ person }: { person: PersonView }) {
       <summary className="cursor-pointer text-sm font-medium">{t("edit.title")}</summary>
       <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-4">
         <IdentityFields defaults={{ fullName: person.fullName, workEmail: person.workEmail, profile: person.personal?.profile }} />
-        <FormError errorKey={errorKey} />
+        <FormError namespace="people.errors" errorKey={errorKey} />
         <div>
           <Button type="submit" disabled={pending}>
             {pending ? t("saving") : t("save")}

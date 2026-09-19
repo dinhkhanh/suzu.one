@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Form from "next/form";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PERSON_STATUSES, WORKFORCE_TYPES } from "@/modules/core-hr/enums";
 import { canBrowsePeople, canFilterByPersonalFacts } from "@/modules/core-hr/policy";
-import { listPeople, listSavedViews, type PeopleFilters } from "@/modules/core-hr/service";
+import { listPeople, listSavedViews, type PeopleFilters, peopleModuleOpen } from "@/modules/core-hr/service";
 import { SavedViews } from "@/modules/core-hr/ui/saved-views";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listDepartments, listEntities } from "@/modules/platform/org/service";
@@ -23,6 +23,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function PeoplePage(props: PageProps<"/people">) {
   const user = await requireUser();
+  if (!(await peopleModuleOpen(user))) notFound();
   // Collaborators have no directory; their own profile is the whole module for them.
   if (!canBrowsePeople(user.principal)) redirect(`/people/${user.person.id}`);
 

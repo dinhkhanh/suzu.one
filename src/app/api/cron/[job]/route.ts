@@ -1,0 +1,40 @@
+import { timingSafeEqual } from "node:crypto";
+import { env } from "@/lib/env";
+import { peopleRollOverJob } from "@/modules/core-hr/jobs";
+import { filesCleanupJob } from "@/modules/platform/files/jobs";
+import { type JobDefinition, runJob } from "@/modules/platform/jobs/service";
+import { notificationsDailyJob } from "@/modules/platform/notifications/jobs";
+
+// What each cron URL runs. Schedules live in vercel.json and stay daily, which every Vercel plan
+// allows; jobs that share a time of day share a URL but are still recorded (and fail) one by one.
+const SCHEDULES: Record<string, JobDefinition[]> = {
+  midnight: [peopleRollOverJob],
+  morning: [notificationsDailyJob, filesCleanupJob],
+};
+
+export const maxDuration = 300;
+
+function authorized(request: Request): boolean {
+  const secret = env().CRON_SECRET;
+  if (!secret) return false;
+  const given = Buffer.from(request.headers.get("authorization") ?? "");
+  const expected = Buffer.from(`Bearer ${secret}`);
+  return given.length === expected.length && timingSafeEqual(given, expected);
+}
+
+// Vercel Cron calls this with `Authorization: Bearer $CRON_SECRET`. Nothing else may.
+// `/api/cron/<schedule>` runs a whole schedule; `/api/cron/<job name>` runs one job by hand.
+export async function GET(request: Request, context: RouteContext<"/api/cron/[job]">) {
+  if (!authorized(request)) return new Response("Unauthorized", { status: 401 });
+
+  const { job } = await context.params;
+  const definitions = SCHEDULES[job] ?? Object.values(SCHEDULES).flat().filter((candidate) => candidate.name === job);
+  if (definitions.length === 0) return new Response("Unknown job", { status: 404 });
+
+  const outcomes = [];
+  for (const definition of definitions) {
+    const run = await runJob(definition);
+    outcomes.push({ job: definition.name, status: run?.status ?? "already_running", result: run?.result ?? null, error: run?.error ?? null });
+  }
+  return Response.json({ outcomes }, { status: outcomes.some((outcome) => outcome.status === "failed") ? 500 : 200 });
+}

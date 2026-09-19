@@ -6,8 +6,8 @@ import { useRef, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { deletePeopleViewAction, savePeopleViewAction } from "../actions";
-import { FormError } from "./fields";
-import { useActionForm } from "./use-action-form";
+import { FormError } from "@/components/forms/field";
+import { useActionForm } from "@/components/forms/use-action-form";
 
 type View = { id: string; name: string; filters: Record<string, string> };
 
@@ -46,7 +46,7 @@ export function SavedViews({ views, currentFilters }: { views: View[]; currentFi
           <Button type="submit" variant="outline" size="sm" disabled={pending}>
             {t("save")}
           </Button>
-          <FormError errorKey={errorKey} />
+          <FormError namespace="people.errors" errorKey={errorKey} />
         </form>
       ) : null}
     </div>

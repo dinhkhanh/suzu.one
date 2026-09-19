@@ -1,9 +1,11 @@
-// Seeds editable starter data: placeholder legal entities and the shared departments (SRS D8).
+// Seeds editable starter data: placeholder legal entities, the shared departments (SRS D8) and the
+// statutory parameter snapshot (SRS Appendix A).
 // Safe to re-run: existing codes are left untouched. Run with `pnpm db:seed`.
 import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { department, entity } from "../src/lib/db/schema";
+import { department, entity, statutoryParameter } from "../src/lib/db/schema";
+import { STATUTORY_SEED } from "../src/modules/platform/statutory/seed-values";
 
 config({ path: ".env.local" });
 
@@ -37,6 +39,12 @@ async function main() {
   const entities = await db.insert(entity).values(ENTITIES).onConflictDoNothing({ target: entity.code }).returning();
   const departments = await db.insert(department).values(DEPARTMENTS).onConflictDoNothing({ target: department.code }).returning();
   console.log(`Seeded ${entities.length} entities and ${departments.length} shared departments (existing codes skipped).`);
+
+  // Statutory parameters: only keys that have no version at all, so nothing HR entered is touched.
+  const present = new Set((await db.selectDistinct({ key: statutoryParameter.key }).from(statutoryParameter)).map((row) => row.key));
+  const missing = STATUTORY_SEED.filter((seed) => !present.has(seed.key));
+  if (missing.length) await db.insert(statutoryParameter).values(missing.map((seed) => ({ ...seed, status: "approved" as const, isVerified: false })));
+  console.log(`Seeded ${missing.length} statutory parameters (unverified until the chief accountant confirms them).`);
 
   await client.end();
 }

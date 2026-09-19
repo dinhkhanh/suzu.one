@@ -55,6 +55,21 @@ export function can(principal: Principal, permission: Exclude<Permission, "*">, 
 }
 
 /**
+ * The list form of `can`, for records that only know their entity (the audit log): which entities
+ * does the principal hold `permission` over? Department and team grants cover no whole entity.
+ */
+export function entityReach(principal: Principal, permission: Exclude<Permission, "*">): { all: true } | { all: false; entityIds: string[] } {
+  const entityIds: string[] = [];
+  for (const grant of principal.grants) {
+    const permissions = ROLE_DEFINITIONS[grant.role].permissions;
+    if (!permissions.includes("*") && !permissions.includes(permission)) continue;
+    if (grant.scope.type === "group") return { all: true };
+    if (grant.scope.type === "entity") entityIds.push(grant.scope.id);
+  }
+  return { all: false, entityIds };
+}
+
+/**
  * Highest sensitivity tier of a person's data the principal may read.
  * - yourself: everything, including your own compensation
  * - your direct reports: personal data, never compensation (FR-ACL, SRS §2.2)

@@ -5,6 +5,12 @@ export * from "../../modules/platform/org/schema";
 export * from "../../modules/platform/people/schema";
 export * from "../../modules/platform/rbac/schema";
 export * from "../../modules/platform/audit/schema";
+export * from "../../modules/platform/jobs/schema";
+export * from "../../modules/platform/notifications/schema";
+export * from "../../modules/platform/files/schema";
+export * from "../../modules/platform/statutory/schema";
+export * from "../../modules/platform/flags/schema";
+export * from "../../modules/platform/import/schema";
 export * from "../../modules/core-hr/schema";
 
 // Every table calls `.enableRLS()` with no policies. The app connects as the table owner, which

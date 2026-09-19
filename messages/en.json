@@ -25,7 +25,14 @@
     "admin": "Admin",
     "entities": "Entities",
     "soon": "Soon",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "org": "Departments & teams",
+    "roles": "Access",
+    "audit": "Audit log",
+    "notifications": "Notifications",
+    "jobs": "Scheduled jobs",
+    "rules": "Statutory parameters",
+    "flags": "Rollout"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -68,8 +75,21 @@
       "entity_code_taken": "That entity code already exists.",
       "forbidden": "You do not have permission to do this.",
       "invalid": "Please check the form.",
-      "generic": "Something went wrong. Please try again."
-    }
+      "generic": "Something went wrong. Please try again.",
+      "entity_in_use": "People still belong to this entity, so it cannot be deactivated yet.",
+      "not_found": "Not found."
+    },
+    "insuranceUnitCode": "Social insurance unit code",
+    "legalRepresentative": "Legal representative",
+    "address": "Address",
+    "wageRegionValue": "Region {region}",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved.",
+    "branches": "Branches / locations",
+    "noBranches": "No branches yet.",
+    "branchName": "Branch name",
+    "addBranch": "Add branch"
   },
   "people": {
     "title": "People",
@@ -200,5 +220,299 @@
       "assignment_after_employment_end": "The effective date is after the employment ended.",
       "assignment_before_current_assignment": "The effective date is before the current assignment started. Past assignments cannot be rewritten."
     }
+  },
+  "org": {
+    "title": "Departments & teams",
+    "description": "Departments are shared across all entities by default; a team belongs to one department.",
+    "code": "Code",
+    "name": "Department name",
+    "parent": "Reports into",
+    "noParent": "None",
+    "belongsTo": "Belongs to",
+    "shared": "Shared",
+    "active": "Active",
+    "inactive": "Inactive",
+    "teams": "Teams",
+    "noTeams": "No teams yet.",
+    "teamCount": "{count, plural, =0 {no teams} one {# team} other {# teams}}",
+    "teamName": "Team name",
+    "newTeam": "New team",
+    "addTeam": "Add team",
+    "addDepartment": "Add department",
+    "save": "Save",
+    "errors": {
+      "department_code_taken": "That department code already exists.",
+      "department_parent_loop": "A department cannot report into itself or one of its own sub-departments.",
+      "department_parent_not_found": "Parent department not found.",
+      "department_in_use": "People still belong to this department, so it cannot be deactivated yet.",
+      "team_in_use": "People still belong to this team, so it cannot be deactivated yet.",
+      "not_found": "Not found.",
+      "forbidden": "You do not have permission to do this.",
+      "invalid": "Please check the information.",
+      "generic": "Something went wrong. Please try again."
+    },
+    "importTitle": "Import departments from Excel / CSV"
+  },
+  "rbac": {
+    "title": "Access",
+    "description": "Roles are always granted explicitly, person by person, each with a scope. Revoking takes effect on that person's very next action.",
+    "person": "Person",
+    "role": "Role",
+    "scopeType": "Scope",
+    "period": "In force",
+    "grantedBy": "Granted by",
+    "system": "System",
+    "noAccess": "No company email",
+    "notYet": "Not yet in force",
+    "choose": "Choose…",
+    "validFrom": "From",
+    "validTo": "Until (blank = no end)",
+    "grant": "Grant a role",
+    "grantSubmit": "Grant",
+    "revoke": "Revoke",
+    "revokeConfirm": "Confirm revoke",
+    "cancel": "Cancel",
+    "scope": {
+      "group": "Whole group",
+      "entity": "Entity",
+      "department": "Department",
+      "team": "Team"
+    },
+    "errors": {
+      "grant_dates": "The end date must be after the start date.",
+      "scope_required": "Please choose a scope.",
+      "scope_not_found": "The chosen scope was not found.",
+      "person_not_found": "Person not found.",
+      "person_has_no_access": "This person has no company email, so they cannot sign in to use a role.",
+      "grant_exists": "This person already holds this role with the same scope.",
+      "grant_not_found": "This grant is no longer in force.",
+      "last_owner": "The last remaining Owner cannot be revoked.",
+      "forbidden": "You do not have permission to do this.",
+      "invalid": "Please check the information.",
+      "generic": "Something went wrong. Please try again."
+    }
+  },
+  "audit": {
+    "title": "Audit log",
+    "description": "Every data change, every refusal and every automated job. The log is append-only; nobody can edit or delete it.",
+    "count": "{count, plural, =0 {No entries} one {# entry} other {# entries}}",
+    "empty": "No entries match these filters.",
+    "system": "System",
+    "resource": "Resource",
+    "ipAddress": "IP address",
+    "userAgent": "Browser",
+    "before": "Before",
+    "after": "After",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page {page} of {pageCount}",
+    "filters": {
+      "action": "Action, e.g. person. or .denied",
+      "actor": "Actor's email",
+      "resourceType": "Resource type",
+      "anyResource": "Any resource type",
+      "entity": "Entity",
+      "anyEntity": "Any entity",
+      "from": "From",
+      "to": "To",
+      "apply": "Filter",
+      "clear": "Clear"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "You have no notifications yet.",
+    "markAllRead": "Mark all as read",
+    "open": "Open",
+    "unread": "Unread",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page {page} of {pageCount}",
+    "emailFooter": "Suzu One · Automated email, please do not reply.",
+    "digestSubject": "{count, plural, one {# new notification} other {# new notifications}} on Suzu One",
+    "preferences": {
+      "title": "How you are notified",
+      "inApp": "In the app",
+      "email": "Email",
+      "mandatory": "Required, cannot be turned off",
+      "save": "Save",
+      "saved": "Saved.",
+      "channel": {
+        "instant": "Right away",
+        "digest": "One email each morning",
+        "off": "Never"
+      },
+      "category": {
+        "security": "Security & access",
+        "system": "System"
+      }
+    },
+    "kinds": {
+      "security_work_email_changed": {
+        "title": "Your sign-in email was changed",
+        "body": "The company email you use to sign in to Suzu One was just changed from {oldEmail} to {newEmail}. If you did not expect this, contact HR right away."
+      },
+      "security_role_granted": {
+        "title": "You were granted a new role",
+        "body": "{actor} granted you the role {role} ({scope}), in force from {validFrom}."
+      },
+      "security_role_revoked": {
+        "title": "One of your roles was revoked",
+        "body": "{actor} revoked your role {role} ({scope})."
+      },
+      "system_job_failed": {
+        "title": "Scheduled job failed: {job}",
+        "body": "The job {job} just failed: {error}"
+      },
+      "system_rule_proposed": {
+        "title": "A statutory parameter change needs your decision",
+        "body": "A new value was proposed for {parameter}, in force from {validFrom}. It takes effect only once you approve it."
+      }
+    },
+    "errors": {
+      "forbidden": "You do not have permission to do this.",
+      "invalid": "Please check the information.",
+      "generic": "Something went wrong. Please try again."
+    }
+  },
+  "jobs": {
+    "title": "Scheduled jobs",
+    "description": "Work that runs on a schedule: the daily people roll-over, notification emails. Owners are notified when a job fails.",
+    "started": "Started",
+    "job": "Job",
+    "status": "Status",
+    "took": "Took",
+    "result": "Result",
+    "empty": "No runs yet.",
+    "seconds": "{seconds}s",
+    "statuses": {
+      "running": "Running",
+      "succeeded": "Succeeded",
+      "failed": "Failed"
+    }
+  },
+  "rules": {
+    "title": "Statutory parameters",
+    "description": "Insurance rates, income tax, regional minimum wages, overtime multipliers… Every value has a start date and a legal source; no figure lives in code. HR / C&B propose changes and the Owner approves them.",
+    "pending": "Proposals awaiting a decision",
+    "unverified": "Not yet confirmed by the chief accountant",
+    "missing": "No value in force.",
+    "otherVersions": "{count, plural, one {# other version} other {# other versions}}",
+    "parameter": "Parameter",
+    "validFrom": "In force from",
+    "legalReference": "Legal source",
+    "note": "Note",
+    "propose": {
+      "title": "Propose a change",
+      "hint": "Edit the current value below. Money is whole VND; rates are basis points (8% = 800); multipliers are percents (150 = 150%).",
+      "value": "Value (JSON)",
+      "submit": "Submit proposal"
+    },
+    "decisions": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "verify": "Confirm as checked"
+    },
+    "parameters": {
+      "insurance_employee_rates": "Insurance — employee share",
+      "insurance_employer_rates": "Insurance — employer share",
+      "insurance_reference_level": "Reference level (base salary)",
+      "insurance_cap_multipliers": "Insurance contribution caps (multiples)",
+      "union_rates": "Trade union fund and dues",
+      "wage_regional_minimum": "Regional minimum wage",
+      "pit_deductions": "Income tax deductions",
+      "pit_brackets": "Progressive income tax brackets",
+      "pit_flat_rates": "Flat-rate income tax withholding",
+      "overtime_multipliers": "Overtime and night-work multipliers",
+      "overtime_caps": "Overtime limits",
+      "leave_annual": "Annual leave",
+      "probation_limits": "Probation",
+      "contract_fixed_term": "Fixed-term contracts"
+    },
+    "errors": {
+      "parameter_unknown": "Unknown parameter.",
+      "parameter_value_invalid": "The value does not have the shape this parameter requires.",
+      "parameter_version_exists": "A version already starts on that date.",
+      "parameter_before_current_version": "The start date must be after the version now in force; history is never overwritten.",
+      "proposal_not_found": "This proposal has already been handled.",
+      "forbidden": "You do not have permission to do this.",
+      "invalid": "Please check the information (the value must be valid JSON).",
+      "generic": "Something went wrong. Please try again."
+    }
+  },
+  "flags": {
+    "title": "Feature rollout",
+    "description": "Open each module to a pilot group first, then to the whole group. This only controls who sees a module; what they may do inside it is still decided by their roles. HR administrators and Owners always see every module.",
+    "everyone": "On for the whole group",
+    "orPilot": "Or on only for the chosen entities, departments and people:",
+    "entities": "Entities",
+    "departments": "Departments",
+    "people": "People",
+    "save": "Save",
+    "saved": "Saved.",
+    "names": {
+      "people": "People module"
+    },
+    "descriptions": {
+      "people": "The internal directory and personal profiles. While off, only HR and administrators see the module, so they can prepare the data."
+    },
+    "errors": {
+      "flag_unknown": "Unknown feature.",
+      "forbidden": "You do not have permission to do this.",
+      "invalid": "Please check the information.",
+      "generic": "Something went wrong. Please try again."
+    }
+  },
+  "imports": {
+    "template": "Download template",
+    "file": "Choose an .xlsx or .csv file",
+    "check": "Check file",
+    "checking": "Checking…",
+    "summary": "{rows, plural, one {# data row} other {# data rows}} · {problems, plural, =0 {no problems} one {# problem} other {# problems}}",
+    "problemAt": "Row {row}",
+    "previewLimit": "Showing the first {shown} of {rows} rows.",
+    "commit": "{rows, plural, one {Write # row} other {Write # rows}}",
+    "fixAndRetry": "Fix the problems above in the file, then check it again. Nothing has been written.",
+    "done": "Import complete. {summary}",
+    "counts": {
+      "created": "Created",
+      "updated": "Updated"
+    },
+    "problems": {
+      "column_missing": "This required column is missing",
+      "column_unknown": "Column not recognised; it will be ignored",
+      "no_rows": "The file has no data rows",
+      "required": "Required",
+      "too_long": "Too long",
+      "bad_code": "Codes use unaccented letters, digits, hyphens or underscores only",
+      "bad_email": "Not a valid email",
+      "bad_number": "Must be a whole number",
+      "bad_date": "Not a valid date (use dd/mm/yyyy)",
+      "bad_choice": "Not one of the allowed values",
+      "duplicate_in_file": "Same as another row in the file",
+      "entity_not_found": "No entity has this code",
+      "parent_not_found": "No department has this parent code",
+      "parent_loop": "A department cannot report into itself or one of its own sub-departments"
+    },
+    "errors": {
+      "import_file_type": "Only .xlsx and .csv files are accepted.",
+      "import_file_size": "The file is empty or larger than 4 MB.",
+      "import_unreadable": "The file could not be read. Save it again as .xlsx and retry.",
+      "import_too_many_rows": "The file has more than 5,000 rows. Please split it.",
+      "import_batch_not_found": "This check has expired or was already written. Check the file again.",
+      "import_stale": "The system's data changed since the check. Check the file again.",
+      "forbidden": "You do not have permission to do this.",
+      "invalid": "Please choose a file.",
+      "generic": "Something went wrong. Please try again."
+    }
+  },
+  "errors": {
+    "title": "Something went wrong",
+    "description": "The error has been recorded and sent to the technical owner. You can try again; if it keeps happening, send the reference below to support.",
+    "reference": "Reference: {digest}",
+    "retry": "Try again",
+    "notFoundTitle": "Page not found",
+    "notFoundDescription": "This page does not exist, or you do not have access to it.",
+    "home": "Back to home"
   }
 }

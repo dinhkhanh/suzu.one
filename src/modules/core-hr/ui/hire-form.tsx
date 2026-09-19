@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { hirePersonAction } from "../actions";
-import { Field, FormError, IdentityFields, PlacementFields, type PlacementOptions } from "./fields";
-import { useActionForm } from "./use-action-form";
+import { Field, FormError } from "@/components/forms/field";
+import { IdentityFields, PlacementFields, type PlacementOptions } from "./fields";
+import { useActionForm } from "@/components/forms/use-action-form";
 
 export function HireForm({ entities, options, today }: { entities: { id: string; name: string }[]; options: PlacementOptions; today: string }) {
   const t = useTranslations("people");
@@ -52,7 +53,7 @@ export function HireForm({ entities, options, today }: { entities: { id: string;
         <PlacementFields options={{ ...options, branches: options.branches.filter((branch) => branch.entityId === entityId) }} />
       </section>
 
-      <FormError errorKey={errorKey} />
+      <FormError namespace="people.errors" errorKey={errorKey} />
       <div>
         <Button type="submit" disabled={pending}>
           {pending ? t("saving") : t("hire.submit")}

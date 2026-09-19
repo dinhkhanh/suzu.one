@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
-import { getPersonView, loadPlacementOptions } from "@/modules/core-hr/service";
+import { getPersonView, loadPlacementOptions, peopleModuleOpen } from "@/modules/core-hr/service";
 import { AssignmentForm } from "@/modules/core-hr/ui/assignment-form";
 import { EditPersonForm } from "@/modules/core-hr/ui/edit-person-form";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -26,6 +26,7 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 
 export default async function PersonPage(props: PageProps<"/people/[id]">) {
   const user = await requireUser();
+  if (!(await peopleModuleOpen(user))) notFound();
   const { id } = await props.params;
   const person = UUID.test(id) ? await getPersonView(user.principal, id) : null;
   if (!person) notFound();

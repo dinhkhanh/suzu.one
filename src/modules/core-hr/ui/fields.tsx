@@ -1,8 +1,7 @@
 "use client";
 import { useTranslations } from "next-intl";
-import type { ReactNode } from "react";
+import { Field } from "@/components/forms/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { GENDERS, MARITAL_STATUSES, WORKFORCE_TYPES } from "../enums";
 
@@ -13,25 +12,6 @@ export type PlacementOptions = {
   positions: string[];
   people: { id: string; fullName: string }[];
 };
-
-export function Field({ name, label, children }: { name: string; label: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={name}>{label}</Label>
-      {children}
-    </div>
-  );
-}
-
-export function FormError({ errorKey }: { errorKey: string | null }) {
-  const t = useTranslations("people.errors");
-  if (!errorKey) return null;
-  return (
-    <p role="alert" className="text-sm text-destructive">
-      {t.has(errorKey) ? t(errorKey) : t("generic")}
-    </p>
-  );
-}
 
 type IdentityDefaults = {
   fullName?: string;

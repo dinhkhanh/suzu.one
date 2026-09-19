@@ -5,8 +5,10 @@ import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { toSearchKey } from "@/lib/text";
+import { featureEnabled } from "@/modules/platform/flags/service";
+import { notify, queueEmail } from "@/modules/platform/notifications/service";
 import { listBranches, listDepartments, listTeams } from "@/modules/platform/org/service";
-import { createPerson, listPersonNames, type PersonRow, setPersonPlacement, updatePersonIdentity, wouldCreateReportingLoop } from "@/modules/platform/people/service";
+import { activatePerson, createPerson, listPersonNames, type PersonRow, setPersonPlacement, updatePersonIdentity, wouldCreateReportingLoop } from "@/modules/platform/people/service";
 import { can, matchesReach, type Principal, readableTier, type Target, tierReach, type TierReach } from "@/modules/platform/rbac/policy";
 import { type Tier, tierRank } from "@/modules/platform/rbac/roles";
 import { periodOn, planAssignmentChange } from "./engine/assignment-plan";
@@ -17,6 +19,16 @@ export type PersonStatus = PersonRow["status"];
 type ProfileRow = typeof schema.personProfile.$inferSelect;
 
 const PAGE_SIZE = 50;
+
+/**
+ * Is the People module switched on for this person? People who manage HR data or the system itself
+ * always see it, so they can load and check the data before the pilot starts. Visibility only:
+ * what anyone may read or change inside is still decided by RBAC.
+ */
+export async function peopleModuleOpen(user: { person: PersonRow; principal: Principal }): Promise<boolean> {
+  if (can(user.principal, "person:manage") || can(user.principal, "org:manage")) return true;
+  return featureEnabled("people", user.person);
+}
 
 // ── Reading ─────────────────────────────────────────────────────────────────────────────────
 
@@ -433,6 +445,13 @@ export async function updatePersonBasics(personId: string, input: { fullName: st
     const [profileBefore] = await tx.select().from(schema.personProfile).where(eq(schema.personProfile.personId, personId)).limit(1);
 
     const person = await updatePersonIdentity(tx, personId, input);
+    if (before.workEmail && before.workEmail !== person.workEmail) {
+      // Whoever holds the new address now sees this person's self-service pages, so the old
+      // address is told too: that is where the real owner would still be reading.
+      const params = { oldEmail: before.workEmail, newEmail: person.workEmail ?? "—" };
+      await queueEmail(before.workEmail, "security.work_email_changed", params, tx);
+      await notify({ recipients: [personId], kind: "security.work_email_changed", params, link: `/people/${personId}` }, tx);
+    }
     const [profile] = await tx
       .insert(schema.personProfile)
       .values({ personId, ...input.profile })
@@ -495,6 +514,37 @@ export async function changeAssignment(personId: string, input: { validFrom: Iso
     }
     return { employment, before, after };
   });
+}
+
+/**
+ * Brings `person` (what sign-in and RBAC read) up to date with the assignment in force on `today`:
+ * future-dated changes that have now started, and new starters whose first day has come.
+ */
+export async function rollOverPlacements(today: IsoDate): Promise<{ placementsUpdated: number; peopleActivated: number }> {
+  const { e, a } = placementOn(today);
+  const stale = await db()
+    .select({
+      personId: schema.person.id,
+      activate: sql<boolean>`${schema.person.status} = 'preboarding' and ${e.startDate} <= ${today}::date`,
+      moved: sql<boolean>`(${schema.person.workforceType}, ${schema.person.primaryEntityId}, ${schema.person.departmentId}, ${schema.person.teamId}, ${schema.person.managerId}) is distinct from (${a.workforceType}, ${e.entityId}, ${a.departmentId}, ${a.teamId}, ${a.managerId})`,
+      placement: { workforceType: a.workforceType, primaryEntityId: e.entityId, departmentId: a.departmentId, teamId: a.teamId, managerId: a.managerId },
+    })
+    .from(schema.person)
+    .innerJoinLateral(e, sql`true`)
+    .innerJoinLateral(a, sql`true`);
+
+  let placementsUpdated = 0;
+  let peopleActivated = 0;
+  for (const row of stale) {
+    if (!row.moved && !row.activate) continue;
+    await db().transaction(async (tx) => {
+      if (row.moved) await setPersonPlacement(tx, row.personId, row.placement);
+      if (row.activate) await activatePerson(tx, row.personId);
+    });
+    if (row.moved) placementsUpdated++;
+    if (row.activate) peopleActivated++;
+  }
+  return { placementsUpdated, peopleActivated };
 }
 
 // Checks that the pieces of a placement belong together and turns the position name into a row.

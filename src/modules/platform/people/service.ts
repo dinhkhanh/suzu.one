@@ -77,6 +77,11 @@ export async function setPersonPlacement(tx: Tx, personId: string, placement: Pe
   await tx.update(schema.person).set({ ...placement, updatedAt: new Date() }).where(eq(schema.person.id, personId));
 }
 
+/** Pre-boarding people become active on their start date; only the daily roll-over calls this. */
+export async function activatePerson(tx: Tx, personId: string): Promise<void> {
+  await tx.update(schema.person).set({ status: "active", updatedAt: new Date() }).where(and(eq(schema.person.id, personId), eq(schema.person.status, "preboarding")));
+}
+
 export async function findPersonById(personId: string): Promise<PersonRow | undefined> {
   const [row] = await db().select().from(schema.person).where(eq(schema.person.id, personId)).limit(1);
   return row;

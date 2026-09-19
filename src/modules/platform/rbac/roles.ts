@@ -33,6 +33,9 @@ export type Permission =
   | "payroll:propose"
   | "payroll:approve"
   | "payroll:pay"
+  // Statutory parameters, pay components, leave and attendance policies (FR-PLT-39):
+  // HR and C&B propose changes; only the owner decides them.
+  | "rules:propose"
   | "payroll:rules"
   | "recruit:manage"
   | "asset:manage"
@@ -49,14 +52,14 @@ export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
   c_level: { permissions: ["org:read", "person:read", "report:read", "payroll:read", "payroll:approve"], maxTier: "compensation" },
   entity_director: { permissions: ["org:read", "person:read", "report:read"], maxTier: "restricted" },
   hr_admin: {
-    permissions: ["org:read", "org:manage", "person:read", "person:manage", "attendance:manage", "leave:manage", "payroll:read", "payroll:propose", "recruit:manage", "report:read", "audit:read"],
+    permissions: ["org:read", "org:manage", "person:read", "person:manage", "attendance:manage", "leave:manage", "payroll:read", "payroll:propose", "rules:propose", "recruit:manage", "report:read", "audit:read"],
     maxTier: "compensation",
   },
   hr_staff: {
     permissions: ["org:read", "person:read", "person:manage", "attendance:manage", "leave:manage", "recruit:manage"],
     maxTier: "restricted",
   },
-  payroll: { permissions: ["org:read", "person:read", "payroll:read", "payroll:propose", "report:read"], maxTier: "compensation" },
+  payroll: { permissions: ["org:read", "person:read", "payroll:read", "payroll:propose", "rules:propose", "report:read"], maxTier: "compensation" },
   finance: { permissions: ["org:read", "person:read", "payroll:read", "payroll:pay", "report:read"], maxTier: "compensation" },
   department_head: { permissions: ["org:read", "person:read", "report:read"], maxTier: "personal" },
   recruiter: { permissions: ["org:read", "recruit:manage"], maxTier: "public_internal" },

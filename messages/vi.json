@@ -25,7 +25,14 @@
     "admin": "Quản trị",
     "entities": "Pháp nhân",
     "soon": "Sắp có",
-    "signOut": "Đăng xuất"
+    "signOut": "Đăng xuất",
+    "org": "Phòng ban & nhóm",
+    "roles": "Phân quyền",
+    "audit": "Nhật ký hệ thống",
+    "notifications": "Thông báo",
+    "jobs": "Tác vụ tự động",
+    "rules": "Tham số pháp định",
+    "flags": "Triển khai tính năng"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -68,8 +75,21 @@
       "entity_code_taken": "Mã pháp nhân đã tồn tại.",
       "forbidden": "Bạn không có quyền thực hiện thao tác này.",
       "invalid": "Vui lòng kiểm tra lại thông tin.",
-      "generic": "Có lỗi xảy ra. Vui lòng thử lại."
-    }
+      "generic": "Có lỗi xảy ra. Vui lòng thử lại.",
+      "entity_in_use": "Vẫn còn nhân sự thuộc pháp nhân này nên chưa thể ngừng hoạt động.",
+      "not_found": "Không tìm thấy dữ liệu."
+    },
+    "insuranceUnitCode": "Mã đơn vị BHXH",
+    "legalRepresentative": "Người đại diện pháp luật",
+    "address": "Địa chỉ",
+    "wageRegionValue": "Vùng {region}",
+    "save": "Lưu",
+    "saving": "Đang lưu…",
+    "saved": "Đã lưu.",
+    "branches": "Chi nhánh / địa điểm",
+    "noBranches": "Chưa có chi nhánh nào.",
+    "branchName": "Tên chi nhánh",
+    "addBranch": "Thêm chi nhánh"
   },
   "people": {
     "title": "Nhân sự",
@@ -200,5 +220,299 @@
       "assignment_after_employment_end": "Ngày hiệu lực muộn hơn ngày nghỉ việc.",
       "assignment_before_current_assignment": "Ngày hiệu lực sớm hơn ngày bắt đầu của vị trí hiện tại. Không thể sửa lịch sử đã qua."
     }
+  },
+  "org": {
+    "title": "Phòng ban & nhóm",
+    "description": "Phòng ban mặc định dùng chung cho mọi pháp nhân; nhóm thuộc về một phòng ban.",
+    "code": "Mã",
+    "name": "Tên phòng ban",
+    "parent": "Trực thuộc",
+    "noParent": "Không trực thuộc",
+    "belongsTo": "Thuộc về",
+    "shared": "Dùng chung",
+    "active": "Hoạt động",
+    "inactive": "Ngừng",
+    "teams": "Nhóm",
+    "noTeams": "Chưa có nhóm nào.",
+    "teamCount": "{count, plural, =0 {chưa có nhóm} other {# nhóm}}",
+    "teamName": "Tên nhóm",
+    "newTeam": "Nhóm mới",
+    "addTeam": "Thêm nhóm",
+    "addDepartment": "Thêm phòng ban",
+    "save": "Lưu",
+    "errors": {
+      "department_code_taken": "Mã phòng ban đã tồn tại.",
+      "department_parent_loop": "Phòng ban không thể trực thuộc chính nó hoặc phòng ban con của nó.",
+      "department_parent_not_found": "Không tìm thấy phòng ban cấp trên.",
+      "department_in_use": "Vẫn còn nhân sự thuộc phòng ban này nên chưa thể ngừng hoạt động.",
+      "team_in_use": "Vẫn còn nhân sự thuộc nhóm này nên chưa thể ngừng hoạt động.",
+      "not_found": "Không tìm thấy dữ liệu.",
+      "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+      "invalid": "Vui lòng kiểm tra lại thông tin.",
+      "generic": "Có lỗi xảy ra. Vui lòng thử lại."
+    },
+    "importTitle": "Nhập phòng ban từ Excel / CSV"
+  },
+  "rbac": {
+    "title": "Phân quyền",
+    "description": "Vai trò luôn được cấp tường minh cho từng người, kèm phạm vi áp dụng. Thu hồi có hiệu lực ngay ở thao tác kế tiếp của người đó.",
+    "person": "Nhân sự",
+    "role": "Vai trò",
+    "scopeType": "Phạm vi",
+    "period": "Hiệu lực",
+    "grantedBy": "Người cấp",
+    "system": "Hệ thống",
+    "noAccess": "Không có email công ty",
+    "notYet": "Chưa hiệu lực",
+    "choose": "Chọn…",
+    "validFrom": "Từ ngày",
+    "validTo": "Đến ngày (bỏ trống = không thời hạn)",
+    "grant": "Cấp vai trò",
+    "grantSubmit": "Cấp quyền",
+    "revoke": "Thu hồi",
+    "revokeConfirm": "Xác nhận thu hồi",
+    "cancel": "Hủy",
+    "scope": {
+      "group": "Toàn tập đoàn",
+      "entity": "Pháp nhân",
+      "department": "Phòng ban",
+      "team": "Nhóm"
+    },
+    "errors": {
+      "grant_dates": "Ngày kết thúc phải sau ngày bắt đầu.",
+      "scope_required": "Vui lòng chọn phạm vi.",
+      "scope_not_found": "Không tìm thấy phạm vi đã chọn.",
+      "person_not_found": "Không tìm thấy nhân sự.",
+      "person_has_no_access": "Người này chưa có email công ty nên không thể đăng nhập để dùng vai trò.",
+      "grant_exists": "Người này đã có vai trò này với cùng phạm vi.",
+      "grant_not_found": "Quyền này không còn hiệu lực.",
+      "last_owner": "Không thể thu hồi Chủ sở hữu cuối cùng của hệ thống.",
+      "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+      "invalid": "Vui lòng kiểm tra lại thông tin.",
+      "generic": "Có lỗi xảy ra. Vui lòng thử lại."
+    }
+  },
+  "audit": {
+    "title": "Nhật ký hệ thống",
+    "description": "Mọi thay đổi dữ liệu, mọi lần bị từ chối và mọi tác vụ tự động. Nhật ký chỉ ghi thêm, không ai sửa hay xóa được.",
+    "count": "{count, plural, =0 {Không có bản ghi} other {# bản ghi}}",
+    "empty": "Không có bản ghi nào khớp bộ lọc.",
+    "system": "Hệ thống",
+    "resource": "Đối tượng",
+    "ipAddress": "Địa chỉ IP",
+    "userAgent": "Trình duyệt",
+    "before": "Trước",
+    "after": "Sau",
+    "previous": "Trước",
+    "next": "Sau",
+    "page": "Trang {page}/{pageCount}",
+    "filters": {
+      "action": "Hành động, vd. person. hoặc .denied",
+      "actor": "Email người thực hiện",
+      "resourceType": "Loại đối tượng",
+      "anyResource": "Mọi loại đối tượng",
+      "entity": "Pháp nhân",
+      "anyEntity": "Mọi pháp nhân",
+      "from": "Từ ngày",
+      "to": "Đến ngày",
+      "apply": "Lọc",
+      "clear": "Xóa lọc"
+    }
+  },
+  "notifications": {
+    "title": "Thông báo",
+    "empty": "Bạn chưa có thông báo nào.",
+    "markAllRead": "Đánh dấu tất cả đã đọc",
+    "open": "Mở",
+    "unread": "Chưa đọc",
+    "previous": "Trước",
+    "next": "Sau",
+    "page": "Trang {page}/{pageCount}",
+    "emailFooter": "Suzu One · Email tự động, vui lòng không trả lời.",
+    "digestSubject": "{count, plural, other {# thông báo mới}} trên Suzu One",
+    "preferences": {
+      "title": "Cách nhận thông báo",
+      "inApp": "Trong ứng dụng",
+      "email": "Email",
+      "mandatory": "Bắt buộc, không thể tắt",
+      "save": "Lưu",
+      "saved": "Đã lưu.",
+      "channel": {
+        "instant": "Gửi ngay",
+        "digest": "Gộp mỗi sáng",
+        "off": "Không gửi"
+      },
+      "category": {
+        "security": "Bảo mật & quyền truy cập",
+        "system": "Hệ thống"
+      }
+    },
+    "kinds": {
+      "security_work_email_changed": {
+        "title": "Email đăng nhập của bạn đã được thay đổi",
+        "body": "Email công ty dùng để đăng nhập Suzu One của bạn vừa được đổi từ {oldEmail} sang {newEmail}. Nếu bạn không biết về thay đổi này, hãy liên hệ phòng Nhân sự ngay."
+      },
+      "security_role_granted": {
+        "title": "Bạn được cấp vai trò mới",
+        "body": "{actor} vừa cấp cho bạn vai trò {role} ({scope}), hiệu lực từ {validFrom}."
+      },
+      "security_role_revoked": {
+        "title": "Một vai trò của bạn đã bị thu hồi",
+        "body": "{actor} vừa thu hồi vai trò {role} ({scope}) của bạn."
+      },
+      "system_job_failed": {
+        "title": "Tác vụ tự động thất bại: {job}",
+        "body": "Tác vụ {job} vừa chạy lỗi: {error}"
+      },
+      "system_rule_proposed": {
+        "title": "Có đề xuất thay đổi tham số pháp định",
+        "body": "Tham số {parameter} được đề xuất giá trị mới, hiệu lực từ {validFrom}. Đề xuất chỉ có hiệu lực sau khi bạn phê duyệt."
+      }
+    },
+    "errors": {
+      "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+      "invalid": "Vui lòng kiểm tra lại thông tin.",
+      "generic": "Có lỗi xảy ra. Vui lòng thử lại."
+    }
+  },
+  "jobs": {
+    "title": "Tác vụ tự động",
+    "description": "Các tác vụ chạy theo lịch: cập nhật nhân sự hằng ngày, gửi email thông báo. Khi một tác vụ lỗi, Chủ sở hữu nhận được thông báo.",
+    "started": "Bắt đầu",
+    "job": "Tác vụ",
+    "status": "Trạng thái",
+    "took": "Thời gian",
+    "result": "Kết quả",
+    "empty": "Chưa có lần chạy nào.",
+    "seconds": "{seconds} giây",
+    "statuses": {
+      "running": "Đang chạy",
+      "succeeded": "Thành công",
+      "failed": "Lỗi"
+    }
+  },
+  "rules": {
+    "title": "Tham số pháp định",
+    "description": "Tỷ lệ bảo hiểm, thuế TNCN, lương tối thiểu vùng, hệ số tăng ca… Mỗi giá trị có ngày hiệu lực và căn cứ pháp lý; không có con số nào nằm trong mã nguồn. Nhân sự / C&B đề xuất thay đổi, Chủ sở hữu phê duyệt.",
+    "pending": "Đề xuất chờ duyệt",
+    "unverified": "Chưa được kế toán trưởng xác nhận",
+    "missing": "Chưa có giá trị đang hiệu lực.",
+    "otherVersions": "{count, plural, other {# phiên bản khác}}",
+    "parameter": "Tham số",
+    "validFrom": "Hiệu lực từ",
+    "legalReference": "Căn cứ pháp lý",
+    "note": "Ghi chú",
+    "propose": {
+      "title": "Đề xuất thay đổi",
+      "hint": "Sửa giá trị hiện hành bên dưới. Tiền là số nguyên VND; tỷ lệ tính theo điểm cơ bản (8% = 800); hệ số tính theo phần trăm (150 = 150%).",
+      "value": "Giá trị (JSON)",
+      "submit": "Gửi đề xuất"
+    },
+    "decisions": {
+      "approve": "Phê duyệt",
+      "reject": "Từ chối",
+      "verify": "Xác nhận đã kiểm tra"
+    },
+    "parameters": {
+      "insurance_employee_rates": "Bảo hiểm – phần người lao động đóng",
+      "insurance_employer_rates": "Bảo hiểm – phần doanh nghiệp đóng",
+      "insurance_reference_level": "Mức tham chiếu (lương cơ sở)",
+      "insurance_cap_multipliers": "Trần đóng bảo hiểm (số lần)",
+      "union_rates": "Kinh phí & đoàn phí công đoàn",
+      "wage_regional_minimum": "Lương tối thiểu vùng",
+      "pit_deductions": "Giảm trừ gia cảnh",
+      "pit_brackets": "Biểu thuế TNCN lũy tiến",
+      "pit_flat_rates": "Thuế TNCN khấu trừ theo tỷ lệ cố định",
+      "overtime_multipliers": "Hệ số lương tăng ca, làm đêm",
+      "overtime_caps": "Giới hạn giờ tăng ca",
+      "leave_annual": "Phép năm",
+      "probation_limits": "Thử việc",
+      "contract_fixed_term": "Hợp đồng xác định thời hạn"
+    },
+    "errors": {
+      "parameter_unknown": "Tham số không tồn tại.",
+      "parameter_value_invalid": "Giá trị không đúng cấu trúc của tham số này.",
+      "parameter_version_exists": "Đã có phiên bản hiệu lực từ đúng ngày này.",
+      "parameter_before_current_version": "Ngày hiệu lực phải sau phiên bản đang áp dụng; lịch sử không được ghi đè.",
+      "proposal_not_found": "Đề xuất này đã được xử lý.",
+      "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+      "invalid": "Vui lòng kiểm tra lại thông tin (giá trị phải là JSON hợp lệ).",
+      "generic": "Có lỗi xảy ra. Vui lòng thử lại."
+    }
+  },
+  "flags": {
+    "title": "Triển khai tính năng",
+    "description": "Mở từng phân hệ cho một nhóm thử nghiệm trước, rồi mở rộng ra toàn tập đoàn. Đây chỉ là việc ai nhìn thấy phân hệ; quyền hạn bên trong vẫn do vai trò quyết định. Quản trị nhân sự và Chủ sở hữu luôn nhìn thấy mọi phân hệ.",
+    "everyone": "Bật cho toàn tập đoàn",
+    "orPilot": "Hoặc chỉ bật cho các pháp nhân, phòng ban, cá nhân được chọn:",
+    "entities": "Pháp nhân",
+    "departments": "Phòng ban",
+    "people": "Cá nhân",
+    "save": "Lưu",
+    "saved": "Đã lưu.",
+    "names": {
+      "people": "Phân hệ Nhân sự"
+    },
+    "descriptions": {
+      "people": "Danh bạ nội bộ và hồ sơ cá nhân. Khi tắt, chỉ bộ phận Nhân sự và quản trị nhìn thấy phân hệ để chuẩn bị dữ liệu."
+    },
+    "errors": {
+      "flag_unknown": "Tính năng không tồn tại.",
+      "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+      "invalid": "Vui lòng kiểm tra lại thông tin.",
+      "generic": "Có lỗi xảy ra. Vui lòng thử lại."
+    }
+  },
+  "imports": {
+    "template": "Tải file mẫu",
+    "file": "Chọn file .xlsx hoặc .csv",
+    "check": "Kiểm tra file",
+    "checking": "Đang kiểm tra…",
+    "summary": "{rows, plural, other {# dòng dữ liệu}} · {problems, plural, =0 {không có lỗi} other {# lỗi}}",
+    "problemAt": "Dòng {row}",
+    "previewLimit": "Đang hiển thị {shown}/{rows} dòng đầu.",
+    "commit": "{rows, plural, other {Ghi # dòng vào hệ thống}}",
+    "fixAndRetry": "Hãy sửa các lỗi trên trong file rồi kiểm tra lại. Chưa có gì được ghi vào hệ thống.",
+    "done": "Đã nhập xong. {summary}",
+    "counts": {
+      "created": "Tạo mới",
+      "updated": "Cập nhật"
+    },
+    "problems": {
+      "column_missing": "Thiếu cột bắt buộc này",
+      "column_unknown": "Cột không được nhận diện, sẽ bị bỏ qua",
+      "no_rows": "File không có dòng dữ liệu nào",
+      "required": "Bắt buộc nhập",
+      "too_long": "Quá dài",
+      "bad_code": "Mã chỉ gồm chữ không dấu, số, gạch ngang hoặc gạch dưới",
+      "bad_email": "Email không hợp lệ",
+      "bad_number": "Phải là số nguyên",
+      "bad_date": "Ngày không hợp lệ (dùng dd/mm/yyyy)",
+      "bad_choice": "Giá trị không nằm trong danh sách cho phép",
+      "duplicate_in_file": "Trùng với một dòng khác trong file",
+      "entity_not_found": "Không có pháp nhân mang mã này",
+      "parent_not_found": "Không có phòng ban cấp trên mang mã này",
+      "parent_loop": "Phòng ban không thể trực thuộc chính nó hoặc phòng ban con của nó"
+    },
+    "errors": {
+      "import_file_type": "Chỉ nhận file .xlsx hoặc .csv.",
+      "import_file_size": "File trống hoặc lớn hơn 4 MB.",
+      "import_unreadable": "Không đọc được file. Hãy lưu lại dưới dạng .xlsx rồi thử lại.",
+      "import_too_many_rows": "File có quá 5.000 dòng. Hãy chia nhỏ.",
+      "import_batch_not_found": "Lần kiểm tra này đã hết hạn hoặc đã được ghi. Hãy kiểm tra lại file.",
+      "import_stale": "Dữ liệu hệ thống đã thay đổi từ lúc kiểm tra. Hãy kiểm tra lại file.",
+      "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+      "invalid": "Vui lòng chọn một file.",
+      "generic": "Có lỗi xảy ra. Vui lòng thử lại."
+    }
+  },
+  "errors": {
+    "title": "Đã có lỗi xảy ra",
+    "description": "Lỗi đã được ghi nhận và gửi tới người phụ trách kỹ thuật. Bạn có thể thử lại; nếu vẫn lỗi, hãy gửi mã tham chiếu bên dưới cho bộ phận hỗ trợ.",
+    "reference": "Mã tham chiếu: {digest}",
+    "retry": "Thử lại",
+    "notFoundTitle": "Không tìm thấy trang",
+    "notFoundDescription": "Trang không tồn tại, hoặc bạn không có quyền xem.",
+    "home": "Về trang chủ"
   }
 }
