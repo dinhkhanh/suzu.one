@@ -34,6 +34,8 @@ export const KINDS = {
   "approvals.decided": "approvals",
   "approvals.commented": "approvals",
   "approvals.delegated_to_you": "approvals",
+  // HR called off someone's approved leave: the person is told, the days are back in the balance.
+  "approvals.leave_cancelled": "approvals",
   "tasks.assigned": "tasks",
 } as const satisfies Record<string, Category>;
 export type Kind = keyof typeof KINDS;

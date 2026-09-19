@@ -2,13 +2,15 @@ import { timingSafeEqual } from "node:crypto";
 import { env } from "@/lib/env";
 import { fieldKeysRewrapJob, hrAlertsJob, peopleRollOverJob } from "@/modules/core-hr/jobs";
 import { filesCleanupJob } from "@/modules/platform/files/jobs";
+import { leaveAccrualJob } from "@/modules/leave/jobs";
 import { type JobDefinition, runJob } from "@/modules/platform/jobs/service";
 import { notificationsDailyJob } from "@/modules/platform/notifications/jobs";
 
 // What each cron URL runs. Schedules live in vercel.json and stay daily, which every Vercel plan
 // allows; jobs that share a time of day share a URL but are still recorded (and fail) one by one.
 const SCHEDULES: Record<string, JobDefinition[]> = {
-  midnight: [peopleRollOverJob],
+  // Leave after the roll-over: a new starter accrues from the day they become active.
+  midnight: [peopleRollOverJob, leaveAccrualJob],
   // Alerts first, so the digest that follows carries them.
   morning: [hrAlertsJob, notificationsDailyJob, filesCleanupJob],
 };

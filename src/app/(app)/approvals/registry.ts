@@ -9,6 +9,8 @@ import { profileChangeRequest } from "@/modules/core-hr/change-requests";
 import { decideProfileChangeAction } from "@/modules/core-hr/change-request-actions";
 import { decideResignationAction } from "@/modules/core-hr/lifecycle-actions";
 import { resignationRequest } from "@/modules/core-hr/resignation";
+import { decideLeaveAction } from "@/modules/leave/actions";
+import { leaveRequestType } from "@/modules/leave/requests";
 import type { RequestTypeDefinition } from "@/modules/platform/approvals/service";
 
 export type RegisteredRequestType = {
@@ -19,6 +21,7 @@ export type RegisteredRequestType = {
 
 const REGISTERED: RegisteredRequestType[] = [
   { definition: profileChangeRequest, approve: (requestId) => decideProfileChangeAction({ requestId, decision: "approve", comment: null }) },
+  { definition: leaveRequestType, approve: (requestId) => decideLeaveAction({ requestId, decision: "approve", comment: null }) },
   { definition: resignationRequest, approve: (requestId) => decideResignationAction({ requestId, decision: "approve", comment: null }) },
 ];
 

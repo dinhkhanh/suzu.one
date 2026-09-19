@@ -11,7 +11,7 @@ export function navFor(principal: Principal, open: { people: boolean }): { main:
     ...(open.people ? [{ key: "people", href: "/people" }] : []),
     ...(can(principal, "report:read") ? [{ key: "reports", href: "/reports/headcount" }] : []),
     { key: "attendance", href: "/attendance" },
-    { key: "leave", phase: 2 },
+    { key: "leave", href: "/leave" },
     { key: "work", phase: 3 },
     { key: "ops", phase: 3 },
     { key: "kb", phase: 4 },

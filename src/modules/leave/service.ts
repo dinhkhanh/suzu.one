@@ -1,0 +1,9 @@
+// The leave module's entry point for other modules (lint allows only this file). Re-exports only,
+// so that the leave ↔ attendance import cycle never runs anything at load time.
+//
+// For attendance (timesheet): `getLeaveOnDays`, `postCompensatoryLeave`.
+// For payroll (Phase 5): `getLeaveUsage` (days by payroll treatment), `listPayouts` (unused days
+// paid on termination), `getBalances`, `getLedger`.
+export type { Portion } from "./engine/request";
+export { type Balance, getBalances, getLedger, type LedgerLine, listPayouts, type PayoutLine, postCompensatoryLeave } from "./ledger";
+export { getLeaveOnDays, getLeaveUsage, type LeaveOnDay, type LeaveUsage } from "./requests";

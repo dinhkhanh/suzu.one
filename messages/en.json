@@ -626,6 +626,10 @@
       "approvals_delegated_to_you": {
         "title": "{delegator} delegated their approvals to you",
         "body": "From {from} to {to}, requests that would go to {delegator} come to you instead."
+      },
+      "approvals_leave_cancelled": {
+        "title": "Your leave was cancelled by HR",
+        "body": "HR cancelled your approved leave ({range}). The days are back in your balance."
       }
     },
     "errors": {
@@ -766,7 +770,14 @@
       "bank_incomplete": "A bank account needs both the bank and the account number",
       "manager_not_found": "No person with this employee code or work email, in the file or in the system",
       "manager_is_self": "A person cannot be their own manager",
-      "manager_loop": "These managers report to each other in a loop"
+      "manager_loop": "These managers report to each other in a loop",
+      "bad_days": "Not a number of days (use 7 or 7,5)",
+      "bad_year": "Not a valid year",
+      "person_not_found": "No employee with this code within your scope",
+      "leave_type_not_found": "No leave type has this code",
+      "leave_type_keeps_no_balance": "This leave type keeps no balance",
+      "as_of_outside_year": "The date must fall in the stated year",
+      "opening_exists": "This person already has an opening balance for this type and year"
     },
     "errors": {
       "import_file_type": "Only .xlsx and .csv files are accepted.",
@@ -806,7 +817,8 @@
     },
     "types": {
       "profile_change": "Personal data change",
-      "resignation": "Resignation"
+      "resignation": "Resignation",
+      "leave": "Leave"
     },
     "status": {
       "pending": "Waiting for approval",
@@ -866,7 +878,8 @@
       "delegation_dates": "The end date is before the start date.",
       "delegation_past": "The delegation would already be over.",
       "delegation_person_unknown": "That person is not active.",
-      "delegation_not_found": "The delegation was not found."
+      "delegation_not_found": "The delegation was not found.",
+      "leave_balance_insufficient": "The balance no longer covers this leave. Ask the requester to change it, or HR to adjust the balance."
     },
     "tools": {
       "comment": "Add a comment",
@@ -1456,6 +1469,274 @@
         "pattern_bad_credit": "Credited minutes must be between 0 and 1440.",
         "pattern_bad_required": "Flexible days need the required minutes.",
         "pattern_no_working_day": "The week has no working day."
+      }
+    }
+  },
+  "leave": {
+    "title": "Leave",
+    "description": "Your balances and requests.",
+    "back": "Back to my leave",
+    "daysCount": "{days} day(s)",
+    "balances": {
+      "title": "Available in {year}",
+      "none": "You have no leave balance yet. Balances appear once HR has set up your leave.",
+      "used": "{days} used",
+      "pending": "{days} waiting for approval"
+    },
+    "request": {
+      "new": "Request leave",
+      "mine": "My requests",
+      "none": "No requests yet.",
+      "amend": "Change",
+      "amendTitle": "Change a leave request",
+      "withdraw": "Withdraw",
+      "cancel": "Cancel leave",
+      "cancelConfirm": "End this request? Approved days go back to the balance.",
+      "cancelReason": "Reason (optional)",
+      "hint": "Choose the type and the dates, check what they cost, then send the request.",
+      "onBehalf": "You are filing this for someone else; the notice period does not apply.",
+      "type": "Leave type",
+      "from": "First day",
+      "to": "Last day",
+      "startPortion": "First day: which part",
+      "endPortion": "Last day: which part",
+      "minutes": "Minutes off (hourly leave)",
+      "portionHint": "One date: choose whole day, morning, afternoon or hours. Several dates: the first day may start at noon (afternoon), the last may end at noon (morning).",
+      "check": "Check",
+      "available": "Available in {year}: {days} day(s)",
+      "noBalance": "This type keeps no balance.",
+      "colleaguesAway": "Also away on these days",
+      "shortfall": "On {dates} fewer than {min} people of your team would be at work. You can still send the request; your manager sees this warning too.",
+      "reason": "Reason",
+      "reasonHint": "Optional, seen by your approver and HR",
+      "attachment": "Attachment",
+      "attachmentRequired": "Attachment (required for this type)",
+      "openAttachment": "Open",
+      "submit": "Send request",
+      "replace": "Replace the request",
+      "filedBy": "filed by {name}",
+      "dates": "Dates",
+      "cost": "Leave days",
+      "countedDays": "Days counted",
+      "balanceNow": "Balance now"
+    },
+    "portions": {
+      "full": "Whole day",
+      "am": "Morning",
+      "pm": "Afternoon",
+      "hours": "Hours"
+    },
+    "status": {
+      "pending": "Waiting for approval",
+      "returned": "Returned for changes",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "withdrawn": "Withdrawn",
+      "cancelled": "Cancelled"
+    },
+    "calendar": {
+      "title": "Team leave calendar",
+      "description": "Who is away when. You see that a colleague is away; why is for their manager and HR.",
+      "everyone": "Everyone",
+      "person": "Person",
+      "away": "Away",
+      "nonWorking": "Not a working day",
+      "list": "Away this month"
+    },
+    "errors": {
+      "generic": "That did not work. Please try again.",
+      "forbidden": "You are not allowed to do this.",
+      "invalid": "Some fields are not valid.",
+      "unauthenticated": "Please sign in again.",
+      "leave_dates_invalid": "The dates are not valid.",
+      "leave_portion_invalid": "For several dates the first day can only be whole or afternoon, the last whole or morning.",
+      "leave_minutes_invalid": "Enter minutes off, less than the working time of that day.",
+      "leave_no_working_days": "There is no working day in these dates.",
+      "leave_type_inactive": "This leave type is no longer in use.",
+      "leave_type_not_found": "Leave type not found.",
+      "leave_not_eligible_workforce": "Your type of employment does not have this leave.",
+      "leave_not_eligible_gender": "This leave type does not apply to you.",
+      "leave_not_eligible_seniority": "You have not worked here long enough for this leave.",
+      "leave_outside_employment": "The dates fall outside the employment.",
+      "leave_half_day_not_allowed": "This type cannot be taken in half days.",
+      "leave_hourly_not_allowed": "This type cannot be taken by the hour.",
+      "leave_too_long": "More days than this type allows in one request.",
+      "leave_attachment_required": "This type needs an attachment.",
+      "leave_backdated": "This type cannot be filed for days already past. Ask HR.",
+      "leave_notice_too_short": "This type must be requested further ahead. Ask HR if it is urgent.",
+      "leave_overlaps": "You already have leave on some of these days.",
+      "leave_on_probation": "This leave cannot be used during probation.",
+      "leave_balance_insufficient": "Not enough days left.",
+      "leave_request_not_found": "Request not found.",
+      "leave_request_not_open": "This request is already closed.",
+      "leave_cancel_started": "This leave has started; ask HR to cancel it.",
+      "leave_cancel_not_allowed": "You cannot cancel this request.",
+      "no_employment": "No employment on record.",
+      "person_not_found": "Person not found.",
+      "file_not_found": "Attachment not found.",
+      "approval_no_approver": "Nobody can approve this request. Ask HR.",
+      "leave_type_paid_mismatch": "Paid and payroll treatment do not match.",
+      "leave_type_code_taken": "This code is already used.",
+      "leave_type_keeps_no_balance": "This type keeps no balance.",
+      "leave_adjustment_zero": "Enter a number of days other than zero.",
+      "leave_policy_later_version": "A later version exists; choose a later start date.",
+      "leave_policy_expiry_invalid": "Expiry must be MM-DD, e.g. 03-31.",
+      "leave_staffing_scope_required": "Choose a department or a team.",
+      "leave_staffing_not_found": "Rule not found.",
+      "leave_no_compensatory_type": "No compensatory leave type is set up."
+    },
+    "admin": {
+      "title": "Leave administration",
+      "description": "Balances, leave types and policies, minimum staffing, opening balances.",
+      "tabs": {
+        "balances": "Balances",
+        "types": "Types & policies",
+        "staffing": "Minimum staffing",
+        "import": "Opening balances"
+      },
+      "myLeave": "My leave",
+      "appliesTo": "Applies to",
+      "everyEntity": "Every entity",
+      "save": "Save",
+      "saved": "Saved",
+      "remove": "Remove",
+      "removeConfirm": "Remove this row?",
+      "types": {
+        "hint": "Group-wide types apply to every entity; an entity's own type with the same code replaces the group's. The 12 statutory days and the seniority step come from Statutory parameters, not from here.",
+        "add": "Add a leave type",
+        "code": "Code",
+        "name": "Name (Vietnamese)",
+        "nameEn": "Name (English)",
+        "category": "Category",
+        "payrollTreatment": "Payroll treatment",
+        "noticeDays": "Notice (days ahead)",
+        "maxDays": "Max days per request",
+        "minSeniorityMonths": "Min. seniority (months)",
+        "gender": "Gender condition",
+        "anyGender": "Any",
+        "female": "Female",
+        "male": "Male",
+        "sortOrder": "Order",
+        "workforce": "Eligible workforce types (none ticked = everyone)",
+        "tracksBalance": "Keeps a balance",
+        "allowHalfDay": "Half days",
+        "allowHourly": "By the hour",
+        "requiresAttachment": "Attachment required",
+        "allowBackdated": "May be filed afterwards",
+        "isLongTerm": "Long-term absence",
+        "countsUntrackedDays": "Counts Saturday WFH days",
+        "isActive": "In use",
+        "inactive": "Not in use",
+        "readOnly": "Group-wide type: only group HR changes it. You can give it a policy for your entity below."
+      },
+      "categories": {
+        "annual": "Annual",
+        "sick": "Sick",
+        "maternity": "Maternity",
+        "paternity": "Paternity",
+        "personal_paid": "Paid personal",
+        "unpaid": "Unpaid",
+        "compensatory": "Compensatory",
+        "company": "Company-specific"
+      },
+      "treatments": {
+        "paid_company": "Paid by the company",
+        "paid_insurance": "Paid by social insurance",
+        "unpaid": "Unpaid"
+      },
+      "workforce": {
+        "employee": "Employee",
+        "probation": "Probation",
+        "intern": "Intern",
+        "part_time": "Part-time",
+        "collaborator": "Collaborator",
+        "advisor": "Advisor"
+      },
+      "policy": {
+        "title": "Policy versions",
+        "none": "No policy yet: the balance only moves through postings.",
+        "save": "Save as new version",
+        "validFrom": "In force from",
+        "accrualMethod": "How days are given",
+        "baseSource": "Base",
+        "fixedDays": "Fixed days per year",
+        "extraDays": "Company extra days",
+        "rounding": "Rounding of part-years",
+        "probationRule": "During probation",
+        "carryOverCap": "Carry-over cap (days)",
+        "noLimit": "empty = no limit",
+        "carryOverExpiry": "Carried days lapse after (MM-DD)",
+        "allowNegative": "Leave in advance (days)",
+        "note": "Note",
+        "seniorityBonus": "Seniority bonus (statutory step)",
+        "prorate": "Pro-rata for joiners and leavers",
+        "payoutOnTermination": "Pay out unused days on termination",
+        "seniorityShort": "seniority",
+        "carryShort": "carry-over {cap}, lapses {expiry}"
+      },
+      "accrual": {
+        "none": "No accrual (postings only)",
+        "monthly_accrual": "Monthly accrual",
+        "yearly_grant": "Yearly grant"
+      },
+      "base": {
+        "statutory_annual": "Statutory annual leave",
+        "fixed": "Fixed number"
+      },
+      "rounding": {
+        "none": "None",
+        "half_day": "To half days",
+        "full_day": "To whole days"
+      },
+      "probation": {
+        "accrue_and_use": "Accrues and may be used",
+        "accrue_no_use": "Accrues, used after probation",
+        "no_accrual": "Does not accrue"
+      },
+      "balances": {
+        "hint": "Balance at today's date; in brackets what pending requests hold. Open a person for the ledger behind the number.",
+        "person": "Person",
+        "unit": "Entity · department",
+        "adjust": "Post an adjustment",
+        "type": "Leave type",
+        "days": "Days (+ / −)",
+        "reason": "Reason",
+        "post": "Post",
+        "runAccruals": "Bring balances up to date",
+        "ledger": "Ledger",
+        "noLedger": "No movements this year.",
+        "system": "System",
+        "requests": "Requests",
+        "fileFor": "File leave for this person"
+      },
+      "ledgerKinds": {
+        "opening": "Opening",
+        "accrual": "Accrual",
+        "grant": "Grant",
+        "use": "Used",
+        "refund": "Refund",
+        "adjustment": "Adjustment",
+        "expiry": "Lapsed",
+        "carry_over": "Carry-over",
+        "payout": "Paid out"
+      },
+      "staffing": {
+        "hint": "At least this many people of a team or department must be at work. A request that breaks it shows a warning to the requester and the approver; it is not blocked.",
+        "none": "No rules yet.",
+        "add": "Add a rule",
+        "department": "Department",
+        "team": "Team",
+        "minPresent": "At least present",
+        "atLeast": "at least {count} present"
+      },
+      "import": {
+        "description": "Opening balances: what each person had left on the day the ledger starts. After the commit, run \"Bring balances up to date\" on the Balances tab.",
+        "wizard": "Import opening balances",
+        "notes": {
+          "asOf": "\"As at\" is the date the balance was counted. Months that started before it are taken as included, and are not accrued again. Leave empty for 1 January.",
+          "once": "One opening balance per person, leave type and year. Correct a mistake with an adjustment.",
+          "accrual": "The total of the file is shown after the commit, to tick against your spreadsheet."
+        }
       }
     }
   }

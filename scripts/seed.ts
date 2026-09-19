@@ -6,8 +6,9 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { between } from "drizzle-orm";
-import { calendarDay, department, entity, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
+import { calendarDay, department, entity, leavePolicy, leaveType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
 import { CALENDAR_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
+import { leaveSeedRows } from "../src/modules/leave/seed-types";
 import { TEMPLATE_SEED } from "../src/modules/platform/tasks-engine/seed-templates";
 import { STATUTORY_SEED } from "../src/modules/platform/statutory/seed-values";
 
@@ -59,6 +60,18 @@ async function main() {
     templates++;
   }
   console.log(`Seeded ${templates} checklist templates (purposes that already have one skipped).`);
+
+  // Leave types and their starter policies: only when there is no leave type at all.
+  const [anyLeaveType] = await db.select({ id: leaveType.id }).from(leaveType).limit(1);
+  let leaveTypes = 0;
+  if (!anyLeaveType) {
+    for (const seed of leaveSeedRows()) {
+      const [created] = await db.insert(leaveType).values(seed.type).returning();
+      if (seed.policy) await db.insert(leavePolicy).values({ ...seed.policy, leaveTypeId: created.id });
+      leaveTypes++;
+    }
+  }
+  console.log(`Seeded ${leaveTypes} leave types with starter policies (skipped when any leave type exists).`);
 
   // Working calendar: only years that have no row at all, so nothing HR entered or removed comes back.
   let calendarDays = 0;

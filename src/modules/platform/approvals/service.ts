@@ -107,6 +107,12 @@ async function resolveFlow(executor: Executor, flow: FlowDefinition, context: { 
       } else if (!standIn && !asked.includes(approverId)) asked.push(approverId);
     }
     if (asked.length === 0) asked.push(...approverIds);
+    // The line manager who is also the department head is asked once: a later step whose only
+    // approver is the only approver of an earlier step would be the same person saying yes twice.
+    if (asked.length === 1 && resolved.some((earlier) => earlier.applies && earlier.approverIds.length === 1 && earlier.approverIds[0] === asked[0])) {
+      resolved.push({ key: step.key, mode: step.mode, applies: false, approverIds: [], ...(step.parallel ? { parallel: true } : {}) });
+      continue;
+    }
     resolved.push({ key: step.key, mode: step.mode, applies: true, approverIds: asked, ...(step.parallel ? { parallel: true } : {}), ...(Object.keys(delegatedFrom).length ? { delegatedFrom } : {}) });
   }
   return resolved;

@@ -148,6 +148,20 @@
       "when": 1789837134878,
       "tag": "0020_attendance_schedule_no_overlap",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1789838881241,
+      "tag": "0021_leave",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1789838890352,
+      "tag": "0022_leave_policy_no_overlap",
+      "breakpoints": true
     }
   ]
 }

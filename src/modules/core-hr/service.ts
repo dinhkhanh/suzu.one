@@ -756,3 +756,6 @@ export async function deleteSavedView(ownerPersonId: string, id: string): Promis
     .returning();
   return row ?? null;
 }
+
+// ── For other modules (leave, attendance, payroll) ──────────────────────────────────────────
+export { cancelLongLeave, type EmploymentFacts, listEmploymentFacts, recordLongLeave } from "./employment-facts";

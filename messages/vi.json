@@ -626,6 +626,10 @@
       "approvals_delegated_to_you": {
         "title": "{delegator} ủy quyền phê duyệt cho bạn",
         "body": "Từ {from} đến {to}, các yêu cầu lẽ ra gửi tới {delegator} sẽ được chuyển cho bạn."
+      },
+      "approvals_leave_cancelled": {
+        "title": "Nhân sự đã huỷ đơn nghỉ của bạn",
+        "body": "Nhân sự đã huỷ đơn nghỉ đã duyệt của bạn ({range}). Số ngày đã được cộng lại vào số dư."
       }
     },
     "errors": {
@@ -766,7 +770,14 @@
       "bank_incomplete": "Tài khoản ngân hàng cần cả tên ngân hàng và số tài khoản",
       "manager_not_found": "Không có ai mang mã nhân viên hoặc email này, trong tệp lẫn trong hệ thống",
       "manager_is_self": "Một người không thể tự quản lý chính mình",
-      "manager_loop": "Các quản lý này báo cáo vòng tròn cho nhau"
+      "manager_loop": "Các quản lý này báo cáo vòng tròn cho nhau",
+      "bad_days": "Số ngày không hợp lệ (ví dụ 7 hoặc 7,5)",
+      "bad_year": "Năm không hợp lệ",
+      "person_not_found": "Không có nhân viên mang mã này trong phạm vi của bạn",
+      "leave_type_not_found": "Không có loại phép mang mã này",
+      "leave_type_keeps_no_balance": "Loại phép này không theo dõi số dư",
+      "as_of_outside_year": "Ngày phải nằm trong năm đã ghi",
+      "opening_exists": "Người này đã có số dư đầu kỳ cho loại phép và năm này"
     },
     "errors": {
       "import_file_type": "Chỉ nhận file .xlsx hoặc .csv.",
@@ -806,7 +817,8 @@
     },
     "types": {
       "profile_change": "Thay đổi thông tin cá nhân",
-      "resignation": "Đơn xin nghỉ việc"
+      "resignation": "Đơn xin nghỉ việc",
+      "leave": "Nghỉ phép"
     },
     "status": {
       "pending": "Đang chờ duyệt",
@@ -866,7 +878,8 @@
       "delegation_dates": "Ngày kết thúc trước ngày bắt đầu.",
       "delegation_past": "Thời gian ủy quyền đã qua.",
       "delegation_person_unknown": "Người này không còn làm việc.",
-      "delegation_not_found": "Không tìm thấy ủy quyền."
+      "delegation_not_found": "Không tìm thấy ủy quyền.",
+      "leave_balance_insufficient": "Số ngày phép còn lại không còn đủ cho đơn này. Đề nghị người gửi sửa đơn hoặc nhờ nhân sự điều chỉnh số dư."
     },
     "tools": {
       "comment": "Thêm ý kiến",
@@ -1456,6 +1469,274 @@
         "pattern_bad_credit": "Số phút ghi nhận từ 0 đến 1440.",
         "pattern_bad_required": "Ngày linh hoạt cần số phút yêu cầu.",
         "pattern_no_working_day": "Tuần không có ngày làm việc nào."
+      }
+    }
+  },
+  "leave": {
+    "title": "Nghỉ phép",
+    "description": "Số ngày phép và các đơn nghỉ của bạn.",
+    "back": "Về trang nghỉ phép của tôi",
+    "daysCount": "{days} ngày",
+    "balances": {
+      "title": "Còn lại trong năm {year}",
+      "none": "Bạn chưa có số dư phép. Số dư sẽ hiện khi nhân sự thiết lập xong.",
+      "used": "đã nghỉ {days}",
+      "pending": "{days} đang chờ duyệt"
+    },
+    "request": {
+      "new": "Xin nghỉ",
+      "mine": "Đơn của tôi",
+      "none": "Chưa có đơn nào.",
+      "amend": "Sửa",
+      "amendTitle": "Sửa đơn nghỉ",
+      "withdraw": "Rút đơn",
+      "cancel": "Huỷ nghỉ",
+      "cancelConfirm": "Kết thúc đơn này? Số ngày đã duyệt sẽ được cộng lại vào số dư.",
+      "cancelReason": "Lý do (không bắt buộc)",
+      "hint": "Chọn loại phép và ngày nghỉ, bấm Kiểm tra để xem số ngày bị trừ, rồi gửi đơn.",
+      "onBehalf": "Bạn đang nộp đơn thay người khác; không áp dụng thời hạn báo trước.",
+      "type": "Loại phép",
+      "from": "Ngày đầu",
+      "to": "Ngày cuối",
+      "startPortion": "Ngày đầu: nghỉ buổi nào",
+      "endPortion": "Ngày cuối: nghỉ buổi nào",
+      "minutes": "Số phút nghỉ (nghỉ theo giờ)",
+      "portionHint": "Nghỉ một ngày: chọn cả ngày, buổi sáng, buổi chiều hoặc theo giờ. Nghỉ nhiều ngày: ngày đầu có thể bắt đầu từ buổi chiều, ngày cuối có thể kết thúc buổi sáng.",
+      "check": "Kiểm tra",
+      "available": "Còn lại năm {year}: {days} ngày",
+      "noBalance": "Loại phép này không trừ vào số dư.",
+      "colleaguesAway": "Cũng nghỉ trong những ngày này",
+      "shortfall": "Vào {dates}, nhóm của bạn sẽ có dưới {min} người đi làm. Bạn vẫn gửi được đơn; quản lý cũng thấy cảnh báo này.",
+      "reason": "Lý do",
+      "reasonHint": "Không bắt buộc; người duyệt và nhân sự xem được",
+      "attachment": "Tệp đính kèm",
+      "attachmentRequired": "Tệp đính kèm (bắt buộc với loại phép này)",
+      "openAttachment": "Mở",
+      "submit": "Gửi đơn",
+      "replace": "Thay đơn cũ bằng đơn này",
+      "filedBy": "{name} nộp thay",
+      "dates": "Thời gian",
+      "cost": "Số ngày phép",
+      "countedDays": "Các ngày được tính",
+      "balanceNow": "Số dư hiện tại"
+    },
+    "portions": {
+      "full": "Cả ngày",
+      "am": "Buổi sáng",
+      "pm": "Buổi chiều",
+      "hours": "Theo giờ"
+    },
+    "status": {
+      "pending": "Chờ duyệt",
+      "returned": "Trả lại để sửa",
+      "approved": "Đã duyệt",
+      "rejected": "Từ chối",
+      "withdrawn": "Đã rút",
+      "cancelled": "Đã huỷ"
+    },
+    "calendar": {
+      "title": "Lịch nghỉ của nhóm",
+      "description": "Ai nghỉ ngày nào. Đồng nghiệp chỉ thấy là vắng mặt; lý do chỉ quản lý và nhân sự xem được.",
+      "everyone": "Tất cả",
+      "person": "Nhân viên",
+      "away": "Vắng mặt",
+      "nonWorking": "Không phải ngày làm việc",
+      "list": "Nghỉ trong tháng"
+    },
+    "errors": {
+      "generic": "Không thực hiện được. Vui lòng thử lại.",
+      "forbidden": "Bạn không có quyền thực hiện việc này.",
+      "invalid": "Một số trường chưa hợp lệ.",
+      "unauthenticated": "Vui lòng đăng nhập lại.",
+      "leave_dates_invalid": "Ngày nghỉ không hợp lệ.",
+      "leave_portion_invalid": "Nghỉ nhiều ngày: ngày đầu chỉ chọn cả ngày hoặc buổi chiều, ngày cuối chỉ chọn cả ngày hoặc buổi sáng.",
+      "leave_minutes_invalid": "Nhập số phút nghỉ, ít hơn thời gian làm việc của ngày đó.",
+      "leave_no_working_days": "Khoảng thời gian này không có ngày làm việc nào.",
+      "leave_type_inactive": "Loại phép này không còn sử dụng.",
+      "leave_type_not_found": "Không tìm thấy loại phép.",
+      "leave_not_eligible_workforce": "Hình thức làm việc của bạn không có loại phép này.",
+      "leave_not_eligible_gender": "Loại phép này không áp dụng cho bạn.",
+      "leave_not_eligible_seniority": "Bạn chưa đủ thâm niên cho loại phép này.",
+      "leave_outside_employment": "Ngày nghỉ nằm ngoài thời gian làm việc tại công ty.",
+      "leave_half_day_not_allowed": "Loại phép này không nghỉ được nửa ngày.",
+      "leave_hourly_not_allowed": "Loại phép này không nghỉ được theo giờ.",
+      "leave_too_long": "Vượt quá số ngày tối đa của loại phép này cho một lần nghỉ.",
+      "leave_attachment_required": "Loại phép này cần tệp đính kèm.",
+      "leave_backdated": "Loại phép này không nộp được cho ngày đã qua. Vui lòng liên hệ nhân sự.",
+      "leave_notice_too_short": "Loại phép này phải xin trước sớm hơn. Nếu gấp, vui lòng liên hệ nhân sự.",
+      "leave_overlaps": "Bạn đã có đơn nghỉ trùng một số ngày này.",
+      "leave_on_probation": "Chưa dùng được loại phép này trong thời gian thử việc.",
+      "leave_balance_insufficient": "Không đủ số ngày phép còn lại.",
+      "leave_request_not_found": "Không tìm thấy đơn.",
+      "leave_request_not_open": "Đơn này đã đóng.",
+      "leave_cancel_started": "Kỳ nghỉ đã bắt đầu; vui lòng nhờ nhân sự huỷ.",
+      "leave_cancel_not_allowed": "Bạn không huỷ được đơn này.",
+      "no_employment": "Chưa có thông tin làm việc.",
+      "person_not_found": "Không tìm thấy nhân viên.",
+      "file_not_found": "Không tìm thấy tệp đính kèm.",
+      "approval_no_approver": "Không có ai duyệt được đơn này. Vui lòng liên hệ nhân sự.",
+      "leave_type_paid_mismatch": "Hưởng lương và cách tính lương không khớp nhau.",
+      "leave_type_code_taken": "Mã này đã được dùng.",
+      "leave_type_keeps_no_balance": "Loại phép này không theo dõi số dư.",
+      "leave_adjustment_zero": "Nhập số ngày khác 0.",
+      "leave_policy_later_version": "Đã có phiên bản sau ngày này; hãy chọn ngày hiệu lực muộn hơn.",
+      "leave_policy_expiry_invalid": "Hạn dùng phải theo dạng MM-DD, ví dụ 03-31.",
+      "leave_staffing_scope_required": "Chọn phòng ban hoặc nhóm.",
+      "leave_staffing_not_found": "Không tìm thấy quy định.",
+      "leave_no_compensatory_type": "Chưa thiết lập loại nghỉ bù."
+    },
+    "admin": {
+      "title": "Quản lý nghỉ phép",
+      "description": "Số dư, loại phép và chính sách, quân số tối thiểu, số dư đầu kỳ.",
+      "tabs": {
+        "balances": "Số dư",
+        "types": "Loại phép & chính sách",
+        "staffing": "Quân số tối thiểu",
+        "import": "Số dư đầu kỳ"
+      },
+      "myLeave": "Nghỉ phép của tôi",
+      "appliesTo": "Áp dụng cho",
+      "everyEntity": "Mọi pháp nhân",
+      "save": "Lưu",
+      "saved": "Đã lưu",
+      "remove": "Xoá",
+      "removeConfirm": "Xoá dòng này?",
+      "types": {
+        "hint": "Loại phép chung áp dụng cho mọi pháp nhân; loại phép riêng của pháp nhân có cùng mã sẽ thay thế loại chung. 12 ngày phép theo luật và bậc thâm niên lấy từ Tham số pháp định, không nhập ở đây.",
+        "add": "Thêm loại phép",
+        "code": "Mã",
+        "name": "Tên (tiếng Việt)",
+        "nameEn": "Tên (tiếng Anh)",
+        "category": "Nhóm",
+        "payrollTreatment": "Cách tính lương",
+        "noticeDays": "Báo trước (ngày)",
+        "maxDays": "Số ngày tối đa mỗi lần",
+        "minSeniorityMonths": "Thâm niên tối thiểu (tháng)",
+        "gender": "Điều kiện giới tính",
+        "anyGender": "Không",
+        "female": "Nữ",
+        "male": "Nam",
+        "sortOrder": "Thứ tự",
+        "workforce": "Hình thức làm việc được hưởng (không chọn = tất cả)",
+        "tracksBalance": "Theo dõi số dư",
+        "allowHalfDay": "Nghỉ nửa ngày",
+        "allowHourly": "Nghỉ theo giờ",
+        "requiresAttachment": "Bắt buộc đính kèm",
+        "allowBackdated": "Được nộp sau",
+        "isLongTerm": "Nghỉ dài hạn",
+        "countsUntrackedDays": "Tính cả Thứ Bảy làm tại nhà",
+        "isActive": "Đang dùng",
+        "inactive": "Ngừng dùng",
+        "readOnly": "Loại phép chung: chỉ nhân sự tập đoàn sửa được. Bạn có thể đặt chính sách riêng cho pháp nhân của mình bên dưới."
+      },
+      "categories": {
+        "annual": "Phép năm",
+        "sick": "Nghỉ ốm",
+        "maternity": "Thai sản",
+        "paternity": "Vợ sinh con",
+        "personal_paid": "Việc riêng có lương",
+        "unpaid": "Không lương",
+        "compensatory": "Nghỉ bù",
+        "company": "Riêng của công ty"
+      },
+      "treatments": {
+        "paid_company": "Công ty trả lương",
+        "paid_insurance": "BHXH chi trả",
+        "unpaid": "Không lương"
+      },
+      "workforce": {
+        "employee": "Chính thức",
+        "probation": "Thử việc",
+        "intern": "Thực tập",
+        "part_time": "Bán thời gian",
+        "collaborator": "Cộng tác viên",
+        "advisor": "Cố vấn"
+      },
+      "policy": {
+        "title": "Các phiên bản chính sách",
+        "none": "Chưa có chính sách: số dư chỉ thay đổi qua các bút toán.",
+        "save": "Lưu thành phiên bản mới",
+        "validFrom": "Hiệu lực từ",
+        "accrualMethod": "Cách cấp ngày phép",
+        "baseSource": "Số ngày cơ sở",
+        "fixedDays": "Số ngày cố định mỗi năm",
+        "extraDays": "Ngày thêm của công ty",
+        "rounding": "Làm tròn khi không đủ năm",
+        "probationRule": "Trong thời gian thử việc",
+        "carryOverCap": "Chuyển năm tối đa (ngày)",
+        "noLimit": "để trống = không giới hạn",
+        "carryOverExpiry": "Ngày chuyển năm hết hạn sau (MM-DD)",
+        "allowNegative": "Cho ứng trước (ngày)",
+        "note": "Ghi chú",
+        "seniorityBonus": "Cộng ngày theo thâm niên (theo luật)",
+        "prorate": "Tính theo tỷ lệ cho người mới vào / nghỉ việc",
+        "payoutOnTermination": "Thanh toán ngày chưa nghỉ khi nghỉ việc",
+        "seniorityShort": "thâm niên",
+        "carryShort": "chuyển năm {cap}, hết hạn {expiry}"
+      },
+      "accrual": {
+        "none": "Không tự cấp (chỉ qua bút toán)",
+        "monthly_accrual": "Cộng dần hàng tháng",
+        "yearly_grant": "Cấp một lần mỗi năm"
+      },
+      "base": {
+        "statutory_annual": "Phép năm theo luật",
+        "fixed": "Số cố định"
+      },
+      "rounding": {
+        "none": "Không làm tròn",
+        "half_day": "Đến nửa ngày",
+        "full_day": "Đến cả ngày"
+      },
+      "probation": {
+        "accrue_and_use": "Được cộng và được nghỉ",
+        "accrue_no_use": "Được cộng, hết thử việc mới nghỉ",
+        "no_accrual": "Không được cộng"
+      },
+      "balances": {
+        "hint": "Số dư tính đến hôm nay; trong ngoặc là số ngày các đơn chờ duyệt đang giữ. Bấm vào tên để xem sổ chi tiết.",
+        "person": "Nhân viên",
+        "unit": "Pháp nhân · phòng ban",
+        "adjust": "Ghi điều chỉnh",
+        "type": "Loại phép",
+        "days": "Số ngày (+ / −)",
+        "reason": "Lý do",
+        "post": "Ghi sổ",
+        "runAccruals": "Cập nhật số dư đến hôm nay",
+        "ledger": "Sổ phép",
+        "noLedger": "Chưa có phát sinh trong năm.",
+        "system": "Hệ thống",
+        "requests": "Các đơn nghỉ",
+        "fileFor": "Nộp đơn thay người này"
+      },
+      "ledgerKinds": {
+        "opening": "Đầu kỳ",
+        "accrual": "Cộng hàng tháng",
+        "grant": "Cấp phép",
+        "use": "Đã nghỉ",
+        "refund": "Hoàn lại",
+        "adjustment": "Điều chỉnh",
+        "expiry": "Hết hạn",
+        "carry_over": "Chuyển năm",
+        "payout": "Thanh toán"
+      },
+      "staffing": {
+        "hint": "Số người tối thiểu của một nhóm hoặc phòng ban phải đi làm. Đơn nghỉ làm thiếu người sẽ hiện cảnh báo cho người gửi và người duyệt; đơn không bị chặn.",
+        "none": "Chưa có quy định nào.",
+        "add": "Thêm quy định",
+        "department": "Phòng ban",
+        "team": "Nhóm",
+        "minPresent": "Tối thiểu có mặt",
+        "atLeast": "tối thiểu {count} người có mặt"
+      },
+      "import": {
+        "description": "Số dư đầu kỳ: số ngày phép mỗi người còn lại vào ngày bắt đầu theo dõi trên hệ thống. Sau khi ghi nhận, bấm \"Cập nhật số dư đến hôm nay\" ở thẻ Số dư.",
+        "wizard": "Nhập số dư đầu kỳ",
+        "notes": {
+          "asOf": "\"Tính đến ngày\" là ngày chốt số dư. Các tháng bắt đầu trước ngày đó coi như đã nằm trong số dư và không cộng lại. Để trống = 01/01.",
+          "once": "Mỗi người, mỗi loại phép, mỗi năm chỉ một số dư đầu kỳ. Sai thì sửa bằng bút toán điều chỉnh.",
+          "accrual": "Tổng số ngày của tệp được hiện sau khi ghi nhận, để đối chiếu với bảng tính của bạn."
+        }
       }
     }
   }
