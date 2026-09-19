@@ -3,7 +3,7 @@
 // change of assignment) and lifecycle.ts (termination, rehire, resignation); both import this
 // file, which imports neither.
 import "server-only";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray } from "drizzle-orm";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { instantiateTemplate, listTasksAbout, type TaskView } from "@/modules/platform/tasks-engine/service";
@@ -108,4 +108,23 @@ export async function markDueTerminationsApplied(tx: Executor, personId: string,
     .where(and(eq(schema.lifecycleEvent.personId, personId), eq(schema.lifecycleEvent.type, "termination"), eq(schema.lifecycleEvent.status, "pending")));
   const ids = due.filter((event) => event.effectiveDate < today).map((event) => event.id);
   if (ids.length) await tx.update(schema.lifecycleEvent).set({ status: "applied", updatedAt: new Date() }).where(inArray(schema.lifecycleEvent.id, ids));
+}
+
+/** A lifecycle event as other modules may know it: who, where, what and when — never the note or the reason. */
+export type LifecycleEventFact = { id: string; type: LifecycleEventType; status: LifecycleEventRow["status"]; personId: string; personName: string; entityId: string; effectiveDate: IsoDate; /** A long absence carries its last day. */ until: IsoDate | null; createdAt: Date };
+
+/**
+ * The events written since a moment, oldest first — the durable log that the ops tracker pulls its
+ * event-driven obligations from (register insurance after a hire, close the book after a
+ * termination…). Read-only; cancelled events are included so their obligations can be called off.
+ */
+export async function listLifecycleEventFacts(filter: { createdSince: Date; types: readonly LifecycleEventType[] }, executor: Executor = db()): Promise<LifecycleEventFact[]> {
+  if (filter.types.length === 0) return [];
+  const rows = await executor
+    .select({ event: schema.lifecycleEvent, personName: schema.person.fullName })
+    .from(schema.lifecycleEvent)
+    .innerJoin(schema.person, eq(schema.person.id, schema.lifecycleEvent.personId))
+    .where(and(gte(schema.lifecycleEvent.createdAt, filter.createdSince), inArray(schema.lifecycleEvent.type, [...filter.types])))
+    .orderBy(asc(schema.lifecycleEvent.createdAt));
+  return rows.map(({ event, personName }) => ({ id: event.id, type: event.type, status: event.status, personId: event.personId, personName, entityId: event.entityId, effectiveDate: event.effectiveDate, until: typeof event.details.to === "string" ? event.details.to : null, createdAt: event.createdAt }));
 }

@@ -570,7 +570,8 @@
         "hr": "Hạn nhân sự",
         "approvals": "Phê duyệt",
         "tasks": "Công việc được giao",
-        "attendance": "Chấm công & bảng công"
+        "attendance": "Chấm công & bảng công",
+        "ops": "Nghĩa vụ tuân thủ"
       },
       "push": "Đẩy"
     },
@@ -690,6 +691,10 @@
       "tasks_nudge": {
         "title": "{name} hỏi về {key}",
         "body": "{name} muốn biết tiến độ của {key} “{title}”{dueDate, select, none {} other { (hạn {dueDate})}}."
+      },
+      "ops_assigned": {
+        "title": "{count, plural, =1 {Nghĩa vụ giao cho bạn: {title}} other {Bạn phụ trách # nghĩa vụ tuân thủ mới}}",
+        "body": "{count, plural, =1 {Bạn phụ trách nghĩa vụ “{title}”.} other {Bạn phụ trách # nghĩa vụ mới, bắt đầu bằng “{title}”.}} Mở Lịch nghĩa vụ để xem hạn, các bước và chứng từ cần có."
       }
     },
     "errors": {
@@ -3115,6 +3120,215 @@
         "nudge_task_closed": "Việc này đã đóng.",
         "task_not_found": "Không tìm thấy công việc."
       }
+    }
+  },
+  "ops": {
+    "title": "Lịch nghĩa vụ",
+    "description": "Nghĩa vụ định kỳ và phát sinh theo sự kiện của từng pháp nhân — ai phụ trách, hạn khi nào và bằng chứng đã hoàn thành.",
+    "sync": "Đồng bộ ngay",
+    "synced": "Tạo mới {created}, đóng hoặc hủy {cancelled}.",
+    "tabs": {
+      "open": "Đang mở",
+      "closed": "Đã đóng"
+    },
+    "allEntities": "Tất cả pháp nhân",
+    "summary": "{total} đang mở · {overdue} quá hạn · {dueSoon} đến hạn trong 7 ngày",
+    "empty": "Chưa có gì ở đây.",
+    "unassigned": "Chưa có người phụ trách",
+    "due": "Hạn {date}",
+    "shifted": "đã dời khỏi ngày nghỉ",
+    "unreviewed": "Quy tắc chưa rà soát",
+    "unreviewedHint": "“Quy tắc chưa rà soát” = mẫu lấy từ thư viện khởi tạo và chưa ai xác nhận hạn nộp. Hãy rà soát trong thư viện.",
+    "unreviewedNote": "Nghĩa vụ này sinh từ mẫu khởi tạo mà Kế toán trưởng / Trưởng phòng Nhân sự chưa xác nhận. Hãy đối chiếu hạn với quy định hiện hành trước khi dựa vào đó.",
+    "instance": {
+      "entity": "Pháp nhân",
+      "period": "Kỳ",
+      "eventDriven": "Theo sự kiện nhân sự",
+      "dueDate": "Hạn",
+      "dueShifted": "{date} (theo quy tắc: {nominal})",
+      "owner": "Người phụ trách",
+      "reviewer": "Người kiểm tra",
+      "subject": "Về nhân sự",
+      "completed": "Đã đóng",
+      "bySystem": "tự động",
+      "guidance": "Hướng dẫn",
+      "penalty": "Nếu trễ: {note}",
+      "reopened": "Đã mở lại: {reason}",
+      "timesheetLocked": "Tự động đóng: bảng công của tháng này đã được khóa.",
+      "checklist": "Các bước",
+      "evidence": "Chứng từ (* = bắt buộc để đóng)",
+      "referenceNumber": "Số tham chiếu",
+      "submittedDate": "Ngày nộp",
+      "amountPaid": "Số tiền đã nộp (VND)",
+      "note": "Ghi chú",
+      "save": "Lưu tiến độ",
+      "saved": "Đã lưu.",
+      "files": "Chứng từ đính kèm ({count})",
+      "noFiles": "Chưa có tệp nào.",
+      "addFile": "Thêm tệp",
+      "removeFile": "Gỡ",
+      "uploading": "Đang tải lên…",
+      "complete": "Đánh dấu hoàn thành",
+      "cancel": "Không áp dụng",
+      "reopen": "Mở lại",
+      "reason": "Lý do",
+      "confirm": "Xác nhận",
+      "missingTitle": "Chưa thể đóng nghĩa vụ này. Còn thiếu:",
+      "missing": {
+        "file": "Tệp chứng từ (biên nhận, tờ khai đã nộp, giấy nộp tiền)",
+        "reference": "Số tham chiếu",
+        "submittedDate": "Ngày nộp",
+        "amount": "Số tiền đã nộp",
+        "checklist": "{count, plural, other {# bước chưa đánh dấu}}"
+      },
+      "people": "Người phụ trách và người kiểm tra",
+      "nobody": "Chưa có",
+      "reassign": "Lưu"
+    },
+    "library": {
+      "title": "Thư viện nghĩa vụ",
+      "description": "Các mẫu mà bộ lập lịch dùng để sinh nghĩa vụ. Thư viện khởi tạo chỉ là bản nháp: hãy rà soát từng quy tắc cùng Kế toán trưởng và Trưởng phòng Nhân sự.",
+      "unreviewedCount": "Còn {count}/{total} mẫu chưa được rà soát.",
+      "inactive": "Tắt",
+      "reviewedOn": "Đã rà soát {date}",
+      "new": "Mẫu mới",
+      "markReviewedNow": "Đánh dấu đã rà soát",
+      "markUnreviewed": "Trả về chưa rà soát",
+      "code": "Mã",
+      "name": "Tên",
+      "category": "Nhóm",
+      "authority": "Cơ quan",
+      "recurrence": "Chu kỳ",
+      "shift": "Nếu hạn rơi vào ngày nghỉ",
+      "ruleType": "Quy tắc tính hạn",
+      "eventType": "Sự kiện nhân sự",
+      "days": "Số ngày sau sự kiện",
+      "monthsAfter": "Số tháng sau khi kỳ kết thúc",
+      "month": "Tháng thứ mấy của kỳ",
+      "day": "Ngày (1–31 hoặc “last”)",
+      "entities": "Áp dụng cho",
+      "entitiesHint": "Không chọn = mọi pháp nhân.",
+      "ownerKind": "Người phụ trách là",
+      "reviewerKind": "Người kiểm tra là",
+      "partyValue": "Vai trò / quyền",
+      "party": {
+        "none": "Không có",
+        "permission": "Người giữ một quyền",
+        "role": "Người giữ một vai trò",
+        "person": "Một người cụ thể"
+      },
+      "checklist": "Các bước (mỗi dòng một bước)",
+      "guidance": "Hướng dẫn",
+      "links": "Liên kết (Tiêu đề | https://…, mỗi dòng một liên kết)",
+      "penaltyNote": "Hậu quả nếu trễ hạn",
+      "reminderLeadDays": "Nhắc trước hạn (số ngày)",
+      "managerAfterDays": "Báo lên quản lý sau (ngày quá hạn)",
+      "executiveAfterDays": "Báo lên Giám đốc tài chính / Chủ sở hữu sau (ngày quá hạn)",
+      "evidenceRequired": "Bắt buộc để đóng",
+      "isActive": "Đang dùng",
+      "markReviewed": "Tôi đã kiểm tra quy tắc này — đánh dấu đã rà soát",
+      "save": "Lưu",
+      "create": "Tạo",
+      "saved": "Đã lưu.",
+      "lastDay": "ngày cuối",
+      "dayN": "ngày {day}",
+      "ruleAfterPeriod": "{day} của tháng thứ +{months} sau kỳ",
+      "ruleInPeriod": "{day} của tháng thứ {month} trong kỳ",
+      "ruleAfterEvent": "{days} ngày sau: {event}"
+    },
+    "enums": {
+      "category": {
+        "internal": "Nội bộ",
+        "external": "Với cơ quan nhà nước"
+      },
+      "authority": {
+        "tax": "Cơ quan thuế",
+        "social_insurance": "Bảo hiểm xã hội",
+        "labour": "Sở Lao động",
+        "statistics": "Cục Thống kê",
+        "trade_union": "Công đoàn",
+        "licensing": "Cấp phép",
+        "internal": "Nội bộ",
+        "other": "Khác"
+      },
+      "recurrence": {
+        "monthly": "Hằng tháng",
+        "quarterly": "Hằng quý",
+        "semi_annual": "Nửa năm",
+        "annual": "Hằng năm",
+        "event": "Theo sự kiện nhân sự"
+      },
+      "shift": {
+        "next_working_day": "Ngày làm việc kế tiếp",
+        "previous_working_day": "Ngày làm việc liền trước",
+        "none": "Không dời"
+      },
+      "rule": {
+        "after_period": "Sau khi kỳ kết thúc",
+        "in_period": "Trong kỳ",
+        "after_event": "Sau sự kiện"
+      },
+      "event": {
+        "hire": "Tuyển mới",
+        "rehire": "Tái tuyển dụng",
+        "termination": "Chấm dứt hợp đồng",
+        "long_leave": "Bắt đầu nghỉ dài ngày",
+        "long_leave_return": "Đi làm lại sau nghỉ dài ngày",
+        "salary_change": "Thay đổi lương"
+      },
+      "evidence": {
+        "file": "Tệp chứng từ",
+        "reference": "Số tham chiếu",
+        "submittedDate": "Ngày nộp",
+        "amount": "Số tiền đã nộp"
+      },
+      "colour": {
+        "upcoming": "Sắp tới",
+        "due_soon": "Sắp đến hạn",
+        "overdue": "Quá hạn",
+        "done": "Hoàn thành",
+        "done_late": "Hoàn thành trễ",
+        "cancelled": "Không áp dụng"
+      }
+    },
+    "errors": {
+      "generic": "Không thực hiện được. Hãy thử lại.",
+      "forbidden": "Bạn không được phép làm việc này.",
+      "invalid": "Hãy kiểm tra các ô được đánh dấu.",
+      "obligation_not_found": "Không tìm thấy nghĩa vụ.",
+      "obligation_closed": "Nghĩa vụ này đã đóng.",
+      "obligation_not_closed": "Nghĩa vụ này vẫn đang mở.",
+      "obligation_evidence_missing": "Còn thiếu chứng từ bắt buộc.",
+      "obligation_submitted_in_future": "Ngày nộp không thể ở tương lai.",
+      "obligation_person_not_found": "Không tìm thấy người này hoặc người này đã nghỉ việc.",
+      "obligation_reviewer_is_owner": "Người phụ trách và người kiểm tra phải là hai người khác nhau.",
+      "file_not_found": "Không tìm thấy tệp.",
+      "file_upload_failed": "Tải lên chưa xong. Hãy thử lại.",
+      "file_empty": "Tệp rỗng.",
+      "file_too_large": "Tệp lớn hơn 20 MB.",
+      "file_type_not_allowed": "Loại tệp này không được phép.",
+      "file_name_invalid": "Tên tệp không hợp lệ.",
+      "file_content_mismatch": "Nội dung tệp không khớp với loại tệp.",
+      "template_not_found": "Không tìm thấy mẫu.",
+      "template_code_taken": "Mã này đã được mẫu khác dùng.",
+      "template_category_invalid": "Nhóm không hợp lệ.",
+      "template_authority_invalid": "Cơ quan không hợp lệ.",
+      "template_recurrence_invalid": "Chu kỳ không hợp lệ.",
+      "template_shift_invalid": "Quy tắc dời hạn không hợp lệ.",
+      "template_rule_type": "Quy tắc tính hạn không phù hợp.",
+      "template_rule_recurrence": "Quy tắc này không hợp với chu kỳ.",
+      "template_rule_day": "Ngày phải từ 1–31 hoặc “last”.",
+      "template_rule_months_after": "Số tháng sau kỳ: 0–12.",
+      "template_rule_month": "Tháng này nằm ngoài kỳ.",
+      "template_rule_days": "Số ngày sau sự kiện: tối đa 366.",
+      "template_event_type_invalid": "Hãy chọn sự kiện nhân sự.",
+      "template_link_invalid": "Liên kết phải bắt đầu bằng https://.",
+      "template_lead_days_invalid": "Số ngày nhắc phải từ 0 đến 120.",
+      "template_escalation_invalid": "Bước báo lên Giám đốc tài chính / Chủ sở hữu không thể trước bước báo lên quản lý.",
+      "template_owner_rule_invalid": "Hãy chọn người phụ trách (vai trò hoặc quyền có thật).",
+      "template_owner_person_required": "Hãy chọn người phụ trách.",
+      "template_reviewer_rule_invalid": "Hãy chọn vai trò hoặc quyền có thật cho người kiểm tra.",
+      "template_reviewer_person_required": "Hãy chọn người kiểm tra."
     }
   }
 }

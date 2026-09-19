@@ -6,11 +6,12 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { and, between, inArray, isNull } from "drizzle-orm";
-import { attendancePolicy, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
+import { attendancePolicy, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
 import { PROFILE_SEED } from "../src/modules/attendance/engine/device-log";
 import { CALENDAR_SEED, DEFAULT_POLICY_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 import { leaveSeedRows } from "../src/modules/leave/seed-types";
 import { TEMPLATE_SEED } from "../src/modules/platform/tasks-engine/seed-templates";
+import { obligationSeedRows } from "../src/modules/ops/seed-library";
 import { WORK_TEMPLATE_SEED } from "../src/modules/work/seed-templates";
 import { STATUTORY_SEED } from "../src/modules/platform/statutory/seed-values";
 
@@ -76,6 +77,11 @@ async function main() {
     workTemplates++;
   }
   console.log(`Seeded ${workTemplates} work templates (names that already exist skipped).`);
+
+  // The obligation library (FR-OPS-03): a draft, every row unreviewed. Codes that exist are left
+  // alone, so nothing the chief accountant corrected or reviewed is ever overwritten.
+  const obligations = await db.insert(obligationTemplate).values(obligationSeedRows()).onConflictDoNothing({ target: obligationTemplate.code }).returning({ id: obligationTemplate.id });
+  console.log(`Seeded ${obligations.length} obligation templates as unreviewed drafts (existing codes skipped).`);
 
   // Leave types and their starter policies: only when there is no leave type at all.
   const [anyLeaveType] = await db.select({ id: leaveType.id }).from(leaveType).limit(1);

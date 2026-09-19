@@ -17,6 +17,7 @@ export * from "../../modules/core-hr/schema";
 export * from "../../modules/attendance/schema";
 export * from "../../modules/leave/schema";
 export * from "../../modules/work/schema";
+export * from "../../modules/ops/schema";
 
 // Every table calls `.enableRLS()` with no policies. The app connects as the table owner, which
 // bypasses row-level security; Supabase's public REST API roles (anon, authenticated) get nothing.

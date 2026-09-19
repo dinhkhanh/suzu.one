@@ -1,7 +1,7 @@
 // The catalogue of notifications. Plain module: shared by the server and the preferences screen.
 // Wording lives in messages/*.json under `notifications.kinds.<kind>` (dots become underscores).
 
-export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks", "attendance"] as const;
+export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks", "attendance", "ops"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const EMAIL_CHANNELS = ["instant", "digest", "off"] as const;
@@ -20,6 +20,8 @@ export const CATEGORY_DEFINITIONS: Record<Category, { defaults: ChannelChoice; /
   tasks: { defaults: { inApp: true, email: "digest", push: true }, mandatory: false },
   // The monthly timesheet: ready to confirm, waiting for the manager, sent back, corrected after the lock.
   attendance: { defaults: { inApp: true, email: "digest", push: true }, mandatory: false },
+  // Compliance obligations: assigned, coming due, overdue, escalated (FR-OPS-08).
+  ops: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false },
 };
 
 export const KINDS = {
@@ -56,6 +58,7 @@ export const KINDS = {
   "attendance.month_reopened": "attendance",
   "attendance.adjusted": "attendance",
   "attendance.nudge": "attendance",
+  "ops.assigned": "ops",
 } as const satisfies Record<string, Category>;
 export type Kind = keyof typeof KINDS;
 

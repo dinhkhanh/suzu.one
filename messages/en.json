@@ -570,7 +570,8 @@
         "hr": "HR deadlines",
         "approvals": "Approvals",
         "tasks": "Tasks assigned to you",
-        "attendance": "Attendance & timesheets"
+        "attendance": "Attendance & timesheets",
+        "ops": "Compliance obligations"
       },
       "push": "Push"
     },
@@ -690,6 +691,10 @@
       "tasks_nudge": {
         "title": "{name} is asking about {key}",
         "body": "{name} is asking for an update on {key} “{title}”{dueDate, select, none {} other { (due {dueDate})}}."
+      },
+      "ops_assigned": {
+        "title": "{count, plural, =1 {Obligation for you: {title}} other {# compliance obligations are yours}}",
+        "body": "{count, plural, =1 {You own the obligation “{title}”.} other {You own # new obligations, starting with “{title}”.}} Open Compliance to see due dates, the steps and the evidence each one needs."
       }
     },
     "errors": {
@@ -3115,6 +3120,215 @@
         "nudge_task_closed": "This task is closed.",
         "task_not_found": "Task not found."
       }
+    }
+  },
+  "ops": {
+    "title": "Compliance",
+    "description": "Recurring and event-driven obligations of every entity — who owns each one, when it is due, and the proof that it was done.",
+    "sync": "Sync now",
+    "synced": "{created} created, {cancelled} closed or called off.",
+    "tabs": {
+      "open": "Open",
+      "closed": "Closed"
+    },
+    "allEntities": "All entities",
+    "summary": "{total} open · {overdue} overdue · {dueSoon} due within 7 days",
+    "empty": "Nothing here.",
+    "unassigned": "Nobody yet",
+    "due": "Due {date}",
+    "shifted": "moved off a day off",
+    "unreviewed": "Unreviewed rule",
+    "unreviewedHint": "“Unreviewed rule” = the template comes from the starter library and nobody has confirmed its due date yet. Review it in the library.",
+    "unreviewedNote": "This obligation comes from a starter template that the chief accountant / HR lead has not confirmed yet. Check the due date against the current rules before relying on it.",
+    "instance": {
+      "entity": "Entity",
+      "period": "Period",
+      "eventDriven": "From an HR event",
+      "dueDate": "Due",
+      "dueShifted": "{date} (rule says {nominal})",
+      "owner": "Owner",
+      "reviewer": "Reviewer",
+      "subject": "About",
+      "completed": "Closed",
+      "bySystem": "automatically",
+      "guidance": "Guidance",
+      "penalty": "If late: {note}",
+      "reopened": "Reopened: {reason}",
+      "timesheetLocked": "Closed automatically: the timesheet of this month was locked.",
+      "checklist": "Steps",
+      "evidence": "Evidence (* = required to close)",
+      "referenceNumber": "Reference number",
+      "submittedDate": "Submitted on",
+      "amountPaid": "Amount paid (VND)",
+      "note": "Note",
+      "save": "Save progress",
+      "saved": "Saved.",
+      "files": "Proof ({count})",
+      "noFiles": "No file yet.",
+      "addFile": "Add a file",
+      "removeFile": "Remove",
+      "uploading": "Uploading…",
+      "complete": "Mark as done",
+      "cancel": "Not applicable",
+      "reopen": "Reopen",
+      "reason": "Reason",
+      "confirm": "Confirm",
+      "missingTitle": "This cannot be closed yet. Still missing:",
+      "missing": {
+        "file": "A file as proof (receipt, filed return, payment slip)",
+        "reference": "The reference number",
+        "submittedDate": "The submitted date",
+        "amount": "The amount paid",
+        "checklist": "{count, plural, =1 {# step not ticked} other {# steps not ticked}}"
+      },
+      "people": "Owner and reviewer",
+      "nobody": "Nobody",
+      "reassign": "Save"
+    },
+    "library": {
+      "title": "Obligation library",
+      "description": "The templates the scheduler turns into obligations. The starter library is a draft: review each rule with the chief accountant and the HR lead.",
+      "unreviewedCount": "{count} of {total} templates are still unreviewed.",
+      "inactive": "Off",
+      "reviewedOn": "Reviewed {date}",
+      "new": "New template",
+      "markReviewedNow": "Mark as reviewed",
+      "markUnreviewed": "Back to unreviewed",
+      "code": "Code",
+      "name": "Name",
+      "category": "Category",
+      "authority": "Authority",
+      "recurrence": "Recurrence",
+      "shift": "If due on a day off",
+      "ruleType": "Due-date rule",
+      "eventType": "HR event",
+      "days": "Days after the event",
+      "monthsAfter": "Months after the period ends",
+      "month": "Month of the period",
+      "day": "Day (1–31 or “last”)",
+      "entities": "Applies to",
+      "entitiesHint": "None ticked = every entity.",
+      "ownerKind": "Owner is",
+      "reviewerKind": "Reviewer is",
+      "partyValue": "Role / permission",
+      "party": {
+        "none": "Nobody",
+        "permission": "Whoever holds a permission",
+        "role": "Whoever holds a role",
+        "person": "A named person"
+      },
+      "checklist": "Steps (one per line)",
+      "guidance": "Guidance",
+      "links": "Links (Title | https://…, one per line)",
+      "penaltyNote": "What happens if late",
+      "reminderLeadDays": "Remind this many days before",
+      "managerAfterDays": "Escalate to the manager after (days overdue)",
+      "executiveAfterDays": "Escalate to the CFO / owner after (days overdue)",
+      "evidenceRequired": "Required to close",
+      "isActive": "Active",
+      "markReviewed": "I have checked this rule — mark as reviewed",
+      "save": "Save",
+      "create": "Create",
+      "saved": "Saved.",
+      "lastDay": "last day",
+      "dayN": "day {day}",
+      "ruleAfterPeriod": "{day} of month +{months} after the period",
+      "ruleInPeriod": "{day} of month {month} of the period",
+      "ruleAfterEvent": "{days} days after: {event}"
+    },
+    "enums": {
+      "category": {
+        "internal": "Internal",
+        "external": "External (authorities)"
+      },
+      "authority": {
+        "tax": "Tax office",
+        "social_insurance": "Social insurance",
+        "labour": "Labour department",
+        "statistics": "Statistics office",
+        "trade_union": "Trade union",
+        "licensing": "Licensing",
+        "internal": "Internal",
+        "other": "Other"
+      },
+      "recurrence": {
+        "monthly": "Monthly",
+        "quarterly": "Quarterly",
+        "semi_annual": "Every half-year",
+        "annual": "Yearly",
+        "event": "On an HR event"
+      },
+      "shift": {
+        "next_working_day": "Next working day",
+        "previous_working_day": "Previous working day",
+        "none": "Do not move"
+      },
+      "rule": {
+        "after_period": "After the period ends",
+        "in_period": "Inside the period",
+        "after_event": "After the event"
+      },
+      "event": {
+        "hire": "New hire",
+        "rehire": "Rehire",
+        "termination": "Termination",
+        "long_leave": "Long leave starts",
+        "long_leave_return": "Back from long leave",
+        "salary_change": "Salary change"
+      },
+      "evidence": {
+        "file": "A file",
+        "reference": "Reference number",
+        "submittedDate": "Submitted date",
+        "amount": "Amount paid"
+      },
+      "colour": {
+        "upcoming": "Upcoming",
+        "due_soon": "Due soon",
+        "overdue": "Overdue",
+        "done": "Done",
+        "done_late": "Done late",
+        "cancelled": "Not applicable"
+      }
+    },
+    "errors": {
+      "generic": "That did not work. Try again.",
+      "forbidden": "You may not do this.",
+      "invalid": "Check the highlighted fields.",
+      "obligation_not_found": "Obligation not found.",
+      "obligation_closed": "This obligation is already closed.",
+      "obligation_not_closed": "This obligation is still open.",
+      "obligation_evidence_missing": "Required evidence is missing.",
+      "obligation_submitted_in_future": "The submitted date cannot be in the future.",
+      "obligation_person_not_found": "That person was not found or has left.",
+      "obligation_reviewer_is_owner": "Owner and reviewer must be two different people.",
+      "file_not_found": "File not found.",
+      "file_upload_failed": "The upload did not finish. Try again.",
+      "file_empty": "The file is empty.",
+      "file_too_large": "The file is larger than 20 MB.",
+      "file_type_not_allowed": "This type of file is not allowed.",
+      "file_name_invalid": "The file name is not valid.",
+      "file_content_mismatch": "The file's content does not match its type.",
+      "template_not_found": "Template not found.",
+      "template_code_taken": "Another template already uses this code.",
+      "template_category_invalid": "Unknown category.",
+      "template_authority_invalid": "Unknown authority.",
+      "template_recurrence_invalid": "Unknown recurrence.",
+      "template_shift_invalid": "Unknown shifting rule.",
+      "template_rule_type": "The due-date rule does not fit.",
+      "template_rule_recurrence": "This rule does not fit the recurrence.",
+      "template_rule_day": "The day must be 1–31 or “last”.",
+      "template_rule_months_after": "Months after the period: 0–12.",
+      "template_rule_month": "That month is outside the period.",
+      "template_rule_days": "Days after the event: at most 366.",
+      "template_event_type_invalid": "Choose the HR event.",
+      "template_link_invalid": "Links must start with https://.",
+      "template_lead_days_invalid": "Reminder days must be between 0 and 120.",
+      "template_escalation_invalid": "The CFO / owner step cannot come before the manager step.",
+      "template_owner_rule_invalid": "Choose who owns the obligation (a role or a permission that exists).",
+      "template_owner_person_required": "Choose the owner.",
+      "template_reviewer_rule_invalid": "Choose a role or permission that exists for the reviewer.",
+      "template_reviewer_person_required": "Choose the reviewer."
     }
   }
 }

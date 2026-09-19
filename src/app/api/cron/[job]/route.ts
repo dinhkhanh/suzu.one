@@ -4,6 +4,7 @@ import { timesheetMonthReadyJob, timesheetRecomputeJob } from "@/modules/attenda
 import { fieldKeysRewrapJob, hrAlertsJob, peopleRollOverJob } from "@/modules/core-hr/jobs";
 import { filesCleanupJob } from "@/modules/platform/files/jobs";
 import { leaveAccrualJob } from "@/modules/leave/jobs";
+import { opsSchedulerJob } from "@/modules/ops/jobs";
 import { type JobDefinition, runJob } from "@/modules/platform/jobs/service";
 import { notificationsDailyJob } from "@/modules/platform/notifications/jobs";
 import { workRecurringJob, workRemindersJob } from "@/modules/work/jobs";
@@ -13,9 +14,9 @@ import { workRecurringJob, workRemindersJob } from "@/modules/work/jobs";
 const SCHEDULES: Record<string, JobDefinition[]> = {
   // Leave after the roll-over: a new starter accrues from the day they become active. The timesheet
   // last: it closes yesterday with the leave and the employment facts of today.
-  midnight: [peopleRollOverJob, leaveAccrualJob, timesheetRecomputeJob, workRecurringJob],
+  midnight: [peopleRollOverJob, leaveAccrualJob, timesheetRecomputeJob, workRecurringJob, opsSchedulerJob],
   // Alerts (and, on the 1st, "your month is ready to confirm") first, so the digest that follows carries them.
-  morning: [hrAlertsJob, timesheetMonthReadyJob, workRemindersJob, notificationsDailyJob, filesCleanupJob],
+  morning: [hrAlertsJob, timesheetMonthReadyJob, opsSchedulerJob, workRemindersJob, notificationsDailyJob, filesCleanupJob],
 };
 
 // Run by hand only: /api/cron/<job name>.
@@ -37,7 +38,8 @@ export async function GET(request: Request, context: RouteContext<"/api/cron/[jo
   if (!authorized(request)) return new Response("Unauthorized", { status: 401 });
 
   const { job } = await context.params;
-  const definitions = SCHEDULES[job] ?? [...Object.values(SCHEDULES).flat(), ...ON_DEMAND].filter((candidate) => candidate.name === job);
+  // A job may sit in two schedules (the ops scheduler): by name it still runs once.
+  const definitions = SCHEDULES[job] ?? [...new Set([...Object.values(SCHEDULES).flat(), ...ON_DEMAND])].filter((candidate) => candidate.name === job);
   if (definitions.length === 0) return new Response("Unknown job", { status: 404 });
 
   const outcomes = [];
