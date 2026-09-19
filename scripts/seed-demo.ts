@@ -6,9 +6,9 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { blindIndex, createFieldCipher, parseKeyRing } from "../src/lib/crypto/field-cipher";
-import { assignment, contract, department, dependent, emergencyContact, employeeCodeScheme, employment, entity, person, personProfile, personSensitive, position, roleAssignment } from "../src/lib/db/schema";
+import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, assignment, contract, department, dependent, emergencyContact, employeeCodeScheme, employment, entity, person, personProfile, personSensitive, position, roleAssignment } from "../src/lib/db/schema";
 import { toSearchKey } from "../src/lib/text";
-import { contractTermsContext, dependentContext, NATIONAL_ID_INDEX_CONTEXT, normalizeIdNumber, sensitiveContext } from "../src/modules/core-hr/field-contexts";
+import { changeRequestContext, contractTermsContext, dependentContext, NATIONAL_ID_INDEX_CONTEXT, normalizeIdNumber, sensitiveContext } from "../src/modules/core-hr/field-contexts";
 
 config({ path: ".env.local" });
 
@@ -116,6 +116,7 @@ async function main() {
 
   console.log(`Seeded ${created} demo people (existing people skipped).`);
   console.log(`Seeded ${await seedRecords(db, today)} contracts, restricted details and dependents (existing ones skipped).`);
+  console.log(`Seeded ${await seedChangeRequests(db)} pending change requests (people who already have one skipped).`);
   await client.end();
 }
 
@@ -190,6 +191,51 @@ async function seedRecords(db: ReturnType<typeof drizzle>, today: string): Promi
     await db.insert(dependent).values({ id, personId: huy.person.id, fullName: "Hồ Gia Bảo", relationship: "child", dateOfBirth: "2022-04-09", idNumber: cipher.encrypt("079222003344", dependentContext("idNumber", id)), deductionFrom: "2023-07-01" });
     await db.insert(emergencyContact).values({ personId: huy.person.id, fullName: "Trần Thị Hoa", relationship: "Vợ", phone: "0903123456" });
     written += 2;
+  }
+  return written;
+}
+
+// Two change requests waiting for HR, written the way the approval engine writes them: one with
+// personal fields, one with a new bank account (values only in the encrypted payload).
+async function seedChangeRequests(db: ReturnType<typeof drizzle>): Promise<number> {
+  const keys = process.env.DATA_ENCRYPTION_KEYS;
+  if (!keys) return 0;
+  const cipher = createFieldCipher(parseKeyRing(keys));
+  const byEmail = async (email: string) => (await db.select().from(person).where(eq(person.workEmail, email)).limit(1))[0];
+  const approvers = (await Promise.all(["bao.pham@suzu.group", "mai.le@suzu.group"].map(byEmail))).filter(Boolean);
+  if (approvers.length === 0) return 0;
+
+  const REQUESTS = [
+    { email: "huy.ho@suzu.group", summary: "Số điện thoại, Nơi ở hiện tại", personal: { phone: { to: "0908765432" }, currentAddress: { to: "25 Nguyễn Thị Minh Khai, P. Bến Nghé, Q.1, TP.HCM" } }, sealed: null },
+    { email: "tam.bui@suzu.group", summary: "Tài khoản ngân hàng nhận lương", personal: {}, sealed: { bankAccount: { bankName: "Techcombank", accountNumber: "19036789012345", accountHolder: "BUI THANH TAM", branch: "Sài Gòn" } } },
+  ];
+  let written = 0;
+  for (const demo of REQUESTS) {
+    const requester = await byEmail(demo.email);
+    if (!requester) continue;
+    const [existing] = await db.select({ id: approvalRequest.id }).from(approvalRequest).where(eq(approvalRequest.subjectPersonId, requester.id)).limit(1);
+    if (existing) continue;
+    const [profile] = await db.select().from(personProfile).where(eq(personProfile.personId, requester.id)).limit(1);
+    const personal = Object.fromEntries(Object.entries(demo.personal).map(([field, change]) => [field, { from: (profile as Record<string, unknown> | undefined)?.[field] ?? null, to: change.to }]));
+    const id = randomUUID();
+    const flow = { steps: [{ key: "hr", mode: "any", approvers: [{ rule: "permission", permission: "person:manage" }] }] };
+    const approverIds = approvers.map((row) => row.id).filter((approverId) => approverId !== requester.id);
+    await db.insert(approvalRequest).values({
+      id,
+      type: "profile_change",
+      entityId: requester.primaryEntityId,
+      requesterPersonId: requester.id,
+      subjectPersonId: requester.id,
+      summary: demo.summary,
+      payload: { personal, restricted: demo.sealed ? Object.keys(demo.sealed) : [] },
+      payloadEnc: demo.sealed ? cipher.encrypt(JSON.stringify(demo.sealed), changeRequestContext(id)) : null,
+      flowSnapshot: { definition: flow, resolved: [{ key: "hr", mode: "any", applies: true, approverIds }] },
+      link: `/approvals/profile-change/${id}`,
+    });
+    const [step] = await db.insert(approvalStep).values({ requestId: id, stepIndex: 0, key: "hr", mode: "any", status: "pending" }).returning();
+    await db.insert(approvalAssignee).values(approverIds.map((approverPersonId) => ({ stepId: step.id, requestId: id, approverPersonId })));
+    await db.insert(approvalEvent).values({ requestId: id, type: "submitted", actorPersonId: requester.id, stepIndex: 0 });
+    written++;
   }
   return written;
 }
