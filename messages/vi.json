@@ -2278,6 +2278,7 @@
       "leave_balance_insufficient": "Không đủ số ngày phép còn lại.",
       "leave_request_not_found": "Không tìm thấy đơn.",
       "leave_request_not_open": "Đơn này đã đóng.",
+      "leave_period_locked": "Một phần kỳ nghỉ nằm trong tháng đã khoá bảng công. Hãy ghi nhận điều chỉnh bảng công thay thế.",
       "leave_cancel_started": "Kỳ nghỉ đã bắt đầu; vui lòng nhờ nhân sự huỷ.",
       "leave_cancel_not_allowed": "Bạn không huỷ được đơn này.",
       "no_employment": "Chưa có thông tin làm việc.",

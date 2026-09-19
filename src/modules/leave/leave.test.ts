@@ -253,6 +253,10 @@ describe("requests", () => {
     const sick = await submitLeave(ids.huy, request({ leaveTypeId: types.SICK, startDate: "2026-09-16", endDate: "2026-09-17", attachmentFileId: file.id }), self(ids.huy));
     await decideLeave(ids.head, sick.approvalRequestId, { action: "approve", comment: null });
     expect(await fails(cancelLeave(sick.leaveRequest.id, self(ids.huy), null))).toBe("leave_cancel_started");
+    // Once the month's timesheet is locked, leave inside it stays as payroll saw it.
+    const [period] = await db().insert(schema.timesheetPeriod).values({ entityId: ids.media, month: "2026-09", status: "locked", lockedAt: new Date(), lockedByPersonId: ids.hr }).returning();
+    expect(await fails(cancelLeave(sick.leaveRequest.id, { personId: ids.hr, isHr: true }, "Nhập nhầm ngày"))).toBe("leave_period_locked");
+    await db().delete(schema.timesheetPeriod).where(eq(schema.timesheetPeriod.id, period.id));
     expect((await cancelLeave(sick.leaveRequest.id, { personId: ids.hr, isHr: true }, "Nhập nhầm ngày")).after.status).toBe("cancelled");
     const notices = await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.huy), eq(schema.notification.kind, "approvals.leave_cancelled")));
     expect(notices).toHaveLength(1);

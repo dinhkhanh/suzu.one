@@ -6,7 +6,7 @@ import { and, desc, eq, gte, inArray, lte, ne, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
-import { getDayPlans, requestTimesheetRecompute } from "@/modules/attendance/service";
+import { getDayPlans, isPeriodLocked, requestTimesheetRecompute } from "@/modules/attendance/service";
 import { cancelLongLeave, type EmploymentFacts, listEmploymentFacts, recordLongLeave } from "@/modules/core-hr/service";
 import { decideRequest, defineRequestType, getRequest, type RequestView, submitRequest, withdrawRequest } from "@/modules/platform/approvals/service";
 import { notify } from "@/modules/platform/notifications/service";
@@ -185,9 +185,20 @@ export async function submitLeave(personId: string, input: LeaveInput, actor: { 
 
 // ── Deciding ────────────────────────────────────────────────────────────────────────────────
 
+// A locked monthly timesheet is what payroll pays from: leave inside it can no longer appear or
+// disappear. HR records a timesheet adjustment instead (FR-ATT-14).
+async function refuseLockedMonths(tx: Tx, entityId: string | null, requestId: string): Promise<void> {
+  if (!entityId) return;
+  const days = await tx.select({ date: schema.leaveRequestDay.date }).from(schema.leaveRequestDay).where(eq(schema.leaveRequestDay.requestId, requestId));
+  for (const month of new Set(days.map((day) => day.date.slice(0, 7)))) {
+    if (await isPeriodLocked(entityId, month, tx)) throw new ActionError("leave_period_locked");
+  }
+}
+
 // Approved: the days leave the balance (one ledger row per leave year), a long absence goes on
 // the person's timeline, and attendance is told that those days changed.
 async function applyApproval(tx: Tx, request: LeaveRequestRow, actorPersonId: string): Promise<LeaveRequestRow> {
+  await refuseLockedMonths(tx, request.entityId, request.id);
   const [type] = await tx.select().from(schema.leaveType).where(eq(schema.leaveType.id, request.leaveTypeId)).limit(1);
   const days = await tx.select().from(schema.leaveRequestDay).where(eq(schema.leaveRequestDay.requestId, request.id));
   if (type.tracksBalance) {
@@ -248,6 +259,7 @@ async function cancelInTransaction(tx: Tx, leaveRequestId: string, actor: { pers
   }
 
   if (before.status !== "approved") throw new ActionError("leave_request_not_open");
+  await refuseLockedMonths(tx, before.entityId, before.id);
   const started = before.startDate <= todayInVietnam();
   if (!actor.isHr && (!own || started)) throw new ActionError(started ? "leave_cancel_started" : "leave_cancel_not_allowed");
   const uses = await tx.select().from(schema.leaveLedgerEntry).where(and(eq(schema.leaveLedgerEntry.requestId, before.id), eq(schema.leaveLedgerEntry.kind, "use")));

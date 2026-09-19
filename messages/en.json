@@ -2278,6 +2278,7 @@
       "leave_balance_insufficient": "Not enough days left.",
       "leave_request_not_found": "Request not found.",
       "leave_request_not_open": "This request is already closed.",
+      "leave_period_locked": "Part of this leave falls in a month whose timesheet is locked. Record a timesheet adjustment instead.",
       "leave_cancel_started": "This leave has started; ask HR to cancel it.",
       "leave_cancel_not_allowed": "You cannot cancel this request.",
       "no_employment": "No employment on record.",
