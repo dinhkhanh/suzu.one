@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { canReadTier, type Grant, type Principal, readableTier } from "../platform/rbac/policy";
-import { canViewCompensationOf } from "../payroll/policy";
-import { canComputeResults, canDecidePerformanceRules, canOverrideResult, canProposeWeighting, canReadResultOf, canSettleResultOf } from "./policy";
+import { canReadBonusRun, canViewBonusOf, canViewCompensationOf } from "../payroll/policy";
+import { canComputeResults, canDecideOutcome, canDecidePerformanceRules, canOverrideResult, canProposeWeighting, canRaiseOutcome, canReadOneOnOne, canReadOneOnOnePrivate, canReadResultOf, canSettleResultOf, canWriteOneOnOne } from "./policy";
 import { canCheckIn, canCloseGoal, canCloseKpiMonth, canEditGoal, canEnterActualsFor, canManageAssignmentsOf, canManageKpiLibrary, canManagePositionKpis, canOpenOverview, canReadPerformanceOf, canReopenGoal, canReopenKpiMonth, canSeeGoal, chainAbove, type GoalParties, overviewReach, type PersonContext, readablePeople, unitTarget } from "./policy";
 
 const SZM = "entity-szm";
@@ -223,5 +223,54 @@ describe("the final yearly result", () => {
     expect(canViewCompensationOf(headVid, { personId: "huy", entityId: SZM })).toBe(false);
     expect(canViewCompensationOf(hrSzm, { personId: "huy", entityId: SZM })).toBe(false); // HR staff is not C&B
     expect(canViewCompensationOf(owner, { personId: "huy", entityId: SZM })).toBe(true);
+  });
+});
+
+// ── 1:1 notes and review outcomes, and the bonus line (Phase 8 week 3) ──────────────────────
+
+describe("1:1 meeting notes (FR-PRF-04)", () => {
+  const meeting = { managerPersonId: "tam", person: huy };
+
+  it("is written by the manager who holds it, or HR — never by the subject", () => {
+    expect(canWriteOneOnOne(principal("tam"), meeting)).toBe(true);
+    expect(canWriteOneOnOne(principal("huy"), meeting)).toBe(false);
+    expect(canWriteOneOnOne(hrSzm, meeting)).toBe(true);
+    expect(canWriteOneOnOne(principal("linh"), meeting)).toBe(false);
+  });
+
+  it("shares the agenda and the shared notes with both sides and the line above", () => {
+    for (const viewer of [principal("tam"), principal("huy"), headVid, hrSzm, owner]) expect(canReadOneOnOne(viewer, meeting)).toBe(true);
+    // A colleague in the same department is still a colleague.
+    expect(canReadOneOnOne(principal("linh"), meeting)).toBe(false);
+  });
+
+  it("keeps the private notes to the one manager who wrote them — not the subject, not HR", () => {
+    expect(canReadOneOnOnePrivate(principal("tam"), meeting)).toBe(true);
+    for (const viewer of [principal("huy"), headVid, hrSzm, owner, auditor]) expect(canReadOneOnOnePrivate(viewer, meeting)).toBe(false);
+  });
+});
+
+describe("review outcomes (FR-PRF-06)", () => {
+  it("is raised by the chain above or HR, and decided by HR", () => {
+    expect(canRaiseOutcome(principal("tam"), huy)).toBe(true);
+    expect(canRaiseOutcome(headVid, huy)).toBe(true);
+    expect(canRaiseOutcome(principal("huy"), huy)).toBe(false); // not about yourself
+    expect(canDecideOutcome(principal("tam"), huy)).toBe(false);
+    expect(canDecideOutcome(hrSzm, huy)).toBe(true);
+  });
+});
+
+describe("the review→pay link stays on payroll's side of the line", () => {
+  it("shows a line manager the band and refuses them the bonus amount", () => {
+    const tam = principal("tam");
+    // The band and the multiplier: personal tier, and theirs to read (asserted above).
+    expect(canReadResultOf(tam, huy)).toBe(true);
+    // The amount built on it: compensation tier, and not theirs, by payroll's own rule.
+    expect(canViewBonusOf(tam, { personId: "huy", entityId: SZM })).toBe(false);
+    expect(canViewBonusOf(headVid, { personId: "huy", entityId: SZM })).toBe(false);
+    expect(canReadBonusRun(tam, [SZM])).toBe(false);
+    expect(canReadBonusRun(headVid, [SZM])).toBe(false);
+    // And the person themself does read their own.
+    expect(canViewBonusOf(principal("huy"), { personId: "huy", entityId: SZM })).toBe(true);
   });
 });

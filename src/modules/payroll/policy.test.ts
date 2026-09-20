@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
-import { canApprovePayroll, canDecidePayRules, canDecideSalaryChange, canManageCompensation, canPayPayroll, canProposePayRules, canReadPayroll, canSeeSimpleProfileReport, canViewCompensationOf, compensationReach, hasPayrollDesk } from "./policy";
+import { canAdjustBonusLine, canApproveBonusRun, canApprovePayroll, canDecideBonusScheme, canDecidePayRules, canDecideSalaryChange, canManageBonusRun, canManageCompensation, canPayPayroll, canProposeBonusRun, canProposeBonusScheme, canProposePayRules, canReadBonusRun, canReadPayroll, canSeeSimpleProfileReport, canViewBonusOf, canViewCompensationOf, compensationReach, hasPayrollDesk } from "./policy";
 
 const SZM = "entity-szm";
 const SZC = "entity-szc";
@@ -114,5 +114,69 @@ describe("payroll policy: the run and the rules (SRS D17)", () => {
     expect(compensationReach(departmentHead)).toEqual({ all: false, entityIds: [] });
     expect(compensationReach(lineManager)).toEqual({ all: false, entityIds: [] });
     expect(compensationReach(ceo)).toEqual({ all: false, entityIds: [] });
+  });
+});
+
+// ── The year-end bonus (FR-PAY-21, Phase 8) ─────────────────────────────────────────────────
+// The line the phase has to hold: a line manager and a department head read the person's review
+// and see their performance band, and see **no bonus amount at all**. The band is performance;
+// the đồng are pay, and pay never follows the org chart.
+
+describe("the year-end bonus is compensation like everything else here", () => {
+  const runEntities = [SZM, SZC];
+
+  it("gives the line manager, the department head and the entity director nothing", () => {
+    for (const viewer of [lineManager, departmentHead, entityDirector, hrStaff, colleague]) {
+      expect(canViewBonusOf(viewer, employee)).toBe(false);
+      expect(canReadBonusRun(viewer, [SZM])).toBe(false);
+      expect(canManageBonusRun(viewer, [SZM])).toBe(false);
+      expect(canProposeBonusRun(viewer, [SZM])).toBe(false);
+      expect(canApproveBonusRun(viewer, [SZM])).toBe(false);
+      expect(canAdjustBonusLine(viewer)).toBe(false);
+    }
+  });
+
+  it("lets the person see their own amount", () => {
+    expect(canViewBonusOf(self, employee)).toBe(true);
+    expect(canViewBonusOf(cnbSzm, employee)).toBe(true);
+    expect(canViewBonusOf(owner, employee)).toBe(true);
+    // Not even the CEO reads one person's pay — they approve the run, they do not browse it.
+    expect(canViewBonusOf(ceo, employee)).toBe(false);
+  });
+
+  it("needs the permission over *every* entity a group-wide run covers", () => {
+    expect(canManageBonusRun(cnbSzm, [SZM])).toBe(true);
+    expect(canManageBonusRun(cnbSzm, runEntities)).toBe(false);
+    expect(canManageBonusRun(hrLead, runEntities)).toBe(true);
+    expect(canManageBonusRun(owner, runEntities)).toBe(true);
+    // An empty run reaches nobody: "every entity" of nothing is not "yes".
+    expect(canManageBonusRun(owner, [])).toBe(false);
+    expect(canApproveBonusRun(owner, [])).toBe(false);
+  });
+
+  it("splits the three desks the way SRS D13 asks", () => {
+    // HR proposes…
+    expect(canProposeBonusRun(hrLead, runEntities)).toBe(true);
+    expect(canProposeBonusRun(ceo, runEntities)).toBe(false);
+    // …the owner adjusts an individual amount, and nobody else — not the CEO, not C&B…
+    expect(canAdjustBonusLine(owner)).toBe(true);
+    for (const viewer of [ceo, hrLead, cnbSzm, accountant, auditor]) expect(canAdjustBonusLine(viewer)).toBe(false);
+    // …and the CEO signs.
+    expect(canApproveBonusRun(ceo, runEntities)).toBe(true);
+    expect(canApproveBonusRun(hrLead, runEntities)).toBe(false);
+    expect(canApproveBonusRun(owner, runEntities)).toBe(true);
+  });
+
+  it("keeps the scheme a pay rule: C&B proposes, the owner decides", () => {
+    expect(canProposeBonusScheme(hrLead)).toBe(true);
+    expect(canDecideBonusScheme(hrLead)).toBe(false);
+    expect(canDecideBonusScheme(owner)).toBe(true);
+    expect(canDecideBonusScheme(ceo)).toBe(false);
+  });
+
+  it("lets the auditor and the CEO read the register without reading a person's amount", () => {
+    expect(canReadBonusRun(auditor, runEntities)).toBe(true);
+    expect(canReadBonusRun(ceo, runEntities)).toBe(true);
+    expect(canViewBonusOf(auditor, employee)).toBe(false);
   });
 });
