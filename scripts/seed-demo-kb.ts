@@ -2,12 +2,20 @@
 // space exists. Written straight into the tables the way the use-cases write them (tsx cannot load
 // server-only modules): a published page has an immutable version, its search columns are the
 // accent-stripped published text, and a restricted page is the access root of everything below it.
-// Week 1 lays the spaces and a handful of pages; the handbook's full set of policies and SOPs
-// arrives with the Markdown importer.
-import { eq } from "drizzle-orm";
+// The handbook's policies and SOPs (seed-demo-kb-pages.ts) are Markdown run through the importer.
+// On top of the pages: two "must read" policies — the work rules about half confirmed and overdue
+// for the rest, the security policy reset by a major revision — one revision waiting for review,
+// and the chunks with their (fake) embeddings, as a publish would have left them.
+import { createHash, randomUUID } from "node:crypto";
+import { eq, sql } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
-import { department, entity, kbAccess, kbPage, kbPageVersion, kbSpace, person } from "../src/lib/db/schema";
+import { addDays, todayInVietnam } from "../src/lib/dates";
+import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, department, entity, kbAckAudience, kbAcknowledgement, kbAckReminder, kbAccess, kbPage, kbPageChunk, kbPageVersion, kbSpace, person } from "../src/lib/db/schema";
 import { toSearchKey } from "../src/lib/text";
+import { chunkDoc, chunkEmbeddingText } from "../src/modules/kb/engine/chunk";
+import { FAKE_EMBEDDING_MODEL, fakeEmbedding } from "../src/modules/kb/engine/fake-embedding";
+import { markdownToDoc } from "../src/modules/kb/engine/markdown";
+import { HANDBOOK_PAGES, REMOTE_DRAFT, SECURITY_V1, SECURITY_V2 } from "./seed-demo-kb-pages";
 import { bold, bulletList, callout, doc, embed, heading, link, orderedList, paragraph, table } from "../src/modules/kb/engine/build";
 import { type Doc, docToPlainText, validateDoc } from "../src/modules/kb/engine/doc";
 
@@ -145,9 +153,27 @@ const PAGES: DemoPage[] = [
   },
 ];
 
+const md = (markdown: string): Doc => markdownToDoc(markdown, { liftTitle: false }).doc;
+
 export async function seedKb(db: Db): Promise<string> {
   const [existing] = await db.select({ id: kbSpace.id }).from(kbSpace).limit(1);
   if (existing) return "0 knowledge-base spaces (already there)";
+
+  const today = todayInVietnam();
+  const day = (offset: number) => addDays(today, offset);
+  // A demo person's row was written a moment ago; the day they joined is the day that counts for
+  // "who owes a confirmation since when". Demo only: real rows are created when people are hired.
+  await db.execute(sql`update person set created_at = e.first_day from (select person_id, min(start_date)::timestamptz as first_day from employment group by person_id) e where e.person_id = person.id and e.first_day < person.created_at`);
+
+  const staged: DemoPage[] = [
+    ...HANDBOOK_PAGES.filter((page) => page.key !== "rules" && page.key !== "remote").map((page) => ({ key: page.key, space: page.space, parent: page.parent, title: page.title, owner: page.owner, reviewBy: page.reviewBy, revisions: [{ on: page.on, by: page.by, note: page.note, major: page.major, content: md(page.markdown) }] })),
+    ...HANDBOOK_PAGES.filter((page) => page.key === "rules").map((page) => ({ key: page.key, space: page.space, title: page.title, owner: page.owner, reviewBy: page.reviewBy, revisions: [{ on: day(-27), by: page.by, note: page.note, major: true, content: md(page.markdown) }] })),
+    { key: "security", space: "so-tay", title: "Bảo mật thông tin và thiết bị", owner: MAI, reviewBy: day(200), revisions: [{ on: day(-45), by: MAI, note: "Ban hành", major: true, content: md(SECURITY_V1) }, { on: day(-10), by: MAI, note: "Thêm quy định về công cụ AI và xử lý sự cố", major: true, content: md(SECURITY_V2) }] },
+    ...HANDBOOK_PAGES.filter((page) => page.key === "remote").map((page) => ({ key: page.key, space: page.space, title: page.title, owner: page.owner, revisions: [{ on: page.on, by: page.by, content: md(page.markdown) }], draft: { content: md(REMOTE_DRAFT) } })),
+  ];
+  // The handbook reads in a sensible order: welcome, the rules, then the rest.
+  const order = ["welcome", "rules", "hours", "overtime", "pay", "insurance", "contract", "conduct", "security", "remote"];
+  const ALL = [...PAGES, ...staged].sort((a, b) => (order.indexOf(a.key) < 0 ? 99 : order.indexOf(a.key)) - (order.indexOf(b.key) < 0 ? 99 : order.indexOf(b.key)));
 
   const people = new Map((await db.select({ id: person.id, name: person.fullName }).from(person)).map((row) => [row.name, row.id]));
   const departments = new Map((await db.select({ id: department.id, code: department.code }).from(department)).map((row) => [row.code, row.id]));
@@ -176,7 +202,9 @@ export async function seedKb(db: Db): Promise<string> {
   const pageIds = new Map<string, string>();
   const roots = new Map<string, string | null>();
   let versions = 0;
-  for (const [index, page] of PAGES.entries()) {
+  const versionIds = new Map<string, string[]>();
+  let chunkCount = 0;
+  for (const [index, page] of ALL.entries()) {
     const spaceId = spaceIds.get(page.space)!;
     const parentId = page.parent ? pageIds.get(page.parent)! : null;
     const last = page.revisions.at(-1);
@@ -201,12 +229,86 @@ export async function seedKb(db: Db): Promise<string> {
         .values({ pageId: row.id, versionNo: number + 1, title: revision.title ?? page.title, content, contentText: docToPlainText(content), authorPersonId: who(revision.by), changeNote: revision.note ?? null, isMajor: !!revision.major, createdAt: at })
         .returning();
       published = { id: version.id, title: version.title, text: version.contentText, at };
+      versionIds.set(page.key, [...(versionIds.get(page.key) ?? []), version.id]);
       versions++;
+    }
+    // What a publish leaves behind for the assistant: the passages of the published version, embedded by the local fake.
+    if (published) {
+      const chunks = chunkDoc(checked(page.revisions.at(-1)!.content), published.title);
+      if (chunks.length) await db.insert(kbPageChunk).values(chunks.map((chunk) => ({ pageId: row.id, versionId: published!.id, chunkIndex: chunk.index, headingPath: chunk.headingPath, content: chunk.content, contentHash: createHash("sha256").update(`${chunk.headingPath}\n${chunk.content}`).digest("hex"), tokenEstimate: chunk.tokenEstimate, embedding: fakeEmbedding(chunkEmbeddingText(chunk)), embeddingModel: FAKE_EMBEDDING_MODEL, embeddedAt: published!.at })));
+      chunkCount += chunks.length;
     }
     await db
       .update(kbPage)
       .set({ accessRootId: root, ...(published ? { publishedVersionId: published.id, publishedTitle: published.title, publishedAt: published.at, searchTitle: toSearchKey(published.title), searchBody: toSearchKey(published.text) } : {}) })
       .where(eq(kbPage.id, row.id));
   }
-  return `${SPACES.length} knowledge-base spaces, ${PAGES.length} pages, ${versions} published versions`;
+
+  // ── "Must read" ─────────────────────────────────────────────────────────────────────────────
+  const at = (date: string, hour = 3) => new Date(`${date}T${String(hour).padStart(2, "0")}:00:00Z`);
+  const audience = await db.select({ id: person.id, name: person.fullName, workforceType: person.workforceType, status: person.status, createdAt: person.createdAt }).from(person);
+  const staff = audience.filter((row) => row.status === "active" && row.workforceType !== "collaborator");
+  let confirmations = 0;
+  const mustRead = async (key: string, since: string, dueDays: number, confirmed: [name: string, on: string][], earlier: [name: string, on: string][] = []) => {
+    const pageId = pageIds.get(key)!;
+    const versionsOf = versionIds.get(key)!;
+    const current = versionsOf.at(-1)!;
+    await db.update(kbPage).set({ ackRequired: true, ackVersionId: current, ackSince: at(since), ackDueDays: dueDays }).where(eq(kbPage.id, pageId));
+    await db.insert(kbAckAudience).values({ pageId, subjectKey: "all" });
+    const rows = [...earlier.map(([name, on]) => ({ name, on, versionId: versionsOf[0] })), ...confirmed.map(([name, on]) => ({ name, on, versionId: current }))].filter((row) => who(row.name));
+    if (rows.length) await db.insert(kbAcknowledgement).values(rows.map((row) => ({ pageId, versionId: row.versionId, personId: who(row.name)!, acknowledgedAt: at(row.on, 2 + (row.name.length % 8)) })));
+    confirmations += rows.length;
+    // The notices the job would have sent: the first one to everybody, then every third day to whoever had not confirmed yet.
+    const confirmedOn = new Map(confirmed.map(([name, on]) => [who(name), on]));
+    const notices: (typeof kbAckReminder.$inferInsert)[] = [];
+    for (const member of staff) {
+      // Someone who joined after the requirement took effect is asked from their first day.
+      const joined = todayInVietnam(member.createdAt);
+      const from = joined > since ? joined : since;
+      const until = confirmedOn.get(member.id) ?? today;
+      const memberDue = addDays(from, dueDays);
+      notices.push({ pageId, versionId: current, personId: member.id, sentOn: from, kind: "requested", createdAt: at(from, 1) });
+      for (let sentOn = addDays(from, 3); sentOn < until; sentOn = addDays(sentOn, 3)) notices.push({ pageId, versionId: current, personId: member.id, sentOn, kind: sentOn > memberDue ? "overdue" : "reminder", createdAt: at(sentOn, 1) });
+    }
+    if (notices.length) await db.insert(kbAckReminder).values(notices);
+  };
+  // The work rules: in force for four weeks, half the staff confirmed — Huy only after the second reminder — and the rest are overdue.
+  await mustRead("rules", day(-27), 14, [[MAI, day(-27)], [BAO, day(-26)], [LONG, day(-26)], [TUAN, day(-25)], ["Dương Thùy Chi", day(-24)], ["Nguyễn Thu Hà", day(-22)], ["Hồ Gia Huy", day(-20)]]);
+  // The security policy: nearly everyone confirmed version 1; the major revision ten days ago asked everybody again.
+  await mustRead(
+    "security",
+    day(-10),
+    14,
+    [[MAI, day(-10)], [BAO, day(-9)], [LONG, day(-8)], ["Hồ Gia Huy", day(-6)]],
+    [MAI, BAO, LONG, TUAN, TAM, "Hồ Gia Huy", "Dương Thùy Chi", "Lý Minh Khôi", "Phan Văn Đức", "Nguyễn Thu Hà"].map((name, index) => [name, day(-44 + (index % 6))] as [string, string]),
+  );
+
+  // ── A revision waiting for review ───────────────────────────────────────────────────────────
+  // Bảo (HR staff of one company) edits the group's handbook but may not publish there: Mai, the group's HR admin, is asked.
+  const remoteId = pageIds.get("remote")!;
+  const requestId = randomUUID();
+  const filedAt = at(day(-1), 8);
+  const flow = { steps: [{ key: "review", mode: "any", approvers: [{ rule: "permission", permission: "kb:manage" }] }] };
+  await db.insert(approvalRequest).values({
+    id: requestId,
+    type: "kb_publish",
+    entityId: null,
+    requesterPersonId: who(BAO)!,
+    subjectPersonId: null,
+    subjectType: "kb_page",
+    subjectId: remoteId,
+    summary: "Làm việc từ xa — Tăng lên 3 ngày mỗi tuần, thêm mục làm việc từ xa dài ngày",
+    payload: { pageId: remoteId, spaceId: spaceIds.get("so-tay")!, title: "Làm việc từ xa", changeNote: "Tăng lên 3 ngày mỗi tuần, thêm mục làm việc từ xa dài ngày", isMajor: false },
+    status: "pending",
+    currentStep: 0,
+    flowSnapshot: { definition: flow, source: "default", resolved: [{ key: "review", mode: "any", applies: true, approverIds: [who(MAI)!] }] },
+    link: `/approvals/kb-publish/${requestId}`,
+    createdAt: filedAt,
+  });
+  const [step] = await db.insert(approvalStep).values({ requestId, stepIndex: 0, key: "review", mode: "any", status: "pending" }).returning();
+  await db.insert(approvalAssignee).values({ stepId: step.id, requestId, approverPersonId: who(MAI)!, status: "pending" });
+  await db.insert(approvalEvent).values({ requestId, type: "submitted", actorPersonId: who(BAO)!, stepIndex: 0, at: filedAt });
+  await db.update(kbPage).set({ status: "in_review", reviewRequestId: requestId, updatedByPersonId: who(BAO) }).where(eq(kbPage.id, remoteId));
+
+  return `${SPACES.length} knowledge-base spaces, ${ALL.length} pages, ${versions} published versions, ${chunkCount} chunks (${FAKE_EMBEDDING_MODEL}), ${confirmations} acknowledgements, 1 revision in review`;
 }
