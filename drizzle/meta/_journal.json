@@ -386,6 +386,13 @@
       "when": 1789880196522,
       "tag": "0054_deep_links_chat_sla",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1789882190807,
+      "tag": "0055_asset_register",
+      "breakpoints": true
     }
   ]
 }
