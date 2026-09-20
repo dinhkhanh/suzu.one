@@ -1,0 +1,28 @@
+{
+  "name": "Probationer on the Simple profile at 85%, no PIT",
+  "source": "synthetic — replace with anonymised real cases",
+  "requirements": ["FR-PAY-07", "FR-PAY-08", "FR-PAY-05"],
+  "derivation": [
+    "The position's official salary is 20,000,000; probation pay is the statutory minimum share, 85% (probation.limits.minimumPayPercent) = 17,000,000.",
+    "22 of 22 working days paid, so the base is not cut: 17,000,000 x 2200 / 2200 = 17,000,000.",
+    "Simple profile: no compulsory insurance and no union at all, whatever the exemption says (SRS D18).",
+    "The entity's policy taxes the Simple profile as 'none', so no PIT is withheld — FR-PAY-07 makes this a parameter, not a rule in code.",
+    "Net = gross = 17,000,000; the employer cost is the same, with nothing on top."
+  ],
+  "month": "2026-08",
+  "monthStandardDays": 22,
+  "profile": { "profile": "simple", "insuranceExemption": "probation" },
+  "employment": { "serviceMonths": 1 },
+  "policy": { "simplePitTreatment": "none" },
+  "segments": [
+    { "from": "2026-08-01", "to": "2026-08-31", "standardDays": 22, "paidDaysCenti": 2200, "terms": { "baseSalary": 17000000, "insuranceSalary": 0, "allowances": [] } }
+  ],
+  "timesheet": { "standardDays": 22, "paidDaysCenti": 2200 },
+  "expect": {
+    "lines": { "BASE": 17000000 },
+    "totals": { "grossEarnings": 17000000, "employeeInsurance": 0, "employerInsurance": 0, "pit": 0, "net": 17000000, "employerCost": 17000000 },
+    "insurance": { "covered": false, "reason": "simple_profile" },
+    "pit": { "method": "none", "tax": 0 },
+    "warnings": []
+  }
+}

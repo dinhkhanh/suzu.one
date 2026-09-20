@@ -1,0 +1,25 @@
+{
+  "name": "Mid-month leaver: 17 uncovered days, no insurance for the month",
+  "source": "synthetic — replace with anonymised real cases",
+  "requirements": ["FR-PAY-11", "FR-PAY-16"],
+  "derivation": [
+    "Last day 7 August 2026: 5 of the month's 22 working days were worked and paid (paidDaysCenti 500).",
+    "BASE = 30,000,000 x 500 / 2200 = 6,818,181.81..., rounded half up to the dong = 6,818,182.",
+    "Insurance: uncovered working days = 22 - 5 = 17, which reaches the seeded threshold of 14, so the month carries no compulsory insurance at all — not a reduced amount, none.",
+    "PIT: taxable 6,818,182 minus the personal deduction 15,500,000 is negative, so assessable 0 and no tax.",
+    "Net = gross = 6,818,182."
+  ],
+  "month": "2026-08",
+  "monthStandardDays": 22,
+  "employment": { "endDate": "2026-08-07", "serviceMonths": 25 },
+  "segments": [
+    { "from": "2026-08-01", "to": "2026-08-07", "standardDays": 5, "paidDaysCenti": 500, "terms": { "baseSalary": 30000000, "insuranceSalary": 30000000, "allowances": [] } }
+  ],
+  "timesheet": { "standardDays": 5, "paidDaysCenti": 500 },
+  "expect": {
+    "lines": { "BASE": 6818182 },
+    "totals": { "grossEarnings": 6818182, "employeeInsurance": 0, "employerInsurance": 0, "pit": 0, "net": 6818182 },
+    "insurance": { "covered": false, "reason": "unpaid_leave_threshold" },
+    "pit": { "method": "progressive", "assessableIncome": 0, "tax": 0 }
+  }
+}

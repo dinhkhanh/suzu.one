@@ -1,0 +1,24 @@
+{
+  "name": "Fourteen days of unpaid leave: the threshold is reached, no insurance",
+  "source": "synthetic — replace with anonymised real cases",
+  "requirements": ["FR-PAY-11"],
+  "derivation": [
+    "22 working days, 14 of them unpaid leave, so 8 paid (paidDaysCenti 800).",
+    "BASE = 30,000,000 x 800 / 2200 = 10,909,090.90..., half up = 10,909,091.",
+    "Insurance: uncovered working days = 22 - 8 = 14, which is 'this many or more' against the seeded threshold of 14 — the month carries no compulsory insurance.",
+    "This is the boundary case: one day fewer (case 08) and the full contribution is due.",
+    "PIT: 10,909,091 is below the personal deduction, so no tax. Net = 10,909,091."
+  ],
+  "month": "2026-08",
+  "monthStandardDays": 22,
+  "unpaidWorkingDays": 14,
+  "segments": [
+    { "from": "2026-08-01", "to": "2026-08-31", "standardDays": 22, "paidDaysCenti": 800, "unpaidDaysCenti": 1400, "terms": { "baseSalary": 30000000, "insuranceSalary": 30000000, "allowances": [] } }
+  ],
+  "timesheet": { "standardDays": 22, "paidDaysCenti": 800, "unpaidDaysCenti": 1400 },
+  "expect": {
+    "lines": { "BASE": 10909091 },
+    "totals": { "grossEarnings": 10909091, "employeeInsurance": 0, "employerInsurance": 0, "net": 10909091 },
+    "insurance": { "covered": false, "reason": "unpaid_leave_threshold" }
+  }
+}

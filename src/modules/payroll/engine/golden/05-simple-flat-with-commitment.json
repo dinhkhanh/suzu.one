@@ -1,0 +1,23 @@
+{
+  "name": "Collaborator with form 08/CK-TNCN on file: nothing withheld",
+  "source": "synthetic — replace with anonymised real cases",
+  "requirements": ["FR-PAY-14"],
+  "derivation": [
+    "The same collaborator as case 04, but with the commitment form (08/CK-TNCN) on file: they undertake that their yearly income stays below the taxable level.",
+    "The 10% withholding is then not applied, however large the single payment is.",
+    "PIT = 0; net = gross = 15,000,000."
+  ],
+  "month": "2026-08",
+  "monthStandardDays": 22,
+  "profile": { "profile": "simple", "pitCommitment": true },
+  "policy": { "simplePitTreatment": "flat_withholding" },
+  "segments": [
+    { "from": "2026-08-01", "to": "2026-08-31", "standardDays": 22, "paidDaysCenti": 2200, "terms": { "baseSalary": 15000000, "insuranceSalary": 0, "allowances": [] } }
+  ],
+  "timesheet": { "standardDays": 22, "paidDaysCenti": 2200 },
+  "expect": {
+    "lines": { "BASE": 15000000 },
+    "totals": { "grossEarnings": 15000000, "pit": 0, "net": 15000000 },
+    "pit": { "method": "flat_without_contract", "tax": 0 }
+  }
+}

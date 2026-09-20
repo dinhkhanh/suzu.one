@@ -1,0 +1,38 @@
+{
+  "name": "Overtime on a weekday, a rest day and a holiday, with night hours",
+  "source": "synthetic — replace with anonymised real cases",
+  "requirements": ["FR-PAY-13", "FR-PAY-15"],
+  "derivation": [
+    "Base 22,000,000, 22 working days, 8 hours a day: the hourly rate is 22,000,000 / (22 x 8 = 176) = 125,000 exactly.",
+    "The policy multiplies the base salary only (overtimeBase = base_salary).",
+    "Weekday overtime 600 minutes by day: 125,000 x (600 x 150%) / (60 x 100) = 125,000 x 15 = 1,875,000.",
+    "Weekday overtime 120 minutes at night: the multiplier is 150% + 30% night premium + 20% extra for overtime at night = 200%; 125,000 x (120 x 200) / 6000 = 125,000 x 4 = 500,000. OT_WEEKDAY = 2,375,000.",
+    "Rest-day overtime 480 minutes by day at 200%: 125,000 x (480 x 200) / 6000 = 125,000 x 16 = 2,000,000.",
+    "Holiday overtime 240 minutes by day at 300%: 125,000 x (240 x 300) / 6000 = 125,000 x 12 = 1,500,000.",
+    "Ordinary hours worked inside the night window: 180 minutes x 30% premium = 125,000 x (180 x 30) / 6000 = 112,500.",
+    "Overtime and night pay together = 2,375,000 + 2,000,000 + 1,500,000 + 112,500 = 5,987,500.",
+    "Gross = 22,000,000 + 5,987,500 = 27,987,500.",
+    "PIT exemption, seeded mode 'premium_only': only what exceeds ordinary-hours pay is exempt. The same overtime hours at 100% would be weekday 125,000 x (720 x 100)/6000 = 1,500,000, rest day 125,000 x (480 x 100)/6000 = 1,000,000, holiday 125,000 x (240 x 100)/6000 = 500,000 — together 3,000,000. The night premium on ordinary hours is pure premium, so all of it is exempt.",
+    "Exempt overtime = 5,987,500 - 3,000,000 = 2,987,500; taxable income = 27,987,500 - 2,987,500 = 25,000,000.",
+    "Insurance on 22,000,000 (overtime is never in the contribution base): employee 1,760,000 + 330,000 + 220,000 = 2,310,000; employer 3,850,000 + 660,000 + 220,000 = 4,730,000.",
+    "Assessable = 25,000,000 - 2,310,000 - 15,500,000 = 7,190,000; PIT = 7,190,000 x 5% = 359,500.",
+    "Net = 27,987,500 - 2,310,000 - 359,500 = 25,318,000."
+  ],
+  "month": "2026-08",
+  "monthStandardDays": 22,
+  "segments": [
+    { "from": "2026-08-01", "to": "2026-08-31", "standardDays": 22, "paidDaysCenti": 2200, "terms": { "baseSalary": 22000000, "insuranceSalary": 22000000, "allowances": [] } }
+  ],
+  "timesheet": {
+    "standardDays": 22,
+    "paidDaysCenti": 2200,
+    "nightMinutes": 180,
+    "overtime": { "weekday": { "day": 600, "night": 120 }, "restDay": { "day": 480 }, "holiday": { "day": 240 } }
+  },
+  "expect": {
+    "lines": { "BASE": 22000000, "OT_WEEKDAY": 2375000, "OT_REST_DAY": 2000000, "OT_HOLIDAY": 1500000, "NIGHT_PREMIUM": 112500, "INS_BHXH_EE": 1760000, "PIT": 359500 },
+    "totals": { "grossEarnings": 27987500, "taxableIncome": 25000000, "employeeInsurance": 2310000, "employerInsurance": 4730000, "pit": 359500, "net": 25318000 },
+    "insurance": { "covered": true, "bhxhBhytBase": 22000000 },
+    "pit": { "assessableIncome": 7190000, "tax": 359500 }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "Union member in an entity with a union: dues hit their cap",
+  "source": "synthetic — replace with anonymised real cases",
+  "requirements": ["FR-PAY-12", "FR-PAY-13"],
+  "derivation": [
+    "Base and insurance salary 40,000,000, two dependents, a full month, and the entity's policy has the union switched on.",
+    "Insurance on 40,000,000 (under both caps): employee 3,200,000 + 600,000 + 400,000 = 4,200,000; employer 7,000,000 + 1,200,000 + 400,000 = 8,600,000.",
+    "Member dues are 1% of the contribution base = 400,000, but they are capped at the seeded share of the reference level: 10% x 2,530,000 = 253,000. The cap bites, so dues = 253,000.",
+    "The employer's union fund is 2% of the same base = 800,000, and it is owed whether or not the person is a member.",
+    "PIT: union dues are a deduction from pay but not from taxable income. Assessable = 40,000,000 - 4,200,000 - 15,500,000 - (2 x 6,200,000 = 12,400,000) = 7,900,000; tax = 5% = 395,000.",
+    "Net = 40,000,000 - 4,200,000 - 253,000 - 395,000 = 35,152,000.",
+    "Employer cost = 40,000,000 + 8,600,000 + 800,000 = 49,400,000."
+  ],
+  "month": "2026-08",
+  "monthStandardDays": 22,
+  "profile": { "unionMember": true },
+  "employment": { "dependents": 2, "serviceMonths": 40 },
+  "policy": { "unionEnabled": true },
+  "segments": [
+    { "from": "2026-08-01", "to": "2026-08-31", "standardDays": 22, "paidDaysCenti": 2200, "terms": { "baseSalary": 40000000, "insuranceSalary": 40000000, "allowances": [] } }
+  ],
+  "timesheet": { "standardDays": 22, "paidDaysCenti": 2200 },
+  "expect": {
+    "lines": { "BASE": 40000000, "UNION_DUES": 253000, "UNION_FUND": 800000, "PIT": 395000 },
+    "totals": { "grossEarnings": 40000000, "employeeInsurance": 4200000, "unionDues": 253000, "unionFund": 800000, "pit": 395000, "net": 35152000, "employerCost": 49400000 },
+    "pit": { "assessableIncome": 7900000, "dependentDeduction": 12400000, "tax": 395000 }
+  }
+}

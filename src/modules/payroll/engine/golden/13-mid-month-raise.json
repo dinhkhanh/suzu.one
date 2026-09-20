@@ -1,0 +1,31 @@
+{
+  "name": "Raise on the 17th: two segments in one month",
+  "source": "synthetic — replace with anonymised real cases",
+  "requirements": ["FR-PAY-01", "FR-PAY-16"],
+  "derivation": [
+    "The salary rises from 24,000,000 to 30,000,000 on 17 August 2026, so the month has two segments: 1-16 (12 working days) and 17-31 (10 working days), 22 in all, every one paid.",
+    "Each segment is pro-rated on its own and rounded on its own, the way an accountant checks it by hand:",
+    "  segment 1: 24,000,000 x 1200 / 2200 = 13,090,909.09... -> 13,090,909",
+    "  segment 2: 30,000,000 x 1000 / 2200 = 13,636,363.63... -> 13,636,364",
+    "  BASE = 26,727,273.",
+    "ALW_PHONE 500,000 is a fixed component, so attendance does not touch it; it follows the segment's share of the 31 employed days: 500,000 x 16/31 = 258,064.51 -> 258,065 and 500,000 x 15/31 = 241,935.48 -> 241,935, together exactly 500,000. It is exempt, so it adds nothing taxable.",
+    "The insurance base follows the terms in force at the end of the period (rule last_segment): 30,000,000.",
+    "Employee insurance 2,400,000 + 450,000 + 300,000 = 3,150,000.",
+    "Gross = 26,727,273 + 500,000 = 27,227,273; taxable income = 26,727,273.",
+    "Assessable = 26,727,273 - 3,150,000 - 15,500,000 = 8,077,273; PIT = 5% = 403,863.65 -> 403,864.",
+    "Net = 27,227,273 - 3,150,000 - 403,864 = 23,673,409."
+  ],
+  "month": "2026-08",
+  "monthStandardDays": 22,
+  "segments": [
+    { "from": "2026-08-01", "to": "2026-08-16", "standardDays": 12, "paidDaysCenti": 1200, "terms": { "baseSalary": 24000000, "insuranceSalary": 24000000, "allowances": [{ "code": "ALW_PHONE", "amount": 500000 }] } },
+    { "from": "2026-08-17", "to": "2026-08-31", "standardDays": 10, "paidDaysCenti": 1000, "terms": { "baseSalary": 30000000, "insuranceSalary": 30000000, "allowances": [{ "code": "ALW_PHONE", "amount": 500000 }] } }
+  ],
+  "timesheet": { "standardDays": 22, "paidDaysCenti": 2200 },
+  "expect": {
+    "lines": { "BASE": 26727273, "ALW_PHONE": 500000, "PIT": 403864 },
+    "totals": { "grossEarnings": 27227273, "taxableIncome": 26727273, "employeeInsurance": 3150000, "pit": 403864, "net": 23673409 },
+    "insurance": { "covered": true, "bhxhBhytBase": 30000000 },
+    "pit": { "assessableIncome": 8077273, "tax": 403864 }
+  }
+}
