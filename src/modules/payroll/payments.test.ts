@@ -38,6 +38,9 @@ import { payComponentSeedRows } from "./seed-components";
 
 const ids = {} as Record<"entity" | "actor" | "vcbPerson" | "acbPerson" | "noAccount" | "cashPerson", string>;
 let runId = "";
+/** A second entity's run, used to watch a cash receipt arrive after the month is closed. */
+let otherRunId = "";
+let otherCashPersonId = "";
 
 const summary = () => ({
   days: 31, standardDays: 22, standardMinutes: 10_560, workedMinutes: 10_560, creditedMinutes: 0,
@@ -234,7 +237,9 @@ describe("the cash sheet (FR-PAY-39)", () => {
 describe("a run is only paid when both channels are settled (FR-PAY-39)", () => {
   it("names the person the bank channel could not reach", async () => {
     const settlement = await settlementOf(await run());
-    expect(settlement.unpaidBank.map((person) => person.reason)).toContain("no_format_for_bank");
+    // The reason is the precise one: this person has no account at all, which is a different
+    // problem (and a different fix) from banking somewhere we have no file format for.
+    expect(settlement.unpaidBank.map((person) => person.reason)).toEqual(["no_account"]);
     expect(settlement.cashDisbursed).toBe(1);
     expect(settlement.cashConfirmed).toBe(1);
   });
@@ -274,6 +279,8 @@ describe("a run is only paid when both channels are settled (FR-PAY-39)", () => 
     const created = await createRegularRun({ entityId: other.id, month: "2026-08" }, ids.actor);
     await calculateRun(created.id);
     for (const step of ["propose", "approve", "prepare_payment"] as const) await stepRun(created.id, step, { personId: ids.actor });
+    otherRunId = created.id;
+    otherCashPersonId = person.id;
 
     const settlement = await settlementOf((await getRun(created.id))!);
     expect(settlement.blockers).toContain("cash_not_disbursed");
@@ -290,5 +297,30 @@ describe("a run is only paid when both channels are settled (FR-PAY-39)", () => 
       .then(() => null)
       .catch((thrown: unknown) => thrown);
     expect(String((error as { cause?: unknown })?.cause ?? error)).toMatch(/locked/);
+  });
+
+  it("but the person may still confirm they took their cash after the month is closed", async () => {
+    // Found by doing it over HTTP: somebody on leave confirms a week later, and refusing them
+    // would leave a locked month permanently short of its evidence (migration 0050).
+    await openCashSheet(otherRunId, ids.actor);
+    await recordCashDisbursement({ runId: otherRunId, personId: otherCashPersonId, disbursedOn: "2026-09-05" }, ids.actor);
+    await stepRun(otherRunId, "mark_paid", { personId: ids.actor });
+    await stepRun(otherRunId, "lock", { personId: ids.actor });
+
+    const [before] = await db().select().from(schema.payrollCashPayment).where(eq(schema.payrollCashPayment.runId, otherRunId));
+    expect(before.receiptConfirmedAt).toBeNull();
+    await confirmCashReceipt(otherRunId, otherCashPersonId);
+    const [after] = await db().select().from(schema.payrollCashPayment).where(eq(schema.payrollCashPayment.id, before.id));
+    expect(after.receiptConfirmedAt).toBeInstanceOf(Date);
+
+    // Everything else about the payment stays frozen, and a confirmation is never rewritten.
+    const refused = async (work: Promise<unknown>) => {
+      const error = await work.then(() => null).catch((thrown: unknown) => thrown);
+      expect(String((error as { cause?: unknown })?.cause ?? error)).toMatch(/locked/);
+    };
+    await refused(db().update(schema.payrollCashPayment).set({ disbursedOn: "2026-09-09" }).where(eq(schema.payrollCashPayment.id, before.id)));
+    await refused(db().update(schema.payrollCashPayment).set({ amountEnc: "tampered" }).where(eq(schema.payrollCashPayment.id, before.id)));
+    await refused(db().update(schema.payrollCashPayment).set({ receiptConfirmedAt: new Date("2030-01-01") }).where(eq(schema.payrollCashPayment.id, before.id)));
+    await refused(db().delete(schema.payrollCashPayment).where(eq(schema.payrollCashPayment.id, before.id)));
   });
 });

@@ -13,4 +13,5 @@ export const BANK_KEYS = Object.keys(BANK_FORMATS);
 
 export const bankFormat = (key: string): BankFormat | null => BANK_FORMATS[key] ?? null;
 
+export { checkAccount } from "./format";
 export type { BankFormat, PayingAccount, SkippedRow, TransferFile, TransferInput, TransferRow } from "./format";

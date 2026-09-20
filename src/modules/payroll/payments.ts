@@ -19,7 +19,7 @@ import { fieldCipher } from "@/lib/crypto";
 import { db, schema, type Tx } from "@/lib/db";
 import { listPayrollFacts } from "@/modules/core-hr/service";
 import { notify } from "@/modules/platform/notifications/service";
-import { bankFormat, type SkippedRow, type TransferFile, type TransferRow } from "./exports/banks";
+import { bankFormat, checkAccount, type SkippedRow, type TransferFile, type TransferRow } from "./exports/banks";
 import type { CashSheetRow } from "./exports/cash-sheet";
 import { cashAmountContext, paymentFileTotalContext } from "./field-contexts";
 import { hasReached } from "./lifecycle";
@@ -317,9 +317,11 @@ export async function settlementOf(run: PayrollRunRow, executor: Executor = db()
   const bankFiles = files.filter((file) => file.channel === "bank");
   const skippedByFiles = bankFiles.reduce((count, file) => count + file.skippedCount, 0);
 
+  // Why each of them cannot be transferred to, said precisely: "no account on file" and "we have
+  // no file format for that bank" are different problems with different fixes.
   const unpaidBank = [
-    ...plan.unroutable.map((person) => ({ personId: person.personId, fullName: person.fullName, reason: "no_format_for_bank" as const })),
-    ...plan.banks.flatMap((group) => group.people.filter((person) => !person.account?.accountNumber).map((person) => ({ personId: person.personId, fullName: person.fullName, reason: "no_account" as const }))),
+    ...plan.unroutable.map((person) => ({ personId: person.personId, fullName: person.fullName, reason: (person.account?.accountNumber ? "no_format_for_bank" : "no_account") as SkippedRow["reason"] | "no_format_for_bank" })),
+    ...plan.banks.flatMap((group) => group.people.map((person) => ({ person, reason: checkAccount({ personId: person.personId, employeeCode: person.employeeCode, fullName: person.fullName, amount: person.net, account: person.account, narrative: "" }) })).filter((row) => row.reason).map((row) => ({ personId: row.person.personId, fullName: row.person.fullName, reason: row.reason! }))),
   ];
 
   const cashDisbursed = cash.filter((row) => row.disbursedOn).length;

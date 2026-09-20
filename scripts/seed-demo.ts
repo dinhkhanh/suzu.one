@@ -201,6 +201,12 @@ async function seedRecords(db: ReturnType<typeof drizzle>, today: string): Promi
     { email: "huy.ho@suzu.group", nationalId: "079098001234", taxCode: "8456712390", socialInsuranceNumber: "7916021234", bank: { bankName: "Vietcombank", accountNumber: "0071000456789", accountHolder: "HO GIA HUY", branch: "TP.HCM" } },
     { email: "tam.bui@suzu.group", nationalId: "079095004321", taxCode: "8345612987", socialInsuranceNumber: "7914025678", bank: { bankName: "ACB", accountNumber: "218834509", accountHolder: "BUI THANH TAM", branch: "Sài Gòn" } },
     { email: "linh.do@suzu.group", nationalId: "001301009876", taxCode: null, socialInsuranceNumber: null, bank: { bankName: "Vietcombank", accountNumber: "0451000987654", accountHolder: "DO KHANH LINH", branch: "Hà Nội" } },
+    // Everyone paid by transfer needs somewhere for the money to go, or the run cannot settle
+    // (FR-PAY-39). Two banks between them, so a month produces a VCB batch and an ACB batch.
+    { email: "bao.pham@suzu.group", nationalId: "079092003456", taxCode: "8523641079", socialInsuranceNumber: "7912034567", bank: { bankName: "Vietcombank", accountNumber: "0071000778899", accountHolder: "PHAM GIA BAO", branch: "TP.HCM" } },
+    { email: "long.dang@suzu.group", nationalId: "001289007654", taxCode: "8467230915", socialInsuranceNumber: "7913045678", bank: { bankName: "ACB", accountNumber: "245667881", accountHolder: "DANG VAN LONG", branch: "Hà Nội" } },
+    { email: "mai.le@suzu.group", nationalId: "079090002345", taxCode: "8391746205", socialInsuranceNumber: "7911023456", bank: { bankName: "Vietcombank", accountNumber: "0071000334455", accountHolder: "LE THI MAI", branch: "TP.HCM" } },
+    { email: "chi.duong@suzu.group", nationalId: "079094005678", taxCode: "8412903746", socialInsuranceNumber: "7915067890", bank: { bankName: "ACB", accountNumber: "231889076", accountHolder: "DUONG THI CHI", branch: "Sài Gòn" } },
   ];
   for (const demo of SENSITIVE) {
     const found = await find(demo.email);

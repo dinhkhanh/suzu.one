@@ -351,6 +351,13 @@
       "when": 1789873109831,
       "tag": "0049_payslips_payments_cash",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1789873110831,
+      "tag": "0050_cash_receipt_after_lock",
+      "breakpoints": true
     }
   ]
 }
