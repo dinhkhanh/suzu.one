@@ -8,10 +8,9 @@ import { db, schema } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import { beginUpload, completeUpload, createDownloadLink, findFile } from "@/modules/platform/files/service";
+import { ATTACHMENT_OWNER_TYPE } from "./enums";
 import { canFileRequests } from "./policy";
 import { getGenericRequest } from "./service";
-
-export const ATTACHMENT_OWNER_TYPE = "request_attachment";
 
 const beginPipeline = createAction({
   name: "request.attachment.begin",
