@@ -15,9 +15,8 @@ import "server-only";
 import { toSearchKey } from "@/lib/text";
 import { db, schema } from "@/lib/db";
 import { eq } from "drizzle-orm";
-import { kbViewerOf } from "@/modules/kb/service";
 import { loadGrants } from "@/modules/platform/rbac/service";
-import { answerQuestion } from "../conversations";
+import { resolveAnswer } from "../conversations";
 import { chatDriver } from "../model";
 import { EVAL_QUESTIONS, type EvalQuestion, type EvalWho } from "./questions";
 
@@ -61,29 +60,47 @@ export type EvalReport = {
 
 const has = (haystack: string, needle: string) => toSearchKey(haystack).includes(toSearchKey(needle));
 
-async function viewerFor(who: EvalWho) {
+/**
+ * The asker, exactly as a signed-in session would supply them: the person row, their grants, and a
+ * fresh re-authentication — the payslip tool asks for one (FR-PLT-06), and the evaluation is about
+ * retrieval and permissions, not about how long ago somebody typed their password.
+ */
+async function askerFor(who: EvalWho) {
   const email = EMAILS[who];
   const [person] = await db().select().from(schema.person).where(eq(schema.person.workEmail, email)).limit(1);
   if (!person) throw new Error(`eval: no seeded person for ${email} — run pnpm db:seed && pnpm db:seed:demo`);
-  return kbViewerOf({ person, principal: { personId: person.id, workforceType: person.workforceType, grants: await loadGrants(person.id) } });
+  return { person, principal: { personId: person.id, workforceType: person.workforceType, grants: await loadGrants(person.id) }, reauthAt: new Date() };
 }
 
 export async function runEval(): Promise<EvalReport> {
-  const viewers = new Map<EvalWho, Awaited<ReturnType<typeof viewerFor>>>();
-  for (const who of Object.keys(EMAILS) as EvalWho[]) viewers.set(who, await viewerFor(who));
+  const askers = new Map<EvalWho, Awaited<ReturnType<typeof askerFor>>>();
+  for (const who of Object.keys(EMAILS) as EvalWho[]) askers.set(who, await askerFor(who));
 
   const outcomes: EvalOutcome[] = [];
   let citedAnywhere = 0;
   let answerQuestions = 0;
 
   for (const question of EVAL_QUESTIONS) {
-    const answer = await answerQuestion(viewers.get(question.who)!, question.question, question.locale);
+    // The same function the chat calls: routing, then a tool or the knowledge base. Measuring it
+    // here rather than `answerQuestion` means a policy question that wrongly reaches a tool fails
+    // the evaluation, which is the failure mode a router introduces.
+    const resolved = await resolveAnswer(askers.get(question.who)!, question.question, question.locale);
+    const answer = resolved.kind === "kb" ? resolved.answer : { body: "", citations: [], score: 0, answered: false };
     const titles = answer.citations.map((citation) => citation.pageTitle);
     const first = titles[0] ?? null;
     let pass = false;
     let problem: string | null = null;
 
-    if (question.kind === "answer") {
+    if (question.kind === "tool") {
+      if (resolved.kind !== "tool") problem = "did not reach a tool";
+      else if (resolved.tool.tool !== question.tool) problem = `called ${resolved.tool.tool}, expected ${question.tool}`;
+      else if (question.expect === "answered") problem = resolved.tool.status === "answered" ? null : `refused (${resolved.tool.status === "refused" ? resolved.tool.reason : "?"})`;
+      else if (resolved.tool.status !== "refused" || resolved.tool.reason !== "other_person") problem = "ANSWERED about another person";
+      else problem = null;
+      pass = problem === null;
+    } else if (resolved.kind === "tool") {
+      problem = `routed to the ${resolved.tool.tool} tool instead of the knowledge base`;
+    } else if (question.kind === "answer") {
       answerQuestions++;
       if (question.pages.some((page) => titles.includes(page))) citedAnywhere++;
       const missing = question.expect.filter((fact) => !has(answer.body, fact));

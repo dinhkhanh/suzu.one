@@ -10,13 +10,17 @@ import "server-only";
 import { type KbViewer, retrieveKbChunks } from "@/modules/kb/service";
 import type { Passage } from "./engine/answer";
 import { rankPassages, type RankedPassage } from "./engine/answer";
+import { questionVariants } from "./engine/glossary";
 import { retrievalQuery } from "./engine/question";
 
 /** How many permission-filtered passages are pulled back for re-ranking. */
 export const CANDIDATES = 120;
 
 export async function retrievePassages(viewer: KbViewer, question: string, options: { spaceId?: string | null } = {}): Promise<RankedPassage[]> {
-  const query = retrievalQuery(question);
+  // The candidate set is the union of both forms of the question — a Postgres `word | word | …`
+  // match, so extra terms only widen it, and widening cannot widen *permissions*: the WHERE clause
+  // that decides what this viewer may see is unchanged and sits underneath.
+  const query = [...new Set(questionVariants(question).flatMap((variant) => retrievalQuery(variant).split(" ")))].filter(Boolean).join(" ");
   if (!query) return [];
   const chunks = await retrieveKbChunks(viewer, { query, limit: CANDIDATES, spaceId: options.spaceId ?? null });
   const passages: Passage[] = chunks.map((chunk) => ({ chunkId: chunk.chunkId, pageId: chunk.pageId, pageTitle: chunk.pageTitle, spaceKey: chunk.spaceKey, spaceName: chunk.spaceName, headingPath: chunk.headingPath, content: chunk.content, vectorScore: chunk.score }));

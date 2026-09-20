@@ -39,8 +39,8 @@ export default async function AssistantPage(props: PageProps<"/assistant">) {
 
       <AssistantChat
         conversationId={conversation?.id ?? null}
-        turns={(conversation?.turns ?? []).map((turn) => ({ id: turn.id, role: turn.role, body: turn.body, outcome: turn.outcome, citations: turn.citations }))}
-        suggestions={[t("suggestions.leave"), t("suggestions.payday"), t("suggestions.overtime"), t("suggestions.remote")]}
+        turns={(conversation?.turns ?? []).map((turn) => ({ id: turn.id, role: turn.role, body: turn.body, outcome: turn.outcome, citations: turn.citations, tool: turn.tool }))}
+        suggestions={[t("suggestions.leave"), t("suggestions.payday"), t("suggestions.balance"), t("suggestions.approver")]}
       />
 
       {recent.length > 0 ? (

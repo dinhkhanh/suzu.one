@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
+import { recordAudit } from "@/modules/platform/audit/service";
 import { ask, deleteConversation, resolveUnanswered } from "./conversations";
 import { QUESTION_MAX } from "./enums";
 import { canAskAssistant, canReadUnansweredLog } from "./policy";
@@ -25,13 +26,26 @@ const askPipeline = createAction({
   }),
   authorize: (user) => canAskAssistant(user.principal),
   run: async ({ user, input }) => {
-    const result = await ask(user, input);
+    const { audit: toolCall, ...result } = await ask(user, input);
+    // FR-AI-06: **every tool call is audited**, under its own action name, so an auditor can ask
+    // "who had the assistant read a payslip this quarter" without reading every question. The
+    // entry says which tool, about whom (always the asker), and how it ended — never a figure.
+    if (toolCall) {
+      await recordAudit({
+        action: `ai.tool.${toolCall.tool}`,
+        actor: { userId: user.userId, personId: user.person.id, email: user.email },
+        request: user.request,
+        resource: { type: "person", id: toolCall.subjectPersonId, entityId: user.person.primaryEntityId },
+        summary: input.question.slice(0, 300),
+        after: { outcome: toolCall.outcome, reason: toolCall.reason, subjectIsAsker: toolCall.subjectPersonId === user.person.id },
+      });
+    }
     return {
       data: result,
       audit: {
         resource: { type: "ai_message", id: result.messageId },
         summary: input.question.slice(0, 300),
-        after: { outcome: result.outcome, score: result.score, driver: result.driver, model: result.model, citedPageIds: result.citations.map((citation) => citation.pageId) },
+        after: { outcome: result.outcome, score: result.score, driver: result.driver, model: result.model, tool: toolCall?.tool ?? null, citedPageIds: result.citations.map((citation) => citation.pageId) },
       },
     };
   },

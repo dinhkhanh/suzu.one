@@ -5,5 +5,5 @@
 // For payroll (Phase 5): `getLeaveUsage` (days by payroll treatment), `listPayouts` (unused days
 // paid on termination), `getBalances`, `getLedger`.
 export type { Portion } from "./engine/request";
-export { type Balance, getBalances, getLedger, type LedgerLine, listPayouts, type PayoutLine, postCompensatoryLeave } from "./ledger";
-export { getLeaveOnDays, getLeaveUsage, type LeaveOnDay, type LeaveUsage } from "./requests";
+export { type Balance, getBalances, getLeaveBalanceFor, getLedger, type LedgerLine, listPayouts, type PayoutLine, postCompensatoryLeave } from "./ledger";
+export { getLeaveOnDays, getLeaveUsage, type LeaveOnDay, type LeaveUsage, whoApprovesLeave } from "./requests";

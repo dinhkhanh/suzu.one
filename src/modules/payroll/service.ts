@@ -3,6 +3,14 @@
 // Everything here is compensation tier. Functions that take a `principal` / `viewer` authorize
 // inside; the rest say "no authorization inside" and are for payroll's own use-cases and jobs.
 export { BASE_SALARY_CODE, getSalaryFile, listSalaryOverview, type SalaryFile, type SalaryOverviewRow, salaryChangeRequest } from "./salaries";
+/**
+ * The assistant's payslip explanation (FR-AI-02, 06). Both are already viewer-scoped and stay
+ * that way: `listMyPayslips` takes a person id and returns that person's own payslips and nothing
+ * else — there is no "somebody else's payslips" call to make — and `getPayslipView` answers null
+ * for anyone but the person, C&B over the entity, or the owner. A line manager reading a report's
+ * pay is refused here, by the same rule that refuses them the payslip page.
+ */
+export { getPayslipView, listMyPayslips, type MyPayslipRow, type PayslipView } from "./payslips";
 export { canApprovePayroll, canManageCompensation, canPayPayroll, canReadPayroll, canViewCompensationOf, hasPayrollDesk } from "./policy";
 /**
  * For the ops tracker (FR-OPS-10): how far each entity's month has got, so the payroll calendar

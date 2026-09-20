@@ -6,6 +6,7 @@
 // over the passage text is a second, independent opinion, and the two fail in different places —
 // so the assistant uses both, with the heading path counted as part of the passage (a chunk titled
 // "Lương và ngày trả lương › Kỳ lương" is about pay even if the sentence inside does not say so).
+import { questionVariants } from "./glossary";
 import { buildIdf, keywordScore, keywords, lexicalScore, words } from "./question";
 
 export type Passage = {
@@ -34,22 +35,39 @@ const TITLE_BONUS = 0.18;
 export const sectionOf = (headingPath: string): string => headingPath.split("›").slice(1).join(" ").trim();
 
 export function rankPassages(question: string, passages: readonly Passage[]): RankedPassage[] {
-  const asked = new Set(keywords(question));
+  // The question as asked and, when the glossary knows the words, the same question in the other
+  // language. A passage is scored against each and keeps its best: an English question can then
+  // match a Vietnamese page without a Vietnamese question losing anything, because its own form is
+  // always one of the variants. See `engine/glossary.ts`.
+  const variants = questionVariants(question);
   // Counted over the candidates themselves — the passages this asker can see, and nothing else.
   const idf = buildIdf(passages.map((passage) => `${sectionOf(passage.headingPath)}\n${passage.content}`));
+  const askedPerVariant = variants.map((variant) => [...new Set(keywords(variant))]);
   return passages
     .map((passage) => {
       // The section heading counts as part of the passage ("› Kỳ lương" is what the paragraph under
       // it is about), but the PAGE TITLE at the head of the path does not: it has its own term
       // below, and counting it twice is what lets a page's stock opening paragraph — whose heading
       // path is nothing but the page title — beat the section that holds the answer.
-      const lexical = lexicalScore(question, `${sectionOf(passage.headingPath)}\n${passage.content}`, idf).score;
+      const text = `${sectionOf(passage.headingPath)}\n${passage.content}`;
       const titleWords = new Set(words(`${passage.pageTitle} ${passage.headingPath}`));
-      // A word in the heading counts for what it is worth: "lương" in "Lương và ngày trả lương"
-      // says more than "việc" in "Quy trình nghỉ việc và bàn giao".
-      const inTitle = [...asked].filter((word) => titleWords.has(word)).reduce((sum, word) => sum + idf.of(word), 0);
-      const askedWeight = [...asked].reduce((sum, word) => sum + idf.of(word), 0);
-      const titleBonus = askedWeight === 0 ? 0 : TITLE_BONUS * (inTitle / askedWeight);
+      let lexical = 0;
+      let titleBonus = 0;
+      for (const [index, variant] of variants.entries()) {
+        const asked = askedPerVariant[index];
+        const score = lexicalScore(variant, text, idf).score;
+        // A word in the heading counts for what it is worth: "lương" in "Lương và ngày trả lương"
+        // says more than "việc" in "Quy trình nghỉ việc và bàn giao".
+        const inTitle = asked.filter((word) => titleWords.has(word)).reduce((sum, word) => sum + idf.of(word), 0);
+        const askedWeight = asked.reduce((sum, word) => sum + idf.of(word), 0);
+        const bonus = askedWeight === 0 ? 0 : TITLE_BONUS * (inTitle / askedWeight);
+        // One variant decides both halves: a passage should not take its lexical score from the
+        // English form and its title bonus from the Vietnamese one.
+        if (score + bonus > lexical + titleBonus) {
+          lexical = score;
+          titleBonus = bonus;
+        }
+      }
       // A negative cosine says "unlike"; it should not drag a good lexical match below zero.
       const vector = Math.max(0, passage.vectorScore);
       return { ...passage, lexical, score: Math.min(1, VECTOR_WEIGHT * vector + LEXICAL_WEIGHT * lexical + titleBonus) };
@@ -71,7 +89,10 @@ export function excerpt(question: string, content: string, budget = MAX_PASSAGE_
   const text = content.trim();
   if (text.length <= budget) return text;
   const lines = text.split("\n");
-  const scores = lines.map((line) => keywordScore(question, line));
+  // Scored against both forms of the question for the same reason the ranking is (glossary.ts):
+  // otherwise an English question picks line 1 of a Vietnamese passage every time.
+  const variants = questionVariants(question);
+  const scores = lines.map((line) => Math.max(...variants.map((variant) => keywordScore(variant, line))));
   let best = 0;
   for (let index = 1; index < lines.length; index++) if (scores[index] > scores[best]) best = index;
   // Grow outwards from the best line, preferring the line after (a heading's list follows it).

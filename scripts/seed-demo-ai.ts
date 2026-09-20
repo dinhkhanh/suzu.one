@@ -16,7 +16,6 @@ import type { drizzle } from "drizzle-orm/postgres-js";
 import { aiConversation, aiMessage, aiUnansweredQuestion, department, entity, kbAccess, kbPage, kbPageChunk, kbSpace, person, roleAssignment } from "../src/lib/db/schema";
 import { extractAnswer, rankPassages, renderExtractedAnswer, type Passage } from "../src/modules/ai/engine/answer";
 import { fakeEmbedding, cosine } from "../src/modules/kb/engine/fake-embedding";
-import { chunkEmbeddingText } from "../src/modules/kb/engine/chunk";
 import { retrievalQuery } from "../src/modules/ai/engine/question";
 
 type Db = ReturnType<typeof drizzle>;

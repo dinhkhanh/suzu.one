@@ -8,7 +8,7 @@ import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { getDayPlans, isPeriodLocked, requestTimesheetRecompute } from "@/modules/attendance/service";
 import { cancelLongLeave, type EmploymentFacts, listEmploymentFacts, recordLongLeave } from "@/modules/core-hr/service";
-import { decideRequest, defineRequestType, getRequest, type RequestView, submitRequest, withdrawRequest } from "@/modules/platform/approvals/service";
+import { type ApproverStep, decideRequest, defineRequestType, getRequest, previewApprovers, type RequestView, submitRequest, withdrawRequest } from "@/modules/platform/approvals/service";
 import { notify } from "@/modules/platform/notifications/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
 import { isOnProbation } from "./engine/entitlement";
@@ -34,6 +34,13 @@ export const leaveRequestType = defineRequestType({
   // HR follows the leave of the people they look after.
   canView: (viewer, subject) => !!subject && can(viewer, "leave:manage", subject),
 });
+
+/**
+ * Who would be asked to approve this person's leave, step by step (FR-AI-02). The entity's own
+ * flow decides; `days` switches on the steps that only apply to a long absence, so asking without
+ * one describes an ordinary request. Names only — the caller decides who may ask about whom.
+ */
+export const whoApprovesLeave = (subjectPersonId: string, days?: number): Promise<ApproverStep[]> => previewApprovers(leaveRequestType, subjectPersonId, days === undefined ? {} : { days });
 
 export type LeaveInput = { leaveTypeId: string; startDate: IsoDate; endDate: IsoDate; startPortion: Portion; endPortion: Portion; minutes: number | null; reason: string | null; attachmentFileId: string | null };
 export type LeavePayload = { leaveRequestId: string; typeCode: string; typeName: string; startDate: IsoDate; endDate: IsoDate; days: number };

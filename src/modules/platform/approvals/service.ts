@@ -94,6 +94,37 @@ export async function resolveApprovers(executor: Executor, rule: ApproverRule, s
   return rows.map((row) => row.id);
 }
 
+export type ApproverStep = { /** The step's key in the flow, e.g. "manager" — also its message key. */ key: string; names: string[] };
+
+/**
+ * Who would be asked if this request were filed now, step by step — the entity's own flow, its
+ * conditions evaluated against `data`, standing delegations left out (they are about a particular
+ * day, and this is a question about the shape of the flow).
+ *
+ * For the assistant's approver lookup (FR-AI-02: "who approves my overtime?") and for telling a
+ * requester what will happen before they file. **Names only** — no ids, no state, no request. It
+ * decides nothing about access: the caller has already decided who may ask about whom, which for
+ * the assistant means the asker and nobody else.
+ */
+export async function previewApprovers(definition: RequestTypeDefinition, subjectPersonId: string, data: Record<string, unknown> = {}): Promise<ApproverStep[]> {
+  const executor = db();
+  const subject = await subjectTarget(executor, subjectPersonId);
+  const { flow } = await effectiveFlow(executor, definition.type, subject?.entityId ?? null, definition.flow);
+  const steps: ApproverStep[] = [];
+  for (const step of flow.steps) {
+    if (!conditionHolds(step.condition, data)) continue;
+    const resolved = (await Promise.all(step.approvers.map((rule) => resolveApprovers(executor, rule, subjectPersonId, subject ?? {})))).flat();
+    // Nobody asks themselves; `resolveApprovers` has already dropped anyone who has left.
+    const unique = [...new Set(resolved)].filter((id) => id !== subjectPersonId);
+    if (unique.length === 0) continue;
+    const rows = await executor.select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, unique));
+    const byId = new Map(rows.map((row) => [row.id, row.fullName]));
+    const names = unique.map((id) => byId.get(id)).filter((name): name is string => !!name);
+    if (names.length > 0) steps.push({ key: step.key, names });
+  }
+  return steps;
+}
+
 async function resolveFlow(executor: Executor, flow: FlowDefinition, context: { requestType: string; requesterId: string; subject: SubjectTarget | null; /** Where the request sits when it is about no person (a page of an entity's space). */ target?: Target; data: Record<string, unknown> }): Promise<ResolvedStep[]> {
   const resolved: ResolvedStep[] = [];
   for (const step of flow.steps) {

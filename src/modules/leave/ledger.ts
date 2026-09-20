@@ -8,7 +8,9 @@ import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { type EmploymentFacts, listEmploymentFacts } from "@/modules/core-hr/service";
 import { getParameter } from "@/modules/platform/statutory/service";
+import type { Principal } from "@/modules/platform/rbac/policy";
 import { accrualPostings, carryOverExpiryDate, carryOverLapse, terminationPayout, yearEndCarryOver } from "./engine/entitlement";
+import { canSeeBalancesOf } from "./policy";
 import { type LeavePolicyRow, type LeaveTypeRow, leaveTypesFor, listPolicies, policyOn, policyRules } from "./types";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -73,6 +75,26 @@ export async function getBalances(personIds: readonly string[], year: number, ex
     result.set(person.id, rows);
   }
   return result;
+}
+
+/**
+ * One person's balances **with the permission decision inside** — null when the reader may not
+ * see them, which is the same answer as a person who does not exist.
+ *
+ * `getBalances` above takes ids and asks nothing; every screen that calls it has checked first.
+ * The assistant (FR-AI-02) has no screen to check on, so this is its door: it is handed the
+ * asker's own principal and `canSeeBalancesOf` decides, exactly as on /leave. Nothing here can be
+ * called with more rights than the person who asked.
+ */
+export async function getLeaveBalanceFor(principal: Principal, subjectPersonId: string, year: number): Promise<Balance[] | null> {
+  const [person] = await db()
+    .select({ id: schema.person.id, entityId: schema.person.primaryEntityId, departmentId: schema.person.departmentId, teamId: schema.person.teamId, managerId: schema.person.managerId })
+    .from(schema.person)
+    .where(eq(schema.person.id, subjectPersonId))
+    .limit(1);
+  if (!person) return null;
+  if (!canSeeBalancesOf(principal, { personId: person.id, entityId: person.entityId, departmentId: person.departmentId, teamId: person.teamId, managerId: person.managerId })) return null;
+  return (await getBalances([subjectPersonId], year)).get(subjectPersonId) ?? [];
 }
 
 // Days asked for by requests the approval engine still holds (pending or returned for changes).

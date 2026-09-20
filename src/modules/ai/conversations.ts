@@ -6,13 +6,16 @@
 // could reach.
 import "server-only";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { type KbViewer, kbViewerOf, type ViewerSource } from "@/modules/kb/service";
 import type { Citation } from "./engine/answer";
-import type { ChatTurn } from "./enums";
+import { routeQuestion } from "./engine/routing";
+import type { ChatTurn, ToolOutcome } from "./enums";
 import { QUESTION_MAX } from "./enums";
 import { chatDriver } from "./model";
 import { retrievePassages } from "./retrieval";
+import { runTool, type ToolAudit, type ToolUser } from "./tools";
 
 const { aiConversation, aiMessage, aiUnansweredQuestion } = schema;
 
@@ -38,12 +41,37 @@ export async function answerQuestion(viewer: KbViewer, question: string, locale:
   return { body: answer.body, citations, score: ranked[0]?.score ?? 0, answered: answer.body.length > 0 && citations.length > 0, driver: driver.name, model: driver.model };
 }
 
+/**
+ * THE WHOLE DECISION, one step up: does this question ask for the person's own data, or for the
+ * knowledge base? Pure routing decides — on the question as typed, before anything is retrieved,
+ * so no page and no model can choose a tool (`engine/routing.ts`).
+ *
+ * Still writes nothing, so the evaluation set can measure exactly what a person gets.
+ */
+export async function resolveAnswer(user: ViewerSource & ToolUser, question: string, locale: string): Promise<Resolved> {
+  const route = routeQuestion(question, todayInVietnam());
+  if (route) {
+    const { outcome, audit } = await runTool(user, route);
+    // A tool that answered, or refused, has settled the question; the knowledge base is not asked
+    // afterwards, so a refusal can never be padded out with a policy page about somebody's salary.
+    return { kind: "tool", tool: outcome, audit, outcome: outcome.status === "answered" ? "answered" : "refused" };
+  }
+  const answer = await answerQuestion(kbViewerOf(user), question, locale);
+  return { kind: "kb", answer, outcome: answer.answered ? "answered" : "unanswered" };
+}
+
+export type Resolved =
+  | { kind: "tool"; tool: ToolOutcome; audit: ToolAudit; outcome: "answered" | "refused" }
+  | { kind: "kb"; answer: Answer; outcome: "answered" | "unanswered" };
+
 export type AskResult = {
   conversationId: string;
   messageId: string;
-  outcome: "answered" | "unanswered";
+  outcome: "answered" | "unanswered" | "refused";
   body: string;
   citations: Citation[];
+  /** Set when a personal tool answered; the chat renders it in the reader's language. */
+  tool: ToolOutcome | null;
   /** Best retrieval score seen, whether or not it was good enough to answer. */
   score: number;
   driver: string;
@@ -54,7 +82,8 @@ export type AiMessageRow = typeof aiMessage.$inferSelect;
 export type ConversationTurn = ChatTurn & { createdAt: Date };
 
 const citationsOf = (row: AiMessageRow): Citation[] => (Array.isArray(row.citations) ? (row.citations as Citation[]) : []);
-const toTurn = (row: AiMessageRow): ConversationTurn => ({ id: row.id, role: row.role, body: row.body, outcome: row.outcome, citations: citationsOf(row), createdAt: row.createdAt });
+const toolOf = (row: AiMessageRow): ToolOutcome | null => (row.toolResult ? (row.toolResult as ToolOutcome) : null);
+const toTurn = (row: AiMessageRow): ConversationTurn => ({ id: row.id, role: row.role, body: row.body, outcome: row.outcome, citations: citationsOf(row), tool: toolOf(row), createdAt: row.createdAt });
 
 /**
  * The asker's own conversation, or null. A conversation belongs to one person and is never shared.
@@ -70,14 +99,22 @@ async function ownConversation(tx: Tx, personId: string, conversationId: string)
  * THE ASSISTANT. `user` supplies the viewer; the viewer supplies the permission filter; nothing
  * here can reach past it.
  */
-export async function ask(user: ViewerSource & { person: { id: string } }, input: AskInput): Promise<AskResult> {
-  const viewer: KbViewer = kbViewerOf(user);
+export async function ask(user: ViewerSource & ToolUser, input: AskInput): Promise<AskResult & { audit: ToolAudit | null }> {
   const personId = user.person.id;
   const question = input.question.trim().slice(0, QUESTION_MAX);
   const locale = input.locale === "en" ? "en" : "vi";
 
-  const answer = await answerQuestion(viewer, question, locale);
-  const { citations, score: best, answered } = answer;
+  const resolved = await resolveAnswer(user, question, locale);
+  const tool = resolved.kind === "tool" ? resolved.tool : null;
+  const citations = resolved.kind === "kb" ? resolved.answer.citations : [];
+  const best = resolved.kind === "kb" ? resolved.answer.score : 0;
+  const body = resolved.kind === "kb" ? resolved.answer.body : "";
+  const driver = resolved.kind === "kb" ? resolved.answer.driver : "tool";
+  const model = resolved.kind === "kb" ? resolved.answer.model : resolved.tool.tool;
+  const outcome = resolved.outcome;
+  // Only a knowledge-base miss is a missing page. A tool refusal is not a gap in the handbook and
+  // must never land in a log that HR reads: "who approves Lê Thị Mai's overtime" belongs nowhere.
+  const logAsUnanswered = resolved.kind === "kb" && !resolved.answer.answered;
 
   return db().transaction(async (tx) => {
     const existing = input.conversationId ? await ownConversation(tx, personId, input.conversationId) : null;
@@ -92,13 +129,13 @@ export async function ask(user: ViewerSource & { person: { id: string } }, input
     await tx.insert(aiMessage).values({ conversationId, personId, role: "user", body: question });
     const [stored] = await tx
       .insert(aiMessage)
-      .values({ conversationId, personId, role: "assistant", body: answer.body, outcome: answered ? "answered" : "unanswered", citations, driver: answer.driver, model: answer.model, score: best })
+      .values({ conversationId, personId, role: "assistant", body, outcome, citations, tool: tool?.tool ?? null, toolResult: tool, driver, model, score: best })
       .returning();
 
     // The backlog of pages still to write. Only the question, never the passages that failed.
-    if (!answered) await tx.insert(aiUnansweredQuestion).values({ personId, messageId: stored.id, question, locale, bestScore: best });
+    if (logAsUnanswered) await tx.insert(aiUnansweredQuestion).values({ personId, messageId: stored.id, question, locale, bestScore: best });
 
-    return { conversationId, messageId: stored.id, outcome: answered ? ("answered" as const) : ("unanswered" as const), body: answer.body, citations, score: best, driver: answer.driver, model: answer.model };
+    return { conversationId, messageId: stored.id, outcome, body, citations, tool, score: best, driver, model, audit: resolved.kind === "tool" ? resolved.audit : null };
   });
 }
 

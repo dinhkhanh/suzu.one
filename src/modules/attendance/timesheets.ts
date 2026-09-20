@@ -200,6 +200,23 @@ export async function summarisePersonYear(personId: string, year: number, execut
   return summariseRows(await getTimesheetDays([personId], `${year}-01-01`, `${year}-12-31`, executor));
 }
 
+/**
+ * One person's month **with the permission decision inside** — null when the reader may not see
+ * it. `summariseMonth` above asks nothing, because every screen that calls it has already checked;
+ * the assistant (FR-AI-02) has no screen, so this is its door, and `canSeeTimesheetOf` answers it
+ * exactly as /attendance does. It cannot be called with more rights than the person who asked.
+ */
+export async function getMonthSummaryFor(principal: Principal, subjectPersonId: string, month: string): Promise<MonthSummary | null> {
+  const [person] = await db()
+    .select({ id: schema.person.id, entityId: schema.person.primaryEntityId, departmentId: schema.person.departmentId, teamId: schema.person.teamId, managerId: schema.person.managerId })
+    .from(schema.person)
+    .where(eq(schema.person.id, subjectPersonId))
+    .limit(1);
+  if (!person) return null;
+  if (!canSeeTimesheetOf(principal, { personId: person.id, entityId: person.entityId, departmentId: person.departmentId, teamId: person.teamId, managerId: person.managerId })) return null;
+  return summariseMonth(subjectPersonId, month);
+}
+
 export type PersonMonth = { personId: string; month: string; days: TimesheetDayRow[]; summary: MonthSummary };
 
 /** A person's month for the "my attendance" calendar. The caller has checked `canSeeTimesheetOf`. */

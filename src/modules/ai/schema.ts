@@ -48,6 +48,15 @@ export const aiMessage = pgTable(
     outcome: aiAnswerOutcome("outcome"),
     /** `{ pageId, pageTitle, spaceKey, spaceName, headingPath, chunkId, score }[]` — see `engine/answer.ts`. */
     citations: jsonb("citations").notNull().default([]),
+    /** The personal tool that answered instead of the knowledge base, if any (FR-AI-02). */
+    tool: text("tool"),
+    /**
+     * That tool's answer as message keys and numbers (`ToolOutcome` in `enums.ts`) — the asker's
+     * own figures, rendered in the reader's language by the chat. It is the asker's own data in
+     * their own conversation, which nobody else can open, so it is kept exactly as it was shown:
+     * a payslip explanation that cannot be read back is not an explanation.
+     */
+    toolResult: jsonb("tool_result"),
     /** The adapter that answered: "local-extractive" or "claude". */
     driver: text("driver"),
     model: text("model"),

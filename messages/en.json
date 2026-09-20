@@ -7441,10 +7441,10 @@
     "noAnswer": "I could not find an answer in the pages you may read.",
     "noAnswerLogged": "The question has been logged so HR can write the missing page. You can also ask HR directly.",
     "suggestions": {
-      "leave": "How many days of annual leave do I get?",
-      "payday": "Which day is payday?",
-      "overtime": "What is the overtime rate on a public holiday?",
-      "remote": "How many days a week may I work remotely?"
+      "leave": "How many days of annual leave do I get a year?",
+      "payday": "When is payday?",
+      "balance": "How many leave days do I have left?",
+      "approver": "Who approves my leave request?"
     },
     "unanswered": {
       "link": "Unanswered questions",
@@ -7466,6 +7466,37 @@
       "forbidden": "You may not use the assistant.",
       "ai_conversation_not_found": "That conversation was not found.",
       "ai_unanswered_not_found": "That question has already been dealt with."
+    },
+    "tools": {
+      "fromYourRecord": "These figures come from your own record, not from a knowledge-base page. Open the screen to see the detail.",
+      "links": {
+        "leave_balance": "Open Leave",
+        "payslip_explain": "Open the payslip",
+        "approver_lookup": "Open the related screen",
+        "attendance_summary": "Open Attendance"
+      },
+      "refusals": {
+        "other_person": "I only answer about your own data. Another person's information is on the screen for it, if you may open it.",
+        "not_permitted": "You may not see this data.",
+        "step_up": "Pay data needs you to confirm who you are again. Re-authenticate, then ask again.",
+        "nothing_yet": "There is nothing recorded yet to answer this."
+      },
+      "leave_balance": {
+        "summary": "In {year} you have {available} days available, {used} used and {pending} waiting for approval.",
+        "type": "{name}: {available} available · {used} used · {pending} pending"
+      },
+      "attendance_summary": {
+        "summary": "In {month}: {days} recorded days, late {lateCount} times ({lateMinutes} minutes), left early {earlyCount} times, absent {absentDays} days, {missingPunchDays} days with a missing punch. Worked {workedHours} hours, of which {overtimeHours} overtime; {paidDays} paid days."
+      },
+      "approver_lookup": {
+        "summary": "First approver: {first}.",
+        "step": "Step “{step}”: {names}"
+      },
+      "payslip_explain": {
+        "summary": "Payslip for {month} ({entity}): gross {gross} ₫, less insurance {insurance} ₫, union {union} ₫, personal income tax {pit} ₫, other deductions {otherDeductions} ₫ — total deductions {deductions} ₫, net {net} ₫. Paid days {paidDays} of {standardDays}.",
+        "earning": "Earning — {name}: {amount} ₫ ({rule})",
+        "deduction": "Deduction — {name}: {amount} ₫ ({rule})"
+      }
     }
   }
 }

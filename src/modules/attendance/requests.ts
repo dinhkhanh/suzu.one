@@ -8,7 +8,7 @@ import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { getPersonTarget } from "@/modules/core-hr/service";
-import { decideRequest, defineRequestType, getRequest, type RequestTypeDefinition, type RequestView, resubmitRequest, submitRequest, withdrawRequest } from "@/modules/platform/approvals/service";
+import { type ApproverStep, decideRequest, defineRequestType, getRequest, previewApprovers, type RequestTypeDefinition, type RequestView, resubmitRequest, submitRequest, withdrawRequest } from "@/modules/platform/approvals/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
 import { getParameter } from "@/modules/platform/statutory/service";
 import { getAttendancePolicy } from "./attendance-policies";
@@ -45,6 +45,12 @@ export const REQUEST_DEFINITIONS: Record<AttendanceRequestType, RequestTypeDefin
   overtime: define("overtime", () => true),
   holiday_work: define("holiday_work", () => true),
 };
+
+/**
+ * Who would be asked to approve one of this person's attendance requests (FR-AI-02: "who approves
+ * my overtime?"). The entity's own flow decides; names only, and the caller decides who may ask.
+ */
+export const whoApprovesAttendance = (type: AttendanceRequestType, subjectPersonId: string): Promise<ApproverStep[]> => previewApprovers(REQUEST_DEFINITIONS[type], subjectPersonId);
 
 export type AttendanceRequestInput = { type: AttendanceRequestType; startDate: IsoDate; endDate: IsoDate; details: AttendanceRequestDetails; reason: string | null; evidenceFileId: string | null; compensation: "pay" | "time_off" | null };
 export type AttendancePayload = { attendanceRequestId: string; startDate: IsoDate; endDate: IsoDate; hasEvidence: boolean; minutes: number; days: number; kind: string };

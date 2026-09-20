@@ -7443,8 +7443,8 @@
     "suggestions": {
       "leave": "Một năm được bao nhiêu ngày phép năm?",
       "payday": "Ngày trả lương là ngày nào?",
-      "overtime": "Làm thêm ngày lễ được trả bao nhiêu?",
-      "remote": "Một tuần được làm việc từ xa mấy ngày?"
+      "balance": "Tôi còn bao nhiêu ngày phép?",
+      "approver": "Ai duyệt đơn nghỉ phép của tôi?"
     },
     "unanswered": {
       "link": "Câu hỏi chưa trả lời được",
@@ -7466,6 +7466,37 @@
       "forbidden": "Bạn không có quyền dùng trợ lý.",
       "ai_conversation_not_found": "Không tìm thấy cuộc trò chuyện.",
       "ai_unanswered_not_found": "Câu hỏi này đã được xử lý rồi."
+    },
+    "tools": {
+      "fromYourRecord": "Số liệu lấy từ hồ sơ của chính bạn, không phải từ trang Tri thức. Mở màn hình gốc để xem chi tiết.",
+      "links": {
+        "leave_balance": "Mở trang Nghỉ phép",
+        "payslip_explain": "Mở phiếu lương",
+        "approver_lookup": "Mở trang liên quan",
+        "attendance_summary": "Mở trang Chấm công"
+      },
+      "refusals": {
+        "other_person": "Mình chỉ trả lời về dữ liệu của chính bạn. Thông tin của người khác phải xem trên màn hình tương ứng, nếu bạn có quyền.",
+        "not_permitted": "Bạn không có quyền xem dữ liệu này.",
+        "step_up": "Dữ liệu lương cần xác thực lại. Hãy xác nhận danh tính rồi hỏi lại.",
+        "nothing_yet": "Chưa có dữ liệu để trả lời câu hỏi này."
+      },
+      "leave_balance": {
+        "summary": "Năm {year}: bạn còn {available} ngày phép khả dụng, đã dùng {used} ngày, đang chờ duyệt {pending} ngày.",
+        "type": "{name}: còn {available} · đã dùng {used} · chờ duyệt {pending}"
+      },
+      "attendance_summary": {
+        "summary": "Tháng {month}: {days} ngày công, đi muộn {lateCount} lần ({lateMinutes} phút), về sớm {earlyCount} lần, vắng {absentDays} ngày, thiếu chấm công {missingPunchDays} ngày. Làm {workedHours} giờ, trong đó làm thêm {overtimeHours} giờ; công hưởng lương {paidDays} ngày."
+      },
+      "approver_lookup": {
+        "summary": "Người duyệt đầu tiên: {first}.",
+        "step": "Bước “{step}”: {names}"
+      },
+      "payslip_explain": {
+        "summary": "Phiếu lương tháng {month} ({entity}): tổng thu nhập {gross} ₫, trừ bảo hiểm {insurance} ₫, công đoàn {union} ₫, thuế TNCN {pit} ₫, khoản trừ khác {otherDeductions} ₫ — tổng trừ {deductions} ₫, thực nhận {net} ₫. Công hưởng lương {paidDays}/{standardDays} ngày.",
+        "earning": "Thu nhập — {name}: {amount} ₫ ({rule})",
+        "deduction": "Khấu trừ — {name}: {amount} ₫ ({rule})"
+      }
     }
   }
 }
