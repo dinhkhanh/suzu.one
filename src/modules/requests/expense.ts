@@ -7,7 +7,7 @@
 // The *effect* of approving one lives in `expense-posting.ts`, which `service.ts` calls inside the
 // approval's own transaction, so a claim is never approved without being offered to payroll.
 import "server-only";
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
@@ -107,10 +107,14 @@ export type ClaimListRow = {
 };
 
 /**
- * The claims finance works through: everything approved but unpaid first, then the rest. Amounts
- * are in the list because that is the whole point of it — who is owed what.
+ * The claims finance works through — who is owed what, and where each one has got to.
+ *
+ * `reach` is the caller's `entityReach(principal, "payroll:pay")`: an accountant who pays one
+ * entity sees that entity's claims and no others, as a WHERE clause rather than a filter applied
+ * after the fact.
  */
-export async function listExpenseClaims(filter: { personId?: string; status?: string } = {}, limit = 200): Promise<ClaimListRow[]> {
+export async function listExpenseClaims(filter: { personId?: string; status?: string; reach?: { all: true } | { all: false; entityIds: string[] } } = {}, limit = 200): Promise<ClaimListRow[]> {
+  if (filter.reach && !filter.reach.all && filter.reach.entityIds.length === 0) return [];
   const rows = await db()
     .select({
       requestId: schema.approvalRequest.id,
@@ -126,11 +130,12 @@ export async function listExpenseClaims(filter: { personId?: string; status?: st
     .innerJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.requestSubmission.approvalRequestId))
     .innerJoin(schema.person, eq(schema.person.id, schema.approvalRequest.requesterPersonId))
     .where(
-      filter.personId
-        ? eq(schema.approvalRequest.requesterPersonId, filter.personId)
-        : filter.status
-          ? eq(schema.approvalRequest.status, filter.status as "approved")
-          : undefined,
+      and(
+        eq(schema.requestSubmission.typeCode, EXPENSE_CLAIM_CODE),
+        filter.personId ? eq(schema.approvalRequest.requesterPersonId, filter.personId) : undefined,
+        filter.status ? eq(schema.approvalRequest.status, filter.status as "approved") : undefined,
+        filter.reach && !filter.reach.all ? inArray(schema.approvalRequest.entityId, filter.reach.entityIds) : undefined,
+      ),
     )
     .orderBy(desc(schema.approvalRequest.createdAt))
     .limit(limit);

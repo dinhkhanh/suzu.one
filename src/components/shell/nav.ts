@@ -17,7 +17,9 @@ export function navFor(principal: Principal, open: { people: boolean }): { main:
     { key: "attendance", href: "/attendance" },
     { key: "leave", href: "/leave" },
     // Purchase, payment, advance, a confirmation letter — the request builder's types (FR-REQ-01).
-    { key: "requests", href: "/requests" },
+    // Whoever pays the payroll also settles the expense claims (FR-REQ-03), so their entry is the
+    // claims desk rather than their own filed requests.
+    { key: "requests", href: can(principal, "payroll:pay") ? "/requests/claims" : "/requests" },
     { key: "work", href: "/work" },
     // Equipment: everyone has their own, so the entry always shows; the register behind it is for
     // whoever keeps one, and /assets sends anybody else to their own list.

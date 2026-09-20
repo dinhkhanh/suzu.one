@@ -6,8 +6,12 @@ import { getPersonTarget } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
+import { todayInVietnam } from "@/lib/dates";
 import { fileRequestAction } from "@/modules/requests/actions";
+import { EXPENSE_CLAIM_CODE } from "@/modules/requests/expense";
+import { fileExpenseClaimAction } from "@/modules/requests/expense-actions";
 import { findRequestTypeByCode } from "@/modules/requests/service";
+import { ExpenseClaimForm } from "@/modules/requests/ui/expense-claim-form";
 import { RequestForm } from "@/modules/requests/ui/request-form";
 
 export const metadata: Metadata = { title: "New request" };
@@ -36,14 +40,18 @@ export default async function FileRequestPage(props: PageProps<"/requests/new/[c
         <h1 className="text-2xl font-semibold tracking-tight">{locale === "en" ? type.nameEn : type.nameVi}</h1>
         <p className="text-sm text-muted-foreground">{(locale === "en" ? type.descriptionEn : type.descriptionVi) ?? ""}</p>
       </header>
-      <RequestForm
-        form={type.form}
-        submit={fileRequestAction}
-        extra={{ code: type.code }}
-        people={people}
-        entities={entities.map((entity) => ({ id: entity.id, name: entity.shortName }))}
-        submitLabel={t("form.submit")}
-      />
+      {type.code === EXPENSE_CLAIM_CODE ? (
+        <ExpenseClaimForm form={type.form} today={todayInVietnam()} submit={fileExpenseClaimAction} extra={{}} submitLabel={t("form.submit")} />
+      ) : (
+        <RequestForm
+          form={type.form}
+          submit={fileRequestAction}
+          extra={{ code: type.code }}
+          people={people}
+          entities={entities.map((entity) => ({ id: entity.id, name: entity.shortName }))}
+          submitLabel={t("form.submit")}
+        />
+      )}
     </div>
   );
 }

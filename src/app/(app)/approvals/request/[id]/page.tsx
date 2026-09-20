@@ -8,9 +8,14 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listFileNames } from "@/modules/platform/files/service";
 import { listEntities } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
+import { todayInVietnam } from "@/lib/dates";
 import { decideRequestAction, refileRequestAction } from "@/modules/requests/actions";
+import { EXPENSE_CLAIM_CODE, getExpenseClaim } from "@/modules/requests/expense";
+import { refileExpenseClaimAction } from "@/modules/requests/expense-actions";
 import { getGenericRequest } from "@/modules/requests/service";
 import { Answers } from "@/modules/requests/ui/answers";
+import { ClaimLines } from "@/modules/requests/ui/claim-lines";
+import { ExpenseClaimForm } from "@/modules/requests/ui/expense-claim-form";
 import { RequestForm } from "@/modules/requests/ui/request-form";
 
 export const metadata: Metadata = { title: "Request" };
@@ -24,6 +29,9 @@ export default async function GenericRequestPage(props: PageProps<"/approvals/re
   const { id } = await props.params;
   const view = UUID.test(id) ? await getGenericRequest({ personId: user.person.id, principal: user.principal }, id) : null;
   if (!view) notFound();
+  // An expense claim is the one type that carries more than its answers; the same view, read again
+  // with its lines. The access rule is the engine's either way.
+  const claim = view.submission.typeCode === EXPENSE_CLAIM_CODE ? await getExpenseClaim({ personId: user.person.id, principal: user.principal }, id) : null;
 
   const t = await getTranslations("requests");
   const locale = await getLocale();
@@ -52,20 +60,33 @@ export default async function GenericRequestPage(props: PageProps<"/approvals/re
       </header>
 
       <Answers form={type.form} values={submission.values} requestId={request.id} fileNames={fileNames} />
+      {claim ? <ClaimLines lines={claim.lines} total={claim.total} byCategory={claim.byCategory} payment={claim.payment} requestId={request.id} fileNames={fileNames} /> : null}
 
       {view.canDecide ? <DecisionForm requestId={request.id} action={decideRequestAction} /> : null}
       {returned ? (
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-medium text-muted-foreground">{t("view.correctAndResend")}</h2>
-          <RequestForm
-            form={type.form}
-            submit={refileRequestAction}
-            extra={{ requestId: request.id }}
-            initialValues={submission.values as Record<string, never>}
-            people={people}
-            entities={entities.map((entity) => ({ id: entity.id, name: entity.shortName }))}
-            submitLabel={t("view.resend")}
-          />
+          {claim ? (
+            <ExpenseClaimForm
+              form={type.form}
+              today={todayInVietnam()}
+              submit={refileExpenseClaimAction}
+              extra={{ requestId: request.id }}
+              initialValues={submission.values as Record<string, never>}
+              initialLines={claim.lines.map((line) => ({ lineDate: line.lineDate, category: line.category, description: line.description, amount: line.amount, receiptFileId: line.receiptFileId, projectTag: line.projectTag }))}
+              submitLabel={t("view.resend")}
+            />
+          ) : (
+            <RequestForm
+              form={type.form}
+              submit={refileRequestAction}
+              extra={{ requestId: request.id }}
+              initialValues={submission.values as Record<string, never>}
+              people={people}
+              entities={entities.map((entity) => ({ id: entity.id, name: entity.shortName }))}
+              submitLabel={t("view.resend")}
+            />
+          )}
         </section>
       ) : null}
       {view.isRequester && (request.status === "pending" || request.status === "returned") ? <WithdrawForm requestId={request.id} /> : null}

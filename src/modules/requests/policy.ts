@@ -15,3 +15,10 @@ export const canManageRequestTypes = (principal: Principal, entityId: string | n
 
 /** Filing a request: anybody who is a person in the system. Collaborators included — they buy things too. */
 export const canFileRequests = (principal: Principal) => principal.personId !== null;
+
+/**
+ * Settling expense claims (FR-REQ-03) — reading the list of what is owed and putting the waiting
+ * ones into a run. Whoever pays the company's people: the claim is paid through the payroll run,
+ * so the same hands do both. With no entity it asks "anywhere at all", for the screen's door.
+ */
+export const canSettleExpenseClaims = (principal: Principal, entityId: string | null = null) => can(principal, "payroll:pay", entityId ? { entityId } : {});

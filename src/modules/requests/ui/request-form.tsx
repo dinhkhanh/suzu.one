@@ -27,6 +27,8 @@ export function RequestForm({
   people,
   entities,
   submitLabel,
+  addendum,
+  addendumInvalid,
 }: {
   form: FormDefinition;
   submit: Submit;
@@ -36,6 +38,10 @@ export function RequestForm({
   people: { id: string; fullName: string }[];
   entities: { id: string; name: string }[];
   submitLabel: string;
+  /** What a type that is more than a form adds: an expense claim's lines (FR-REQ-03). */
+  addendum?: React.ReactNode;
+  /** True while the addendum is not ready to be sent; the button stays disabled. */
+  addendumInvalid?: boolean;
 }) {
   const t = useTranslations("requests");
   const locale = useLocale();
@@ -58,7 +64,7 @@ export function RequestForm({
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setTouched(true);
-    if (Object.keys(problems).length > 0) return;
+    if (Object.keys(problems).length > 0 || addendumInvalid) return;
     startTransition(async () => {
       // Only what is on screen: a hidden field's answer is nobody's business, here or on the server.
       const payload = Object.fromEntries(shown.map((field) => [field.key, values[field.key] ?? null]));
@@ -102,9 +108,10 @@ export function RequestForm({
           {t.has(`errors.${uploadError}`) ? t(`errors.${uploadError}` as "errors.generic") : t("errors.generic")}
         </p>
       ) : null}
+      {addendum}
       <FormError namespace="requests.errors" errorKey={errorKey} />
       <div>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending || addendumInvalid}>
           {submitLabel}
         </Button>
       </div>
