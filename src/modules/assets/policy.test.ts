@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Principal } from "../platform/rbac/policy";
-import { assetReach, canConfirmHandover, canManageAssets, canManageCategories, canReadAssetMoney, canReadPersonAssets, canReadRegister, canViewAsset } from "./policy";
+import { assetReach, canActOnBooking, canBookAssets, canConfirmHandover, canDecideBookings, canManageAssets, canManageCategories, canReadAssetMoney, canReadPersonAssets, canReadRegister, canViewAsset } from "./policy";
 
 const SZM = "00000000-0000-4000-8000-000000000001";
 const SZC = "00000000-0000-4000-8000-000000000002";
@@ -107,5 +107,47 @@ describe("asset policy", () => {
     expect(assetReach(keeper)).toEqual({ all: true });
     expect(assetReach(entityKeeper)).toEqual({ all: false, entityIds: [SZM] });
     expect(assetReach(employee)).toEqual({ all: false, entityIds: [] });
+  });
+
+  // Week 3: shared production gear is common property, and the widening is deliberate.
+  describe("bookable gear", () => {
+    it("opens a bookable asset to anybody on the staff, and a non-bookable one to nobody new", () => {
+      expect(canViewAsset(employee, { entityId: SZM, bookable: true }, null)).toBe(true);
+      expect(canViewAsset(head, { entityId: SZC, bookable: true }, null)).toBe(true);
+      // Exactly as before when the category is not bookable.
+      expect(canViewAsset(employee, { entityId: SZM, bookable: false }, null)).toBe(false);
+      expect(canViewAsset(employee, { entityId: SZM }, null)).toBe(false);
+    });
+
+    it("still does not show what the gear cost — the widening is about facts, not money", () => {
+      expect(canViewAsset(employee, { entityId: SZM, bookable: true }, null)).toBe(true);
+      expect(canReadAssetMoney(employee, SZM)).toBe(false);
+      expect(canReadAssetMoney(head, SZM)).toBe(false);
+    });
+
+    it("lets anybody with a person record book, and nobody without one", () => {
+      expect(canBookAssets(employee)).toBe(true);
+      expect(canBookAssets(keeper)).toBe(true);
+      expect(canBookAssets({ personId: null, workforceType: null, grants: [] })).toBe(false);
+    });
+
+    it("leaves confirming and refusing to whoever keeps that entity's gear", () => {
+      expect(canDecideBookings(entityKeeper, SZM)).toBe(true);
+      expect(canDecideBookings(entityKeeper, SZC)).toBe(false);
+      expect(canDecideBookings(employee, SZM)).toBe(false);
+      expect(canDecideBookings(head, SZM)).toBe(false);
+    });
+
+    it("lets the person whose booking it is act on it, and the keeper, and no colleague", () => {
+      const mine = { personId: "employee", entityId: SZM };
+      expect(canActOnBooking(employee, mine)).toBe(true);
+      expect(canActOnBooking(entityKeeper, mine)).toBe(true);
+      expect(canActOnBooking(owner, mine)).toBe(true);
+      // A colleague cannot call off somebody else's Friday shoot.
+      expect(canActOnBooking(principal("colleague"), mine)).toBe(false);
+      expect(canActOnBooking(head, mine)).toBe(false);
+      // Nor can a keeper of a different entity.
+      expect(canActOnBooking(entityKeeper, { personId: "employee", entityId: SZC })).toBe(false);
+    });
   });
 });

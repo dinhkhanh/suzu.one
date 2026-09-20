@@ -3,10 +3,11 @@
 // run → audit). Nothing here writes to the database itself: the use-cases live in service.ts.
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createAction } from "@/lib/action";
-import { assignAsset, confirmHandover, findAssignment, findAsset, registerAsset, returnAsset, saveCategory, setAssetStatus, updateAsset } from "./service";
+import { ActionError, createAction } from "@/lib/action";
+import { assignAsset, bookAsset, cancelBooking, checkInBooking, checkOutBooking, confirmHandover, decideBooking, findAssignment, findAsset, findBooking, registerAsset, returnAsset, saveCategory, setAssetStatus, updateAsset } from "./service";
+import { windowProblems } from "./engine/booking";
 import { ASSET_CONDITIONS, ASSET_KINDS, ASSET_STATUSES, HOLDER_TYPES } from "./enums";
-import { canConfirmHandover, canManageAssets, canManageCategories } from "./policy";
+import { canActOnBooking, canBookAssets, canConfirmHandover, canDecideBookings, canManageAssets, canManageCategories } from "./policy";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
 const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blankToNull, schema.nullable().default(null));
@@ -160,6 +161,113 @@ const saveAssetCategoryPipeline = createAction({
 });
 
 
+// ── Booking shared gear (FR-AST-03) ─────────────────────────────────────────────────────────
+
+function refreshBookings(assetId?: string) {
+  revalidatePath("/assets/bookings");
+  revalidatePath("/assets/mine");
+  if (assetId) revalidatePath(`/assets/${assetId}`);
+}
+
+// A datetime as the form sends it: "2026-09-25T09:00". Read as Vietnam time, which is where the
+// gear and the people are; the column is timestamptz, so the instant is unambiguous once stored.
+const vietnamInstant = z.preprocess((value) => {
+  if (value instanceof Date) return value;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) return value;
+  return new Date(`${value.slice(0, 16)}:00+07:00`);
+}, z.date());
+
+const bookAssetPipeline = createAction({
+  name: "asset.booking.create",
+  input: z.object({
+    assetId: z.uuid(),
+    // Booking on somebody else's behalf is the keeper's privilege; the authorize step below checks it.
+    personId: optional(z.uuid()),
+    startAt: vietnamInstant,
+    endAt: vietnamInstant,
+    purpose: optional(z.string().trim().max(500)),
+    projectRef: optional(z.string().trim().max(60)),
+  }),
+  authorize: async (user, input) => {
+    if (!canBookAssets(user.principal)) return false;
+    // For yourself: anybody. For somebody else: only whoever keeps that entity's gear.
+    if (!input.personId || input.personId === user.person.id) return true;
+    const asset = await findAsset(input.assetId);
+    return !!asset && canManageAssets(user.principal, asset.entityId);
+  },
+  run: async ({ user, input }) => {
+    const problems = windowProblems({ startAt: input.startAt, endAt: input.endAt }, new Date());
+    if (problems.length > 0) throw new ActionError(problems[0]);
+    const booking = await bookAsset({ assetId: input.assetId, personId: input.personId ?? user.person.id, startAt: input.startAt, endAt: input.endAt, purpose: input.purpose, projectRef: input.projectRef }, { personId: user.person.id, principal: user.principal });
+    const asset = await findAsset(input.assetId);
+    refreshBookings(input.assetId);
+    return {
+      data: { id: booking.id, status: booking.status },
+      audit: { resource: { type: "asset_booking", id: booking.id, entityId: asset?.entityId ?? null }, summary: `${asset?.code ?? input.assetId} ${input.startAt.toISOString()} → ${input.endAt.toISOString()}`, after: { status: booking.status, personId: booking.personId } },
+    };
+  },
+});
+
+const decideBookingPipeline = createAction({
+  name: "asset.booking.decide",
+  input: z.object({ bookingId: z.uuid(), decision: z.enum(["confirm", "refuse"]), note: optional(z.string().trim().max(1000)) }),
+  authorize: async (user, input) => {
+    const booking = await findBooking(input.bookingId);
+    return !!booking && canDecideBookings(user.principal, booking.assetEntityId);
+  },
+  run: async ({ user, input }) => {
+    const before = await findBooking(input.bookingId);
+    const after = await decideBooking(input.bookingId, input.decision, input.note, user.person.id);
+    refreshBookings(before?.assetId);
+    return { data: { status: after.status }, audit: { resource: { type: "asset_booking", id: input.bookingId, entityId: before?.assetEntityId ?? null }, summary: before?.assetCode ?? input.bookingId, before: { status: before?.status }, after: { status: after.status } } };
+  },
+});
+
+const cancelBookingPipeline = createAction({
+  name: "asset.booking.cancel",
+  input: z.object({ bookingId: z.uuid(), note: optional(z.string().trim().max(1000)) }),
+  authorize: async (user, input) => {
+    const booking = await findBooking(input.bookingId);
+    return !!booking && canActOnBooking(user.principal, { personId: booking.personId, entityId: booking.assetEntityId });
+  },
+  run: async ({ user, input }) => {
+    const before = await findBooking(input.bookingId);
+    const after = await cancelBooking(input.bookingId, input.note, user.person.id);
+    refreshBookings(before?.assetId);
+    return { data: { status: after.status }, audit: { resource: { type: "asset_booking", id: input.bookingId, entityId: before?.assetEntityId ?? null }, summary: before?.assetCode ?? input.bookingId, before: { status: before?.status }, after: { status: after.status } } };
+  },
+});
+
+const checkOutBookingPipeline = createAction({
+  name: "asset.booking.check_out",
+  input: z.object({ bookingId: z.uuid(), conditionOut: z.enum(ASSET_CONDITIONS), note: optional(z.string().trim().max(1000)) }),
+  authorize: async (user, input) => {
+    const booking = await findBooking(input.bookingId);
+    return !!booking && canActOnBooking(user.principal, { personId: booking.personId, entityId: booking.assetEntityId });
+  },
+  run: async ({ user, input }) => {
+    const before = await findBooking(input.bookingId);
+    const after = await checkOutBooking(input, user.person.id);
+    refreshBookings(before?.assetId);
+    return { data: { status: after.status }, audit: { resource: { type: "asset_booking", id: input.bookingId, entityId: before?.assetEntityId ?? null }, summary: before?.assetCode ?? input.bookingId, after: { status: after.status, conditionOut: input.conditionOut } } };
+  },
+});
+
+const checkInBookingPipeline = createAction({
+  name: "asset.booking.check_in",
+  input: z.object({ bookingId: z.uuid(), conditionIn: z.enum(ASSET_CONDITIONS), note: optional(z.string().trim().max(1000)) }),
+  authorize: async (user, input) => {
+    const booking = await findBooking(input.bookingId);
+    return !!booking && canActOnBooking(user.principal, { personId: booking.personId, entityId: booking.assetEntityId });
+  },
+  run: async ({ user, input }) => {
+    const before = await findBooking(input.bookingId);
+    const after = await checkInBooking(input, user.person.id);
+    refreshBookings(before?.assetId);
+    return { data: { status: after.status }, audit: { resource: { type: "asset_booking", id: input.bookingId, entityId: before?.assetEntityId ?? null }, summary: before?.assetCode ?? input.bookingId, after: { status: after.status, conditionIn: input.conditionIn } } };
+  },
+});
+
 // A `"use server"` file may export nothing but async functions — exporting the pipeline as a
 // const makes the bundler drop every export of the module (tests/server-actions.test.ts).
 
@@ -189,4 +297,24 @@ export async function setAssetStatusAction(input: unknown) {
 
 export async function saveAssetCategoryAction(input: unknown) {
   return saveAssetCategoryPipeline(input);
+}
+
+export async function bookAssetAction(input: unknown) {
+  return bookAssetPipeline(input);
+}
+
+export async function decideBookingAction(input: unknown) {
+  return decideBookingPipeline(input);
+}
+
+export async function cancelBookingAction(input: unknown) {
+  return cancelBookingPipeline(input);
+}
+
+export async function checkOutBookingAction(input: unknown) {
+  return checkOutBookingPipeline(input);
+}
+
+export async function checkInBookingAction(input: unknown) {
+  return checkInBookingPipeline(input);
 }

@@ -14,11 +14,12 @@ import { db, schema, type Tx } from "@/lib/db";
 import { cancelOpenTasksOfContext, createTasks } from "@/modules/platform/tasks-engine/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { listPeopleHolding } from "@/modules/platform/rbac/service";
-import { type AssetCondition, type AssetKind, type AssetStatus, type HolderType, UNASSIGNABLE_STATUSES } from "./enums";
-import { assetReach, canReadAssetMoney, canReadRegister, canViewAsset } from "./policy";
+import { type AssetCondition, type AssetKind, type AssetStatus, BOOKING_CLOSED, BOOKING_HOLDS_SLOT, type BookingStatus, type HolderType, UNASSIGNABLE_STATUSES } from "./enums";
+import { assetReach, canManageAssets, canReadAssetMoney, canReadRegister, canViewAsset } from "./policy";
 
 export * from "./enums";
-export { assetReach, canConfirmHandover, canManageAssets, canManageCategories, canReadAssetMoney, canReadPersonAssets, canReadRegister, canViewAsset } from "./policy";
+export * from "./engine/booking";
+export { assetReach, canActOnBooking, canBookAssets, canConfirmHandover, canDecideBookings, canManageAssets, canManageCategories, canReadAssetMoney, canReadPersonAssets, canReadRegister, canViewAsset } from "./policy";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type AssetRow = typeof schema.asset.$inferSelect;
@@ -403,7 +404,10 @@ export async function getAssetView(viewer: Principal, assetId: string): Promise<
   const asset = await findAsset(assetId);
   if (!asset) return null;
   const open = await openAssignment(db(), assetId);
-  if (!canViewAsset(viewer, { entityId: asset.entityId }, open?.holderPersonId ?? null)) return null;
+  // Shared production gear is common property: whether the category is bookable is part of who
+  // may look at the thing at all (`canViewAsset`).
+  const [category] = await db().select({ bookable: schema.assetCategory.bookable }).from(schema.assetCategory).where(eq(schema.assetCategory.id, asset.categoryId)).limit(1);
+  if (!canViewAsset(viewer, { entityId: asset.entityId, bookable: category?.bookable ?? false }, open?.holderPersonId ?? null)) return null;
 
   const actor = alias(schema.person, "actor");
   const assignedBy = alias(schema.person, "assigned_by");
@@ -581,6 +585,274 @@ export async function cancelReturnTasks(tx: Tx, personId: string): Promise<numbe
 /** What a leaver still has not handed back — the offboarding screen's "still out" list. */
 export async function outstandingFor(personId: string, executor: Executor = db()): Promise<HeldAsset[]> {
   return listAssetsOfPerson(personId, executor);
+}
+
+// ── Booking shared production gear (FR-AST-03) ───────────────────────────────────────────────
+// Two bookings of one thing never overlap, and the database is what says so: the exclusion
+// constraint `asset_booking_no_overlap` (migration 0056). Everything below checks first only so
+// that the answer reads as a sentence rather than a constraint name — the check and the write are
+// in one transaction, but even so the constraint is the rule and the `23P01` handler below is not
+// a fallback we hope never runs: it is the path two people booking at the same instant take.
+
+export type AssetBookingRow = typeof schema.assetBooking.$inferSelect;
+
+/**
+ * An instant as a bound parameter of a raw SQL fragment.
+ *
+ * Drizzle binds a `Date` happily when it knows the column, but inside a function call —
+ * `tstzrange($1, $2)` — it has no column to learn the type from, and postgres.js then tries to
+ * serialise the Date as a string and throws. PGlite, which the tests run on, is forgiving about
+ * it; the real driver is not, which is why this was found by opening the page rather than by a
+ * test. An ISO string with an explicit cast is unambiguous to both.
+ */
+const instant = (value: Date) => sql`${value.toISOString()}::timestamptz`;
+
+/** Postgres's exclusion-violation code: somebody else got the slot between our check and our insert. */
+const EXCLUSION_VIOLATION = "23P01";
+const isExclusionViolation = (error: unknown): boolean => typeof error === "object" && error !== null && (error as { code?: string }).code === EXCLUSION_VIOLATION;
+
+export type BookingInput = { assetId: string; personId: string; startAt: Date; endAt: Date; purpose: string | null; projectRef: string | null };
+
+/**
+ * Reserves a thing for somebody. Someone who keeps the gear books straight into `confirmed`;
+ * anybody else asks, and the keeper answers — but both hold the slot at once, so asking early
+ * beats confirming late.
+ */
+export async function bookAsset(input: BookingInput, actor: { personId: string; principal: Principal }, executor?: Tx): Promise<AssetBookingRow> {
+  const run = async (tx: Tx): Promise<AssetBookingRow> => {
+    const [row] = await tx
+      .select({ asset: schema.asset, bookable: schema.assetCategory.bookable })
+      .from(schema.asset)
+      .innerJoin(schema.assetCategory, eq(schema.assetCategory.id, schema.asset.categoryId))
+      .where(eq(schema.asset.id, input.assetId))
+      .limit(1);
+    if (!row) throw new ActionError("asset_not_found");
+    if (!row.bookable) throw new ActionError("asset_not_bookable");
+    if (UNASSIGNABLE_STATUSES.includes(row.asset.status)) throw new ActionError("asset_not_assignable");
+    if (row.asset.status === "in_repair") throw new ActionError("asset_in_repair");
+
+    const [holder] = await tx.select({ status: schema.person.status }).from(schema.person).where(eq(schema.person.id, input.personId)).limit(1);
+    if (!holder) throw new ActionError("asset_holder_unknown");
+    if (holder.status === "offboarded") throw new ActionError("asset_holder_inactive");
+
+    // Said plainly before the constraint says it in Latin.
+    const clash = await tx
+      .select({ id: schema.assetBooking.id })
+      .from(schema.assetBooking)
+      .where(
+        and(
+          eq(schema.assetBooking.assetId, input.assetId),
+          inArray(schema.assetBooking.status, [...BOOKING_HOLDS_SLOT]),
+          sql`tstzrange(${schema.assetBooking.startAt}, ${schema.assetBooking.endAt}, '[)') && tstzrange(${instant(input.startAt)}, ${instant(input.endAt)}, '[)')`,
+        ),
+      )
+      .limit(1);
+    if (clash.length > 0) throw new ActionError("asset_booking_clash");
+
+    const status: BookingStatus = canManageAssets(actor.principal, row.asset.entityId) ? "confirmed" : "requested";
+    try {
+      const [booking] = await tx
+        .insert(schema.assetBooking)
+        .values({
+          assetId: input.assetId,
+          personId: input.personId,
+          startAt: input.startAt,
+          endAt: input.endAt,
+          purpose: input.purpose,
+          projectRef: input.projectRef,
+          status,
+          createdByPersonId: actor.personId,
+          ...(status === "confirmed" ? { decidedByPersonId: actor.personId, decidedAt: now() } : {}),
+        })
+        .returning();
+      await tx.insert(schema.assetEvent).values({ assetId: input.assetId, type: "booked", actorPersonId: actor.personId, note: input.purpose, detail: { bookingId: booking.id, status, from: input.startAt.toISOString(), to: input.endAt.toISOString() } });
+      return booking;
+    } catch (error) {
+      // Two people pressed the button at the same instant; the database picked one.
+      if (isExclusionViolation(error)) throw new ActionError("asset_booking_clash");
+      throw error;
+    }
+  };
+  return executor ? run(executor) : db().transaction(run);
+}
+
+/** The keeper's answer to a request. Confirming holds the slot it already held; refusing frees it. */
+export async function decideBooking(bookingId: string, decision: "confirm" | "refuse", note: string | null, actorPersonId: string): Promise<AssetBookingRow> {
+  return db().transaction(async (tx) => {
+    const [booking] = await tx.select().from(schema.assetBooking).where(eq(schema.assetBooking.id, bookingId)).limit(1).for("update");
+    if (!booking) throw new ActionError("asset_booking_not_found");
+    if (booking.status !== "requested") throw new ActionError("asset_booking_not_pending");
+    const status: BookingStatus = decision === "confirm" ? "confirmed" : "cancelled";
+    if (decision === "refuse" && !note?.trim()) throw new ActionError("asset_booking_reason_required");
+    const [after] = await tx
+      .update(schema.assetBooking)
+      .set({ status, decidedByPersonId: actorPersonId, decidedAt: now(), decisionNote: note?.trim() || null, updatedAt: now() })
+      .where(eq(schema.assetBooking.id, bookingId))
+      .returning();
+    if (decision === "refuse") {
+      await tx.insert(schema.assetEvent).values({ assetId: booking.assetId, type: "booking_cancelled", actorPersonId, note: note?.trim() || null, detail: { bookingId, refused: true } });
+    }
+    return after;
+  });
+}
+
+/** Called off by the person whose booking it is, or by the keeper. Anything not yet back is refused. */
+export async function cancelBooking(bookingId: string, note: string | null, actorPersonId: string): Promise<AssetBookingRow> {
+  return db().transaction(async (tx) => {
+    const [booking] = await tx.select().from(schema.assetBooking).where(eq(schema.assetBooking.id, bookingId)).limit(1).for("update");
+    if (!booking) throw new ActionError("asset_booking_not_found");
+    if (BOOKING_CLOSED.includes(booking.status)) throw new ActionError("asset_booking_closed");
+    // Gear that is out of the building is brought back, not cancelled.
+    if (booking.status === "checked_out") throw new ActionError("asset_booking_checked_out");
+    const [after] = await tx
+      .update(schema.assetBooking)
+      .set({ status: "cancelled", decidedByPersonId: actorPersonId, decidedAt: now(), decisionNote: note?.trim() || null, updatedAt: now() })
+      .where(eq(schema.assetBooking.id, bookingId))
+      .returning();
+    await tx.insert(schema.assetEvent).values({ assetId: booking.assetId, type: "booking_cancelled", actorPersonId, note: note?.trim() || null, detail: { bookingId } });
+    return after;
+  });
+}
+
+export type CheckOutInput = { bookingId: string; conditionOut: AssetCondition; note: string | null };
+
+/** The gear leaves the shelf. The asset's condition follows what was seen at the counter. */
+export async function checkOutBooking(input: CheckOutInput, actorPersonId: string): Promise<AssetBookingRow> {
+  return db().transaction(async (tx) => {
+    const [booking] = await tx.select().from(schema.assetBooking).where(eq(schema.assetBooking.id, input.bookingId)).limit(1).for("update");
+    if (!booking) throw new ActionError("asset_booking_not_found");
+    if (booking.status === "requested") throw new ActionError("asset_booking_not_confirmed");
+    if (booking.status !== "confirmed") throw new ActionError("asset_booking_closed");
+    const [after] = await tx
+      .update(schema.assetBooking)
+      .set({ status: "checked_out", checkedOutAt: now(), checkedOutByPersonId: actorPersonId, conditionOut: input.conditionOut, note: input.note, updatedAt: now() })
+      .where(eq(schema.assetBooking.id, input.bookingId))
+      .returning();
+    // Booked gear that is out is out; the register says so rather than showing it on the shelf.
+    await tx.update(schema.asset).set({ status: "assigned", condition: input.conditionOut, updatedAt: now() }).where(eq(schema.asset.id, booking.assetId));
+    await tx.insert(schema.assetEvent).values({ assetId: booking.assetId, type: "checked_out", actorPersonId, note: input.note, detail: { bookingId: booking.id, conditionOut: input.conditionOut } });
+    return after;
+  });
+}
+
+export type CheckInInput = { bookingId: string; conditionIn: AssetCondition; note: string | null };
+
+/**
+ * The gear comes back. The booking leaves the statuses that hold a slot, so whatever is left of
+ * its window is free for somebody else — an early return is a real return, not a formality.
+ */
+export async function checkInBooking(input: CheckInInput, actorPersonId: string): Promise<AssetBookingRow> {
+  return db().transaction(async (tx) => {
+    const [booking] = await tx.select().from(schema.assetBooking).where(eq(schema.assetBooking.id, input.bookingId)).limit(1).for("update");
+    if (!booking) throw new ActionError("asset_booking_not_found");
+    if (booking.status !== "checked_out") throw new ActionError("asset_booking_not_checked_out");
+    const [after] = await tx
+      .update(schema.assetBooking)
+      .set({ status: "returned", checkedInAt: now(), checkedInByPersonId: actorPersonId, conditionIn: input.conditionIn, note: input.note, updatedAt: now() })
+      .where(eq(schema.assetBooking.id, input.bookingId))
+      .returning();
+    // Back on the shelf — unless it came back broken, in which case it goes to the repair bench.
+    // An asset that is also assigned to somebody long-term keeps that assignment; a booking never
+    // opens or closes one, so the two never fight over `status`.
+    const stillHeld = await openAssignment(tx, booking.assetId);
+    const status: AssetStatus = input.conditionIn === "broken" ? "in_repair" : stillHeld ? "assigned" : "in_stock";
+    await tx.update(schema.asset).set({ status, condition: input.conditionIn, updatedAt: now() }).where(eq(schema.asset.id, booking.assetId));
+    await tx.insert(schema.assetEvent).values({ assetId: booking.assetId, type: "checked_in", actorPersonId, note: input.note, detail: { bookingId: booking.id, conditionIn: input.conditionIn } });
+    return after;
+  });
+}
+
+export type BookingView = AssetBookingRow & { assetCode: string; assetName: string; assetEntityId: string; categoryName: string | null; personName: string };
+
+const bookingColumns = {
+  booking: schema.assetBooking,
+  assetCode: schema.asset.code,
+  assetName: schema.asset.name,
+  assetEntityId: schema.asset.entityId,
+  categoryName: schema.assetCategory.name,
+  personName: schema.person.fullName,
+};
+
+const bookingQuery = (executor: Executor = db()) =>
+  executor
+    .select(bookingColumns)
+    .from(schema.assetBooking)
+    .innerJoin(schema.asset, eq(schema.asset.id, schema.assetBooking.assetId))
+    .leftJoin(schema.assetCategory, eq(schema.assetCategory.id, schema.asset.categoryId))
+    .innerJoin(schema.person, eq(schema.person.id, schema.assetBooking.personId));
+
+const asBookingView = (row: { booking: AssetBookingRow; assetCode: string; assetName: string; assetEntityId: string; categoryName: string | null; personName: string }): BookingView => ({
+  ...row.booking,
+  assetCode: row.assetCode,
+  assetName: row.assetName,
+  assetEntityId: row.assetEntityId,
+  categoryName: row.categoryName,
+  personName: row.personName,
+});
+
+export type BookingFilter = { from: Date; to: Date; categoryId?: string; entityId?: string; assetId?: string; personId?: string; includeClosed?: boolean };
+
+/**
+ * The bookings a calendar draws. Bookable gear is common property (see `canViewAsset`), so this
+ * is not narrowed by entity for reading — what it *is* narrowed by is the filter the screen sets.
+ */
+export async function listBookings(filter: BookingFilter): Promise<BookingView[]> {
+  const rows = await bookingQuery()
+    .where(
+      and(
+        eq(schema.assetCategory.bookable, true),
+        filter.includeClosed ? undefined : inArray(schema.assetBooking.status, [...BOOKING_HOLDS_SLOT]),
+        sql`tstzrange(${schema.assetBooking.startAt}, ${schema.assetBooking.endAt}, '[)') && tstzrange(${instant(filter.from)}, ${instant(filter.to)}, '[)')`,
+        filter.categoryId ? eq(schema.asset.categoryId, filter.categoryId) : undefined,
+        filter.entityId ? eq(schema.asset.entityId, filter.entityId) : undefined,
+        filter.assetId ? eq(schema.assetBooking.assetId, filter.assetId) : undefined,
+        filter.personId ? eq(schema.assetBooking.personId, filter.personId) : undefined,
+      ),
+    )
+    .orderBy(asc(schema.assetBooking.startAt));
+  return rows.map(asBookingView);
+}
+
+/** One booking with the thing behind it, for the screens that act on a single reservation. */
+export async function findBooking(bookingId: string, executor: Executor = db()): Promise<BookingView | undefined> {
+  const [row] = await bookingQuery(executor).where(eq(schema.assetBooking.id, bookingId)).limit(1);
+  return row ? asBookingView(row) : undefined;
+}
+
+/** Somebody's own bookings, soonest first: what they have coming and what is still out. */
+export async function listBookingsOfPerson(personId: string, executor: Executor = db()): Promise<BookingView[]> {
+  const rows = await bookingQuery(executor)
+    .where(and(eq(schema.assetBooking.personId, personId), inArray(schema.assetBooking.status, [...BOOKING_HOLDS_SLOT])))
+    .orderBy(asc(schema.assetBooking.startAt));
+  return rows.map(asBookingView);
+}
+
+/** Requests waiting for a keeper's answer, over the entities that keeper covers. */
+export async function listBookingRequests(viewer: Principal): Promise<BookingView[]> {
+  const reach = assetReach(viewer);
+  if (!reach.all && reach.entityIds.length === 0) return [];
+  const rows = await bookingQuery()
+    .where(and(eq(schema.assetBooking.status, "requested"), reach.all ? undefined : inArray(schema.asset.entityId, reach.entityIds)))
+    .orderBy(asc(schema.assetBooking.startAt));
+  return rows.map(asBookingView);
+}
+
+/** The bookable things a calendar offers, in the order the register lists categories. */
+export async function listBookableAssets(filter: { categoryId?: string; entityId?: string } = {}): Promise<{ id: string; code: string; name: string; categoryId: string; categoryName: string; entityId: string; status: AssetStatus }[]> {
+  return db()
+    .select({ id: schema.asset.id, code: schema.asset.code, name: schema.asset.name, categoryId: schema.asset.categoryId, categoryName: schema.assetCategory.name, entityId: schema.asset.entityId, status: schema.asset.status })
+    .from(schema.asset)
+    .innerJoin(schema.assetCategory, eq(schema.assetCategory.id, schema.asset.categoryId))
+    .where(
+      and(
+        eq(schema.assetCategory.bookable, true),
+        eq(schema.assetCategory.isActive, true),
+        sql`${schema.asset.status} not in ('lost', 'disposed')`,
+        filter.categoryId ? eq(schema.asset.categoryId, filter.categoryId) : undefined,
+        filter.entityId ? eq(schema.asset.entityId, filter.entityId) : undefined,
+      ),
+    )
+    .orderBy(asc(schema.assetCategory.sortOrder), asc(schema.assetCategory.name), asc(schema.asset.code));
 }
 
 export const assetsToday = (): IsoDate => todayInVietnam();

@@ -50,7 +50,8 @@
     "payslips": "Phiếu lương",
     "requests": "Đề nghị",
     "requestTypes": "Loại đề nghị",
-    "assets": "Tài sản"
+    "assets": "Tài sản",
+    "bookings": "Lịch đặt thiết bị"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -5599,7 +5600,8 @@
       "categories": "Nhóm tài sản",
       "new": "Ghi nhận tài sản",
       "edit": "Sửa thông tin",
-      "import": "Nhập từ tệp"
+      "import": "Nhập từ tệp",
+      "bookings": "Lịch đặt thiết bị"
     },
     "columns": {
       "code": "Mã",
@@ -5754,7 +5756,21 @@
       "asset_holder_inactive": "Người này đã nghỉ việc, không thể giao tài sản.",
       "asset_assignment_not_found": "Không tìm thấy lượt giao tài sản.",
       "asset_assignment_closed": "Lượt giao này đã kết thúc.",
-      "asset_handover_already_confirmed": "Bạn đã xác nhận nhận tài sản này rồi."
+      "asset_handover_already_confirmed": "Bạn đã xác nhận nhận tài sản này rồi.",
+      "asset_not_bookable": "Nhóm tài sản này không cho đặt lịch.",
+      "asset_in_repair": "Thiết bị đang được sửa chữa.",
+      "asset_booking_clash": "Thiết bị đã có người đặt trong khoảng thời gian này.",
+      "asset_booking_not_found": "Không tìm thấy lượt đặt.",
+      "asset_booking_not_pending": "Yêu cầu này đã được trả lời.",
+      "asset_booking_reason_required": "Vui lòng nêu lý do từ chối.",
+      "asset_booking_closed": "Lượt đặt này đã kết thúc.",
+      "asset_booking_checked_out": "Thiết bị đang được mượn — hãy nhận lại thay vì hủy.",
+      "asset_booking_not_confirmed": "Lượt đặt chưa được duyệt.",
+      "asset_booking_not_checked_out": "Thiết bị chưa được giao.",
+      "booking_end_before_start": "Thời điểm kết thúc phải sau thời điểm bắt đầu.",
+      "booking_in_the_past": "Không thể đặt lịch cho thời gian đã qua.",
+      "booking_too_long": "Một lượt đặt kéo dài tối đa 14 ngày.",
+      "booking_too_far_ahead": "Chỉ có thể đặt trước tối đa một năm."
     },
     "person": {
       "title": "Thiết bị đang giữ",
@@ -5773,6 +5789,83 @@
         "code": "Để trống cột Mã tài sản thì hệ thống tự đánh số tiếp theo pháp nhân và nhóm.",
         "holder": "Cột Người giữ nhận mã nhân viên hoặc email công việc; hệ thống sẽ mở luôn lượt giao và vẫn chờ người đó xác nhận.",
         "serial": "Nhóm tài sản có bật \"bắt buộc số sê-ri\" thì dòng thiếu sê-ri sẽ báo lỗi."
+      }
+    },
+    "bookings": {
+      "title": "Lịch đặt thiết bị",
+      "description": "Thiết bị sản xuất dùng chung: đặt lịch, nhận máy và trả máy. Hai lượt đặt cùng một thiết bị không bao giờ chồng nhau.",
+      "noGear": "Chưa có thiết bị nào thuộc nhóm cho đặt lịch.",
+      "waiting": "Chờ duyệt",
+      "noneWaiting": "Không có yêu cầu nào đang chờ.",
+      "mine": "Lượt đặt của tôi",
+      "noneMine": "Bạn chưa đặt thiết bị nào.",
+      "nav": {
+        "calendar": "Lịch đặt",
+        "mine": "Thiết bị của tôi"
+      },
+      "week": {
+        "previous": "Tuần trước",
+        "next": "Tuần sau",
+        "of": "Tuần bắt đầu {date}"
+      },
+      "days": {
+        "mon": "T2",
+        "tue": "T3",
+        "wed": "T4",
+        "thu": "T5",
+        "fri": "T6",
+        "sat": "T7",
+        "sun": "CN"
+      },
+      "columns": {
+        "asset": "Thiết bị",
+        "person": "Người đặt",
+        "window": "Thời gian",
+        "purpose": "Mục đích",
+        "status": "Trạng thái"
+      },
+      "status": {
+        "requested": "Chờ duyệt",
+        "confirmed": "Đã duyệt",
+        "checked_out": "Đang mượn",
+        "returned": "Đã trả",
+        "cancelled": "Đã hủy"
+      },
+      "form": {
+        "title": "Đặt thiết bị",
+        "asset": "Thiết bị",
+        "pickAsset": "Chọn thiết bị…",
+        "person": "Người sử dụng",
+        "myself": "Chính tôi",
+        "from": "Từ",
+        "to": "Đến",
+        "purpose": "Mục đích",
+        "purposeHint": "Quay phóng sự tại Đà Nẵng",
+        "projectRef": "Mã dự án",
+        "submit": "Đặt lịch"
+      },
+      "decide": {
+        "title": "Duyệt yêu cầu",
+        "confirm": "Duyệt",
+        "refuse": "Từ chối",
+        "reason": "Lý do từ chối",
+        "back": "Quay lại"
+      },
+      "cancel": {
+        "open": "Hủy lượt đặt",
+        "reason": "Lý do (không bắt buộc)",
+        "submit": "Xác nhận hủy"
+      },
+      "move": {
+        "outTitle": "Giao thiết bị",
+        "inTitle": "Nhận lại thiết bị",
+        "conditionOut": "Tình trạng khi giao",
+        "conditionIn": "Tình trạng khi nhận lại",
+        "note": "Ghi chú",
+        "checkOut": "Đã giao máy",
+        "checkIn": "Đã nhận lại",
+        "checkedOutAt": "Giao lúc",
+        "checkedInAt": "Nhận lại lúc"
       }
     }
   }

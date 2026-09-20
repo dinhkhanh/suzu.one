@@ -8,7 +8,7 @@
 import { randomBytes } from "node:crypto";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
-import { asset, assetAssignment, assetCategory, assetEvent, employment, entity, person, roleAssignment } from "../src/lib/db/schema";
+import { asset, assetAssignment, assetBooking, assetCategory, assetEvent, employment, entity, person, roleAssignment } from "../src/lib/db/schema";
 import type { AssetCondition } from "../src/modules/assets/enums";
 
 type Db = ReturnType<typeof drizzle>;
@@ -64,9 +64,28 @@ const UNASSIGNED: (Kit & { status?: "in_stock" | "in_repair" | "lost"; location?
 
 const token = () => randomBytes(16).toString("hex");
 
-export async function seedAssets(db: Db, today: string): Promise<{ assets: number; assigned: number }> {
+/** Everyone still here, by work email (or by full name for the people without one). */
+async function peopleByKey(db: Db): Promise<Map<string, { id: string; fullName: string; workEmail: string | null; entityId: string | null }>> {
+  const people = await db
+    .select({ id: person.id, fullName: person.fullName, workEmail: person.workEmail, entityId: person.primaryEntityId })
+    .from(person)
+    .leftJoin(employment, and(eq(employment.personId, person.id), isNull(employment.endDate)))
+    .where(eq(person.status, "active"))
+    .orderBy(asc(person.fullName));
+  return new Map(people.flatMap((row) => [[row.workEmail?.toLowerCase() ?? row.fullName, row] as const]));
+}
+
+/** Whoever keeps the gear in the demo company. */
+async function keeperId(db: Db): Promise<string | null> {
+  const byKey = await peopleByKey(db);
+  return (byKey.get("bao.pham@suzu.group") ?? byKey.get("mai.le@suzu.group"))?.id ?? null;
+}
+
+export async function seedAssets(db: Db, today: string): Promise<{ assets: number; assigned: number; bookings: number }> {
+  // The register and the bookings guard themselves separately, so a database that already has one
+  // still gets the other — which is what happens when a later week adds to an earlier week's seed.
   const existing = await db.select({ id: asset.id }).from(asset).limit(1);
-  if (existing.length > 0) return { assets: 0, assigned: 0 };
+  if (existing.length > 0) return { assets: 0, assigned: 0, bookings: await seedBookings(db, await peopleByKey(db), await keeperId(db)) };
 
   const categories = new Map((await db.select().from(assetCategory)).map((row) => [row.code, row]));
   const entities = new Map((await db.select().from(entity)).map((row) => [row.code, row]));
@@ -205,5 +224,56 @@ export async function seedAssets(db: Db, today: string): Promise<{ assets: numbe
     assigned += 1;
   }
 
-  return { assets, assigned };
+  const bookings = await seedBookings(db, byKey, keeper?.id ?? null);
+  return { assets, assigned, bookings };
+}
+
+/**
+ * A believable week on the studio shelf (FR-AST-03): one shoot already out with the FX6 and the
+ * 24-70, a confirmed booking of the drone next week, a request from the editor still waiting for
+ * the keeper's answer, and one booking that was called off. Written through the tables for the
+ * same reason as the rest of this file — no session to run a use-case with — but every row is the
+ * shape `bookAsset` writes, and the exclusion constraint checks them just the same.
+ */
+async function seedBookings(db: Db, byKey: Map<string, { id: string }>, keeper: string | null): Promise<number> {
+  const existing = await db.select({ id: assetBooking.id }).from(assetBooking).limit(1);
+  if (existing.length > 0) return 0;
+
+  const gear = new Map(
+    (await db.select({ id: asset.id, name: asset.name }).from(asset).innerJoin(assetCategory, eq(assetCategory.id, asset.categoryId)).where(eq(assetCategory.bookable, true))).map((row) => [row.name, row.id] as const),
+  );
+  const tam = byKey.get("tam.bui@suzu.group");
+  const huy = byKey.get("huy.ho@suzu.group");
+  const baoAnh = byKey.get("Ngô Bảo Anh");
+  if (!tam || !huy) return 0;
+
+  // Anchored on the Monday of this week, so the calendar always has something on it.
+  const monday = new Date();
+  monday.setUTCHours(2, 0, 0, 0);
+  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+  const day = (offset: number, hour: number) => new Date(monday.getTime() + offset * 86_400_000 + (hour - 9) * 3_600_000);
+
+  const rows: (typeof assetBooking.$inferInsert)[] = [];
+  const add = (name: string, personId: string, from: Date, to: Date, over: Partial<typeof assetBooking.$inferInsert> = {}) => {
+    const assetId = gear.get(name);
+    if (assetId) rows.push({ assetId, personId, startAt: from, endAt: to, createdByPersonId: keeper, status: "confirmed", decidedByPersonId: keeper, decidedAt: monday, ...over });
+  };
+
+  // Out on a shoot right now: taken off the shelf this morning, back on Wednesday.
+  add("Sony FX6", tam.id, day(0, 8), day(2, 18), { status: "checked_out", purpose: "Quay TVC cho khách hàng Vinamilk", projectRef: "PRJ-2026-014", checkedOutAt: day(0, 8), checkedOutByPersonId: keeper, conditionOut: "good" });
+  add("Sony 24-70mm f/2.8 GM II", tam.id, day(0, 8), day(2, 18), { status: "checked_out", purpose: "Quay TVC cho khách hàng Vinamilk", projectRef: "PRJ-2026-014", checkedOutAt: day(0, 8), checkedOutByPersonId: keeper, conditionOut: "good" });
+  // Confirmed, still to come.
+  add("DJI Mavic 3 Pro", baoAnh?.id ?? huy.id, day(8, 7), day(9, 17), { purpose: "Quay flycam khu nghỉ dưỡng Hồ Tràm", projectRef: "PRJ-2026-019" });
+  add("Aputure 600d Pro", huy.id, day(3, 9), day(3, 18), { purpose: "Quay phỏng vấn nội bộ" });
+  // Waiting for the keeper's answer — the request that makes the inbox worth looking at.
+  add("Sony FX3", huy.id, day(4, 8), day(4, 18), { status: "requested", decidedByPersonId: null, decidedAt: null, createdByPersonId: huy.id, purpose: "Quay hậu trường sự kiện ra mắt" });
+  // Called off, so its slot is free again — and the calendar does not show it.
+  add("Sony 70-200mm f/2.8 GM II", tam.id, day(1, 8), day(1, 18), { status: "cancelled", decisionNote: "Khách dời lịch quay sang tuần sau." });
+
+  if (rows.length === 0) return 0;
+  const inserted = await db.insert(assetBooking).values(rows).returning({ id: assetBooking.id, assetId: assetBooking.assetId, status: assetBooking.status });
+  await db.insert(assetEvent).values(inserted.map((row) => ({ assetId: row.assetId, type: "booked" as const, actorPersonId: keeper, detail: { bookingId: row.id, status: row.status } })));
+  // The two lenses and the body that are out are not on the shelf, and the register says so.
+  for (const row of inserted.filter((booking) => booking.status === "checked_out")) await db.update(asset).set({ status: "assigned" }).where(eq(asset.id, row.assetId));
+  return inserted.length;
 }

@@ -6,8 +6,10 @@ import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { requireUser } from "@/modules/platform/auth/session";
-import { canConfirmHandover, canManageAssets, findAsset, getAssetView, listCategories } from "@/modules/assets/service";
+import { canBookAssets, canConfirmHandover, canManageAssets, findAsset, getAssetView, listBookings, listCategories } from "@/modules/assets/service";
 import { AssignForm, ConfirmHandoverForm, ReturnForm, StatusForm } from "@/modules/assets/ui/asset-forms";
+import { BookingList } from "@/modules/assets/ui/booking-calendar";
+import { BookAssetForm } from "@/modules/assets/ui/booking-forms";
 import { AssetHistory, AssetQr, StatusBadge } from "@/modules/assets/ui/register-views";
 
 export const metadata: Metadata = { title: "Tài sản" };
@@ -25,6 +27,13 @@ export default async function AssetPage({ params }: PageProps<"/assets/[assetId]
   const mine = canConfirmHandover(user.principal, open?.holderPersonId ?? null) && !open?.handoverConfirmedAt;
   const t = await getTranslations("assets");
   const tField = await getTranslations("assets.form");
+  const tBooking = await getTranslations("assets.bookings");
+
+  // Shared production gear carries its own booking panel; ordinary equipment does not.
+  const [category] = asset ? await db().select({ bookable: schema.assetCategory.bookable }).from(schema.assetCategory).where(eq(schema.assetCategory.id, asset.categoryId)).limit(1) : [];
+  const bookable = !!category?.bookable;
+  const from = new Date();
+  const upcoming = bookable ? await listBookings({ from, to: new Date(from.getTime() + 90 * 86_400_000), assetId }) : [];
 
   const [people, teams, entities, categories] = manage
     ? await Promise.all([
@@ -94,6 +103,19 @@ export default async function AssetPage({ params }: PageProps<"/assets/[assetId]
           <Link href={`/assets/${assetId}/edit`} className="text-sm underline">
             {t("nav.edit")}
           </Link>
+        </section>
+      ) : null}
+
+      {bookable ? (
+        <section className="flex flex-col gap-3 rounded-md border p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-medium">{tBooking("title")}</h2>
+            <Link href="/assets/bookings" className="text-sm underline">
+              {tBooking("nav.calendar")}
+            </Link>
+          </div>
+          <BookingList rows={upcoming} empty={tBooking("noneMine")} showAsset={false} />
+          {canBookAssets(user.principal) ? <BookAssetForm assets={[]} assetId={assetId} people={people} canBookForOthers={manage} /> : null}
         </section>
       ) : null}
 

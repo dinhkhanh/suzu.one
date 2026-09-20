@@ -156,7 +156,7 @@ async function main() {
   console.log(`Seeded ${await seedComms(db)}.`);
   console.log(`Seeded ${await seedGenericRequests(db)} generic requests (purchase, payment, advance, letter, trip — at every approval stage).`);
   const equipment = await seedAssets(db, today);
-  console.log(`Seeded ${equipment.assets} assets, ${equipment.assigned} of them handed out (existing register left untouched).`);
+  console.log(`Seeded ${equipment.assets} assets, ${equipment.assigned} of them handed out, and ${equipment.bookings} bookings of the shared gear (existing register left untouched).`);
   console.log(`Seeded ${await seedPayroll(db)}.`);
   // The ops tracker's instances come from the real scheduler, which only runs inside the app
   // (server-only modules cannot be loaded by tsx): start `pnpm dev`, then `pnpm db:seed:demo:ops`.

@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { bigint, boolean, date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { entity, team } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
-import type { AssetCondition, AssetEventType, AssetKind, AssetStatus, HolderType } from "./enums";
+import type { AssetCondition, AssetEventType, AssetKind, AssetStatus, BookingStatus, HolderType } from "./enums";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -110,6 +110,49 @@ export const assetAssignment = pgTable(
     index("asset_assignment_holder_idx").on(t.holderPersonId, t.returnedAt),
     index("asset_assignment_asset_idx").on(t.assetId, t.assignedAt),
   ],
+).enableRLS();
+
+// A spell of shared production gear reserved for somebody (FR-AST-03). Two bookings of one thing
+// never overlap, and it is the database that says so: migration 0056 adds
+//   EXCLUDE USING gist (asset_id WITH =, tstzrange(start_at, end_at) WITH &&)
+//     WHERE (status in ('requested', 'confirmed', 'checked_out'))
+// which drizzle-kit cannot express, so it is hand-written there beside the other exclusion
+// constraints (0005, 0010, 0020). The check in `bookAsset` is for a decent message, not the rule.
+export const assetBooking = pgTable(
+  "asset_booking",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    assetId: uuid("asset_id")
+      .notNull()
+      .references(() => asset.id),
+    // Who will have it. A booking is always a person's — a shelf does not shoot a film.
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    // The reservation. Half-open in the constraint: a booking ending at 17:00 and one starting
+    // at 17:00 do not clash.
+    startAt: timestamp("start_at", { withTimezone: true }).notNull(),
+    endAt: timestamp("end_at", { withTimezone: true }).notNull(),
+    purpose: text("purpose"),
+    // The shoot or the client it is for, typed as the production team says it: "PRJ-2026-014".
+    projectRef: text("project_ref"),
+    status: text("status").$type<BookingStatus>().notNull().default("requested"),
+    // What actually happened, kept apart from what was reserved.
+    checkedOutAt: timestamp("checked_out_at", { withTimezone: true }),
+    checkedOutByPersonId: uuid("checked_out_by_person_id").references(() => person.id),
+    conditionOut: text("condition_out").$type<AssetCondition>(),
+    checkedInAt: timestamp("checked_in_at", { withTimezone: true }),
+    checkedInByPersonId: uuid("checked_in_by_person_id").references(() => person.id),
+    conditionIn: text("condition_in").$type<AssetCondition>(),
+    note: text("note"),
+    // Why it was called off, or who confirmed it.
+    decidedByPersonId: uuid("decided_by_person_id").references(() => person.id),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decisionNote: text("decision_note"),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [index("asset_booking_asset_idx").on(t.assetId, t.startAt), index("asset_booking_person_idx").on(t.personId, t.startAt), index("asset_booking_window_idx").on(t.startAt, t.endAt)],
 ).enableRLS();
 
 // Everything that ever happened to one asset, in order. Only ever inserted.

@@ -50,7 +50,8 @@
     "payslips": "Payslips",
     "requests": "Requests",
     "requestTypes": "Request types",
-    "assets": "Assets"
+    "assets": "Assets",
+    "bookings": "Equipment bookings"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -5599,7 +5600,8 @@
       "categories": "Categories",
       "new": "Register an asset",
       "edit": "Edit",
-      "import": "Import"
+      "import": "Import",
+      "bookings": "Equipment bookings"
     },
     "columns": {
       "code": "Code",
@@ -5754,7 +5756,21 @@
       "asset_holder_inactive": "That person has left and cannot be given equipment.",
       "asset_assignment_not_found": "Assignment not found.",
       "asset_assignment_closed": "That assignment has already ended.",
-      "asset_handover_already_confirmed": "You have already confirmed receipt of this asset."
+      "asset_handover_already_confirmed": "You have already confirmed receipt of this asset.",
+      "asset_not_bookable": "This category is not booked.",
+      "asset_in_repair": "The equipment is being repaired.",
+      "asset_booking_clash": "Somebody already has this equipment for that time.",
+      "asset_booking_not_found": "Booking not found.",
+      "asset_booking_not_pending": "This request has already been answered.",
+      "asset_booking_reason_required": "Please say why you are refusing.",
+      "asset_booking_closed": "This booking is over.",
+      "asset_booking_checked_out": "The equipment is out — take it back rather than cancelling.",
+      "asset_booking_not_confirmed": "The booking has not been confirmed.",
+      "asset_booking_not_checked_out": "The equipment has not been handed over.",
+      "booking_end_before_start": "The end must come after the start.",
+      "booking_in_the_past": "A booking cannot start in the past.",
+      "booking_too_long": "A booking runs for a fortnight at most.",
+      "booking_too_far_ahead": "A booking can be made a year ahead at most."
     },
     "person": {
       "title": "Equipment held",
@@ -5773,6 +5789,83 @@
         "code": "Leave the code column empty and the register numbers the asset from its entity and category.",
         "holder": "The holder column takes an employee code or work email; the assignment is opened and still waits for that person to confirm.",
         "serial": "A category with \"serial number required\" turned on rejects a row without one."
+      }
+    },
+    "bookings": {
+      "title": "Equipment bookings",
+      "description": "Shared production gear: reserve it, take it out, bring it back. Two bookings of one thing never overlap.",
+      "noGear": "No equipment in a bookable category yet.",
+      "waiting": "Waiting for an answer",
+      "noneWaiting": "Nothing is waiting.",
+      "mine": "My bookings",
+      "noneMine": "You have not booked anything.",
+      "nav": {
+        "calendar": "Calendar",
+        "mine": "My equipment"
+      },
+      "week": {
+        "previous": "Previous week",
+        "next": "Next week",
+        "of": "Week beginning {date}"
+      },
+      "days": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      },
+      "columns": {
+        "asset": "Equipment",
+        "person": "Booked by",
+        "window": "When",
+        "purpose": "Purpose",
+        "status": "Status"
+      },
+      "status": {
+        "requested": "Requested",
+        "confirmed": "Confirmed",
+        "checked_out": "Out",
+        "returned": "Returned",
+        "cancelled": "Cancelled"
+      },
+      "form": {
+        "title": "Book equipment",
+        "asset": "Equipment",
+        "pickAsset": "Choose equipment…",
+        "person": "For",
+        "myself": "Myself",
+        "from": "From",
+        "to": "To",
+        "purpose": "Purpose",
+        "purposeHint": "Documentary shoot in Đà Nẵng",
+        "projectRef": "Project reference",
+        "submit": "Book"
+      },
+      "decide": {
+        "title": "Answer the request",
+        "confirm": "Confirm",
+        "refuse": "Refuse",
+        "reason": "Reason for refusing",
+        "back": "Back"
+      },
+      "cancel": {
+        "open": "Cancel booking",
+        "reason": "Reason (optional)",
+        "submit": "Confirm cancellation"
+      },
+      "move": {
+        "outTitle": "Hand the equipment over",
+        "inTitle": "Take the equipment back",
+        "conditionOut": "Condition when handed over",
+        "conditionIn": "Condition when returned",
+        "note": "Note",
+        "checkOut": "Handed over",
+        "checkIn": "Taken back",
+        "checkedOutAt": "Handed over at",
+        "checkedInAt": "Taken back at"
       }
     }
   }

@@ -22,6 +22,9 @@ export function navFor(principal: Principal, open: { people: boolean }): { main:
     // Equipment: everyone has their own, so the entry always shows; the register behind it is for
     // whoever keeps one, and /assets sends anybody else to their own list.
     { key: "assets", href: can(principal, "asset:manage") ? "/assets" : "/assets/mine" },
+    // Shared production gear is common property (see assets/policy.ts), so the calendar is for
+    // everybody — the camera operator who needs the lens on Friday most of all.
+    { key: "bookings", href: "/assets/bookings" },
     // Compliance: people with an ops role. Anyone else reaches their own obligations through My work.
     ...(can(principal, "ops:read") || can(principal, "ops:manage") ? [{ key: "ops", href: "/ops" }] : []),
     // Goals and KPIs: everyone has their own; what else they see is decided on the pages.

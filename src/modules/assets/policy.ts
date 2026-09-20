@@ -16,6 +16,9 @@ import { can, entityReach, type Principal, type Target } from "../platform/rbac/
 export type AssetTarget = { entityId: string };
 export type HolderTarget = Target & { personId: string };
 
+/** A booking, as far as the rules care: whose it is and which entity's gear it holds. */
+export type BookingTarget = { personId: string; entityId: string };
+
 // No entity at all means "anywhere" — `can()` reads an *absent* target that way, while `{}` is a
 // target that nothing covers. The difference is what separates a navigation check from a data one.
 const over = (entityId: string | null | undefined) => (entityId ? { entityId } : undefined);
@@ -43,9 +46,37 @@ export const canReadAssetMoney = (principal: Principal, entityId?: string): bool
 export const canReadPersonAssets = (principal: Principal, person: HolderTarget): boolean =>
   (!!principal.personId && principal.personId === person.personId) || canReadRegister(principal, person.entityId ?? undefined) || can(principal, "person:manage", person);
 
-/** One asset's page: the register's readers, and whoever is holding it right now. */
-export const canViewAsset = (principal: Principal, asset: AssetTarget, holderPersonId: string | null): boolean =>
-  canReadRegister(principal, asset.entityId) || (!!principal.personId && holderPersonId === principal.personId);
+/**
+ * One asset's page: the register's readers, whoever is holding it right now — and, for **shared
+ * production gear**, anybody on the staff.
+ *
+ * The last limb is week 3's addition and it is a deliberate widening. A booking calendar that
+ * only `asset:manage` can read is of no use to the camera operator who needs the 24-70 on Friday:
+ * the whole point of marking a category bookable is that the gear is common property on a shelf.
+ * So a bookable asset's *facts* — what it is, what condition it is in, who has it booked — are
+ * open to the staff, while its **money stays where it was** (`canReadAssetMoney`, untouched): the
+ * operator sees the lens and never what it cost. Nothing that is not bookable moves an inch.
+ */
+export const canViewAsset = (principal: Principal, asset: AssetTarget & { bookable?: boolean }, holderPersonId: string | null): boolean =>
+  canReadRegister(principal, asset.entityId) || (!!principal.personId && holderPersonId === principal.personId) || (!!asset.bookable && !!principal.personId);
+
+/**
+ * Who may reserve shared gear: anybody on the staff, for themselves. Someone with `asset:manage`
+ * books straight into `confirmed` (they keep the gear); everybody else *asks*, and the keeper
+ * confirms. Both hold the slot from the moment they are made — first come, first served — so
+ * asking is not a weaker claim, only a reversible one.
+ */
+export const canBookAssets = (principal: Principal): boolean => !!principal.personId;
+
+/** Confirming somebody else's request, and refusing one: whoever keeps that entity's gear. */
+export const canDecideBookings = (principal: Principal, entityId?: string): boolean => canManageAssets(principal, entityId);
+
+/**
+ * Calling a booking off, taking the gear out and bringing it back: the person whose booking it is,
+ * or whoever keeps the gear. A colleague cannot cancel your Friday shoot.
+ */
+export const canActOnBooking = (principal: Principal, booking: BookingTarget): boolean =>
+  (!!principal.personId && principal.personId === booking.personId) || canManageAssets(principal, booking.entityId);
 
 /**
  * Only the person a thing was handed to confirms they received it (FR-AST-02). Not the storekeeper
