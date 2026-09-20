@@ -8,7 +8,8 @@
 //   · everyone has self-reviewed except one person (so the "waiting for the self review" path is live)
 //   · their managers have written and submitted, except for that one
 //   · two people are calibrated and released, one of them has acknowledged
-//   · peer nominations are approved and one peer form is in (week 2 drives the rest)
+//   · peer nominations are approved and four peer forms are in; one nomination is still waiting
+//     for the manager's answer, so the approval step has a live row too
 import { eq } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
 import { entity, person, reviewCycle, reviewForm, reviewParticipant, reviewPeerNomination, reviewTemplate } from "../src/lib/db/schema";
@@ -52,6 +53,8 @@ type Fill = {
   release?: string;
   acknowledge?: string;
   peers?: { by: string; answers: ReviewAnswers; comment: string }[];
+  /** Nominated but not yet approved: the manager still has to answer. */
+  pendingPeers?: string[];
 };
 
 const FILLS: Fill[] = [
@@ -69,20 +72,32 @@ const FILLS: Fill[] = [
     self: { answers: { quality: 4, ownership: 4, teamwork: 3, growth: 3, highlights: "Đạo diễn 6 TVC, 5 bàn giao đúng hạn; số vòng sửa trung bình giảm từ 3,5 xuống 2,4.", improve: "Giao việc lại cho đội nhiều hơn thay vì ôm." }, comment: "Quý 3 nặng nhưng giữ được chất lượng." },
     manager: { by: LONG, answers: { quality: 4, ownership: 4, teamwork: 3, growth: 4, highlights: "Giữ được chất lượng khi khối lượng tăng; khách hài lòng.", improve: "Phân việc cho Huy và Linh nhiều hơn để đỡ nghẽn ở một người." }, comment: "Trụ cột của phòng. Cần tập giao việc." },
     release: LONG,
+    acknowledge: "Em nhận phần giao việc. Sang năm sẽ chia rõ đầu việc cho Huy và Linh ngay từ đầu dự án.",
+    peers: [
+      { by: HUY, answers: { quality: 5, teamwork: 3, highlights: "Anh Tâm chốt hướng rất nhanh, đỡ mất thời gian sửa.", improve: "Đôi khi ôm việc, bọn em muốn được giao thêm." }, comment: "Học được nhiều khi làm cùng." },
+      { by: LINH, answers: { quality: 4, teamwork: 4, highlights: "Brief rõ ràng, phản hồi nhanh.", improve: "" }, comment: "Dễ làm việc cùng." },
+    ],
   },
   {
     who: LONG,
     self: { answers: { quality: 4, ownership: 5, teamwork: 4, growth: 3, highlights: "Phòng Video đạt 95 % đúng hạn và giữ CSAT 4,25.", improve: "Xây quy trình hậu kỳ chuẩn hoá hơn." }, comment: "Một năm ổn định." },
     manager: { by: HA, answers: { quality: 4, ownership: 5, teamwork: 4, growth: 3, highlights: "Phòng chạy đều, không còn phụ thuộc vào một người.", improve: "Cần chuẩn bị người kế cận." }, comment: "Đồng ý." },
+    calibrate: { bp: 11000, note: "Cân đối giữa các trưởng phòng: giữ ở mức vượt mong đợi.", by: HA },
+    release: HA,
+    peers: [{ by: TAM, answers: { quality: 4, teamwork: 5, highlights: "Anh Long bảo vệ đội trước khách rất tốt.", improve: "" }, comment: "Sếp trực tiếp, làm việc thẳng thắn." }],
   },
   {
     who: BAO,
     self: { answers: { quality: 3, ownership: 3, teamwork: 4, growth: 4, highlights: "Hồ sơ nhân sự đúng hạn 95 %, hỗ trợ tốt cho kỳ lương.", improve: "Nắm chắc hơn phần bảo hiểm." }, comment: "Năm đầu phụ trách một pháp nhân riêng." },
     manager: { by: MAI, answers: { quality: 3, ownership: 4, teamwork: 4, growth: 4, highlights: "Chủ động hơn hẳn nửa cuối năm.", improve: "Phần bảo hiểm cần chắc tay hơn." }, comment: "Tiến bộ đều." },
+    release: MAI,
+    peers: [{ by: LINH, answers: { quality: 3, teamwork: 4, highlights: "Anh Bảo trả lời thắc mắc về hợp đồng rất nhanh.", improve: "" }, comment: "" }],
   },
   // Linh joined in August and has not written hers: the manager review is blocked until the due
-  // date passes, which is exactly the path the screen has to explain.
-  { who: LINH, peers: [] },
+  // date passes, which is exactly the path the screen has to explain. One peer has been put
+  // forward for her and is still waiting for Tâm to approve, so the nomination flow has a live
+  // pending row too.
+  { who: LINH, pendingPeers: [HUY] },
 ];
 
 export async function seedReviews(db: Db): Promise<string> {
@@ -154,6 +169,10 @@ export async function seedReviews(db: Db): Promise<string> {
     if (fill.manager) {
       const author = byName.get(fill.manager.by);
       if (author) await writeForm(participant.id, subject.id, "manager", author.id, fill.manager.answers, fill.manager.comment, "2026-12-12T07:00:00Z");
+    }
+    for (const name of fill.pendingPeers ?? []) {
+      const peer = byName.get(name);
+      if (peer) await db.insert(reviewPeerNomination).values({ cycleId: cycle.id, participantId: participant.id, peerPersonId: peer.id, nominatedByPersonId: subject.id, status: "pending" });
     }
     for (const peer of fill.peers ?? []) {
       const author = byName.get(peer.by);
