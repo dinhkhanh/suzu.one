@@ -52,6 +52,14 @@ export function stepUpDriverProblem(input: { driver: "google" | "local"; nodeEnv
   return null;
 }
 
+/**
+ * True only on a developer's own machine: never in a production build, never on Vercel. The one
+ * place `NODE_ENV` may be read, so development-only tooling has a single honest gate.
+ */
+export function isDevelopmentEnvironment(): boolean {
+  return process.env.NODE_ENV !== "production" && !process.env.VERCEL_ENV;
+}
+
 function load() {
   const parsed = schema.safeParse({
     ...process.env,

@@ -9,7 +9,9 @@ vi.mock("@/lib/env", () => ({
 }));
 
 import { fieldCipher } from "@/lib/crypto";
-import { db, migrateTestDb, schema } from "../../../tests/helpers/db";
+// Through the mock, so the transaction type is the app's own and the services type-check here.
+import { db, schema } from "@/lib/db";
+import { migrateTestDb } from "../../../tests/helpers/db";
 import { runResultContext, runTotalsContext } from "./field-contexts";
 import type { PersonPayResult } from "./engine/types";
 import { COMPARED_FIELDS, openReference, reconcile, saveFinding, saveReference } from "./parallel";

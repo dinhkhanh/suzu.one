@@ -11,6 +11,7 @@ import { payrollCalculateJob } from "@/modules/payroll/run-calculation";
 import { type JobDefinition, runJob } from "@/modules/platform/jobs/service";
 import { notificationsDailyJob } from "@/modules/platform/notifications/jobs";
 import { workRecurringJob, workRemindersJob } from "@/modules/work/jobs";
+import { payrollDemoRunsJob } from "./payroll-demo";
 
 // What each cron URL runs. Schedules live in vercel.json and stay daily, which every Vercel plan
 // allows; jobs that share a time of day share a URL but are still recorded (and fail) one by one.
@@ -23,7 +24,8 @@ const SCHEDULES: Record<string, JobDefinition[]> = {
 };
 
 // Run by hand only: /api/cron/<job name>.
-const ON_DEMAND: JobDefinition[] = [fieldKeysRewrapJob, opsBackfillJob];
+// `payroll-demo-runs` refuses to run outside a development server (see its own file).
+const ON_DEMAND: JobDefinition[] = [fieldKeysRewrapJob, opsBackfillJob, payrollDemoRunsJob];
 
 export const maxDuration = 300;
 

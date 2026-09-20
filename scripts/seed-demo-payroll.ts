@@ -15,7 +15,8 @@ import { randomUUID } from "node:crypto";
 import { and, eq, gte, isNull, or } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
 import { createFieldCipher, parseKeyRing } from "../src/lib/crypto/field-cipher";
-import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, dependent, employment, entity, lifecycleEvent, payProfile, payrollPolicy, person, roleAssignment, salaryStructure } from "../src/lib/db/schema";
+import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, dependent, employment, entity, lifecycleEvent, payProfile, payrollPolicy, person, personSensitive, roleAssignment, salaryStructure } from "../src/lib/db/schema";
+import { sensitiveContext } from "../src/modules/core-hr/field-contexts";
 import { DEFAULT_PAYROLL_POLICY, type SalaryTerms } from "../src/modules/payroll/enums";
 import { salaryChangeContext, salaryTermsContext } from "../src/modules/payroll/field-contexts";
 
@@ -112,6 +113,25 @@ export async function seedPayroll(db: Db): Promise<string> {
     dependents += family.length;
   }
 
+  // A pay account for every Statutory-profile person who has none. A run cannot honestly be
+  // marked paid while somebody it owes money to cannot be transferred to — which is exactly what
+  // the payment rules refuse (FR-PAY-33) — so the demo company banks everyone, alternating
+  // between the two banks the system can write files for.
+  let accounts = 0;
+  const statutory = await db.select({ personId: payProfile.personId }).from(payProfile).where(and(eq(payProfile.profile, "statutory"), eq(payProfile.status, "approved")));
+  for (const [index, row] of statutory.entries()) {
+    const holder = people.find((candidate) => candidate.person.id === row.personId);
+    if (!holder) continue;
+    const [existing] = await db.select().from(personSensitive).where(eq(personSensitive.personId, row.personId)).limit(1);
+    if (existing?.bankAccounts) continue;
+    const ascii = holder.person.searchName.toUpperCase();
+    const account = [{ bankName: index % 2 === 0 ? "Vietcombank" : "ACB", accountNumber: `00710009${String(100000 + index).slice(-6)}`, accountHolder: ascii, branch: "TP.HCM" }];
+    const sealed = cipher.encrypt(JSON.stringify(account), sensitiveContext("bankAccounts", row.personId));
+    if (existing) await db.update(personSensitive).set({ bankAccounts: sealed }).where(eq(personSensitive.personId, row.personId));
+    else await db.insert(personSensitive).values({ personId: row.personId, bankAccounts: sealed });
+    accounts++;
+  }
+
   // SZM's own pay policy: union on, flat PIT withholding for the Simple profile.
   let policies = 0;
   const [media] = await db.select().from(entity).where(eq(entity.code, "SZM")).limit(1);
@@ -180,5 +200,5 @@ export async function seedPayroll(db: Db): Promise<string> {
     await db.insert(roleAssignment).values({ personId: cnb.person.id, role: "payroll", scopeType: "entity", scopeId: cnb.job.entityId });
   }
 
-  return `${profiles} pay profiles, ${structures} salary structures, ${dependents} dependents, ${policies} entity pay policy, ${requests} salary change requests, ${proposals} profile proposal`;
+  return `${profiles} pay profiles, ${structures} salary structures, ${accounts} pay accounts added, ${dependents} dependents, ${policies} entity pay policy, ${requests} salary change requests, ${proposals} profile proposal`;
 }
