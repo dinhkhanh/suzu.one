@@ -45,7 +45,7 @@ import {
   type OfferStatus,
 } from "./enums";
 import { defaultExpiry, effectiveOfferStatus, mayMove, nextStatus, offerProblems, offerTotalVnd, probationMonthlyVnd } from "./engine/offer";
-import { canConvertToEmployee, canMakeOffer, canReadOfferMoney, canReadRecruitMoney, canRecordOfferResponse, canViewOffer, type OpeningTarget } from "./policy";
+import { canConvertToEmployee, canMakeOffer, canReadOfferMoney, canRecordOfferResponse, canViewOffer, type OpeningTarget } from "./policy";
 import { findApplication, findCandidate, findOpening, isOpeningMember, recordApplicationEvent } from "./service";
 
 type Executor = Tx | ReturnType<typeof db>;
