@@ -1,5 +1,6 @@
 // Value lists and small pure helpers shared by the server and the forms (a "use client" file
 // cannot export constants to the server). Goals and key results: FR-PRF-01.
+import { z } from "zod";
 
 export const GOAL_LEVELS = ["group", "entity", "department", "team", "individual"] as const;
 export type GoalLevel = (typeof GOAL_LEVELS)[number];
@@ -156,3 +157,76 @@ export type ReviewFormShape = { sections: ReviewSection[]; ratingScale: RatingPo
 export type ReviewAnswers = Record<string, number | string>;
 
 export const sectionsFor = (shape: ReviewFormShape, kind: ReviewFormKind): ReviewSection[] => shape.sections.filter((section) => section.askedOf.includes(kind));
+
+// ── The final yearly result (FR-PRF-09, Phase 8 week 2) ─────────────────────────────────────
+// How the review rating, the KPI score and OKR attainment are combined, and which band the figure
+// lands in, are **configuration** (SRS D13, Q14): the weighting is an effective-dated version the
+// owner approves, exactly like a pay policy. Nothing below is a constant the code decides.
+
+export const RESULT_COMPONENTS = ["review", "kpi", "okr"] as const;
+export type ResultComponentKey = (typeof RESULT_COMPONENTS)[number];
+
+/** Which OKR figure counts, and for how much: one's own goals, and the units one belongs to. */
+export const OKR_LEVELS = ["individual", "team", "department", "entity", "group"] as const;
+export type OkrLevel = (typeof OKR_LEVELS)[number];
+
+export const PERFORMANCE_RESULT_STATUSES = ["draft", "locked", "published"] as const;
+export type PerformanceResultStatus = (typeof PERFORMANCE_RESULT_STATUSES)[number];
+
+const bp = (max: number) => z.number().int().min(0).max(max);
+
+/**
+ * One band of the result scale: from `minScoreBp` up to the next band's floor. `multiplierBp` is
+ * what the band is worth to the year-end bonus (FR-PAY-21) — a number, not money; the amount is
+ * payroll's and stays there.
+ */
+export const resultBandSchema = z.object({
+  key: z.string().trim().regex(/^[a-z0-9][a-z0-9_-]{0,39}$/),
+  label: z.string().trim().min(1).max(120),
+  labelEn: z.string().trim().max(120).nullable().default(null),
+  minScoreBp: bp(1_000_000),
+  multiplierBp: bp(1_000_000),
+});
+export type ResultBand = z.output<typeof resultBandSchema>;
+
+export const FULL_WEIGHT_BP = 10_000;
+
+export const performanceWeightingSchema = z
+  .object({
+    // Σ = 10000. A component the person has no figure for drops out and the rest renormalise.
+    reviewBp: bp(FULL_WEIGHT_BP),
+    kpiBp: bp(FULL_WEIGHT_BP),
+    okrBp: bp(FULL_WEIGHT_BP),
+    // Inside the OKR share: how much is one's own, how much the units one belongs to. Σ = 10000.
+    okrMix: z.object({ individualBp: bp(FULL_WEIGHT_BP), teamBp: bp(FULL_WEIGHT_BP), departmentBp: bp(FULL_WEIGHT_BP), entityBp: bp(FULL_WEIGHT_BP), groupBp: bp(FULL_WEIGHT_BP) }),
+    bands: z.array(resultBandSchema).min(1).max(12),
+  })
+  .refine((value) => value.reviewBp + value.kpiBp + value.okrBp === FULL_WEIGHT_BP, "weights_not_full")
+  .refine((value) => Object.values(value.okrMix).reduce((sum, share) => sum + share, 0) === FULL_WEIGHT_BP, "okr_mix_not_full")
+  .refine((value) => new Set(value.bands.map((band) => band.key)).size === value.bands.length, "duplicate_band")
+  .refine((value) => value.bands.some((band) => band.minScoreBp === 0), "no_bottom_band");
+export type PerformanceWeightingValue = z.output<typeof performanceWeightingSchema>;
+
+/** The starter weighting the demo seeds: half the KPI score, a third the review, the rest OKR. */
+export const DEFAULT_PERFORMANCE_WEIGHTING: PerformanceWeightingValue = {
+  reviewBp: 3000,
+  kpiBp: 5000,
+  okrBp: 2000,
+  okrMix: { individualBp: 5000, teamBp: 0, departmentBp: 2000, entityBp: 2000, groupBp: 1000 },
+  bands: [
+    { key: "below", label: "Chưa đạt", labelEn: "Below expectations", minScoreBp: 0, multiplierBp: 0 },
+    { key: "partly", label: "Gần đạt", labelEn: "Partly meets", minScoreBp: 6000, multiplierBp: 5000 },
+    { key: "meets", label: "Đạt", labelEn: "Meets expectations", minScoreBp: 8000, multiplierBp: 10000 },
+    { key: "exceeds", label: "Vượt", labelEn: "Exceeds", minScoreBp: 10000, multiplierBp: 12500 },
+    { key: "outstanding", label: "Xuất sắc", labelEn: "Outstanding", minScoreBp: 11000, multiplierBp: 15000 },
+  ],
+};
+
+/** The band a figure lands in: the highest band whose floor it reaches. */
+export const bandOf = (bands: readonly ResultBand[], scoreBp: number | null): ResultBand | null =>
+  scoreBp === null ? null : ([...bands].sort((a, b) => a.minScoreBp - b.minScoreBp).filter((band) => scoreBp >= band.minScoreBp).pop() ?? null);
+
+// ── Peer nominations (week 2) ───────────────────────────────────────────────────────────────
+
+/** Who put a peer forward, as the screens describe it. */
+export const NOMINATION_SOURCES = ["self", "manager", "hr"] as const;

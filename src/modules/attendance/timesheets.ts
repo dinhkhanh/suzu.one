@@ -189,6 +189,17 @@ export async function summariseMonth(personId: string, month: string, executor: 
   return summariseRows(await getTimesheetDays([personId], monthStart(month), monthEnd(month), executor));
 }
 
+/**
+ * One person's whole year, added up the same way (Phase 8, FR-PRF-07: the attendance line of a
+ * review's evidence panel). One query over the year rather than twelve — the summary is the same
+ * function, so a year and a month can never disagree about what "late" means.
+ *
+ * **No authorization inside**: the caller has checked who may read this person's data.
+ */
+export async function summarisePersonYear(personId: string, year: number, executor: Executor = db()): Promise<MonthSummary> {
+  return summariseRows(await getTimesheetDays([personId], `${year}-01-01`, `${year}-12-31`, executor));
+}
+
 export type PersonMonth = { personId: string; month: string; days: TimesheetDayRow[]; summary: MonthSummary };
 
 /** A person's month for the "my attendance" calendar. The caller has checked `canSeeTimesheetOf`. */

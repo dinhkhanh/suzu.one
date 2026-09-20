@@ -610,7 +610,8 @@
         "kb": "Knowledge base & policies",
         "comms": "Announcements & kudos",
         "payroll": "Pay & payroll",
-        "recruit": "Recruitment"
+        "recruit": "Recruitment",
+        "performance": "Performance reviews"
       },
       "push": "Push"
     },
@@ -826,6 +827,22 @@
       "recruit_offer_accepted": {
         "title": "The candidate accepted",
         "body": "{name} accepted, starting {date}. Time to create the employee record."
+      },
+      "performance_peer_requested": {
+        "title": "You were asked for peer feedback",
+        "body": "You have been invited to give 360° feedback in a review cycle. Open the reviews page to write it."
+      },
+      "performance_review_released": {
+        "title": "Your review has been released",
+        "body": "Cycle {cycle}: your review has been released. Please read it and acknowledge."
+      },
+      "performance_result_published": {
+        "title": "Your {year} performance result is out",
+        "body": "Your final performance result for {year} has been published. Open the results page to see how it was worked out."
+      },
+      "performance_rule_proposed": {
+        "title": "A performance weighting version is waiting",
+        "body": "A new weighting version has been proposed, effective from {validFrom}. It takes effect only once you approve it."
       }
     },
     "errors": {
@@ -3671,7 +3688,8 @@
       "team": "My team",
       "overview": "Overview",
       "admin": "KPI admin",
-      "reviews": "Reviews"
+      "reviews": "Reviews",
+      "results": "Yearly result"
     },
     "period": {
       "annual": "{year}",
@@ -3908,7 +3926,8 @@
         "positions": "By position",
         "library": "Library",
         "import": "Import",
-        "cycles": "Review cycles"
+        "cycles": "Review cycles",
+        "weighting": "Result weighting"
       }
     },
     "library": {
@@ -3983,7 +4002,8 @@
       "closeConfirm": "Close this month? The scores are stored and the actuals can no longer change.",
       "reopenReason": "Reason for reopening",
       "reopen": "Reopen",
-      "reopenConfirm": "Reopen this month? The stored scores become superseded."
+      "reopenConfirm": "Reopen this month? The stored scores become superseded.",
+      "consumed": "Paid from"
     },
     "import": {
       "description": "Actuals in bulk from a spreadsheet: one line per person, KPI and period.",
@@ -4067,7 +4087,8 @@
       "kpi_month_already_closed": "This month is already closed.",
       "kpi_nothing_to_close": "No KPI is due this month.",
       "kpi_month_blocked": "Actuals are missing. Enter them, or close with a reason.",
-      "kpi_month_not_closed": "This month is not closed."
+      "kpi_month_not_closed": "This month is not closed.",
+      "kpi_month_consumed": "A year-end bonus run has already been approved from this month, so it cannot be reopened. A correction belongs in a later period."
     },
     "reviews": {
       "title": "Performance reviews",
@@ -4154,7 +4175,10 @@
         "title": "Release",
         "action": "Release to the employee",
         "confirm": "Once released the employee can read the manager review. Go ahead?",
-        "yes": "Release"
+        "yes": "Release",
+        "cycleAction": "Release the whole cycle",
+        "cycleConfirm": "Everyone whose manager review is in will be released. Continue?",
+        "cycleDone": "Released {released}, skipped {skipped}."
       },
       "acknowledge": {
         "title": "Employee acknowledgement",
@@ -4238,7 +4262,208 @@
         "review_manager_not_submitted": "The manager review has not been submitted.",
         "review_already_released": "Already released.",
         "review_not_released": "Not released yet.",
-        "review_already_acknowledged": "Already acknowledged."
+        "review_already_acknowledged": "Already acknowledged.",
+        "review_peers_disabled": "This cycle does not collect peer feedback.",
+        "review_peer_is_subject": "The person being reviewed cannot be their own peer.",
+        "review_peer_exists": "That colleague has already been asked.",
+        "review_peer_max": "The cycle's maximum number of peers has been reached.",
+        "review_nomination_not_found": "That request no longer exists.",
+        "review_nomination_decided": "That request has already been answered.",
+        "review_nomination_has_form": "That colleague has already written feedback, so the request cannot be withdrawn."
+      },
+      "peers": {
+        "title": "Peer feedback (360°)",
+        "disabled": "This cycle does not collect peer feedback.",
+        "empty": "Nobody has been asked yet.",
+        "add": "Ask for feedback",
+        "choose": "— Choose a colleague —",
+        "note": "Note (optional)",
+        "submit": "Send the request",
+        "range": "{min}–{max} people are wanted. Approved so far: {approved}.",
+        "needMore": "{count} more approved peers are needed.",
+        "status": {
+          "pending": "Waiting for approval",
+          "approved": "Approved",
+          "declined": "Declined"
+        },
+        "written": "Written",
+        "notWritten": "Not written",
+        "approve": "Approve",
+        "decline": "Decline",
+        "withdraw": "Withdraw",
+        "selfHint": "You choose who to ask; your manager approves the list.",
+        "managerHint": "Anyone you ask can write straight away — no further approval.",
+        "anonymous": "This cycle is anonymous: the person reads what was said, never who said it.",
+        "invitations": "Feedback others asked of you",
+        "invitationsEmpty": "Nobody is waiting on feedback from you.",
+        "invitationDue": "Due: {date}",
+        "write": "Write the feedback"
+      },
+      "evidence": {
+        "title": "Evidence for {year}",
+        "description": "What the system recorded, so a rating is argued from the record rather than from memory.",
+        "okr": "Goals (OKR)",
+        "okrIndividual": "Individual",
+        "okrDepartment": "Department",
+        "okrEntity": "Entity",
+        "okrGroup": "Group",
+        "okrGoals": "{count} goals",
+        "kpi": "KPI score for the year",
+        "kpiMonths": "{closed} months closed, {open} still open",
+        "kpiFinal": "All twelve months closed",
+        "tasks": "Tasks",
+        "tasksDone": "{count} completed",
+        "tasksOnTime": "{count} on time",
+        "tasksLate": "{count} late",
+        "tasksOpen": "{count} still open ({overdue} overdue)",
+        "kudos": "Kudos",
+        "kudosCount": "{count} kudos this year",
+        "attendance": "Attendance",
+        "attendanceLate": "{count} late arrivals",
+        "attendanceAbsent": "{count} days absent",
+        "attendanceLeave": "{days} days of paid leave",
+        "none": "No data."
+      }
+    },
+    "results": {
+      "title": "Final performance result",
+      "description": "The review rating, the KPI score and OKR attainment combined by the approved weighting into one score and one band.",
+      "year": "{year}",
+      "mine": {
+        "title": "My result",
+        "empty": "Nothing has been published for you yet.",
+        "notPublished": "The {year} result has not been published yet."
+      },
+      "list": {
+        "title": "{year} results",
+        "empty": "Nothing has been computed for this year.",
+        "person": "Person",
+        "review": "Review",
+        "kpi": "KPI",
+        "okr": "OKR",
+        "computed": "Computed",
+        "final": "Final",
+        "band": "Band",
+        "multiplier": "Multiplier",
+        "status": "Status",
+        "overridden": "Owner override",
+        "count": "{count} people"
+      },
+      "status": {
+        "draft": "Draft",
+        "locked": "Locked",
+        "published": "Published"
+      },
+      "compute": {
+        "title": "Compute",
+        "action": "Compute for every participant",
+        "confirm": "Draft results will be recomputed. Locked ones are left alone. Continue?",
+        "yes": "Compute",
+        "one": "Recompute",
+        "done": "Computed {computed}, skipped {skipped} already settled.",
+        "noWeighting": "No weighting version has been approved for this year."
+      },
+      "trace": {
+        "title": "How it was worked out",
+        "component": "Component",
+        "score": "Score",
+        "weight": "Weight",
+        "normalised": "Actual weight",
+        "contribution": "Contribution",
+        "components": {
+          "review": "Review",
+          "kpi": "KPI",
+          "okr": "OKR"
+        },
+        "missing": "No figure — its weight went to the other components.",
+        "renormalised": "A component had no figure, so the remaining weights were renormalised.",
+        "okrMix": "Inside the OKR figure",
+        "level": {
+          "individual": "Individual",
+          "team": "Team",
+          "department": "Department",
+          "entity": "Entity",
+          "group": "Group"
+        },
+        "computed": "Score by the formula: {value}",
+        "finalLine": "Final score: {value} — band {band} (multiplier {multiplier})",
+        "nothing": "No component had a figure, so there is no score.",
+        "weightingVersion": "Weighting version in force from {date}",
+        "provenance": "From {months} closed KPI months and {goals} goals."
+      },
+      "override": {
+        "title": "Owner override",
+        "hint": "The computed figure is kept beside it; an override needs a reason.",
+        "score": "Override score (%)",
+        "reason": "Reason",
+        "save": "Save the override",
+        "remove": "Remove the override",
+        "was": "By the formula: {value}",
+        "by": "{name} overrode this on {date}"
+      },
+      "lock": {
+        "action": "Lock",
+        "publish": "Publish",
+        "unlock": "Unlock",
+        "lockHint": "The year-end bonus run reads locked results only."
+      },
+      "weighting": {
+        "title": "Result weighting",
+        "description": "HR proposes, the owner decides. Approved versions never overlap, and a year uses the version in force on 31 December of that year.",
+        "entity": "Entity",
+        "wholeGroup": "The whole group",
+        "validFrom": "From",
+        "validTo": "To",
+        "status": {
+          "proposed": "Waiting",
+          "approved": "In force",
+          "rejected": "Rejected"
+        },
+        "weights": "The three component weights (%)",
+        "review": "Review",
+        "kpi": "KPI",
+        "okr": "OKR",
+        "okrMix": "Inside the OKR share (%)",
+        "individual": "Individual",
+        "team": "Team",
+        "department": "Department",
+        "entityLevel": "Entity",
+        "group": "Group",
+        "bands": "Bands",
+        "bandKey": "Key",
+        "bandLabel": "Name",
+        "bandMin": "From (%)",
+        "bandMultiplier": "Multiplier (%)",
+        "addBand": "Add a band",
+        "removeBand": "Remove a band",
+        "note": "Note",
+        "propose": "Propose this version",
+        "proposed": "Proposal sent.",
+        "approve": "Approve",
+        "reject": "Reject",
+        "versions": "Versions",
+        "none": "No version yet. Propose one before computing any result.",
+        "sumHint": "The three weights must add up to 100 %, and so must the OKR share."
+      },
+      "errors": {
+        "generic": "That did not work. Please try again.",
+        "forbidden": "You are not allowed to do this.",
+        "invalid": "Please check the marked fields.",
+        "unauthenticated": "Your session has expired.",
+        "weighting_missing": "No weighting version has been approved for this period.",
+        "weighting_proposal_not_found": "There is no proposal waiting.",
+        "weighting_weights_not_full": "The three weights must add up to 100 %.",
+        "weighting_okr_mix_not_full": "The OKR share must add up to 100 %.",
+        "weighting_duplicate_band": "Two bands share a key.",
+        "weighting_no_bottom_band": "One band must start at 0 %.",
+        "weighting_version_exists": "A version already starts on that date.",
+        "weighting_before_current_version": "A new version must start after the one in force.",
+        "result_not_found": "That result no longer exists.",
+        "result_locked": "The result is locked and cannot be changed.",
+        "result_not_locked": "Lock it before publishing.",
+        "result_published": "It has already been published.",
+        "result_nothing_scored": "No component has a figure, so there is nothing to lock.",
+        "result_consumed": "This year has already been paid from and cannot be reopened."
       }
     }
   },

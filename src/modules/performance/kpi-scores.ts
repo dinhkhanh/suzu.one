@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 import { and, asc, desc, eq, inArray, isNull, like, lte, or, gte } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
+import { monthConsumers } from "./consumption";
 import { annualKpiScore, type AnnualKpiScore, canonicalInputs, type KpiLineInput, kpiMonthScore, type KpiTrace } from "./engine/kpi-score";
 import { coversMonth, isKpiMonth, type KpiDirection, type KpiFrequency, type KpiUnit, monthsOfYear, parseMetricValue, periodDueIn, periodFits, scoringMonthOf } from "./enums";
 
@@ -226,12 +227,19 @@ export async function closeMonth(actorPersonId: string, input: { entityId: strin
 
 /**
  * Take a closed month back. The stored scores stay, marked superseded; the next close writes the
- * next revision. Phase 8 must refuse this once a bonus run has used the month (it will own that check).
+ * next revision.
+ *
+ * **Refused once a year-end bonus run has been approved off the month** (Phase 8, FR-PAY-21):
+ * money has been decided on those figures, so they are evidence. A correction belongs in the next
+ * year's scores, not in a rewrite of the year that was paid. The lock is taken before the check so
+ * a run cannot be approved in the gap between asking and superseding.
  */
 export async function reopenMonth(actorPersonId: string, input: { entityId: string; month: string; reason: string }, executor: ReturnType<typeof db> = db()): Promise<{ before: KpiPeriodRow; after: KpiPeriodRow; superseded: number }> {
   return executor.transaction(async (tx) => {
     const [before] = await tx.select().from(schema.kpiPeriod).where(and(eq(schema.kpiPeriod.entityId, input.entityId), eq(schema.kpiPeriod.month, input.month))).limit(1).for("update");
     if (!before || before.status !== "closed") throw new ActionError("kpi_month_not_closed");
+    const consumers = await monthConsumers(input.entityId, input.month, tx);
+    if (consumers.length > 0) throw new ActionError("kpi_month_consumed", { consumerType: consumers[0].consumerType, consumerIds: [...new Set(consumers.map((row) => row.consumerId))] });
     const superseded = await tx.update(schema.kpiScore).set({ supersededAt: new Date() }).where(and(eq(schema.kpiScore.entityId, input.entityId), eq(schema.kpiScore.month, input.month), isNull(schema.kpiScore.supersededAt))).returning({ id: schema.kpiScore.id });
     const [after] = await tx.update(schema.kpiPeriod).set({ status: "open", reopenedByPersonId: actorPersonId, reopenedAt: new Date(), reopenReason: input.reason, updatedAt: new Date() }).where(eq(schema.kpiPeriod.id, before.id)).returning();
     return { before, after, superseded: superseded.length };

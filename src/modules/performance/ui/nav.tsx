@@ -7,11 +7,20 @@ import { getCurrentUser } from "../../platform/auth/session";
 import { hasReports } from "../people";
 import { canOpenKpiAdmin, canOpenOverview } from "../policy";
 
-export const PERFORMANCE_SECTIONS = ["mine", "alignment", "kpis", "reviews", "team", "overview", "admin"] as const;
+export const PERFORMANCE_SECTIONS = ["mine", "alignment", "kpis", "reviews", "results", "team", "overview", "admin"] as const;
 export type PerformanceSection = (typeof PERFORMANCE_SECTIONS)[number];
-const SECTION_HREF: Record<PerformanceSection, string> = { mine: "/performance", alignment: "/performance/goals", kpis: "/performance/kpis", team: "/performance/team", overview: "/performance/overview", admin: "/performance/admin/periods", reviews: "/performance/reviews" };
+const SECTION_HREF: Record<PerformanceSection, string> = {
+  mine: "/performance",
+  alignment: "/performance/goals",
+  kpis: "/performance/kpis",
+  team: "/performance/team",
+  overview: "/performance/overview",
+  admin: "/performance/admin/periods",
+  reviews: "/performance/reviews",
+  results: "/performance/results",
+};
 // Goal pages carry the year along; the KPI pages pick their own month.
-const TAKES_YEAR: readonly PerformanceSection[] = ["mine", "alignment"];
+const TAKES_YEAR: readonly PerformanceSection[] = ["mine", "alignment", "results"];
 
 export async function PerformanceNav({ active, year }: { active: PerformanceSection | null; year?: number }) {
   const [t, user] = await Promise.all([getTranslations("performance.nav"), getCurrentUser()]);
@@ -22,6 +31,8 @@ export async function PerformanceNav({ active, year }: { active: PerformanceSect
     kpis: true,
     // Everyone has reviews of their own, or owes one; the page itself shows what there is.
     reviews: true,
+    // Likewise the yearly result: one's own once published, other people's only by the policy.
+    results: true,
     team: !!principal && !!user && (can(principal, "performance:read") || can(principal, "performance:manage") || (await hasReports(user.person.id))),
     overview: !!principal && canOpenOverview(principal),
     admin: !!principal && canOpenKpiAdmin(principal),

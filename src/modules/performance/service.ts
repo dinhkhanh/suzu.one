@@ -48,3 +48,27 @@ export {
   listReviewsIOwe,
 } from "./reviews";
 export { isAnswered, missingRequired, type ReviewScoreLine, type ReviewScoreTrace, scoreReviewForm } from "./engine/review-score";
+
+// ── Peer / 360 (week 2) ─────────────────────────────────────────────────────────────────────
+export { canDecideNomination, canNominatePeer, canSeeNominations, nominationIsApproved } from "./review-policy";
+export { findNomination, isApprovedPeer, listPeerInvitations, peerCandidates, type PeerInvitation } from "./reviews";
+
+// ── The final yearly result (week 2, FR-PRF-09) ─────────────────────────────────────────────
+export { canComputeResults, canDecidePerformanceRules, canOpenResults, canOverrideResult, canProposeWeighting, canReadResultOf, canSettleResultOf } from "./policy";
+export { bandOf, DEFAULT_PERFORMANCE_WEIGHTING, FULL_WEIGHT_BP, OKR_LEVELS, type OkrLevel, PERFORMANCE_RESULT_STATUSES, type PerformanceResultStatus, type PerformanceWeightingValue, performanceWeightingSchema, type ResultBand, RESULT_COMPONENTS, type ResultComponentKey } from "./enums";
+export { finalResult, okrFigure, type OkrMixLine, type ResultComponentLine, type ResultOverride, type ResultTrace } from "./engine/result";
+export { getWeighting, getWeightingVersion, hasWeighting, listWeightingVersions, type PerformanceWeightingRow, type ResolvedWeighting, weightingDateOf } from "./weighting";
+/**
+ * What the year-end bonus run reads (FR-PAY-21). `listFinalResults` and `getFinalResult` hand back
+ * **settled** results only — locked or published — with the trace that explains each figure.
+ * No authorization inside: payroll decides who may see an amount built on them.
+ */
+export { findResult, findResultById, getFinalResult, getPublishedResult, listFinalResults, listResults, type PerformanceResultRow, previewResult, type ResultLine, resultYears } from "./final-results";
+/**
+ * The other half of the bonus contract: once a run is approved, payroll records the stored KPI
+ * scores it was computed from, and `reopenMonth` then refuses to take those months back.
+ */
+export { consumedMonths, isMonthConsumed, isYearConsumed, type KpiScoreUseRow, markScoresConsumed, monthConsumers, releaseConsumedScores, type ScoreUse } from "./consumption";
+
+// ── The evidence panel (week 2, FR-PRF-07) ──────────────────────────────────────────────────
+export { loadReviewEvidence, type ReviewEvidence } from "./evidence";

@@ -135,3 +135,35 @@ export const canOpenOverview = (principal: Principal): boolean => {
   const reach = overviewReach(principal);
   return reach.all || reach.entityIds.length > 0;
 };
+
+// ── The final yearly result (FR-PRF-09, Phase 8 week 2) ─────────────────────────────────────
+// A result is a score, a band and a multiplier — **personal tier, like every other figure in this
+// module**. It is not compensation: what the multiplier is worth in VND is decided in payroll and
+// never leaves it, which is why a line manager may read the band of somebody in their line and
+// still see nothing of the money. A test holds that line.
+
+/**
+ * Reading one person's result. Before it is published only the people who may already read their
+ * performance data see it — their line, HR, the owner. Publishing adds the person themself, which
+ * `canReadPerformanceOf` grants anyway; the `published` flag is what a screen shows them.
+ */
+export const canReadResultOf = (principal: Principal, person: PersonContext): boolean => canReadPerformanceOf(principal, person);
+
+/** Computing and recomputing a year for the people in scope: HR over them. */
+export const canComputeResults = (principal: Principal, entityId: string | null): boolean => can(principal, "performance:manage", entityId ? { entityId } : {});
+
+/** Locking and publishing a settled result: HR over the person. */
+export const canSettleResultOf = (principal: Principal, person: PersonContext): boolean => canManagePerformanceOf(principal, person);
+
+/**
+ * Overriding a result, and deciding the weighting version it is combined by: the owner's alone
+ * (SRS D13 — "the owner can override it with a recorded reason"). HR proposes; nobody else decides.
+ */
+export const canDecidePerformanceRules = (principal: Principal): boolean => can(principal, "performance:decide", {});
+export const canOverrideResult = canDecidePerformanceRules;
+
+/** Proposing a weighting version: group-wide HR, like the KPI library. */
+export const canProposeWeighting = (principal: Principal): boolean => can(principal, "performance:manage", {});
+
+/** Is there a results screen for this viewer at all? Navigation only — the page checks again. */
+export const canOpenResults = (principal: Principal): boolean => !!principal.personId;

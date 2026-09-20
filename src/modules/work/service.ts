@@ -19,3 +19,9 @@ export { getLeaderView, type LeaderTask, type LeaderView, listMyWorkItems, type 
 export { getWorkload, WORKLOAD_WEEKS, type WorkloadPerson, type WorkloadView } from "./workload";
 export { findIntakeForm, type IntakeFormRow, type IntakeFormView, listMyIntakeRequests, listOpenIntakeForms, listTeamIntakeForms } from "./intake";
 export { INTAKE_FIELD_TYPES, type IntakeField, type IntakeFieldType, MAX_INTAKE_FIELDS } from "./engine/intake";
+/**
+ * Phase 8 (FR-PRF-07): how much work one person got through in a period, for the evidence panel
+ * of a performance review. Counts only, and **no authorization inside** — performance has already
+ * decided that the reviewer may read this person's performance data.
+ */
+export { getPersonTaskStats, type PersonTaskStats } from "./stats";

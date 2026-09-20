@@ -1,23 +1,31 @@
 import type { Metadata } from "next";
-import { getFormatter, getTranslations } from "next-intl/server";
+import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { todayInVietnam } from "@/lib/dates";
 import {
   canAcknowledgeReview,
+  canDecideNomination,
+  canNominatePeer,
   canReadAnonymisedPeers,
   canReadReviewForm,
   canReleaseReview,
+  canSeeNominations,
   canSeeParticipant,
   canWriteManagerReview,
   canWritePeerReview,
   canWriteSelfReview,
+  getPublishedResult,
   loadParticipant,
+  loadReviewEvidence,
+  peerCandidates,
 } from "@/modules/performance/service";
-import type { ReviewFormKind } from "@/modules/performance/service";
+import type { PeerNominationStatus, ReviewFormKind } from "@/modules/performance/service";
+import { EvidencePanel } from "@/modules/performance/ui/evidence";
 import { PerformanceNav } from "@/modules/performance/ui/nav";
+import { BandBadge, ResultTraceTable } from "@/modules/performance/ui/result";
 import { FilledForm, ratingText, StageBadge, Timeline } from "@/modules/performance/ui/review";
-import { AcknowledgeForm, CalibrateForm, ReleaseForm, ReviewFormEditor } from "@/modules/performance/ui/review-forms";
+import { AcknowledgeForm, CalibrateForm, NominatePeerForm, NominationDecisionForm, ReleaseForm, ReviewFormEditor } from "@/modules/performance/ui/review-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 
 export const metadata: Metadata = { title: "Review" };
@@ -34,8 +42,8 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
   const nominated = !!loaded?.nominations.some((row) => row.peerPersonId === user.person.id && row.status === "approved");
   if (!loaded || !canSeeParticipant(user.principal, loaded.parties, nominated)) notFound();
 
-  const { participant, cycle, parties, shape, forms, directory } = loaded;
-  const [t, format] = await Promise.all([getTranslations("performance.reviews"), getFormatter()]);
+  const { participant, cycle, parties, shape, forms, nominations, directory } = loaded;
+  const [t, tr, format, locale] = await Promise.all([getTranslations("performance.reviews"), getTranslations("performance.results"), getFormatter(), getLocale()]);
   const today = todayInVietnam();
   const nameOf = (personId: string) => directory.get(personId)?.fullName ?? "—";
   const readable = forms.filter((form) => canReadReviewForm(user.principal, parties, { kind: form.kind as ReviewFormKind, authorPersonId: form.authorPersonId, status: form.status as "draft" | "submitted" }));
@@ -48,6 +56,21 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
   // Anonymous peer feedback the subject may read: the content without its author.
   const anonymousPeers = canReadAnonymisedPeers(user.principal, parties) ? forms.filter((form) => form.kind === "peer" && form.status === "submitted") : [];
   const formatDate = (value: string) => format.dateTime(new Date(`${value}T00:00:00Z`), { dateStyle: "medium" });
+
+  // The evidence panel (FR-PRF-07) is for whoever writes or reads this review — it is the same
+  // personal-tier data as the review itself, and a nominated peer is not shown it.
+  const writesReview = canWriteManagerReview(user.principal, parties) || canWriteSelfReview(user.principal, parties);
+  const showsEvidence = writesReview || canReleaseReview(user.principal, parties);
+  const evidence = showsEvidence ? await loadReviewEvidence({ personId: participant.personId, year: cycle.year }) : null;
+  // The person's own settled result, once it has been published to them (FR-PRF-09).
+  const published = canSeeNominations(user.principal, parties) ? await getPublishedResult(participant.personId, cycle.year) : null;
+
+  const seesNominations = canSeeNominations(user.principal, parties);
+  const mayNominate = canNominatePeer(user.principal, parties);
+  const mayDecide = canDecideNomination(user.principal, parties);
+  const approvedPeers = nominations.filter((row) => row.status === "approved").length;
+  const candidates = cycle.peersEnabled && mayNominate ? await peerCandidates(participantId) : [];
+  const peerWrote = new Set(forms.filter((form) => form.kind === "peer").map((form) => form.authorPersonId));
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -78,6 +101,8 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
 
       {shape === null ? <p className="text-sm text-muted-foreground">{t("notLaunched")}</p> : null}
 
+      {evidence ? <EvidencePanel evidence={evidence} labels={{ t, format }} /> : null}
+
       {shape && canWriteSelfReview(user.principal, parties) && mySelf?.status !== "submitted" ? (
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-medium">{t("form.kind.self")}</h2>
@@ -97,6 +122,45 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-medium">{t("form.kind.peer")}</h2>
           <ReviewFormEditor value={{ participantId, kind: "peer", shape, answers: myPeer?.answers ?? {}, comment: myPeer?.comment ?? null, submitted: false }} />
+        </section>
+      ) : null}
+
+      {/* Who was asked for 360 feedback. Anonymity hides *who wrote what* (the forms below),
+          never the fact that somebody was asked — HR and the manager have to be able to chase them. */}
+      {seesNominations ? (
+        <section className="flex flex-col gap-3 rounded-xl border p-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-sm font-medium">{t("peers.title")}</h2>
+            {cycle.peersEnabled ? <span className="text-xs text-muted-foreground">{t("peers.range", { min: cycle.peerMin, max: cycle.peerMax, approved: approvedPeers })}</span> : null}
+          </div>
+          {!cycle.peersEnabled ? (
+            <p className="text-sm text-muted-foreground">{t("peers.disabled")}</p>
+          ) : (
+            <>
+              {cycle.peerAnonymous ? <p className="text-xs text-muted-foreground">{t("peers.anonymous")}</p> : null}
+              {nominations.length === 0 ? <p className="text-sm text-muted-foreground">{t("peers.empty")}</p> : null}
+              <ul className="flex flex-col divide-y">
+                {nominations.map((row) => (
+                  <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                    <span>
+                      {nameOf(row.peerPersonId)}
+                      <span className="pl-2 text-xs text-muted-foreground">
+                        {t(`peers.status.${row.status as PeerNominationStatus}`)} · {peerWrote.has(row.peerPersonId) ? t("peers.written") : t("peers.notWritten")}
+                      </span>
+                    </span>
+                    <NominationDecisionForm nominationId={row.id} canDecide={mayDecide && row.status === "pending"} canWithdraw={!peerWrote.has(row.peerPersonId) && (mayDecide || row.nominatedByPersonId === user.person.id)} />
+                  </li>
+                ))}
+              </ul>
+              {mayNominate && approvedPeers < cycle.peerMax ? (
+                <>
+                  <NominatePeerForm participantId={participantId} candidates={candidates} />
+                  <p className="text-xs text-muted-foreground">{mayDecide ? t("peers.managerHint") : t("peers.selfHint")}</p>
+                  {approvedPeers < cycle.peerMin ? <p className="text-xs text-amber-700 dark:text-amber-300">{t("peers.needMore", { count: cycle.peerMin - approvedPeers })}</p> : null}
+                </>
+              ) : null}
+            </>
+          )}
         </section>
       ) : null}
 
@@ -154,6 +218,18 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
           ) : (
             <p className="text-sm text-muted-foreground">{t("acknowledge.waiting")}</p>
           )}
+        </section>
+      ) : null}
+
+      {/* The settled yearly result, once it has been published (FR-PRF-09). Score, band and
+          multiplier — a number, never money: the bonus it drives lives in payroll. */}
+      {published ? (
+        <section className="flex flex-col gap-3 rounded-xl border p-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-sm font-medium">{tr("title")}</h2>
+            <BandBadge band={published.finalBand} label={published.trace.finalBand ? (locale.startsWith("en") && published.trace.finalBand.labelEn ? published.trace.finalBand.labelEn : published.trace.finalBand.label) : "—"} />
+          </div>
+          <ResultTraceTable trace={published.trace} labels={{ t: tr, format }} locale={locale} provenance={{ months: published.kpiScoreIds.length, goals: published.goalIds.length, weightingFrom: null }} />
         </section>
       ) : null}
     </div>

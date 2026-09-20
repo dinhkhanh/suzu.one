@@ -11,7 +11,7 @@
 // No authorization inside: `review-actions.ts` checks `review-policy.ts` first, exactly as the
 // goal and KPI use-cases do.
 import "server-only";
-import { and, asc, desc, eq, inArray, isNotNull, ne } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
@@ -367,6 +367,166 @@ export async function acknowledgeParticipant(participantId: string, note: string
       .returning();
     return { before, after };
   });
+}
+
+// ── Peer / 360 feedback (FR-PRF-03, week 2) ─────────────────────────────────────────────────
+//
+// The person puts peers forward and their manager (or HR) approves them; a manager or HR may also
+// add a peer outright, which needs no approval. A peer who is approved gets a `review_form` of
+// their own to fill in — their draft is private to them, like every other draft.
+//
+// Anonymity is a property of the cycle, honoured on the way out (`review-policy.ts`), not by
+// hiding the nomination: HR and the manager must be able to see who was asked and chase them.
+
+/** Who may be asked: the cycle's people, minus the subject, minus whoever is already nominated. */
+export async function peerCandidates(participantId: string, executor: Executor = db()): Promise<{ id: string; fullName: string }[]> {
+  const found = await findParticipant(participantId, executor);
+  if (!found) return [];
+  const directory = await loadDirectory(executor);
+  const taken = new Set((await executor.select({ peerPersonId: schema.reviewPeerNomination.peerPersonId }).from(schema.reviewPeerNomination).where(eq(schema.reviewPeerNomination.participantId, participantId))).map((row) => row.peerPersonId));
+  return [...directory.values()]
+    .filter((row) => row.status === "active" && row.workforceType !== "collaborator" && row.personId !== found.participant.personId && !taken.has(row.personId))
+    .map((row) => ({ id: row.personId, fullName: row.fullName }))
+    .sort((a, b) => a.fullName.localeCompare(b.fullName));
+}
+
+const approvedCount = async (participantId: string, executor: Executor): Promise<number> =>
+  (await executor.select({ id: schema.reviewPeerNomination.id }).from(schema.reviewPeerNomination).where(and(eq(schema.reviewPeerNomination.participantId, participantId), eq(schema.reviewPeerNomination.status, "approved")))).length;
+
+export type NominateResult = { nomination: ReviewPeerNominationRow; notify: boolean };
+
+/**
+ * Put one peer forward. `approved` is set by the caller from the policy: the subject's own
+ * nomination waits for their manager, a manager's or HR's is approved at once.
+ */
+export async function nominatePeer(input: { participantId: string; peerPersonId: string; approved: boolean; note: string | null }, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<NominateResult> {
+  return executor.transaction(async (tx) => {
+    const found = await findParticipant(input.participantId, tx);
+    if (!found) throw new ActionError("review_participant_not_found");
+    const { participant, cycle } = found;
+    if (!cycle.peersEnabled) throw new ActionError("review_peers_disabled");
+    if (cycle.status !== "active") throw new ActionError("review_cycle_not_collecting");
+    if (input.peerPersonId === participant.personId) throw new ActionError("review_peer_is_subject");
+    // The cap counts the peers who are actually going to write, not the ones still waiting.
+    if (input.approved && cycle.peerMax > 0 && (await approvedCount(input.participantId, tx)) >= cycle.peerMax) throw new ActionError("review_peer_max");
+    const [nomination] = await tx
+      .insert(schema.reviewPeerNomination)
+      .values({
+        cycleId: cycle.id,
+        participantId: input.participantId,
+        peerPersonId: input.peerPersonId,
+        nominatedByPersonId: actorPersonId,
+        note: input.note,
+        status: input.approved ? "approved" : "pending",
+        decidedByPersonId: input.approved ? actorPersonId : null,
+        decidedAt: input.approved ? new Date() : null,
+      })
+      .onConflictDoNothing()
+      .returning();
+    if (!nomination) throw new ActionError("review_peer_exists");
+    return { nomination, notify: input.approved };
+  });
+}
+
+/** The manager's (or HR's) answer to a nomination the person made. */
+export async function decideNomination(nominationId: string, decision: "approve" | "decline", actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<{ before: ReviewPeerNominationRow; after: ReviewPeerNominationRow; cycle: ReviewCycleRow }> {
+  return executor.transaction(async (tx) => {
+    const [before] = await tx.select().from(schema.reviewPeerNomination).where(eq(schema.reviewPeerNomination.id, nominationId)).limit(1).for("update");
+    if (!before) throw new ActionError("review_nomination_not_found");
+    if (before.status !== "pending") throw new ActionError("review_nomination_decided");
+    const cycle = await findReviewCycle(before.cycleId, tx);
+    if (!cycle) throw new ActionError("review_cycle_not_found");
+    if (decision === "approve" && cycle.peerMax > 0 && (await approvedCount(before.participantId, tx)) >= cycle.peerMax) throw new ActionError("review_peer_max");
+    const [after] = await tx
+      .update(schema.reviewPeerNomination)
+      .set({ status: decision === "approve" ? "approved" : "declined", decidedByPersonId: actorPersonId, decidedAt: new Date(), updatedAt: new Date() })
+      .where(eq(schema.reviewPeerNomination.id, nominationId))
+      .returning();
+    return { before, after, cycle };
+  });
+}
+
+export async function findNomination(nominationId: string, executor: Executor = db()): Promise<ReviewPeerNominationRow | null> {
+  const [row] = await executor.select().from(schema.reviewPeerNomination).where(eq(schema.reviewPeerNomination.id, nominationId)).limit(1);
+  return row ?? null;
+}
+
+/** Taking a nomination back — only while that peer has written nothing. */
+export async function withdrawNomination(nominationId: string, executor: ReturnType<typeof db> = db()): Promise<ReviewPeerNominationRow> {
+  return executor.transaction(async (tx) => {
+    const [row] = await tx.select().from(schema.reviewPeerNomination).where(eq(schema.reviewPeerNomination.id, nominationId)).limit(1).for("update");
+    if (!row) throw new ActionError("review_nomination_not_found");
+    const [form] = await tx.select({ id: schema.reviewForm.id }).from(schema.reviewForm).where(and(eq(schema.reviewForm.participantId, row.participantId), eq(schema.reviewForm.kind, "peer"), eq(schema.reviewForm.authorPersonId, row.peerPersonId))).limit(1);
+    if (form) throw new ActionError("review_nomination_has_form");
+    await tx.delete(schema.reviewPeerNomination).where(eq(schema.reviewPeerNomination.id, nominationId));
+    return row;
+  });
+}
+
+export type PeerInvitation = { nominationId: string; participantId: string; cycleId: string; cycleName: string; year: number; subjectPersonId: string; subjectName: string; peerDueOn: IsoDate | null; written: boolean; submitted: boolean };
+
+/** "Somebody asked you for feedback": the approved nominations naming me, in a live cycle. */
+export async function listPeerInvitations(personId: string, executor: Executor = db()): Promise<PeerInvitation[]> {
+  const rows = await executor
+    .select({ nomination: schema.reviewPeerNomination, participant: schema.reviewParticipant, cycle: schema.reviewCycle })
+    .from(schema.reviewPeerNomination)
+    .innerJoin(schema.reviewParticipant, eq(schema.reviewParticipant.id, schema.reviewPeerNomination.participantId))
+    .innerJoin(schema.reviewCycle, eq(schema.reviewCycle.id, schema.reviewPeerNomination.cycleId))
+    .where(and(eq(schema.reviewPeerNomination.peerPersonId, personId), eq(schema.reviewPeerNomination.status, "approved"), inArray(schema.reviewCycle.status, ["active", "calibration"])))
+    .orderBy(desc(schema.reviewCycle.year));
+  if (rows.length === 0) return [];
+  const forms = await executor
+    .select({ participantId: schema.reviewForm.participantId, status: schema.reviewForm.status })
+    .from(schema.reviewForm)
+    .where(and(eq(schema.reviewForm.authorPersonId, personId), eq(schema.reviewForm.kind, "peer"), inArray(schema.reviewForm.participantId, rows.map((row) => row.participant.id))));
+  const directory = await loadDirectory(executor);
+  return rows.map(({ nomination, participant, cycle }) => {
+    const form = forms.find((row) => row.participantId === participant.id);
+    return {
+      nominationId: nomination.id,
+      participantId: participant.id,
+      cycleId: cycle.id,
+      cycleName: cycle.name,
+      year: cycle.year,
+      subjectPersonId: participant.personId,
+      subjectName: directory.get(participant.personId)?.fullName ?? "—",
+      peerDueOn: cycle.peerDueOn,
+      written: !!form,
+      submitted: form?.status === "submitted",
+    };
+  });
+}
+
+/** Is this person an approved peer of this participant? What the form and the page ask. */
+export async function isApprovedPeer(participantId: string, personId: string, executor: Executor = db()): Promise<boolean> {
+  const [row] = await executor
+    .select({ id: schema.reviewPeerNomination.id })
+    .from(schema.reviewPeerNomination)
+    .where(and(eq(schema.reviewPeerNomination.participantId, participantId), eq(schema.reviewPeerNomination.peerPersonId, personId), eq(schema.reviewPeerNomination.status, "approved")))
+    .limit(1);
+  return !!row;
+}
+
+// ── Releasing a whole cycle at once ─────────────────────────────────────────────────────────
+
+export type BulkReleaseResult = { released: string[]; skipped: { participantId: string; reason: string }[] };
+
+/**
+ * Release everybody in a cycle who is ready. The ones whose manager has not written are left
+ * alone and listed back — a bulk action that silently skips people is worse than one that says so.
+ */
+export async function releaseCycle(cycleId: string, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<BulkReleaseResult> {
+  const participants = await executor.select().from(schema.reviewParticipant).where(and(eq(schema.reviewParticipant.cycleId, cycleId), isNull(schema.reviewParticipant.releasedAt)));
+  const result: BulkReleaseResult = { released: [], skipped: [] };
+  for (const participant of participants) {
+    try {
+      await releaseParticipant(participant.id, actorPersonId, executor);
+      result.released.push(participant.id);
+    } catch (error) {
+      result.skipped.push({ participantId: participant.id, reason: error instanceof ActionError ? error.message : "failed" });
+    }
+  }
+  return result;
 }
 
 // ── Reads for the screens ───────────────────────────────────────────────────────────────────

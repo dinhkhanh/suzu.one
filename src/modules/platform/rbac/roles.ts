@@ -54,6 +54,10 @@ export type Permission =
   | "performance:manage"
   | "performance:goals"
   | "performance:read"
+  // Phase 8 (FR-PRF-09): deciding the weighting the final yearly result is combined by, and
+  // overriding one person's result with a recorded reason. The owner's alone — no role below
+  // lists it, so only a "*" grant holds it, exactly like `payroll:rules` for pay rules.
+  | "performance:decide"
   // Knowledge base (Phase 4): create and archive spaces, set who views and edits them, publish in
   // controlled spaces and edit anything in the spaces the grant covers. Reading and everyday
   // editing come from a space's access rows, not from a role.

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { Grant, Principal } from "../platform/rbac/policy";
+import { canReadTier, type Grant, type Principal, readableTier } from "../platform/rbac/policy";
+import { canViewCompensationOf } from "../payroll/policy";
+import { canComputeResults, canDecidePerformanceRules, canOverrideResult, canProposeWeighting, canReadResultOf, canSettleResultOf } from "./policy";
 import { canCheckIn, canCloseGoal, canCloseKpiMonth, canEditGoal, canEnterActualsFor, canManageAssignmentsOf, canManageKpiLibrary, canManagePositionKpis, canOpenOverview, canReadPerformanceOf, canReopenGoal, canReopenKpiMonth, canSeeGoal, chainAbove, type GoalParties, overviewReach, type PersonContext, readablePeople, unitTarget } from "./policy";
 
 const SZM = "entity-szm";
@@ -156,5 +158,70 @@ describe("KPIs", () => {
     expect(overviewReach(director)).toEqual({ all: false, entityIds: [SZC] });
     expect(canOpenOverview(headVid)).toBe(false); // a department is not an entity: the team view is theirs
     expect(canOpenOverview(principal("huy"))).toBe(false);
+  });
+});
+
+// ── The final yearly result (Phase 8 week 2, FR-PRF-09) ─────────────────────────────────────
+describe("the final yearly result", () => {
+  const hrAdmin = principal("mai", [{ role: "hr_admin", scope: { type: "group" } }]);
+  const ceo = principal("ceo", [{ role: "c_level", scope: { type: "group" } }]);
+
+  it("is read by the same people as the rest of a person's performance data", () => {
+    expect(canReadResultOf(principal("huy"), huy)).toBe(true); // one's own
+    expect(canReadResultOf(principal("tam"), huy)).toBe(true); // line manager
+    expect(canReadResultOf(headVid, huy)).toBe(true); // skip-level
+    expect(canReadResultOf(hrSzm, huy)).toBe(true);
+    expect(canReadResultOf(owner, huy)).toBe(true);
+    expect(canReadResultOf(principal("linh"), huy)).toBe(false); // colleague
+    expect(canReadResultOf(headDes, huy)).toBe(false); // another department's head
+  });
+
+  it("is computed and settled by HR, never by the person's manager", () => {
+    expect(canComputeResults(hrSzm, SZM)).toBe(true);
+    expect(canComputeResults(hrSzm, SZC)).toBe(false);
+    expect(canComputeResults(headVid, SZM)).toBe(false);
+    expect(canComputeResults(principal("huy"), SZM)).toBe(false);
+    expect(canSettleResultOf(hrSzm, huy)).toBe(true);
+    expect(canSettleResultOf(headVid, huy)).toBe(false);
+    expect(canSettleResultOf(principal("tam"), huy)).toBe(false);
+  });
+
+  /**
+   * The override and the weighting are the owner's alone (SRS D13). Nobody else — not the CEO who
+   * signs payroll, not the HR administrator who computed the figure in the first place.
+   */
+  it("is overridden, and its weighting decided, by the owner alone", () => {
+    expect(canOverrideResult(owner)).toBe(true);
+    expect(canDecidePerformanceRules(owner)).toBe(true);
+    for (const who of [ceo, hrAdmin, hrSzm, headVid, auditor, principal("huy")]) {
+      expect(canOverrideResult(who)).toBe(false);
+      expect(canDecidePerformanceRules(who)).toBe(false);
+    }
+    // Proposing a version is group-wide HR's; an entity's HR cannot change a group-wide rule.
+    expect(canProposeWeighting(hrAdmin)).toBe(true);
+    expect(canProposeWeighting(hrSzm)).toBe(false);
+    expect(canProposeWeighting(owner)).toBe(true);
+  });
+
+  /**
+   * The line that FR-ACL and SRS §2.2 draw, and the reason the bonus lives in payroll rather than
+   * here: a line manager reads their report's **band and multiplier** — numbers about performance,
+   * personal tier — and reads nothing at compensation tier, where the amount of money lives.
+   */
+  it("keeps a line manager on the personal side of the tier line", () => {
+    const tam = principal("tam");
+    expect(canReadResultOf(tam, huy)).toBe(true);
+    expect(readableTier(tam, { ...huy, managerId: "tam" })).toBe("personal");
+    expect(canReadTier(tam, { ...huy, managerId: "tam" }, "compensation")).toBe(false);
+    expect(canReadTier(tam, { ...huy, managerId: "tam" }, "restricted")).toBe(false);
+    // A department head is no different: their role's ceiling is personal too.
+    expect(readableTier(headVid, huy)).toBe("personal");
+    expect(canReadTier(headVid, huy, "compensation")).toBe(false);
+    // Payroll's own rule says the same thing from the other side: no compensation without a
+    // payroll grant over the entity, whatever the reporting line says.
+    expect(canViewCompensationOf(tam, { personId: "huy", entityId: SZM })).toBe(false);
+    expect(canViewCompensationOf(headVid, { personId: "huy", entityId: SZM })).toBe(false);
+    expect(canViewCompensationOf(hrSzm, { personId: "huy", entityId: SZM })).toBe(false); // HR staff is not C&B
+    expect(canViewCompensationOf(owner, { personId: "huy", entityId: SZM })).toBe(true);
   });
 });

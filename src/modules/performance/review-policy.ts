@@ -92,6 +92,31 @@ export const canWriteManagerReview = (principal: Principal, parties: ReviewParti
 /** Writing peer feedback: the nominated peer, while the cycle collects, and never about oneself. */
 export const canWritePeerReview = (principal: Principal, parties: ReviewParties, nominated: boolean): boolean => !isSelf(principal, parties) && nominated && parties.cycleStatus === "active";
 
+// ── Peer nominations (week 2) ───────────────────────────────────────────────────────────────
+
+/**
+ * Putting a peer forward: the person themself (it is their 360), anyone above them, or HR.
+ * A colleague cannot nominate somebody to review a third person.
+ */
+export const canNominatePeer = (principal: Principal, parties: ReviewParties): boolean => parties.cycleStatus === "active" && (isSelf(principal, parties) || isReviewingManager(principal, parties) || canManagePerformanceOf(principal, parties.subject));
+
+/**
+ * Whether that nomination takes effect at once. The subject's own choices are a request their
+ * manager answers (FR-PRF-03's "optional peers/360" step); a manager's or HR's choice is the
+ * decision itself, so it needs nobody else's approval.
+ */
+export const nominationIsApproved = (principal: Principal, parties: ReviewParties): boolean => !isSelf(principal, parties) && (isReviewingManager(principal, parties) || canManagePerformanceOf(principal, parties.subject));
+
+/** Approving or declining a pending nomination: the reviewing manager or HR — never the subject. */
+export const canDecideNomination = (principal: Principal, parties: ReviewParties): boolean => nominationIsApproved(principal, parties);
+
+/**
+ * Who may see the list of who was asked. HR and the line always; the subject sees **their own**
+ * nominations because they made them — but on an anonymous cycle they are shown who was *asked*,
+ * never which of them wrote what, which is `canReadReviewForm`'s business.
+ */
+export const canSeeNominations = (principal: Principal, parties: ReviewParties): boolean => isSelf(principal, parties) || isAbove(principal, parties) || isHr(principal, parties);
+
 /** Calibration and release: the reviewing manager or HR over the person. Never the subject. */
 export const canReleaseReview = (principal: Principal, parties: ReviewParties): boolean => !isSelf(principal, parties) && (isReviewingManager(principal, parties) || canManagePerformanceOf(principal, parties.subject));
 

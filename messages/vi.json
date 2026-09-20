@@ -610,7 +610,8 @@
         "kb": "Tri thức & chính sách",
         "comms": "Thông báo nội bộ & ghi nhận",
         "payroll": "Lương & bảng lương",
-        "recruit": "Tuyển dụng"
+        "recruit": "Tuyển dụng",
+        "performance": "Đánh giá hiệu suất"
       },
       "push": "Đẩy"
     },
@@ -826,6 +827,22 @@
       "recruit_offer_accepted": {
         "title": "Ứng viên đã đồng ý",
         "body": "{name} đã đồng ý nhận việc, dự kiến bắt đầu ngày {date}. Hãy tạo hồ sơ nhân viên."
+      },
+      "performance_peer_requested": {
+        "title": "Có người nhờ bạn phản hồi đồng nghiệp",
+        "body": "Bạn được mời viết phản hồi 360° trong một chu kỳ đánh giá. Hãy mở trang đánh giá để viết."
+      },
+      "performance_review_released": {
+        "title": "Phiếu đánh giá của bạn đã được công bố",
+        "body": "Chu kỳ {cycle}: phiếu đánh giá của bạn đã được công bố. Hãy đọc và xác nhận."
+      },
+      "performance_result_published": {
+        "title": "Kết quả hiệu suất năm {year} đã có",
+        "body": "Kết quả hiệu suất cả năm {year} của bạn đã được công bố. Hãy mở trang kết quả để xem cách tính."
+      },
+      "performance_rule_proposed": {
+        "title": "Có đề xuất trọng số kết quả hiệu suất",
+        "body": "Một phiên bản trọng số mới được đề xuất, hiệu lực từ {validFrom}. Chỉ có hiệu lực sau khi bạn phê duyệt."
       }
     },
     "errors": {
@@ -3671,7 +3688,8 @@
       "team": "Đội của tôi",
       "overview": "Toàn cảnh",
       "admin": "Quản trị KPI",
-      "reviews": "Đánh giá"
+      "reviews": "Đánh giá",
+      "results": "Kết quả năm"
     },
     "period": {
       "annual": "Năm {year}",
@@ -3908,7 +3926,8 @@
         "positions": "Theo vị trí",
         "library": "Thư viện",
         "import": "Nhập từ tệp",
-        "cycles": "Chu kỳ đánh giá"
+        "cycles": "Chu kỳ đánh giá",
+        "weighting": "Trọng số kết quả"
       }
     },
     "library": {
@@ -3983,7 +4002,8 @@
       "closeConfirm": "Chốt tháng này? Điểm sẽ được lưu và không sửa được số liệu nữa.",
       "reopenReason": "Lý do mở lại",
       "reopen": "Mở lại kỳ",
-      "reopenConfirm": "Mở lại kỳ này? Điểm đã lưu sẽ chuyển sang “đã thay thế”."
+      "reopenConfirm": "Mở lại kỳ này? Điểm đã lưu sẽ chuyển sang “đã thay thế”.",
+      "consumed": "Đã dùng tính thưởng"
     },
     "import": {
       "description": "Nhập số thực đạt hàng loạt từ bảng tính: mỗi dòng là một người, một KPI, một kỳ.",
@@ -4067,7 +4087,8 @@
       "kpi_month_already_closed": "Tháng này đã chốt rồi.",
       "kpi_nothing_to_close": "Không có KPI nào đến hạn trong tháng này.",
       "kpi_month_blocked": "Còn thiếu số thực đạt. Bổ sung, hoặc chốt kèm lý do.",
-      "kpi_month_not_closed": "Tháng này chưa chốt."
+      "kpi_month_not_closed": "Tháng này chưa chốt.",
+      "kpi_month_consumed": "Tháng này đã được dùng để tính thưởng cuối năm, không mở lại được. Sai sót phải xử lý ở kỳ sau."
     },
     "reviews": {
       "title": "Đánh giá hiệu suất",
@@ -4154,7 +4175,10 @@
         "title": "Công bố",
         "action": "Công bố cho nhân viên",
         "confirm": "Công bố rồi nhân viên sẽ đọc được phiếu của quản lý. Tiếp tục?",
-        "yes": "Công bố"
+        "yes": "Công bố",
+        "cycleAction": "Công bố cả chu kỳ",
+        "cycleConfirm": "Sẽ công bố cho tất cả những người đã có phiếu quản lý. Tiếp tục?",
+        "cycleDone": "Đã công bố {released} người, bỏ qua {skipped} người."
       },
       "acknowledge": {
         "title": "Xác nhận của nhân viên",
@@ -4238,7 +4262,208 @@
         "review_manager_not_submitted": "Quản lý chưa gửi phiếu.",
         "review_already_released": "Đã công bố rồi.",
         "review_not_released": "Chưa công bố.",
-        "review_already_acknowledged": "Đã xác nhận rồi."
+        "review_already_acknowledged": "Đã xác nhận rồi.",
+        "review_peers_disabled": "Chu kỳ này không lấy phản hồi đồng nghiệp.",
+        "review_peer_is_subject": "Không thể mời chính người được đánh giá.",
+        "review_peer_exists": "Người này đã được mời.",
+        "review_peer_max": "Đã đủ số người phản hồi tối đa.",
+        "review_nomination_not_found": "Không tìm thấy lời mời.",
+        "review_nomination_decided": "Lời mời đã được trả lời.",
+        "review_nomination_has_form": "Người này đã viết phản hồi, không rút lại được."
+      },
+      "peers": {
+        "title": "Phản hồi đồng nghiệp (360°)",
+        "disabled": "Chu kỳ này không lấy phản hồi đồng nghiệp.",
+        "empty": "Chưa mời ai.",
+        "add": "Mời phản hồi",
+        "choose": "— Chọn đồng nghiệp —",
+        "note": "Ghi chú (không bắt buộc)",
+        "submit": "Gửi lời mời",
+        "range": "Cần {min}–{max} người. Đã duyệt: {approved}.",
+        "needMore": "Còn thiếu {count} người đã duyệt.",
+        "status": {
+          "pending": "Chờ duyệt",
+          "approved": "Đã duyệt",
+          "declined": "Đã từ chối"
+        },
+        "written": "Đã viết",
+        "notWritten": "Chưa viết",
+        "approve": "Duyệt",
+        "decline": "Từ chối",
+        "withdraw": "Rút lại",
+        "selfHint": "Bạn chọn người muốn xin phản hồi; quản lý của bạn sẽ duyệt.",
+        "managerHint": "Bạn mời ai thì người đó được viết ngay, không cần duyệt thêm.",
+        "anonymous": "Chu kỳ này ẩn danh: nhân viên đọc nội dung phản hồi nhưng không biết ai viết.",
+        "invitations": "Phản hồi người khác nhờ bạn",
+        "invitationsEmpty": "Hiện không ai nhờ bạn phản hồi.",
+        "invitationDue": "Hạn: {date}",
+        "write": "Viết phản hồi"
+      },
+      "evidence": {
+        "title": "Bằng chứng năm {year}",
+        "description": "Số liệu đã ghi nhận trong hệ thống, để chấm điểm dựa trên hồ sơ chứ không dựa vào trí nhớ.",
+        "okr": "Mục tiêu (OKR)",
+        "okrIndividual": "Cá nhân",
+        "okrDepartment": "Bộ phận",
+        "okrEntity": "Pháp nhân",
+        "okrGroup": "Tập đoàn",
+        "okrGoals": "{count} mục tiêu",
+        "kpi": "Điểm KPI cả năm",
+        "kpiMonths": "{closed} tháng đã chốt, {open} tháng chưa chốt",
+        "kpiFinal": "Đã chốt đủ 12 tháng",
+        "tasks": "Công việc",
+        "tasksDone": "{count} việc hoàn thành",
+        "tasksOnTime": "{count} đúng hạn",
+        "tasksLate": "{count} trễ hạn",
+        "tasksOpen": "{count} đang mở ({overdue} quá hạn)",
+        "kudos": "Ghi nhận (kudos)",
+        "kudosCount": "{count} lời ghi nhận trong năm",
+        "attendance": "Chấm công",
+        "attendanceLate": "{count} lần đi muộn",
+        "attendanceAbsent": "{count} ngày vắng",
+        "attendanceLeave": "{days} ngày nghỉ có lương",
+        "none": "Không có dữ liệu."
+      }
+    },
+    "results": {
+      "title": "Kết quả hiệu suất cả năm",
+      "description": "Điểm đánh giá, điểm KPI và tiến độ OKR gộp lại theo trọng số đã phê duyệt, ra một điểm và một mức.",
+      "year": "Năm {year}",
+      "mine": {
+        "title": "Kết quả của tôi",
+        "empty": "Chưa có kết quả nào được công bố cho bạn.",
+        "notPublished": "Kết quả năm {year} chưa được công bố."
+      },
+      "list": {
+        "title": "Kết quả năm {year}",
+        "empty": "Chưa tính kết quả cho năm này.",
+        "person": "Nhân sự",
+        "review": "Đánh giá",
+        "kpi": "KPI",
+        "okr": "OKR",
+        "computed": "Điểm tính",
+        "final": "Điểm cuối",
+        "band": "Mức",
+        "multiplier": "Hệ số",
+        "status": "Trạng thái",
+        "overridden": "Chủ sở hữu điều chỉnh",
+        "count": "{count} người"
+      },
+      "status": {
+        "draft": "Bản nháp",
+        "locked": "Đã chốt",
+        "published": "Đã công bố"
+      },
+      "compute": {
+        "title": "Tính kết quả",
+        "action": "Tính cho tất cả người tham gia",
+        "confirm": "Sẽ tính lại các kết quả còn là bản nháp. Bản đã chốt giữ nguyên. Tiếp tục?",
+        "yes": "Tính luôn",
+        "one": "Tính lại",
+        "done": "Đã tính {computed} người, bỏ qua {skipped} người đã chốt.",
+        "noWeighting": "Chưa có phiên bản trọng số nào được phê duyệt cho năm này."
+      },
+      "trace": {
+        "title": "Cách tính",
+        "component": "Thành phần",
+        "score": "Điểm",
+        "weight": "Trọng số",
+        "normalised": "Trọng số thực",
+        "contribution": "Đóng góp",
+        "components": {
+          "review": "Đánh giá",
+          "kpi": "KPI",
+          "okr": "OKR"
+        },
+        "missing": "Không có số liệu — trọng số chia lại cho các thành phần còn lại.",
+        "renormalised": "Có thành phần thiếu số liệu nên trọng số đã được chia lại.",
+        "okrMix": "Thành phần OKR",
+        "level": {
+          "individual": "Cá nhân",
+          "team": "Đội",
+          "department": "Bộ phận",
+          "entity": "Pháp nhân",
+          "group": "Tập đoàn"
+        },
+        "computed": "Điểm theo công thức: {value}",
+        "finalLine": "Điểm cuối: {value} — mức {band} (hệ số {multiplier})",
+        "nothing": "Không có thành phần nào có số liệu, chưa ra điểm.",
+        "weightingVersion": "Phiên bản trọng số hiệu lực từ {date}",
+        "provenance": "Nguồn: {months} tháng KPI đã chốt, {goals} mục tiêu."
+      },
+      "override": {
+        "title": "Điều chỉnh của chủ sở hữu",
+        "hint": "Điểm theo công thức vẫn được giữ nguyên bên cạnh; điều chỉnh bắt buộc phải có lý do.",
+        "score": "Điểm điều chỉnh (%)",
+        "reason": "Lý do",
+        "save": "Lưu điều chỉnh",
+        "remove": "Bỏ điều chỉnh",
+        "was": "Theo công thức: {value}",
+        "by": "{name} điều chỉnh ngày {date}"
+      },
+      "lock": {
+        "action": "Chốt",
+        "publish": "Công bố",
+        "unlock": "Mở lại",
+        "lockHint": "Chốt xong thì kỳ thưởng cuối năm mới đọc được kết quả này."
+      },
+      "weighting": {
+        "title": "Trọng số kết quả hiệu suất",
+        "description": "Nhân sự đề xuất, chủ sở hữu phê duyệt. Các phiên bản đã duyệt không chồng lấn, và năm nào dùng phiên bản hiệu lực đến 31/12 năm đó.",
+        "entity": "Pháp nhân",
+        "wholeGroup": "Toàn tập đoàn",
+        "validFrom": "Hiệu lực từ",
+        "validTo": "Đến",
+        "status": {
+          "proposed": "Chờ duyệt",
+          "approved": "Đang áp dụng",
+          "rejected": "Đã từ chối"
+        },
+        "weights": "Trọng số ba thành phần (%)",
+        "review": "Đánh giá",
+        "kpi": "KPI",
+        "okr": "OKR",
+        "okrMix": "Chia nhỏ phần OKR (%)",
+        "individual": "Cá nhân",
+        "team": "Đội",
+        "department": "Bộ phận",
+        "entityLevel": "Pháp nhân",
+        "group": "Tập đoàn",
+        "bands": "Các mức",
+        "bandKey": "Mã",
+        "bandLabel": "Tên mức",
+        "bandMin": "Từ (%)",
+        "bandMultiplier": "Hệ số (%)",
+        "addBand": "Thêm mức",
+        "removeBand": "Bớt mức",
+        "note": "Ghi chú",
+        "propose": "Đề xuất phiên bản",
+        "proposed": "Đã gửi đề xuất.",
+        "approve": "Phê duyệt",
+        "reject": "Từ chối",
+        "versions": "Các phiên bản",
+        "none": "Chưa có phiên bản nào. Hãy đề xuất một phiên bản trước khi tính kết quả.",
+        "sumHint": "Ba trọng số phải cộng lại đúng 100 %, phần OKR cũng vậy."
+      },
+      "errors": {
+        "generic": "Không thực hiện được. Hãy thử lại.",
+        "forbidden": "Bạn không có quyền làm việc này.",
+        "invalid": "Hãy kiểm tra các ô được đánh dấu.",
+        "unauthenticated": "Phiên đăng nhập đã hết.",
+        "weighting_missing": "Chưa có phiên bản trọng số được phê duyệt cho kỳ này.",
+        "weighting_proposal_not_found": "Không tìm thấy đề xuất đang chờ.",
+        "weighting_weights_not_full": "Ba trọng số phải cộng lại đúng 100 %.",
+        "weighting_okr_mix_not_full": "Phần OKR phải cộng lại đúng 100 %.",
+        "weighting_duplicate_band": "Hai mức trùng mã.",
+        "weighting_no_bottom_band": "Phải có một mức bắt đầu từ 0 %.",
+        "weighting_version_exists": "Đã có phiên bản bắt đầu đúng ngày này.",
+        "weighting_before_current_version": "Phiên bản mới phải bắt đầu sau phiên bản đang áp dụng.",
+        "result_not_found": "Không tìm thấy kết quả.",
+        "result_locked": "Kết quả đã chốt, không sửa được nữa.",
+        "result_not_locked": "Phải chốt trước khi công bố.",
+        "result_published": "Đã công bố rồi.",
+        "result_nothing_scored": "Chưa có thành phần nào có số liệu, không chốt được.",
+        "result_consumed": "Năm này đã dùng để tính thưởng, không mở lại được."
       }
     }
   },

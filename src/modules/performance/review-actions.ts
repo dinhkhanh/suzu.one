@@ -3,19 +3,25 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
+import { notify } from "@/modules/platform/notifications/service";
 import { REVIEW_CYCLE_KINDS, REVIEW_CYCLE_STATUSES, REVIEW_FORM_KINDS, REVIEW_SECTION_KINDS } from "./enums";
 import { loadDirectory } from "./people";
-import { canAcknowledgeReview, canManageCycle, canManageReviewTemplates, canReleaseReview, canWriteManagerReview, canWritePeerReview, canWriteSelfReview, type ReviewParties } from "./review-policy";
+import { canAcknowledgeReview, canDecideNomination, canManageCycle, canManageReviewTemplates, canNominatePeer, canReleaseReview, canWriteManagerReview, canWritePeerReview, canWriteSelfReview, nominationIsApproved, type ReviewParties } from "./review-policy";
 import {
   acknowledgeParticipant,
   addParticipant,
   advanceReviewCycle,
   calibrateParticipant,
+  decideNomination,
+  findNomination,
   findParticipant,
   findReviewCycle,
+  isApprovedPeer,
   launchReviewCycle,
-  loadParticipant,
+  listCycleParticipants,
+  nominatePeer,
   partiesOfParticipant,
+  releaseCycle,
   releaseParticipant,
   removeParticipant,
   type ReviewCycleRow,
@@ -23,6 +29,7 @@ import {
   saveReviewCycle,
   saveReviewForm,
   saveReviewTemplate,
+  withdrawNomination,
 } from "./reviews";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -225,11 +232,8 @@ const saveFormPipeline = createAction({
         return canWriteSelfReview(user.principal, parties);
       case "manager":
         return canWriteManagerReview(user.principal, parties);
-      case "peer": {
-        const loaded = await loadParticipant(input.participantId);
-        const nominated = !!loaded?.nominations.some((row) => row.peerPersonId === user.person.id && row.status === "approved");
-        return canWritePeerReview(user.principal, parties, nominated);
-      }
+      case "peer":
+        return canWritePeerReview(user.principal, parties, await isApprovedPeer(input.participantId, user.person.id));
     }
   },
   run: async ({ user, input }) => {
@@ -272,12 +276,107 @@ const releasePipeline = createAction({
   },
   run: async ({ user, input }) => {
     const { before, after } = await releaseParticipant(input.participantId, user.person.id);
+    const cycle = await findReviewCycle(after.cycleId);
+    // The person is told there is something to read — never what it says, and never the figure.
+    await notify({ recipients: [after.personId], kind: "performance.review_released", params: { cycle: cycle?.name ?? "" }, link: `/performance/reviews/${after.id}` });
     refresh(input.participantId);
     return { data: { releasedAt: after.releasedAt }, audit: { resource: { type: "review_participant", id: after.id, entityId: after.entityId }, summary: "released", before: { stage: before.stage }, after: { stage: after.stage, reviewScoreBp: after.reviewScoreBp } } };
   },
 });
 export async function releaseReviewAction(input: unknown) {
   return releasePipeline(input);
+}
+
+// Release everybody who is ready. The ones the bulk action left alone come back in `data`.
+const releaseCyclePipeline = createAction({
+  name: "performance.review.releaseCycle",
+  input: z.object({ cycleId: z.uuid() }),
+  authorize: async (user, input) => {
+    const cycle = await findReviewCycle(input.cycleId);
+    return !!cycle && canManageCycle(user.principal, cycle.entityId);
+  },
+  run: async ({ user, input }) => {
+    const result = await releaseCycle(input.cycleId, user.person.id);
+    const cycle = await findReviewCycle(input.cycleId);
+    // Everybody released hears once, in one go, that their review is theirs to read.
+    if (result.released.length > 0) {
+      const participants = await listCycleParticipants(input.cycleId);
+      const told = participants.filter((line) => result.released.includes(line.participantId));
+      await notify({ recipients: told.map((line) => line.personId), kind: "performance.review_released", params: { cycle: cycle?.name ?? "" }, link: "/performance/reviews" });
+    }
+    refresh();
+    return {
+      data: { released: result.released.length, skipped: result.skipped },
+      audit: { resource: { type: "review_cycle", id: input.cycleId, entityId: cycle?.entityId ?? null }, summary: `released ${result.released.length}, skipped ${result.skipped.length}`, after: { released: result.released.length, skipped: result.skipped.map((row) => row.reason) } },
+    };
+  },
+});
+export async function releaseCycleAction(input: unknown) {
+  return releaseCyclePipeline(input);
+}
+
+// ── Peer / 360 nominations (week 2) ─────────────────────────────────────────────────────────
+
+const nominatePipeline = createAction({
+  name: "performance.review.nominatePeer",
+  input: z.object({ participantId: z.uuid(), peerPersonId: z.uuid(), note: optional(z.string().trim().max(500)) }),
+  authorize: async (user, input) => {
+    const parties = await partiesOf(input.participantId);
+    return !!parties && canNominatePeer(user.principal, parties);
+  },
+  run: async ({ user, input }) => {
+    const parties = await partiesOf(input.participantId);
+    // The subject's own choice waits for their manager; a manager's or HR's takes effect at once.
+    const approved = !!parties && nominationIsApproved(user.principal, parties);
+    const { nomination } = await nominatePeer({ participantId: input.participantId, peerPersonId: input.peerPersonId, approved, note: input.note }, user.person.id);
+    if (approved) await notify({ recipients: [input.peerPersonId], kind: "performance.peer_requested", params: {}, link: "/performance/reviews" });
+    refresh(input.participantId);
+    return { data: { id: nomination.id, status: nomination.status }, audit: { resource: { type: "review_peer_nomination", id: nomination.id }, summary: nomination.status, after: { participantId: nomination.participantId, peerPersonId: nomination.peerPersonId, status: nomination.status } } };
+  },
+});
+export async function nominatePeerAction(input: unknown) {
+  return nominatePipeline(input);
+}
+
+const decideNominationPipeline = createAction({
+  name: "performance.review.decideNomination",
+  input: z.object({ nominationId: z.uuid(), decision: z.enum(["approve", "decline"]) }),
+  authorize: async (user, input) => {
+    const found = await findNomination(input.nominationId);
+    if (!found) return false;
+    const parties = await partiesOf(found.participantId);
+    return !!parties && canDecideNomination(user.principal, parties);
+  },
+  run: async ({ user, input }) => {
+    const { before, after } = await decideNomination(input.nominationId, input.decision, user.person.id);
+    if (after.status === "approved") await notify({ recipients: [after.peerPersonId], kind: "performance.peer_requested", params: {}, link: "/performance/reviews" });
+    refresh(after.participantId);
+    return { data: { status: after.status }, audit: { resource: { type: "review_peer_nomination", id: after.id }, summary: `${before.status} → ${after.status}`, before: { status: before.status }, after: { status: after.status, peerPersonId: after.peerPersonId } } };
+  },
+});
+export async function decidePeerNominationAction(input: unknown) {
+  return decideNominationPipeline(input);
+}
+
+const withdrawNominationPipeline = createAction({
+  name: "performance.review.withdrawNomination",
+  input: z.object({ nominationId: z.uuid() }),
+  authorize: async (user, input) => {
+    const found = await findNomination(input.nominationId);
+    if (!found) return false;
+    const parties = await partiesOf(found.participantId);
+    if (!parties) return false;
+    // Whoever may decide a nomination may take one back; so may the person who made it.
+    return canDecideNomination(user.principal, parties) || found.nominatedByPersonId === user.person.id;
+  },
+  run: async ({ input }) => {
+    const row = await withdrawNomination(input.nominationId);
+    refresh(row.participantId);
+    return { data: { id: row.id }, audit: { resource: { type: "review_peer_nomination", id: row.id }, summary: "withdrawn", before: { peerPersonId: row.peerPersonId, status: row.status } } };
+  },
+});
+export async function withdrawPeerNominationAction(input: unknown) {
+  return withdrawNominationPipeline(input);
 }
 
 const acknowledgePipeline = createAction({

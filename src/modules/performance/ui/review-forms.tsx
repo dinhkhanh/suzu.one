@@ -8,7 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { REVIEW_CYCLE_KINDS, type ReviewCycleKind, type ReviewFormKind, type ReviewFormShape } from "../enums";
-import { acknowledgeReviewAction, advanceReviewCycleAction, calibrateReviewAction, launchReviewCycleAction, releaseReviewAction, saveReviewCycleAction, saveReviewFormAction } from "../review-actions";
+import {
+  acknowledgeReviewAction,
+  advanceReviewCycleAction,
+  calibrateReviewAction,
+  decidePeerNominationAction,
+  launchReviewCycleAction,
+  nominatePeerAction,
+  releaseCycleAction,
+  releaseReviewAction,
+  saveReviewCycleAction,
+  saveReviewFormAction,
+  withdrawPeerNominationAction,
+} from "../review-actions";
 
 const ERRORS = "performance.reviews.errors";
 type Option = { id: string; name: string };
@@ -160,6 +172,105 @@ export function AcknowledgeForm({ participantId }: { participantId: string }) {
         </Button>
         <FormError namespace={ERRORS} errorKey={form.errorKey} />
       </div>
+    </form>
+  );
+}
+
+// ── Peer / 360 nominations (week 2) ─────────────────────────────────────────────────────────
+
+export function NominatePeerForm({ participantId, candidates }: { participantId: string; candidates: { id: string; fullName: string }[] }) {
+  const t = useTranslations("performance.reviews");
+  const router = useRouter();
+  const form = useActionForm(nominatePeerAction, { onSuccess: () => router.refresh() });
+  return (
+    <form onSubmit={form.onSubmit} className="flex flex-wrap items-end gap-2">
+      <FieldErrors value={form.fieldErrors}>
+        <input type="hidden" name="participantId" value={participantId} />
+        <Field name="peerPersonId" label={t("peers.add")}>
+          <Select name="peerPersonId" id="peerPersonId" defaultValue="" required className="w-64">
+            <option value="">{t("peers.choose")}</option>
+            {candidates.map((person) => (
+              <option key={person.id} value={person.id}>
+                {person.fullName}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field name="note" label={t("peers.note")}>
+          <Input name="note" id="note" maxLength={500} className="w-64" />
+        </Field>
+      </FieldErrors>
+      <Button type="submit" variant="outline" disabled={form.pending}>
+        {t("peers.submit")}
+      </Button>
+      <FormError namespace={ERRORS} errorKey={form.errorKey} />
+    </form>
+  );
+}
+
+export function NominationDecisionForm({ nominationId, canDecide, canWithdraw }: { nominationId: string; canDecide: boolean; canWithdraw: boolean }) {
+  const t = useTranslations("performance.reviews");
+  const router = useRouter();
+  const decide = useActionForm(decidePeerNominationAction, { onSuccess: () => router.refresh() });
+  const withdraw = useActionForm(withdrawPeerNominationAction, { onSuccess: () => router.refresh() });
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      {canDecide ? (
+        <form onSubmit={decide.onSubmit} className="inline-flex items-center gap-1">
+          <input type="hidden" name="nominationId" value={nominationId} />
+          <Button type="submit" name="decision" value="approve" size="sm" disabled={decide.pending}>
+            {t("peers.approve")}
+          </Button>
+          <Button type="submit" name="decision" value="decline" size="sm" variant="outline" disabled={decide.pending}>
+            {t("peers.decline")}
+          </Button>
+          <FormError namespace={ERRORS} errorKey={decide.errorKey} />
+        </form>
+      ) : null}
+      {canWithdraw ? (
+        <form onSubmit={withdraw.onSubmit} className="inline-flex items-center gap-1">
+          <input type="hidden" name="nominationId" value={nominationId} />
+          <Button type="submit" size="sm" variant="outline" disabled={withdraw.pending}>
+            {t("peers.withdraw")}
+          </Button>
+          <FormError namespace={ERRORS} errorKey={withdraw.errorKey} />
+        </form>
+      ) : null}
+    </span>
+  );
+}
+
+export function ReleaseCycleForm({ cycleId }: { cycleId: string }) {
+  const t = useTranslations("performance.reviews");
+  const router = useRouter();
+  const [confirming, setConfirming] = useState(false);
+  const [summary, setSummary] = useState<{ released: number; skipped: unknown[] } | null>(null);
+  const form = useActionForm(releaseCycleAction, {
+    onSuccess: (data) => {
+      setSummary(data);
+      router.refresh();
+    },
+  });
+  return (
+    <form onSubmit={form.onSubmit} className="flex flex-wrap items-center gap-3">
+      <input type="hidden" name="cycleId" value={cycleId} />
+      {confirming ? (
+        <>
+          <span className="text-sm">{t("release.cycleConfirm")}</span>
+          <Button type="submit" disabled={form.pending}>
+            {t("release.yes")}
+          </Button>
+          <Button type="button" variant="outline" onClick={() => setConfirming(false)}>
+            {t("form.cancel")}
+          </Button>
+        </>
+      ) : (
+        <Button type="button" variant="outline" onClick={() => setConfirming(true)} disabled={form.pending}>
+          {t("release.cycleAction")}
+        </Button>
+      )}
+      {summary ? <span className="text-sm text-muted-foreground">{t("release.cycleDone", { released: summary.released, skipped: summary.skipped.length })}</span> : null}
+      <FormError namespace={ERRORS} errorKey={form.errorKey} />
     </form>
   );
 }

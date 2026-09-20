@@ -8,8 +8,9 @@ import { position } from "../core-hr/schema";
 import { department, entity, team } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
 import type { KpiTrace } from "./engine/kpi-score";
+import type { ResultTrace } from "./engine/result";
 import type { ReviewScoreTrace } from "./engine/review-score";
-import type { Milestone, RatingPoint, ReviewAnswers, ReviewFormShape, ReviewSection } from "./enums";
+import type { Milestone, PerformanceWeightingValue, RatingPoint, ReviewAnswers, ReviewFormShape, ReviewSection } from "./enums";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -398,4 +399,100 @@ export const reviewPeerNomination = pgTable(
     ...timestamps,
   },
   (t) => [unique("review_peer_nomination_unique").on(t.participantId, t.peerPersonId), index("review_peer_nomination_peer_idx").on(t.peerPersonId, t.status)],
+).enableRLS();
+
+// ── The final yearly result (FR-PRF-09 — Phase 8 week 2) ────────────────────────────────────
+// How the review rating, the KPI score and OKR attainment are combined is **configuration the
+// owner approves**, effective-dated exactly like a pay policy (FR-PLT-39): the year the bonus is
+// computed for reads the version in force at its end, and that version never changes afterwards.
+
+export const performanceWeighting = pgTable(
+  "performance_weighting",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // null = the group's weighting; an entity's own version replaces it for that entity.
+    entityId: uuid("entity_id").references(() => entity.id),
+    value: jsonb("value").$type<PerformanceWeightingValue>().notNull(),
+    validFrom: date("valid_from").notNull(),
+    validTo: date("valid_to"),
+    // proposed | approved | rejected
+    status: text("status").notNull().default("proposed"),
+    note: text("note"),
+    proposedByPersonId: uuid("proposed_by_person_id").references(() => person.id),
+    decidedByPersonId: uuid("decided_by_person_id").references(() => person.id),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("performance_weighting_entity_idx").on(t.entityId, t.status, t.validFrom)],
+).enableRLS();
+
+// One person's year. The computed figure and the owner's override sit side by side: an override
+// never rewrites what the weighting worked out, it is recorded beside it with its reason.
+// `trace` is the whole derivation; `kpi_score_ids` and `goal_ids` are its provenance, so the
+// figures can still be pointed at months and goals long after the year has closed.
+export const performanceResult = pgTable(
+  "performance_result",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    entityId: uuid("entity_id").references(() => entity.id),
+    year: integer("year").notNull(),
+    weightingVersionId: uuid("weighting_version_id").references(() => performanceWeighting.id),
+    // Where the review figure came from, when there was one.
+    participantId: uuid("participant_id").references(() => reviewParticipant.id),
+    reviewScoreBp: integer("review_score_bp"),
+    kpiScoreBp: integer("kpi_score_bp"),
+    okrScoreBp: integer("okr_score_bp"),
+    computedScoreBp: integer("computed_score_bp"),
+    computedBand: text("computed_band"),
+    overrideScoreBp: integer("override_score_bp"),
+    overrideReason: text("override_reason"),
+    overrideByPersonId: uuid("override_by_person_id").references(() => person.id),
+    overrideAt: timestamp("override_at", { withTimezone: true }),
+    finalScoreBp: integer("final_score_bp"),
+    finalBand: text("final_band"),
+    // What the band is worth to the year-end bonus. A number, not money: the amount is payroll's.
+    multiplierBp: integer("multiplier_bp"),
+    trace: jsonb("trace").$type<ResultTrace>().notNull(),
+    kpiScoreIds: jsonb("kpi_score_ids").$type<string[]>().notNull().default([]),
+    goalIds: jsonb("goal_ids").$type<string[]>().notNull().default([]),
+    // draft | locked | published
+    status: text("status").notNull().default("draft"),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    lockedByPersonId: uuid("locked_by_person_id").references(() => person.id),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    publishedByPersonId: uuid("published_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [unique("performance_result_unique").on(t.personId, t.year), index("performance_result_year_idx").on(t.year, t.entityId, t.status)],
+).enableRLS();
+
+// What a stored KPI score has already been used for. Phase 3.5 stores scores immutably and lets
+// group HR reopen a month, which supersedes them and writes a new revision — but **a month a
+// bonus run has already paid from must not move**: the money is out, and the figure behind it is
+// evidence. Payroll writes these rows when a bonus run is approved (`markScoresConsumed`), and
+// `reopenMonth` refuses any month that appears here.
+export const kpiScoreUse = pgTable(
+  "kpi_score_use",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // What consumed it, e.g. "bonus_run". Kept as text: the consumer lives in another module.
+    consumerType: text("consumer_type").notNull(),
+    consumerId: uuid("consumer_id").notNull(),
+    scoreId: uuid("score_id")
+      .notNull()
+      .references(() => kpiScore.id),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    month: text("month").notNull(),
+    year: integer("year").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("kpi_score_use_unique").on(t.consumerId, t.scoreId), index("kpi_score_use_month_idx").on(t.entityId, t.month), index("kpi_score_use_year_idx").on(t.entityId, t.year)],
 ).enableRLS();

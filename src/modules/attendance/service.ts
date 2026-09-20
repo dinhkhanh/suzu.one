@@ -6,7 +6,7 @@ export { requestTimesheetRecompute } from "./recompute";
 export { listPunches, type PunchFact } from "./punches";
 export { getAttendancePolicy, type ResolvedPolicy } from "./attendance-policies";
 export type { MonthSummary } from "./engine/timesheet";
-export { getTimesheetDays, recomputeDays, summariseMonth, type TimesheetDayRow } from "./timesheets";
+export { getTimesheetDays, recomputeDays, summariseMonth, summarisePersonYear, type TimesheetDayRow } from "./timesheets";
 // Payroll's input (Phase 5): the locked month per entity, retro adjustments, and the receipt payroll leaves on them.
 export { getLockedTimesheets, isPeriodLocked, listAdjustmentsForPayroll, type LockedPeriod, type LockedTimesheet, markAdjustmentsTaken, type TimesheetAdjustmentRow } from "./months";
 export type { AdjustmentDeltas } from "./schema";

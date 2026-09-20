@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { todayInVietnam } from "@/lib/dates";
 import { canManageCycle, cycleProgress, listCycleParticipants, listReviewCycles, listReviewTemplates, nextCycleStatus } from "@/modules/performance/service";
 import { FormStatusBadge, StageBadge, Timeline } from "@/modules/performance/ui/review";
-import { AdvanceCycleForm, CycleForm, LaunchCycleForm } from "@/modules/performance/ui/review-forms";
+import { AdvanceCycleForm, CycleForm, LaunchCycleForm, ReleaseCycleForm } from "@/modules/performance/ui/review-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 
@@ -68,6 +68,8 @@ export default async function ReviewCyclesPage({ searchParams }: PageProps<"/per
                 {cycle.status !== "draft" ? <p className="text-xs text-muted-foreground tabular-nums">{t("admin.progress", { participants: counts.participants, self: counts.selfDone, manager: counts.managerDone, released: counts.released })}</p> : null}
                 <div className="flex flex-wrap items-center gap-3">
                   {cycle.status === "draft" ? <LaunchCycleForm cycleId={cycle.id} /> : null}
+                  {/* Release everyone whose manager review is in. The ones it skips are reported. */}
+                  {cycle.status === "calibration" || cycle.status === "active" ? <ReleaseCycleForm cycleId={cycle.id} /> : null}
                   {next ? <AdvanceCycleForm cycleId={cycle.id} to={next} label={t(`admin.advance.${next}`)} /> : null}
                 </div>
               </li>

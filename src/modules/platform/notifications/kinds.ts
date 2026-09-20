@@ -1,7 +1,7 @@
 // The catalogue of notifications. Plain module: shared by the server and the preferences screen.
 // Wording lives in messages/*.json under `notifications.kinds.<kind>` (dots become underscores).
 
-export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks", "attendance", "ops", "kb", "comms", "payroll", "recruit"] as const;
+export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks", "attendance", "ops", "kb", "comms", "payroll", "recruit", "performance"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const EMAIL_CHANNELS = ["instant", "digest", "off"] as const;
@@ -33,6 +33,10 @@ export const CATEGORY_DEFINITIONS: Record<Category, { defaults: ChannelChoice; /
   // matters in hiring — a candidate who waits three days for an answer takes the other offer — so
   // these go out instantly. Never a figure: a salary expectation is compensation-tier.
   recruit: { defaults: { inApp: true, email: "instant", push: true }, mandatory: false },
+  // Performance (Phase 8): somebody asked you for 360 feedback, your review is out, your yearly
+  // result is published. A deadline to meet or a page to read — never a score and never an amount:
+  // the figure is personal tier and the bonus it drives is compensation.
+  performance: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false },
 };
 
 export const KINDS = {
@@ -106,6 +110,13 @@ export const KINDS = {
   "recruit.offer_approved": "recruit",
   // The candidate said yes: somebody has to put them on the books before they turn up (FR-REC-09).
   "recruit.offer_accepted": "recruit",
+  // Performance reviews (FR-PRF-03, 08, 09). The person's name, the cycle's name and a link —
+  // never the rating, which is personal-tier content and belongs on the page behind the link.
+  "performance.peer_requested": "performance",
+  "performance.review_released": "performance",
+  "performance.result_published": "performance",
+  // The owner has a weighting version to decide (FR-PRF-09 is configuration, not code).
+  "performance.rule_proposed": "performance",
 } as const satisfies Record<string, Category>;
 export type Kind = keyof typeof KINDS;
 

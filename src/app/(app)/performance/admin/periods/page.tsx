@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { todayInVietnam } from "@/lib/dates";
-import { canCloseKpiMonth, canReopenKpiMonth, closeBlockers, listPeriods } from "@/modules/performance/service";
+import { canCloseKpiMonth, canReopenKpiMonth, closeBlockers, consumedMonths, listPeriods } from "@/modules/performance/service";
 import { MonthPicker, monthLabel, readMonth, ScoreState } from "@/modules/performance/ui/kpi";
 import { CloseMonthForm, ReopenMonthForm } from "@/modules/performance/ui/kpi-forms";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -17,7 +17,9 @@ export default async function KpiPeriodsPage({ searchParams }: PageProps<"/perfo
   const today = todayInVietnam();
   const month = readMonth((await searchParams).month, today);
   const entities = (await listEntities()).filter((entity) => entity.isActive && canCloseKpiMonth(user.principal, entity.id));
-  const [periods, t, format] = await Promise.all([listPeriods({ month, entityIds: entities.map((entity) => entity.id) }), getTranslations("performance"), getFormatter()]);
+  const entityIds = entities.map((entity) => entity.id);
+  // Months a year-end bonus run has already been approved from cannot be reopened (FR-PAY-21).
+  const [periods, consumed, t, format] = await Promise.all([listPeriods({ month, entityIds }), consumedMonths(entityIds), getTranslations("performance"), getFormatter()]);
   const over = month < today.slice(0, 7);
   const rows = await Promise.all(
     entities.map(async (entity) => {
@@ -33,6 +35,7 @@ export default async function KpiPeriodsPage({ searchParams }: PageProps<"/perfo
       {!over ? <p className="text-sm text-muted-foreground">{t("periods.notOver", { month: monthLabel(month) })}</p> : null}
       {rows.map(({ entity, period, blockers }) => {
         const closed = period?.status === "closed";
+        const frozen = consumed.has(`${entity.id}:${month}`);
         return (
           <article key={entity.id} className="flex flex-col gap-3 rounded-xl border p-3">
             <header className="flex flex-wrap items-center gap-3">
@@ -42,7 +45,8 @@ export default async function KpiPeriodsPage({ searchParams }: PageProps<"/perfo
             </header>
             {closed && period?.overrideReason ? <p className="text-xs text-amber-700 dark:text-amber-300">{t("periods.overridden", { count: period.exceptions?.length ?? 0, reason: period.overrideReason })}</p> : null}
             {!closed && period?.reopenReason ? <p className="text-xs text-muted-foreground">{t("periods.reopened", { reason: period.reopenReason })}</p> : null}
-            {closed ? canReopenKpiMonth(user.principal) ? <ReopenMonthForm entityId={entity.id} month={month} /> : <p className="text-xs text-muted-foreground">{t("periods.reopenGroupOnly")}</p> : over ? <CloseMonthForm entityId={entity.id} month={month} blockers={blockers} /> : blockers.length > 0 ? <p className="text-xs text-muted-foreground">{t("periods.blocked", { count: blockers.length })}</p> : null}
+            {closed && frozen ? <p className="text-xs text-amber-700 dark:text-amber-300">{`${t("periods.consumed")} — ${t("errors.kpi_month_consumed")}`}</p> : null}
+            {closed ? frozen ? null : canReopenKpiMonth(user.principal) ? <ReopenMonthForm entityId={entity.id} month={month} /> : <p className="text-xs text-muted-foreground">{t("periods.reopenGroupOnly")}</p> : over ? <CloseMonthForm entityId={entity.id} month={month} blockers={blockers} /> : blockers.length > 0 ? <p className="text-xs text-muted-foreground">{t("periods.blocked", { count: blockers.length })}</p> : null}
           </article>
         );
       })}

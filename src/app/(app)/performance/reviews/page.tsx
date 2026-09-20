@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { listMyParticipations, listReviewsIOwe } from "@/modules/performance/service";
+import { listMyParticipations, listPeerInvitations, listReviewsIOwe } from "@/modules/performance/service";
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { FormStatusBadge, ratingText, StageBadge } from "@/modules/performance/ui/review";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Reviews" };
 // another person's review, writing it — is decided on the review's own page.
 export default async function ReviewsPage() {
   const user = await requireUser();
-  const [mine, owed, t, format] = await Promise.all([listMyParticipations(user.person.id), listReviewsIOwe(user.person.id), getTranslations("performance.reviews"), getFormatter()]);
+  const [mine, owed, invitations, t, format] = await Promise.all([listMyParticipations(user.person.id), listReviewsIOwe(user.person.id), listPeerInvitations(user.person.id), getTranslations("performance.reviews"), getFormatter()]);
 
   return (
     <div className="flex max-w-4xl flex-col gap-6">
@@ -40,6 +40,28 @@ export default async function ReviewsPage() {
           ))}
         </ul>
       </section>
+
+      {/* 360 feedback other people asked of me (FR-PRF-03). Nothing here says what anybody else
+          wrote — only that somebody is waiting on me. */}
+      {invitations.length > 0 ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-lg font-medium">{t("peers.invitations")}</h2>
+          <ul className="flex flex-col divide-y rounded-xl border">
+            {invitations.map((invitation) => (
+              <li key={invitation.nominationId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
+                <Link href={`/performance/reviews/${invitation.participantId}`} className="min-w-0 flex-1 text-sm underline-offset-4 hover:underline">
+                  {invitation.subjectName}
+                </Link>
+                <span className="text-xs text-muted-foreground">{invitation.cycleName}</span>
+                <FormStatusBadge status={invitation.submitted ? "submitted" : invitation.written ? "draft" : null} label={t(`formStatus.${invitation.submitted ? "submitted" : invitation.written ? "draft" : "none"}`)} />
+                {invitation.peerDueOn && !invitation.submitted ? (
+                  <span className="text-xs text-amber-700 dark:text-amber-300">{t("peers.invitationDue", { date: format.dateTime(new Date(`${invitation.peerDueOn}T00:00:00Z`), { dateStyle: "medium" }) })}</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {owed.length > 0 ? (
         <section className="flex flex-col gap-2">
