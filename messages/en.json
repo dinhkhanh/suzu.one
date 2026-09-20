@@ -44,7 +44,9 @@
     "approvalFlows": "Approval flows",
     "checkIn": "Check in / out",
     "menu": "Menu",
-    "performance": "Goals & KPIs"
+    "performance": "Goals & KPIs",
+    "announcements": "Announcements",
+    "kudos": "Kudos"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -52,7 +54,30 @@
     "noRoles": "Employee (no admin roles)",
     "scopeGroup": "group-wide",
     "roadmap": "Modules",
-    "phase": "Phase {n}"
+    "phase": "Phase {n}",
+    "pending": {
+      "title": "Waiting for you",
+      "acks": "{count, plural, one {# policy to read and confirm} other {# policies to read and confirm}}",
+      "announcements": "{count, plural, one {# announcement to acknowledge} other {# announcements to acknowledge}}",
+      "approvals": "{count, plural, one {# request waiting for your approval} other {# requests waiting for your approval}}",
+      "overdue": "overdue",
+      "dueOn": "due {date}"
+    },
+    "announcements": "Announcements",
+    "noAnnouncements": "No announcements yet.",
+    "joiners": "New joiners",
+    "joinerLine": "{position} · {department} · {entity}",
+    "joinedOn": "started {date}",
+    "birthdays": "Birthdays this week",
+    "anniversaries": "Work anniversaries",
+    "years": "{years, plural, one {# year} other {# years}}",
+    "today": "today",
+    "onDate": "on {date}",
+    "kudos": "Recent kudos",
+    "noKudos": "No kudos yet — be the first.",
+    "giveKudos": "Give kudos",
+    "newPages": "New knowledge-base pages",
+    "nothingThisWeek": "Nothing this week."
   },
   "roles": {
     "owner": "Owner",
@@ -725,6 +750,14 @@
       "kb_review_due": {
         "title": "Review due: {title}",
         "body": "The page “{title}” you own reached its review date ({date}). Check that it is still right and set a new review date."
+      },
+      "comms_announcement": {
+        "title": "{must, select, yes {Please acknowledge: {title}} other {New announcement: {title}}}",
+        "body": "{name} posted “{title}”."
+      },
+      "comms_kudos_received": {
+        "title": "{name} gave you kudos",
+        "body": "{name} thanked you for “{value}”."
       }
     },
     "errors": {
@@ -746,6 +779,9 @@
       "testSent": "Test sent to {count, plural, one {# device} other {# devices}}.",
       "testSimulated": "Recorded for {count, plural, one {# device} other {# devices}} — this server only simulates push.",
       "failed": "That did not work. Try again."
+    },
+    "categories": {
+      "comms": "Announcements & kudos"
     }
   },
   "jobs": {
@@ -4219,6 +4255,114 @@
       "titleField": "Page title",
       "titleHint": "Empty = the first level-1 heading, or the file name",
       "submit": "Import as a draft"
+    }
+  },
+  "comms": {
+    "audience": {
+      "all": "All staff",
+      "entity": "Entity",
+      "department": "Department",
+      "team": "Team",
+      "branch": "Branch / location",
+      "person": "Person"
+    },
+    "phase": {
+      "draft": "Draft",
+      "scheduled": "Scheduled",
+      "live": "Live",
+      "expired": "Expired",
+      "archived": "Archived"
+    },
+    "list": {
+      "title": "Announcements",
+      "help": "Announcements addressed to you, newest first; pinned ones stay on top.",
+      "empty": "No announcements for you yet.",
+      "unread": "Unread",
+      "pinned": "Pinned",
+      "mustAcknowledge": "Needs acknowledgement",
+      "acknowledged": "Acknowledged",
+      "all": "All announcements"
+    },
+    "detail": {
+      "readMore": "Read more in the knowledge base:",
+      "mustAcknowledge": "Please confirm that you have read this announcement.",
+      "acknowledge": "I have read this",
+      "acknowledgedOn": "You acknowledged this on {date}.",
+      "manage": "Edit and see who has read it"
+    },
+    "manage": {
+      "title": "Manage announcements",
+      "help": "The announcements you may manage: drafts, scheduled, live and expired.",
+      "new": "Write an announcement",
+      "empty": "No announcements yet.",
+      "phase": "Status",
+      "author": "Posted by",
+      "view": "View as a reader",
+      "pin": "Pin to top",
+      "unpin": "Unpin",
+      "archive": "Archive",
+      "archiveConfirm": "Archive this announcement? Readers will no longer see it."
+    },
+    "form": {
+      "title": "Title",
+      "body": "Text",
+      "kbPage": "Knowledge-base page to attach (paste its link, optional)",
+      "audience": "Send to",
+      "audienceEmpty": "Nobody chosen yet.",
+      "audienceType": "Kind of recipient",
+      "audienceName": "Recipient",
+      "add": "Add",
+      "remove": "Remove",
+      "pinned": "Pin to top",
+      "mustAcknowledge": "Ask readers to acknowledge",
+      "publishAt": "Show from",
+      "expiresAt": "Expires at",
+      "scheduleHelp": "Leave “show from” empty to post now. Pick a time ahead to schedule: the announcement appears at that time, and recipients are notified by the next job run.",
+      "publish": "Publish",
+      "saveDraft": "Save draft",
+      "saveAndKeep": "Save changes"
+    },
+    "report": {
+      "title": "Who has read it",
+      "summary": "{read} of {total} people have read it.",
+      "summaryAck": "{read} of {total} have read it, {acknowledged} of {total} acknowledged.",
+      "department": "Department",
+      "people": "People",
+      "read": "Read",
+      "acknowledged": "Acknowledged",
+      "person": "Person"
+    },
+    "kudos": {
+      "title": "Kudos",
+      "help": "Thank a colleague for something they did, tied to a company value. Everyone in the company sees it.",
+      "giveTitle": "Give kudos",
+      "to": "To",
+      "value": "Value",
+      "message": "Message",
+      "give": "Send kudos",
+      "sent": "Sent.",
+      "line": "<b>{from}</b> thanked <b>{to}</b>",
+      "wall": "Latest",
+      "mine": "Received by me",
+      "empty": "No kudos yet.",
+      "mineEmpty": "You have not received kudos yet.",
+      "remove": "Remove",
+      "removeConfirm": "Remove this kudos?",
+      "all": "See all"
+    },
+    "errors": {
+      "generic": "That did not work. Please try again.",
+      "forbidden": "You may not address this audience.",
+      "invalid": "Please check the fields.",
+      "unauthenticated": "Your session has expired.",
+      "comms_audience_required": "Choose at least one recipient.",
+      "comms_announcement_not_found": "Announcement not found.",
+      "comms_announcement_archived": "An archived announcement cannot be changed.",
+      "comms_expires_before_publish": "The expiry must be after the time it is shown.",
+      "comms_ack_not_asked": "This announcement does not ask for acknowledgement.",
+      "comms_kudos_recipient": "You cannot give kudos to this person.",
+      "comms_value_unknown": "That value is no longer in use.",
+      "comms_kudos_not_found": "Kudos not found."
     }
   }
 }

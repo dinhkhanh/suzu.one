@@ -7,6 +7,9 @@ export type NavItem = { key: string; href?: string; phase?: number };
 export function navFor(principal: Principal, open: { people: boolean }): { main: NavItem[]; admin: NavItem[] } {
   const main: NavItem[] = [
     { key: "home", href: "/home" },
+    // Announcements aimed at the reader; kudos are about the directory, which collaborators do not have.
+    { key: "announcements", href: "/announcements" },
+    ...(principal.workforceType === "collaborator" ? [] : [{ key: "kudos", href: "/kudos" }]),
     { key: "checkIn", href: "/attendance/check-in" },
     { key: "me", href: "/me" },
     ...(open.people ? [{ key: "people", href: "/people" }] : []),

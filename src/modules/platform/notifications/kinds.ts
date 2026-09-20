@@ -1,7 +1,7 @@
 // The catalogue of notifications. Plain module: shared by the server and the preferences screen.
 // Wording lives in messages/*.json under `notifications.kinds.<kind>` (dots become underscores).
 
-export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks", "attendance", "ops", "kb"] as const;
+export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks", "attendance", "ops", "kb", "comms"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const EMAIL_CHANNELS = ["instant", "digest", "off"] as const;
@@ -24,6 +24,8 @@ export const CATEGORY_DEFINITIONS: Record<Category, { defaults: ChannelChoice; /
   ops: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false },
   // Knowledge base: a policy to read and confirm, the reminders, a page whose review date has passed.
   kb: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false },
+  // Announcements and kudos (Phase 4): in the app and on the phone at once, by email once a day.
+  comms: { defaults: { inApp: true, email: "digest", push: true }, mandatory: false },
 };
 
 export const KINDS = {
@@ -68,6 +70,8 @@ export const KINDS = {
   "kb.ack_requested": "kb",
   "kb.ack_reminder": "kb",
   "kb.review_due": "kb",
+  "comms.announcement": "comms",
+  "comms.kudos_received": "comms",
 } as const satisfies Record<string, Category>;
 export type Kind = keyof typeof KINDS;
 

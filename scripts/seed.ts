@@ -6,12 +6,13 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { and, between, inArray, isNull } from "drizzle-orm";
-import { attendancePolicy, kbTemplate, kpiDefinition, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
+import { attendancePolicy, companyValue, kbTemplate, kpiDefinition, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
 import { PROFILE_SEED } from "../src/modules/attendance/engine/device-log";
 import { CALENDAR_SEED, DEFAULT_POLICY_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 import { leaveSeedRows } from "../src/modules/leave/seed-types";
 import { TEMPLATE_SEED } from "../src/modules/platform/tasks-engine/seed-templates";
 import { obligationSeedRows } from "../src/modules/ops/seed-library";
+import { STARTER_COMPANY_VALUES } from "../src/modules/comms/seed-values";
 import { kbTemplateSeedRows } from "../src/modules/kb/seed-templates";
 import { kpiSeedRows } from "../src/modules/performance/seed-kpis";
 import { WORK_TEMPLATE_SEED } from "../src/modules/work/seed-templates";
@@ -132,6 +133,12 @@ async function main() {
   const newTemplates = kbTemplateSeedRows().filter((row) => !templateKeys.has(row.key));
   if (newTemplates.length) await db.insert(kbTemplate).values(newTemplates);
   console.log(`Seeded ${newTemplates.length} knowledge-base page templates (existing keys left untouched).`);
+
+  // Company values for kudos (FR-COM-03): placeholders, only keys that do not exist yet.
+  const valueKeys = new Set((await db.select({ key: companyValue.key }).from(companyValue)).map((row) => row.key));
+  const newValues = STARTER_COMPANY_VALUES.filter((row) => !valueKeys.has(row.key));
+  if (newValues.length) await db.insert(companyValue).values(newValues.map((row) => ({ ...row })));
+  console.log(`Seeded ${newValues.length} company values (existing keys left untouched).`);
 
   await client.end();
 }

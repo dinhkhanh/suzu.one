@@ -44,7 +44,9 @@
     "approvalFlows": "Luồng phê duyệt",
     "checkIn": "Vào / ra ca",
     "menu": "Menu",
-    "performance": "Mục tiêu & KPI"
+    "performance": "Mục tiêu & KPI",
+    "announcements": "Thông báo",
+    "kudos": "Ghi nhận"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -52,7 +54,30 @@
     "noRoles": "Nhân viên (chưa có vai trò quản trị)",
     "scopeGroup": "toàn tập đoàn",
     "roadmap": "Các phân hệ",
-    "phase": "Giai đoạn {n}"
+    "phase": "Giai đoạn {n}",
+    "pending": {
+      "title": "Việc đang chờ bạn",
+      "acks": "{count, plural, other {# chính sách cần đọc và xác nhận}}",
+      "announcements": "{count, plural, other {# thông báo cần xác nhận}}",
+      "approvals": "{count, plural, other {# yêu cầu chờ bạn duyệt}}",
+      "overdue": "quá hạn",
+      "dueOn": "hạn {date}"
+    },
+    "announcements": "Thông báo",
+    "noAnnouncements": "Chưa có thông báo nào.",
+    "joiners": "Thành viên mới",
+    "joinerLine": "{position} · {department} · {entity}",
+    "joinedOn": "bắt đầu {date}",
+    "birthdays": "Sinh nhật tuần này",
+    "anniversaries": "Kỷ niệm ngày vào công ty",
+    "years": "{years, plural, other {# năm}}",
+    "today": "hôm nay",
+    "onDate": "ngày {date}",
+    "kudos": "Ghi nhận gần đây",
+    "noKudos": "Chưa có lời ghi nhận nào — hãy là người đầu tiên.",
+    "giveKudos": "Gửi ghi nhận",
+    "newPages": "Trang tri thức mới",
+    "nothingThisWeek": "Tuần này chưa có gì."
   },
   "roles": {
     "owner": "Chủ sở hữu",
@@ -725,6 +750,14 @@
       "kb_review_due": {
         "title": "Đến hạn rà soát: {title}",
         "body": "Trang “{title}” do bạn phụ trách đã đến hạn rà soát ({date}). Hãy kiểm tra nội dung còn đúng không và đặt hạn rà soát mới."
+      },
+      "comms_announcement": {
+        "title": "{must, select, yes {Cần xác nhận: {title}} other {Thông báo mới: {title}}}",
+        "body": "{name} vừa đăng thông báo “{title}”."
+      },
+      "comms_kudos_received": {
+        "title": "{name} vừa ghi nhận bạn",
+        "body": "{name} gửi bạn lời ghi nhận về giá trị “{value}”."
       }
     },
     "errors": {
@@ -746,6 +779,9 @@
       "testSent": "Đã gửi thử tới {count} thiết bị.",
       "testSimulated": "Đã ghi nhận cho {count} thiết bị — máy chủ này chỉ mô phỏng thông báo đẩy.",
       "failed": "Không thực hiện được. Vui lòng thử lại."
+    },
+    "categories": {
+      "comms": "Thông báo nội bộ & ghi nhận"
     }
   },
   "jobs": {
@@ -4219,6 +4255,114 @@
       "titleField": "Tiêu đề trang",
       "titleHint": "Để trống = lấy tiêu đề cấp 1 đầu tiên hoặc tên tệp",
       "submit": "Nhập thành bản nháp"
+    }
+  },
+  "comms": {
+    "audience": {
+      "all": "Toàn bộ nhân viên",
+      "entity": "Pháp nhân",
+      "department": "Phòng ban",
+      "team": "Nhóm",
+      "branch": "Chi nhánh / địa điểm",
+      "person": "Cá nhân"
+    },
+    "phase": {
+      "draft": "Bản nháp",
+      "scheduled": "Đã hẹn giờ",
+      "live": "Đang hiển thị",
+      "expired": "Hết hạn",
+      "archived": "Đã lưu trữ"
+    },
+    "list": {
+      "title": "Thông báo",
+      "help": "Thông báo gửi tới bạn, mới nhất ở trên; thông báo được ghim luôn ở đầu.",
+      "empty": "Chưa có thông báo nào gửi tới bạn.",
+      "unread": "Chưa đọc",
+      "pinned": "Ghim",
+      "mustAcknowledge": "Cần xác nhận",
+      "acknowledged": "Đã xác nhận",
+      "all": "Xem tất cả thông báo"
+    },
+    "detail": {
+      "readMore": "Đọc thêm trong kho tri thức:",
+      "mustAcknowledge": "Thông báo này cần bạn xác nhận đã đọc.",
+      "acknowledge": "Tôi đã đọc",
+      "acknowledgedOn": "Bạn đã xác nhận lúc {date}.",
+      "manage": "Sửa và xem ai đã đọc"
+    },
+    "manage": {
+      "title": "Quản lý thông báo",
+      "help": "Các thông báo bạn được quyền quản lý: bản nháp, đã hẹn giờ, đang hiển thị, hết hạn.",
+      "new": "Soạn thông báo",
+      "empty": "Chưa có thông báo nào.",
+      "phase": "Trạng thái",
+      "author": "Người đăng",
+      "view": "Xem như người đọc",
+      "pin": "Ghim lên đầu",
+      "unpin": "Bỏ ghim",
+      "archive": "Lưu trữ",
+      "archiveConfirm": "Lưu trữ thông báo này? Người đọc sẽ không còn thấy nó."
+    },
+    "form": {
+      "title": "Tiêu đề",
+      "body": "Nội dung",
+      "kbPage": "Trang tri thức đính kèm (dán đường dẫn, không bắt buộc)",
+      "audience": "Gửi tới",
+      "audienceEmpty": "Chưa chọn người nhận.",
+      "audienceType": "Loại người nhận",
+      "audienceName": "Người nhận",
+      "add": "Thêm",
+      "remove": "Bỏ",
+      "pinned": "Ghim lên đầu",
+      "mustAcknowledge": "Yêu cầu xác nhận đã đọc",
+      "publishAt": "Thời điểm hiển thị",
+      "expiresAt": "Hết hạn lúc",
+      "scheduleHelp": "Để trống thời điểm hiển thị để đăng ngay. Chọn một thời điểm sắp tới để hẹn giờ: thông báo tự hiện đúng giờ, người nhận được báo trong lần chạy tác vụ kế tiếp.",
+      "publish": "Đăng",
+      "saveDraft": "Lưu nháp",
+      "saveAndKeep": "Lưu thay đổi"
+    },
+    "report": {
+      "title": "Ai đã đọc",
+      "summary": "{read}/{total} người đã đọc.",
+      "summaryAck": "{read}/{total} người đã đọc, {acknowledged}/{total} đã xác nhận.",
+      "department": "Phòng ban",
+      "people": "Số người",
+      "read": "Đã đọc",
+      "acknowledged": "Đã xác nhận",
+      "person": "Nhân viên"
+    },
+    "kudos": {
+      "title": "Ghi nhận",
+      "help": "Cảm ơn một đồng nghiệp vì điều họ đã làm, gắn với một giá trị của công ty. Mọi người trong công ty đều thấy.",
+      "giveTitle": "Gửi lời ghi nhận",
+      "to": "Gửi tới",
+      "value": "Giá trị",
+      "message": "Lời nhắn",
+      "give": "Gửi ghi nhận",
+      "sent": "Đã gửi.",
+      "line": "<b>{from}</b> ghi nhận <b>{to}</b>",
+      "wall": "Mới nhất",
+      "mine": "Tôi nhận được",
+      "empty": "Chưa có lời ghi nhận nào.",
+      "mineEmpty": "Bạn chưa nhận được lời ghi nhận nào.",
+      "remove": "Gỡ",
+      "removeConfirm": "Gỡ lời ghi nhận này?",
+      "all": "Xem tất cả"
+    },
+    "errors": {
+      "generic": "Không thực hiện được. Vui lòng thử lại.",
+      "forbidden": "Bạn không có quyền gửi tới nhóm người nhận này.",
+      "invalid": "Vui lòng kiểm tra lại các trường.",
+      "unauthenticated": "Phiên đăng nhập đã hết hạn.",
+      "comms_audience_required": "Hãy chọn ít nhất một người nhận.",
+      "comms_announcement_not_found": "Không tìm thấy thông báo.",
+      "comms_announcement_archived": "Thông báo đã lưu trữ, không sửa được nữa.",
+      "comms_expires_before_publish": "Thời điểm hết hạn phải sau thời điểm hiển thị.",
+      "comms_ack_not_asked": "Thông báo này không yêu cầu xác nhận.",
+      "comms_kudos_recipient": "Không thể gửi ghi nhận cho người này.",
+      "comms_value_unknown": "Giá trị không còn được dùng.",
+      "comms_kudos_not_found": "Không tìm thấy lời ghi nhận."
     }
   }
 }
