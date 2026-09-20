@@ -6346,7 +6346,13 @@
       "recruit_interview_status_unchanged": "The status has not changed.",
       "recruit_not_an_interviewer": "Only somebody who was in the room may score an interview.",
       "recruit_scorecard_submitted": "A submitted scorecard cannot be changed.",
-      "recruit_scorecard_needs_recommendation": "Choose a recommendation before submitting."
+      "recruit_scorecard_needs_recommendation": "Choose a recommendation before submitting.",
+      "assignment_due_in_the_past": "The deadline cannot be in the past.",
+      "assignment_link_closed": "This link is no longer usable.",
+      "assignment_nothing_submitted": "Attach a file or paste a link.",
+      "recruit_assignment_not_found": "Assignment not found.",
+      "recruit_assignment_closed": "This assignment is closed.",
+      "recruit_assignment_not_submitted": "Nothing has been sent back yet."
     },
     "duplicates": {
       "title": "Possible matches already on file:",
@@ -6538,6 +6544,49 @@
         "no": "No",
         "yes": "Yes",
         "strong_yes": "Strong yes"
+      }
+    },
+    "assignment": {
+      "heading": "Take-home assignments",
+      "none": "No assignments sent.",
+      "send": "Send an assignment",
+      "cancel": "Cancel",
+      "cancelForm": "Cancel",
+      "done": "Done",
+      "title": "Title",
+      "brief": "Brief",
+      "due": "Due",
+      "submittedAt": "Sent back",
+      "submit": "Send it back",
+      "file": "Your work",
+      "fileHint": "Up to {megabytes} MB. If the work lives online, paste the link below instead.",
+      "links": "Links",
+      "linksHint": "One per line, up to {count}.",
+      "note": "A note for the recruiter",
+      "rating": "Rating",
+      "ratingNote": "Comment",
+      "rate": "Rate",
+      "linkTitle": "The link to send the candidate",
+      "linkOnce": "This is the only time this link is shown — only its hash is stored. Copy it now; if you lose it you will have to send the assignment again to get a new one.",
+      "statuses": {
+        "sent": "Sent",
+        "received": "Received",
+        "rated": "Rated",
+        "cancelled": "Cancelled"
+      },
+      "errors": {
+        "failed": "That could not be sent. Please try again.",
+        "assignment_link_closed": "This link is no longer usable.",
+        "assignment_nothing_submitted": "Attach a file or paste a link.",
+        "rate_limited": "Too many attempts. Please try again later.",
+        "file_too_large": "That file is too large.",
+        "file_type_not_allowed": "That file type is not accepted.",
+        "file_content_mismatch": "The file's contents do not match its extension.",
+        "invalid": "Something in the form is not right."
+      },
+      "thanks": {
+        "title": "We have your work",
+        "body": "Thank you. We will look at it and come back to you."
       }
     }
   }

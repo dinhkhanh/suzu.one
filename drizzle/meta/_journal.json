@@ -442,6 +442,13 @@
       "when": 1789895867448,
       "tag": "0062_interviews_and_scorecards",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1789896505360,
+      "tag": "0063_take_home_assignments",
+      "breakpoints": true
     }
   ]
 }

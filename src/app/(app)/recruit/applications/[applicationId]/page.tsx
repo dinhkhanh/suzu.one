@@ -3,8 +3,12 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { headers } from "next/headers";
 import { requireUser } from "@/modules/platform/auth/session";
+import { listAssignments } from "@/modules/recruit/assignments";
 import { APPLICATION_CLOSED, getApplicationView } from "@/modules/recruit/service";
+import { CancelAssignment, RateAssignment, SendAssignment } from "@/modules/recruit/ui/assignment-forms";
+import { AssignmentLink } from "@/modules/recruit/ui/assignment-link";
 import { interviewerOptions, listInterviewsOfApplication } from "@/modules/recruit/interviews";
 import { ApplicationActions } from "@/modules/recruit/ui/application-actions";
 import { CvLink } from "@/modules/recruit/ui/cv-link";
@@ -26,9 +30,16 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
   const tInterview = await getTranslations("recruit.interview");
   const format = await getFormatter();
   const closed = APPLICATION_CLOSED.includes(view.application.status);
-  // The caller has already been checked by `getApplicationView`; the panel is the same audience.
+  const tAssignment = await getTranslations("recruit.assignment");
+  // The caller has already been checked by `getApplicationView`; the panels are the same audience.
   const interviews = await listInterviewsOfApplication(applicationId);
+  const assignments = await listAssignments(applicationId);
   const options = view.canAct ? await interviewerOptions(view.opening.id) : [];
+  // The take-home link is absolute so a recruiter can paste it straight into an email. Read from
+  // the request, not from configuration: on a laptop it is localhost, in production it is the
+  // deployment's own host, and neither should be guessed.
+  const requestHeaders = await headers();
+  const origin = `${requestHeaders.get("x-forwarded-proto") ?? "http"}://${requestHeaders.get("host") ?? ""}`;
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -133,6 +144,46 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
           </ul>
         )}
         {view.canAct && !closed ? <ScheduleInterview applicationId={applicationId} stages={view.stages} options={options} /> : null}
+      </section>
+
+      {/* Take-home assignments (FR-REC-07). The brief goes out as a link; the work comes back
+          through the public page, and the file is `not_scanned` like every other candidate upload. */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-medium text-muted-foreground">{tAssignment("heading")}</h2>
+        {assignments.length === 0 ? <p className="text-sm text-muted-foreground">{tAssignment("none")}</p> : null}
+        {assignments.map((assignment) => (
+          <article key={assignment.id} className="flex flex-col gap-2 rounded-xl border p-4 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-medium">{assignment.title}</span>
+              <Badge variant={assignment.status === "sent" ? "secondary" : "outline"}>{tAssignment(`statuses.${assignment.status}`)}</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {tAssignment("due")}: {format.dateTime(assignment.dueAt, { dateStyle: "medium", timeStyle: "short" })}
+              {assignment.submittedAt ? ` · ${tAssignment("submittedAt")}: ${format.dateTime(assignment.submittedAt, { dateStyle: "medium", timeStyle: "short" })}` : ""}
+            </p>
+            {assignment.submissionNote ? <p className="whitespace-pre-line text-muted-foreground">{assignment.submissionNote}</p> : null}
+            {assignment.submissionLinks.length > 0 ? (
+              <ul className="flex flex-col gap-1">
+                {assignment.submissionLinks.map((link) => (
+                  <li key={link}>
+                    <a href={link} target="_blank" rel="noreferrer noopener" className="underline underline-offset-4">
+                      {link}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {assignment.submissionFileId ? (
+              <div className="flex flex-col gap-1">
+                <AssignmentLink assignmentId={assignment.id} fileId={assignment.submissionFileId} fileName={assignment.title} />
+                <p className="text-xs text-muted-foreground">{t("notScanned")}</p>
+              </div>
+            ) : null}
+            {view.canAct && assignment.submittedAt && assignment.status !== "cancelled" ? <RateAssignment assignmentId={assignment.id} rating={assignment.rating} /> : null}
+            {view.canAct && assignment.status === "sent" ? <CancelAssignment assignmentId={assignment.id} /> : null}
+          </article>
+        ))}
+        {view.canAct && !closed ? <SendAssignment applicationId={applicationId} origin={origin} /> : null}
       </section>
 
       {view.canAct ? <ApplicationActions applicationId={applicationId} stages={view.stages} currentStageId={view.stage.id} closed={closed} /> : null}

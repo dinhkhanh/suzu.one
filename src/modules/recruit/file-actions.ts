@@ -11,6 +11,7 @@
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
 import { createDownloadLink, findFile } from "@/modules/platform/files/service";
+import { findAssignment, mayRunAssignmentOn } from "./assignments";
 import { isInterviewerOnApplication } from "./interviews";
 import { canOpenCandidateFile } from "./policy";
 import { findApplication, findOpening, isOpeningMember } from "./service";
@@ -36,6 +37,31 @@ const openCvPipeline = createAction({
   },
 });
 
+/**
+ * A take-home submission (FR-REC-07). Same rule, same reasoning, different record: the file came
+ * from the internet through the public brief page, nothing has scanned it, and it opens only for
+ * the people running the opening it belongs to.
+ */
+const openSubmissionPipeline = createAction({
+  name: "recruit.assignment_file.open",
+  input: z.object({ assignmentId: z.uuid(), fileId: z.uuid() }),
+  authorize: async (user, input) => {
+    const assignment = await findAssignment(input.assignmentId);
+    if (!assignment || assignment.submissionFileId !== input.fileId) return false;
+    return mayRunAssignmentOn({ principal: user.principal, personId: user.person.id }, assignment.applicationId);
+  },
+  run: async ({ user, input }) => {
+    const file = await findFile(input.fileId);
+    if (!file || file.deletedAt || file.ownerType !== "recruit_assignment") throw new ActionError("file_not_found");
+    const url = await createDownloadLink(file, { personId: user.person.id, email: user.email }, user.request);
+    return { data: { url }, audit: { resource: { type: "stored_file", id: file.id, entityId: file.entityId }, summary: file.fileName } };
+  },
+});
+
 export async function openCandidateCvAction(input: unknown) {
   return openCvPipeline(input);
+}
+
+export async function openAssignmentFileAction(input: unknown) {
+  return openSubmissionPipeline(input);
 }

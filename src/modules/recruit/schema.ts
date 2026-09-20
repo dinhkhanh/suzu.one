@@ -18,6 +18,7 @@ import { person } from "../platform/people/schema";
 import type {
   ApplicationEventType,
   ApplicationStatus,
+  AssignmentStatus,
   CalendarDeliveryStatus,
   CandidateSource,
   EmploymentType,
@@ -422,6 +423,53 @@ export const interviewScorecard = pgTable(
     ...timestamps,
   },
   (t) => [unique("interview_scorecard_key").on(t.interviewId, t.interviewerPersonId), index("interview_scorecard_person_idx").on(t.interviewerPersonId, t.submittedAt)],
+).enableRLS();
+
+// ── Take-home assignments (FR-REC-07) ───────────────────────────────────────────────────────
+
+/**
+ * A brief sent to a candidate and what came back.
+ *
+ * The candidate is not a user of this system, so the submission arrives through the public surface
+ * — the same `createPublicAction`, rate limiter and byte checks the application form uses.
+ * **`token_hash` is a hash, not a link**: the URL exists in the candidate's email and nowhere else,
+ * exactly as the approval deep links work (FR-PLT-24). Re-sending mints a new one, which is what
+ * makes the old one stop working.
+ */
+export const recruitAssignment = pgTable(
+  "recruit_assignment",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    applicationId: uuid("application_id")
+      .notNull()
+      .references(() => jobApplication.id),
+    openingId: uuid("opening_id")
+      .notNull()
+      .references(() => jobOpening.id),
+    title: text("title").notNull(),
+    brief: text("brief").notNull(),
+    dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+    status: text("status").$type<AssignmentStatus>().notNull().default("sent"),
+    // SHA-256 of the link's token. The token itself is never stored.
+    tokenHash: text("token_hash").notNull().unique(),
+    tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }).notNull(),
+    sentByPersonId: uuid("sent_by_person_id")
+      .notNull()
+      .references(() => person.id),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+    // What the candidate sent back: a file, links, a note. Files are `not_scanned`, like every CV.
+    submissionFileId: uuid("submission_file_id"),
+    submissionLinks: text("submission_links").array().notNull().default([]),
+    submissionNote: text("submission_note"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    // 1..4, the same scale a scorecard uses, so "good" means one thing across the module.
+    rating: smallint("rating"),
+    ratingNote: text("rating_note"),
+    ratedByPersonId: uuid("rated_by_person_id").references(() => person.id),
+    ratedAt: timestamp("rated_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("recruit_assignment_application_idx").on(t.applicationId, t.sentAt), index("recruit_assignment_opening_idx").on(t.openingId, t.status)],
 ).enableRLS();
 
 // ── The public careers page (FR-REC-03) ─────────────────────────────────────────────────────

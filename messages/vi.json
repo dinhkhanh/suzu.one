@@ -6346,7 +6346,13 @@
       "recruit_interview_status_unchanged": "Trạng thái không thay đổi.",
       "recruit_not_an_interviewer": "Chỉ người ngồi trong buổi phỏng vấn mới được chấm.",
       "recruit_scorecard_submitted": "Phiếu đã gửi thì không sửa được nữa.",
-      "recruit_scorecard_needs_recommendation": "Vui lòng chọn kết luận trước khi gửi."
+      "recruit_scorecard_needs_recommendation": "Vui lòng chọn kết luận trước khi gửi.",
+      "assignment_due_in_the_past": "Hạn nộp không thể ở quá khứ.",
+      "assignment_link_closed": "Đường dẫn này không còn dùng được.",
+      "assignment_nothing_submitted": "Vui lòng đính kèm tệp hoặc dán đường dẫn.",
+      "recruit_assignment_not_found": "Không tìm thấy bài tập.",
+      "recruit_assignment_closed": "Bài tập này đã khép lại.",
+      "recruit_assignment_not_submitted": "Ứng viên chưa nộp bài."
     },
     "duplicates": {
       "title": "Có thể trùng với ứng viên đã có:",
@@ -6538,6 +6544,49 @@
         "no": "Không",
         "yes": "Có",
         "strong_yes": "Chắc chắn có"
+      }
+    },
+    "assignment": {
+      "heading": "Bài tập về nhà",
+      "none": "Chưa giao bài tập nào.",
+      "send": "Giao bài tập",
+      "cancel": "Huỷ bài",
+      "cancelForm": "Thôi",
+      "done": "Xong",
+      "title": "Tên bài",
+      "brief": "Đề bài",
+      "due": "Hạn nộp",
+      "submittedAt": "Đã nộp",
+      "submit": "Nộp bài",
+      "file": "Tệp bài làm",
+      "fileHint": "Tối đa {megabytes} MB. Nếu bài làm nằm trên mạng, hãy dán đường dẫn bên dưới.",
+      "links": "Đường dẫn",
+      "linksHint": "Mỗi dòng một đường dẫn, tối đa {count} đường dẫn.",
+      "note": "Ghi chú cho người tuyển dụng",
+      "rating": "Đánh giá",
+      "ratingNote": "Nhận xét",
+      "rate": "Chấm bài",
+      "linkTitle": "Đường dẫn gửi ứng viên",
+      "linkOnce": "Đây là lần duy nhất đường dẫn này hiện ra — hệ thống chỉ lưu bản băm. Hãy sao chép ngay; nếu mất, bạn phải giao lại bài để có đường dẫn mới.",
+      "statuses": {
+        "sent": "Đã giao",
+        "received": "Đã nộp",
+        "rated": "Đã chấm",
+        "cancelled": "Đã huỷ"
+      },
+      "errors": {
+        "failed": "Không gửi được. Vui lòng thử lại.",
+        "assignment_link_closed": "Đường dẫn này không còn dùng được.",
+        "assignment_nothing_submitted": "Vui lòng đính kèm tệp hoặc dán đường dẫn.",
+        "rate_limited": "Bạn đã gửi quá nhiều lần. Vui lòng thử lại sau.",
+        "file_too_large": "Tệp quá lớn.",
+        "file_type_not_allowed": "Định dạng tệp không được chấp nhận.",
+        "file_content_mismatch": "Nội dung tệp không khớp với phần mở rộng.",
+        "invalid": "Thông tin chưa hợp lệ."
+      },
+      "thanks": {
+        "title": "Đã nhận bài của bạn",
+        "body": "Cảm ơn bạn. Chúng tôi sẽ xem và liên hệ lại."
       }
     }
   }

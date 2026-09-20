@@ -28,6 +28,14 @@ export const CAREERS_LIMITS = {
   apply: { max: 6, windowSeconds: 60 * 60 },
   /** Opening the form (which mints a signed token): stops a script harvesting tokens to spend later. */
   form: { max: 60, windowSeconds: 60 * 60 },
+  /**
+   * Sending back a take-home (FR-REC-07). Tighter than an application, because a candidate sends
+   * one piece of work back once — the allowance is for the person who uploads the wrong file twice
+   * and then the right one, not for anybody with a habit.
+   */
+  assignment: { max: 4, windowSeconds: 60 * 60 },
+  /** Opening a take-home brief. Generous: rereading the brief before starting is what people do. */
+  assignment_view: { max: 60, windowSeconds: 60 * 60 },
 } as const satisfies Record<string, RateLimit>;
 
 export type CareersBucket = keyof typeof CAREERS_LIMITS;
