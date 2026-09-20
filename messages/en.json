@@ -970,7 +970,13 @@
       "kpi_period_must_be_month": "Monthly KPI: the period must be YYYY-MM",
       "kpi_period_must_be_quarter": "Quarterly KPI: the period must be YYYY-Qn",
       "kpi_not_assigned": "The person does not have this KPI in that period",
-      "kpi_month_closed": "The month is closed"
+      "kpi_month_closed": "The month is closed",
+      "duplicate_person": "This employee appears more than once in the file.",
+      "bad_amount": "That is not a valid amount.",
+      "amount_negative": "An amount cannot be negative.",
+      "bad_month_count": "The number of months must be between 0 and 12.",
+      "tax_without_income": "Tax was withheld but the taxable income is zero.",
+      "reference_does_not_balance": "The net does not equal gross less the deductions in this same file."
     },
     "errors": {
       "import_file_type": "Only .xlsx and .csv files are accepted.",
@@ -4462,6 +4468,14 @@
       "statutory": {
         "title": "Statutory data",
         "description": "Data for the BHXH and PIT filings: D02-LT, 05/KK-TNCN, the annual finalization, dependants."
+      },
+      "parallel": {
+        "title": "Parallel run",
+        "description": "Per-person reconciliation against the old payroll; the condition for go-live."
+      },
+      "ytd": {
+        "title": "Year-to-date figures",
+        "description": "Import income and tax for months the system did not run."
       }
     },
     "salaries": {
@@ -5290,6 +5304,84 @@
         "step_up_required": "Confirm it is you before opening payroll data.",
         "forbidden": "You may not export this entity's statutory data."
       }
+    },
+    "parallel": {
+      "title": "Parallel run & reconciliation",
+      "description": "The system's payroll held against the existing method, person by person. Every difference must be explained before go-live.",
+      "back": "Payroll",
+      "entity": "Entity",
+      "month": "Month",
+      "person": "Employee",
+      "differences": "Differences (system / spreadsheet)",
+      "action": "Explain",
+      "identical": "Identical.",
+      "unexplained": "Unexplained",
+      "stale": "The explanation was written for a different figure",
+      "explain": "Explain",
+      "reexplain": "Change explanation",
+      "classification": "Cause",
+      "note": "Explanation",
+      "save": "Save",
+      "cancel": "Cancel",
+      "otherMonths": "Other months",
+      "classes": {
+        "system_bug": "System bug",
+        "spreadsheet_error": "Spreadsheet error",
+        "rule_gap": "Rule gap",
+        "accepted_rounding": "Accepted rounding difference"
+      },
+      "fields": {
+        "gross": "Gross",
+        "employeeInsurance": "Employee insurance",
+        "unionDues": "Union dues",
+        "pit": "PIT",
+        "otherDeductions": "Other deductions",
+        "net": "Net"
+      },
+      "presence": {
+        "system_only": "In the system only — the spreadsheet has no such person.",
+        "reference_only": "In the spreadsheet only — the system paid nobody here."
+      },
+      "verdict": {
+        "clean": "{month}: {people} people, no unexplained differences left.",
+        "open": "{lines} unexplained differences across {people} people.",
+        "noReference": "The existing method's figures for this month have not been entered yet. Import a file or type them below."
+      },
+      "summary": {
+        "people": "{count} people",
+        "matching": "{count} matching",
+        "differing": "{count} differing",
+        "missingFromSystem": "{count} missing from the system",
+        "missingFromReference": "{count} missing from the spreadsheet"
+      },
+      "import": {
+        "title": "Import the existing method's figures",
+        "hint": "A file for {month}: employee code and the gross, insurance, union dues, PIT, other deductions and net columns. Re-importing replaces that month's figures.",
+        "wizard": "Import reconciliation file"
+      },
+      "entry": {
+        "title": "Type one person",
+        "hint": "For correcting a person or two.",
+        "saved": "Saved."
+      },
+      "errors": {
+        "step_up_required": "Confirm it is you before opening payroll data.",
+        "forbidden": "You may not reconcile this entity's payroll.",
+        "generic": "Could not save, please try again."
+      }
+    },
+    "ytd": {
+      "title": "Year-to-date figures",
+      "back": "Payroll",
+      "description": "Income and tax withheld in the months of the year the system did not run, so the annual finalization covers the whole year.",
+      "person": "Employee",
+      "months": "Months",
+      "taxableIncome": "Taxable income",
+      "insurance": "Insurance deducted",
+      "taxWithheld": "Tax withheld",
+      "empty": "No year-to-date figures for {year} yet.",
+      "importHint": "A file for {year}: one row per employee. Re-importing replaces that person's row.",
+      "wizard": "Import year-to-date figures"
     }
   }
 }

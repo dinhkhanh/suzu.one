@@ -970,7 +970,13 @@
       "kpi_period_must_be_month": "KPI tháng: kỳ phải là YYYY-MM",
       "kpi_period_must_be_quarter": "KPI quý: kỳ phải là YYYY-Qn",
       "kpi_not_assigned": "Người này không được gán KPI đó trong kỳ",
-      "kpi_month_closed": "Tháng đã chốt"
+      "kpi_month_closed": "Tháng đã chốt",
+      "duplicate_person": "Nhân viên này xuất hiện nhiều lần trong file.",
+      "bad_amount": "Số tiền không hợp lệ.",
+      "amount_negative": "Số tiền không được âm.",
+      "bad_month_count": "Số tháng phải từ 0 đến 12.",
+      "tax_without_income": "Có thuế đã khấu trừ nhưng thu nhập chịu thuế bằng 0.",
+      "reference_does_not_balance": "Thực nhận không khớp với tổng thu nhập trừ các khoản khấu trừ trong chính file này."
     },
     "errors": {
       "import_file_type": "Chỉ nhận file .xlsx hoặc .csv.",
@@ -4462,6 +4468,14 @@
       "statutory": {
         "title": "Dữ liệu khai báo",
         "description": "Số liệu lập tờ khai BHXH và thuế TNCN: D02-LT, 05/KK-TNCN, quyết toán năm, người phụ thuộc."
+      },
+      "parallel": {
+        "title": "Chạy song song",
+        "description": "Đối chiếu từng người với bảng lương cũ; điều kiện để chuyển sang dùng chính thức."
+      },
+      "ytd": {
+        "title": "Số liệu luỹ kế",
+        "description": "Nhập thu nhập và thuế của các tháng hệ thống chưa chạy."
       }
     },
     "salaries": {
@@ -5290,6 +5304,84 @@
         "step_up_required": "Cần xác thực lại trước khi xem dữ liệu lương.",
         "forbidden": "Bạn không có quyền xuất dữ liệu khai báo của pháp nhân này."
       }
+    },
+    "parallel": {
+      "title": "Chạy song song & đối chiếu",
+      "description": "So sánh bảng lương của hệ thống với cách làm hiện tại, từng người một. Mỗi chênh lệch phải được giải thích trước khi chuyển sang dùng chính thức.",
+      "back": "Lương",
+      "entity": "Pháp nhân",
+      "month": "Tháng",
+      "person": "Nhân viên",
+      "differences": "Chênh lệch (hệ thống / bảng cũ)",
+      "action": "Giải thích",
+      "identical": "Khớp hoàn toàn.",
+      "unexplained": "Chưa giải thích",
+      "stale": "Giải thích cũ không còn khớp số hiện tại",
+      "explain": "Giải thích",
+      "reexplain": "Sửa giải thích",
+      "classification": "Nguyên nhân",
+      "note": "Diễn giải",
+      "save": "Lưu",
+      "cancel": "Huỷ",
+      "otherMonths": "Tháng khác",
+      "classes": {
+        "system_bug": "Lỗi hệ thống",
+        "spreadsheet_error": "Sai ở bảng tính cũ",
+        "rule_gap": "Thiếu quy tắc",
+        "accepted_rounding": "Chênh lệch làm tròn, chấp nhận"
+      },
+      "fields": {
+        "gross": "Tổng thu nhập",
+        "employeeInsurance": "Bảo hiểm (NLĐ)",
+        "unionDues": "Đoàn phí",
+        "pit": "Thuế TNCN",
+        "otherDeductions": "Khấu trừ khác",
+        "net": "Thực nhận"
+      },
+      "presence": {
+        "system_only": "Chỉ có trong hệ thống — bảng cũ không có người này.",
+        "reference_only": "Chỉ có trong bảng cũ — hệ thống chưa trả lương người này."
+      },
+      "verdict": {
+        "clean": "Tháng {month}: {people} người, không còn chênh lệch nào chưa giải thích.",
+        "open": "Còn {lines} chênh lệch chưa giải thích ở {people} người.",
+        "noReference": "Chưa có số liệu của cách làm hiện tại cho tháng này. Nhập file hoặc nhập tay bên dưới."
+      },
+      "summary": {
+        "people": "{count} người",
+        "matching": "{count} khớp",
+        "differing": "{count} lệch",
+        "missingFromSystem": "{count} thiếu ở hệ thống",
+        "missingFromReference": "{count} thiếu ở bảng cũ"
+      },
+      "import": {
+        "title": "Nhập số liệu bảng lương cũ",
+        "hint": "File cho tháng {month}: mã nhân viên và các cột tổng thu nhập, bảo hiểm, đoàn phí, thuế, khấu trừ khác, thực nhận. Nhập lại sẽ thay thế số cũ của tháng.",
+        "wizard": "Nhập file đối chiếu"
+      },
+      "entry": {
+        "title": "Nhập tay một người",
+        "hint": "Dùng khi chỉ cần sửa một vài người.",
+        "saved": "Đã lưu."
+      },
+      "errors": {
+        "step_up_required": "Cần xác thực lại trước khi xem dữ liệu lương.",
+        "forbidden": "Bạn không có quyền đối chiếu lương của pháp nhân này.",
+        "generic": "Không lưu được, vui lòng thử lại."
+      }
+    },
+    "ytd": {
+      "title": "Số liệu luỹ kế đầu năm",
+      "back": "Lương",
+      "description": "Thu nhập và thuế đã khấu trừ của những tháng trong năm mà hệ thống chưa chạy, để quyết toán năm đủ cả năm.",
+      "person": "Nhân viên",
+      "months": "Số tháng",
+      "taxableIncome": "Thu nhập chịu thuế",
+      "insurance": "Bảo hiểm được trừ",
+      "taxWithheld": "Thuế đã khấu trừ",
+      "empty": "Chưa có số liệu luỹ kế nào cho năm {year}.",
+      "importHint": "File cho năm {year}: mỗi nhân viên một dòng. Nhập lại sẽ thay thế dòng cũ của người đó.",
+      "wizard": "Nhập số liệu luỹ kế"
     }
   }
 }
