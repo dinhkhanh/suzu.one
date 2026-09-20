@@ -119,6 +119,24 @@ const fixtureSchema = z.object({
   insuranceLeaveDays: z.number().int().nonnegative().default(0),
   unpaidWorkingDays: z.number().int().nonnegative().default(0),
   inputs: z.array(z.object({ code: z.string(), amount: money, note: z.string().nullable().default(null) })).default([]),
+  /** Differences from months already paid, carried into this run (FR-PAY-17). */
+  retro: z
+    .array(
+      z.object({
+        sourceMonth: z.string().regex(/^\d{4}-\d{2}$/),
+        amount: money,
+        kind: z.enum(["salary_change", "timesheet_adjustment", "manual"]).default("manual"),
+        reason: z.string().nullable().default(null),
+        insuranceBaseChanged: z.boolean().default(false),
+      }),
+    )
+    .default([]),
+  /** An off-cycle run: what the month's regular run already taxed and withheld (FR-PAY-19). */
+  priorInMonth: z
+    .object({ runId: z.string().nullable().default(null), taxableIncome: money, employeeInsurance: money.default(0), otherDeductions: money.default(0), tax: money })
+    .nullable()
+    .default(null),
+  runKind: z.enum(["regular", "off_cycle"]).default("regular"),
   otherPitDeductions: z.number().int().nonnegative().default(0),
   /** What the case must produce. Only the keys given are checked, so a case can be narrow. */
   expect: z.object({
@@ -172,6 +190,9 @@ export function toEngineInput(fixture: GoldenFixture): PersonPayInput {
     unpaidWorkingDays: fixture.unpaidWorkingDays,
     components: seededComponents(),
     inputs: fixture.inputs,
+    retro: fixture.retro,
+    priorInMonth: fixture.priorInMonth,
+    runKind: fixture.runKind,
     otherPitDeductions: fixture.otherPitDeductions,
     policy: { ...DEFAULT_PAYROLL_POLICY, ...fixture.policy },
     statutory: seededStatutory(period.end),

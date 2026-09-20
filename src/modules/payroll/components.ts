@@ -1,7 +1,7 @@
 // The pay component catalogue (FR-PAY-02) and its governance (FR-PLT-39): C&B proposes a version,
 // the owner decides, approved versions of one code in one scope never overlap.
 import "server-only";
-import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
@@ -23,6 +23,17 @@ export async function listComponentVersions(executor: Executor = db()): Promise<
 /** The catalogue an entity's payroll uses on `date`: approved versions in force, the entity's own over the group's. */
 export async function resolveCatalogue(entityId: string | null, date: IsoDate, executor: Executor = db()): Promise<PayComponentRow[]> {
   return pickCatalogue(await executor.select().from(schema.payComponent).where(eq(schema.payComponent.status, "approved")), entityId, date);
+}
+
+/**
+ * The exact component versions a past run used (`CalculationContext.componentVersionIds`), in
+ * catalogue order — so a recomputed month reads its lines by the rules that made them.
+ */
+export async function resolveCatalogueVersions(versionIds: readonly string[], executor: Executor = db()): Promise<PayComponentRow[]> {
+  if (versionIds.length === 0) return [];
+  const rows = await executor.select().from(schema.payComponent).where(inArray(schema.payComponent.id, [...versionIds]));
+  if (rows.length !== new Set(versionIds).size) throw new ActionError("component_version_missing");
+  return rows.sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code));
 }
 
 export async function proposeComponent(input: ComponentInput, actorPersonId: string): Promise<PayComponentRow> {

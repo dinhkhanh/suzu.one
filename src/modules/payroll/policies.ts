@@ -26,6 +26,13 @@ export async function getPayrollPolicy(entityId: string, date: IsoDate, executor
   return { id: version.id, entityId: version.entityId, validFrom: version.validFrom, value: payrollPolicySchema.parse(version.value) };
 }
 
+/** The exact policy version a past run used — for recomputing a paid month (FR-PAY-17, 20). */
+export async function getPayrollPolicyVersion(id: string, executor: Executor = db()): Promise<ResolvedPayrollPolicy> {
+  const [row] = await executor.select().from(schema.payrollPolicy).where(eq(schema.payrollPolicy.id, id)).limit(1);
+  if (!row) throw new ActionError("payroll_policy_missing");
+  return { id: row.id, entityId: row.entityId, validFrom: row.validFrom, value: payrollPolicySchema.parse(row.value) };
+}
+
 export function checkPolicyValue(value: unknown): PayrollPolicyValue {
   const parsed = payrollPolicySchema.safeParse(value);
   if (!parsed.success) throw new ActionError("policy_invalid");

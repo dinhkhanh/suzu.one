@@ -45,7 +45,7 @@ export function progressiveTax(assessable: number, brackets: readonly { upTo: nu
 export function calculatePit(input: PersonPayInput, figures: PitInput): { result: PitResult; lines: PayLine[]; trace: TraceStep[] } {
   const { statutory, profile, policy, components } = input;
   const method = pitMethodFor(input);
-  const base: Omit<PitResult, "method" | "tax" | "brackets"> = {
+  const base: Omit<PitResult, "method" | "tax" | "monthTax" | "priorTax" | "brackets"> = {
     taxableIncome: figures.taxableIncome,
     exemptIncome: figures.exemptIncome,
     personalDeduction: 0,
@@ -56,47 +56,68 @@ export function calculatePit(input: PersonPayInput, figures: PitInput): { result
     assessableIncome: 0,
   };
 
+  // What an earlier run of the same month already taxed and withheld (FR-PAY-19).
+  const prior = input.priorInMonth;
+  const priorTax = prior?.tax ?? 0;
+
   if (method === "none") {
-    return { result: { ...base, method, brackets: [], tax: 0 }, lines: [], trace: [{ stage: "pit", rule: "no_withholding", detail: { profile: profile.profile, simpleTreatment: policy.simplePitTreatment } }] };
+    return { result: { ...base, method, brackets: [], monthTax: priorTax, priorTax, tax: 0 }, lines: [], trace: [{ stage: "pit", rule: "no_withholding", detail: { profile: profile.profile, simpleTreatment: policy.simplePitTreatment } }] };
   }
 
   let tax = 0;
+  let monthTax = 0;
   let brackets: PitResult["brackets"] = [];
   let result: PitResult;
   const trace: TraceStep[] = [];
 
   if (method === "flat_non_resident") {
+    // A flat rate is the same whatever else the month held, so an off-cycle payment is simply
+    // taxed on its own; there is nothing to aggregate and nothing to credit.
     const rate = statutory.pitFlatRates.nonResident;
     tax = percentBp(figures.taxableIncome, rate, "half_up");
-    result = { ...base, method, assessableIncome: figures.taxableIncome, brackets, tax };
+    monthTax = priorTax + tax;
+    result = { ...base, method, assessableIncome: figures.taxableIncome, brackets, monthTax, priorTax, tax };
     trace.push({ stage: "pit", rule: "flat_non_resident", detail: { taxableIncome: figures.taxableIncome, rateBp: rate, tax } });
   } else if (method === "flat_without_contract") {
     const { withoutContract: rate, withoutContractThreshold: threshold } = statutory.pitFlatRates;
     // Form 08/CK-TNCN: the person commits that their yearly income stays under the taxable level,
-    // so nothing is withheld. Below the per-payment threshold there is no withholding either.
+    // so nothing is withheld. Below the per-payment threshold there is no withholding either —
+    // and the threshold is **per payment**, so an off-cycle payment is tested on its own.
     const withhold = !profile.pitCommitment && figures.taxableIncome >= threshold;
     tax = withhold ? percentBp(figures.taxableIncome, rate, "half_up") : 0;
-    result = { ...base, method, assessableIncome: withhold ? figures.taxableIncome : 0, brackets, tax };
-    trace.push({ stage: "pit", rule: "flat_without_contract", detail: { taxableIncome: figures.taxableIncome, rateBp: rate, threshold, commitment: profile.pitCommitment, withheld: withhold, tax } });
+    monthTax = priorTax + tax;
+    result = { ...base, method, assessableIncome: withhold ? figures.taxableIncome : 0, brackets, monthTax, priorTax, tax };
+    trace.push({ stage: "pit", rule: "flat_without_contract", detail: { taxableIncome: figures.taxableIncome, rateBp: rate, threshold, commitment: profile.pitCommitment, withheld: withhold, perPayment: true, tax } });
   } else {
+    // Progressive tax is worked out on the **month**, not on the payment: an off-cycle bonus is
+    // added to what the regular run already taxed, the deductions are given once, and this run
+    // withholds the difference. A regular run has nothing before it, so the two agree.
     const deductions = statutory.pitDeductions;
     const dependentDeduction = deductions.dependent * figures.dependents;
-    const assessable = Math.max(0, figures.taxableIncome - figures.employeeInsurance - deductions.personal - dependentDeduction - figures.otherDeductions);
+    const taxableIncome = figures.taxableIncome + (prior?.taxableIncome ?? 0);
+    const insurance = figures.employeeInsurance + (prior?.employeeInsurance ?? 0);
+    const otherDeductions = figures.otherDeductions + (prior?.otherDeductions ?? 0);
+    const assessable = Math.max(0, taxableIncome - insurance - deductions.personal - dependentDeduction - otherDeductions);
     const progressive = progressiveTax(assessable, statutory.pitBrackets);
-    tax = progressive.tax;
+    monthTax = progressive.tax;
+    // Never negative: a month that has already withheld more than it owes is put right in the
+    // annual finalisation, not by paying tax back through payroll.
+    tax = Math.max(0, monthTax - priorTax);
     brackets = progressive.slices;
     result = {
       ...base,
       method,
       personalDeduction: deductions.personal,
       dependentDeduction,
-      insuranceDeduction: figures.employeeInsurance,
-      otherDeductions: figures.otherDeductions,
+      insuranceDeduction: insurance,
+      otherDeductions,
       assessableIncome: assessable,
       brackets,
+      monthTax,
+      priorTax,
       tax,
     };
-    trace.push({ stage: "pit", rule: "progressive", detail: { taxableIncome: figures.taxableIncome, insurance: figures.employeeInsurance, personalDeduction: deductions.personal, dependentDeduction, dependents: figures.dependents, otherDeductions: figures.otherDeductions, assessableIncome: assessable, tax } });
+    trace.push({ stage: "pit", rule: prior ? "progressive_month_aggregated" : "progressive", detail: { taxableIncome, thisRunTaxableIncome: figures.taxableIncome, priorTaxableIncome: prior?.taxableIncome ?? 0, insurance, personalDeduction: deductions.personal, dependentDeduction, dependents: figures.dependents, otherDeductions, assessableIncome: assessable, monthTax, priorTax, tax } });
   }
 
   const component = findComponent(components, ENGINE_CODES.pit);

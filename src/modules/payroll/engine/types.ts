@@ -50,6 +50,41 @@ export const STATUTORY_KEYS = {
 export type PayInput = { code: string; amount: number; note?: string | null };
 
 /**
+ * A difference from a period that is already paid, carried into this run as its own line
+ * (FR-PAY-17). Signed: money owed to the person is positive, money to recover negative. The
+ * amount is the **gross** difference; it is taxed in the month it is paid, not in the month it
+ * belongs to, and it never re-opens the insurance contribution of a filed month (see retro.ts).
+ */
+export type RetroItem = {
+  /** The month the difference belongs to, "2026-07". */
+  sourceMonth: string;
+  amount: number;
+  /** Why there is a difference: a late-approved raise, a correction to a locked timesheet, HR's own entry. */
+  kind: "salary_change" | "timesheet_adjustment" | "manual";
+  /** Free text kept with the line so a payslip can say what it is. Never an amount. */
+  reason?: string | null;
+  /**
+   * The month's insurance base changed as well — the contribution of a filed month cannot be
+   * corrected in payroll, so the run flags it for the BHXH adjustment declaration (FR-PAY-35).
+   */
+  insuranceBaseChanged?: boolean;
+};
+
+/**
+ * What an earlier run of the **same month** already paid this person (FR-PAY-19). An off-cycle
+ * run taxes the month as a whole and withholds only the difference, so a bonus paid on the 20th
+ * is taxed at the rate the month's total income deserves — not as if it were the only pay.
+ */
+export type PriorInMonth = {
+  runId: string | null;
+  taxableIncome: number;
+  employeeInsurance: number;
+  otherDeductions: number;
+  /** Tax already withheld by the earlier run(s) of this month. */
+  tax: number;
+};
+
+/**
  * Everything the engine needs about one person for one period. Assembled by the service layer
  * (`calculation.ts`) from the locked timesheet, the leave ledger, the salary structures, the pay
  * profile, the component catalogue, the entity's policy and the statutory snapshot — and by
@@ -82,8 +117,17 @@ export type PersonPayInput = {
   unpaidWorkingDays: number;
   components: ComponentDefinition[];
   inputs: PayInput[];
+  /** Differences from months already paid, carried into this run (FR-PAY-17). */
+  retro: RetroItem[];
   /** Charity, voluntary pension and the like, deducted before the brackets (FR-PAY-13). */
   otherPitDeductions: number;
+  /** Set on an off-cycle run: what the month's earlier run already taxed (FR-PAY-19). */
+  priorInMonth: PriorInMonth | null;
+  /**
+   * `regular` pays the month; `off_cycle` pays something extra inside a month already run. The
+   * engine reads it only to explain itself — what changes the arithmetic is `priorInMonth`.
+   */
+  runKind: "regular" | "off_cycle";
   policy: PayrollPolicyValue;
   statutory: StatutoryParams;
 };
@@ -134,7 +178,7 @@ export type PayTotals = {
 export type InsuranceResult = {
   covered: boolean;
   /** Why nobody contributes this month, when `covered` is false. */
-  reason: "simple_profile" | "probation" | "retiree" | "insured_elsewhere" | "other_exemption" | "unpaid_leave_threshold" | "no_salary" | null;
+  reason: "simple_profile" | "probation" | "retiree" | "insured_elsewhere" | "other_exemption" | "unpaid_leave_threshold" | "no_salary" | "off_cycle_run" | null;
   /** The declared contribution base before the caps. */
   declaredBase: number;
   bhxhBhytBase: number;
@@ -147,6 +191,7 @@ export type InsuranceResult = {
 
 export type PitResult = {
   method: "progressive" | "flat_without_contract" | "flat_non_resident" | "none";
+  /** This run's own taxable income. On an off-cycle run the month's total is in the trace. */
   taxableIncome: number;
   exemptIncome: number;
   personalDeduction: number;
@@ -157,6 +202,13 @@ export type PitResult = {
   assessableIncome: number;
   /** Per bracket: the slice of income in it and the tax on that slice. */
   brackets: { upTo: number | null; rateBp: number; amount: number; tax: number }[];
+  /**
+   * An off-cycle run taxes the whole month and withholds the difference (FR-PAY-19): `tax` is
+   * what this run withholds, `monthTax` the month's tax altogether and `priorTax` what an earlier
+   * run already took. On a regular run with nothing before it the three agree.
+   */
+  monthTax: number;
+  priorTax: number;
   tax: number;
 };
 

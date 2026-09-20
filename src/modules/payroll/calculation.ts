@@ -13,16 +13,16 @@ import { db, schema, type Tx } from "@/lib/db";
 import { getLockedTimesheets, getTimesheetDays, type LockedTimesheet, type TimesheetDayRow } from "@/modules/attendance/service";
 import { listPayrollFacts, type PayrollPersonFacts } from "@/modules/core-hr/service";
 import { getLeaveUsage, type LeaveUsage } from "@/modules/leave/service";
-import { resolveCatalogue } from "./components";
+import { resolveCatalogue, resolveCatalogueVersions } from "./components";
 import { calculatePerson, PAYROLL_ENGINE_VERSION } from "./engine/calculate";
 import type { ComponentDefinition } from "./engine/components";
 import { payableOvertime, payPeriodOf, type PaySegment, type ProfileFacts } from "./engine/period";
 import { isRoundingRule } from "./engine/rounding";
-import type { PayInput, PersonPayInput, PersonPayResult } from "./engine/types";
-import { getPayrollPolicy } from "./policies";
+import type { PayInput, PersonPayInput, PersonPayResult, PriorInMonth, RetroItem } from "./engine/types";
+import { getPayrollPolicy, getPayrollPolicyVersion } from "./policies";
 import { getProfilesOn, listProfilesBetween, type PayProfileRow } from "./profiles";
 import { listStructuresBetween, type SalaryStructureView } from "./salaries";
-import { loadStatutoryParams, type LoadedStatutoryParams } from "./statutory";
+import { loadStatutoryParams, loadStatutoryParamsByVersion, type LoadedStatutoryParams } from "./statutory";
 
 type Executor = Tx | ReturnType<typeof db>;
 
@@ -44,14 +44,33 @@ export type PersonCalculation = { input: PersonPayInput; result: PersonPayResult
 
 export type EntityMonthCalculation = { context: CalculationContext; people: PersonCalculation[] };
 
-/** Figures typed into a run, per person — bonuses, advances, penalties (week 4 stores them). */
+/** Figures typed into a run, per person — bonuses, advances, penalties (`payroll_run_input`). */
 export type RunInputs = ReadonlyMap<string, PayInput[]>;
+/** Differences from earlier months to carry into this run, per person (FR-PAY-17). */
+export type RunRetro = ReadonlyMap<string, RetroItem[]>;
+/** What an earlier run of the same month already taxed, per person (FR-PAY-19). */
+export type RunPrior = ReadonlyMap<string, PriorInMonth>;
+
+export type CalculateOptions = {
+  inputs?: RunInputs;
+  retro?: RunRetro;
+  /** Set on an off-cycle run; the regular run of the month supplies it. */
+  prior?: RunPrior;
+  kind?: "regular" | "off_cycle";
+  /**
+   * Reuse the statutory versions, pay policy and catalogue an earlier run was calculated with,
+   * instead of what is in force today — how a past month is recomputed to derive a retro
+   * difference, so the difference is the change that was made and not a change in the law.
+   */
+  context?: CalculationContext;
+  executor?: Executor;
+};
 
 /**
  * Calculate an entity's month. Refuses rather than guesses: without a locked timesheet there is
  * nothing to pay on (FR-PAY-10), and a missing statutory value or pay policy stops the run.
  */
-export async function calculateEntityMonth(entityId: string, month: string, options: { inputs?: RunInputs; executor?: Executor } = {}): Promise<EntityMonthCalculation> {
+export async function calculateEntityMonth(entityId: string, month: string, options: CalculateOptions = {}): Promise<EntityMonthCalculation> {
   const executor = options.executor ?? db();
   const period = payPeriodOf(month, 0);
   const locked = await getLockedTimesheets(entityId, month, executor);
@@ -62,10 +81,11 @@ export async function calculateEntityMonth(entityId: string, month: string, opti
   const wageRegion = asWageRegion(entity.wageRegion);
 
   const personIds = locked.people.map((row) => row.personId);
+  const replay = options.context ?? null;
   const [statutory, policy, catalogue, structures, profiles, facts, leave, days] = await Promise.all([
-    loadStatutoryParams(period.end, executor),
-    getPayrollPolicy(entityId, period.end, executor),
-    resolveCatalogue(entityId, period.end, executor),
+    replay ? loadStatutoryParamsByVersion(replay.parameterVersions, executor) : loadStatutoryParams(period.end, executor),
+    replay ? getPayrollPolicyVersion(replay.policyVersionId, executor) : getPayrollPolicy(entityId, period.end, executor),
+    replay ? resolveCatalogueVersions(replay.componentVersionIds, executor) : resolveCatalogue(entityId, period.end, executor),
     listStructuresBetween(entityId, period.start, period.end, executor),
     listProfilesBetween(entityId, period.start, period.end, executor),
     listPayrollFacts({ personIds }, month, executor),
@@ -100,6 +120,9 @@ export async function calculateEntityMonth(entityId: string, month: string, opti
       leave: leave.filter((row) => row.personId === timesheet.personId),
       components,
       inputs: options.inputs?.get(timesheet.personId) ?? [],
+      retro: options.retro?.get(timesheet.personId) ?? [],
+      priorInMonth: options.prior?.get(timesheet.personId) ?? null,
+      runKind: options.kind ?? "regular",
       policy: policy.value,
       statutory,
     });
@@ -168,6 +191,11 @@ export function buildPersonInput(source: {
   leave: LeaveUsage[];
   components: ComponentDefinition[];
   inputs: PayInput[];
+  /** Differences from months already paid (FR-PAY-17); empty on an ordinary month. */
+  retro?: RetroItem[];
+  /** An off-cycle run: what the month's regular run already taxed (FR-PAY-19). */
+  priorInMonth?: PriorInMonth | null;
+  runKind?: "regular" | "off_cycle";
   policy: PersonPayInput["policy"];
   statutory: LoadedStatutoryParams;
 }): PersonPayInput {
@@ -209,7 +237,10 @@ export function buildPersonInput(source: {
     unpaidWorkingDays,
     components: source.components,
     inputs: source.inputs,
+    retro: source.retro ?? [],
     otherPitDeductions: 0,
+    priorInMonth: source.priorInMonth ?? null,
+    runKind: source.runKind ?? "regular",
     policy: source.policy,
     statutory: source.statutory.params,
   };

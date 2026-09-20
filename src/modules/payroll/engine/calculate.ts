@@ -10,6 +10,7 @@ import { calculateInsurance, calculateUnion } from "./insurance";
 import { calculateOvertime } from "./overtime";
 import { calculatePit, overtimeExemption, pitMethodFor } from "./pit";
 import { uncoveredWorkingDays } from "./proration";
+import { calculateRetroLines } from "./retro";
 import type { PayLine, PersonPayInput, PersonPayResult, TraceStep } from "./types";
 
 /**
@@ -21,9 +22,13 @@ export const PAYROLL_ENGINE_VERSION = "1.0.0";
 export function calculatePerson(input: PersonPayInput): PersonPayResult {
   const trace: TraceStep[] = [];
   const warnings: PersonPayResult["warnings"] = [];
+  // An off-cycle run pays something extra inside a month the regular run already paid: it has no
+  // salary structure and no attendance of its own, and saying so every time would only teach
+  // people to ignore warnings.
+  const regular = input.runKind === "regular";
   const hasStructure = input.segments.some((segment) => segment.terms.baseSalary > 0 || segment.terms.allowances.length > 0);
-  if (!hasStructure) warnings.push("no_salary_structure");
-  if (input.timesheet.paidDaysCenti === 0) warnings.push("zero_paid_days");
+  if (regular && !hasStructure) warnings.push("no_salary_structure");
+  if (regular && input.timesheet.paidDaysCenti === 0) warnings.push("zero_paid_days");
 
   // 1–2. Pro-rating and the structure's own lines.
   const earnings = calculateEarnings(input);
@@ -39,12 +44,17 @@ export function calculatePerson(input: PersonPayInput): PersonPayResult {
   const overtime = calculateOvertime(input, overtimeRate);
   trace.push(...overtime.trace);
 
-  // Formula and typed-in lines see the structure and overtime lines before them.
-  const beforeFormulas = [...earnings.lines, ...overtime.lines];
+  // Differences from months already paid, each as its own line (FR-PAY-17).
+  const retro = calculateRetroLines(input);
+  trace.push(...retro.trace);
+
+  // Formula and typed-in lines see the structure, overtime and retro lines before them.
+  const beforeFormulas = [...earnings.lines, ...overtime.lines, ...retro.lines.filter((line) => line.kind === "earning")];
   const formulaLines = calculateFormulaLines(input, beforeFormulas);
   const inputLines = calculateInputLines(input);
+  const retroDeductions = retro.lines.filter((line) => line.kind === "deduction");
   const earningLines = [...beforeFormulas, ...formulaLines, ...inputLines].filter((line) => line.kind === "earning");
-  const inputDeductions = [...formulaLines, ...inputLines].filter((line) => line.kind === "deduction");
+  const inputDeductions = [...retroDeductions, ...formulaLines, ...inputLines].filter((line) => line.kind === "deduction");
   const inputEmployerCosts = [...formulaLines, ...inputLines].filter((line) => line.kind === "employer_cost");
 
   // 4. Insurance: on the declared insurance salary, never pro-rated, all or nothing for the month.

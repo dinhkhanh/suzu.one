@@ -46,6 +46,10 @@ export function calculateInsurance(input: PersonPayInput, declaredBase: number, 
   const trace: TraceStep[] = [];
 
   if (reason) return { result: none, lines: [], trace: [{ stage: "insurance", rule: "exempt", detail: { reason, uncoveredDays } }] };
+  // An off-cycle run pays something extra inside a month the regular run already contributed for
+  // (FR-PAY-19). The contribution belongs to the month and was made once; a bonus run neither
+  // repeats it nor counts as a month without one.
+  if (input.runKind === "off_cycle") return { result: { ...none, reason: "off_cycle_run" }, lines: [], trace: [{ stage: "insurance", rule: "off_cycle_run", detail: { runKind: input.runKind } }] };
   if (overThreshold) return { result: { ...none, reason: "unpaid_leave_threshold" }, lines: [], trace: [{ stage: "insurance", rule: "unpaid_leave_threshold", detail: { uncoveredDays, thresholdDays: threshold } }] };
   if (declaredBase <= 0) return { result: { ...none, reason: "no_salary" }, lines: [], trace: [{ stage: "insurance", rule: "no_salary", detail: { declaredBase } }] };
 

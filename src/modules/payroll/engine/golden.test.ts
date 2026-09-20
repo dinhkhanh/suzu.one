@@ -9,7 +9,7 @@ const fixtures = loadFixtures();
 
 describe("golden payroll cases", () => {
   it("finds the fixtures", () => {
-    expect(fixtures.length).toBeGreaterThanOrEqual(13);
+    expect(fixtures.length).toBeGreaterThanOrEqual(16);
   });
 
   for (const fixture of fixtures) {
