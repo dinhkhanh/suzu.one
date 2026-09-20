@@ -17,6 +17,7 @@ import { seedKpis } from "./seed-demo-kpis";
 import { seedPayroll } from "./seed-demo-payroll";
 import { describeRecruitSeed, seedRecruit } from "./seed-demo-recruit";
 import { seedPerformance } from "./seed-demo-performance";
+import { seedReviews } from "./seed-demo-reviews";
 import { seedAssets } from "./seed-demo-assets";
 import { seedAttendanceRequests } from "./seed-demo-requests";
 import { seedGenericRequests } from "./seed-demo-requests-generic";
@@ -153,6 +154,7 @@ async function main() {
   console.log(`Seeded ${await seedWorkIntake(db, today)}.`);
   console.log(`Seeded ${await seedPerformance(db)}.`);
   console.log(`Seeded ${await seedKpis(db)}.`);
+  console.log(`Seeded ${await seedReviews(db)}.`);
   console.log(`Seeded ${await seedKb(db)}.`);
   console.log(`Seeded ${await seedComms(db)}.`);
   console.log(`Seeded ${await seedGenericRequests(db)} generic requests (purchase, payment, advance, letter, trip — at every approval stage).`);

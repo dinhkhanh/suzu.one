@@ -39,8 +39,14 @@ const isHr = (principal: Principal, parties: ReviewParties) => canManagePerforma
 /** The reviewing manager: the one named at launch, or — if they have gone — anyone above the subject. */
 export const isReviewingManager = (principal: Principal, parties: ReviewParties): boolean => (!!principal.personId && principal.personId === parties.managerPersonId) || isAbove(principal, parties);
 
-/** Does this review exist for the viewer at all? (The list, the person's name, how far it has got.) */
-export const canSeeParticipant = (principal: Principal, parties: ReviewParties): boolean => canReadPerformanceOf(principal, parties.subject);
+/**
+ * Does this review exist for the viewer at all? (The list, the person's name, how far it has got.)
+ *
+ * A **nominated peer** is admitted too, otherwise they could not write the feedback they were
+ * asked for — but only that: every block on the page is behind `canReadReviewForm`, which lets a
+ * peer read their own form and nothing else.
+ */
+export const canSeeParticipant = (principal: Principal, parties: ReviewParties, nominated = false): boolean => canReadPerformanceOf(principal, parties.subject) || (nominated && !!principal.personId && principal.personId !== parties.subject.personId);
 
 /**
  * Reading one filled form. A draft is its author's alone; after that the rules above apply.

@@ -177,3 +177,23 @@ describe("building a cycle", () => {
     expect(canManageReviewTemplates(owner)).toBe(true);
   });
 });
+
+describe("a nominated peer", () => {
+  it("can open the review to write their feedback, and reads nothing else there", () => {
+    const released = parties(huy, { released: true });
+    // Without a nomination a colleague does not know the review exists.
+    expect(canSeeParticipant(colleague, released)).toBe(false);
+    expect(canSeeParticipant(colleague, released, true)).toBe(true);
+    // …but the only form they read is their own.
+    expect(canReadReviewForm(colleague, released, peerForm)).toBe(true);
+    expect(canReadReviewForm(colleague, released, selfForm)).toBe(false);
+    expect(canReadReviewForm(colleague, released, managerForm)).toBe(false);
+    expect(canReadReviewForm(colleague, released, { kind: "peer", authorPersonId: "duc", status: "submitted" })).toBe(false);
+    // Nor can they calibrate, release or acknowledge.
+    expect(canReleaseReview(colleague, released)).toBe(false);
+    expect(canAcknowledgeReview(colleague, released)).toBe(false);
+    // A nomination never lets somebody peer-review themselves.
+    expect(canSeeParticipant(principal("huy"), released, true)).toBe(true); // it is their own review anyway
+    expect(canWritePeerReview(principal("huy"), released, true)).toBe(false);
+  });
+});

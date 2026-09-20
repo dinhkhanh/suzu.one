@@ -10,6 +10,7 @@ import {
   canReleaseReview,
   canSeeParticipant,
   canWriteManagerReview,
+  canWritePeerReview,
   canWriteSelfReview,
   loadParticipant,
 } from "@/modules/performance/service";
@@ -30,7 +31,8 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
   const user = await requireUser();
   const { participantId } = await params;
   const loaded = await loadParticipant(participantId);
-  if (!loaded || !canSeeParticipant(user.principal, loaded.parties)) notFound();
+  const nominated = !!loaded?.nominations.some((row) => row.peerPersonId === user.person.id && row.status === "approved");
+  if (!loaded || !canSeeParticipant(user.principal, loaded.parties, nominated)) notFound();
 
   const { participant, cycle, parties, shape, forms, directory } = loaded;
   const [t, format] = await Promise.all([getTranslations("performance.reviews"), getFormatter()]);
@@ -39,6 +41,7 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
   const readable = forms.filter((form) => canReadReviewForm(user.principal, parties, { kind: form.kind as ReviewFormKind, authorPersonId: form.authorPersonId, status: form.status as "draft" | "submitted" }));
   const mySelf = forms.find((form) => form.kind === "self" && form.authorPersonId === user.person.id);
   const myManager = forms.find((form) => form.kind === "manager" && form.authorPersonId === user.person.id);
+  const myPeer = forms.find((form) => form.kind === "peer" && form.authorPersonId === user.person.id);
   const selfSubmitted = forms.some((form) => form.kind === "self" && form.status === "submitted");
   const selfOverdue = cycle.selfDueOn !== null && cycle.selfDueOn < today;
   const managerBlocked = !selfSubmitted && !selfOverdue;
@@ -87,6 +90,13 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
           <h2 className="text-lg font-medium">{t("form.kind.manager")}</h2>
           {managerBlocked ? <p className="text-sm text-amber-700 dark:text-amber-300">{t("form.waitingForSelf", { date: cycle.selfDueOn ? formatDate(cycle.selfDueOn) : "—" })}</p> : null}
           <ReviewFormEditor value={{ participantId, kind: "manager", shape, answers: myManager?.answers ?? {}, comment: myManager?.comment ?? null, submitted: false }} />
+        </section>
+      ) : null}
+
+      {shape && canWritePeerReview(user.principal, parties, nominated) && myPeer?.status !== "submitted" ? (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-medium">{t("form.kind.peer")}</h2>
+          <ReviewFormEditor value={{ participantId, kind: "peer", shape, answers: myPeer?.answers ?? {}, comment: myPeer?.comment ?? null, submitted: false }} />
         </section>
       ) : null}
 
