@@ -36,9 +36,21 @@ const schema = z.object({
   // still cut, stored and ranked, but the vectors mean nothing outside this machine.
   EMBEDDINGS_API_KEY: z.string().min(1).optional(),
   EMBEDDINGS_MODEL: z.string().min(1).default("voyage-3.5"),
+  // Step-up re-authentication before compensation screens (FR-PLT-06). "google" sends the person
+  // through Google again; "local" is a confirm button for development machines, where Google
+  // cannot be reached — `load()` refuses it in any production build or on Vercel.
+  STEP_UP_DRIVER: z.enum(["google", "local"]).default("google"),
   // Shared with Vercel Cron, which sends it as a bearer token. Unset = scheduled jobs refuse to run.
   CRON_SECRET: z.string().min(16).optional(),
 });
+
+/** The local step-up driver skips Google, so it must never exist where real salaries do. */
+export function stepUpDriverProblem(input: { driver: "google" | "local"; nodeEnv: string | undefined; vercelEnv: string | undefined }): string | null {
+  if (input.driver !== "local") return null;
+  if (input.nodeEnv === "production") return "the local driver is for development only and is refused in a production build";
+  if (input.vercelEnv) return "the local driver is refused on Vercel (any environment)";
+  return null;
+}
 
 function load() {
   const parsed = schema.safeParse({
@@ -50,6 +62,8 @@ function load() {
     const problems = parsed.error.issues.map((issue) => `  ${issue.path.join(".")}: ${issue.message}`).join("\n");
     throw new Error(`Invalid environment configuration (see .env.example):\n${problems}`);
   }
+  const guard = stepUpDriverProblem({ driver: parsed.data.STEP_UP_DRIVER, nodeEnv: process.env.NODE_ENV, vercelEnv: process.env.VERCEL_ENV });
+  if (guard) throw new Error(`Invalid environment configuration (see .env.example):\n  STEP_UP_DRIVER: ${guard}`);
   return {
     ...parsed.data,
     allowedWorkspaceDomains: csv(parsed.data.ALLOWED_WORKSPACE_DOMAINS),

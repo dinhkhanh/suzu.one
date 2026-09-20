@@ -4366,5 +4366,17 @@
       "comms_value_unknown": "That value is no longer in use.",
       "comms_kudos_not_found": "Kudos not found."
     }
+  },
+  "stepUp": {
+    "title": "Confirm it is you",
+    "description": "Salary and payroll screens ask you to have proved who you are within the last {minutes} minutes.",
+    "google": "Sign in again with Google ({email})",
+    "localNotice": "Development machine: there is no Google round trip here. The button below exists in development only and is refused on a production build.",
+    "localConfirm": "Confirm it is me (development only)",
+    "errors": {
+      "generic": "Could not confirm. Please try again.",
+      "forbidden": "This way of confirming is not enabled.",
+      "rejected": "Google could not confirm that sign-in. Try again with the account you are using here."
+    }
   }
 }

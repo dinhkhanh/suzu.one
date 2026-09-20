@@ -2,6 +2,7 @@ import "server-only";
 import type { z } from "zod";
 import { recordAudit, type AuditEntry } from "@/modules/platform/audit/service";
 import { getCurrentUser, type CurrentUser } from "@/modules/platform/auth/session";
+import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 
 export type ActionResult<T> =
   | { ok: true; data: T }
@@ -29,6 +30,12 @@ export function createAction<Schema extends z.ZodType, Output>(definition: {
   /** Audit action name, e.g. "entity.create". */
   name: string;
   input: Schema;
+  /**
+   * Compensation and payroll actions (FR-PLT-06): refused with `step_up_required` unless the
+   * session's holder proved who they are in the last few minutes. Checked before authorization,
+   * so the answer says nothing about what the person may do.
+   */
+  stepUp?: boolean;
   authorize: (user: CurrentUser, input: z.output<Schema>) => boolean | Promise<boolean>;
   run: (context: { user: CurrentUser; input: z.output<Schema> }) => Promise<{ data: Output; audit: AuditDetails }>;
 }) {
@@ -43,6 +50,8 @@ export function createAction<Schema extends z.ZodType, Output>(definition: {
 
     const user = await getCurrentUser();
     if (!user) return { ok: false, error: "unauthenticated" };
+
+    if (definition.stepUp && !isStepUpFresh(user.reauthAt)) return { ok: false, error: "failed", message: "step_up_required" };
 
     const actor = { userId: user.userId, personId: user.person.id, email: user.email };
     if (!(await definition.authorize(user, parsed.data))) {

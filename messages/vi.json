@@ -4366,5 +4366,17 @@
       "comms_value_unknown": "Giá trị không còn được dùng.",
       "comms_kudos_not_found": "Không tìm thấy lời ghi nhận."
     }
+  },
+  "stepUp": {
+    "title": "Xác thực lại",
+    "description": "Màn hình lương và bảng lương yêu cầu bạn xác nhận danh tính trong vòng {minutes} phút gần nhất.",
+    "google": "Đăng nhập lại bằng Google ({email})",
+    "localNotice": "Máy phát triển: không có vòng xác thực Google. Nút dưới đây chỉ tồn tại ở môi trường phát triển và bị từ chối trên bản chạy thật.",
+    "localConfirm": "Xác nhận là tôi (chỉ dùng khi phát triển)",
+    "errors": {
+      "generic": "Không xác thực được. Vui lòng thử lại.",
+      "forbidden": "Cách xác thực này không được bật.",
+      "rejected": "Google không xác nhận được lần đăng nhập vừa rồi. Hãy thử lại bằng đúng tài khoản đang dùng."
+    }
   }
 }

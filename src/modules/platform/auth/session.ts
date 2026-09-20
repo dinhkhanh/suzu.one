@@ -8,8 +8,13 @@ import { loadGrants } from "../rbac/service";
 import { auth } from "./auth";
 import { clientIpFrom } from "./client-ip";
 
+const toDate = (value: unknown): Date | null => (value instanceof Date ? value : typeof value === "string" || typeof value === "number" ? new Date(value) : null);
+
 export type CurrentUser = {
   userId: string;
+  /** The session row behind this request, and when its holder last proved who they are (step-up, FR-PLT-06). */
+  sessionId: string;
+  reauthAt: Date | null;
   email: string;
   name: string;
   image: string | null;
@@ -35,6 +40,8 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 
   return {
     userId: session.user.id,
+    sessionId: session.session.id,
+    reauthAt: toDate((session.session as { reauthAt?: unknown }).reauthAt),
     email: session.user.email,
     name: session.user.name,
     image: session.user.image ?? null,
