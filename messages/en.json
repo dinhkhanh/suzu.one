@@ -817,6 +817,14 @@
       "recruit_assignment_received": {
         "title": "Assignment submitted",
         "body": "{candidate} has sent back {title}."
+      },
+      "recruit_offer_approved": {
+        "title": "The offer was approved",
+        "body": "Offer {number} for {title} has been approved and may go to the candidate."
+      },
+      "recruit_offer_accepted": {
+        "title": "The candidate accepted",
+        "body": "{name} accepted, starting {date}. Time to create the employee record."
       }
     },
     "errors": {
@@ -6043,7 +6051,8 @@
       "contract": "Contract",
       "decision": "Decision",
       "confirmation_letter": "Confirmation letter",
-      "other": "Other"
+      "other": "Other",
+      "offer": "Offer letter"
     },
     "tier": {
       "public_internal": "Internal",
@@ -6320,8 +6329,8 @@
       "recruit_budget_range_invalid": "The floor is above the ceiling.",
       "recruit_start_date_past": "The start date cannot be in the past.",
       "recruit_candidate_name_required": "A candidate needs a name.",
-      "recruit_candidate_not_found": "Candidate not found.",
-      "recruit_candidate_anonymised": "This record has been anonymised under the retention policy.",
+      "recruit_candidate_not_found": "No such candidate.",
+      "recruit_candidate_anonymised": "The candidate's data has been anonymised under the retention policy.",
       "recruit_candidate_duplicate": "This candidate is already on file (same email or phone).",
       "recruit_candidate_possible_duplicate": "Somebody with this name is already on file. Check the matches, then confirm if this is someone else.",
       "recruit_already_applied": "This candidate has already applied to this opening.",
@@ -6352,7 +6361,27 @@
       "assignment_nothing_submitted": "Attach a file or paste a link.",
       "recruit_assignment_not_found": "Assignment not found.",
       "recruit_assignment_closed": "This assignment is closed.",
-      "recruit_assignment_not_submitted": "Nothing has been sent back yet."
+      "recruit_assignment_not_submitted": "Nothing has been sent back yet.",
+      "offer_amount_invalid": "The salary must be a whole positive number of đồng.",
+      "offer_amount_too_large": "That salary is beyond the allowed range.",
+      "offer_allowances_invalid": "The allowance figure is not valid.",
+      "offer_start_date_past": "That start date has already passed.",
+      "offer_expiry_past": "That expiry date has already passed.",
+      "offer_expiry_after_start": "An offer cannot stand past the day the job starts.",
+      "offer_probation_invalid": "That probation period is not allowed.",
+      "offer_probation_percent_invalid": "Probation pay must be between 85% and 100% of the agreed package.",
+      "offer_position_empty": "The offer needs a job title.",
+      "offer_note_too_long": "That note is too long.",
+      "offer_already_open": "This application already has a live offer.",
+      "offer_not_found": "No such offer.",
+      "offer_not_editable": "The offer has gone for approval or been sent; it cannot be edited now.",
+      "offer_not_submittable": "Only a draft can be sent for approval.",
+      "offer_not_sendable": "The offer has to be approved before it goes out.",
+      "offer_not_answerable": "The offer has not been sent, so there is nothing to answer.",
+      "offer_not_withdrawable": "The offer is finished; there is nothing to withdraw.",
+      "offer_expired": "The offer has expired.",
+      "offer_not_accepted": "An employee record is only created once the candidate has accepted.",
+      "recruit_already_converted": "An employee record has already been created from this application."
     },
     "duplicates": {
       "title": "Possible matches already on file:",
@@ -6588,6 +6617,80 @@
         "title": "We have your work",
         "body": "Thank you. We will look at it and come back to you."
       }
+    },
+    "offer": {
+      "title": "Offers",
+      "description": "Approved offers, letters sent, and what the candidate said.",
+      "heading": "Offer",
+      "none": "No offers yet.",
+      "create": "Draft an offer",
+      "newTitle": "Offer for {name}",
+      "editTitle": "Edit the offer for {name}",
+      "edit": "Edit the offer",
+      "save": "Save the offer",
+      "positionName": "Job title",
+      "jobLevel": "Level",
+      "employmentType": "Employment type",
+      "workLocation": "Work location",
+      "manager": "Line manager",
+      "noManager": "Not decided",
+      "department": "Department",
+      "startDate": "Start date",
+      "expiresOn": "Stands until",
+      "letterTemplate": "Letter template",
+      "noLetter": "No letter",
+      "probationMonths": "Probation (months)",
+      "probationPercent": "Probation pay (%)",
+      "probationPay": "Probation pay",
+      "baseSalary": "Base salary",
+      "allowances": "Allowances",
+      "total": "Total package",
+      "moneyNote": "Figures are whole Vietnamese đồng per month. Only a reader who may see compensation is shown this.",
+      "note": "Internal note",
+      "submitForApproval": "Send for approval",
+      "send": "Mark as sent",
+      "withdraw": "Withdraw",
+      "approval": "Approval",
+      "letter": "Offer letter",
+      "downloadLetter": "Download the letter (PDF)",
+      "letterNote": "The letter is re-made from its template every time it is opened; nothing rendered is stored.",
+      "stepUp": "Confirm it is you to see the figure.",
+      "responseTitle": "The candidate's answer",
+      "responseNote": "The recruiter writes down what they were told. The candidate does not click a button here.",
+      "accepted": "The candidate accepted",
+      "declined": "The candidate declined",
+      "confirmDecline": "Confirm the decline",
+      "declineReason": "Why they declined",
+      "declinedBecause": "Declined because: {reason}",
+      "convertTitle": "Create the employee record",
+      "convertNote": "Everything the candidate typed and everything the offer promised is carried across. Nothing is retyped.",
+      "convert": "Create the employee record",
+      "employeeCode": "Employee code",
+      "employeeCodeAuto": "Leave blank to take the next one",
+      "salaryProblem": "The employee record was created, but the salary could not be proposed to payroll. Propose it by hand.",
+      "openPerson": "Open the employee record",
+      "statuses": {
+        "draft": "Draft",
+        "pending_approval": "Awaiting approval",
+        "approved": "Approved",
+        "rejected": "Not approved",
+        "sent": "Sent",
+        "accepted": "Accepted",
+        "declined": "Declined",
+        "withdrawn": "Withdrawn",
+        "expired": "Expired",
+        "converted": "On the books"
+      }
+    },
+    "declineReasons": {
+      "compensation": "The money",
+      "counter_offer": "Counter-offer from their employer",
+      "another_offer": "Took another offer",
+      "role_fit": "The job was not right",
+      "location": "Location",
+      "timing": "Wrong time for them",
+      "personal": "Personal reasons",
+      "other": "Other"
     }
   }
 }

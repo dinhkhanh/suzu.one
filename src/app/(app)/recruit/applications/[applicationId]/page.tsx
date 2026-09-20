@@ -3,9 +3,12 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { headers } from "next/headers";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listAssignments } from "@/modules/recruit/assignments";
+import { listOffersOfApplication } from "@/modules/recruit/offers";
+import { canMakeOffer } from "@/modules/recruit/policy";
 import { APPLICATION_CLOSED, getApplicationView } from "@/modules/recruit/service";
 import { CancelAssignment, RateAssignment, SendAssignment } from "@/modules/recruit/ui/assignment-forms";
 import { AssignmentLink } from "@/modules/recruit/ui/assignment-link";
@@ -31,6 +34,10 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
   const format = await getFormatter();
   const closed = APPLICATION_CLOSED.includes(view.application.status);
   const tAssignment = await getTranslations("recruit.assignment");
+  const tOffer = await getTranslations("recruit.offer");
+  // The offers on this application, and whether this reader may draft another one.
+  const offers = await listOffersOfApplication(applicationId);
+  const mayOffer = canMakeOffer(user.principal, { entityId: view.opening.entityId, departmentId: view.opening.departmentId, teamId: view.opening.teamId });
   // The caller has already been checked by `getApplicationView`; the panels are the same audience.
   const interviews = await listInterviewsOfApplication(applicationId);
   const assignments = await listAssignments(applicationId);
@@ -184,6 +191,33 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
           </article>
         ))}
         {view.canAct && !closed ? <SendAssignment applicationId={applicationId} origin={origin} /> : null}
+      </section>
+
+      {/* Offers (FR-REC-08). The list is the hiring team's; drafting one is the money authority's,
+          so the "make an offer" link is only drawn for a reader who may type a figure. */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-medium text-muted-foreground">{tOffer("heading")}</h2>
+        {offers.length === 0 ? <p className="text-sm text-muted-foreground">{tOffer("none")}</p> : null}
+        {offers.length > 0 ? (
+          <ul className="flex flex-col divide-y rounded-xl border">
+            {offers.map((row) => (
+              <li key={row.id} className="flex flex-wrap items-center gap-3 p-3">
+                <Link href={`/recruit/offers/${row.id}`} className="min-w-0 flex-1 text-sm font-medium hover:underline">
+                  {row.number}
+                </Link>
+                <span className="text-xs text-muted-foreground">{format.dateTime(new Date(`${row.startDate}T00:00:00Z`), { dateStyle: "medium", timeZone: "UTC" })}</span>
+                <Badge variant={row.status === "accepted" ? "default" : "outline"}>{tOffer(`statuses.${row.status}`)}</Badge>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {mayOffer && !closed ? (
+          <div>
+            <Link href={`/recruit/offers/new?applicationId=${applicationId}`} className={buttonVariants({ size: "sm", variant: "outline" })}>
+              {tOffer("create")}
+            </Link>
+          </div>
+        ) : null}
       </section>
 
       {view.canAct ? <ApplicationActions applicationId={applicationId} stages={view.stages} currentStageId={view.stage.id} closed={closed} /> : null}

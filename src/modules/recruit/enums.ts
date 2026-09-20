@@ -172,6 +172,37 @@ export const ASSIGNMENT_LIMITS = { note: 5_000, link: 300, links: 5 } as const;
 /** How long a take-home link stays usable after the due date before it stops opening at all. */
 export const ASSIGNMENT_GRACE_DAYS = 3;
 
+// ── Offers (FR-REC-08) ──────────────────────────────────────────────────────────────────────
+
+/**
+ * An offer's life. Three of these are worth reading twice:
+ *
+ *   · `pending_approval` → `rejected` is an *internal* refusal — the company decided not to make
+ *     this offer. It never reached the candidate and it is not a decline.
+ *   · `approved` → `sent` is the moment the figure leaves the building. Before it, the offer can
+ *     still be edited; after it, it cannot, because the candidate is holding a piece of paper.
+ *   · `expired` is set by nobody: `offerExpiredOn` decides it from the clock, and the screens and
+ *     the response path read it. A stale row is not a live offer just because no job has run.
+ */
+export const OFFER_STATUSES = ["draft", "pending_approval", "approved", "rejected", "sent", "accepted", "declined", "withdrawn", "expired"] as const;
+export type OfferStatus = (typeof OFFER_STATUSES)[number];
+
+/** Offers that still occupy the application — at most one of these may exist for it at a time. */
+export const OFFER_LIVE: readonly OfferStatus[] = ["draft", "pending_approval", "approved", "sent", "accepted"];
+
+/** Offers nobody is waiting on any more. */
+export const OFFER_CLOSED: readonly OfferStatus[] = ["rejected", "accepted", "declined", "withdrawn", "expired"];
+
+/** Why the candidate said no. A short list so the funnel report can count it (FR-REC-11). */
+export const OFFER_DECLINE_REASONS = ["compensation", "counter_offer", "another_offer", "role_fit", "location", "timing", "personal", "other"] as const;
+export type OfferDeclineReason = (typeof OFFER_DECLINE_REASONS)[number];
+
+/** How long an offer stands by default before it lapses. Company practice; the form may override it. */
+export const DEFAULT_OFFER_VALID_DAYS = 7;
+
+/** What an offer may contain. Probation in Vietnam is capped at 60 days for most roles (Labour Code art. 25). */
+export const OFFER_LIMITS = { probationMonths: 6, probationPercentMin: 85, note: 5_000, maxMonthlyVnd: 2_000_000_000 } as const;
+
 // ── Candidate emails (FR-REC-05) ────────────────────────────────────────────────────────────
 
 /** What a wording is for. The kind decides which templates a screen offers, nothing more. */

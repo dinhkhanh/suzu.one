@@ -3,15 +3,19 @@ import type { Principal } from "../platform/rbac/policy";
 import {
   canActOnApplication,
   canBrowseCandidates,
+  canConvertToEmployee,
   canEditOpening,
   canFileHiringRequest,
   canManageCandidates,
+  canMakeOffer,
   canManagePipelines,
   canOpenCandidateFile,
   canOpenFromHiringRequest,
   canReadRecruitMoney,
+  canRecordOfferResponse,
   canRunRecruitment,
   canViewHiringRequest,
+  canViewOffer,
   canViewOpening,
 } from "./policy";
 
@@ -184,5 +188,47 @@ describe("hiring requests", () => {
     expect(canOpenFromHiringRequest(entityRecruiter, request)).toBe(true);
     expect(canOpenFromHiringRequest(otherRecruiter, request)).toBe(false);
     expect(canOpenFromHiringRequest(head, request)).toBe(false);
+  });
+});
+
+describe("offers (FR-REC-08) and becoming an employee (FR-REC-09)", () => {
+  it("is drafted only by whoever may read a salary over that opening", () => {
+    for (const who of [owner, hrAdmin]) expect(canMakeOffer(who, opening)).toBe(true);
+    // The pipeline runs it; it does not price it. A recruiter never types a figure.
+    for (const who of [recruiter, entityRecruiter, hrStaff, head, ...outsiders]) expect(canMakeOffer(who, opening)).toBe(false);
+    // And the money authority is scoped: group-wide HR over one entity is not HR over the other.
+    expect(canMakeOffer(principal("szm-hr", [{ role: "hr_admin", scope: { type: "entity", id: SZM } }]), otherOpening)).toBe(false);
+  });
+
+  it("is seen — as a fact, without its figure — by everybody who runs the opening", () => {
+    for (const who of [owner, hrAdmin, hrStaff, entityRecruiter]) expect(canViewOffer(who, opening, false)).toBe(true);
+    // The hiring manager reaches it through the hiring team, and only theirs.
+    expect(canViewOffer(head, opening, true)).toBe(true);
+    expect(canViewOffer(head, opening, false)).toBe(false);
+    for (const who of [finance, payroll, ceo, auditor, employee]) expect(canViewOffer(who, opening, false)).toBe(false);
+  });
+
+  it("separates seeing that an offer exists from seeing what it says", () => {
+    // The pair that matters: `hr_staff` runs the offer through its life and is never shown a đồng.
+    expect(canViewOffer(hrStaff, opening, false)).toBe(true);
+    expect(canReadRecruitMoney(hrStaff, opening)).toBe(false);
+    expect(canViewOffer(head, opening, true)).toBe(true);
+    expect(canReadRecruitMoney(head, opening)).toBe(false);
+  });
+
+  it("has the candidate's answer written down by whoever took the call", () => {
+    for (const who of [hrAdmin, hrStaff, entityRecruiter]) expect(canRecordOfferResponse(who, opening, false)).toBe(true);
+    expect(canRecordOfferResponse(head, opening, true)).toBe(true);
+    for (const who of [finance, ceo, employee, otherRecruiter]) expect(canRecordOfferResponse(who, opening, false)).toBe(false);
+  });
+
+  it("is turned into an employee only by somebody who may put people on the books", () => {
+    // `person:manage` as well as recruitment: conversion writes to the employee register.
+    for (const who of [owner, hrAdmin, hrStaff]) expect(canConvertToEmployee(who, opening)).toBe(true);
+    // A recruiter may run every opening in the group and still cannot create an employee.
+    for (const who of [recruiter, entityRecruiter]) expect(canConvertToEmployee(who, opening)).toBe(false);
+    // Nor may someone who may put people on the books elsewhere but runs no recruitment here.
+    for (const who of [head, finance, ceo, auditor, employee]) expect(canConvertToEmployee(who, opening)).toBe(false);
+    expect(canConvertToEmployee(hrStaff, otherOpening)).toBe(false);
   });
 });

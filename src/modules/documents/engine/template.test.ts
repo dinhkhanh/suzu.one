@@ -12,7 +12,19 @@ describe("the placeholder catalogue", () => {
     const money = PLACEHOLDERS.filter((p) => p.key.startsWith("salary."));
     expect(money.length).toBeGreaterThan(0);
     expect(money.every((p) => p.tier === "compensation")).toBe(true);
-    expect(PLACEHOLDERS.filter((p) => p.tier === "compensation").every((p) => p.key.startsWith("salary."))).toBe(true);
+    // The whole compensation tier, named one key at a time on purpose: adding a placeholder here
+    // is a decision about what a `personal` letter can never print, so it has to be deliberate.
+    // `offer.probationSalary` is an offer letter's probation pay (FR-REC-08) — a figure like the rest.
+    expect(PLACEHOLDERS.filter((p) => p.tier === "compensation").map((p) => p.key).sort()).toEqual(
+      ["offer.probationSalary", "salary.allowances", "salary.base", "salary.effectiveFrom", "salary.insurance", "salary.total", "salary.totalInWords"].sort(),
+    );
+  });
+
+  it("keeps the rest of an offer letter below the money", () => {
+    // How long probation lasts and when the offer lapses are dates and counts, not amounts: a
+    // recruiter's personal-tier wording may say them.
+    expect(findPlaceholder("offer.probationMonths")?.tier).toBe("personal");
+    expect(findPlaceholder("offer.expiryDate")?.tier).toBe("personal");
   });
 
   it("keeps a name and a job title at the personal tier, and a date of birth above it", () => {

@@ -23,6 +23,8 @@ import { leaveRequestType } from "@/modules/leave/requests";
 import type { RequestTypeDefinition } from "@/modules/platform/approvals/service";
 import { decideHiringRequestAction } from "@/modules/recruit/actions";
 import { hiringRequestType } from "@/modules/recruit/hiring";
+import { decideOfferAction } from "@/modules/recruit/offer-actions";
+import { offerRequestType } from "@/modules/recruit/offers";
 import { decideRequestAction } from "@/modules/requests/actions";
 import { registeredGenericTypes } from "@/modules/requests/service";
 
@@ -44,6 +46,9 @@ const REGISTERED: RegisteredRequestType[] = [
   // A head is a budget decision and its budget is not in the summary, so this one is never bulk-
   // approvable either (FR-REC-01); registered so the flow administration can configure it.
   { definition: hiringRequestType, approve: (requestId) => decideHiringRequestAction({ requestId, decision: "approve", comment: null }) },
+  // An offer is a salary (FR-REC-08). Its figure is on its own page and nowhere in the summary, so
+  // approving one from the inbox without reading it is exactly what must not happen.
+  { definition: offerRequestType, approve: (requestId) => decideOfferAction({ requestId, decision: "approve", comment: null }) },
 ];
 
 export const REQUEST_TYPES: ReadonlyMap<string, RegisteredRequestType> = new Map(REGISTERED.map((entry) => [entry.definition.type, entry]));

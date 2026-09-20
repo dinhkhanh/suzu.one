@@ -449,6 +449,13 @@
       "when": 1789896505360,
       "tag": "0063_take_home_assignments",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1789898231649,
+      "tag": "0064_offers_and_conversion",
+      "breakpoints": true
     }
   ]
 }

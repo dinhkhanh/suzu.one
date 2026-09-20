@@ -100,6 +100,12 @@ export const KINDS = {
   "recruit.interview_cancelled": "recruit",
   // A take-home came back (FR-REC-07) — told to whoever sent the brief.
   "recruit.assignment_received": "recruit",
+  // An offer cleared its flow and may go out (FR-REC-08). The offer's number and the job title —
+  // never the amount, which is the whole point of the offer and the one thing a notification
+  // read on a lock screen must not carry.
+  "recruit.offer_approved": "recruit",
+  // The candidate said yes: somebody has to put them on the books before they turn up (FR-REC-09).
+  "recruit.offer_accepted": "recruit",
 } as const satisfies Record<string, Category>;
 export type Kind = keyof typeof KINDS;
 

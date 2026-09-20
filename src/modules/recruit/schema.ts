@@ -11,7 +11,9 @@
 //     budget and an opening's salary band are compensation-tier facts; the approval engine's
 //     payload and summary are read by approvers, inboxes, notifications and the audit log, so the
 //     figures stay here where `policy.ts` decides who is shown them.
+import { sql } from "drizzle-orm";
 import { bigint, boolean, date, index, integer, jsonb, pgTable, smallint, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { documentTemplate } from "../documents/schema";
 import { approvalRequest } from "../platform/approvals/schema";
 import { department, entity, team } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
@@ -27,6 +29,8 @@ import type {
   InterviewMode,
   InterviewRecommendation,
   InterviewStatus,
+  OfferDeclineReason,
+  OfferStatus,
   OpeningMemberRole,
   OpeningQuestion,
   OpeningStatus,
@@ -292,6 +296,12 @@ export const jobApplication = pgTable(
   },
   (t) => [
     uniqueIndex("job_application_candidate_opening_key").on(t.candidateId, t.openingId),
+    // One employee record per application, and one application per employee record (FR-REC-09).
+    // Converting twice would hire the same person twice; the database refuses it rather than the
+    // use-case remembering to look. `recruit/offers.test.ts` inserts past the use-case to prove it.
+    uniqueIndex("job_application_hired_person_key")
+      .on(t.hiredPersonId)
+      .where(sql`${t.hiredPersonId} is not null`),
     index("job_application_opening_idx").on(t.openingId, t.status, t.stageId),
     index("job_application_candidate_idx").on(t.candidateId, t.appliedAt),
   ],
@@ -526,4 +536,94 @@ export const recruitEmailTemplate = pgTable(
     ...timestamps,
   },
   (t) => [index("recruit_email_template_kind_idx").on(t.kind, t.isActive)],
+).enableRLS();
+
+// ── Offers (FR-REC-08) ──────────────────────────────────────────────────────────────────────
+
+/**
+ * What the company is willing to pay somebody to come and work here.
+ *
+ * This is the most sensitive row in the module and it is shaped accordingly:
+ *
+ *   · **The figures live here and nowhere else.** `base_salary_vnd` and `allowances_vnd` are
+ *     compensation-tier facts. They are not in the approval request's payload, not in its summary,
+ *     not in any notification and not in the candidate's email — all of which are read by people
+ *     who may not see them. `policy.ts` decides who is shown the two columns, and the offer page
+ *     shows them only to a reader who also proved who they are in the last few minutes.
+ *   · **The job as offered is copied here, not looked up.** Position, department, manager, start
+ *     date: these are what the candidate agreed to, and when the offer is accepted they are what
+ *     `core-hr` is handed. The opening may be edited or closed afterwards; the offer must still
+ *     say what was actually promised.
+ *   · **At most one live offer per application** — the partial unique index below. Re-offering
+ *     after a decline is a new row; two open offers to the same person for the same job is a
+ *     mistake the database refuses rather than a race the code hopes to lose.
+ *
+ * Nothing rendered is stored: the offer letter is re-made from its template every time it is
+ * opened, and the tier is re-checked then (the rule `src/modules/documents/` set in Phase 6).
+ */
+export const jobOffer = pgTable(
+  "job_offer",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    applicationId: uuid("application_id")
+      .notNull()
+      .references(() => jobApplication.id),
+    // Denormalised from the application so every scope query filters in one join, as `interview` does.
+    openingId: uuid("opening_id")
+      .notNull()
+      .references(() => jobOpening.id),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => candidate.id),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    // "SZM-TM-2026-0001" — what the letter calls itself, so it can be quoted back. Minted once.
+    number: text("number").notNull().unique(),
+
+    // ── The job, as offered ───────────────────────────────────────────────────────────────
+    positionName: text("position_name").notNull(),
+    jobLevel: text("job_level"),
+    departmentId: uuid("department_id").references(() => department.id),
+    teamId: uuid("team_id").references(() => team.id),
+    managerPersonId: uuid("manager_person_id").references(() => person.id),
+    employmentType: text("employment_type").$type<EmploymentType>().notNull().default("employee"),
+    workLocation: text("work_location"),
+    startDate: date("start_date").notNull(),
+    probationMonths: smallint("probation_months").notNull().default(2),
+    /** Probation pay as a share of the package. Vietnam's floor is 85% (Labour Code art. 26). */
+    probationSalaryPercent: smallint("probation_salary_percent").notNull().default(85),
+
+    // ── The money. Compensation tier — see the note above. ────────────────────────────────
+    baseSalaryVnd: bigint("base_salary_vnd", { mode: "number" }).notNull(),
+    allowancesVnd: bigint("allowances_vnd", { mode: "number" }).notNull().default(0),
+
+    // ── Its life ──────────────────────────────────────────────────────────────────────────
+    status: text("status").$type<OfferStatus>().notNull().default("draft"),
+    /** The last day the offer stands, inclusive. Lapsing is read from the clock, not written by a job. */
+    expiresOn: date("expires_on").notNull(),
+    approvalRequestId: uuid("approval_request_id").references(() => approvalRequest.id),
+    /** The wording the letter is made from. A compensation-tier `document_template`. */
+    letterTemplateId: uuid("letter_template_id").references(() => documentTemplate.id),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
+    declineReason: text("decline_reason").$type<OfferDeclineReason>(),
+    declineNote: text("decline_note"),
+    /** An internal note beside the offer. Never printed on the letter. */
+    note: text("note"),
+    createdByPersonId: uuid("created_by_person_id")
+      .notNull()
+      .references(() => person.id),
+    decidedByPersonId: uuid("decided_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [
+    // One live offer per application. A declined or withdrawn one leaves the field clear for the next.
+    uniqueIndex("job_offer_live_key")
+      .on(t.applicationId)
+      .where(sql`${t.status} in ('draft', 'pending_approval', 'approved', 'sent', 'accepted')`),
+    index("job_offer_opening_idx").on(t.openingId, t.status),
+    index("job_offer_application_idx").on(t.applicationId),
+    index("job_offer_expiry_idx").on(t.status, t.expiresOn),
+  ],
 ).enableRLS();

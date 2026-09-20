@@ -36,6 +36,12 @@ export default async function RecruitPage() {
               {t("candidates")}
             </Link>
           ) : null}
+          {/* The offer desk. The list carries no figure at all; one offer's page decides that. */}
+          {runs ? (
+            <Link href="/recruit/offers" className={buttonVariants({ size: "sm", variant: "outline" })}>
+              {t("offer.title")}
+            </Link>
+          ) : null}
           {/* The wordings are the group's, so the entry shows for a group-wide grant only. */}
           {canManagePipelines(user.principal) ? (
             <Link href="/recruit/emails" className={buttonVariants({ size: "sm", variant: "outline" })}>

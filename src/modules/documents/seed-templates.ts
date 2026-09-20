@@ -168,4 +168,36 @@ Thực hiện theo Bộ luật Lao động và các thỏa thuận tại hợp �
 
 Hợp đồng được lập thành 02 bản có giá trị như nhau, mỗi bên giữ 01 bản.${DRAFT}`,
   },
+  {
+    code: "TM-NHAN-VIEC",
+    name: "Thư mời nhận việc",
+    entityId: null,
+    kind: "offer",
+    // It names a salary, so the engine refuses to store it any lower. Recruitment renders it for a
+    // **candidate**, who is not a person on the books, through `recruit/offers.ts` — the wording,
+    // the tier rule and the placeholder catalogue are shared with every other document.
+    tier: "compensation",
+    isActive: true,
+    letterhead: LETTERHEAD,
+    body: `Kính gửi Ông/Bà {{person.fullName}},
+
+Sau quá trình trao đổi, {{company.name}} trân trọng mời Ông/Bà nhận công việc tại Công ty với các nội dung sau:
+
+Chức danh: {{person.position}}
+Bộ phận: {{person.department}}
+Hình thức làm việc: {{employment.type}}
+Ngày dự kiến bắt đầu: {{employment.startDate}}
+
+Thu nhập hằng tháng:
+- Lương cơ bản: {{salary.base}} đồng
+- Phụ cấp: {{salary.allowances}} đồng
+- Tổng thu nhập: {{salary.total}} đồng
+  (Bằng chữ: {{salary.totalInWords}})
+
+Thời gian thử việc: {{offer.probationMonths}} tháng, thu nhập trong thời gian thử việc là {{offer.probationSalary}} đồng/tháng.
+
+Thư mời này có giá trị đến hết ngày {{offer.expiryDate}}. Sau thời hạn trên, nếu Công ty chưa nhận được xác nhận của Ông/Bà, thư mời sẽ không còn hiệu lực.
+
+Rất mong được đồng hành cùng Ông/Bà.${DRAFT}`,
+  },
 ];

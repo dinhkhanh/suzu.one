@@ -17,7 +17,7 @@ export type Placeholder = {
   /** The tier of the fact this reveals. A template naming it must be at least this sensitive. */
   tier: Tier;
   /** Message key for the designer's field list: `documents.placeholders.<key>`. */
-  group: "company" | "person" | "employment" | "salary" | "document";
+  group: "company" | "person" | "employment" | "salary" | "document" | "offer";
 };
 
 const RANK: Record<Tier, number> = { public_internal: 0, personal: 1, restricted: 2, compensation: 3 };
@@ -62,6 +62,14 @@ export const PLACEHOLDERS: readonly Placeholder[] = [
   { key: "salary.total", tier: "compensation", group: "salary" },
   { key: "salary.totalInWords", tier: "compensation", group: "salary" },
   { key: "salary.effectiveFrom", tier: "compensation", group: "salary" },
+
+  // The offer letter (FR-REC-08). An offer is about somebody who is not on the books yet, so it
+  // borrows `person.fullName`, `person.position` and the `salary.*` figures above and adds the
+  // three facts that are peculiar to it. `offer.probationSalary` is a figure, so it is
+  // compensation like every other figure; how *long* probation lasts is not.
+  { key: "offer.expiryDate", tier: "personal", group: "offer" },
+  { key: "offer.probationMonths", tier: "personal", group: "offer" },
+  { key: "offer.probationSalary", tier: "compensation", group: "offer" },
 ];
 
 const BY_KEY = new Map(PLACEHOLDERS.map((placeholder) => [placeholder.key, placeholder]));

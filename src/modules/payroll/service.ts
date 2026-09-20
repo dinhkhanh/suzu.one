@@ -18,3 +18,11 @@ export { createOffCycleRun } from "./runs";
  * carries ids, a month and a status and nothing else, so no amount leaves payroll this way.
  */
 export { findOpenRegularRun, getRunHandle, removeRunInput, type RunHandle, setRunInput } from "./runs";
+/**
+ * The first salary of somebody who has just been hired (FR-REC-09). Recruitment knows what was
+ * offered and accepted; it must not become a second way to set a salary, so it **proposes** the
+ * figure through payroll's own use-case and the owner decides it exactly as for any other change
+ * (SRS D17). The proposal is encrypted by `submitSalaryChange` like every other one, and nothing
+ * is read back: the return value carries the request's id, not an amount.
+ */
+export { type SalaryChangeInput, submitSalaryChange } from "./salaries";

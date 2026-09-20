@@ -817,6 +817,14 @@
       "recruit_assignment_received": {
         "title": "Ứng viên đã nộp bài",
         "body": "{candidate} đã nộp bài {title}."
+      },
+      "recruit_offer_approved": {
+        "title": "Thư mời đã được duyệt",
+        "body": "Thư mời {number} cho vị trí {title} đã được duyệt. Có thể gửi cho ứng viên."
+      },
+      "recruit_offer_accepted": {
+        "title": "Ứng viên đã đồng ý",
+        "body": "{name} đã đồng ý nhận việc, dự kiến bắt đầu ngày {date}. Hãy tạo hồ sơ nhân viên."
       }
     },
     "errors": {
@@ -6043,7 +6051,8 @@
       "contract": "Hợp đồng",
       "decision": "Quyết định",
       "confirmation_letter": "Giấy xác nhận",
-      "other": "Văn bản khác"
+      "other": "Văn bản khác",
+      "offer": "Thư mời nhận việc"
     },
     "tier": {
       "public_internal": "Nội bộ",
@@ -6321,7 +6330,7 @@
       "recruit_start_date_past": "Ngày bắt đầu không thể ở quá khứ.",
       "recruit_candidate_name_required": "Vui lòng nhập họ tên ứng viên.",
       "recruit_candidate_not_found": "Không tìm thấy ứng viên.",
-      "recruit_candidate_anonymised": "Hồ sơ này đã được ẩn danh theo chính sách lưu trữ.",
+      "recruit_candidate_anonymised": "Dữ liệu ứng viên đã được ẩn danh theo chính sách lưu trữ.",
       "recruit_candidate_duplicate": "Ứng viên này đã có trong hệ thống (trùng email hoặc số điện thoại).",
       "recruit_candidate_possible_duplicate": "Có ứng viên trùng tên trong hệ thống. Hãy kiểm tra rồi xác nhận nếu đây là người khác.",
       "recruit_already_applied": "Ứng viên đã ứng tuyển vị trí này.",
@@ -6352,7 +6361,27 @@
       "assignment_nothing_submitted": "Vui lòng đính kèm tệp hoặc dán đường dẫn.",
       "recruit_assignment_not_found": "Không tìm thấy bài tập.",
       "recruit_assignment_closed": "Bài tập này đã khép lại.",
-      "recruit_assignment_not_submitted": "Ứng viên chưa nộp bài."
+      "recruit_assignment_not_submitted": "Ứng viên chưa nộp bài.",
+      "offer_amount_invalid": "Mức lương phải là số đồng nguyên dương.",
+      "offer_amount_too_large": "Mức lương vượt quá giới hạn cho phép.",
+      "offer_allowances_invalid": "Phụ cấp không hợp lệ.",
+      "offer_start_date_past": "Ngày bắt đầu đã qua.",
+      "offer_expiry_past": "Hạn hiệu lực đã qua.",
+      "offer_expiry_after_start": "Thư mời không thể còn hiệu lực sau ngày bắt đầu làm việc.",
+      "offer_probation_invalid": "Thời gian thử việc không hợp lệ.",
+      "offer_probation_percent_invalid": "Lương thử việc phải từ 85% đến 100% mức thoả thuận.",
+      "offer_position_empty": "Chưa có chức danh.",
+      "offer_note_too_long": "Ghi chú quá dài.",
+      "offer_already_open": "Hồ sơ này đã có một thư mời đang hiệu lực.",
+      "offer_not_found": "Không tìm thấy thư mời.",
+      "offer_not_editable": "Thư mời đã trình duyệt hoặc đã gửi, không sửa được nữa.",
+      "offer_not_submittable": "Chỉ trình duyệt được thư mời ở trạng thái nháp.",
+      "offer_not_sendable": "Thư mời phải được duyệt trước khi gửi.",
+      "offer_not_answerable": "Thư mời chưa gửi nên chưa có câu trả lời.",
+      "offer_not_withdrawable": "Thư mời đã kết thúc, không thu hồi được.",
+      "offer_expired": "Thư mời đã hết hạn.",
+      "offer_not_accepted": "Chỉ tạo hồ sơ nhân viên khi ứng viên đã đồng ý.",
+      "recruit_already_converted": "Hồ sơ nhân viên đã được tạo từ đơn ứng tuyển này."
     },
     "duplicates": {
       "title": "Có thể trùng với ứng viên đã có:",
@@ -6588,6 +6617,80 @@
         "title": "Đã nhận bài của bạn",
         "body": "Cảm ơn bạn. Chúng tôi sẽ xem và liên hệ lại."
       }
+    },
+    "offer": {
+      "title": "Thư mời nhận việc",
+      "description": "Đề nghị tuyển dụng đã duyệt, thư mời đã gửi và câu trả lời của ứng viên.",
+      "heading": "Thư mời nhận việc",
+      "none": "Chưa có thư mời nào.",
+      "create": "Soạn thư mời",
+      "newTitle": "Thư mời cho {name}",
+      "editTitle": "Sửa thư mời cho {name}",
+      "edit": "Sửa thư mời",
+      "save": "Lưu thư mời",
+      "positionName": "Chức danh",
+      "jobLevel": "Cấp bậc",
+      "employmentType": "Hình thức làm việc",
+      "workLocation": "Nơi làm việc",
+      "manager": "Quản lý trực tiếp",
+      "noManager": "Chưa xác định",
+      "department": "Bộ phận",
+      "startDate": "Ngày bắt đầu",
+      "expiresOn": "Hiệu lực đến",
+      "letterTemplate": "Mẫu thư mời",
+      "noLetter": "Không kèm thư",
+      "probationMonths": "Thử việc (tháng)",
+      "probationPercent": "Lương thử việc (%)",
+      "probationPay": "Thu nhập thử việc",
+      "baseSalary": "Lương cơ bản",
+      "allowances": "Phụ cấp",
+      "total": "Tổng thu nhập",
+      "moneyNote": "Số tiền là đồng Việt Nam, đơn vị đồng/tháng. Chỉ người có quyền xem lương mới thấy phần này.",
+      "note": "Ghi chú nội bộ",
+      "submitForApproval": "Trình duyệt",
+      "send": "Đánh dấu đã gửi",
+      "withdraw": "Thu hồi",
+      "approval": "Phê duyệt",
+      "letter": "Thư mời",
+      "downloadLetter": "Tải thư mời (PDF)",
+      "letterNote": "Thư được dựng lại từ mẫu mỗi lần mở; hệ thống không lưu bản đã dựng.",
+      "stepUp": "Xác nhận lại danh tính để xem mức lương.",
+      "responseTitle": "Ứng viên trả lời",
+      "responseNote": "Người tuyển dụng ghi lại câu trả lời nhận được. Ứng viên không tự bấm trên hệ thống.",
+      "accepted": "Ứng viên đồng ý",
+      "declined": "Ứng viên từ chối",
+      "confirmDecline": "Xác nhận từ chối",
+      "declineReason": "Lý do từ chối",
+      "declinedBecause": "Lý do từ chối: {reason}",
+      "convertTitle": "Tạo hồ sơ nhân viên",
+      "convertNote": "Toàn bộ thông tin ứng viên và nội dung thư mời được chuyển sang hồ sơ nhân sự. Không phải nhập lại.",
+      "convert": "Tạo hồ sơ nhân viên",
+      "employeeCode": "Mã nhân viên",
+      "employeeCodeAuto": "Để trống để hệ thống tự cấp",
+      "salaryProblem": "Đã tạo hồ sơ nhân viên, nhưng chưa đề xuất được mức lương sang bộ phận tiền lương. Hãy đề xuất thủ công.",
+      "openPerson": "Mở hồ sơ nhân viên",
+      "statuses": {
+        "draft": "Nháp",
+        "pending_approval": "Chờ duyệt",
+        "approved": "Đã duyệt",
+        "rejected": "Không duyệt",
+        "sent": "Đã gửi",
+        "accepted": "Đã đồng ý",
+        "declined": "Đã từ chối",
+        "withdrawn": "Đã thu hồi",
+        "expired": "Hết hạn",
+        "converted": "Đã vào hồ sơ"
+      }
+    },
+    "declineReasons": {
+      "compensation": "Mức lương",
+      "counter_offer": "Công ty hiện tại giữ lại",
+      "another_offer": "Đã nhận lời mời khác",
+      "role_fit": "Công việc không phù hợp",
+      "location": "Nơi làm việc",
+      "timing": "Thời điểm chưa phù hợp",
+      "personal": "Lý do cá nhân",
+      "other": "Lý do khác"
     }
   }
 }

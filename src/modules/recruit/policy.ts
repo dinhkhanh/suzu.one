@@ -154,6 +154,37 @@ export const canScoreInterview = (principal: Principal, interviewing: Interviewi
 /** Sending a brief and rating what comes back: the same people who move the application along. */
 export const canRunAssignment = (principal: Principal, opening: OpeningTarget, member: Membership): boolean => canActOnApplication(principal, opening, member);
 
+// ── Offers (FR-REC-08) and becoming an employee (FR-REC-09) ─────────────────────────────────
+
+/**
+ * Making an offer means typing a salary, so it is the money authority and nothing less —
+ * `owner` and `hr_admin` in the catalogue as it stands. A recruiter runs the pipeline right up to
+ * this point and then hands over, which is how it works in the room as well.
+ */
+export const canMakeOffer = (principal: Principal, opening: OpeningTarget): boolean => canSetRecruitMoney(principal, opening);
+
+/**
+ * Seeing that an offer *exists* — its status, its start date, whether the candidate has answered.
+ * Deliberately wider than the figure: a recruiter has to know the candidate said yes in order to
+ * do anything about it, and `canReadRecruitMoney` still decides whether they are shown a đồng.
+ */
+export const canViewOffer = (principal: Principal, opening: OpeningTarget, member: Membership): boolean => canViewOpening(principal, opening, member);
+
+/**
+ * Writing down what the candidate said. The recruiter takes the phone call, so this is the
+ * pipeline authority rather than the money authority — recording an acceptance does not require,
+ * and does not grant, sight of the amount that was accepted.
+ */
+export const canRecordOfferResponse = (principal: Principal, opening: OpeningTarget, member: Membership): boolean => canActOnApplication(principal, opening, member);
+
+/**
+ * Turning an accepted candidate into a person on the books (FR-REC-09). This writes to the
+ * **employee register**, so recruitment authority alone is not enough: it takes `person:manage`
+ * over the entity the person will belong to, the same permission the hire form asks for. A
+ * recruiter who may run every opening in the group still cannot create an employee.
+ */
+export const canConvertToEmployee = (principal: Principal, opening: OpeningTarget): boolean => canRunRecruitment(principal, opening) && can(principal, "person:manage", over(opening));
+
 // ── Candidate files ─────────────────────────────────────────────────────────────────────────
 
 /**
