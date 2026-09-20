@@ -1,0 +1,50 @@
+{
+  "name": "Full month, statutory profile, no dependents",
+  "source": "synthetic — replace with anonymised real cases",
+  "requirements": ["FR-PAY-10", "FR-PAY-11", "FR-PAY-13", "FR-PAY-16"],
+  "derivation": [
+    "August 2026 asks 22 working days; the person was paid for all 22 (paidDaysCenti 2200).",
+    "BASE 30,000,000 is attendance-prorated: 30,000,000 x 2200 / (22 x 100) = 30,000,000.",
+    "ALW_MEAL 730,000, exempt up to the seeded cap 730,000 -> taxable max(0, 730,000 - 730,000) = 0.",
+    "ALW_PHONE 500,000, exempt, fixed proration, one segment -> 500,000, taxable 0.",
+    "ALW_TRANSPORT 1,000,000, taxable, attendance -> 1,000,000.",
+    "Gross = 30,000,000 + 730,000 + 500,000 + 1,000,000 = 32,230,000.",
+    "Insurance: uncovered working days = 22 - 22 = 0, under the seeded threshold of 14, so the month contributes.",
+    "Declared base 30,000,000 is under the BHXH/BHYT cap (20 x reference level 2,530,000 = 50,600,000) and under the BHTN cap (20 x region I minimum 5,310,000 = 106,200,000).",
+    "Employee: BHXH 8% = 2,400,000; BHYT 1.5% = 450,000; BHTN 1% = 300,000; total 3,150,000.",
+    "Employer: BHXH 17.5% = 5,250,000; BHYT 3% = 900,000; BHTN 1% = 300,000; total 6,450,000.",
+    "Union is off in the default policy -> 0.",
+    "Taxable income = 30,000,000 + 0 + 0 + 1,000,000 = 31,000,000.",
+    "Assessable = 31,000,000 - 3,150,000 (employee insurance) - 15,500,000 (personal deduction) - 0 (no dependents) = 12,350,000.",
+    "PIT: first bracket 10,000,000 x 5% = 500,000; second bracket (12,350,000 - 10,000,000) = 2,350,000 x 10% = 235,000; total 735,000.",
+    "Net = 32,230,000 - 3,150,000 - 735,000 = 28,345,000.",
+    "Employer cost = 32,230,000 + 6,450,000 = 38,680,000."
+  ],
+  "month": "2026-08",
+  "monthStandardDays": 22,
+  "segments": [
+    {
+      "from": "2026-08-01",
+      "to": "2026-08-31",
+      "standardDays": 22,
+      "paidDaysCenti": 2200,
+      "terms": {
+        "baseSalary": 30000000,
+        "insuranceSalary": 30000000,
+        "allowances": [
+          { "code": "ALW_MEAL", "amount": 730000 },
+          { "code": "ALW_PHONE", "amount": 500000 },
+          { "code": "ALW_TRANSPORT", "amount": 1000000 }
+        ]
+      }
+    }
+  ],
+  "timesheet": { "standardDays": 22, "paidDaysCenti": 2200, "workedMinutes": 10560 },
+  "expect": {
+    "lines": { "BASE": 30000000, "ALW_MEAL": 730000, "ALW_PHONE": 500000, "ALW_TRANSPORT": 1000000, "INS_BHXH_EE": 2400000, "INS_BHYT_EE": 450000, "INS_BHTN_EE": 300000, "PIT": 735000, "INS_BHXH_ER": 5250000, "INS_BHYT_ER": 900000, "INS_BHTN_ER": 300000 },
+    "totals": { "grossEarnings": 32230000, "taxableIncome": 31000000, "employeeInsurance": 3150000, "employerInsurance": 6450000, "pit": 735000, "net": 28345000, "employerCost": 38680000 },
+    "insurance": { "covered": true, "reason": null, "bhxhBhytBase": 30000000, "bhtnBase": 30000000 },
+    "pit": { "method": "progressive", "assessableIncome": 12350000, "tax": 735000 },
+    "warnings": []
+  }
+}

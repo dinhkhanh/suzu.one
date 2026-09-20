@@ -33,10 +33,37 @@ export type Permission =
   | "payroll:propose"
   | "payroll:approve"
   | "payroll:pay"
+  // Statutory parameters, pay components, leave and attendance policies (FR-PLT-39):
+  // HR and C&B propose changes; only the owner decides them.
+  | "rules:propose"
   | "payroll:rules"
   | "recruit:manage"
   | "asset:manage"
-  | "report:read";
+  | "report:read"
+  // Work management (Phase 3): create teams and clients, run any non-private project in scope.
+  // Day-to-day rights come from team and project membership, not from a role.
+  | "work:manage"
+  // Operations & compliance tracker: keep the obligation library, complete or reassign any
+  // obligation in scope (`ops:manage`); see the compliance calendar and its evidence (`ops:read`).
+  | "ops:manage"
+  | "ops:read"
+  // Performance (Phase 3.5): HR runs goals and KPIs for the people and units in scope
+  // (`performance:manage`); leaders set the goals of the units their grant covers
+  // (`performance:goals`) and read the individual goals and KPI scores of the people in it
+  // (`performance:read`). One's own goals, and those of one's reports, need no permission.
+  | "performance:manage"
+  | "performance:goals"
+  | "performance:read"
+  // Phase 8 (FR-PRF-09): deciding the weighting the final yearly result is combined by, and
+  // overriding one person's result with a recorded reason. The owner's alone — no role below
+  // lists it, so only a "*" grant holds it, exactly like `payroll:rules` for pay rules.
+  | "performance:decide"
+  // Knowledge base (Phase 4): create and archive spaces, set who views and edits them, publish in
+  // controlled spaces and edit anything in the spaces the grant covers. Reading and everyday
+  // editing come from a space's access rows, not from a role.
+  | "kb:manage"
+  // Internal comms (Phase 4): post announcements to the audience the grant covers and see who read them.
+  | "comms:manage";
 
 type RoleDefinition = {
   permissions: readonly Permission[];
@@ -46,22 +73,22 @@ type RoleDefinition = {
 
 export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
   owner: { permissions: ["*"], maxTier: "compensation" },
-  c_level: { permissions: ["org:read", "person:read", "report:read", "payroll:read", "payroll:approve"], maxTier: "compensation" },
-  entity_director: { permissions: ["org:read", "person:read", "report:read"], maxTier: "restricted" },
+  c_level: { permissions: ["org:read", "person:read", "report:read", "payroll:read", "payroll:approve", "work:manage", "ops:read", "performance:goals", "performance:read", "comms:manage"], maxTier: "compensation" },
+  entity_director: { permissions: ["org:read", "person:read", "report:read", "work:manage", "ops:read", "performance:goals", "performance:read", "comms:manage"], maxTier: "restricted" },
   hr_admin: {
-    permissions: ["org:read", "org:manage", "person:read", "person:manage", "attendance:manage", "leave:manage", "payroll:read", "payroll:propose", "recruit:manage", "report:read", "audit:read"],
+    permissions: ["org:read", "org:manage", "person:read", "person:manage", "attendance:manage", "leave:manage", "payroll:read", "payroll:propose", "rules:propose", "recruit:manage", "report:read", "audit:read", "ops:manage", "performance:manage", "kb:manage", "comms:manage"],
     maxTier: "compensation",
   },
   hr_staff: {
-    permissions: ["org:read", "person:read", "person:manage", "attendance:manage", "leave:manage", "recruit:manage"],
+    permissions: ["org:read", "person:read", "person:manage", "attendance:manage", "leave:manage", "recruit:manage", "ops:manage", "performance:manage", "kb:manage", "comms:manage"],
     maxTier: "restricted",
   },
-  payroll: { permissions: ["org:read", "person:read", "payroll:read", "payroll:propose", "report:read"], maxTier: "compensation" },
-  finance: { permissions: ["org:read", "person:read", "payroll:read", "payroll:pay", "report:read"], maxTier: "compensation" },
-  department_head: { permissions: ["org:read", "person:read", "report:read"], maxTier: "personal" },
+  payroll: { permissions: ["org:read", "person:read", "payroll:read", "payroll:propose", "rules:propose", "report:read", "ops:manage"], maxTier: "compensation" },
+  finance: { permissions: ["org:read", "person:read", "payroll:read", "payroll:pay", "report:read", "ops:manage"], maxTier: "compensation" },
+  department_head: { permissions: ["org:read", "person:read", "report:read", "work:manage", "performance:goals", "performance:read", "comms:manage"], maxTier: "personal" },
   recruiter: { permissions: ["org:read", "recruit:manage"], maxTier: "public_internal" },
   asset_admin: { permissions: ["org:read", "person:read", "asset:manage"], maxTier: "public_internal" },
-  auditor: { permissions: ["org:read", "person:read", "payroll:read", "report:read", "audit:read"], maxTier: "compensation" },
+  auditor: { permissions: ["org:read", "person:read", "payroll:read", "report:read", "audit:read", "ops:read", "performance:read"], maxTier: "compensation" },
 };
 
 export function tierRank(tier: Tier): number {

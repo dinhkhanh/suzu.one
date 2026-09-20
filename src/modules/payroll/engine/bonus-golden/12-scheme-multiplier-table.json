@@ -1,0 +1,29 @@
+{
+  "name": "A what-if: the scheme's own multiplier table instead of the published band",
+  "source": "synthetic",
+  "derivation": [
+    "The published result says 'Vượt' worth 1,2500 (FR-PRF-09).",
+    "This scheme version is set to `scheme_bands` and pays 2,0000 from 100,00 % — the simulation the owner asked for.",
+    "The person belongs to no entity figure, so the collective multiplier is neutral 1,0000, not zero.",
+    "Base 10.000.000 × 1,0000 × 2,0000 × 1,0000 = 20.000.000 ₫."
+  ],
+  "schemePatch": {
+    "performanceMultiplier": {
+      "source": "scheme_bands",
+      "bands": [
+        { "key": "below", "label": "Chưa đạt", "minScoreBp": 0, "multiplierBp": 0 },
+        { "key": "meets", "label": "Đạt", "minScoreBp": 8000, "multiplierBp": 12000 },
+        { "key": "exceeds", "label": "Vượt", "minScoreBp": 10000, "multiplierBp": 20000 }
+      ]
+    }
+  },
+  "person": {
+    "baseSalaryVnd": 10000000,
+    "serviceMonths": 36,
+    "workforceType": "employee",
+    "activeOnReferenceDay": true,
+    "unitOkrProgressBp": null,
+    "result": { "resultId": "r12", "finalScoreBp": 10500, "bandKey": "exceeds", "bandMultiplierBp": 12500, "bandLabel": "Vượt", "reviewScoreBp": 10000, "kpiScoreBp": 10800, "okrScoreBp": 10200, "overridden": false, "overrideReason": null }
+  },
+  "expect": { "eligible": true, "performanceMultiplierBp": 20000, "unitOkrMultiplierBp": 10000, "combinedMultiplierBp": 20000, "computedAmountVnd": 20000000, "finalAmountVnd": 20000000 }
+}

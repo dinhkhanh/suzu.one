@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { can, canReadTier, readableTier, type Grant, type Principal } from "./policy";
+import { can, canReadTier, entityReach, matchesReach, permissionReach, reachesNothing, readableTier, tierReach, type Grant, type Principal } from "./policy";
+import { ROLES, TIERS } from "./roles";
 
 const ENTITY_A = "entity-a";
 const ENTITY_B = "entity-b";
@@ -63,6 +64,68 @@ describe("can", () => {
   });
 });
 
+describe("work and ops permissions (Phase 3)", () => {
+  it("lets leaders run work management in their scope, and nobody else by role", () => {
+    const head = principal([{ role: "department_head", scope: { type: "department", id: DESIGN } }]);
+    expect(can(head, "work:manage", { departmentId: DESIGN, entityId: ENTITY_A })).toBe(true);
+    expect(can(head, "work:manage", { departmentId: "dept-video", entityId: ENTITY_A })).toBe(false);
+    expect(can(principal([{ role: "entity_director", scope: { type: "entity", id: ENTITY_A } }]), "work:manage", { entityId: ENTITY_A })).toBe(true);
+    expect(can(principal([{ role: "entity_director", scope: { type: "entity", id: ENTITY_A } }]), "work:manage", { entityId: ENTITY_B })).toBe(false);
+    for (const role of ["hr_admin", "hr_staff", "payroll", "finance", "recruiter", "asset_admin", "auditor"] as const) expect(can(principal([{ role, scope: { type: "group" } }]), "work:manage")).toBe(false);
+  });
+
+  it("gives the compliance tracker to HR, C&B and finance; executives and the auditor only read it", () => {
+    const group = { type: "group" } as const;
+    for (const role of ["hr_admin", "hr_staff", "payroll", "finance"] as const) expect(can(principal([{ role, scope: group }]), "ops:manage")).toBe(true);
+    for (const role of ["c_level", "entity_director", "auditor"] as const) {
+      expect(can(principal([{ role, scope: group }]), "ops:read")).toBe(true);
+      expect(can(principal([{ role, scope: group }]), "ops:manage")).toBe(false);
+    }
+    for (const role of ["department_head", "recruiter", "asset_admin"] as const) {
+      expect(can(principal([{ role, scope: group }]), "ops:read")).toBe(false);
+      expect(can(principal([{ role, scope: group }]), "ops:manage")).toBe(false);
+    }
+    expect(can(principal([{ role: "hr_staff", scope: { type: "entity", id: ENTITY_A } }]), "ops:manage", { entityId: ENTITY_B })).toBe(false);
+  });
+
+  it("lets HR run performance, leaders set unit goals and read their people, the auditor only read", () => {
+    const group = { type: "group" } as const;
+    for (const role of ["hr_admin", "hr_staff"] as const) expect(can(principal([{ role, scope: group }]), "performance:manage")).toBe(true);
+    for (const role of ["c_level", "entity_director", "department_head"] as const) {
+      expect(can(principal([{ role, scope: group }]), "performance:goals")).toBe(true);
+      expect(can(principal([{ role, scope: group }]), "performance:read")).toBe(true);
+      expect(can(principal([{ role, scope: group }]), "performance:manage")).toBe(false);
+    }
+    expect(can(principal([{ role: "auditor", scope: group }]), "performance:read")).toBe(true);
+    expect(can(principal([{ role: "auditor", scope: group }]), "performance:goals")).toBe(false);
+    for (const role of ["payroll", "finance", "recruiter", "asset_admin"] as const) {
+      for (const permission of ["performance:manage", "performance:goals", "performance:read"] as const) expect(can(principal([{ role, scope: group }]), permission)).toBe(false);
+    }
+    // A department head's grant covers the department's goal, not the group's or another department's.
+    const head = principal([{ role: "department_head", scope: { type: "department", id: DESIGN } }]);
+    expect(can(head, "performance:goals", { departmentId: DESIGN, entityId: ENTITY_A })).toBe(true);
+    expect(can(head, "performance:goals", {})).toBe(false);
+    expect(can(head, "performance:goals", { departmentId: "dept-other" })).toBe(false);
+  });
+
+  it("lets HR run the knowledge base, and leaders and HR post announcements within their scope", () => {
+    const group = { type: "group" } as const;
+    for (const role of ["hr_admin", "hr_staff"] as const) expect(can(principal([{ role, scope: group }]), "kb:manage")).toBe(true);
+    for (const role of ["c_level", "entity_director", "department_head", "payroll", "finance", "recruiter", "asset_admin", "auditor"] as const) expect(can(principal([{ role, scope: group }]), "kb:manage")).toBe(false);
+    for (const role of ["c_level", "entity_director", "hr_admin", "hr_staff", "department_head"] as const) expect(can(principal([{ role, scope: group }]), "comms:manage")).toBe(true);
+    for (const role of ["payroll", "finance", "recruiter", "asset_admin", "auditor"] as const) expect(can(principal([{ role, scope: group }]), "comms:manage")).toBe(false);
+    // An entity's HR runs that entity's spaces, not the group-wide ones and not another entity's.
+    const hr = principal([{ role: "hr_staff", scope: { type: "entity", id: ENTITY_A } }]);
+    expect(can(hr, "kb:manage", { entityId: ENTITY_A })).toBe(true);
+    expect(can(hr, "kb:manage", { entityId: null })).toBe(false);
+    expect(can(hr, "kb:manage", { entityId: ENTITY_B })).toBe(false);
+    // A department head announces to the department, not to the entity.
+    const head = principal([{ role: "department_head", scope: { type: "department", id: DESIGN } }]);
+    expect(can(head, "comms:manage", { departmentId: DESIGN })).toBe(true);
+    expect(can(head, "comms:manage", { entityId: ENTITY_A })).toBe(false);
+  });
+});
+
 describe("readableTier", () => {
   it("lets everyone read their own compensation", () => {
     expect(readableTier(principal([], { personId: "lan" }), lan)).toBe("compensation");
@@ -103,5 +166,110 @@ describe("readableTier", () => {
     expect(readableTier(freelancer, lan)).toBeNull();
     expect(canReadTier(freelancer, lan, "public_internal")).toBe(false);
     expect(readableTier(freelancer, { personId: "ctv" })).toBe("compensation");
+  });
+});
+
+describe("tierReach", () => {
+  it("agrees with canReadTier for every role, scope, tier and target", () => {
+    const TEAM = "team-ui";
+    const scopes = [
+      { type: "group" },
+      { type: "entity", id: ENTITY_A },
+      { type: "department", id: DESIGN },
+      { type: "team", id: TEAM },
+    ] as const;
+    const principals = [
+      principal([]),
+      principal([], { personId: "manager-1" }),
+      principal([], { personId: "ctv", workforceType: "collaborator" }),
+      principal([], { personId: "manager-1", workforceType: "collaborator" }),
+      ...ROLES.flatMap((role) => scopes.map((scope) => principal([{ role, scope }]))),
+    ];
+    const targets = [
+      lan,
+      { ...lan, teamId: TEAM },
+      { ...lan, entityId: ENTITY_B, departmentId: "dept-video", managerId: null },
+      { personId: "loose", entityId: null, departmentId: null, teamId: null, managerId: null },
+    ];
+    for (const who of principals) {
+      for (const tier of TIERS) {
+        const reach = tierReach(who, tier);
+        for (const target of targets) {
+          expect(matchesReach(reach, target), `${JSON.stringify(who)} ${tier} ${target.personId}`).toBe(canReadTier(who, target, tier));
+        }
+      }
+    }
+  });
+
+  it("never reaches compensation through the manager line", () => {
+    const manager = principal([], { personId: "manager-1" });
+    expect(tierReach(manager, "personal")).toMatchObject({ all: false, managerOf: "manager-1" });
+    expect(tierReach(manager, "restricted")).toMatchObject({ all: false, managerOf: null });
+    expect(tierReach(manager, "compensation")).toMatchObject({ all: false, managerOf: null });
+  });
+});
+
+describe("entityReach", () => {
+  const grants = (...list: Grant[]): Principal => ({ personId: "viewer", workforceType: "employee", grants: list });
+
+  it("agrees with can() for every role, scope and entity", () => {
+    const scopes: Grant["scope"][] = [{ type: "group" }, { type: "entity", id: ENTITY_A }, { type: "department", id: DESIGN }, { type: "team", id: "team-1" }];
+    for (const role of ROLES) {
+      for (const scope of scopes) {
+        const principal = grants({ role, scope });
+        const reach = entityReach(principal, "audit:read");
+        for (const entityId of [ENTITY_A, ENTITY_B]) {
+          const reached = reach.all || reach.entityIds.includes(entityId);
+          // Only the entity is known about an audit entry, so that is all can() is told.
+          expect(reached, `${role} ${scope.type} ${entityId}`).toBe(can(principal, "audit:read", { entityId }));
+        }
+      }
+    }
+  });
+
+  it("gives an entity HR admin their entity only, and someone without the permission nothing", () => {
+    expect(entityReach(grants({ role: "hr_admin", scope: { type: "entity", id: ENTITY_A } }), "audit:read")).toEqual({ all: false, entityIds: [ENTITY_A] });
+    expect(entityReach(grants({ role: "hr_staff", scope: { type: "group" } }), "audit:read")).toEqual({ all: false, entityIds: [] });
+    expect(entityReach(grants({ role: "auditor", scope: { type: "group" } }), "audit:read")).toEqual({ all: true });
+  });
+});
+
+describe("rule governance (FR-PLT-39)", () => {
+  const holder = (role: Grant["role"], scope: Grant["scope"] = { type: "group" }): Principal => ({ personId: "viewer", workforceType: "employee", grants: [{ role, scope }] });
+
+  it("lets HR and C&B propose rule changes but only the owner decide them", () => {
+    for (const role of ROLES) {
+      expect(can(holder(role), "payroll:rules", {}), role).toBe(role === "owner");
+      expect(can(holder(role), "rules:propose", {}), role).toBe(["owner", "hr_admin", "payroll"].includes(role));
+    }
+  });
+
+  it("treats the rules as group-wide: an entity-scoped grant cannot touch them", () => {
+    expect(can(holder("hr_admin", { type: "entity", id: ENTITY_A }), "rules:propose", {})).toBe(false);
+  });
+});
+
+describe("permissionReach", () => {
+  it("agrees with can() for every role, scope, permission and target", () => {
+    const TEAM = "team-ui";
+    const scopes = [{ type: "group" }, { type: "entity", id: ENTITY_A }, { type: "department", id: DESIGN }, { type: "team", id: TEAM }] as const;
+    const permissions = ["report:read", "person:manage", "person:read", "audit:read", "payroll:read"] as const;
+    const targets = [lan, { ...lan, teamId: TEAM }, { ...lan, entityId: ENTITY_B, departmentId: "dept-video" }, { personId: "loose", entityId: null, departmentId: null, teamId: null, managerId: null }];
+    for (const role of ROLES) {
+      for (const scope of scopes) {
+        // The viewer is also lan's line manager: that must never widen a permission.
+        const who = principal([{ role, scope }], { personId: lan.managerId });
+        for (const permission of permissions) {
+          const reach = permissionReach(who, permission);
+          for (const target of targets) expect(matchesReach(reach, target), `${role} ${scope.type} ${permission} ${target.personId}`).toBe(can(who, permission, target));
+        }
+      }
+    }
+  });
+
+  it("is empty without a grant that carries the permission", () => {
+    expect(reachesNothing(permissionReach(principal([]), "report:read"))).toBe(true);
+    expect(reachesNothing(permissionReach(principal([{ role: "recruiter", scope: { type: "group" } }]), "report:read"))).toBe(true);
+    expect(permissionReach(principal([{ role: "department_head", scope: { type: "department", id: DESIGN } }]), "report:read")).toMatchObject({ all: false, departmentIds: [DESIGN], entityIds: [] });
   });
 });

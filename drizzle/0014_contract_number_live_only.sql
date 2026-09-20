@@ -1,0 +1,2 @@
+ALTER TABLE "contract" DROP CONSTRAINT "contract_entity_number_key";--> statement-breakpoint
+CREATE UNIQUE INDEX "contract_entity_number_key" ON "contract" USING btree ("entity_id","number") WHERE "contract"."deleted_at" IS NULL;

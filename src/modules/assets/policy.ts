@@ -1,0 +1,102 @@
+// Who may see and do what in the asset register. Pure.
+//
+// The shape of it, and why:
+//   · The **register** — every thing the group owns and who has it — is `asset:manage` over the
+//     asset's entity. Deny by default (CLAUDE.md): a colleague has no business browsing the list
+//     of everyone's equipment, and nothing about their own work needs it.
+//   · **What one person holds** is part of that person's record, at the personal tier in substance:
+//     they always see it themselves, and whoever may `person:manage` them sees it too. Without
+//     that, HR could not run the offboarding step that collects a leaver's equipment, since HR
+//     holds no `asset:manage` in the role catalogue as it stands.
+//   · **The money** — what the thing cost and who sold it — is narrower still: `asset:manage` or
+//     `report:read` over the owning entity. The person holding the laptop does not see its price,
+//     and that is the line the tests are drawn along.
+import { can, entityReach, type Principal, type Target } from "../platform/rbac/policy";
+
+export type AssetTarget = { entityId: string };
+export type HolderTarget = Target & { personId: string };
+
+/** A booking, as far as the rules care: whose it is and which entity's gear it holds. */
+export type BookingTarget = { personId: string; entityId: string };
+
+// No entity at all means "anywhere" — `can()` reads an *absent* target that way, while `{}` is a
+// target that nothing covers. The difference is what separates a navigation check from a data one.
+const over = (entityId: string | null | undefined) => (entityId ? { entityId } : undefined);
+
+/** Without an entity: "anywhere at all" — navigation only, never data. */
+export const canReadRegister = (principal: Principal, entityId?: string): boolean => can(principal, "asset:manage", over(entityId));
+
+/** Register, edit, assign, take back, retire. The same authority that reads the register runs it. */
+export const canManageAssets = (principal: Principal, entityId?: string): boolean => can(principal, "asset:manage", over(entityId));
+
+/**
+ * What the thing cost and who supplied it. Kept apart from the register itself so that the person
+ * holding a camera can be shown the camera without being shown the invoice — that is the whole
+ * distinction, and it is the one the tests are drawn along.
+ *
+ * It once also admitted `report:read`, on the reasoning that finance needs the asset base for the
+ * books. Exercising the pages over HTTP showed that limb was unreachable: `canViewAsset` never
+ * opens an asset to a `report:read` holder, so the rule promised an access nobody could take. A
+ * predicate that cannot fire is worse than an absent one, because it reads like a decision. If
+ * finance is to see the asset base, that is a decision about the *register*, not about this rule.
+ */
+export const canReadAssetMoney = (principal: Principal, entityId?: string): boolean => can(principal, "asset:manage", over(entityId));
+
+/** The equipment one person holds: their own, or someone whose record you keep. */
+export const canReadPersonAssets = (principal: Principal, person: HolderTarget): boolean =>
+  (!!principal.personId && principal.personId === person.personId) || canReadRegister(principal, person.entityId ?? undefined) || can(principal, "person:manage", person);
+
+/**
+ * One asset's page: the register's readers, whoever is holding it right now — and, for **shared
+ * production gear**, anybody on the staff.
+ *
+ * The last limb is week 3's addition and it is a deliberate widening. A booking calendar that
+ * only `asset:manage` can read is of no use to the camera operator who needs the 24-70 on Friday:
+ * the whole point of marking a category bookable is that the gear is common property on a shelf.
+ * So a bookable asset's *facts* — what it is, what condition it is in, who has it booked — are
+ * open to the staff, while its **money stays where it was** (`canReadAssetMoney`, untouched): the
+ * operator sees the lens and never what it cost. Nothing that is not bookable moves an inch.
+ */
+export const canViewAsset = (principal: Principal, asset: AssetTarget & { bookable?: boolean }, holderPersonId: string | null): boolean =>
+  canReadRegister(principal, asset.entityId) || (!!principal.personId && holderPersonId === principal.personId) || (!!asset.bookable && !!principal.personId);
+
+/**
+ * Who may reserve shared gear: anybody on the staff, for themselves. Someone with `asset:manage`
+ * books straight into `confirmed` (they keep the gear); everybody else *asks*, and the keeper
+ * confirms. Both hold the slot from the moment they are made — first come, first served — so
+ * asking is not a weaker claim, only a reversible one.
+ */
+export const canBookAssets = (principal: Principal): boolean => !!principal.personId;
+
+/** Confirming somebody else's request, and refusing one: whoever keeps that entity's gear. */
+export const canDecideBookings = (principal: Principal, entityId?: string): boolean => canManageAssets(principal, entityId);
+
+/**
+ * Calling a booking off, taking the gear out and bringing it back: the person whose booking it is,
+ * or whoever keeps the gear. A colleague cannot cancel your Friday shoot.
+ */
+export const canActOnBooking = (principal: Principal, booking: BookingTarget): boolean =>
+  (!!principal.personId && principal.personId === booking.personId) || canManageAssets(principal, booking.entityId);
+
+/**
+ * Only the person a thing was handed to confirms they received it (FR-AST-02). Not the storekeeper
+ * on their behalf — a handover nobody acknowledged is exactly what the confirmation is there to
+ * catch. A team's or an office's asset has nobody to confirm, so nothing is asked of anyone.
+ */
+export const canConfirmHandover = (principal: Principal, holderPersonId: string | null): boolean => !!principal.personId && !!holderPersonId && holderPersonId === principal.personId;
+
+/** The category library belongs to the group: changing it takes a group-wide grant. */
+export const canManageCategories = (principal: Principal): boolean => can(principal, "asset:manage", {});
+
+/**
+ * Licences and subscriptions (FR-AST-05) sit with the register: the same authority that knows
+ * which laptop is whose knows which seats are paid for. The cost follows `canReadAssetMoney`,
+ * so a licence's price is exactly as visible as an asset's, and no more.
+ */
+export const canReadLicences = (principal: Principal, entityId?: string): boolean => canReadRegister(principal, entityId);
+export const canManageLicences = (principal: Principal, entityId?: string): boolean => canManageAssets(principal, entityId);
+
+/** The list form of `canReadRegister`: whose entities' assets the principal may read. */
+export function assetReach(principal: Principal): { all: true } | { all: false; entityIds: string[] } {
+  return entityReach(principal, "asset:manage");
+}

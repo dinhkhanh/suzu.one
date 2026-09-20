@@ -1,0 +1,25 @@
+{
+  "name": "Ten days of unpaid leave: below the threshold, insurance still due",
+  "source": "synthetic — replace with anonymised real cases",
+  "requirements": ["FR-PAY-11", "FR-PAY-16"],
+  "derivation": [
+    "22 working days in the month, 10 of them unpaid leave, so 12 paid (paidDaysCenti 1200, unpaidDaysCenti 1000).",
+    "BASE = 30,000,000 x 1200 / 2200 = 16,363,636.36..., half up = 16,363,636.",
+    "Insurance: uncovered working days = 22 - 12 = 10, below the threshold of 14, so the month is contributed for in full on 30,000,000.",
+    "Employee insurance 3,150,000 as in the full-month case — the contribution does not follow the salary down.",
+    "PIT: 16,363,636 - 3,150,000 - 15,500,000 = -2,286,364 -> assessable 0, no tax.",
+    "Net = 16,363,636 - 3,150,000 = 13,213,636."
+  ],
+  "month": "2026-08",
+  "monthStandardDays": 22,
+  "unpaidWorkingDays": 10,
+  "segments": [
+    { "from": "2026-08-01", "to": "2026-08-31", "standardDays": 22, "paidDaysCenti": 1200, "unpaidDaysCenti": 1000, "terms": { "baseSalary": 30000000, "insuranceSalary": 30000000, "allowances": [] } }
+  ],
+  "timesheet": { "standardDays": 22, "paidDaysCenti": 1200, "unpaidDaysCenti": 1000 },
+  "expect": {
+    "lines": { "BASE": 16363636, "INS_BHXH_EE": 2400000 },
+    "totals": { "grossEarnings": 16363636, "employeeInsurance": 3150000, "pit": 0, "net": 13213636 },
+    "insurance": { "covered": true, "reason": null, "bhxhBhytBase": 30000000 }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Below expectations: eligible, in the run, and paid nothing",
+  "source": "synthetic",
+  "derivation": [
+    "Base 20.000.000 ₫; 24 months → 1,0000; entity OKR 90,00 % → 1,0000.",
+    "Result 40,00 % → band 'below' → multiplier 0,0000.",
+    "Combined = 1,0000 × 0,0000 × 1,0000 = 0,0000, so the amount is 0 ₫.",
+    "The person still has a line: 'why did I get nothing' is answered by the trace, not by absence."
+  ],
+  "person": {
+    "baseSalaryVnd": 20000000,
+    "serviceMonths": 24,
+    "workforceType": "employee",
+    "activeOnReferenceDay": true,
+    "unitOkrProgressBp": 9000,
+    "result": { "resultId": "r6", "finalScoreBp": 4000, "bandKey": "below", "bandMultiplierBp": 0, "bandLabel": "Chưa đạt", "reviewScoreBp": 4000, "kpiScoreBp": 3800, "okrScoreBp": 4500, "overridden": false, "overrideReason": null }
+  },
+  "expect": { "eligible": true, "exclusion": null, "performanceMultiplierBp": 0, "combinedMultiplierBp": 0, "computedAmountVnd": 0, "finalAmountVnd": 0 }
+}

@@ -23,6 +23,9 @@ export const session = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
+    // When the person last proved who they are: set at sign-in and by the step-up round trip
+    // (FR-PLT-06). Compensation screens and payroll actions ask for a recent value.
+    reauthAt: timestamp("reauth_at", { withTimezone: true }),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),

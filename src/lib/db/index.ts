@@ -11,6 +11,7 @@ function create() {
 }
 
 export type Db = ReturnType<typeof create>;
+export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
 const globalForDb = globalThis as unknown as { __suzuDb?: Db };
 

@@ -1,0 +1,21 @@
+{
+  "name": "A full year, meets expectations, the entity on target — exactly one month's salary",
+  "source": "synthetic",
+  "derivation": [
+    "Base month salary 20.000.000 ₫.",
+    "24 months of service → the '12 tháng trở lên' band → factor 1,0000.",
+    "The published result is 85,00 % → band 'meets' → multiplier 1,0000.",
+    "The entity's OKR year is 95,00 % → the 'Công ty đạt' band (floor 70,00 %) → 1,0000.",
+    "Combined = 1,0000 × 1,0000 × 1,0000 = 1,0000, under the cap of 3,0000.",
+    "20.000.000 × 1,0000 = 20.000.000, already a multiple of 1.000 ₫."
+  ],
+  "person": {
+    "baseSalaryVnd": 20000000,
+    "serviceMonths": 24,
+    "workforceType": "employee",
+    "activeOnReferenceDay": true,
+    "unitOkrProgressBp": 9500,
+    "result": { "resultId": "r1", "finalScoreBp": 8500, "bandKey": "meets", "bandMultiplierBp": 10000, "bandLabel": "Đạt", "reviewScoreBp": 8000, "kpiScoreBp": 8800, "okrScoreBp": 8200, "overridden": false, "overrideReason": null }
+  },
+  "expect": { "eligible": true, "exclusion": null, "serviceFactorBp": 10000, "performanceMultiplierBp": 10000, "unitOkrMultiplierBp": 10000, "combinedMultiplierBp": 10000, "capApplied": false, "computedAmountVnd": 20000000, "finalAmountVnd": 20000000 }
+}

@@ -45,6 +45,9 @@ function create() {
       updateAge: 60 * 60 * 24,
       // No cookie cache: every request re-reads the session row, so revocation is immediate (FR-PLT-05).
       cookieCache: { enabled: false },
+      // A sign-in is a proof of identity, so a new session starts "recently re-authenticated"
+      // (FR-PLT-06). Never accepted from a request: only the step-up adapter moves it later.
+      additionalFields: { reauthAt: { type: "date", required: false, input: false, defaultValue: () => new Date() } },
     },
 
     onAPIError: { errorURL: "/sign-in" },

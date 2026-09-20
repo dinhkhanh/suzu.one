@@ -25,7 +25,7 @@ export type Target = {
   managerId?: string | null;
 };
 
-function scopeCovers(scope: Scope, target: Target): boolean {
+export function scopeCovers(scope: Scope, target: Target): boolean {
   switch (scope.type) {
     case "group":
       return true;
@@ -52,6 +52,21 @@ export function can(principal: Principal, permission: Exclude<Permission, "*">, 
     const permissions = ROLE_DEFINITIONS[grant.role].permissions;
     return permissions.includes("*") || permissions.includes(permission);
   });
+}
+
+/**
+ * The list form of `can`, for records that only know their entity (the audit log): which entities
+ * does the principal hold `permission` over? Department and team grants cover no whole entity.
+ */
+export function entityReach(principal: Principal, permission: Exclude<Permission, "*">): { all: true } | { all: false; entityIds: string[] } {
+  const entityIds: string[] = [];
+  for (const grant of principal.grants) {
+    const permissions = ROLE_DEFINITIONS[grant.role].permissions;
+    if (!permissions.includes("*") && !permissions.includes(permission)) continue;
+    if (grant.scope.type === "group") return { all: true };
+    if (grant.scope.type === "entity") entityIds.push(grant.scope.id);
+  }
+  return { all: false, entityIds };
 }
 
 /**
@@ -82,4 +97,59 @@ export function readableTier(principal: Principal, person: Target & { personId: 
 export function canReadTier(principal: Principal, person: Target & { personId: string }, tier: Tier): boolean {
   const readable = readableTier(principal, person);
   return readable !== null && tierRank(readable) >= tierRank(tier);
+}
+
+// The set form of `readableTier`, for list queries: which people can the principal read at `tier`
+// or above, other than themselves? Services turn this into a WHERE clause; `matchesReach` is the
+// reference semantics and a test keeps both in step with `canReadTier`.
+export type TierReach =
+  | { all: true }
+  | { all: false; entityIds: string[]; departmentIds: string[]; teamIds: string[]; managerOf: string | null };
+
+export function tierReach(principal: Principal, tier: Tier): TierReach {
+  if (tier === "public_internal" && principal.workforceType !== "collaborator") return { all: true };
+
+  const reach = { all: false as const, entityIds: [] as string[], departmentIds: [] as string[], teamIds: [] as string[], managerOf: null as string | null };
+  if (tierRank(tier) <= tierRank("personal")) reach.managerOf = principal.personId;
+
+  for (const grant of principal.grants) {
+    const definition = ROLE_DEFINITIONS[grant.role];
+    const readsPeople = definition.permissions.includes("*") || definition.permissions.includes("person:read");
+    if (!readsPeople || tierRank(definition.maxTier) < tierRank(tier)) continue;
+    if (grant.scope.type === "group") return { all: true };
+    if (grant.scope.type === "entity") reach.entityIds.push(grant.scope.id);
+    if (grant.scope.type === "department") reach.departmentIds.push(grant.scope.id);
+    if (grant.scope.type === "team") reach.teamIds.push(grant.scope.id);
+  }
+  return reach;
+}
+
+/**
+ * The list form of `can`, for reports and other queries over many people: where does the principal
+ * hold `permission`? Same shape as a tier reach (and matched by `matchesReach`), minus the
+ * line-manager clause: a permission comes from grants only. A test keeps it in step with `can`.
+ */
+export function permissionReach(principal: Principal, permission: Exclude<Permission, "*">): TierReach {
+  const reach = { all: false as const, entityIds: [] as string[], departmentIds: [] as string[], teamIds: [] as string[], managerOf: null };
+  for (const grant of principal.grants) {
+    const permissions = ROLE_DEFINITIONS[grant.role].permissions;
+    if (!permissions.includes("*") && !permissions.includes(permission)) continue;
+    if (grant.scope.type === "group") return { all: true };
+    if (grant.scope.type === "entity") reach.entityIds.push(grant.scope.id);
+    if (grant.scope.type === "department") reach.departmentIds.push(grant.scope.id);
+    if (grant.scope.type === "team") reach.teamIds.push(grant.scope.id);
+  }
+  return reach;
+}
+
+export const reachesNothing = (reach: TierReach): boolean => !reach.all && reach.entityIds.length + reach.departmentIds.length + reach.teamIds.length === 0 && !reach.managerOf;
+
+export function matchesReach(reach: TierReach, person: Target): boolean {
+  if (reach.all) return true;
+  return (
+    (!!person.entityId && reach.entityIds.includes(person.entityId)) ||
+    (!!person.departmentId && reach.departmentIds.includes(person.departmentId)) ||
+    (!!person.teamId && reach.teamIds.includes(person.teamId)) ||
+    (!!reach.managerOf && person.managerId === reach.managerOf)
+  );
 }

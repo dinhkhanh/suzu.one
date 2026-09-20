@@ -1,0 +1,36 @@
+{
+  "name": "Recovering an overpayment of a locked month (FR-PAY-17)",
+  "source": "synthetic — replace with anonymised real cases",
+  "requirements": ["FR-PAY-17"],
+  "derivation": [
+    "July was locked and paid with two days of leave that turned out to be unpaid absence. The month is never re-opened: the overpayment is recovered in August.",
+    "Two working days of a 22-day July on 22,000,000: 22,000,000 x 200 / (22 x 100) = 2,000,000 to recover.",
+    "August is an ordinary full month: BASE 22,000,000.",
+    "RETRO_RECOVERY 2,000,000 is a deduction, not a negative earning, so the payslip shows it on its own line.",
+    "It does not reduce August's taxable income: August's tax is on what August earned (the July correction is put right in the annual finalisation).",
+    "Gross = 22,000,000. Insurance on the declared base 22,000,000: BHXH 8% = 1,760,000; BHYT 1.5% = 330,000; BHTN 1% = 220,000; total 2,310,000.",
+    "Taxable income = 22,000,000. Assessable = 22,000,000 - 2,310,000 - 15,500,000 = 4,190,000.",
+    "PIT: 4,190,000 falls in the first bracket: 4,190,000 x 5% = 209,500.",
+    "Net = 22,000,000 - 2,310,000 - 209,500 - 2,000,000 (recovery) = 17,480,500."
+  ],
+  "month": "2026-08",
+  "monthStandardDays": 22,
+  "segments": [
+    {
+      "from": "2026-08-01",
+      "to": "2026-08-31",
+      "standardDays": 22,
+      "paidDaysCenti": 2200,
+      "terms": { "baseSalary": 22000000, "insuranceSalary": 22000000, "allowances": [] }
+    }
+  ],
+  "timesheet": { "standardDays": 22, "paidDaysCenti": 2200, "workedMinutes": 10560 },
+  "retro": [{ "sourceMonth": "2026-07", "amount": -2000000, "kind": "timesheet_adjustment", "reason": "Hai ngày nghỉ không lương ghi nhận sau khi khoá bảng công" }],
+  "expect": {
+    "lines": { "BASE": 22000000, "RETRO_RECOVERY": 2000000, "INS_BHXH_EE": 1760000, "INS_BHYT_EE": 330000, "INS_BHTN_EE": 220000, "PIT": 209500 },
+    "totals": { "grossEarnings": 22000000, "taxableIncome": 22000000, "employeeInsurance": 2310000, "pit": 209500, "net": 17480500 },
+    "insurance": { "covered": true, "reason": null },
+    "pit": { "method": "progressive", "assessableIncome": 4190000, "tax": 209500 },
+    "warnings": []
+  }
+}

@@ -128,3 +128,34 @@
     @apply font-sans;
   }
 }
+
+/* The knowledge-base editor (Tiptap / ProseMirror). The reading view is styled in render-doc.tsx;
+   this keeps what the author types looking the same. */
+@layer components {
+  .kb-editor .ProseMirror {
+    @apply flex min-h-[24rem] flex-col gap-3 px-4 py-3 text-[0.95rem] break-words outline-none;
+  }
+  .kb-editor .ProseMirror p { @apply leading-7; }
+  .kb-editor .ProseMirror h1 { @apply mt-4 text-xl font-semibold tracking-tight; }
+  .kb-editor .ProseMirror h2 { @apply mt-3 text-lg font-semibold; }
+  .kb-editor .ProseMirror h3 { @apply mt-2 text-base font-semibold; }
+  .kb-editor .ProseMirror ul { @apply ml-6 list-disc; }
+  .kb-editor .ProseMirror ol { @apply ml-6 list-decimal; }
+  .kb-editor .ProseMirror blockquote { @apply border-l-4 pl-4 text-muted-foreground; }
+  .kb-editor .ProseMirror pre { @apply overflow-x-auto rounded-md bg-muted p-3 font-mono text-sm; }
+  .kb-editor .ProseMirror code { @apply rounded bg-muted px-1 font-mono text-[0.85em]; }
+  .kb-editor .ProseMirror pre code { @apply bg-transparent p-0; }
+  .kb-editor .ProseMirror a { @apply text-primary underline underline-offset-2; }
+  .kb-editor .ProseMirror table { @apply w-full table-fixed border-collapse text-sm; }
+  .kb-editor .ProseMirror th, .kb-editor .ProseMirror td { @apply relative border px-3 py-2 align-top; }
+  .kb-editor .ProseMirror th { @apply bg-muted/60 text-left font-medium; }
+  .kb-editor .ProseMirror .selectedCell { @apply bg-primary/10; }
+  .kb-editor .ProseMirror img { @apply max-w-full rounded-md border; }
+  .kb-editor .ProseMirror [data-callout] { @apply rounded-md border border-sky-300 bg-sky-50 p-3 dark:border-sky-800 dark:bg-sky-950/40; }
+  .kb-editor .ProseMirror [data-callout="warning"] { @apply border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40; }
+  .kb-editor .ProseMirror [data-callout="success"] { @apply border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40; }
+  .kb-editor .ProseMirror [data-callout="danger"] { @apply border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/40; }
+  .kb-editor .ProseMirror [data-kb-block] { @apply rounded-md border border-dashed bg-muted/50 px-3 py-2 text-sm text-muted-foreground; }
+  .kb-editor .ProseMirror .ProseMirror-selectednode { @apply ring-2 ring-ring; }
+  .kb-editor .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); @apply pointer-events-none float-left h-0 text-muted-foreground; }
+}

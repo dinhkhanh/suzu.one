@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Known vulnerabilities in what ships to production (NFR-SEC-07).
+      - run: pnpm audit --prod --audit-level high
+      # Typecheck, lint (incl. module boundaries) and tests. The tests run every migration on an
+      # in-process Postgres (PGlite) and include the permission-matrix suite.
+      - run: pnpm check
+      - run: pnpm build
+        env:
+          # Placeholders: the build never connects to anything, it only needs the variables to exist.
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+          BETTER_AUTH_SECRET: ci-placeholder-secret-ci-placeholder-secret
+          BETTER_AUTH_URL: http://localhost:3000
+          GOOGLE_CLIENT_ID: ci
+          GOOGLE_CLIENT_SECRET: ci

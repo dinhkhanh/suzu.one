@@ -5,6 +5,29 @@ export * from "../../modules/platform/org/schema";
 export * from "../../modules/platform/people/schema";
 export * from "../../modules/platform/rbac/schema";
 export * from "../../modules/platform/audit/schema";
+export * from "../../modules/platform/jobs/schema";
+export * from "../../modules/platform/notifications/schema";
+export * from "../../modules/platform/files/schema";
+export * from "../../modules/platform/statutory/schema";
+export * from "../../modules/platform/flags/schema";
+export * from "../../modules/platform/import/schema";
+export * from "../../modules/platform/approvals/schema";
+export * from "../../modules/platform/tasks-engine/schema";
+export * from "../../modules/core-hr/schema";
+export * from "../../modules/attendance/schema";
+export * from "../../modules/leave/schema";
+export * from "../../modules/work/schema";
+export * from "../../modules/ops/schema";
+export * from "../../modules/performance/schema";
+export * from "../../modules/kb/schema";
+export * from "../../modules/comms/schema";
+export * from "../../modules/payroll/schema";
+export * from "../../modules/assets/schema";
+export * from "../../modules/documents/schema";
+export * from "../../modules/requests/schema";
+export * from "../../modules/recruit/schema";
+export * from "../../modules/ai/schema";
+export * from "../../modules/reports/schema";
 
 // Every table calls `.enableRLS()` with no policies. The app connects as the table owner, which
 // bypasses row-level security; Supabase's public REST API roles (anon, authenticated) get nothing.

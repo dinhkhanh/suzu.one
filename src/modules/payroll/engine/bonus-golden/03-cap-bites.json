@@ -1,0 +1,19 @@
+{
+  "name": "The cap bites: the bands would pay 1,8 months, the scheme allows 1,5",
+  "source": "synthetic",
+  "derivation": [
+    "Same figures as case 02, but this scheme version caps the bonus at 1,5000 months.",
+    "Combined = 1,0000 × 1,5000 × 1,2000 = 1,8000 → capped to 1,5000.",
+    "30.000.000 × 1,5000 = 45.000.000 ₫."
+  ],
+  "schemePatch": { "capMultiplierBp": 15000 },
+  "person": {
+    "baseSalaryVnd": 30000000,
+    "serviceMonths": 18,
+    "workforceType": "employee",
+    "activeOnReferenceDay": true,
+    "unitOkrProgressBp": 10500,
+    "result": { "resultId": "r3", "finalScoreBp": 11500, "bandKey": "outstanding", "bandMultiplierBp": 15000, "bandLabel": "Xuất sắc", "reviewScoreBp": 11000, "kpiScoreBp": 12000, "okrScoreBp": 11000, "overridden": false, "overrideReason": null }
+  },
+  "expect": { "eligible": true, "combinedMultiplierBp": 18000, "capApplied": true, "cappedMultiplierBp": 15000, "computedAmountVnd": 45000000, "finalAmountVnd": 45000000 }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "Mid-month joiner: salary pro-rated, insurance in full",
+  "source": "synthetic — replace with anonymised real cases",
+  "requirements": ["FR-PAY-11", "FR-PAY-16"],
+  "derivation": [
+    "Joined on 17 August 2026. The month asks 22 working days of a full-time person; the joiner's own timesheet has 11 of them, all paid (paidDaysCenti 1100).",
+    "The divisor is the month's 22 days, never the person's 11 — dividing by 11 would pay a whole month.",
+    "BASE = 30,000,000 x 1100 / (22 x 100) = 30,000,000 x 1100 / 2200 = 15,000,000.",
+    "Insurance: uncovered working days = 22 - 11 = 11, below the threshold of 14, so the month is contributed for.",
+    "The contribution is NOT pro-rated: it is on the declared insurance salary of 30,000,000, the same as a full month.",
+    "Employee: 8% = 2,400,000; 1.5% = 450,000; 1% = 300,000; total 3,150,000.",
+    "Taxable income 15,000,000; assessable = 15,000,000 - 3,150,000 - 15,500,000 = -3,650,000, so 0 and no PIT.",
+    "Net = 15,000,000 - 3,150,000 = 11,850,000."
+  ],
+  "month": "2026-08",
+  "monthStandardDays": 22,
+  "employment": { "startDate": "2026-08-17", "serviceMonths": 0 },
+  "segments": [
+    { "from": "2026-08-17", "to": "2026-08-31", "standardDays": 11, "paidDaysCenti": 1100, "terms": { "baseSalary": 30000000, "insuranceSalary": 30000000, "allowances": [] } }
+  ],
+  "timesheet": { "standardDays": 11, "paidDaysCenti": 1100 },
+  "expect": {
+    "lines": { "BASE": 15000000, "INS_BHXH_EE": 2400000, "INS_BHYT_EE": 450000, "INS_BHTN_EE": 300000 },
+    "totals": { "grossEarnings": 15000000, "employeeInsurance": 3150000, "pit": 0, "net": 11850000 },
+    "insurance": { "covered": true, "reason": null, "bhxhBhytBase": 30000000 },
+    "pit": { "method": "progressive", "assessableIncome": 0, "tax": 0 }
+  }
+}

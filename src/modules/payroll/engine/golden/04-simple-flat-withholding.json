@@ -1,0 +1,27 @@
+{
+  "name": "Collaborator on the Simple profile, 10% flat withholding",
+  "source": "synthetic — replace with anonymised real cases",
+  "requirements": ["FR-PAY-07", "FR-PAY-14"],
+  "derivation": [
+    "A service-contract collaborator (CTV) paid 15,000,000 for a full month.",
+    "The entity's policy taxes the Simple profile as 'flat_withholding'; the person is a resident, so the method is the withholding for people without a labour contract of three months or more.",
+    "The seeded rate is 10% and the per-payment threshold 2,000,000; the payment is above it and there is no form 08/CK-TNCN on file, so tax is withheld.",
+    "PIT = 10% x 15,000,000 = 1,500,000. No personal or dependent deduction applies to flat withholding.",
+    "No insurance and no union on the Simple profile.",
+    "Net = 15,000,000 - 1,500,000 = 13,500,000."
+  ],
+  "month": "2026-08",
+  "monthStandardDays": 22,
+  "profile": { "profile": "simple" },
+  "policy": { "simplePitTreatment": "flat_withholding" },
+  "segments": [
+    { "from": "2026-08-01", "to": "2026-08-31", "standardDays": 22, "paidDaysCenti": 2200, "terms": { "baseSalary": 15000000, "insuranceSalary": 0, "allowances": [] } }
+  ],
+  "timesheet": { "standardDays": 22, "paidDaysCenti": 2200 },
+  "expect": {
+    "lines": { "BASE": 15000000, "PIT": 1500000 },
+    "totals": { "grossEarnings": 15000000, "employeeInsurance": 0, "pit": 1500000, "net": 13500000 },
+    "insurance": { "covered": false, "reason": "simple_profile" },
+    "pit": { "method": "flat_without_contract", "tax": 1500000 }
+  }
+}

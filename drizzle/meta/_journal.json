@@ -29,6 +29,482 @@
       "when": 1789812529245,
       "tag": "0003_revoke_api_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789826409749,
+      "tag": "0004_core_hr",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789826414844,
+      "tag": "0005_core_hr_no_overlap",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789828158955,
+      "tag": "0006_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789828866397,
+      "tag": "0007_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789829275644,
+      "tag": "0008_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789829471235,
+      "tag": "0009_statutory",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789829472001,
+      "tag": "0010_statutory_no_overlap",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789829768476,
+      "tag": "0011_feature_flags",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789829996537,
+      "tag": "0012_import_batch",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1789831814897,
+      "tag": "0013_core_hr_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1789832760267,
+      "tag": "0014_contract_number_live_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1789833374775,
+      "tag": "0015_approvals",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1789834626952,
+      "tag": "0016_tasks_engine",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1789834801072,
+      "tag": "0017_lifecycle_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789836442496,
+      "tag": "0018_approvals_flows_delegation",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1789837134026,
+      "tag": "0019_attendance_calendar_schedules",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1789837134878,
+      "tag": "0020_attendance_schedule_no_overlap",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1789838881241,
+      "tag": "0021_leave",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1789838890352,
+      "tag": "0022_leave_policy_no_overlap",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1789840858123,
+      "tag": "0023_attendance_checkin",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1789841762674,
+      "tag": "0024_web_push",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1789842357239,
+      "tag": "0025_attendance_devices_timesheet",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1789842358113,
+      "tag": "0026_attendance_policy_no_overlap",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1789844630659,
+      "tag": "0027_attendance_requests_timesheet_lock",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1789847071385,
+      "tag": "0028_work_management",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1789849405853,
+      "tag": "0029_work_reminders",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1789850147651,
+      "tag": "0030_work_review_templates_recurrence",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1789851783691,
+      "tag": "0031_ops_tracker",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1789853818942,
+      "tag": "0032_work_intake_forms",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1789854311796,
+      "tag": "0033_work_intake_audience",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1789855183318,
+      "tag": "0034_performance_goals",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1789856704888,
+      "tag": "0035_performance_kpis",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1789856727746,
+      "tag": "0036_kpi_score_current",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1789858982247,
+      "tag": "0037_kb_spaces_pages",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1789860552120,
+      "tag": "0038_kb_review_request",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1789860751433,
+      "tag": "0039_kb_acknowledgement",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1789861536260,
+      "tag": "0040_kb_templates",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1789861885873,
+      "tag": "0041_kb_page_chunks",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1789862670924,
+      "tag": "0042_comms_announcements_kudos",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1789863501506,
+      "tag": "0043_task_link_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1789864731281,
+      "tag": "0044_session_reauth_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1789866223934,
+      "tag": "0045_payroll_setup",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1789866224940,
+      "tag": "0046_payroll_no_overlap",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1789869545777,
+      "tag": "0047_payroll_runs_and_retro_items",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1789870955874,
+      "tag": "0048_payroll_run_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1789873109831,
+      "tag": "0049_payslips_payments_cash",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1789873110831,
+      "tag": "0050_cash_receipt_after_lock",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1789876109067,
+      "tag": "0051_payroll_ytd_and_parallel_run",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1789879159176,
+      "tag": "0052_request_builder",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1789879305681,
+      "tag": "0053_approval_type_name",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1789880196522,
+      "tag": "0054_deep_links_chat_sla",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1789882190807,
+      "tag": "0055_asset_register",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1789885199325,
+      "tag": "0056_asset_bookings",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1789886674812,
+      "tag": "0057_licences",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1789887298790,
+      "tag": "0058_document_templates",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1789889501170,
+      "tag": "0059_expense_claims",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1789891876867,
+      "tag": "0060_recruitment",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1789893236009,
+      "tag": "0061_careers_public_form",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1789895867448,
+      "tag": "0062_interviews_and_scorecards",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1789896505360,
+      "tag": "0063_take_home_assignments",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1789898231649,
+      "tag": "0064_offers_and_conversion",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1789900736854,
+      "tag": "0065_referrals_and_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1789903286196,
+      "tag": "0066_phase8-review-cycles",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1789904888713,
+      "tag": "0067_phase8-results",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1789906668696,
+      "tag": "0068_phase8-bonus",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1789909738123,
+      "tag": "0069_ai_assistant",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1789912842243,
+      "tag": "0070_ai_tool_calls",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1789915180963,
+      "tag": "0071_report_schedules",
+      "breakpoints": true
     }
   ]
 }

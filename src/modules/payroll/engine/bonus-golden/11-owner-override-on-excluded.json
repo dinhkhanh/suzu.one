@@ -1,0 +1,19 @@
+{
+  "name": "The owner grants an amount to somebody the formula excludes, with a reason",
+  "source": "synthetic",
+  "derivation": [
+    "2 months of service → excluded as 'service_too_short' (checked before the missing result), so the formula comes to 0 ₫.",
+    "The owner sets 5.000.000 ₫ with a written reason; the computed 0 stays on the trace beside it.",
+    "The final amount is the owner's figure — the difference is the override, and it is visible."
+  ],
+  "person": {
+    "baseSalaryVnd": 15000000,
+    "serviceMonths": 2,
+    "workforceType": "employee",
+    "activeOnReferenceDay": true,
+    "unitOkrProgressBp": 9500,
+    "result": null,
+    "override": { "amountVnd": 5000000, "reason": "Đóng góp đặc biệt cho dự án ra mắt tháng 11", "byPersonId": "owner", "at": "2026-12-20T03:00:00.000Z" }
+  },
+  "expect": { "eligible": false, "exclusion": "service_too_short", "computedAmountVnd": 0, "finalAmountVnd": 5000000 }
+}

@@ -1,0 +1,41 @@
+{
+  "name": "Late-approved raise: July's difference carried into August (FR-PAY-17)",
+  "source": "synthetic — replace with anonymised real cases",
+  "requirements": ["FR-PAY-13", "FR-PAY-17"],
+  "derivation": [
+    "The person earns 30,000,000 and was raised to 33,000,000 from 1 July 2026, but the owner only approved it in August. July was already paid on the old salary, so the difference is carried into August as a retro line.",
+    "July's difference: 33,000,000 - 30,000,000 = 3,000,000 gross (July was a full month, so no pro-rating on either side).",
+    "August is paid on the new salary: BASE 33,000,000 x 2200 / (22 x 100) = 33,000,000.",
+    "RETRO_PAY 3,000,000 is taxable income of August (taxed in the month it is paid) but is NOT part of August's insurance base.",
+    "Gross = 33,000,000 + 3,000,000 = 36,000,000.",
+    "Insurance is on the declared base 33,000,000 only, well under the BHXH/BHYT cap of 20 x 2,530,000 = 50,600,000.",
+    "Employee: BHXH 8% = 2,640,000; BHYT 1.5% = 495,000; BHTN 1% = 330,000; total 3,465,000.",
+    "Employer: BHXH 17.5% = 5,775,000; BHYT 3% = 990,000; BHTN 1% = 330,000; total 7,095,000.",
+    "Taxable income = 33,000,000 + 3,000,000 = 36,000,000 (nothing exempt here).",
+    "Assessable = 36,000,000 - 3,465,000 - 15,500,000 (personal deduction) - 6,200,000 (one dependant) = 10,835,000.",
+    "PIT: 10,000,000 x 5% = 500,000; (10,835,000 - 10,000,000) = 835,000 x 10% = 83,500; total 583,500.",
+    "Net = 36,000,000 - 3,465,000 - 583,500 = 31,951,500.",
+    "The item is flagged insuranceBaseChanged: July's declared base should have been 33,000,000, which payroll cannot put right — it belongs in the BHXH adjustment declaration (FR-PAY-35)."
+  ],
+  "month": "2026-08",
+  "monthStandardDays": 22,
+  "employment": { "dependents": 1 },
+  "segments": [
+    {
+      "from": "2026-08-01",
+      "to": "2026-08-31",
+      "standardDays": 22,
+      "paidDaysCenti": 2200,
+      "terms": { "baseSalary": 33000000, "insuranceSalary": 33000000, "allowances": [] }
+    }
+  ],
+  "timesheet": { "standardDays": 22, "paidDaysCenti": 2200, "workedMinutes": 10560 },
+  "retro": [{ "sourceMonth": "2026-07", "amount": 3000000, "kind": "salary_change", "reason": "Tăng lương từ 01/07 được duyệt muộn", "insuranceBaseChanged": true }],
+  "expect": {
+    "lines": { "BASE": 33000000, "RETRO_PAY": 3000000, "INS_BHXH_EE": 2640000, "INS_BHYT_EE": 495000, "INS_BHTN_EE": 330000, "PIT": 583500 },
+    "totals": { "grossEarnings": 36000000, "taxableIncome": 36000000, "employeeInsurance": 3465000, "employerInsurance": 7095000, "pit": 583500, "net": 31951500 },
+    "insurance": { "covered": true, "reason": null, "bhxhBhytBase": 33000000, "bhtnBase": 33000000 },
+    "pit": { "method": "progressive", "assessableIncome": 10835000, "dependentDeduction": 6200000, "tax": 583500 },
+    "warnings": []
+  }
+}

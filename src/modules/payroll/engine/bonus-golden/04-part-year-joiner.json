@@ -1,0 +1,19 @@
+{
+  "name": "Joined in June: half a year of service halves the bonus",
+  "source": "synthetic",
+  "derivation": [
+    "Base 12.000.000 ₫; 7 months of service → the '6–11 tháng' band → factor 0,5000.",
+    "Result 82,00 % → 'meets' → 1,0000. Entity OKR 90,00 % → 'Công ty đạt' → 1,0000.",
+    "Combined = 0,5000 × 1,0000 × 1,0000 = 0,5000.",
+    "12.000.000 × 0,5000 = 6.000.000 ₫."
+  ],
+  "person": {
+    "baseSalaryVnd": 12000000,
+    "serviceMonths": 7,
+    "workforceType": "employee",
+    "activeOnReferenceDay": true,
+    "unitOkrProgressBp": 9000,
+    "result": { "resultId": "r4", "finalScoreBp": 8200, "bandKey": "meets", "bandMultiplierBp": 10000, "bandLabel": "Đạt", "reviewScoreBp": 8000, "kpiScoreBp": 8300, "okrScoreBp": 8200, "overridden": false, "overrideReason": null }
+  },
+  "expect": { "eligible": true, "serviceFactorBp": 5000, "combinedMultiplierBp": 5000, "computedAmountVnd": 6000000, "finalAmountVnd": 6000000 }
+}

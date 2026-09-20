@@ -1,0 +1,26 @@
+{
+  "name": "Non-resident foreigner: 20% flat, no unemployment insurance",
+  "source": "synthetic — replace with anonymised real cases",
+  "requirements": ["FR-PAY-11", "FR-PAY-14"],
+  "derivation": [
+    "Salary 50,000,000 for a full month; the person is a non-resident and a foreigner.",
+    "A foreign employee contributes to social and health insurance but not to unemployment insurance (the 'foreigner' exemption switches off BHTN alone).",
+    "Base for BHXH/BHYT = min(50,000,000, cap 50,600,000) = 50,000,000. Employee: 8% = 4,000,000; 1.5% = 750,000; BHTN 0. Total 4,750,000.",
+    "Employer: 17.5% = 8,750,000; 3% = 1,500,000; BHTN 0. Total 10,250,000.",
+    "PIT for a non-resident is a flat 20% on Vietnam-sourced salary with no deductions at all — no personal deduction, no dependants, no insurance relief: 20% x 50,000,000 = 10,000,000.",
+    "Net = 50,000,000 - 4,750,000 - 10,000,000 = 35,250,000."
+  ],
+  "month": "2026-08",
+  "monthStandardDays": 22,
+  "profile": { "taxResidency": "non_resident", "pitMethod": "flat_non_resident", "insuranceExemption": "foreigner" },
+  "segments": [
+    { "from": "2026-08-01", "to": "2026-08-31", "standardDays": 22, "paidDaysCenti": 2200, "terms": { "baseSalary": 50000000, "insuranceSalary": 50000000, "allowances": [] } }
+  ],
+  "timesheet": { "standardDays": 22, "paidDaysCenti": 2200 },
+  "expect": {
+    "lines": { "BASE": 50000000, "INS_BHXH_EE": 4000000, "INS_BHYT_EE": 750000, "PIT": 10000000 },
+    "totals": { "grossEarnings": 50000000, "employeeInsurance": 4750000, "employerInsurance": 10250000, "pit": 10000000, "net": 35250000 },
+    "insurance": { "covered": true, "bhxhBhytBase": 50000000 },
+    "pit": { "method": "flat_non_resident", "tax": 10000000 }
+  }
+}

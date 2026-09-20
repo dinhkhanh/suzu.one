@@ -1,0 +1,138 @@
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { todayInVietnam } from "@/lib/dates";
+import { requireUser } from "@/modules/platform/auth/session";
+import { listPersonNames } from "@/modules/platform/people/service";
+import { getDaysOff } from "@/modules/attendance/service";
+import { isMonthKey, monthGrid } from "@/modules/work/engine/calendar";
+import { FILTER_KEYS, GROUPINGS, type Grouping, type TaskFilters } from "@/modules/work/engine/filter";
+import { canContributeToProject, canManageProject, canViewProject, findProject, listAssignable, listClients, listLabels, listProjectMembers, listProjectTasks, listRecurrences, listSavedViews, listStates, listWorkTemplates, loadViewer, projectFacts, withEditable, WORK_VIEWS, type WorkView } from "@/modules/work/service";
+import { BoardView } from "@/modules/work/ui/board-view";
+import { CalendarView } from "@/modules/work/ui/calendar-view";
+import { ViewTabs } from "@/modules/work/ui/filter-bar";
+import { RecurrenceManager, TemplateUseForm } from "@/modules/work/ui/planning-forms";
+import { ProjectForm } from "@/modules/work/ui/project-forms";
+import { TaskListView } from "@/modules/work/ui/task-list-view";
+import { MemberManager } from "@/modules/work/ui/team-forms";
+
+export const metadata: Metadata = { title: "Project" };
+
+export default async function ProjectPage({ params, searchParams }: PageProps<"/work/projects/[projectId]">) {
+  const user = await requireUser();
+  const { projectId } = await params;
+  const query = await searchParams;
+  const found = /^[0-9a-f-]{36}$/.test(projectId) ? await findProject(projectId) : undefined;
+  const viewer = await loadViewer(user);
+  // A project the viewer may not open does not exist, as far as they can tell.
+  if (!found || !canViewProject(viewer, projectFacts(found.project, found.team))) notFound();
+  const { project, team } = found;
+  const facts = projectFacts(project, team);
+  const t = await getTranslations("work");
+  const manage = canManageProject(viewer, facts);
+  const today = todayInVietnam();
+
+  const [views, tasks, states, labels, clients, members, assignable, people, recurrences, templates] = await Promise.all([
+    listSavedViews(project.id, user.person.id),
+    listProjectTasks(project.id),
+    listStates([team.id]),
+    listLabels([team.id]),
+    listClients({ activeOnly: true }),
+    listProjectMembers(project.id),
+    listAssignable(team.id, project.id),
+    manage ? listPersonNames() : [],
+    listRecurrences(project.id, today),
+    listWorkTemplates([team.id], { activeOnly: true }),
+  ]);
+  const filters: TaskFilters = Object.fromEntries(FILTER_KEYS.flatMap((key) => (typeof query[key] === "string" ? [[key, query[key]]] : [])));
+  const grouping = GROUPINGS.includes(query.group as Grouping) ? (query.group as Grouping) : "none";
+  const clientName = clients.find((client) => client.id === project.clientId)?.name;
+  const view: WorkView = WORK_VIEWS.includes(query.view as WorkView) ? (query.view as WorkView) : "list";
+  const options = { states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })), people: assignable, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })) };
+  const canContribute = canContributeToProject(viewer, facts) && project.status !== "archived";
+  const month = isMonthKey(query.month) ? query.month : today.slice(0, 7);
+  const grid = monthGrid(month);
+  const [calendarTasks, daysOff] = view === "calendar" ? await Promise.all([withEditable(viewer, tasks), getDaysOff(project.entityId ?? team.entityId, grid.from, grid.to)]) : [[], []];
+
+  return (
+    <div className="flex max-w-6xl flex-col gap-6">
+      <header className="flex flex-col gap-1">
+        <p className="text-sm text-muted-foreground">
+          <Link href="/work" className="underline">
+            {t("title")}
+          </Link>
+          {" / "}
+          <Link href={`/work/teams/${team.id}`} className="underline">
+            {team.name}
+          </Link>
+        </p>
+        <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight">
+          {project.name}
+          <Badge variant="outline">{t(`visibility.${project.visibility}`)}</Badge>
+          {project.status === "active" ? null : <Badge variant="secondary">{t(`projects.status.${project.status}`)}</Badge>}
+        </h1>
+        <p className="text-sm text-muted-foreground">{[clientName, project.description].filter(Boolean).join(" · ")}</p>
+      </header>
+
+      <ViewTabs current={view} />
+      {view === "board" ? (
+        <BoardView tasks={tasks} options={options} initialFilters={filters} selfId={user.person.id} today={today} canContribute={canContribute} />
+      ) : view === "calendar" ? (
+        <CalendarView
+          tasks={calendarTasks.map((task) => ({ ...task, editable: task.editable && project.status !== "archived" }))}
+          options={options}
+          month={month}
+          daysOff={daysOff.map(({ date, name }) => ({ date, name }))}
+          initialFilters={filters}
+          initialExtra={{ channel: typeof query.channel === "string" ? query.channel : undefined }}
+          selfId={user.person.id}
+          today={today}
+        />
+      ) : (
+        <TaskListView
+          tasks={tasks}
+          options={options}
+          scope={{ teamId: team.id, projectId: project.id }}
+          initialFilters={filters}
+          initialGrouping={grouping}
+          selfId={user.person.id}
+          today={today}
+          canContribute={canContribute}
+          savedViews={views.map((view) => ({ id: view.id, name: view.name, isShared: view.isShared, mine: view.ownerPersonId === user.person.id, canDelete: view.ownerPersonId === user.person.id || manage, filters: view.filters }))}
+        />
+      )}
+
+      <details className="rounded-xl border p-4" open={recurrences.length > 0 && typeof query.planning === "string"}>
+        <summary className="cursor-pointer text-sm font-medium">{t("projects.planning", { count: recurrences.filter((row) => row.isActive).length })}</summary>
+        <div className="flex flex-col gap-6 pt-4">
+          <section className="flex flex-col gap-2">
+            <h2 className="text-sm font-medium text-muted-foreground">{t("recurrence.heading")}</h2>
+            <RecurrenceManager
+              projectId={project.id}
+              recurrences={recurrences.map(({ id, title, rule, startDate, endDate, isActive, assigneeName, nextDate, made }) => ({ id, title, rule, startDate, endDate, isActive, assigneeName, nextDate, made }))}
+              people={assignable}
+              canManage={canContribute}
+              today={today}
+            />
+          </section>
+          {canContribute ? (
+            <section className="flex flex-col gap-2">
+              <h2 className="text-sm font-medium text-muted-foreground">{t("templates.addToProject")}</h2>
+              <TemplateUseForm templates={templates.filter((template) => template.items.length > 0).map(({ id, name, ownerId, roleKeys }) => ({ id, name, ownerId, roleKeys }))} projectId={project.id} peopleByTeam={{ "": assignable }} today={today} />
+            </section>
+          ) : null}
+        </div>
+      </details>
+
+      <details className="rounded-xl border p-4">
+        <summary className="cursor-pointer text-sm font-medium">{t("projects.membersAndSettings", { count: members.length })}</summary>
+        <div className="flex flex-col gap-6 pt-4">
+          <MemberManager members={members} people={people} canManage={manage} target={{ projectId: project.id }} />
+          {manage ? <ProjectForm project={project} teams={[]} clients={clients.map(({ id, name }) => ({ id, name }))} people={assignable} /> : null}
+        </div>
+      </details>
+    </div>
+  );
+}
