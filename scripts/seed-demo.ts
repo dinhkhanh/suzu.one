@@ -10,6 +10,7 @@ import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, assignm
 import { planChecklist } from "../src/modules/platform/tasks-engine/engine/checklist";
 import { toSearchKey } from "../src/lib/text";
 import { seedAttendance, seedPunches } from "./seed-demo-attendance";
+import { seedComms } from "./seed-demo-comms";
 import { seedLeave } from "./seed-demo-leave";
 import { seedKb } from "./seed-demo-kb";
 import { seedKpis } from "./seed-demo-kpis";
@@ -141,6 +142,7 @@ async function main() {
   console.log(`Seeded ${await seedPerformance(db)}.`);
   console.log(`Seeded ${await seedKpis(db)}.`);
   console.log(`Seeded ${await seedKb(db)}.`);
+  console.log(`Seeded ${await seedComms(db)}.`);
   // The ops tracker's instances come from the real scheduler, which only runs inside the app
   // (server-only modules cannot be loaded by tsx): start `pnpm dev`, then `pnpm db:seed:demo:ops`.
   console.log("Next: `pnpm dev` in another terminal, then `pnpm db:seed:demo:ops` (obligations) and `pnpm db:recompute` (timesheets).");

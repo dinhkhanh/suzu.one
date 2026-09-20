@@ -54,6 +54,9 @@ const saveAnnouncementPipeline = createAction({
   },
   run: async ({ user, input }) => {
     const { id, intent, publishAt, ...values } = input;
+    // Checked before anything is written, so a refused publication leaves no stray draft behind.
+    const shownFrom = publishAt && publishAt > new Date() ? publishAt : new Date();
+    if (intent === "publish" && values.expiresAt && values.expiresAt <= shownFrom) throw new ActionError("comms_expires_before_publish");
     const saved = id ? await updateAnnouncement(id, values) : null;
     let row = saved?.after ?? (await createAnnouncement(values, user.person.id));
     let notified = 0;
