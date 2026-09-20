@@ -6,7 +6,7 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { and, between, inArray, isNull } from "drizzle-orm";
-import { approvalFlow, attendancePolicy, payComponent, payrollPolicy, companyValue, kbTemplate, kpiDefinition, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, requestType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
+import { approvalFlow, assetCategory, attendancePolicy, payComponent, payrollPolicy, companyValue, kbTemplate, kpiDefinition, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, requestType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
 import { PROFILE_SEED } from "../src/modules/attendance/engine/device-log";
 import { CALENDAR_SEED, DEFAULT_POLICY_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 import { leaveSeedRows } from "../src/modules/leave/seed-types";
@@ -20,6 +20,7 @@ import { STATUTORY_SEED } from "../src/modules/platform/statutory/seed-values";
 import { DEFAULT_PAYROLL_POLICY } from "../src/modules/payroll/enums";
 import { PAY_COMPONENT_SEED_VALID_FROM, payComponentSeedRows } from "../src/modules/payroll/seed-components";
 import { REQUEST_TYPE_SEED } from "../src/modules/requests/seed-types";
+import { CATEGORY_SEED } from "../src/modules/assets/seed-categories";
 
 config({ path: ".env.local" });
 
@@ -160,6 +161,13 @@ async function main() {
       .onConflictDoNothing();
   }
   console.log(`Seeded ${newTypes.length} request types with their approval flows (existing codes left untouched).`);
+
+  // The asset categories (FR-AST-01), shared by the group: only codes that do not exist yet, so a
+  // category whose warranty or serial rule has been edited is never overwritten.
+  const categoryCodes = new Set((await db.select({ code: assetCategory.code }).from(assetCategory)).map((row) => row.code));
+  const newCategories = CATEGORY_SEED.filter((seed) => !categoryCodes.has(seed.code));
+  if (newCategories.length) await db.insert(assetCategory).values(newCategories.map((row) => ({ ...row })));
+  console.log(`Seeded ${newCategories.length} asset categories (existing codes left untouched).`);
 
   // Company values for kudos (FR-COM-03): placeholders, only keys that do not exist yet.
   const valueKeys = new Set((await db.select({ key: companyValue.key }).from(companyValue)).map((row) => row.key));
