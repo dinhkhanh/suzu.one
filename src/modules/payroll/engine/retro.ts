@@ -141,6 +141,19 @@ export function applyAdjustmentDeltas(input: PersonPayInput, deltas: AdjustmentD
   };
 }
 
+/**
+ * The input a month was paid on, with different salary terms — how a raise approved after the
+ * month was paid is valued (FR-PAY-17).
+ *
+ * Everything else is the input **exactly as it was paid**: the same attendance, the same leave,
+ * the same dependants, the same bonuses and advances typed into that run. So the difference that
+ * comes out is the change to the salary and nothing else — not a bonus counted twice, not a
+ * deduction quietly dropped.
+ */
+export function withSegments(input: PersonPayInput, segments: PersonPayInput["segments"]): PersonPayInput {
+  return { ...input, segments: segments.length > 0 ? segments : input.segments };
+}
+
 /** Adds a correction's paid days to the segment covering the corrected time — the last, without a date. */
 function spreadPaidDays(segments: PersonPayInput["segments"], deltaCenti: number): PersonPayInput["segments"] {
   if (deltaCenti === 0 || segments.length === 0) return segments;

@@ -16,7 +16,7 @@ import { getLeaveUsage, type LeaveUsage } from "@/modules/leave/service";
 import { resolveCatalogue, resolveCatalogueVersions } from "./components";
 import { calculatePerson, PAYROLL_ENGINE_VERSION } from "./engine/calculate";
 import type { ComponentDefinition } from "./engine/components";
-import { payableOvertime, payPeriodOf, type PaySegment, type ProfileFacts } from "./engine/period";
+import { EMPTY_TIMESHEET, payableOvertime, payPeriodOf, type PaySegment, type ProfileFacts } from "./engine/period";
 import { isRoundingRule } from "./engine/rounding";
 import type { PayInput, PersonPayInput, PersonPayResult, PriorInMonth, RetroItem } from "./engine/types";
 import { getPayrollPolicy, getPayrollPolicyVersion } from "./policies";
@@ -145,10 +145,91 @@ export async function calculateEntityMonth(entityId: string, month: string, opti
 }
 
 /** One person, for a payslip preview or a re-check. Same path as the whole month. */
-export async function calculateOnePerson(entityId: string, month: string, personId: string, options: { inputs?: PayInput[]; executor?: Executor } = {}): Promise<PersonCalculation | null> {
-  const calculation = await calculateEntityMonth(entityId, month, { inputs: new Map([[personId, options.inputs ?? []]]), executor: options.executor });
+export async function calculateOnePerson(entityId: string, month: string, personId: string, options: { inputs?: PayInput[] } & Omit<CalculateOptions, "inputs"> = {}): Promise<PersonCalculation | null> {
+  const { inputs, ...rest } = options;
+  const calculation = await calculateEntityMonth(entityId, month, { ...rest, inputs: new Map([[personId, inputs ?? []]]) });
   return calculation.people.find((person) => person.input.personId === personId) ?? null;
 }
+
+/**
+ * An off-cycle run (FR-PAY-19): only the people it names, only what is typed into it, taxed with
+ * the month the payment falls in.
+ *
+ * It deliberately does **not** ask for a locked timesheet. A bonus is not a month's work: it is
+ * paid on a decision, often before the month is over — Phase 8's year-end bonus above all. The
+ * person's salary structure is loaded all the same, because a bonus formula reads the base salary
+ * from it, but no structure line is ever paid (`calculateEarnings` skips them on an off-cycle run).
+ */
+export async function calculateOffCycle(entityId: string, month: string, options: { inputs: RunInputs; prior?: RunPrior; executor?: Executor }): Promise<EntityMonthCalculation> {
+  const executor = options.executor ?? db();
+  const period = payPeriodOf(month, 0);
+  const personIds = [...options.inputs.keys()];
+  if (personIds.length === 0) throw new ActionError("run_has_no_lines");
+
+  const [entity] = await executor.select().from(schema.entity).where(eq(schema.entity.id, entityId)).limit(1);
+  if (!entity) throw new ActionError("entity_not_found");
+
+  const [statutory, policy, catalogue, structures, facts, profiles] = await Promise.all([
+    loadStatutoryParams(period.end, executor),
+    getPayrollPolicy(entityId, period.end, executor),
+    resolveCatalogue(entityId, period.end, executor),
+    listStructuresBetween(entityId, period.start, period.end, executor),
+    listPayrollFacts({ personIds }, month, executor),
+    getProfilesOn(personIds, period.end, executor),
+  ]);
+  const components = catalogue.map(toComponentDefinition);
+
+  const people: PersonCalculation[] = [];
+  for (const personId of personIds) {
+    const personFacts = facts.find((row) => row.personId === personId);
+    const profile = profiles.get(personId);
+    if (!personFacts || !profile) throw new ActionError("pay_profile_missing", { personId });
+    const terms = structures.filter((row) => row.personId === personId).at(-1)?.terms ?? { baseSalary: 0, insuranceSalary: 0, allowances: [] };
+    const input: PersonPayInput = {
+      personId,
+      entityId,
+      period: payPeriodOf(month, monthStandardDaysOf(policy.value, period)),
+      wageRegion: asWageRegion(entity.wageRegion),
+      employment: { startDate: null, endDate: null, dependents: personFacts.dependents, serviceMonths: monthsOfService(personFacts.seniorityDate ?? personFacts.startDate, period.end), kpiScoreBp: 0 },
+      profile: toProfileFacts(profile),
+      // The structure is carried for the formulas to read; nothing in it is paid.
+      segments: [{ from: period.start, to: period.end, terms, standardDays: 0, paidDaysCenti: 0, unpaidDaysCenti: 0 }],
+      timesheet: EMPTY_TIMESHEET,
+      insuranceLeaveDays: 0,
+      unpaidWorkingDays: 0,
+      components,
+      inputs: options.inputs.get(personId) ?? [],
+      retro: [],
+      otherPitDeductions: 0,
+      priorInMonth: options.prior?.get(personId) ?? null,
+      runKind: "off_cycle",
+      policy: policy.value,
+      statutory: statutory.params,
+    };
+    people.push({ input, result: calculatePerson(input), facts: personFacts });
+  }
+
+  return {
+    context: {
+      entityId,
+      month,
+      engineVersion: PAYROLL_ENGINE_VERSION,
+      policyVersionId: policy.id,
+      parameterVersions: statutory.versions,
+      unverifiedParameters: statutory.unverified,
+      componentVersionIds: components.map((component) => component.versionId),
+      // An off-cycle run waits for no timesheet; the date it was calculated stands in its place.
+      lockedAt: new Date(0),
+    },
+    people,
+  };
+}
+
+/**
+ * The divisor an off-cycle run reports. Nothing is pro-rated in one, but the month still has a
+ * shape — a fixed divisor when the policy names one, else the calendar.
+ */
+const monthStandardDaysOf = (policy: PersonPayInput["policy"], period: { calendarDays: number }): number => (policy.prorationBasis === "fixed_days" ? (policy.fixedDays ?? period.calendarDays) : period.calendarDays);
 
 // ── Turning rows into the engine's plain input ──────────────────────────────────────────────
 

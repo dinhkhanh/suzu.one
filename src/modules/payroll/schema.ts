@@ -202,3 +202,143 @@ export const salaryStructure = pgTable(
     check("salary_structure_dates_check", sql`${t.validTo} IS NULL OR ${t.validTo} >= ${t.validFrom}`),
   ],
 ).enableRLS();
+
+// ── Payroll runs (FR-PAY-19, 30; SRS D17) ───────────────────────────────────────────────────
+
+// `regular` pays an entity's month from its locked timesheet; `off_cycle` pays something extra
+// inside a month already run — a bonus, and in Phase 8 the year-end bonus (FR-PAY-21).
+export const payrollRunKind = pgEnum("payroll_run_kind", ["regular", "off_cycle"]);
+// The lifecycle of SRS D17. Week 3 creates runs and calculates them; the transitions from
+// `proposed` on (who may, in which order, what each one freezes) are week 4's.
+export const payrollRunStatus = pgEnum("payroll_run_status", ["draft", "calculated", "proposed", "approved", "payment_prepared", "paid", "locked", "cancelled"]);
+
+export const payrollRun = pgTable(
+  "payroll_run",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    /** "2026-08" — the month the pay belongs to and is taxed in. */
+    month: text("month").notNull(),
+    kind: payrollRunKind("kind").notNull().default("regular"),
+    status: payrollRunStatus("status").notNull().default("draft"),
+    /** What this run is called on screen; an off-cycle run needs one ("Thưởng dự án tháng 8"). */
+    name: text("name"),
+    note: text("note"),
+    /**
+     * Everything the calculation was made from: engine version, policy version, statutory
+     * parameter versions, component versions, the timesheet lock (`CalculationContext`). Rules and
+     * ids, never money — this is what makes a payslip reproducible (FR-PAY-20).
+     */
+    context: jsonb("context"),
+    /** The run's totals, encrypted: context "payroll_run.totals:<id>". */
+    totalsEnc: text("totals_enc"),
+    headcount: integer("headcount").notNull().default(0),
+    calculatedAt: timestamp("calculated_at", { withTimezone: true }),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [
+    index("payroll_run_entity_month_idx").on(t.entityId, t.month),
+    // One live regular run per entity and month; off-cycle runs are as many as the month needs.
+    uniqueIndex("payroll_run_regular_key").on(t.entityId, t.month).where(sql`${t.kind} = 'regular' AND ${t.status} <> 'cancelled'`),
+    check("payroll_run_month_check", sql`${t.month} ~ '^\\d{4}-(0[1-9]|1[0-2])$'`),
+  ],
+).enableRLS();
+
+// One person's line in a run. `result_enc` is the whole `PersonPayResult` (lines, totals,
+// insurance, PIT, trace) and `input_enc` the `PersonPayInput` it was calculated from — keeping the
+// input is what lets a month be recomputed exactly, and a timesheet correction be turned into
+// money without guessing (FR-PAY-17, 20).
+export const payrollRunPerson = pgTable(
+  "payroll_run_person",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => payrollRun.id, { onDelete: "cascade" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    profile: payProfileKind("profile").notNull(),
+    /** Context "payroll_run_person.result:<id>" and "payroll_run_person.input:<id>". */
+    resultEnc: text("result_enc").notNull(),
+    inputEnc: text("input_enc").notNull(),
+    /** Names of the engine's warnings — `negative_net` and the like. Never an amount. */
+    warnings: text("warnings").array().notNull().default(sql`ARRAY[]::text[]`),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("payroll_run_person_key").on(t.runId, t.personId), index("payroll_run_person_person_idx").on(t.personId)],
+).enableRLS();
+
+// A figure typed into a run for one person: a bonus, a commission, an advance, a penalty. The
+// catalogue decides what each code means; the amount is encrypted like every other figure.
+export const payrollRunInput = pgTable(
+  "payroll_run_input",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => payrollRun.id, { onDelete: "cascade" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    code: text("code").notNull(),
+    /** Context "payroll_run_input.amount:<id>". */
+    amountEnc: text("amount_enc").notNull(),
+    note: text("note"),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("payroll_run_input_key").on(t.runId, t.personId, t.code)],
+).enableRLS();
+
+// ── Retroactive items (FR-PAY-17) ───────────────────────────────────────────────────────────
+
+export const retroItemKind = pgEnum("retro_item_kind", ["salary_change", "timesheet_adjustment", "manual"]);
+export const retroItemStatus = pgEnum("retro_item_status", ["open", "taken", "cancelled"]);
+
+// A difference belonging to a month that is already paid, waiting for the next run to carry it.
+// The month itself is never re-opened (DR-07).
+export const payrollRetroItem = pgTable(
+  "payroll_retro_item",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    /** The month the difference belongs to, "2026-07". */
+    sourceMonth: text("source_month").notNull(),
+    kind: retroItemKind("kind").notNull(),
+    status: retroItemStatus("status").notNull().default("open"),
+    /** Signed: owed to the person, or to recover. Context "payroll_retro_item.amount:<id>". */
+    amountEnc: text("amount_enc").notNull(),
+    /** Why there is a difference. Words, never figures — it is shown beside the payslip line. */
+    reason: text("reason").notNull(),
+    /**
+     * The month's declared insurance base changed too. Payroll cannot correct a filed
+     * contribution: the BHXH adjustment declaration must (FR-PAY-35).
+     */
+    insuranceBaseChanged: boolean("insurance_base_changed").notNull().default(false),
+    /** What it came from: a `timesheet_adjustment` id, a `salary_structure` id, or nothing. */
+    sourceRef: uuid("source_ref"),
+    /** Set when a run takes the item in: the run's month and the run itself. */
+    payrollMonth: text("payroll_month"),
+    runId: uuid("run_id").references(() => payrollRun.id),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [
+    index("payroll_retro_item_entity_idx").on(t.entityId, t.status),
+    index("payroll_retro_item_person_idx").on(t.personId, t.sourceMonth),
+    // One item per source of a difference: re-deriving a correction never doubles it.
+    uniqueIndex("payroll_retro_item_source_key").on(t.personId, t.kind, t.sourceRef).where(sql`${t.sourceRef} IS NOT NULL AND ${t.status} <> 'cancelled'`),
+  ],
+).enableRLS();

@@ -242,3 +242,33 @@ describe("an off-cycle run taxes the month, not the payment (FR-PAY-19)", () => 
     expect(nonResident.pit.personalDeduction).toBe(0);
   });
 });
+
+describe("a month that earns less than its own insurance", () => {
+  // Found by the property tests: someone on unpaid leave for just under the statutory threshold
+  // earns almost nothing, yet the month still carries a full contribution on the **declared**
+  // insurance salary — the contribution is never pro-rated (FR-PAY-11). The person ends the month
+  // owing the company. The engine says so rather than hiding it; HR decides how it is recovered.
+  const barelyPaid = personInput({
+    period: payPeriodOf("2026-08", 18),
+    segments: [{ from: "2026-08-01", to: "2026-08-31", standardDays: 18, paidDaysCenti: 401, unpaidDaysCenti: 1399, terms: { baseSalary: 5_000_000, insuranceSalary: 5_000_000, allowances: [] } }],
+    timesheet: { standardDays: 18, standardMinutes: 8_640, paidDaysCenti: 401, unpaidDaysCenti: 1399, workedMinutes: 1_920, nightMinutes: 0, overtime: { weekday: { day: 0, night: 0 }, restDay: { day: 0, night: 0 }, holiday: { day: 0, night: 0 } } },
+  });
+
+  it("still contributes in full, and the shortfall is flagged, not swallowed", () => {
+    const result = calculatePerson(barelyPaid);
+    // 13.99 uncovered working days is under the threshold of 14, so the month is covered.
+    expect(result.insurance).toMatchObject({ covered: true, bhxhBhytBase: 5_000_000 });
+    // Pay for 4.01 of 18 days: 5,000,000 × 401 ÷ 1,800 = 1,113,889. Insurance is 10.5% of the
+    // whole 5,000,000 = 525,000 — less than the pay here, so the net stays positive…
+    expect(result.lines.find((line) => line.code === "BASE")?.amount).toBe(1_113_889);
+    expect(result.totals.employeeInsurance).toBe(525_000);
+    expect(result.totals.net).toBe(588_889);
+  });
+
+  it("goes negative when the month pays less than the contribution, with a warning", () => {
+    const nothingEarned = calculatePerson({ ...barelyPaid, segments: [{ ...barelyPaid.segments[0], terms: { baseSalary: 0, insuranceSalary: 5_000_000, allowances: [] } }] });
+    expect(nothingEarned.totals.grossEarnings).toBe(0);
+    expect(nothingEarned.totals.net).toBe(-525_000);
+    expect(nothingEarned.warnings).toContain("negative_net");
+  });
+});

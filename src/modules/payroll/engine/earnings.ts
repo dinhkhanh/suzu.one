@@ -44,7 +44,10 @@ export function calculateEarnings(input: PersonPayInput): EarningsResult {
     structureCodes.add(BASE_CODE);
     for (const allowance of segment.terms.allowances) structureCodes.add(allowance.code);
   }
-  const structureComponents = components.filter((component) => component.source === "structure" && structureCodes.has(component.code));
+  // An off-cycle run pays only what is typed into it (FR-PAY-19): the month's salary and
+  // allowances were paid by the regular run. The structure is still carried, because a bonus
+  // formula reads the person's base salary from it (`base_salary`).
+  const structureComponents = input.runKind === "off_cycle" ? [] : components.filter((component) => component.source === "structure" && structureCodes.has(component.code));
 
   for (const component of structureComponents) {
     let amount = 0;
