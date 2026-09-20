@@ -598,7 +598,9 @@
         "tasks": "Công việc được giao",
         "attendance": "Chấm công & bảng công",
         "ops": "Nghĩa vụ tuân thủ",
-        "kb": "Tri thức & chính sách"
+        "kb": "Tri thức & chính sách",
+        "comms": "Thông báo nội bộ & ghi nhận",
+        "payroll": "Lương & bảng lương"
       },
       "push": "Đẩy"
     },
@@ -758,6 +760,14 @@
       "comms_kudos_received": {
         "title": "{name} vừa ghi nhận bạn",
         "body": "{name} gửi bạn lời ghi nhận về giá trị “{value}”."
+      },
+      "payroll_rule_proposed": {
+        "title": "Có đề xuất thay đổi quy tắc tính lương",
+        "body": "{rule} được đề xuất thay đổi, hiệu lực từ {validFrom}. Đề xuất chỉ có hiệu lực sau khi bạn phê duyệt."
+      },
+      "payroll_profile_proposed": {
+        "title": "Có đề xuất đổi hồ sơ trả lương",
+        "body": "Đề xuất đổi hồ sơ trả lương của {person}, hiệu lực từ {validFrom}. Chỉ có hiệu lực sau khi bạn phê duyệt."
       }
     },
     "errors": {
@@ -837,6 +847,9 @@
       "leave_annual": "Phép năm",
       "probation_limits": "Thử việc",
       "contract_fixed_term": "Hợp đồng xác định thời hạn",
+      "union_dues_cap": "Công đoàn – mức trần đoàn phí",
+      "insurance_unpaid_leave_threshold": "Bảo hiểm – số ngày nghỉ không lương trong tháng thì không đóng",
+      "pit_overtime_exemption": "Thuế TNCN – phần tiền làm thêm, làm đêm được miễn",
       "hr_alert_thresholds": "Số ngày nhắc trước các hạn nhân sự",
       "work_night_window": "Giờ làm việc ban đêm"
     },
@@ -988,7 +1001,8 @@
       "remote_work": "Làm việc từ xa / ngoài văn phòng",
       "overtime": "Làm thêm giờ",
       "holiday_work": "Làm việc ngày nghỉ, ngày lễ",
-      "kb_publish": "Duyệt xuất bản trang tri thức"
+      "kb_publish": "Duyệt xuất bản trang tri thức",
+      "salary_change": "Điều chỉnh lương"
     },
     "status": {
       "pending": "Đang chờ duyệt",
@@ -1343,6 +1357,7 @@
       "transfer": "Điều chuyển",
       "promotion": "Thăng chức / bổ nhiệm",
       "salary_change": "Điều chỉnh lương",
+      "pay_profile_change": "Đổi hồ sơ trả lương",
       "discipline": "Kỷ luật",
       "reward": "Khen thưởng",
       "long_leave": "Nghỉ dài hạn (thai sản, không lương…)",
@@ -4377,6 +4392,389 @@
       "generic": "Không xác thực được. Vui lòng thử lại.",
       "forbidden": "Cách xác thực này không được bật.",
       "rejected": "Google không xác nhận được lần đăng nhập vừa rồi. Hãy thử lại bằng đúng tài khoản đang dùng."
+    }
+  },
+  "payroll": {
+    "title": "Lương",
+    "description": "Hồ sơ lương của bạn và — nếu bạn có quyền — bàn làm việc C&B. Mọi màn hình ở đây yêu cầu xác thực lại gần đây.",
+    "desk": {
+      "mine": {
+        "title": "Hồ sơ lương của tôi",
+        "description": "Mức lương, phụ cấp và lịch sử điều chỉnh của bạn."
+      },
+      "salaries": {
+        "title": "Cơ cấu lương nhân viên",
+        "description": "Lương cơ bản, lương đóng bảo hiểm, phụ cấp; đề xuất điều chỉnh lương."
+      },
+      "profiles": {
+        "title": "Hồ sơ trả lương",
+        "description": "Đề xuất chuyển giữa hồ sơ Đầy đủ và Đơn giản đang chờ Chủ sở hữu duyệt."
+      },
+      "simpleReport": {
+        "title": "Báo cáo hồ sơ Đơn giản",
+        "description": "Ai đang nhận lương không bảo hiểm/thuế, theo căn cứ nào, đã bao lâu. Chỉ Chủ sở hữu xem được."
+      },
+      "components": {
+        "title": "Danh mục khoản lương",
+        "description": "Thu nhập, khấu trừ, chi phí công ty; công thức; thuộc tính thuế và bảo hiểm."
+      },
+      "policy": {
+        "title": "Chính sách tính lương",
+        "description": "Cách chia ngày công, công đoàn, thuế của hồ sơ Đơn giản, ngưỡng cảnh báo, ngày trả lương."
+      }
+    },
+    "salaries": {
+      "title": "Cơ cấu lương",
+      "description": "Chỉ gồm nhân sự thuộc pháp nhân bạn phụ trách C&B. Số tiền được mã hóa khi lưu.",
+      "search": "Tìm theo tên",
+      "allEntities": "Mọi pháp nhân",
+      "filter": "Lọc",
+      "person": "Nhân sự",
+      "entity": "Pháp nhân",
+      "baseSalary": "Lương cơ bản",
+      "insuranceSalary": "Lương đóng bảo hiểm",
+      "allowances": "Tổng phụ cấp",
+      "validFrom": "Hiệu lực từ",
+      "openChange": "đang chờ duyệt",
+      "noProfile": "Chưa có hồ sơ trả lương",
+      "noStructure": "Chưa có cơ cấu lương",
+      "empty": "Không có nhân sự nào trong phạm vi của bạn.",
+      "open": "nay",
+      "history": "Lịch sử cơ cấu lương",
+      "decision": "Quyết định số {number}",
+      "requests": "Đề xuất điều chỉnh",
+      "noRequests": "Chưa có đề xuất nào.",
+      "requestStatus": {
+        "pending": "Chờ duyệt",
+        "approved": "Đã duyệt",
+        "rejected": "Từ chối",
+        "returned": "Trả lại",
+        "withdrawn": "Đã rút",
+        "cancelled": "Đã hủy"
+      },
+      "changeOpen": "Đang có một đề xuất chờ xử lý; chỉ mở đề xuất mới khi đề xuất này kết thúc.",
+      "reason": "Lý do",
+      "note": "Ghi chú (chỉ người duyệt thấy)",
+      "reasons": {
+        "initial": "Thiết lập lương ban đầu",
+        "probation_end": "Điều chỉnh lương sau thử việc",
+        "raise": "Tăng lương",
+        "promotion": "Điều chỉnh lương do thăng chức",
+        "adjustment": "Điều chỉnh lương",
+        "contract_renewal": "Điều chỉnh lương khi tái ký hợp đồng"
+      },
+      "form": {
+        "title": "Đề xuất điều chỉnh lương",
+        "titleInitial": "Thiết lập cơ cấu lương ban đầu",
+        "hint": "Nhập số tiền VND/tháng (gross). Đề xuất chỉ có hiệu lực sau khi được phê duyệt; cơ cấu hiện tại tự kết thúc vào ngày trước đó.",
+        "submit": "Gửi đề xuất",
+        "resubmit": "Gửi lại"
+      },
+      "decide": {
+        "title": "Quyết định",
+        "comment": "Ý kiến (bắt buộc khi trả lại hoặc từ chối)",
+        "approve": "Phê duyệt",
+        "return": "Trả lại để sửa",
+        "reject": "Từ chối"
+      },
+      "withdraw": "Rút đề xuất",
+      "requestedBy": "Người đề xuất: {name}",
+      "effective": "hiệu lực {date}",
+      "component": "Khoản",
+      "currentTerms": "Hiện tại",
+      "proposedTerms": "Đề xuất",
+      "figuresHidden": "Bạn không có quyền xem số tiền của đề xuất này.",
+      "steps": "Các bước duyệt"
+    },
+    "profiles": {
+      "title": "Hồ sơ trả lương",
+      "profile": "Hồ sơ",
+      "kinds": {
+        "statutory": "Đầy đủ (BH + thuế, chuyển khoản)",
+        "simple": "Đơn giản (chỉ lương, tiền mặt)"
+      },
+      "basis": "Căn cứ",
+      "bases": {
+        "probation": "Thử việc",
+        "internship": "Thực tập",
+        "service_contract": "Hợp đồng dịch vụ / CTV",
+        "short_term": "Ngắn hạn dưới 1 tháng",
+        "retiree": "Người đã nghỉ hưu",
+        "other": "Khác"
+      },
+      "reviewDate": "Ngày xem xét lại",
+      "validFrom": "Hiệu lực từ",
+      "taxResidency": "Cư trú thuế",
+      "residencies": {
+        "resident": "Cư trú",
+        "non_resident": "Không cư trú"
+      },
+      "pitMethod": "Cách tính thuế TNCN",
+      "pitMethods": {
+        "progressive": "Lũy tiến từng phần",
+        "flat_without_contract": "Khấu trừ theo tỷ lệ (không HĐ / HĐ dưới 3 tháng)",
+        "flat_non_resident": "Thuế suất không cư trú"
+      },
+      "insuranceExemption": "Bảo hiểm bắt buộc",
+      "insuranceFull": "Đóng đầy đủ",
+      "exemptions": {
+        "probation": "Không đóng — đang thử việc",
+        "retiree": "Không đóng — đã hưởng lương hưu",
+        "insured_elsewhere": "Không đóng — đã đóng ở nơi khác",
+        "foreigner": "Người nước ngoài — theo quy định riêng",
+        "other": "Không đóng — lý do khác"
+      },
+      "pitCommitment": "Có bản cam kết 08/CK-TNCN",
+      "unionMember": "Là đoàn viên công đoàn",
+      "note": "Ghi chú",
+      "form": {
+        "title": "Thiết lập hồ sơ trả lương",
+        "titleChange": "Đề xuất đổi hồ sơ trả lương",
+        "hint": "Hồ sơ Đầy đủ đầu tiên có hiệu lực ngay. Đưa một người vào hồ sơ Đơn giản, hoặc chuyển giữa hai hồ sơ, cần Chủ sở hữu phê duyệt.",
+        "submit": "Gửi"
+      },
+      "proposalsTitle": "Đề xuất hồ sơ trả lương",
+      "proposalsDescription": "Chuyển một người giữa hồ sơ Đầy đủ và Đơn giản là một sự kiện nhân sự và chỉ có hiệu lực khi Chủ sở hữu phê duyệt.",
+      "noProposals": "Không có đề xuất nào đang chờ."
+    },
+    "rules": {
+      "status": {
+        "proposed": "Đề xuất",
+        "approved": "Đã duyệt",
+        "rejected": "Từ chối"
+      },
+      "waiting": "Chờ Chủ sở hữu quyết định",
+      "approve": "Phê duyệt",
+      "reject": "Từ chối"
+    },
+    "exposure": {
+      "title": "Hồ sơ Đơn giản — căn cứ và thời gian",
+      "description": "Mọi người đang nhận lương theo hồ sơ Đơn giản (không bảo hiểm, công đoàn, thuế; trả tiền mặt), không ẩn ai. Cờ đỏ là nơi căn cứ có thể đã hết hiệu lực — hãy trao đổi với kế toán trưởng.",
+      "contract": "Hợp đồng hiện tại",
+      "since": "Từ ngày",
+      "months": "Số tháng",
+      "flags": "Cần xem xét",
+      "contracts": {
+        "probation": "Thử việc",
+        "fixed_term": "HĐLĐ xác định thời hạn",
+        "indefinite": "HĐLĐ không xác định thời hạn",
+        "service": "Dịch vụ / CTV",
+        "internship": "Thực tập"
+      },
+      "flagLabels": {
+        "review_date_passed": "Đã đến ngày xem xét",
+        "probation_longer_than_limit": "Thử việc vượt thời hạn tối đa",
+        "short_term_longer_than_a_month": "“Ngắn hạn” đã quá 1 tháng",
+        "service_contract_with_labour_contract": "Căn cứ dịch vụ nhưng đang có HĐLĐ",
+        "no_basis_document": "Không có hợp đồng trên hồ sơ"
+      },
+      "empty": "Không có ai đang ở hồ sơ Đơn giản.",
+      "legalNote": "Lưu ý: người có HĐLĐ từ 1 tháng trở lên nhìn chung thuộc diện BHXH bắt buộc; thù lao CTV, lao động ngắn hạn nhìn chung phải khấu trừ thuế TNCN. Hệ thống ghi nhận và trả lương theo chỉ đạo của Chủ sở hữu và không ẩn những người này khỏi bất kỳ báo cáo nào."
+    },
+    "components": {
+      "title": "Danh mục khoản lương",
+      "description": "Mỗi dòng là một phiên bản có ngày hiệu lực. C&B đề xuất; phiên bản chỉ có hiệu lực sau khi Chủ sở hữu phê duyệt, và phiên bản đang áp dụng tự kết thúc vào ngày trước đó. Khoản riêng của pháp nhân thay cho khoản cùng mã của tập đoàn.",
+      "groupWide": "Toàn tập đoàn",
+      "scope": "Phạm vi",
+      "code": "Mã",
+      "name": "Tên",
+      "nameEn": "Tên tiếng Anh",
+      "sortOrder": "Thứ tự trên phiếu lương",
+      "kind": "Loại",
+      "kinds": {
+        "earning": "Thu nhập",
+        "deduction": "Khấu trừ",
+        "employer_cost": "Chi phí công ty"
+      },
+      "category": "Nhóm",
+      "categories": {
+        "salary": "Lương",
+        "allowance": "Phụ cấp",
+        "overtime": "Làm thêm / làm đêm",
+        "bonus": "Thưởng",
+        "commission": "Hoa hồng",
+        "thirteenth_month": "Lương tháng 13",
+        "holiday_bonus": "Thưởng lễ, Tết",
+        "leave_payout": "Thanh toán phép",
+        "retro": "Truy lĩnh / truy thu",
+        "insurance": "Bảo hiểm",
+        "pit": "Thuế TNCN",
+        "union": "Công đoàn",
+        "advance": "Tạm ứng",
+        "penalty": "Phạt",
+        "asset_compensation": "Bồi thường tài sản",
+        "loan": "Khoản vay",
+        "other": "Khác"
+      },
+      "source": "Nguồn số tiền",
+      "sources": {
+        "structure": "Cơ cấu lương của từng người",
+        "formula": "Công thức",
+        "engine": "Hệ thống tính theo luật",
+        "input": "Nhập theo từng kỳ lương"
+      },
+      "taxTreatment": "Thuế TNCN",
+      "taxTreatments": {
+        "taxable": "Chịu thuế",
+        "exempt": "Miễn thuế",
+        "exempt_up_to_cap": "Miễn thuế đến mức trần"
+      },
+      "exemptCap": "Mức miễn thuế mỗi tháng (đ)",
+      "proration": "Theo ngày công",
+      "prorations": {
+        "fixed": "Cố định",
+        "attendance": "Theo ngày công"
+      },
+      "roundingRule": "Quy tắc làm tròn",
+      "roundingRules": {
+        "half_up": "Đến đồng, 0,5 làm tròn lên",
+        "down": "Đến đồng, bỏ phần lẻ",
+        "up": "Đến đồng, làm tròn lên",
+        "half_up_to_hundred": "Đến trăm đồng, 0,5 lên",
+        "half_up_to_thousand": "Đến nghìn đồng, 0,5 lên",
+        "down_to_thousand": "Đến nghìn đồng, làm tròn xuống",
+        "up_to_thousand": "Đến nghìn đồng, làm tròn lên"
+      },
+      "subjectToInsurance": "Tính vào lương đóng bảo hiểm",
+      "insurable": "đóng BH",
+      "formula": "Công thức",
+      "formulaErrors": {
+        "too_long": "Công thức quá dài (tối đa 500 ký tự).",
+        "empty": "Công thức đang trống.",
+        "bad_character": "Ký tự không được phép",
+        "decimal_not_allowed": "Không dùng số thập phân — dùng điểm cơ bản (8% = 800) với pct().",
+        "division_operator": "Không có phép “/”: dùng div_half_up, div_down hoặc div_up để nói rõ cách làm tròn.",
+        "unexpected_token": "Không hiểu được chỗ này",
+        "unexpected_end": "Công thức kết thúc giữa chừng.",
+        "too_deep": "Lồng quá nhiều cấp.",
+        "too_many_nodes": "Công thức quá phức tạp.",
+        "unknown_variable": "Không có biến này",
+        "unknown_function": "Không có hàm này",
+        "wrong_argument_count": "Sai số lượng tham số của hàm",
+        "type_mismatch": "Lẫn giữa số và điều kiện đúng/sai ở",
+        "result_not_number": "Công thức phải cho ra một số tiền.",
+        "division_by_zero": "Chia cho 0.",
+        "overflow": "Số quá lớn.",
+        "missing_value": "Thiếu giá trị của"
+      },
+      "formulaPosition": "ký tự thứ {position}",
+      "formulaHelp": "Biến và hàm dùng được",
+      "formulaHelpText": "Chỉ số nguyên (VND, phút, phần trăm ngày công ×100, điểm cơ bản). Không có phép chia trần: mỗi phép chia phải nói rõ cách làm tròn. Khoản khác được đọc bằng c_<mã viết thường>.",
+      "note": "Ghi chú / căn cứ",
+      "validFrom": "Hiệu lực từ",
+      "propose": {
+        "title": "Đề xuất khoản mới hoặc phiên bản mới",
+        "hint": "Dùng lại mã đã có để đề xuất phiên bản mới của khoản đó. Công thức được kiểm tra ngay khi gửi.",
+        "submit": "Gửi đề xuất",
+        "saved": "Đã gửi — chờ Chủ sở hữu phê duyệt."
+      }
+    },
+    "policy": {
+      "title": "Chính sách tính lương",
+      "description": "Những lựa chọn luật để cho công ty quyết định. Thuế suất, mức trần và các con số pháp định nằm ở Quản trị → Tham số pháp định.",
+      "groupWide": "Mặc định của tập đoàn",
+      "scope": "Phạm vi",
+      "validFrom": "Hiệu lực từ",
+      "note": "Ghi chú",
+      "empty": "Chưa có chính sách nào — không thể chạy lương khi thiếu chính sách.",
+      "yes": "Có",
+      "no": "Không",
+      "fields": {
+        "prorationBasis": "Chia lương theo",
+        "fixedDays": "Số ngày cố định",
+        "hoursPerDay": "Giờ công chuẩn mỗi ngày",
+        "overtimeBase": "Đơn giá làm thêm tính trên",
+        "unionEnabled": "Pháp nhân có công đoàn",
+        "simplePitTreatment": "Thuế TNCN của hồ sơ Đơn giản",
+        "varianceThresholdBp": "Ngưỡng cảnh báo chênh lệch thực lĩnh (điểm cơ bản, 1000 = 10%)",
+        "payDay": "Ngày trả lương",
+        "payDayShift": "Khi trùng ngày ngân hàng nghỉ"
+      },
+      "options": {
+        "prorationBasis": {
+          "working_days": "Ngày công chuẩn của tháng",
+          "calendar_days": "Ngày dương lịch",
+          "fixed_days": "Số ngày cố định (ví dụ 26)"
+        },
+        "overtimeBase": {
+          "base_salary": "Lương cơ bản",
+          "base_plus_insurable_allowances": "Lương cơ bản + phụ cấp tính đóng BH"
+        },
+        "simplePitTreatment": {
+          "none": "Không khấu trừ",
+          "flat_withholding": "Khấu trừ theo tỷ lệ cố định"
+        },
+        "payDayShift": {
+          "previous_working_day": "Trả sớm vào ngày làm việc liền trước",
+          "next_working_day": "Trả vào ngày làm việc kế tiếp"
+        }
+      },
+      "propose": {
+        "title": "Đề xuất chính sách mới",
+        "hint": "Bắt đầu từ chính sách đang áp dụng của tập đoàn. Chỉ có hiệu lực sau khi Chủ sở hữu phê duyệt.",
+        "submit": "Gửi đề xuất",
+        "saved": "Đã gửi — chờ Chủ sở hữu phê duyệt."
+      }
+    },
+    "decision": {
+      "number": "Số: {number}",
+      "republic": "Cộng hòa Xã hội Chủ nghĩa Việt Nam",
+      "motto": "Độc lập – Tự do – Hạnh phúc",
+      "title": "Quyết định về việc điều chỉnh lương",
+      "titleInitial": "Quyết định về việc xếp lương",
+      "basis": "Căn cứ Bộ luật Lao động, hợp đồng lao động đã ký, quy chế lương của công ty và đề nghị của bộ phận Nhân sự – C&B;",
+      "article1": "Điều 1. Áp dụng mức lương và phụ cấp dưới đây cho Ông/Bà {name} (mã nhân viên {code}) kể từ ngày {date}:",
+      "component": "Khoản (VND/tháng, gross)",
+      "before": "Trước",
+      "after": "Từ ngày hiệu lực",
+      "baseSalary": "Lương cơ bản",
+      "insuranceSalary": "Mức lương đóng bảo hiểm",
+      "article2": "Điều 2. Các chế độ khác thực hiện theo hợp đồng lao động và quy chế của công ty.",
+      "article3": "Điều 3. Bộ phận Nhân sự – C&B, Kế toán và Ông/Bà có tên tại Điều 1 chịu trách nhiệm thi hành quyết định này.",
+      "signatory": "Người đại diện theo pháp luật",
+      "signHint": "(ký, ghi rõ họ tên, đóng dấu)",
+      "printHint": "Văn bản được tạo từ cơ cấu lương đã duyệt (người duyệt trên hệ thống: {approver}). In từ trình duyệt; hệ thống không lưu bản in."
+    },
+    "errors": {
+      "generic": "Không thực hiện được. Vui lòng thử lại.",
+      "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+      "invalid": "Dữ liệu chưa hợp lệ. Kiểm tra lại các ô được đánh dấu.",
+      "unauthenticated": "Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.",
+      "step_up_required": "Cần xác thực lại trước khi thao tác với dữ liệu lương. Tải lại trang để xác thực.",
+      "component_formula_required": "Khoản tính bằng công thức phải có công thức.",
+      "component_formula_not_allowed": "Chỉ khoản có nguồn “Công thức” mới được có công thức.",
+      "component_formula_invalid": "Công thức chưa hợp lệ.",
+      "component_formula_reads_itself": "Công thức không được đọc chính khoản của nó.",
+      "component_cap_required": "Cần nhập mức miễn thuế mỗi tháng.",
+      "component_cap_not_allowed": "Chỉ nhập mức trần khi chọn “Miễn thuế đến mức trần”.",
+      "component_rounding_rule_unknown": "Quy tắc làm tròn không tồn tại.",
+      "component_kind_fixed": "Mã này đã được dùng với loại hoặc nguồn khác; phiên bản mới phải giữ nguyên.",
+      "proposal_not_found": "Không tìm thấy đề xuất đang chờ.",
+      "rule_version_exists": "Đã có phiên bản hiệu lực từ đúng ngày này.",
+      "rule_before_current_version": "Ngày hiệu lực phải sau ngày bắt đầu của phiên bản đang áp dụng.",
+      "payroll_policy_missing": "Chưa có chính sách tính lương được duyệt cho thời điểm này.",
+      "policy_invalid": "Giá trị chính sách chưa hợp lệ.",
+      "policy_fixed_days": "Chỉ nhập số ngày cố định khi chia lương theo số ngày cố định.",
+      "profile_basis_required": "Hồ sơ Đơn giản cần có căn cứ; hồ sơ Đầy đủ thì không.",
+      "profile_review_date_simple_only": "Ngày xem xét lại chỉ dùng cho hồ sơ Đơn giản.",
+      "profile_non_resident_method": "Cách tính thuế không khớp với tình trạng cư trú.",
+      "person_without_employment": "Người này chưa có quan hệ lao động với pháp nhân nào.",
+      "profile_before_employment": "Ngày hiệu lực trước ngày vào làm.",
+      "profile_proposal_open": "Đang có một đề xuất hồ sơ chờ duyệt.",
+      "salary_terms_invalid": "Số tiền chưa hợp lệ.",
+      "salary_allowance_unknown": "Phụ cấp không có trong danh mục của pháp nhân tại ngày hiệu lực:",
+      "salary_version_exists": "Đã có cơ cấu lương hiệu lực từ đúng ngày này.",
+      "salary_before_current_version": "Ngày hiệu lực phải sau ngày bắt đầu của cơ cấu lương hiện tại.",
+      "salary_before_employment": "Ngày hiệu lực trước ngày vào làm.",
+      "salary_change_open": "Người này đang có một đề xuất lương chờ xử lý.",
+      "approval_not_found": "Không tìm thấy đề xuất.",
+      "approval_not_pending": "Đề xuất không còn chờ duyệt.",
+      "approval_not_assignee": "Chưa đến lượt bạn duyệt đề xuất này.",
+      "approval_not_requester": "Chỉ người đề xuất mới làm được việc này.",
+      "approval_own_request": "Không thể tự duyệt đề xuất của mình.",
+      "approval_comment_required": "Hãy ghi lý do khi trả lại hoặc từ chối.",
+      "approval_no_approver": "Không tìm thấy người duyệt.",
+      "statutory_parameter_missing": "Thiếu tham số pháp định cho kỳ này."
     }
   }
 }

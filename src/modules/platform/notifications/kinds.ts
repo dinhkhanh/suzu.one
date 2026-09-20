@@ -1,7 +1,7 @@
 // The catalogue of notifications. Plain module: shared by the server and the preferences screen.
 // Wording lives in messages/*.json under `notifications.kinds.<kind>` (dots become underscores).
 
-export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks", "attendance", "ops", "kb", "comms"] as const;
+export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks", "attendance", "ops", "kb", "comms", "payroll"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const EMAIL_CHANNELS = ["instant", "digest", "off"] as const;
@@ -26,6 +26,9 @@ export const CATEGORY_DEFINITIONS: Record<Category, { defaults: ChannelChoice; /
   kb: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false },
   // Announcements and kudos (Phase 4): in the app and on the phone at once, by email once a day.
   comms: { defaults: { inApp: true, email: "digest", push: true }, mandatory: false },
+  // Payroll (Phase 5): something to decide or a payslip to read. Never an amount — a notification
+  // is read on lock screens and in mailboxes.
+  payroll: { defaults: { inApp: true, email: "instant", push: true }, mandatory: false },
 };
 
 export const KINDS = {
@@ -72,6 +75,9 @@ export const KINDS = {
   "kb.review_due": "kb",
   "comms.announcement": "comms",
   "comms.kudos_received": "comms",
+  // Rule governance (FR-PLT-39) for pay components and pay policies, and a move between pay profiles: to the owners.
+  "payroll.rule_proposed": "payroll",
+  "payroll.profile_proposed": "payroll",
 } as const satisfies Record<string, Category>;
 export type Kind = keyof typeof KINDS;
 

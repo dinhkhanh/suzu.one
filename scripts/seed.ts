@@ -6,7 +6,7 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { and, between, inArray, isNull } from "drizzle-orm";
-import { attendancePolicy, companyValue, kbTemplate, kpiDefinition, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
+import { attendancePolicy, payComponent, payrollPolicy, companyValue, kbTemplate, kpiDefinition, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
 import { PROFILE_SEED } from "../src/modules/attendance/engine/device-log";
 import { CALENDAR_SEED, DEFAULT_POLICY_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 import { leaveSeedRows } from "../src/modules/leave/seed-types";
@@ -17,6 +17,8 @@ import { kbTemplateSeedRows } from "../src/modules/kb/seed-templates";
 import { kpiSeedRows } from "../src/modules/performance/seed-kpis";
 import { WORK_TEMPLATE_SEED } from "../src/modules/work/seed-templates";
 import { STATUTORY_SEED } from "../src/modules/platform/statutory/seed-values";
+import { DEFAULT_PAYROLL_POLICY } from "../src/modules/payroll/enums";
+import { PAY_COMPONENT_SEED_VALID_FROM, payComponentSeedRows } from "../src/modules/payroll/seed-components";
 
 config({ path: ".env.local" });
 
@@ -56,6 +58,15 @@ async function main() {
   const missing = STATUTORY_SEED.filter((seed) => !present.has(seed.key));
   if (missing.length) await db.insert(statutoryParameter).values(missing.map((seed) => ({ ...seed, status: "approved" as const, isVerified: false })));
   console.log(`Seeded ${missing.length} statutory parameters (unverified until the chief accountant confirms them).`);
+
+  // Pay component catalogue (FR-PAY-02): only codes that have no version at all, so nothing C&B
+  // proposed or the owner approved is touched. The group's default pay policy: only when there is none.
+  const componentCodes = new Set((await db.selectDistinct({ code: payComponent.code }).from(payComponent)).map((row) => row.code));
+  const newComponents = payComponentSeedRows().filter((row) => !componentCodes.has(row.code));
+  if (newComponents.length) await db.insert(payComponent).values(newComponents);
+  const [anyPayPolicy] = await db.select({ id: payrollPolicy.id }).from(payrollPolicy).limit(1);
+  if (!anyPayPolicy) await db.insert(payrollPolicy).values({ entityId: null, value: DEFAULT_PAYROLL_POLICY, validFrom: PAY_COMPONENT_SEED_VALID_FROM, status: "approved", note: "Mặc định khởi tạo — Chủ sở hữu rà soát trước kỳ lương đầu tiên." });
+  console.log(`Seeded ${newComponents.length} pay components${anyPayPolicy ? "" : " and the group's default pay policy"} (starting points for the chief accountant and the owner to confirm).`);
 
   // Starter checklists: only for a purpose that has no template at all, so nothing HR wrote is touched.
   const purposes = new Set((await db.selectDistinct({ purpose: taskTemplate.purpose }).from(taskTemplate)).map((row) => row.purpose));

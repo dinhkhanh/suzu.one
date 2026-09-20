@@ -598,7 +598,9 @@
         "tasks": "Tasks assigned to you",
         "attendance": "Attendance & timesheets",
         "ops": "Compliance obligations",
-        "kb": "Knowledge base & policies"
+        "kb": "Knowledge base & policies",
+        "comms": "Announcements & kudos",
+        "payroll": "Pay & payroll"
       },
       "push": "Push"
     },
@@ -758,6 +760,14 @@
       "comms_kudos_received": {
         "title": "{name} gave you kudos",
         "body": "{name} thanked you for “{value}”."
+      },
+      "payroll_rule_proposed": {
+        "title": "A pay rule change is proposed",
+        "body": "{rule} has a proposed change effective {validFrom}. It takes effect only after you approve it."
+      },
+      "payroll_profile_proposed": {
+        "title": "A pay profile change is proposed",
+        "body": "A pay profile change for {person} effective {validFrom} is waiting for your decision."
       }
     },
     "errors": {
@@ -837,6 +847,9 @@
       "leave_annual": "Annual leave",
       "probation_limits": "Probation",
       "contract_fixed_term": "Fixed-term contracts",
+      "union_dues_cap": "Union – cap on member dues",
+      "insurance_unpaid_leave_threshold": "Insurance – unpaid days in a month above which nothing is contributed",
+      "pit_overtime_exemption": "PIT – exempt part of overtime and night pay",
       "hr_alert_thresholds": "HR alert countdowns (days ahead)",
       "work_night_window": "Night work hours"
     },
@@ -988,7 +1001,8 @@
       "remote_work": "Remote / off-site work",
       "overtime": "Overtime",
       "holiday_work": "Holiday / rest-day work",
-      "kb_publish": "Knowledge-base page review"
+      "kb_publish": "Knowledge-base page review",
+      "salary_change": "Salary change"
     },
     "status": {
       "pending": "Waiting for approval",
@@ -1343,6 +1357,7 @@
       "transfer": "Transfer",
       "promotion": "Promotion / appointment",
       "salary_change": "Salary change",
+      "pay_profile_change": "Pay profile change",
       "discipline": "Disciplinary action",
       "reward": "Reward",
       "long_leave": "Long leave (maternity, unpaid…)",
@@ -4377,6 +4392,389 @@
       "generic": "Could not confirm. Please try again.",
       "forbidden": "This way of confirming is not enabled.",
       "rejected": "Google could not confirm that sign-in. Try again with the account you are using here."
+    }
+  },
+  "payroll": {
+    "title": "Pay",
+    "description": "Your own pay file and — if you hold a payroll role — the C&B desk. Every screen here asks for a recent re-authentication.",
+    "desk": {
+      "mine": {
+        "title": "My pay file",
+        "description": "Your salary, allowances and their history."
+      },
+      "salaries": {
+        "title": "Salary structures",
+        "description": "Base salary, insurance salary, allowances; propose salary changes."
+      },
+      "profiles": {
+        "title": "Pay profiles",
+        "description": "Moves between the Statutory and Simple profiles waiting for the owner."
+      },
+      "simpleReport": {
+        "title": "Simple-profile report",
+        "description": "Who is paid without insurance or tax, on what basis and for how long. Owner only."
+      },
+      "components": {
+        "title": "Pay components",
+        "description": "Earnings, deductions, employer costs; formulas; tax and insurance attributes."
+      },
+      "policy": {
+        "title": "Pay policy",
+        "description": "Pro-rating, union, the Simple profile's tax, the variance threshold, pay day."
+      }
+    },
+    "salaries": {
+      "title": "Salary structures",
+      "description": "Only people of the entities you run C&B for. Amounts are encrypted at rest.",
+      "search": "Search by name",
+      "allEntities": "All entities",
+      "filter": "Filter",
+      "person": "Person",
+      "entity": "Entity",
+      "baseSalary": "Base salary",
+      "insuranceSalary": "Insurance salary",
+      "allowances": "Allowances",
+      "validFrom": "Effective from",
+      "openChange": "change pending",
+      "noProfile": "No pay profile",
+      "noStructure": "No salary structure",
+      "empty": "Nobody within your reach.",
+      "open": "now",
+      "history": "Salary history",
+      "decision": "Decision no. {number}",
+      "requests": "Change requests",
+      "noRequests": "No requests yet.",
+      "requestStatus": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "returned": "Returned",
+        "withdrawn": "Withdrawn",
+        "cancelled": "Cancelled"
+      },
+      "changeOpen": "A request is still open; a new one can start once it is settled.",
+      "reason": "Reason",
+      "note": "Note (approvers only)",
+      "reasons": {
+        "initial": "Initial salary",
+        "probation_end": "Salary after probation",
+        "raise": "Raise",
+        "promotion": "Promotion",
+        "adjustment": "Adjustment",
+        "contract_renewal": "Contract renewal"
+      },
+      "form": {
+        "title": "Propose a salary change",
+        "titleInitial": "Set the initial salary",
+        "hint": "Monthly gross amounts in VND. Nothing takes effect until approved; the current structure then ends the day before.",
+        "submit": "Submit",
+        "resubmit": "Resubmit"
+      },
+      "decide": {
+        "title": "Decision",
+        "comment": "Comment (required to return or reject)",
+        "approve": "Approve",
+        "return": "Return for changes",
+        "reject": "Reject"
+      },
+      "withdraw": "Withdraw",
+      "requestedBy": "Requested by {name}",
+      "effective": "effective {date}",
+      "component": "Component",
+      "currentTerms": "Current",
+      "proposedTerms": "Proposed",
+      "figuresHidden": "You are not allowed to see the figures of this request.",
+      "steps": "Approval steps"
+    },
+    "profiles": {
+      "title": "Pay profile",
+      "profile": "Profile",
+      "kinds": {
+        "statutory": "Statutory (insurance + tax, bank)",
+        "simple": "Simple (salary only, cash)"
+      },
+      "basis": "Basis",
+      "bases": {
+        "probation": "Probation",
+        "internship": "Internship",
+        "service_contract": "Service / collaborator contract",
+        "short_term": "Short-term under one month",
+        "retiree": "Retiree",
+        "other": "Other"
+      },
+      "reviewDate": "Review date",
+      "validFrom": "Effective from",
+      "taxResidency": "Tax residency",
+      "residencies": {
+        "resident": "Resident",
+        "non_resident": "Non-resident"
+      },
+      "pitMethod": "PIT method",
+      "pitMethods": {
+        "progressive": "Progressive",
+        "flat_without_contract": "Flat withholding (no / short contract)",
+        "flat_non_resident": "Non-resident flat rate"
+      },
+      "insuranceExemption": "Compulsory insurance",
+      "insuranceFull": "Contributes in full",
+      "exemptions": {
+        "probation": "None — on probation",
+        "retiree": "None — retiree",
+        "insured_elsewhere": "None — insured at another employer",
+        "foreigner": "Foreigner — special rules",
+        "other": "None — other reason"
+      },
+      "pitCommitment": "Commitment form 08/CK-TNCN on file",
+      "unionMember": "Union member",
+      "note": "Note",
+      "form": {
+        "title": "Set the pay profile",
+        "titleChange": "Propose a pay profile change",
+        "hint": "A first Statutory profile takes effect at once. Putting someone on the Simple profile, or moving between profiles, needs the owner's approval.",
+        "submit": "Submit"
+      },
+      "proposalsTitle": "Pay profile proposals",
+      "proposalsDescription": "Moving a person between the Statutory and Simple profiles is a lifecycle event and takes effect only with the owner's approval.",
+      "noProposals": "Nothing is waiting."
+    },
+    "rules": {
+      "status": {
+        "proposed": "Proposed",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      },
+      "waiting": "Waiting for the owner",
+      "approve": "Approve",
+      "reject": "Reject"
+    },
+    "exposure": {
+      "title": "Simple profile — basis and time on it",
+      "description": "Everyone paid under the Simple profile (no insurance, union or tax; cash), nobody left out. A red flag marks a basis that may have run out — talk to the chief accountant.",
+      "contract": "Current contract",
+      "since": "Since",
+      "months": "Months",
+      "flags": "To review",
+      "contracts": {
+        "probation": "Probation",
+        "fixed_term": "Fixed-term",
+        "indefinite": "Indefinite",
+        "service": "Service",
+        "internship": "Internship"
+      },
+      "flagLabels": {
+        "review_date_passed": "Review date passed",
+        "probation_longer_than_limit": "Probation past the legal maximum",
+        "short_term_longer_than_a_month": "“Short-term” has lasted a month",
+        "service_contract_with_labour_contract": "Service basis but a labour contract is in force",
+        "no_basis_document": "No contract on file"
+      },
+      "empty": "Nobody is on the Simple profile.",
+      "legalNote": "Note: a person on a labour contract of one month or more generally falls under compulsory social insurance; payments to collaborators and short-term workers generally carry PIT withholding. The system records and pays as the owner directs and hides these people from no report."
+    },
+    "components": {
+      "title": "Pay components",
+      "description": "Each row is an effective-dated version. C&B proposes; a version takes effect only once the owner approves, and the one in force then ends the day before. An entity's own component replaces the group's of the same code.",
+      "groupWide": "Group-wide",
+      "scope": "Scope",
+      "code": "Code",
+      "name": "Name",
+      "nameEn": "English name",
+      "sortOrder": "Order on the payslip",
+      "kind": "Kind",
+      "kinds": {
+        "earning": "Earning",
+        "deduction": "Deduction",
+        "employer_cost": "Employer cost"
+      },
+      "category": "Category",
+      "categories": {
+        "salary": "Salary",
+        "allowance": "Allowance",
+        "overtime": "Overtime / night",
+        "bonus": "Bonus",
+        "commission": "Commission",
+        "thirteenth_month": "13th month",
+        "holiday_bonus": "Holiday bonus",
+        "leave_payout": "Leave payout",
+        "retro": "Retro",
+        "insurance": "Insurance",
+        "pit": "PIT",
+        "union": "Union",
+        "advance": "Advance",
+        "penalty": "Penalty",
+        "asset_compensation": "Asset compensation",
+        "loan": "Loan",
+        "other": "Other"
+      },
+      "source": "Amount comes from",
+      "sources": {
+        "structure": "The person's salary structure",
+        "formula": "A formula",
+        "engine": "The engine (statutory)",
+        "input": "Typed into each run"
+      },
+      "taxTreatment": "PIT",
+      "taxTreatments": {
+        "taxable": "Taxable",
+        "exempt": "Exempt",
+        "exempt_up_to_cap": "Exempt up to a cap"
+      },
+      "exemptCap": "Monthly exempt amount (VND)",
+      "proration": "Pro-rating",
+      "prorations": {
+        "fixed": "Fixed",
+        "attendance": "By attendance"
+      },
+      "roundingRule": "Rounding rule",
+      "roundingRules": {
+        "half_up": "To the đồng, halves up",
+        "down": "To the đồng, down",
+        "up": "To the đồng, up",
+        "half_up_to_hundred": "To 100, halves up",
+        "half_up_to_thousand": "To 1,000, halves up",
+        "down_to_thousand": "To 1,000, down",
+        "up_to_thousand": "To 1,000, up"
+      },
+      "subjectToInsurance": "Counts towards insurance salary",
+      "insurable": "insurable",
+      "formula": "Formula",
+      "formulaErrors": {
+        "too_long": "The formula is too long (500 characters at most).",
+        "empty": "The formula is empty.",
+        "bad_character": "Character not allowed",
+        "decimal_not_allowed": "No decimals — use basis points (8% = 800) with pct().",
+        "division_operator": "There is no “/”: use div_half_up, div_down or div_up so the rounding is explicit.",
+        "unexpected_token": "Unexpected here",
+        "unexpected_end": "The formula ends too early.",
+        "too_deep": "Nested too deeply.",
+        "too_many_nodes": "The formula is too complex.",
+        "unknown_variable": "Unknown variable",
+        "unknown_function": "Unknown function",
+        "wrong_argument_count": "Wrong number of arguments for",
+        "type_mismatch": "Numbers and conditions are mixed up at",
+        "result_not_number": "The formula must produce an amount.",
+        "division_by_zero": "Division by zero.",
+        "overflow": "Number too large.",
+        "missing_value": "No value for"
+      },
+      "formulaPosition": "character {position}",
+      "formulaHelp": "Variables and functions",
+      "formulaHelpText": "Integers only (VND, minutes, hundredths of a day, basis points). No bare division: every division says how it rounds. Another component is read as c_<code in lowercase>.",
+      "note": "Note / reference",
+      "validFrom": "Effective from",
+      "propose": {
+        "title": "Propose a component or a new version",
+        "hint": "Reuse an existing code to propose its next version. A formula is checked when you submit.",
+        "submit": "Propose",
+        "saved": "Sent — waiting for the owner."
+      }
+    },
+    "policy": {
+      "title": "Pay policy",
+      "description": "The choices the law leaves to the company. Rates, caps and other legal figures live in Admin → Statutory parameters.",
+      "groupWide": "Group default",
+      "scope": "Scope",
+      "validFrom": "Effective from",
+      "note": "Note",
+      "empty": "No policy yet — payroll cannot run without one.",
+      "yes": "Yes",
+      "no": "No",
+      "fields": {
+        "prorationBasis": "Pro-rate by",
+        "fixedDays": "Fixed days",
+        "hoursPerDay": "Standard hours per day",
+        "overtimeBase": "Overtime rate is based on",
+        "unionEnabled": "The entity has a union",
+        "simplePitTreatment": "PIT under the Simple profile",
+        "varianceThresholdBp": "Net variance threshold (basis points, 1000 = 10%)",
+        "payDay": "Pay day",
+        "payDayShift": "When the bank is closed that day"
+      },
+      "options": {
+        "prorationBasis": {
+          "working_days": "The month's working days",
+          "calendar_days": "Calendar days",
+          "fixed_days": "A fixed number of days (e.g. 26)"
+        },
+        "overtimeBase": {
+          "base_salary": "Base salary",
+          "base_plus_insurable_allowances": "Base + insurable allowances"
+        },
+        "simplePitTreatment": {
+          "none": "None",
+          "flat_withholding": "Flat withholding"
+        },
+        "payDayShift": {
+          "previous_working_day": "Previous working day",
+          "next_working_day": "Next working day"
+        }
+      },
+      "propose": {
+        "title": "Propose a new policy",
+        "hint": "Starts from the group's policy in force. Takes effect only once the owner approves.",
+        "submit": "Propose",
+        "saved": "Sent — waiting for the owner."
+      }
+    },
+    "decision": {
+      "number": "No. {number}",
+      "republic": "Socialist Republic of Viet Nam",
+      "motto": "Independence – Freedom – Happiness",
+      "title": "Decision on a salary adjustment",
+      "titleInitial": "Decision on the starting salary",
+      "basis": "Pursuant to the Labour Code, the signed labour contract, the company's pay regulations and the proposal of HR – C&B;",
+      "article1": "Article 1. The salary and allowances below apply to Mr/Ms {name} (employee code {code}) from {date}:",
+      "component": "Component (VND per month, gross)",
+      "before": "Before",
+      "after": "From the effective date",
+      "baseSalary": "Base salary",
+      "insuranceSalary": "Insurance salary",
+      "article2": "Article 2. All other terms follow the labour contract and company regulations.",
+      "article3": "Article 3. HR – C&B, Accounting and the person named in Article 1 are responsible for carrying out this decision.",
+      "signatory": "Legal representative",
+      "signHint": "(signature, full name, seal)",
+      "printHint": "Generated from the approved structure (approved in the system by {approver}). Print from the browser; no copy is stored."
+    },
+    "errors": {
+      "generic": "That did not work. Please try again.",
+      "forbidden": "You are not allowed to do this.",
+      "invalid": "Some fields are not valid. Check the marked ones.",
+      "unauthenticated": "Your session has ended. Please sign in again.",
+      "step_up_required": "Confirm it is you before working with pay data. Reload the page to do so.",
+      "component_formula_required": "A formula component needs a formula.",
+      "component_formula_not_allowed": "Only a component whose amount comes from a formula may have one.",
+      "component_formula_invalid": "The formula is not valid.",
+      "component_formula_reads_itself": "A formula cannot read its own component.",
+      "component_cap_required": "Enter the monthly exempt amount.",
+      "component_cap_not_allowed": "A cap goes only with “Exempt up to a cap”.",
+      "component_rounding_rule_unknown": "Unknown rounding rule.",
+      "component_kind_fixed": "This code already exists with another kind or source; a new version must keep them.",
+      "proposal_not_found": "No such pending proposal.",
+      "rule_version_exists": "A version already starts on that day.",
+      "rule_before_current_version": "The effective date must be after the start of the version in force.",
+      "payroll_policy_missing": "No approved pay policy for that date.",
+      "policy_invalid": "The policy values are not valid.",
+      "policy_fixed_days": "Fixed days go only with pro-rating by a fixed number of days.",
+      "profile_basis_required": "The Simple profile needs a basis; the Statutory profile has none.",
+      "profile_review_date_simple_only": "A review date is for the Simple profile only.",
+      "profile_non_resident_method": "The PIT method does not match the tax residency.",
+      "person_without_employment": "This person has no employment.",
+      "profile_before_employment": "The date is before the employment starts.",
+      "profile_proposal_open": "A profile proposal is already waiting.",
+      "salary_terms_invalid": "The amounts are not valid.",
+      "salary_allowance_unknown": "Allowance not in the entity's catalogue on that date:",
+      "salary_version_exists": "A structure already starts on that day.",
+      "salary_before_current_version": "The date must be after the current structure's start.",
+      "salary_before_employment": "The date is before the employment starts.",
+      "salary_change_open": "This person already has an open salary request.",
+      "approval_not_found": "Request not found.",
+      "approval_not_pending": "The request is no longer pending.",
+      "approval_not_assignee": "It is not your turn to answer this request.",
+      "approval_not_requester": "Only the requester can do this.",
+      "approval_own_request": "You cannot answer your own request.",
+      "approval_comment_required": "Say why when returning or rejecting.",
+      "approval_no_approver": "No approver could be found.",
+      "statutory_parameter_missing": "A statutory parameter is missing for this period."
     }
   }
 }

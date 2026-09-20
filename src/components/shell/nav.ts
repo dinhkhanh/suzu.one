@@ -23,7 +23,8 @@ export function navFor(principal: Principal, open: { people: boolean }): { main:
     { key: "performance", href: "/performance" },
     // The knowledge base: which spaces open is decided by their access rows, on the pages.
     { key: "kb", href: "/kb" },
-    { key: "payroll", phase: 5 },
+    // Pay: everyone has their own pay file; the desk behind it is decided on the pages.
+    { key: "payroll", href: "/payroll" },
   ];
   // Navigation visibility only. Every page and action re-checks permissions itself.
   const admin: NavItem[] = [

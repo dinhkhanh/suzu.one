@@ -302,6 +302,8 @@ export const lifecycleEventType = pgEnum("lifecycle_event_type", [
   "transfer",
   "promotion",
   "salary_change",
+  // A move between the Statutory and Simple pay profiles (SRS D18, FR-PAY-07); written by payroll.
+  "pay_profile_change",
   "discipline",
   "reward",
   "long_leave",

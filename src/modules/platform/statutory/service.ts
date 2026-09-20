@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
@@ -19,6 +19,24 @@ export async function getParameter<Key extends ParameterKey>(key: Key, date: Iso
   const version = versionOn(approved, date);
   if (!version) throw new Error(`No approved statutory parameter "${key}" on ${date}`);
   return PARAMETERS[key].parse(version.value) as ParameterValue<Key>;
+}
+
+export type ParameterSnapshot = { [Key in ParameterKey]?: { id: string; value: ParameterValue<Key>; validFrom: IsoDate; isVerified: boolean } };
+
+/**
+ * The approved versions of several parameters in force on `date`, with their version ids — what a
+ * payroll run stores so that a payslip can be reproduced (FR-PAY-20). A key with no version in
+ * force is simply absent; the caller decides whether that is fatal.
+ */
+export async function getParameterSnapshot(keys: readonly ParameterKey[], date: IsoDate, executor: Tx | ReturnType<typeof db> = db()): Promise<ParameterSnapshot> {
+  if (keys.length === 0) return {};
+  const approved = await executor.select().from(schema.statutoryParameter).where(and(inArray(schema.statutoryParameter.key, [...keys]), eq(schema.statutoryParameter.status, "approved")));
+  const snapshot: Record<string, unknown> = {};
+  for (const key of keys) {
+    const version = versionOn(approved.filter((row) => row.key === key), date);
+    if (version) snapshot[key] = { id: version.id, value: PARAMETERS[key].parse(version.value), validFrom: version.validFrom, isVerified: version.isVerified };
+  }
+  return snapshot as ParameterSnapshot;
 }
 
 /** Every version of every parameter, newest first within a key. */

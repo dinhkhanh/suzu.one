@@ -15,6 +15,12 @@ export const PARAMETERS = {
   "insurance.reference_level": z.object({ amount: vnd }),
   "insurance.cap_multipliers": z.object({ bhxhBhyt: count, bhtn: count }),
   "union.rates": z.object({ employerFund: basisPoints, memberDues: basisPoints }),
+  // Member dues stop at a share of the reference level (payroll, Phase 5).
+  "union.dues_cap": z.object({ referenceLevelShare: basisPoints }),
+  // A month with this many unpaid working days (or more) carries no compulsory insurance at all.
+  "insurance.unpaid_leave_threshold": z.object({ workingDays: count }),
+  // What part of overtime and night pay is exempt from PIT: only what exceeds ordinary-hours pay, or all of it.
+  "pit.overtime_exemption": z.object({ mode: z.enum(["premium_only", "full"]) }),
   "wage.regional_minimum": z.object({ region1: vnd, region2: vnd, region3: vnd, region4: vnd }),
   "pit.deductions": z.object({ personal: vnd, dependent: vnd }),
   // Monthly assessable income. Ascending; the last bracket has no upper bound.
