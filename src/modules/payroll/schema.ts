@@ -730,8 +730,9 @@ export const bonusRunLine = pgTable(
     eligible: boolean("eligible").notNull().default(true),
     /** Why not: "workforce_type", "service_too_short", … A name, never a sentence about pay. */
     exclusionReason: text("exclusion_reason"),
-    /** The band and multiplier are numbers about performance, not money: they stay readable. */
+    /** The band is a number about performance, not money: it stays readable. */
     bandKey: text("band_key"),
+    /** Service × performance × unit OKR after the cap — the multiple of a month's salary paid. */
     multiplierBp: integer("multiplier_bp"),
     serviceMonths: integer("service_months"),
     finalScoreBp: integer("final_score_bp"),

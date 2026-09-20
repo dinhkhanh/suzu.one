@@ -4,8 +4,11 @@ import { todayInVietnam } from "@/lib/dates";
 import {
   canComputeResults,
   canOverrideResult,
+  canDecideOutcome,
+  canRaiseOutcome,
   canReadResultOf,
   canSettleResultOf,
+  listOutcomes,
   type DirectoryPerson,
   getPublishedResult,
   hasWeighting,
@@ -19,6 +22,7 @@ import {
 import { PerformanceNav, readYear, yearChoices } from "@/modules/performance/ui/nav";
 import { BandBadge, percentText, ResultTraceTable, StatusBadge } from "@/modules/performance/ui/result";
 import { ComputeResultsForm, OverrideResultForm, RecomputeResultForm, ResultStepForm } from "@/modules/performance/ui/result-forms";
+import { OutcomeDecisionButtons, RaiseOutcomeForm } from "@/modules/performance/ui/one-on-one-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import Link from "next/link";
 
@@ -40,6 +44,9 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
   const [t, format, locale, directory] = await Promise.all([getTranslations("performance.results"), getFormatter(), getLocale(), loadDirectory()]);
 
   const mine = await getPublishedResult(user.person.id, year);
+  // What each settled result has led to (FR-PRF-06): a promotion, a salary proposal, a plan.
+  const outcomes = await listOutcomes({ year });
+  const tOutcome = await getTranslations("performance.oneOnOnes.outcomes");
   // Everything the viewer may read: the policy decides person by person, not by a query filter.
   const all = await listResults({ year });
   const readable = all.filter((line) => {
@@ -138,6 +145,36 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
                     {maySettle && line.status !== "draft" ? <ResultStepForm resultId={line.id} step="unlock" /> : null}
                   </div>
                   {mayOverride && line.status === "draft" ? <OverrideResultForm resultId={line.id} currentPercent={row?.overrideScoreBp === null || row === null ? "" : String(row.overrideScoreBp / 100)} reason={row?.overrideReason ?? ""} /> : null}
+
+                  {/* FR-PRF-06: what this result leads to. A salary adjustment goes out through
+                      payroll's own approval; the others raise a task for HR. */}
+                  {(() => {
+                    const own = outcomes.filter((outcome) => outcome.row.personId === line.personId);
+                    const mayDecide = canDecideOutcome(user.principal, person);
+                    if (own.length === 0 && !(line.status !== "draft" && canRaiseOutcome(user.principal, person))) return null;
+                    return (
+                      <div className="flex flex-col gap-2 border-t pt-2">
+                        {own.map((outcome) => (
+                          <div key={outcome.row.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                            <span>
+                              {tOutcome(`type.${outcome.row.type as "promotion"}`)}
+                              <span className="ml-2 text-xs text-muted-foreground">{tOutcome(`status.${outcome.row.status as "proposed"}`)}</span>
+                              {outcome.row.note ? <span className="ml-2 text-xs text-muted-foreground">{outcome.row.note}</span> : null}
+                            </span>
+                            {mayDecide && outcome.row.status === "proposed" ? <OutcomeDecisionButtons outcomeId={outcome.row.id} /> : null}
+                          </div>
+                        ))}
+                        {line.status !== "draft" && canRaiseOutcome(user.principal, person) ? (
+                          <details>
+                            <summary className="cursor-pointer text-xs text-muted-foreground">{tOutcome("raise")}</summary>
+                            <div className="pt-2">
+                              <RaiseOutcomeForm resultId={line.id} />
+                            </div>
+                          </details>
+                        ) : null}
+                      </div>
+                    );
+                  })()}
                 </li>
               );
             })}

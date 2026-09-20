@@ -19,6 +19,7 @@ import { describeRecruitSeed, seedRecruit } from "./seed-demo-recruit";
 import { seedPerformance } from "./seed-demo-performance";
 import { seedPerformanceResults } from "./seed-demo-results";
 import { seedReviews } from "./seed-demo-reviews";
+import { seedBonusScheme } from "./seed-demo-bonus";
 import { seedAssets } from "./seed-demo-assets";
 import { seedAttendanceRequests } from "./seed-demo-requests";
 import { seedGenericRequests } from "./seed-demo-requests-generic";
@@ -164,9 +165,10 @@ async function main() {
   console.log(`Seeded ${equipment.assets} assets, ${equipment.assigned} of them handed out, and ${equipment.bookings} bookings of the shared gear (existing register left untouched).`);
   console.log(`Seeded ${describeRecruitSeed(await seedRecruit(db, today))}.`);
   console.log(`Seeded ${await seedPayroll(db)}.`);
+  console.log(`Seeded ${await seedBonusScheme(db)}.`);
   // The ops tracker's instances come from the real scheduler, which only runs inside the app
   // (server-only modules cannot be loaded by tsx): start `pnpm dev`, then `pnpm db:seed:demo:ops`.
-  console.log("Next: `pnpm dev` in another terminal, then `pnpm db:seed:demo:ops` (obligations) and `pnpm db:recompute` (timesheets).");
+  console.log("Next: `pnpm dev` in another terminal, then `pnpm db:seed:demo:ops` (obligations), `pnpm db:seed:demo:payroll` (payroll runs), `pnpm db:seed:demo:bonus` (the year-end bonus run) and `pnpm db:recompute` (timesheets).");
   await client.end();
 }
 

@@ -19,6 +19,7 @@
     "db:recompute": "tsx scripts/recompute-timesheets.ts",
     "db:seed:demo:ops": "tsx scripts/seed-demo-ops.ts",
     "db:seed:demo:payroll": "tsx scripts/seed-demo-payroll-runs.ts",
+    "db:seed:demo:bonus": "tsx scripts/seed-demo-bonus-run.ts",
     "push:keys": "tsx scripts/push-keys.ts",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "db:down": "supabase stop",

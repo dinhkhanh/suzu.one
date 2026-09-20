@@ -33,8 +33,9 @@ import { listEmploymentFacts } from "@/modules/core-hr/service";
 import { getKpiResults, getOkrResults, listFinalResults, markScoresConsumed, type PerformanceResultRow, releaseConsumedScores, type ScoreUse } from "@/modules/performance/service";
 import { getBonusScheme, getBonusSchemeVersion, type ResolvedBonusScheme, schemeDateOf } from "./bonus-schemes";
 import { type BonusOkrLevel, type BonusRunStatus, type BonusSchemeValue, bonusSchemeSchema } from "./enums";
-import { bonusForPerson, type BonusOverride, type BonusPersonInput, type BonusResultInput, type BonusTotals, type BonusTrace, EMPTY_BONUS_TOTALS, sumBonus, wholeMonthsBetween } from "./engine/bonus";
+import { bonusForPerson, type BonusOverride, type BonusPersonInput, type BonusResultInput, type BonusTotals, type BonusTrace, EMPTY_BONUS_TOTALS, sumBonus } from "./engine/bonus";
 import { bonusLineContext, bonusRunTotalsContext } from "./field-contexts";
+import { monthsOfService } from "./calculation";
 import { createOffCycleRun } from "./runs";
 import { listBaseSalariesOn } from "./salaries";
 
@@ -186,8 +187,11 @@ const resultInput = (row: PerformanceResultRow): BonusResultInput => ({
   overrideReason: row.overrideReason,
 });
 
-/** Whole months from the seniority (or start) date to the scheme's reference day. */
-const serviceMonthsOn = (start: IsoDate | null, referenceDate: IsoDate): number => (start ? wholeMonthsBetween(start, referenceDate) : 0);
+/**
+ * Whole months from the seniority (or start) date to the scheme's reference day — the same rule
+ * the payroll engine already uses for seniority, not a second one.
+ */
+const serviceMonthsOn = (start: IsoDate | null, referenceDate: IsoDate): number => monthsOfService(start, referenceDate);
 
 export type SimulationOptions = {
   /**
@@ -478,7 +482,9 @@ export async function payBonusRun(runId: string, actorPersonId: string, executor
       actorPersonId,
       executor,
     );
-    await executor.update(schema.bonusRunLine).set({ payrollRunId: created.id, updatedAt: new Date() }).where(and(eq(schema.bonusRunLine.runId, runId), eq(schema.bonusRunLine.entityId, entityId)));
+    // Only the lines that were actually in the payroll run. A line worth nothing was never paid,
+    // and must not claim on its explanation page that it was.
+    await executor.update(schema.bonusRunLine).set({ payrollRunId: created.id, updatedAt: new Date() }).where(and(eq(schema.bonusRunLine.runId, runId), inArray(schema.bonusRunLine.personId, payable.map((line) => line.row.personId))));
     payrollRuns.push({ entityId, payrollRunId: created.id, headcount: payable.length });
   }
   if (payrollRuns.length === 0) throw new ActionError("bonus_run_nothing_to_pay");

@@ -76,6 +76,6 @@ export { reopenMonth } from "./kpi-scores";
 export { loadReviewEvidence, type ReviewEvidence } from "./evidence";
 
 // ── 1:1 notes and review outcomes (week 3, FR-PRF-04, 06) ───────────────────────────────────
-export { canDecideOutcome, canRaiseOutcome, canReadOneOnOne, canReadOneOnOnePrivate, canSeeOutcome, canWriteOneOnOne } from "./policy";
+export { canDecideOutcome, canHoldOneOnOneWith, canRaiseOutcome, canReadOneOnOne, canReadOneOnOnePrivate, canSeeOutcome, canWriteOneOnOne } from "./policy";
 export { addOneOnOneAction, completeOneOnOneAction, createOneOnOne, findOneOnOne, findOneOnOneAction, listOneOnOnes, loadOneOnOne, myReports, ONE_ON_ONE_CONTEXT, type OneOnOneActionRow, type OneOnOneRow, type OneOnOneView, shareOneOnOne, updateOneOnOne } from "./one-on-ones";
 export { decideOutcome, findOutcome, listOutcomes, OUTCOME_CONTEXT, type OutcomeInput, raiseOutcome, type ReviewOutcomeRow } from "./outcomes";

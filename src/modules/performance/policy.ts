@@ -172,8 +172,18 @@ export const canOpenResults = (principal: Principal): boolean => !!principal.per
 
 type MeetingParties = { managerPersonId: string; person: PersonContext };
 
-/** The manager who holds the meeting, or HR over the person. The subject does not write it. */
-export const canWriteOneOnOne = (principal: Principal, meeting: MeetingParties): boolean => (!!principal.personId && principal.personId === meeting.managerPersonId) || canManagePerformanceOf(principal, meeting.person);
+/**
+ * Who may **open** a 1:1 about somebody: a manager above them in the reporting line, or HR over
+ * them. Not a colleague — found over HTTP in week 3: checking only "am I the manager named on the
+ * row?" let anybody name themselves the manager of anyone and start a record about them.
+ */
+export const canHoldOneOnOneWith = (principal: Principal, person: PersonContext): boolean => isAbove(principal, person) || canManagePerformanceOf(principal, person);
+
+/**
+ * Who may write an existing meeting: the manager whose meeting it is (they keep it even if the
+ * reporting line moves under them afterwards), or HR over the person. The subject never writes it.
+ */
+export const canWriteOneOnOne = (principal: Principal, meeting: MeetingParties): boolean => (!!principal.personId && principal.personId === meeting.managerPersonId && !isSelf(principal, meeting.person)) || canManagePerformanceOf(principal, meeting.person);
 
 /**
  * Reading the shared half: the two people in the meeting, anyone above the subject in the

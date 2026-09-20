@@ -103,18 +103,6 @@ export type BonusPersonInput = {
 
 const roundHalfUp = (numerator: bigint, denominator: bigint): number => Number((numerator * 2n + denominator) / (denominator * 2n));
 
-/**
- * Whole months of service between two "YYYY-MM-DD" days — the figure the service bands read.
- * A month counts once the same day of the month has come round: 15 March → 14 April is 0 months,
- * 15 April is 1. Negative spans (somebody who starts after the reference day) come back as 0.
- */
-export function wholeMonthsBetween(from: string, to: string): number {
-  const [fromYear, fromMonth, fromDay] = from.split("-").map(Number);
-  const [toYear, toMonth, toDay] = to.split("-").map(Number);
-  const months = (toYear - fromYear) * 12 + (toMonth - fromMonth) - (toDay < fromDay ? 1 : 0);
-  return Math.max(0, months);
-}
-
 /** The highest band whose floor the figure reaches. */
 const pick = <B>(bands: readonly B[], floorOf: (band: B) => number, figure: number): B | null => [...bands].sort((a, b) => floorOf(a) - floorOf(b)).filter((band) => figure >= floorOf(band)).pop() ?? null;
 
@@ -123,7 +111,7 @@ export const scoreBandFor = (bands: readonly BonusScoreBand[], scoreBp: number):
 export const okrBandFor = (bands: readonly BonusOkrBand[], progressBp: number): BonusOkrBand | null => pick(bands, (band) => band.minProgressBp, progressBp);
 
 /** "1,2500" — a basis-point factor as a plain multiplier, for the trace's expressions. */
-const factorText = (bp: number): string => (bp / FULL_BP).toFixed(4);
+const factorText = (bp: number): string => (bp / FULL_BP).toLocaleString("vi-VN", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
 const vndText = (amount: number): string => amount.toLocaleString("vi-VN");
 
 /** Why this person gets nothing, or null if they qualify. Checked in a fixed order so it is stable. */

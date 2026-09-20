@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { canReadTier, type Grant, type Principal, readableTier } from "../platform/rbac/policy";
 import { canReadBonusRun, canViewBonusOf, canViewCompensationOf } from "../payroll/policy";
-import { canComputeResults, canDecideOutcome, canDecidePerformanceRules, canOverrideResult, canProposeWeighting, canRaiseOutcome, canReadOneOnOne, canReadOneOnOnePrivate, canReadResultOf, canSettleResultOf, canWriteOneOnOne } from "./policy";
+import { canComputeResults, canDecideOutcome, canDecidePerformanceRules, canHoldOneOnOneWith, canOverrideResult, canProposeWeighting, canRaiseOutcome, canReadOneOnOne, canReadOneOnOnePrivate, canReadResultOf, canSettleResultOf, canWriteOneOnOne } from "./policy";
 import { canCheckIn, canCloseGoal, canCloseKpiMonth, canEditGoal, canEnterActualsFor, canManageAssignmentsOf, canManageKpiLibrary, canManagePositionKpis, canOpenOverview, canReadPerformanceOf, canReopenGoal, canReopenKpiMonth, canSeeGoal, chainAbove, type GoalParties, overviewReach, type PersonContext, readablePeople, unitTarget } from "./policy";
 
 const SZM = "entity-szm";
@@ -231,9 +231,25 @@ describe("the final yearly result", () => {
 describe("1:1 meeting notes (FR-PRF-04)", () => {
   const meeting = { managerPersonId: "tam", person: huy };
 
+  /**
+   * Found over HTTP in week 3: the create action asked "am I the manager named on this row?",
+   * which is always true of whoever is posting — so any colleague could start a 1:1 record about
+   * anybody. Who the meeting is *about* decides who may open it.
+   */
+  it("is opened only by somebody above the person, or by HR", () => {
+    expect(canHoldOneOnOneWith(principal("tam"), huy)).toBe(true); // line manager
+    expect(canHoldOneOnOneWith(headVid, huy)).toBe(true); // skip-level
+    expect(canHoldOneOnOneWith(hrSzm, huy)).toBe(true);
+    expect(canHoldOneOnOneWith(principal("linh"), huy)).toBe(false); // a colleague
+    expect(canHoldOneOnOneWith(principal("huy"), huy)).toBe(false); // nor about yourself
+    expect(canHoldOneOnOneWith(headDes, huy)).toBe(false); // another department's head
+  });
+
   it("is written by the manager who holds it, or HR — never by the subject", () => {
     expect(canWriteOneOnOne(principal("tam"), meeting)).toBe(true);
     expect(canWriteOneOnOne(principal("huy"), meeting)).toBe(false);
+    // Nor by somebody who has written themselves into the manager column of their own meeting.
+    expect(canWriteOneOnOne(principal("huy"), { managerPersonId: "huy", person: huy })).toBe(false);
     expect(canWriteOneOnOne(hrSzm, meeting)).toBe(true);
     expect(canWriteOneOnOne(principal("linh"), meeting)).toBe(false);
   });

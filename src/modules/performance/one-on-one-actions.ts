@@ -8,7 +8,7 @@ import { OUTCOME_TYPES } from "./enums";
 import { addOneOnOneAction, completeOneOnOneAction, createOneOnOne, findOneOnOne, findOneOnOneAction, shareOneOnOne, updateOneOnOne } from "./one-on-ones";
 import { decideOutcome, findOutcome, raiseOutcome } from "./outcomes";
 import { loadDirectory } from "./people";
-import { canDecideOutcome, canRaiseOutcome, canWriteOneOnOne } from "./policy";
+import { canDecideOutcome, canHoldOneOnOneWith, canRaiseOutcome, canWriteOneOnOne } from "./policy";
 import { findResultById } from "./final-results";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -34,10 +34,11 @@ async function partiesOf(meetingId: string) {
 const createPipeline = createAction({
   name: "one_on_one.create",
   input: z.object({ personId: z.uuid(), meetingOn: z.iso.date(), agenda: notes(4000), sharedNotes: notes(8000), privateNotes: notes(8000) }),
+  // Who the meeting is about decides who may open it — not who says they are the manager.
   authorize: async (user, input) => {
     const directory = await loadDirectory();
     const person = directory.get(input.personId);
-    return !!person && canWriteOneOnOne(user.principal, { managerPersonId: user.person.id, person });
+    return !!person && canHoldOneOnOneWith(user.principal, person);
   },
   run: async ({ user, input }) => {
     const created = await createOneOnOne(input, user.person.id);

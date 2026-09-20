@@ -354,10 +354,15 @@ describe("paying it", () => {
     expect(inputs.has(ids.partner)).toBe(false);
   });
 
-  it("records which payroll run paid each line", async () => {
+  it("records which payroll run paid each line — and leaves the unpaid ones alone", async () => {
     const [run] = await db().select().from(schema.bonusRun);
-    const line = await getBonusLine(run.id, ids.star);
-    expect(line!.row.payrollRunId).not.toBeNull();
+    const star = await getBonusLine(run.id, ids.star);
+    expect(star!.row.payrollRunId).not.toBeNull();
+    // Found over HTTP: an excluded person was claiming to have been paid through the run.
+    for (const personId of [ids.partner, ids.newcomer]) {
+      const line = await getBonusLine(run.id, personId);
+      expect({ personId, paidThrough: line!.row.payrollRunId }).toEqual({ personId, paidThrough: null });
+    }
   });
 
   it("is evidence once paid: the database itself refuses a change", async () => {

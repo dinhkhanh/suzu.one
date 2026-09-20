@@ -13,6 +13,7 @@ import { notificationsDailyJob } from "@/modules/platform/notifications/jobs";
 import { candidateRetentionJob } from "@/modules/recruit/jobs";
 import { requestSlaJob } from "@/modules/requests/jobs";
 import { workRecurringJob, workRemindersJob } from "@/modules/work/jobs";
+import { bonusDemoRunJob } from "./bonus-demo";
 import { payrollDemoRunsJob } from "./payroll-demo";
 
 // What each cron URL runs. Schedules live in vercel.json and stay daily, which every Vercel plan
@@ -28,8 +29,8 @@ const SCHEDULES: Record<string, JobDefinition[]> = {
 };
 
 // Run by hand only: /api/cron/<job name>.
-// `payroll-demo-runs` refuses to run outside a development server (see its own file).
-const ON_DEMAND: JobDefinition[] = [fieldKeysRewrapJob, opsBackfillJob, payrollDemoRunsJob];
+// `payroll-demo-runs` and `bonus-demo-run` refuse to run outside a development server.
+const ON_DEMAND: JobDefinition[] = [fieldKeysRewrapJob, opsBackfillJob, payrollDemoRunsJob, bonusDemoRunJob];
 
 export const maxDuration = 300;
 
