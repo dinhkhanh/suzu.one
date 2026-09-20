@@ -23,7 +23,7 @@
 // talent-pool candidate who survives the retention job, and one whose window has passed so that
 // the job has something to do.
 import { randomBytes } from "node:crypto";
-import { and, asc, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
 import {
   applicationEvent,
@@ -54,7 +54,6 @@ import { CONSENT_VERSION, DEFAULT_INTERVIEW_KIT } from "../src/modules/recruit/e
 import { toSearchKey } from "../src/lib/text";
 
 type Db = ReturnType<typeof drizzle>;
-type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
 export type RecruitSeedResult = { openings: number; candidates: number; applications: number; interviews: number; offers: number; referrals: number; hired: string | null };
 
