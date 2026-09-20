@@ -17,6 +17,7 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { isDevelopmentEnvironment } from "@/lib/env";
+import { sweepApprovedClaims } from "@/modules/requests/expense-posting";
 import { getLockedTimesheets, lockPeriod } from "@/modules/attendance/months";
 import type { JobDefinition } from "@/modules/platform/jobs/service";
 import { listOwnerPersonIds } from "@/modules/platform/rbac/service";
@@ -110,6 +111,10 @@ export const payrollDemoRunsJob: JobDefinition = {
     }
 
     const payslips = await db().select({ id: schema.payslip.id }).from(schema.payslip).where(and(eq(schema.payslip.month, PAID_MONTH)));
-    return { entities: done, payslips: payslips.length };
+    // The approved expense claims the demo seed left waiting now have somewhere to go: September's
+    // draft (FR-REQ-03). The real use-case, not an insert — and idempotent, so running the demo
+    // job again posts nothing twice.
+    const claims = await sweepApprovedClaims(actorPersonId);
+    return { entities: done, payslips: payslips.length, expenseClaims: claims };
   },
 };

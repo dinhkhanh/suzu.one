@@ -9,7 +9,8 @@
 import { randomUUID } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
-import { approvalAssignee, approvalEvent, approvalFlow, approvalRequest, approvalStep, person, requestSubmission, requestType, roleAssignment } from "../src/lib/db/schema";
+import { approvalAssignee, approvalEvent, approvalFlow, approvalRequest, approvalStep, expenseClaimLine, person, requestSubmission, requestType, roleAssignment } from "../src/lib/db/schema";
+import type { ExpenseCategory } from "../src/modules/requests/engine/expense";
 
 type Db = ReturnType<typeof drizzle>;
 type PersonRow = typeof person.$inferSelect;
@@ -28,6 +29,8 @@ type Demo = {
   values: Record<string, unknown>;
   /** Who answers, in order, and what they say. An empty list leaves it waiting. */
   decisions: { by: string; action: "approve" | "reject" | "return" }[];
+  /** An expense claim's lines (FR-REQ-03); its figure is their sum, never something typed. */
+  lines?: { lineDate: string; category: ExpenseCategory; description: string; amount: number; projectTag?: string | null }[];
 };
 
 const DEMO: Demo[] = [
@@ -75,6 +78,36 @@ const DEMO: Demo[] = [
     daysAgo: 8,
     values: { destination: "Đà Nẵng", start_date: day(20), end_date: day(23), transport: ["plane"], amount: 9_800_000, needs_accommodation: true, accommodation_note: "Khách sạn gần khu vực quay, 3 đêm.", purpose: "Khảo sát địa điểm và gặp khách hàng cho dự án quý sau." },
     decisions: [{ by: "long.dang@suzu.group", action: "reject" }],
+  },
+  {
+    // Approved end to end: the manager, then finance. Its figure waits for a payroll run, and the
+    // September draft takes it as soon as `pnpm db:seed:demo:payroll` has made one.
+    code: "expense_claim",
+    requester: "tam.bui@suzu.group",
+    daysAgo: 6,
+    values: { title: "Khảo sát địa điểm quay tại Đà Lạt", project_tag: "Phim quảng cáo Trà Ô Long", note: "Chi hộ đoàn tiền xe và ăn trưa hai ngày khảo sát." },
+    lines: [
+      { lineDate: day(-9), category: "transport", description: "Vé xe khách Sài Gòn – Đà Lạt (2 người)", amount: 640_000, projectTag: "Trà Ô Long" },
+      { lineDate: day(-9), category: "meals", description: "Ăn trưa đoàn khảo sát", amount: 385_000, projectTag: "Trà Ô Long" },
+      { lineDate: day(-8), category: "transport", description: "Thuê xe máy đi các điểm quay", amount: 300_000, projectTag: "Trà Ô Long" },
+      { lineDate: day(-8), category: "meals", description: "Ăn trưa ngày thứ hai", amount: 420_000, projectTag: "Trà Ô Long" },
+    ],
+    decisions: [
+      { by: "long.dang@suzu.group", action: "approve" },
+      { by: "tuan.vo@suzu.group", action: "approve" },
+    ],
+  },
+  {
+    // Still on the first approver's desk.
+    code: "expense_claim",
+    requester: "khoi.ly@suzu.group",
+    daysAgo: 2,
+    values: { title: "Vật tư in thử bộ nhận diện", project_tag: "Rebrand Minh An", note: null },
+    lines: [
+      { lineDate: day(-3), category: "supplies", description: "Giấy mỹ thuật và mẫu in thử", amount: 275_000, projectTag: "Minh An" },
+      { lineDate: day(-2), category: "transport", description: "Grab đi lấy bản in tại xưởng", amount: 96_000, projectTag: "Minh An" },
+    ],
+    decisions: [],
   },
 ];
 
@@ -125,8 +158,8 @@ export async function seedGenericRequests(db: Db): Promise<number> {
       subjectPersonId: requester.id,
       subjectType: "request_type",
       subjectId: type.id,
-      summary: summarize(type, demo.values),
-      payload: conditionData(type, demo.values),
+      summary: summarize(type, demo.values, demo.lines?.reduce((total, line) => total + line.amount, 0)),
+      payload: { ...conditionData(type, demo.values), ...(demo.lines ? { amount: demo.lines.reduce((total, line) => total + line.amount, 0), lines: demo.lines.length } : {}) },
       flowSnapshot: { definition, source: "group", resolved: steps.map(({ key, mode, applies, approverIds }) => ({ key, mode, applies, approverIds })) },
       link: `/approvals/request/${id}`,
       createdAt: filedAt,
@@ -145,15 +178,22 @@ export async function seedGenericRequests(db: Db): Promise<number> {
     await db.insert(approvalEvent).values({ requestId: id, type: "submitted", actorPersonId: requester.id, stepIndex: firstApplying(steps), at: filedAt });
 
     const amountField = type.form.fields.find((field) => field.type === "money")?.key;
-    await db.insert(requestSubmission).values({
-      approvalRequestId: id,
-      requestTypeId: type.id,
-      typeCode: type.code,
-      values: demo.values,
-      amount: amountField && typeof demo.values[amountField] === "number" ? (demo.values[amountField] as number) : null,
-      createdAt: filedAt,
-      updatedAt: filedAt,
-    });
+    const [submission] = await db
+      .insert(requestSubmission)
+      .values({
+        approvalRequestId: id,
+        requestTypeId: type.id,
+        typeCode: type.code,
+        values: demo.values,
+        // An expense claim's figure is its lines added up; every other type's is its money field.
+        amount: demo.lines ? demo.lines.reduce((total, line) => total + line.amount, 0) : amountField && typeof demo.values[amountField] === "number" ? (demo.values[amountField] as number) : null,
+        createdAt: filedAt,
+        updatedAt: filedAt,
+      })
+      .returning({ id: requestSubmission.id });
+    if (demo.lines) {
+      await db.insert(expenseClaimLine).values(demo.lines.map((line, index) => ({ submissionId: submission.id, lineDate: line.lineDate, category: line.category, description: line.description, amount: line.amount, projectTag: line.projectTag ?? null, sortOrder: index })));
+    }
 
     // Walk the decisions the demo asked for, one open step at a time.
     let current = firstApplying(steps);
@@ -238,9 +278,9 @@ function peopleFor(rules: Rule[], requester: PersonRow, everyone: PersonRow[], g
   return [...found].filter((id) => active.has(id));
 }
 
-function summarize(type: TypeRow, values: Record<string, unknown>): string {
+function summarize(type: TypeRow, values: Record<string, unknown>, override?: number): string {
   const amountField = type.form.fields.find((field) => field.type === "money")?.key;
-  const amount = amountField && typeof values[amountField] === "number" ? (values[amountField] as number) : null;
+  const amount = override ?? (amountField && typeof values[amountField] === "number" ? (values[amountField] as number) : null);
   const first = type.form.fields.find((field) => (field.type === "text" || field.type === "textarea") && typeof values[field.key] === "string" && (values[field.key] as string).length > 0);
   const words = first ? String(values[first.key]).replaceAll(/\s+/g, " ").slice(0, 120) : "";
   return [amount === null ? null : dong(amount), words || null].filter(Boolean).join(" · ") || type.nameVi;
