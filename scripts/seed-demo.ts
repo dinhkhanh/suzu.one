@@ -17,6 +17,7 @@ import { seedKpis } from "./seed-demo-kpis";
 import { seedPayroll } from "./seed-demo-payroll";
 import { seedPerformance } from "./seed-demo-performance";
 import { seedAttendanceRequests } from "./seed-demo-requests";
+import { seedGenericRequests } from "./seed-demo-requests-generic";
 import { seedWork, seedWorkConversations } from "./seed-demo-work";
 import { seedWorkIntake } from "./seed-demo-work-intake";
 import { seedWorkPlanning } from "./seed-demo-work-planning";
@@ -152,6 +153,7 @@ async function main() {
   console.log(`Seeded ${await seedKpis(db)}.`);
   console.log(`Seeded ${await seedKb(db)}.`);
   console.log(`Seeded ${await seedComms(db)}.`);
+  console.log(`Seeded ${await seedGenericRequests(db)} generic requests (purchase, payment, advance, letter, trip — at every approval stage).`);
   console.log(`Seeded ${await seedPayroll(db)}.`);
   // The ops tracker's instances come from the real scheduler, which only runs inside the app
   // (server-only modules cannot be loaded by tsx): start `pnpm dev`, then `pnpm db:seed:demo:ops`.
