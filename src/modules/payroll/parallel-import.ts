@@ -83,6 +83,8 @@ export async function resolveParallelRows(rows: Row[], user: { principal: Parame
 
 export const parallelImport = defineImport({
   kind: "payroll_parallel",
+  // A spreadsheet of people's pay: compensation tier, so it asks who you are again (FR-PLT-06).
+  stepUp: true,
   columns: parallelColumns,
   params: parallelParams,
   authorize: (user, params) => !!params && canManageCompensation(user.principal, { entityId: params.entityId }),

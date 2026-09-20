@@ -6,8 +6,8 @@ import { FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import type { StatutoryExportKey } from "../statutory-export-actions";
 import { exportStatutoryDataAction, withholdingCertificateAction } from "../statutory-export-actions";
+import type { StatutoryExportKey } from "../statutory-kinds";
 
 function save(file: { fileName: string; content: string; contentType: string }) {
   const url = URL.createObjectURL(new Blob([file.content], { type: file.contentType }));

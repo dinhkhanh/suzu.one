@@ -3,6 +3,10 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Next logs every server-function call in development **with its arguments**, and payroll
+  // actions take salary figures as arguments — a developer's terminal would hold people's pay in
+  // its scrollback. Off (see docs/PAYROLL_SECURITY_REVIEW.md, finding 3).
+  logging: { serverFunctions: false },
   // Spreadsheet imports arrive through a server action; everything else is far below the default.
   experimental: { serverActions: { bodySizeLimit: "4mb" } },
   // The payslip PDF embeds a font it reads from disk at runtime (FR-PAY-32). Tracing a

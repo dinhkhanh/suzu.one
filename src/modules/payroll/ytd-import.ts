@@ -93,6 +93,8 @@ export async function resolveYtdRows(rows: Row[], user: { principal: Parameters<
 
 export const ytdImport = defineImport({
   kind: "payroll_ytd",
+  // A spreadsheet of people's pay: compensation tier, so it asks who you are again (FR-PLT-06).
+  stepUp: true,
   columns: ytdColumns,
   params: ytdParams,
   authorize: (user, params) => !!params && canManageCompensation(user.principal, { entityId: params.entityId }),

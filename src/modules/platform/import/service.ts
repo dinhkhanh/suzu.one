@@ -24,6 +24,8 @@ export type ImportDefinition<C extends Columns, P = void> = {
   columns: C;
   /** What is chosen beside the file (which device a log came from): the form's other fields. Kept with the batch. */
   params?: z.ZodType<P>;
+  /** Compensation-tier data (a payroll spreadsheet): both steps then need a recent re-authentication (FR-PLT-06). */
+  stepUp?: boolean;
   /** File types this import takes; default .xlsx and .csv. Anything else must be text and needs `readTable`. */
   extensions?: readonly string[];
   /** Turns the upload into a table whose first row carries this import's headers. Default: the sheet or CSV as it is. */
@@ -107,6 +109,7 @@ export function defineImport<C extends Columns, P = void>(definition: ImportDefi
 
   const stage = createAction({
     name: `import.${definition.kind}.stage`,
+    stepUp: definition.stepUp,
     input: formInput,
     authorize: (user, input) => definition.authorize(user, input.params),
     run: async ({ user, input: { file, params } }) => {
@@ -145,6 +148,7 @@ export function defineImport<C extends Columns, P = void>(definition: ImportDefi
 
   const commit = createAction({
     name: `import.${definition.kind}.commit`,
+    stepUp: definition.stepUp,
     input: z.object({ batchId: z.uuid() }),
     // Whether this person may commit *this* batch is decided below, against the batch's own parameters.
     authorize: (user) => definition.authorize(user, undefined),
@@ -174,5 +178,8 @@ export function defineImport<C extends Columns, P = void>(definition: ImportDefi
     },
   });
 
-  return { stage, commit };
+  // The definition comes back with the two actions so that a module can test what its import
+  // demands of a caller (who may run it, whether it needs a re-authentication) without going
+  // through a file upload.
+  return { stage, commit, definition };
 }

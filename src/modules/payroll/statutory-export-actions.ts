@@ -15,11 +15,8 @@ import { buildFinalization, buildFinalizationAppendix1, buildFinalizationAppendi
 import { buildPitMonthly, buildPitWorkingSheet } from "./exports/statutory/pit-monthly";
 import type { StatutoryFile } from "./exports/statutory/format";
 import { canManageCompensation } from "./policy";
+import { STATUTORY_EXPORTS, type StatutoryExportKey } from "./statutory-kinds";
 import { dependantRows, finalizationRows, insuranceChanges, pitPeriodRows, withholdingCertificate } from "./statutory-exports";
-
-/** Every filing this module can produce. Adding one is a line here and a format module. */
-export const STATUTORY_EXPORTS = ["d02lt", "pit_monthly", "pit_monthly_detail", "pit_finalization", "pit_finalization_appendix1", "pit_finalization_appendix2", "dependants"] as const;
-export type StatutoryExportKey = (typeof STATUTORY_EXPORTS)[number];
 
 /** A month "2026-08", a quarter "2026-Q3" or a year "2026" — each filing says which it takes. */
 const period = z.string().regex(/^\d{4}(-(0[1-9]|1[0-2]|Q[1-4]))?$/);
