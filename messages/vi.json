@@ -3670,7 +3670,8 @@
       "kpis": "KPI của tôi",
       "team": "Đội của tôi",
       "overview": "Toàn cảnh",
-      "admin": "Quản trị KPI"
+      "admin": "Quản trị KPI",
+      "reviews": "Đánh giá"
     },
     "period": {
       "annual": "Năm {year}",
@@ -3906,7 +3907,8 @@
         "assignments": "Phân bổ",
         "positions": "Theo vị trí",
         "library": "Thư viện",
-        "import": "Nhập từ tệp"
+        "import": "Nhập từ tệp",
+        "cycles": "Chu kỳ đánh giá"
       }
     },
     "library": {
@@ -4066,6 +4068,178 @@
       "kpi_nothing_to_close": "Không có KPI nào đến hạn trong tháng này.",
       "kpi_month_blocked": "Còn thiếu số thực đạt. Bổ sung, hoặc chốt kèm lý do.",
       "kpi_month_not_closed": "Tháng này chưa chốt."
+    },
+    "reviews": {
+      "title": "Đánh giá hiệu suất",
+      "description": "Chu kỳ đánh giá: tự đánh giá, quản lý đánh giá, phản hồi đồng nghiệp, cân đối rồi công bố.",
+      "back": "← Tất cả đánh giá",
+      "manager": "Quản lý đánh giá: {name}",
+      "notLaunched": "Chu kỳ chưa mở, chưa có biểu mẫu.",
+      "mine": {
+        "title": "Đánh giá của tôi",
+        "empty": "Chưa có chu kỳ đánh giá nào dành cho bạn.",
+        "self": "Tự đánh giá",
+        "selfDue": "Hạn tự đánh giá: {date}"
+      },
+      "owed": {
+        "title": "Đánh giá tôi phải viết",
+        "description": "Những người báo cáo trực tiếp cho bạn trong các chu kỳ đang mở.",
+        "selfLabel": "Tự ĐG",
+        "managerLabel": "QL ĐG"
+      },
+      "stage": {
+        "pending": "Chưa bắt đầu",
+        "self_done": "Đã tự đánh giá",
+        "manager_done": "Quản lý đã đánh giá",
+        "calibrated": "Đã cân đối",
+        "released": "Đã công bố",
+        "acknowledged": "Đã xác nhận"
+      },
+      "formStatus": {
+        "none": "Chưa có",
+        "draft": "Bản nháp",
+        "submitted": "Đã gửi"
+      },
+      "cycleStatus": {
+        "draft": "Bản nháp",
+        "active": "Đang thu thập",
+        "calibration": "Đang cân đối",
+        "released": "Đã công bố",
+        "closed": "Đã đóng"
+      },
+      "timeline": {
+        "periodStart": "Từ ngày",
+        "periodEnd": "Đến ngày",
+        "selfDueOn": "Hạn tự đánh giá",
+        "managerDueOn": "Hạn quản lý đánh giá",
+        "peerDueOn": "Hạn phản hồi đồng nghiệp",
+        "calibrationOn": "Ngày cân đối",
+        "releaseOn": "Ngày công bố"
+      },
+      "form": {
+        "kind": {
+          "self": "Tự đánh giá",
+          "manager": "Quản lý đánh giá",
+          "peer": "Phản hồi đồng nghiệp"
+        },
+        "by": {
+          "self": "Tự đánh giá — {name}",
+          "manager": "Quản lý đánh giá — {name}",
+          "peer": "Phản hồi đồng nghiệp — {name}"
+        },
+        "overall": "Điểm chung: {value}",
+        "comment": "Nhận xét chung",
+        "choose": "— Chọn mức —",
+        "saveDraft": "Lưu nháp",
+        "submit": "Gửi",
+        "submitConfirm": "Gửi rồi sẽ không sửa được nữa. Tiếp tục?",
+        "submitYes": "Gửi luôn",
+        "cancel": "Huỷ",
+        "saved": "Đã lưu.",
+        "draftHint": "Bản nháp chỉ mình bạn đọc được. Sau khi gửi, quản lý và Nhân sự sẽ đọc được.",
+        "waitingForSelf": "Chưa gửi được: đang chờ người này tự đánh giá, hoặc chờ qua hạn {date}."
+      },
+      "submitted": {
+        "title": "Các phiếu đã gửi",
+        "empty": "Chưa có phiếu nào bạn được đọc."
+      },
+      "calibrate": {
+        "title": "Điểm đánh giá",
+        "current": "Điểm hiện tại: {value}",
+        "rating": "Điểm (%)",
+        "note": "Lý do cân đối",
+        "save": "Lưu cân đối"
+      },
+      "release": {
+        "title": "Công bố",
+        "action": "Công bố cho nhân viên",
+        "confirm": "Công bố rồi nhân viên sẽ đọc được phiếu của quản lý. Tiếp tục?",
+        "yes": "Công bố"
+      },
+      "acknowledge": {
+        "title": "Xác nhận của nhân viên",
+        "note": "Ý kiến của bạn (không bắt buộc)",
+        "action": "Tôi đã đọc và xác nhận",
+        "done": "Đã xác nhận ngày {date}.",
+        "waiting": "Đang chờ nhân viên xác nhận."
+      },
+      "cycle": {
+        "name": "Tên chu kỳ",
+        "entity": "Pháp nhân",
+        "wholeGroup": "Toàn tập đoàn",
+        "kind": "Loại",
+        "kinds": {
+          "probation": "Hết thử việc",
+          "mid_year": "Giữa năm",
+          "annual": "Cả năm"
+        },
+        "template": "Biểu mẫu",
+        "year": "Năm",
+        "peers": "Phản hồi đồng nghiệp (360°)",
+        "peersEnabled": "Có lấy phản hồi đồng nghiệp",
+        "peerMin": "Tối thiểu",
+        "peerMax": "Tối đa",
+        "peerAnonymous": "Ẩn danh người phản hồi",
+        "save": "Lưu chu kỳ",
+        "saved": "Đã lưu.",
+        "launch": "Mở chu kỳ",
+        "launchConfirm": "Mở chu kỳ sẽ khoá biểu mẫu và ghi nhận quản lý của từng người. Tiếp tục?",
+        "launchYes": "Mở luôn"
+      },
+      "admin": {
+        "description": "Tạo chu kỳ, mở chu kỳ (khoá biểu mẫu và ghi nhận quản lý của từng người), rồi cân đối và công bố.",
+        "cycles": "Chu kỳ năm {year}",
+        "noCycles": "Chưa có chu kỳ nào trong năm này.",
+        "open": "Xem người tham gia",
+        "progress": "{participants} người · tự ĐG {self} · QL ĐG {manager} · đã công bố {released}",
+        "participants": "Người tham gia — {name}",
+        "newCycle": "Chu kỳ mới",
+        "noTemplates": "Chưa có biểu mẫu nào đang dùng. Hãy tạo biểu mẫu trước.",
+        "templates": "Biểu mẫu đánh giá",
+        "templateShape": "{sections} câu · thang {points} mức",
+        "templateHint": "Biểu mẫu do Nhân sự cấp tập đoàn quản lý. Chu kỳ đã mở giữ nguyên biểu mẫu tại thời điểm mở.",
+        "inactive": "Ngừng dùng",
+        "advance": {
+          "calibration": "Chuyển sang cân đối",
+          "released": "Đánh dấu đã công bố",
+          "closed": "Đóng chu kỳ"
+        }
+      },
+      "errors": {
+        "generic": "Không thực hiện được. Hãy thử lại.",
+        "forbidden": "Bạn không có quyền làm việc này.",
+        "invalid": "Hãy kiểm tra các ô được đánh dấu.",
+        "unauthenticated": "Phiên đăng nhập đã hết.",
+        "step_up_required": "Hãy xác thực lại để tiếp tục.",
+        "review_template_empty": "Biểu mẫu phải có ít nhất một câu.",
+        "review_template_duplicate_key": "Hai câu trùng mã.",
+        "review_template_unasked_section": "Mỗi câu phải thuộc ít nhất một loại phiếu.",
+        "review_template_scale_short": "Thang điểm phải có ít nhất hai mức.",
+        "review_template_duplicate_point": "Hai mức trùng giá trị.",
+        "review_template_unscored": "Biểu mẫu phải có ít nhất một câu chấm điểm có trọng số.",
+        "review_template_not_found": "Không tìm thấy biểu mẫu, hoặc biểu mẫu đã ngừng dùng.",
+        "review_cycle_not_found": "Không tìm thấy chu kỳ.",
+        "review_cycle_launched": "Chu kỳ đã mở, không sửa được nữa.",
+        "review_cycle_not_launched": "Chu kỳ chưa mở.",
+        "review_cycle_no_participants": "Không có ai thuộc phạm vi chu kỳ này.",
+        "review_cycle_bad_step": "Không chuyển được sang trạng thái đó.",
+        "review_cycle_not_collecting": "Chu kỳ không còn nhận phiếu.",
+        "review_period_backwards": "Ngày kết thúc phải sau ngày bắt đầu.",
+        "review_timeline_backwards": "Các mốc thời gian phải theo thứ tự.",
+        "review_timeline_before_period": "Mốc thời gian không được trước ngày bắt đầu kỳ.",
+        "review_peer_range": "Số đồng nghiệp tối đa phải lớn hơn hoặc bằng tối thiểu.",
+        "review_participant_not_found": "Không tìm thấy người tham gia.",
+        "review_participant_exists": "Người này đã có trong chu kỳ.",
+        "review_participant_has_forms": "Đã có phiếu đánh giá, không xoá được.",
+        "review_person_not_found": "Không tìm thấy người này.",
+        "review_form_submitted": "Phiếu đã gửi, không sửa được nữa.",
+        "review_form_incomplete": "Còn câu bắt buộc chưa trả lời.",
+        "review_self_not_submitted": "Chờ nhân viên tự đánh giá, hoặc chờ qua hạn tự đánh giá.",
+        "review_manager_not_submitted": "Quản lý chưa gửi phiếu.",
+        "review_already_released": "Đã công bố rồi.",
+        "review_not_released": "Chưa công bố.",
+        "review_already_acknowledged": "Đã xác nhận rồi."
+      }
     }
   },
   "kb": {

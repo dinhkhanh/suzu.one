@@ -95,3 +95,64 @@ export const coversMonth = (assignment: { fromPeriod: string; toPeriod: string |
 
 export const KPI_PERIOD_STATUSES = ["open", "closed"] as const;
 export type KpiPeriodStatus = (typeof KPI_PERIOD_STATUSES)[number];
+
+// ── Review cycles (FR-PRF-03, Phase 8 week 1) ───────────────────────────────────────────────
+
+export const REVIEW_CYCLE_KINDS = ["probation", "mid_year", "annual"] as const;
+export type ReviewCycleKind = (typeof REVIEW_CYCLE_KINDS)[number];
+
+/**
+ * draft → active (self and manager write) → calibration (forms locked, HR levels the ratings)
+ *       → released (each participant, one at a time) → closed.
+ * `released` on the cycle means every participant has been released; a participant carries its own.
+ */
+export const REVIEW_CYCLE_STATUSES = ["draft", "active", "calibration", "released", "closed"] as const;
+export type ReviewCycleStatus = (typeof REVIEW_CYCLE_STATUSES)[number];
+
+export const REVIEW_FORM_KINDS = ["self", "manager", "peer"] as const;
+export type ReviewFormKind = (typeof REVIEW_FORM_KINDS)[number];
+
+export const REVIEW_FORM_STATUSES = ["draft", "submitted"] as const;
+export type ReviewFormStatus = (typeof REVIEW_FORM_STATUSES)[number];
+
+/** Where one person's review has got to. Only ever moves forward. */
+export const REVIEW_STAGES = ["pending", "self_done", "manager_done", "calibrated", "released", "acknowledged"] as const;
+export type ReviewStage = (typeof REVIEW_STAGES)[number];
+export const stageRank = (stage: ReviewStage): number => REVIEW_STAGES.indexOf(stage);
+/** Stages never go backwards: a re-release of an acknowledged review keeps the acknowledgement. */
+export const laterStage = (a: ReviewStage, b: ReviewStage): ReviewStage => (stageRank(a) >= stageRank(b) ? a : b);
+
+export const REVIEW_SECTION_KINDS = ["rating", "text"] as const;
+export type ReviewSectionKind = (typeof REVIEW_SECTION_KINDS)[number];
+
+export const PEER_NOMINATION_STATUSES = ["pending", "approved", "declined"] as const;
+export type PeerNominationStatus = (typeof PEER_NOMINATION_STATUSES)[number];
+
+/**
+ * One question on a review form. `weight` counts only for rating sections; a text section is
+ * prose and scores nothing. `askedOf` says which of the three forms carries the question — a
+ * peer is rarely asked the same things as the person's manager.
+ */
+export type ReviewSection = {
+  key: string;
+  title: string;
+  titleEn: string | null;
+  kind: ReviewSectionKind;
+  weight: number;
+  required: boolean;
+  askedOf: ReviewFormKind[];
+};
+
+/**
+ * One point of the rating scale, with **what it is worth**. The mapping is configuration, not a
+ * constant in code (SRS D13: the year-end bonus is computed from it): "meets expectations" is
+ * worth 100 % on one scale and 80 % on another, and the company decides which.
+ */
+export type RatingPoint = { value: number; label: string; labelEn: string | null; scoreBp: number };
+
+export type ReviewFormShape = { sections: ReviewSection[]; ratingScale: RatingPoint[] };
+
+/** What one author wrote: section key → the chosen rating value, or the text. */
+export type ReviewAnswers = Record<string, number | string>;
+
+export const sectionsFor = (shape: ReviewFormShape, kind: ReviewFormKind): ReviewSection[] => shape.sections.filter((section) => section.askedOf.includes(kind));

@@ -3670,7 +3670,8 @@
       "kpis": "My KPIs",
       "team": "My team",
       "overview": "Overview",
-      "admin": "KPI admin"
+      "admin": "KPI admin",
+      "reviews": "Reviews"
     },
     "period": {
       "annual": "{year}",
@@ -3906,7 +3907,8 @@
         "assignments": "Assignments",
         "positions": "By position",
         "library": "Library",
-        "import": "Import"
+        "import": "Import",
+        "cycles": "Review cycles"
       }
     },
     "library": {
@@ -4066,6 +4068,178 @@
       "kpi_nothing_to_close": "No KPI is due this month.",
       "kpi_month_blocked": "Actuals are missing. Enter them, or close with a reason.",
       "kpi_month_not_closed": "This month is not closed."
+    },
+    "reviews": {
+      "title": "Performance reviews",
+      "description": "Review cycles: self review, manager review, peer feedback, calibration, then release.",
+      "back": "← All reviews",
+      "manager": "Reviewing manager: {name}",
+      "notLaunched": "The cycle has not been launched, so there is no form yet.",
+      "mine": {
+        "title": "My reviews",
+        "empty": "No review cycle covers you yet.",
+        "self": "Self review",
+        "selfDue": "Self review due {date}"
+      },
+      "owed": {
+        "title": "Reviews I must write",
+        "description": "The people who report to you in the cycles that are open.",
+        "selfLabel": "Self",
+        "managerLabel": "Manager"
+      },
+      "stage": {
+        "pending": "Not started",
+        "self_done": "Self review in",
+        "manager_done": "Manager review in",
+        "calibrated": "Calibrated",
+        "released": "Released",
+        "acknowledged": "Acknowledged"
+      },
+      "formStatus": {
+        "none": "None",
+        "draft": "Draft",
+        "submitted": "Submitted"
+      },
+      "cycleStatus": {
+        "draft": "Draft",
+        "active": "Collecting",
+        "calibration": "Calibration",
+        "released": "Released",
+        "closed": "Closed"
+      },
+      "timeline": {
+        "periodStart": "From",
+        "periodEnd": "To",
+        "selfDueOn": "Self review due",
+        "managerDueOn": "Manager review due",
+        "peerDueOn": "Peer feedback due",
+        "calibrationOn": "Calibration",
+        "releaseOn": "Release"
+      },
+      "form": {
+        "kind": {
+          "self": "Self review",
+          "manager": "Manager review",
+          "peer": "Peer feedback"
+        },
+        "by": {
+          "self": "Self review — {name}",
+          "manager": "Manager review — {name}",
+          "peer": "Peer feedback — {name}"
+        },
+        "overall": "Overall: {value}",
+        "comment": "Overall comment",
+        "choose": "— Choose a rating —",
+        "saveDraft": "Save draft",
+        "submit": "Submit",
+        "submitConfirm": "Once submitted it cannot be changed. Go ahead?",
+        "submitYes": "Submit",
+        "cancel": "Cancel",
+        "saved": "Saved.",
+        "draftHint": "A draft is yours alone. Once submitted, your manager and HR can read it.",
+        "waitingForSelf": "Cannot submit yet: waiting for the person's self review, or for the {date} due date to pass."
+      },
+      "submitted": {
+        "title": "Submitted forms",
+        "empty": "Nothing here that you may read."
+      },
+      "calibrate": {
+        "title": "Review rating",
+        "current": "Current rating: {value}",
+        "rating": "Rating (%)",
+        "note": "Why it was calibrated",
+        "save": "Save calibration"
+      },
+      "release": {
+        "title": "Release",
+        "action": "Release to the employee",
+        "confirm": "Once released the employee can read the manager review. Go ahead?",
+        "yes": "Release"
+      },
+      "acknowledge": {
+        "title": "Employee acknowledgement",
+        "note": "Your comment (optional)",
+        "action": "I have read and acknowledge this",
+        "done": "Acknowledged on {date}.",
+        "waiting": "Waiting for the employee to acknowledge."
+      },
+      "cycle": {
+        "name": "Cycle name",
+        "entity": "Legal entity",
+        "wholeGroup": "The whole group",
+        "kind": "Kind",
+        "kinds": {
+          "probation": "End of probation",
+          "mid_year": "Mid-year",
+          "annual": "Annual"
+        },
+        "template": "Form template",
+        "year": "Year",
+        "peers": "Peer feedback (360°)",
+        "peersEnabled": "Collect peer feedback",
+        "peerMin": "Minimum",
+        "peerMax": "Maximum",
+        "peerAnonymous": "Keep peers anonymous",
+        "save": "Save cycle",
+        "saved": "Saved.",
+        "launch": "Launch cycle",
+        "launchConfirm": "Launching freezes the form and snapshots each person's manager. Go ahead?",
+        "launchYes": "Launch"
+      },
+      "admin": {
+        "description": "Build a cycle, launch it (which freezes the form and snapshots each person's manager), then calibrate and release.",
+        "cycles": "Cycles in {year}",
+        "noCycles": "No cycle in this year yet.",
+        "open": "See participants",
+        "progress": "{participants} people · self {self} · manager {manager} · released {released}",
+        "participants": "Participants — {name}",
+        "newCycle": "New cycle",
+        "noTemplates": "No active form template. Create one first.",
+        "templates": "Form templates",
+        "templateShape": "{sections} questions · {points}-point scale",
+        "templateHint": "Templates are the group's. A launched cycle keeps the template as it was when it launched.",
+        "inactive": "Retired",
+        "advance": {
+          "calibration": "Move to calibration",
+          "released": "Mark released",
+          "closed": "Close cycle"
+        }
+      },
+      "errors": {
+        "generic": "That did not work. Try again.",
+        "forbidden": "You are not allowed to do this.",
+        "invalid": "Please check the marked fields.",
+        "unauthenticated": "Your session has expired.",
+        "step_up_required": "Please confirm who you are to continue.",
+        "review_template_empty": "A template needs at least one question.",
+        "review_template_duplicate_key": "Two questions share a key.",
+        "review_template_unasked_section": "Every question must appear on at least one form.",
+        "review_template_scale_short": "A rating scale needs at least two points.",
+        "review_template_duplicate_point": "Two scale points share a value.",
+        "review_template_unscored": "A template needs at least one weighted rating question.",
+        "review_template_not_found": "No such form template, or it has been retired.",
+        "review_cycle_not_found": "No such cycle.",
+        "review_cycle_launched": "The cycle has launched and cannot be changed.",
+        "review_cycle_not_launched": "The cycle has not been launched.",
+        "review_cycle_no_participants": "Nobody falls inside this cycle.",
+        "review_cycle_bad_step": "That is not the next step.",
+        "review_cycle_not_collecting": "The cycle is no longer taking forms.",
+        "review_period_backwards": "The end date must be after the start date.",
+        "review_timeline_backwards": "The timeline dates must run forwards.",
+        "review_timeline_before_period": "A timeline date cannot fall before the period starts.",
+        "review_peer_range": "The maximum number of peers must be at least the minimum.",
+        "review_participant_not_found": "No such participant.",
+        "review_participant_exists": "That person is already in the cycle.",
+        "review_participant_has_forms": "Something has been written about them already.",
+        "review_person_not_found": "No such person.",
+        "review_form_submitted": "The form has been submitted and cannot be changed.",
+        "review_form_incomplete": "A required question is still blank.",
+        "review_self_not_submitted": "Waiting for the self review, or for its due date to pass.",
+        "review_manager_not_submitted": "The manager review has not been submitted.",
+        "review_already_released": "Already released.",
+        "review_not_released": "Not released yet.",
+        "review_already_acknowledged": "Already acknowledged."
+      }
     }
   },
   "kb": {

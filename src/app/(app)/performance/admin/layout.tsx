@@ -19,7 +19,7 @@ export default async function KpiAdminLayout({ children }: { children: ReactNode
       </header>
       <PerformanceNav active="admin" />
       <nav className="flex flex-wrap gap-4 text-sm">
-        {(["periods", "assignments", "positions", "library", "import"] as const).map((tab) => (
+        {(["periods", "cycles", "assignments", "positions", "library", "import"] as const).map((tab) => (
           <Link key={tab} href={`/performance/admin/${tab}`} className="underline-offset-4 hover:underline">
             {t(`tabs.${tab}`)}
           </Link>

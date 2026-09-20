@@ -20,3 +20,31 @@ export { closeBlockers, type CloseBlocker, getScorecard, isMissing, listPeriods,
 export { type EntryRow, getEntryGrid, getOverview, getTeamDashboard, type Overview, type OverviewEntity, type Spread, type TeamRow } from "./kpi-views";
 export { loadDirectory, reportsBelow, type DirectoryPerson } from "./people";
 export type { AnnualKpiLine, KpiLineFlag, KpiTrace, KpiTraceLine } from "./engine/kpi-score";
+
+// ── Review cycles (Phase 8 week 1, FR-PRF-03, 08) ───────────────────────────────────────────
+export { canAcknowledgeReview, canManageCycle, canManageReviewTemplates, canReadAnonymisedPeers, canReadReviewForm, canReleaseReview, canSeeParticipant, canWriteManagerReview, canWritePeerReview, canWriteSelfReview, isReviewingManager, type ReviewParties } from "./review-policy";
+export {
+  cycleProgress,
+  eligibleParticipants,
+  findParticipant,
+  findReviewCycle,
+  findReviewTemplate,
+  listCycleParticipants,
+  listFormsOf,
+  listMyParticipations,
+  listReleasedReviewScores,
+  listReviewCycles,
+  listReviewTemplates,
+  loadParticipant,
+  type LoadedParticipant,
+  nextCycleStatus,
+  type ParticipantLine,
+  partiesOfParticipant,
+  type ReviewCycleRow,
+  type ReviewFormRow,
+  type ReviewParticipantRow,
+  type ReviewPeerNominationRow,
+  type ReviewTemplateRow,
+  listReviewsIOwe,
+} from "./reviews";
+export { isAnswered, missingRequired, type ReviewScoreLine, type ReviewScoreTrace, scoreReviewForm } from "./engine/review-score";
