@@ -5,7 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { getCurrentUser } from "@/modules/platform/auth/session";
 import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 import { renderCashSheetPdf } from "@/modules/payroll/exports/cash-sheet";
-import { payslipFont } from "@/modules/payroll/exports/pdf/load-font";
+import { payslipFont } from "@/modules/platform/pdf/load-font";
 import { hasReached } from "@/modules/payroll/lifecycle";
 import { cashSheetRows } from "@/modules/payroll/payments";
 import { canManageCompensation, canPayPayroll } from "@/modules/payroll/policy";

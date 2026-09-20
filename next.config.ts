@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   experimental: { serverActions: { bodySizeLimit: "4mb" } },
   // The payslip PDF embeds a font it reads from disk at runtime (FR-PAY-32). Tracing a
   // `readFileSync` is best-effort, so the file is named here and copied into the deployment.
-  outputFileTracingIncludes: { "/payslips/[payslipId]/pdf": ["./src/modules/payroll/exports/pdf/fonts/*.ttf"] },
+  outputFileTracingIncludes: { "/payslips/[payslipId]/pdf": ["./src/modules/platform/pdf/fonts/*.ttf"], "/payroll/runs/[runId]/payments/cash-sheet": ["./src/modules/platform/pdf/fonts/*.ttf"], "/assets/labels": ["./src/modules/platform/pdf/fonts/*.ttf"] },
   async headers() {
     return [
       {

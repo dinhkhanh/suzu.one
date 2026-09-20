@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { glyphsOf, parseFont, truncateToWidth, widthOfText } from "./font";
 import { A4, Page, renderPdf } from "./writer";
 
-const font = parseFont(readFileSync("src/modules/payroll/exports/pdf/fonts/Roboto-Subset-Regular.ttf"));
+const font = parseFont(readFileSync("src/modules/platform/pdf/fonts/Roboto-Subset-Regular.ttf"));
 const latin1 = (bytes: Uint8Array) => Buffer.from(bytes).toString("latin1");
 
 describe("reading the font", () => {

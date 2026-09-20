@@ -9,7 +9,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 import { getCurrentUser } from "@/modules/platform/auth/session";
 import { renderPayslipPdf } from "@/modules/payroll/exports/payslip-pdf";
-import { payslipFont } from "@/modules/payroll/exports/pdf/load-font";
+import { payslipFont } from "@/modules/platform/pdf/load-font";
 import { getPayslipView, recordPayslipView } from "@/modules/payroll/payslips";
 import { formatVnd } from "@/modules/payroll/ui/money";
 

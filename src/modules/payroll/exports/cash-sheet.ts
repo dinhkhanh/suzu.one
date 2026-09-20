@@ -8,8 +8,8 @@
 //
 // Cash totals are deliberately kept apart from bank totals all the way through (FR-PAY-39), so
 // nothing here ever adds the two together.
-import { type ParsedFont, truncateToWidth, widthOfText } from "./pdf/font";
-import { A4, Page, type PageSize, renderPdf } from "./pdf/writer";
+import { type ParsedFont, truncateToWidth, widthOfText } from "@/modules/platform/pdf/font";
+import { A4, Page, type PageSize, renderPdf } from "@/modules/platform/pdf/writer";
 
 export type CashSheetRow = {
   personId: string;

@@ -4,8 +4,8 @@
 // The wording is passed in rather than looked up, so this file has no opinion about language and
 // the caller can render it with next-intl exactly as the page does.
 import type { PersonPayResult } from "../engine/types";
-import { type ParsedFont, truncateToWidth, widthOfText } from "./pdf/font";
-import { A4, Page, type PageSize, renderPdf } from "./pdf/writer";
+import { type ParsedFont, truncateToWidth, widthOfText } from "@/modules/platform/pdf/font";
+import { A4, Page, type PageSize, renderPdf } from "@/modules/platform/pdf/writer";
 
 export type PayslipLabels = {
   title: string;
