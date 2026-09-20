@@ -11,7 +11,7 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { getDaysOff, isPeriodLocked } from "@/modules/attendance/service";
-import { hasReached, listRunMilestones, type RunStatus } from "@/modules/payroll/service";
+import { hasReached, listRunMilestones, type RunMilestone, type RunStatus } from "@/modules/payroll/service";
 import { type LifecycleEventFact, listLifecycleEventFacts } from "@/modules/core-hr/service";
 import { notify } from "../platform/notifications/service";
 import type { Permission, Role } from "../platform/rbac/roles";
@@ -35,14 +35,18 @@ export const TIMESHEET_LOCK_CODE = "INT-TIMESHEET-LOCK";
  * timesheet lock above — payroll writes nothing here, and this module only ever asks it
  * `listRunMilestones`, which carries statuses and dates, never a figure.
  *
- * "Phát hành phiếu lương" (INT-PAYSLIP-RELEASE) is not here: payslips are published in week 5,
- * and it closes when they are.
+ * "Phát hành phiếu lương" is not a status of the run — payslips are released after the CEO has
+ * signed — so it is matched on the date payroll reports instead (FR-PAY-32).
  */
-const PAYROLL_MILESTONES: { code: string; reached: RunStatus }[] = [
+const PAYROLL_MILESTONES: { code: string; reached?: RunStatus; published?: true }[] = [
   { code: "INT-PAYROLL-PROPOSE", reached: "proposed" },
   { code: "INT-PAYROLL-SIGN", reached: "approved" },
   { code: "INT-SALARY-PAYMENT", reached: "paid" },
+  { code: "INT-PAYSLIP-RELEASE", published: true },
 ];
+
+/** Has the run done what this milestone waits for? */
+const milestoneMet = (milestone: { reached?: RunStatus; published?: true }, run: RunMilestone): boolean => (milestone.published ? !!run.payslipsPublishedAt : !!milestone.reached && hasReached(run, milestone.reached));
 
 const LIFECYCLE_TYPE: Record<ObligationEventType, LifecycleEventFact["type"]> = { hire: "hire", rehire: "rehire", termination: "termination", long_leave: "long_leave", salary_change: "salary_change", long_leave_return: "long_leave" };
 
@@ -199,9 +203,9 @@ async function closePayrollMilestones(tx: Executor, templates: ObligationTemplat
   for (const { instance } of open) {
     const wants = wanted.find((milestone) => milestone.template!.id === instance.templateId);
     const run = byKey.get(`${instance.entityId}|${instance.periodKey}`);
-    if (!wants || !run || !hasReached(run, wants.reached)) continue;
+    if (!wants || !run || !milestoneMet(wants, run)) continue;
     await tx.update(schema.task).set({ status: "done", completedAt: new Date(), completedByPersonId: null, updatedAt: new Date() }).where(eq(schema.task.id, instance.taskId));
-    await tx.update(schema.obligationInstance).set({ note: `system:payroll_${wants.reached}`, completedLate: false, updatedAt: new Date() }).where(eq(schema.obligationInstance.id, instance.id));
+    await tx.update(schema.obligationInstance).set({ note: `system:payroll_${wants.published ? "payslips_published" : wants.reached}`, completedLate: false, updatedAt: new Date() }).where(eq(schema.obligationInstance.id, instance.id));
     closed++;
   }
   return closed;

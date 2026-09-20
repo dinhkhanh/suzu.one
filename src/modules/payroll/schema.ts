@@ -255,6 +255,13 @@ export const payrollRun = pgTable(
     paidByPersonId: uuid("paid_by_person_id").references(() => person.id),
     lockedAt: timestamp("locked_at", { withTimezone: true }),
     lockedByPersonId: uuid("locked_by_person_id").references(() => person.id),
+    /**
+     * When the payslips of this run were released to the people in it (FR-PAY-32). Not a status of
+     * its own: publishing happens after the CEO has signed and does not carry the run forward. The
+     * ops tracker closes "Phát hành phiếu lương" off this date.
+     */
+    payslipsPublishedAt: timestamp("payslips_published_at", { withTimezone: true }),
+    payslipsPublishedByPersonId: uuid("payslips_published_by_person_id").references(() => person.id),
 
     // ── Calculation progress (ADR-09) ──
     calcState: payrollCalcState("calc_state").notNull().default("idle"),
@@ -347,6 +354,157 @@ export const payrollRunInput = pgTable(
     ...timestamps,
   },
   (t) => [uniqueIndex("payroll_run_input_key").on(t.runId, t.personId, t.code)],
+).enableRLS();
+
+// ── Payslips (FR-PAY-32) ────────────────────────────────────────────────────────────────────
+
+// A payslip is a **publication record**, not a second copy of the figures: what the person reads
+// is their `payroll_run_person` result, and this row says that it was released to them, when, and
+// whether they have looked at it. One source of truth, so a payslip can never drift from the run.
+//
+// Nothing here is published before the CEO has signed (FR-PAY-30): `publishPayslips` refuses it.
+export const payslip = pgTable(
+  "payslip",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => payrollRun.id, { onDelete: "cascade" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    month: text("month").notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }).notNull().defaultNow(),
+    publishedByPersonId: uuid("published_by_person_id").references(() => person.id),
+    /** When the person first opened it, and last opened it. Counts, not money — HR chases the unread. */
+    firstViewedAt: timestamp("first_viewed_at", { withTimezone: true }),
+    lastViewedAt: timestamp("last_viewed_at", { withTimezone: true }),
+    viewCount: integer("view_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // One payslip per person per run; publishing twice changes nothing (idempotent).
+    uniqueIndex("payslip_run_person_key").on(t.runId, t.personId),
+    index("payslip_person_idx").on(t.personId, t.month),
+    index("payslip_entity_month_idx").on(t.entityId, t.month),
+  ],
+).enableRLS();
+
+export const payslipQueryStatus = pgEnum("payslip_query_status", ["open", "answered", "closed"]);
+
+// "Why is my net lower this month?" — the employee asks, C&B answers (FR-PAY-32). The thread lives
+// beside the payslip and is visible to exactly the people the payslip is: its owner, C&B, the owner.
+export const payslipQuery = pgTable(
+  "payslip_query",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    payslipId: uuid("payslip_id")
+      .notNull()
+      .references(() => payslip.id, { onDelete: "cascade" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    status: payslipQueryStatus("status").notNull().default("open"),
+    answeredAt: timestamp("answered_at", { withTimezone: true }),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("payslip_query_payslip_idx").on(t.payslipId), index("payslip_query_entity_idx").on(t.entityId, t.status)],
+).enableRLS();
+
+// One message in the thread. Append-only by a database trigger: an answer about someone's pay is
+// evidence, and neither side rewrites what was said.
+export const payslipQueryMessage = pgTable(
+  "payslip_query_message",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    queryId: uuid("query_id")
+      .notNull()
+      .references(() => payslipQuery.id, { onDelete: "cascade" }),
+    authorPersonId: uuid("author_person_id")
+      .notNull()
+      .references(() => person.id),
+    /** Words. A figure the two of them quote is their own doing — nothing here is machine-read. */
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("payslip_query_message_query_idx").on(t.queryId, t.createdAt)],
+).enableRLS();
+
+// ── Paying the run (FR-PAY-33, FR-PAY-39) ───────────────────────────────────────────────────
+
+export const paymentChannel = pgEnum("payment_channel", ["bank", "cash"]);
+
+/**
+ * A bulk-transfer file that was generated, and by whom (FR-PAY-33). **The file itself is not
+ * stored**: it carries every account number and every net figure in one place, and it can be
+ * rebuilt byte for byte from the approved run at any time. What is kept is the receipt — who
+ * generated what, how many rows it had and what it came to — so the accountant can prove the
+ * batch they uploaded matches the run the CEO signed.
+ */
+export const payrollPaymentFile = pgTable(
+  "payroll_payment_file",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => payrollRun.id, { onDelete: "cascade" }),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    channel: paymentChannel("channel").notNull(),
+    /** "vcb", "acb" — a key of the format registry; null for the cash sheet. */
+    bank: text("bank"),
+    /** The format module's own version, so a file made last month can be told from this month's. */
+    formatVersion: text("format_version").notNull(),
+    fileName: text("file_name").notNull(),
+    rowCount: integer("row_count").notNull(),
+    /** People left out because their pay account is missing or malformed — never silently dropped. */
+    skippedCount: integer("skipped_count").notNull().default(0),
+    /** The batch total, encrypted: context "payroll_payment_file.total:<id>". */
+    totalEnc: text("total_enc").notNull(),
+    generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+    generatedByPersonId: uuid("generated_by_person_id").references(() => person.id),
+  },
+  (t) => [index("payroll_payment_file_run_idx").on(t.runId, t.generatedAt)],
+).enableRLS();
+
+/**
+ * Cash paid into someone's hand (FR-PAY-39, SRS D18). One row per Simple-profile person in the
+ * run: the sheet they are listed on, the disbursement the chief accountant records, and the
+ * receipt the person confirms in the app — or the signed paper sheet, scanned and attached to
+ * the run. A run is "paid" only once every one of these rows has been disbursed.
+ */
+export const payrollCashPayment = pgTable(
+  "payroll_cash_payment",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => payrollRun.id, { onDelete: "cascade" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    /** The net to hand over, frozen from the run: context "payroll_cash_payment.amount:<id>". */
+    amountEnc: text("amount_enc").notNull(),
+    /** The day the money changed hands, and who handed it over (the chief accountant). */
+    disbursedOn: date("disbursed_on"),
+    disbursedByPersonId: uuid("disbursed_by_person_id").references(() => person.id),
+    disbursementNote: text("disbursement_note"),
+    /** The person's own confirmation in the app. Nobody may confirm on their behalf. */
+    receiptConfirmedAt: timestamp("receipt_confirmed_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("payroll_cash_payment_key").on(t.runId, t.personId), index("payroll_cash_payment_person_idx").on(t.personId)],
 ).enableRLS();
 
 // ── Retroactive items (FR-PAY-17) ───────────────────────────────────────────────────────────

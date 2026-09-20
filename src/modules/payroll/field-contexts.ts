@@ -13,3 +13,7 @@ export const runInputContext = (runPersonId: string) => `payroll_run_person.inpu
 export const runEntryContext = (entryId: string) => `payroll_run_input.amount:${entryId}`;
 /** A difference belonging to a month already paid (FR-PAY-17). */
 export const retroAmountContext = (itemId: string) => `payroll_retro_item.amount:${itemId}`;
+
+/** The total of a generated bank batch or cash sheet (FR-PAY-33, 39), and one person's cash net. */
+export const paymentFileTotalContext = (fileId: string) => `payroll_payment_file.total:${fileId}`;
+export const cashAmountContext = (paymentId: string) => `payroll_cash_payment.amount:${paymentId}`;

@@ -78,6 +78,12 @@ export const KINDS = {
   // Rule governance (FR-PLT-39) for pay components and pay policies, and a move between pay profiles: to the owners.
   "payroll.rule_proposed": "payroll",
   "payroll.profile_proposed": "payroll",
+  // A month's payslip is out, a question about one was asked or answered, cash is waiting to be
+  // confirmed (FR-PAY-32, 39). The month and a link — never a figure.
+  "payroll.payslip_published": "payroll",
+  "payroll.payslip_query_raised": "payroll",
+  "payroll.payslip_query_answered": "payroll",
+  "payroll.cash_receipt_due": "payroll",
 } as const satisfies Record<string, Category>;
 export type Kind = keyof typeof KINDS;
 

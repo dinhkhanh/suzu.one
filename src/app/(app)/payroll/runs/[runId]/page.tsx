@@ -11,6 +11,8 @@ import { RUN_STEPS, type RunStep } from "@/modules/payroll/lifecycle";
 import { canApprovePayroll, canManageCompensation, canPayPayroll } from "@/modules/payroll/policy";
 import { getRunView } from "@/modules/payroll/run-views";
 import { formatVnd } from "@/modules/payroll/ui/money";
+import { listPayslipsOfRun } from "@/modules/payroll/payslips";
+import { PublishPayslipsButton } from "@/modules/payroll/ui/payslip-forms";
 import { CalculateRunButton, CancelRunButton, RemoveRunInputButton, RunInputForm, RunStepForm } from "@/modules/payroll/ui/run-forms";
 
 export const metadata: Metadata = { title: "Payroll run" };
@@ -25,6 +27,8 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
 
   const [t, format] = await Promise.all([getTranslations("payroll"), getFormatter()]);
   const { run, entity, totals, progress, variance, people, events, seesPayslips } = view;
+  // Payslips exist only once the CEO has signed (FR-PAY-32); before that there is nothing to show.
+  const payslips = seesPayslips && run.approvedAt ? await listPayslipsOfRun(run.id, run.month) : [];
   const when = (value: Date | null) => (value ? format.dateTime(value, { dateStyle: "medium", timeStyle: "short" }) : "—");
 
   // Which of the steps the run allows is *this* person's to take (SRS D17). The action checks again.
@@ -180,6 +184,23 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
       {/* ── Typed-in figures: bonuses, advances, penalties ── */}
       {seesPayslips && editable ? <RunInputForm runId={run.id} people={people.map(({ personId, fullName }) => ({ personId, fullName }))} codes={inputCodes} /> : null}
 
+      {/* ── Releasing the payslips (FR-PAY-32) ── */}
+      {view.seesPayslips && run.approvedAt ? (
+        <section className="flex flex-col gap-3 rounded-xl border p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-medium">{t("payslips.runTitle")}</h2>
+              <p className="text-sm text-muted-foreground">
+                {run.payslipsPublishedAt
+                  ? `${t("payslips.released")} · ${when(run.payslipsPublishedAt)} · ${payslips.filter((row) => row.firstViewedAt).length}/${payslips.length} ${t("payslips.readBy")}`
+                  : t("payslips.notReleased")}
+              </p>
+            </div>
+            <PublishPayslipsButton runId={run.id} published={!!run.payslipsPublishedAt} />
+          </div>
+        </section>
+      ) : null}
+
       {/* ── The people in the run ── */}
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium">{t("runs.people")}</h2>
@@ -201,6 +222,11 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
                   <Link href={`/payroll/salaries/${person.personId}`} className="font-medium hover:underline">
                     {person.fullName}
                   </Link>
+                  {payslips.find((row) => row.personId === person.personId)?.payslipId ? (
+                    <Link href={`/payslips/${payslips.find((row) => row.personId === person.personId)!.payslipId}`} className="ml-2 text-xs text-muted-foreground hover:underline">
+                      {t("payslips.open")}
+                    </Link>
+                  ) : null}
                   <span className="ml-2 font-mono text-xs text-muted-foreground">{person.employeeCode}</span>
                   {person.inputs.map((input) => (
                     <span key={input.code} className="ml-2 text-xs text-muted-foreground">

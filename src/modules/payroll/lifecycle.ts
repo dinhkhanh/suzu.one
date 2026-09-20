@@ -157,7 +157,7 @@ export async function assertPeriodOpen(entityId: string, month: string, executor
 
 // ── What other modules ask (through service.ts) ─────────────────────────────────────────────
 
-export type RunMilestone = { entityId: string; month: string; status: RunStatus; proposedAt: Date | null; approvedAt: Date | null; paidAt: Date | null; lockedAt: Date | null };
+export type RunMilestone = { entityId: string; month: string; status: RunStatus; proposedAt: Date | null; approvedAt: Date | null; paidAt: Date | null; lockedAt: Date | null; payslipsPublishedAt: Date | null };
 
 /**
  * How far each entity's regular run has got, for the months asked about. This is what the ops
@@ -175,6 +175,7 @@ export async function listRunMilestones(filter: { entityIds?: readonly string[];
       approvedAt: schema.payrollRun.approvedAt,
       paidAt: schema.payrollRun.paidAt,
       lockedAt: schema.payrollRun.lockedAt,
+      payslipsPublishedAt: schema.payrollRun.payslipsPublishedAt,
     })
     .from(schema.payrollRun)
     .where(

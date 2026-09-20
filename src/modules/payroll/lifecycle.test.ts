@@ -429,7 +429,7 @@ describe("what other modules are told (FR-OPS-10)", () => {
     const july = milestones.find((row) => row.month === "2026-07")!;
     expect(july).toMatchObject({ entityId: ids.entity, status: "locked" });
     expect(july.paidAt).toBeInstanceOf(Date);
-    expect(Object.keys(july).sort()).toEqual(["approvedAt", "entityId", "lockedAt", "month", "paidAt", "proposedAt", "status"]);
+    expect(Object.keys(july).sort()).toEqual(["approvedAt", "entityId", "lockedAt", "month", "paidAt", "payslipsPublishedAt", "proposedAt", "status"]);
     expect(milestones.find((row) => row.month === "2026-09")?.status).toBe("proposed");
   });
 

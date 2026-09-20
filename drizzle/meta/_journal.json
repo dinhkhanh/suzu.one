@@ -344,6 +344,13 @@
       "when": 1789870955874,
       "tag": "0048_payroll_run_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1789873109831,
+      "tag": "0049_payslips_payments_cash",
+      "breakpoints": true
     }
   ]
 }

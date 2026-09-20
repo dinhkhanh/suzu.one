@@ -46,7 +46,8 @@
     "menu": "Menu",
     "performance": "Goals & KPIs",
     "announcements": "Announcements",
-    "kudos": "Kudos"
+    "kudos": "Kudos",
+    "payslips": "Payslips"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -768,6 +769,22 @@
       "payroll_profile_proposed": {
         "title": "A pay profile change is proposed",
         "body": "A pay profile change for {person} effective {validFrom} is waiting for your decision."
+      },
+      "payroll_payslip_published": {
+        "title": "Your {month} payslip is ready",
+        "body": "Your payslip for {month} has been released. Open the app to read it."
+      },
+      "payroll_payslip_query_raised": {
+        "title": "A payslip query was raised",
+        "body": "Someone asked about their {month} payslip."
+      },
+      "payroll_payslip_query_answered": {
+        "title": "C&B answered your query",
+        "body": "Your question about the {month} payslip has been answered."
+      },
+      "payroll_cash_receipt_due": {
+        "title": "Confirm you received your pay",
+        "body": "Please confirm that you received your {month} pay in cash."
       }
     },
     "errors": {
@@ -4429,6 +4446,14 @@
       "runs": {
         "title": "Payroll runs",
         "description": "Calculate, propose and follow each month's payroll."
+      },
+      "queries": {
+        "title": "Payslip queries",
+        "description": "Answer employees' questions about their payslips."
+      },
+      "myPayslips": {
+        "title": "My payslips",
+        "description": "The pay periods released to you."
       }
     },
     "salaries": {
@@ -4937,6 +4962,130 @@
         "pay_profile_missing": "Somebody has no pay profile.",
         "amount_invalid": "That amount is not valid.",
         "run_has_no_lines": "There is nothing to pay."
+      }
+    },
+    "payslips": {
+      "mine": "My payslips",
+      "mineDescription": "The pay periods released to you. Only you, your entity's C&B team and the owner can see them.",
+      "none": "No payslip has been released to you yet.",
+      "month": "Period",
+      "entity": "Entity",
+      "net": "Net pay",
+      "published": "Released",
+      "new": "New",
+      "open": "Open",
+      "queryOpen": "Query open",
+      "backToRun": "Payroll run",
+      "downloadPdf": "Download PDF",
+      "titleFor": "PAYSLIP FOR {month}",
+      "taxCode": "Tax code",
+      "person": "Employee",
+      "employeeCode": "Employee code",
+      "position": "Position",
+      "department": "Department",
+      "profile": "Pay profile",
+      "paidDays": "Paid days",
+      "profiles": {
+        "statutory": "Statutory",
+        "simple": "Simple"
+      },
+      "earnings": "Earnings",
+      "deductions": "Deductions",
+      "employerCosts": "Employer contributions",
+      "line": "Item",
+      "amount": "Amount",
+      "taxablePart": "Taxable part",
+      "grossEarnings": "Gross earnings",
+      "totalDeductions": "Total deductions",
+      "trace": "How this was calculated",
+      "warnings": {
+        "negative_net": "Negative net",
+        "no_salary_structure": "No salary structure",
+        "zero_paid_days": "No paid days",
+        "insurance_base_below_minimum": "Contribution base below the regional minimum",
+        "insurance_base_above_declared": "Contribution base above the declared salary"
+      },
+      "insurance": {
+        "title": "Compulsory insurance",
+        "fund": "Fund",
+        "base": "Base",
+        "employee": "Employee pays",
+        "employer": "Employer pays",
+        "funds": {
+          "bhxh": "Social (BHXH)",
+          "bhyt": "Health (BHYT)",
+          "bhtn": "Unemployment (BHTN)"
+        },
+        "notCovered": "No compulsory insurance was due this period.",
+        "capped": "The declared base of {declared} is above the cap, so {capped} was used.",
+        "reasons": {
+          "simple_profile": "Simple pay profile: no compulsory insurance.",
+          "probation": "On probation: not covered by compulsory insurance.",
+          "retiree": "Retired: not covered by compulsory insurance.",
+          "insured_elsewhere": "Insured through another employer.",
+          "other_exemption": "Exempt, as recorded by HR.",
+          "unpaid_leave_threshold": "14 or more working days of unpaid leave this month.",
+          "no_salary": "No pay this period.",
+          "off_cycle_run": "Off-cycle run: insurance was taken in the month's regular run."
+        }
+      },
+      "pit": {
+        "title": "Personal income tax",
+        "methods": {
+          "progressive": "Progressive brackets (labour contract of three months or more, resident).",
+          "flat_without_contract": "Flat withholding (no contract, or a contract under three months).",
+          "flat_non_resident": "Flat withholding for a non-resident.",
+          "none": "No personal income tax was withheld this period."
+        },
+        "taxableIncome": "Taxable income",
+        "exemptIncome": "Exempt income",
+        "insuranceDeduction": "Insurance deducted",
+        "personalDeduction": "Personal deduction",
+        "dependentDeduction": "Dependent deduction",
+        "otherDeductions": "Other deductions",
+        "assessableIncome": "Assessable income",
+        "bracket": "Bracket",
+        "rate": "Rate",
+        "slice": "Income in bracket",
+        "taxOnSlice": "Tax",
+        "above": "Above",
+        "offCycle": "Tax for the whole month {monthTax}, already withheld {priorTax}, withheld now {tax}."
+      },
+      "publish": "Release payslips",
+      "publishAgain": "Release the missing ones",
+      "released": "Released",
+      "notReleased": "Not released",
+      "readBy": "Opened",
+      "runTitle": "Payslip release",
+      "queries": {
+        "title": "Payslip queries",
+        "none": "No queries yet.",
+        "ask": "Ask C&B about this payslip",
+        "askHint": "Only your entity's C&B team can read your question.",
+        "question": "Your question",
+        "reply": "Reply",
+        "send": "Send",
+        "close": "Close the query",
+        "queue": "Payslip queries",
+        "queueDescription": "Questions about payslips in the entities you look after.",
+        "noneInQueue": "Nothing is waiting.",
+        "lastMessage": "Latest message",
+        "asker": "Asked by",
+        "statuses": {
+          "open": "Waiting for C&B",
+          "answered": "C&B replied",
+          "closed": "Closed"
+        }
+      },
+      "errors": {
+        "run_not_approved": "The run has not been signed off, so payslips cannot be released.",
+        "run_is_empty": "The run has nobody in it.",
+        "run_not_found": "Payroll run not found.",
+        "payslip_not_found": "Payslip not found.",
+        "query_not_found": "Query not found.",
+        "query_closed": "This query is closed.",
+        "forbidden": "You are not allowed to do this.",
+        "failed": "That did not work. Please try again."
       }
     }
   }

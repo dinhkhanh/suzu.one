@@ -46,7 +46,8 @@
     "menu": "Menu",
     "performance": "Mục tiêu & KPI",
     "announcements": "Thông báo",
-    "kudos": "Ghi nhận"
+    "kudos": "Ghi nhận",
+    "payslips": "Phiếu lương"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -768,6 +769,22 @@
       "payroll_profile_proposed": {
         "title": "Có đề xuất đổi hồ sơ trả lương",
         "body": "Đề xuất đổi hồ sơ trả lương của {person}, hiệu lực từ {validFrom}. Chỉ có hiệu lực sau khi bạn phê duyệt."
+      },
+      "payroll_payslip_published": {
+        "title": "Phiếu lương tháng {month} đã có",
+        "body": "Phiếu lương tháng {month} của bạn đã được phát hành. Mở ứng dụng để xem."
+      },
+      "payroll_payslip_query_raised": {
+        "title": "Có thắc mắc về phiếu lương",
+        "body": "Một nhân viên gửi thắc mắc về phiếu lương tháng {month}."
+      },
+      "payroll_payslip_query_answered": {
+        "title": "C&B đã trả lời thắc mắc",
+        "body": "Thắc mắc của bạn về phiếu lương tháng {month} đã được trả lời."
+      },
+      "payroll_cash_receipt_due": {
+        "title": "Xác nhận đã nhận lương tiền mặt",
+        "body": "Vui lòng xác nhận bạn đã nhận lương tháng {month} bằng tiền mặt."
       }
     },
     "errors": {
@@ -4429,6 +4446,14 @@
       "runs": {
         "title": "Kỳ lương",
         "description": "Tính, trình và theo dõi bảng lương từng tháng."
+      },
+      "queries": {
+        "title": "Thắc mắc phiếu lương",
+        "description": "Trả lời câu hỏi của nhân viên về phiếu lương."
+      },
+      "myPayslips": {
+        "title": "Phiếu lương của tôi",
+        "description": "Các kỳ lương đã phát hành cho bạn."
       }
     },
     "salaries": {
@@ -4937,6 +4962,130 @@
         "pay_profile_missing": "Có nhân viên chưa có hồ sơ trả lương.",
         "amount_invalid": "Số tiền không hợp lệ.",
         "run_has_no_lines": "Chưa có khoản nào để chi."
+      }
+    },
+    "payslips": {
+      "mine": "Phiếu lương của tôi",
+      "mineDescription": "Các kỳ lương đã phát hành cho bạn. Chỉ bạn, bộ phận C&B của pháp nhân và chủ sở hữu xem được.",
+      "none": "Chưa có phiếu lương nào được phát hành cho bạn.",
+      "month": "Kỳ lương",
+      "entity": "Pháp nhân",
+      "net": "Thực nhận",
+      "published": "Ngày phát hành",
+      "new": "Mới",
+      "open": "Xem",
+      "queryOpen": "Đang có thắc mắc",
+      "backToRun": "Bảng lương",
+      "downloadPdf": "Tải bản PDF",
+      "titleFor": "PHIẾU LƯƠNG THÁNG {month}",
+      "taxCode": "Mã số thuế",
+      "person": "Nhân viên",
+      "employeeCode": "Mã nhân viên",
+      "position": "Chức danh",
+      "department": "Phòng ban",
+      "profile": "Hồ sơ trả lương",
+      "paidDays": "Ngày công hưởng lương",
+      "profiles": {
+        "statutory": "Đóng đủ chế độ",
+        "simple": "Chi lương giản lược"
+      },
+      "earnings": "Các khoản thu nhập",
+      "deductions": "Các khoản khấu trừ",
+      "employerCosts": "Công ty đóng cho người lao động",
+      "line": "Khoản mục",
+      "amount": "Số tiền",
+      "taxablePart": "Phần chịu thuế",
+      "grossEarnings": "Tổng thu nhập",
+      "totalDeductions": "Tổng khấu trừ",
+      "trace": "Diễn giải cách tính",
+      "warnings": {
+        "negative_net": "Thực nhận âm",
+        "no_salary_structure": "Chưa có cơ cấu lương",
+        "zero_paid_days": "Không có ngày công hưởng lương",
+        "insurance_base_below_minimum": "Mức đóng dưới lương tối thiểu vùng",
+        "insurance_base_above_declared": "Mức đóng cao hơn mức khai báo"
+      },
+      "insurance": {
+        "title": "Bảo hiểm bắt buộc",
+        "fund": "Quỹ",
+        "base": "Mức đóng",
+        "employee": "Người lao động đóng",
+        "employer": "Công ty đóng",
+        "funds": {
+          "bhxh": "BHXH",
+          "bhyt": "BHYT",
+          "bhtn": "BHTN"
+        },
+        "notCovered": "Kỳ này không phát sinh đóng bảo hiểm bắt buộc.",
+        "capped": "Mức lương đóng bảo hiểm {declared} vượt trần nên tính trên {capped}.",
+        "reasons": {
+          "simple_profile": "Hồ sơ chi lương giản lược: không đóng bảo hiểm bắt buộc.",
+          "probation": "Đang thử việc: không thuộc diện đóng bảo hiểm bắt buộc.",
+          "retiree": "Đã nghỉ hưu: không thuộc diện đóng bảo hiểm bắt buộc.",
+          "insured_elsewhere": "Đã tham gia bảo hiểm tại đơn vị khác.",
+          "other_exemption": "Thuộc diện miễn đóng theo ghi nhận của nhân sự.",
+          "unpaid_leave_threshold": "Nghỉ không hưởng lương từ 14 ngày làm việc trở lên trong tháng.",
+          "no_salary": "Không phát sinh lương trong kỳ.",
+          "off_cycle_run": "Kỳ chi bổ sung: bảo hiểm đã tính ở kỳ lương chính của tháng."
+        }
+      },
+      "pit": {
+        "title": "Thuế thu nhập cá nhân",
+        "methods": {
+          "progressive": "Biểu thuế lũy tiến từng phần (hợp đồng lao động từ 3 tháng, cá nhân cư trú).",
+          "flat_without_contract": "Khấu trừ theo tỷ lệ cố định (không có hợp đồng hoặc hợp đồng dưới 3 tháng).",
+          "flat_non_resident": "Khấu trừ theo tỷ lệ cố định dành cho cá nhân không cư trú.",
+          "none": "Kỳ này không khấu trừ thuế thu nhập cá nhân."
+        },
+        "taxableIncome": "Thu nhập chịu thuế",
+        "exemptIncome": "Thu nhập được miễn",
+        "insuranceDeduction": "Bảo hiểm được trừ",
+        "personalDeduction": "Giảm trừ bản thân",
+        "dependentDeduction": "Giảm trừ người phụ thuộc",
+        "otherDeductions": "Các khoản được trừ khác",
+        "assessableIncome": "Thu nhập tính thuế",
+        "bracket": "Bậc thuế",
+        "rate": "Thuế suất",
+        "slice": "Phần thu nhập",
+        "taxOnSlice": "Thuế",
+        "above": "Phần vượt",
+        "offCycle": "Thuế cả tháng {monthTax}, kỳ trước đã khấu trừ {priorTax}, kỳ này khấu trừ {tax}."
+      },
+      "publish": "Phát hành phiếu lương",
+      "publishAgain": "Phát hành bổ sung",
+      "released": "Đã phát hành",
+      "notReleased": "Chưa phát hành",
+      "readBy": "Đã xem",
+      "runTitle": "Phát hành phiếu lương",
+      "queries": {
+        "title": "Thắc mắc về phiếu lương",
+        "none": "Chưa có thắc mắc nào.",
+        "ask": "Gửi thắc mắc đến C&B",
+        "askHint": "Câu hỏi của bạn chỉ C&B của pháp nhân đọc được.",
+        "question": "Nội dung",
+        "reply": "Trả lời",
+        "send": "Gửi",
+        "close": "Đóng thắc mắc",
+        "queue": "Thắc mắc phiếu lương",
+        "queueDescription": "Các câu hỏi về phiếu lương trong phạm vi bạn phụ trách.",
+        "noneInQueue": "Không có thắc mắc nào đang chờ.",
+        "lastMessage": "Nội dung gần nhất",
+        "asker": "Người hỏi",
+        "statuses": {
+          "open": "Đang chờ C&B",
+          "answered": "C&B đã trả lời",
+          "closed": "Đã đóng"
+        }
+      },
+      "errors": {
+        "run_not_approved": "Bảng lương chưa được ký duyệt nên chưa thể phát hành phiếu lương.",
+        "run_is_empty": "Bảng lương chưa có người nào.",
+        "run_not_found": "Không tìm thấy bảng lương.",
+        "payslip_not_found": "Không tìm thấy phiếu lương.",
+        "query_not_found": "Không tìm thấy thắc mắc.",
+        "query_closed": "Thắc mắc đã đóng.",
+        "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+        "failed": "Không thực hiện được. Vui lòng thử lại."
       }
     }
   }
