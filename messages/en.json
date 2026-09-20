@@ -55,7 +55,8 @@
     "documentTemplates": "Document templates",
     "recruit": "Recruitment",
     "interviews": "Interviews",
-    "referrals": "Refer a candidate"
+    "referrals": "Refer a candidate",
+    "assistant": "Ask Suzu"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -7424,6 +7425,47 @@
       "medianDays": "Median (days)",
       "noSources": "No applications in this period.",
       "noCostPerHire": "Cost per hire is not shown: the system does not record recruitment spend."
+    }
+  },
+  "assistant": {
+    "title": "Ask Suzu",
+    "intro": "Answers from the knowledge-base pages you may read, with a link to the source. Only pages you can open are ever used.",
+    "askLabel": "Your question",
+    "placeholder": "For example: How many days of annual leave do I get?",
+    "send": "Ask",
+    "thinking": "Looking…",
+    "newChat": "New chat",
+    "history": "Asked recently",
+    "emptyHint": "Ask about the work rules, policies and procedures. Accents are optional.",
+    "mayBeWrong": "The answer is quoted from a knowledge-base page and may be incomplete — open the source to read it in full.",
+    "noAnswer": "I could not find an answer in the pages you may read.",
+    "noAnswerLogged": "The question has been logged so HR can write the missing page. You can also ask HR directly.",
+    "suggestions": {
+      "leave": "How many days of annual leave do I get?",
+      "payday": "Which day is payday?",
+      "overtime": "What is the overtime rate on a public holiday?",
+      "remote": "How many days a week may I work remotely?"
+    },
+    "unanswered": {
+      "link": "Unanswered questions",
+      "back": "Ask Suzu",
+      "title": "Unanswered questions",
+      "intro": "What people asked that the knowledge base does not cover. Most-asked first — this is the list of pages still to write.",
+      "open": "Open",
+      "all": "All",
+      "empty": "Nothing has gone unanswered yet.",
+      "askedTimes": "{count, plural, one {asked once} other {asked # times}}",
+      "bestScore": "best match {score}%",
+      "resolve": "Mark done",
+      "note": "Note",
+      "notePlaceholder": "Which page did you write?",
+      "resolvedOn": "Done on {date}"
+    },
+    "errors": {
+      "generic": "The question could not be sent. Please try again.",
+      "forbidden": "You may not use the assistant.",
+      "ai_conversation_not_found": "That conversation was not found.",
+      "ai_unanswered_not_found": "That question has already been dealt with."
     }
   }
 }

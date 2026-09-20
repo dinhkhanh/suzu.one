@@ -13,6 +13,7 @@ import { notificationsDailyJob } from "@/modules/platform/notifications/jobs";
 import { candidateRetentionJob } from "@/modules/recruit/jobs";
 import { requestSlaJob } from "@/modules/requests/jobs";
 import { workRecurringJob, workRemindersJob } from "@/modules/work/jobs";
+import { aiEvalJob } from "../ai-eval";
 import { bonusDemoRunJob } from "./bonus-demo";
 import { payrollDemoRunsJob } from "./payroll-demo";
 
@@ -29,8 +30,8 @@ const SCHEDULES: Record<string, JobDefinition[]> = {
 };
 
 // Run by hand only: /api/cron/<job name>.
-// `payroll-demo-runs` and `bonus-demo-run` refuse to run outside a development server.
-const ON_DEMAND: JobDefinition[] = [fieldKeysRewrapJob, opsBackfillJob, payrollDemoRunsJob, bonusDemoRunJob];
+// `payroll-demo-runs`, `bonus-demo-run` and `ai-eval` refuse to run outside a development server.
+const ON_DEMAND: JobDefinition[] = [fieldKeysRewrapJob, opsBackfillJob, payrollDemoRunsJob, bonusDemoRunJob, aiEvalJob];
 
 export const maxDuration = 300;
 

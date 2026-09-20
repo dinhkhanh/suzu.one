@@ -36,6 +36,13 @@ const schema = z.object({
   // still cut, stored and ranked, but the vectors mean nothing outside this machine.
   EMBEDDINGS_API_KEY: z.string().min(1).optional(),
   EMBEDDINGS_MODEL: z.string().min(1).default("voyage-3.5"),
+  // The assistant's model (Phase 9, FR-AI-01). Unset = the local extractive driver: it answers with
+  // the knowledge base's own words, generates nothing, and nothing leaves the machine. With a key
+  // the Claude driver runs instead — **written against the Messages API and never run**, because
+  // the company has no key. Zero data retention (FR-AI-06) is a setting on the Anthropic
+  // organisation the key belongs to, not a request parameter: the owner has to ask for it.
+  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  ANTHROPIC_MODEL: z.string().min(1).default("claude-opus-5"),
   // Step-up re-authentication before compensation screens (FR-PLT-06). "google" sends the person
   // through Google again; "local" is a confirm button for development machines, where Google
   // cannot be reached — `load()` refuses it in any production build or on Vercel.

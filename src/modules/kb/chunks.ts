@@ -92,7 +92,10 @@ const CANDIDATE_CAP = 2000;
  * that is thin, every visible chunk up to a cap.
  */
 export async function retrieveKbChunks(viewer: KbViewer, input: { query: string; limit?: number; spaceId?: string | null }): Promise<RetrievedChunk[]> {
-  const limit = Math.max(1, Math.min(input.limit ?? 8, 50));
+  // Up to 200 (Phase 9): the assistant asks for a wide set and ranks it again in `modules/ai`
+  // against the question's words, because a vector score and a lexical score fail in different
+  // places. Screens still ask for a handful.
+  const limit = Math.max(1, Math.min(input.limit ?? 8, 200));
   const tokens = searchTokens(input.query);
   if (tokens.length === 0) return [];
   const select = { chunkId: kbPageChunk.id, pageId: kbPage.id, pageTitle: kbPage.publishedTitle, spaceKey: kbSpace.key, spaceName: kbSpace.name, versionId: kbPageChunk.versionId, chunkIndex: kbPageChunk.chunkIndex, headingPath: kbPageChunk.headingPath, content: kbPageChunk.content, embedding: kbPageChunk.embedding, embeddingModel: kbPageChunk.embeddingModel };

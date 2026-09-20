@@ -55,7 +55,8 @@
     "documentTemplates": "Mẫu văn bản",
     "recruit": "Tuyển dụng",
     "interviews": "Lịch phỏng vấn",
-    "referrals": "Giới thiệu ứng viên"
+    "referrals": "Giới thiệu ứng viên",
+    "assistant": "Hỏi Suzu"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -7424,6 +7425,47 @@
       "medianDays": "Trung vị (ngày)",
       "noSources": "Chưa có hồ sơ nào trong kỳ này.",
       "noCostPerHire": "Chi phí trên mỗi lượt tuyển chưa được tính: hệ thống chưa ghi nhận chi phí tuyển dụng."
+    }
+  },
+  "assistant": {
+    "title": "Hỏi Suzu",
+    "intro": "Trả lời từ các trang Tri thức bạn được xem, kèm liên kết tới trang gốc. Chỉ những trang bạn mở được mới được dùng.",
+    "askLabel": "Câu hỏi của bạn",
+    "placeholder": "Ví dụ: Một năm được bao nhiêu ngày phép năm?",
+    "send": "Hỏi",
+    "thinking": "Đang tìm…",
+    "newChat": "Cuộc trò chuyện mới",
+    "history": "Đã hỏi gần đây",
+    "emptyHint": "Hỏi về nội quy, chính sách và quy trình. Gõ không dấu cũng được.",
+    "mayBeWrong": "Câu trả lời được trích từ trang Tri thức và có thể chưa đầy đủ — hãy mở trang nguồn để đọc đủ.",
+    "noAnswer": "Mình không tìm thấy câu trả lời trong các trang bạn được xem.",
+    "noAnswerLogged": "Câu hỏi đã được ghi lại để phòng Nhân sự bổ sung trang còn thiếu. Bạn có thể hỏi trực tiếp phòng Nhân sự.",
+    "suggestions": {
+      "leave": "Một năm được bao nhiêu ngày phép năm?",
+      "payday": "Ngày trả lương là ngày nào?",
+      "overtime": "Làm thêm ngày lễ được trả bao nhiêu?",
+      "remote": "Một tuần được làm việc từ xa mấy ngày?"
+    },
+    "unanswered": {
+      "link": "Câu hỏi chưa trả lời được",
+      "back": "Hỏi Suzu",
+      "title": "Câu hỏi chưa trả lời được",
+      "intro": "Những gì mọi người hỏi mà Tri thức chưa có. Hỏi nhiều nhất xếp trước — đây là danh sách trang cần viết.",
+      "open": "Chưa xử lý",
+      "all": "Tất cả",
+      "empty": "Chưa có câu hỏi nào bị bỏ sót.",
+      "askedTimes": "{count, plural, other {# lượt hỏi}}",
+      "bestScore": "độ khớp cao nhất {score}%",
+      "resolve": "Đánh dấu đã xử lý",
+      "note": "Ghi chú",
+      "notePlaceholder": "Đã viết trang nào?",
+      "resolvedOn": "Đã xử lý ngày {date}"
+    },
+    "errors": {
+      "generic": "Không gửi được câu hỏi. Thử lại nhé.",
+      "forbidden": "Bạn không có quyền dùng trợ lý.",
+      "ai_conversation_not_found": "Không tìm thấy cuộc trò chuyện.",
+      "ai_unanswered_not_found": "Câu hỏi này đã được xử lý rồi."
     }
   }
 }
