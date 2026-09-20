@@ -51,9 +51,15 @@ export function createAction<Schema extends z.ZodType, Output>(definition: {
     const user = await getCurrentUser();
     if (!user) return { ok: false, error: "unauthenticated" };
 
-    if (definition.stepUp && !isStepUpFresh(user.reauthAt)) return { ok: false, error: "failed", message: "step_up_required" };
-
     const actor = { userId: user.userId, personId: user.person.id, email: user.email };
+
+    // Recorded like a refusal: someone reaching a compensation action on a stale session is worth
+    // seeing in the log, whether it is a forgotten tab or somebody else at the keyboard.
+    if (definition.stepUp && !isStepUpFresh(user.reauthAt)) {
+      await recordAudit({ action: `${definition.name}.step_up_required`, actor, request: user.request });
+      return { ok: false, error: "failed", message: "step_up_required" };
+    }
+
     if (!(await definition.authorize(user, parsed.data))) {
       await recordAudit({ action: `${definition.name}.denied`, actor, request: user.request });
       return { ok: false, error: "forbidden" };

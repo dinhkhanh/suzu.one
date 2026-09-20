@@ -63,6 +63,12 @@ export type CalculateOptions = {
    * difference, so the difference is the change that was made and not a change in the law.
    */
   context?: CalculationContext;
+  /**
+   * Told how far the calculation has got, person by person (ADR-09). The background worker writes
+   * it to the run so a screen can follow a long month; it may also refuse to go on (by throwing)
+   * when the run has been taken over by someone else.
+   */
+  onProgress?: (done: number, total: number) => void | Promise<void>;
   executor?: Executor;
 };
 
@@ -127,6 +133,7 @@ export async function calculateEntityMonth(entityId: string, month: string, opti
       statutory,
     });
     people.push({ input, result: calculatePerson(input), facts: personFacts });
+    await options.onProgress?.(people.length, locked.people.length);
   }
 
   return {
@@ -160,7 +167,7 @@ export async function calculateOnePerson(entityId: string, month: string, person
  * person's salary structure is loaded all the same, because a bonus formula reads the base salary
  * from it, but no structure line is ever paid (`calculateEarnings` skips them on an off-cycle run).
  */
-export async function calculateOffCycle(entityId: string, month: string, options: { inputs: RunInputs; prior?: RunPrior; executor?: Executor }): Promise<EntityMonthCalculation> {
+export async function calculateOffCycle(entityId: string, month: string, options: { inputs: RunInputs; prior?: RunPrior; onProgress?: CalculateOptions["onProgress"]; executor?: Executor }): Promise<EntityMonthCalculation> {
   const executor = options.executor ?? db();
   const period = payPeriodOf(month, 0);
   const personIds = [...options.inputs.keys()];
@@ -207,6 +214,7 @@ export async function calculateOffCycle(entityId: string, month: string, options
       statutory: statutory.params,
     };
     people.push({ input, result: calculatePerson(input), facts: personFacts });
+    await options.onProgress?.(people.length, personIds.length);
   }
 
   return {

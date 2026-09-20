@@ -4425,6 +4425,10 @@
       "netToGross": {
         "title": "Net to gross",
         "description": "Turn an agreed take-home figure into the gross for the offer."
+      },
+      "runs": {
+        "title": "Payroll runs",
+        "description": "Calculate, propose and follow each month's payroll."
       }
     },
     "salaries": {
@@ -4810,6 +4814,130 @@
       "net": "Net",
       "employerCost": "Employer cost",
       "unverified": "{count} statutory values are not yet confirmed by the chief accountant."
+    },
+    "runs": {
+      "title": "Payroll runs",
+      "description": "The month's payroll: calculated, proposed, signed, paid and locked.",
+      "entity": "Entity",
+      "month": "Month",
+      "kind": "Kind",
+      "status": "Status",
+      "headcount": "People",
+      "net": "Net",
+      "paidAt": "Paid",
+      "note": "Note",
+      "empty": "No payroll runs yet.",
+      "people": "People in the run",
+      "noPeople": "Nobody has been calculated in this run yet.",
+      "history": "History",
+      "noHistory": "No step has been taken yet.",
+      "lifecycle": "Approval steps",
+      "calculate": "Calculate",
+      "recalculate": "Recalculate",
+      "cancel": "Cancel run",
+      "calculating": "calculating…",
+      "calcFailed": "calculation failed",
+      "progress": "Calculating: {done}/{total} people.",
+      "calcError": "Could not calculate: {error}",
+      "unverified": "These parameters are not confirmed by the chief accountant yet: {keys}.",
+      "kinds": {
+        "regular": "Regular",
+        "off_cycle": "Off-cycle"
+      },
+      "statuses": {
+        "draft": "Draft",
+        "calculated": "Calculated",
+        "proposed": "Proposed",
+        "approved": "Approved",
+        "payment_prepared": "Payment prepared",
+        "paid": "Paid",
+        "locked": "Locked",
+        "cancelled": "Cancelled"
+      },
+      "steps": {
+        "propose": "Propose",
+        "approve": "Approve",
+        "return": "Return to HR",
+        "prepare_payment": "Prepare payment",
+        "mark_paid": "Mark as paid",
+        "lock": "Lock the period",
+        "comment": "Note (optional)",
+        "reason": "Reason for returning",
+        "reasonHint": "HR needs to know what to fix."
+      },
+      "totals": {
+        "headcount": "People",
+        "gross": "Gross",
+        "deductions": "Deductions",
+        "net": "Net",
+        "employerCost": "Employer cost",
+        "netStatutory": "Bank transfer (Statutory)",
+        "netSimple": "Cash (Simple)",
+        "pit": "Personal income tax",
+        "insurance": "Compulsory insurance"
+      },
+      "variance": {
+        "title": "Against last month",
+        "against": "Against {month}: {previous} · change {change}.",
+        "noPrevious": "There is no earlier run to compare with.",
+        "clean": "Nothing to look at.",
+        "flags": "Flags",
+        "previousNet": "Last month",
+        "change": "Change",
+        "flagNames": {
+          "net_change": "Net changed",
+          "new_person": "New",
+          "removed_person": "No longer in the run",
+          "negative_net": "Negative net",
+          "zero_net": "Zero net",
+          "missing_bank_account": "No bank account",
+          "missing_tax_code": "No tax code"
+        }
+      },
+      "warnings": {
+        "negative_net": "Negative net",
+        "no_salary_structure": "No salary structure",
+        "zero_paid_days": "No paid days",
+        "insurance_base_below_minimum": "Insurance base below the minimum",
+        "insurance_base_above_declared": "Insurance base above the declared one"
+      },
+      "new": {
+        "link": "New run",
+        "title": "New payroll run",
+        "hint": "Only a month whose timesheet is locked can be run.",
+        "noMonths": "No locked month is waiting for a run.",
+        "submit": "Create",
+        "saving": "Creating"
+      },
+      "inputs": {
+        "title": "Typed-in figures",
+        "hint": "Bonuses, commission, advances, deductions — enter them, then recalculate.",
+        "person": "Person",
+        "code": "Component",
+        "amount": "Amount",
+        "note": "Note",
+        "save": "Save",
+        "saved": "Saved.",
+        "remove": "Remove"
+      },
+      "errors": {
+        "generic": "That did not work.",
+        "forbidden": "You have no access to this payroll run.",
+        "step_up_required": "Please confirm who you are to continue.",
+        "run_not_found": "Payroll run not found.",
+        "run_exists": "This month already has a run.",
+        "run_not_editable": "The run has been proposed and can no longer be changed.",
+        "run_step_not_allowed": "That step is not possible from the run's current state.",
+        "run_is_empty": "The run has nobody in it.",
+        "run_calculating": "The run is being calculated; please wait.",
+        "run_cancelled": "The run was cancelled.",
+        "comment_required": "A reason is required.",
+        "payroll_period_locked": "This month's payroll is locked.",
+        "timesheet_not_locked": "The month's timesheet is not locked.",
+        "pay_profile_missing": "Somebody has no pay profile.",
+        "amount_invalid": "That amount is not valid.",
+        "run_has_no_lines": "There is nothing to pay."
+      }
     }
   }
 }

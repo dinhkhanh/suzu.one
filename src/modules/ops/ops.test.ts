@@ -162,6 +162,42 @@ describe("the scheduler", () => {
     expect(await generateInstances(TODAY, { horizonDays: 20 })).toMatchObject({ autoCompleted: 1 });
     expect((await instancesOf("INT-TIMESHEET-LOCK")).map((row) => [row.instance.periodKey, row.task.status, row.instance.note])).toEqual([["2026-08", "done", "system:timesheet_locked"], ["2026-09", "todo", null]]);
   });
+
+  // FR-OPS-10: the deferred half of the payroll calendar, closed by payroll's own lifecycle.
+  it("closes the payroll calendar as the month's run is proposed, signed and paid", async () => {
+    const payrollTemplate = (code: string, name: string, day: number, ownerRule: string) => saveTemplate(null, { ...base, code, name, category: "internal", authority: "internal", dueRule: { type: "after_period", monthsAfter: 1, day }, ownerRule, entityIds: [ids.szm] });
+    await payrollTemplate("INT-PAYROLL-PROPOSE", "Trình bảng lương", 3, "permission:payroll:propose");
+    await payrollTemplate("INT-PAYROLL-SIGN", "Ký duyệt bảng lương", 4, "permission:payroll:approve");
+    await payrollTemplate("INT-SALARY-PAYMENT", "Chi lương", 5, "permission:payroll:pay");
+    await generateInstances(TODAY, { from: "2026-09-01", horizonDays: 20 });
+
+    const august = async (code: string) => (await instancesOf(code)).find((row) => row.instance.periodKey === "2026-08")!;
+    expect((await august("INT-PAYROLL-PROPOSE")).task.status).toBe("todo");
+
+    // Nothing closes while August's run is still being worked on.
+    const [run] = await db().insert(schema.payrollRun).values({ entityId: ids.szm, month: "2026-08", kind: "regular", status: "calculated", headcount: 4 }).returning();
+    expect(await generateInstances(TODAY, { horizonDays: 20 })).toMatchObject({ autoCompleted: 0 });
+
+    // The HR lead proposes it: the first of the three ticks, the other two wait.
+    await db().update(schema.payrollRun).set({ status: "proposed", proposedAt: new Date() }).where(eq(schema.payrollRun.id, run.id));
+    expect(await generateInstances(TODAY, { horizonDays: 20 })).toMatchObject({ autoCompleted: 1 });
+    expect((await august("INT-PAYROLL-PROPOSE")).instance.note).toBe("system:payroll_proposed");
+    expect((await august("INT-PAYROLL-SIGN")).task.status).toBe("todo");
+
+    // Paid: signing is behind it, so the run closes both of the remaining items at once.
+    await db().update(schema.payrollRun).set({ status: "paid", approvedAt: new Date(), paidAt: new Date() }).where(eq(schema.payrollRun.id, run.id));
+    expect(await generateInstances(TODAY, { horizonDays: 20 })).toMatchObject({ autoCompleted: 2 });
+    expect([(await august("INT-PAYROLL-SIGN")).instance.note, (await august("INT-SALARY-PAYMENT")).instance.note]).toEqual(["system:payroll_approved", "system:payroll_paid"]);
+
+    // Idempotent: a second sync closes nothing again, and September is untouched.
+    expect(await generateInstances(TODAY, { horizonDays: 20 })).toMatchObject({ autoCompleted: 0 });
+    expect((await instancesOf("INT-SALARY-PAYMENT")).find((row) => row.instance.periodKey === "2026-09")!.task.status).toBe("todo");
+  });
+
+  it("leaves the payroll calendar of an entity whose run was cancelled alone", async () => {
+    await db().insert(schema.payrollRun).values({ entityId: ids.szc, month: "2026-08", kind: "regular", status: "cancelled", headcount: 0 });
+    expect(await generateInstances(TODAY, { horizonDays: 20 })).toMatchObject({ autoCompleted: 0 });
+  });
 });
 
 describe("working an instance", () => {

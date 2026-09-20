@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { requireUser } from "@/modules/platform/auth/session";
-import { canDecidePayRules, canReadPayRules, canSeeSimpleProfileReport, compensationReach } from "@/modules/payroll/policy";
+import { canDecidePayRules, canReadPayRules, canSeeSimpleProfileReport, compensationReach, payrollReadReach } from "@/modules/payroll/policy";
 
 export const metadata: Metadata = { title: "Payroll" };
 
@@ -13,8 +13,10 @@ export default async function PayrollPage() {
   const t = await getTranslations("payroll");
   const reach = compensationReach(user.principal);
   const managesSomewhere = reach.all || reach.entityIds.length > 0;
-  const links: { href: string; key: "mine" | "salaries" | "profiles" | "simpleReport" | "netToGross" | "components" | "policy" }[] = [
+  const readsRuns = payrollReadReach(user.principal);
+  const links: { href: string; key: "mine" | "runs" | "salaries" | "profiles" | "simpleReport" | "netToGross" | "components" | "policy" }[] = [
     { href: `/payroll/salaries/${user.person.id}`, key: "mine" },
+    ...(readsRuns.all || readsRuns.entityIds.length > 0 ? [{ href: "/payroll/runs", key: "runs" as const }] : []),
     ...(managesSomewhere ? [{ href: "/payroll/salaries", key: "salaries" as const }] : []),
     ...(managesSomewhere || canDecidePayRules(user.principal) ? [{ href: "/payroll/profiles", key: "profiles" as const }] : []),
     ...(canSeeSimpleProfileReport(user.principal) ? [{ href: "/payroll/profiles/simple", key: "simpleReport" as const }] : []),

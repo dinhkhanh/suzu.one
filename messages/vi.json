@@ -4425,6 +4425,10 @@
       "netToGross": {
         "title": "Quy đổi net → gross",
         "description": "Tính mức gross cần đề nghị từ mức thực nhận đã thoả thuận."
+      },
+      "runs": {
+        "title": "Kỳ lương",
+        "description": "Tính, trình và theo dõi bảng lương từng tháng."
       }
     },
     "salaries": {
@@ -4810,6 +4814,130 @@
       "net": "Thực nhận",
       "employerCost": "Chi phí công ty",
       "unverified": "{count} tham số pháp lý chưa được kế toán trưởng xác nhận."
+    },
+    "runs": {
+      "title": "Kỳ lương",
+      "description": "Bảng lương từng tháng: tính, trình, ký duyệt, chi và khóa sổ.",
+      "entity": "Pháp nhân",
+      "month": "Tháng",
+      "kind": "Loại",
+      "status": "Trạng thái",
+      "headcount": "Số người",
+      "net": "Thực nhận",
+      "paidAt": "Ngày chi",
+      "note": "Ghi chú",
+      "empty": "Chưa có kỳ lương nào.",
+      "people": "Danh sách nhân viên",
+      "noPeople": "Chưa tính lương cho ai trong kỳ này.",
+      "history": "Diễn biến",
+      "noHistory": "Chưa có bước nào được thực hiện.",
+      "lifecycle": "Quy trình duyệt",
+      "calculate": "Tính lương",
+      "recalculate": "Tính lại",
+      "cancel": "Hủy kỳ lương",
+      "calculating": "đang tính…",
+      "calcFailed": "tính lỗi",
+      "progress": "Đang tính: {done}/{total} người.",
+      "calcError": "Không tính được: {error}",
+      "unverified": "Các tham số sau chưa được Kế toán trưởng xác nhận: {keys}.",
+      "kinds": {
+        "regular": "Định kỳ",
+        "off_cycle": "Ngoài kỳ"
+      },
+      "statuses": {
+        "draft": "Nháp",
+        "calculated": "Đã tính",
+        "proposed": "Đã trình",
+        "approved": "Đã ký duyệt",
+        "payment_prepared": "Đã lập lệnh chi",
+        "paid": "Đã chi",
+        "locked": "Đã khóa",
+        "cancelled": "Đã hủy"
+      },
+      "steps": {
+        "propose": "Trình bảng lương",
+        "approve": "Ký duyệt",
+        "return": "Trả lại cho nhân sự",
+        "prepare_payment": "Lập lệnh chi",
+        "mark_paid": "Xác nhận đã chi",
+        "lock": "Khóa sổ kỳ lương",
+        "comment": "Ghi chú (không bắt buộc)",
+        "reason": "Lý do trả lại",
+        "reasonHint": "Nhân sự cần biết phải sửa gì."
+      },
+      "totals": {
+        "headcount": "Số người",
+        "gross": "Tổng thu nhập",
+        "deductions": "Tổng khấu trừ",
+        "net": "Tổng thực nhận",
+        "employerCost": "Chi phí công ty",
+        "netStatutory": "Chuyển khoản (hồ sơ Đầy đủ)",
+        "netSimple": "Tiền mặt (hồ sơ Đơn giản)",
+        "pit": "Thuế TNCN",
+        "insurance": "Bảo hiểm bắt buộc"
+      },
+      "variance": {
+        "title": "Đối chiếu với tháng trước",
+        "against": "So với {month}: {previous} · thay đổi {change}.",
+        "noPrevious": "Chưa có kỳ lương tháng trước để đối chiếu.",
+        "clean": "Không có bất thường nào cần xem lại.",
+        "flags": "Cảnh báo",
+        "previousNet": "Tháng trước",
+        "change": "Thay đổi",
+        "flagNames": {
+          "net_change": "Biến động lớn",
+          "new_person": "Người mới",
+          "removed_person": "Không còn trong kỳ",
+          "negative_net": "Thực nhận âm",
+          "zero_net": "Thực nhận bằng 0",
+          "missing_bank_account": "Thiếu tài khoản ngân hàng",
+          "missing_tax_code": "Thiếu mã số thuế"
+        }
+      },
+      "warnings": {
+        "negative_net": "Thực nhận âm",
+        "no_salary_structure": "Chưa có cơ cấu lương",
+        "zero_paid_days": "Không có ngày công hưởng lương",
+        "insurance_base_below_minimum": "Lương đóng BH dưới mức tối thiểu",
+        "insurance_base_above_declared": "Lương đóng BH vượt mức đã khai"
+      },
+      "new": {
+        "link": "Kỳ lương mới",
+        "title": "Tạo kỳ lương",
+        "hint": "Chỉ những tháng đã khóa bảng công mới có thể tính lương.",
+        "noMonths": "Không có tháng nào đã khóa bảng công và chưa có kỳ lương.",
+        "submit": "Tạo",
+        "saving": "Đang tạo"
+      },
+      "inputs": {
+        "title": "Khoản nhập tay",
+        "hint": "Thưởng, hoa hồng, tạm ứng, khấu trừ — nhập cho từng người rồi tính lại.",
+        "person": "Nhân viên",
+        "code": "Khoản mục",
+        "amount": "Số tiền",
+        "note": "Diễn giải",
+        "save": "Lưu",
+        "saved": "Đã lưu.",
+        "remove": "Xóa"
+      },
+      "errors": {
+        "generic": "Không thực hiện được.",
+        "forbidden": "Bạn không có quyền với kỳ lương này.",
+        "step_up_required": "Vui lòng xác thực lại để tiếp tục.",
+        "run_not_found": "Không tìm thấy kỳ lương.",
+        "run_exists": "Tháng này đã có kỳ lương.",
+        "run_not_editable": "Kỳ lương đã trình, không sửa được nữa.",
+        "run_step_not_allowed": "Không thực hiện được bước này ở trạng thái hiện tại.",
+        "run_is_empty": "Kỳ lương chưa có ai.",
+        "run_calculating": "Kỳ lương đang được tính, vui lòng đợi.",
+        "run_cancelled": "Kỳ lương đã bị hủy.",
+        "comment_required": "Cần nêu lý do trả lại.",
+        "payroll_period_locked": "Kỳ lương của tháng này đã khóa sổ.",
+        "timesheet_not_locked": "Bảng công của tháng chưa khóa.",
+        "pay_profile_missing": "Có nhân viên chưa có hồ sơ trả lương.",
+        "amount_invalid": "Số tiền không hợp lệ.",
+        "run_has_no_lines": "Chưa có khoản nào để chi."
+      }
     }
   }
 }

@@ -208,9 +208,13 @@ export const salaryStructure = pgTable(
 // `regular` pays an entity's month from its locked timesheet; `off_cycle` pays something extra
 // inside a month already run — a bonus, and in Phase 8 the year-end bonus (FR-PAY-21).
 export const payrollRunKind = pgEnum("payroll_run_kind", ["regular", "off_cycle"]);
-// The lifecycle of SRS D17. Week 3 creates runs and calculates them; the transitions from
-// `proposed` on (who may, in which order, what each one freezes) are week 4's.
+// The lifecycle of SRS D17: draft → calculated → proposed (HR lead) → approved (the CEO signs) →
+// payment_prepared (the chief accountant) → paid → locked. `lifecycle.ts` owns the transitions.
 export const payrollRunStatus = pgEnum("payroll_run_status", ["draft", "calculated", "proposed", "approved", "payment_prepared", "paid", "locked", "cancelled"]);
+
+// How the calculation of a run is getting on (ADR-09). `queued` is picked up by the
+// `payroll-calculate` job, so a calculation that died with its server finishes by itself.
+export const payrollCalcState = pgEnum("payroll_calc_state", ["idle", "queued", "running", "done", "failed"]);
 
 export const payrollRun = pgTable(
   "payroll_run",
@@ -237,6 +241,33 @@ export const payrollRun = pgTable(
     headcount: integer("headcount").notNull().default(0),
     calculatedAt: timestamp("calculated_at", { withTimezone: true }),
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+
+    // ── The lifecycle (FR-PAY-30): who carried the run forward, and when ──
+    // Each step is a signature. `payroll_run_event` keeps the whole history including returns;
+    // these columns are the current state, so a list does not need the events.
+    proposedAt: timestamp("proposed_at", { withTimezone: true }),
+    proposedByPersonId: uuid("proposed_by_person_id").references(() => person.id),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    approvedByPersonId: uuid("approved_by_person_id").references(() => person.id),
+    paymentPreparedAt: timestamp("payment_prepared_at", { withTimezone: true }),
+    paymentPreparedByPersonId: uuid("payment_prepared_by_person_id").references(() => person.id),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    paidByPersonId: uuid("paid_by_person_id").references(() => person.id),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    lockedByPersonId: uuid("locked_by_person_id").references(() => person.id),
+
+    // ── Calculation progress (ADR-09) ──
+    calcState: payrollCalcState("calc_state").notNull().default("idle"),
+    /** People stored so far, and how many there are to store. Counts, not money. */
+    calcDone: integer("calc_done").notNull().default(0),
+    calcTotal: integer("calc_total").notNull().default(0),
+    calcStartedAt: timestamp("calc_started_at", { withTimezone: true }),
+    /** Refreshed as the calculation works; a claim that stops beating is taken over. */
+    calcHeartbeatAt: timestamp("calc_heartbeat_at", { withTimezone: true }),
+    /** Who holds the calculation: one worker at a time, whoever wrote this token. */
+    calcClaim: uuid("calc_claim"),
+    /** Why the last attempt stopped. A message about the run, never about a person's pay. */
+    calcError: text("calc_error"),
     ...timestamps,
   },
   (t) => [
@@ -245,6 +276,27 @@ export const payrollRun = pgTable(
     uniqueIndex("payroll_run_regular_key").on(t.entityId, t.month).where(sql`${t.kind} = 'regular' AND ${t.status} <> 'cancelled'`),
     check("payroll_run_month_check", sql`${t.month} ~ '^\\d{4}-(0[1-9]|1[0-2])$'`),
   ],
+).enableRLS();
+
+// Every step a run was carried through, in order, with who did it and what they said (FR-PAY-30).
+// The CEO's return to HR is a step like any other, so a run that went back and forth shows it.
+// Append-only: a database trigger refuses updates and deletes, like the audit log.
+export const payrollRunEvent = pgTable(
+  "payroll_run_event",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => payrollRun.id, { onDelete: "cascade" }),
+    fromStatus: payrollRunStatus("from_status").notNull(),
+    toStatus: payrollRunStatus("to_status").notNull(),
+    /** null when the step was taken by a job rather than a person. */
+    actorPersonId: uuid("actor_person_id").references(() => person.id),
+    /** The CEO's reason for sending it back, the accountant's note. Words, never figures. */
+    comment: text("comment"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("payroll_run_event_run_idx").on(t.runId, t.createdAt)],
 ).enableRLS();
 
 // One person's line in a run. `result_enc` is the whole `PersonPayResult` (lines, totals,

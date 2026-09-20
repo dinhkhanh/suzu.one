@@ -17,6 +17,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import { markAdjustmentsTaken } from "@/modules/attendance/service";
 import { type CalculationContext, calculateEntityMonth, calculateOffCycle, type PersonCalculation } from "./calculation";
 import type { PayInput, PersonPayResult, PriorInMonth, RetroItem } from "./engine/types";
+import { assertPeriodOpen } from "./lifecycle";
 import { runEntryContext, runResultContext, runInputContext, runTotalsContext } from "./field-contexts";
 import { listOpenRetroItems, markRetroItemsTaken, type RetroItemView } from "./retro";
 import { EMPTY_TOTALS, openInput, openResult, openTotals, type PayrollRunPersonRow, type PayrollRunRow, type RunTotals, sumTotals } from "./run-storage";
@@ -110,6 +111,7 @@ export const isOpenForEditing = (run: PayrollRunRow): boolean => run.status === 
  * that went wrong is cancelled rather than duplicated.
  */
 export async function createRegularRun(input: { entityId: string; month: string; note?: string | null }, actorPersonId: string, executor: Executor = db()): Promise<PayrollRunRow> {
+  await assertPeriodOpen(input.entityId, input.month, executor);
   const [existing] = await executor.select().from(schema.payrollRun).where(and(eq(schema.payrollRun.entityId, input.entityId), eq(schema.payrollRun.month, input.month), eq(schema.payrollRun.kind, "regular"), ne(schema.payrollRun.status, "cancelled"))).limit(1);
   if (existing) throw new ActionError("run_exists", { runId: existing.id });
   const [created] = await executor.insert(schema.payrollRun).values({ entityId: input.entityId, month: input.month, kind: "regular", note: input.note ?? null, createdByPersonId: actorPersonId }).returning();
@@ -124,6 +126,8 @@ export async function createRegularRun(input: { entityId: string; month: string;
  */
 export async function createOffCycleRun(input: { entityId: string; month: string; name: string; note?: string | null; lines: readonly { personId: string; code: string; amount: number; note?: string | null }[] }, actorPersonId: string, executor: Executor = db()): Promise<PayrollRunRow> {
   if (input.lines.length === 0) throw new ActionError("run_has_no_lines");
+  // A closed month takes nothing more, not even a bonus: it would change a filed month's tax.
+  await assertPeriodOpen(input.entityId, input.month, executor);
   const [created] = await executor.insert(schema.payrollRun).values({ entityId: input.entityId, month: input.month, kind: "off_cycle", name: input.name, note: input.note ?? null, createdByPersonId: actorPersonId }).returning();
   for (const line of input.lines) await setRunInput({ runId: created.id, ...line }, actorPersonId, executor);
   return created;
@@ -139,7 +143,7 @@ export type CalculatedRun = { run: PayrollRunRow; totals: RunTotals; people: Per
  * corrections attendance has recorded against locked timesheets (FR-PAY-17). Those are marked as
  * taken inside the same transaction, so a difference is carried exactly once.
  */
-export async function calculateRun(runId: string, options: { executor?: Executor } = {}): Promise<CalculatedRun> {
+export async function calculateRun(runId: string, options: { executor?: Executor; onProgress?: (done: number, total: number) => void | Promise<void> } = {}): Promise<CalculatedRun> {
   const executor = options.executor ?? db();
   const run = await getRun(runId, executor);
   if (!run) throw new ActionError("run_not_found");
@@ -151,8 +155,8 @@ export async function calculateRun(runId: string, options: { executor?: Executor
 
   const calculation =
     run.kind === "off_cycle"
-      ? await calculateOffCycle(run.entityId, run.month, { inputs, prior, executor })
-      : await calculateEntityMonth(run.entityId, run.month, { inputs, retro: new Map([...retro].map(([personId, items]) => [personId, items.map(toRetroItem)])), prior, executor });
+      ? await calculateOffCycle(run.entityId, run.month, { inputs, prior, onProgress: options.onProgress, executor })
+      : await calculateEntityMonth(run.entityId, run.month, { inputs, retro: new Map([...retro].map(([personId, items]) => [personId, items.map(toRetroItem)])), prior, onProgress: options.onProgress, executor });
 
   const totals = sumTotals(calculation.people);
   const cipher = fieldCipher();

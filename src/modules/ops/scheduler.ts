@@ -11,6 +11,7 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { getDaysOff, isPeriodLocked } from "@/modules/attendance/service";
+import { hasReached, listRunMilestones, type RunStatus } from "@/modules/payroll/service";
 import { type LifecycleEventFact, listLifecycleEventFacts } from "@/modules/core-hr/service";
 import { notify } from "../platform/notifications/service";
 import type { Permission, Role } from "../platform/rbac/roles";
@@ -27,6 +28,21 @@ export const DEFAULT_HORIZON_DAYS = 100;
 export const EVENT_LOOKBACK_DAYS = 60;
 /** The library code of the monthly timesheet lock — closed by the scheduler once attendance says the month is locked (FR-OPS-10, lite). */
 export const TIMESHEET_LOCK_CODE = "INT-TIMESHEET-LOCK";
+
+/**
+ * The monthly payroll calendar (FR-OPS-10, SRS D17): each of these closes itself when payroll
+ * reports that the run of that month has got that far. Pulled and idempotent, exactly like the
+ * timesheet lock above — payroll writes nothing here, and this module only ever asks it
+ * `listRunMilestones`, which carries statuses and dates, never a figure.
+ *
+ * "Phát hành phiếu lương" (INT-PAYSLIP-RELEASE) is not here: payslips are published in week 5,
+ * and it closes when they are.
+ */
+const PAYROLL_MILESTONES: { code: string; reached: RunStatus }[] = [
+  { code: "INT-PAYROLL-PROPOSE", reached: "proposed" },
+  { code: "INT-PAYROLL-SIGN", reached: "approved" },
+  { code: "INT-SALARY-PAYMENT", reached: "paid" },
+];
 
 const LIFECYCLE_TYPE: Record<ObligationEventType, LifecycleEventFact["type"]> = { hire: "hire", rehire: "rehire", termination: "termination", long_leave: "long_leave", salary_change: "salary_change", long_leave_return: "long_leave" };
 
@@ -141,7 +157,7 @@ async function generateIn(tx: Executor, today: IsoDate, options: GenerateOptions
   // One notice per person per run: a quarter's worth of returns is one event, not thirty.
   for (const [personId, { count, title }] of told) await notify({ recipients: [personId], kind: "ops.assigned", params: { count, title }, link: "/ops" }, tx);
 
-  const autoCompleted = await closeLockedTimesheetMonths(tx, templates);
+  const autoCompleted = (await closeLockedTimesheetMonths(tx, templates)) + (await closePayrollMilestones(tx, templates));
   return { created: planned.length, fromEvents: planned.filter((plan) => plan.source).length, cancelled, autoCompleted, unassigned };
 }
 
@@ -155,6 +171,40 @@ async function cancelForSources(tx: Executor, sourceType: string, sourceIds: str
   if (open.length === 0) return 0;
   await tx.update(schema.task).set({ status: "cancelled", updatedAt: new Date() }).where(inArray(schema.task.id, open.map((row) => row.taskId)));
   return open.length;
+}
+
+/**
+ * FR-OPS-10: the monthly payroll calendar closes itself. "Trình bảng lương" is done when the
+ * month's run has been proposed, "ký duyệt" when the CEO has signed it, "chi lương" when it is
+ * paid. A run that goes further closes the earlier ones too, so a month approved before anyone
+ * looked at the tracker still ticks all its boxes.
+ */
+async function closePayrollMilestones(tx: Executor, templates: ObligationTemplateRow[]): Promise<number> {
+  const wanted = PAYROLL_MILESTONES.map((milestone) => ({ ...milestone, template: templates.find((row) => row.code === milestone.code) })).filter((milestone) => milestone.template);
+  if (wanted.length === 0) return 0;
+
+  const open = await tx
+    .select({ instance: schema.obligationInstance })
+    .from(schema.obligationInstance)
+    .innerJoin(schema.task, eq(schema.task.id, schema.obligationInstance.taskId))
+    .where(and(inArray(schema.obligationInstance.templateId, wanted.map((milestone) => milestone.template!.id)), inArray(schema.task.status, [...OPEN]), isNull(schema.task.deletedAt)));
+  if (open.length === 0) return 0;
+
+  // One read for every month in question; payroll answers with statuses and dates only.
+  const months = [...new Set(open.map((row) => row.instance.periodKey))].filter((key) => /^\d{4}-\d{2}$/.test(key));
+  const milestones = months.length === 0 ? [] : await listRunMilestones({ entityIds: [...new Set(open.map((row) => row.instance.entityId))], months }, tx);
+  const byKey = new Map(milestones.map((milestone) => [`${milestone.entityId}|${milestone.month}`, milestone]));
+
+  let closed = 0;
+  for (const { instance } of open) {
+    const wants = wanted.find((milestone) => milestone.template!.id === instance.templateId);
+    const run = byKey.get(`${instance.entityId}|${instance.periodKey}`);
+    if (!wants || !run || !hasReached(run, wants.reached)) continue;
+    await tx.update(schema.task).set({ status: "done", completedAt: new Date(), completedByPersonId: null, updatedAt: new Date() }).where(eq(schema.task.id, instance.taskId));
+    await tx.update(schema.obligationInstance).set({ note: `system:payroll_${wants.reached}`, completedLate: false, updatedAt: new Date() }).where(eq(schema.obligationInstance.id, instance.id));
+    closed++;
+  }
+  return closed;
 }
 
 /** FR-OPS-10, lite: "lock the timesheet" is done when attendance says the entity's month is locked. */
