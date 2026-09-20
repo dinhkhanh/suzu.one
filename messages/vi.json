@@ -49,7 +49,8 @@
     "kudos": "Ghi nhận",
     "payslips": "Phiếu lương",
     "requests": "Đề nghị",
-    "requestTypes": "Loại đề nghị"
+    "requestTypes": "Loại đề nghị",
+    "assets": "Tài sản"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -5576,6 +5577,176 @@
       "file_too_large": "Tệp quá lớn.",
       "file_type_not_allowed": "Định dạng tệp không được chấp nhận.",
       "file_not_found": "Không tìm thấy tệp."
+    }
+  },
+  "assets": {
+    "title": "Tài sản",
+    "description": "Sổ tài sản của nhóm: thiết bị, máy quay, đồ nội thất — ai đang giữ và tình trạng ra sao.",
+    "empty": "Chưa có tài sản nào.",
+    "totals": "Trong kho: {in_stock} · Đang giao: {assigned} · Đang sửa: {in_repair} · Mất: {lost} · Đã thanh lý: {disposed}",
+    "history": "Lịch sử",
+    "nav": {
+      "mine": "Thiết bị của tôi",
+      "labels": "In nhãn QR",
+      "categories": "Nhóm tài sản",
+      "new": "Ghi nhận tài sản",
+      "edit": "Sửa thông tin",
+      "import": "Nhập từ tệp"
+    },
+    "columns": {
+      "code": "Mã",
+      "name": "Tên",
+      "category": "Nhóm",
+      "entity": "Pháp nhân",
+      "status": "Trạng thái",
+      "holder": "Người giữ",
+      "purchasePrice": "Nguyên giá (₫)"
+    },
+    "filters": {
+      "search": "Tìm kiếm",
+      "searchHint": "Mã, tên hoặc số sê-ri",
+      "entity": "Pháp nhân",
+      "category": "Nhóm",
+      "status": "Trạng thái",
+      "any": "Tất cả",
+      "apply": "Lọc"
+    },
+    "form": {
+      "name": "Tên tài sản",
+      "category": "Nhóm",
+      "entity": "Pháp nhân sở hữu",
+      "condition": "Tình trạng",
+      "brand": "Hãng",
+      "model": "Model",
+      "serial": "Số sê-ri",
+      "location": "Vị trí",
+      "purchaseDate": "Ngày mua",
+      "warrantyUntil": "Bảo hành đến",
+      "purchasePrice": "Nguyên giá (₫)",
+      "supplier": "Nhà cung cấp",
+      "notes": "Ghi chú",
+      "register": "Ghi nhận",
+      "save": "Lưu"
+    },
+    "assign": {
+      "title": "Giao cho",
+      "holderType": "Giao cho",
+      "holder": "Người / nhóm nhận",
+      "conditionOut": "Tình trạng khi giao",
+      "dueBack": "Hẹn trả",
+      "purpose": "Mục đích",
+      "accessories": "Phụ kiện kèm theo",
+      "accessoriesHint": "Mỗi dòng một món: sạc, túi, pin dự phòng",
+      "submit": "Giao tài sản"
+    },
+    "handover": {
+      "declaration": "Tôi xác nhận đã nhận đủ tài sản và phụ kiện kèm theo, trong tình trạng như mô tả.",
+      "note": "Ghi chú khi nhận",
+      "confirm": "Xác nhận đã nhận"
+    },
+    "return": {
+      "conditionIn": "Tình trạng khi trả",
+      "location": "Cất về vị trí",
+      "note": "Ghi chú khi thu hồi",
+      "submit": "Thu hồi"
+    },
+    "status": {
+      "title": "Trạng thái",
+      "status": "Chuyển sang",
+      "note": "Lý do",
+      "submit": "Cập nhật"
+    },
+    "held": {
+      "title": "Đang được giữ",
+      "by": "Người giữ: {holder}",
+      "confirmed": "Đã xác nhận nhận",
+      "awaitingConfirmation": "Chưa xác nhận nhận"
+    },
+    "mine": {
+      "title": "Thiết bị của tôi",
+      "description": "Những gì công ty đã giao cho bạn.",
+      "empty": "Bạn chưa được giao thiết bị nào.",
+      "since": "Nhận từ {date}",
+      "dueBack": "hẹn trả {date}",
+      "confirmed": "Đã xác nhận ngày {date}",
+      "register": "Mở sổ tài sản"
+    },
+    "categories": {
+      "title": "Nhóm tài sản",
+      "description": "Nhóm dùng chung cho cả tập đoàn: một chiếc laptop là laptop ở mọi pháp nhân.",
+      "code": "Mã nhóm",
+      "name": "Tên nhóm",
+      "kind": "Loại",
+      "warrantyMonths": "Bảo hành mặc định (tháng)",
+      "sortOrder": "Thứ tự",
+      "requiresSerial": "Bắt buộc số sê-ri",
+      "bookable": "Cho phép đặt lịch mượn",
+      "isActive": "Đang dùng",
+      "save": "Lưu",
+      "addTitle": "Thêm nhóm mới"
+    },
+    "labels": {
+      "title": "Nhãn tài sản",
+      "footer": "In ngày {at} · Suzu One",
+      "scanHint": "Quét mã để mở hồ sơ tài sản"
+    },
+    "events": {
+      "acquired": "Ghi nhận",
+      "edited": "Sửa thông tin",
+      "assigned": "Giao",
+      "handover_confirmed": "Xác nhận nhận",
+      "returned": "Thu hồi",
+      "condition_changed": "Đổi tình trạng",
+      "repaired": "Sửa xong",
+      "lost": "Báo mất",
+      "disposed": "Thanh lý",
+      "imported": "Nhập từ tệp"
+    },
+    "enums": {
+      "kind": {
+        "it_equipment": "Thiết bị CNTT",
+        "production_gear": "Thiết bị sản xuất",
+        "furniture": "Nội thất",
+        "vehicle": "Phương tiện",
+        "phone_sim": "Điện thoại / SIM",
+        "other": "Khác"
+      },
+      "condition": {
+        "new": "Mới",
+        "good": "Tốt",
+        "fair": "Bình thường",
+        "poor": "Kém",
+        "broken": "Hỏng"
+      },
+      "status": {
+        "in_stock": "Trong kho",
+        "assigned": "Đang giao",
+        "in_repair": "Đang sửa",
+        "lost": "Mất",
+        "disposed": "Đã thanh lý"
+      },
+      "holder": {
+        "person": "Cá nhân",
+        "team": "Nhóm",
+        "entity": "Pháp nhân"
+      }
+    },
+    "errors": {
+      "generic": "Không thực hiện được. Vui lòng thử lại.",
+      "asset_not_found": "Không tìm thấy tài sản.",
+      "asset_category_not_found": "Không tìm thấy nhóm tài sản.",
+      "asset_entity_not_found": "Không tìm thấy pháp nhân.",
+      "asset_serial_required": "Nhóm tài sản này bắt buộc có số sê-ri.",
+      "asset_price_invalid": "Nguyên giá phải là số nguyên không âm.",
+      "asset_already_assigned": "Tài sản đang được người khác giữ. Hãy thu hồi trước.",
+      "asset_not_assignable": "Tài sản đã mất hoặc đã thanh lý, không thể giao.",
+      "asset_still_out": "Tài sản đang được giữ. Hãy thu hồi trước khi đổi trạng thái.",
+      "asset_status_follows_assignment": "Trạng thái \"Đang giao\" do việc giao tài sản quyết định.",
+      "asset_holder_unknown": "Không tìm thấy người hoặc nhóm nhận.",
+      "asset_holder_inactive": "Người này đã nghỉ việc, không thể giao tài sản.",
+      "asset_assignment_not_found": "Không tìm thấy lượt giao tài sản.",
+      "asset_assignment_closed": "Lượt giao này đã kết thúc.",
+      "asset_handover_already_confirmed": "Bạn đã xác nhận nhận tài sản này rồi."
     }
   }
 }

@@ -1,0 +1,108 @@
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { asc, eq } from "drizzle-orm";
+import { db, schema } from "@/lib/db";
+import { env } from "@/lib/env";
+import { requireUser } from "@/modules/platform/auth/session";
+import { canConfirmHandover, canManageAssets, findAsset, getAssetView, listCategories } from "@/modules/assets/service";
+import { AssignForm, ConfirmHandoverForm, ReturnForm, StatusForm } from "@/modules/assets/ui/asset-forms";
+import { AssetHistory, AssetQr, StatusBadge } from "@/modules/assets/ui/register-views";
+
+export const metadata: Metadata = { title: "Tài sản" };
+
+export default async function AssetPage({ params }: PageProps<"/assets/[assetId]">) {
+  const user = await requireUser();
+  const { assetId } = await params;
+  const view = await getAssetView(user.principal, assetId);
+  // Not there, or not theirs — the same answer either way.
+  if (!view) notFound();
+
+  const asset = await findAsset(assetId);
+  const manage = canManageAssets(user.principal, view.asset.entityId);
+  const open = view.spells.find((spell) => !spell.returnedAt);
+  const mine = canConfirmHandover(user.principal, open?.holderPersonId ?? null) && !open?.handoverConfirmedAt;
+  const t = await getTranslations("assets");
+  const tField = await getTranslations("assets.form");
+
+  const [people, teams, entities, categories] = manage
+    ? await Promise.all([
+        db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.status, "active")).orderBy(asc(schema.person.fullName)),
+        db().select({ id: schema.team.id, name: schema.team.name }).from(schema.team).orderBy(asc(schema.team.name)),
+        db().select({ id: schema.entity.id, code: schema.entity.code, shortName: schema.entity.shortName }).from(schema.entity).orderBy(asc(schema.entity.code)),
+        listCategories(),
+      ])
+    : [[], [], [], []];
+
+  const fact = (label: string, value: string | number | null) =>
+    value === null || value === "" ? null : (
+      <div key={label}>
+        <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
+        <dd className="text-sm">{typeof value === "number" ? value.toLocaleString("vi-VN") : value}</dd>
+      </div>
+    );
+
+  return (
+    <div className="flex max-w-5xl flex-col gap-6">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="font-mono text-xs text-muted-foreground">{view.asset.code}</p>
+          <h1 className="text-2xl font-semibold tracking-tight">{view.asset.name}</h1>
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <StatusBadge status={view.asset.status} />
+            {view.asset.categoryName} · {view.asset.entityName}
+          </p>
+        </div>
+        {asset ? <AssetQr url={`${env().BETTER_AUTH_URL}/assets/qr/${asset.qrToken}`} /> : null}
+      </header>
+
+      <dl className="grid grid-cols-2 gap-4 rounded-md border p-4 sm:grid-cols-4">
+        {fact(tField("brand"), view.asset.brand)}
+        {fact(tField("model"), view.asset.model)}
+        {fact(tField("serial"), view.asset.serial)}
+        {fact(tField("condition"), view.asset.condition)}
+        {fact(tField("location"), view.asset.location)}
+        {fact(tField("warrantyUntil"), view.asset.warrantyUntil)}
+        {view.canSeeMoney ? fact(tField("purchaseDate"), view.asset.purchaseDate) : null}
+        {view.canSeeMoney ? fact(tField("purchasePrice"), view.asset.purchasePrice) : null}
+        {view.canSeeMoney ? fact(tField("supplier"), view.asset.supplier) : null}
+      </dl>
+
+      {open ? (
+        <section className="flex flex-col gap-3 rounded-md border p-4">
+          <h2 className="font-medium">{t("held.title")}</h2>
+          <p className="text-sm">
+            {t("held.by", { holder: open.holderName ?? "—" })} · {open.assignedAt.toLocaleDateString("vi-VN")}
+            {open.handoverConfirmedAt ? <span className="ml-2 text-emerald-600">{t("held.confirmed")}</span> : <span className="ml-2 text-amber-600">{t("held.awaitingConfirmation")}</span>}
+          </p>
+          {open.accessories.length > 0 ? <p className="text-sm text-muted-foreground">{open.accessories.join(" · ")}</p> : null}
+          {mine ? <ConfirmHandoverForm assignmentId={open.id} /> : null}
+          {manage ? <ReturnForm assignmentId={open.id} /> : null}
+        </section>
+      ) : manage ? (
+        <section className="flex flex-col gap-3 rounded-md border p-4">
+          <h2 className="font-medium">{t("assign.title")}</h2>
+          <AssignForm assetId={assetId} options={{ people, teams, entities }} />
+        </section>
+      ) : null}
+
+      {manage ? (
+        <section className="flex flex-col gap-3 rounded-md border p-4">
+          <h2 className="font-medium">{t("status.title")}</h2>
+          <StatusForm assetId={assetId} status={view.asset.status} />
+          <Link href={`/assets/${assetId}/edit`} className="text-sm underline">
+            {t("nav.edit")}
+          </Link>
+        </section>
+      ) : null}
+
+      <section className="flex flex-col gap-3">
+        <h2 className="font-medium">{t("history")}</h2>
+        <AssetHistory entries={view.history} />
+      </section>
+
+      {categories.length > 0 ? null : null}
+    </div>
+  );
+}

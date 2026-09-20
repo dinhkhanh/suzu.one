@@ -19,6 +19,9 @@ export function navFor(principal: Principal, open: { people: boolean }): { main:
     // Purchase, payment, advance, a confirmation letter — the request builder's types (FR-REQ-01).
     { key: "requests", href: "/requests" },
     { key: "work", href: "/work" },
+    // Equipment: everyone has their own, so the entry always shows; the register behind it is for
+    // whoever keeps one, and /assets sends anybody else to their own list.
+    { key: "assets", href: can(principal, "asset:manage") ? "/assets" : "/assets/mine" },
     // Compliance: people with an ops role. Anyone else reaches their own obligations through My work.
     ...(can(principal, "ops:read") || can(principal, "ops:manage") ? [{ key: "ops", href: "/ops" }] : []),
     // Goals and KPIs: everyone has their own; what else they see is decided on the pages.

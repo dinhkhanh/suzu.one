@@ -49,7 +49,8 @@
     "kudos": "Kudos",
     "payslips": "Payslips",
     "requests": "Requests",
-    "requestTypes": "Request types"
+    "requestTypes": "Request types",
+    "assets": "Assets"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -5576,6 +5577,176 @@
       "file_too_large": "The file is too large.",
       "file_type_not_allowed": "That kind of file is not accepted.",
       "file_not_found": "File not found."
+    }
+  },
+  "assets": {
+    "title": "Assets",
+    "description": "The equipment register: laptops, cameras, furniture — who has what, and what state it is in.",
+    "empty": "No assets yet.",
+    "totals": "In stock: {in_stock} · Assigned: {assigned} · In repair: {in_repair} · Lost: {lost} · Disposed: {disposed}",
+    "history": "History",
+    "nav": {
+      "mine": "My equipment",
+      "labels": "Print QR labels",
+      "categories": "Categories",
+      "new": "Register an asset",
+      "edit": "Edit",
+      "import": "Import"
+    },
+    "columns": {
+      "code": "Code",
+      "name": "Name",
+      "category": "Category",
+      "entity": "Entity",
+      "status": "Status",
+      "holder": "Held by",
+      "purchasePrice": "Purchase price (₫)"
+    },
+    "filters": {
+      "search": "Search",
+      "searchHint": "Code, name or serial",
+      "entity": "Entity",
+      "category": "Category",
+      "status": "Status",
+      "any": "All",
+      "apply": "Filter"
+    },
+    "form": {
+      "name": "Asset name",
+      "category": "Category",
+      "entity": "Owning entity",
+      "condition": "Condition",
+      "brand": "Brand",
+      "model": "Model",
+      "serial": "Serial number",
+      "location": "Location",
+      "purchaseDate": "Purchase date",
+      "warrantyUntil": "Warranty until",
+      "purchasePrice": "Purchase price (₫)",
+      "supplier": "Supplier",
+      "notes": "Notes",
+      "register": "Register",
+      "save": "Save"
+    },
+    "assign": {
+      "title": "Assign",
+      "holderType": "Assign to",
+      "holder": "Person / team",
+      "conditionOut": "Condition when handed over",
+      "dueBack": "Due back",
+      "purpose": "Purpose",
+      "accessories": "Accessories",
+      "accessoriesHint": "One per line: charger, case, spare battery",
+      "submit": "Assign"
+    },
+    "handover": {
+      "declaration": "I confirm I received this asset and the accessories listed, in the condition described.",
+      "note": "Note",
+      "confirm": "Confirm receipt"
+    },
+    "return": {
+      "conditionIn": "Condition on return",
+      "location": "Store at",
+      "note": "Note",
+      "submit": "Take back"
+    },
+    "status": {
+      "title": "Status",
+      "status": "Change to",
+      "note": "Reason",
+      "submit": "Update"
+    },
+    "held": {
+      "title": "Currently held",
+      "by": "Held by {holder}",
+      "confirmed": "Receipt confirmed",
+      "awaitingConfirmation": "Receipt not confirmed"
+    },
+    "mine": {
+      "title": "My equipment",
+      "description": "What the company has handed to you.",
+      "empty": "You have no equipment assigned.",
+      "since": "Since {date}",
+      "dueBack": "due back {date}",
+      "confirmed": "Confirmed on {date}",
+      "register": "Open the register"
+    },
+    "categories": {
+      "title": "Asset categories",
+      "description": "Shared by the group: a laptop is a laptop in every entity.",
+      "code": "Code",
+      "name": "Name",
+      "kind": "Kind",
+      "warrantyMonths": "Default warranty (months)",
+      "sortOrder": "Sort order",
+      "requiresSerial": "Serial number required",
+      "bookable": "Bookable",
+      "isActive": "Active",
+      "save": "Save",
+      "addTitle": "Add a category"
+    },
+    "labels": {
+      "title": "Asset labels",
+      "footer": "Printed {at} · Suzu One",
+      "scanHint": "Scan to open the asset"
+    },
+    "events": {
+      "acquired": "Registered",
+      "edited": "Edited",
+      "assigned": "Assigned",
+      "handover_confirmed": "Receipt confirmed",
+      "returned": "Returned",
+      "condition_changed": "Condition changed",
+      "repaired": "Repaired",
+      "lost": "Reported lost",
+      "disposed": "Disposed",
+      "imported": "Imported"
+    },
+    "enums": {
+      "kind": {
+        "it_equipment": "IT equipment",
+        "production_gear": "Production gear",
+        "furniture": "Furniture",
+        "vehicle": "Vehicle",
+        "phone_sim": "Phone / SIM",
+        "other": "Other"
+      },
+      "condition": {
+        "new": "New",
+        "good": "Good",
+        "fair": "Fair",
+        "poor": "Poor",
+        "broken": "Broken"
+      },
+      "status": {
+        "in_stock": "In stock",
+        "assigned": "Assigned",
+        "in_repair": "In repair",
+        "lost": "Lost",
+        "disposed": "Disposed"
+      },
+      "holder": {
+        "person": "Person",
+        "team": "Team",
+        "entity": "Entity"
+      }
+    },
+    "errors": {
+      "generic": "That did not work. Please try again.",
+      "asset_not_found": "Asset not found.",
+      "asset_category_not_found": "Asset category not found.",
+      "asset_entity_not_found": "Entity not found.",
+      "asset_serial_required": "This category requires a serial number.",
+      "asset_price_invalid": "The purchase price must be a whole, non-negative number.",
+      "asset_already_assigned": "Somebody is already holding this asset. Take it back first.",
+      "asset_not_assignable": "This asset is lost or disposed of and cannot be handed over.",
+      "asset_still_out": "Somebody is holding this asset. Take it back before changing its status.",
+      "asset_status_follows_assignment": "\"Assigned\" follows from an open assignment, not from this form.",
+      "asset_holder_unknown": "That person or team was not found.",
+      "asset_holder_inactive": "That person has left and cannot be given equipment.",
+      "asset_assignment_not_found": "Assignment not found.",
+      "asset_assignment_closed": "That assignment has already ended.",
+      "asset_handover_already_confirmed": "You have already confirmed receipt of this asset."
     }
   }
 }

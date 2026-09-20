@@ -369,6 +369,31 @@ export async function listAssets(viewer: Principal, filter: AssetFilter = {}): P
   });
 }
 
+/**
+ * What a sheet of labels needs, for the assets this reader keeps. The QR token lives only here and
+ * on the asset's own page: it is on every list row nowhere, because nothing else has a use for it.
+ */
+export async function listLabelRows(viewer: Principal, filter: { entityId?: string; assetIds?: readonly string[] } = {}): Promise<{ id: string; code: string; name: string; entityName: string | null; qrToken: string }[]> {
+  const reach = assetReach(viewer);
+  if (!reach.all && reach.entityIds.length === 0) return [];
+  const rows = await db()
+    .select({ id: schema.asset.id, code: schema.asset.code, name: schema.asset.name, qrToken: schema.asset.qrToken, entityName: schema.entity.shortName })
+    .from(schema.asset)
+    .leftJoin(schema.entity, eq(schema.entity.id, schema.asset.entityId))
+    .where(
+      and(
+        reach.all ? undefined : inArray(schema.asset.entityId, reach.entityIds),
+        filter.entityId ? eq(schema.asset.entityId, filter.entityId) : undefined,
+        filter.assetIds && filter.assetIds.length > 0 ? inArray(schema.asset.id, [...filter.assetIds]) : undefined,
+        // Nothing written off: a label for a thing that no longer exists wastes a sticker.
+        sql`${schema.asset.status} <> 'disposed'`,
+      ),
+    )
+    .orderBy(asc(schema.asset.code))
+    .limit(500);
+  return rows;
+}
+
 export type AssetHistoryEntry = { id: number; type: string; at: Date; actorName: string | null; note: string | null; detail: Record<string, unknown> | null };
 export type AssetSpell = AssetAssignmentRow & { holderName: string | null; assignedByName: string | null; returnedToName: string | null };
 export type AssetView = { asset: AssetListRow; history: AssetHistoryEntry[]; spells: AssetSpell[]; canSeeMoney: boolean };
