@@ -26,7 +26,7 @@ Phases 1–9 are built on **local branch `mvp`** (stacked on `phase-0-remainder`
 | 6 Assets & requests | `assets`, `requests` — generic request builder, expense claims, asset register, QR labels, bookings, licences, generated documents | 0052–0059 | 1,794 |
 | 7 Recruitment / ATS | `recruit` — hiring requests, openings, pipeline, public careers page, interviews, offers, referrals | 0060–0065 | 2,130 |
 | 8 Performance reviews + bonus | `performance`, `payroll` — review cycles, peer/360, evidence panel, final yearly result, year-end bonus scheme and run, 1:1 notes | 0066–0068 | 2,383 |
-| 9 AI assistant + analytics | `ai`, `reports` — Ask Suzu (KB retrieval with citations, four personal tools), owner dashboard v2, scheduled reports, work analytics | 0069–0071 | 2,498 |
+| 9 AI assistant + analytics | `ai`, `reports` — Ask SuZu (KB retrieval with citations, four personal tools), owner dashboard v2, scheduled reports, work analytics | 0069–0071 | 2,498 |
 
 Phase 10 (CRM) is **not started** and needs its own SRS.
 

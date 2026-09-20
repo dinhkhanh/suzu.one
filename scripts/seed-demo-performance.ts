@@ -40,7 +40,7 @@ const GOALS: Demo[] = [
       { title: "Điểm hài lòng của khách hàng (CSAT)", type: "number", start: 4.1, target: 4.5, checkIns: [["2026-07-06", 4.3, "on_track"], ["2026-09-07", 4.25, "at_risk"]] },
     ],
   },
-  { key: "szm26q3", level: "entity", entity: "SZM", owner: LONG, parent: "g26", period: "2026-Q3", weight: 2, title: "Suzu Media: giao video đúng hạn, ít vòng sửa (Q3/2026)" },
+  { key: "szm26q3", level: "entity", entity: "SZM", owner: LONG, parent: "g26", period: "2026-Q3", weight: 2, title: "SuZu Media: giao video đúng hạn, ít vòng sửa (Q3/2026)" },
   { key: "vid26q3", level: "department", department: "VID", entity: "SZM", owner: LONG, parent: "szm26q3", period: "2026-Q3", title: "Phòng Video: quy trình hậu kỳ gọn hơn" },
   {
     key: "tam26q3", level: "individual", person: TAM, owner: TAM, parent: "vid26q3", period: "2026-Q3", weight: 2, title: "Đạo diễn 6 TVC đúng hạn, khách duyệt trong 2 vòng",
@@ -85,7 +85,7 @@ const GOALS: Demo[] = [
       { title: "Hợp đồng được ký lại theo mẫu mới", type: "milestone", milestones: ["Mẫu hợp đồng được duyệt", "Ký lại SZM", "Ký lại SZC", "Ký lại SZG"], checkIns: [["2026-05-18", 2, "on_track"], ["2026-06-29", 3, "at_risk", "SZG dời sang tháng 7."]] },
     ],
   },
-  { key: "bao26q4", level: "individual", person: BAO, owner: BAO, period: "2026-Q4", status: "draft", title: "Đưa chấm công và nghỉ phép của SZM lên Suzu One", krs: [{ title: "Nhân viên SZM chấm công trên ứng dụng", type: "percent", start: 0, target: 95 }] },
+  { key: "bao26q4", level: "individual", person: BAO, owner: BAO, period: "2026-Q4", status: "draft", title: "Đưa chấm công và nghỉ phép của SZM lên SuZu One", krs: [{ title: "Nhân viên SZM chấm công trên ứng dụng", type: "percent", start: 0, target: 95 }] },
 
   // ── 2027: the company's tree ────────────────────────────────────────────────────────────
   {
@@ -97,20 +97,20 @@ const GOALS: Demo[] = [
     ],
   },
   {
-    key: "g27people", level: "group", owner: HA, period: "2027", weight: 2, title: "Suzu là nơi người giỏi muốn ở lại",
+    key: "g27people", level: "group", owner: HA, period: "2027", weight: 2, title: "SuZu là nơi người giỏi muốn ở lại",
     krs: [
       { title: "Tỷ lệ nghỉ việc tự nguyện", type: "percent", start: 14, target: 9 },
       { title: "eNPS", type: "number", start: 18, target: 35 },
-      { title: "Vận hành nhân sự trên Suzu One", type: "milestone", milestones: ["Chấm công & nghỉ phép", "OKR & KPI", "Bảng lương chạy song song", "Bảng lương chính thức", "Đánh giá cuối năm & thưởng"] },
+      { title: "Vận hành nhân sự trên SuZu One", type: "milestone", milestones: ["Chấm công & nghỉ phép", "OKR & KPI", "Bảng lương chạy song song", "Bảng lương chính thức", "Đánh giá cuối năm & thưởng"] },
     ],
   },
-  { key: "szm27", level: "entity", entity: "SZM", owner: LONG, parent: "g27rev", period: "2027", weight: 2, title: "Suzu Media: 24 tỷ doanh thu sản xuất video", krs: [{ title: "Doanh thu Suzu Media", type: "currency", start: 0, target: 24_000_000_000, weight: 2 }, { title: "Dự án bàn giao đúng hạn", type: "percent", start: 78, target: 92 }] },
-  { key: "szc27", level: "entity", entity: "SZC", owner: HA, parent: "g27rev", period: "2027", weight: 3, title: "Suzu Creative: 36 tỷ doanh thu, 10 khách retainer mới", krs: [{ title: "Doanh thu Suzu Creative", type: "currency", start: 0, target: 36_000_000_000, weight: 2 }, { title: "Khách retainer mới", type: "number", start: 0, target: 10 }] },
+  { key: "szm27", level: "entity", entity: "SZM", owner: LONG, parent: "g27rev", period: "2027", weight: 2, title: "SuZu Media: 24 tỷ doanh thu sản xuất video", krs: [{ title: "Doanh thu SuZu Media", type: "currency", start: 0, target: 24_000_000_000, weight: 2 }, { title: "Dự án bàn giao đúng hạn", type: "percent", start: 78, target: 92 }] },
+  { key: "szc27", level: "entity", entity: "SZC", owner: HA, parent: "g27rev", period: "2027", weight: 3, title: "SuZu Creative: 36 tỷ doanh thu, 10 khách retainer mới", krs: [{ title: "Doanh thu SuZu Creative", type: "currency", start: 0, target: 36_000_000_000, weight: 2 }, { title: "Khách retainer mới", type: "number", start: 0, target: 10 }] },
   { key: "vid27", level: "department", department: "VID", entity: "SZM", owner: LONG, parent: "szm27", period: "2027", title: "Phòng Video: đúng hạn 92%, tối đa 2 vòng sửa" },
   { key: "des27", level: "department", department: "DES", entity: "SZC", owner: CHI, parent: "szc27", period: "2027", title: "Phòng Thiết kế: duyệt ngay vòng đầu đạt 80%", krs: [{ title: "Thiết kế được duyệt ngay vòng đầu", type: "percent", start: 68, target: 80 }, { title: "Thời gian ra concept (ngày)", type: "number", start: 5, target: 3 }] },
   { key: "soc27", level: "department", department: "SOC", entity: "SZC", owner: DUC, parent: "szc27", period: "2027", title: "Social: tương tác trung bình 4% trên các kênh retainer", krs: [{ title: "Tỷ lệ tương tác trung bình", type: "percent", start: 3.2, target: 4 }, { title: "Báo cáo tháng gửi khách trước ngày 5", type: "percent", start: 70, target: 100 }] },
   { key: "acc27", level: "department", department: "ACC", entity: "SZC", owner: HA, parent: "szc27", period: "2027", status: "draft", title: "Account: CSAT 4,5 và gia hạn 90% hợp đồng retainer", krs: [{ title: "CSAT", type: "number", start: 4.25, target: 4.5 }, { title: "Tỷ lệ gia hạn retainer", type: "percent", start: 80, target: 90 }] },
-  { key: "hr27", level: "department", department: "HR", owner: MAI, parent: "g27people", period: "2027", title: "Nhân sự: giữ người và vận hành trên Suzu One", krs: [{ title: "Nhân viên có OKR hoặc KPI được giao", type: "percent", start: 0, target: 100 }, { title: "Thời gian tuyển một vị trí (ngày)", type: "number", start: 45, target: 30 }] },
+  { key: "hr27", level: "department", department: "HR", owner: MAI, parent: "g27people", period: "2027", title: "Nhân sự: giữ người và vận hành trên SuZu One", krs: [{ title: "Nhân viên có OKR hoặc KPI được giao", type: "percent", start: 0, target: 100 }, { title: "Thời gian tuyển một vị trí (ngày)", type: "number", start: 45, target: 30 }] },
   { key: "fin27", level: "department", department: "FIN", owner: TUAN, parent: "g27rev", period: "2027", title: "Tài chính: đóng sổ tháng trong 5 ngày làm việc", krs: [{ title: "Số ngày đóng sổ tháng", type: "number", start: 9, target: 5 }, { title: "Công nợ quá hạn trên 60 ngày", type: "currency", start: 1_450_000_000, target: 500_000_000 }] },
 
   { key: "long27", level: "individual", person: LONG, owner: LONG, parent: "szm27", period: "2027", title: "Xây đội sản xuất tự chủ, không phụ thuộc một người", krs: [{ title: "Đạo diễn có thể dẫn dự án độc lập", type: "number", start: 1, target: 3 }, { title: "Quy trình sản xuất được viết thành tài liệu", type: "milestone", milestones: ["Tiền kỳ", "Quay", "Hậu kỳ", "Bàn giao & lưu trữ"] }] },
@@ -120,7 +120,7 @@ const GOALS: Demo[] = [
   { key: "chi27", level: "individual", person: CHI, owner: CHI, parent: "des27", period: "2027", title: "Phát triển đội thiết kế lên 5 người vững nghề", krs: [{ title: "Designer đạt chuẩn senior nội bộ", type: "number", start: 1, target: 3 }, { title: "Buổi review thiết kế hằng tuần được duy trì", type: "percent", start: 50, target: 90 }] },
   { key: "khoi27", level: "individual", person: KHOI, owner: KHOI, parent: "des27", period: "2027", title: "Dẫn dắt nhận diện cho 4 khách hàng mới", krs: [{ title: "Bộ nhận diện bàn giao", type: "number", start: 0, target: 4 }, { title: "Thiết kế được duyệt ngay vòng đầu", type: "percent", start: 66, target: 80 }] },
   { key: "duc27", level: "individual", person: DUC, owner: DUC, parent: "soc27", period: "2027", title: "Đưa 3 kênh khách hàng vượt 100 nghìn người theo dõi", krs: [{ title: "Kênh vượt 100 nghìn người theo dõi", type: "number", start: 0, target: 3 }, { title: "Chi phí trên mỗi lượt tương tác", type: "currency", start: 1_400, target: 1_000 }] },
-  { key: "mai27", level: "individual", person: MAI, owner: MAI, parent: "hr27", period: "2027", title: "Hoàn tất chuyển đổi vận hành nhân sự sang Suzu One", krs: [{ title: "Phân hệ đã vận hành chính thức", type: "milestone", milestones: ["Chấm công & nghỉ phép", "OKR & KPI", "Bảng lương", "Đánh giá cuối năm"] }] },
+  { key: "mai27", level: "individual", person: MAI, owner: MAI, parent: "hr27", period: "2027", title: "Hoàn tất chuyển đổi vận hành nhân sự sang SuZu One", krs: [{ title: "Phân hệ đã vận hành chính thức", type: "milestone", milestones: ["Chấm công & nghỉ phép", "OKR & KPI", "Bảng lương", "Đánh giá cuối năm"] }] },
   { key: "bao27", level: "individual", person: BAO, owner: BAO, parent: "hr27", period: "2027", title: "Hồ sơ và chấm công SZM sạch 100% mỗi tháng", krs: [{ title: "Bảng công SZM khoá trước ngày 2", type: "percent", start: 60, target: 100 }, { title: "Hồ sơ nhân viên SZM đủ giấy tờ", type: "percent", start: 96, target: 100 }] },
   { key: "tuan27", level: "individual", person: TUAN, owner: TUAN, parent: "fin27", period: "2027", title: "Tự động hoá báo cáo quản trị hằng tháng", krs: [{ title: "Báo cáo quản trị gửi trước ngày 7", type: "percent", start: 40, target: 100 }] },
 ];

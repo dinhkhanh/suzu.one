@@ -67,14 +67,14 @@ const LEAVE = "Quy định nghỉ phép";
 const ONBOARDING = "Quy trình tiếp nhận nhân viên mới";
 const OFFBOARDING = "Quy trình nghỉ việc và bàn giao";
 const DRIVE = "Đặt tên và sắp xếp tệp trên Google Drive";
-const SUZU_ONE = "Hướng dẫn dùng Suzu One";
+const SUZU_ONE = "Hướng dẫn dùng SuZu One";
 const VIDEO_SOP = "SOP: từ brief đến bản dựng cuối";
 const CLIENT_REVIEW = "SOP: duyệt nội dung với khách hàng";
 const ADVANCE = "Quy trình tạm ứng và hoàn ứng";
 const EXPENSES = "Công tác phí và thanh toán chi phí";
 const DISCIPLINE = "Hướng dẫn xử lý kỷ luật lao động";
 const MANAGERS = "Dành cho quản lý";
-const WELCOME = "Chào mừng đến với Suzu";
+const WELCOME = "Chào mừng đến với SuZu";
 
 const ask = (id: string, question: string, pages: string[], expect: string[], who: EvalWho = "huy", locale: "vi" | "en" = "vi"): EvalQuestion => ({ id, who, locale, kind: "answer", question, pages, expect });
 
@@ -205,10 +205,10 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
   ask("drv-naming", "Đặt tên thư mục dự án trên Google Drive theo mẫu nào?", [DRIVE], ["khách hàng"]),
   ask("drv-share", "Chia sẻ tệp trên Drive theo cách nào?", [DRIVE], ["nhóm google"]),
   ask("drv-final", "Tài liệu cuối cùng để ở thư mục nào?", [DRIVE], ["final"]),
-  ask("app-install", "Làm sao để dùng Suzu One như ứng dụng trên điện thoại?", [SUZU_ONE], ["màn hình chính"]),
+  ask("app-install", "Làm sao để dùng SuZu One như ứng dụng trên điện thoại?", [SUZU_ONE], ["màn hình chính"]),
   ask("app-missing-menu", "Không thấy một mục trong menu thì làm gì?", [SUZU_ONE], ["chưa được cấp quyền"]),
   ask("app-ack", "Trang nào cần đọc và xác nhận thì xem ở đâu?", [SUZU_ONE], ["xác nhận của tôi"]),
-  ask("welcome-values", "Giá trị cốt lõi của Suzu là gì?", [WELCOME], ["tử tế"]),
+  ask("welcome-values", "Giá trị cốt lõi của SuZu là gì?", [WELCOME], ["tử tế"]),
 
   // ── SOP sản xuất video (Video department) ─────────────────────────────────────────────────
   ask("vid-editor", "Trong quy trình sản xuất video ai phụ trách dựng và màu?", [VIDEO_SOP], ["editor"]),
@@ -241,7 +241,7 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
   ask("en-okr", "When do we agree my OKR and KPI after joining?", [ONBOARDING], ["okr"], "huy", "en"),
   ask("en-nas", "Where is client footage stored, Drive or NAS?", [SECURITY], ["nas"], "huy", "en"),
   ask("en-ai", "What is the rule about public AI tools and client data?", [SECURITY], ["ai"], "huy", "en"),
-  ask("en-suzu-one", "How do I install Suzu One on my phone?", [SUZU_ONE], ["chrome"], "huy", "en"),
+  ask("en-suzu-one", "How do I install SuZu One on my phone?", [SUZU_ONE], ["chrome"], "huy", "en"),
   ask("en-drive", "How should I name a project folder on Google Drive?", [DRIVE], ["khách hàng"], "huy", "en"),
   ask("en-camera", "Do I need my camera on in a client meeting when working remotely?", [REMOTE], ["camera"], "huy", "en"),
 

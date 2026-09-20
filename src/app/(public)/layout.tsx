@@ -4,7 +4,7 @@ import Link from "next/link";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
 
 /**
- * The shell for the **only** part of Suzu One a stranger can open (FR-REC-03). It deliberately
+ * The shell for the **only** part of SuZu One a stranger can open (FR-REC-03). It deliberately
  * shares nothing with `(app)/layout.tsx`: no `requireUser`, no navigation, no inbox counts, no
  * command palette, no person's name in a corner. Everything that layout renders is a fact about
  * the company or the reader, and none of it belongs on a page the internet can fetch.
@@ -15,7 +15,7 @@ import { LocaleSwitch } from "@/components/shell/locale-switch";
  * for itself, and the application form and the thank-you page below stay out of the index.
  */
 export const metadata: Metadata = {
-  title: { default: "Tuyển dụng · Suzu Group", template: "%s · Suzu Group" },
+  title: { default: "Tuyển dụng · SuZu Group", template: "%s · SuZu Group" },
   robots: { index: true, follow: true },
 };
 

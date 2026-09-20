@@ -40,7 +40,7 @@ async function hire(name: string, entityId: string, departmentId: string, manage
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "Suzu Media", shortName: "Media" }, { code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }]).returning();
+  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "SuZu Media", shortName: "Media" }, { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }]).returning();
   const [video, design] = await db().insert(schema.department).values([{ code: "VID", name: "Video" }, { code: "DES", name: "Design" }]).returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
   Object.assign(ids, { media: media.id, creative: creative.id, video: video.id, design: design.id, actor: actor.id });

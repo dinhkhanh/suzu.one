@@ -46,7 +46,7 @@ let contractId: string;
 beforeAll(async () => {
   await migrateTestDb();
   await db().insert(schema.statutoryParameter).values(STATUTORY_SEED.map((seed) => ({ ...seed, status: "approved" as const })));
-  const [media] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" }).returning();
+  const [media] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   const [video] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
 

@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# Suzu One — project conventions
+# SuZu One — project conventions
 
 Read `docs/SRS.md` (requirements, decisions D1–D18) and `docs/DEVELOPMENT_PLAN.md` (architecture §2, phases §3) before starting a phase.
 

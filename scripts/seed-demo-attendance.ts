@@ -82,16 +82,16 @@ export async function seedAttendance(db: Db): Promise<string> {
 
   // An entity's own calendar row: Creative's team-building day.
   const [teamDay] = await db.select({ id: calendarDay.id }).from(calendarDay).where(and(eq(calendarDay.entityId, creative.id), eq(calendarDay.date, "2026-08-21"))).limit(1);
-  if (!teamDay) await db.insert(calendarDay).values({ entityId: creative.id, date: "2026-08-21", kind: "company_off", name: "Team building Suzu Creative" });
+  if (!teamDay) await db.insert(calendarDay).values({ entityId: creative.id, date: "2026-08-21", kind: "company_off", name: "Team building SuZu Creative" });
 
   // Work locations (FR-ATT-04): one office per entity in Ho Chi Minh City. The loopback addresses
   // stand in for the office network so a check-in from this machine passes; Media also has a
   // studio that accepts the position only.
   const offices: { code: string; name: string; address: string; latitude: number; longitude: number; radiusM: number; ipAllowlist: string[]; rule: "gps_or_ip" | "gps" }[] = [
-    { code: "SZG", name: "Văn phòng Suzu Group", address: "2 Hải Triều, Bến Nghé, Quận 1, TP.HCM", latitude: 10.771595, longitude: 106.704758, radiusM: 150, ipAllowlist: ["127.0.0.1", "::1"], rule: "gps_or_ip" },
-    { code: "SZM", name: "Văn phòng Suzu Media", address: "72 Lê Thánh Tôn, Bến Nghé, Quận 1, TP.HCM", latitude: 10.778203, longitude: 106.702143, radiusM: 120, ipAllowlist: ["127.0.0.1", "::1"], rule: "gps_or_ip" },
+    { code: "SZG", name: "Văn phòng SuZu Group", address: "2 Hải Triều, Bến Nghé, Quận 1, TP.HCM", latitude: 10.771595, longitude: 106.704758, radiusM: 150, ipAllowlist: ["127.0.0.1", "::1"], rule: "gps_or_ip" },
+    { code: "SZM", name: "Văn phòng SuZu Media", address: "72 Lê Thánh Tôn, Bến Nghé, Quận 1, TP.HCM", latitude: 10.778203, longitude: 106.702143, radiusM: 120, ipAllowlist: ["127.0.0.1", "::1"], rule: "gps_or_ip" },
     { code: "SZM", name: "Studio Thảo Điền", address: "Xuân Thuỷ, Thảo Điền, TP. Thủ Đức", latitude: 10.803512, longitude: 106.733418, radiusM: 200, ipAllowlist: [], rule: "gps" },
-    { code: "SZC", name: "Văn phòng Suzu Creative", address: "Võ Văn Tần, Phường 6, Quận 3, TP.HCM", latitude: 10.776889, longitude: 106.690102, radiusM: 120, ipAllowlist: ["127.0.0.1", "::1"], rule: "gps_or_ip" },
+    { code: "SZC", name: "Văn phòng SuZu Creative", address: "Võ Văn Tần, Phường 6, Quận 3, TP.HCM", latitude: 10.776889, longitude: 106.690102, radiusM: 120, ipAllowlist: ["127.0.0.1", "::1"], rule: "gps_or_ip" },
   ];
   let locations = 0;
   for (const office of offices) {
@@ -160,8 +160,8 @@ export async function seedPunches(db: Db): Promise<string> {
   // Clocks: a ZKTeco at Media's front door, a CSV-exporting clock at the Group's reception. Creative uses the app only.
   const profiles = await db.select().from(deviceMappingProfile);
   const devices: { code: string; name: string; model: string; profile: string; file: string }[] = [
-    { code: "SZM", name: "Cửa chính Suzu Media", model: "ZKTeco K40", profile: "ZKTeco attlog.dat", file: "attlog-szm.dat" },
-    { code: "SZG", name: "Lễ tân Suzu Group", model: "Ronald Jack X628", profile: "CSV chung (có dòng tiêu đề)", file: "device-log-szg.csv" },
+    { code: "SZM", name: "Cửa chính SuZu Media", model: "ZKTeco K40", profile: "ZKTeco attlog.dat", file: "attlog-szm.dat" },
+    { code: "SZG", name: "Lễ tân SuZu Group", model: "Ronald Jack X628", profile: "CSV chung (có dòng tiêu đề)", file: "device-log-szg.csv" },
   ];
   const deviceOf = new Map<string, { id: string; ids: Map<string, string>; file: string; kind: "dat" | "csv"; lines: string[] }>();
   for (const spec of devices) {

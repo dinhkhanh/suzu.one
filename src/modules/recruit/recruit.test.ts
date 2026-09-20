@@ -64,8 +64,8 @@ let employee: Principal;
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" }).returning();
-  const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }).returning();
+  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
+  const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
   const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
   const [des] = await db().insert(schema.department).values({ code: "DES", name: "Design" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id, vid: vid.id, des: des.id });

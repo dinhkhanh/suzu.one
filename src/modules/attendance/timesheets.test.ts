@@ -53,7 +53,7 @@ const dayOf = async (personId: string, date: string) => (await getTimesheetDays(
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "Suzu Media", shortName: "Media" }, { code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }]).returning();
+  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "SuZu Media", shortName: "Media" }, { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }]).returning();
   const [video] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
   const person = async (name: string, entityId: string, code: string, managerId: string | null = null) => {
     const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), primaryEntityId: entityId, departmentId: video.id, managerId, status: "active" }).returning();

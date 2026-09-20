@@ -53,8 +53,8 @@ beforeAll(async () => {
   const [media, creative] = await db()
     .insert(schema.entity)
     .values([
-      { code: "SZM", legalName: "Suzu Media", shortName: "Media" },
-      { code: "SZC", legalName: "Suzu Creative", shortName: "Creative" },
+      { code: "SZM", legalName: "SuZu Media", shortName: "Media" },
+      { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" },
     ])
     .returning();
   const [video, design] = await db()

@@ -38,7 +38,7 @@ export async function seedComms(db: Db): Promise<string> {
   const demos: Demo[] = [
     {
       title: "Lịch nghỉ Tết Dương lịch 2027 và kế hoạch làm việc cuối năm",
-      body: "Thân gửi toàn thể anh chị em,\n\nCông ty nghỉ Tết Dương lịch vào thứ Sáu, ngày 01/01/2027, theo quy định hiện hành. Các phòng ban vui lòng chốt kế hoạch công việc tháng 12 trước ngày 27/11 và đăng ký nghỉ phép cuối năm trên Suzu One trước ngày 10/12 để trưởng bộ phận sắp xếp nhân sự.\n\nTiệc cuối năm dự kiến tổ chức vào tối thứ Sáu 18/12 — thông tin chi tiết sẽ được gửi sau.\n\nPhòng Nhân sự",
+      body: "Thân gửi toàn thể anh chị em,\n\nCông ty nghỉ Tết Dương lịch vào thứ Sáu, ngày 01/01/2027, theo quy định hiện hành. Các phòng ban vui lòng chốt kế hoạch công việc tháng 12 trước ngày 27/11 và đăng ký nghỉ phép cuối năm trên SuZu One trước ngày 10/12 để trưởng bộ phận sắp xếp nhân sự.\n\nTiệc cuối năm dự kiến tổ chức vào tối thứ Sáu 18/12 — thông tin chi tiết sẽ được gửi sau.\n\nPhòng Nhân sự",
       author: mai.id, audience: ["all"], entityId: null, publishAt: ago(3, 2), pinned: true,
       readers: ["owner@suzu.vn", "ha.nguyen@suzu.vn", "bao.pham@suzu.group", "long.dang@suzu.group", "tam.bui@suzu.group", "khoi.ly@suzu.group", "duc.phan@suzu.group"],
     },
@@ -50,8 +50,8 @@ export async function seedComms(db: Db): Promise<string> {
       acknowledgers: ["ha.nguyen@suzu.vn", "bao.pham@suzu.group", "tuan.vo@suzu.group", "tam.bui@suzu.group", "chi.duong@suzu.group", "duc.phan@suzu.group"],
     },
     {
-      title: "Suzu Media: khám sức khỏe định kỳ năm 2026",
-      body: "Suzu Media tổ chức khám sức khỏe định kỳ vào sáng thứ Bảy 10/10 tại phòng khám đối tác (địa chỉ gửi kèm trong lịch).\n\nAnh chị em vui lòng nhịn ăn sáng, mang theo CCCD và có mặt trước 7g30. Ai không tham gia được xin báo lại cho Bảo (Nhân sự) trước ngày 05/10 để đổi lịch.",
+      title: "SuZu Media: khám sức khỏe định kỳ năm 2026",
+      body: "SuZu Media tổ chức khám sức khỏe định kỳ vào sáng thứ Bảy 10/10 tại phòng khám đối tác (địa chỉ gửi kèm trong lịch).\n\nAnh chị em vui lòng nhịn ăn sáng, mang theo CCCD và có mặt trước 7g30. Ai không tham gia được xin báo lại cho Bảo (Nhân sự) trước ngày 05/10 để đổi lịch.",
       author: bao.id, audience: [`entity:${szm.id}`], entityId: szm.id, publishAt: ago(1, 5),
       readers: ["long.dang@suzu.group", "huy.ho@suzu.group"],
     },
@@ -73,7 +73,7 @@ export async function seedComms(db: Db): Promise<string> {
       readers: ["owner@suzu.vn", "tuan.vo@suzu.group", "long.dang@suzu.group", "huy.ho@suzu.group", "khoi.ly@suzu.group"],
     },
     {
-      title: "Suzu Creative: đăng ký workshop thiết kế thương hiệu (bản nháp)",
+      title: "SuZu Creative: đăng ký workshop thiết kế thương hiệu (bản nháp)",
       body: "Dự kiến tổ chức workshop nội bộ về thiết kế thương hiệu trong tháng 10. Nội dung và lịch đang được hoàn thiện.",
       author: mai.id, audience: [`entity:${szc.id}`, `department:${des.id}`], entityId: null, publishAt: null, status: "draft",
     },
@@ -142,7 +142,7 @@ export async function seedComms(db: Db): Promise<string> {
   // ── Checklist steps that point at the handbook (exit criterion) ───────────────────────────
   const links: [string, string, string][] = [
     ["onboarding", "nội quy lao động", "Nội quy lao động"],
-    ["onboarding", "thông tin cá nhân trên Suzu One", "Hướng dẫn dùng Suzu One"],
+    ["onboarding", "thông tin cá nhân trên SuZu One", "Hướng dẫn dùng SuZu One"],
     ["onboarding", "kế hoạch tuần đầu tiên", "Quy trình tiếp nhận nhân viên mới"],
     ["onboarding", "Google Workspace", "Bảo mật thông tin và thiết bị"],
     ["onboarding", "bảo hiểm xã hội", "Bảo hiểm xã hội, y tế và thất nghiệp"],

@@ -1,4 +1,4 @@
-// Suzu One service worker. Deliberately small:
+// SuZu One service worker. Deliberately small:
 //  - caches only what is public and immutable: the build's hashed static files and the icons;
 //  - never caches a page, an RSC payload, a server action or an API response — all of those are
 //    per person and permission-checked on the server, and a stale copy would be a leak or a lie;
@@ -56,7 +56,7 @@ self.addEventListener("push", (event) => {
     payload = { body: event.data ? event.data.text() : "" };
   }
   event.waitUntil(
-    self.registration.showNotification(payload.title || "Suzu One", {
+    self.registration.showNotification(payload.title || "SuZu One", {
       body: payload.body || "",
       icon: "/icons/icon-192.png",
       badge: "/icons/badge-96.png",

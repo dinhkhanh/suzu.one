@@ -30,9 +30,9 @@ import { templateProblems } from "../src/modules/documents/engine/template";
 config({ path: ".env.local" });
 
 const ENTITIES = [
-  { code: "SZG", shortName: "Suzu Group", legalName: "Công ty Cổ phần Suzu Group (placeholder — edit me)", wageRegion: 1 },
-  { code: "SZM", shortName: "Suzu Media", legalName: "Công ty TNHH Suzu Media (placeholder — edit me)", wageRegion: 1 },
-  { code: "SZC", shortName: "Suzu Creative", legalName: "Công ty TNHH Suzu Creative (placeholder — edit me)", wageRegion: 1 },
+  { code: "SZG", shortName: "SuZu Group", legalName: "Công ty Cổ phần SuZu Group (placeholder — edit me)", wageRegion: 1 },
+  { code: "SZM", shortName: "SuZu Media", legalName: "Công ty TNHH SuZu Media (placeholder — edit me)", wageRegion: 1 },
+  { code: "SZC", shortName: "SuZu Creative", legalName: "Công ty TNHH SuZu Creative (placeholder — edit me)", wageRegion: 1 },
 ];
 
 // Shared across every entity (entityId = null).

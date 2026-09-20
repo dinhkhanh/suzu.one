@@ -62,7 +62,7 @@ describe("ranking", () => {
   const passages = [
     passage({ chunkId: "boilerplate", headingPath: "Lương và ngày trả lương", content: "Văn bản mẫu để dùng thử. Phòng Nhân sự sẽ thay bằng văn bản chính thức của công ty." }),
     passage({ chunkId: "period", pageTitle: "Lương và ngày trả lương", headingPath: "Lương và ngày trả lương › Kỳ lương", content: "Kỳ tính lương: từ ngày 1 đến ngày cuối tháng.\nNgày trả lương: ngày 5 của tháng kế tiếp." }),
-    passage({ chunkId: "hours", pageTitle: "Giờ làm việc", headingPath: "Giờ làm việc › Chấm công", content: "Mở Chấm công trên Suzu One khi đến và khi về mỗi ngày." }),
+    passage({ chunkId: "hours", pageTitle: "Giờ làm việc", headingPath: "Giờ làm việc › Chấm công", content: "Mở Chấm công trên SuZu One khi đến và khi về mỗi ngày." }),
   ];
 
   it("puts the paragraph that answers above the page's stock opening", () => {
@@ -237,7 +237,7 @@ describe("routing a question to a personal tool (engine/routing.ts)", () => {
   });
 
   it("does not mistake a product or an acronym for a person", () => {
-    expect(namedPersonIn("Tôi cài Suzu One trên điện thoại thế nào?")).toBeNull();
+    expect(namedPersonIn("Tôi cài SuZu One trên điện thoại thế nào?")).toBeNull();
     expect(namedPersonIn("Tôi còn bao nhiêu ngày phép? Hỏi HR hay xem OT?")).toBeNull();
   });
 

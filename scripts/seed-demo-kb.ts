@@ -31,7 +31,7 @@ const LONG = "Đặng Hoàng Long";
 const TAM = "Bùi Thanh Tâm";
 
 const SPACES: { key: string; name: string; icon: string; description: string; entity?: string; kind: "open" | "controlled"; access: Access[] }[] = [
-  { key: "so-tay", name: "Sổ tay nhân viên", icon: "📘", kind: "controlled", description: "Những điều mọi người ở Suzu cần biết: văn hoá, nội quy, quyền lợi.", access: [["all", "view"], ["role:hr_admin", "edit"], ["role:hr_staff", "edit"]] },
+  { key: "so-tay", name: "Sổ tay nhân viên", icon: "📘", kind: "controlled", description: "Những điều mọi người ở SuZu cần biết: văn hoá, nội quy, quyền lợi.", access: [["all", "view"], ["role:hr_admin", "edit"], ["role:hr_staff", "edit"]] },
   { key: "chinh-sach-nhan-su", name: "Chính sách nhân sự", icon: "⚖️", kind: "controlled", description: "Chính sách và quy định do phòng Hành chính – Nhân sự ban hành.", access: [["all", "view"], ["role:hr_admin", "edit"], ["role:hr_staff", "edit"]] },
   { key: "quy-trinh-tai-chinh", name: "Quy trình tài chính", icon: "🧾", kind: "controlled", description: "Tạm ứng, thanh toán, hoá đơn — dành cho phòng Tài chính – Kế toán.", access: [["role:finance", "edit"], ["role:payroll", "edit"], ["department:FIN", "view"]] },
   { key: "san-xuat-video", name: "Sản xuất Video", icon: "🎬", kind: "open", description: "SOP và kinh nghiệm của phòng Sản xuất Video.", access: [["department:VID", "edit"]] },
@@ -40,18 +40,18 @@ const SPACES: { key: string; name: string; icon: string; description: string; en
 
 const PAGES: DemoPage[] = [
   {
-    key: "welcome", space: "so-tay", title: "Chào mừng đến với Suzu", owner: MAI, reviewBy: "2027-06-30",
+    key: "welcome", space: "so-tay", title: "Chào mừng đến với SuZu", owner: MAI, reviewBy: "2027-06-30",
     revisions: [
       {
         on: "2026-03-02", by: MAI, note: "Bản đầu tiên",
         content: doc(
           heading(1, "Chào mừng bạn"),
-          paragraph("Suzu Group gồm ba công ty: ", bold("Suzu Group"), ", ", bold("Suzu Media"), " và ", bold("Suzu Creative"), ". Sổ tay này giúp bạn nắm nhanh cách chúng ta làm việc."),
+          paragraph("SuZu Group gồm ba công ty: ", bold("SuZu Group"), ", ", bold("SuZu Media"), " và ", bold("SuZu Creative"), ". Sổ tay này giúp bạn nắm nhanh cách chúng ta làm việc."),
           callout("info", "Tuần đầu tiên, hãy hoàn thành danh sách hội nhập trong mục Việc của tôi và đọc các chính sách được đánh dấu bắt buộc."),
           heading(2, "Giá trị cốt lõi"),
           bulletList("Tử tế với đồng nghiệp và khách hàng", "Làm đến nơi đến chốn", "Học mỗi ngày", "Nói thẳng, nói thật, nói sớm"),
           heading(2, "Bắt đầu từ đâu"),
-          orderedList([paragraph("Đọc ", link("Nội quy lao động", "/kb"), " và ", link("Quy định nghỉ phép", "/kb"), ".")], "Cài ứng dụng Suzu One lên điện thoại để chấm công.", "Gặp quản lý trực tiếp để thống nhất mục tiêu 30 – 60 – 90 ngày."),
+          orderedList([paragraph("Đọc ", link("Nội quy lao động", "/kb"), " và ", link("Quy định nghỉ phép", "/kb"), ".")], "Cài ứng dụng SuZu One lên điện thoại để chấm công.", "Gặp quản lý trực tiếp để thống nhất mục tiêu 30 – 60 – 90 ngày."),
           heading(2, "Video giới thiệu"),
           embed("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
         ),
@@ -69,7 +69,7 @@ const PAGES: DemoPage[] = [
           heading(1, "Số ngày nghỉ"),
           table(["Loại nghỉ", "Số ngày", "Hưởng lương"], ["Phép năm", "12 ngày / năm, cộng 1 ngày mỗi 5 năm thâm niên", "Có"], ["Kết hôn", "3 ngày", "Có"], ["Con kết hôn", "1 ngày", "Có"], ["Tang cha mẹ, vợ chồng, con", "3 ngày", "Có"], ["Nghỉ không lương", "Theo thoả thuận", "Không"]),
           heading(1, "Cách xin nghỉ"),
-          orderedList("Tạo đơn trong mục Nghỉ phép trên Suzu One.", "Quản lý trực tiếp duyệt; nghỉ từ 5 ngày liên tục cần thêm trưởng phòng.", "Bàn giao công việc trước ngày nghỉ."),
+          orderedList("Tạo đơn trong mục Nghỉ phép trên SuZu One.", "Quản lý trực tiếp duyệt; nghỉ từ 5 ngày liên tục cần thêm trưởng phòng.", "Bàn giao công việc trước ngày nghỉ."),
           callout("warning", "Nghỉ phép năm từ 3 ngày trở lên cần báo trước ít nhất 5 ngày làm việc."),
         ),
       },
@@ -81,7 +81,7 @@ const PAGES: DemoPage[] = [
           heading(1, "Số ngày nghỉ"),
           table(["Loại nghỉ", "Số ngày", "Hưởng lương"], ["Phép năm", "12 ngày / năm, cộng 1 ngày mỗi 5 năm thâm niên", "Có"], ["Kết hôn", "3 ngày", "Có"], ["Con kết hôn", "1 ngày", "Có"], ["Tang cha mẹ, vợ chồng, con", "3 ngày", "Có"], ["Nghỉ không lương", "Theo thoả thuận", "Không"]),
           heading(1, "Cách xin nghỉ"),
-          orderedList("Tạo đơn trong mục Nghỉ phép trên Suzu One.", "Quản lý trực tiếp duyệt; nghỉ từ 5 ngày liên tục cần thêm trưởng phòng.", "Bàn giao công việc trước ngày nghỉ."),
+          orderedList("Tạo đơn trong mục Nghỉ phép trên SuZu One.", "Quản lý trực tiếp duyệt; nghỉ từ 5 ngày liên tục cần thêm trưởng phòng.", "Bàn giao công việc trước ngày nghỉ."),
           callout("warning", "Nghỉ phép năm từ 3 ngày trở lên cần báo trước ít nhất 5 ngày làm việc."),
           heading(1, "Chuyển phép sang năm sau"),
           paragraph("Tối đa ", bold("5 ngày"), " phép chưa dùng được chuyển sang năm sau và phải dùng trước ngày 31/3. Phần còn lại sẽ hết hạn."),

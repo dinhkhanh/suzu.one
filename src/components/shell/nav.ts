@@ -41,7 +41,7 @@ export function navFor(principal: Principal, open: { people: boolean; recruit: b
     ...(open.interviews ? [{ key: "interviews", href: "/recruit/interviews" }] : []),
     // The knowledge base: which spaces open is decided by their access rows, on the pages.
     { key: "kb", href: "/kb" },
-    // Ask Suzu: everybody may ask; what it can answer is decided per asker by the same access
+    // Ask SuZu: everybody may ask; what it can answer is decided per asker by the same access
     // rows, in SQL, on every question. Somebody who can open no page gets "I do not know".
     { key: "assistant", href: "/assistant" },
     // Referring somebody is everybody's (FR-REC-10) — the programme only works if the whole

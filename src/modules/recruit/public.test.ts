@@ -69,7 +69,7 @@ const filled = (slugFor: string, overrides: Record<string, unknown> = {}) => ({
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty Suzu Media", shortName: "Suzu Media" }).returning();
+  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty SuZu Media", shortName: "SuZu Media" }).returning();
   const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
   Object.assign(ids, { szm: szm.id, vid: vid.id });
   for (const [key, fullName] of [

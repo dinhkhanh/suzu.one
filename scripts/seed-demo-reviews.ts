@@ -4,7 +4,7 @@
 // had at launch, and every submitted form carries the figure the pure engine gives for its
 // answers, so week 2's final yearly result reads exactly what a real cycle would have left.
 //
-// One 2026 annual cycle for Suzu Media (SZM), most of the way through:
+// One 2026 annual cycle for SuZu Media (SZM), most of the way through:
 //   · everyone has self-reviewed except one person (so the "waiting for the self review" path is live)
 //   · their managers have written and submitted, except for that one
 //   · two people are calibrated and released, one of them has acknowledged
@@ -121,7 +121,7 @@ export async function seedReviews(db: Db): Promise<string> {
     .insert(reviewCycle)
     .values({
       entityId: szm.id,
-      name: "Đánh giá năm 2026 — Suzu Media",
+      name: "Đánh giá năm 2026 — SuZu Media",
       kind: "annual",
       year: 2026,
       periodStart: "2026-01-01",

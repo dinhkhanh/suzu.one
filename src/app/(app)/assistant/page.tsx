@@ -6,7 +6,7 @@ import { AssistantChat } from "@/modules/ai/ui/chat";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 
-export const metadata: Metadata = { title: "Ask Suzu" };
+export const metadata: Metadata = { title: "Ask SuZu" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

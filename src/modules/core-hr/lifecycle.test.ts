@@ -61,7 +61,7 @@ async function signIn(email: string) {
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [media] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" }).returning();
+  const [media] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   const [video] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
   Object.assign(ids, { media: media.id, video: video.id, actor: actor.id });

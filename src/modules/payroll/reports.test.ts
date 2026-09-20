@@ -48,8 +48,8 @@ const nobody = (): Principal => ({ personId: crypto.randomUUID(), workforceType:
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [media] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media", wageRegion: 1 }).returning();
-  const [creative] = await db().insert(schema.entity).values({ code: "SZC", legalName: "Suzu Creative", shortName: "Creative", wageRegion: 1 }).returning();
+  const [media] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media", wageRegion: 1 }).returning();
+  const [creative] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative", wageRegion: 1 }).returning();
   const [video] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
   const [social] = await db().insert(schema.department).values({ code: "SOC", name: "Social" }).returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();

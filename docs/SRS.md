@@ -1,8 +1,8 @@
-# Suzu One — Software Requirements Specification (SRS)
+# SuZu One — Software Requirements Specification (SRS)
 
 | | |
 |---|---|
-| **Product** | Suzu One (working name) — internal HRM + work platform for Suzu Group, CRM to follow |
+| **Product** | SuZu One (working name) — internal HRM + work platform for SuZu Group, CRM to follow |
 | **Version** | 0.2 (owner's answers of 2026-09-19 incorporated) |
 | **Date** | 2026-09-19 |
 | **Owner** | Company owner (product owner and final approver) |
@@ -16,7 +16,7 @@ Requirement priority uses MoSCoW: **M** = must have, **S** = should have, **C** 
 
 ### 1.1 Purpose
 
-Suzu Group runs social media marketing and media/creative services across several legal entities. HR data, attendance, leave, payroll, task assignment, internal knowledge and statutory deadlines currently live in spreadsheets, chat threads and people's heads. Suzu One replaces those with a single internal web application.
+SuZu Group runs social media marketing and media/creative services across several legal entities. HR data, attendance, leave, payroll, task assignment, internal knowledge and statutory deadlines currently live in spreadsheets, chat threads and people's heads. SuZu One replaces those with a single internal web application.
 
 ### 1.2 Product vision
 
@@ -73,7 +73,7 @@ Decisions added 2026-09-19 (owner's answers to the open questions):
 
 | Term | Meaning |
 |---|---|
-| Group | Suzu Group as a whole (top-level tenant) |
+| Group | SuZu Group as a whole (top-level tenant) |
 | Entity | A legal company within the group (has its own tax code, insurance code, payroll, statutory filings) |
 | ESS / MSS | Employee self-service / manager self-service |
 | BHXH, BHYT, BHTN | Social, health and unemployment insurance |
@@ -482,7 +482,7 @@ For HR, C&B and finance: never miss a recurring job, and be able to prove it was
 
 | ID | Requirement | Pri |
 |---|---|---|
-| FR-AI-01 | **Ask Suzu**: chat that answers policy and how-to questions from the KB with **citations**, in Vietnamese or English. Retrieval respects the asker's KB permissions. | S |
+| FR-AI-01 | **Ask SuZu**: chat that answers policy and how-to questions from the KB with **citations**, in Vietnamese or English. Retrieval respects the asker's KB permissions. | S |
 | FR-AI-02 | Personal HR answers using the user's own data via permission-checked tools: "how many leave days do I have?", "explain my payslip this month", "who approves my OT?". | S |
 | FR-AI-03 | Action shortcuts with confirmation: "request leave next Friday", "create a task for Lan to design the Tết banner, due Wednesday". The assistant drafts; the user confirms; normal approval flows apply. | C |
 | FR-AI-04 | Drafting help: job descriptions, announcements, KB pages, review summaries, task briefs from a rough note. | C |

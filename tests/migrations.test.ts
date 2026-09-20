@@ -15,7 +15,7 @@ beforeAll(async () => {
 
 describe("migrations", () => {
   it("creates shared departments (no entity) and entity-specific ones", async () => {
-    const [entity] = await db.insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" }).returning();
+    const [entity] = await db.insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
     await db.insert(schema.department).values([
       { code: "HR", name: "Human Resources" },
       { code: "SZM-STUDIO", name: "Studio", entityId: entity.id },
@@ -32,7 +32,7 @@ describe("migrations", () => {
   });
 
   it("keeps one employment per person at a time, and allows a rehire after the previous period ends", async () => {
-    const [entity] = await db.insert(schema.entity).values({ code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }).returning();
+    const [entity] = await db.insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
     const [person] = await db.insert(schema.person).values({ fullName: "Lê Minh", searchName: "le minh" }).returning();
     const base = { personId: person.id, entityId: entity.id, seniorityDate: "2024-01-01" };
     await db.insert(schema.employment).values({ ...base, employeeCode: "SZC-0001", startDate: "2024-01-01", endDate: "2024-12-31" });

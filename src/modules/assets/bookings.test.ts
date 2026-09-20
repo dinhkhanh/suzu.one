@@ -41,7 +41,7 @@ let huy: Principal;
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" }).returning();
+  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
   ids.szm = szm.id;
   for (const [key, fullName] of [

@@ -18,7 +18,7 @@ const sheet = (csv: string) => parseTable(parseCsv(csv), departmentColumns).rows
 
 beforeAll(async () => {
   await migrateTestDb();
-  await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" });
+  await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" });
   await db().insert(schema.department).values({ code: "DES", name: "Thiết kế" });
 });
 

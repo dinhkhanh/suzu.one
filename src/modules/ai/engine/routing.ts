@@ -44,7 +44,7 @@ function isFirstPerson(asked: ReadonlySet<string>, text: string): boolean {
   return has(asked, "toi", "tui", "minh", "em", "my", "mine", "i", "me", "myself") || hasPhrase(text, "cua toi", "cua minh", "cua em", "cho toi", "cho minh");
 }
 
-// Capitalised words that are not people. Without this "Suzu One", "Google Drive" and "OT" would be
+// Capitalised words that are not people. Without this "SuZu One", "Google Drive" and "OT" would be
 // read as colleagues; with it, a capitalised word inside a tool question is a name.
 const NOT_NAMES = new Set([
   "suzu", "one", "google", "drive", "docs", "sheets", "meet", "gmail", "zalo", "facebook", "youtube",

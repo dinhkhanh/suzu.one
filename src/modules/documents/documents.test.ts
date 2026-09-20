@@ -36,7 +36,7 @@ let boss: { principal: Principal; personId: string };
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty TNHH Suzu Media", shortName: "Suzu Media" }).returning();
+  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty TNHH SuZu Media", shortName: "SuZu Media" }).returning();
   const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Sản xuất Video" }).returning();
   Object.assign(ids, { szm: szm.id, vid: vid.id });
 

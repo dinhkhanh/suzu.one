@@ -39,7 +39,7 @@ export type DocumentPdfInput = {
   number: string;
   text: string;
   letterhead: LetterheadFields;
-  /** "Tài liệu do Suzu One tạo" and the like — the footer of every page. */
+  /** "Tài liệu do SuZu One tạo" and the like — the footer of every page. */
   footer: string;
   today: string;
   font?: ParsedFont;

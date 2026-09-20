@@ -9,19 +9,19 @@ const BAO = "Phạm Quốc Bảo";
 const TUAN = "Võ Minh Tuấn";
 const LONG = "Đặng Hoàng Long";
 
-const SAMPLE = "> [!NOTE]\n> Văn bản mẫu để dùng thử Suzu One. Phòng Hành chính – Nhân sự sẽ thay bằng văn bản chính thức của công ty.\n\n";
+const SAMPLE = "> [!NOTE]\n> Văn bản mẫu để dùng thử SuZu One. Phòng Hành chính – Nhân sự sẽ thay bằng văn bản chính thức của công ty.\n\n";
 
 export const HANDBOOK_PAGES: HandbookPage[] = [
   {
     key: "rules", space: "so-tay", title: "Nội quy lao động", owner: MAI, reviewBy: "2027-03-31", on: "2026-08-24", by: MAI, note: "Ban hành nội quy 2026", major: true,
     markdown: `${SAMPLE}## 1. Phạm vi áp dụng
 
-Nội quy áp dụng cho toàn bộ người lao động của Suzu Group, Suzu Media và Suzu Creative, kể cả thử việc, thực tập và bán thời gian.
+Nội quy áp dụng cho toàn bộ người lao động của SuZu Group, SuZu Media và SuZu Creative, kể cả thử việc, thực tập và bán thời gian.
 
 ## 2. Thời giờ làm việc, nghỉ ngơi
 
 - Giờ làm việc: thứ Hai đến thứ Sáu, 8:30 – 17:30, nghỉ trưa 12:00 – 13:00.
-- Chấm công bằng ứng dụng Suzu One hoặc máy chấm công tại văn phòng.
+- Chấm công bằng ứng dụng SuZu One hoặc máy chấm công tại văn phòng.
 - Chi tiết xem trang **Giờ làm việc và chấm công**.
 
 ## 3. Trật tự nơi làm việc
@@ -60,12 +60,12 @@ Việc xử lý kỷ luật tuân theo trình tự của Bộ luật Lao động
 | Nhóm | Giờ làm | Ghi chú |
 |---|---|---|
 | Văn phòng | 8:30 – 17:30 | Linh hoạt ±30 phút, đủ 8 giờ |
-| Sản xuất video | Theo lịch quay | Phân ca trên Suzu One |
+| Sản xuất video | Theo lịch quay | Phân ca trên SuZu One |
 | Bán thời gian | Theo hợp đồng | Tối thiểu 4 giờ / ca |
 
 ## Chấm công
 
-1. Mở **Chấm công** trên Suzu One khi đến và khi về. Ứng dụng ghi vị trí trong phạm vi văn phòng.
+1. Mở **Chấm công** trên SuZu One khi đến và khi về. Ứng dụng ghi vị trí trong phạm vi văn phòng.
 2. Đi gặp khách hoặc quay ngoại cảnh: tạo đơn **Làm việc ngoài văn phòng** trước ngày đi.
 3. Quên chấm công: tạo đơn **Bổ sung công** trong 3 ngày làm việc. Mỗi tháng tối đa 3 lần.
 
@@ -81,7 +81,7 @@ Việc xử lý kỷ luật tuân theo trình tự của Bộ luật Lao động
     key: "overtime", space: "so-tay", title: "Làm thêm giờ", owner: BAO, on: "2026-08-25", by: MAI,
     markdown: `${SAMPLE}## Nguyên tắc
 
-Làm thêm giờ phải được **quản lý trực tiếp duyệt trước** trên Suzu One (đơn *Làm thêm giờ*). Giờ làm thêm không có đơn được duyệt sẽ không được tính.
+Làm thêm giờ phải được **quản lý trực tiếp duyệt trước** trên SuZu One (đơn *Làm thêm giờ*). Giờ làm thêm không có đơn được duyệt sẽ không được tính.
 
 ## Giới hạn
 
@@ -163,18 +163,18 @@ Tỷ lệ đóng của người lao động và của công ty theo **quy địn
 | Công việc khác | 6 ngày làm việc |
 
 - Lương thử việc ít nhất bằng **85%** lương chính thức của vị trí.
-- Trước khi hết thử việc 5 ngày, quản lý trực tiếp đánh giá trên Suzu One. Đạt → ký hợp đồng lao động.
+- Trước khi hết thử việc 5 ngày, quản lý trực tiếp đánh giá trên SuZu One. Đạt → ký hợp đồng lao động.
 
 ## Loại hợp đồng
 
 1. Hợp đồng xác định thời hạn: tối đa 36 tháng, được ký tối đa 2 lần liên tiếp.
 2. Hợp đồng không xác định thời hạn.
 
-Suzu One nhắc phòng Nhân sự và quản lý **45 ngày** trước khi hợp đồng hết hạn.
+SuZu One nhắc phòng Nhân sự và quản lý **45 ngày** trước khi hợp đồng hết hạn.
 
 ## Chấm dứt hợp đồng
 
-Người lao động báo trước 30 ngày (hợp đồng xác định thời hạn) hoặc 45 ngày (không xác định thời hạn) bằng **Đơn xin nghỉ việc** trên Suzu One. Xem thêm trang **Quy trình nghỉ việc và bàn giao**.
+Người lao động báo trước 30 ngày (hợp đồng xác định thời hạn) hoặc 45 ngày (không xác định thời hạn) bằng **Đơn xin nghỉ việc** trên SuZu One. Xem thêm trang **Quy trình nghỉ việc và bàn giao**.
 `,
   },
   {
@@ -209,7 +209,7 @@ Nhân viên chính thức, công việc không đòi hỏi có mặt tại văn 
 
 ## Cách đăng ký
 
-1. Tạo đơn **Làm việc từ xa** trên Suzu One trước ít nhất 1 ngày làm việc.
+1. Tạo đơn **Làm việc từ xa** trên SuZu One trước ít nhất 1 ngày làm việc.
 2. Tối đa 2 ngày mỗi tuần; nhiều hơn cần trưởng phòng duyệt.
 3. Chấm công trên ứng dụng như bình thường; ứng dụng ghi nhận ngày làm việc từ xa theo đơn đã duyệt.
 
@@ -248,7 +248,7 @@ Nhân viên chính thức, công việc không đòi hỏi có mặt tại văn 
 
 | Việc | Người phụ trách | Hạn |
 |---|---|---|
-| Tạo hồ sơ trên Suzu One, gửi thư mời nhận việc | Nhân sự | 5 ngày trước |
+| Tạo hồ sơ trên SuZu One, gửi thư mời nhận việc | Nhân sự | 5 ngày trước |
 | Chuẩn bị máy tính, tài khoản email, quyền truy cập | IT / Hành chính | 2 ngày trước |
 | Phân công người đồng hành (buddy) | Quản lý trực tiếp | 2 ngày trước |
 
@@ -261,7 +261,7 @@ Nhân viên chính thức, công việc không đòi hỏi có mặt tại văn 
 ## 30 – 60 – 90 ngày
 
 - Ngày 30: quản lý trao đổi về mức độ hoà nhập.
-- Ngày 55: đánh giá thử việc trên Suzu One.
+- Ngày 55: đánh giá thử việc trên SuZu One.
 - Ngày 90: thống nhất mục tiêu cá nhân (OKR / KPI).
 `,
   },
@@ -269,7 +269,7 @@ Nhân viên chính thức, công việc không đòi hỏi có mặt tại văn 
     key: "offboarding", space: "chinh-sach-nhan-su", title: "Quy trình nghỉ việc và bàn giao", owner: BAO, on: "2026-08-21", by: MAI,
     markdown: `${SAMPLE}## Các bước
 
-1. Nhân viên gửi **Đơn xin nghỉ việc** trên Suzu One; quản lý trực tiếp duyệt.
+1. Nhân viên gửi **Đơn xin nghỉ việc** trên SuZu One; quản lý trực tiếp duyệt.
 2. Nhân sự xác nhận ngày làm việc cuối và tạo **danh sách bàn giao**.
 3. Bàn giao công việc, tài liệu, tài khoản cho người nhận; quản lý xác nhận.
 4. Trả thiết bị, thẻ nhân viên; IT thu hồi quyền truy cập vào ngày làm việc cuối.
@@ -305,7 +305,7 @@ Giảm số vòng sửa và tránh tranh cãi về phạm vi bằng cách duyệ
 
 1. Gửi bản duyệt qua **link Frame.io / Drive chỉ xem**, không gửi tệp gốc.
 2. Gom góp ý của khách hàng vào **một** danh sách; Account xác nhận lại bằng email.
-3. Ghi vòng sửa vào công việc trên Suzu One (bước *Duyệt*), đính kèm danh sách góp ý.
+3. Ghi vòng sửa vào công việc trên SuZu One (bước *Duyệt*), đính kèm danh sách góp ý.
 4. Vượt số vòng trong gói: Account báo giá phát sinh **trước khi** làm.
 
 > [!WARNING]
@@ -313,10 +313,10 @@ Giảm số vòng sửa và tránh tranh cãi về phạm vi bằng cách duyệ
 `,
   },
   {
-    key: "suzu-one", space: "cong-cu", title: "Hướng dẫn dùng Suzu One", owner: BAO, on: "2026-09-01", by: BAO,
+    key: "suzu-one", space: "cong-cu", title: "Hướng dẫn dùng SuZu One", owner: BAO, on: "2026-09-01", by: BAO,
     markdown: `## Bắt đầu
 
-1. Đăng nhập bằng tài khoản Google của công ty tại trang Suzu One.
+1. Đăng nhập bằng tài khoản Google của công ty tại trang SuZu One.
 2. Trên điện thoại: mở bằng Chrome hoặc Safari → **Thêm vào màn hình chính** để dùng như ứng dụng.
 3. Bật thông báo để nhận nhắc việc và kết quả phê duyệt.
 
@@ -377,7 +377,7 @@ Nhân viên chính thức, công việc không đòi hỏi có mặt tại văn 
 
 ## Cách đăng ký
 
-1. Tạo đơn **Làm việc từ xa** trên Suzu One trước ít nhất 1 ngày làm việc.
+1. Tạo đơn **Làm việc từ xa** trên SuZu One trước ít nhất 1 ngày làm việc.
 2. Tối đa **3 ngày** mỗi tuần; nhiều hơn cần trưởng phòng duyệt.
 3. Chấm công trên ứng dụng như bình thường; ứng dụng ghi nhận ngày làm việc từ xa theo đơn đã duyệt.
 

@@ -21,7 +21,7 @@ const kinds = async (personId: string, from: string, to: string) => (await getDa
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "Suzu Media", shortName: "Media" }, { code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }]).returning();
+  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "SuZu Media", shortName: "Media" }, { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }]).returning();
   const [video] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
   const person = async (name: string, entityId: string, departmentId: string | null) => (await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), primaryEntityId: entityId, departmentId }).returning())[0].id;
   Object.assign(ids, { media: media.id, creative: creative.id, video: video.id, huy: await person("Huy", media.id, video.id), tam: await person("Tam", media.id, video.id), lan: await person("Lan", creative.id, null) });

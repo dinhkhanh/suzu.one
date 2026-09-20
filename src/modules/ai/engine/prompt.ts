@@ -22,7 +22,7 @@
 export type PromptSource = { index: number; pageTitle: string; spaceName: string; headingPath: string; content: string };
 
 export const SYSTEM_PROMPT = [
-  "You are Suzu One's internal assistant for a Vietnamese media group.",
+  "You are SuZu One's internal assistant for a Vietnamese media group.",
   "",
   "You answer questions about company policy and procedure using ONLY the reference material supplied with the question.",
   "",

@@ -24,7 +24,7 @@ const FORMS = [
     ]),
     requests: [
       { by: "duc.phan@suzu.group", title: "Clip recap workshop khách hàng Lumi", daysAgo: 3, answers: ["Recap 60 giây buổi workshop ngày 18/9 cho fanpage Lumi, cần phụ đề.", "Reels / TikTok (dọc)", 8, "https://drive.google.com/drive/folders/lumi-workshop"] },
-      { by: "mai.le@suzu.group", title: "Video giới thiệu văn hóa công ty cho nhân viên mới", daysAgo: 1, answers: ["Video 2–3 phút dùng trong buổi hội nhập: lời chào của CEO, một ngày ở Suzu, các phòng ban.", "YouTube (ngang)", 25, null] },
+      { by: "mai.le@suzu.group", title: "Video giới thiệu văn hóa công ty cho nhân viên mới", daysAgo: 1, answers: ["Video 2–3 phút dùng trong buổi hội nhập: lời chào của CEO, một ngày ở SuZu, các phòng ban.", "YouTube (ngang)", 25, null] },
     ],
   },
   {

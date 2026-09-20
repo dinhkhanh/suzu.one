@@ -36,7 +36,7 @@ const noticesOf = async (personId: string, kind: string) => (await db().select()
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" }).returning();
+  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   ids.szm = szm.id;
   for (const [key, name] of [["long", "Long Dang"], ["tam", "Tam Bui"], ["huy", "Huy Ho"], ["khoi", "Khoi Ly"]] as const) {
     const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();

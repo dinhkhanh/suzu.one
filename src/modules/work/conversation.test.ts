@@ -44,8 +44,8 @@ async function noticesOf(personId: string, kind?: string) {
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" }).returning();
-  const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }).returning();
+  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
+  const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id });
   for (const [key, name, entity] of [["long", "Long Dang", szm.id], ["tam", "Tam Bui", szm.id], ["huy", "Huy Ho", szm.id], ["khoi", "Khoi Ly", szc.id]] as const) ids[key] = await addPerson(name, entity);
   const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.long);

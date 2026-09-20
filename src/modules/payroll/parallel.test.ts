@@ -73,8 +73,8 @@ describe("parallel run reconciliation", () => {
   beforeAll(async () => {
     await migrateTestDb();
     await db().insert(schema.entity).values([
-      { id: ids.entity, code: "SZM", legalName: "Suzu Media", shortName: "SZM" },
-      { id: ids.other, code: "SZC", legalName: "Suzu Creative", shortName: "SZC" },
+      { id: ids.entity, code: "SZM", legalName: "SuZu Media", shortName: "SZM" },
+      { id: ids.other, code: "SZC", legalName: "SuZu Creative", shortName: "SZC" },
     ]);
     await db().insert(schema.person).values([
       { id: ids.person, fullName: "Nguyễn Văn A", searchName: "nguyen van a", workforceType: "employee", status: "active", primaryEntityId: ids.entity },

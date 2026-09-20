@@ -52,8 +52,8 @@ beforeAll(async () => {
   vi.setSystemTime(new Date("2026-09-19T03:00:00Z"));
   await migrateTestDb();
 
-  const [media] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" }).returning();
-  const [creative] = await db().insert(schema.entity).values({ code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }).returning();
+  const [media] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
+  const [creative] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
   const [video] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
   Object.assign(ids, { media: media.id, creative: creative.id, video: video.id });
 

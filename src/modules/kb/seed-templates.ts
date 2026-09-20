@@ -198,7 +198,7 @@ _Vài dòng về nhóm, cách làm việc, ai là người đồng hành (buddy)
 - [ ] Nhận thiết bị, tài khoản, quyền truy cập
 - [ ] Đọc và xác nhận các chính sách bắt buộc trong **Tri thức**
 - [ ] Gặp quản lý trực tiếp để thống nhất mục tiêu
-- [ ] Làm quen các công cụ: Suzu One, Google Workspace, …
+- [ ] Làm quen các công cụ: SuZu One, Google Workspace, …
 
 ## 30 ngày đầu
 

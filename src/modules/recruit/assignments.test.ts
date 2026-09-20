@@ -39,7 +39,7 @@ const inDays = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 100
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty Suzu Media", shortName: "Suzu Media" }).returning();
+  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty SuZu Media", shortName: "SuZu Media" }).returning();
   const [person] = await db().insert(schema.person).values({ fullName: "Người tuyển dụng", searchName: "recruiter", primaryEntityId: szm.id, status: "active" }).returning();
   ids.szm = szm.id;
   ids.recruiterPerson = person.id;

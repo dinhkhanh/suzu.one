@@ -1,7 +1,7 @@
 {
   "app": {
-    "name": "Suzu One",
-    "tagline": "Nền tảng vận hành nội bộ của Suzu Group"
+    "name": "SuZu One",
+    "tagline": "Nền tảng vận hành nội bộ của SuZu Group"
   },
   "signIn": {
     "title": "Đăng nhập",
@@ -9,7 +9,7 @@
     "google": "Đăng nhập bằng Google",
     "errors": {
       "not_a_workspace_account": "Tài khoản Gmail cá nhân không được phép. Hãy dùng email công ty.",
-      "domain_not_allowed": "Tên miền email này không thuộc Suzu Group.",
+      "domain_not_allowed": "Tên miền email này không thuộc SuZu Group.",
       "not_provisioned": "Tài khoản của bạn chưa được tạo hồ sơ trong hệ thống. Vui lòng liên hệ phòng Nhân sự.",
       "access_revoked": "Quyền truy cập của bạn đã bị khóa. Vui lòng liên hệ phòng Nhân sự.",
       "email_not_verified": "Email chưa được Google xác minh.",
@@ -56,7 +56,7 @@
     "recruit": "Tuyển dụng",
     "interviews": "Lịch phỏng vấn",
     "referrals": "Giới thiệu ứng viên",
-    "assistant": "Hỏi Suzu"
+    "assistant": "Hỏi SuZu"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -586,8 +586,8 @@
     "previous": "Trước",
     "next": "Sau",
     "page": "Trang {page}/{pageCount}",
-    "emailFooter": "Suzu One · Email tự động, vui lòng không trả lời.",
-    "digestSubject": "{count, plural, other {# thông báo mới}} trên Suzu One",
+    "emailFooter": "SuZu One · Email tự động, vui lòng không trả lời.",
+    "digestSubject": "{count, plural, other {# thông báo mới}} trên SuZu One",
     "preferences": {
       "title": "Cách nhận thông báo",
       "inApp": "Trong ứng dụng",
@@ -619,7 +619,7 @@
     "kinds": {
       "security_work_email_changed": {
         "title": "Email đăng nhập của bạn đã được thay đổi",
-        "body": "Email công ty dùng để đăng nhập Suzu One của bạn vừa được đổi từ {oldEmail} sang {newEmail}. Nếu bạn không biết về thay đổi này, hãy liên hệ phòng Nhân sự ngay."
+        "body": "Email công ty dùng để đăng nhập SuZu One của bạn vừa được đổi từ {oldEmail} sang {newEmail}. Nếu bạn không biết về thay đổi này, hãy liên hệ phòng Nhân sự ngay."
       },
       "security_role_granted": {
         "title": "Bạn được cấp vai trò mới",
@@ -854,7 +854,7 @@
     "push": {
       "title": "Thông báo đẩy trên thiết bị này",
       "notConfigured": "Máy chủ chưa được cấu hình thông báo đẩy.",
-      "unsupported": "Trình duyệt này không hỗ trợ thông báo đẩy. Trên iPhone, hãy thêm Suzu One vào màn hình chính trước.",
+      "unsupported": "Trình duyệt này không hỗ trợ thông báo đẩy. Trên iPhone, hãy thêm SuZu One vào màn hình chính trước.",
       "denied": "Thông báo của trang này đang bị chặn trong cài đặt trình duyệt.",
       "off": "Nhận yêu cầu phê duyệt và công việc ngay trên màn hình khoá, kể cả khi đã đóng ứng dụng.",
       "on": "Thiết bị này đang nhận thông báo đẩy.",
@@ -2038,7 +2038,7 @@
         "rejected": "Đã từ chối"
       },
       "install": {
-        "offer": "Cài Suzu One lên thiết bị để chấm công bằng một chạm.",
+        "offer": "Cài SuZu One lên thiết bị để chấm công bằng một chạm.",
         "ios": "Để chấm công bằng một chạm: bấm Chia sẻ rồi chọn “Thêm vào MH chính”.",
         "generic": "Mẹo: thêm ứng dụng này vào màn hình chính từ trình đơn của trình duyệt.",
         "button": "Cài đặt"
@@ -5910,7 +5910,7 @@
         "headcount": "người",
         "preparedBy": "Người lập biểu",
         "receivedBy": "Người chi tiền",
-        "sheetNote": "Người nhận ký và ghi rõ họ tên vào cột ký nhận. Bảng này do hệ thống Suzu One lập."
+        "sheetNote": "Người nhận ký và ghi rõ họ tên vào cột ký nhận. Bảng này do hệ thống SuZu One lập."
       },
       "errors": {
         "bank_unknown": "Hệ thống chưa có mẫu tệp cho ngân hàng này.",
@@ -6652,7 +6652,7 @@
     },
     "labels": {
       "title": "Nhãn tài sản",
-      "footer": "In ngày {at} · Suzu One",
+      "footer": "In ngày {at} · SuZu One",
       "scanHint": "Quét mã để mở hồ sơ tài sản"
     },
     "events": {
@@ -6880,7 +6880,7 @@
   },
   "documents": {
     "title": "Văn bản",
-    "pdfFooter": "Văn bản số {number} — tạo từ hệ thống Suzu One.",
+    "pdfFooter": "Văn bản số {number} — tạo từ hệ thống SuZu One.",
     "heading": "Văn bản đã cấp",
     "none": "Chưa cấp văn bản nào cho người này.",
     "noTemplates": "Không có mẫu văn bản nào bạn được phép cấp cho người này.",
@@ -7244,10 +7244,10 @@
       }
     },
     "careers": {
-      "brand": "Suzu Group · Tuyển dụng",
-      "footer": "© Suzu Group. Thông tin ứng tuyển được xử lý theo thông báo bảo mật trên trang ứng tuyển.",
+      "brand": "SuZu Group · Tuyển dụng",
+      "footer": "© SuZu Group. Thông tin ứng tuyển được xử lý theo thông báo bảo mật trên trang ứng tuyển.",
       "title": "Cơ hội nghề nghiệp",
-      "intro": "Những vị trí Suzu Group đang tìm người. Chọn một vị trí để xem mô tả và ứng tuyển.",
+      "intro": "Những vị trí SuZu Group đang tìm người. Chọn một vị trí để xem mô tả và ứng tuyển.",
       "noOpenings": "Hiện chưa có vị trí nào đang tuyển. Mời bạn quay lại sau.",
       "description": "Mô tả công việc",
       "requirements": "Yêu cầu",
@@ -7284,13 +7284,13 @@
       },
       "consent": {
         "title": "Thông báo xử lý dữ liệu cá nhân",
-        "body": "Khi gửi hồ sơ, bạn đồng ý để Suzu Group thu thập và xử lý thông tin trong hồ sơ này nhằm mục đích tuyển dụng cho vị trí bạn ứng tuyển.\nHồ sơ được lưu trong {months} tháng kể từ ngày ứng tuyển, sau đó được xoá hoặc ẩn danh, trừ khi bạn đồng ý để chúng tôi giữ lại cho các cơ hội khác.\nBạn có quyền yêu cầu xem, sửa hoặc xoá dữ liệu của mình bất kỳ lúc nào bằng cách liên hệ bộ phận nhân sự.",
-        "agree": "Tôi đồng ý cho Suzu Group xử lý hồ sơ này cho vị trí tôi ứng tuyển.",
-        "talentPool": "Tôi đồng ý để Suzu Group giữ hồ sơ cho các vị trí phù hợp khác trong tương lai."
+        "body": "Khi gửi hồ sơ, bạn đồng ý để SuZu Group thu thập và xử lý thông tin trong hồ sơ này nhằm mục đích tuyển dụng cho vị trí bạn ứng tuyển.\nHồ sơ được lưu trong {months} tháng kể từ ngày ứng tuyển, sau đó được xoá hoặc ẩn danh, trừ khi bạn đồng ý để chúng tôi giữ lại cho các cơ hội khác.\nBạn có quyền yêu cầu xem, sửa hoặc xoá dữ liệu của mình bất kỳ lúc nào bằng cách liên hệ bộ phận nhân sự.",
+        "agree": "Tôi đồng ý cho SuZu Group xử lý hồ sơ này cho vị trí tôi ứng tuyển.",
+        "talentPool": "Tôi đồng ý để SuZu Group giữ hồ sơ cho các vị trí phù hợp khác trong tương lai."
       },
       "thanks": {
         "title": "Đã nhận hồ sơ của bạn",
-        "body": "Cảm ơn bạn đã quan tâm đến Suzu Group. Nếu hồ sơ phù hợp, bộ phận tuyển dụng sẽ liên hệ với bạn qua email.",
+        "body": "Cảm ơn bạn đã quan tâm đến SuZu Group. Nếu hồ sơ phù hợp, bộ phận tuyển dụng sẽ liên hệ với bạn qua email.",
         "back": "Xem các vị trí khác"
       },
       "errors": {
@@ -7615,7 +7615,7 @@
     }
   },
   "assistant": {
-    "title": "Hỏi Suzu",
+    "title": "Hỏi SuZu",
     "intro": "Trả lời từ các trang Tri thức bạn được xem, kèm liên kết tới trang gốc. Chỉ những trang bạn mở được mới được dùng.",
     "askLabel": "Câu hỏi của bạn",
     "placeholder": "Ví dụ: Một năm được bao nhiêu ngày phép năm?",
@@ -7635,7 +7635,7 @@
     },
     "unanswered": {
       "link": "Câu hỏi chưa trả lời được",
-      "back": "Hỏi Suzu",
+      "back": "Hỏi SuZu",
       "title": "Câu hỏi chưa trả lời được",
       "intro": "Những gì mọi người hỏi mà Tri thức chưa có. Hỏi nhiều nhất xếp trước — đây là danh sách trang cần viết.",
       "open": "Chưa xử lý",

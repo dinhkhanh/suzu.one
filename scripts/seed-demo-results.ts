@@ -7,7 +7,7 @@
 // seeded is exactly what recomputing the year in the app would produce. Week 3's bonus run reads
 // these rows, and the whole chain has to add up.
 //
-// What is left behind for the 2026 Suzu Media cycle:
+// What is left behind for the 2026 SuZu Media cycle:
 //   · one approved, group-wide weighting version in force from 2026-01-01 (configuration, SRS Q14)
 //   · a locked-and-published result for everybody whose review was released
 //   · one of them carrying an owner override with its reason, so the "explain the amount" path

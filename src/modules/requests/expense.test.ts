@@ -62,8 +62,8 @@ beforeAll(async () => {
   const [group, other] = await db()
     .insert(schema.entity)
     .values([
-      { code: "SZM", legalName: "Suzu Media", shortName: "SZM", taxCode: "0101", wageRegion: 1 },
-      { code: "SZC", legalName: "Suzu Creative", shortName: "SZC", taxCode: "0102", wageRegion: 1 },
+      { code: "SZM", legalName: "SuZu Media", shortName: "SZM", taxCode: "0101", wageRegion: 1 },
+      { code: "SZC", legalName: "SuZu Creative", shortName: "SZC", taxCode: "0102", wageRegion: 1 },
     ])
     .returning();
   ids.entity = group.id;
@@ -148,7 +148,7 @@ describe("approving one", () => {
   });
 
   it("leaves the claim waiting when the entity has no open run", async () => {
-    const [lonely] = await db().insert(schema.entity).values({ code: "SZG", legalName: "Suzu Group", shortName: "SZG", taxCode: "0103", wageRegion: 1 }).returning();
+    const [lonely] = await db().insert(schema.entity).values({ code: "SZG", legalName: "SuZu Group", shortName: "SZG", taxCode: "0103", wageRegion: 1 }).returning();
     await db().update(schema.person).set({ primaryEntityId: lonely.id }).where(eq(schema.person.id, ids.huy));
     const filed = await fileAndApprove(ids.huy, [line({ amount: 90_000 })], [ids.boss]);
 
@@ -194,7 +194,7 @@ describe("paying it twice", () => {
 
 describe("a run cancelled underneath a claim", () => {
   it("puts the claim back to waiting and lets the next run take it", async () => {
-    const [entity] = await db().insert(schema.entity).values({ code: "SZX", legalName: "Suzu X", shortName: "SZX", taxCode: "0104", wageRegion: 1 }).returning();
+    const [entity] = await db().insert(schema.entity).values({ code: "SZX", legalName: "SuZu X", shortName: "SZX", taxCode: "0104", wageRegion: 1 }).returning();
     await db().update(schema.person).set({ primaryEntityId: entity.id }).where(eq(schema.person.id, ids.huy));
     const first = await openRun(entity.id, "2027-02");
     const filed = await fileAndApprove(ids.huy, [line({ amount: 333_000 })], [ids.boss]);
@@ -217,7 +217,7 @@ describe("a run cancelled underneath a claim", () => {
 
 describe("a run that has moved past calculated", () => {
   it("keeps the figure it was signed with", async () => {
-    const [entity] = await db().insert(schema.entity).values({ code: "SZY", legalName: "Suzu Y", shortName: "SZY", taxCode: "0105", wageRegion: 1 }).returning();
+    const [entity] = await db().insert(schema.entity).values({ code: "SZY", legalName: "SuZu Y", shortName: "SZY", taxCode: "0105", wageRegion: 1 }).returning();
     await db().update(schema.person).set({ primaryEntityId: entity.id }).where(eq(schema.person.id, ids.lan));
     const run = await openRun(entity.id, "2027-04");
     await fileAndApprove(ids.lan, [line({ amount: 55_000 })], [ids.boss]);

@@ -122,8 +122,8 @@ async function refused(query: Promise<unknown>, reason: RegExp): Promise<void> {
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [entity] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media", wageRegion: 1 }).returning();
-  const [other] = await db().insert(schema.entity).values({ code: "SZC", legalName: "Suzu Creative", shortName: "Creative", wageRegion: 1 }).returning();
+  const [entity] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media", wageRegion: 1 }).returning();
+  const [other] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative", wageRegion: 1 }).returning();
   const [department] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
   ids.entity = entity.id;
@@ -370,7 +370,7 @@ describe("the variance check (FR-PAY-31)", () => {
 
   it("has nothing to compare for an entity's first run, and does not pretend otherwise", async () => {
     // An entity that has never run payroll: no earlier month exists to compare against.
-    const [fresh] = await db().insert(schema.entity).values({ code: "SZG", legalName: "Suzu Group", shortName: "Group", wageRegion: 1 }).returning();
+    const [fresh] = await db().insert(schema.entity).values({ code: "SZG", legalName: "SuZu Group", shortName: "Group", wageRegion: 1 }).returning();
     const run = await createRegularRun({ entityId: fresh.id, month: "2026-08" }, ids.actor);
     const variance = await getRunVariance(run);
     expect(variance.hasPrevious).toBe(false);

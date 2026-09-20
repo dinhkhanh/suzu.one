@@ -73,7 +73,7 @@ async function freshApplication(name: string, email: string): Promise<string> {
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty Suzu Media", shortName: "Suzu Media" }).returning();
+  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty SuZu Media", shortName: "SuZu Media" }).returning();
   const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
   ids.szm = szm.id;
   ids.vid = vid.id;
@@ -139,7 +139,7 @@ beforeAll(async () => {
   // refuses by tier rather than by which page asked for it.
   const [template] = await db()
     .insert(schema.documentTemplate)
-    .values({ code: "TM-TEST", name: "Thư mời nhận việc", kind: "offer", tier: "compensation", body: "{{person.fullName}} — {{person.position}} — {{salary.total}} đồng — đến {{offer.expiryDate}}", letterhead: { companyName: "Suzu Media" } })
+    .values({ code: "TM-TEST", name: "Thư mời nhận việc", kind: "offer", tier: "compensation", body: "{{person.fullName}} — {{person.position}} — {{salary.total}} đồng — đến {{offer.expiryDate}}", letterhead: { companyName: "SuZu Media" } })
     .returning();
   ids.templateId = template.id;
   const [plain] = await db()

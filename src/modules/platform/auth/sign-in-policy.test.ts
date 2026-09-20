@@ -56,7 +56,7 @@ describe("decideSignIn", () => {
   });
 
   it("lets a bootstrap owner in before any person record exists", () => {
-    expect(decide({ email: "Owner@Suzu.vn", hostedDomain: "suzu.vn" }, "none")).toEqual({
+    expect(decide({ email: "Owner@SuZu.vn", hostedDomain: "suzu.vn" }, "none")).toEqual({
       allowed: true,
       bootstrapOwner: true,
     });

@@ -40,8 +40,8 @@ const stateNamed = async (teamId: string, name: string) => (await listStates([te
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" }).returning();
-  const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }).returning();
+  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
+  const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
   const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id, vidDept: vid.id });
   for (const [key, name, entity] of [["owner", "The Owner", szm.id], ["long", "Long Dang", szm.id], ["tam", "Tam Bui", szm.id], ["huy", "Huy Ho", szm.id], ["bao", "Bao Pham", szm.id], ["head", "Other Head", szm.id], ["khoi", "Khoi Ly", szc.id]] as const) ids[key] = await addPerson(name, entity);

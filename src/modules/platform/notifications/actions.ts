@@ -78,7 +78,7 @@ const testPushPipeline = createAction({
   input: z.object({}),
   authorize: () => true,
   run: async ({ user }) => {
-    const devices = await queueTestPush(user.person.id, { title: "Suzu One", body: "Thông báo đẩy đang hoạt động trên thiết bị này.", link: "/notifications" });
+    const devices = await queueTestPush(user.person.id, { title: "SuZu One", body: "Thông báo đẩy đang hoạt động trên thiết bị này.", link: "/notifications" });
     const tally = await deliverPendingPushes();
     return { data: { devices, ...tally }, audit: { resource: { type: "push_subscription", id: user.person.id }, summary: `test push to ${devices} device(s)` } };
   },

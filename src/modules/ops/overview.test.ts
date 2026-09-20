@@ -36,8 +36,8 @@ const clearNotices = () => db().delete(schema.notification);
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" }).returning();
-  const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }).returning();
+  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
+  const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
   const [fin] = await db().insert(schema.department).values({ code: "FIN", name: "Finance" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id, fin: fin.id });
   for (const key of ["finance", "head", "accountant", "hrSzm", "ceo", "owner", "employee"] as const) {

@@ -91,7 +91,7 @@ export function renderIcs(event: IcsEvent): string {
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     // The identifier a client shows when it asks who made this file.
-    "PRODID:-//Suzu One//Recruitment//VI",
+    "PRODID:-//SuZu One//Recruitment//VI",
     "CALSCALE:GREGORIAN",
     `METHOD:${event.cancelled ? "CANCEL" : "REQUEST"}`,
     "BEGIN:VEVENT",
