@@ -7486,14 +7486,14 @@
         "type": "{name}: còn {available} · đã dùng {used} · chờ duyệt {pending}"
       },
       "attendance_summary": {
-        "summary": "Tháng {month}: {days} ngày công, đi muộn {lateCount} lần ({lateMinutes} phút), về sớm {earlyCount} lần, vắng {absentDays} ngày, thiếu chấm công {missingPunchDays} ngày. Làm {workedHours} giờ, trong đó làm thêm {overtimeHours} giờ; công hưởng lương {paidDays} ngày."
+        "summary": "Kỳ {month}: {days} ngày công, đi muộn {lateCount} lần ({lateMinutes} phút), về sớm {earlyCount} lần, vắng {absentDays} ngày, thiếu chấm công {missingPunchDays} ngày. Làm {workedHours} giờ, trong đó làm thêm {overtimeHours} giờ; công hưởng lương {paidDays} ngày."
       },
       "approver_lookup": {
         "summary": "Người duyệt đầu tiên: {first}.",
         "step": "Bước “{step}”: {names}"
       },
       "payslip_explain": {
-        "summary": "Phiếu lương tháng {month} ({entity}): tổng thu nhập {gross} ₫, trừ bảo hiểm {insurance} ₫, công đoàn {union} ₫, thuế TNCN {pit} ₫, khoản trừ khác {otherDeductions} ₫ — tổng trừ {deductions} ₫, thực nhận {net} ₫. Công hưởng lương {paidDays}/{standardDays} ngày.",
+        "summary": "Phiếu lương kỳ {month} ({entity}): tổng thu nhập {gross} ₫, trừ bảo hiểm {insurance} ₫, công đoàn {union} ₫, thuế TNCN {pit} ₫, khoản trừ khác {otherDeductions} ₫ — tổng trừ {deductions} ₫, thực nhận {net} ₫. Công hưởng lương {paidDays}/{standardDays} ngày.",
         "earning": "Thu nhập — {name}: {amount} ₫ ({rule})",
         "deduction": "Khấu trừ — {name}: {amount} ₫ ({rule})"
       }

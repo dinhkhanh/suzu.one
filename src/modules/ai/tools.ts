@@ -55,13 +55,16 @@ async function leaveBalance(user: ToolUser, route: ToolRoute): Promise<ToolOutco
   const balances = await getLeaveBalanceFor(user.principal, user.person.id, year);
   if (!balances) return refuse("leave_balance", "not_permitted", "/leave");
   const tracked = balances.filter((row) => row.balanceCenti !== 0 || row.usedCenti !== 0 || row.availableCenti !== 0);
-  if (tracked.length === 0) return refuse("leave_balance", "nothing_yet", "/leave", { year });
+  if (tracked.length === 0) return refuse("leave_balance", "nothing_yet", "/leave", { year: String(year) });
   const annual = tracked.find((row) => row.code === "ANNUAL") ?? tracked[0];
   return {
     status: "answered",
     tool: "leave_balance",
     key: "summary",
-    params: { year, code: annual.code, available: DAYS(annual.availableCenti), used: DAYS(annual.usedCenti), pending: DAYS(annual.pendingCenti) },
+    // The year is a label, not a quantity: as a number the chat's `Intl` formatter renders it
+    // "2.026" in Vietnamese. Anything in `params` that is counted is a number; anything that names
+    // a thing — a year, a month, an entity — is a string.
+    params: { year: String(year), code: annual.code, available: DAYS(annual.availableCenti), used: DAYS(annual.usedCenti), pending: DAYS(annual.pendingCenti) },
     lines: tracked.map((row) => ({ key: "type", params: { name: row.name, nameEn: row.nameEn ?? row.name, available: DAYS(row.availableCenti), used: DAYS(row.usedCenti), pending: DAYS(row.pendingCenti) } })),
     link: "/leave",
   };

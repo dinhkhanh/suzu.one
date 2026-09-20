@@ -7486,7 +7486,7 @@
         "type": "{name}: {available} available · {used} used · {pending} pending"
       },
       "attendance_summary": {
-        "summary": "In {month}: {days} recorded days, late {lateCount} times ({lateMinutes} minutes), left early {earlyCount} times, absent {absentDays} days, {missingPunchDays} days with a missing punch. Worked {workedHours} hours, of which {overtimeHours} overtime; {paidDays} paid days."
+        "summary": "{month}: {days} recorded days, late {lateCount} times ({lateMinutes} minutes), left early {earlyCount} times, absent {absentDays} days, {missingPunchDays} days with a missing punch. Worked {workedHours} hours, of which {overtimeHours} overtime; {paidDays} paid days."
       },
       "approver_lookup": {
         "summary": "First approver: {first}.",

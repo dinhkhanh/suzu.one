@@ -13,7 +13,7 @@
 // service; the app itself has a single path.
 import { eq, inArray, sql } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
-import { aiConversation, aiMessage, aiUnansweredQuestion, department, entity, kbAccess, kbPage, kbPageChunk, kbSpace, person, roleAssignment } from "../src/lib/db/schema";
+import { aiConversation, aiMessage, aiUnansweredQuestion, department, entity, kbAccess, kbPage, kbPageChunk, kbSpace, leaveLedgerEntry, leaveType, person, roleAssignment } from "../src/lib/db/schema";
 import { extractAnswer, rankPassages, renderExtractedAnswer, type Passage } from "../src/modules/ai/engine/answer";
 import { fakeEmbedding, cosine } from "../src/modules/kb/engine/fake-embedding";
 import { retrievalQuery } from "../src/modules/ai/engine/question";
@@ -40,7 +40,7 @@ export async function seedAi(db: Db): Promise<string> {
   const [existing] = await db.select({ id: aiConversation.id }).from(aiConversation).limit(1);
   if (existing) return "0 assistant conversations (already there)";
 
-  const people = await db.select({ id: person.id, name: person.fullName, entityId: person.primaryEntityId, departmentId: person.departmentId, workforceType: person.workforceType }).from(person);
+  const people = await db.select({ id: person.id, name: person.fullName, entityId: person.primaryEntityId, departmentId: person.departmentId, workforceType: person.workforceType, managerId: person.managerId }).from(person);
   const byName = new Map(people.map((row) => [row.name, row]));
   const grants = await db.select({ personId: roleAssignment.personId, role: roleAssignment.role }).from(roleAssignment);
   const rolesOf = new Map<string, string[]>();
@@ -118,6 +118,51 @@ export async function seedAi(db: Db): Promise<string> {
     }
   }
 
+  // ── The personal tools (FR-AI-02) ─────────────────────────────────────────────────────────
+  // Two turns that show the assistant answering from the asker's OWN record rather than from a
+  // page, so the demo has one of each on screen. The figures are the seeded ledger's, worked out
+  // here the way `leave/ledger.ts` works them out; the payslip explanation needs a published
+  // payslip and is demonstrated live after `pnpm db:seed:demo:payroll`, not seeded.
+  const balanceRows = await db
+    .select({ personId: leaveLedgerEntry.personId, code: leaveType.code, name: leaveType.name, nameEn: leaveType.nameEn, balance: sql<number>`sum(${leaveLedgerEntry.amountCenti})::int` })
+    .from(leaveLedgerEntry)
+    .innerJoin(leaveType, eq(leaveType.id, leaveLedgerEntry.leaveTypeId))
+    .where(sql`${leaveType.tracksBalance} and ${leaveLedgerEntry.leaveYear} = ${now.getFullYear()}`)
+    .groupBy(leaveLedgerEntry.personId, leaveType.code, leaveType.name, leaveType.nameEn);
+
+  const toolTurn = async (whoName: string, question: string, tool: string, result: Record<string, unknown>, minutes: number) => {
+    const who = byName.get(whoName);
+    if (!who) return;
+    const at = minutesAgo(minutes);
+    const [row] = await db.insert(aiConversation).values({ personId: who.id, title: question.slice(0, 120), locale: "vi", createdAt: at, updatedAt: at }).returning();
+    await db.insert(aiMessage).values({ conversationId: row.id, personId: who.id, role: "user", body: question, createdAt: at });
+    await db.insert(aiMessage).values({ conversationId: row.id, personId: who.id, role: "assistant", body: "", outcome: "answered", citations: [], tool, toolResult: { status: "answered", tool, ...result }, driver: "tool", model: tool, score: 0, createdAt: new Date(at.getTime() + 1500) });
+    answered++;
+  };
+
+  const huy = byName.get("Hồ Gia Huy");
+  const huyBalances = balanceRows.filter((row) => row.personId === huy?.id);
+  if (huyBalances.length > 0) {
+    const annual = huyBalances.find((row) => row.code === "ANNUAL") ?? huyBalances[0];
+    const days = (centi: number) => Math.round(centi) / 100;
+    await toolTurn("Hồ Gia Huy", "Tôi còn bao nhiêu ngày phép?", "leave_balance", {
+      key: "summary",
+      params: { year: String(now.getFullYear()), code: annual.code, available: days(annual.balance), used: 0, pending: 0 },
+      lines: huyBalances.map((row) => ({ key: "type", params: { name: row.name, nameEn: row.nameEn ?? row.name, available: days(row.balance), used: 0, pending: 0 } })),
+      link: "/leave",
+    }, 38);
+  }
+
+  const manager = huy?.managerId ? people.find((row) => row.id === huy.managerId) : undefined;
+  if (manager) {
+    await toolTurn("Hồ Gia Huy", "Ai duyệt đơn nghỉ phép của tôi?", "approver_lookup", {
+      key: "summary",
+      params: { kind: "leave", first: manager.name },
+      lines: [{ key: "step", params: { step: "manager", names: manager.name } }],
+      link: "/leave/new",
+    }, 34);
+  }
+
   // The backlog. The same question from several people is several rows — the log groups them.
   const askers = people.filter((row) => row.workforceType !== "collaborator");
   for (const [index, missing] of MISSING.entries()) {
@@ -139,5 +184,5 @@ export async function seedAi(db: Db): Promise<string> {
   // Keep the demo honest: departments and entities are referenced above only through the keys.
   void department;
   void entity;
-  return `${CHATS.length} assistant conversations (${answered} questions answered from the seeded knowledge base) and ${logged} unanswered questions`;
+  return `${answered} answered assistant turns (knowledge base and the personal tools) and ${logged} unanswered questions`;
 }
