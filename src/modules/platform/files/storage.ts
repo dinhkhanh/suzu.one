@@ -1,5 +1,6 @@
 import "server-only";
 import { env } from "@/lib/env";
+import { MAX_FILE_BYTES } from "./rules";
 
 // A thin client for Supabase Storage's REST API: only what the files service needs, no SDK.
 // The service-role key never leaves the server; browsers only ever get short-lived signed URLs.
@@ -54,6 +55,24 @@ export async function createSignedUploadUrl(objectPath: string, maxFileBytes: nu
   if (!response.ok) await fail(response, "sign upload");
   const { url } = (await response.json()) as { url: string };
   return `${base}${url}`;
+}
+
+/**
+ * Bytes the **server** already holds, written straight into the bucket. Used by the one upload
+ * path that cannot be given a signed URL: the public careers form (FR-REC-03). An unauthenticated
+ * visitor must never be handed a capability to write into private storage, so their file arrives
+ * inside the request, is checked in memory, and only then lands here.
+ */
+export async function putObject(objectPath: string, bytes: Uint8Array, contentType: string): Promise<void> {
+  await ensureBucket(MAX_FILE_BYTES);
+  const { bucket } = config();
+  const response = await call(`/object/${bucket}/${encodePath(objectPath)}`, {
+    method: "POST",
+    // `x-upsert: false` — an object path is a fresh uuid, so a collision means something is wrong.
+    headers: { "content-type": contentType, "x-upsert": "false" },
+    body: new Uint8Array(bytes),
+  });
+  if (!response.ok) await fail(response, "put object");
 }
 
 /** Size of the stored object and its first bytes, or null when nothing was uploaded. */

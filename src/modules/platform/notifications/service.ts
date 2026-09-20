@@ -111,6 +111,20 @@ function composeEmail(to: string, kind: string, params: Params, link: string | n
   return { toEmail: to, subject: title, bodyText: `${body}\n\n${absolute(link)}\n\n— ${emailText("emailFooter")}` };
 }
 
+/**
+ * An email whose wording did **not** come from the notification catalogue: the subject and body
+ * are already written. The one caller is recruitment, whose candidate letters are editable
+ * templates in the database rather than message keys (FR-REC-05), and whose recipient is outside
+ * the company and so has no person, no preferences and no digest.
+ *
+ * It still goes through the same outbox — same delivery, same retries, same "simulated" when no
+ * `RESEND_API_KEY` is set — because a second mail path is a second thing to get wrong.
+ */
+export async function queueRawEmail(to: string, subject: string, bodyText: string, executor: Tx | ReturnType<typeof db> = db()): Promise<void> {
+  await executor.insert(schema.emailOutbox).values({ toEmail: to, subject, bodyText });
+  deliverSoon();
+}
+
 /** An email to an address rather than a person — e.g. the address someone just lost. */
 export async function queueEmail(to: string, kind: Kind, params: Params, executor: Tx | ReturnType<typeof db> = db()): Promise<void> {
   await executor.insert(schema.emailOutbox).values(composeEmail(to, kind, params, null));

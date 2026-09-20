@@ -24,6 +24,7 @@ import type {
   OpeningMemberRole,
   OpeningQuestion,
   OpeningStatus,
+  RecruitEmailKind,
   RejectionReason,
   StageCategory,
   WorkMode,
@@ -302,4 +303,60 @@ export const applicationEvent = pgTable(
     at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("application_event_application_idx").on(t.applicationId, t.id)],
+).enableRLS();
+
+// ── The public careers page (FR-REC-03) ─────────────────────────────────────────────────────
+
+/**
+ * One counted window of one visitor's requests to the careers page. The whole rate limiter: an
+ * atomic `insert … on conflict do update set hits = hits + 1 returning hits` against the unique
+ * key below, with the arithmetic in `engine/rate-limit.ts`.
+ *
+ * **`visitor_hash` is not an address.** It is HMAC-SHA-256 of the caller's IP under the
+ * application secret, truncated to 16 hex characters (`visitorOf` in `src/lib/public-action.ts`):
+ * enough to count one visitor's submissions for an hour, not enough to recover the address, to
+ * join it to anything else, or to be personal data worth keeping (PDPL minimisation). The rows are
+ * swept by the retention job.
+ */
+export const recruitPublicHit = pgTable(
+  "recruit_public_hit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // What was counted: "apply", "form". See `CAREERS_LIMITS`.
+    bucket: text("bucket").notNull(),
+    visitorHash: text("visitor_hash").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    hits: integer("hits").notNull().default(1),
+    lastAt: timestamp("last_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("recruit_public_hit_key").on(t.bucket, t.visitorHash, t.windowStart), index("recruit_public_hit_window_idx").on(t.windowStart)],
+).enableRLS();
+
+// ── Candidate emails (FR-REC-05) ────────────────────────────────────────────────────────────
+
+/**
+ * A wording a recruiter sends a candidate: the invitation, the rejection, the offer note. Both
+ * languages live on the row because the recipient is outside the company and their language is a
+ * property of *them*, not of the sender's locale cookie.
+ *
+ * Sending goes through the existing outbox (`email_outbox`), so a candidate email is delivered,
+ * retried and — with no `RESEND_API_KEY` — simulated by exactly the same code as every other
+ * email in the system. There is no second mail path to get wrong.
+ */
+export const recruitEmailTemplate = pgTable(
+  "recruit_email_template",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull().unique(),
+    name: text("name").notNull(),
+    kind: text("kind").$type<RecruitEmailKind>().notNull(),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    subjectEn: text("subject_en"),
+    bodyEn: text("body_en"),
+    isActive: boolean("is_active").notNull().default(true),
+    updatedByPersonId: uuid("updated_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [index("recruit_email_template_kind_idx").on(t.kind, t.isActive)],
 ).enableRLS();

@@ -6318,6 +6318,72 @@
         "phone": "trùng số điện thoại",
         "name": "trùng tên"
       }
+    },
+    "careers": {
+      "brand": "Suzu Group · Tuyển dụng",
+      "footer": "© Suzu Group. Thông tin ứng tuyển được xử lý theo thông báo bảo mật trên trang ứng tuyển.",
+      "title": "Cơ hội nghề nghiệp",
+      "intro": "Những vị trí Suzu Group đang tìm người. Chọn một vị trí để xem mô tả và ứng tuyển.",
+      "noOpenings": "Hiện chưa có vị trí nào đang tuyển. Mời bạn quay lại sau.",
+      "description": "Mô tả công việc",
+      "requirements": "Yêu cầu",
+      "benefits": "Quyền lợi",
+      "salary": "Mức lương",
+      "apply": "Ứng tuyển",
+      "submit": "Gửi hồ sơ",
+      "workMode": {
+        "onsite": "Tại văn phòng",
+        "hybrid": "Kết hợp",
+        "remote": "Từ xa"
+      },
+      "employmentType": {
+        "employee": "Toàn thời gian",
+        "probation": "Thử việc",
+        "intern": "Thực tập",
+        "part_time": "Bán thời gian",
+        "collaborator": "Cộng tác viên"
+      },
+      "fields": {
+        "fullName": "Họ và tên",
+        "email": "Email",
+        "phone": "Số điện thoại",
+        "location": "Nơi ở hiện tại",
+        "currentTitle": "Vị trí hiện tại",
+        "currentEmployer": "Nơi làm việc hiện tại",
+        "cv": "CV",
+        "cvHint": "PDF, DOCX, JPG hoặc PNG, tối đa {megabytes} MB. Hệ thống chưa quét virus tệp tải lên; tệp chỉ đến được bộ phận tuyển dụng của vị trí này.",
+        "links": "Portfolio và hồ sơ trực tuyến",
+        "linksPlaceholder": "https://behance.net/ban\nhttps://youtube.com/@ban",
+        "linksHint": "Mỗi dòng một đường dẫn. Với vị trí sáng tạo, đây là phần quan trọng nhất.",
+        "coverLetter": "Thư giới thiệu",
+        "salaryExpectation": "Mức lương mong muốn (đồng/tháng)"
+      },
+      "consent": {
+        "title": "Thông báo xử lý dữ liệu cá nhân",
+        "body": "Khi gửi hồ sơ, bạn đồng ý để Suzu Group thu thập và xử lý thông tin trong hồ sơ này nhằm mục đích tuyển dụng cho vị trí bạn ứng tuyển.\nHồ sơ được lưu trong {months} tháng kể từ ngày ứng tuyển, sau đó được xoá hoặc ẩn danh, trừ khi bạn đồng ý để chúng tôi giữ lại cho các cơ hội khác.\nBạn có quyền yêu cầu xem, sửa hoặc xoá dữ liệu của mình bất kỳ lúc nào bằng cách liên hệ bộ phận nhân sự.",
+        "agree": "Tôi đồng ý cho Suzu Group xử lý hồ sơ này cho vị trí tôi ứng tuyển.",
+        "talentPool": "Tôi đồng ý để Suzu Group giữ hồ sơ cho các vị trí phù hợp khác trong tương lai."
+      },
+      "thanks": {
+        "title": "Đã nhận hồ sơ của bạn",
+        "body": "Cảm ơn bạn đã quan tâm đến Suzu Group. Nếu hồ sơ phù hợp, bộ phận tuyển dụng sẽ liên hệ với bạn qua email.",
+        "back": "Xem các vị trí khác"
+      },
+      "errors": {
+        "failed": "Không gửi được hồ sơ. Mời bạn thử lại.",
+        "invalid": "Một vài thông tin chưa hợp lệ. Mời bạn kiểm tra lại.",
+        "rate_limited": "Bạn đã gửi khá nhiều hồ sơ trong thời gian ngắn. Mời bạn thử lại sau.",
+        "file_too_large": "Tệp quá lớn. Mời bạn gửi tệp nhỏ hơn.",
+        "file_type_not_allowed": "Định dạng tệp không được chấp nhận.",
+        "file_content_mismatch": "Nội dung tệp không khớp với phần mở rộng của tên tệp.",
+        "file_empty": "Tệp rỗng.",
+        "file_name_invalid": "Tên tệp không hợp lệ.",
+        "careers_form_expired": "Biểu mẫu đã hết hạn. Mời bạn tải lại trang và gửi lại.",
+        "careers_form_invalid": "Biểu mẫu không hợp lệ. Mời bạn tải lại trang và gửi lại.",
+        "careers_opening_closed": "Vị trí này đã đóng.",
+        "careers_answer_required": "Mời bạn trả lời các câu hỏi bắt buộc.",
+        "careers_answer_invalid": "Câu trả lời không hợp lệ."
+      }
     }
   }
 }

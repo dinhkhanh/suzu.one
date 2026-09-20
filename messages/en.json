@@ -6318,6 +6318,72 @@
         "phone": "same phone",
         "name": "same name"
       }
+    },
+    "careers": {
+      "brand": "Suzu Group · Careers",
+      "footer": "© Suzu Group. Applications are handled under the privacy notice shown on the application form.",
+      "title": "Open roles",
+      "intro": "The roles Suzu Group is hiring for. Pick one to read the description and apply.",
+      "noOpenings": "No roles are open at the moment. Please check back.",
+      "description": "About the role",
+      "requirements": "What we are looking for",
+      "benefits": "What we offer",
+      "salary": "Salary",
+      "apply": "Apply",
+      "submit": "Send application",
+      "workMode": {
+        "onsite": "On site",
+        "hybrid": "Hybrid",
+        "remote": "Remote"
+      },
+      "employmentType": {
+        "employee": "Full time",
+        "probation": "Probation",
+        "intern": "Internship",
+        "part_time": "Part time",
+        "collaborator": "Contract"
+      },
+      "fields": {
+        "fullName": "Full name",
+        "email": "Email",
+        "phone": "Phone",
+        "location": "Where you are based",
+        "currentTitle": "Current role",
+        "currentEmployer": "Current employer",
+        "cv": "CV",
+        "cvHint": "PDF, DOCX, JPG or PNG, up to {megabytes} MB. Uploads are not virus-scanned; the file reaches only the hiring team for this role.",
+        "links": "Portfolio and profiles",
+        "linksPlaceholder": "https://behance.net/you\nhttps://youtube.com/@you",
+        "linksHint": "One link per line. For creative roles this matters most.",
+        "coverLetter": "Cover letter",
+        "salaryExpectation": "Salary expectation (VND per month)"
+      },
+      "consent": {
+        "title": "How we handle your personal data",
+        "body": "By sending this application you agree that Suzu Group may collect and process the information in it for the purpose of recruiting for the role you applied to.\nYour application is kept for {months} months from the day you apply and is then deleted or anonymised, unless you agree below that we may keep it for other opportunities.\nYou may ask to see, correct or delete your data at any time by contacting HR.",
+        "agree": "I agree that Suzu Group may process this application for the role I applied to.",
+        "talentPool": "I also agree that Suzu Group may keep my details for other suitable roles in future."
+      },
+      "thanks": {
+        "title": "Your application has been received",
+        "body": "Thank you for your interest in Suzu Group. If your application fits, our recruiters will be in touch by email.",
+        "back": "See other roles"
+      },
+      "errors": {
+        "failed": "The application could not be sent. Please try again.",
+        "invalid": "Some of the details are not valid. Please check the form.",
+        "rate_limited": "That is a lot of applications in a short time. Please try again later.",
+        "file_too_large": "That file is too large. Please send a smaller one.",
+        "file_type_not_allowed": "That file type is not accepted.",
+        "file_content_mismatch": "The file's contents do not match its name.",
+        "file_empty": "That file is empty.",
+        "file_name_invalid": "That file name is not valid.",
+        "careers_form_expired": "The form has expired. Please reload the page and send it again.",
+        "careers_form_invalid": "The form is not valid. Please reload the page and send it again.",
+        "careers_opening_closed": "This role has closed.",
+        "careers_answer_required": "Please answer the required questions.",
+        "careers_answer_invalid": "That answer is not valid."
+      }
     }
   }
 }

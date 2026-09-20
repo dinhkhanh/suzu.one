@@ -84,3 +84,50 @@ export type OpeningQuestion = { key: string; label: string; labelEn: string | nu
 
 /** How long an unsuccessful candidate's data is kept by default (FR-REC-13, PDPL). Configuration, not a constant in the engine. */
 export const DEFAULT_RETENTION_MONTHS = 12;
+
+// ── The public careers page (FR-REC-03) ─────────────────────────────────────────────────────
+
+/**
+ * Which privacy notice the candidate agreed to. Stored on the candidate row, so that when the
+ * wording changes it is still possible to say what each person was actually shown — which is the
+ * whole point of recording consent rather than a boolean (PDPL).
+ *
+ * **Bump this whenever `recruit.careers.consent.*` changes in either message bundle.**
+ */
+export const CONSENT_VERSION = "2026-09-pdpl-1";
+
+/** What the public form is allowed to contain, so a probe cannot post a 10 MB cover letter. */
+export const PUBLIC_LIMITS = {
+  fullName: 120,
+  email: 200,
+  phone: 40,
+  location: 120,
+  currentTitle: 120,
+  currentEmployer: 120,
+  coverLetter: 5_000,
+  answer: 2_000,
+  link: 300,
+  links: 8,
+} as const;
+
+// ── Candidate emails (FR-REC-05) ────────────────────────────────────────────────────────────
+
+/** What a wording is for. The kind decides which templates a screen offers, nothing more. */
+export const RECRUIT_EMAIL_KINDS = ["invite", "reject", "offer", "general"] as const;
+export type RecruitEmailKind = (typeof RECRUIT_EMAIL_KINDS)[number];
+
+/**
+ * Everything a candidate email may name. A short allow-list on purpose — see the note at the top
+ * of `engine/email-template.ts`. **No figure appears here**: money belongs in the offer letter,
+ * which is a tiered document, not in a wording anybody with `recruit:manage` may edit.
+ */
+export const RECRUIT_EMAIL_PLACEHOLDERS = [
+  "candidate_name",
+  "job_title",
+  "company_name",
+  "stage_name",
+  "sender_name",
+  "sender_title",
+  "careers_url",
+] as const;
+export type RecruitEmailPlaceholder = (typeof RECRUIT_EMAIL_PLACEHOLDERS)[number];
