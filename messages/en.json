@@ -4421,6 +4421,10 @@
       "policy": {
         "title": "Pay policy",
         "description": "Pro-rating, union, the Simple profile's tax, the variance threshold, pay day."
+      },
+      "netToGross": {
+        "title": "Net to gross",
+        "description": "Turn an agreed take-home figure into the gross for the offer."
       }
     },
     "salaries": {
@@ -4775,6 +4779,37 @@
       "approval_comment_required": "Say why when returning or rejecting.",
       "approval_no_approver": "No approver could be found.",
       "statutory_parameter_missing": "A statutory parameter is missing for this period."
+    },
+    "offers": {
+      "title": "Net to gross",
+      "description": "A candidate negotiates what they take home; this says what gross to write into the offer and the contract. Nothing is stored.",
+      "back": "Payroll",
+      "entity": "Entity",
+      "month": "For the month",
+      "netSalary": "Agreed net salary",
+      "dependents": "Dependants",
+      "profile": "Pay profile",
+      "profileStatutory": "Statutory (insurance, tax)",
+      "profileSimple": "Simple (salary only)",
+      "residency": "Tax residency",
+      "resident": "Resident",
+      "nonResident": "Non-resident",
+      "insuranceSalary": "Insurance salary",
+      "followGross": "Same as gross",
+      "insuranceExempt": "Not insured (probation, intern, collaborator)",
+      "allowances": "Allowances included",
+      "calculate": "Work out the gross",
+      "calculating": "Working it out…",
+      "grossToOffer": "Gross to offer",
+      "netIs": "Takes home: {net}",
+      "notExact": "No gross nets exactly this figure — rounding and the tax brackets leave gaps. This is the lowest gross that reaches it.",
+      "nearestBelow": "Nearest below: {gross} → {net}",
+      "gross": "Gross earnings",
+      "insurance": "Insurance (employee)",
+      "pit": "Personal income tax",
+      "net": "Net",
+      "employerCost": "Employer cost",
+      "unverified": "{count} statutory values are not yet confirmed by the chief accountant."
     }
   }
 }

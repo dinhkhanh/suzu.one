@@ -4421,6 +4421,10 @@
       "policy": {
         "title": "Chính sách tính lương",
         "description": "Cách chia ngày công, công đoàn, thuế của hồ sơ Đơn giản, ngưỡng cảnh báo, ngày trả lương."
+      },
+      "netToGross": {
+        "title": "Quy đổi net → gross",
+        "description": "Tính mức gross cần đề nghị từ mức thực nhận đã thoả thuận."
       }
     },
     "salaries": {
@@ -4775,6 +4779,37 @@
       "approval_comment_required": "Hãy ghi lý do khi trả lại hoặc từ chối.",
       "approval_no_approver": "Không tìm thấy người duyệt.",
       "statutory_parameter_missing": "Thiếu tham số pháp định cho kỳ này."
+    },
+    "offers": {
+      "title": "Quy đổi lương net sang gross",
+      "description": "Ứng viên thoả thuận mức thực nhận; công cụ này cho biết mức gross cần ghi trong thư mời và hợp đồng. Không lưu lại gì.",
+      "back": "Lương",
+      "entity": "Pháp nhân",
+      "month": "Áp dụng cho tháng",
+      "netSalary": "Lương net thoả thuận",
+      "dependents": "Số người phụ thuộc",
+      "profile": "Hồ sơ trả lương",
+      "profileStatutory": "Đầy đủ (bảo hiểm, thuế)",
+      "profileSimple": "Đơn giản (chỉ lương)",
+      "residency": "Cư trú thuế",
+      "resident": "Cá nhân cư trú",
+      "nonResident": "Cá nhân không cư trú",
+      "insuranceSalary": "Lương đóng bảo hiểm",
+      "followGross": "Bằng lương gross",
+      "insuranceExempt": "Không tham gia bảo hiểm (thử việc, thực tập, CTV)",
+      "allowances": "Phụ cấp kèm theo",
+      "calculate": "Tính mức gross",
+      "calculating": "Đang tính…",
+      "grossToOffer": "Mức gross cần đề nghị",
+      "netIs": "Thực nhận: {net}",
+      "notExact": "Không có mức gross nào cho đúng con số net này — do làm tròn và bậc thuế. Mức trên là mức thấp nhất đạt hoặc vượt yêu cầu.",
+      "nearestBelow": "Mức liền dưới: {gross} → {net}",
+      "gross": "Tổng thu nhập",
+      "insurance": "Bảo hiểm (người lao động)",
+      "pit": "Thuế TNCN",
+      "net": "Thực nhận",
+      "employerCost": "Chi phí công ty",
+      "unverified": "{count} tham số pháp lý chưa được kế toán trưởng xác nhận."
     }
   }
 }

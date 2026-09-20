@@ -13,11 +13,12 @@ export default async function PayrollPage() {
   const t = await getTranslations("payroll");
   const reach = compensationReach(user.principal);
   const managesSomewhere = reach.all || reach.entityIds.length > 0;
-  const links: { href: string; key: "mine" | "salaries" | "profiles" | "simpleReport" | "components" | "policy" }[] = [
+  const links: { href: string; key: "mine" | "salaries" | "profiles" | "simpleReport" | "netToGross" | "components" | "policy" }[] = [
     { href: `/payroll/salaries/${user.person.id}`, key: "mine" },
     ...(managesSomewhere ? [{ href: "/payroll/salaries", key: "salaries" as const }] : []),
     ...(managesSomewhere || canDecidePayRules(user.principal) ? [{ href: "/payroll/profiles", key: "profiles" as const }] : []),
     ...(canSeeSimpleProfileReport(user.principal) ? [{ href: "/payroll/profiles/simple", key: "simpleReport" as const }] : []),
+    ...(managesSomewhere ? [{ href: "/payroll/tools/net-to-gross", key: "netToGross" as const }] : []),
     ...(canReadPayRules(user.principal) ? [{ href: "/payroll/components", key: "components" as const }, { href: "/payroll/policy", key: "policy" as const }] : []),
   ];
   return (
