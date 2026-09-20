@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Spreadsheet imports arrive through a server action; everything else is far below the default.
   experimental: { serverActions: { bodySizeLimit: "4mb" } },
+  // The payslip PDF embeds a font it reads from disk at runtime (FR-PAY-32). Tracing a
+  // `readFileSync` is best-effort, so the file is named here and copied into the deployment.
+  outputFileTracingIncludes: { "/payslips/[payslipId]/pdf": ["./src/modules/payroll/exports/pdf/fonts/*.ttf"] },
   async headers() {
     return [
       {

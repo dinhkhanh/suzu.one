@@ -5086,7 +5086,8 @@
         "query_closed": "Thắc mắc đã đóng.",
         "forbidden": "Bạn không có quyền thực hiện thao tác này.",
         "failed": "Không thực hiện được. Vui lòng thử lại."
-      }
+      },
+      "pdfFooter": "Phiếu lương do hệ thống tạo ngày {at}. Bản in không cần chữ ký."
     }
   }
 }
