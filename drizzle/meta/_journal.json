@@ -407,6 +407,13 @@
       "when": 1789886674812,
       "tag": "0057_licences",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1789887298790,
+      "tag": "0058_document_templates",
+      "breakpoints": true
     }
   ]
 }

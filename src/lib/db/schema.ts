@@ -23,6 +23,7 @@ export * from "../../modules/kb/schema";
 export * from "../../modules/comms/schema";
 export * from "../../modules/payroll/schema";
 export * from "../../modules/assets/schema";
+export * from "../../modules/documents/schema";
 export * from "../../modules/requests/schema";
 
 // Every table calls `.enableRLS()` with no policies. The app connects as the table owner, which

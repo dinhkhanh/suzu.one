@@ -51,7 +51,8 @@
     "requests": "Đề nghị",
     "requestTypes": "Loại đề nghị",
     "assets": "Tài sản",
-    "bookings": "Lịch đặt thiết bị"
+    "bookings": "Lịch đặt thiết bị",
+    "documentTemplates": "Mẫu văn bản"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -5922,6 +5923,78 @@
         "submit": "Lưu",
         "saved": "Đã lưu."
       }
+    }
+  },
+  "documents": {
+    "title": "Văn bản",
+    "pdfFooter": "Văn bản số {number} — tạo từ hệ thống Suzu One.",
+    "heading": "Văn bản đã cấp",
+    "none": "Chưa cấp văn bản nào cho người này.",
+    "noTemplates": "Không có mẫu văn bản nào bạn được phép cấp cho người này.",
+    "pickTemplate": "Chọn mẫu văn bản…",
+    "generate": "Cấp văn bản",
+    "made": "Đã cấp văn bản số {number}.",
+    "download": "Tải PDF",
+    "columns": {
+      "number": "Số",
+      "template": "Mẫu",
+      "tier": "Mức nhạy cảm",
+      "by": "Người cấp",
+      "at": "Ngày cấp"
+    },
+    "kind": {
+      "contract": "Hợp đồng",
+      "decision": "Quyết định",
+      "confirmation_letter": "Giấy xác nhận",
+      "other": "Văn bản khác"
+    },
+    "tier": {
+      "public_internal": "Nội bộ",
+      "personal": "Cá nhân",
+      "restricted": "Hạn chế",
+      "compensation": "Lương thưởng"
+    },
+    "designer": {
+      "title": "Mẫu văn bản",
+      "description": "Hợp đồng, quyết định và giấy xác nhận. Mức nhạy cảm của mẫu phải đủ cao cho những thông tin mà nội dung mẫu in ra — hệ thống từ chối lưu nếu không.",
+      "new": "Tạo mẫu mới",
+      "code": "Mã mẫu",
+      "name": "Tên mẫu",
+      "kind": "Loại",
+      "entity": "Pháp nhân",
+      "groupWide": "Dùng chung toàn nhóm",
+      "tier": "Mức nhạy cảm",
+      "version": "Phiên bản",
+      "needs": "cần",
+      "body": "Nội dung mẫu",
+      "needsTier": "Nội dung hiện tại cần mức nhạy cảm tối thiểu:",
+      "tierTooLow": "Mức đang chọn thấp hơn — phải nâng lên {tier} mới lưu được.",
+      "unknown": "Không nhận diện được: {keys}",
+      "using": "Đang dùng: {keys}",
+      "catalogue": "Danh sách trường có thể chèn",
+      "letterhead": "Thông tin đầu thư",
+      "letterheadFields": {
+        "companyName": "Tên công ty",
+        "address": "Địa chỉ",
+        "taxCode": "Mã số thuế",
+        "phone": "Điện thoại",
+        "representative": "Người đại diện",
+        "representativeTitle": "Chức vụ người đại diện",
+        "place": "Nơi lập văn bản"
+      },
+      "active": "Đang sử dụng",
+      "save": "Lưu mẫu"
+    },
+    "errors": {
+      "generic": "Không thực hiện được. Vui lòng thử lại.",
+      "template_not_found": "Không tìm thấy mẫu văn bản.",
+      "template_name_empty": "Vui lòng nhập tên mẫu.",
+      "template_body_empty": "Nội dung mẫu không được để trống.",
+      "template_body_too_long": "Nội dung mẫu quá dài.",
+      "template_unknown_placeholder": "Nội dung có trường không nhận diện được.",
+      "template_tier_too_low": "Mức nhạy cảm của mẫu thấp hơn thông tin mà mẫu in ra.",
+      "document_subject_unknown": "Không tìm thấy nhân sự.",
+      "document_forbidden": "Bạn không có quyền cấp văn bản này."
     }
   }
 }
