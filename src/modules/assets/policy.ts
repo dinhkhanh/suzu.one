@@ -28,9 +28,16 @@ export const canManageAssets = (principal: Principal, entityId?: string): boolea
 
 /**
  * What the thing cost and who supplied it. Kept apart from the register itself so that the person
- * holding a camera can be shown the camera without being shown the invoice.
+ * holding a camera can be shown the camera without being shown the invoice — that is the whole
+ * distinction, and it is the one the tests are drawn along.
+ *
+ * It once also admitted `report:read`, on the reasoning that finance needs the asset base for the
+ * books. Exercising the pages over HTTP showed that limb was unreachable: `canViewAsset` never
+ * opens an asset to a `report:read` holder, so the rule promised an access nobody could take. A
+ * predicate that cannot fire is worse than an absent one, because it reads like a decision. If
+ * finance is to see the asset base, that is a decision about the *register*, not about this rule.
  */
-export const canReadAssetMoney = (principal: Principal, entityId?: string): boolean => can(principal, "asset:manage", over(entityId)) || can(principal, "report:read", over(entityId));
+export const canReadAssetMoney = (principal: Principal, entityId?: string): boolean => can(principal, "asset:manage", over(entityId));
 
 /** The equipment one person holds: their own, or someone whose record you keep. */
 export const canReadPersonAssets = (principal: Principal, person: HolderTarget): boolean =>

@@ -48,12 +48,21 @@ describe("asset policy", () => {
   // The decision this module is asked to defend: an asset's price is not public, and holding the
   // thing tells you nothing about what it cost.
   describe("what the thing cost", () => {
-    it("is read by whoever keeps the register or reads the entity's reports", () => {
+    it("is read by whoever keeps that entity's register, and by nobody else", () => {
       expect(canReadAssetMoney(owner, SZM)).toBe(true);
       expect(canReadAssetMoney(entityKeeper, SZM)).toBe(true);
-      expect(canReadAssetMoney(finance, SZM)).toBe(true);
-      expect(canReadAssetMoney(ceo, SZM)).toBe(true);
-      expect(canReadAssetMoney(hrAdmin, SZM)).toBe(true); // hr_admin holds report:read
+      // Reading reports is not reading the register: none of these can open an asset at all, so
+      // none of them may read its price either. Exercising the pages proved the earlier rule,
+      // which let `report:read` through, could never actually fire.
+      expect(canReadAssetMoney(finance, SZM)).toBe(false);
+      expect(canReadAssetMoney(ceo, SZM)).toBe(false);
+      expect(canReadAssetMoney(hrAdmin, SZM)).toBe(false);
+    });
+
+    it("never fires for somebody the register will not open an asset to", () => {
+      for (const who of [finance, ceo, hrAdmin, hrStaff, head, employee]) {
+        if (canReadAssetMoney(who, SZM)) expect(canViewAsset(who, { entityId: SZM }, null)).toBe(true);
+      }
     });
 
     it("is not read by the person holding it, nor by anyone else", () => {

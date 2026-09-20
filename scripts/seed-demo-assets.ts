@@ -8,7 +8,7 @@
 import { randomBytes } from "node:crypto";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
-import { asset, assetAssignment, assetCategory, assetEvent, employment, entity, person } from "../src/lib/db/schema";
+import { asset, assetAssignment, assetCategory, assetEvent, employment, entity, person, roleAssignment } from "../src/lib/db/schema";
 import type { AssetCondition } from "../src/modules/assets/enums";
 
 type Db = ReturnType<typeof drizzle>;
@@ -78,7 +78,15 @@ export async function seedAssets(db: Db, today: string): Promise<{ assets: numbe
     .where(eq(person.status, "active"))
     .orderBy(asc(person.fullName));
   const byKey = new Map(people.flatMap((row) => [[row.workEmail?.toLowerCase() ?? row.fullName, row] as const]));
-  const keeper = byKey.get("mai.le@suzu.group") ?? people[0];
+  const keeper = byKey.get("bao.pham@suzu.group") ?? byKey.get("mai.le@suzu.group") ?? people[0];
+
+  // Somebody has to keep the register, and no HR role carries `asset:manage` in the catalogue as
+  // it stands — so the demo grants `asset_admin` to the HR officer who actually hands out the
+  // laptops. On the real system this is the owner's call (see the phase's status note).
+  if (keeper) {
+    const held = await db.select({ role: roleAssignment.role }).from(roleAssignment).where(eq(roleAssignment.personId, keeper.id));
+    if (!held.some((row) => row.role === "asset_admin")) await db.insert(roleAssignment).values({ personId: keeper.id, role: "asset_admin", scopeType: "group", scopeId: null });
+  }
 
   // Codes are numbered per entity and category, exactly as `nextAssetCode` does it.
   const counters = new Map<string, number>();
