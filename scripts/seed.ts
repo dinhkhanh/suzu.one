@@ -6,7 +6,7 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { and, between, inArray, isNull } from "drizzle-orm";
-import { approvalFlow, assetCategory, attendancePolicy, payComponent, payrollPolicy, companyValue, documentTemplate, kbTemplate, kpiDefinition, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, requestType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
+import { approvalFlow, assetCategory, attendancePolicy, payComponent, payrollPolicy, companyValue, documentTemplate, kbTemplate, kpiDefinition, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, recruitPipeline, recruitPipelineStage, requestType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
 import { PROFILE_SEED } from "../src/modules/attendance/engine/device-log";
 import { CALENDAR_SEED, DEFAULT_POLICY_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 import { leaveSeedRows } from "../src/modules/leave/seed-types";
@@ -21,6 +21,7 @@ import { DEFAULT_PAYROLL_POLICY } from "../src/modules/payroll/enums";
 import { PAY_COMPONENT_SEED_VALID_FROM, payComponentSeedRows } from "../src/modules/payroll/seed-components";
 import { REQUEST_TYPE_SEED } from "../src/modules/requests/seed-types";
 import { CATEGORY_SEED } from "../src/modules/assets/seed-categories";
+import { PIPELINE_SEED, pipelineSeedProblems } from "../src/modules/recruit/seed-pipelines";
 import { DOCUMENT_TEMPLATE_SEED } from "../src/modules/documents/seed-templates";
 import { templateProblems } from "../src/modules/documents/engine/template";
 
@@ -180,6 +181,19 @@ async function main() {
   if (leaky.length) throw new Error(`document template seed is invalid: ${leaky.map((seed) => `${seed.code} (${templateProblems({ name: seed.name, body: seed.body, tier: seed.tier }).join(", ")})`).join("; ")}`);
   if (newDocTemplates.length) await db.insert(documentTemplate).values(newDocTemplates.map((row) => ({ ...row })));
   console.log(`Seeded ${newDocTemplates.length} document templates (existing codes left untouched).`);
+
+  // Hiring pipelines (FR-REC-02): only codes that do not exist yet, so a pipeline whose stages a
+  // recruiter has renamed or reordered is never overwritten. The seed is validated first — a
+  // pipeline with nowhere for an application to start would break every opening using it.
+  const pipelineCodes = new Set((await db.select({ code: recruitPipeline.code }).from(recruitPipeline)).map((row) => row.code));
+  const newPipelines = PIPELINE_SEED.filter((seed) => !pipelineCodes.has(seed.code));
+  const brokenPipelines = newPipelines.filter((seed) => pipelineSeedProblems(seed).length > 0);
+  if (brokenPipelines.length) throw new Error(`pipeline seed is invalid: ${brokenPipelines.map((seed) => `${seed.code} (${pipelineSeedProblems(seed).join(", ")})`).join("; ")}`);
+  for (const seed of newPipelines) {
+    const [created] = await db.insert(recruitPipeline).values({ code: seed.code, name: seed.name, nameEn: seed.nameEn, description: seed.description, isDefault: seed.isDefault }).returning();
+    await db.insert(recruitPipelineStage).values(seed.stages.map((stage, index) => ({ pipelineId: created.id, key: stage.key, name: stage.name, nameEn: stage.nameEn, category: stage.category, sortOrder: index })));
+  }
+  console.log(`Seeded ${newPipelines.length} hiring pipelines with their stages (existing codes left untouched).`);
 
   // Company values for kudos (FR-COM-03): placeholders, only keys that do not exist yet.
   const valueKeys = new Set((await db.select({ key: companyValue.key }).from(companyValue)).map((row) => row.key));

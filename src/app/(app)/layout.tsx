@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CollapsibleNav } from "@/components/shell/collapsible-nav";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
 import { navFor, type NavItem } from "@/components/shell/nav";
+import { recruitModuleOpen } from "@/modules/recruit/service";
 import { SignOutButton } from "@/components/shell/sign-out-button";
 import { Badge } from "@/components/ui/badge";
 import { peopleModuleOpen } from "@/modules/core-hr/service";
@@ -16,7 +17,7 @@ import { CommandPalette } from "@/modules/work/ui/command-palette";
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
   const t = await getTranslations();
-  const nav = navFor(user.principal, { people: await peopleModuleOpen(user) });
+  const nav = navFor(user.principal, { people: await peopleModuleOpen(user), recruit: await recruitModuleOpen(user.principal, user.person.id) });
   const [unread, waiting, openTasks, reviews] = await Promise.all([countUnread(user.person.id), countInbox(user.person.id), countMyOpenTasks(user.person.id), countReviewsWaitingFor(user.person.id)]);
   // "My work" is one inbox (FR-WRK-06): tasks of every kind, deliverables to review, requests to approve.
   const tasks = openTasks + reviews + waiting;

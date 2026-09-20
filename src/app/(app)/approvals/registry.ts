@@ -21,6 +21,8 @@ import { kbPublishRequest } from "@/modules/kb/service";
 import { decideLeaveAction } from "@/modules/leave/actions";
 import { leaveRequestType } from "@/modules/leave/requests";
 import type { RequestTypeDefinition } from "@/modules/platform/approvals/service";
+import { decideHiringRequestAction } from "@/modules/recruit/actions";
+import { hiringRequestType } from "@/modules/recruit/hiring";
 import { decideRequestAction } from "@/modules/requests/actions";
 import { registeredGenericTypes } from "@/modules/requests/service";
 
@@ -39,6 +41,9 @@ const REGISTERED: RegisteredRequestType[] = [
   { definition: resignationRequest, approve: (requestId) => decideResignationAction({ requestId, decision: "approve", comment: null }) },
   // Never bulk-approvable (a reviewer reads the revision first); registered for the flow administration.
   { definition: kbPublishRequest, approve: (requestId) => decidePageReviewAction({ requestId, decision: "approve", comment: null }) },
+  // A head is a budget decision and its budget is not in the summary, so this one is never bulk-
+  // approvable either (FR-REC-01); registered so the flow administration can configure it.
+  { definition: hiringRequestType, approve: (requestId) => decideHiringRequestAction({ requestId, decision: "approve", comment: null }) },
 ];
 
 export const REQUEST_TYPES: ReadonlyMap<string, RegisteredRequestType> = new Map(REGISTERED.map((entry) => [entry.definition.type, entry]));

@@ -4,7 +4,7 @@ import { can } from "@/modules/platform/rbac/policy";
 export type NavItem = { key: string; href?: string; phase?: number };
 
 // Modules without an href are not built yet; they show with the phase they arrive in.
-export function navFor(principal: Principal, open: { people: boolean }): { main: NavItem[]; admin: NavItem[] } {
+export function navFor(principal: Principal, open: { people: boolean; recruit: boolean }): { main: NavItem[]; admin: NavItem[] } {
   const main: NavItem[] = [
     { key: "home", href: "/home" },
     // Announcements aimed at the reader; kudos are about the directory, which collaborators do not have.
@@ -31,6 +31,9 @@ export function navFor(principal: Principal, open: { people: boolean }): { main:
     ...(can(principal, "ops:read") || can(principal, "ops:manage") ? [{ key: "ops", href: "/ops" }] : []),
     // Goals and KPIs: everyone has their own; what else they see is decided on the pages.
     { key: "performance", href: "/performance" },
+    // Recruitment: whoever runs it, and whoever sits on a hiring team — the second is a row in
+    // `job_opening_member`, not a role, so the layout has to ask. Cosmetic: every page re-checks.
+    ...(open.recruit ? [{ key: "recruit", href: "/recruit" }] : []),
     // The knowledge base: which spaces open is decided by their access rows, on the pages.
     { key: "kb", href: "/kb" },
     // Pay: everyone has their own payslips; the desk behind them is decided on the pages.

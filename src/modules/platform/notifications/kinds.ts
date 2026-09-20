@@ -1,7 +1,7 @@
 // The catalogue of notifications. Plain module: shared by the server and the preferences screen.
 // Wording lives in messages/*.json under `notifications.kinds.<kind>` (dots become underscores).
 
-export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks", "attendance", "ops", "kb", "comms", "payroll"] as const;
+export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks", "attendance", "ops", "kb", "comms", "payroll", "recruit"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const EMAIL_CHANNELS = ["instant", "digest", "off"] as const;
@@ -29,6 +29,10 @@ export const CATEGORY_DEFINITIONS: Record<Category, { defaults: ChannelChoice; /
   // Payroll (Phase 5): something to decide or a payslip to read. Never an amount — a notification
   // is read on lock screens and in mailboxes.
   payroll: { defaults: { inApp: true, email: "instant", push: true }, mandatory: false },
+  // Recruitment (Phase 7): a head was approved, an interview is on, a scorecard is waiting. Time
+  // matters in hiring — a candidate who waits three days for an answer takes the other offer — so
+  // these go out instantly. Never a figure: a salary expectation is compensation-tier.
+  recruit: { defaults: { inApp: true, email: "instant", push: true }, mandatory: false },
 };
 
 export const KINDS = {
@@ -88,6 +92,9 @@ export const KINDS = {
   "payroll.payslip_query_raised": "payroll",
   "payroll.payslip_query_answered": "payroll",
   "payroll.cash_receipt_due": "payroll",
+  // Recruitment (FR-REC-01): a hiring request cleared its flow, so there is a head to advertise.
+  // The title and the count — never the budget.
+  "recruit.hiring_approved": "recruit",
 } as const satisfies Record<string, Category>;
 export type Kind = keyof typeof KINDS;
 
