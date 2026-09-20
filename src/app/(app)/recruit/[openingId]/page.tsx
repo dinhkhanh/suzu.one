@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { listPeople } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
-import { getOpeningView, listApplications } from "@/modules/recruit/service";
+import { canSetRecruitMoney, getOpeningView, listApplications, listCandidates } from "@/modules/recruit/service";
+import { AddApplicationForm } from "@/modules/recruit/ui/add-application";
 import { HiringTeamForm, OpeningStatusControls } from "@/modules/recruit/ui/opening-controls";
 
 export const metadata: Metadata = { title: "Job opening" };
@@ -24,6 +25,10 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
   const format = await getFormatter();
   const applications = await listApplications({ principal: user.principal, personId: user.person.id }, openingId);
   const people = view.canEdit ? (await listPeople(user.principal, {}, { pageSize: 500 })).rows.map((row) => ({ id: row.id, fullName: row.fullName })) : [];
+  // Candidates this person may already see, minus the ones on this opening — the rest of the
+  // database stays out of reach exactly as it is on /recruit/candidates.
+  const applied = new Set(applications.map((row) => row.candidateId));
+  const candidates = view.canEdit ? (await listCandidates(user.principal)).filter((row) => !applied.has(row.id) && !row.anonymised).map((row) => ({ id: row.id, fullName: row.fullName })) : [];
 
   const byStage = view.stages.map((stage) => ({ stage, rows: applications.filter((row) => row.stageId === stage.id && row.status === "active") }));
   const closed = applications.filter((row) => row.status !== "active");
@@ -114,6 +119,14 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
               </div>
             ))}
         </section>
+      ) : null}
+
+      {view.canEdit ? (
+        <AddApplicationForm
+          openingId={openingId}
+          candidates={candidates}
+          canSetMoney={canSetRecruitMoney(user.principal, { entityId: view.opening.entityId, departmentId: view.opening.departmentId, teamId: view.opening.teamId })}
+        />
       ) : null}
 
       <section className="flex flex-col gap-3">
