@@ -42,8 +42,8 @@ export function pickTemplate<T extends TemplateScope>(templates: readonly T[], p
   return best?.template ?? null;
 }
 
-export type TemplateItem = { id: string; title: string; description: string | null; assigneeRule: string; assigneePersonId: string | null; dueOffsetDays: number; sortOrder: number };
-export type PlannedTask = { templateItemId: string; title: string; description: string | null; assigneePersonId: string | null; dueDate: IsoDate; sortOrder: number };
+export type TemplateItem = { id: string; title: string; description: string | null; linkUrl?: string | null; assigneeRule: string; assigneePersonId: string | null; dueOffsetDays: number; sortOrder: number };
+export type PlannedTask = { templateItemId: string; title: string; description: string | null; linkUrl: string | null; assigneePersonId: string | null; dueDate: IsoDate; sortOrder: number };
 
 /**
  * Items + anchor date + "who is that rule today" → task rows. `resolve` returns the first person a
@@ -55,7 +55,7 @@ export function planChecklist(items: readonly TemplateItem[], anchorDate: IsoDat
     .sort((a, b) => a.sortOrder - b.sortOrder || a.dueOffsetDays - b.dueOffsetDays)
     .map((item, index) => {
       const rule = parseAssigneeRule(item.assigneeRule, item.assigneePersonId);
-      return { templateItemId: item.id, title: item.title, description: item.description, assigneePersonId: rule ? resolve(rule) : null, dueDate: addDays(anchorDate, item.dueOffsetDays), sortOrder: index };
+      return { templateItemId: item.id, title: item.title, description: item.description, linkUrl: item.linkUrl ?? null, assigneePersonId: rule ? resolve(rule) : null, dueDate: addDays(anchorDate, item.dueOffsetDays), sortOrder: index };
     });
 }
 
@@ -66,4 +66,18 @@ export function summarize(tasks: readonly { status: "todo" | "in_progress" | "do
   const counted = tasks.filter((task) => task.status !== "cancelled");
   const open = counted.filter((task) => task.status !== "done");
   return { total: counted.length, done: counted.length - open.length, open: open.length, overdue: open.filter((task) => task.dueDate !== null && task.dueDate < today).length, complete: counted.length > 0 && open.length === 0 };
+}
+
+/**
+ * A task's "how to" link: a page inside the app ("/kb/pages/…") or an https address. Anything
+ * else — `javascript:`, protocol-relative "//host", a bare word — is refused.
+ */
+export function isSafeTaskLink(value: string): boolean {
+  if (value.length > 500 || /[\s\\]/.test(value)) return false;
+  if (value.startsWith("/")) return !value.startsWith("//");
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
 }

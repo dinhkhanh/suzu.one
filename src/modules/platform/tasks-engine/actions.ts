@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
-import { ASSIGNEE_RULES, isChecklistPurpose } from "./engine/checklist";
+import { ASSIGNEE_RULES, isChecklistPurpose, isSafeTaskLink } from "./engine/checklist";
 import { canManageTask, canManageTemplates, canMoveTask, movesThroughEngine } from "./policy";
 import { addTemplateItem, findTask, findTemplate, findTemplateItem, reassignTask, removeTemplateItem, saveTemplate, setTaskStatus } from "./service";
 
@@ -92,6 +92,7 @@ const addItemPipeline = createAction({
     templateId: z.uuid(),
     title: z.string().trim().min(1).max(200),
     description: optional(z.string().trim().max(1000)),
+    linkUrl: optional(z.string().trim().max(500).refine(isSafeTaskLink)),
     rule: z.enum(ASSIGNEE_RULES),
     permission: optional(z.string().trim().regex(/^[a-z_]+:[a-z_]+$/)),
     assigneePersonId: optional(z.uuid()),

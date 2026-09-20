@@ -30,6 +30,7 @@ export type NewTask = {
   kind: string;
   title: string;
   description?: string | null;
+  linkUrl?: string | null;
   assigneePersonId?: string | null;
   dueDate?: IsoDate | null;
   priority?: number | null;
@@ -201,7 +202,7 @@ export async function listTasksAbout(subjectPersonId: string, kind: string): Pro
 
 export type TemplateView = TaskTemplateRow & { items: TaskTemplateItemRow[] };
 export type TemplateInput = { purpose: string; name: string; entityId: string | null; departmentId: string | null; positionId: string | null; isActive: boolean };
-export type TemplateItemInput = { title: string; description: string | null; assigneeRule: string; assigneePersonId: string | null; dueOffsetDays: number; sortOrder: number };
+export type TemplateItemInput = { title: string; description: string | null; linkUrl?: string | null; assigneeRule: string; assigneePersonId: string | null; dueOffsetDays: number; sortOrder: number };
 
 /** Checklist templates; work management lists its own. */
 export async function listTemplates(): Promise<TemplateView[]> {
@@ -264,6 +265,7 @@ export function presentTasks(principal: Principal, tasks: TaskView[], linkFor?: 
     id: task.id,
     title: task.title,
     description: task.description,
+    linkUrl: task.linkUrl,
     status: task.status,
     dueDate: task.dueDate,
     assigneePersonId: task.assigneePersonId,

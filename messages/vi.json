@@ -1265,7 +1265,8 @@
     "openApprovals": "Mở hộp phê duyệt",
     "blocked": "bị chặn bởi {count} việc",
     "changesRequested": "Cần chỉnh sửa",
-    "urgent": "Khẩn"
+    "urgent": "Khẩn",
+    "guide": "Đọc hướng dẫn"
   },
   "checklists": {
     "title": "Mẫu checklist",
@@ -1302,7 +1303,8 @@
       "description": "Ghi chú",
       "rule": "Giao cho",
       "assigneePersonId": "Người phụ trách",
-      "dueOffsetDays": "Hạn (số ngày so với ngày mốc, âm = trước)"
+      "dueOffsetDays": "Hạn (số ngày so với ngày mốc, âm = trước)",
+      "linkUrl": "Trang hướng dẫn (đường dẫn trang tri thức /kb/pages/… hoặc https://…)"
     },
     "errors": {
       "generic": "Không lưu được.",

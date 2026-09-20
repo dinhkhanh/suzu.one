@@ -57,6 +57,13 @@ export default async function ChecklistsPage() {
                         <div className="min-w-0 flex-1">
                           <p>{item.title}</p>
                           {item.description ? <p className="text-xs text-muted-foreground">{item.description}</p> : null}
+                          {item.linkUrl ? (
+                            <p className="text-xs">
+                              <a href={item.linkUrl} className="underline underline-offset-2">
+                                {t("fields.linkUrl")}: {item.linkUrl}
+                              </a>
+                            </p>
+                          ) : null}
                         </div>
                         <span className="text-xs text-muted-foreground">
                           {item.assigneeRule === "person" ? people.find((person) => person.id === item.assigneePersonId)?.fullName : t(`rule.${item.assigneeRule.split(":")[0]}` as "rule.subject")}

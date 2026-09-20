@@ -1265,7 +1265,8 @@
     "openApprovals": "Open the approvals inbox",
     "blocked": "blocked by {count}",
     "changesRequested": "Changes requested",
-    "urgent": "Urgent"
+    "urgent": "Urgent",
+    "guide": "Read the guide"
   },
   "checklists": {
     "title": "Checklist templates",
@@ -1302,7 +1303,8 @@
       "description": "Note",
       "rule": "Assign to",
       "assigneePersonId": "Person in charge",
-      "dueOffsetDays": "Due (days from the anchor date, negative = before)"
+      "dueOffsetDays": "Due (days from the anchor date, negative = before)",
+      "linkUrl": "Guide (a knowledge-base link /kb/pages/… or https://…)"
     },
     "errors": {
       "generic": "Could not save.",

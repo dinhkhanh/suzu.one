@@ -53,6 +53,9 @@ export const taskTemplateItem = pgTable(
     // For the rule "role:<key>": who plays the role is said when the template is used.
     roleKey: text("role_key"),
     estimateMinutes: integer("estimate_minutes"),
+    // Where the how-to is: a knowledge-base page ("/kb/pages/<id>") or an https address. The
+    // platform stores the address only — it knows nothing about the module behind it.
+    linkUrl: text("link_url"),
   },
   (t) => [index("task_template_item_template_idx").on(t.templateId)],
 ).enableRLS();
@@ -83,6 +86,8 @@ export const task = pgTable(
     subjectPersonId: uuid("subject_person_id").references(() => person.id),
     sortOrder: integer("sort_order").notNull().default(0),
     templateItemId: uuid("template_item_id").references(() => taskTemplateItem.id, { onDelete: "set null" }),
+    // Copied from the template item when the checklist is made, so the task keeps its guide.
+    linkUrl: text("link_url"),
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     completedByPersonId: uuid("completed_by_person_id").references(() => person.id),

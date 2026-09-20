@@ -68,3 +68,11 @@ describe("role rule (work templates)", () => {
     expect(ASSIGNEE_RULES).toEqual(["subject", "line_manager", "person", "permission"]);
   });
 });
+
+describe("isSafeTaskLink", () => {
+  it("takes in-app paths and https, nothing else", async () => {
+    const { isSafeTaskLink } = await import("./checklist");
+    for (const good of ["/kb/pages/0b0e0c52-1111-4222-8333-444455556666", "https://docs.google.com/document/d/abc"]) expect(isSafeTaskLink(good)).toBe(true);
+    for (const bad of ["javascript:alert(1)", "//evil.example/x", "http://plain.example", "kb/pages/x", "/kb pages", "data:text/html,x", "/kb\\pages"]) expect(isSafeTaskLink(bad)).toBe(false);
+  });
+});

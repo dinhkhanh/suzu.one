@@ -11,6 +11,7 @@ export type TaskItem = {
   id: string;
   title: string;
   description: string | null;
+  linkUrl?: string | null;
   status: "todo" | "in_progress" | "done" | "cancelled";
   dueDate: string | null;
   assigneePersonId: string | null;
@@ -61,6 +62,13 @@ export function TaskList({ tasks, today, showSubject = false, people }: { tasks:
                   )}
                 </p>
                 {task.description ? <p className="text-xs text-muted-foreground">{task.description}</p> : null}
+                {task.linkUrl ? (
+                  <p className="text-xs">
+                    <a href={task.linkUrl} className="underline underline-offset-2" {...(task.linkUrl.startsWith("/") ? {} : { target: "_blank", rel: "noopener noreferrer" })}>
+                      {t("guide")}
+                    </a>
+                  </p>
+                ) : null}
                 <p className="text-xs text-muted-foreground">
                   {[
                     showSubject && task.subjectName ? t("about", { name: task.subjectName }) : null,

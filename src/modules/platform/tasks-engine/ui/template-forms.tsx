@@ -107,6 +107,9 @@ export function TemplateItemForm({ templateId, people, nextOrder }: { templateId
           <Field name="description" label={t("fields.description")}>
             <Input id="description" name="description" maxLength={1000} />
           </Field>
+          <Field name="linkUrl" label={t("fields.linkUrl")}>
+            <Input id="linkUrl" name="linkUrl" maxLength={500} placeholder="/kb/pages/…" />
+          </Field>
         </div>
       </div>
       <FormError namespace="checklists.errors" errorKey={errorKey} />
