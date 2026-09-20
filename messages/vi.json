@@ -1639,7 +1639,8 @@
         "gross": "Tổng thu nhập",
         "headcount": "Số người tính lương",
         "change": "So với tháng trước",
-        "noRuns": "Chưa có kỳ lương nào đã tính."
+        "noRuns": "Chưa có kỳ lương nào đã tính.",
+        "locked": "Xác nhận danh tính để xem số liệu lương"
       },
       "attendance": {
         "in": "Đang ở công ty",

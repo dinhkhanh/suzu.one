@@ -37,7 +37,7 @@ import { db, schema } from "@/lib/db";
 import { hirePerson } from "@/modules/core-hr/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { migrateTestDb } from "../../../tests/helpers/db";
-import { buildReportFor, isSchedulable, listReportsFor } from "./catalogue";
+import { buildReportFor, isSchedulable, listReportsFor, needsStepUp, REPORT_KEYS } from "./catalogue";
 import { createSchedule, runDueSchedules, runSchedule } from "./schedules";
 
 type Who = "hr" | "head" | "huy";
@@ -128,6 +128,13 @@ describe("the catalogue", () => {
 
   it("refuses a report key that does not exist", async () => {
     expect(await buildReportFor(users.hr, "salaries_of_everyone", {}, PERIOD, "vi")).toBeNull();
+  });
+
+  it("asks for a fresh proof of identity for the compensation report and for nothing else", () => {
+    // An export must not become the quiet way past step-up (FR-PLT-06); `exportReportAction` asks
+    // this before it builds anything.
+    expect(needsStepUp("payroll_cost")).toBe(true);
+    expect(REPORT_KEYS.filter((key) => needsStepUp(key))).toEqual(["payroll_cost"]);
   });
 });
 

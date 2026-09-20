@@ -3,7 +3,7 @@
 // principal, and the only tables here are the schedules and their delivery record.
 import "server-only";
 
-export { buildReportFor, findReport, isSchedulable, listReportsFor, type Locale, REPORT_KEYS, type ReportDefinition, type ReportKey, type ReportTable, type ReportViewer, reportToCsv, reportToText } from "./catalogue";
+export { buildReportFor, findReport, isSchedulable, listReportsFor, needsStepUp, type Locale, REPORT_KEYS, type ReportDefinition, type ReportKey, type ReportTable, type ReportViewer, reportToCsv, reportToText } from "./catalogue";
 export type { AttendanceTile, Dashboard, DashboardViewer, HeadcountTile, LeaveTile, OpsTile, PayrollTile, RecruitTile, WorkTile } from "./dashboard";
 export { getDashboard } from "./dashboard";
 export { type Cadence, isoDayOfWeek, nextRunAfter, nextRunOnOrAfter, type Period, periodFor } from "./engine/cadence";

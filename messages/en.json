@@ -1639,7 +1639,8 @@
         "gross": "Gross earnings",
         "headcount": "People paid",
         "change": "Against last month",
-        "noRuns": "No payroll run has been calculated yet."
+        "noRuns": "No payroll run has been calculated yet.",
+        "locked": "Confirm who you are to see pay figures"
       },
       "attendance": {
         "in": "On site",

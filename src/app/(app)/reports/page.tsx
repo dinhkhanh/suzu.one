@@ -76,7 +76,7 @@ export default async function ReportsOverviewPage() {
         {!stepUpFresh ? (
           <p className="text-muted-foreground">
             <Link href={`/step-up?next=${encodeURIComponent("/payroll/reports")}`} className="underline underline-offset-2">
-              {t("open")}
+              {t("payroll.locked")}
             </Link>
           </p>
         ) : tile.latest ? (

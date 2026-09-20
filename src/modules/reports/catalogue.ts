@@ -49,6 +49,12 @@ export type ReportDefinition<Parameters> = {
    * no step-up at all. It stays exportable on demand from `/payroll/reports`, which does ask.
    */
   schedulable?: boolean;
+  /**
+   * Does reading this report need a fresh proof of identity (FR-PLT-06)? True for anything at the
+   * compensation tier, so an export cannot become the one door to a pay figure that does not ask.
+   * Screens gate themselves with `requireStepUp`; `exportReportAction` asks this.
+   */
+  stepUp?: boolean;
   /** Where the report lives, so an email can link to the screen behind the numbers. */
   href: (parameters: Parameters) => string;
   build: (user: ReportViewer, parameters: Parameters, period: Period, locale: Locale) => Promise<ReportTable>;
@@ -112,8 +118,10 @@ const payrollCost: ReportDefinition<{ entityId?: string; months: number }> = {
   // permission and never will through this catalogue.
   canSee: (user) => hasPayrollReach(user.principal),
   // Never emailed on a schedule: see `schedulable` on ReportDefinition. Compensation is read after
-  // proving who you are, and a mailbox proves nothing.
+  // proving who you are, and a mailbox proves nothing. The on-demand export asks for the same
+  // proof `/payroll/reports` asks for, so this is not a quieter way in.
   schedulable: false,
+  stepUp: true,
   href: (parameters) => (parameters.entityId ? `/payroll/reports?entityId=${parameters.entityId}` : "/payroll/reports"),
   build: async (user, parameters, period, locale) => {
     const t = translator(locale);
@@ -229,6 +237,11 @@ export function findReport(key: string): ReportDefinition<any> | undefined {
 
 export function isSchedulable(key: string): boolean {
   return findReport(key)?.schedulable !== false;
+}
+
+/** Does this report need a fresh step-up before it may be read outside its own screen? */
+export function needsStepUp(key: string): boolean {
+  return findReport(key)?.stepUp === true;
 }
 
 /**

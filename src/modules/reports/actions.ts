@@ -9,8 +9,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
+import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 import { todayInVietnam } from "@/lib/dates";
-import { buildReportFor, findReport, isSchedulable, REPORT_KEYS, reportToCsv } from "./catalogue";
+import { buildReportFor, findReport, isSchedulable, needsStepUp, REPORT_KEYS, reportToCsv } from "./catalogue";
 import { canEditSchedule, canManageSchedules } from "./policy";
 import { createSchedule, deleteSchedule, findSchedule, setScheduleActive, updateSchedule } from "./schedules";
 
@@ -116,7 +117,10 @@ const exportPipeline = createAction({
   input: z.object({ reportKey: z.enum(REPORT_KEYS as [string, ...string[]]), parameters, from: day, to: day, locale }),
   // The catalogue entry's own `canSee` — the same predicate its screen checks. `buildReportFor`
   // asks it a second time, so an export can never outrun the permission it was started with.
+  // A compensation report also wants a fresh proof of identity, exactly as its screen does: an
+  // export must not be the quiet way past step-up (FR-PLT-06).
   authorize: async (user, input) => {
+    if (needsStepUp(input.reportKey) && !isStepUpFresh(user.reauthAt)) return false;
     const definition = findReport(input.reportKey);
     return !!definition && (await definition.canSee(user));
   },
