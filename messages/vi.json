@@ -4454,6 +4454,10 @@
       "myPayslips": {
         "title": "Phiếu lương của tôi",
         "description": "Các kỳ lương đã phát hành cho bạn."
+      },
+      "reports": {
+        "title": "Báo cáo lương",
+        "description": "Bảng lương chi tiết, chi phí, bảo hiểm và thuế."
       }
     },
     "salaries": {
@@ -5175,6 +5179,54 @@
         "run_not_found": "Không tìm thấy bảng lương.",
         "cash_payment_not_found": "Không tìm thấy dòng chi tiền mặt.",
         "run_not_settled": "Chưa chi xong: còn tệp ngân hàng hoặc bảng tiền mặt chưa hoàn tất.",
+        "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+        "failed": "Không thực hiện được. Vui lòng thử lại."
+      }
+    },
+    "reports": {
+      "title": "Báo cáo lương",
+      "description": "Bảng lương chi tiết, chi phí theo phòng ban, đối chiếu bảo hiểm và thuế. Số liệu lấy từ các bảng lương đã tính, không tính lại.",
+      "back": "Lương",
+      "entity": "Pháp nhân",
+      "month": "Kỳ lương",
+      "person": "Nhân viên",
+      "total": "Tổng cộng",
+      "export": "Xuất CSV",
+      "noRuns": "Chưa có bảng lương nào trong phạm vi của bạn.",
+      "register": {
+        "title": "Bảng lương chi tiết",
+        "department": "Phòng ban",
+        "gross": "Tổng thu nhập",
+        "insurance": "Bảo hiểm (NLĐ)",
+        "pit": "Thuế TNCN",
+        "net": "Thực nhận",
+        "employerCost": "Tổng chi phí"
+      },
+      "cost": {
+        "title": "Chi phí nhân sự theo phòng ban",
+        "department": "Phòng ban",
+        "headcount": "Số người",
+        "employerInsurance": "Công ty đóng BH"
+      },
+      "insurance": {
+        "title": "Đối chiếu bảo hiểm bắt buộc",
+        "totals": "Người lao động {employee} · Công ty {employer} · Tổng {total}",
+        "notCovered": "{count} người không phát sinh đóng"
+      },
+      "pit": {
+        "title": "Tổng hợp thuế TNCN đã khấu trừ",
+        "totals": "Thu nhập chịu thuế {taxable} · Thuế đã khấu trừ {tax}",
+        "missingTaxCodes": "{count} người chưa có mã số thuế"
+      },
+      "union": {
+        "title": "Báo cáo công đoàn",
+        "totals": "{members} đoàn viên · Đoàn phí {dues} · KPCĐ {fund}"
+      },
+      "trend": {
+        "title": "Chi phí nhân sự theo tháng"
+      },
+      "errors": {
+        "report_not_available": "Không có số liệu cho báo cáo này, hoặc bạn không có quyền xem.",
         "forbidden": "Bạn không có quyền thực hiện thao tác này.",
         "failed": "Không thực hiện được. Vui lòng thử lại."
       }

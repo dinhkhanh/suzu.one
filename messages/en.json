@@ -4454,6 +4454,10 @@
       "myPayslips": {
         "title": "My payslips",
         "description": "The pay periods released to you."
+      },
+      "reports": {
+        "title": "Payroll reports",
+        "description": "The register, cost, insurance and tax reports."
       }
     },
     "salaries": {
@@ -5175,6 +5179,54 @@
         "run_not_found": "Payroll run not found.",
         "cash_payment_not_found": "Cash row not found.",
         "run_not_settled": "Not settled yet: a bank file or the cash sheet is still outstanding.",
+        "forbidden": "You are not allowed to do this.",
+        "failed": "That did not work. Please try again."
+      }
+    },
+    "reports": {
+      "title": "Payroll reports",
+      "description": "The register, cost by department, and the insurance and tax figures to reconcile with. Built from calculated runs — never recalculated.",
+      "back": "Payroll",
+      "entity": "Entity",
+      "month": "Period",
+      "person": "Employee",
+      "total": "Total",
+      "export": "Export CSV",
+      "noRuns": "No payroll run in your scope yet.",
+      "register": {
+        "title": "Payroll register",
+        "department": "Department",
+        "gross": "Gross",
+        "insurance": "Insurance (employee)",
+        "pit": "PIT",
+        "net": "Net",
+        "employerCost": "Employer cost"
+      },
+      "cost": {
+        "title": "Cost by department",
+        "department": "Department",
+        "headcount": "People",
+        "employerInsurance": "Employer insurance"
+      },
+      "insurance": {
+        "title": "Insurance contribution summary",
+        "totals": "Employee {employee} · Employer {employer} · Total {total}",
+        "notCovered": "{count} not contributing"
+      },
+      "pit": {
+        "title": "PIT withholding summary",
+        "totals": "Taxable income {taxable} · Tax withheld {tax}",
+        "missingTaxCodes": "{count} without a tax code"
+      },
+      "union": {
+        "title": "Union report",
+        "totals": "{members} members · Dues {dues} · Fund {fund}"
+      },
+      "trend": {
+        "title": "Cost by month"
+      },
+      "errors": {
+        "report_not_available": "No figures for that report, or you may not see it.",
         "forbidden": "You are not allowed to do this.",
         "failed": "That did not work. Please try again."
       }
