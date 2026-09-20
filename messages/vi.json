@@ -6128,7 +6128,8 @@
       "team": "Nhóm tuyển dụng",
       "pipeline": "Quy trình",
       "approved": "Đầu việc được duyệt",
-      "open": "Còn trống"
+      "open": "Còn trống",
+      "cv": "CV"
     },
     "status": {
       "draft": "Nháp",
@@ -6242,7 +6243,11 @@
       "members": "Thành viên nhóm tuyển dụng",
       "addMember": "Thêm thành viên",
       "person": "Người",
-      "role": "Vai trò"
+      "role": "Vai trò",
+      "code": "Mã",
+      "name": "Tên",
+      "kind": "Loại",
+      "isActive": "Đang dùng"
     },
     "actions": {
       "publish": "Đăng tuyển",
@@ -6309,7 +6314,14 @@
       "recruit_already_applied": "Ứng viên đã ứng tuyển vị trí này.",
       "recruit_application_not_found": "Không tìm thấy hồ sơ ứng tuyển.",
       "recruit_application_closed": "Hồ sơ đã kết thúc, không thể thay đổi.",
-      "generic": "Không thực hiện được. Vui lòng kiểm tra lại."
+      "generic": "Không thực hiện được. Vui lòng kiểm tra lại.",
+      "recruit_email_template_not_found": "Không tìm thấy mẫu thư.",
+      "recruit_candidate_no_email": "Ứng viên chưa có địa chỉ email.",
+      "email_template_subject_empty": "Tiêu đề thư không được để trống.",
+      "email_template_subject_too_long": "Tiêu đề thư quá dài.",
+      "email_template_body_empty": "Nội dung thư không được để trống.",
+      "email_template_body_too_long": "Nội dung thư quá dài.",
+      "email_template_unknown_placeholder": "Thư có trường thay thế mà hệ thống không biết."
     },
     "duplicates": {
       "title": "Có thể trùng với ứng viên đã có:",
@@ -6384,6 +6396,36 @@
         "careers_answer_required": "Mời bạn trả lời các câu hỏi bắt buộc.",
         "careers_answer_invalid": "Câu trả lời không hợp lệ."
       }
+    },
+    "email": {
+      "title": "Gửi email cho ứng viên",
+      "template": "Mẫu thư",
+      "language": "Ngôn ngữ ứng viên đọc",
+      "send": "Gửi",
+      "sent": "Đã đưa vào hàng chờ gửi tới {to}.",
+      "noAddress": "Ứng viên này chưa có địa chỉ email, nên không gửi được thư.",
+      "description": "Thư gửi ứng viên. Đây là bản nháp — nhân sự sẽ viết lại; vì vậy chúng nằm trong cơ sở dữ liệu chứ không nằm trong mã nguồn.",
+      "subject": "Tiêu đề",
+      "body": "Nội dung",
+      "placeholders": "Trường thay thế cho phép",
+      "new": "Thêm mẫu thư mới"
+    },
+    "board": {
+      "description": "Kéo thẻ sang cột khác, hoặc chọn nhiều thẻ rồi chuyển cùng lúc.",
+      "openingDetails": "Chi tiết vị trí",
+      "selected": "Đã chọn {count}",
+      "moveTo": "Chuyển sang…",
+      "rejectWith": "Từ chối vì…",
+      "clear": "Bỏ chọn",
+      "days": "{days} ngày ở bước này",
+      "empty": "Chưa có ai",
+      "title": "Bảng tuyển dụng"
+    },
+    "emailKind": {
+      "invite": "Mời phỏng vấn",
+      "reject": "Từ chối",
+      "offer": "Đề nghị tuyển dụng",
+      "general": "Chung"
     }
   }
 }

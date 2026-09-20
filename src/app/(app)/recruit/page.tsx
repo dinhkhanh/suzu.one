@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/modules/platform/auth/session";
-import { canBrowseCandidates, canRunRecruitment, listOpenings, recruitModuleOpen } from "@/modules/recruit/service";
+import { canBrowseCandidates, canManagePipelines, canRunRecruitment, listOpenings, recruitModuleOpen } from "@/modules/recruit/service";
 import { notFound } from "next/navigation";
 
 export const metadata: Metadata = { title: "Recruitment" };
@@ -34,6 +34,12 @@ export default async function RecruitPage() {
           {canBrowseCandidates(user.principal) ? (
             <Link href="/recruit/candidates" className={buttonVariants({ size: "sm", variant: "outline" })}>
               {t("candidates")}
+            </Link>
+          ) : null}
+          {/* The wordings are the group's, so the entry shows for a group-wide grant only. */}
+          {canManagePipelines(user.principal) ? (
+            <Link href="/recruit/emails" className={buttonVariants({ size: "sm", variant: "outline" })}>
+              {t("email.title")}
             </Link>
           ) : null}
           {runs ? (

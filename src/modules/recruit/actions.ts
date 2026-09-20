@@ -13,7 +13,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { STAGE_CATEGORIES } from "./enums";
-import { CANDIDATE_SOURCES, EMPLOYMENT_TYPES, OPENING_MEMBER_ROLES, OPENING_STATUSES, REJECTION_REASONS, WORK_MODES } from "./enums";
+import { CANDIDATE_SOURCES, EMPLOYMENT_TYPES, OPENING_MEMBER_ROLES, OPENING_STATUSES, RECRUIT_EMAIL_KINDS, REJECTION_REASONS, WORK_MODES } from "./enums";
+import { saveEmailTemplate, sendCandidateEmail } from "./emails";
 import { decideHiringRequest, submitHiringRequest } from "./hiring";
 import {
   canActOnApplication,
@@ -397,6 +398,56 @@ const withdrawApplicationPipeline = createAction({
   },
 });
 
+// ── Candidate emails (FR-REC-05) ────────────────────────────────────────────────────────────
+
+const sendCandidateEmailPipeline = createAction({
+  name: "recruit.email.send",
+  input: z.object({ applicationId: z.uuid(), templateId: z.uuid(), locale: z.enum(["vi", "en"]).default("vi") }),
+  // The same authority that moves an application along writes to its candidate: the recruiter and
+  // the opening's hiring team, and nobody else.
+  authorize: async (user, input) => {
+    const application = await findApplication(input.applicationId);
+    if (!application) return false;
+    const opening = await findOpening(application.openingId);
+    return !!opening && canActOnApplication(user.principal, openingTargetOf(opening), await isOpeningMember(opening.id, user.person.id));
+  },
+  run: async ({ user, input }) => {
+    const sent = await sendCandidateEmail(input.applicationId, input.templateId, { personId: user.person.id, fullName: user.person.fullName }, input.locale);
+    revalidatePath(`/recruit/applications/${input.applicationId}`);
+    return {
+      data: { to: sent.to },
+      // The subject, not the letter, and never the address: the audit log is read across the company.
+      audit: { resource: { type: "job_application", id: input.applicationId, entityId: sent.entityId }, summary: sent.templateCode, after: { subject: sent.subject } },
+    };
+  },
+});
+
+const saveEmailTemplatePipeline = createAction({
+  name: "recruit.email_template.save",
+  input: z.object({
+    templateId: optional(z.uuid()),
+    code: z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9_-]{1,31}$/),
+    name: z.string().trim().min(2).max(120),
+    kind: z.enum(RECRUIT_EMAIL_KINDS),
+    subject: z.string().trim().min(1).max(200),
+    body: z.string().trim().min(1).max(10_000),
+    subjectEn: optional(z.string().trim().max(200)),
+    bodyEn: optional(z.string().trim().max(10_000)),
+    isActive: checkbox,
+  }),
+  // The wordings are the group's, like the pipeline library.
+  authorize: (user) => canManagePipelines(user.principal),
+  run: async ({ user, input }) => {
+    const { templateId, ...rest } = input;
+    const { before, after } = await saveEmailTemplate(templateId, rest, user.person.id);
+    revalidatePath("/recruit/emails");
+    return {
+      data: { id: after.id },
+      audit: { resource: { type: "recruit_email_template", id: after.id, entityId: null }, summary: `${after.code} ${after.name}`, before: before && { name: before.name, isActive: before.isActive }, after: { name: after.name, isActive: after.isActive } },
+    };
+  },
+});
+
 // A `"use server"` file may export nothing but async functions — exporting a pipeline as a const
 // makes the bundler drop every export of the module (tests/server-actions.test.ts).
 
@@ -450,4 +501,12 @@ export async function rejectApplicationAction(input: unknown) {
 
 export async function withdrawApplicationAction(input: unknown) {
   return withdrawApplicationPipeline(input);
+}
+
+export async function sendCandidateEmailAction(input: unknown) {
+  return sendCandidateEmailPipeline(input);
+}
+
+export async function saveRecruitEmailTemplateAction(input: unknown) {
+  return saveEmailTemplatePipeline(input);
 }

@@ -46,11 +46,16 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
           </div>
           <div className="flex flex-col items-end gap-2">
             <Badge variant={view.opening.status === "open" ? "default" : "outline"}>{t(`status.${view.opening.status}`)}</Badge>
-            {view.canEdit ? (
-              <Link href={`/recruit/${openingId}/edit`} className={buttonVariants({ size: "sm", variant: "outline" })}>
-                {t("actions.edit")}
+            <div className="flex gap-2">
+              <Link href={`/recruit/${openingId}/board`} className={buttonVariants({ size: "sm", variant: "outline" })}>
+                {t("board.title")}
               </Link>
-            ) : null}
+              {view.canEdit ? (
+                <Link href={`/recruit/${openingId}/edit`} className={buttonVariants({ size: "sm", variant: "outline" })}>
+                  {t("actions.edit")}
+                </Link>
+              ) : null}
+            </div>
           </div>
         </div>
         {view.canEdit ? <OpeningStatusControls openingId={openingId} status={view.opening.status} /> : null}

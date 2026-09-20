@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { APPLICATION_CLOSED, getApplicationView } from "@/modules/recruit/service";
 import { ApplicationActions } from "@/modules/recruit/ui/application-actions";
+import { CvLink } from "@/modules/recruit/ui/cv-link";
+import { listEmailTemplates } from "@/modules/recruit/emails";
+import { SendCandidateEmail } from "@/modules/recruit/ui/send-email";
 
 export const metadata: Metadata = { title: "Application" };
 
@@ -65,6 +68,29 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
         </div>
       </dl>
 
+      {/* The CV came from the internet and nothing has scanned it. The warning is part of the
+          control, not a footnote somewhere else on the page. */}
+      {view.application.cvFileId && view.cvFileName ? (
+        <section className="flex flex-col gap-1 rounded-xl border p-4">
+          <h2 className="text-sm font-medium">{t("columns.cv")}</h2>
+          <CvLink applicationId={applicationId} fileId={view.application.cvFileId} fileName={view.cvFileName} />
+          <p className="text-xs text-muted-foreground">{t("notScanned")}</p>
+        </section>
+      ) : null}
+
+      {Object.keys(view.application.answers).length > 0 ? (
+        <dl className="flex flex-col gap-3 rounded-xl border p-4 text-sm">
+          {view.opening.questions
+            .filter((question) => view.application.answers[question.key])
+            .map((question) => (
+              <div key={question.key} className="flex flex-col gap-0.5">
+                <dt className="text-xs text-muted-foreground">{question.label}</dt>
+                <dd className="whitespace-pre-line">{view.application.answers[question.key]}</dd>
+              </div>
+            ))}
+        </dl>
+      ) : null}
+
       {view.application.coverLetter ? <p className="whitespace-pre-line rounded-xl border p-4 text-sm text-muted-foreground">{view.application.coverLetter}</p> : null}
 
       {view.application.portfolioLinks.length > 0 ? (
@@ -80,6 +106,14 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
       ) : null}
 
       {view.canAct ? <ApplicationActions applicationId={applicationId} stages={view.stages} currentStageId={view.stage.id} closed={closed} /> : null}
+
+      {view.canAct ? (
+        <SendCandidateEmail
+          applicationId={applicationId}
+          templates={(await listEmailTemplates()).map((template) => ({ id: template.id, name: template.name, kind: template.kind }))}
+          hasEmail={!!view.candidate.email}
+        />
+      ) : null}
 
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-medium text-muted-foreground">{t("history")}</h2>

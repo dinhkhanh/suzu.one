@@ -59,7 +59,7 @@ describe("renderEmail", () => {
   });
 
   it("treats an empty value as missing rather than printing a hole", () => {
-    expect(renderEmail({ subject: "x", body: "{{sender_title}}" }, { sender_title: "" }).missing).toEqual(["sender_title"]);
+    expect(renderEmail({ subject: "x", body: "{{stage_name}}" }, { stage_name: "" }).missing).toEqual(["stage_name"]);
   });
 
   it("substitutes once — a value containing a placeholder is not expanded again", () => {

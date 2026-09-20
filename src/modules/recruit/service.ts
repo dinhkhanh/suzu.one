@@ -11,6 +11,7 @@ import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import { listFileNames } from "@/modules/platform/files/service";
 import { entityReach, type Principal } from "@/modules/platform/rbac/policy";
 import { toSearchKey } from "@/lib/text";
 import {
@@ -775,6 +776,8 @@ export type ApplicationListRow = {
   status: ApplicationStatus;
   appliedAt: Date;
   stageEnteredAt: Date;
+  /** How long this card has been sitting in its column. Counted by the database's clock, not the page's. */
+  daysInStage: number;
   source: CandidateSource;
 };
 
@@ -796,6 +799,7 @@ export async function listApplications(viewer: { principal: Principal; personId:
       status: schema.jobApplication.status,
       appliedAt: schema.jobApplication.appliedAt,
       stageEnteredAt: schema.jobApplication.stageEnteredAt,
+      daysInStage: sql<number>`greatest(0, floor(extract(epoch from now() - ${schema.jobApplication.stageEnteredAt}) / 86400))::int`,
       source: schema.jobApplication.source,
     })
     .from(schema.jobApplication)
@@ -816,6 +820,8 @@ export type ApplicationView = {
   events: ApplicationEventView[];
   /** Cut by tier before it leaves the service. */
   salaryExpectationVnd: number | null;
+  /** The CV's name, for the download link. Null when there is none — the id alone opens nothing. */
+  cvFileName: string | null;
   canAct: boolean;
   canReadMoney: boolean;
 };
@@ -856,6 +862,7 @@ export async function getApplicationView(viewer: { principal: Principal; personI
     .orderBy(desc(schema.applicationEvent.id));
 
   const money = canReadRecruitMoney(viewer.principal, target);
+  const cvFileName = application.cvFileId ? ((await listFileNames([application.cvFileId])).get(application.cvFileId) ?? null) : null;
   return {
     application,
     candidate,
@@ -864,6 +871,7 @@ export async function getApplicationView(viewer: { principal: Principal; personI
     stage,
     events,
     salaryExpectationVnd: money ? application.salaryExpectationVnd : null,
+    cvFileName,
     canAct: canViewOpening(viewer.principal, target, member),
     canReadMoney: money,
   };

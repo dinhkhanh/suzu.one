@@ -6,7 +6,7 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { and, between, inArray, isNull } from "drizzle-orm";
-import { approvalFlow, assetCategory, attendancePolicy, payComponent, payrollPolicy, companyValue, documentTemplate, kbTemplate, kpiDefinition, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, recruitPipeline, recruitPipelineStage, requestType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
+import { approvalFlow, assetCategory, attendancePolicy, payComponent, payrollPolicy, companyValue, documentTemplate, kbTemplate, kpiDefinition, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, recruitEmailTemplate, recruitPipeline, recruitPipelineStage, requestType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
 import { PROFILE_SEED } from "../src/modules/attendance/engine/device-log";
 import { CALENDAR_SEED, DEFAULT_POLICY_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 import { leaveSeedRows } from "../src/modules/leave/seed-types";
@@ -22,6 +22,8 @@ import { PAY_COMPONENT_SEED_VALID_FROM, payComponentSeedRows } from "../src/modu
 import { REQUEST_TYPE_SEED } from "../src/modules/requests/seed-types";
 import { CATEGORY_SEED } from "../src/modules/assets/seed-categories";
 import { PIPELINE_SEED, pipelineSeedProblems } from "../src/modules/recruit/seed-pipelines";
+import { EMAIL_TEMPLATE_SEED } from "../src/modules/recruit/seed-email-templates";
+import { emailTemplateProblems } from "../src/modules/recruit/engine/email-template";
 import { DOCUMENT_TEMPLATE_SEED } from "../src/modules/documents/seed-templates";
 import { templateProblems } from "../src/modules/documents/engine/template";
 
@@ -194,6 +196,19 @@ async function main() {
     await db.insert(recruitPipelineStage).values(seed.stages.map((stage, index) => ({ pipelineId: created.id, key: stage.key, name: stage.name, nameEn: stage.nameEn, category: stage.category, sortOrder: index })));
   }
   console.log(`Seeded ${newPipelines.length} hiring pipelines with their stages (existing codes left untouched).`);
+
+  // Candidate email wordings (FR-REC-05): drafts HR will rewrite, which is exactly why they are
+  // rows and not code. Validated first — an unknown placeholder would reach a candidate as braces.
+  const emailTemplateCodes = new Set((await db.select({ code: recruitEmailTemplate.code }).from(recruitEmailTemplate)).map((row) => row.code));
+  const newEmailTemplates = EMAIL_TEMPLATE_SEED.filter((seed) => !emailTemplateCodes.has(seed.code));
+  for (const seed of newEmailTemplates) {
+    for (const draft of [{ subject: seed.subject, body: seed.body }, { subject: seed.subjectEn, body: seed.bodyEn }]) {
+      const problems = emailTemplateProblems(draft);
+      if (problems.length) throw new Error(`email template seed is invalid: ${seed.code} (${problems.join(", ")})`);
+    }
+  }
+  if (newEmailTemplates.length) await db.insert(recruitEmailTemplate).values(newEmailTemplates.map((row) => ({ ...row })));
+  console.log(`Seeded ${newEmailTemplates.length} candidate email templates (existing codes left untouched).`);
 
   // Company values for kudos (FR-COM-03): placeholders, only keys that do not exist yet.
   const valueKeys = new Set((await db.select({ key: companyValue.key }).from(companyValue)).map((row) => row.key));

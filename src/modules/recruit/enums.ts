@@ -127,7 +127,6 @@ export const RECRUIT_EMAIL_PLACEHOLDERS = [
   "company_name",
   "stage_name",
   "sender_name",
-  "sender_title",
   "careers_url",
 ] as const;
 export type RecruitEmailPlaceholder = (typeof RECRUIT_EMAIL_PLACEHOLDERS)[number];

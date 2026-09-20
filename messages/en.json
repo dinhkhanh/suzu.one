@@ -6128,7 +6128,8 @@
       "team": "Hiring team",
       "pipeline": "Pipeline",
       "approved": "Approved heads",
-      "open": "Still open"
+      "open": "Still open",
+      "cv": "CV"
     },
     "status": {
       "draft": "Draft",
@@ -6242,7 +6243,11 @@
       "members": "Hiring team members",
       "addMember": "Add member",
       "person": "Person",
-      "role": "Role"
+      "role": "Role",
+      "code": "Code",
+      "name": "Name",
+      "kind": "Kind",
+      "isActive": "In use"
     },
     "actions": {
       "publish": "Publish",
@@ -6309,7 +6314,14 @@
       "recruit_already_applied": "This candidate has already applied to this opening.",
       "recruit_application_not_found": "Application not found.",
       "recruit_application_closed": "This application has ended and cannot be changed.",
-      "generic": "That did not work. Please check the form."
+      "generic": "That did not work. Please check the form.",
+      "recruit_email_template_not_found": "That wording no longer exists.",
+      "recruit_candidate_no_email": "This candidate has no email address.",
+      "email_template_subject_empty": "The subject cannot be empty.",
+      "email_template_subject_too_long": "The subject is too long.",
+      "email_template_body_empty": "The body cannot be empty.",
+      "email_template_body_too_long": "The body is too long.",
+      "email_template_unknown_placeholder": "The wording names a placeholder this system does not know."
     },
     "duplicates": {
       "title": "Possible matches already on file:",
@@ -6384,6 +6396,36 @@
         "careers_answer_required": "Please answer the required questions.",
         "careers_answer_invalid": "That answer is not valid."
       }
+    },
+    "email": {
+      "title": "Email the candidate",
+      "template": "Wording",
+      "language": "The candidate's language",
+      "send": "Send",
+      "sent": "Queued for delivery to {to}.",
+      "noAddress": "This candidate has no email address, so nothing can be sent.",
+      "description": "What a candidate reads. These are drafts for HR to rewrite, which is why they are rows and not code.",
+      "subject": "Subject",
+      "body": "Body",
+      "placeholders": "Placeholders you may use",
+      "new": "Add a wording"
+    },
+    "board": {
+      "description": "Drag a card to another column, or select several and move them together.",
+      "openingDetails": "Opening details",
+      "selected": "{count} selected",
+      "moveTo": "Move to…",
+      "rejectWith": "Reject with…",
+      "clear": "Clear",
+      "days": "{days} days in this stage",
+      "empty": "Nobody yet",
+      "title": "Pipeline board"
+    },
+    "emailKind": {
+      "invite": "Invitation",
+      "reject": "Rejection",
+      "offer": "Offer",
+      "general": "General"
     }
   }
 }
