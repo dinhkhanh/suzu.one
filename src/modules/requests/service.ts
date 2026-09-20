@@ -15,6 +15,7 @@ import { decideRequest, defineRequestType, getRequest, type RequestTypeDefinitio
 import { can, type Principal } from "@/modules/platform/rbac/policy";
 import { conditionFieldsOf, flowConditionData, type FormDefinition, type FormValues, formProblems, validateSubmission } from "./engine/form";
 import type { RequestCategory } from "./enums";
+import { EXPENSE_CLAIM_CODE, postApprovedClaim } from "./expense-posting";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type RequestTypeRow = typeof schema.requestType.$inferSelect;
@@ -46,8 +47,9 @@ export function genericRequestType(row: Pick<RequestTypeRow, "code" | "form" | "
     // A form was filled in to be read. Nothing generic is ticked off an inbox unopened.
     bulkApprovable: () => false,
     // Whoever may administer request types follows them; approvers and the requester are let in
-    // by the engine itself.
-    canView: (viewer) => can(viewer, "org:manage", {}),
+    // by the engine itself. One exception: an expense claim is a payment, so whoever pays the
+    // company's people may read it — finance cannot settle what it may not see (FR-REQ-03).
+    canView: (viewer, subject) => can(viewer, "org:manage", {}) || (row.code === EXPENSE_CLAIM_CODE && can(viewer, "payroll:pay", subject ?? {})),
   });
 }
 
@@ -132,6 +134,21 @@ export async function setRequestTypeActive(id: string, active: boolean, actorPer
 
 export type FileRequestInput = { code: string; values: FormValues };
 
+/**
+ * What a type that is more than a form adds to a submission (FR-REQ-03: an expense claim's lines).
+ * Everything here is optional; a plain request supplies none of it and behaves exactly as before.
+ */
+export type FileExtras = {
+  /** Overrides the figure the form would derive — a claim adds its lines up rather than trusting a typed total. */
+  amount?: number;
+  /** Stored-file ids to record beside the form's own, so the attachment rule covers them too. */
+  extraFileIds?: readonly string[];
+  /** Merged over what a flow condition may test. */
+  conditionData?: Record<string, unknown>;
+  /** Runs in the same transaction once the submission row exists. */
+  afterInsert?: (tx: Tx, submissionId: string) => Promise<void>;
+};
+
 /** The field a type calls its amount, by convention: the first money field on the form. */
 export function amountFieldOf(form: FormDefinition): string | null {
   return form.fields.find((field) => field.type === "money")?.key ?? null;
@@ -141,9 +158,9 @@ export function amountFieldOf(form: FormDefinition): string | null {
  * One line for inboxes, emails and the Chat card. Built from the answers, never from a field the
  * form marked as holding anything restricted — a summary is read on lock screens.
  */
-function summarize(type: RequestTypeRow, values: FormValues, formatMoney: (amount: number) => string): string {
+function summarize(type: RequestTypeRow, values: FormValues, formatMoney: (amount: number) => string, override?: number): string {
   const amountField = amountFieldOf(type.form);
-  const amount = amountField && typeof values[amountField] === "number" ? (values[amountField] as number) : null;
+  const amount = override ?? (amountField && typeof values[amountField] === "number" ? (values[amountField] as number) : null);
   const firstText = type.form.fields.find((field) => (field.type === "text" || field.type === "textarea") && typeof values[field.key] === "string" && (values[field.key] as string).length > 0);
   const words = firstText ? String(values[firstText.key]).replaceAll(/\s+/g, " ").slice(0, 120) : "";
   return [amount === null ? null : formatMoney(amount), words || null].filter(Boolean).join(" · ") || type.nameVi;
@@ -155,6 +172,7 @@ export async function fileRequest(
   input: FileRequestInput,
   requester: { personId: string; entityId: string | null; departmentId: string | null; teamId: string | null; managerId: string | null },
   formatMoney: (amount: number) => string,
+  extras: FileExtras = {},
 ): Promise<FiledRequest> {
   return db().transaction(async (tx) => {
     const type = await findRequestTypeByCode(input.code, tx);
@@ -166,8 +184,11 @@ export async function fileRequest(
     if (problems.length > 0) throw new ActionError(`form_value_${problems[0].problem}`, problems);
 
     const amountField = amountFieldOf(type.form);
-    const amount = amountField && typeof values[amountField] === "number" ? Math.round(values[amountField] as number) : null;
-    const fileIds = type.form.fields.filter((field) => field.type === "file").flatMap((field) => (Array.isArray(values[field.key]) ? (values[field.key] as string[]) : []));
+    const amount = extras.amount ?? (amountField && typeof values[amountField] === "number" ? Math.round(values[amountField] as number) : null);
+    const fileIds = [
+      ...type.form.fields.filter((field) => field.type === "file").flatMap((field) => (Array.isArray(values[field.key]) ? (values[field.key] as string[]) : [])),
+      ...(extras.extraFileIds ?? []),
+    ];
 
     const definition = genericRequestType(type);
     const { request, outcome } = await submitRequest(tx, definition, {
@@ -177,9 +198,9 @@ export async function fileRequest(
       subjectPersonId: requester.personId,
       subjectType: "request_type",
       subjectId: type.id,
-      summary: summarize(type, values, formatMoney),
+      summary: summarize(type, values, formatMoney, extras.amount),
       // Answers live in the submission row; the engine's payload carries only what a flow tests.
-      payload: flowConditionData(type.form, values) as SubmitInput["payload"],
+      payload: { ...flowConditionData(type.form, values), ...extras.conditionData } as SubmitInput["payload"],
       link: (requestId) => `/approvals/request/${requestId}`,
     });
 
@@ -187,12 +208,13 @@ export async function fileRequest(
       .insert(schema.requestSubmission)
       .values({ approvalRequestId: request.id, requestTypeId: type.id, typeCode: type.code, values, attachmentFileIds: fileIds.length ? fileIds : null, amount })
       .returning({ id: schema.requestSubmission.id });
+    await extras.afterInsert?.(tx, submission.id);
     return { requestId: request.id, submissionId: submission.id, outcome };
   });
 }
 
 /** After "return for changes": the requester corrects the answers and sends it round again. */
-export async function refileRequest(requestId: string, actorPersonId: string, values: FormValues, formatMoney: (amount: number) => string): Promise<{ requestId: string }> {
+export async function refileRequest(requestId: string, actorPersonId: string, values: FormValues, formatMoney: (amount: number) => string, extras: FileExtras = {}): Promise<{ requestId: string }> {
   return db().transaction(async (tx) => {
     const loaded = await loadSubmission(requestId, tx);
     if (!loaded) throw new ActionError("approval_not_found");
@@ -201,16 +223,20 @@ export async function refileRequest(requestId: string, actorPersonId: string, va
     if (problems.length > 0) throw new ActionError(`form_value_${problems[0].problem}`, problems);
 
     const amountField = amountFieldOf(type.form);
-    const amount = amountField && typeof clean[amountField] === "number" ? Math.round(clean[amountField] as number) : null;
-    const fileIds = type.form.fields.filter((field) => field.type === "file").flatMap((field) => (Array.isArray(clean[field.key]) ? (clean[field.key] as string[]) : []));
+    const amount = extras.amount ?? (amountField && typeof clean[amountField] === "number" ? Math.round(clean[amountField] as number) : null);
+    const fileIds = [
+      ...type.form.fields.filter((field) => field.type === "file").flatMap((field) => (Array.isArray(clean[field.key]) ? (clean[field.key] as string[]) : [])),
+      ...(extras.extraFileIds ?? []),
+    ];
 
     await tx
       .update(schema.requestSubmission)
       .set({ values: clean, amount, attachmentFileIds: fileIds.length ? fileIds : null, updatedAt: new Date() })
       .where(eq(schema.requestSubmission.id, submission.id));
+    await extras.afterInsert?.(tx, submission.id);
     await resubmitRequest(tx, genericRequestType(type), requestId, actorPersonId, {
-      summary: summarize(type, clean, formatMoney),
-      payload: flowConditionData(type.form, clean) as SubmitInput["payload"],
+      summary: summarize(type, clean, formatMoney, extras.amount),
+      payload: { ...flowConditionData(type.form, clean), ...extras.conditionData } as SubmitInput["payload"],
     });
     return { requestId };
   });
@@ -225,7 +251,13 @@ export async function decideGenericRequest(requestId: string, actorPersonId: str
   return db().transaction(async (tx) => {
     const loaded = await loadSubmission(requestId, tx);
     if (!loaded) throw new ActionError("approval_not_found");
-    return decideRequest(tx, genericRequestType(loaded.type), requestId, actorPersonId, decision);
+    const decided = await decideRequest(tx, genericRequestType(loaded.type), requestId, actorPersonId, decision);
+    // One type does have an effect: an approved expense claim becomes money in a payroll run. It
+    // happens in this transaction, so a claim is never approved without being offered to payroll.
+    if (decided.outcome === "approved" && loaded.type.code === EXPENSE_CLAIM_CODE) {
+      await postApprovedClaim(tx, { submissionId: loaded.submission.id, personId: decided.request.requesterPersonId, entityId: decided.request.entityId, amount: loaded.submission.amount ?? 0 }, actorPersonId);
+    }
+    return decided;
   });
 }
 

@@ -46,6 +46,21 @@ const SEEDS: Seed[] = [
   { code: "PENALTY", name: "Khấu trừ vi phạm", nameEn: "Penalty", kind: "deduction", category: "penalty", source: "input" },
   { code: "ASSET_COMPENSATION", name: "Bồi thường tài sản", nameEn: "Asset compensation", kind: "deduction", category: "asset_compensation", source: "input" },
   { code: "LOAN_REPAYMENT", name: "Trả nợ vay công ty", nameEn: "Loan repayment", kind: "deduction", category: "loan", source: "input" },
+  // Phase 6 (FR-REQ-03): an approved expense claim is paid back through the month's run. It is a
+  // refund of the employee's own money, so it is not income — not taxed, not insured, and never
+  // pro-rated by attendance. The chief accountant confirms the treatment.
+  {
+    code: "EXPENSE_REIMBURSE",
+    name: "Hoàn ứng chi phí",
+    nameEn: "Expense reimbursement",
+    kind: "earning",
+    category: "other",
+    source: "input",
+    taxTreatment: "exempt",
+    subjectToInsurance: false,
+    proration: "fixed",
+    note: "Hoàn lại tiền người lao động đã chi hộ công ty theo đề nghị thanh toán chi phí đã duyệt — không phải thu nhập chịu thuế, không tính bảo hiểm. Kế toán trưởng xác nhận.",
+  },
   { code: "INS_BHXH_ER", name: "BHXH (công ty đóng)", nameEn: "Social insurance (employer)", kind: "employer_cost", category: "insurance", source: "engine" },
   { code: "INS_BHYT_ER", name: "BHYT (công ty đóng)", nameEn: "Health insurance (employer)", kind: "employer_cost", category: "insurance", source: "engine" },
   { code: "INS_BHTN_ER", name: "BHTN (công ty đóng)", nameEn: "Unemployment insurance (employer)", kind: "employer_cost", category: "insurance", source: "engine" },

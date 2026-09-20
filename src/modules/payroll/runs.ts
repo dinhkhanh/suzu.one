@@ -104,6 +104,37 @@ export async function removeRunInput(runId: string, personId: string, code: stri
 /** Until a run is proposed it may still be changed and recalculated; after that it is evidence. */
 export const isOpenForEditing = (run: PayrollRunRow): boolean => run.status === "draft" || run.status === "calculated";
 
+/**
+ * What another module may know about a run: which month it is and how far it has got. Ids, a month
+ * and a status — never a figure, and never who is in it.
+ */
+export type RunHandle = { id: string; entityId: string; month: string; status: PayrollRunRow["status"]; openForEditing: boolean };
+
+const handleOf = (run: PayrollRunRow): RunHandle => ({ id: run.id, entityId: run.entityId, month: run.month, status: run.status, openForEditing: isOpenForEditing(run) });
+
+/**
+ * The run a figure typed in today would land in: the entity's **earliest** regular run that is
+ * still open for editing — earliest, so something waiting to be paid goes into the month that pays
+ * soonest rather than sitting out a cycle. `null` = nothing is open, and the caller waits.
+ *
+ * This is how a module outside payroll (an approved expense claim, FR-REQ-03) finds somewhere to
+ * put a payment without knowing anything about runs.
+ */
+export async function findOpenRegularRun(entityId: string, executor: Executor = db()): Promise<RunHandle | null> {
+  const rows = await executor
+    .select()
+    .from(schema.payrollRun)
+    .where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.kind, "regular"), inArray(schema.payrollRun.status, ["draft", "calculated"])))
+    .orderBy(schema.payrollRun.month);
+  return rows.length > 0 ? handleOf(rows[0]) : null;
+}
+
+/** One run's handle, for a caller holding an id it stored earlier. */
+export async function getRunHandle(runId: string, executor: Executor = db()): Promise<RunHandle | null> {
+  const run = await getRun(runId, executor);
+  return run ? handleOf(run) : null;
+}
+
 // ── Creating and calculating ────────────────────────────────────────────────────────────────
 
 /**

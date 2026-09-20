@@ -258,4 +258,35 @@ export const REQUEST_TYPE_SEED: RequestTypeSeed[] = [
     slaEscalateAfterDays: 3,
     slaEscalateTo: { rule: "manager_level", level: 2 },
   },
+  {
+    // FR-REQ-03. The only seeded type whose approval *does* something: it becomes a line in the
+    // entity's open payroll run. Its figure is the lines added up, so the form asks for no total —
+    // the money field a generic type would carry is deliberately absent here.
+    code: "expense_claim",
+    nameVi: "Đề nghị thanh toán chi phí",
+    nameEn: "Expense claim",
+    descriptionVi: "Hoàn lại tiền bạn đã chi hộ công ty. Kê từng khoản kèm hóa đơn; tiền được trả cùng kỳ lương gần nhất.",
+    descriptionEn: "Money you spent on the company's behalf. List each item with its receipt; it is paid back in the next payroll run.",
+    category: "finance",
+    icon: "receipt",
+    sortOrder: 35,
+    form: {
+      fields: [
+        { key: "title", type: "text", labelVi: "Nội dung đề nghị", labelEn: "What the claim is for", required: true, minLength: 3, maxLength: 160, hintVi: "Ví dụ: Công tác Đà Nẵng 12–14/09", hintEn: "For example: Da Nang trip, 12–14 September" },
+        { key: "project_tag", type: "text", labelVi: "Dự án / khách hàng", labelEn: "Project or client", maxLength: 60 },
+        { key: "note", type: "textarea", labelVi: "Ghi chú cho người duyệt", labelEn: "Note for the approver", maxLength: 2000 },
+      ],
+    },
+    flow: {
+      steps: [
+        { key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] },
+        // Finance settles it, so finance sees every claim — not only the large ones.
+        { key: "finance", mode: "any", approvers: [finance] },
+        { key: "ceo", mode: "any", approvers: [ceo], condition: { field: "amount", op: "gt", value: CEO_THRESHOLD } },
+      ],
+    },
+    slaRemindAfterDays: 2,
+    slaEscalateAfterDays: 5,
+    slaEscalateTo: { rule: "manager_level", level: 2 },
+  },
 ];

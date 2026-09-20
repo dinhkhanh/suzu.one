@@ -11,3 +11,10 @@ export { canApprovePayroll, canManageCompensation, canPayPayroll, canReadPayroll
 export { getRunMilestone, hasReached, isPayrollPeriodLocked, listRunMilestones, type RunMilestone, type RunStatus } from "./lifecycle";
 /** Off-cycle runs are how Phase 8's year-end bonus is paid (FR-PAY-21, FR-PAY-19). */
 export { createOffCycleRun } from "./runs";
+/**
+ * Paying something that payroll did not work out for itself (FR-REQ-03: an approved expense
+ * claim). The caller finds the entity's open run, types its figure in under a pay component, and
+ * takes it out again if what it was for goes away. It never reads a figure back: `RunHandle`
+ * carries ids, a month and a status and nothing else, so no amount leaves payroll this way.
+ */
+export { findOpenRegularRun, getRunHandle, removeRunInput, type RunHandle, setRunInput } from "./runs";

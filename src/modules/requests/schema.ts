@@ -5,10 +5,13 @@
 // A submission is an `approval_request` like any other — inbox, delegation, history and bulk
 // approve all work untouched. This table holds only what the engine has no business knowing: the
 // answers, the attachments, and the figure a report adds up.
-import { bigint, boolean, index, jsonb, pgTable, smallint, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { bigint, boolean, date, index, jsonb, pgTable, smallint, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { payrollRun } from "../payroll/schema";
 import { approvalRequest } from "../platform/approvals/schema";
+import { storedFile } from "../platform/files/schema";
 import { entity } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
+import type { ExpenseCategory } from "./engine/expense";
 import type { FormDefinition } from "./engine/form";
 
 export const requestType = pgTable(
@@ -66,4 +69,59 @@ export const requestSubmission = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [unique("request_submission_approval_key").on(t.approvalRequestId), index("request_submission_type_idx").on(t.requestTypeId, t.createdAt)],
+).enableRLS();
+
+// ── Expense claims (FR-REQ-03) ──────────────────────────────────────────────────────────────
+//
+// A claim *is* a submission — the form, the flow, the inbox, the SLA clock and the deep links all
+// come from the builder. These two tables hold the only things a generic form cannot express: the
+// lines it is made of, and the fact that it was handed to payroll.
+
+export const expenseClaimLine = pgTable(
+  "expense_claim_line",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    submissionId: uuid("submission_id")
+      .notNull()
+      .references(() => requestSubmission.id, { onDelete: "cascade" }),
+    // The day the money was spent, not the day the claim was filed.
+    lineDate: date("line_date").notNull(),
+    category: text("category").$type<ExpenseCategory>().notNull(),
+    description: text("description").notNull(),
+    // Whole đồng, always positive. Not encrypted: a person's own out-of-pocket spend is `personal`,
+    // not compensation — it buys a taxi, it does not say what anybody earns.
+    amount: bigint("amount", { mode: "number" }).notNull(),
+    receiptFileId: uuid("receipt_file_id").references(() => storedFile.id),
+    // The project, client or job the spend belongs to. Free text: no project register exists yet.
+    projectTag: text("project_tag"),
+    sortOrder: smallint("sort_order").notNull().default(0),
+  },
+  (t) => [index("expense_claim_line_submission_idx").on(t.submissionId, t.sortOrder)],
+).enableRLS();
+
+/**
+ * One claim handed to one payroll run. **The unique key on `submission_id` is what makes paying a
+ * claim twice impossible** — not a check in the service, which two approvals landing together
+ * would both pass. Removing the row (a cancelled run) puts the claim back to waiting, which is why
+ * the posting is a row of its own rather than a column on the submission.
+ */
+export const expenseClaimPosting = pgTable(
+  "expense_claim_posting",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    submissionId: uuid("submission_id")
+      .notNull()
+      .references(() => requestSubmission.id, { onDelete: "cascade" }),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => payrollRun.id),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    // Repeated from the lines so the run's figure can be rebuilt without reading them all back.
+    amount: bigint("amount", { mode: "number" }).notNull(),
+    postedAt: timestamp("posted_at", { withTimezone: true }).notNull().defaultNow(),
+    postedByPersonId: uuid("posted_by_person_id").references(() => person.id),
+  },
+  (t) => [unique("expense_claim_posting_submission_key").on(t.submissionId), index("expense_claim_posting_run_idx").on(t.runId, t.personId)],
 ).enableRLS();
