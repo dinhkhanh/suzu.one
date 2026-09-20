@@ -6,6 +6,7 @@ import { listProfileChanges } from "@/modules/core-hr/change-requests";
 import { getPersonView } from "@/modules/core-hr/service";
 import { ChangeRequestForm } from "@/modules/core-hr/ui/change-request-forms";
 import { ResignationForm } from "@/modules/core-hr/ui/lifecycle-forms";
+import { PersonEquipment } from "@/modules/assets/ui/person-equipment";
 import { LifecycleSection } from "@/modules/core-hr/ui/lifecycle-section";
 import { RecordSections } from "@/modules/core-hr/ui/record-sections";
 import { listRequestsAbout } from "@/modules/platform/approvals/service";
@@ -90,6 +91,7 @@ export default async function MyProfilePage() {
 
       <RecordSections principal={user.principal} personId={user.person.id} />
       <LifecycleSection principal={user.principal} personId={user.person.id} canManage={false} employed />
+      <PersonEquipment principal={user.principal} personId={user.person.id} />
       <ResignationBlock personId={user.person.id} />
     </div>
   );

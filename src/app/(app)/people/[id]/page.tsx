@@ -11,6 +11,7 @@ import { getPersonView, loadPlacementOptions, peopleModuleOpen } from "@/modules
 import { AssignmentForm } from "@/modules/core-hr/ui/assignment-form";
 import { EditPersonForm } from "@/modules/core-hr/ui/edit-person-form";
 import { RehireForm } from "@/modules/core-hr/ui/lifecycle-forms";
+import { PersonEquipment } from "@/modules/assets/ui/person-equipment";
 import { LifecycleSection } from "@/modules/core-hr/ui/lifecycle-section";
 import { RecordSections } from "@/modules/core-hr/ui/record-sections";
 import { RequestTable } from "@/modules/platform/approvals/ui/request-views";
@@ -151,6 +152,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
           </section>
 
           <LifecycleSection principal={user.principal} personId={person.id} canManage={person.canManage} employed={personal.endDate === null} />
+          <PersonEquipment principal={user.principal} personId={person.id} />
           {/* A former employee comes back on the same record (FR-CHR-16). */}
           {person.canManage && personal.status === "offboarded" ? (
             <RehireForm

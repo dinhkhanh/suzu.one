@@ -987,7 +987,15 @@
       "amount_negative": "Số tiền không được âm.",
       "bad_month_count": "Số tháng phải từ 0 đến 12.",
       "tax_without_income": "Có thuế đã khấu trừ nhưng thu nhập chịu thuế bằng 0.",
-      "reference_does_not_balance": "Thực nhận không khớp với tổng thu nhập trừ các khoản khấu trừ trong chính file này."
+      "reference_does_not_balance": "Thực nhận không khớp với tổng thu nhập trừ các khoản khấu trừ trong chính file này.",
+      "unknown_category": "Không có nhóm tài sản với mã này",
+      "unknown_entity": "Không có pháp nhân với mã này",
+      "entity_not_allowed": "Bạn không quản lý tài sản của pháp nhân này",
+      "code_taken": "Mã tài sản đã tồn tại",
+      "serial_taken": "Số sê-ri đã tồn tại",
+      "serial_required": "Nhóm này bắt buộc có số sê-ri",
+      "unknown_holder": "Không tìm thấy nhân sự đang làm việc với mã hoặc email này",
+      "negative_price": "Nguyên giá không được âm"
     },
     "errors": {
       "import_file_type": "Chỉ nhận file .xlsx hoặc .csv.",
@@ -5747,6 +5755,25 @@
       "asset_assignment_not_found": "Không tìm thấy lượt giao tài sản.",
       "asset_assignment_closed": "Lượt giao này đã kết thúc.",
       "asset_handover_already_confirmed": "Bạn đã xác nhận nhận tài sản này rồi."
+    },
+    "person": {
+      "title": "Thiết bị đang giữ",
+      "empty": "Không giữ thiết bị nào của công ty.",
+      "since": "nhận từ {date}",
+      "dueBack": "hẹn trả {date}",
+      "unconfirmed": "chưa xác nhận nhận"
+    },
+    "import": {
+      "title": "Nhập tài sản từ tệp",
+      "description": "Chuyển sổ tài sản từ bảng tính sang hệ thống. Tệp được kiểm tra trước, không có gì được ghi cho tới khi bạn xác nhận.",
+      "back": "Về sổ tài sản",
+      "wizard": "Tệp tài sản",
+      "notes": {
+        "newOnly": "Chỉ thêm mới: mã tài sản đã có trong hệ thống sẽ báo lỗi chứ không ghi đè.",
+        "code": "Để trống cột Mã tài sản thì hệ thống tự đánh số tiếp theo pháp nhân và nhóm.",
+        "holder": "Cột Người giữ nhận mã nhân viên hoặc email công việc; hệ thống sẽ mở luôn lượt giao và vẫn chờ người đó xác nhận.",
+        "serial": "Nhóm tài sản có bật \"bắt buộc số sê-ri\" thì dòng thiếu sê-ri sẽ báo lỗi."
+      }
     }
   }
 }

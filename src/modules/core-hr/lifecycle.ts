@@ -6,6 +6,9 @@ import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { toSearchKey } from "@/lib/text";
+// The register decides what happens to a leaver's equipment; reached through its barrel, which is
+// the boundary the module rule allows.
+import { cancelReturnTasks, openReturnTasks } from "@/modules/assets/service";
 import { canReadTier, type Principal } from "@/modules/platform/rbac/policy";
 import { endRoleGrantsOf, restoreRoleGrants } from "@/modules/platform/rbac/service";
 import { cancelOpenTasksOfContext } from "@/modules/platform/tasks-engine/service";
@@ -89,8 +92,12 @@ export async function terminateEmployment(personId: string, input: TerminationIn
       await tx.update(schema.lifecycleEvent).set({ status: "applied", updatedAt: new Date() }).where(and(eq(schema.lifecycleEvent.id, input.resignationEventId), eq(schema.lifecycleEvent.personId, personId), eq(schema.lifecycleEvent.type, "resignation")));
     }
     const { tasks } = await startChecklist(tx, event, "offboarding", { departmentId: current?.departmentId ?? null, positionId: current?.positionId ?? null }, actorPersonId);
+    // Whatever the leaver is still holding becomes one return task each, due by the last working
+    // day, beside the checklist's own "collect the equipment" step (FR-AST-02). What happens to a
+    // camera is the register's business, so it decides who collects it and what it is called.
+    const returns = await openReturnTasks(tx, personId, input.lastDay, actorPersonId);
     const offboardedNow = (await offboardLeavers(today, personId, tx)) > 0;
-    return { employment: ended, before: employment, event, tasks, closed, offboardedNow };
+    return { employment: ended, before: employment, event, tasks, closed, offboardedNow, returns };
   });
 }
 
@@ -108,8 +115,10 @@ export async function cancelTermination(eventId: string) {
     if (closed.contracts.length) await tx.update(schema.contract).set({ terminatedOn: null, updatedAt: new Date() }).where(inArray(schema.contract.id, closed.contracts));
     await restoreRoleGrants(tx, closed.grants);
     const cancelledTasks = await cancelOpenTasksOfContext(tx, { type: LIFECYCLE_CONTEXT, id: event.id });
+    // The equipment is not going back after all. Anything already handed in stays handed in.
+    const cancelledReturns = await cancelReturnTasks(tx, event.personId);
     const [after] = await tx.update(schema.lifecycleEvent).set({ status: "cancelled", updatedAt: new Date() }).where(eq(schema.lifecycleEvent.id, event.id)).returning();
-    return { before: event, after, employment, cancelledTasks };
+    return { before: event, after, employment, cancelledTasks, cancelledReturns };
   });
 }
 

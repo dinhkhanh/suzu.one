@@ -987,7 +987,15 @@
       "amount_negative": "An amount cannot be negative.",
       "bad_month_count": "The number of months must be between 0 and 12.",
       "tax_without_income": "Tax was withheld but the taxable income is zero.",
-      "reference_does_not_balance": "The net does not equal gross less the deductions in this same file."
+      "reference_does_not_balance": "The net does not equal gross less the deductions in this same file.",
+      "unknown_category": "No asset category with this code",
+      "unknown_entity": "No entity with this code",
+      "entity_not_allowed": "You do not keep the register for this entity",
+      "code_taken": "That asset code already exists",
+      "serial_taken": "That serial number already exists",
+      "serial_required": "This category requires a serial number",
+      "unknown_holder": "No active person with that code or email",
+      "negative_price": "The purchase price cannot be negative"
     },
     "errors": {
       "import_file_type": "Only .xlsx and .csv files are accepted.",
@@ -5747,6 +5755,25 @@
       "asset_assignment_not_found": "Assignment not found.",
       "asset_assignment_closed": "That assignment has already ended.",
       "asset_handover_already_confirmed": "You have already confirmed receipt of this asset."
+    },
+    "person": {
+      "title": "Equipment held",
+      "empty": "Holds no company equipment.",
+      "since": "since {date}",
+      "dueBack": "due back {date}",
+      "unconfirmed": "receipt not confirmed"
+    },
+    "import": {
+      "title": "Import assets",
+      "description": "Move the equipment register out of the spreadsheet. The file is checked first; nothing is written until you confirm.",
+      "back": "Back to the register",
+      "wizard": "Asset file",
+      "notes": {
+        "newOnly": "New assets only: a code already on the books is a problem row, not an update.",
+        "code": "Leave the code column empty and the register numbers the asset from its entity and category.",
+        "holder": "The holder column takes an employee code or work email; the assignment is opened and still waits for that person to confirm.",
+        "serial": "A category with \"serial number required\" turned on rejects a row without one."
+      }
     }
   }
 }
