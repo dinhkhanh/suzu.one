@@ -69,6 +69,8 @@ export { findResult, findResultById, getFinalResult, getPublishedResult, listFin
  * scores it was computed from, and `reopenMonth` then refuses to take those months back.
  */
 export { consumedMonths, isMonthConsumed, isYearConsumed, type KpiScoreUseRow, markScoresConsumed, monthConsumers, releaseConsumedScores, type ScoreUse } from "./consumption";
+/** Exported beside them so the refusal can be exercised from outside: a consumed month never reopens. */
+export { reopenMonth } from "./kpi-scores";
 
 // ── The evidence panel (week 2, FR-PRF-07) ──────────────────────────────────────────────────
 export { loadReviewEvidence, type ReviewEvidence } from "./evidence";

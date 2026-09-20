@@ -25,10 +25,7 @@ import { eq } from "drizzle-orm";
 import { fieldCipher } from "@/lib/crypto";
 import { db, schema } from "@/lib/db";
 import { hirePerson } from "@/modules/core-hr/service";
-import { DEFAULT_PERFORMANCE_WEIGHTING } from "@/modules/performance/enums";
-import { finalResult } from "@/modules/performance/engine/result";
-import { isMonthConsumed, isYearConsumed } from "@/modules/performance/consumption";
-import { reopenMonth } from "@/modules/performance/kpi-scores";
+import { DEFAULT_PERFORMANCE_WEIGHTING, finalResult, isMonthConsumed, isYearConsumed, reopenMonth } from "@/modules/performance/service";
 import { STATUTORY_SEED } from "@/modules/platform/statutory/seed-values";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { createBonusRun, getBonusCost, getBonusLine, listBonusLines, listBonusRunEvents, overrideBonusLine, payBonusRun, simulateBonusRun, simulateWhatIf, stepBonusRun } from "./bonus";
@@ -109,7 +106,7 @@ beforeAll(async () => {
   ids.entity = entity.id;
   ids.actor = actor.id;
 
-  const hire = async (name: string, startDate: string, workforceType = "employee") => {
+  const hire = async (name: string, startDate: string, workforceType: "employee" | "collaborator" = "employee") => {
     const { person } = await hirePerson(
       {
         fullName: name,

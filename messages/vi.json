@@ -3689,7 +3689,8 @@
       "overview": "Toàn cảnh",
       "admin": "Quản trị KPI",
       "reviews": "Đánh giá",
-      "results": "Kết quả năm"
+      "results": "Kết quả năm",
+      "oneOnOnes": "Gặp 1:1"
     },
     "period": {
       "annual": "Năm {year}",
@@ -4465,6 +4466,73 @@
         "result_nothing_scored": "Chưa có thành phần nào có số liệu, không chốt được.",
         "result_consumed": "Năm này đã dùng để tính thưởng, không mở lại được."
       }
+    },
+    "oneOnOnes": {
+      "title": "Gặp 1:1",
+      "description": "Chương trình chung, ghi chú chung và ghi chú riêng của quản lý. Việc cần làm trở thành công việc thật.",
+      "new": "Buổi mới",
+      "empty": "Chưa có buổi nào.",
+      "with": "Với {name}",
+      "meetingOn": "Ngày",
+      "person": "Nhân sự",
+      "agenda": "Chương trình",
+      "sharedNotes": "Ghi chú chung",
+      "privateNotes": "Ghi chú riêng của quản lý",
+      "privateHint": "Người được đánh giá không bao giờ đọc phần này.",
+      "status": {
+        "draft": "Nháp",
+        "shared": "Đã chia sẻ"
+      },
+      "share": "Chia sẻ với nhân sự",
+      "save": "Lưu",
+      "saved": "Đã lưu.",
+      "actions": {
+        "title": "Việc cần làm",
+        "add": "Thêm việc",
+        "titleField": "Nội dung",
+        "assignee": "Người làm",
+        "dueOn": "Hạn",
+        "empty": "Chưa có việc nào.",
+        "complete": "Đánh dấu xong",
+        "task": "Đã tạo công việc"
+      },
+      "outcomes": {
+        "title": "Đề xuất sau đánh giá",
+        "type": {
+          "promotion": "Đề bạt",
+          "salary_adjustment": "Điều chỉnh lương",
+          "development_plan": "Kế hoạch phát triển",
+          "pip": "Kế hoạch cải thiện"
+        },
+        "status": {
+          "proposed": "Chờ HR",
+          "accepted": "Đã chấp nhận",
+          "rejected": "Đã từ chối"
+        },
+        "salaryHint": "Điều chỉnh lương đi qua quy trình duyệt lương của bảng lương, không ghi ở đây.",
+        "empty": "Chưa có đề xuất nào.",
+        "typeLabel": "Loại đề xuất",
+        "raise": "Gửi đề xuất",
+        "note": "Ghi chú",
+        "validFrom": "Hiệu lực từ (nếu điều chỉnh lương)",
+        "baseSalary": "Lương gốc đề xuất (đ)",
+        "insuranceSalary": "Lương đóng bảo hiểm (đ)"
+      },
+      "errors": {
+        "generic": "Không thực hiện được.",
+        "forbidden": "Bạn không có quyền với buổi này.",
+        "one_on_one_not_found": "Không tìm thấy buổi gặp.",
+        "one_on_one_with_self": "Không thể tạo buổi 1:1 với chính mình.",
+        "one_on_one_shared": "Buổi này đã được chia sẻ.",
+        "one_on_one_action_not_found": "Không tìm thấy việc cần làm.",
+        "outcome_not_found": "Không tìm thấy đề xuất.",
+        "outcome_decided": "Đề xuất đã được quyết định.",
+        "outcome_type_unknown": "Loại đề xuất không hợp lệ.",
+        "result_not_found": "Không tìm thấy kết quả năm.",
+        "result_not_locked": "Kết quả năm chưa được chốt.",
+        "salary_terms_required": "Cần nhập mức lương đề xuất và ngày hiệu lực.",
+        "salary_change_open": "Nhân sự này đang có một đề xuất lương chờ duyệt."
+      }
     }
   },
   "kb": {
@@ -4938,6 +5006,10 @@
       "ytd": {
         "title": "Số liệu luỹ kế",
         "description": "Nhập thu nhập và thuế của các tháng hệ thống chưa chạy."
+      },
+      "bonus": {
+        "title": "Thưởng cuối năm",
+        "description": "Thưởng tháng 13 theo kết quả KPI và OKR: mô phỏng chi phí, trình duyệt, chi qua kỳ lương ngoài kỳ."
       }
     },
     "salaries": {
@@ -5844,6 +5916,194 @@
       "empty": "Chưa có số liệu luỹ kế nào cho năm {year}.",
       "importHint": "File cho năm {year}: mỗi nhân viên một dòng. Nhập lại sẽ thay thế dòng cũ của người đó.",
       "wizard": "Nhập số liệu luỹ kế"
+    },
+    "bonus": {
+      "title": "Thưởng cuối năm",
+      "description": "Thưởng tháng 13 tính theo kết quả KPI và OKR của từng người (FR-PAY-21).",
+      "back": "Bảng lương",
+      "empty": "Chưa có đợt thưởng nào.",
+      "hidden": "—",
+      "runYear": "Năm {year}",
+      "payrollMonth": "Chi vào kỳ lương {month}",
+      "headcount": "{count} người, {eligible} đủ điều kiện",
+      "approvedAt": "CEO duyệt ngày {at}",
+      "status": {
+        "draft": "Nháp",
+        "simulated": "Đã mô phỏng",
+        "proposed": "Đã trình",
+        "approved": "Đã duyệt",
+        "paid": "Đã chi",
+        "cancelled": "Đã hủy"
+      },
+      "new": {
+        "title": "Tạo đợt thưởng",
+        "hint": "Một đợt cho cả tập đoàn: chi phí được mô phỏng trên mọi pháp nhân trước khi trình.",
+        "year": "Năm thưởng",
+        "name": "Tên đợt",
+        "defaultName": "Thưởng cuối năm {year}",
+        "payrollMonth": "Kỳ lương chi trả",
+        "entities": "Pháp nhân",
+        "entitiesHint": "Mỗi pháp nhân sẽ có một kỳ lương ngoài kỳ riêng khi chi.",
+        "submit": "Tạo đợt"
+      },
+      "cost": {
+        "title": "Chi phí",
+        "hint": "Tổng chi phí trước khi cam kết bất cứ điều gì.",
+        "total": "Tổng cộng",
+        "beforeOverrides": "Trước điều chỉnh của chủ sở hữu"
+      },
+      "steps": {
+        "simulate": "Tính lại",
+        "propose": "Trình CEO",
+        "approve": "Duyệt",
+        "return": "Trả lại HR",
+        "cancel": "Hủy đợt",
+        "pay": "Chi qua kỳ lương ngoài kỳ",
+        "payHint": "Tạo một kỳ lương ngoài kỳ cho mỗi pháp nhân; thuế, bảo hiểm và phiếu lương do bảng lương lo.",
+        "comment": "Ghi chú",
+        "reason": "Lý do trả lại"
+      },
+      "lines": {
+        "title": "Từng người",
+        "person": "Nhân sự",
+        "band": "Xếp loại",
+        "multiplier": "Hệ số",
+        "computed": "Theo công thức",
+        "final": "Thực nhận",
+        "overridden": "(đã điều chỉnh)",
+        "adjustHint": "Mở một dòng để xem toàn bộ cách tính và điều chỉnh số tiền kèm lý do.",
+        "empty": "Chưa tính. Bấm “Tính lại” để dựng danh sách."
+      },
+      "override": {
+        "title": "Chủ sở hữu điều chỉnh",
+        "hint": "Số tiền theo công thức vẫn được giữ nguyên bên cạnh; lý do là phần bắt buộc.",
+        "amount": "Số tiền (đ)",
+        "reason": "Lý do",
+        "clearHint": "Để trống số tiền để bỏ điều chỉnh.",
+        "save": "Lưu điều chỉnh",
+        "saved": "Đã lưu."
+      },
+      "events": {
+        "title": "Nhật ký",
+        "empty": "Chưa có bước nào."
+      },
+      "whatIf": {
+        "title": "Thử bảng hệ số khác",
+        "hint": "Xem tổng chi phí nếu áp dụng một quy chế khác. Không lưu gì cả.",
+        "submit": "Tính thử",
+        "total": "Tổng cộng"
+      },
+      "scheme": {
+        "link": "Quy chế thưởng",
+        "title": "Quy chế thưởng cuối năm",
+        "description": "Công thức thưởng là cấu hình có hiệu lực theo thời gian: C&B đề xuất, chủ sở hữu quyết định.",
+        "groupWide": "Toàn tập đoàn",
+        "empty": "Chưa có phiên bản nào.",
+        "propose": "Đề xuất phiên bản mới",
+        "proposeHint": "Sửa trực tiếp cấu hình dưới dạng JSON; hệ thống kiểm tra lại toàn bộ khi lưu.",
+        "scope": "Phạm vi",
+        "validFrom": "Hiệu lực từ",
+        "note": "Ghi chú",
+        "value": "Cấu hình",
+        "submit": "Đề xuất",
+        "approve": "Duyệt",
+        "reject": "Từ chối",
+        "payComponent": "Khoản chi",
+        "base": "Lương gốc",
+        "cap": "Trần",
+        "rounding": "Làm tròn",
+        "serviceBands": "Thâm niên",
+        "performanceBands": "Hệ số cá nhân",
+        "unitOkr": "Hệ số tập thể",
+        "eligibility": "Điều kiện",
+        "eligibilityValue": "Tối thiểu {months} tháng làm việc; loại trừ: {excluded}",
+        "status": {
+          "proposed": "Chờ duyệt",
+          "approved": "Đang áp dụng",
+          "rejected": "Đã từ chối"
+        },
+        "source": {
+          "result_band": "Theo xếp loại đã công bố (FR-PRF-09)",
+          "scheme_bands": "Theo bảng riêng của quy chế"
+        }
+      },
+      "trace": {
+        "description": "Toàn bộ cách tính, từ điểm KPI và OKR đến số tiền.",
+        "kpi": "Điểm KPI từng tháng",
+        "noKpi": "Không có tháng KPI nào đã chốt.",
+        "kpiFrozen": "{count} tháng đã chốt và bị khóa lại khi đợt thưởng được duyệt.",
+        "kpiYear": "Điểm KPI cả năm",
+        "components": "Ba cấu phần",
+        "okr": "OKR",
+        "review": "Đánh giá",
+        "kpiComponent": "KPI",
+        "weight": "trọng số {weight}",
+        "renormalised": "Một cấu phần không có số liệu; trọng số của nó được chia lại cho các cấu phần còn lại.",
+        "result": "Kết quả năm",
+        "computedScore": "Điểm theo công thức",
+        "resultOverride": "Chủ sở hữu điều chỉnh điểm",
+        "resultOverrideReason": "Lý do: {reason}",
+        "finalScore": "Điểm cuối cùng",
+        "band": "Xếp loại",
+        "source": {
+          "result_band": "Hệ số lấy từ xếp loại đã công bố.",
+          "scheme_bands": "Hệ số lấy từ bảng riêng của quy chế."
+        },
+        "formula": "Công thức",
+        "base": "Lương một tháng",
+        "service": "Hệ số thâm niên",
+        "serviceHint": "{months} tháng — {band}",
+        "performanceFactor": "Hệ số cá nhân",
+        "unitOkr": "Hệ số tập thể",
+        "unitOkrNone": "Quy chế không dùng hệ số tập thể.",
+        "unitOkrHint": "{level}: {progress} — {band}",
+        "combined": "Hệ số tổng",
+        "cap": "Sau khi áp trần",
+        "capHint": "trần {cap}",
+        "rounding": "Sau làm tròn",
+        "roundingHint": "{before} → bội số {unit}",
+        "steps": "Từng bước",
+        "amount": "Số tiền",
+        "computedAmount": "Theo công thức",
+        "overrideAmount": "Chủ sở hữu điều chỉnh",
+        "overrideReason": "Lý do: {reason}",
+        "finalAmount": "Thực nhận",
+        "paidThrough": "Đã chi qua",
+        "offCycleRun": "kỳ lương ngoài kỳ",
+        "exclusion": {
+          "not_active": "Không còn làm việc tại ngày chốt.",
+          "workforce_type": "Loại hình nhân sự không thuộc diện thưởng.",
+          "service_too_short": "Chưa đủ thâm niên tối thiểu.",
+          "no_result": "Chưa có kết quả đánh giá năm được chốt.",
+          "no_band": "Kết quả năm chưa có điểm.",
+          "no_salary": "Chưa có mức lương tại ngày chốt."
+        }
+      },
+      "errors": {
+        "generic": "Không thực hiện được.",
+        "forbidden": "Bạn không có quyền với đợt thưởng này.",
+        "step_up_required": "Vui lòng xác thực lại để tiếp tục.",
+        "bonus_run_not_found": "Không tìm thấy đợt thưởng.",
+        "bonus_run_exists": "Năm này đã có một đợt thưởng đang chạy.",
+        "bonus_run_no_entities": "Chọn ít nhất một pháp nhân.",
+        "bonus_run_not_editable": "Đợt thưởng đã trình, không sửa được nữa.",
+        "bonus_run_empty": "Đợt thưởng chưa có ai. Bấm “Tính lại” trước.",
+        "bonus_run_not_approved": "Đợt thưởng chưa được CEO duyệt.",
+        "bonus_run_nothing_to_pay": "Không có khoản nào để chi.",
+        "bonus_step_not_allowed": "Không thực hiện được bước này ở trạng thái hiện tại.",
+        "bonus_line_not_found": "Không tìm thấy dòng thưởng.",
+        "bonus_scheme_missing": "Chưa có quy chế thưởng cho pháp nhân và năm này.",
+        "bonus_scheme_invalid": "Cấu hình quy chế không hợp lệ.",
+        "scheme_not_json": "Cấu hình không phải JSON hợp lệ.",
+        "comment_required": "Cần nêu lý do.",
+        "reason_required": "Cần nêu lý do điều chỉnh.",
+        "amount_invalid": "Số tiền không hợp lệ.",
+        "proposal_not_found": "Không tìm thấy đề xuất.",
+        "rule_version_exists": "Đã có phiên bản hiệu lực từ ngày này.",
+        "rule_before_current_version": "Ngày hiệu lực phải sau phiên bản hiện hành.",
+        "run_has_no_lines": "Không có khoản nào để chi.",
+        "payroll_period_locked": "Kỳ lương của tháng chi đã khóa sổ."
+      }
     }
   },
   "requests": {

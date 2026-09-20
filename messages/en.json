@@ -3689,7 +3689,8 @@
       "overview": "Overview",
       "admin": "KPI admin",
       "reviews": "Reviews",
-      "results": "Yearly result"
+      "results": "Yearly result",
+      "oneOnOnes": "1:1 meetings"
     },
     "period": {
       "annual": "{year}",
@@ -4465,6 +4466,73 @@
         "result_nothing_scored": "No component has a figure, so there is nothing to lock.",
         "result_consumed": "This year has already been paid from and cannot be reopened."
       }
+    },
+    "oneOnOnes": {
+      "title": "1:1 meetings",
+      "description": "A shared agenda, shared notes, and the manager's own private notes. Action items become real tasks.",
+      "new": "New meeting",
+      "empty": "No meetings yet.",
+      "with": "With {name}",
+      "meetingOn": "Date",
+      "person": "Person",
+      "agenda": "Agenda",
+      "sharedNotes": "Shared notes",
+      "privateNotes": "Manager's private notes",
+      "privateHint": "The person this is about never reads this.",
+      "status": {
+        "draft": "Draft",
+        "shared": "Shared"
+      },
+      "share": "Share with the person",
+      "save": "Save",
+      "saved": "Saved.",
+      "actions": {
+        "title": "Action items",
+        "add": "Add an action",
+        "titleField": "What",
+        "assignee": "Who",
+        "dueOn": "Due",
+        "empty": "No action items yet.",
+        "complete": "Mark done",
+        "task": "Task created"
+      },
+      "outcomes": {
+        "title": "Review outcomes",
+        "type": {
+          "promotion": "Promotion",
+          "salary_adjustment": "Salary adjustment",
+          "development_plan": "Development plan",
+          "pip": "Improvement plan"
+        },
+        "status": {
+          "proposed": "With HR",
+          "accepted": "Accepted",
+          "rejected": "Rejected"
+        },
+        "salaryHint": "A salary adjustment goes through payroll's own approval, never written here.",
+        "empty": "No outcomes yet.",
+        "typeLabel": "Outcome",
+        "raise": "Raise it",
+        "note": "Note",
+        "validFrom": "Valid from (salary adjustment)",
+        "baseSalary": "Proposed base salary (VND)",
+        "insuranceSalary": "Insurance salary (VND)"
+      },
+      "errors": {
+        "generic": "That did not work.",
+        "forbidden": "You may not act on this meeting.",
+        "one_on_one_not_found": "Meeting not found.",
+        "one_on_one_with_self": "You cannot hold a 1:1 with yourself.",
+        "one_on_one_shared": "This meeting has already been shared.",
+        "one_on_one_action_not_found": "Action item not found.",
+        "outcome_not_found": "Outcome not found.",
+        "outcome_decided": "That outcome has already been decided.",
+        "outcome_type_unknown": "Unknown outcome type.",
+        "result_not_found": "Result not found.",
+        "result_not_locked": "The year's result is not settled yet.",
+        "salary_terms_required": "A proposed salary and an effective date are required.",
+        "salary_change_open": "This person already has a salary change waiting."
+      }
     }
   },
   "kb": {
@@ -4938,6 +5006,10 @@
       "ytd": {
         "title": "Year-to-date figures",
         "description": "Import income and tax for months the system did not run."
+      },
+      "bonus": {
+        "title": "Year-end bonus",
+        "description": "The 13th-month bonus from KPI and OKR results: simulate the cost, get it approved, pay it off-cycle."
       }
     },
     "salaries": {
@@ -5844,6 +5916,194 @@
       "empty": "No year-to-date figures for {year} yet.",
       "importHint": "A file for {year}: one row per employee. Re-importing replaces that person's row.",
       "wizard": "Import year-to-date figures"
+    },
+    "bonus": {
+      "title": "Year-end bonus",
+      "description": "The 13th-month bonus, driven by each person's KPI and OKR results (FR-PAY-21).",
+      "back": "Payroll",
+      "empty": "No bonus run yet.",
+      "hidden": "—",
+      "runYear": "Year {year}",
+      "payrollMonth": "Paid in {month}",
+      "headcount": "{count} people, {eligible} eligible",
+      "approvedAt": "Approved by the CEO on {at}",
+      "status": {
+        "draft": "Draft",
+        "simulated": "Simulated",
+        "proposed": "Proposed",
+        "approved": "Approved",
+        "paid": "Paid",
+        "cancelled": "Cancelled"
+      },
+      "new": {
+        "title": "New bonus run",
+        "hint": "One run for the whole group: the cost is simulated across every entity before anything is proposed.",
+        "year": "Bonus year",
+        "name": "Name",
+        "defaultName": "Year-end bonus {year}",
+        "payrollMonth": "Payroll month",
+        "entities": "Entities",
+        "entitiesHint": "Each entity gets its own off-cycle payroll run when it is paid.",
+        "submit": "Create run"
+      },
+      "cost": {
+        "title": "Cost",
+        "hint": "What the whole group would pay, before anything is committed.",
+        "total": "Total",
+        "beforeOverrides": "Before the owner's adjustments"
+      },
+      "steps": {
+        "simulate": "Recalculate",
+        "propose": "Propose to the CEO",
+        "approve": "Approve",
+        "return": "Send back to HR",
+        "cancel": "Cancel run",
+        "pay": "Pay through off-cycle runs",
+        "payHint": "Creates one off-cycle payroll run per entity; tax, insurance and payslips are payroll's.",
+        "comment": "Comment",
+        "reason": "Reason for sending it back"
+      },
+      "lines": {
+        "title": "Per person",
+        "person": "Person",
+        "band": "Band",
+        "multiplier": "Multiplier",
+        "computed": "By the formula",
+        "final": "Paid",
+        "overridden": "(adjusted)",
+        "adjustHint": "Open a line to see the whole derivation and adjust the amount with a reason.",
+        "empty": "Nothing computed yet. Press “Recalculate”."
+      },
+      "override": {
+        "title": "Owner's adjustment",
+        "hint": "The formula's own figure is kept beside it; the reason is required.",
+        "amount": "Amount (VND)",
+        "reason": "Reason",
+        "clearHint": "Leave the amount empty to take the adjustment back.",
+        "save": "Save adjustment",
+        "saved": "Saved."
+      },
+      "events": {
+        "title": "History",
+        "empty": "No steps yet."
+      },
+      "whatIf": {
+        "title": "Try another multiplier table",
+        "hint": "What the group would pay under a different scheme. Stores nothing.",
+        "submit": "Simulate",
+        "total": "Total"
+      },
+      "scheme": {
+        "link": "Bonus scheme",
+        "title": "Year-end bonus scheme",
+        "description": "The formula is effective-dated configuration: C&B proposes, the owner decides.",
+        "groupWide": "Group-wide",
+        "empty": "No version yet.",
+        "propose": "Propose a new version",
+        "proposeHint": "Edit the configuration as JSON; it is validated in full when saved.",
+        "scope": "Scope",
+        "validFrom": "Valid from",
+        "note": "Note",
+        "value": "Configuration",
+        "submit": "Propose",
+        "approve": "Approve",
+        "reject": "Reject",
+        "payComponent": "Pay component",
+        "base": "Base salary",
+        "cap": "Cap",
+        "rounding": "Rounding",
+        "serviceBands": "Service bands",
+        "performanceBands": "Individual multiplier",
+        "unitOkr": "Collective multiplier",
+        "eligibility": "Eligibility",
+        "eligibilityValue": "At least {months} months of service; excluded: {excluded}",
+        "status": {
+          "proposed": "Proposed",
+          "approved": "In force",
+          "rejected": "Rejected"
+        },
+        "source": {
+          "result_band": "From the published band (FR-PRF-09)",
+          "scheme_bands": "From the scheme's own table"
+        }
+      },
+      "trace": {
+        "description": "The whole derivation, from the KPI and OKR results to the amount.",
+        "kpi": "KPI score per month",
+        "noKpi": "No closed KPI month.",
+        "kpiFrozen": "{count} closed months, frozen when the run was approved.",
+        "kpiYear": "KPI score for the year",
+        "components": "The three components",
+        "okr": "OKR",
+        "review": "Review",
+        "kpiComponent": "KPI",
+        "weight": "weight {weight}",
+        "renormalised": "One component had no figure; its weight was shared out among the others.",
+        "result": "Result for the year",
+        "computedScore": "Computed score",
+        "resultOverride": "Owner's override of the score",
+        "resultOverrideReason": "Reason: {reason}",
+        "finalScore": "Final score",
+        "band": "Band",
+        "source": {
+          "result_band": "The multiplier comes from the published band.",
+          "scheme_bands": "The multiplier comes from the scheme's own table."
+        },
+        "formula": "Formula",
+        "base": "One month's salary",
+        "service": "Service factor",
+        "serviceHint": "{months} months — {band}",
+        "performanceFactor": "Individual multiplier",
+        "unitOkr": "Collective multiplier",
+        "unitOkrNone": "The scheme uses no collective multiplier.",
+        "unitOkrHint": "{level}: {progress} — {band}",
+        "combined": "Combined multiplier",
+        "cap": "After the cap",
+        "capHint": "cap {cap}",
+        "rounding": "After rounding",
+        "roundingHint": "{before} → multiple of {unit}",
+        "steps": "Step by step",
+        "amount": "Amount",
+        "computedAmount": "By the formula",
+        "overrideAmount": "Owner's adjustment",
+        "overrideReason": "Reason: {reason}",
+        "finalAmount": "Paid",
+        "paidThrough": "Paid through",
+        "offCycleRun": "an off-cycle payroll run",
+        "exclusion": {
+          "not_active": "Not employed on the reference day.",
+          "workforce_type": "This workforce type is not in the year-end bonus.",
+          "service_too_short": "Below the minimum service time.",
+          "no_result": "No settled performance result for the year.",
+          "no_band": "The year's result has no score.",
+          "no_salary": "No salary in force on the reference day."
+        }
+      },
+      "errors": {
+        "generic": "That did not work.",
+        "forbidden": "You may not act on this bonus run.",
+        "step_up_required": "Please confirm who you are to continue.",
+        "bonus_run_not_found": "Bonus run not found.",
+        "bonus_run_exists": "This year already has a live bonus run.",
+        "bonus_run_no_entities": "Choose at least one entity.",
+        "bonus_run_not_editable": "The run has been proposed and can no longer be changed.",
+        "bonus_run_empty": "The run has nobody in it yet. Recalculate first.",
+        "bonus_run_not_approved": "The CEO has not approved this run.",
+        "bonus_run_nothing_to_pay": "There is nothing to pay.",
+        "bonus_step_not_allowed": "That step is not available in this state.",
+        "bonus_line_not_found": "Bonus line not found.",
+        "bonus_scheme_missing": "No bonus scheme for this entity and year.",
+        "bonus_scheme_invalid": "The scheme configuration is not valid.",
+        "scheme_not_json": "That is not valid JSON.",
+        "comment_required": "A reason is required.",
+        "reason_required": "An adjustment needs a reason.",
+        "amount_invalid": "That amount is not valid.",
+        "proposal_not_found": "Proposal not found.",
+        "rule_version_exists": "A version already starts on that date.",
+        "rule_before_current_version": "The date must be after the version in force.",
+        "run_has_no_lines": "There is nothing to pay.",
+        "payroll_period_locked": "The payroll month is closed."
+      }
     }
   },
   "requests": {

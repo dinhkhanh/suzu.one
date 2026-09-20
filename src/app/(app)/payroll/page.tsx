@@ -14,10 +14,10 @@ export default async function PayrollPage() {
   const reach = compensationReach(user.principal);
   const managesSomewhere = reach.all || reach.entityIds.length > 0;
   const readsRuns = payrollReadReach(user.principal);
-  const links: { href: string; key: "mine" | "myPayslips" | "queries" | "reports" | "runs" | "salaries" | "profiles" | "simpleReport" | "netToGross" | "components" | "policy" | "statutory" | "parallel" | "ytd" }[] = [
+  const links: { href: string; key: "mine" | "myPayslips" | "queries" | "reports" | "runs" | "salaries" | "profiles" | "simpleReport" | "netToGross" | "components" | "policy" | "statutory" | "parallel" | "ytd" | "bonus" }[] = [
     { href: "/payslips", key: "myPayslips" },
     { href: `/payroll/salaries/${user.person.id}`, key: "mine" },
-    ...(readsRuns.all || readsRuns.entityIds.length > 0 ? [{ href: "/payroll/runs", key: "runs" as const }, { href: "/payroll/reports", key: "reports" as const }] : []),
+    ...(readsRuns.all || readsRuns.entityIds.length > 0 ? [{ href: "/payroll/runs", key: "runs" as const }, { href: "/payroll/reports", key: "reports" as const }, { href: "/payroll/bonus", key: "bonus" as const }] : []),
     ...(managesSomewhere ? [{ href: "/payroll/salaries", key: "salaries" as const }] : []),
     ...(managesSomewhere || canDecidePayRules(user.principal) ? [{ href: "/payroll/profiles", key: "profiles" as const }] : []),
     ...(canSeeSimpleProfileReport(user.principal) ? [{ href: "/payroll/profiles/simple", key: "simpleReport" as const }] : []),
