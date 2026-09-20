@@ -184,6 +184,19 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
       {/* ── Typed-in figures: bonuses, advances, penalties ── */}
       {seesPayslips && editable ? <RunInputForm runId={run.id} people={people.map(({ personId, fullName }) => ({ personId, fullName }))} codes={inputCodes} /> : null}
 
+      {/* ── Paying it out (FR-PAY-33, FR-PAY-39) ── */}
+      {run.approvedAt ? (
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4">
+          <div>
+            <h2 className="text-sm font-medium">{t("payments.title")}</h2>
+            <p className="text-sm text-muted-foreground">{t("payments.description")}</p>
+          </div>
+          <Link href={`/payroll/runs/${run.id}/payments`} className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted">
+            {t("runs.payments")}
+          </Link>
+        </section>
+      ) : null}
+
       {/* ── Releasing the payslips (FR-PAY-32) ── */}
       {view.seesPayslips && run.approvedAt ? (
         <section className="flex flex-col gap-3 rounded-xl border p-4">

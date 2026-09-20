@@ -4961,8 +4961,10 @@
         "timesheet_not_locked": "Bảng công của tháng chưa khóa.",
         "pay_profile_missing": "Có nhân viên chưa có hồ sơ trả lương.",
         "amount_invalid": "Số tiền không hợp lệ.",
-        "run_has_no_lines": "Chưa có khoản nào để chi."
-      }
+        "run_has_no_lines": "Chưa có khoản nào để chi.",
+        "run_not_settled": "Chưa thể ghi nhận “đã chi”: còn tệp ngân hàng hoặc bảng tiền mặt chưa hoàn tất."
+      },
+      "payments": "Chi lương"
     },
     "payslips": {
       "mine": "Phiếu lương của tôi",
@@ -5088,6 +5090,94 @@
         "failed": "Không thực hiện được. Vui lòng thử lại."
       },
       "pdfFooter": "Phiếu lương do hệ thống tạo ngày {at}. Bản in không cần chữ ký."
+    },
+    "payments": {
+      "title": "Chi lương",
+      "description": "Lập tệp chuyển khoản cho từng ngân hàng và bảng chi tiền mặt. Bảng lương chỉ được ghi nhận “đã chi” khi cả hai đã xong.",
+      "bankTotal": "Tổng chuyển khoản",
+      "cashTotal": "Tổng chi tiền mặt",
+      "settled": "Tình trạng",
+      "settledYes": "Đã chi xong",
+      "settledNo": "Chưa chi xong",
+      "people": "{count} người",
+      "unroutableTitle": "Những người chưa thể chuyển khoản",
+      "blockers": {
+        "bank_file_missing": "Chưa lập tệp chuyển khoản nào.",
+        "bank_people_uncovered": "Còn người hưởng lương qua ngân hàng chưa nằm trong tệp đã lập.",
+        "cash_not_disbursed": "Còn người trong bảng tiền mặt chưa ghi nhận đã chi."
+      },
+      "bank": {
+        "title": "Tệp chuyển khoản",
+        "hint": "Mỗi ngân hàng một tệp, theo mẫu nộp lô của ngân hàng đó. Tệp được tạo và tải về ngay, hệ thống không lưu lại.",
+        "unverified": "Mẫu tệp VCB và ACB trong hệ thống được dựng lại theo hiểu biết tốt nhất và CHƯA ĐỐI CHIẾU với mẫu hiện hành của ngân hàng. Kế toán trưởng vui lòng tải mẫu mới nhất trên cổng của ngân hàng và xác nhận trước kỳ chi lương thật.",
+        "bank": "Ngân hàng",
+        "valueDate": "Ngày chi",
+        "accountNumber": "Tài khoản công ty",
+        "accountName": "Tên tài khoản công ty",
+        "generate": "Lập tệp",
+        "saveAgain": "Tải lại",
+        "generated": "Đã lập {file} ({rows} dòng).",
+        "skippedTitle": "Không đưa vào tệp:",
+        "skipReasons": {
+          "no_account": "chưa có số tài khoản",
+          "account_not_numeric": "số tài khoản không hợp lệ",
+          "account_too_short": "số tài khoản quá ngắn",
+          "no_holder": "chưa có tên chủ tài khoản",
+          "zero_amount": "thực nhận bằng 0",
+          "negative_amount": "thực nhận âm",
+          "no_format_for_bank": "hệ thống chưa hỗ trợ mẫu tệp của ngân hàng này"
+        },
+        "generatedFiles": "Các tệp đã lập",
+        "noFiles": "Chưa lập tệp nào.",
+        "file": "Tên tệp",
+        "formatVersion": "Phiên bản mẫu",
+        "rows": "Số dòng",
+        "total": "Tổng tiền",
+        "generatedAt": "Lập lúc"
+      },
+      "cash": {
+        "title": "Bảng chi tiền mặt",
+        "hint": "Dành cho người thuộc hồ sơ chi lương giản lược. In ra, chi tiền và lấy chữ ký; hoặc để nhân viên xác nhận trong ứng dụng.",
+        "open": "Lập bảng chi",
+        "refresh": "Cập nhật bảng chi",
+        "notOpened": "Chưa lập bảng chi tiền mặt.",
+        "print": "In bảng chi (PDF)",
+        "person": "Nhân viên",
+        "amount": "Số tiền",
+        "disbursedOn": "Ngày chi",
+        "receipt": "Xác nhận",
+        "record": "Ghi nhận đã chi",
+        "confirm": "Tôi đã nhận đủ",
+        "confirmed": "Đã xác nhận",
+        "awaitingReceipt": "Chờ xác nhận",
+        "receiptNote": "Xác nhận của nhân viên là bằng chứng bổ sung; bảng lương vẫn có thể chuyển sang “đã chi” khi kế toán đã ghi nhận chi đủ.",
+        "sheetTitle": "BẢNG THANH TOÁN LƯƠNG BẰNG TIỀN MẶT",
+        "sheetMonth": "Kỳ lương",
+        "taxCode": "Mã số thuế",
+        "columns": {
+          "index": "STT",
+          "employeeCode": "Mã NV",
+          "name": "Họ và tên",
+          "amount": "Số tiền",
+          "signature": "Ký nhận",
+          "date": "Ngày"
+        },
+        "total": "TỔNG CỘNG",
+        "headcount": "người",
+        "preparedBy": "Người lập biểu",
+        "receivedBy": "Người chi tiền",
+        "sheetNote": "Người nhận ký và ghi rõ họ tên vào cột ký nhận. Bảng này do hệ thống Suzu One lập."
+      },
+      "errors": {
+        "bank_unknown": "Hệ thống chưa có mẫu tệp cho ngân hàng này.",
+        "bank_has_nobody": "Không có ai hưởng lương qua ngân hàng này trong kỳ.",
+        "run_not_approved": "Bảng lương chưa được ký duyệt.",
+        "run_not_found": "Không tìm thấy bảng lương.",
+        "cash_payment_not_found": "Không tìm thấy dòng chi tiền mặt.",
+        "run_not_settled": "Chưa chi xong: còn tệp ngân hàng hoặc bảng tiền mặt chưa hoàn tất.",
+        "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+        "failed": "Không thực hiện được. Vui lòng thử lại."
+      }
     }
   }
 }

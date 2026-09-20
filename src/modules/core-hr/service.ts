@@ -759,6 +759,8 @@ export async function deleteSavedView(ownerPersonId: string, id: string): Promis
 
 // ── For other modules (leave, attendance, payroll) ──────────────────────────────────────────
 export { cancelLongLeave, type EmploymentFacts, listEmploymentFacts, listPositionHolders, recordLongLeave } from "./employment-facts";
+// `BankAccount` travels with the payroll facts: payroll writes bank files from it (FR-PAY-33).
+export type { BankAccount } from "./records";
 export { listPayrollFacts, type PayrollPersonFacts, recordPayEvent } from "./payroll-facts";
 export { type LifecycleEventFact, listLifecycleEventFacts } from "./lifecycle-events";
 export { currentBranchOf, findBranchEntity, listPeopleAtBranches, listStaffOccasionFacts, type StaffOccasionFacts } from "./feed-facts";

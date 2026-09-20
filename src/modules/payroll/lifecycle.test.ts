@@ -30,6 +30,7 @@ import { salaryTermsContext } from "./field-contexts";
 /** core-hr binds these the same way; spelled out here so the test imports only payroll. */
 const sensitiveContext = (field: "taxCode" | "bankAccounts", personId: string) => `person_sensitive.${field === "taxCode" ? "tax_code" : "bank_accounts"}:${personId}`;
 import { availableSteps, hasReached, isPayrollPeriodLocked, listRunEvents, listRunMilestones, NEXT_STEP, RUN_STEPS, type RunStep, stepRun } from "./lifecycle";
+import { generateBankFile, openCashSheet, planPayment, listPayables, recordCashDisbursement } from "./payments";
 import { canApprovePayroll, canManageCompensation, canPayPayroll } from "./policy";
 import { isCalculating, payrollCalculateJob, progressOf, queueRunCalculation, workOneRun } from "./run-calculation";
 import { calculateRun, createOffCycleRun, createRegularRun, getRun as loadRun } from "./runs";
@@ -86,6 +87,23 @@ async function lockMonth(month: string, people: string[]) {
 
 /** A principal holding one payroll role over one entity — how the steps are guarded in the actions. */
 const grantee = (role: "hr_admin" | "c_level" | "finance" | "department_head", entityId: string): Principal => ({ personId: crypto.randomUUID(), workforceType: "employee", grants: [{ role, scope: { type: "entity", id: entityId } }] });
+
+/**
+ * Everything FR-PAY-39 asks for before a run may be called "paid": a batch for every bank that
+ * owes somebody money, and a disbursement recorded for everyone on the cash sheet. `payments.test`
+ * covers the rule itself; here it is just the step before `mark_paid`.
+ */
+async function settle(runId: string) {
+  const run = (await loadRun(runId))!;
+  const plan = planPayment(await listPayables(run));
+  for (const bank of plan.banks) {
+    await generateBankFile({ runId, bank: bank.key, valueDate: `${run.month}-05`, payingAccount: { accountNumber: "0071000123456", accountName: "CONG TY" } }, ids.actor);
+  }
+  if (plan.cash.length > 0) {
+    await openCashSheet(runId, ids.actor);
+    for (const person of plan.cash) await recordCashDisbursement({ runId, personId: person.personId, disbursedOn: `${run.month}-05` }, ids.actor);
+  }
+}
 
 /** `getRun` is nullable; inside these tests the run always exists. */
 const getRun = async (runId: string) => (await loadRun(runId))!;
@@ -172,6 +190,8 @@ describe("the lifecycle order (FR-PAY-30, SRS D17)", () => {
 
     const walked: string[] = [];
     for (const step of ["propose", "approve", "prepare_payment", "mark_paid", "lock"] as RunStep[]) {
+      // The money has to have actually gone out before the run says it has (FR-PAY-39).
+      if (step === "mark_paid") await settle(run.id);
       const { run: after } = await stepRun(run.id, step, { personId: ids.actor });
       walked.push(after.status);
     }

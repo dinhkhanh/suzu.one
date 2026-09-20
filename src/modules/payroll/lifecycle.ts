@@ -19,6 +19,7 @@ import "server-only";
 import { and, eq, inArray, ne } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
+import { settlementOf } from "./payments";
 import type { PayrollRunRow } from "./run-storage";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -49,7 +50,8 @@ export const RUN_STEPS: Record<RunStep, StepRule> = {
   return: { from: ["proposed", "approved"], to: "calculated", permission: "payroll:approve", commentRequired: true },
   // The chief accountant prepares the transfer files and the cash sheet (week 5 fills them in).
   prepare_payment: { from: ["approved"], to: "payment_prepared", permission: "payroll:pay" },
-  // The money has left: the bank batch went through and the cash was handed over.
+  // The money has left: the bank batch went through and the cash was handed over. Refused until
+  // both are settled (FR-PAY-39) — the check is inside `stepRun`.
   mark_paid: { from: ["payment_prepared"], to: "paid", permission: "payroll:pay" },
   // C&B closes the month. Deliberately not the accountant who paid it: two people close a period.
   lock: { from: ["paid"], to: "locked", permission: "payroll:propose" },
@@ -112,6 +114,12 @@ export async function stepRun(runId: string, step: RunStep, actor: { personId: s
     if (!rule.from.includes(before.status)) throw new ActionError("run_step_not_allowed", { status: before.status, step });
     // Nothing is proposed with nobody in it: an empty run is a mistake, not a month.
     if (step === "propose" && before.headcount === 0) throw new ActionError("run_is_empty");
+    // "The run is 'Paid' only when the bank batch and the cash sheet are both settled" (FR-PAY-39).
+    // Asked of `payments.ts` here rather than in the action, so no path can skip it.
+    if (step === "mark_paid") {
+      const settlement = await settlementOf(before, tx);
+      if (!settlement.settled) throw new ActionError("run_not_settled", { blockers: settlement.blockers });
+    }
     // A calculation still in flight would overwrite what is being proposed.
     if (step === "propose" && (before.calcState === "queued" || before.calcState === "running")) throw new ActionError("run_calculating");
 
