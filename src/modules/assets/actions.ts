@@ -4,10 +4,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
-import { assignAsset, bookAsset, cancelBooking, checkInBooking, checkOutBooking, confirmHandover, decideBooking, findAssignment, findAsset, findBooking, registerAsset, returnAsset, saveCategory, setAssetStatus, updateAsset } from "./service";
+import { assignAsset, bookAsset, cancelBooking, checkInBooking, checkOutBooking, confirmHandover, decideBooking, findAssignment, findAsset, findBooking, findLicence, registerAsset, returnAsset, saveCategory, saveLicence, setAssetStatus, updateAsset } from "./service";
 import { windowProblems } from "./engine/booking";
-import { ASSET_CONDITIONS, ASSET_KINDS, ASSET_STATUSES, HOLDER_TYPES } from "./enums";
-import { canActOnBooking, canBookAssets, canConfirmHandover, canDecideBookings, canManageAssets, canManageCategories } from "./policy";
+import { ASSET_CONDITIONS, ASSET_KINDS, ASSET_STATUSES, BILLING_CYCLES, HOLDER_TYPES, LICENCE_STATUSES } from "./enums";
+import { canActOnBooking, canBookAssets, canConfirmHandover, canDecideBookings, canManageAssets, canManageCategories, canManageLicences } from "./policy";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
 const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blankToNull, schema.nullable().default(null));
@@ -268,6 +268,47 @@ const checkInBookingPipeline = createAction({
   },
 });
 
+// ── Licences and subscriptions (FR-AST-05) ──────────────────────────────────────────────────
+
+const saveLicencePipeline = createAction({
+  name: "asset.licence.save",
+  input: z.object({
+    licenceId: optional(z.uuid()),
+    name: z.string().trim().min(1).max(200),
+    vendor: optional(z.string().trim().max(120)),
+    entityId: z.uuid(),
+    seats: optional(z.coerce.number().int().min(0).max(100_000)),
+    seatHolderPersonIds: z.preprocess((value) => (Array.isArray(value) ? value : value ? [value] : []), z.array(z.uuid()).max(500).default([])),
+    costPerCycle: optional(money),
+    billingCycle: z.enum(BILLING_CYCLES),
+    renewalDate: optional(isoDate),
+    autoRenews: checkbox,
+    ownerPersonId: optional(z.uuid()),
+    assetId: optional(z.uuid()),
+    accountRef: optional(z.string().trim().max(200)),
+    notes: optional(z.string().trim().max(2000)),
+    status: z.enum(LICENCE_STATUSES),
+  }),
+  authorize: async (user, input) => {
+    // Authority over where it sits now *and* over where it is going, when the entity changes.
+    if (!canManageLicences(user.principal, input.entityId)) return false;
+    if (!input.licenceId) return true;
+    const before = await findLicence(input.licenceId);
+    return !!before && canManageLicences(user.principal, before.entityId);
+  },
+  run: async ({ user, input }) => {
+    const { licenceId, ...fields } = input;
+    const { before, after } = await saveLicence(licenceId, fields, user.person.id);
+    revalidatePath("/assets/licences");
+    revalidatePath("/ops");
+    // The audit names the subscription and its renewal date, never what it costs.
+    return {
+      data: { id: after.id },
+      audit: { resource: { type: "licence", id: after.id, entityId: after.entityId }, summary: after.name, before: before && { status: before.status, renewalDate: before.renewalDate }, after: { status: after.status, renewalDate: after.renewalDate } },
+    };
+  },
+});
+
 // A `"use server"` file may export nothing but async functions — exporting the pipeline as a
 // const makes the bundler drop every export of the module (tests/server-actions.test.ts).
 
@@ -317,4 +358,8 @@ export async function checkOutBookingAction(input: unknown) {
 
 export async function checkInBookingAction(input: unknown) {
   return checkInBookingPipeline(input);
+}
+
+export async function saveLicenceAction(input: unknown) {
+  return saveLicencePipeline(input);
 }

@@ -5601,7 +5601,8 @@
       "new": "Ghi nhận tài sản",
       "edit": "Sửa thông tin",
       "import": "Nhập từ tệp",
-      "bookings": "Lịch đặt thiết bị"
+      "bookings": "Lịch đặt thiết bị",
+      "licences": "Bản quyền & thuê bao"
     },
     "columns": {
       "code": "Mã",
@@ -5770,7 +5771,11 @@
       "booking_end_before_start": "Thời điểm kết thúc phải sau thời điểm bắt đầu.",
       "booking_in_the_past": "Không thể đặt lịch cho thời gian đã qua.",
       "booking_too_long": "Một lượt đặt kéo dài tối đa 14 ngày.",
-      "booking_too_far_ahead": "Chỉ có thể đặt trước tối đa một năm."
+      "booking_too_far_ahead": "Chỉ có thể đặt trước tối đa một năm.",
+      "licence_not_found": "Không tìm thấy bản quyền.",
+      "licence_cost_invalid": "Chi phí không hợp lệ.",
+      "licence_seats_invalid": "Số người dùng không hợp lệ.",
+      "licence_renewal_date_required": "Chu kỳ này cần có ngày đến hạn."
     },
     "person": {
       "title": "Thiết bị đang giữ",
@@ -5866,6 +5871,56 @@
         "checkIn": "Đã nhận lại",
         "checkedOutAt": "Giao lúc",
         "checkedInAt": "Nhận lại lúc"
+      }
+    },
+    "licences": {
+      "title": "Bản quyền & thuê bao",
+      "description": "Phần mềm, dịch vụ đám mây và thuê bao: số lượng người dùng, chi phí và — quan trọng nhất — ngày đến hạn.",
+      "empty": "Chưa có bản quyền nào được ghi nhận.",
+      "manualRenew": "(không tự gia hạn)",
+      "trackerNote": "Mỗi kỳ đến hạn sẽ tự sinh một nghĩa vụ trong Sổ tay tuân thủ, đến hạn trước 14 ngày — đủ thời gian quyết định gia hạn hay hủy.",
+      "nav": {
+        "register": "Sổ tài sản",
+        "new": "Thêm bản quyền"
+      },
+      "columns": {
+        "name": "Tên",
+        "entity": "Pháp nhân",
+        "seats": "Số người dùng",
+        "cycle": "Chu kỳ",
+        "renewal": "Đến hạn",
+        "owner": "Người phụ trách",
+        "cost": "Chi phí / kỳ (₫)",
+        "status": "Trạng thái"
+      },
+      "cycle": {
+        "monthly": "Hằng tháng",
+        "quarterly": "Hằng quý",
+        "annual": "Hằng năm",
+        "perpetual": "Vĩnh viễn"
+      },
+      "status": {
+        "active": "Đang dùng",
+        "cancelled": "Đã hủy",
+        "expired": "Hết hạn"
+      },
+      "form": {
+        "name": "Tên bản quyền / thuê bao",
+        "vendor": "Nhà cung cấp",
+        "entity": "Pháp nhân",
+        "owner": "Người phụ trách",
+        "noOwner": "Chưa phân công",
+        "seats": "Số người dùng",
+        "cycle": "Chu kỳ thanh toán",
+        "renewalDate": "Ngày đến hạn tiếp theo",
+        "cost": "Chi phí mỗi kỳ (₫)",
+        "accountRef": "Mã tài khoản / hợp đồng",
+        "status": "Trạng thái",
+        "autoRenews": "Tự động gia hạn nếu không hủy",
+        "notes": "Ghi chú",
+        "tracker": "Ngày đến hạn sẽ sinh nghĩa vụ trong Sổ tay tuân thủ. Người phụ trách ghi ở đây sẽ nhận nghĩa vụ đó.",
+        "submit": "Lưu",
+        "saved": "Đã lưu."
       }
     }
   }

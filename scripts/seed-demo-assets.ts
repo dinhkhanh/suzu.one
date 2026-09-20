@@ -8,7 +8,7 @@
 import { randomBytes } from "node:crypto";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
-import { asset, assetAssignment, assetBooking, assetCategory, assetEvent, employment, entity, person, roleAssignment } from "../src/lib/db/schema";
+import { asset, assetAssignment, assetBooking, assetCategory, assetEvent, employment, entity, licence, person, roleAssignment } from "../src/lib/db/schema";
 import type { AssetCondition } from "../src/modules/assets/enums";
 
 type Db = ReturnType<typeof drizzle>;
@@ -85,7 +85,12 @@ export async function seedAssets(db: Db, today: string): Promise<{ assets: numbe
   // The register and the bookings guard themselves separately, so a database that already has one
   // still gets the other — which is what happens when a later week adds to an earlier week's seed.
   const existing = await db.select({ id: asset.id }).from(asset).limit(1);
-  if (existing.length > 0) return { assets: 0, assigned: 0, bookings: await seedBookings(db, await peopleByKey(db), await keeperId(db)) };
+  if (existing.length > 0) {
+    const byKeyOnly = await peopleByKey(db);
+    const bookings = await seedBookings(db, byKeyOnly, await keeperId(db));
+    await seedLicences(db, byKeyOnly);
+    return { assets: 0, assigned: 0, bookings };
+  }
 
   const categories = new Map((await db.select().from(assetCategory)).map((row) => [row.code, row]));
   const entities = new Map((await db.select().from(entity)).map((row) => [row.code, row]));
@@ -225,6 +230,7 @@ export async function seedAssets(db: Db, today: string): Promise<{ assets: numbe
   }
 
   const bookings = await seedBookings(db, byKey, keeper?.id ?? null);
+  await seedLicences(db, byKey);
   return { assets, assigned, bookings };
 }
 
@@ -276,4 +282,56 @@ async function seedBookings(db: Db, byKey: Map<string, { id: string }>, keeper: 
   // The two lenses and the body that are out are not on the shelf, and the register says so.
   for (const row of inserted.filter((booking) => booking.status === "checked_out")) await db.update(asset).set({ status: "assigned" }).where(eq(asset.id, row.assetId));
   return inserted.length;
+}
+
+/**
+ * Two subscriptions the company really would have, both falling due soon enough that the OPS
+ * tracker has something to show: the design suite renews in about five weeks, the cloud storage
+ * in about three. One renews itself and one does not, which is the difference that decides how
+ * urgent the obligation is.
+ */
+async function seedLicences(db: Db, byKey: Map<string, { id: string }>): Promise<number> {
+  const existing = await db.select({ id: licence.id }).from(licence).limit(1);
+  if (existing.length > 0) return 0;
+  const entities = new Map((await db.select().from(entity)).map((row) => [row.code, row]));
+  const creative = entities.get("SZC") ?? entities.get("SZM");
+  const media = entities.get("SZM");
+  if (!creative || !media) return 0;
+
+  const inDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+  const chi = byKey.get("chi.duong@suzu.group");
+  const long = byKey.get("long.dang@suzu.group");
+
+  const rows = await db
+    .insert(licence)
+    .values([
+      {
+        name: "Adobe Creative Cloud (All Apps)",
+        vendor: "Adobe",
+        entityId: creative.id,
+        seats: 6,
+        costPerCycle: 41_400_000,
+        billingCycle: "annual" as const,
+        renewalDate: inDays(35),
+        autoRenews: true,
+        ownerPersonId: chi?.id ?? null,
+        accountRef: "ADB-VN-88213",
+        notes: "6 ghế: thiết kế 4, video 2. Gia hạn theo năm, thanh toán bằng thẻ tín dụng công ty.",
+      },
+      {
+        name: "Google Workspace Business Standard",
+        vendor: "Google",
+        entityId: media.id,
+        seats: 22,
+        costPerCycle: 3_960_000,
+        billingCycle: "monthly" as const,
+        renewalDate: inDays(21),
+        autoRenews: false,
+        ownerPersonId: long?.id ?? null,
+        accountRef: "GWS-SUZU-001",
+        notes: "Tính theo số tài khoản đang hoạt động; rà lại sau mỗi đợt nghỉ việc.",
+      },
+    ])
+    .returning({ id: licence.id });
+  return rows.length;
 }

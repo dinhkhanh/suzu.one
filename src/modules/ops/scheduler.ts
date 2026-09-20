@@ -1,11 +1,14 @@
 // The scheduler (FR-OPS-02, 04): turns the library into dated, owned instances.
 //
 // Recurring templates: every period whose due date falls inside the horizon gets one instance per
-// applicable entity. Event-driven templates: *pulled* from core-hr's lifecycle events — those rows
-// are written in the same transaction as the hire, the termination or the approved long leave, so
-// they are the durable event log and no outbox is needed; core-hr knows nothing of this module.
-// Everything is idempotent through the unique key (template, entity, period key): the job runs in
-// both cron schedules and behind the "Sync now" button.
+// applicable entity. Event-driven templates are *pulled* from whichever module owns the facts, and
+// there are two such sources:
+//   · core-hr's lifecycle events — written in the same transaction as the hire, the termination or
+//     the approved long leave, so they are the durable event log and no outbox is needed;
+//   · the asset module's licence register (FR-AST-05) — one fact per renewal that falls due.
+// Neither module knows anything about obligations, and this one knows nothing about hires or
+// licences beyond a date, an entity and a name. Everything is idempotent through the unique key
+// (template, entity, period key): the job runs in both cron schedules and behind "Sync now".
 import "server-only";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { addDays, type IsoDate } from "@/lib/dates";
@@ -13,12 +16,13 @@ import { db, schema, type Tx } from "@/lib/db";
 import { getDaysOff, isPeriodLocked } from "@/modules/attendance/service";
 import { hasReached, listRunMilestones, type RunMilestone, type RunStatus } from "@/modules/payroll/service";
 import { type LifecycleEventFact, listLifecycleEventFacts } from "@/modules/core-hr/service";
+import { listInactiveLicenceIds, listLicenceRenewalFacts } from "@/modules/assets/service";
 import { notify } from "../platform/notifications/service";
 import type { Permission, Role } from "../platform/rbac/roles";
 import { listPeopleHolding, listPeopleWithRole } from "../platform/rbac/service";
 import { createTasks } from "../platform/tasks-engine/service";
 import { nominalDueDate, type Period, periodsDueBetween, shiftDueDate } from "./engine/due-rule";
-import { OBLIGATION_KIND, type ObligationEventType, type PeriodicRecurrence, type Shift } from "./enums";
+import { LIFECYCLE_EVENT_TYPES, OBLIGATION_KIND, type ObligationEventType, type PeriodicRecurrence, type Shift } from "./enums";
 import type { ObligationTemplateRow } from "./templates";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -28,6 +32,8 @@ export const DEFAULT_HORIZON_DAYS = 100;
 export const EVENT_LOOKBACK_DAYS = 60;
 /** The library code of the monthly timesheet lock — closed by the scheduler once attendance says the month is locked (FR-OPS-10, lite). */
 export const TIMESHEET_LOCK_CODE = "INT-TIMESHEET-LOCK";
+/** `obligation_instance.source_type` for a renewal pulled from the licence register (FR-AST-05). */
+export const LICENCE_SOURCE = "licence_renewal";
 
 /**
  * The monthly payroll calendar (FR-OPS-10, SRS D17): each of these closes itself when payroll
@@ -48,7 +54,9 @@ const PAYROLL_MILESTONES: { code: string; reached?: RunStatus; published?: true 
 /** Has the run done what this milestone waits for? */
 const milestoneMet = (milestone: { reached?: RunStatus; published?: true }, run: RunMilestone): boolean => (milestone.published ? !!run.payslipsPublishedAt : !!milestone.reached && hasReached(run, milestone.reached));
 
-const LIFECYCLE_TYPE: Record<ObligationEventType, LifecycleEventFact["type"]> = { hire: "hire", rehire: "rehire", termination: "termination", long_leave: "long_leave", salary_change: "salary_change", long_leave_return: "long_leave" };
+// Only the event types that come from a person's lifecycle appear here; `licence_renewal` has its
+// own source and its own branch below, which is why this is partial rather than total.
+const LIFECYCLE_TYPE: Partial<Record<ObligationEventType, LifecycleEventFact["type"]>> = { hire: "hire", rehire: "rehire", termination: "termination", long_leave: "long_leave", salary_change: "salary_change", long_leave_return: "long_leave" };
 
 /** "08/2026", "Q3/2026", "H2/2026", "2026". */
 export function periodLabel(key: string): string {
@@ -102,7 +110,7 @@ async function generateIn(tx: Executor, today: IsoDate, options: GenerateOptions
     return parties.get(key)!;
   };
 
-  type Planned = { template: ObligationTemplateRow; entityId: string; periodKey: string; period: Period | null; nominal: IsoDate; title: string; subjectPersonId: string | null; source: { type: string; id: string } | null };
+  type Planned = { template: ObligationTemplateRow; entityId: string; periodKey: string; period: Period | null; nominal: IsoDate; title: string; subjectPersonId: string | null; source: { type: string; id: string } | null; /** The person the fact itself names as responsible; tried before the template's rule. */ preferredOwnerId?: string | null };
   const planned: Planned[] = [];
 
   for (const template of templates) {
@@ -116,12 +124,12 @@ async function generateIn(tx: Executor, today: IsoDate, options: GenerateOptions
   }
 
   // ── Pulled from HR events ─────────────────────────────────────────────────────────────────
-  const eventTemplates = templates.filter((template) => template.recurrence === "event" && template.eventType);
+  const eventTemplates = templates.filter((template) => template.recurrence === "event" && template.eventType && LIFECYCLE_EVENT_TYPES.includes(template.eventType as ObligationEventType));
   let cancelled = 0;
   if (eventTemplates.length) {
     const lookback = new Date(now.getTime() - EVENT_LOOKBACK_DAYS * 86_400_000);
     const since = eventTemplates.reduce((earliest, template) => (template.createdAt < earliest ? template.createdAt : earliest), lookback);
-    const facts = await listLifecycleEventFacts({ createdSince: since, types: [...new Set(eventTemplates.map((template) => LIFECYCLE_TYPE[template.eventType as ObligationEventType]))] }, tx);
+    const facts = await listLifecycleEventFacts({ createdSince: since, types: [...new Set(eventTemplates.flatMap((template) => LIFECYCLE_TYPE[template.eventType as ObligationEventType] ?? []))] }, tx);
 
     const calledOff = facts.filter((fact) => fact.status === "cancelled").map((fact) => fact.id);
     if (calledOff.length) cancelled = await cancelForSources(tx, "lifecycle_event", calledOff);
@@ -144,13 +152,58 @@ async function generateIn(tx: Executor, today: IsoDate, options: GenerateOptions
     }
   }
 
+  // ── Pulled from the licence register (FR-AST-05) ───────────────────────────────────────────
+  // The same shape as the HR branch above and for the same reason: the assets module publishes
+  // dated *facts* through its barrel and knows nothing of obligations, while this module knows
+  // nothing of licences beyond a name, a date and an owner. One fact per renewal occurrence, with
+  // a stable id, so generating twice changes nothing.
+  const licenceTemplates = templates.filter((template) => template.recurrence === "event" && template.eventType === "licence_renewal");
+  if (licenceTemplates.length) {
+    const renewals = await listLicenceRenewalFacts(from, to, tx);
+    // A licence that was cancelled or has expired renews no more: what was opened for it goes.
+    const inactive = await listInactiveLicenceIds(tx);
+    if (inactive.length) {
+      const stale = await tx
+        .select({ sourceId: schema.obligationInstance.sourceId })
+        .from(schema.obligationInstance)
+        .where(eq(schema.obligationInstance.sourceType, LICENCE_SOURCE));
+      const toCancel = stale.map((row) => row.sourceId).filter((id): id is string => !!id && inactive.includes(id.split(":")[0]));
+      if (toCancel.length) cancelled += await cancelForSources(tx, LICENCE_SOURCE, toCancel);
+    }
+
+    for (const template of licenceTemplates) {
+      for (const fact of renewals) {
+        if (!appliesTo(template, fact.entityId)) continue;
+        const periodKey = `event:${fact.id}`;
+        if (have.has(`${template.id}|${fact.entityId}|${periodKey}`)) continue;
+        // The due date is counted from the renewal itself: `dueRule` decides how long before it
+        // somebody has to have acted, which is the whole point for a licence that auto-renews.
+        const nominal = nominalDueDate(template.dueRule, { eventDate: fact.renewalDate });
+        if (nominal > to) continue;
+        planned.push({
+          template,
+          entityId: fact.entityId,
+          periodKey,
+          period: null,
+          nominal,
+          title: `${template.name} — ${fact.name}${fact.vendor ? ` (${fact.vendor})` : ""} · ${entityCode.get(fact.entityId)}`,
+          subjectPersonId: null,
+          source: { type: LICENCE_SOURCE, id: fact.id },
+          // Whoever owns the subscription is the one who has to decide about it.
+          preferredOwnerId: fact.ownerPersonId,
+        });
+      }
+    }
+  }
+
   // ── Writing ───────────────────────────────────────────────────────────────────────────────
   const told = new Map<string, { count: number; title: string }>();
   let unassigned = 0;
   for (const plan of planned) {
     const { template } = plan;
     // Nobody prepares the papers about themselves leaving: the subject is never the owner.
-    const owner = (await candidates(template.ownerRule, template.ownerPersonId, plan.entityId)).find((id) => id !== plan.subjectPersonId) ?? null;
+    const named = plan.preferredOwnerId && plan.preferredOwnerId !== plan.subjectPersonId ? plan.preferredOwnerId : null;
+    const owner = named ?? (await candidates(template.ownerRule, template.ownerPersonId, plan.entityId)).find((id) => id !== plan.subjectPersonId) ?? null;
     const reviewer = (await candidates(template.reviewerRule, template.reviewerPersonId, plan.entityId)).find((id) => id !== owner && id !== plan.subjectPersonId) ?? null;
     const dueDate = shiftDueDate(plan.nominal, template.shift as Shift, await daysOffOf(plan.entityId));
     const [task] = await createTasks(tx, [{ kind: OBLIGATION_KIND, title: plan.title, assigneePersonId: owner, dueDate, entityId: plan.entityId, subjectPersonId: plan.subjectPersonId, context: { type: "obligation_template", id: template.id } }], options.actorId ?? null, { notify: false });

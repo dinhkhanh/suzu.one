@@ -41,6 +41,12 @@ export default async function AssetsPage({ searchParams }: PageProps<"/assets">)
           <Link href="/assets/mine" className="h-9 rounded-md border px-3 text-sm leading-9">
             {t("nav.mine")}
           </Link>
+          <Link href="/assets/bookings" className="h-9 rounded-md border px-3 text-sm leading-9">
+            {t("nav.bookings")}
+          </Link>
+          <Link href="/assets/licences" className="h-9 rounded-md border px-3 text-sm leading-9">
+            {t("nav.licences")}
+          </Link>
           {canManageAssets(user.principal) ? (
             <>
               <Link href="/assets/labels" className="h-9 rounded-md border px-3 text-sm leading-9">

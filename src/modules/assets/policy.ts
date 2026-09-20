@@ -88,6 +88,14 @@ export const canConfirmHandover = (principal: Principal, holderPersonId: string 
 /** The category library belongs to the group: changing it takes a group-wide grant. */
 export const canManageCategories = (principal: Principal): boolean => can(principal, "asset:manage", {});
 
+/**
+ * Licences and subscriptions (FR-AST-05) sit with the register: the same authority that knows
+ * which laptop is whose knows which seats are paid for. The cost follows `canReadAssetMoney`,
+ * so a licence's price is exactly as visible as an asset's, and no more.
+ */
+export const canReadLicences = (principal: Principal, entityId?: string): boolean => canReadRegister(principal, entityId);
+export const canManageLicences = (principal: Principal, entityId?: string): boolean => canManageAssets(principal, entityId);
+
 /** The list form of `canReadRegister`: whose entities' assets the principal may read. */
 export function assetReach(principal: Principal): { all: true } | { all: false; entityIds: string[] } {
   return entityReach(principal, "asset:manage");

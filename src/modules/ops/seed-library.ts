@@ -12,6 +12,7 @@ const CONFIRM_HR = "Bản nháp — cần Trưởng phòng Nhân sự xác nhậ
 const FINANCE = "role:finance";
 const HR = "permission:person:manage";
 const PAYROLL = "permission:payroll:propose";
+const ASSETS = "permission:asset:manage";
 
 const FILED: EvidenceRequirement = { file: true, reference: true, submittedDate: true, amount: false };
 const PAID: EvidenceRequirement = { file: true, reference: false, submittedDate: true, amount: true };
@@ -98,6 +99,26 @@ export const OBLIGATION_LIBRARY: TemplateInput[] = [
   template({ code: "EVT-LONG-LEAVE-CLAIM", name: "Hồ sơ hưởng chế độ BHXH (thai sản, ốm đau)", category: "external", authority: "social_insurance", recurrence: "event", eventType: "long_leave", dueRule: afterEvent(45), ownerRule: HR, evidence: FILED, guidance: "Hủy nếu loại nghỉ không có chế độ BHXH (nghỉ không lương, nghỉ phép dài)." }),
   template({ code: "EVT-LONG-LEAVE-RETURN", name: "Báo tăng BHXH khi đi làm lại", category: "external", authority: "social_insurance", recurrence: "event", eventType: "long_leave_return", dueRule: afterEvent(10), ownerRule: HR, evidence: FILED }),
   template({ code: "EVT-SALARY-CHANGE-INSURANCE", name: "Điều chỉnh mức đóng BHXH do thay đổi lương", category: "external", authority: "social_insurance", recurrence: "event", eventType: "salary_change", dueRule: afterEvent(30), ownerRule: HR, evidence: FILED }),
+  // Licences and subscriptions (FR-AST-05). The source is the asset module's licence register, not
+  // HR: the scheduler pulls one fact per renewal that falls due. Fourteen days *before* the money
+  // goes out, which is the point — a subscription that renews itself is decided in advance or not
+  // at all. The owner named on the licence takes it; `ASSETS` is only the fallback.
+  template({
+    code: "EVT-LICENCE-RENEWAL",
+    name: "Gia hạn hoặc hủy bản quyền / thuê bao",
+    category: "internal",
+    authority: "internal",
+    recurrence: "event",
+    eventType: "licence_renewal",
+    dueRule: afterEvent(-14),
+    shift: "previous_working_day",
+    ownerRule: ASSETS,
+    reviewerRule: FINANCE,
+    checklist: ["Xác nhận còn dùng hay không", "Rà soát số lượng người dùng thực tế", "Đàm phán giá / đổi gói nếu cần", "Gia hạn hoặc hủy trước ngày đến hạn"],
+    evidence: { file: false, reference: false, submittedDate: true, amount: true },
+    guidance: "Hạn: 14 ngày trước ngày đến hạn, để kịp quyết định trước khi thuê bao tự động gia hạn. Sinh ra từ Tài sản → Bản quyền & thuê bao.",
+    reminderLeadDays: [7, 3, 1],
+  }),
 ];
 
 /** Rows for the `obligation_template` table, in library order. */

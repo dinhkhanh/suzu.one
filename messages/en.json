@@ -5601,7 +5601,8 @@
       "new": "Register an asset",
       "edit": "Edit",
       "import": "Import",
-      "bookings": "Equipment bookings"
+      "bookings": "Equipment bookings",
+      "licences": "Licences"
     },
     "columns": {
       "code": "Code",
@@ -5770,7 +5771,11 @@
       "booking_end_before_start": "The end must come after the start.",
       "booking_in_the_past": "A booking cannot start in the past.",
       "booking_too_long": "A booking runs for a fortnight at most.",
-      "booking_too_far_ahead": "A booking can be made a year ahead at most."
+      "booking_too_far_ahead": "A booking can be made a year ahead at most.",
+      "licence_not_found": "Licence not found.",
+      "licence_cost_invalid": "That cost is not a valid figure.",
+      "licence_seats_invalid": "That seat count is not valid.",
+      "licence_renewal_date_required": "A renewing cycle needs a renewal date."
     },
     "person": {
       "title": "Equipment held",
@@ -5866,6 +5871,56 @@
         "checkIn": "Taken back",
         "checkedOutAt": "Handed over at",
         "checkedInAt": "Taken back at"
+      }
+    },
+    "licences": {
+      "title": "Licences & subscriptions",
+      "description": "Software, cloud services and subscriptions: how many seats, what they cost, and above all when they fall due.",
+      "empty": "No licences recorded yet.",
+      "manualRenew": "(does not auto-renew)",
+      "trackerNote": "Each renewal raises an obligation in the compliance tracker, due a fortnight beforehand — time enough to decide whether to renew or cancel.",
+      "nav": {
+        "register": "Asset register",
+        "new": "Add a licence"
+      },
+      "columns": {
+        "name": "Name",
+        "entity": "Entity",
+        "seats": "Seats",
+        "cycle": "Cycle",
+        "renewal": "Renews",
+        "owner": "Owner",
+        "cost": "Cost / cycle (₫)",
+        "status": "Status"
+      },
+      "cycle": {
+        "monthly": "Monthly",
+        "quarterly": "Quarterly",
+        "annual": "Annual",
+        "perpetual": "Perpetual"
+      },
+      "status": {
+        "active": "Active",
+        "cancelled": "Cancelled",
+        "expired": "Expired"
+      },
+      "form": {
+        "name": "Licence or subscription",
+        "vendor": "Vendor",
+        "entity": "Entity",
+        "owner": "Owner",
+        "noOwner": "Nobody yet",
+        "seats": "Seats",
+        "cycle": "Billing cycle",
+        "renewalDate": "Next renewal date",
+        "cost": "Cost per cycle (₫)",
+        "accountRef": "Account or contract reference",
+        "status": "Status",
+        "autoRenews": "Renews itself unless cancelled",
+        "notes": "Notes",
+        "tracker": "The renewal date raises an obligation in the compliance tracker. Whoever is named here as owner receives it.",
+        "submit": "Save",
+        "saved": "Saved."
       }
     }
   }

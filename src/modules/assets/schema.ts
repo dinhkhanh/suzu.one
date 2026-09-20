@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { bigint, boolean, date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { entity, team } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
-import type { AssetCondition, AssetEventType, AssetKind, AssetStatus, BookingStatus, HolderType } from "./enums";
+import type { AssetCondition, AssetEventType, AssetKind, AssetStatus, BillingCycle, BookingStatus, HolderType, LicenceStatus } from "./enums";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -153,6 +153,40 @@ export const assetBooking = pgTable(
     ...timestamps,
   },
   (t) => [index("asset_booking_asset_idx").on(t.assetId, t.startAt), index("asset_booking_person_idx").on(t.personId, t.startAt), index("asset_booking_window_idx").on(t.startAt, t.endAt)],
+).enableRLS();
+
+// Software licences and subscriptions (FR-AST-05). Not assets on a shelf: what matters is the
+// seat count, the bill, and — above all — the renewal date, which is why the ops tracker pulls
+// these rows as dated facts (`listLicenceRenewalFacts`) exactly as it pulls HR lifecycle events.
+export const licence = pgTable(
+  "licence",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    vendor: text("vendor"),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    // How many seats are paid for, and who is actually using them.
+    seats: integer("seats"),
+    seatHolderPersonIds: uuid("seat_holder_person_ids").array(),
+    // Integer VND per billing cycle. Read by the same people who read an asset's price.
+    costPerCycle: bigint("cost_per_cycle", { mode: "number" }),
+    billingCycle: text("billing_cycle").$type<BillingCycle>().notNull(),
+    // The next date money is due. The scheduler walks forward from here on the cycle.
+    renewalDate: date("renewal_date"),
+    // Whether it renews itself if nobody acts — which changes what the obligation is *for*.
+    autoRenews: boolean("auto_renews").notNull().default(true),
+    ownerPersonId: uuid("owner_person_id").references(() => person.id),
+    // The machine it is tied to, when it is tied to one (a workstation licence).
+    assetId: uuid("asset_id").references(() => asset.id),
+    accountRef: text("account_ref"),
+    notes: text("notes"),
+    status: text("status").$type<LicenceStatus>().notNull().default("active"),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [index("licence_entity_idx").on(t.entityId, t.status), index("licence_renewal_idx").on(t.renewalDate)],
 ).enableRLS();
 
 // Everything that ever happened to one asset, in order. Only ever inserted.

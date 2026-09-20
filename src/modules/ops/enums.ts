@@ -13,10 +13,15 @@ export type PeriodicRecurrence = Exclude<Recurrence, "event">;
 export const SHIFTS = ["next_working_day", "previous_working_day", "none"] as const;
 export type Shift = (typeof SHIFTS)[number];
 
-// What in HR starts an event-driven obligation. The first six are lifecycle event types; the last
-// is the end of a long absence, read from the long-leave event's `details.to`.
-export const EVENT_TYPES = ["hire", "rehire", "termination", "long_leave", "salary_change", "long_leave_return"] as const;
+// What starts an event-driven obligation. The first five are lifecycle event types;
+// `long_leave_return` is the end of a long absence, read from the long-leave event's `details.to`.
+// `licence_renewal` is the odd one out and deliberately so: it comes from the asset module's
+// licences rather than from HR (FR-AST-05), and the scheduler has a branch of its own for it.
+export const EVENT_TYPES = ["hire", "rehire", "termination", "long_leave", "salary_change", "long_leave_return", "licence_renewal"] as const;
 export type ObligationEventType = (typeof EVENT_TYPES)[number];
+
+/** The event types that come from a person's lifecycle; the rest have their own source. */
+export const LIFECYCLE_EVENT_TYPES: readonly ObligationEventType[] = ["hire", "rehire", "termination", "long_leave", "salary_change", "long_leave_return"];
 
 export const REVIEW_STATUSES = ["unreviewed", "reviewed"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];

@@ -6,7 +6,7 @@
 // check in code is there to give a decent message, not to be the rule.
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
@@ -14,12 +14,14 @@ import { db, schema, type Tx } from "@/lib/db";
 import { cancelOpenTasksOfContext, createTasks } from "@/modules/platform/tasks-engine/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { listPeopleHolding } from "@/modules/platform/rbac/service";
-import { type AssetCondition, type AssetKind, type AssetStatus, BOOKING_CLOSED, BOOKING_HOLDS_SLOT, type BookingStatus, type HolderType, UNASSIGNABLE_STATUSES } from "./enums";
+import { type AssetCondition, type AssetKind, type AssetStatus, type BillingCycle, BOOKING_CLOSED, BOOKING_HOLDS_SLOT, type BookingStatus, CYCLE_MONTHS, type HolderType, type LicenceStatus, UNASSIGNABLE_STATUSES } from "./enums";
 import { assetReach, canManageAssets, canReadAssetMoney, canReadRegister, canViewAsset } from "./policy";
+import { renewalsBetween } from "./engine/renewal";
 
 export * from "./enums";
 export * from "./engine/booking";
-export { assetReach, canActOnBooking, canBookAssets, canConfirmHandover, canDecideBookings, canManageAssets, canManageCategories, canReadAssetMoney, canReadPersonAssets, canReadRegister, canViewAsset } from "./policy";
+export * from "./engine/renewal";
+export { assetReach, canActOnBooking, canBookAssets, canConfirmHandover, canDecideBookings, canManageAssets, canManageCategories, canManageLicences, canReadAssetMoney, canReadLicences, canReadPersonAssets, canReadRegister, canViewAsset } from "./policy";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type AssetRow = typeof schema.asset.$inferSelect;
@@ -853,6 +855,99 @@ export async function listBookableAssets(filter: { categoryId?: string; entityId
       ),
     )
     .orderBy(asc(schema.assetCategory.sortOrder), asc(schema.assetCategory.name), asc(schema.asset.code));
+}
+
+// ── Licences and subscriptions (FR-AST-05) ──────────────────────────────────────────────────
+// The renewal dates reach the OPS tracker the same way HR's lifecycle events do: this module
+// publishes *facts*, and `ops/scheduler.ts` pulls them through this barrel. Nothing here knows
+// what an obligation is, and nothing in ops knows what a licence is beyond the fact's shape.
+
+export type LicenceRow = typeof schema.licence.$inferSelect;
+
+export type LicenceInput = {
+  name: string;
+  vendor: string | null;
+  entityId: string;
+  seats: number | null;
+  seatHolderPersonIds: string[];
+  costPerCycle: number | null;
+  billingCycle: BillingCycle;
+  renewalDate: IsoDate | null;
+  autoRenews: boolean;
+  ownerPersonId: string | null;
+  assetId: string | null;
+  accountRef: string | null;
+  notes: string | null;
+  status: LicenceStatus;
+};
+
+export async function saveLicence(licenceId: string | null, input: LicenceInput, actorPersonId: string): Promise<{ before: LicenceRow | null; after: LicenceRow }> {
+  if (input.costPerCycle !== null && (!Number.isSafeInteger(input.costPerCycle) || input.costPerCycle < 0)) throw new ActionError("licence_cost_invalid");
+  if (input.seats !== null && (!Number.isInteger(input.seats) || input.seats < 0)) throw new ActionError("licence_seats_invalid");
+  // A cycle that renews needs a date to renew on, or nothing can ever be put in the tracker.
+  if (CYCLE_MONTHS[input.billingCycle] !== null && !input.renewalDate) throw new ActionError("licence_renewal_date_required");
+  const values = { ...input, seatHolderPersonIds: input.seatHolderPersonIds, updatedAt: now() };
+  if (!licenceId) {
+    const [after] = await db().insert(schema.licence).values({ ...values, createdByPersonId: actorPersonId }).returning();
+    return { before: null, after };
+  }
+  const [before] = await db().select().from(schema.licence).where(eq(schema.licence.id, licenceId)).limit(1);
+  if (!before) throw new ActionError("licence_not_found");
+  const [after] = await db().update(schema.licence).set(values).where(eq(schema.licence.id, licenceId)).returning();
+  return { before, after };
+}
+
+export async function findLicence(licenceId: string, executor: Executor = db()): Promise<LicenceRow | undefined> {
+  const [row] = await executor.select().from(schema.licence).where(eq(schema.licence.id, licenceId)).limit(1);
+  return row;
+}
+
+export type LicenceView = LicenceRow & { entityName: string | null; ownerName: string | null; assetCode: string | null; canSeeMoney: boolean };
+
+/** The licence list, narrowed to the entities whose register the viewer keeps. */
+export async function listLicences(viewer: Principal, filter: { entityId?: string; status?: LicenceStatus } = {}): Promise<LicenceView[]> {
+  const reach = assetReach(viewer);
+  if (!reach.all && reach.entityIds.length === 0) return [];
+  const owner = alias(schema.person, "licence_owner");
+  const rows = await db()
+    .select({ licence: schema.licence, entityName: schema.entity.shortName, ownerName: owner.fullName, assetCode: schema.asset.code })
+    .from(schema.licence)
+    .leftJoin(schema.entity, eq(schema.entity.id, schema.licence.entityId))
+    .leftJoin(owner, eq(owner.id, schema.licence.ownerPersonId))
+    .leftJoin(schema.asset, eq(schema.asset.id, schema.licence.assetId))
+    .where(and(reach.all ? undefined : inArray(schema.licence.entityId, reach.entityIds), filter.entityId ? eq(schema.licence.entityId, filter.entityId) : undefined, filter.status ? eq(schema.licence.status, filter.status) : undefined))
+    .orderBy(asc(schema.licence.renewalDate), asc(schema.licence.name));
+  return rows.map((row) => ({ ...row.licence, entityName: row.entityName, ownerName: row.ownerName, assetCode: row.assetCode, canSeeMoney: canReadAssetMoney(viewer, row.licence.entityId) }));
+}
+
+/**
+ * Every renewal that falls due between `from` and `to`, one fact per occurrence.
+ *
+ * This is what the OPS tracker pulls (FR-AST-05: "renewals appear in the OPS tracker"). The id is
+ * stable — `<licence id>:<renewal date>` — so the tracker's unique key on (template, entity,
+ * period) makes generating twice a no-op, and walking the cycle forward from the stored renewal
+ * date means a licence renewed years ago still produces the *next* one rather than a backlog.
+ * A cancelled or expired licence produces nothing, which is how its open obligations get called off.
+ */
+export type LicenceRenewalFact = { id: string; licenceId: string; entityId: string; name: string; vendor: string | null; renewalDate: IsoDate; ownerPersonId: string | null; autoRenews: boolean };
+
+export async function listLicenceRenewalFacts(from: IsoDate, to: IsoDate, executor: Executor = db()): Promise<LicenceRenewalFact[]> {
+  const rows = await executor.select().from(schema.licence).where(eq(schema.licence.status, "active"));
+  const facts: LicenceRenewalFact[] = [];
+  for (const row of rows) {
+    const months = CYCLE_MONTHS[row.billingCycle];
+    if (!row.renewalDate || months === null) continue;
+    for (const date of renewalsBetween(row.renewalDate, months, from, to)) {
+      facts.push({ id: `${row.id}:${date}`, licenceId: row.id, entityId: row.entityId, name: row.name, vendor: row.vendor, renewalDate: date, ownerPersonId: row.ownerPersonId, autoRenews: row.autoRenews });
+    }
+  }
+  return facts.sort((left, right) => left.renewalDate.localeCompare(right.renewalDate));
+}
+
+/** Licence ids that no longer renew, so the tracker can call off what it opened for them. */
+export async function listInactiveLicenceIds(executor: Executor = db()): Promise<string[]> {
+  const rows = await executor.select({ id: schema.licence.id }).from(schema.licence).where(ne(schema.licence.status, "active"));
+  return rows.map((row) => row.id);
 }
 
 export const assetsToday = (): IsoDate => todayInVietnam();

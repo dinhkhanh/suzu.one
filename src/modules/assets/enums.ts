@@ -65,3 +65,15 @@ export const BOOKING_HOLDS_SLOT: readonly BookingStatus[] = ["requested", "confi
 
 /** A booking nobody can still act on. */
 export const BOOKING_CLOSED: readonly BookingStatus[] = ["returned", "cancelled"];
+
+// ── Licences and subscriptions (FR-AST-05) ──────────────────────────────────────────────────
+
+/** How often the bill comes round. `perpetual` never renews — it is tracked for the seat count. */
+export const BILLING_CYCLES = ["monthly", "quarterly", "annual", "perpetual"] as const;
+export type BillingCycle = (typeof BILLING_CYCLES)[number];
+
+/** Months between renewals; `perpetual` has none, which is why the map returns null for it. */
+export const CYCLE_MONTHS: Record<BillingCycle, number | null> = { monthly: 1, quarterly: 3, annual: 12, perpetual: null };
+
+export const LICENCE_STATUSES = ["active", "cancelled", "expired"] as const;
+export type LicenceStatus = (typeof LICENCE_STATUSES)[number];
