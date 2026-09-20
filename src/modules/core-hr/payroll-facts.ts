@@ -9,7 +9,7 @@ import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { countDependentsInMonth } from "./engine/dependents";
 import { type EmploymentFacts, listEmploymentFacts } from "./employment-facts";
-import { sensitiveContext } from "./field-contexts";
+import { dependentContext, sensitiveContext } from "./field-contexts";
 import { recordLifecycleEvent } from "./lifecycle-events";
 import type { BankAccount } from "./records";
 
@@ -22,6 +22,8 @@ export type PayrollPersonFacts = EmploymentFacts & {
   taxCode: string | null;
   hasTaxCode: boolean;
   socialInsuranceNumber: string | null;
+  /** The insurance and PIT forms match a person on their national ID when no code is on file. */
+  nationalId: string | null;
   /** The first account on file is the pay account. */
   bankAccount: BankAccount | null;
   /** The contract in force on the month's last day (else the latest before it); appendices and NDAs ignored. */
@@ -45,8 +47,8 @@ export async function listPayrollFacts(filter: { personIds?: readonly string[]; 
     executor.select().from(schema.personSensitive).where(inArray(schema.personSensitive.personId, ids)),
     executor.select().from(schema.contract).where(and(inArray(schema.contract.personId, ids), isNull(schema.contract.deletedAt), inArray(schema.contract.type, ["probation", "fixed_term", "indefinite", "service", "internship"]))).orderBy(desc(schema.contract.startDate)),
   ]);
-  const cipher = sensitive.some((row) => row.taxCode || row.bankAccounts || row.socialInsuranceNumber) ? fieldCipher() : null;
-  const open = (row: (typeof sensitive)[number] | undefined, field: "taxCode" | "socialInsuranceNumber" | "bankAccounts") => (row?.[field] && cipher ? cipher.decrypt(row[field], sensitiveContext(field, row.personId)) : null);
+  const cipher = sensitive.some((row) => row.taxCode || row.bankAccounts || row.socialInsuranceNumber || row.nationalId) ? fieldCipher() : null;
+  const open = (row: (typeof sensitive)[number] | undefined, field: "taxCode" | "socialInsuranceNumber" | "bankAccounts" | "nationalId") => (row?.[field] && cipher ? cipher.decrypt(row[field], sensitiveContext(field, row.personId)) : null);
 
   return facts.map((fact) => {
     const row = sensitive.find((candidate) => candidate.personId === fact.personId);
@@ -60,6 +62,7 @@ export async function listPayrollFacts(filter: { personIds?: readonly string[]; 
       taxCode,
       hasTaxCode: !!taxCode,
       socialInsuranceNumber: open(row, "socialInsuranceNumber"),
+      nationalId: open(row, "nationalId"),
       bankAccount: accounts ? ((JSON.parse(accounts) as BankAccount[])[0] ?? null) : null,
       contract: inForce ? { type: inForce.type as "probation", startDate: inForce.startDate, endDate: inForce.terminatedOn ?? inForce.endDate } : null,
     };
@@ -73,4 +76,54 @@ export async function listPayrollFacts(filter: { personIds?: readonly string[]; 
  */
 export async function recordPayEvent(tx: Tx, event: { type: "salary_change" | "pay_profile_change"; personId: string; employmentId: string; entityId: string; effectiveDate: IsoDate; reason: string | null; details: Record<string, string | null>; approvalRequestId?: string | null }, actorPersonId: string | null) {
   return recordLifecycleEvent(tx, { ...event, status: "applied" }, actorPersonId);
+}
+
+/**
+ * The PIT family-deduction register as the tax office wants to see it (FR-PAY-35: dependants
+ * registration list). One row per dependant with the months it is claimed for, decrypted here
+ * because this module owns the cipher contexts. Restricted data: only payroll's statutory exports
+ * call it, and only after they have checked compensation access.
+ */
+export type DependantRegistration = {
+  personId: string;
+  personName: string;
+  employeeCode: string | null;
+  personTaxCode: string | null;
+  dependantName: string;
+  relationship: string;
+  dateOfBirth: IsoDate | null;
+  idNumber: string | null;
+  taxCode: string | null;
+  deductionFrom: IsoDate;
+  deductionTo: IsoDate | null;
+};
+
+export async function listDependantRegistrations(filter: { entityIds?: readonly string[]; personIds?: readonly string[] }, month: string, executor: Executor = db()): Promise<DependantRegistration[]> {
+  const facts = await listPayrollFacts(filter, month, executor);
+  if (facts.length === 0) return [];
+  const ids = facts.map((fact) => fact.personId);
+  const rows = await executor.select().from(schema.dependent).where(and(inArray(schema.dependent.personId, ids), isNull(schema.dependent.deletedAt))).orderBy(schema.dependent.deductionFrom);
+  if (rows.length === 0) return [];
+  const cipher = fieldCipher();
+  const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
+
+  return rows.flatMap((row) => {
+    const person = factOf.get(row.personId);
+    if (!person) return [];
+    return [
+      {
+        personId: row.personId,
+        personName: person.fullName,
+        employeeCode: person.employeeCode,
+        personTaxCode: person.taxCode,
+        dependantName: row.fullName,
+        relationship: row.relationship,
+        dateOfBirth: row.dateOfBirth as IsoDate | null,
+        idNumber: row.idNumber ? cipher.decrypt(row.idNumber, dependentContext("idNumber", row.id)) : null,
+        taxCode: row.taxCode ? cipher.decrypt(row.taxCode, dependentContext("taxCode", row.id)) : null,
+        deductionFrom: row.deductionFrom as IsoDate,
+        deductionTo: row.deductionTo as IsoDate | null,
+      },
+    ];
+  });
 }

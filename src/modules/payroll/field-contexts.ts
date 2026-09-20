@@ -17,3 +17,9 @@ export const retroAmountContext = (itemId: string) => `payroll_retro_item.amount
 /** The total of a generated bank batch or cash sheet (FR-PAY-33, 39), and one person's cash net. */
 export const paymentFileTotalContext = (fileId: string) => `payroll_payment_file.total:${fileId}`;
 export const cashAmountContext = (paymentId: string) => `payroll_cash_payment.amount:${paymentId}`;
+
+/** Year-to-date figures imported for a year the system did not run (FR-PAY-35). */
+export const ytdFiguresContext = (ytdId: string) => `payroll_ytd.figures:${ytdId}`;
+/** The existing method's figures for one person and month, and a difference someone explained (FR-PAY-38). */
+export const parallelReferenceContext = (referenceId: string) => `payroll_parallel_reference.figures:${referenceId}`;
+export const parallelDeltaContext = (findingId: string) => `payroll_parallel_finding.delta:${findingId}`;

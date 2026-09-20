@@ -4458,6 +4458,10 @@
       "reports": {
         "title": "Báo cáo lương",
         "description": "Bảng lương chi tiết, chi phí, bảo hiểm và thuế."
+      },
+      "statutory": {
+        "title": "Dữ liệu khai báo",
+        "description": "Số liệu lập tờ khai BHXH và thuế TNCN: D02-LT, 05/KK-TNCN, quyết toán năm, người phụ thuộc."
       }
     },
     "salaries": {
@@ -5229,6 +5233,62 @@
         "report_not_available": "Không có số liệu cho báo cáo này, hoặc bạn không có quyền xem.",
         "forbidden": "Bạn không có quyền thực hiện thao tác này.",
         "failed": "Không thực hiện được. Vui lòng thử lại."
+      }
+    },
+    "statutory": {
+      "title": "Dữ liệu khai báo",
+      "description": "Số liệu để lập tờ khai bảo hiểm và thuế TNCN: tăng/giảm lao động (D02-LT), tờ khai tháng/quý (05/KK-TNCN), quyết toán năm (05/QTT-TNCN) và danh sách người phụ thuộc. Lấy từ các bảng lương đã tính, không tính lại.",
+      "back": "Lương",
+      "entity": "Pháp nhân",
+      "month": "Tháng",
+      "year": "Năm",
+      "person": "Nhân viên",
+      "download": "Tải CSV",
+      "noData": "Chưa có số liệu cho kỳ này.",
+      "unverified": "Bố cục cột chưa được đối chiếu với biểu mẫu chính thức.",
+      "unverifiedBanner": "Toàn bộ bố cục cột trong trang này là giả định, chưa đối chiếu với biểu mẫu chính thức của HTKK và cổng BHXH. Số liệu lấy đúng từ bảng lương đã duyệt; kế toán trưởng cần kiểm tra thứ tự và tên cột trước khi nộp.",
+      "d02lt": {
+        "title": "Tăng / giảm lao động tham gia bảo hiểm (D02-LT)",
+        "summary": "{count} thay đổi trong tháng {month}.",
+        "change": "Phương án",
+        "previousBase": "Mức đóng cũ",
+        "newBase": "Mức đóng mới",
+        "reasons": {
+          "new_participant": "Tăng mới",
+          "base_increase": "Điều chỉnh tăng mức đóng",
+          "base_decrease": "Điều chỉnh giảm mức đóng",
+          "left": "Giảm do nghỉ việc",
+          "unpaid_leave": "Giảm do nghỉ không lương",
+          "insurance_leave": "Giảm do nghỉ ốm đau/thai sản",
+          "other_stop": "Giảm khác"
+        }
+      },
+      "pitMonthly": {
+        "title": "Tờ khai khấu trừ thuế TNCN (05/KK-TNCN)",
+        "summary": "{count} cá nhân, tổng thuế đã khấu trừ {tax}.",
+        "download": "Chỉ tiêu tháng",
+        "downloadDetail": "Bảng kê chi tiết",
+        "downloadQuarter": "Chỉ tiêu quý"
+      },
+      "finalization": {
+        "title": "Quyết toán thuế TNCN năm {year} (05/QTT-TNCN)",
+        "summary": "{count} cá nhân, đã khấu trừ {withheld}; {imported} người có số liệu nhập từ ngoài hệ thống.",
+        "download": "Chỉ tiêu quyết toán",
+        "appendix1": "Phụ lục 05-1/BK",
+        "appendix2": "Phụ lục 05-2/BK",
+        "taxableIncome": "Thu nhập chịu thuế",
+        "withheld": "Đã khấu trừ",
+        "due": "Phải nộp (tính lại)",
+        "importedMark": "(có số liệu nhập)"
+      },
+      "dependants": {
+        "title": "Danh sách người phụ thuộc (07/ĐK-NPT-TNCN)",
+        "summary": "{count} người phụ thuộc đang được tính giảm trừ."
+      },
+      "errors": {
+        "statutory_export_not_available": "Chưa có số liệu để xuất cho kỳ này.",
+        "step_up_required": "Cần xác thực lại trước khi xem dữ liệu lương.",
+        "forbidden": "Bạn không có quyền xuất dữ liệu khai báo của pháp nhân này."
       }
     }
   }

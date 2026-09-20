@@ -552,3 +552,87 @@ export const payrollRetroItem = pgTable(
     uniqueIndex("payroll_retro_item_source_key").on(t.personId, t.kind, t.sourceRef).where(sql`${t.sourceRef} IS NOT NULL AND ${t.status} <> 'cancelled'`),
   ],
 ).enableRLS();
+
+// ── Year-to-date figures brought in from outside the system (FR-PAY-35) ─────────────────────
+
+// A person whose tax year started before the system did still needs a full finalization. These
+// are the months nobody here calculated, imported once per person per year and added to what the
+// runs know. Encrypted like everything else about a person's pay.
+export const payrollYtd = pgTable(
+  "payroll_ytd",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    year: integer("year").notNull(),
+    /** How many months of that year these figures cover — the finalization counts them. */
+    months: integer("months").notNull().default(0),
+    /** Encrypted `YtdFigures` JSON, context "payroll_ytd.figures:<id>". */
+    figuresEnc: text("figures_enc").notNull(),
+    note: text("note"),
+    importBatchId: uuid("import_batch_id"),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  // One row per person per year: a re-import replaces it rather than adding to it.
+  (t) => [uniqueIndex("payroll_ytd_person_year_key").on(t.personId, t.year), index("payroll_ytd_entity_idx").on(t.entityId, t.year)],
+).enableRLS();
+
+// ── Parallel run (FR-PAY-38) ────────────────────────────────────────────────────────────────
+
+// What the existing method (the accountant's spreadsheet) says a person was paid, so the system's
+// own figure can be held against it person by person before go-live.
+export const payrollParallelReference = pgTable(
+  "payroll_parallel_reference",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    month: text("month").notNull(),
+    /** Encrypted `ReferenceFigures` JSON, context "payroll_parallel_reference.figures:<id>". */
+    figuresEnc: text("figures_enc").notNull(),
+    note: text("note"),
+    importBatchId: uuid("import_batch_id"),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("payroll_parallel_reference_key").on(t.entityId, t.month, t.personId), index("payroll_parallel_reference_person_idx").on(t.personId, t.month)],
+).enableRLS();
+
+// Every difference starts unexplained; go-live needs none left (development plan §3, Phase 5).
+export const parallelFindingClass = pgEnum("parallel_finding_class", ["system_bug", "spreadsheet_error", "rule_gap", "accepted_rounding"]);
+
+// One person's one differing figure, and what it was found to be. The difference it was explained
+// against is kept with it: if the run is recalculated and the gap changes, the explanation no
+// longer covers it and the reconciliation shows the line as unexplained again.
+export const payrollParallelFinding = pgTable(
+  "payroll_parallel_finding",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    month: text("month").notNull(),
+    /** Which figure differs: "net", "pit", "employeeInsurance", … */
+    field: text("field").notNull(),
+    /** Encrypted signed difference the classification was made against, context "payroll_parallel_finding.delta:<id>". */
+    deltaEnc: text("delta_enc").notNull(),
+    classification: parallelFindingClass("classification").notNull(),
+    /** Why — required, because an unexplained difference is the thing this table exists to remove. */
+    note: text("note").notNull(),
+    classifiedByPersonId: uuid("classified_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("payroll_parallel_finding_key").on(t.entityId, t.month, t.personId, t.field), index("payroll_parallel_finding_month_idx").on(t.entityId, t.month)],
+).enableRLS();

@@ -4458,6 +4458,10 @@
       "reports": {
         "title": "Payroll reports",
         "description": "The register, cost, insurance and tax reports."
+      },
+      "statutory": {
+        "title": "Statutory data",
+        "description": "Data for the BHXH and PIT filings: D02-LT, 05/KK-TNCN, the annual finalization, dependants."
       }
     },
     "salaries": {
@@ -5229,6 +5233,62 @@
         "report_not_available": "No figures for that report, or you may not see it.",
         "forbidden": "You are not allowed to do this.",
         "failed": "That did not work. Please try again."
+      }
+    },
+    "statutory": {
+      "title": "Statutory data",
+      "description": "The data behind the insurance and PIT filings: the increase/decrease list (D02-LT), the monthly or quarterly declaration (05/KK-TNCN), the annual finalization (05/QTT-TNCN) and the dependants register. Taken from calculated runs, never recalculated.",
+      "back": "Payroll",
+      "entity": "Entity",
+      "month": "Month",
+      "year": "Year",
+      "person": "Employee",
+      "download": "Download CSV",
+      "noData": "No data for this period yet.",
+      "unverified": "The column layout is unverified against the official template.",
+      "unverifiedBanner": "Every column layout on this page is an assumption, unverified against the official HTKK and BHXH portal templates. The figures come from the approved payroll; the chief accountant must check the column order and names before filing.",
+      "d02lt": {
+        "title": "Insurance increase / decrease (D02-LT)",
+        "summary": "{count} changes in {month}.",
+        "change": "Change",
+        "previousBase": "Previous base",
+        "newBase": "New base",
+        "reasons": {
+          "new_participant": "New participant",
+          "base_increase": "Base increased",
+          "base_decrease": "Base decreased",
+          "left": "Left the company",
+          "unpaid_leave": "Unpaid leave",
+          "insurance_leave": "Sick or maternity leave",
+          "other_stop": "Stopped contributing"
+        }
+      },
+      "pitMonthly": {
+        "title": "PIT withholding declaration (05/KK-TNCN)",
+        "summary": "{count} individuals, {tax} withheld in total.",
+        "download": "Monthly indicators",
+        "downloadDetail": "Working sheet",
+        "downloadQuarter": "Quarterly indicators"
+      },
+      "finalization": {
+        "title": "PIT finalization {year} (05/QTT-TNCN)",
+        "summary": "{count} individuals, {withheld} withheld; {imported} with figures imported from outside the system.",
+        "download": "Finalization indicators",
+        "appendix1": "Appendix 05-1/BK",
+        "appendix2": "Appendix 05-2/BK",
+        "taxableIncome": "Taxable income",
+        "withheld": "Withheld",
+        "due": "Due (recomputed)",
+        "importedMark": "(imported figures)"
+      },
+      "dependants": {
+        "title": "Dependants register (07/ĐK-NPT-TNCN)",
+        "summary": "{count} dependants currently deducted."
+      },
+      "errors": {
+        "statutory_export_not_available": "There is no data to export for this period.",
+        "step_up_required": "Confirm it is you before opening payroll data.",
+        "forbidden": "You may not export this entity's statutory data."
       }
     }
   }
