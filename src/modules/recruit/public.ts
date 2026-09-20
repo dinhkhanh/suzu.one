@@ -18,7 +18,7 @@ import "server-only";
 //   · **The CV is never trusted.** The bytes are checked against the allow-list and the file's own
 //     magic bytes in memory before anything is stored, the stored row is `not_scanned` (there is
 //     no scanner in this system), and `policy.ts` keeps it to the people hiring for that opening.
-import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { ActionError } from "@/lib/action";
 import { createPublicAction, type RateLimitOutcome, type Visitor } from "@/lib/public-action";
@@ -58,9 +58,16 @@ export async function countPublicHit(bucket: CareersBucket, visitor: Visitor, at
   return withinLimit(row?.hits ?? 1, limit) ? { ok: true } : { ok: false, retryAfterSeconds: retryAfterSeconds(at, limit.windowSeconds) };
 }
 
-/** Counted windows nobody can still be inside. Swept by the retention job (week 4). */
+/**
+ * Counted windows nobody can still be inside. Swept by the retention job (week 4).
+ *
+ * `lt`, not a `sql` fragment: drizzle binds a `Date` correctly when it knows the column, but a raw
+ * fragment gives postgres.js nothing to infer the type from and it **throws** — while PGlite
+ * shrugs and the tests stay green. The same trap Phase 6 hit with `tstzrange`; here it took
+ * running the job against a real Postgres to see it.
+ */
 export async function purgePublicHits(before: Date): Promise<number> {
-  const rows = await db().delete(schema.recruitPublicHit).where(sql`${schema.recruitPublicHit.windowStart} < ${before}`).returning({ id: schema.recruitPublicHit.id });
+  const rows = await db().delete(schema.recruitPublicHit).where(lt(schema.recruitPublicHit.windowStart, before)).returning({ id: schema.recruitPublicHit.id });
   return rows.length;
 }
 

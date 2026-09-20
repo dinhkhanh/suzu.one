@@ -218,13 +218,19 @@ export const canManageReferrals = (principal: Principal): boolean => canRunRecru
 // ── Reports (FR-REC-11) ─────────────────────────────────────────────────────────────────────
 
 /**
- * The funnel, time-to-hire and source effectiveness. `report:read` is what admits somebody to the
- * page at all; **which** openings the numbers are counted over is not decided here but in the
- * query, by the same `openingScope` every other list goes through. A department head with
- * `report:read` sees the funnel of the opening they are hiring for and an empty report otherwise —
- * there is no figure on this page that its reader could not already reach one opening at a time.
+ * The funnel, time-to-hire and source effectiveness.
+ *
+ * Either permission admits somebody to the page: `report:read` because that is what marks a reader
+ * of reports across the product, and `recruit:manage` because **the person running the pipeline is
+ * the one the funnel is for** — gating it on `report:read` alone shut the recruiter out of their
+ * own numbers, which was the first thing trying it over HTTP showed.
+ *
+ * **Which** openings are counted is not decided here but in the query, by the same `openingScope`
+ * every other list goes through. A department head sees the funnel of the opening they are hiring
+ * for and an empty report otherwise: there is nothing on this page that its reader could not
+ * already reach one opening at a time.
  */
-export const canReadRecruitReports = (principal: Principal): boolean => can(principal, "report:read");
+export const canReadRecruitReports = (principal: Principal): boolean => can(principal, "report:read") || canRunRecruitment(principal);
 
 // ── Candidate files ─────────────────────────────────────────────────────────────────────────
 
