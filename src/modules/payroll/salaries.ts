@@ -55,6 +55,31 @@ export async function getStructureOn(personId: string, date: IsoDate, executor: 
   return row ? openTerms(row) : null;
 }
 
+/**
+ * "One month's salary" for a set of entities on one day — what the year-end bonus multiplies
+ * (FR-PAY-21). Narrow on purpose: one figure per person and nothing else, so the bonus use-case
+ * never has to open a whole salary file. Somebody with no structure in force is simply absent from
+ * the map, and their bonus line records `no_salary` rather than guessing at zero.
+ *
+ * `baseComponentCode` is the scheme's, not a constant here: "BASE" is the base salary, and any
+ * other code is looked up among the structure's allowances.
+ *
+ * Stays inside payroll — it is not exported from `service.ts`, and no figure leaves the module.
+ */
+export async function listBaseSalariesOn(entityIds: readonly string[], date: IsoDate, baseComponentCode: string, executor: Executor = db()): Promise<Map<string, number>> {
+  if (entityIds.length === 0) return new Map();
+  const table = schema.salaryStructure;
+  const rows = await executor.select().from(table).where(and(inArray(table.entityId, [...entityIds]), inForce(table, date, date))).orderBy(table.personId, table.validFrom);
+  const salaries = new Map<string, number>();
+  for (const row of rows) {
+    const terms = openTerms(row).terms;
+    const amount = baseComponentCode === BASE_SALARY_CODE ? terms.baseSalary : (terms.allowances.find((line) => line.code === baseComponentCode)?.amount ?? null);
+    // Ordered by validFrom, so the latest structure in force on the day wins.
+    if (amount !== null) salaries.set(row.personId, amount);
+  }
+  return salaries;
+}
+
 // ── Screens ─────────────────────────────────────────────────────────────────────────────────
 
 export type SalaryOverviewRow = {

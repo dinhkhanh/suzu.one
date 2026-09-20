@@ -53,3 +53,34 @@ export const payrollReadReach = (principal: Principal) => entityReach(principal,
 
 /** Does any payroll screen exist for this person? Navigation only. */
 export const hasPayrollDesk = (principal: Principal): boolean => can(principal, "payroll:read") || can(principal, "payroll:propose") || can(principal, "payroll:approve") || can(principal, "payroll:pay");
+
+// ── The year-end bonus (FR-PAY-21, Phase 8 week 3) ──────────────────────────────────────────
+// A bonus amount is compensation like any other figure in this module, so the rules above hold
+// unchanged: a line manager, a department head and an entity director see **nothing** here,
+// however much of the person's review and performance band they may read in the performance
+// module. The band is about performance; the đồng are pay.
+
+/** Build, simulate and rebuild a run over these entities: C&B over every one of them. */
+export const canManageBonusRun = (principal: Principal, entityIds: readonly string[]): boolean => entityIds.length > 0 && entityIds.every((entityId) => canManageCompensation(principal, { entityId }));
+
+/** HR puts the run up to the CEO — the same desk that proposes a payroll run. */
+export const canProposeBonusRun = canManageBonusRun;
+
+/** The owner adjusts an individual amount, with a reason (SRS D13). Nobody else, not the CEO. */
+export const canAdjustBonusLine = (principal: Principal): boolean => canDecidePayRules(principal);
+
+/** The CEO signs the run, over every entity it covers. */
+export const canApproveBonusRun = (principal: Principal, entityIds: readonly string[]): boolean => entityIds.length > 0 && entityIds.every((entityId) => canApprovePayroll(principal, { entityId }));
+
+/** Paying it is creating payroll runs, which is C&B's — the payroll lifecycle then takes over. */
+export const canPayBonusRun = canManageBonusRun;
+
+/** Reading the register and its totals: any payroll reader over every entity in the run. */
+export const canReadBonusRun = (principal: Principal, entityIds: readonly string[]): boolean => entityIds.length > 0 && entityIds.every((entityId) => canReadPayroll(principal, { entityId }));
+
+/** One person's amount and the working out behind it: their own, or C&B over their entity. */
+export const canViewBonusOf = canViewCompensationOf;
+
+/** The bonus scheme is a pay rule: C&B proposes a version, the owner decides it (FR-PLT-39). */
+export const canProposeBonusScheme = canProposePayRules;
+export const canDecideBonusScheme = canDecidePayRules;

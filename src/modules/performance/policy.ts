@@ -167,3 +167,31 @@ export const canProposeWeighting = (principal: Principal): boolean => can(princi
 
 /** Is there a results screen for this viewer at all? Navigation only — the page checks again. */
 export const canOpenResults = (principal: Principal): boolean => !!principal.personId;
+
+// ── 1:1 notes and review outcomes (FR-PRF-04, 06 — Phase 8 week 3) ──────────────────────────
+
+type MeetingParties = { managerPersonId: string; person: PersonContext };
+
+/** The manager who holds the meeting, or HR over the person. The subject does not write it. */
+export const canWriteOneOnOne = (principal: Principal, meeting: MeetingParties): boolean => (!!principal.personId && principal.personId === meeting.managerPersonId) || canManagePerformanceOf(principal, meeting.person);
+
+/**
+ * Reading the shared half: the two people in the meeting, anyone above the subject in the
+ * reporting line, and HR. A colleague never.
+ */
+export const canReadOneOnOne = (principal: Principal, meeting: MeetingParties): boolean => canWriteOneOnOne(principal, meeting) || canReadPerformanceOf(principal, meeting.person);
+
+/**
+ * The manager's private notes. **Not the subject, ever** — that is the whole point of the column —
+ * and not HR either: it is one manager's thinking, not a record about the person.
+ */
+export const canReadOneOnOnePrivate = (principal: Principal, meeting: MeetingParties): boolean => !!principal.personId && principal.personId === meeting.managerPersonId;
+
+/** Raising a promotion, a development plan or a PIP off a settled result: the chain above, or HR. */
+export const canRaiseOutcome = (principal: Principal, person: PersonContext): boolean => isAbove(principal, person) || canManagePerformanceOf(principal, person);
+
+/** Accepting or rejecting one is HR's — they are the desk that acts on it. */
+export const canDecideOutcome = (principal: Principal, person: PersonContext): boolean => canManagePerformanceOf(principal, person);
+
+/** The person sees what was decided about them, once it has been decided. */
+export const canSeeOutcome = (principal: Principal, person: PersonContext): boolean => canReadPerformanceOf(principal, person);

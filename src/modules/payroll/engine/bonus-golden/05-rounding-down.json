@@ -1,0 +1,21 @@
+{
+  "name": "Rounding to the nearest 1.000 ₫",
+  "source": "synthetic",
+  "derivation": [
+    "Base 13.333.333 ₫; 24 months → 1,0000.",
+    "Result 65,00 % → band 'partly' → 0,5000.",
+    "Entity OKR 60,00 % → the bottom band 'Công ty chưa đạt' → 0,8000.",
+    "Combined = 1,0000 × 0,5000 × 0,8000 = 0,4000.",
+    "13.333.333 × 0,4000 = 5.333.333,2 → 5.333.333 ₫ before rounding.",
+    "5.333.333 / 1.000 = 5.333,333 → nearest multiple 5.333.000 ₫."
+  ],
+  "person": {
+    "baseSalaryVnd": 13333333,
+    "serviceMonths": 24,
+    "workforceType": "employee",
+    "activeOnReferenceDay": true,
+    "unitOkrProgressBp": 6000,
+    "result": { "resultId": "r5", "finalScoreBp": 6500, "bandKey": "partly", "bandMultiplierBp": 5000, "bandLabel": "Gần đạt", "reviewScoreBp": 6000, "kpiScoreBp": 6800, "okrScoreBp": 6400, "overridden": false, "overrideReason": null }
+  },
+  "expect": { "eligible": true, "combinedMultiplierBp": 4000, "beforeRoundingVnd": 5333333, "computedAmountVnd": 5333000, "finalAmountVnd": 5333000 }
+}

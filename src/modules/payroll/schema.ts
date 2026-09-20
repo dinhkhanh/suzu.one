@@ -12,7 +12,7 @@ import { boolean, check, date, index, integer, jsonb, pgEnum, pgTable, text, tim
 import { employment } from "../core-hr/schema";
 import { entity } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
-import type { PayrollPolicyValue } from "./enums";
+import type { BonusSchemeValue, PayrollPolicyValue } from "./enums";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -635,4 +635,134 @@ export const payrollParallelFinding = pgTable(
     ...timestamps,
   },
   (t) => [uniqueIndex("payroll_parallel_finding_key").on(t.entityId, t.month, t.personId, t.field), index("payroll_parallel_finding_month_idx").on(t.entityId, t.month)],
+).enableRLS();
+
+// ── The performance-driven year-end bonus (FR-PAY-21, SRS D13 — Phase 8 week 3) ─────────────
+//
+// The bonus lives here, in payroll, and not in the performance module: the amount is compensation
+// tier, and `policy.ts` already refuses a line manager, a department head and an entity director
+// every figure. Performance publishes the *multiplier* (FR-PRF-09) and payroll turns it into
+// money — the dependency runs one way, payroll → performance/service, and never back.
+//
+// The file's rule holds here too: **no column holds an amount of money about a person in the
+// clear.** A line's whole `BonusTrace` — base salary, every step, the override, the amount — is
+// encrypted and bound to its row; the clear columns are ids, bands, multipliers, flags and words.
+
+export const bonusScheme = pgTable(
+  "bonus_scheme",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // null = the group's scheme; an entity's own version replaces it for that entity.
+    entityId: uuid("entity_id").references(() => entity.id),
+    value: jsonb("value").$type<BonusSchemeValue>().notNull(),
+    validFrom: date("valid_from").notNull(),
+    validTo: date("valid_to"),
+    ...governance,
+    ...timestamps,
+  },
+  (t) => [index("bonus_scheme_entity_idx").on(t.entityId, t.status, t.validFrom), check("bonus_scheme_dates_check", sql`${t.validTo} IS NULL OR ${t.validTo} >= ${t.validFrom}`)],
+).enableRLS();
+
+// draft → simulated → proposed (HR) → approved (the CEO) → paid (off-cycle runs created).
+export const bonusRunStatus = pgEnum("bonus_run_status", ["draft", "simulated", "proposed", "approved", "paid", "cancelled"]);
+
+// One year's bonus across the **whole group**: the cost is simulated over every entity at once
+// before anything is committed (FR-PAY-21), and paid out as one off-cycle payroll run per entity.
+export const bonusRun = pgTable(
+  "bonus_run",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    year: integer("year").notNull(),
+    name: text("name").notNull(),
+    /** The entities the run covers. Group-shaped on purpose: the simulation spans them. */
+    entityIds: jsonb("entity_ids").$type<string[]>().notNull().default([]),
+    /** "2027-01" — the month the off-cycle runs pay in, and are taxed in (FR-PAY-19). */
+    payrollMonth: text("payroll_month").notNull(),
+    status: bonusRunStatus("status").notNull().default("draft"),
+    note: text("note"),
+    /** The run's totals, encrypted: context "bonus_run.totals:<id>". */
+    totalsEnc: text("totals_enc"),
+    /** Counts, not money — safe in the clear, and what a list needs. */
+    headcount: integer("headcount").notNull().default(0),
+    eligibleCount: integer("eligible_count").notNull().default(0),
+    overriddenCount: integer("overridden_count").notNull().default(0),
+    simulatedAt: timestamp("simulated_at", { withTimezone: true }),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    proposedAt: timestamp("proposed_at", { withTimezone: true }),
+    proposedByPersonId: uuid("proposed_by_person_id").references(() => person.id),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    approvedByPersonId: uuid("approved_by_person_id").references(() => person.id),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    paidByPersonId: uuid("paid_by_person_id").references(() => person.id),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    index("bonus_run_year_idx").on(t.year, t.status),
+    // One live run per year: a year is paid once, and a run that went wrong is cancelled.
+    uniqueIndex("bonus_run_year_key").on(t.year).where(sql`${t.status} <> 'cancelled'`),
+    check("bonus_run_month_check", sql`${t.payrollMonth} ~ '^\\d{4}-(0[1-9]|1[0-2])$'`),
+  ],
+).enableRLS();
+
+// One person's line. `trace_enc` is the whole `BonusTrace` — the phase's exit criterion lives in
+// it: base salary, each band and why, the arithmetic, the cap, the rounding and any override.
+// `result_id`, `kpi_score_ids` and `scheme_version_id` are the provenance, in the clear, so the
+// chain back to the KPI months survives without decrypting anything.
+export const bonusRunLine = pgTable(
+  "bonus_run_line",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => bonusRun.id, { onDelete: "cascade" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    schemeVersionId: uuid("scheme_version_id").references(() => bonusScheme.id),
+    /** The settled `performance_result` the multiplier came from (FR-PRF-09). */
+    resultId: uuid("result_id"),
+    /** The stored KPI month scores behind that result — what `markScoresConsumed` freezes. */
+    kpiScoreIds: jsonb("kpi_score_ids").$type<string[]>().notNull().default([]),
+    eligible: boolean("eligible").notNull().default(true),
+    /** Why not: "workforce_type", "service_too_short", … A name, never a sentence about pay. */
+    exclusionReason: text("exclusion_reason"),
+    /** The band and multiplier are numbers about performance, not money: they stay readable. */
+    bandKey: text("band_key"),
+    multiplierBp: integer("multiplier_bp"),
+    serviceMonths: integer("service_months"),
+    finalScoreBp: integer("final_score_bp"),
+    /** Context "bonus_run_line.trace:<id>". */
+    traceEnc: text("trace_enc").notNull(),
+    /** The owner's adjustment: the reason is words and stays clear; the amount is inside the trace. */
+    overrideReason: text("override_reason"),
+    overrideByPersonId: uuid("override_by_person_id").references(() => person.id),
+    overrideAt: timestamp("override_at", { withTimezone: true }),
+    /** The off-cycle payroll run this line was paid through (FR-PAY-19). */
+    payrollRunId: uuid("payroll_run_id").references(() => payrollRun.id),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("bonus_run_line_key").on(t.runId, t.personId), index("bonus_run_line_entity_idx").on(t.runId, t.entityId), index("bonus_run_line_person_idx").on(t.personId)],
+).enableRLS();
+
+// Every step the run was carried through, with who took it and what they said (FR-PAY-21's
+// "HR proposes → the owner adjusts → the CEO approves"). Append-only, like `payroll_run_event`.
+export const bonusRunEvent = pgTable(
+  "bonus_run_event",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => bonusRun.id, { onDelete: "cascade" }),
+    fromStatus: bonusRunStatus("from_status").notNull(),
+    toStatus: bonusRunStatus("to_status").notNull(),
+    actorPersonId: uuid("actor_person_id").references(() => person.id),
+    /** Words, never figures. */
+    comment: text("comment"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("bonus_run_event_run_idx").on(t.runId, t.createdAt)],
 ).enableRLS();

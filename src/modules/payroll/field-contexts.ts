@@ -23,3 +23,7 @@ export const ytdFiguresContext = (ytdId: string) => `payroll_ytd.figures:${ytdId
 /** The existing method's figures for one person and month, and a difference someone explained (FR-PAY-38). */
 export const parallelReferenceContext = (referenceId: string) => `payroll_parallel_reference.figures:${referenceId}`;
 export const parallelDeltaContext = (findingId: string) => `payroll_parallel_finding.delta:${findingId}`;
+
+/** A year-end bonus run's totals, and one person's whole derivation (FR-PAY-21, Phase 8). */
+export const bonusRunTotalsContext = (runId: string) => `bonus_run.totals:${runId}`;
+export const bonusLineContext = (lineId: string) => `bonus_run_line.trace:${lineId}`;

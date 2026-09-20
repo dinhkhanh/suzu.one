@@ -230,3 +230,15 @@ export const bandOf = (bands: readonly ResultBand[], scoreBp: number | null): Re
 
 /** Who put a peer forward, as the screens describe it. */
 export const NOMINATION_SOURCES = ["self", "manager", "hr"] as const;
+
+// ── Review outcomes and 1:1 notes (FR-PRF-06, 04 — Phase 8 week 3) ──────────────────────────
+
+/** What a settled result can lead to. A salary adjustment goes through payroll, never through here. */
+export const OUTCOME_TYPES = ["promotion", "salary_adjustment", "development_plan", "pip"] as const;
+export type OutcomeType = (typeof OUTCOME_TYPES)[number];
+
+export const OUTCOME_STATUSES = ["proposed", "accepted", "rejected"] as const;
+export type OutcomeStatus = (typeof OUTCOME_STATUSES)[number];
+
+export const ONE_ON_ONE_STATUSES = ["draft", "shared"] as const;
+export type OneOnOneStatus = (typeof ONE_ON_ONE_STATUSES)[number];

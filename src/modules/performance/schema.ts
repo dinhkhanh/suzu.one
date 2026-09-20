@@ -496,3 +496,81 @@ export const kpiScoreUse = pgTable(
   },
   (t) => [unique("kpi_score_use_unique").on(t.consumerId, t.scoreId), index("kpi_score_use_month_idx").on(t.entityId, t.month), index("kpi_score_use_year_idx").on(t.entityId, t.year)],
 ).enableRLS();
+
+// ── 1:1 meeting notes (FR-PRF-04, S — Phase 8 week 3) ───────────────────────────────────────
+// A shared agenda and shared notes both sides read, and a private column only the manager sees:
+// the policy refuses the subject that field, and a test proves it. Action items become real tasks
+// in the task engine (ADR-10) rather than a second to-do list nobody looks at.
+
+export const oneOnOne = pgTable(
+  "one_on_one",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    managerPersonId: uuid("manager_person_id")
+      .notNull()
+      .references(() => person.id),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    meetingOn: date("meeting_on").notNull(),
+    agenda: text("agenda"),
+    sharedNotes: text("shared_notes"),
+    /** The manager's own notes. Never read by the subject, whatever else they may hold. */
+    privateNotes: text("private_notes"),
+    // draft | shared
+    status: text("status").notNull().default("draft"),
+    sharedAt: timestamp("shared_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("one_on_one_pair_idx").on(t.personId, t.meetingOn), index("one_on_one_manager_idx").on(t.managerPersonId, t.meetingOn)],
+).enableRLS();
+
+export const oneOnOneAction = pgTable(
+  "one_on_one_action",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    meetingId: uuid("meeting_id")
+      .notNull()
+      .references(() => oneOnOne.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    assigneePersonId: uuid("assignee_person_id").references(() => person.id),
+    dueOn: date("due_on"),
+    /** The task the engine made of it — the action item and the task are one thing, not two. */
+    taskId: uuid("task_id"),
+    ...timestamps,
+  },
+  (t) => [index("one_on_one_action_meeting_idx").on(t.meetingId)],
+).enableRLS();
+
+// ── Review outcomes (FR-PRF-06, S — Phase 8 week 3) ─────────────────────────────────────────
+// What a published result leads to. A salary adjustment is **proposed through payroll's own
+// use-case** (SRS D17): performance never becomes a second way to set a salary, so this row keeps
+// the request's id and nothing else about money. The others raise a task for HR.
+
+export const reviewOutcome = pgTable(
+  "review_outcome",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    entityId: uuid("entity_id").references(() => entity.id),
+    year: integer("year").notNull(),
+    resultId: uuid("result_id").references(() => performanceResult.id),
+    participantId: uuid("participant_id").references(() => reviewParticipant.id),
+    // promotion | salary_adjustment | development_plan | pip
+    type: text("type").notNull(),
+    note: text("note"),
+    // proposed | accepted | rejected
+    status: text("status").notNull().default("proposed"),
+    /** Payroll's `salary_change` approval request, when the outcome is a salary adjustment. */
+    salaryRequestId: uuid("salary_request_id"),
+    /** The HR task the outcome raised, for the others. */
+    taskId: uuid("task_id"),
+    raisedByPersonId: uuid("raised_by_person_id").references(() => person.id),
+    decidedByPersonId: uuid("decided_by_person_id").references(() => person.id),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("review_outcome_person_idx").on(t.personId, t.year), index("review_outcome_status_idx").on(t.status, t.year)],
+).enableRLS();

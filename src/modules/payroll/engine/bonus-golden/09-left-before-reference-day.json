@@ -1,0 +1,17 @@
+{
+  "name": "Left in October: not employed on the reference day",
+  "source": "synthetic",
+  "derivation": [
+    "The scheme requires employment on 31 December; this person left before it.",
+    "`not_active` is checked first, so it is the reason even though other rules would also exclude them."
+  ],
+  "person": {
+    "baseSalaryVnd": 25000000,
+    "serviceMonths": 40,
+    "workforceType": "employee",
+    "activeOnReferenceDay": false,
+    "unitOkrProgressBp": 9500,
+    "result": { "resultId": "r9", "finalScoreBp": 10000, "bandKey": "exceeds", "bandMultiplierBp": 12500, "bandLabel": "Vượt", "reviewScoreBp": 10000, "kpiScoreBp": 10000, "okrScoreBp": 10000, "overridden": false, "overrideReason": null }
+  },
+  "expect": { "eligible": false, "exclusion": "not_active", "computedAmountVnd": 0, "finalAmountVnd": 0 }
+}

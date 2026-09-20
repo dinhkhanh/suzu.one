@@ -1,0 +1,17 @@
+{
+  "name": "A collaborator is not in the year-end bonus at all",
+  "source": "synthetic",
+  "derivation": [
+    "The scheme excludes the workforce type 'collaborator'.",
+    "The exclusion is decided before any arithmetic, so the amount is 0 ₫ and the reason is on the line."
+  ],
+  "person": {
+    "baseSalaryVnd": 20000000,
+    "serviceMonths": 30,
+    "workforceType": "collaborator",
+    "activeOnReferenceDay": true,
+    "unitOkrProgressBp": 9500,
+    "result": { "resultId": "r7", "finalScoreBp": 10500, "bandKey": "exceeds", "bandMultiplierBp": 12500, "bandLabel": "Vượt", "reviewScoreBp": 10000, "kpiScoreBp": 10800, "okrScoreBp": 10200, "overridden": false, "overrideReason": null }
+  },
+  "expect": { "eligible": false, "exclusion": "workforce_type", "computedAmountVnd": 0, "finalAmountVnd": 0 }
+}

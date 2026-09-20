@@ -1,0 +1,17 @@
+{
+  "name": "Two months in the company: below the scheme's three-month floor",
+  "source": "synthetic",
+  "derivation": [
+    "Eligibility asks for at least 3 months on the reference day; this person has 2.",
+    "Amount 0 ₫, reason 'service_too_short'."
+  ],
+  "person": {
+    "baseSalaryVnd": 15000000,
+    "serviceMonths": 2,
+    "workforceType": "employee",
+    "activeOnReferenceDay": true,
+    "unitOkrProgressBp": 9500,
+    "result": { "resultId": "r8", "finalScoreBp": 9000, "bandKey": "meets", "bandMultiplierBp": 10000, "bandLabel": "Đạt", "reviewScoreBp": 9000, "kpiScoreBp": 9000, "okrScoreBp": 9000, "overridden": false, "overrideReason": null }
+  },
+  "expect": { "eligible": false, "exclusion": "service_too_short", "computedAmountVnd": 0, "finalAmountVnd": 0 }
+}

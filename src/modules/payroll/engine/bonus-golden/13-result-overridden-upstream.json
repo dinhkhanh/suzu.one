@@ -1,0 +1,19 @@
+{
+  "name": "The owner overrode the performance result, not the amount — the band follows the override",
+  "source": "synthetic",
+  "derivation": [
+    "FR-PRF-09's override moved the year's score from 78,00 % to 102,00 %, with a reason.",
+    "The published band is therefore 'Vượt' → 1,2500, and the bonus reads that, not the computed score.",
+    "Base 20.000.000 × 1,0000 × 1,2500 × 1,0000 = 25.000.000 ₫.",
+    "The trace carries `resultOverridden` and the reason, so the amount stays explainable."
+  ],
+  "person": {
+    "baseSalaryVnd": 20000000,
+    "serviceMonths": 24,
+    "workforceType": "employee",
+    "activeOnReferenceDay": true,
+    "unitOkrProgressBp": 9000,
+    "result": { "resultId": "r13", "finalScoreBp": 10200, "bandKey": "exceeds", "bandMultiplierBp": 12500, "bandLabel": "Vượt", "reviewScoreBp": 7000, "kpiScoreBp": 8000, "okrScoreBp": 7800, "overridden": true, "overrideReason": "Gánh toàn bộ mảng khách hàng lớn sau khi trưởng nhóm nghỉ" }
+  },
+  "expect": { "eligible": true, "performanceMultiplierBp": 12500, "combinedMultiplierBp": 12500, "computedAmountVnd": 25000000, "finalAmountVnd": 25000000 }
+}
