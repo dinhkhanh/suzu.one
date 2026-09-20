@@ -10,6 +10,7 @@ import { opsBackfillJob, opsRemindersJob, opsSchedulerJob } from "@/modules/ops/
 import { payrollCalculateJob } from "@/modules/payroll/run-calculation";
 import { type JobDefinition, runJob } from "@/modules/platform/jobs/service";
 import { notificationsDailyJob } from "@/modules/platform/notifications/jobs";
+import { candidateRetentionJob } from "@/modules/recruit/jobs";
 import { requestSlaJob } from "@/modules/requests/jobs";
 import { workRecurringJob, workRemindersJob } from "@/modules/work/jobs";
 import { payrollDemoRunsJob } from "./payroll-demo";
@@ -19,7 +20,9 @@ import { payrollDemoRunsJob } from "./payroll-demo";
 const SCHEDULES: Record<string, JobDefinition[]> = {
   // Leave after the roll-over: a new starter accrues from the day they become active. The timesheet
   // last: it closes yesterday with the leave and the employment facts of today.
-  midnight: [peopleRollOverJob, leaveAccrualJob, timesheetRecomputeJob, workRecurringJob, opsSchedulerJob, kbEmbeddingsJob, commsAnnouncementsJob, payrollCalculateJob],
+  // Candidate retention runs with the other nightly housekeeping (FR-REC-13): it empties out the
+  // records of people whose window has passed, and it must run whether or not anybody logs in.
+  midnight: [peopleRollOverJob, leaveAccrualJob, timesheetRecomputeJob, workRecurringJob, opsSchedulerJob, kbEmbeddingsJob, commsAnnouncementsJob, payrollCalculateJob, candidateRetentionJob],
   // Alerts (and, on the 1st, "your month is ready to confirm") first, so the digest that follows carries them.
   morning: [hrAlertsJob, timesheetMonthReadyJob, payrollCalculateJob, opsSchedulerJob, opsRemindersJob, requestSlaJob, workRemindersJob, kbAckRemindersJob, kbEmbeddingsJob, commsAnnouncementsJob, notificationsDailyJob, filesCleanupJob],
 };

@@ -54,7 +54,8 @@
     "bookings": "Lịch đặt thiết bị",
     "documentTemplates": "Mẫu văn bản",
     "recruit": "Tuyển dụng",
-    "interviews": "Lịch phỏng vấn"
+    "interviews": "Lịch phỏng vấn",
+    "referrals": "Giới thiệu ứng viên"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -6381,7 +6382,11 @@
       "offer_not_withdrawable": "Thư mời đã kết thúc, không thu hồi được.",
       "offer_expired": "Thư mời đã hết hạn.",
       "offer_not_accepted": "Chỉ tạo hồ sơ nhân viên khi ứng viên đã đồng ý.",
-      "recruit_already_converted": "Hồ sơ nhân viên đã được tạo từ đơn ứng tuyển này."
+      "recruit_already_converted": "Hồ sơ nhân viên đã được tạo từ đơn ứng tuyển này.",
+      "recruit_opening_not_open": "Vị trí này hiện không nhận hồ sơ.",
+      "recruit_referral_not_found": "Không tìm thấy giới thiệu.",
+      "recruit_referral_not_earned": "Giới thiệu này chưa đủ điều kiện thưởng.",
+      "recruit_referral_already_settled": "Giới thiệu này đã được tất toán."
     },
     "duplicates": {
       "title": "Có thể trùng với ứng viên đã có:",
@@ -6691,6 +6696,75 @@
       "timing": "Thời điểm chưa phù hợp",
       "personal": "Lý do cá nhân",
       "other": "Lý do khác"
+    },
+    "referral": {
+      "title": "Giới thiệu ứng viên",
+      "description": "Giới thiệu người bạn tin tưởng vào một vị trí đang tuyển. Bộ phận tuyển dụng sẽ liên hệ với họ.",
+      "newTitle": "Giới thiệu một người",
+      "opening": "Vị trí",
+      "fullName": "Họ và tên",
+      "email": "Email",
+      "phone": "Điện thoại",
+      "currentTitle": "Vị trí hiện tại",
+      "currentEmployer": "Nơi làm việc hiện tại",
+      "cv": "CV (không bắt buộc)",
+      "links": "Liên kết hồ sơ",
+      "linksHint": "Mỗi dòng một liên kết",
+      "note": "Vì sao bạn giới thiệu người này?",
+      "noteHint": "Bạn biết họ làm việc thế nào — điều đó hữu ích hơn bản CV.",
+      "consentNotice": "Người được giới thiệu chưa đồng ý điều gì cả. Bộ phận tuyển dụng sẽ xin phép họ khi liên hệ, và dữ liệu được giữ theo đúng thời hạn lưu trữ như mọi ứng viên khác. Chỉ giới thiệu khi bạn đã hỏi ý họ.",
+      "submit": "Gửi giới thiệu",
+      "thanks": "Cảm ơn bạn. Bộ phận tuyển dụng sẽ xem và liên hệ với người bạn giới thiệu.",
+      "noOpenings": "Hiện chưa có vị trí nào đang tuyển.",
+      "mine": "Tôi đã giới thiệu",
+      "noneMine": "Bạn chưa giới thiệu ai.",
+      "book": "Tất cả giới thiệu",
+      "bookHint": "Thưởng giới thiệu do bộ phận lương chi trả; ở đây chỉ ghi nhận là đã tất toán.",
+      "none": "Chưa có giới thiệu nào.",
+      "by": "{name} giới thiệu",
+      "settle": "Đánh dấu đã thưởng",
+      "settleNote": "Ghi chú (không bắt buộc)",
+      "settleConfirm": "Xác nhận",
+      "bonus": {
+        "pending": "Đang theo dõi",
+        "earned": "Đủ điều kiện thưởng",
+        "settled": "Đã tất toán",
+        "not_earned": "Không phát sinh thưởng"
+      }
+    },
+    "reports": {
+      "title": "Báo cáo tuyển dụng",
+      "description": "Phễu tuyển dụng, thời gian tuyển và hiệu quả từng nguồn.",
+      "back": "Về tuyển dụng",
+      "from": "Từ ngày",
+      "to": "Đến ngày",
+      "opening": "Vị trí",
+      "allOpenings": "Tất cả vị trí",
+      "apply": "Xem",
+      "applications": "Hồ sơ",
+      "openOpenings": "Vị trí đang tuyển",
+      "hires": "Đã tuyển",
+      "active": "Đang tiến hành",
+      "funnel": "Phễu tuyển dụng",
+      "funnelHint": "Một hồ sơ bị từ chối vẫn nằm ở bước nó dừng lại, nên bảng này cho biết người ta rơi ở đâu.",
+      "stage": "Bước",
+      "reached": "Đạt tới",
+      "fromPrevious": "So với bước trước",
+      "ofApplied": "So với tổng hồ sơ",
+      "timeToHire": "Thời gian tuyển",
+      "median": "Trung vị",
+      "mean": "Trung bình",
+      "fastest": "Nhanh nhất",
+      "slowest": "Chậm nhất",
+      "noHires": "Chưa tuyển được ai trong kỳ này.",
+      "days": "{count} ngày",
+      "sources": "Hiệu quả theo nguồn",
+      "source": "Nguồn",
+      "interviewed": "Vào phỏng vấn",
+      "hireRate": "Tỷ lệ tuyển",
+      "medianDays": "Trung vị (ngày)",
+      "noSources": "Chưa có hồ sơ nào trong kỳ này.",
+      "noCostPerHire": "Chi phí trên mỗi lượt tuyển chưa được tính: hệ thống chưa ghi nhận chi phí tuyển dụng."
     }
   }
 }

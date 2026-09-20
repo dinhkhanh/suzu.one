@@ -54,7 +54,8 @@
     "bookings": "Equipment bookings",
     "documentTemplates": "Document templates",
     "recruit": "Recruitment",
-    "interviews": "Interviews"
+    "interviews": "Interviews",
+    "referrals": "Refer a candidate"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -6381,7 +6382,11 @@
       "offer_not_withdrawable": "The offer is finished; there is nothing to withdraw.",
       "offer_expired": "The offer has expired.",
       "offer_not_accepted": "An employee record is only created once the candidate has accepted.",
-      "recruit_already_converted": "An employee record has already been created from this application."
+      "recruit_already_converted": "An employee record has already been created from this application.",
+      "recruit_opening_not_open": "This role is not taking applications.",
+      "recruit_referral_not_found": "Referral not found.",
+      "recruit_referral_not_earned": "This referral has not earned a bonus yet.",
+      "recruit_referral_already_settled": "This referral has already been settled."
     },
     "duplicates": {
       "title": "Possible matches already on file:",
@@ -6691,6 +6696,75 @@
       "timing": "Wrong time for them",
       "personal": "Personal reasons",
       "other": "Other"
+    },
+    "referral": {
+      "title": "Refer a candidate",
+      "description": "Put forward somebody you trust for an open role. Recruitment will get in touch with them.",
+      "newTitle": "Refer somebody",
+      "opening": "Opening",
+      "fullName": "Full name",
+      "email": "Email",
+      "phone": "Phone",
+      "currentTitle": "Current role",
+      "currentEmployer": "Current employer",
+      "cv": "CV (optional)",
+      "links": "Portfolio links",
+      "linksHint": "One link per line",
+      "note": "Why are you putting them forward?",
+      "noteHint": "You know how they work — that is worth more than the CV.",
+      "consentNotice": "The person you are referring has agreed to nothing. Recruitment will ask their permission when they make contact, and their data is kept under the same retention window as any other candidate. Only refer somebody you have asked first.",
+      "submit": "Send referral",
+      "thanks": "Thank you. Recruitment will look at this and contact the person you referred.",
+      "noOpenings": "There are no open roles at the moment.",
+      "mine": "My referrals",
+      "noneMine": "You have not referred anybody yet.",
+      "book": "All referrals",
+      "bookHint": "A referral bonus is paid through payroll; this only records that it has been settled.",
+      "none": "No referrals yet.",
+      "by": "referred by {name}",
+      "settle": "Mark bonus settled",
+      "settleNote": "Note (optional)",
+      "settleConfirm": "Confirm",
+      "bonus": {
+        "pending": "In progress",
+        "earned": "Bonus earned",
+        "settled": "Settled",
+        "not_earned": "No bonus due"
+      }
+    },
+    "reports": {
+      "title": "Recruitment reports",
+      "description": "The hiring funnel, time to hire and which sources actually work.",
+      "back": "Back to recruitment",
+      "from": "From",
+      "to": "To",
+      "opening": "Opening",
+      "allOpenings": "All openings",
+      "apply": "Show",
+      "applications": "Applications",
+      "openOpenings": "Open roles",
+      "hires": "Hires",
+      "active": "In progress",
+      "funnel": "Funnel",
+      "funnelHint": "A rejected application keeps the stage it was rejected at, so this table says where people fall out.",
+      "stage": "Stage",
+      "reached": "Reached",
+      "fromPrevious": "From previous",
+      "ofApplied": "Of all applications",
+      "timeToHire": "Time to hire",
+      "median": "Median",
+      "mean": "Mean",
+      "fastest": "Fastest",
+      "slowest": "Slowest",
+      "noHires": "Nobody was hired in this period.",
+      "days": "{count} days",
+      "sources": "Source effectiveness",
+      "source": "Source",
+      "interviewed": "Reached interview",
+      "hireRate": "Hire rate",
+      "medianDays": "Median (days)",
+      "noSources": "No applications in this period.",
+      "noCostPerHire": "Cost per hire is not shown: the system does not record recruitment spend."
     }
   }
 }

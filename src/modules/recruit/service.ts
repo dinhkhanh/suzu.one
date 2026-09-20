@@ -6,7 +6,7 @@
 // JavaScript is a list that leaks the moment somebody adds a `count`.
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { and, asc, count, desc, eq, exists, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, inArray, isNull, notExists, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
@@ -172,7 +172,7 @@ export async function savePipeline(pipelineId: string | null, input: PipelineInp
  * `recruit:manage` covers, plus the ones they are on the hiring team of. `sql\`false\`` for
  * somebody with neither, so a query returns nothing rather than everything.
  */
-function openingScope(principal: Principal) {
+export function openingScope(principal: Principal) {
   const reach = entityReach(principal, "recruit:manage");
   const byEntity = reach.all ? sql`true` : reach.entityIds.length > 0 ? inArray(schema.jobOpening.entityId, reach.entityIds) : undefined;
   const byMembership = principal.personId
@@ -566,8 +566,16 @@ export async function listCandidates(principal: Principal, filters: { query?: st
       .innerJoin(schema.jobOpening, eq(schema.jobOpening.id, schema.jobApplication.openingId))
       .where(and(eq(schema.jobApplication.candidateId, schema.candidate.id), openingScope(principal))),
   );
+  // `notExists` on the query builder, not a hand-written `sql` fragment: a drizzle column embedded
+  // in `sql` renders *unqualified*, so `candidate_id = id` inside the subquery compares the
+  // application's own two columns and is never true — the clause would silently mean "always".
   const unapplied = and(
-    sql`not exists (select 1 from ${schema.jobApplication} where ${schema.jobApplication.candidateId} = ${schema.candidate.id})`,
+    notExists(
+      db()
+        .select({ one: sql`1` })
+        .from(schema.jobApplication)
+        .where(eq(schema.jobApplication.candidateId, schema.candidate.id)),
+    ),
     reach.all ? sql`true` : sql`false`,
   );
 

@@ -202,6 +202,30 @@ export const canRecordOfferResponse = (principal: Principal, opening: OpeningTar
  */
 export const canConvertToEmployee = (principal: Principal, opening: OpeningTarget): boolean => canRunRecruitment(principal, opening) && can(principal, "person:manage", over(opening));
 
+// ── Referrals (FR-REC-10) ───────────────────────────────────────────────────────────────────
+
+/**
+ * Putting a name forward is **everybody's**, like filing a request: the referral programme exists
+ * precisely so that people who are not recruiters bring candidates in. What it does *not* grant is
+ * any sight of the candidate database — `referrals.ts` answers a referrer identically whether the
+ * person is already on file or not, so the form cannot be used as a lookup.
+ */
+export const canRefer = (principal: Principal): boolean => !!principal.personId;
+
+/** Reading the whole referral book, and settling a bonus on it: the recruitment desk's. */
+export const canManageReferrals = (principal: Principal): boolean => canRunRecruitment(principal);
+
+// ── Reports (FR-REC-11) ─────────────────────────────────────────────────────────────────────
+
+/**
+ * The funnel, time-to-hire and source effectiveness. `report:read` is what admits somebody to the
+ * page at all; **which** openings the numbers are counted over is not decided here but in the
+ * query, by the same `openingScope` every other list goes through. A department head with
+ * `report:read` sees the funnel of the opening they are hiring for and an empty report otherwise —
+ * there is no figure on this page that its reader could not already reach one opening at a time.
+ */
+export const canReadRecruitReports = (principal: Principal): boolean => can(principal, "report:read");
+
 // ── Candidate files ─────────────────────────────────────────────────────────────────────────
 
 /**

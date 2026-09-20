@@ -39,6 +39,10 @@ export function navFor(principal: Principal, open: { people: boolean; recruit: b
     ...(open.interviews ? [{ key: "interviews", href: "/recruit/interviews" }] : []),
     // The knowledge base: which spaces open is decided by their access rows, on the pages.
     { key: "kb", href: "/kb" },
+    // Referring somebody is everybody's (FR-REC-10) — the programme only works if the whole
+    // company can find it — so the entry does not depend on recruitment access. It opens the form
+    // and the person's own referrals, and nothing of the candidate database.
+    ...(principal.workforceType === "collaborator" ? [] : [{ key: "referrals", href: "/recruit/referrals" }]),
     // Pay: everyone has their own payslips; the desk behind them is decided on the pages.
     { key: "payslips", href: "/payslips" },
     { key: "payroll", href: "/payroll" },

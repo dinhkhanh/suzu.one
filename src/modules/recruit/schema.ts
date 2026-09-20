@@ -627,3 +627,52 @@ export const jobOffer = pgTable(
     index("job_offer_expiry_idx").on(t.status, t.expiresOn),
   ],
 ).enableRLS();
+
+// ── The referral programme (FR-REC-10) ──────────────────────────────────────────────────────
+
+/**
+ * An employee putting somebody forward.
+ *
+ * The row is deliberately thin, because a referral is **not a second kind of application**: the
+ * candidate and the application it creates are the ordinary ones, made by the ordinary use-cases
+ * and subject to the ordinary duplicate check. This table only records the part that is peculiar
+ * to a referral — who put the name forward, and what the company owes them for it.
+ *
+ * **No money.** Whether a bonus is *due* is read from the facts (`engine/referral.ts`:
+ * the application was hired, the person started, their probation is behind them) and never stored;
+ * what the bonus *is* belongs to payroll, which is where it is paid. All this table keeps is the
+ * moment somebody marked it settled, so the same referral is not paid twice.
+ */
+export const referral = pgTable(
+  "referral",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    referredByPersonId: uuid("referred_by_person_id")
+      .notNull()
+      .references(() => person.id),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => candidate.id),
+    openingId: uuid("opening_id")
+      .notNull()
+      .references(() => jobOpening.id),
+    // Made in the same transaction: a referral with nobody applying is a note, not a referral.
+    applicationId: uuid("application_id")
+      .notNull()
+      .references(() => jobApplication.id),
+    // Why the referrer thinks this is the right person. Read by the recruiter, nobody else.
+    note: text("note"),
+    // Set when HR has settled the bonus. Never an amount — see the note above.
+    bonusSettledAt: timestamp("bonus_settled_at", { withTimezone: true }),
+    bonusSettledByPersonId: uuid("bonus_settled_by_person_id").references(() => person.id),
+    bonusNote: text("bonus_note"),
+    ...timestamps,
+  },
+  (t) => [
+    // One referral per application: two colleagues claiming the same hire is a conversation to
+    // have, not a row to write twice.
+    unique("referral_application_key").on(t.applicationId),
+    index("referral_person_idx").on(t.referredByPersonId, t.createdAt),
+    index("referral_opening_idx").on(t.openingId),
+  ],
+).enableRLS();

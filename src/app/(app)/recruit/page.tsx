@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canBrowseCandidates, canManagePipelines, canRunRecruitment, listOpenings, recruitModuleOpen } from "@/modules/recruit/service";
+import { canReadRecruitReports } from "@/modules/recruit/policy";
 import { notFound } from "next/navigation";
 
 export const metadata: Metadata = { title: "Recruitment" };
@@ -40,6 +41,18 @@ export default async function RecruitPage() {
           {runs ? (
             <Link href="/recruit/offers" className={buttonVariants({ size: "sm", variant: "outline" })}>
               {t("offer.title")}
+            </Link>
+          ) : null}
+          {/* The funnel, time to hire and source effectiveness (FR-REC-11). Counted only over the
+              openings this reader could open one at a time, so the entry follows `report:read`. */}
+          {canReadRecruitReports(user.principal) ? (
+            <Link href="/recruit/reports" className={buttonVariants({ size: "sm", variant: "outline" })}>
+              {t("reports.title")}
+            </Link>
+          ) : null}
+          {runs ? (
+            <Link href="/recruit/referrals" className={buttonVariants({ size: "sm", variant: "outline" })}>
+              {t("referral.title")}
             </Link>
           ) : null}
           {/* The wordings are the group's, so the entry shows for a group-wide grant only. */}
