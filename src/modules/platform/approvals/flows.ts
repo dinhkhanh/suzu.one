@@ -16,7 +16,7 @@ export type ApprovalFlowRow = typeof schema.approvalFlow.$inferSelect;
 // Permissions a flow may name: the ones some role holds by name (the owners' "*" is the fallback).
 const NAMED_PERMISSIONS = [...new Set(Object.values(ROLE_DEFINITIONS).flatMap((definition) => definition.permissions))].filter((permission) => permission !== "*") as string[];
 
-const approverRule = z.discriminatedUnion("rule", [
+export const approverRuleSchema = z.discriminatedUnion("rule", [
   z.object({ rule: z.literal("line_manager") }),
   z.object({ rule: z.literal("department_head") }),
   z.object({ rule: z.literal("manager_level"), level: z.coerce.number().int().min(1).max(6) }),
@@ -25,7 +25,9 @@ const approverRule = z.discriminatedUnion("rule", [
   z.object({ rule: z.literal("person"), personId: z.uuid() }),
 ]);
 
-const condition = z.object({
+// Also used by the request builder: a form field's "shown only when…" is the same idea, so a
+// designer learns one shape (approvals/engine/flow.ts).
+export const conditionSchema = z.object({
   field: z.string().trim().min(1).max(60).regex(/^[A-Za-z][A-Za-z0-9_]*$/),
   op: z.enum(["eq", "ne", "gt", "gte", "lt", "lte", "in"]),
   value: z.union([z.string().max(200), z.number(), z.boolean(), z.array(z.union([z.string().max(200), z.number()])).max(50)]),
@@ -37,8 +39,8 @@ export const flowDefinitionSchema = z.object({
       z.object({
         key: z.string().trim().min(1).max(40).regex(/^[a-z][a-z0-9_]*$/),
         mode: z.enum(["any", "all"]),
-        approvers: z.array(approverRule).min(1).max(6),
-        condition: condition.optional(),
+        approvers: z.array(approverRuleSchema).min(1).max(6),
+        condition: conditionSchema.optional(),
         parallel: z.boolean().optional(),
       }),
     )

@@ -6,7 +6,7 @@ import { BulkInbox } from "@/modules/platform/approvals/ui/bulk-inbox";
 import { RequestTable } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
 import { bulkApproveAction } from "./actions";
-import { REQUEST_TYPES } from "./registry";
+import { allRequestTypes } from "./registry";
 
 export const metadata: Metadata = { title: "Approvals" };
 
@@ -16,8 +16,9 @@ export default async function ApprovalsPage() {
   const [inbox, mine] = await Promise.all([listInbox(user.person.id), listMyRequests(user.person.id)]);
   const t = await getTranslations("approvals");
   // Which waiting requests may be approved unopened is their type's call (the registry knows every type).
-  const full = new Map((await getRequestRows(inbox.map((row) => row.id))).map((row) => [row.id, row]));
-  const inboxRows = inbox.map((row) => ({ id: row.id, type: row.type, summary: row.summary, link: row.link, createdAt: row.createdAt, requesterName: row.requesterName, bulk: !!(full.get(row.id) && REQUEST_TYPES.get(row.type)?.definition.bulkApprovable?.(full.get(row.id)!)) }));
+  const [full, registered] = await Promise.all([getRequestRows(inbox.map((row) => row.id)).then((rows) => new Map(rows.map((row) => [row.id, row]))), allRequestTypes()]);
+  const labels = new Map([...registered].flatMap(([type, entry]) => (entry.names ? [[type, entry.names.vi] as const] : [])));
+  const inboxRows = inbox.map((row) => ({ id: row.id, type: row.type, summary: row.summary, link: row.link, createdAt: row.createdAt, requesterName: row.requesterName, bulk: !!(full.get(row.id) && registered.get(row.type)?.definition.bulkApprovable?.(full.get(row.id)!)) }));
 
   return (
     <div className="flex max-w-5xl flex-col gap-8">
@@ -32,11 +33,11 @@ export default async function ApprovalsPage() {
       </header>
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">{t("inbox", { count: inbox.length })}</h2>
-        <BulkInbox rows={inboxRows} action={bulkApproveAction} />
+        <BulkInbox rows={inboxRows} action={bulkApproveAction} labels={Object.fromEntries(labels)} />
       </section>
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">{t("mine")}</h2>
-        <RequestTable rows={mine} empty={t("mineEmpty")} showRequester={false} />
+        <RequestTable rows={mine} empty={t("mineEmpty")} showRequester={false} labels={labels} />
       </section>
     </div>
   );

@@ -17,6 +17,9 @@ export const approvalRequest = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     // The request type, owned by a module: "profile_change", later "leave", "overtime", …
     type: text("type").notNull(),
+    // What to call the type in a notification when it has no message key: the request builder's
+    // types (FR-REQ-01) are named in the database, and a notification is read outside the app.
+    typeName: text("type_name"),
     entityId: uuid("entity_id").references(() => entity.id),
     requesterPersonId: uuid("requester_person_id")
       .notNull()

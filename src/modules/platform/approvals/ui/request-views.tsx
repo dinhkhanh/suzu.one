@@ -12,7 +12,7 @@ export async function RequestStatusBadge({ status }: { status: string }) {
   return <Badge variant={status === "pending" ? "secondary" : "outline"}>{t(`status.${status}` as "status.pending")}</Badge>;
 }
 
-export async function RequestTable({ rows, empty, showRequester }: { rows: RequestListRow[]; empty: string; showRequester: boolean }) {
+export async function RequestTable({ rows, empty, showRequester, labels }: { rows: RequestListRow[]; empty: string; showRequester: boolean; /** Names of the request builder's types, which the message bundle does not know. */ labels?: ReadonlyMap<string, string> }) {
   const t = await getTranslations("approvals");
   const format = await getFormatter();
   if (rows.length === 0) return <p className="text-sm text-muted-foreground">{empty}</p>;
@@ -31,7 +31,7 @@ export async function RequestTable({ rows, empty, showRequester }: { rows: Reque
           <TableRow key={row.id}>
             <TableCell>
               <Link href={row.link ?? "/approvals"} className="font-medium hover:underline">
-                {t.has(`types.${row.type}` as "types.profile_change") ? t(`types.${row.type}` as "types.profile_change") : row.type}
+                {labels?.get(row.type) ?? (t.has(`types.${row.type}` as "types.profile_change") ? t(`types.${row.type}` as "types.profile_change") : row.type)}
               </Link>
               <p className="text-xs text-muted-foreground">{row.summary}</p>
             </TableCell>

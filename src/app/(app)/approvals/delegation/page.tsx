@@ -7,7 +7,7 @@ import { listDelegations } from "@/modules/platform/approvals/delegations";
 import { DelegationForm, RevokeDelegationButton } from "@/modules/platform/approvals/ui/delegation-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
-import { REQUEST_TYPES } from "../registry";
+import { allRequestTypes } from "../registry";
 
 export const metadata: Metadata = { title: "Delegation" };
 
@@ -17,9 +17,10 @@ export default async function DelegationPage() {
   const t = await getTranslations("approvals");
   const format = await getFormatter();
   const today = todayInVietnam();
-  const [{ given, received }, people] = await Promise.all([listDelegations(user.person.id), listPersonNames()]);
+  const [{ given, received }, people, registered] = await Promise.all([listDelegations(user.person.id), listPersonNames(), allRequestTypes()]);
+  const label = (type: string) => registered.get(type)?.names?.vi ?? (t.has(`types.${type}`) ? t(`types.${type}` as "types.profile_change") : type);
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" });
-  const types = (row: { requestTypes: string[] | null }) => (row.requestTypes ? row.requestTypes.map((type) => (t.has(`types.${type}`) ? t(`types.${type}` as "types.profile_change") : type)).join(", ") : t("delegation.allTypes"));
+  const types = (row: { requestTypes: string[] | null }) => (row.requestTypes ? row.requestTypes.map(label).join(", ") : t("delegation.allTypes"));
 
   return (
     <div className="flex max-w-3xl flex-col gap-8">
@@ -30,7 +31,7 @@ export default async function DelegationPage() {
         <h1 className="text-2xl font-semibold tracking-tight">{t("delegation.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("delegation.description")}</p>
       </header>
-      <DelegationForm people={people.filter((person) => person.id !== user.person.id)} requestTypes={[...REQUEST_TYPES.keys()]} today={today} />
+      <DelegationForm people={people.filter((person) => person.id !== user.person.id)} requestTypes={[...registered.keys()].map((type) => ({ type, name: label(type) }))} today={today} />
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">{t("delegation.given")}</h2>
         {given.length === 0 ? <p className="text-sm text-muted-foreground">{t("delegation.none")}</p> : null}

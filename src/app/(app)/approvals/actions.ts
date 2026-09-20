@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { getRequestRows } from "@/modules/platform/approvals/service";
-import { REQUEST_TYPES } from "./registry";
+import { allRequestTypes } from "./registry";
 
 type BulkResult = { requestId: string; ok: boolean; error?: string };
 
@@ -15,15 +15,15 @@ const bulkApprovePipeline = createAction({
   // Whether it is the caller's turn is each request's own question, asked by its action below.
   authorize: () => true,
   run: async ({ input }) => {
-    const rows = new Map((await getRequestRows(input.requestIds)).map((row) => [row.id, row]));
+    const [rows, registered] = await Promise.all([getRequestRows(input.requestIds).then((all) => new Map(all.map((row) => [row.id, row]))), allRequestTypes()]);
     const results: BulkResult[] = [];
     for (const requestId of [...new Set(input.requestIds)]) {
       const row = rows.get(requestId);
-      const registered = row ? REQUEST_TYPES.get(row.type) : undefined;
-      if (!row || !registered) results.push({ requestId, ok: false, error: "approval_not_found" });
-      else if (!registered.definition.bulkApprovable?.(row)) results.push({ requestId, ok: false, error: "approval_open_to_decide" });
+      const type = row ? registered.get(row.type) : undefined;
+      if (!row || !type) results.push({ requestId, ok: false, error: "approval_not_found" });
+      else if (!type.definition.bulkApprovable?.(row)) results.push({ requestId, ok: false, error: "approval_open_to_decide" });
       else {
-        const result = await registered.approve(requestId);
+        const result = await type.approve(requestId);
         results.push(result.ok ? { requestId, ok: true } : { requestId, ok: false, error: (result.error === "failed" ? result.message : result.error) ?? "generic" });
       }
     }

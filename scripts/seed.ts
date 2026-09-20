@@ -6,7 +6,7 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { and, between, inArray, isNull } from "drizzle-orm";
-import { attendancePolicy, payComponent, payrollPolicy, companyValue, kbTemplate, kpiDefinition, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
+import { approvalFlow, attendancePolicy, payComponent, payrollPolicy, companyValue, kbTemplate, kpiDefinition, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, requestType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
 import { PROFILE_SEED } from "../src/modules/attendance/engine/device-log";
 import { CALENDAR_SEED, DEFAULT_POLICY_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 import { leaveSeedRows } from "../src/modules/leave/seed-types";
@@ -19,6 +19,7 @@ import { WORK_TEMPLATE_SEED } from "../src/modules/work/seed-templates";
 import { STATUTORY_SEED } from "../src/modules/platform/statutory/seed-values";
 import { DEFAULT_PAYROLL_POLICY } from "../src/modules/payroll/enums";
 import { PAY_COMPONENT_SEED_VALID_FROM, payComponentSeedRows } from "../src/modules/payroll/seed-components";
+import { REQUEST_TYPE_SEED } from "../src/modules/requests/seed-types";
 
 config({ path: ".env.local" });
 
@@ -144,6 +145,21 @@ async function main() {
   const newTemplates = kbTemplateSeedRows().filter((row) => !templateKeys.has(row.key));
   if (newTemplates.length) await db.insert(kbTemplate).values(newTemplates);
   console.log(`Seeded ${newTemplates.length} knowledge-base page templates (existing keys left untouched).`);
+
+  // The request types the company files (FR-REQ-02) and the flow each one runs: only codes that do
+  // not exist yet, so a form an administrator has edited is never overwritten. The flow is a plain
+  // group-wide `approval_flow` row — the builder does not keep a second flow store.
+  const typeCodes = new Set((await db.select({ code: requestType.code }).from(requestType)).map((row) => row.code));
+  const newTypes = REQUEST_TYPE_SEED.filter((seed) => !typeCodes.has(seed.code));
+  for (const seed of newTypes) {
+    const { flow, ...row } = seed;
+    await db.insert(requestType).values(row);
+    await db
+      .insert(approvalFlow)
+      .values({ requestType: `request:${seed.code}`, entityId: null, definition: flow, active: true })
+      .onConflictDoNothing();
+  }
+  console.log(`Seeded ${newTypes.length} request types with their approval flows (existing codes left untouched).`);
 
   // Company values for kudos (FR-COM-03): placeholders, only keys that do not exist yet.
   const valueKeys = new Set((await db.select({ key: companyValue.key }).from(companyValue)).map((row) => row.key));

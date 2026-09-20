@@ -33,6 +33,11 @@ export type RequestTypeDefinition = {
   bulkApprovable?: (request: ApprovalRequestRow) => boolean;
   /** Who may open a request of this type besides its requester and its approvers. */
   canView?: (viewer: Principal, subject: SubjectTarget | null) => boolean;
+  /**
+   * What to call the type in a notification when `approvals.types.<type>` is not a message key —
+   * the request builder's types are named in the database (FR-REQ-01).
+   */
+  name?: string;
 };
 
 export const defineRequestType = (definition: RequestTypeDefinition): RequestTypeDefinition => definition;
@@ -180,9 +185,12 @@ async function personName(tx: Tx, personId: string): Promise<string> {
   return row?.fullName ?? "—";
 }
 
+/** What to call the request in a notification: its stored name, else its type's message key. */
+const typeLabel = (request: ApprovalRequestRow) => request.typeName ?? request.type;
+
 async function askApprovers(tx: Tx, request: ApprovalRequestRow, approverIds: string[]): Promise<void> {
   if (approverIds.length === 0) return;
-  await notify({ recipients: approverIds, kind: "approvals.requested", params: { requester: await personName(tx, request.requesterPersonId), requestType: request.type }, link: request.link }, tx);
+  await notify({ recipients: approverIds, kind: "approvals.requested", params: { requester: await personName(tx, request.requesterPersonId), requestType: typeLabel(request) }, link: request.link }, tx);
 }
 
 // ── Use-cases ───────────────────────────────────────────────────────────────────────────────
@@ -217,6 +225,7 @@ export async function submitRequest(tx: Tx, definition: RequestTypeDefinition, i
     .values({
       id,
       type: definition.type,
+      typeName: definition.name ?? null,
       entityId: input.entityId,
       requesterPersonId: input.requesterPersonId,
       subjectPersonId: input.subjectPersonId,
@@ -262,7 +271,7 @@ export async function decideRequest(tx: Tx, definition: RequestTypeDefinition, r
 
   await askApprovers(tx, request, result.nowWaitingFor);
   if (result.outcome !== "pending") {
-    await notify({ recipients: [request.requesterPersonId], kind: "approvals.decided", params: { requestType: request.type, outcome: result.outcome, approver: await personName(tx, actorPersonId) }, link: request.link }, tx);
+    await notify({ recipients: [request.requesterPersonId], kind: "approvals.decided", params: { requestType: typeLabel(request), outcome: result.outcome, approver: await personName(tx, actorPersonId) }, link: request.link }, tx);
   }
   return { request, before: loaded.request, outcome: result.outcome };
 }
@@ -318,7 +327,7 @@ export async function commentOnRequest(tx: Tx, requestId: string, actorPersonId:
   if (!isParty) throw new ActionError("approval_not_found");
   await tx.insert(schema.approvalEvent).values({ requestId, type: "commented", actorPersonId, stepIndex: request.currentStep, comment: comment.trim() });
   const others = request.requesterPersonId === actorPersonId ? assignees.filter((row) => row.status === "pending").map((row) => row.approverPersonId) : [request.requesterPersonId];
-  await notify({ recipients: [...new Set(others)].filter((id) => id !== actorPersonId), kind: "approvals.commented", params: { author: await personName(tx, actorPersonId), requestType: request.type }, link: request.link }, tx);
+  await notify({ recipients: [...new Set(others)].filter((id) => id !== actorPersonId), kind: "approvals.commented", params: { author: await personName(tx, actorPersonId), requestType: typeLabel(request) }, link: request.link }, tx);
   return { request };
 }
 

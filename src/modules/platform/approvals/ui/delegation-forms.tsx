@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { createDelegationAction, revokeDelegationAction } from "../actions";
 
-export function DelegationForm({ people, requestTypes, today }: { people: { id: string; fullName: string }[]; requestTypes: string[]; today: string }) {
+export function DelegationForm({ people, requestTypes, today }: { people: { id: string; fullName: string }[]; requestTypes: { type: string; name: string }[]; today: string }) {
   const t = useTranslations("approvals");
   const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(createDelegationAction);
   return (
@@ -29,9 +29,9 @@ export function DelegationForm({ people, requestTypes, today }: { people: { id: 
           <Field name="requestTypes" label={t("delegation.types")}>
             <Select id="requestTypes" name="requestTypes" defaultValue="">
               <option value="">{t("delegation.allTypes")}</option>
-              {requestTypes.map((type) => (
-                <option key={type} value={type}>
-                  {t.has(`types.${type}`) ? t(`types.${type}` as "types.profile_change") : type}
+              {requestTypes.map((entry) => (
+                <option key={entry.type} value={entry.type}>
+                  {entry.name}
                 </option>
               ))}
             </Select>

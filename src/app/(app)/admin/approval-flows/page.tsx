@@ -10,7 +10,7 @@ import { listEntities } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { can } from "@/modules/platform/rbac/policy";
 import { ROLES } from "@/modules/platform/rbac/roles";
-import { REQUEST_TYPES } from "../../approvals/registry";
+import { allRequestTypes } from "../../approvals/registry";
 
 export const metadata: Metadata = { title: "Approval flows" };
 
@@ -20,9 +20,11 @@ export default async function ApprovalFlowsPage() {
   const user = await requireUser();
   if (!can(user.principal, "org:manage")) notFound();
   const t = await getTranslations("approvals");
-  const [flows, entities, people] = await Promise.all([listFlows(), listEntities(), listPersonNames()]);
+  const [flows, entities, people, registered] = await Promise.all([listFlows(), listEntities(), listPersonNames(), allRequestTypes()]);
+  // The builder's types carry their own name; the ones in code are named in the message bundle.
+  const label = (type: string) => registered.get(type)?.names?.vi ?? (t.has(`types.${type}`) ? t(`types.${type}` as "types.profile_change") : type);
   const options = {
-    requestTypes: [...REQUEST_TYPES.values()].map(({ definition }) => ({ type: definition.type, conditionFields: definition.conditionFields ?? [] })),
+    requestTypes: [...registered.values()].map(({ definition, names }) => ({ type: definition.type, conditionFields: definition.conditionFields ?? [], name: names?.vi })),
     entities: entities.filter((entity) => can(user.principal, "org:manage", { entityId: entity.id })).map((entity) => ({ id: entity.id, name: entity.shortName })),
     canGroup: can(user.principal, "org:manage", {}),
     people,
@@ -43,9 +45,9 @@ export default async function ApprovalFlowsPage() {
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">{t("flows.defaults")}</h2>
         <ul className="flex flex-col divide-y rounded-xl border text-sm">
-          {[...REQUEST_TYPES.values()].map(({ definition }) => (
+          {[...registered.values()].map(({ definition }) => (
             <li key={definition.type} className="flex flex-wrap items-center gap-2 p-3">
-              <span className="font-medium">{t.has(`types.${definition.type}`) ? t(`types.${definition.type}` as "types.profile_change") : definition.type}</span>
+              <span className="font-medium">{label(definition.type)}</span>
               <span className="text-muted-foreground">{describe(definition.flow)}</span>
             </li>
           ))}
@@ -62,7 +64,7 @@ export default async function ApprovalFlowsPage() {
               <li key={flow.id} className="rounded-xl border p-4">
                 <details>
                   <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm">
-                    <span className="font-medium">{t.has(`types.${flow.requestType}`) ? t(`types.${flow.requestType}` as "types.profile_change") : flow.requestType}</span>
+                    <span className="font-medium">{label(flow.requestType)}</span>
                     <Badge variant="secondary">{flow.entityName ?? t("flows.group")}</Badge>
                     {flow.active ? null : <Badge variant="outline">{t("flows.off")}</Badge>}
                     <span className="text-muted-foreground">{describe(definition)}</span>

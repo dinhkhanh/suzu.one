@@ -137,7 +137,8 @@ const canManageFlow = (user: { principal: Principal }, entityId: string | null) 
 const saveFlowPipeline = createAction({
   name: "approval.flow.save",
   input: z.object({
-    requestType: z.string().trim().min(1).max(60).regex(/^[a-z][a-z0-9_]*$/),
+    // "leave", or a generic type from the request builder: "request:<code>".
+    requestType: z.string().trim().min(1).max(60).regex(/^[a-z][a-z0-9_]*(:[a-z][a-z0-9_]*)?$/),
     entityId: z.preprocess(blankToNull, z.uuid().nullable().default(null)),
     active: z.preprocess((value) => value === "on" || value === true, z.boolean()),
     // The editor posts the flow as JSON text.

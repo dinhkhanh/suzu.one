@@ -104,7 +104,13 @@ export function effectiveChoice(category: Category, stored: { inApp: boolean; em
 export function resolveParams(params: Record<string, string | number>, lookup: (key: string) => string): Record<string, string | number> {
   const resolved = { ...params };
   if (typeof params.role === "string") resolved.role = lookup(`roles.${params.role}`);
-  if (typeof params.requestType === "string") resolved.requestType = lookup(`approvals.types.${params.requestType}`);
+  // The request builder's types are named in the database, not here: what the notification was
+  // given already reads as a name, so a missing message key leaves it alone rather than showing one.
+  if (typeof params.requestType === "string") {
+    const key = `approvals.types.${params.requestType}`;
+    const found = lookup(key);
+    resolved.requestType = found === key ? params.requestType : found;
+  }
   if (typeof params.outcome === "string") resolved.outcome = lookup(`approvals.status.${params.outcome}`);
   if (typeof params.scopeType === "string") {
     const scopeType = lookup(`rbac.scope.${params.scopeType}`);

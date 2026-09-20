@@ -11,7 +11,7 @@ import type { ActionResult } from "@/lib/action";
 export type BulkInboxRow = { id: string; type: string; summary: string; link: string | null; createdAt: Date; requesterName: string; bulk: boolean };
 export type BulkResult = { requestId: string; ok: boolean; error?: string };
 
-export function BulkInbox({ rows, action }: { rows: BulkInboxRow[]; action: (input: unknown) => Promise<ActionResult<{ results: BulkResult[] }>> }) {
+export function BulkInbox({ rows, action, labels = {} }: { rows: BulkInboxRow[]; action: (input: unknown) => Promise<ActionResult<{ results: BulkResult[] }>>; /** Names of the request builder's types, which the message bundle does not know. */ labels?: Record<string, string> }) {
   const t = useTranslations("approvals");
   const format = useFormatter();
   const [selected, setSelected] = useState<string[]>([]);
@@ -60,7 +60,7 @@ export function BulkInbox({ rows, action }: { rows: BulkInboxRow[]; action: (inp
               <input type="checkbox" className="mt-1 size-4" aria-label={t("bulk.tick")} disabled={!row.bulk || pending} checked={selected.includes(row.id)} onChange={() => toggle(row.id)} />
               <div className="min-w-0 flex-1">
                 <Link href={row.link ?? "/approvals"} className="text-sm font-medium hover:underline">
-                  {t.has(`types.${row.type}`) ? t(`types.${row.type}` as "types.profile_change") : row.type}
+                  {labels[row.type] ?? (t.has(`types.${row.type}`) ? t(`types.${row.type}` as "types.profile_change") : row.type)}
                 </Link>
                 <p className="text-xs text-muted-foreground">{row.summary}</p>
                 <p className="text-xs text-muted-foreground">

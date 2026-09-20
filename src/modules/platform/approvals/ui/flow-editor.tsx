@@ -10,7 +10,8 @@ import { deleteFlowAction, saveFlowAction } from "../actions";
 import type { ApproverRule, Condition, FlowDefinition, StepDefinition } from "../engine/flow";
 
 type Options = {
-  requestTypes: { type: string; conditionFields: readonly string[] }[];
+  /** `name` is set for the request builder's types, which are named in the database rather than the message bundle. */
+  requestTypes: { type: string; conditionFields: readonly string[]; name?: string }[];
   entities: { id: string; name: string }[];
   canGroup: boolean;
   people: { id: string; fullName: string }[];
@@ -79,7 +80,7 @@ export function FlowEditor({ options, flow }: { options: Options; flow?: { id: s
           <Select value={requestType} disabled={!!flow} onChange={(event) => setRequestType(event.target.value)}>
             {options.requestTypes.map((entry) => (
               <option key={entry.type} value={entry.type}>
-                {tTypes.has(entry.type) ? tTypes(entry.type as "profile_change") : entry.type}
+                {entry.name ?? (tTypes.has(entry.type) ? tTypes(entry.type as "profile_change") : entry.type)}
               </option>
             ))}
           </Select>
