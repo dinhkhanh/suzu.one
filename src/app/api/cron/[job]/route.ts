@@ -10,6 +10,7 @@ import { opsBackfillJob, opsRemindersJob, opsSchedulerJob } from "@/modules/ops/
 import { payrollCalculateJob } from "@/modules/payroll/run-calculation";
 import { type JobDefinition, runJob } from "@/modules/platform/jobs/service";
 import { notificationsDailyJob } from "@/modules/platform/notifications/jobs";
+import { requestSlaJob } from "@/modules/requests/jobs";
 import { workRecurringJob, workRemindersJob } from "@/modules/work/jobs";
 import { payrollDemoRunsJob } from "./payroll-demo";
 
@@ -20,7 +21,7 @@ const SCHEDULES: Record<string, JobDefinition[]> = {
   // last: it closes yesterday with the leave and the employment facts of today.
   midnight: [peopleRollOverJob, leaveAccrualJob, timesheetRecomputeJob, workRecurringJob, opsSchedulerJob, kbEmbeddingsJob, commsAnnouncementsJob, payrollCalculateJob],
   // Alerts (and, on the 1st, "your month is ready to confirm") first, so the digest that follows carries them.
-  morning: [hrAlertsJob, timesheetMonthReadyJob, payrollCalculateJob, opsSchedulerJob, opsRemindersJob, workRemindersJob, kbAckRemindersJob, kbEmbeddingsJob, commsAnnouncementsJob, notificationsDailyJob, filesCleanupJob],
+  morning: [hrAlertsJob, timesheetMonthReadyJob, payrollCalculateJob, opsSchedulerJob, opsRemindersJob, requestSlaJob, workRemindersJob, kbAckRemindersJob, kbEmbeddingsJob, commsAnnouncementsJob, notificationsDailyJob, filesCleanupJob],
 };
 
 // Run by hand only: /api/cron/<job name>.

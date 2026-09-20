@@ -45,6 +45,10 @@ export const KINDS = {
   "approvals.decided": "approvals",
   "approvals.commented": "approvals",
   "approvals.delegated_to_you": "approvals",
+  // FR-PLT-23: a request has been waiting for your answer; and, when it still is, the nudge that
+  // goes over your head. Neither carries anything but the type, the one-line summary and the wait.
+  "approvals.sla_reminder": "approvals",
+  "approvals.sla_escalated": "approvals",
   // HR called off someone's approved leave: the person is told, the days are back in the balance.
   "approvals.leave_cancelled": "approvals",
   "tasks.assigned": "tasks",

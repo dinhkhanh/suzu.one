@@ -787,6 +787,14 @@
       "payroll_cash_receipt_due": {
         "title": "Xác nhận đã nhận lương tiền mặt",
         "body": "Vui lòng xác nhận bạn đã nhận lương tháng {month} bằng tiền mặt."
+      },
+      "approvals_sla_reminder": {
+        "title": "Đề nghị đang chờ bạn duyệt",
+        "body": "{requestType} — {summary} — đã chờ {days} ngày."
+      },
+      "approvals_sla_escalated": {
+        "title": "Đề nghị quá hạn duyệt",
+        "body": "{requestType} — {summary} — đã chờ {approver} duyệt {days} ngày."
       }
     },
     "errors": {
@@ -1088,7 +1096,8 @@
       "delegation_past": "Thời gian ủy quyền đã qua.",
       "delegation_person_unknown": "Người này không còn làm việc.",
       "delegation_not_found": "Không tìm thấy ủy quyền.",
-      "leave_balance_insufficient": "Số ngày phép còn lại không còn đủ cho đơn này. Đề nghị người gửi sửa đơn hoặc nhờ nhân sự điều chỉnh số dư."
+      "leave_balance_insufficient": "Số ngày phép còn lại không còn đủ cho đơn này. Đề nghị người gửi sửa đơn hoặc nhờ nhân sự điều chỉnh số dư.",
+      "approval_link_unusable": "Liên kết không còn dùng được. Vui lòng mở đề nghị từ hộp phê duyệt."
     },
     "tools": {
       "comment": "Thêm ý kiến",
@@ -1189,6 +1198,19 @@
         "flow_no_unconditional_step": "Cần ít nhất một bước áp dụng cho mọi yêu cầu, nếu không sẽ có yêu cầu không ai duyệt.",
         "flow_bad_level": "Bậc quản lý từ 1 đến 6.",
         "flow_person_unknown": "Người duyệt được chỉ định không còn làm việc."
+      }
+    },
+    "deepLink": {
+      "title": "Duyệt nhanh",
+      "description": "Bạn mở liên kết từ thông báo. Đọc lại nội dung rồi bấm duyệt.",
+      "readFirst": "Liên kết này chỉ là lối tắt: hệ thống vẫn kiểm tra bạn là người được hỏi và vẫn ghi nhật ký như khi bạn duyệt trên trang đề nghị.",
+      "approve": "Duyệt",
+      "openIt": "Mở đề nghị để xem đầy đủ",
+      "openInbox": "Mở hộp phê duyệt",
+      "refused": {
+        "unknown": "Liên kết không hợp lệ hoặc không dành cho bạn.",
+        "expired": "Liên kết đã hết hạn. Vui lòng mở đề nghị từ hộp phê duyệt.",
+        "used": "Liên kết này đã được dùng rồi."
       }
     }
   },

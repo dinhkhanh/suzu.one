@@ -43,6 +43,9 @@ export const notificationPreference = pgTable(
 
 export const emailStatus = pgEnum("email_status", ["pending", "sent", "failed", "skipped"]);
 
+// "simulated" = no Chat webhook is configured: the local driver recorded the card instead of sending it.
+export const chatStatus = pgEnum("chat_status", ["pending", "sent", "simulated", "failed"]);
+
 // Every email the app sends goes through here first, so a provider outage loses nothing.
 export const emailOutbox = pgTable(
   "email_outbox",
@@ -78,6 +81,31 @@ export const pushSubscription = pgTable(
     lastSuccessAt: timestamp("last_success_at", { withTimezone: true }),
   },
   (t) => [index("push_subscription_person_idx").on(t.personId)],
+).enableRLS();
+
+// Google Chat (FR-PLT-31). One row per card, exactly like `email_outbox` and `push_delivery`: an
+// outage loses nothing, and what was sent to whom can be looked up. `space` is the webhook the
+// card went to — the company has one space today, so it is recorded rather than configured per row.
+export const chatDelivery = pgTable(
+  "chat_delivery",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id").references(() => person.id),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    link: text("link"),
+    /** The "approve" deep link (FR-PLT-24), when the card offers one. */
+    actionLink: text("action_link"),
+    actionLabel: text("action_label"),
+    space: text("space"),
+    status: chatStatus("status").notNull().default("pending"),
+    attempts: smallint("attempts").notNull().default(0),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (t) => [index("chat_delivery_status_idx").on(t.status, t.createdAt)],
 ).enableRLS();
 
 // "simulated" = no VAPID keys are configured: the local driver recorded the push instead of sending it.

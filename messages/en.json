@@ -787,6 +787,14 @@
       "payroll_cash_receipt_due": {
         "title": "Confirm you received your pay",
         "body": "Please confirm that you received your {month} pay in cash."
+      },
+      "approvals_sla_reminder": {
+        "title": "A request is waiting for your answer",
+        "body": "{requestType} — {summary} — waiting {days} days."
+      },
+      "approvals_sla_escalated": {
+        "title": "A request is overdue",
+        "body": "{requestType} — {summary} — has been waiting {days} days for {approver}."
       }
     },
     "errors": {
@@ -1088,7 +1096,8 @@
       "delegation_past": "The delegation would already be over.",
       "delegation_person_unknown": "That person is not active.",
       "delegation_not_found": "The delegation was not found.",
-      "leave_balance_insufficient": "The balance no longer covers this leave. Ask the requester to change it, or HR to adjust the balance."
+      "leave_balance_insufficient": "The balance no longer covers this leave. Ask the requester to change it, or HR to adjust the balance.",
+      "approval_link_unusable": "That link cannot be used any more. Open the request from your approvals inbox."
     },
     "tools": {
       "comment": "Add a comment",
@@ -1189,6 +1198,19 @@
         "flow_no_unconditional_step": "At least one step must apply to every request, or some requests would be approved by nobody.",
         "flow_bad_level": "Manager level must be between 1 and 6.",
         "flow_person_unknown": "A named approver is not an active person."
+      }
+    },
+    "deepLink": {
+      "title": "Approve",
+      "description": "You opened a link from a notification. Read it again, then press approve.",
+      "readFirst": "The link is only a shortcut: you still have to be the person who was asked, and this is logged exactly as approving on the request page is.",
+      "approve": "Approve",
+      "openIt": "Open the request in full",
+      "openInbox": "Open the approvals inbox",
+      "refused": {
+        "unknown": "That link is not valid, or is not yours.",
+        "expired": "That link has expired. Open the request from your approvals inbox.",
+        "used": "That link has already been used."
       }
     }
   },

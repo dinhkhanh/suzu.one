@@ -85,6 +85,10 @@ export const approvalAssignee = pgTable(
     status: approvalAssigneeStatus("status").notNull().default("pending"),
     comment: text("comment"),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
+    // FR-PLT-23. Set by the SLA job so a nudge and an escalation each happen once per turn, and
+    // cleared when the turn starts over (a returned request sent round again).
+    remindedAt: timestamp("reminded_at", { withTimezone: true }),
+    escalatedAt: timestamp("escalated_at", { withTimezone: true }),
   },
   (t) => [index("approval_assignee_inbox_idx").on(t.approverPersonId, t.status), index("approval_assignee_request_idx").on(t.requestId)],
 ).enableRLS();
@@ -125,6 +129,31 @@ export const approvalFlow = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [unique("approval_flow_type_entity_key").on(t.requestType, t.entityId).nullsNotDistinct()],
+).enableRLS();
+
+// A one-shot key that carries an approver straight from a notification to the decision
+// (FR-PLT-24). It is a **shortcut, not an authentication**: the signed-in person must still be the
+// person the token names, and the owning module's decide action still runs every check it always
+// runs. Hashed at rest, single use, short-lived — a forwarded email must not become an approval.
+export const approvalActionToken = pgTable(
+  "approval_action_token",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    requestId: uuid("request_id")
+      .notNull()
+      .references(() => approvalRequest.id),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    // Only "approve" today: rejecting and returning both need a reason, which needs a form.
+    action: text("action").notNull(),
+    // SHA-256 of the token; the token itself exists only in the link that was sent.
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("approval_action_token_request_idx").on(t.requestId, t.personId)],
 ).enableRLS();
 
 // A standing delegation (FR-PLT-22): while it runs, requests that would reach `from` go to `to`.

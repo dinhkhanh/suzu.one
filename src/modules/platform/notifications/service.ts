@@ -5,6 +5,7 @@ import { after } from "next/server";
 import { db, schema, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
 import vi from "../../../../messages/vi.json";
+import { chatDriver } from "./chat";
 import { sendEmail } from "./email";
 import { pushDriver } from "./push";
 import { CATEGORIES, CATEGORY_DEFINITIONS, type Category, type ChannelChoice, effectiveChoice, type Kind, KINDS, messageKey, resolveParams } from "./kinds";
@@ -29,7 +30,18 @@ function wording(kind: string, params: Params): { title: string; body: string } 
 
 const absolute = (link: string | null) => (link ? new URL(link, env().BETTER_AUTH_URL).toString() : env().BETTER_AUTH_URL);
 
-export type NotifyInput = { recipients: readonly string[]; kind: Kind; params?: Params; link?: string | null };
+export type NotifyInput = {
+  recipients: readonly string[];
+  kind: Kind;
+  params?: Params;
+  link?: string | null;
+  /**
+   * A card in the company's Google Chat space as well (FR-PLT-31), with an optional one-shot
+   * "approve" link (FR-PLT-24). The space is shared, so `chat` is passed only for events that may
+   * be read over a shoulder: who is waiting for what, never an amount or anything personal.
+   */
+  chat?: { actionPath?: string | null; actionLabel?: string | null } | false;
+};
 
 /**
  * Tells people that something happened, through the channels each of them chose.
@@ -72,7 +84,26 @@ export async function notify(input: NotifyInput, executor: Tx | ReturnType<typeo
   if (rows.length) await executor.insert(schema.notification).values(rows);
   if (emails.length) await executor.insert(schema.emailOutbox).values(emails);
   if (pushes.length) await executor.insert(schema.pushDelivery).values(pushes);
-  if (emails.length || pushes.length) deliverSoon();
+  // One card per recipient: the deep link belongs to one person, and a space with several
+  // approvers in it must not let the wrong one press the button.
+  if (input.chat) {
+    const cards: (typeof schema.chatDelivery.$inferInsert)[] = [];
+    for (const person of people) {
+      if (person.status === "offboarded") continue;
+      const { title, body } = wording(input.kind, params);
+      cards.push({
+        personId: person.id,
+        kind: input.kind,
+        title,
+        body,
+        link: absolute(input.link ?? null),
+        actionLink: input.chat.actionPath ? absolute(input.chat.actionPath) : null,
+        actionLabel: input.chat.actionLabel ?? null,
+      });
+    }
+    if (cards.length) await executor.insert(schema.chatDelivery).values(cards);
+  }
+  if (emails.length || pushes.length || input.chat) deliverSoon();
 }
 
 function composeEmail(to: string, kind: string, params: Params, link: string | null): typeof schema.emailOutbox.$inferInsert {
@@ -90,7 +121,7 @@ export async function queueEmail(to: string, kind: Kind, params: Params, executo
 function deliverSoon(): void {
   try {
     after(() =>
-      Promise.all([deliverPendingEmails(), deliverPendingPushes()]).catch((error) => console.error(JSON.stringify({ level: "error", event: "notification.delivery_failed", message: String(error) }))),
+      Promise.all([deliverPendingEmails(), deliverPendingPushes(), deliverPendingChats()]).catch((error) => console.error(JSON.stringify({ level: "error", event: "notification.delivery_failed", message: String(error) }))),
     );
   } catch {
     // Not in a request.
@@ -190,6 +221,35 @@ export async function deliverPendingPushes(limit = 100): Promise<{ sent: number;
       await db().update(outbox).set({ status: result.status, sentAt: result.status === "gone" ? null : new Date(), lastError: null }).where(eq(outbox.id, delivery.id));
       if (result.status === "gone" && device) await db().delete(schema.pushSubscription).where(eq(schema.pushSubscription.id, device.id));
       if (result.status === "sent" && device) await db().update(schema.pushSubscription).set({ lastSuccessAt: new Date() }).where(eq(schema.pushSubscription.id, device.id));
+    }
+    tally[result.status]++;
+  }
+  return tally;
+}
+
+// ── Google Chat (FR-PLT-31) ─────────────────────────────────────────────────────────────────
+
+/** Posts the waiting cards. Without a webhook the driver records them as "simulated" instead. */
+export async function deliverPendingChats(limit = 50): Promise<{ sent: number; simulated: number; failed: number }> {
+  const outbox = schema.chatDelivery;
+  const driver = chatDriver();
+  const pending = await db().select().from(outbox).where(and(eq(outbox.status, "pending"), lt(outbox.attempts, MAX_ATTEMPTS))).orderBy(asc(outbox.createdAt)).limit(limit);
+  const tally = { sent: 0, simulated: 0, failed: 0 };
+  for (const card of pending) {
+    // Claim it, as the email and push deliverers do.
+    const [claimed] = await db()
+      .update(outbox)
+      .set({ attempts: card.attempts + 1, space: driver.space })
+      .where(and(eq(outbox.id, card.id), eq(outbox.status, "pending"), eq(outbox.attempts, card.attempts)))
+      .returning({ id: outbox.id });
+    if (!claimed) continue;
+
+    const result = await driver.send({ title: card.title, body: card.body, link: card.link, actionLink: card.actionLink, actionLabel: card.actionLabel });
+    if (result.status === "failed") {
+      const givenUp = card.attempts + 1 >= MAX_ATTEMPTS;
+      await db().update(outbox).set({ status: givenUp ? "failed" : "pending", lastError: result.error }).where(eq(outbox.id, card.id));
+    } else {
+      await db().update(outbox).set({ status: result.status, sentAt: new Date(), lastError: null }).where(eq(outbox.id, card.id));
     }
     tally[result.status]++;
   }

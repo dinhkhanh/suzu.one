@@ -47,6 +47,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await db().delete(schema.approvalEvent);
+  await db().delete(schema.approvalActionToken);
   await db().delete(schema.approvalAssignee);
   await db().delete(schema.approvalStep);
   await db().delete(schema.approvalRequest);

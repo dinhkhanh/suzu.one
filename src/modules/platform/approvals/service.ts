@@ -13,6 +13,7 @@ import { notify } from "../notifications/service";
 import type { Principal, Target } from "../rbac/policy";
 import { type Permission, type Role, ROLES } from "../rbac/roles";
 import { listOwnerPersonIds, listPeopleHolding, listPeopleWithRole } from "../rbac/service";
+import { issueActionToken, voidActionTokens } from "./action-tokens";
 import { standIns } from "./delegations";
 import { effectiveFlow } from "./flows";
 import { canOpenRequest } from "./policy";
@@ -79,6 +80,18 @@ async function peopleFor(executor: Executor, rule: ApproverRule, subject: Subjec
       // owners only when there is nobody else (below).
       return listPeopleHolding(rule.permission as Exclude<Permission, "*">, where, { includeWildcard: false, executor });
   }
+}
+
+/**
+ * One approver rule turned into people, resolved against a subject person — for callers outside a
+ * flow, such as the SLA job asking who a silent approver escalates to (FR-PLT-23).
+ */
+export async function resolveApprovers(executor: Executor, rule: ApproverRule, subjectPersonId: string, where: Target = {}): Promise<string[]> {
+  const subject = await subjectTarget(executor, subjectPersonId);
+  const named = await peopleFor(executor, rule, subject, subject ?? where);
+  if (named.length === 0) return [];
+  const rows = await executor.select({ id: schema.person.id }).from(schema.person).where(and(inArray(schema.person.id, [...new Set(named)]), eq(schema.person.status, "active")));
+  return rows.map((row) => row.id);
 }
 
 async function resolveFlow(executor: Executor, flow: FlowDefinition, context: { requestType: string; requesterId: string; subject: SubjectTarget | null; /** Where the request sits when it is about no person (a page of an entity's space). */ target?: Target; data: Record<string, unknown> }): Promise<ResolvedStep[]> {
@@ -161,7 +174,8 @@ async function persist(tx: Tx, loaded: Loaded, next: RequestState, actor: { pers
       const answered = assignee.status !== "pending" && assignee.personId === actor.personId;
       await tx
         .update(schema.approvalAssignee)
-        .set({ status: assignee.status, approverPersonId: assignee.personId, delegatedFromPersonId: assignee.delegatedFrom ?? null, ...(answered ? { comment: actor.comment, decidedAt: now } : assignee.status === "pending" ? { comment: null, decidedAt: null } : {}) })
+        // A turn that starts over starts its SLA clock over too (FR-PLT-23).
+        .set({ status: assignee.status, approverPersonId: assignee.personId, delegatedFromPersonId: assignee.delegatedFrom ?? null, ...(answered ? { comment: actor.comment, decidedAt: now } : assignee.status === "pending" ? { comment: null, decidedAt: null, remindedAt: null, escalatedAt: null } : {}) })
         .where(eq(schema.approvalAssignee.id, loaded.assigneeIds[index][position]));
     }
   }
@@ -188,9 +202,19 @@ async function personName(tx: Tx, personId: string): Promise<string> {
 /** What to call the request in a notification: its stored name, else its type's message key. */
 const typeLabel = (request: ApprovalRequestRow) => request.typeName ?? request.type;
 
+/**
+ * Tells the people whose turn it is, and gives each of them a one-shot link that approves this
+ * request (FR-PLT-24). Each approver gets their own token: the Chat space is shared, and a button
+ * in it must not let the wrong person press it.
+ */
 async function askApprovers(tx: Tx, request: ApprovalRequestRow, approverIds: string[]): Promise<void> {
   if (approverIds.length === 0) return;
-  await notify({ recipients: approverIds, kind: "approvals.requested", params: { requester: await personName(tx, request.requesterPersonId), requestType: typeLabel(request) }, link: request.link }, tx);
+  const requester = await personName(tx, request.requesterPersonId);
+  const params = { requester, requestType: typeLabel(request) };
+  for (const approverId of approverIds) {
+    const { path } = await issueActionToken(tx, request.id, approverId);
+    await notify({ recipients: [approverId], kind: "approvals.requested", params, link: request.link, chat: { actionPath: path, actionLabel: "Duyệt" } }, tx);
+  }
 }
 
 // ── Use-cases ───────────────────────────────────────────────────────────────────────────────
@@ -269,6 +293,8 @@ export async function decideRequest(tx: Tx, definition: RequestTypeDefinition, r
   const eventType = input.action === "approve" ? "approved" : input.action === "reject" ? "rejected" : "returned";
   await tx.insert(schema.approvalEvent).values({ requestId, type: eventType, actorPersonId, stepIndex: loaded.state.currentStep, comment, meta: input.meta ?? null });
 
+  // Whatever was outstanding is spent: the request has moved on, and a stale link must do nothing.
+  await voidActionTokens(tx, requestId);
   await askApprovers(tx, request, result.nowWaitingFor);
   if (result.outcome !== "pending") {
     await notify({ recipients: [request.requesterPersonId], kind: "approvals.decided", params: { requestType: typeLabel(request), outcome: result.outcome, approver: await personName(tx, actorPersonId) }, link: request.link }, tx);
@@ -284,6 +310,7 @@ export async function withdrawRequest(tx: Tx, requestId: string, actorPersonId: 
   const result = applyDecision(loaded.state, { actorId: actorPersonId, action: "withdraw" });
   if (!result.ok) throw new ActionError(REFUSALS[result.reason]);
   const request = await persist(tx, loaded, result.state, { personId: actorPersonId, comment: null });
+  await voidActionTokens(tx, requestId);
   await tx.insert(schema.approvalEvent).values({ requestId, type: "withdrawn", actorPersonId, stepIndex: loaded.state.currentStep });
   return { request, before: loaded.request };
 }
@@ -295,6 +322,7 @@ export async function resubmitRequest(tx: Tx, definition: RequestTypeDefinition,
   if (!result.ok) throw new ActionError(REFUSALS[result.reason]);
   await tx.update(schema.approvalRequest).set({ ...(changes.summary === undefined ? {} : { summary: changes.summary }), ...(changes.payload === undefined ? {} : { payload: changes.payload }), ...(changes.payloadEnc === undefined ? {} : { payloadEnc: changes.payloadEnc }) }).where(eq(schema.approvalRequest.id, requestId));
   const request = await persist(tx, loaded, result.state, { personId: actorPersonId, comment: null });
+  await voidActionTokens(tx, requestId);
   await tx.insert(schema.approvalEvent).values({ requestId, type: "resubmitted", actorPersonId, stepIndex: result.state.currentStep });
   await askApprovers(tx, request, result.nowWaitingFor);
   return { request, before: loaded.request };
@@ -313,6 +341,8 @@ export async function delegateRequest(tx: Tx, requestId: string, actorPersonId: 
   const result = delegate(loaded.state, actorPersonId, input.toPersonId);
   if (!result.ok) throw new ActionError(result.reason === "not_assignee" ? "approval_delegate_refused" : REFUSALS[result.reason]);
   const request = await persist(tx, loaded, result.state, { personId: actorPersonId, comment: null });
+  // The turn moved: the link the previous approver was given must stop working.
+  await voidActionTokens(tx, requestId);
   await tx.insert(schema.approvalEvent).values({ requestId, type: "delegated", actorPersonId, stepIndex: loaded.state.currentStep, comment: input.comment?.trim() || null, meta: { toPersonId: to.id, toName: to.fullName } });
   await askApprovers(tx, request, [to.id]);
   return { request, toName: to.fullName };

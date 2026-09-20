@@ -42,6 +42,9 @@ const schema = z.object({
   STEP_UP_DRIVER: z.enum(["google", "local"]).default("google"),
   // Shared with Vercel Cron, which sends it as a bearer token. Unset = scheduled jobs refuse to run.
   CRON_SECRET: z.string().min(16).optional(),
+  // Google Chat (FR-PLT-31): an incoming-webhook URL for the space that gets approval cards.
+  // Unset = the local driver records each card as "simulated" and nothing leaves the machine.
+  GOOGLE_CHAT_WEBHOOK_URL: z.url().optional(),
 });
 
 /** The local step-up driver skips Google, so it must never exist where real salaries do. */
