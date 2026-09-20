@@ -950,3 +950,11 @@ export async function headcountPlan(principal: Principal): Promise<HeadcountRow[
     hired: Number(row.fulfilled ?? 0),
   }));
 }
+
+/**
+ * The recruitment funnel (FR-REC-11), for Phase 9's dashboard and scheduled reports. Scoped by the
+ * same `openingScope` clause as every other list here: a reader who can see no opening gets an
+ * empty report. `canReadRecruitReports` is the predicate its own screen checks.
+ */
+export { defaultReportFrom, getRecruitReport, type RecruitReport, type RecruitReportFilters } from "./reports";
+export { canReadRecruitReports } from "./policy";

@@ -1608,6 +1608,192 @@
         "value": "Value"
       },
       "department": "Department"
+    },
+    "overview": {
+      "title": "Overview",
+      "description": "The numbers you may see, on one page. Each tile opens the screen behind it.",
+      "empty": "There is nothing here for you to see yet.",
+      "asOf": "As at {date}",
+      "open": "Open",
+      "scoped": "Within your scope.",
+      "tiles": {
+        "headcount": "Headcount",
+        "payroll": "Payroll cost",
+        "attendance": "Attendance today",
+        "leave": "Away today",
+        "recruit": "Recruitment",
+        "ops": "Overdue obligations",
+        "work": "Work to watch",
+        "approvals": "Waiting on you"
+      },
+      "headcount": {
+        "total": "Total headcount",
+        "joiners": "Joined this month",
+        "leavers": "Left this month",
+        "contracts": "Contracts expiring",
+        "probations": "Probations ending"
+      },
+      "payroll": {
+        "month": "{month}",
+        "employerCost": "Total employer cost",
+        "gross": "Gross earnings",
+        "headcount": "People paid",
+        "change": "Against last month",
+        "noRuns": "No payroll run has been calculated yet."
+      },
+      "attendance": {
+        "in": "On site",
+        "notYet": "Not in yet",
+        "offSite": "Working off site",
+        "out": "Left for the day",
+        "onLeave": "On leave",
+        "of": "of {total} people"
+      },
+      "leave": {
+        "away": "{count} away",
+        "pending": "pending",
+        "none": "Nobody is away today."
+      },
+      "recruit": {
+        "openOpenings": "Open positions",
+        "applications": "Applications, 6 months",
+        "active": "In progress"
+      },
+      "ops": {
+        "overdue": "Overdue",
+        "dueSoon": "Due within 14 days",
+        "none": "Nothing is overdue."
+      },
+      "work": {
+        "open": "Open",
+        "overdue": "Overdue",
+        "atRisk": "At risk"
+      },
+      "approvals": {
+        "waiting": "{count} requests waiting on you",
+        "none": "Nothing is waiting on you."
+      }
+    },
+    "analytics": {
+      "title": "Work reports",
+      "description": "Throughput, on-time rate, open workload and revision rounds — by team and by client.",
+      "back": "Back to work",
+      "from": "From",
+      "to": "To",
+      "apply": "Show",
+      "allTeams": "All teams",
+      "scoped": "Counted over the work you may see, and no more.",
+      "total": "Total",
+      "byTeam": "By team",
+      "byClient": "By client",
+      "none": "There is no work in your scope yet.",
+      "hint": "Work completed with no due date is left out of the on-time rate.",
+      "columns": {
+        "kind": "Grouping",
+        "name": "Name",
+        "completed": "Completed",
+        "onTime": "On time",
+        "late": "Late",
+        "onTimeRate": "On-time rate",
+        "open": "Open",
+        "overdue": "Overdue",
+        "revisions": "Revisions / task",
+        "contributors": "Contributors"
+      }
+    },
+    "catalogue": {
+      "empty": "No figures.",
+      "headcount": {
+        "name": "Headcount report",
+        "summary": "Headcount {total}; {joiners} joined and {leavers} left in the period."
+      },
+      "payroll_cost": {
+        "name": "Payroll cost",
+        "summary": "{month}: total employer cost {cost}.",
+        "month": "Month",
+        "headcount": "People",
+        "gross": "Gross",
+        "net": "Net",
+        "employerCost": "Employer cost"
+      },
+      "work_analytics": {
+        "name": "Work report",
+        "summary": "{completed} tasks completed, {rate} on time, {overdue} overdue."
+      },
+      "ops_overdue": {
+        "name": "Overdue obligations",
+        "summary": "{count} obligations are overdue.",
+        "entity": "Entity",
+        "obligation": "Obligation",
+        "due": "Due",
+        "owner": "Owner"
+      },
+      "recruit_funnel": {
+        "name": "Recruitment funnel",
+        "summary": "{applications} applications, {open} open positions.",
+        "stage": "Stage",
+        "count": "Count",
+        "openOpenings": "Open positions",
+        "applications": "Applications",
+        "active": "In progress"
+      }
+    },
+    "schedules": {
+      "title": "Scheduled reports",
+      "description": "Send a report by email on a schedule. Every time it runs, the report is built again for each recipient with that recipient's own permissions.",
+      "back": "Back to overview",
+      "none": "No schedules yet.",
+      "new": "New schedule",
+      "edit": "Edit",
+      "name": "Name",
+      "report": "Report",
+      "cadence": "Cadence",
+      "cadences": {
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "monthly": "Monthly"
+      },
+      "dayOfWeek": "Day",
+      "days": {
+        "1": "Monday",
+        "2": "Tuesday",
+        "3": "Wednesday",
+        "4": "Thursday",
+        "5": "Friday",
+        "6": "Saturday",
+        "7": "Sunday"
+      },
+      "dayOfMonth": "Day of the month",
+      "dayOfMonthHint": "A shorter month falls back to its last day.",
+      "recipients": "Recipients",
+      "recipientsHint": "Being named here grants nothing: somebody who may not read the report does not get it, and that is recorded.",
+      "locale": "Email language",
+      "nextRun": "Next run",
+      "lastRun": "Last run",
+      "status": "Status",
+      "active": "Active",
+      "paused": "Paused",
+      "pause": "Pause",
+      "resume": "Resume",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this schedule?",
+      "save": "Save",
+      "saved": "Saved.",
+      "created": "Schedule created.",
+      "delivered": "{count} delivered",
+      "withheld": "{count} withheld (not permitted)",
+      "runStatus": {
+        "succeeded": "Succeeded",
+        "partial": "Partial",
+        "failed": "Failed"
+      },
+      "noEmailDriver": "No email service is configured: messages are written to the outbox and marked skipped.",
+      "errors": {
+        "unknown_report": "No such report.",
+        "forbidden": "You may not read this report.",
+        "not_found": "Schedule not found.",
+        "failed": "Could not save."
+      }
     }
   },
   "attendance": {

@@ -13,7 +13,9 @@ export function navFor(principal: Principal, open: { people: boolean; recruit: b
     { key: "checkIn", href: "/attendance/check-in" },
     { key: "me", href: "/me" },
     ...(open.people ? [{ key: "people", href: "/people" }] : []),
-    ...(can(principal, "report:read") ? [{ key: "reports", href: "/reports/headcount" }] : []),
+    // The overview (FR-RPT-01 v2) decides tile by tile what this reader may see, so the entry is
+    // not gated on one permission; the page itself shows only the tiles they hold. Cosmetic, as ever.
+    { key: "reports", href: "/reports" },
     { key: "attendance", href: "/attendance" },
     { key: "leave", href: "/leave" },
     // Purchase, payment, advance, a confirmation letter — the request builder's types (FR-REQ-01).

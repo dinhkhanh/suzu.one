@@ -1608,6 +1608,192 @@
         "value": "Giá trị"
       },
       "department": "Phòng ban"
+    },
+    "overview": {
+      "title": "Tổng quan",
+      "description": "Những con số bạn được xem, gom về một trang. Mỗi ô dẫn tới màn hình đứng sau nó.",
+      "empty": "Chưa có ô nào để hiển thị cho bạn.",
+      "asOf": "Tính đến {date}",
+      "open": "Mở",
+      "scoped": "Trong phạm vi của bạn.",
+      "tiles": {
+        "headcount": "Quân số",
+        "payroll": "Chi phí lương",
+        "attendance": "Chấm công hôm nay",
+        "leave": "Nghỉ hôm nay",
+        "recruit": "Tuyển dụng",
+        "ops": "Nghĩa vụ quá hạn",
+        "work": "Công việc cần để mắt",
+        "approvals": "Chờ bạn duyệt"
+      },
+      "headcount": {
+        "total": "Tổng quân số",
+        "joiners": "Vào trong tháng",
+        "leavers": "Nghỉ trong tháng",
+        "contracts": "Hợp đồng sắp hết hạn",
+        "probations": "Sắp hết thử việc"
+      },
+      "payroll": {
+        "month": "Tháng {month}",
+        "employerCost": "Tổng chi phí sử dụng lao động",
+        "gross": "Tổng thu nhập",
+        "headcount": "Số người tính lương",
+        "change": "So với tháng trước",
+        "noRuns": "Chưa có kỳ lương nào đã tính."
+      },
+      "attendance": {
+        "in": "Đang ở công ty",
+        "notYet": "Chưa vào ca",
+        "offSite": "Làm ngoài văn phòng",
+        "out": "Đã ra về",
+        "onLeave": "Nghỉ phép",
+        "of": "trên {total} người"
+      },
+      "leave": {
+        "away": "{count} người nghỉ",
+        "pending": "chờ duyệt",
+        "none": "Hôm nay không ai nghỉ."
+      },
+      "recruit": {
+        "openOpenings": "Vị trí đang tuyển",
+        "applications": "Hồ sơ 6 tháng qua",
+        "active": "Đang tiến hành"
+      },
+      "ops": {
+        "overdue": "Quá hạn",
+        "dueSoon": "Đến hạn trong 14 ngày",
+        "none": "Không có nghĩa vụ nào quá hạn."
+      },
+      "work": {
+        "open": "Đang mở",
+        "overdue": "Quá hạn",
+        "atRisk": "Có rủi ro trễ"
+      },
+      "approvals": {
+        "waiting": "{count} đề nghị đang chờ bạn",
+        "none": "Không có đề nghị nào chờ bạn."
+      }
+    },
+    "analytics": {
+      "title": "Báo cáo công việc",
+      "description": "Sản lượng, tỷ lệ đúng hạn, khối lượng đang mở và số vòng chỉnh sửa — theo nhóm và theo khách hàng.",
+      "back": "Về công việc",
+      "from": "Từ ngày",
+      "to": "Đến ngày",
+      "apply": "Xem",
+      "allTeams": "Tất cả nhóm",
+      "scoped": "Chỉ tính trên những việc bạn được xem.",
+      "total": "Tổng",
+      "byTeam": "Theo nhóm",
+      "byClient": "Theo khách hàng",
+      "none": "Chưa có việc nào trong phạm vi của bạn.",
+      "hint": "Việc hoàn thành không có hạn chót không được tính vào tỷ lệ đúng hạn.",
+      "columns": {
+        "kind": "Nhóm số liệu",
+        "name": "Tên",
+        "completed": "Hoàn thành",
+        "onTime": "Đúng hạn",
+        "late": "Trễ",
+        "onTimeRate": "Tỷ lệ đúng hạn",
+        "open": "Đang mở",
+        "overdue": "Quá hạn",
+        "revisions": "Vòng chỉnh sửa / việc",
+        "contributors": "Người tham gia"
+      }
+    },
+    "catalogue": {
+      "empty": "Không có số liệu.",
+      "headcount": {
+        "name": "Báo cáo nhân sự",
+        "summary": "Quân số {total}; vào {joiners}, nghỉ {leavers} trong kỳ."
+      },
+      "payroll_cost": {
+        "name": "Chi phí lương",
+        "summary": "Tháng {month}: tổng chi phí sử dụng lao động {cost}.",
+        "month": "Tháng",
+        "headcount": "Số người",
+        "gross": "Tổng thu nhập",
+        "net": "Thực nhận",
+        "employerCost": "Chi phí sử dụng lao động"
+      },
+      "work_analytics": {
+        "name": "Báo cáo công việc",
+        "summary": "Hoàn thành {completed} việc, đúng hạn {rate}, quá hạn {overdue}."
+      },
+      "ops_overdue": {
+        "name": "Nghĩa vụ quá hạn",
+        "summary": "{count} nghĩa vụ đang quá hạn.",
+        "entity": "Pháp nhân",
+        "obligation": "Nghĩa vụ",
+        "due": "Hạn",
+        "owner": "Người phụ trách"
+      },
+      "recruit_funnel": {
+        "name": "Phễu tuyển dụng",
+        "summary": "{applications} hồ sơ, {open} vị trí đang tuyển.",
+        "stage": "Bước",
+        "count": "Số lượng",
+        "openOpenings": "Vị trí đang tuyển",
+        "applications": "Hồ sơ",
+        "active": "Đang tiến hành"
+      }
+    },
+    "schedules": {
+      "title": "Báo cáo định kỳ",
+      "description": "Gửi một báo cáo qua email theo lịch. Mỗi lần gửi, báo cáo được dựng lại cho từng người nhận theo quyền của chính họ.",
+      "back": "Về tổng quan",
+      "none": "Chưa có lịch gửi nào.",
+      "new": "Tạo lịch gửi",
+      "edit": "Sửa",
+      "name": "Tên",
+      "report": "Báo cáo",
+      "cadence": "Tần suất",
+      "cadences": {
+        "daily": "Hằng ngày",
+        "weekly": "Hằng tuần",
+        "monthly": "Hằng tháng"
+      },
+      "dayOfWeek": "Thứ",
+      "days": {
+        "1": "Thứ hai",
+        "2": "Thứ ba",
+        "3": "Thứ tư",
+        "4": "Thứ năm",
+        "5": "Thứ sáu",
+        "6": "Thứ bảy",
+        "7": "Chủ nhật"
+      },
+      "dayOfMonth": "Ngày trong tháng",
+      "dayOfMonthHint": "Tháng ngắn hơn sẽ tự lùi về ngày cuối tháng.",
+      "recipients": "Người nhận",
+      "recipientsHint": "Được nêu tên ở đây không cho thêm quyền gì: ai không được xem báo cáo thì không nhận, và điều đó được ghi lại.",
+      "locale": "Ngôn ngữ email",
+      "nextRun": "Lần gửi tới",
+      "lastRun": "Lần gửi gần nhất",
+      "status": "Trạng thái",
+      "active": "Đang chạy",
+      "paused": "Tạm dừng",
+      "pause": "Tạm dừng",
+      "resume": "Chạy lại",
+      "delete": "Xóa",
+      "deleteConfirm": "Xóa lịch gửi này?",
+      "save": "Lưu",
+      "saved": "Đã lưu.",
+      "created": "Đã tạo lịch gửi.",
+      "delivered": "Đã gửi {count}",
+      "withheld": "Không gửi {count} (không đủ quyền)",
+      "runStatus": {
+        "succeeded": "Thành công",
+        "partial": "Một phần",
+        "failed": "Thất bại"
+      },
+      "noEmailDriver": "Chưa cấu hình dịch vụ email: thư được ghi vào hộp gửi và đánh dấu bỏ qua.",
+      "errors": {
+        "unknown_report": "Không có báo cáo này.",
+        "forbidden": "Bạn không được xem báo cáo này.",
+        "not_found": "Không tìm thấy lịch gửi.",
+        "failed": "Không lưu được."
+      }
     }
   },
   "attendance": {

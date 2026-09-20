@@ -4,6 +4,8 @@ export type { CalendarDay, DayExpectation, DayPlan, DayPlanKind, PlannedSegment 
 export { type DayOff, getDayPlans, getDaysOff, type PersonDayPlans } from "./schedules";
 export { requestTimesheetRecompute } from "./recompute";
 export { listPunches, type PunchFact } from "./punches";
+/** Who is in, out, away or not here yet (FR-ATT-15) — the dashboard's attendance tile. Viewer-scoped inside. */
+export { getWhoIsIn, type Presence, type PresenceRow, type PresenceStatus } from "./punches";
 export { getAttendancePolicy, type ResolvedPolicy } from "./attendance-policies";
 export type { MonthSummary } from "./engine/timesheet";
 export { getMonthSummaryFor, getTimesheetDays, recomputeDays, summariseMonth, summarisePersonYear, type TimesheetDayRow } from "./timesheets";

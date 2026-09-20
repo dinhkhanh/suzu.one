@@ -11,6 +11,7 @@ import { payrollCalculateJob } from "@/modules/payroll/run-calculation";
 import { type JobDefinition, runJob } from "@/modules/platform/jobs/service";
 import { notificationsDailyJob } from "@/modules/platform/notifications/jobs";
 import { candidateRetentionJob } from "@/modules/recruit/jobs";
+import { reportSchedulesJob } from "@/modules/reports/service";
 import { requestSlaJob } from "@/modules/requests/jobs";
 import { workRecurringJob, workRemindersJob } from "@/modules/work/jobs";
 import { aiEvalJob } from "../ai-eval";
@@ -26,7 +27,7 @@ const SCHEDULES: Record<string, JobDefinition[]> = {
   // records of people whose window has passed, and it must run whether or not anybody logs in.
   midnight: [peopleRollOverJob, leaveAccrualJob, timesheetRecomputeJob, workRecurringJob, opsSchedulerJob, kbEmbeddingsJob, commsAnnouncementsJob, payrollCalculateJob, candidateRetentionJob],
   // Alerts (and, on the 1st, "your month is ready to confirm") first, so the digest that follows carries them.
-  morning: [hrAlertsJob, timesheetMonthReadyJob, payrollCalculateJob, opsSchedulerJob, opsRemindersJob, requestSlaJob, workRemindersJob, kbAckRemindersJob, kbEmbeddingsJob, commsAnnouncementsJob, notificationsDailyJob, filesCleanupJob],
+  morning: [hrAlertsJob, timesheetMonthReadyJob, payrollCalculateJob, opsSchedulerJob, opsRemindersJob, requestSlaJob, workRemindersJob, kbAckRemindersJob, kbEmbeddingsJob, commsAnnouncementsJob, reportSchedulesJob, notificationsDailyJob, filesCleanupJob],
 };
 
 // Run by hand only: /api/cron/<job name>.

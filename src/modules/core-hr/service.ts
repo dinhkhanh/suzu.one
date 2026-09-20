@@ -764,3 +764,9 @@ export type { BankAccount } from "./records";
 export { type DependantRegistration, listDependantRegistrations, listPayrollFacts, type PayrollPersonFacts, recordPayEvent } from "./payroll-facts";
 export { type LifecycleEventFact, listLifecycleEventFacts } from "./lifecycle-events";
 export { currentBranchOf, findBranchEntity, listPeopleAtBranches, listStaffOccasionFacts, type StaffOccasionFacts } from "./feed-facts";
+/**
+ * The headcount report (FR-RPT-02), for Phase 9's dashboard and scheduled reports. It takes the
+ * reader's principal and scopes itself — a viewer with no `report:read` reach gets null, exactly
+ * as on `/reports/headcount`.
+ */
+export { getHeadcountReport, type HeadcountFilters, type HeadcountReport } from "./reports";

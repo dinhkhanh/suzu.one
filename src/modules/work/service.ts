@@ -25,3 +25,9 @@ export { INTAKE_FIELD_TYPES, type IntakeField, type IntakeFieldType, MAX_INTAKE_
  * decided that the reviewer may read this person's performance data.
  */
 export { getPersonTaskStats, type PersonTaskStats } from "./stats";
+/**
+ * Phase 9 (FR-RPT-04): throughput, on-time rate, workload and revision rounds by team and client.
+ * Scope-filtered in SQL by `visibleTaskCondition`, the same clause the work screens use — the
+ * report is a different shape of the rows the viewer may already open, never a wider set.
+ */
+export { type AnalyticsCell, type AnalyticsFilter, defaultAnalyticsPeriod, getWorkAnalytics, type NamedGroup, type WorkAnalytics } from "./analytics";
