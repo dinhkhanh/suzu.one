@@ -16,6 +16,8 @@ export function navFor(principal: Principal, open: { people: boolean }): { main:
     ...(can(principal, "report:read") ? [{ key: "reports", href: "/reports/headcount" }] : []),
     { key: "attendance", href: "/attendance" },
     { key: "leave", href: "/leave" },
+    // Purchase, payment, advance, a confirmation letter — the request builder's types (FR-REQ-01).
+    { key: "requests", href: "/requests" },
     { key: "work", href: "/work" },
     // Compliance: people with an ops role. Anyone else reaches their own obligations through My work.
     ...(can(principal, "ops:read") || can(principal, "ops:manage") ? [{ key: "ops", href: "/ops" }] : []),
@@ -32,7 +34,7 @@ export function navFor(principal: Principal, open: { people: boolean }): { main:
     ...(can(principal, "org:read") ? [{ key: "entities", href: "/admin/entities" }, { key: "org", href: "/admin/org" }] : []),
     ...(can(principal, "org:manage", {}) ? [{ key: "flags", href: "/admin/flags" }] : []),
     ...(can(principal, "person:manage") ? [{ key: "checklists", href: "/admin/checklists" }] : []),
-    ...(can(principal, "org:manage") ? [{ key: "approvalFlows", href: "/admin/approval-flows" }] : []),
+    ...(can(principal, "org:manage") ? [{ key: "approvalFlows", href: "/admin/approval-flows" }, { key: "requestTypes", href: "/admin/request-types" }] : []),
     ...(can(principal, "rbac:manage") ? [{ key: "roles", href: "/admin/roles" }] : []),
     ...(can(principal, "rules:propose", {}) || can(principal, "payroll:rules", {}) || can(principal, "payroll:read", {}) ? [{ key: "rules", href: "/admin/rules" }] : []),
     ...(can(principal, "audit:read") ? [{ key: "audit", href: "/admin/audit" }] : []),

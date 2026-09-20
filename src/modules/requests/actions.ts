@@ -8,7 +8,8 @@ import { getPersonTarget } from "@/modules/core-hr/service";
 import { approverRuleSchema, conditionSchema } from "@/modules/platform/approvals/flows";
 import { FIELD_TYPES, MAX_FIELDS, MAX_OPTIONS, MAX_TEXT } from "./engine/form";
 import { canFileRequests, canManageRequestTypes } from "./policy";
-import { decideGenericRequest, fileRequest, findRequestType, getGenericRequest, refileRequest, REQUEST_CATEGORIES, saveRequestType, setRequestTypeActive } from "./service";
+import { REQUEST_CATEGORIES } from "./enums";
+import { decideGenericRequest, fileRequest, findRequestType, getGenericRequest, refileRequest, saveRequestType, setRequestTypeActive } from "./service";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
 const optionalText = (max: number) => z.preprocess(blankToNull, z.string().trim().max(max).nullable().default(null));

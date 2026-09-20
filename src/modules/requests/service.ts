@@ -14,6 +14,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import { decideRequest, defineRequestType, getRequest, type RequestTypeDefinition, type RequestView, resubmitRequest, type SubmitInput, submitRequest } from "@/modules/platform/approvals/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
 import { conditionFieldsOf, flowConditionData, type FormDefinition, type FormValues, formProblems, validateSubmission } from "./engine/form";
+import type { RequestCategory } from "./enums";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type RequestTypeRow = typeof schema.requestType.$inferSelect;
@@ -24,8 +25,7 @@ export const APPROVAL_TYPE_PREFIX = "request:";
 export const approvalTypeOf = (code: string) => `${APPROVAL_TYPE_PREFIX}${code}`;
 export const codeOfApprovalType = (type: string) => (type.startsWith(APPROVAL_TYPE_PREFIX) ? type.slice(APPROVAL_TYPE_PREFIX.length) : null);
 
-export const REQUEST_CATEGORIES = ["purchase", "finance", "hr", "it", "admin", "other"] as const;
-export type RequestCategory = (typeof REQUEST_CATEGORIES)[number];
+export { REQUEST_CATEGORIES, type RequestCategory } from "./enums";
 
 // ── A database row as a request type the approval engine understands ────────────────────────
 

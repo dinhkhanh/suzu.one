@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, isNull, lt } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lt } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema } from "@/lib/db";
 import { recordAudit } from "../audit/service";
@@ -67,6 +67,16 @@ export async function listFilesOf(ownerType: string, ownerId: string): Promise<S
     .from(schema.storedFile)
     .where(and(eq(schema.storedFile.ownerType, ownerType), eq(schema.storedFile.ownerId, ownerId), eq(schema.storedFile.status, "ready"), isNull(schema.storedFile.deletedAt)))
     .orderBy(asc(schema.storedFile.createdAt));
+}
+
+/** The names of a known set of files, for a screen that already decided the reader may see them. */
+export async function listFileNames(fileIds: readonly string[]): Promise<Map<string, string>> {
+  if (fileIds.length === 0) return new Map();
+  const rows = await db()
+    .select({ id: schema.storedFile.id, fileName: schema.storedFile.fileName })
+    .from(schema.storedFile)
+    .where(and(inArray(schema.storedFile.id, [...fileIds]), isNull(schema.storedFile.deletedAt)));
+  return new Map(rows.map((row) => [row.id, row.fileName]));
 }
 
 export async function findFile(fileId: string): Promise<StoredFileRow | undefined> {
