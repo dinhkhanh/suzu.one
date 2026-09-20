@@ -28,6 +28,8 @@ const nextConfig: NextConfig = {
         ],
       },
       { source: "/offline.html", headers: [{ key: "Cache-Control", value: "no-cache" }] },
+      // Compensation screens (NFR-SEC-08): never stored by a browser, a proxy or a CDN.
+      ...["/payroll/:path*", "/payroll", "/payslips/:path*", "/payslips", "/step-up"].map((source) => ({ source, headers: [{ key: "Cache-Control", value: "private, no-store, max-age=0" }] })),
     ];
   },
 };

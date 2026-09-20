@@ -24,7 +24,9 @@ describe("field cipher", () => {
     expect(() => cipher.decrypt(stored, "person_sensitive.national_id:person-2")).toThrow(FieldCipherError);
     expect(() => cipher.decrypt(stored, "person_sensitive.bank_account:person-1")).toThrow(FieldCipherError);
     const parts = stored.split(".");
-    parts[5] = parts[5].slice(0, -2) + (parts[5].endsWith("A") ? "B" : "A") + parts[5].slice(-1);
+    // Replace the second-to-last character (all six of its bits are data) with a *different* one.
+    // Choosing by the last character instead left the ciphertext unchanged once in 64 runs.
+    parts[5] = parts[5].slice(0, -2) + (parts[5].at(-2) === "A" ? "B" : "A") + parts[5].slice(-1);
     expect(() => cipher.decrypt(parts.join("."), context)).toThrow(FieldCipherError);
     expect(() => cipher.decrypt("not-a-ciphertext", context)).toThrow("bad_format");
   });

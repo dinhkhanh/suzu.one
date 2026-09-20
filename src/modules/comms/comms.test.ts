@@ -211,7 +211,8 @@ describe("home feed", () => {
     expect(feed.anniversaries.map((row) => [row.fullName, row.years, row.inDays])).toEqual([["hrGroup", 6, 3]]);
     expect(feed.joiners.map((row) => row.fullName)).toEqual(["huy"]);
     expect(feed.kudos.map((card) => card.toName)).toEqual(["khoi"]);
-    const text = JSON.stringify(feed);
+    // Ids are random hex: one of them spells "1990" every few runs, so they are taken out first.
+    const text = JSON.stringify(feed).replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "<id>");
     for (const year of ["1980", "1988", "1990", "1995", "1996", "1997", "1999"]) expect(text).not.toContain(year);
     expect(text).not.toContain("dateOfBirth");
   });

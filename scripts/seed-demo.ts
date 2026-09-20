@@ -14,6 +14,7 @@ import { seedComms } from "./seed-demo-comms";
 import { seedLeave } from "./seed-demo-leave";
 import { seedKb } from "./seed-demo-kb";
 import { seedKpis } from "./seed-demo-kpis";
+import { seedPayroll } from "./seed-demo-payroll";
 import { seedPerformance } from "./seed-demo-performance";
 import { seedAttendanceRequests } from "./seed-demo-requests";
 import { seedWork, seedWorkConversations } from "./seed-demo-work";
@@ -53,6 +54,8 @@ const PEOPLE: Demo[] = [
   { name: "Phan Văn Đức", email: "duc.phan@suzu.group", entity: "SZC", department: "SOC", position: "Social Media Executive", manager: "ha.nguyen@suzu.vn", start: "2023-02-06" },
   { name: "Huỳnh Mỹ Duyên", email: "duyen.huynh@suzu.group", entity: "SZC", department: "CON", position: "Content Writer", type: "part_time", manager: "duc.phan@suzu.group", start: "2024-10-01" },
   { name: "Mai Anh Thư", email: "thu.mai@suzu.group", entity: "SZC", department: "ACC", position: "Account Executive", manager: "ha.nguyen@suzu.vn", start: "2026-11-02" },
+  // Phase 5: C&B for one entity only — the persona that proves payroll access stops at the entity. Last, so nobody's employee code moves.
+  { name: "Vũ Thị Ngân", email: "ngan.vu@suzu.group", entity: "SZC", department: "HR", position: "Chuyên viên C&B", manager: "mai.le@suzu.group", start: "2024-03-04", role: { role: "payroll", scope: "entity" } },
 ];
 
 async function main() {
@@ -70,7 +73,13 @@ async function main() {
   let created = 0;
   await db.transaction(async (tx) => {
     const idByEmail = new Map<string, string>();
+    // Codes continue from each entity's numbering scheme, so a person added to the list later
+    // (or hired through the app in between) never collides with a code already handed out.
     const counters = new Map<string, number>();
+    for (const scheme of await tx.select().from(employeeCodeScheme)) {
+      const home = [...entities.values()].find((row) => row.id === scheme.entityId);
+      if (home) counters.set(home.code, scheme.nextNumber - 1);
+    }
     for (const demo of PEOPLE) {
       const home = entities.get(demo.entity)!;
       const dept = departments.get(demo.department)!;
@@ -121,7 +130,7 @@ async function main() {
     }
     for (const [code, used] of counters) {
       const home = entities.get(code)!;
-      await tx.insert(employeeCodeScheme).values({ entityId: home.id, prefix: `${code}-`, nextNumber: used + 1 }).onConflictDoNothing();
+      await tx.insert(employeeCodeScheme).values({ entityId: home.id, prefix: `${code}-`, nextNumber: used + 1 }).onConflictDoUpdate({ target: employeeCodeScheme.entityId, set: { nextNumber: used + 1 } });
     }
   });
 
@@ -143,6 +152,7 @@ async function main() {
   console.log(`Seeded ${await seedKpis(db)}.`);
   console.log(`Seeded ${await seedKb(db)}.`);
   console.log(`Seeded ${await seedComms(db)}.`);
+  console.log(`Seeded ${await seedPayroll(db)}.`);
   // The ops tracker's instances come from the real scheduler, which only runs inside the app
   // (server-only modules cannot be loaded by tsx): start `pnpm dev`, then `pnpm db:seed:demo:ops`.
   console.log("Next: `pnpm dev` in another terminal, then `pnpm db:seed:demo:ops` (obligations) and `pnpm db:recompute` (timesheets).");
