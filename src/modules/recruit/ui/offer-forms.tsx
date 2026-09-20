@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { EMPLOYMENT_TYPES, OFFER_DECLINE_REASONS, OFFER_LIMITS } from "../enums";
-import { convertOfferToEmployeeAction, makeOfferAction, respondToOfferAction, sendOfferAction, submitOfferAction, updateOfferAction, withdrawOfferAction } from "../offer-actions";
+import { convertOfferToEmployeeAction, decideOfferAction, makeOfferAction, respondToOfferAction, sendOfferAction, submitOfferAction, updateOfferAction, withdrawOfferAction } from "../offer-actions";
 
 export type OfferFormValues = {
   positionName: string;
@@ -270,6 +270,43 @@ export function ConvertToEmployee({ offerId }: { offerId: string }) {
       <div>
         <Button type="submit" size="sm" disabled={form.pending}>
           {t("convert")}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * The approver's three buttons, on the offer's own page.
+ *
+ * The approval lives here rather than on the generic request screen because an offer is the one
+ * request whose substance — the job, the dates, and for the reader who may see it the figure — is
+ * on this page and deliberately nowhere else. The department head approves the *person*; the
+ * compensation step approves the *money*, and only that reader is shown it.
+ */
+export function OfferDecision({ requestId }: { requestId: string }) {
+  const t = useTranslations("recruit.form");
+  const actions = useTranslations("recruit.actions");
+  const router = useRouter();
+  const { onSubmit, pending, errorKey, fieldErrors } = useActionForm(decideOfferAction, { extra: { requestId }, onSuccess: () => router.refresh() });
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-3 rounded-xl border p-4">
+      <FieldErrors value={fieldErrors}>
+        <Field name="comment" label={t("note")}>
+          <Input id="comment" name="comment" maxLength={2000} />
+        </Field>
+      </FieldErrors>
+      <FormError namespace="recruit.errors" errorKey={errorKey} />
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" name="decision" value="approve" size="sm" disabled={pending}>
+          {actions("approve")}
+        </Button>
+        <Button type="submit" name="decision" value="return" size="sm" variant="outline" disabled={pending}>
+          {actions("returnRequest")}
+        </Button>
+        <Button type="submit" name="decision" value="reject" size="sm" variant="destructive" disabled={pending}>
+          {actions("rejectRequest")}
         </Button>
       </div>
     </form>

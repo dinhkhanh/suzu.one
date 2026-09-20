@@ -15,6 +15,7 @@ vi.mock("@/lib/env", () => ({
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
+import { DOCUMENT_TEMPLATE_SEED } from "../documents/seed-templates";
 import type { Principal } from "../platform/rbac/policy";
 import { convertToEmployee, findOffer, getOfferView, listOffers, makeOffer, offerLetter, recordOfferResponse, sendOffer, submitOfferForApproval, updateOffer, withdrawOffer } from "./offers";
 import { PIPELINE_SEED } from "./seed-pipelines";
@@ -251,6 +252,23 @@ describe("the letter", () => {
     }
     // The same answer as an offer that does not exist: a 404 says nothing about which it was.
     expect(await offerLetter(viewerOf(hrAdmin), "00000000-0000-4000-8000-000000000000")).toBeNull();
+    await withdrawOffer(offer.id, ids.hrAdmin, null);
+  });
+
+  it("renders the wording the company actually ships with no holes in it", async () => {
+    // The seeded `TM-NHAN-VIEC` body, not a fixture: a placeholder nobody fills would print
+    // "[salary.total]" on a letter somebody signs, and `missing` is the only thing that says so.
+    const seeded = DOCUMENT_TEMPLATE_SEED.find((template) => template.kind === "offer");
+    expect(seeded).toBeTruthy();
+    const [row] = await db().insert(schema.documentTemplate).values({ ...seeded!, code: "TM-SEEDED-TEST" }).returning();
+    const offer = await makeOffer(offerInput({ letterTemplateId: row.id }), ids.hrAdmin);
+    const letter = await offerLetter(viewerOf(hrAdmin), offer.id);
+    expect(letter?.missing).toEqual([]);
+    expect(letter?.text).toContain("Phạm Minh Anh");
+    expect(letter?.text).toContain("23.500.000");
+    // Probation pay, spelled out in đồng, and the day the offer lapses.
+    expect(letter?.text).toContain("19.975.000");
+    expect(letter?.text).toContain(isoDay(7).split("-").reverse().join("/"));
     await withdrawOffer(offer.id, ids.hrAdmin, null);
   });
 

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 import { getOfferView } from "@/modules/recruit/offers";
-import { ConvertToEmployee, OfferMoves, OfferResponse } from "@/modules/recruit/ui/offer-forms";
+import { ConvertToEmployee, OfferDecision, OfferMoves, OfferResponse } from "@/modules/recruit/ui/offer-forms";
 
 export const metadata: Metadata = { title: "Offer" };
 
@@ -125,6 +125,8 @@ export default async function OfferPage({ params }: PageProps<"/recruit/offers/[
             </Link>
           </div>
           <p className="text-xs text-muted-foreground">{tApprovals(`status.${view.approval.request.status}` as "status.pending")}</p>
+          {/* It is this reader's turn: the decision is taken here, beside the offer it is about. */}
+          {view.approval.canDecide ? <OfferDecision requestId={view.offer.approvalRequestId!} /> : null}
         </section>
       ) : null}
 

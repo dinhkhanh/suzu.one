@@ -166,9 +166,26 @@ export const canMakeOffer = (principal: Principal, opening: OpeningTarget): bool
 /**
  * Seeing that an offer *exists* — its status, its start date, whether the candidate has answered.
  * Deliberately wider than the figure: a recruiter has to know the candidate said yes in order to
- * do anything about it, and `canReadRecruitMoney` still decides whether they are shown a đồng.
+ * do anything about it, and `canReadOfferMoney` still decides whether they are shown a đồng.
+ *
+ * `party` is "the approval engine has already decided this person is a party to the request", and
+ * it is not optional politeness: without it the flow asks somebody to approve an offer they cannot
+ * open. (Which is exactly what happened the first time an offer went out for approval — the CEO's
+ * inbox had the request and the offer's page answered 404.)
  */
-export const canViewOffer = (principal: Principal, opening: OpeningTarget, member: Membership): boolean => canViewOpening(principal, opening, member);
+export const canViewOffer = (principal: Principal, opening: OpeningTarget, member: Membership, party = false): boolean => canViewOpening(principal, opening, member) || (party && !!principal.personId);
+
+/**
+ * The offer's figure. Two authorities, because two different people need it:
+ *
+ *   · a **compensation-tier recruitment grant** over the opening — the person who typed it;
+ *   · **`payroll:approve`** over the entity — the person the flow asks to approve the money. The
+ *     second step of the flow is a `permission: payroll:approve` rule, so this is not a widening:
+ *     it is the same authority, read on the page instead of in an inbox.
+ *
+ * Everybody else stops at the figure, including the department head who approved the *person*.
+ */
+export const canReadOfferMoney = (principal: Principal, opening: OpeningTarget): boolean => canReadRecruitMoney(principal, opening) || can(principal, "payroll:approve", over(opening));
 
 /**
  * Writing down what the candidate said. The recruiter takes the phone call, so this is the

@@ -11,6 +11,7 @@ import {
   canManagePipelines,
   canOpenCandidateFile,
   canOpenFromHiringRequest,
+  canReadOfferMoney,
   canReadRecruitMoney,
   canRecordOfferResponse,
   canRunRecruitment,
@@ -206,6 +207,27 @@ describe("offers (FR-REC-08) and becoming an employee (FR-REC-09)", () => {
     expect(canViewOffer(head, opening, true)).toBe(true);
     expect(canViewOffer(head, opening, false)).toBe(false);
     for (const who of [finance, payroll, ceo, auditor, employee]) expect(canViewOffer(who, opening, false)).toBe(false);
+  });
+
+  it("lets in whoever the flow asked, and only them", () => {
+    // The compensation step is a `payroll:approve` rule, so the CEO is asked to approve an offer
+    // for an opening they run no recruitment on. Without the party clause the request sat in their
+    // inbox and the offer answered 404 — found by approving one, not by testing one.
+    expect(canViewOffer(ceo, opening, false, false)).toBe(false);
+    expect(canViewOffer(ceo, opening, false, true)).toBe(true);
+    // Being a party is not a way in for somebody with no person record at all.
+    expect(canViewOffer({ personId: null, workforceType: null, grants: [] }, opening, false, true)).toBe(false);
+    // And it does not let a party read what their authority does not cover: the department head
+    // approves the person and is still shown no figure.
+    expect(canReadOfferMoney(head, opening)).toBe(false);
+  });
+
+  it("shows the figure to the two authorities that need it and to nobody else", () => {
+    // Whoever typed it, and whoever the flow asks to approve the money.
+    for (const who of [owner, hrAdmin, ceo]) expect(canReadOfferMoney(who, opening)).toBe(true);
+    for (const who of [hrStaff, recruiter, entityRecruiter, head, finance, payroll, auditor, director, employee]) expect(canReadOfferMoney(who, opening)).toBe(false);
+    // `payroll:approve` is scoped like everything else.
+    expect(canReadOfferMoney(principal("szm-cxo", [{ role: "c_level", scope: { type: "entity", id: SZM } }]), otherOpening)).toBe(false);
   });
 
   it("separates seeing that an offer exists from seeing what it says", () => {

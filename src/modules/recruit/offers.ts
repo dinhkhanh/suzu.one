@@ -45,7 +45,7 @@ import {
   type OfferStatus,
 } from "./enums";
 import { defaultExpiry, effectiveOfferStatus, mayMove, nextStatus, offerProblems, offerTotalVnd, probationMonthlyVnd } from "./engine/offer";
-import { canConvertToEmployee, canMakeOffer, canReadRecruitMoney, canRecordOfferResponse, canViewOffer, type OpeningTarget } from "./policy";
+import { canConvertToEmployee, canMakeOffer, canReadOfferMoney, canReadRecruitMoney, canRecordOfferResponse, canViewOffer, type OpeningTarget } from "./policy";
 import { findApplication, findCandidate, findOpening, isOpeningMember, recordApplicationEvent } from "./service";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -97,7 +97,9 @@ export const offerRequestType = defineRequestType({
   conditionFields: ["employmentType"],
   // Never from the inbox without opening it: an offer is a salary, and the salary is on its page.
   bulkApprovable: () => false,
-  canView: (viewer, subject) => canReadRecruitMoney(viewer, subject?.entityId ? { entityId: subject.entityId, departmentId: subject.departmentId, teamId: subject.teamId } : undefined),
+  // Nobody beyond the parties to the request. An offer is read on its own page, where the tier and
+  // the step-up decide; the approval request itself is a line in an inbox and stays that way.
+  canView: () => false,
 });
 
 // ── Numbering ───────────────────────────────────────────────────────────────────────────────
@@ -257,9 +259,15 @@ export async function submitOfferForApproval(offerId: string, actorPersonId: str
     const { request } = await submitRequest(tx, offerRequestType, {
       entityId: offer.entityId,
       requesterPersonId: actorPersonId,
-      // The offer is about somebody who is not a person on the books, so — as with a hiring
-      // request — the subject the flow resolves against is whoever is asking.
-      subjectPersonId: actorPersonId,
+      /**
+       * **No subject person, on purpose.** An offer is about a candidate, who is not on the books,
+       * and `resolveFlow` ignores `target` whenever a subject is given: naming the filer as the
+       * subject would resolve the `department_head` step against *HR's* department rather than the
+       * one that is hiring, find nobody, and fall back to the owner. (Which is exactly what it did
+       * the first time this ran — found by making an offer, not by testing one.) With no subject,
+       * `target` below is what the `role` and `permission` rules see.
+       */
+      subjectPersonId: null,
       subjectType: "job_offer",
       subjectId: offer.id,
       // Read in an inbox, an email and a chat card. A name, a job and a date. Never a figure.
@@ -463,11 +471,14 @@ export async function getOfferView(viewer: { principal: Principal; personId: str
   if (!opening) return null;
   const member = await isOpeningMember(opening.id, viewer.personId);
   const target = targetOf(opening);
-  if (!canViewOffer(viewer.principal, target, member)) return null;
+  // The approval is read **first**: `getRequest` returns null unless the viewer is a party to it,
+  // which is how somebody the flow asked — and who runs no recruitment at all — reaches the offer
+  // they have been asked to approve.
+  const approval = offer.approvalRequestId && viewer.personId ? await getRequest({ principal: viewer.principal, personId: viewer.personId }, offerRequestType, offer.approvalRequestId) : null;
+  if (!canViewOffer(viewer.principal, target, member, !!approval)) return null;
 
   const candidate = await findCandidate(offer.candidateId);
   const application = await findApplication(offer.applicationId);
-  const approval = offer.approvalRequestId && viewer.personId ? await getRequest({ principal: viewer.principal, personId: viewer.personId }, offerRequestType, offer.approvalRequestId) : null;
 
   const [entity] = await db().select({ shortName: schema.entity.shortName }).from(schema.entity).where(eq(schema.entity.id, offer.entityId)).limit(1);
   const [department] = offer.departmentId ? await db().select({ name: schema.department.name }).from(schema.department).where(eq(schema.department.id, offer.departmentId)).limit(1) : [undefined];
@@ -475,7 +486,7 @@ export async function getOfferView(viewer: { principal: Principal; personId: str
   const [maker] = await db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, offer.createdByPersonId)).limit(1);
 
   const status = effectiveOfferStatus({ status: offer.status, expiresOn: offer.expiresOn as IsoDate }, today);
-  const money = canReadRecruitMoney(viewer.principal, target)
+  const money = canReadOfferMoney(viewer.principal, target)
     ? { baseSalaryVnd: offer.baseSalaryVnd, allowancesVnd: offer.allowancesVnd, totalVnd: offerTotalVnd(offer), probationMonthlyVnd: probationMonthlyVnd(offer) }
     : null;
 
@@ -622,13 +633,14 @@ export async function offerLetter(viewer: { principal: Principal; personId: stri
   if (!opening) return null;
   const member = await isOpeningMember(opening.id, viewer.personId);
   const target = targetOf(opening);
-  if (!canViewOffer(viewer.principal, target, member)) return null;
+  const party = offer.approvalRequestId && viewer.personId ? !!(await getRequest({ principal: viewer.principal, personId: viewer.personId }, offerRequestType, offer.approvalRequestId)) : false;
+  if (!canViewOffer(viewer.principal, target, member, party)) return null;
 
   const [template] = await db().select().from(schema.documentTemplate).where(and(eq(schema.documentTemplate.id, offer.letterTemplateId), eq(schema.documentTemplate.isActive, true))).limit(1);
   if (!template) return null;
   // An offer letter prints a salary, so its template is compensation tier and the reader must hold
   // the money authority. Checked here, again, against who is asking *now*.
-  if (atLeast(template.tier, "compensation") && !canReadRecruitMoney(viewer.principal, target)) return null;
+  if (atLeast(template.tier, "compensation") && !canReadOfferMoney(viewer.principal, target)) return null;
 
   const candidate = await findCandidate(offer.candidateId);
   const [department] = offer.departmentId ? await db().select({ name: schema.department.name }).from(schema.department).where(eq(schema.department.id, offer.departmentId)).limit(1) : [undefined];
