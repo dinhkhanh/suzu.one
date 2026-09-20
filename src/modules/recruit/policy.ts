@@ -119,11 +119,51 @@ export const canViewHiringRequest = (principal: Principal, request: OpeningTarge
 /** Turning an approved ask into an opening: the recruiter's job, over the entity that asked. */
 export const canOpenFromHiringRequest = (principal: Principal, request: OpeningTarget): boolean => canRunRecruitment(principal, request);
 
+// ── Interviews (FR-REC-06) ──────────────────────────────────────────────────────────────────
+
+/**
+ * Whether the asker is in the room for *this* interview. Resolved by the service from
+ * `interview_interviewer`; the rules only read it.
+ */
+export type Interviewing = boolean;
+
+/** Booking, moving and cancelling an interview: the recruiter and the hiring team, as with any other move. */
+export const canScheduleInterview = (principal: Principal, opening: OpeningTarget, member: Membership): boolean => canActOnApplication(principal, opening, member);
+
+/**
+ * Opening one interview. Two ways in, and the second is the interesting one:
+ *
+ *   · whoever runs the opening — recruiter, hiring team;
+ *   · **whoever is interviewing**, who may be neither. A colleague pulled in for one technical
+ *     round needs the candidate's name, their CV and the kit, and gets exactly that: this rule
+ *     admits them to *the interview*, and nothing anywhere admits them to the opening's other
+ *     candidates or to the candidate database. That is why being an interviewer is not a
+ *     `job_opening_member` row — see the note on the table.
+ */
+export const canViewInterview = (principal: Principal, opening: OpeningTarget, member: Membership, interviewing: Interviewing): boolean =>
+  canViewOpening(principal, opening, member) || (interviewing && !!principal.personId);
+
+/**
+ * Writing a scorecard: only somebody who was in the room. A recruiter cannot score an interview
+ * they did not sit in, however senior — a scorecard is testimony, not an opinion.
+ */
+export const canScoreInterview = (principal: Principal, interviewing: Interviewing): boolean => interviewing && !!principal.personId;
+
+// ── Take-home assignments (FR-REC-07) ───────────────────────────────────────────────────────
+
+/** Sending a brief and rating what comes back: the same people who move the application along. */
+export const canRunAssignment = (principal: Principal, opening: OpeningTarget, member: Membership): boolean => canActOnApplication(principal, opening, member);
+
 // ── Candidate files ─────────────────────────────────────────────────────────────────────────
 
 /**
- * A CV uploaded through the public careers page. **Uploads are marked `not_scanned`** — there is
- * no virus scanner in this system yet — so the file is kept to the people who are hiring for that
- * opening and reaches nobody else in the company, and the download path says so out loud.
+ * A CV uploaded through the public careers page, or a take-home submission. **Uploads are marked
+ * `not_scanned`** — there is no virus scanner in this system yet — so the file is kept to the
+ * people who are hiring for that opening and reaches nobody else in the company, and the download
+ * path says so out loud.
+ *
+ * An interviewer on one of this application's interviews is included: reading the CV before the
+ * conversation is the conversation. It admits them to that candidate's file, never to the opening.
  */
-export const canOpenCandidateFile = (principal: Principal, opening: OpeningTarget, member: Membership): boolean => canViewOpening(principal, opening, member);
+export const canOpenCandidateFile = (principal: Principal, opening: OpeningTarget, member: Membership, interviewing: Interviewing = false): boolean =>
+  canViewInterview(principal, opening, member, interviewing);

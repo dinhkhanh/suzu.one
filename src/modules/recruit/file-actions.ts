@@ -4,12 +4,14 @@
 // in the product and it says so on the page that offers it.
 //
 // The rule is the one `policy.ts` states: a CV opens for whoever runs recruitment over the
-// opening, and for the opening's own hiring team. Never on the file id alone, never for a
-// colleague, never for finance, never for the auditors. The link is made on click and lives for a
-// minute, so no storage URL is ever sitting in a page.
+// opening, for the opening's own hiring team, and for anybody interviewing this candidate —
+// reading the CV before the conversation is the conversation. Never on the file id alone, never
+// for a colleague, never for finance, never for the auditors. The link is made on click and lives
+// for a minute, so no storage URL is ever sitting in a page.
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
 import { createDownloadLink, findFile } from "@/modules/platform/files/service";
+import { isInterviewerOnApplication } from "./interviews";
 import { canOpenCandidateFile } from "./policy";
 import { findApplication, findOpening, isOpeningMember } from "./service";
 
@@ -23,11 +25,8 @@ const openCvPipeline = createAction({
     if (!application || application.cvFileId !== input.fileId) return false;
     const opening = await findOpening(application.openingId);
     if (!opening) return false;
-    return canOpenCandidateFile(
-      user.principal,
-      { entityId: opening.entityId, departmentId: opening.departmentId, teamId: opening.teamId },
-      await isOpeningMember(opening.id, user.person.id),
-    );
+    const [member, interviewing] = await Promise.all([isOpeningMember(opening.id, user.person.id), isInterviewerOnApplication(application.id, user.person.id)]);
+    return canOpenCandidateFile(user.principal, { entityId: opening.entityId, departmentId: opening.departmentId, teamId: opening.teamId }, member, interviewing);
   },
   run: async ({ user, input }) => {
     const file = await findFile(input.fileId);

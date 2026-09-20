@@ -53,7 +53,8 @@
     "assets": "Assets",
     "bookings": "Equipment bookings",
     "documentTemplates": "Document templates",
-    "recruit": "Recruitment"
+    "recruit": "Recruitment",
+    "interviews": "Interviews"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -804,6 +805,18 @@
       "recruit_hiring_approved": {
         "title": "Hiring request approved",
         "body": "The request for {title} ({count}) was approved. Time to write the posting."
+      },
+      "recruit_interview_scheduled": {
+        "title": "You have an interview",
+        "body": "{title} with {candidate}."
+      },
+      "recruit_interview_cancelled": {
+        "title": "Interview cancelled",
+        "body": "{title} with {candidate} has been cancelled."
+      },
+      "recruit_assignment_received": {
+        "title": "Assignment submitted",
+        "body": "{candidate} has sent back {title}."
       }
     },
     "errors": {
@@ -6321,7 +6334,19 @@
       "email_template_subject_too_long": "The subject is too long.",
       "email_template_body_empty": "The body cannot be empty.",
       "email_template_body_too_long": "The body is too long.",
-      "email_template_unknown_placeholder": "The wording names a placeholder this system does not know."
+      "email_template_unknown_placeholder": "The wording names a placeholder this system does not know.",
+      "interview_ends_before_it_starts": "The end time must be after the start.",
+      "interview_too_short": "That interview is too short.",
+      "interview_too_long": "That interview is too long.",
+      "interview_too_far_back": "That is too far in the past to record.",
+      "interview_too_far_ahead": "That is too far ahead to book.",
+      "interview_no_interviewer": "An interview needs at least one interviewer.",
+      "recruit_interview_not_found": "Interview not found.",
+      "recruit_interview_closed": "This interview is closed.",
+      "recruit_interview_status_unchanged": "The status has not changed.",
+      "recruit_not_an_interviewer": "Only somebody who was in the room may score an interview.",
+      "recruit_scorecard_submitted": "A submitted scorecard cannot be changed.",
+      "recruit_scorecard_needs_recommendation": "Choose a recommendation before submitting."
     },
     "duplicates": {
       "title": "Possible matches already on file:",
@@ -6426,6 +6451,94 @@
       "reject": "Rejection",
       "offer": "Offer",
       "general": "General"
+    },
+    "interview": {
+      "heading": "Interviews",
+      "none": "No interviews yet.",
+      "mine": "My interviews",
+      "mineDescription": "The conversations you are in, and the scorecards you still owe.",
+      "upcoming": "Upcoming",
+      "past": "Past",
+      "noneUpcoming": "Nothing coming up.",
+      "schedule": "Schedule an interview",
+      "reschedule": "Reschedule",
+      "cancelForm": "Cancel",
+      "title": "Title",
+      "defaultTitle": "Interview",
+      "date": "Date",
+      "time": "Time",
+      "duration": "Length",
+      "minutes": "{count} minutes",
+      "when": "When",
+      "kind": "Kind",
+      "mode": "Format",
+      "stage": "Stage",
+      "location": "Location",
+      "meetingUrl": "Meeting link",
+      "notesForCandidate": "Notes for the candidate",
+      "interviewers": "Interviewers",
+      "interviewersHint": "Whoever will be in the room. They see this interview only — not the opening's other candidates.",
+      "outcome": "Outcome",
+      "cancelReason": "Reason (if cancelling)",
+      "downloadIcs": "Download calendar file (.ics)",
+      "clash": "Already booked: {names}",
+      "cardDue": "Scorecard due",
+      "cardIn": "Scorecard in",
+      "kinds": {
+        "phone_screen": "Phone screen",
+        "hiring_manager": "Hiring manager",
+        "technical": "Technical",
+        "portfolio": "Portfolio",
+        "culture": "Culture",
+        "panel": "Panel",
+        "final": "Final round"
+      },
+      "modes": {
+        "onsite": "On site",
+        "video": "Video",
+        "phone": "Phone"
+      },
+      "statuses": {
+        "scheduled": "Scheduled",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "no_show": "No show"
+      },
+      "calendar": {
+        "simulated": "The internal event exists. Google Calendar is not connected, so nothing left this system — use the .ics file.",
+        "sent": "Created on Google Calendar.",
+        "failed": "Google Calendar could not be reached. The internal event and the .ics file still work."
+      }
+    },
+    "scorecard": {
+      "mine": "My scorecard",
+      "panel": "The panel's scorecards",
+      "recommendation": "Recommendation",
+      "strengths": "Strengths",
+      "concerns": "Concerns",
+      "notes": "Notes",
+      "saveDraft": "Save draft",
+      "submit": "Submit",
+      "submitted": "Submitted",
+      "saved": "Saved.",
+      "submitWarning": "Once submitted it cannot be changed.",
+      "finalNote": "Submitted. This is the record of the interview, so it cannot be edited.",
+      "blind": "The others' feedback appears once yours is in.",
+      "blindHint": "You cannot see anybody else's scorecard yet — and they cannot see yours. Write down what you thought first.",
+      "noneYet": "Nobody has submitted yet.",
+      "awaiting": "{count} still to come",
+      "scale": {
+        "1": "1 — No",
+        "2": "2 — Below the bar",
+        "3": "3 — Meets the bar",
+        "4": "4 — Outstanding"
+      },
+      "recommendations": {
+        "strong_no": "Strong no",
+        "no": "No",
+        "yes": "Yes",
+        "strong_yes": "Strong yes"
+      }
     }
   }
 }

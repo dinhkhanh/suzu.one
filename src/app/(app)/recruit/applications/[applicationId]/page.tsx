@@ -5,9 +5,11 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { APPLICATION_CLOSED, getApplicationView } from "@/modules/recruit/service";
+import { interviewerOptions, listInterviewsOfApplication } from "@/modules/recruit/interviews";
 import { ApplicationActions } from "@/modules/recruit/ui/application-actions";
 import { CvLink } from "@/modules/recruit/ui/cv-link";
 import { listEmailTemplates } from "@/modules/recruit/emails";
+import { ScheduleInterview } from "@/modules/recruit/ui/interview-form";
 import { SendCandidateEmail } from "@/modules/recruit/ui/send-email";
 
 export const metadata: Metadata = { title: "Application" };
@@ -21,8 +23,12 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
   if (!view) notFound();
 
   const t = await getTranslations("recruit");
+  const tInterview = await getTranslations("recruit.interview");
   const format = await getFormatter();
   const closed = APPLICATION_CLOSED.includes(view.application.status);
+  // The caller has already been checked by `getApplicationView`; the panel is the same audience.
+  const interviews = await listInterviewsOfApplication(applicationId);
+  const options = view.canAct ? await interviewerOptions(view.opening.id) : [];
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -104,6 +110,30 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
           ))}
         </ul>
       ) : null}
+
+      {/* Interviews (FR-REC-06). The list is everybody's; booking one is the hiring team's. */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-medium text-muted-foreground">{tInterview("heading")}</h2>
+        {interviews.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{tInterview("none")}</p>
+        ) : (
+          <ul className="flex flex-col divide-y rounded-xl border">
+            {interviews.map((row) => (
+              <li key={row.id} className="flex flex-wrap items-center gap-3 p-3">
+                <div className="min-w-0 flex-1">
+                  <Link href={`/recruit/interviews/${row.id}`} className="text-sm font-medium hover:underline">
+                    {row.title}
+                  </Link>
+                  <p className="text-xs text-muted-foreground">{row.interviewers.map((person) => person.fullName).join(", ")}</p>
+                </div>
+                <span className="text-xs text-muted-foreground">{format.dateTime(row.startAt, { dateStyle: "medium", timeStyle: "short" })}</span>
+                <Badge variant={row.status === "scheduled" ? "default" : "outline"}>{tInterview(`statuses.${row.status}`)}</Badge>
+              </li>
+            ))}
+          </ul>
+        )}
+        {view.canAct && !closed ? <ScheduleInterview applicationId={applicationId} stages={view.stages} options={options} /> : null}
+      </section>
 
       {view.canAct ? <ApplicationActions applicationId={applicationId} stages={view.stages} currentStageId={view.stage.id} closed={closed} /> : null}
 

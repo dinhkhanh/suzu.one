@@ -18,14 +18,20 @@ import { person } from "../platform/people/schema";
 import type {
   ApplicationEventType,
   ApplicationStatus,
+  CalendarDeliveryStatus,
   CandidateSource,
   EmploymentType,
   HiringRequestStatus,
+  InterviewKind,
+  InterviewMode,
+  InterviewRecommendation,
+  InterviewStatus,
   OpeningMemberRole,
   OpeningQuestion,
   OpeningStatus,
   RecruitEmailKind,
   RejectionReason,
+  ScorecardCriterion,
   StageCategory,
   WorkMode,
 } from "./enums";
@@ -159,6 +165,12 @@ export const jobOpening = pgTable(
     publicSlug: text("public_slug").notNull().unique(),
     // Custom questions the application form asks (FR-REC-03). See `OpeningQuestion` in enums.ts.
     questions: jsonb("questions").$type<OpeningQuestion[]>().notNull().default([]),
+    /**
+     * The interview kit (FR-REC-06): what every interviewer on this job is asked to judge. Empty
+     * means `DEFAULT_INTERVIEW_KIT`. It is **copied onto each interview** when one is scheduled —
+     * see the note on `ScorecardCriterion` — so this column is the current kit, not the history.
+     */
+    interviewKit: jsonb("interview_kit").$type<ScorecardCriterion[]>().notNull().default([]),
     targetStartDate: date("target_start_date"),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     closedAt: timestamp("closed_at", { withTimezone: true }),
@@ -303,6 +315,113 @@ export const applicationEvent = pgTable(
     at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("application_event_application_idx").on(t.applicationId, t.id)],
+).enableRLS();
+
+// ── Interviews (FR-REC-06) ──────────────────────────────────────────────────────────────────
+
+/**
+ * One conversation with one candidate, at one time, with one or more interviewers.
+ *
+ * **The internal event is the record.** Google Calendar is not available to this system (no keys,
+ * no incremental OAuth scopes), so scheduling was built the other way round from the usual: this
+ * row is the truth, `engine/ics.ts` turns it into a calendar file anybody's calendar can read, and
+ * `calendar.ts` is an adapter that *may* also push it to Google when somebody configures it. The
+ * `calendar_*` columns below record what that adapter managed — `simulated` on a machine with no
+ * credentials, which is honest rather than silent.
+ */
+export const interview = pgTable(
+  "interview",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    applicationId: uuid("application_id")
+      .notNull()
+      .references(() => jobApplication.id),
+    // Denormalised from the application so every scope query can filter on it in one join.
+    openingId: uuid("opening_id")
+      .notNull()
+      .references(() => jobOpening.id),
+    // Which rung of the pipeline this round belongs to. Null when it belongs to none in particular.
+    stageId: uuid("stage_id").references(() => recruitPipelineStage.id),
+    kind: text("kind").$type<InterviewKind>().notNull(),
+    round: smallint("round").notNull().default(1),
+    title: text("title").notNull(),
+    startAt: timestamp("start_at", { withTimezone: true }).notNull(),
+    endAt: timestamp("end_at", { withTimezone: true }).notNull(),
+    mode: text("mode").$type<InterviewMode>().notNull().default("onsite"),
+    location: text("location"),
+    meetingUrl: text("meeting_url"),
+    status: text("status").$type<InterviewStatus>().notNull().default("scheduled"),
+    // What the candidate is told beside the time — the address, what to bring. Goes in the invitation.
+    notesForCandidate: text("notes_for_candidate"),
+    /**
+     * The kit the interviewers are asked to fill in, copied from the opening at scheduling time.
+     * A kit edited afterwards does not change what these scorecards mean.
+     */
+    criteria: jsonb("criteria").$type<ScorecardCriterion[]>().notNull().default([]),
+    // What `calendar.ts` did with this event. See the note above.
+    calendarDriver: text("calendar_driver"),
+    calendarStatus: text("calendar_status").$type<CalendarDeliveryStatus>(),
+    calendarEventId: text("calendar_event_id"),
+    calendarError: text("calendar_error"),
+    scheduledByPersonId: uuid("scheduled_by_person_id").references(() => person.id),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    cancelReason: text("cancel_reason"),
+    ...timestamps,
+  },
+  (t) => [index("interview_application_idx").on(t.applicationId, t.startAt), index("interview_opening_idx").on(t.openingId, t.startAt), index("interview_start_idx").on(t.startAt, t.status)],
+).enableRLS();
+
+/**
+ * Who is in the room. **Being an interviewer is not being on the hiring team**: it admits this
+ * person to *this interview* and the candidate behind it, and to nothing else about the opening.
+ * A colleague brought in for one technical round does not thereby get the candidate database.
+ */
+export const interviewInterviewer = pgTable(
+  "interview_interviewer",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    interviewId: uuid("interview_id")
+      .notNull()
+      .references(() => interview.id),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    // Who runs the conversation. Cosmetic; it decides nothing about access.
+    isLead: boolean("is_lead").notNull().default(false),
+    ...timestamps,
+  },
+  (t) => [unique("interview_interviewer_key").on(t.interviewId, t.personId), index("interview_interviewer_person_idx").on(t.personId)],
+).enableRLS();
+
+/**
+ * One interviewer's verdict (FR-REC-06: "feedback hidden from other interviewers until submitted").
+ *
+ * **`submitted_at` is the whole rule.** A scorecard with a null `submitted_at` is a private draft;
+ * a submitted one is visible to the rest of the panel. `scorecardsFor` in `interviews.ts` will not
+ * return anybody else's row to an interviewer who has not submitted their own, and the test that
+ * says so calls the service, not a page — the rule is not a piece of UI that can be posted around.
+ * Submitting is final: an interviewer who could revise after reading the others has not been blind.
+ */
+export const interviewScorecard = pgTable(
+  "interview_scorecard",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    interviewId: uuid("interview_id")
+      .notNull()
+      .references(() => interview.id),
+    interviewerPersonId: uuid("interviewer_person_id")
+      .notNull()
+      .references(() => person.id),
+    // Scores by criterion key, 1..4. Keys that are not in the interview's own kit are dropped.
+    ratings: jsonb("ratings").$type<Record<string, number>>().notNull().default({}),
+    recommendation: text("recommendation").$type<InterviewRecommendation>(),
+    strengths: text("strengths"),
+    concerns: text("concerns"),
+    notes: text("notes"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [unique("interview_scorecard_key").on(t.interviewId, t.interviewerPersonId), index("interview_scorecard_person_idx").on(t.interviewerPersonId, t.submittedAt)],
 ).enableRLS();
 
 // ── The public careers page (FR-REC-03) ─────────────────────────────────────────────────────

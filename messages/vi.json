@@ -53,7 +53,8 @@
     "assets": "Tài sản",
     "bookings": "Lịch đặt thiết bị",
     "documentTemplates": "Mẫu văn bản",
-    "recruit": "Tuyển dụng"
+    "recruit": "Tuyển dụng",
+    "interviews": "Lịch phỏng vấn"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -804,6 +805,18 @@
       "recruit_hiring_approved": {
         "title": "Đã duyệt nhu cầu tuyển dụng",
         "body": "Nhu cầu tuyển {title} ({count} người) đã được duyệt. Hãy tạo tin tuyển dụng."
+      },
+      "recruit_interview_scheduled": {
+        "title": "Bạn có lịch phỏng vấn",
+        "body": "{title} với {candidate}."
+      },
+      "recruit_interview_cancelled": {
+        "title": "Đã huỷ lịch phỏng vấn",
+        "body": "{title} với {candidate} đã bị huỷ."
+      },
+      "recruit_assignment_received": {
+        "title": "Ứng viên đã nộp bài",
+        "body": "{candidate} đã nộp bài {title}."
       }
     },
     "errors": {
@@ -6321,7 +6334,19 @@
       "email_template_subject_too_long": "Tiêu đề thư quá dài.",
       "email_template_body_empty": "Nội dung thư không được để trống.",
       "email_template_body_too_long": "Nội dung thư quá dài.",
-      "email_template_unknown_placeholder": "Thư có trường thay thế mà hệ thống không biết."
+      "email_template_unknown_placeholder": "Thư có trường thay thế mà hệ thống không biết.",
+      "interview_ends_before_it_starts": "Giờ kết thúc phải sau giờ bắt đầu.",
+      "interview_too_short": "Buổi phỏng vấn quá ngắn.",
+      "interview_too_long": "Buổi phỏng vấn quá dài.",
+      "interview_too_far_back": "Không thể ghi nhận buổi phỏng vấn quá xa trong quá khứ.",
+      "interview_too_far_ahead": "Không thể đặt lịch xa đến vậy.",
+      "interview_no_interviewer": "Cần ít nhất một người phỏng vấn.",
+      "recruit_interview_not_found": "Không tìm thấy buổi phỏng vấn.",
+      "recruit_interview_closed": "Buổi phỏng vấn này đã khép lại.",
+      "recruit_interview_status_unchanged": "Trạng thái không thay đổi.",
+      "recruit_not_an_interviewer": "Chỉ người ngồi trong buổi phỏng vấn mới được chấm.",
+      "recruit_scorecard_submitted": "Phiếu đã gửi thì không sửa được nữa.",
+      "recruit_scorecard_needs_recommendation": "Vui lòng chọn kết luận trước khi gửi."
     },
     "duplicates": {
       "title": "Có thể trùng với ứng viên đã có:",
@@ -6426,6 +6451,94 @@
       "reject": "Từ chối",
       "offer": "Đề nghị tuyển dụng",
       "general": "Chung"
+    },
+    "interview": {
+      "heading": "Phỏng vấn",
+      "none": "Chưa có buổi phỏng vấn nào.",
+      "mine": "Lịch phỏng vấn của tôi",
+      "mineDescription": "Những buổi bạn ngồi phỏng vấn, và phiếu đánh giá bạn còn nợ.",
+      "upcoming": "Sắp tới",
+      "past": "Đã qua",
+      "noneUpcoming": "Không có buổi nào sắp tới.",
+      "schedule": "Đặt lịch phỏng vấn",
+      "reschedule": "Đổi lịch",
+      "cancelForm": "Thôi",
+      "title": "Tên buổi phỏng vấn",
+      "defaultTitle": "Phỏng vấn",
+      "date": "Ngày",
+      "time": "Giờ",
+      "duration": "Thời lượng",
+      "minutes": "{count} phút",
+      "when": "Thời gian",
+      "kind": "Loại",
+      "mode": "Hình thức",
+      "stage": "Vòng",
+      "location": "Địa điểm",
+      "meetingUrl": "Đường dẫn họp trực tuyến",
+      "notesForCandidate": "Dặn dò ứng viên",
+      "interviewers": "Người phỏng vấn",
+      "interviewersHint": "Chọn những người sẽ ngồi trong buổi này. Họ chỉ thấy buổi phỏng vấn này, không thấy các hồ sơ khác.",
+      "outcome": "Kết quả buổi phỏng vấn",
+      "cancelReason": "Lý do (nếu huỷ)",
+      "downloadIcs": "Tải file lịch (.ics)",
+      "clash": "Trùng lịch: {names}",
+      "cardDue": "Chưa có phiếu",
+      "cardIn": "Đã gửi phiếu",
+      "kinds": {
+        "phone_screen": "Sàng lọc qua điện thoại",
+        "hiring_manager": "Quản lý tuyển dụng",
+        "technical": "Chuyên môn",
+        "portfolio": "Portfolio",
+        "culture": "Văn hoá",
+        "panel": "Hội đồng",
+        "final": "Vòng cuối"
+      },
+      "modes": {
+        "onsite": "Tại văn phòng",
+        "video": "Trực tuyến",
+        "phone": "Điện thoại"
+      },
+      "statuses": {
+        "scheduled": "Đã đặt lịch",
+        "completed": "Đã phỏng vấn",
+        "cancelled": "Đã huỷ",
+        "no_show": "Ứng viên không đến"
+      },
+      "calendar": {
+        "simulated": "Sự kiện nội bộ đã tạo. Chưa kết nối Google Calendar nên không có gì rời khỏi hệ thống — hãy dùng file .ics.",
+        "sent": "Đã tạo trên Google Calendar.",
+        "failed": "Không gửi được sang Google Calendar. Sự kiện nội bộ và file .ics vẫn dùng được."
+      }
+    },
+    "scorecard": {
+      "mine": "Phiếu đánh giá của tôi",
+      "panel": "Phiếu của hội đồng",
+      "recommendation": "Kết luận",
+      "strengths": "Điểm mạnh",
+      "concerns": "Điểm băn khoăn",
+      "notes": "Ghi chú",
+      "saveDraft": "Lưu nháp",
+      "submit": "Gửi phiếu",
+      "submitted": "Đã gửi",
+      "saved": "Đã lưu.",
+      "submitWarning": "Gửi rồi thì không sửa được nữa.",
+      "finalNote": "Phiếu đã gửi. Đây là bản ghi của buổi phỏng vấn nên không sửa được.",
+      "blind": "Phiếu của những người khác sẽ hiện ra sau khi bạn gửi phiếu của mình.",
+      "blindHint": "Bạn chưa thấy phiếu của ai khác — và họ cũng chưa thấy của bạn. Hãy ghi nhận xét của riêng mình trước.",
+      "noneYet": "Chưa ai gửi phiếu.",
+      "awaiting": "Còn {count} phiếu chưa gửi",
+      "scale": {
+        "1": "1 — Không đạt",
+        "2": "2 — Còn thiếu",
+        "3": "3 — Đạt",
+        "4": "4 — Xuất sắc"
+      },
+      "recommendations": {
+        "strong_no": "Chắc chắn không",
+        "no": "Không",
+        "yes": "Có",
+        "strong_yes": "Chắc chắn có"
+      }
     }
   }
 }

@@ -45,6 +45,16 @@ const schema = z.object({
   // Google Chat (FR-PLT-31): an incoming-webhook URL for the space that gets approval cards.
   // Unset = the local driver records each card as "simulated" and nothing leaves the machine.
   GOOGLE_CHAT_WEBHOOK_URL: z.url().optional(),
+  // Google Calendar for interview scheduling (FR-REC-06). A service account with domain-wide
+  // delegation; `IMPERSONATE` is the mailbox the events are created as, which is what Google
+  // requires before it will mint a Meet link. All four are needed together — with any of them
+  // missing the local driver runs, the internal event and the .ics are unaffected, and nothing
+  // leaves the machine. **The Google driver has never been run**: the company has no service
+  // account, so it is written against the documented API and is untested.
+  GOOGLE_CALENDAR_ID: z.string().min(1).optional(),
+  GOOGLE_CALENDAR_SERVICE_ACCOUNT_EMAIL: z.string().min(1).optional(),
+  GOOGLE_CALENDAR_SERVICE_ACCOUNT_KEY: z.string().min(1).optional(),
+  GOOGLE_CALENDAR_IMPERSONATE: z.string().min(1).optional(),
 });
 
 /** The local step-up driver skips Google, so it must never exist where real salaries do. */

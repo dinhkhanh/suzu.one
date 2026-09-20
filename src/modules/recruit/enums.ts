@@ -110,6 +110,68 @@ export const PUBLIC_LIMITS = {
   links: 8,
 } as const;
 
+// ── Interviews (FR-REC-06) ──────────────────────────────────────────────────────────────────
+
+/** What kind of conversation this round is. Names the *purpose*, not the tool used to hold it. */
+export const INTERVIEW_KINDS = ["phone_screen", "hiring_manager", "technical", "portfolio", "culture", "panel", "final"] as const;
+export type InterviewKind = (typeof INTERVIEW_KINDS)[number];
+
+/** Where it happens. `video` is the one that carries a meeting link. */
+export const INTERVIEW_MODES = ["onsite", "video", "phone"] as const;
+export type InterviewMode = (typeof INTERVIEW_MODES)[number];
+
+export const INTERVIEW_STATUSES = ["scheduled", "completed", "cancelled", "no_show"] as const;
+export type InterviewStatus = (typeof INTERVIEW_STATUSES)[number];
+
+/** An interview nobody is still waiting for. */
+export const INTERVIEW_CLOSED: readonly InterviewStatus[] = ["completed", "cancelled", "no_show"];
+
+/**
+ * What the calendar adapter managed to do (`calendar.ts`). `simulated` is the honest answer on a
+ * machine with no Google credentials: the internal event exists, the `.ics` works, and nothing
+ * left the building.
+ */
+export const CALENDAR_DELIVERY_STATUSES = ["simulated", "sent", "failed"] as const;
+export type CalendarDeliveryStatus = (typeof CALENDAR_DELIVERY_STATUSES)[number];
+
+/**
+ * One line of an interview kit (FR-REC-06: structured scorecards). The kit lives on the **opening**
+ * and is **copied onto the interview** when it is scheduled, so rewriting the kit next month does
+ * not rewrite what last month's interviewers were asked — a scorecard has to keep meaning what it
+ * meant when it was filled in.
+ */
+export type ScorecardCriterion = { key: string; label: string; labelEn: string | null; hint: string | null };
+
+/** The kit an opening gets when nobody has written one. Four things every interview is really about. */
+export const DEFAULT_INTERVIEW_KIT: readonly ScorecardCriterion[] = [
+  { key: "craft", label: "Chuyên môn", labelEn: "Craft", hint: "Kỹ năng và kinh nghiệm cho đúng công việc này" },
+  { key: "problem_solving", label: "Giải quyết vấn đề", labelEn: "Problem solving", hint: "Cách nghĩ khi gặp việc chưa có sẵn lời giải" },
+  { key: "collaboration", label: "Phối hợp", labelEn: "Collaboration", hint: "Làm việc với người khác, nhận và đưa phản hồi" },
+  { key: "motivation", label: "Động lực", labelEn: "Motivation", hint: "Vì sao là công việc này, ở đây, lúc này" },
+];
+
+/** The scale every criterion is scored on. Four points, no middle: a scorecard has to take a side. */
+export const SCORE_MIN = 1;
+export const SCORE_MAX = 4;
+
+/** What the interviewer concludes. Kept separate from the ratings: the numbers inform it, they do not decide it. */
+export const INTERVIEW_RECOMMENDATIONS = ["strong_no", "no", "yes", "strong_yes"] as const;
+export type InterviewRecommendation = (typeof INTERVIEW_RECOMMENDATIONS)[number];
+
+// ── Take-home assignments (FR-REC-07) ───────────────────────────────────────────────────────
+
+export const ASSIGNMENT_STATUSES = ["sent", "received", "rated", "cancelled"] as const;
+export type AssignmentStatus = (typeof ASSIGNMENT_STATUSES)[number];
+
+/** An assignment nobody is still waiting on. */
+export const ASSIGNMENT_CLOSED: readonly AssignmentStatus[] = ["rated", "cancelled"];
+
+/** What the candidate's submission page accepts. Same spirit as `PUBLIC_LIMITS`. */
+export const ASSIGNMENT_LIMITS = { note: 5_000, link: 300, links: 5 } as const;
+
+/** How long a take-home link stays usable after the due date before it stops opening at all. */
+export const ASSIGNMENT_GRACE_DAYS = 3;
+
 // ── Candidate emails (FR-REC-05) ────────────────────────────────────────────────────────────
 
 /** What a wording is for. The kind decides which templates a screen offers, nothing more. */

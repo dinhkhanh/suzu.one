@@ -95,6 +95,11 @@ export const KINDS = {
   // Recruitment (FR-REC-01): a hiring request cleared its flow, so there is a head to advertise.
   // The title and the count — never the budget.
   "recruit.hiring_approved": "recruit",
+  // Interviews (FR-REC-06): you are in the room on Thursday, or you are no longer.
+  "recruit.interview_scheduled": "recruit",
+  "recruit.interview_cancelled": "recruit",
+  // A take-home came back (FR-REC-07) — told to whoever sent the brief.
+  "recruit.assignment_received": "recruit",
 } as const satisfies Record<string, Category>;
 export type Kind = keyof typeof KINDS;
 
