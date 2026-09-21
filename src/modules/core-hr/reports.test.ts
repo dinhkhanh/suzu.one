@@ -20,7 +20,7 @@ const ids = {} as Record<"media" | "creative" | "video" | "design" | "actor" | "
 const principal = (personId: string, grants: Grant[] = []): Principal => ({ personId, workforceType: "employee", grants });
 const period = { asOf: today, from: addDays(today, -30), to: today };
 
-async function hire(name: string, entityId: string, departmentId: string, managerId: string | null, more: { type?: "employee" | "probation"; gender?: "male" | "female"; start?: string } = {}) {
+async function hire(name: string, entityId: string, orgUnitId: string, managerId: string | null, more: { type?: "employee" | "probation"; gender?: "male" | "female"; start?: string } = {}) {
   const { person } = await hirePerson(
     {
       fullName: name,
@@ -30,7 +30,7 @@ async function hire(name: string, entityId: string, departmentId: string, manage
       employeeCode: null,
       startDate: more.start ?? "2022-01-01",
       seniorityDate: null,
-      placement: { workforceType: more.type ?? "employee", branchId: null, departmentId, teamId: null, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
+      placement: { workforceType: more.type ?? "employee", branchId: null, orgUnitId, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
     },
     ids.actor,
     { onboarding: false },
@@ -40,8 +40,8 @@ async function hire(name: string, entityId: string, departmentId: string, manage
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "Suzu Media", shortName: "Media" }, { code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }]).returning();
-  const [video, design] = await db().insert(schema.department).values([{ code: "VID", name: "Video" }, { code: "DES", name: "Design" }]).returning();
+  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "SuZu Media", shortName: "Media" }, { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }]).returning();
+  const [video, design] = await db().insert(schema.orgUnit).values([{ code: "VID", name: "Video" }, { code: "DES", name: "Design" }]).returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
   Object.assign(ids, { media: media.id, creative: creative.id, video: video.id, design: design.id, actor: actor.id });
 
@@ -71,7 +71,7 @@ describe("headcount report", () => {
   });
 
   it("gives a department head only their department, and an entity director only their entity", async () => {
-    const head = (await getHeadcountReport(principal(ids.head, [{ role: "department_head", scope: { type: "department", id: ids.video } }]), period))!;
+    const head = (await getHeadcountReport(principal(ids.head, [{ role: "department_head", scope: { type: "unit", id: ids.video } }]), period))!;
     expect(head.scoped).toBe(true);
     expect(head.snapshot.total).toBe(3);
     expect(head.snapshot.byDepartment).toEqual([{ key: "Video", count: 3 }]);
@@ -86,7 +86,7 @@ describe("headcount report", () => {
   });
 
   it("exports the same scoped figures", async () => {
-    const { file, scoped } = await buildHeadcountExport(principal(ids.head, [{ role: "department_head", scope: { type: "department", id: ids.video } }]), period, "en");
+    const { file, scoped } = await buildHeadcountExport(principal(ids.head, [{ role: "department_head", scope: { type: "unit", id: ids.video } }]), period, "en");
     expect(scoped).toBe(true);
     expect(file.csv).toContain("Total headcount");
     expect(file.csv).toContain("By department,Video,3");

@@ -40,9 +40,9 @@ const stateNamed = async (teamId: string, name: string) => (await listStates([te
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" }).returning();
-  const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }).returning();
-  const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
+  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
+  const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
+  const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id, vidDept: vid.id });
   for (const [key, name, entity] of [["owner", "The Owner", szm.id], ["long", "Long Dang", szm.id], ["tam", "Tam Bui", szm.id], ["huy", "Huy Ho", szm.id], ["bao", "Bao Pham", szm.id], ["head", "Other Head", szm.id], ["khoi", "Khoi Ly", szc.id]] as const) ids[key] = await addPerson(name, entity);
   ids.freelancer = await addPerson("Bao Anh", szm.id, "collaborator");
@@ -186,7 +186,7 @@ describe("privacy in lists (FR-WRK-18)", () => {
     expect(await names(ids.khoi, ids.szc)).toEqual(["Brand refresh"]);
     // The owner's "*" opens everything but the private project.
     expect(await names(ids.owner, ids.szm, [{ role: "owner", scope: { type: "group" } }])).toEqual(["Brand refresh", "Company profile video", "TVC Tet"]);
-    expect(await names(ids.head, ids.szm, [{ role: "department_head", scope: { type: "department", id: ids.vidDept } }])).toEqual(["Company profile video", "TVC Tet"]);
+    expect(await names(ids.head, ids.szm, [{ role: "department_head", scope: { type: "unit", id: ids.vidDept } }])).toEqual(["Company profile video", "TVC Tet"]);
     // A collaborator in the team sees its team projects, never the entity-wide ones of others.
     expect(await names(ids.freelancer, ids.szm, [], "collaborator")).toEqual(["Company profile video", "TVC Tet"]);
   });
@@ -207,7 +207,7 @@ describe("privacy in lists (FR-WRK-18)", () => {
       await viewerOf(ids.bao, ids.szm),
       await viewerOf(ids.khoi, ids.szc),
       await viewerOf(ids.owner, ids.szm, [{ role: "owner", scope: { type: "group" } }]),
-      await viewerOf(ids.head, ids.szm, [{ role: "department_head", scope: { type: "department", id: ids.vidDept } }]),
+      await viewerOf(ids.head, ids.szm, [{ role: "department_head", scope: { type: "unit", id: ids.vidDept } }]),
       await viewerOf(ids.head, ids.szm, [{ role: "entity_director", scope: { type: "entity", id: ids.szc } }]),
       await viewerOf(ids.freelancer, ids.szm, [], "collaborator"),
     ];

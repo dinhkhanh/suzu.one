@@ -37,11 +37,11 @@ const krs = {} as Record<"huyVideos" | "huyRounds" | "huyCourse" | "vidRevenue",
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" }).returning();
-  const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }).returning();
-  const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
-  const [des] = await db().insert(schema.department).values({ code: "DES", name: "Design" }).returning();
-  const [crew] = await db().insert(schema.team).values({ departmentId: vid.id, name: "Crew A" }).returning();
+  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
+  const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
+  const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
+  const [des] = await db().insert(schema.orgUnit).values({ code: "DES", name: "Design" }).returning();
+  const [crew] = await db().insert(schema.orgUnit).values({ kind: "team", parentId: vid.id, name: "Crew A" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id, vid: vid.id, des: des.id, crew: crew.id });
 
   // owner → ceo → long (head of VID) → tam → huy; linh and the collaborator ngo also under long/tam; chi heads DES, khoi under chi.
@@ -58,9 +58,9 @@ beforeAll(async () => {
     ["khoi", szc.id, des.id, "chi", null, null, "employee"],
   ];
   for (const [key, entityId, departmentId, manager, role, scope, workforceType] of people) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: entityId, departmentId, teamId: key === "huy" || key === "tam" ? crew.id : null, managerId: manager ? ids[manager] : null }).returning();
+    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: entityId, orgUnitId: key === "huy" || key === "tam" ? crew.id : departmentId, managerId: manager ? ids[manager] : null }).returning();
     ids[key] = row.id;
-    const grants: Grant[] = role ? [{ role, scope: scope === "group" ? { type: "group" } : scope === "entity" ? { type: "entity", id: entityId } : { type: "department", id: departmentId } }] : [];
+    const grants: Grant[] = role ? [{ role, scope: scope === "group" ? { type: "group" } : scope === "entity" ? { type: "entity", id: entityId } : { type: "unit", id: departmentId } }] : [];
     const principal: Principal = { personId: row.id, workforceType, grants };
     viewers[key] = { principal, personId: row.id };
   }

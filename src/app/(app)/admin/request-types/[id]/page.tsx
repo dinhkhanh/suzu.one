@@ -48,7 +48,7 @@ export default async function RequestTypePage(props: PageProps<"/admin/request-t
           ← {t("title")}
         </Link>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{type.nameVi}</h1>
+          <h1>{type.nameVi}</h1>
           {type.active ? null : <Badge variant="outline">{t("off")}</Badge>}
         </div>
         <p className="text-sm text-muted-foreground">{t("editHint")}</p>

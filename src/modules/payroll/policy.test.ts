@@ -19,7 +19,7 @@ const cnbSzc = principal("p-cnb-szc", [{ role: "payroll", scope: inSzc }]);
 const accountant = principal("p-fin", [{ role: "finance", scope: inSzm }]);
 const auditor = principal("p-audit", [{ role: "auditor", scope: group }]);
 const lineManager = principal("p-long");
-const departmentHead = principal("p-long", [{ role: "department_head", scope: { type: "department", id: "d-video" } }]);
+const departmentHead = principal("p-long", [{ role: "department_head", scope: { type: "unit", id: "d-video" } }]);
 const entityDirector = principal("p-director", [{ role: "entity_director", scope: inSzm }]);
 const hrStaff = principal("p-bao", [{ role: "hr_staff", scope: inSzm }]);
 const colleague = principal("p-colleague");
@@ -41,7 +41,7 @@ describe("payroll policy: one person's salary and payslips", () => {
   });
 
   it("a department head who is also the line manager still sees nothing", () => {
-    const both = principal("p-long", [{ role: "department_head", scope: { type: "department", id: "d-video" } }, { role: "department_head", scope: inSzm }]);
+    const both = principal("p-long", [{ role: "department_head", scope: { type: "unit", id: "d-video" } }, { role: "department_head", scope: inSzm }]);
     expect(canViewCompensationOf(both, employee)).toBe(false);
   });
 

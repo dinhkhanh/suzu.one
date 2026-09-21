@@ -251,7 +251,7 @@ export async function listOpenings(principal: Principal, filters: { status?: Ope
       title: schema.jobOpening.title,
       status: schema.jobOpening.status,
       entityName: schema.entity.shortName,
-      departmentName: schema.department.name,
+      departmentName: schema.orgUnit.name,
       headcount: schema.jobOpening.headcount,
       publishedAt: schema.jobOpening.publishedAt,
       createdAt: schema.jobOpening.createdAt,
@@ -260,7 +260,7 @@ export async function listOpenings(principal: Principal, filters: { status?: Ope
     })
     .from(schema.jobOpening)
     .leftJoin(schema.entity, eq(schema.entity.id, schema.jobOpening.entityId))
-    .leftJoin(schema.department, eq(schema.department.id, schema.jobOpening.departmentId))
+    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.jobOpening.departmentId))
     .leftJoin(active, eq(active.openingId, schema.jobOpening.id))
     .leftJoin(hired, eq(hired.openingId, schema.jobOpening.id))
     .where(
@@ -328,8 +328,8 @@ export async function getOpeningView(viewer: { principal: Principal; personId: s
     .where(eq(schema.jobOpeningMember.openingId, openingId))
     .orderBy(asc(schema.jobOpeningMember.role), asc(schema.person.fullName));
   const [entity] = opening.entityId ? await db().select({ shortName: schema.entity.shortName }).from(schema.entity).where(eq(schema.entity.id, opening.entityId)).limit(1) : [undefined];
-  const [department] = opening.departmentId ? await db().select({ name: schema.department.name }).from(schema.department).where(eq(schema.department.id, opening.departmentId)).limit(1) : [undefined];
-  const [team] = opening.teamId ? await db().select({ name: schema.team.name }).from(schema.team).where(eq(schema.team.id, opening.teamId)).limit(1) : [undefined];
+  const [department] = opening.departmentId ? await db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, opening.departmentId)).limit(1) : [undefined];
+  const [team] = opening.teamId ? await db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, opening.teamId)).limit(1) : [undefined];
 
   return {
     opening,
@@ -901,7 +901,7 @@ export async function listHiringRequests(principal: Principal): Promise<HiringRe
       headcount: schema.hiringRequest.headcount,
       status: schema.hiringRequest.status,
       entityName: schema.entity.shortName,
-      departmentName: schema.department.name,
+      departmentName: schema.orgUnit.name,
       requesterName: schema.person.fullName,
       createdAt: schema.hiringRequest.createdAt,
       approvalRequestId: schema.hiringRequest.approvalRequestId,
@@ -910,7 +910,7 @@ export async function listHiringRequests(principal: Principal): Promise<HiringRe
     .from(schema.hiringRequest)
     .innerJoin(schema.person, eq(schema.person.id, schema.hiringRequest.requestedByPersonId))
     .leftJoin(schema.entity, eq(schema.entity.id, schema.hiringRequest.entityId))
-    .leftJoin(schema.department, eq(schema.department.id, schema.hiringRequest.departmentId))
+    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.hiringRequest.departmentId))
     .where(or(byReach, mine) ?? sql`false`)
     .orderBy(desc(schema.hiringRequest.createdAt))
     .limit(200);
@@ -930,16 +930,16 @@ export async function headcountPlan(principal: Principal): Promise<HeadcountRow[
   const rows = await db()
     .select({
       departmentId: schema.hiringRequest.departmentId,
-      departmentName: schema.department.name,
+      departmentName: schema.orgUnit.name,
       entityName: schema.entity.shortName,
       approvedHeads: sql<number>`sum(${schema.hiringRequest.headcount})`,
       fulfilled: sql<number>`sum(case when ${schema.hiringRequest.status} = 'fulfilled' then ${schema.hiringRequest.headcount} else 0 end)`,
     })
     .from(schema.hiringRequest)
-    .leftJoin(schema.department, eq(schema.department.id, schema.hiringRequest.departmentId))
+    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.hiringRequest.departmentId))
     .leftJoin(schema.entity, eq(schema.entity.id, schema.hiringRequest.entityId))
     .where(and(inArray(schema.hiringRequest.status, ["approved", "fulfilled"]), reach.all ? undefined : inArray(schema.hiringRequest.entityId, reach.entityIds)))
-    .groupBy(schema.hiringRequest.departmentId, schema.department.name, schema.entity.shortName);
+    .groupBy(schema.hiringRequest.departmentId, schema.orgUnit.name, schema.entity.shortName);
 
   return rows.map((row) => ({
     departmentId: row.departmentId,

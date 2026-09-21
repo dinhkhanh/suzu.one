@@ -102,7 +102,7 @@ describe("the daily job", () => {
     expect(await sendDigests()).toEqual({ digests: 1 });
     expect(await sendDigests()).toEqual({ digests: 0 });
     const [email] = await db().select().from(schema.emailOutbox);
-    expect(email).toMatchObject({ toEmail: "binh@suzu.vn", subject: "2 thông báo mới trên Suzu One" });
+    expect(email).toMatchObject({ toEmail: "binh@suzu.vn", subject: "2 thông báo mới trên SuZu One" });
   });
 
   it("retries failed emails and gives up after five attempts", async () => {

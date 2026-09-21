@@ -14,7 +14,7 @@ describe("parseTable", () => {
     const { rows, problems } = parseTable(
       [
         ["EMAIL CONG TY", " ho va ten ", "Ngày vào làm", "Lương", "Loại"],
-        ["Dat@Suzu.vn", "Nguyễn  Văn Đạt", new Date("2026-03-01T00:00:00Z"), "12.500.000", "chinh thuc"],
+        ["Dat@SuZu.vn", "Nguyễn  Văn Đạt", new Date("2026-03-01T00:00:00Z"), "12.500.000", "chinh thuc"],
         [null, null, "", null, null],
         ["", "Trần Thị B", "5/3/2026", 9000000, "Thực tập"],
       ],

@@ -29,7 +29,7 @@ import {
   applicationEvent,
   assignment,
   candidate,
-  department,
+  orgUnit,
   documentTemplate,
   employeeCodeScheme,
   employment,
@@ -76,7 +76,7 @@ export async function seedRecruit(db: Db, today: string): Promise<RecruitSeedRes
   if (existing) return result;
 
   const entities = new Map((await db.select().from(entity)).map((row) => [row.code, row]));
-  const departments = new Map((await db.select().from(department)).map((row) => [row.code, row]));
+  const departments = new Map((await db.select().from(orgUnit)).map((row) => [row.code, row]));
   const people = new Map((await db.select().from(person)).map((row) => [row.workEmail ?? row.fullName, row]));
   const pipelines = new Map((await db.select().from(recruitPipeline)).map((row) => [row.code, row]));
   if (!pipelines.has("STANDARD")) throw new Error("Run `pnpm db:seed` first (no recruitment pipelines).");
@@ -138,7 +138,7 @@ export async function seedRecruit(db: Db, today: string): Promise<RecruitSeedRes
         workLocation: "Hà Nội",
         headcount: 1,
         description:
-          "Suzu Media đang tìm một người dựng phim cho tuyến quảng cáo thương hiệu.\n\nBạn sẽ làm việc cùng đạo diễn và bộ phận sáng tạo từ lúc có kịch bản cho tới bản phát sóng: chọn take, dựng thô, dựng tinh, phối hợp với bộ phận âm thanh và màu.",
+          "SuZu Media đang tìm một người dựng phim cho tuyến quảng cáo thương hiệu.\n\nBạn sẽ làm việc cùng đạo diễn và bộ phận sáng tạo từ lúc có kịch bản cho tới bản phát sóng: chọn take, dựng thô, dựng tinh, phối hợp với bộ phận âm thanh và màu.",
         requirements: "Ít nhất 2 năm dựng phim quảng cáo hoặc TVC.\nThành thạo Premiere Pro hoặc DaVinci Resolve.\nCó portfolio để xem.",
         benefits: "Bảo hiểm đầy đủ trên lương thực tế, 12 ngày phép, thiết bị do công ty cấp.",
         salaryMinVnd: 18_000_000,
@@ -205,7 +205,7 @@ export async function seedRecruit(db: Db, today: string): Promise<RecruitSeedRes
         stageId: stageBy("hired").id,
         status: "hired",
         source: "careers_page",
-        coverLetter: "Tôi theo dõi các TVC của Suzu Media đã lâu và muốn được dựng những sản phẩm như vậy.",
+        coverLetter: "Tôi theo dõi các TVC của SuZu Media đã lâu và muốn được dựng những sản phẩm như vậy.",
         answers: { portfolio: "TVC Tết cho một nhãn sữa — tôi dựng toàn bộ và tự làm phần chuyển cảnh.", software: "Premiere Pro" },
         portfolioLinks: ["https://vimeo.com/hoainam/tet"],
         salaryExpectationVnd: 22_000_000,
@@ -380,7 +380,7 @@ export async function seedRecruit(db: Db, today: string): Promise<RecruitSeedRes
         workMode: "hybrid",
         workLocation: "Hà Nội",
         headcount: 2,
-        description: "Suzu Creative tìm hai bạn thiết kế cho tuyến social và ấn phẩm thương hiệu.\n\nBạn sẽ làm việc trực tiếp với trưởng nhóm thiết kế và bộ phận nội dung.",
+        description: "SuZu Creative tìm hai bạn thiết kế cho tuyến social và ấn phẩm thương hiệu.\n\nBạn sẽ làm việc trực tiếp với trưởng nhóm thiết kế và bộ phận nội dung.",
         requirements: "Portfolio rõ ràng.\nThành thạo Figma và bộ Adobe.\nBiết lắng nghe góp ý.",
         benefits: "Bảo hiểm đầy đủ, 12 ngày phép, hai ngày làm việc tại nhà mỗi tuần.",
         salaryMinVnd: 12_000_000,

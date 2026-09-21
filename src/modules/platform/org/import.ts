@@ -21,11 +21,11 @@ type Row = ParsedRow<typeof departmentColumns>;
 
 async function validate(rows: Row[]): Promise<Problem[]> {
   const problems: Problem[] = [];
-  const [departments, entities] = await Promise.all([db().select().from(schema.department), db().select({ code: schema.entity.code }).from(schema.entity)]);
+  const [departments, entities] = await Promise.all([db().select().from(schema.orgUnit), db().select({ code: schema.entity.code }).from(schema.entity)]);
   const entityCodes = new Set(entities.map((entity) => entity.code));
-  const codeById = new Map(departments.map((department) => [department.id, department.code]));
+  const codeById = new Map(departments.flatMap((department) => (department.code ? [[department.id, department.code] as const] : [])));
   // Parent of every department as it would be after the import.
-  const parentOf = new Map<string, string | null>(departments.map((department) => [department.code, department.parentId ? (codeById.get(department.parentId) ?? null) : null]));
+  const parentOf = new Map<string, string | null>(departments.flatMap((department) => (department.code ? [[department.code, department.parentId ? (codeById.get(department.parentId) ?? null) : null] as const] : [])));
 
   const seen = new Set<string>();
   for (const { row, values } of rows) {
@@ -63,18 +63,18 @@ export const departmentImport = defineImport({
     let updated = 0;
     // First every department, then the parents: a parent may sit further down the same file.
     for (const { values } of rows) {
-      const [existing] = await tx.select({ id: schema.department.id }).from(schema.department).where(eq(schema.department.code, values.code!)).limit(1);
+      const [existing] = await tx.select({ id: schema.orgUnit.id }).from(schema.orgUnit).where(eq(schema.orgUnit.code, values.code!)).limit(1);
       if (existing) {
-        await tx.update(schema.department).set({ name: values.name!, updatedAt: new Date() }).where(eq(schema.department.id, existing.id));
+        await tx.update(schema.orgUnit).set({ name: values.name!, updatedAt: new Date() }).where(eq(schema.orgUnit.id, existing.id));
         updated++;
       } else {
-        await tx.insert(schema.department).values({ code: values.code!, name: values.name!, entityId: values.entityCode ? (entities.get(values.entityCode) ?? null) : null });
+        await tx.insert(schema.orgUnit).values({ code: values.code!, name: values.name!, entityId: values.entityCode ? (entities.get(values.entityCode) ?? null) : null });
         created++;
       }
     }
-    const ids = new Map((await tx.select({ id: schema.department.id, code: schema.department.code }).from(schema.department)).map((department) => [department.code, department.id]));
+    const ids = new Map((await tx.select({ id: schema.orgUnit.id, code: schema.orgUnit.code }).from(schema.orgUnit)).flatMap((department) => (department.code ? [[department.code, department.id] as const] : [])));
     for (const { values } of rows) {
-      await tx.update(schema.department).set({ parentId: values.parentCode ? (ids.get(values.parentCode) ?? null) : null }).where(eq(schema.department.code, values.code!));
+      await tx.update(schema.orgUnit).set({ parentId: values.parentCode ? (ids.get(values.parentCode) ?? null) : null }).where(eq(schema.orgUnit.code, values.code!));
     }
     return { created, updated };
   },

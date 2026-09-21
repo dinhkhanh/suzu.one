@@ -187,7 +187,7 @@ export async function seedAssets(db: Db, today: string): Promise<{ assets: numbe
     for (const kit of kits) await put(kit, entityCode, { type: "person", id: holder.id }, { confirmed: kit.confirmed });
   }
 
-  // Shared gear sits on Suzu Media's own shelf: held by the company, not by any one person, which
+  // Shared gear sits on SuZu Media's own shelf: held by the company, not by any one person, which
   // is what the third kind of holder is for. Nobody signs for it, so no handover is recorded.
   const media = entities.get("SZM");
   for (const kit of TEAM_GEAR) await put(kit, "SZM", media ? { type: "entity", id: media.id } : null);

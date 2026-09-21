@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
-import { listDepartments, listEntities } from "@/modules/platform/org/service";
+import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { FILTER_KEYS, GROUPINGS, type Grouping, type TaskFilters } from "@/modules/work/engine/filter";
 import { canAdminTeam, canContributeToTeam, canManageWorkspace, canViewTeam, canViewTeamBacklog, findTeam, listAssignable, listClients, listTeamIntakeForms, listLabels, listStates, listTeamBacklog, listTeamMembers, loadViewer, teamFacts, visibleProjects } from "@/modules/work/service";
@@ -39,7 +39,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
   ]);
   const intakeForms = await listTeamIntakeForms(team.id);
   const intakeProjects = projects.filter((project) => project.teamId === team.id && project.status !== "archived" && project.status !== "done").map(({ id, name }) => ({ id, name }));
-  const [people, entities, departments] = admin ? await Promise.all([listPersonNames(), listEntities(), listDepartments()]) : [[], [], []];
+  const [people, entities, departments] = admin ? await Promise.all([listPersonNames(), listEntities(), unitChoices()]) : [[], [], []];
   const filters: TaskFilters = Object.fromEntries(FILTER_KEYS.flatMap((key) => (typeof query[key] === "string" ? [[key, query[key]]] : [])));
   const grouping = GROUPINGS.includes(query.group as Grouping) ? (query.group as Grouping) : "none";
 
@@ -51,7 +51,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
             {t("title")}
           </Link>
         </p>
-        <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight">
+        <h1 className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-base text-muted-foreground">{team.key}</span> {team.name}
           {team.isActive ? null : <Badge variant="outline">{t("teams.inactive")}</Badge>}
         </h1>
@@ -116,7 +116,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
       {admin ? (
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-medium text-muted-foreground">{t("teams.settings")}</h2>
-          <TeamForm team={team} entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments.filter((department) => department.isActive).map(({ id, name }) => ({ id, name }))} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} />
+          <TeamForm team={team} entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} />
         </section>
       ) : null}
     </div>

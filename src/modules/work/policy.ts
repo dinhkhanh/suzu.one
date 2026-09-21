@@ -31,7 +31,9 @@ export type TaskFacts = {
 };
 
 const isCollaborator = (viewer: WorkViewer) => viewer.principal.workforceType === "collaborator";
-const scopeOf = (team: Pick<TeamFacts, "entityId" | "departmentId">) => ({ entityId: team.entityId, departmentId: team.departmentId });
+// A work team may hang off an org unit; a `work:manage` grant on that unit — or on any unit above
+// it, which the grant already knows about — covers the team.
+const scopeOf = (team: Pick<TeamFacts, "entityId" | "departmentId">) => ({ entityId: team.entityId, unitPath: team.departmentId ? [team.departmentId] : [] });
 
 /** Create teams here, keep the client list: leaders with `work:manage` over the place. */
 export function canManageWorkspace(viewer: WorkViewer, place?: { entityId: string | null; departmentId: string | null }): boolean {

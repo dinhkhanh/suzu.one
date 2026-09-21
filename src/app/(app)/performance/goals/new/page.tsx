@@ -32,7 +32,7 @@ export default async function NewGoalPage({ searchParams }: PageProps<"/performa
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("newGoal")}</h1>
+        <h1>{t("newGoal")}</h1>
         <p className="text-sm text-muted-foreground">{t("form.intro")}</p>
       </header>
       <PerformanceNav active={null} year={year} />

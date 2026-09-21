@@ -14,7 +14,7 @@ const principal = (personId: string, grants: Grant[] = [], workforceType: Princi
 
 // owner → ceo → long (head of VID) → tam → huy; chi heads DES at SZC.
 const managerOf = new Map<string, string | null>([["owner", null], ["ceo", "owner"], ["long", "ceo"], ["tam", "long"], ["huy", "tam"], ["linh", "tam"], ["chi", "ceo"], ["khoi", "chi"]]);
-const person = (personId: string, entityId: string, departmentId: string): PersonContext => ({ personId, entityId, departmentId, teamId: null, managerId: managerOf.get(personId) ?? null, chainAbove: chainAbove(managerOf, personId) });
+const person = (personId: string, entityId: string, unitId: string): PersonContext => ({ personId, entityId, unitPath: [unitId], managerId: managerOf.get(personId) ?? null, chainAbove: chainAbove(managerOf, personId) });
 
 const huy = person("huy", SZM, VID);
 const khoi = person("khoi", SZC, DES);
@@ -24,8 +24,8 @@ const parties = (subject: PersonContext, over: Partial<ReviewParties> = {}): Rev
 const owner = principal("owner", [{ role: "owner", scope: { type: "group" } }]);
 const hrSzm = principal("bao", [{ role: "hr_staff", scope: { type: "entity", id: SZM } }]);
 const hrAdmin = principal("mai", [{ role: "hr_admin", scope: { type: "group" } }]);
-const headVid = principal("long", [{ role: "department_head", scope: { type: "department", id: VID } }]);
-const headDes = principal("chi", [{ role: "department_head", scope: { type: "department", id: DES } }]);
+const headVid = principal("long", [{ role: "department_head", scope: { type: "unit", id: VID } }]);
+const headDes = principal("chi", [{ role: "department_head", scope: { type: "unit", id: DES } }]);
 const auditor = principal("aud", [{ role: "auditor", scope: { type: "group" } }]);
 const lineManager = principal("tam");
 const colleague = principal("linh");

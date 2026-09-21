@@ -13,7 +13,7 @@ describe("the Google Chat card", () => {
   it("offers the approve deep link as a button, beside the one that just opens the request", () => {
     const card = chatCard({ ...base, actionLink: "https://suzu.one/approvals/act/tok", actionLabel: "Duyệt" }) as { cardsV2: { card: { sections: { widgets: { buttonList?: { buttons: { text: string; onClick: { openLink: { url: string } } }[] } }[] }[] } }[] };
     const buttons = card.cardsV2[0].card.sections[0].widgets.flatMap((widget) => widget.buttonList?.buttons ?? []);
-    expect(buttons.map((button) => button.text)).toEqual(["Duyệt", "Mở Suzu One"]);
+    expect(buttons.map((button) => button.text)).toEqual(["Duyệt", "Mở SuZu One"]);
     expect(buttons[0].onClick.openLink.url).toBe("https://suzu.one/approvals/act/tok");
   });
 

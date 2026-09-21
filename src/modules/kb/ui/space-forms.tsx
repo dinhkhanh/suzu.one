@@ -26,7 +26,7 @@ function KindSelect({ defaultValue }: { defaultValue: SpaceKind }) {
 }
 
 /** `entities` are the ones the viewer manages; `groupWide` says whether they may open a space for everyone. */
-export function NewSpaceForm({ entities, groupWide }: { entities: Option[]; groupWide: boolean }) {
+export function NewSpaceForm({ entities, units, groupWide }: { entities: Option[]; units: Option[]; groupWide: boolean }) {
   const t = useTranslations("kb");
   const router = useRouter();
   // A new space starts readable by all staff; its manager narrows or widens that on the space page.
@@ -41,6 +41,18 @@ export function NewSpaceForm({ entities, groupWide }: { entities: Option[]; grou
           <Field name="key" label={t("fields.spaceKey")}>
             <Input id="key" name="key" required pattern="[a-z0-9][a-z0-9-]{1,39}" placeholder="so-tay" />
           </Field>
+          {units.length > 0 ? (
+            <Field name="ownerUnitId" label={t("fields.ownerUnit")}>
+              <Select id="ownerUnitId" name="ownerUnitId" defaultValue="">
+                <option value="">{t("space.noOwnerUnit")}</option>
+                {units.map((unit) => (
+                  <option key={unit.id} value={unit.id}>
+                    {unit.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          ) : null}
           <Field name="entityId" label={t("fields.entity")}>
             <Select id="entityId" name="entityId" defaultValue={groupWide ? "" : entities[0]?.id}>
               {groupWide ? <option value="">{t("space.groupWide")}</option> : null}

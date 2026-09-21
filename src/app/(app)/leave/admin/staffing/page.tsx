@@ -4,7 +4,7 @@ import { canManageLeaveConfig } from "@/modules/leave/policy";
 import { listStaffingRules } from "@/modules/leave/types";
 import { DeleteStaffingRuleButton, StaffingRuleForm } from "@/modules/leave/ui/admin-forms";
 import { requireUser } from "@/modules/platform/auth/session";
-import { listDepartments, listTeams } from "@/modules/platform/org/service";
+import { unitChoices } from "@/modules/platform/org/service";
 import { leaveConfigOptions } from "../options";
 
 export const metadata: Metadata = { title: "Minimum staffing" };
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Minimum staffing" };
 export default async function StaffingPage() {
   const user = await requireUser();
   const t = await getTranslations("leave.admin");
-  const [rules, options, departments, teams] = await Promise.all([listStaffingRules(), leaveConfigOptions(user.principal), listDepartments(), listTeams()]);
+  const [rules, options, units] = await Promise.all([listStaffingRules(), leaveConfigOptions(user.principal), unitChoices()]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -28,7 +28,7 @@ export default async function StaffingPage() {
           </li>
         ))}
       </ul>
-      {options.entities.length > 0 || options.canGroup ? <StaffingRuleForm {...options} departments={departments.filter((row) => row.isActive).map((row) => ({ id: row.id, name: row.name }))} teams={teams.map((row) => ({ id: row.id, name: row.name }))} /> : null}
+      {options.entities.length > 0 || options.canGroup ? <StaffingRuleForm {...options} departments={units} teams={units} /> : null}
     </div>
   );
 }

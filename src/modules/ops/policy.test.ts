@@ -11,7 +11,7 @@ const finance = principal("finance", [{ role: "finance", scope: { type: "group" 
 const hrStaff = principal("hr", [{ role: "hr_staff", scope: { type: "entity", id: SZM } }]);
 const ceo = principal("ceo", [{ role: "c_level", scope: { type: "group" } }]);
 const director = principal("director", [{ role: "entity_director", scope: { type: "entity", id: SZC } }]);
-const head = principal("head", [{ role: "department_head", scope: { type: "department", id: "d" } }]);
+const head = principal("head", [{ role: "department_head", scope: { type: "unit", id: "d" } }]);
 const employee = principal("employee");
 
 const instance = (entityId: string, assigneePersonId: string | null = null, reviewerPersonId: string | null = null) => ({ entityId, assigneePersonId, reviewerPersonId });

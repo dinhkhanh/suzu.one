@@ -206,7 +206,7 @@ export function renderPdf(pages: readonly Page[], font: ParsedFont, metadata: Pd
   object(6, stream("", Buffer.from(toUnicodeCMap(font, used), "utf8")));
   object(
     7,
-    `<< /Title ${textString(metadata.title)} ${metadata.author ? `/Author ${textString(metadata.author)} ` : ""}${metadata.subject ? `/Subject ${textString(metadata.subject)} ` : ""}/Producer (${literal("Suzu One")}) /CreationDate (${pdfDate(metadata.createdAt ?? new Date())}) >>`,
+    `<< /Title ${textString(metadata.title)} ${metadata.author ? `/Author ${textString(metadata.author)} ` : ""}${metadata.subject ? `/Subject ${textString(metadata.subject)} ` : ""}/Producer (${literal("SuZu One")}) /CreationDate (${pdfDate(metadata.createdAt ?? new Date())}) >>`,
   );
 
   pages.forEach((page, index) => {

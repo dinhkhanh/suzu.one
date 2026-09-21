@@ -2,27 +2,28 @@
 // "I have read this". Both directions of the audience are SQL: which announcements name the
 // viewer (`visibleSql`), and which people an announcement names (`audiencePeople`).
 import "server-only";
-import { and, asc, desc, eq, inArray, isNull, lte, type SQL, sql } from "drizzle-orm";
+import { and, arrayOverlaps, asc, desc, eq, inArray, isNull, lte, type SQL, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { currentBranchOf, findBranchEntity, listPeopleAtBranches } from "../core-hr/service";
 import { notify } from "../platform/notifications/service";
+import { unitChoices, unitPathsOf } from "../platform/org/service";
 import type { Principal } from "../platform/rbac/policy";
 import { type AnnouncementPhase, parseAudienceKey } from "./enums";
 import { type AudienceTarget, canManageAnnouncement, canPostTo, canReadAnnouncement, type CommsViewer, commsViewerKeys, phaseOf } from "./policy";
 
 type Executor = Tx | ReturnType<typeof db>;
-const { announcement, announcementAudience, announcementRead, department, entity, person, team } = schema;
+const { announcement, announcementAudience, announcementRead, entity, orgUnit, person } = schema;
 
 export type AnnouncementRow = typeof schema.announcement.$inferSelect;
 
-type ViewerSource = { person: { id: string; primaryEntityId: string | null; departmentId: string | null; teamId: string | null }; principal: Principal };
+type ViewerSource = { person: { id: string; primaryEntityId: string | null; orgUnitId: string | null; orgUnitPath: readonly string[] }; principal: Principal };
 
 /** The viewer with their audience keys. The branch comes from today's primary assignment. */
 export async function commsViewerOf(user: ViewerSource, today: IsoDate = todayInVietnam()): Promise<CommsViewer> {
   const branchId = user.principal.workforceType === "collaborator" ? null : await currentBranchOf(user.person.id, today);
-  return { principal: user.principal, personId: user.person.id, keys: commsViewerKeys(user.principal, { entityId: user.person.primaryEntityId, departmentId: user.person.departmentId, teamId: user.person.teamId, branchId }) };
+  return { principal: user.principal, personId: user.person.id, keys: commsViewerKeys(user.principal, { entityId: user.person.primaryEntityId, unitPath: user.person.orgUnitPath, unitId: user.person.orgUnitId, branchId }) };
 }
 
 // ── The audience ────────────────────────────────────────────────────────────────────────────
@@ -37,18 +38,17 @@ export async function resolveAudienceTargets(keys: readonly string[], executor: 
     else if (subject.type === "entity") {
       const [row] = await executor.select({ id: entity.id }).from(entity).where(eq(entity.id, subject.id!)).limit(1);
       targets.push({ key, target: row ? { entityId: row.id } : null });
-    } else if (subject.type === "department") {
-      const [row] = await executor.select({ id: department.id, entityId: department.entityId }).from(department).where(eq(department.id, subject.id!)).limit(1);
-      targets.push({ key, target: row ? { departmentId: row.id, entityId: row.entityId } : null });
-    } else if (subject.type === "team") {
-      const [row] = await executor.select({ id: team.id, departmentId: team.departmentId }).from(team).where(eq(team.id, subject.id!)).limit(1);
-      targets.push({ key, target: row ? { teamId: row.id, departmentId: row.departmentId } : null });
+    } else if (subject.type === "unit" || subject.type === "unit_only") {
+      // Posting to a unit takes the permission over that unit — which a grant on any unit above it
+      // carries, so the path is the target.
+      const [row] = await executor.select({ id: orgUnit.id, entityId: orgUnit.entityId, path: orgUnit.path }).from(orgUnit).where(eq(orgUnit.id, subject.id!)).limit(1);
+      targets.push({ key, target: row ? { unitPath: row.path, entityId: row.entityId } : null });
     } else if (subject.type === "branch") {
       const row = await findBranchEntity(subject.id!, executor);
       targets.push({ key, target: row ? { entityId: row.entityId } : null });
     } else {
       const [row] = await executor.select().from(person).where(eq(person.id, subject.id!)).limit(1);
-      targets.push({ key, target: row ? { personId: row.id, entityId: row.primaryEntityId, departmentId: row.departmentId, teamId: row.teamId, managerId: row.managerId } : null });
+      targets.push({ key, target: row ? { personId: row.id, entityId: row.primaryEntityId, unitPath: row.orgUnitPath, managerId: row.managerId } : null });
     }
   }
   return targets;
@@ -60,6 +60,12 @@ const commonEntity = (targets: readonly AudienceTarget[]): string | null => {
   return ids.size === 1 ? ([...ids][0] ?? null) : null;
 };
 
+// "unit:<id>" for any unit on the person's path: naming a unit reaches everyone below it (FR-PLT-16).
+function unitKeysSql(keys: readonly string[]): SQL {
+  const unitIds = keys.flatMap((key) => (key.startsWith("unit:") ? [key.slice("unit:".length)] : []));
+  return unitIds.length ? arrayOverlaps(person.orgUnitPath, unitIds) : sql`false`;
+}
+
 /** `person` (un-aliased) is named by one of the keys. Branch membership arrives as a list of people: it lives in core-hr. */
 function personInAudienceSql(keys: readonly string[], branchPeople: readonly string[]): SQL {
   const list = [...keys];
@@ -67,8 +73,8 @@ function personInAudienceSql(keys: readonly string[], branchPeople: readonly str
   return sql`(${inArray(sql`'person:' || ${person.id}::text`, list)} or (${person.workforceType} <> 'collaborator' and (
     ${list.includes("all") ? sql`true` : sql`false`}
     or ${inArray(sql`'entity:' || ${person.primaryEntityId}::text`, list)}
-    or ${inArray(sql`'department:' || ${person.departmentId}::text`, list)}
-    or ${inArray(sql`'team:' || ${person.teamId}::text`, list)}
+    or ${unitKeysSql(list)}
+    or ${inArray(sql`'unit_only:' || ${person.orgUnitId}::text`, list)}
     or ${branchPeople.length ? inArray(person.id, [...branchPeople]) : sql`false`})))`;
 }
 
@@ -82,9 +88,9 @@ export async function audiencePeople(keys: readonly string[], executor: Executor
   });
   const branchPeople = await listPeopleAtBranches(branchIds, today, executor);
   return executor
-    .select({ personId: person.id, fullName: person.fullName, departmentName: department.name })
+    .select({ personId: person.id, fullName: person.fullName, departmentName: orgUnit.name })
     .from(person)
-    .leftJoin(department, eq(department.id, person.departmentId))
+    .leftJoin(orgUnit, eq(orgUnit.id, person.departmentId))
     .where(and(eq(person.status, "active"), personInAudienceSql(keys, branchPeople)))
     .orderBy(asc(person.searchName));
 }
@@ -307,33 +313,32 @@ export async function getReadReport(id: string): Promise<ReadReport | null> {
 // ── The audience picker ─────────────────────────────────────────────────────────────────────
 
 type Option = { id: string; name: string };
-export type AudienceOptions = { all: boolean; entities: Option[]; departments: Option[]; teams: Option[]; branches: Option[]; people: Option[] };
+export type AudienceOptions = { all: boolean; entities: Option[]; units: Option[]; branches: Option[]; people: Option[] };
 
-/** Only what the principal may address: a department head's picker holds their department and its people, nothing else. */
+/** Only what the principal may address: a department head's picker holds their unit, the units below it and their people, nothing else. */
 export async function audienceOptionsFor(principal: Principal): Promise<AudienceOptions> {
-  const [entities, departments, teams, branches, people] = await Promise.all([
+  const [entities, units, branches, people] = await Promise.all([
     db().select().from(entity).orderBy(asc(entity.shortName)),
-    db().select().from(department).orderBy(asc(department.name)),
-    db().select().from(team).orderBy(asc(team.name)),
+    unitChoices(),
     db().select().from(schema.branch).orderBy(asc(schema.branch.name)),
     db().select().from(person).where(eq(person.status, "active")).orderBy(asc(person.searchName)),
   ]);
+  const unitPaths = await unitPathsOf(units.map((unit) => unit.id));
   const may = (target: AudienceTarget["target"]) => canPostTo(principal, [{ key: "", target }]);
   return {
     all: may({}),
     entities: entities.filter((row) => may({ entityId: row.id })).map((row) => ({ id: row.id, name: row.shortName })),
-    departments: departments.filter((row) => may({ departmentId: row.id, entityId: row.entityId })).map((row) => ({ id: row.id, name: row.name })),
-    teams: teams.filter((row) => may({ teamId: row.id, departmentId: row.departmentId })).map((row) => ({ id: row.id, name: row.name })),
+    units: units.filter((row) => may({ unitPath: unitPaths.get(row.id) ?? [] })),
     branches: branches.filter((row) => may({ entityId: row.entityId })).map((row) => ({ id: row.id, name: row.name })),
-    people: people.filter((row) => may({ personId: row.id, entityId: row.primaryEntityId, departmentId: row.departmentId, teamId: row.teamId })).map((row) => ({ id: row.id, name: row.fullName })),
+    people: people.filter((row) => may({ personId: row.id, entityId: row.primaryEntityId, unitPath: row.orgUnitPath })).map((row) => ({ id: row.id, name: row.fullName })),
   };
 }
 
 /** Names for audience keys ("entity:<id>" → "Media"); "all" and the type are put into words by the screen. */
 export async function audienceNames(keys: readonly string[]): Promise<Map<string, string>> {
   const names = new Map<string, string>();
-  const tables = { entity: [entity, entity.shortName], department: [department, department.name], team: [team, team.name], branch: [schema.branch, schema.branch.name], person: [person, person.fullName] } as const;
-  for (const type of ["entity", "department", "team", "branch", "person"] as const) {
+  const tables = { entity: [entity, entity.shortName], unit: [orgUnit, orgUnit.name], unit_only: [orgUnit, orgUnit.name], branch: [schema.branch, schema.branch.name], person: [person, person.fullName] } as const;
+  for (const type of ["entity", "unit", "unit_only", "branch", "person"] as const) {
     const wanted = keys.flatMap((key) => (key.startsWith(`${type}:`) ? [key.slice(type.length + 1)] : []));
     if (wanted.length === 0) continue;
     const [table, column] = tables[type];

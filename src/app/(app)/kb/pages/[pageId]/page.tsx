@@ -8,7 +8,7 @@ import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { setPageAccessAction } from "@/modules/kb/actions";
 import { parseSubjectKey } from "@/modules/kb/enums";
-import { atLeast, breadcrumbOf, canManageSpace, canOrganisePages, getAckSettings, getAckStatus, canPublishDirectly, getReadingView, kbViewerOf, levelOf, listPageAccess, listTree, loadPage, moveTargets, outlineOf, recordView, subjectNames, subjectOptions, syncReviewState } from "@/modules/kb/service";
+import { atLeast, breadcrumbOf, canManageSpace, spaceOwner, canOrganisePages, getAckSettings, getAckStatus, canPublishDirectly, getReadingView, kbViewerOf, levelOf, listPageAccess, listTree, loadPage, moveTargets, outlineOf, recordView, subjectNames, subjectOptions, syncReviewState } from "@/modules/kb/service";
 import { AccessForm } from "@/modules/kb/ui/access-form";
 import { AckSettingsForm, AcknowledgeButton } from "@/modules/kb/ui/ack-forms";
 import { MovePageForm, PageLifecycleButtons, PageMetaForm, PublishDraftButton, SaveAsTemplateForm, SubmitReviewButton } from "@/modules/kb/ui/page-forms";
@@ -50,7 +50,7 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
     const name = subject?.type === "role" ? tRoles(subject.id as "owner") : (names.get(row.subjectKey) ?? "");
     return { ...row, label: !subject || subject.type === "all" ? t("access.subject.all") : `${t(`access.subject.${subject.type}`)}: ${name}` };
   });
-  const manages = canManageSpace(user.principal, space);
+  const manages = canManageSpace(user.principal, spaceOwner(space));
   const [ack, ackAudience] = await Promise.all([getAckStatus(page, user.person.id), manages ? getAckSettings(page.id) : []]);
   const audienceNames = manages ? await subjectNames(ackAudience) : new Map<string, string>();
   const audienceRows = ackAudience.map((key) => {
@@ -90,7 +90,7 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
             ))}
           </nav>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">{view.title}</h1>
+            <h1>{view.title}</h1>
             {view.showing === "draft" ? <Badge variant="outline">{t("status.draft")}</Badge> : null}
             {page.status === "archived" || page.status === "in_review" ? <Badge variant="secondary">{t(`status.${page.status}`)}</Badge> : null}
             {page.accessRootId ? <Badge variant="outline">🔒 {t("page.restricted")}</Badge> : null}

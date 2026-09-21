@@ -112,7 +112,7 @@ export function SaveAsTemplateForm({ pageId, defaultName }: { pageId: string; de
   return (
     <form onSubmit={form.onSubmit} className="flex flex-col gap-2">
       <h2 className="text-sm font-medium">{t("template.saveTitle")}</h2>
-      <div className="flex flex-wrap items-end gap-2">
+      <div className="toolbar">
         <Field name="name" label={t("template.name")}>
           <Input id="template-name" name="name" required maxLength={120} defaultValue={defaultName} />
         </Field>

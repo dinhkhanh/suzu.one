@@ -29,7 +29,7 @@ export default async function TeamPerformancePage({ searchParams }: PageProps<"/
     <div className="flex max-w-5xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("team.title")}</h1>
+          <h1>{t("team.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("team.description")}</p>
         </div>
         {entersFor ? (

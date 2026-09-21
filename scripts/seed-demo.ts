@@ -6,7 +6,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { blindIndex, createFieldCipher, parseKeyRing } from "../src/lib/crypto/field-cipher";
-import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, assignment, contract, department, dependent, emergencyContact, employeeCodeScheme, employment, entity, lifecycleEvent, person, personProfile, personSensitive, position, roleAssignment, task, taskTemplate, taskTemplateItem } from "../src/lib/db/schema";
+import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, assignment, contract, orgUnit, dependent, emergencyContact, employeeCodeScheme, employment, entity, lifecycleEvent, person, personProfile, personSensitive, position, roleAssignment, task, taskTemplate, taskTemplateItem } from "../src/lib/db/schema";
 import { planChecklist } from "../src/modules/platform/tasks-engine/engine/checklist";
 import { toSearchKey } from "../src/lib/text";
 import { seedAttendance, seedPunches } from "./seed-demo-attendance";
@@ -41,7 +41,7 @@ type Demo = {
   type?: "employee" | "probation" | "intern" | "part_time" | "collaborator";
   manager?: string;
   start: string;
-  role?: { role: string; scope: "group" | "entity" | "department" };
+  role?: { role: string; scope: "group" | "entity" | "unit" };
 };
 
 // `manager` refers to an earlier row by email.
@@ -51,12 +51,12 @@ const PEOPLE: Demo[] = [
   { name: "Lê Thị Mai", email: "mai.le@suzu.group", entity: "SZG", department: "HR", position: "Trưởng phòng Nhân sự", manager: "ha.nguyen@suzu.vn", start: "2020-02-10", role: { role: "hr_admin", scope: "group" } },
   { name: "Phạm Quốc Bảo", email: "bao.pham@suzu.group", entity: "SZM", department: "HR", position: "Chuyên viên Nhân sự", manager: "mai.le@suzu.group", start: "2022-08-01", role: { role: "hr_staff", scope: "entity" } },
   { name: "Võ Minh Tuấn", email: "tuan.vo@suzu.group", entity: "SZG", department: "FIN", position: "Kế toán trưởng", manager: "ha.nguyen@suzu.vn", start: "2020-05-04", role: { role: "finance", scope: "group" } },
-  { name: "Đặng Hoàng Long", email: "long.dang@suzu.group", entity: "SZM", department: "VID", position: "Trưởng phòng Sản xuất Video", manager: "ha.nguyen@suzu.vn", start: "2020-09-14", role: { role: "department_head", scope: "department" } },
+  { name: "Đặng Hoàng Long", email: "long.dang@suzu.group", entity: "SZM", department: "VID", position: "Trưởng phòng Sản xuất Video", manager: "ha.nguyen@suzu.vn", start: "2020-09-14", role: { role: "department_head", scope: "unit" } },
   { name: "Bùi Thanh Tâm", email: "tam.bui@suzu.group", entity: "SZM", department: "VID", position: "Đạo diễn", manager: "long.dang@suzu.group", start: "2021-03-01" },
-  { name: "Hồ Gia Huy", email: "huy.ho@suzu.group", entity: "SZM", department: "VID", position: "Dựng phim", manager: "long.dang@suzu.group", start: "2023-07-17" },
-  { name: "Đỗ Khánh Linh", email: "linh.do@suzu.group", entity: "SZM", department: "VID", position: "Dựng phim", type: "probation", manager: "long.dang@suzu.group", start: "2026-08-03" },
+  { name: "Hồ Gia Huy", email: "huy.ho@suzu.group", entity: "SZM", department: "VID-POST", position: "Dựng phim", manager: "long.dang@suzu.group", start: "2023-07-17", role: { role: "department_head", scope: "unit" } },
+  { name: "Đỗ Khánh Linh", email: "linh.do@suzu.group", entity: "SZM", department: "VID-POST", position: "Dựng phim", type: "probation", manager: "huy.ho@suzu.group", start: "2026-08-03" },
   { name: "Ngô Bảo Anh", email: null, entity: "SZM", department: "VID", position: "Quay phim", type: "collaborator", manager: "tam.bui@suzu.group", start: "2025-11-01" },
-  { name: "Dương Thùy Chi", email: "chi.duong@suzu.group", entity: "SZC", department: "DES", position: "Trưởng nhóm Thiết kế", manager: "ha.nguyen@suzu.vn", start: "2021-01-11", role: { role: "department_head", scope: "department" } },
+  { name: "Dương Thùy Chi", email: "chi.duong@suzu.group", entity: "SZC", department: "DES", position: "Trưởng nhóm Thiết kế", manager: "ha.nguyen@suzu.vn", start: "2021-01-11", role: { role: "department_head", scope: "unit" } },
   { name: "Lý Minh Khôi", email: "khoi.ly@suzu.group", entity: "SZC", department: "DES", position: "Thiết kế đồ họa", manager: "chi.duong@suzu.group", start: "2022-04-18" },
   { name: "Trịnh Ngọc Ánh", email: "anh.trinh@suzu.group", entity: "SZC", department: "DES", position: "Thiết kế đồ họa", type: "intern", manager: "chi.duong@suzu.group", start: "2026-06-15" },
   { name: "Phan Văn Đức", email: "duc.phan@suzu.group", entity: "SZC", department: "SOC", position: "Social Media Executive", manager: "ha.nguyen@suzu.vn", start: "2023-02-06" },
@@ -75,8 +75,18 @@ async function main() {
 
   const today = new Date().toISOString().slice(0, 10);
   const entities = new Map((await db.select().from(entity)).map((row) => [row.code, row]));
-  const departments = new Map((await db.select().from(department)).map((row) => [row.code, row]));
+  const departments = new Map((await db.select().from(orgUnit)).map((row) => [row.code, row]));
   if (entities.size === 0 || departments.size === 0) throw new Error("Run `pnpm db:seed` first.");
+
+  // A small team inside a department, so the demo has a tree three levels deep (FR-PLT-16) and a
+  // space a team lead runs on their own (FR-KB-13).
+  if (!departments.has("VID-POST")) {
+    const [post] = await db
+      .insert(orgUnit)
+      .values({ code: "VID-POST", name: "Hậu kỳ", kind: "team", parentId: departments.get("VID")!.id })
+      .returning();
+    departments.set(post.code!, post);
+  }
 
   let created = 0;
   await db.transaction(async (tx) => {
@@ -111,7 +121,7 @@ async function main() {
           workforceType,
           status: demo.start > today ? "preboarding" : "active",
           primaryEntityId: home.id,
-          departmentId: dept.id,
+          orgUnitId: dept.id,
           managerId,
         })
         .returning();
@@ -129,9 +139,11 @@ async function main() {
         .insert(employment)
         .values({ personId: row.id, entityId: home.id, employeeCode: `${home.code}-${String(number).padStart(4, "0")}`, startDate: demo.start, seniorityDate: demo.start })
         .returning();
-      await tx.insert(assignment).values({ employmentId: contract.id, workforceType, departmentId: dept.id, positionId: job.id, managerId, validFrom: demo.start });
+      // The assignment keeps the two derived columns the app derives on a real hire.
+      const placement = dept.kind === "team" ? { departmentId: dept.parentId, teamId: dept.id } : { departmentId: dept.id, teamId: null };
+      await tx.insert(assignment).values({ employmentId: contract.id, workforceType, orgUnitId: dept.id, ...placement, positionId: job.id, managerId, validFrom: demo.start });
       if (demo.role) {
-        const scopeId = demo.role.scope === "entity" ? home.id : demo.role.scope === "department" ? dept.id : null;
+        const scopeId = demo.role.scope === "entity" ? home.id : demo.role.scope === "unit" ? dept.id : null;
         await tx.insert(roleAssignment).values({ personId: row.id, role: demo.role.role, scopeType: demo.role.scope, scopeId });
       }
       created++;
@@ -353,10 +365,10 @@ async function seedLifecycle(db: ReturnType<typeof drizzle>, today: string): Pro
 
   // A former employee: left two months ago, offboarded, no way in.
   const [szm] = await db.select().from(entity).where(eq(entity.code, "SZM")).limit(1);
-  const [video] = await db.select().from(department).where(eq(department.code, "VID")).limit(1);
+  const [video] = await db.select().from(orgUnit).where(eq(orgUnit.code, "VID")).limit(1);
   const head = await byEmail("long.dang@suzu.group");
   if (szm && video && head && !(await byEmail("dang.vu@suzu.group"))) {
-    const [gone] = await db.insert(person).values({ fullName: "Vũ Hải Đăng", searchName: toSearchKey("Vũ Hải Đăng"), workEmail: "dang.vu@suzu.group", status: "offboarded", primaryEntityId: szm.id, departmentId: video.id, managerId: head.id }).returning();
+    const [gone] = await db.insert(person).values({ fullName: "Vũ Hải Đăng", searchName: toSearchKey("Vũ Hải Đăng"), workEmail: "dang.vu@suzu.group", status: "offboarded", primaryEntityId: szm.id, orgUnitId: video.id, managerId: head.id }).returning();
     await db.insert(personProfile).values({ personId: gone.id, nationality: "Việt Nam", dateOfBirth: "1994-02-11", gender: "male", phone: "0933555777" });
     const [job] = await db.insert(employment).values({ personId: gone.id, entityId: szm.id, employeeCode: "SZM-0090", startDate: "2022-05-09", seniorityDate: "2022-05-09", endDate: day(-60) }).returning();
     await db.insert(assignment).values({ employmentId: job.id, workforceType: "employee", departmentId: video.id, managerId: head.id, validFrom: "2022-05-09", validTo: day(-60) });

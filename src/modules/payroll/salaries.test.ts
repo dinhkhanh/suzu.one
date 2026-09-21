@@ -44,12 +44,12 @@ const approve = { action: "approve" as const, comment: null };
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "Suzu Media", shortName: "Media" }, { code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }]).returning();
-  const [video] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
+  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "SuZu Media", shortName: "Media" }, { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }]).returning();
+  const [video] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
   const hire = async (name: string, entityId: string, managerId: string | null = null, workforceType: "employee" | "collaborator" = "employee") => {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId, employeeCode: null, startDate: "2025-01-01", seniorityDate: null, placement: { workforceType, branchId: null, departmentId: video.id, teamId: null, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null } },
+      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId, employeeCode: null, startDate: "2025-01-01", seniorityDate: null, placement: { workforceType, branchId: null, orgUnitId: video.id, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null } },
       actor.id,
       { onboarding: false },
     );
@@ -73,7 +73,7 @@ beforeAll(async () => {
     [cnb]: [{ role: "payroll", scope: { type: "entity", id: media.id } }],
     [cnbCreative]: [{ role: "payroll", scope: { type: "entity", id: creative.id } }],
     // The line manager is also the department head and — worst case — holds it over the whole entity.
-    [manager]: [{ role: "department_head", scope: { type: "department", id: video.id } }, { role: "department_head", scope: { type: "entity", id: media.id } }],
+    [manager]: [{ role: "department_head", scope: { type: "unit", id: video.id } }, { role: "department_head", scope: { type: "entity", id: media.id } }],
     [hrStaff]: [{ role: "hr_staff", scope: { type: "entity", id: media.id } }],
     [director]: [{ role: "entity_director", scope: { type: "entity", id: media.id } }],
   };

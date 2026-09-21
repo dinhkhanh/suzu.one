@@ -23,7 +23,7 @@ export default async function MyPayslipsPage() {
   return (
     <div className="flex max-w-4xl flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("mine")}</h1>
+        <h1>{t("mine")}</h1>
         <p className="text-sm text-muted-foreground">{t("mineDescription")}</p>
       </header>
 

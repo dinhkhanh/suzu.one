@@ -20,7 +20,7 @@ export default async function CheckInPage() {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6">
       <header className="flex flex-col gap-1 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1>{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{format.dateTime(new Date(`${state.today}T00:00:00`), { weekday: "long", day: "numeric", month: "long" })}</p>
         {plan ? (
           <p className="flex flex-wrap items-center justify-center gap-2 text-sm">

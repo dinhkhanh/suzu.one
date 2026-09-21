@@ -158,7 +158,7 @@ export function MemberManager({ members, people, canManage, target }: { members:
       {canManage ? (
         <form
           ref={form}
-          className="flex flex-wrap items-end gap-2"
+          className="toolbar"
           onSubmit={(event) => {
             event.preventDefault();
             const data = new FormData(event.currentTarget);

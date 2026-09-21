@@ -8,7 +8,7 @@
 
 Phases 1–9 are built on **local branch `mvp`** (stacked on `phase-0-remainder`). **Nothing is pushed. Nothing is merged into `main`. Nothing is deployed.** Only the first part of Phase 0 is live on `main`.
 
-`pnpm check` (2,498 tests) and `pnpm build` pass on `mvp`. Migrations 0001–0071 are applied to the local Docker database; every one of them is additive and backward-compatible with the deployed code.
+`pnpm check` (2,512 tests) and `pnpm build` pass on `mvp`. Migrations 0001–0073 are applied to the local Docker database. All are backward-compatible with the deployed code except **0072**, which rebuilds the org structure as one tree (§5b): it renames `department`, folds `team` into it and rewrites the role scopes and audience keys, so the code and that migration must ship together.
 
 **To get this in front of anybody:** open a pull request from `mvp`, read the diff, merge, and let the `main` deploy run the migrations — after working through §4.A below.
 
@@ -26,7 +26,7 @@ Phases 1–9 are built on **local branch `mvp`** (stacked on `phase-0-remainder`
 | 6 Assets & requests | `assets`, `requests` — generic request builder, expense claims, asset register, QR labels, bookings, licences, generated documents | 0052–0059 | 1,794 |
 | 7 Recruitment / ATS | `recruit` — hiring requests, openings, pipeline, public careers page, interviews, offers, referrals | 0060–0065 | 2,130 |
 | 8 Performance reviews + bonus | `performance`, `payroll` — review cycles, peer/360, evidence panel, final yearly result, year-end bonus scheme and run, 1:1 notes | 0066–0068 | 2,383 |
-| 9 AI assistant + analytics | `ai`, `reports` — Ask Suzu (KB retrieval with citations, four personal tools), owner dashboard v2, scheduled reports, work analytics | 0069–0071 | 2,498 |
+| 9 AI assistant + analytics | `ai`, `reports` — Ask SuZu (KB retrieval with citations, four personal tools), owner dashboard v2, scheduled reports, work analytics | 0069–0071 | 2,498 |
 
 Phase 10 (CRM) is **not started** and needs its own SRS.
 
@@ -117,6 +117,18 @@ Nothing here blocks go-live; all of it was consciously left out.
 - **Phase 8:** a structured band-table editor for the bonus scheme (JSON today, fully validated), calibration sessions as their own screen, training completion in the evidence panel.
 - **Phase 9:** **FR-AI-03 confirm-to-act shortcuts and FR-AI-04 drafting helpers were not built** — both C items, neither was nearly free. Also FR-AI-05 (natural-language questions over reports), manager-scope tools, streaming answers, feedback on an answer, pgvector with an HNSW index, and `.xlsx` scheduled reports.
 - **Phase 10 (CRM):** not started; it needs its own SRS.
+
+## 5b. Built after the MVP: nested org units and unit-owned KB spaces
+
+**SRS D19, D20, FR-PLT-16, FR-KB-13..16 — built 2026-09-21 on branch `mvp`.** "Team" in this company means a group at any level — department, big team, small team — so the two flat levels became one tree, and a unit may now keep a knowledge base and documents of its own, run by its head rather than by HR.
+
+**Done.** `department` and `team` are one `org_unit` table whose rows nest to any depth (migration 0072). The rename and the fold-in keep every id, so every `department_id`, `team_id`, subject key and role-grant `scope_id` still points at the same unit — nothing had to be re-entered. Two derived things carry the tree, both written by database triggers and never by the application: `org_unit.path` (the unit and its ancestors) and, on `person`, `org_unit_path` plus the `department_id` / `team_id` the reports still group by — the deepest unit of each kind on the chain. Moving a unit rewrites all of them for the whole subtree, people included. The scope `department` | `team` became one `unit` scope that **covers everything below it**: `loadGrants` widens a unit grant to its subtree once per request, so a check with one unit id is correct wherever the chain is not at hand. Access rows, acknowledgement audiences and announcement audiences use `unit:<id>` (the subtree) and `unit_only:<id>` (that unit alone, the deliberate narrowing); the migration rewrote the existing `department:` / `team:` keys. A schedule set on a unit now reaches the units below it, and the deeper unit wins. `/admin/org` is a tree editor: one form for every level, "add a unit inside this one", and a move that is refused if it would put a unit inside itself (in the service and again in the database). The placement fields on hire and reassignment are one unit picker. **Unit spaces (FR-KB-13):** `kb_space.owner_unit_id`, a new permission `kb:manage_unit` (c_level, entity_director, department_head), at most one space per unit, an access row for the unit written on creation, and the heads above inheriting the head's rights while `kb:manage` still reaches everything. **Unit documents (FR-KB-15):** every file in a space in one list, permission-filtered by the same SQL as the page tree.
+
+**Verified** on the real local database and over HTTP with forged sessions: migration 0072 applied to a populated database (11 units, 20 people placed, the department-scoped grants and KB rows rewritten, no person left without a derived department); a small team created inside a department, a person moved into it, the department head's unchanged grant reaching it, and a move of that team to another department taking its person's whole chain and department with it. As a department head: `/admin/org` readable but not editable (no `org:manage`), `/kb` offering a space for their own unit, the create action allowed for a unit below them and refused for another department's unit, for a company-wide space, and for a second space on the same unit. Reading the finished team space: its member and the head above see it, a colleague in the same department but not in the team gets 404, HR sees it. The documents list shows a page's file to the team and not to that colleague. **A bug found this way:** `stored_file.owner_id` is `text`, so the new file query needed an explicit cast — the unit tests never saw it because they have no files.
+
+**Not verified:** anything in a browser, as with the rest of the MVP. `pnpm db:seed:demo` now creates a "Hậu kỳ" team inside the video department, with a space its lead runs, but the demo has only been re-seeded from an empty database in tests, not against a running local stack.
+
+**Needs the owner:** the real shape of the tree — which departments hold which teams, and how deep — since the migration leaves every existing department at the top level; and which heads get `department_head` grants on which units, because that grant is now what lets someone run their team's own knowledge base.
 
 ## 6. What has never been seen in a real browser
 

@@ -73,7 +73,7 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1>{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
       <PerformanceNav active="results" />
@@ -86,7 +86,7 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
       </nav>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">{t("mine.title")}</h2>
+        <h2>{t("mine.title")}</h2>
         {mine ? (
           <article className="flex flex-col gap-3 rounded-xl border p-3">
             <div className="flex flex-wrap items-center gap-3">
@@ -102,7 +102,7 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
 
       {computable.length > 0 ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-lg font-medium">{t("compute.title")}</h2>
+          <h2>{t("compute.title")}</h2>
           {weightingReady ? <ComputeResultsForm year={year} personIds={computable} /> : <p className="text-sm text-amber-700 dark:text-amber-300">{t("compute.noWeighting")}</p>}
         </section>
       ) : null}
@@ -110,7 +110,7 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
       {readable.length > 0 ? (
         <section className="flex flex-col gap-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg font-medium">{t("list.title", { year })}</h2>
+            <h2>{t("list.title", { year })}</h2>
             <span className="text-xs text-muted-foreground">{t("list.count", { count: readable.length })}</span>
           </div>
           <ul className="flex flex-col gap-3">

@@ -101,7 +101,7 @@ async function viewerFor(executor: Executor, personId: string): Promise<KbViewer
   const [row] = await executor.select().from(person).where(eq(person.id, personId)).limit(1);
   if (!row) return null;
   const principal = { personId: row.id, workforceType: row.workforceType, grants: await loadGrants(row.id, todayInVietnam(), executor) };
-  return { principal, personId: row.id, keys: viewerKeys(principal, { entityId: row.primaryEntityId, departmentId: row.departmentId, teamId: row.teamId }) };
+  return { principal, personId: row.id, keys: viewerKeys(principal, { entityId: row.primaryEntityId, unitId: row.orgUnitId, unitPath: row.orgUnitPath }) };
 }
 
 const dueText = (date: IsoDate) => date.split("-").reverse().join("/");
@@ -264,7 +264,7 @@ export async function getAckReport(page: PageRow, today: IsoDate = todayInVietna
       fullName: person.fullName,
       createdAt: person.createdAt,
       entityName: schema.entity.shortName,
-      departmentName: schema.department.name,
+      departmentName: schema.orgUnit.name,
       acknowledgedAt: kbAcknowledgement.acknowledgedAt,
       lastNoticeOn: sql<IsoDate | null>`(select max(${kbAckReminder.sentOn}) from ${kbAckReminder} where ${kbAckReminder.pageId} = ${kbPage.id} and ${kbAckReminder.versionId} = ${kbPage.ackVersionId} and ${kbAckReminder.personId} = ${person.id})`,
       notices: sql<number>`(select count(*)::int from ${kbAckReminder} where ${kbAckReminder.pageId} = ${kbPage.id} and ${kbAckReminder.versionId} = ${kbPage.ackVersionId} and ${kbAckReminder.personId} = ${person.id})`,
@@ -272,7 +272,7 @@ export async function getAckReport(page: PageRow, today: IsoDate = todayInVietna
     .from(person)
     .innerJoin(kbPage, eq(kbPage.id, page.id))
     .leftJoin(schema.entity, eq(schema.entity.id, person.primaryEntityId))
-    .leftJoin(schema.department, eq(schema.department.id, person.departmentId))
+    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, person.departmentId))
     .leftJoin(kbAcknowledgement, and(eq(kbAcknowledgement.pageId, kbPage.id), eq(kbAcknowledgement.versionId, kbPage.ackVersionId), eq(kbAcknowledgement.personId, person.id)))
     .where(and(eq(person.status, "active"), inAudienceSql()))
     .orderBy(asc(person.searchName));

@@ -5,7 +5,7 @@
 import { sql } from "drizzle-orm";
 import { type AnyPgColumn, check, date, index, integer, jsonb, pgEnum, pgTable, smallint, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { storedFile } from "../platform/files/schema";
-import { branch, department, entity, team } from "../platform/org/schema";
+import { branch, entity, orgUnit } from "../platform/org/schema";
 import { person, workforceType } from "../platform/people/schema";
 
 const timestamps = {
@@ -65,8 +65,12 @@ export const assignment = pgTable(
     kind: assignmentKind("kind").notNull().default("primary"),
     workforceType: workforceType("workforce_type").notNull(),
     branchId: uuid("branch_id").references(() => branch.id),
-    departmentId: uuid("department_id").references(() => department.id),
-    teamId: uuid("team_id").references(() => team.id),
+    // The unit the person is assigned to, at any depth (FR-PLT-16). The two columns below are
+    // derived from it when the assignment is written (`placementFor`) and then left alone: an
+    // assignment is history, so a later reshuffle of the tree must not rewrite what it says.
+    orgUnitId: uuid("org_unit_id").references(() => orgUnit.id),
+    departmentId: uuid("department_id").references(() => orgUnit.id),
+    teamId: uuid("team_id").references(() => orgUnit.id),
     positionId: uuid("position_id").references(() => position.id),
     jobLevel: text("job_level"),
     managerId: uuid("manager_id").references(() => person.id),

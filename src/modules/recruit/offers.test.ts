@@ -73,8 +73,8 @@ async function freshApplication(name: string, email: string): Promise<string> {
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty Suzu Media", shortName: "Suzu Media" }).returning();
-  const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
+  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty SuZu Media", shortName: "SuZu Media" }).returning();
+  const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   ids.szm = szm.id;
   ids.vid = vid.id;
 
@@ -85,7 +85,7 @@ beforeAll(async () => {
     ["headPerson", "Trưởng phòng Video", "head@suzu.group"],
     ["strangerPerson", "Nhân viên thường", "nv@suzu.group"],
   ] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName, searchName: key, workEmail: email, primaryEntityId: szm.id, departmentId: vid.id, status: "active" }).returning();
+    const [row] = await db().insert(schema.person).values({ fullName, searchName: key, workEmail: email, primaryEntityId: szm.id, orgUnitId: vid.id, status: "active" }).returning();
     ids[key] = row.id;
   }
 
@@ -93,7 +93,7 @@ beforeAll(async () => {
   // principals: the department head signs off on the person, whoever may approve payroll on the
   // money. Without these rows a submitted offer has nobody to go to.
   await db().insert(schema.roleAssignment).values([
-    { personId: ids.headPerson, role: "department_head", scopeType: "department", scopeId: vid.id },
+    { personId: ids.headPerson, role: "department_head", scopeType: "unit", scopeId: vid.id },
     { personId: ids.hrAdmin, role: "hr_admin", scopeType: "entity", scopeId: szm.id },
     { personId: ids.strangerPerson, role: "c_level", scopeType: "group", scopeId: null },
   ]);
@@ -102,7 +102,7 @@ beforeAll(async () => {
   hrAdmin = principal(ids.hrAdmin, [{ role: "hr_admin", scope: { type: "entity", id: szm.id } }]);
   hrStaff = principal(ids.hrStaff, [{ role: "hr_staff", scope: { type: "entity", id: szm.id } }]);
   recruiter = principal(ids.recruiterPerson, [{ role: "recruiter", scope: { type: "entity", id: szm.id } }]);
-  head = principal(ids.headPerson, [{ role: "department_head", scope: { type: "department", id: vid.id } }]);
+  head = principal(ids.headPerson, [{ role: "department_head", scope: { type: "unit", id: vid.id } }]);
   stranger = principal(ids.strangerPerson);
 
   const { after: pipeline } = await savePipeline(null, { ...PIPELINE_SEED[0], isActive: true, stages: PIPELINE_SEED[0].stages.map((stage) => ({ ...stage })) });
@@ -139,7 +139,7 @@ beforeAll(async () => {
   // refuses by tier rather than by which page asked for it.
   const [template] = await db()
     .insert(schema.documentTemplate)
-    .values({ code: "TM-TEST", name: "Thư mời nhận việc", kind: "offer", tier: "compensation", body: "{{person.fullName}} — {{person.position}} — {{salary.total}} đồng — đến {{offer.expiryDate}}", letterhead: { companyName: "Suzu Media" } })
+    .values({ code: "TM-TEST", name: "Thư mời nhận việc", kind: "offer", tier: "compensation", body: "{{person.fullName}} — {{person.position}} — {{salary.total}} đồng — đến {{offer.expiryDate}}", letterhead: { companyName: "SuZu Media" } })
     .returning();
   ids.templateId = template.id;
   const [plain] = await db()

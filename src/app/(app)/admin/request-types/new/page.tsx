@@ -22,7 +22,7 @@ export default async function NewRequestTypePage() {
         <Link href="/admin/request-types" className="text-sm text-muted-foreground hover:underline">
           ← {t("title")}
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("add")}</h1>
+        <h1>{t("add")}</h1>
         <p className="text-sm text-muted-foreground">{t("addHint")}</p>
       </header>
       <TypeDesigner

@@ -31,7 +31,7 @@ export default async function ActualsPage({ searchParams }: PageProps<"/performa
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("entry.title")}</h1>
+        <h1>{t("entry.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("entry.description")}</p>
       </header>
       <PerformanceNav active="team" />

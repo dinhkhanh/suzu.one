@@ -40,7 +40,7 @@ export default async function AlignmentPage({ searchParams }: PageProps<"/perfor
     <div className="flex max-w-5xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("alignment.title")}</h1>
+          <h1>{t("alignment.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("alignment.description")}</p>
         </div>
         <Link href={`/performance/goals/new?year=${year}`} className={buttonVariants()}>
@@ -75,7 +75,7 @@ export default async function AlignmentPage({ searchParams }: PageProps<"/perfor
       ) : null}
       {unaligned.length > 0 ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-lg font-medium">{t("alignment.unaligned")}</h2>
+          <h2>{t("alignment.unaligned")}</h2>
           <p className="text-sm text-muted-foreground">{t("alignment.unalignedHint")}</p>
           <div className="rounded-xl border px-4">
             <GoalTree goals={goals} rootIds={unaligned.map((goal) => goal.id)} />

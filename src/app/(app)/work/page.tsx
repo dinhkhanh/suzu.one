@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
-import { listDepartments, listEntities } from "@/modules/platform/org/service";
+import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { canManageWorkspace, canViewTeam, listClients, listCreateTargets, listTeams, loadViewer, teamFacts, visibleProjects } from "@/modules/work/service";
 import { ProjectForm } from "@/modules/work/ui/project-forms";
@@ -23,7 +23,7 @@ export default async function WorkPage() {
   const others = teams.filter((team) => !viewer.teamRoles.has(team.id));
   const projectTeams = targets.teams.filter((team) => team.canCreateProject);
   const canCreateTeam = canManageWorkspace(viewer);
-  const [entities, departments, people] = canCreateTeam || projectTeams.length ? await Promise.all([listEntities(), listDepartments(), listPersonNames()]) : [[], [], []];
+  const [entities, departments, people] = canCreateTeam || projectTeams.length ? await Promise.all([listEntities(), unitChoices(), listPersonNames()]) : [[], [], []];
 
   const teamCard = (team: (typeof teams)[number]) => (
     <li key={team.id}>
@@ -43,10 +43,10 @@ export default async function WorkPage() {
     <div className="flex max-w-6xl flex-col gap-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <h1>{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("description")}</p>
         </div>
-        <nav className="flex gap-3 text-sm">
+        <nav className="tab-row">
           <Link href="/tasks" className="underline">
             {t("myWork")}
           </Link>
@@ -120,7 +120,7 @@ export default async function WorkPage() {
           <details className="rounded-xl border p-4">
             <summary className="cursor-pointer text-sm font-medium">{t("teams.create")}</summary>
             <div className="pt-4">
-              <TeamForm entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments.filter((department) => department.isActive).map(({ id, name }) => ({ id, name }))} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} />
+              <TeamForm entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} />
             </div>
           </details>
         ) : null}

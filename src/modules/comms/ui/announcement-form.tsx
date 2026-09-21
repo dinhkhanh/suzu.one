@@ -11,7 +11,7 @@ import { saveAnnouncementAction } from "../actions";
 import { type AudienceType, audienceKey } from "../enums";
 
 type Option = { id: string; name: string };
-export type AudienceChoices = { all: boolean; entities: Option[]; departments: Option[]; teams: Option[]; branches: Option[]; people: Option[] };
+export type AudienceChoices = { all: boolean; entities: Option[]; units: Option[]; branches: Option[]; people: Option[] };
 export type AnnouncementDraft = { id: string | null; title: string; body: string; kbPageId: string | null; pinned: boolean; mustAcknowledge: boolean; expiresAt: string; publishAt: string; audience: { key: string; label: string }[]; published: boolean };
 
 /** Write or edit an announcement: text, who it is for, when it appears. "Publish" with a future time schedules it. */
@@ -19,7 +19,7 @@ export function AnnouncementForm({ draft, choices }: { draft: AnnouncementDraft;
   const t = useTranslations("comms");
   const router = useRouter();
   const [list, setList] = useState(draft.audience);
-  const types = ([["all", choices.all ? [{ id: "", name: "" }] : []], ["entity", choices.entities], ["department", choices.departments], ["team", choices.teams], ["branch", choices.branches], ["person", choices.people]] as [AudienceType, Option[]][]).filter(([, options]) => options.length > 0);
+  const types = ([["all", choices.all ? [{ id: "", name: "" }] : []], ["entity", choices.entities], ["unit", choices.units], ["unit_only", choices.units], ["branch", choices.branches], ["person", choices.people]] as [AudienceType, Option[]][]).filter(([, options]) => options.length > 0);
   const [type, setType] = useState<AudienceType>(types[0]?.[0] ?? "all");
   const [id, setId] = useState("");
   const options = types.find(([value]) => value === type)?.[1] ?? [];

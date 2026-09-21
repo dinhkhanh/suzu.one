@@ -58,7 +58,7 @@ export default async function WorkAnalyticsPage({ searchParams }: PageProps<"/wo
               {tWork("title")}
             </Link>
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <h1>{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("description")}</p>
         </div>
         <ExportButton action={exportReportAction} input={{ reportKey: "work_analytics", parameters: teamId ? { teamId } : {}, from: period.from, to: period.to, locale }} label={tExports("button")} failedLabel={tExports("failed")} truncatedLabel={tExports("truncated")} />

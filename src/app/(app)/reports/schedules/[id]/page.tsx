@@ -39,7 +39,7 @@ export default async function SchedulePage({ params }: PageProps<"/reports/sched
             {t("title")}
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">{schedule.name}</h1>
+        <h1>{schedule.name}</h1>
         <p className="text-sm text-muted-foreground">
           {t("nextRun")}: {day(schedule.nextRunOn)} · {t("lastRun")}: {day(schedule.lastRunOn)}
         </p>

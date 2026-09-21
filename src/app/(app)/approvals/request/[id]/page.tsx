@@ -51,7 +51,7 @@ export default async function GenericRequestPage(props: PageProps<"/approvals/re
           ← {t("backToApprovals")}
         </Link>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{locale === "en" ? type.nameEn : type.nameVi}</h1>
+          <h1>{locale === "en" ? type.nameEn : type.nameVi}</h1>
           <RequestStatusBadge status={request.status} />
         </div>
         <p className="text-sm text-muted-foreground">

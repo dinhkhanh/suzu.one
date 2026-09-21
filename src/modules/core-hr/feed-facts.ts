@@ -7,7 +7,7 @@ import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 
 type Executor = Tx | ReturnType<typeof db>;
-const { assignment, branch, department, employment, entity, person, personProfile, position } = schema;
+const { assignment, branch, employment, entity, orgUnit, person, personProfile, position } = schema;
 
 const currentAssignment = (onDate: IsoDate) => and(eq(assignment.kind, "primary"), lte(assignment.validFrom, onDate), or(isNull(assignment.validTo), gte(assignment.validTo, onDate)));
 const currentEmployment = (onDate: IsoDate) => and(lte(employment.startDate, onDate), or(isNull(employment.endDate), gte(employment.endDate, onDate)));
@@ -59,7 +59,7 @@ export async function listStaffOccasionFacts(onDate: IsoDate, executor: Executor
       personId: person.id,
       fullName: person.fullName,
       entityName: entity.shortName,
-      departmentName: department.name,
+      departmentName: orgUnit.name,
       positionName: position.name,
       birthMonth: sql<number | null>`extract(month from ${personProfile.dateOfBirth})::int`,
       birthDay: sql<number | null>`extract(day from ${personProfile.dateOfBirth})::int`,
@@ -72,7 +72,7 @@ export async function listStaffOccasionFacts(onDate: IsoDate, executor: Executor
     .leftJoin(assignment, and(eq(assignment.employmentId, employment.id), currentAssignment(onDate)))
     .leftJoin(position, eq(position.id, assignment.positionId))
     .leftJoin(entity, eq(entity.id, employment.entityId))
-    .leftJoin(department, eq(department.id, person.departmentId))
+    .leftJoin(orgUnit, eq(orgUnit.id, person.departmentId))
     .where(and(eq(person.status, "active"), ne(person.workforceType, "collaborator")))
     .orderBy(asc(person.searchName));
   const seen = new Set<string>();

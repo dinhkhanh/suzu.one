@@ -27,7 +27,7 @@ export default async function ProfilesPage() {
         <Link href="/payroll" className="text-sm text-muted-foreground hover:underline">
           ← {t("title")}
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("profiles.proposalsTitle")}</h1>
+        <h1>{t("profiles.proposalsTitle")}</h1>
         <p className="text-sm text-muted-foreground">{t("profiles.proposalsDescription")}</p>
         {canSeeSimpleProfileReport(user.principal) ? (
           <Link href="/payroll/profiles/simple" className="text-sm hover:underline">

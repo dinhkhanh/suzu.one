@@ -19,7 +19,7 @@ export default async function EditCandidatePage({ params }: PageProps<"/recruit/
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{candidate.fullName}</h1>
+      <h1>{candidate.fullName}</h1>
       <CandidateForm
         value={{
           id: candidate.id,

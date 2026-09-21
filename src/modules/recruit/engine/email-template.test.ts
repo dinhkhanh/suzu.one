@@ -46,9 +46,9 @@ describe("emailTemplateProblems", () => {
 
 describe("renderEmail", () => {
   it("substitutes what it has", () => {
-    const rendered = renderEmail({ subject: "{{job_title}}", body: "Chào {{candidate_name}} — {{company_name}}" }, { job_title: "Biên tập viên", candidate_name: "Trần Thị Mai", company_name: "Suzu Media" });
+    const rendered = renderEmail({ subject: "{{job_title}}", body: "Chào {{candidate_name}} — {{company_name}}" }, { job_title: "Biên tập viên", candidate_name: "Trần Thị Mai", company_name: "SuZu Media" });
     expect(rendered.subject).toBe("Biên tập viên");
-    expect(rendered.body).toBe("Chào Trần Thị Mai — Suzu Media");
+    expect(rendered.body).toBe("Chào Trần Thị Mai — SuZu Media");
     expect(rendered.missing).toEqual([]);
   });
 
@@ -63,7 +63,7 @@ describe("renderEmail", () => {
   });
 
   it("substitutes once — a value containing a placeholder is not expanded again", () => {
-    const rendered = renderEmail({ subject: "x", body: "{{candidate_name}}" }, { candidate_name: "{{company_name}}", company_name: "Suzu" });
+    const rendered = renderEmail({ subject: "x", body: "{{candidate_name}}" }, { candidate_name: "{{company_name}}", company_name: "SuZu" });
     expect(rendered.body).toBe("{{company_name}}");
   });
 });

@@ -34,7 +34,7 @@ export default async function PayrollRunsPage({ searchParams }: PageProps<"/payr
           <Link href="/payroll" className="text-sm text-muted-foreground hover:underline">
             ← {t("title")}
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("runs.title")}</h1>
+          <h1>{t("runs.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("runs.description")}</p>
         </div>
         {canCreate ? (
@@ -44,7 +44,7 @@ export default async function PayrollRunsPage({ searchParams }: PageProps<"/payr
         ) : null}
       </header>
 
-      <form className="flex flex-wrap items-end gap-2" action="/payroll/runs">
+      <form className="toolbar" action="/payroll/runs">
         <select name="entity" defaultValue={entityId ?? ""} className="h-9 rounded-md border bg-transparent px-2 text-sm">
           <option value="">{t("salaries.allEntities")}</option>
           {entities.map((entity) => (

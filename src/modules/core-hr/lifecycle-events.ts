@@ -50,8 +50,8 @@ export async function startChecklist(tx: Executor, event: LifecycleEventRow, pur
 /** A placement in words, for the from → to snapshot of a transfer or promotion. Names, not ids: the timeline must still read right after a department is renamed or a manager leaves. */
 export async function describePlacement(tx: Executor, row: { departmentId: string | null; teamId: string | null; positionId: string | null; managerId: string | null; jobLevel: string | null; workforceType: string }) {
   const [[department], [team], [position], [manager]] = await Promise.all([
-    row.departmentId ? tx.select({ name: schema.department.name }).from(schema.department).where(eq(schema.department.id, row.departmentId)) : [],
-    row.teamId ? tx.select({ name: schema.team.name }).from(schema.team).where(eq(schema.team.id, row.teamId)) : [],
+    row.departmentId ? tx.select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, row.departmentId)) : [],
+    row.teamId ? tx.select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, row.teamId)) : [],
     row.positionId ? tx.select({ name: schema.position.name }).from(schema.position).where(eq(schema.position.id, row.positionId)) : [],
     row.managerId ? tx.select({ name: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, row.managerId)) : [],
   ]);

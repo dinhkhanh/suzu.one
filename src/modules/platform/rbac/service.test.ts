@@ -15,7 +15,7 @@ const people = {} as Record<"owner" | "mai" | "ctv", string>;
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [entity] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" }).returning();
+  const [entity] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   entityId = entity.id;
   const rows = await db()
     .insert(schema.person)

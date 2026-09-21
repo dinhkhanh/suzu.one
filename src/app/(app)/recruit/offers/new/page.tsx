@@ -30,7 +30,7 @@ export default async function NewOfferPage({ searchParams }: PageProps<"/recruit
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("newTitle", { name: view.candidate.fullName })}</h1>
+        <h1>{t("newTitle", { name: view.candidate.fullName })}</h1>
         <p className="text-sm text-muted-foreground">
           {view.opening.title} · {view.opening.code}
         </p>

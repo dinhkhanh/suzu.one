@@ -22,7 +22,7 @@ export default async function NewPersonPage() {
   return (
     <div className="flex max-w-5xl flex-col gap-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("hire.title")}</h1>
+        <h1>{t("hire.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("hire.description")}</p>
       </header>
       <HireForm entities={entities.map(({ id, shortName }) => ({ id, name: shortName }))} options={options} today={todayInVietnam()} />

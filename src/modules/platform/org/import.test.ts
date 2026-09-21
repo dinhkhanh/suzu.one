@@ -18,8 +18,8 @@ const sheet = (csv: string) => parseTable(parseCsv(csv), departmentColumns).rows
 
 beforeAll(async () => {
   await migrateTestDb();
-  await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" });
-  await db().insert(schema.department).values({ code: "DES", name: "Thiết kế" });
+  await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" });
+  await db().insert(schema.orgUnit).values({ code: "DES", name: "Thiết kế" });
 });
 
 it("finds duplicates, missing references and loops — including loops through departments already in the system", async () => {
@@ -33,7 +33,7 @@ it("creates and updates in one go, whatever order the parents come in", async ()
   const counts = await db().transaction((tx) => definition.commit(rows, tx as unknown as Tx, undefined as never));
   expect(counts).toEqual({ created: 2, updated: 1 });
 
-  const departments = await db().select().from(schema.department);
+  const departments = await db().select().from(schema.orgUnit);
   const byCode = Object.fromEntries(departments.map((department) => [department.code, department]));
   expect(byCode.DES.name).toBe("Thiết kế & Sáng tạo");
   expect(byCode.MOT.parentId).toBe(byCode.DES.id);

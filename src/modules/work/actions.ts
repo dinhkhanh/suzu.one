@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
-import { findDepartment } from "../platform/org/service";
+import { findOrgUnit } from "../platform/org/service";
 import { addComment, deleteComment, editComment, findComment, toggleReaction } from "./comments";
 import { beginTaskUpload, completeTaskUpload, findTaskFile, removeTaskFile, taskFileLink } from "./attachments";
 import { setFollowing } from "./followers";
@@ -38,7 +38,7 @@ const createTeamPipeline = createAction({
   authorize: async (user, input) => canManageWorkspace(await loadViewer(user), { entityId: input.entityId, departmentId: input.departmentId }),
   run: async ({ user, input }) => {
     const { preset, stateNames, ...values } = input;
-    if (values.departmentId && !(await findDepartment(values.departmentId))) values.departmentId = null;
+    if (values.departmentId && !(await findOrgUnit(values.departmentId))) values.departmentId = null;
     const team = await createTeam(values, preset, stateNames, user.person.id);
     revalidatePath("/work");
     return { data: { id: team.id }, audit: { resource: { type: "work_team", id: team.id, entityId: team.entityId }, summary: `${team.key}: ${team.name}`, after: team } };

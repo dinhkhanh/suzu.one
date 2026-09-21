@@ -13,10 +13,10 @@ export default async function AttendanceSettingsLayout({ children }: { children:
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1>{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
-      <nav className="flex flex-wrap gap-4 border-b pb-2 text-sm">
+      <nav className="tab-row border-b pb-2">
         {(["calendar", "schedules", "shifts", "locations", "policy"] as const).map((tab) => (
           <Link key={tab} href={`/attendance/settings/${tab}`} className="underline-offset-4 hover:underline">
             {t(`tabs.${tab}`)}

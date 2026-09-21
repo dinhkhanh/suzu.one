@@ -16,14 +16,14 @@ export type TeamCalendar = { dates: { date: IsoDate; kind: string }[]; people: C
 
 export async function getTeamCalendar(viewer: { personId: string; principal: Principal }, range: { from: IsoDate; to: IsoDate; departmentId?: string | null }): Promise<TeamCalendar> {
   const rows = await db()
-    .select({ person: schema.person, departmentName: schema.department.name })
+    .select({ person: schema.person, departmentName: schema.orgUnit.name })
     .from(schema.person)
-    .leftJoin(schema.department, eq(schema.department.id, schema.person.departmentId))
+    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.person.departmentId))
     .where(eq(schema.person.status, "active"));
   const me = rows.find((row) => row.person.id === viewer.personId)?.person;
   const hrReach = permissionReach(viewer.principal, "leave:manage");
   const personalReach = tierReach(viewer.principal, "personal");
-  const target = (person: typeof schema.person.$inferSelect) => ({ personId: person.id, entityId: person.primaryEntityId, departmentId: person.departmentId, teamId: person.teamId, managerId: person.managerId });
+  const target = (person: typeof schema.person.$inferSelect) => ({ personId: person.id, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId });
   // Collaborators have no directory: they see themselves only.
   const sameGroup = (person: typeof schema.person.$inferSelect) =>
     !!me && viewer.principal.workforceType !== "collaborator" && (me.teamId ? person.teamId === me.teamId : !!me.departmentId && person.departmentId === me.departmentId && person.primaryEntityId === me.primaryEntityId);

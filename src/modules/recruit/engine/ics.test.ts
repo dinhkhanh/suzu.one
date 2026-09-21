@@ -105,7 +105,7 @@ describe("renderIcs", () => {
       [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        "PRODID:-//Suzu One//Recruitment//VI",
+        "PRODID:-//SuZu One//Recruitment//VI",
         "CALSCALE:GREGORIAN",
         "METHOD:REQUEST",
         "BEGIN:VEVENT",

@@ -27,9 +27,10 @@ export async function getDayPlans(personIds: readonly string[], from: IsoDate, t
   const result = new Map<string, PersonDayPlans>();
   if (personIds.length === 0 || to < from) return result;
   const ids = [...new Set(personIds)];
-  const people = await executor.select({ personId: schema.person.id, entityId: schema.person.primaryEntityId, departmentId: schema.person.departmentId }).from(schema.person).where(inArray(schema.person.id, ids));
+  const people = await executor.select({ personId: schema.person.id, entityId: schema.person.primaryEntityId, unitPath: schema.person.orgUnitPath }).from(schema.person).where(inArray(schema.person.id, ids));
   const entityIds = [...new Set(people.flatMap((row) => (row.entityId ? [row.entityId] : [])))];
-  const departmentIds = [...new Set(people.flatMap((row) => (row.departmentId ? [row.departmentId] : [])))];
+  // Every unit above each person: a schedule set on a department applies to its teams as well.
+  const departmentIds = [...new Set(people.flatMap((row) => row.unitPath))];
 
   const [assignments, schedules, calendar, roster] = await Promise.all([
     executor
@@ -206,13 +207,13 @@ export type AssignmentView = ScheduleAssignmentRow & { scheduleName: string; ent
 
 export async function listAssignments(): Promise<AssignmentView[]> {
   const rows = await db()
-    .select({ row: schema.scheduleAssignment, scheduleName: schema.workSchedule.name, entityName: schema.entity.shortName, departmentName: schema.department.name, personName: schema.person.fullName })
+    .select({ row: schema.scheduleAssignment, scheduleName: schema.workSchedule.name, entityName: schema.entity.shortName, departmentName: schema.orgUnit.name, personName: schema.person.fullName })
     .from(schema.scheduleAssignment)
     .innerJoin(schema.workSchedule, eq(schema.workSchedule.id, schema.scheduleAssignment.scheduleId))
     .leftJoin(schema.entity, eq(schema.entity.id, schema.scheduleAssignment.entityId))
-    .leftJoin(schema.department, eq(schema.department.id, schema.scheduleAssignment.departmentId))
+    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.scheduleAssignment.departmentId))
     .leftJoin(schema.person, eq(schema.person.id, schema.scheduleAssignment.personId))
-    .orderBy(asc(schema.scheduleAssignment.scope), asc(schema.entity.shortName), asc(schema.department.name), asc(schema.person.fullName), desc(schema.scheduleAssignment.validFrom));
+    .orderBy(asc(schema.scheduleAssignment.scope), asc(schema.entity.shortName), asc(schema.orgUnit.name), asc(schema.person.fullName), desc(schema.scheduleAssignment.validFrom));
   return rows.map(({ row, ...names }) => ({ ...row, ...names }));
 }
 

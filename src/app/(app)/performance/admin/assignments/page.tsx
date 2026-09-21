@@ -30,7 +30,7 @@ export default async function KpiAssignmentsPage({ searchParams }: PageProps<"/p
           {t("assignments.back")}
         </Link>
         <header className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-medium">{person.fullName}</h2>
+          <h2>{person.fullName}</h2>
           <Link href={`/performance/kpis/${person.personId}`} className="text-sm underline underline-offset-4">
             {t("assignments.scorecard")}
           </Link>

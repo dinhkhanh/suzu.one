@@ -31,7 +31,7 @@ const localDriver: ChatDriver = { name: "local", space: null, send: async () => 
 export function chatCard(message: ChatMessage): Record<string, unknown> {
   const buttons = [
     ...(message.actionLink && message.actionLabel ? [{ text: message.actionLabel, onClick: { openLink: { url: message.actionLink } } }] : []),
-    ...(message.link ? [{ text: "Mở Suzu One", onClick: { openLink: { url: message.link } } }] : []),
+    ...(message.link ? [{ text: "Mở SuZu One", onClick: { openLink: { url: message.link } } }] : []),
   ];
   return {
     text: `${message.title}\n${message.body}${message.link ? `\n${message.link}` : ""}`,
@@ -39,7 +39,7 @@ export function chatCard(message: ChatMessage): Record<string, unknown> {
       {
         cardId: "suzu-one",
         card: {
-          header: { title: message.title, subtitle: "Suzu One" },
+          header: { title: message.title, subtitle: "SuZu One" },
           sections: [{ widgets: [{ textParagraph: { text: message.body } }, ...(buttons.length ? [{ buttonList: { buttons } }] : [])] }],
         },
       },

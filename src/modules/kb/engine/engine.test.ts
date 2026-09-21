@@ -14,7 +14,7 @@ const sample = doc(
   paragraph("Nhân viên được ", bold("12 ngày"), " phép năm. Xem ", link("biểu mẫu", "/kb/pages/abc"), "."),
   callout("warning", "Báo trước 3 ngày làm việc."),
   heading(2, "Các bước"),
-  orderedList("Tạo đơn trên Suzu One", "Quản lý duyệt"),
+  orderedList("Tạo đơn trên SuZu One", "Quản lý duyệt"),
   bulletList([paragraph("Mục cha"), bulletList("Mục con")]),
   table(["Loại", "Số ngày"], ["Phép năm", "12"], ["Kết hôn", "3"]),
   codeBlock("a = 1\nb = 2", "python"),
@@ -104,7 +104,7 @@ describe("validateDoc", () => {
 describe("reading a document", () => {
   it("gives the plain text one line per block, a table row per line", () => {
     expect(docToPlainText(sample)).toBe(
-      ["Quy định nghỉ phép", "Nhân viên được 12 ngày phép năm. Xem biểu mẫu.", "Báo trước 3 ngày làm việc.", "Các bước", "Tạo đơn trên Suzu One", "Quản lý duyệt", "Mục cha", "Mục con", "Loại | Số ngày", "Phép năm | 12", "Kết hôn | 3", "a = 1", "b = 2", "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "Mẫu đơn.pdf", "Sơ đồ", "Hỏi @Phạm Bảo", "cuối."].join("\n"),
+      ["Quy định nghỉ phép", "Nhân viên được 12 ngày phép năm. Xem biểu mẫu.", "Báo trước 3 ngày làm việc.", "Các bước", "Tạo đơn trên SuZu One", "Quản lý duyệt", "Mục cha", "Mục con", "Loại | Số ngày", "Phép năm | 12", "Kết hôn | 3", "a = 1", "b = 2", "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "Mẫu đơn.pdf", "Sơ đồ", "Hỏi @Phạm Bảo", "cuối."].join("\n"),
     );
     expect(docToPlainText(doc())).toBe("");
   });

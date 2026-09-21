@@ -1,6 +1,6 @@
-# Suzu One
+# SuZu One
 
-Internal operations platform for Suzu Group: HRM first (people, attendance, leave, payroll, recruitment, performance), plus work management, an HR/finance obligations tracker, a knowledge base and internal comms. CRM follows later.
+Internal operations platform for SuZu Group: HRM first (people, attendance, leave, payroll, recruitment, performance), plus work management, an HR/finance obligations tracker, a knowledge base and internal comms. CRM follows later.
 
 - Requirements: [docs/SRS.md](docs/SRS.md)
 - Architecture, phases and status: [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)

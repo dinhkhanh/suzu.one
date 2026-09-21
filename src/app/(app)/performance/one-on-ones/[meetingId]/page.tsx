@@ -40,7 +40,7 @@ export default async function OneOnOnePage({ params }: PageProps<"/performance/o
         <Link href="/performance/one-on-ones" className="text-sm text-muted-foreground hover:underline">
           ← {t("title")}
         </Link>
-        <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight">
+        <h1 className="flex flex-wrap items-center gap-2">
           {format.dateTime(new Date(`${meeting.meetingOn}T00:00:00+07:00`), { dateStyle: "long" })}
           <Badge variant={meeting.status === "shared" ? "secondary" : "outline"}>{t(`status.${meeting.status}`)}</Badge>
         </h1>
@@ -67,7 +67,7 @@ export default async function OneOnOnePage({ params }: PageProps<"/performance/o
       {mayWrite && meeting.status === "draft" ? <ShareOneOnOneButton meetingId={meeting.id} /> : null}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">{t("actions.title")}</h2>
+        <h2>{t("actions.title")}</h2>
         <ul className="flex flex-col divide-y rounded-xl border px-4 text-sm">
           {meeting.actions.map((action) => (
             <li key={action.id} className="flex flex-wrap items-baseline justify-between gap-3 py-2">

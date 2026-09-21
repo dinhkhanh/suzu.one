@@ -10,7 +10,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
 import { addDays, todayInVietnam } from "../src/lib/dates";
-import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, department, entity, kbAckAudience, kbAcknowledgement, kbAckReminder, kbAccess, kbPage, kbPageChunk, kbPageVersion, kbSpace, person } from "../src/lib/db/schema";
+import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, orgUnit, entity, kbAckAudience, kbAcknowledgement, kbAckReminder, kbAccess, kbPage, kbPageChunk, kbPageVersion, kbSpace, person } from "../src/lib/db/schema";
 import { toSearchKey } from "../src/lib/text";
 import { chunkDoc, chunkEmbeddingText } from "../src/modules/kb/engine/chunk";
 import { FAKE_EMBEDDING_MODEL, fakeEmbedding } from "../src/modules/kb/engine/fake-embedding";
@@ -30,28 +30,31 @@ const TUAN = "Võ Minh Tuấn";
 const LONG = "Đặng Hoàng Long";
 const TAM = "Bùi Thanh Tâm";
 
-const SPACES: { key: string; name: string; icon: string; description: string; entity?: string; kind: "open" | "controlled"; access: Access[] }[] = [
-  { key: "so-tay", name: "Sổ tay nhân viên", icon: "📘", kind: "controlled", description: "Những điều mọi người ở Suzu cần biết: văn hoá, nội quy, quyền lợi.", access: [["all", "view"], ["role:hr_admin", "edit"], ["role:hr_staff", "edit"]] },
+const SPACES: { key: string; name: string; icon: string; description: string; entity?: string; unit?: string; kind: "open" | "controlled"; access: Access[] }[] = [
+  { key: "so-tay", name: "Sổ tay nhân viên", icon: "📘", kind: "controlled", description: "Những điều mọi người ở SuZu cần biết: văn hoá, nội quy, quyền lợi.", access: [["all", "view"], ["role:hr_admin", "edit"], ["role:hr_staff", "edit"]] },
   { key: "chinh-sach-nhan-su", name: "Chính sách nhân sự", icon: "⚖️", kind: "controlled", description: "Chính sách và quy định do phòng Hành chính – Nhân sự ban hành.", access: [["all", "view"], ["role:hr_admin", "edit"], ["role:hr_staff", "edit"]] },
   { key: "quy-trinh-tai-chinh", name: "Quy trình tài chính", icon: "🧾", kind: "controlled", description: "Tạm ứng, thanh toán, hoá đơn — dành cho phòng Tài chính – Kế toán.", access: [["role:finance", "edit"], ["role:payroll", "edit"], ["department:FIN", "view"]] },
-  { key: "san-xuat-video", name: "Sản xuất Video", icon: "🎬", kind: "open", description: "SOP và kinh nghiệm của phòng Sản xuất Video.", access: [["department:VID", "edit"]] },
+  { key: "san-xuat-video", name: "Sản xuất Video", icon: "🎬", kind: "open", description: "SOP và kinh nghiệm của phòng Sản xuất Video.", unit: "VID", access: [["unit:VID", "edit"]] },
+  // A small team inside that department, with a space its own lead runs (FR-KB-13): the people in
+  // "Hậu kỳ" reach it, the rest of the video department does not.
+  { key: "hau-ky", name: "Nhóm Hậu kỳ", icon: "🎞️", kind: "open", description: "Ghi chú nội bộ của nhóm Hậu kỳ: preset, LUT, quy ước đặt tên file.", unit: "VID-POST", access: [["unit:VID-POST", "edit"]] },
   { key: "cong-cu", name: "Công cụ & hướng dẫn", icon: "🛠️", kind: "open", description: "Mẹo dùng công cụ nội bộ. Ai cũng có thể viết và sửa.", access: [["all", "edit"]] },
 ];
 
 const PAGES: DemoPage[] = [
   {
-    key: "welcome", space: "so-tay", title: "Chào mừng đến với Suzu", owner: MAI, reviewBy: "2027-06-30",
+    key: "welcome", space: "so-tay", title: "Chào mừng đến với SuZu", owner: MAI, reviewBy: "2027-06-30",
     revisions: [
       {
         on: "2026-03-02", by: MAI, note: "Bản đầu tiên",
         content: doc(
           heading(1, "Chào mừng bạn"),
-          paragraph("Suzu Group gồm ba công ty: ", bold("Suzu Group"), ", ", bold("Suzu Media"), " và ", bold("Suzu Creative"), ". Sổ tay này giúp bạn nắm nhanh cách chúng ta làm việc."),
+          paragraph("SuZu Group gồm ba công ty: ", bold("SuZu Group"), ", ", bold("SuZu Media"), " và ", bold("SuZu Creative"), ". Sổ tay này giúp bạn nắm nhanh cách chúng ta làm việc."),
           callout("info", "Tuần đầu tiên, hãy hoàn thành danh sách hội nhập trong mục Việc của tôi và đọc các chính sách được đánh dấu bắt buộc."),
           heading(2, "Giá trị cốt lõi"),
           bulletList("Tử tế với đồng nghiệp và khách hàng", "Làm đến nơi đến chốn", "Học mỗi ngày", "Nói thẳng, nói thật, nói sớm"),
           heading(2, "Bắt đầu từ đâu"),
-          orderedList([paragraph("Đọc ", link("Nội quy lao động", "/kb"), " và ", link("Quy định nghỉ phép", "/kb"), ".")], "Cài ứng dụng Suzu One lên điện thoại để chấm công.", "Gặp quản lý trực tiếp để thống nhất mục tiêu 30 – 60 – 90 ngày."),
+          orderedList([paragraph("Đọc ", link("Nội quy lao động", "/kb"), " và ", link("Quy định nghỉ phép", "/kb"), ".")], "Cài ứng dụng SuZu One lên điện thoại để chấm công.", "Gặp quản lý trực tiếp để thống nhất mục tiêu 30 – 60 – 90 ngày."),
           heading(2, "Video giới thiệu"),
           embed("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
         ),
@@ -69,7 +72,7 @@ const PAGES: DemoPage[] = [
           heading(1, "Số ngày nghỉ"),
           table(["Loại nghỉ", "Số ngày", "Hưởng lương"], ["Phép năm", "12 ngày / năm, cộng 1 ngày mỗi 5 năm thâm niên", "Có"], ["Kết hôn", "3 ngày", "Có"], ["Con kết hôn", "1 ngày", "Có"], ["Tang cha mẹ, vợ chồng, con", "3 ngày", "Có"], ["Nghỉ không lương", "Theo thoả thuận", "Không"]),
           heading(1, "Cách xin nghỉ"),
-          orderedList("Tạo đơn trong mục Nghỉ phép trên Suzu One.", "Quản lý trực tiếp duyệt; nghỉ từ 5 ngày liên tục cần thêm trưởng phòng.", "Bàn giao công việc trước ngày nghỉ."),
+          orderedList("Tạo đơn trong mục Nghỉ phép trên SuZu One.", "Quản lý trực tiếp duyệt; nghỉ từ 5 ngày liên tục cần thêm trưởng phòng.", "Bàn giao công việc trước ngày nghỉ."),
           callout("warning", "Nghỉ phép năm từ 3 ngày trở lên cần báo trước ít nhất 5 ngày làm việc."),
         ),
       },
@@ -81,7 +84,7 @@ const PAGES: DemoPage[] = [
           heading(1, "Số ngày nghỉ"),
           table(["Loại nghỉ", "Số ngày", "Hưởng lương"], ["Phép năm", "12 ngày / năm, cộng 1 ngày mỗi 5 năm thâm niên", "Có"], ["Kết hôn", "3 ngày", "Có"], ["Con kết hôn", "1 ngày", "Có"], ["Tang cha mẹ, vợ chồng, con", "3 ngày", "Có"], ["Nghỉ không lương", "Theo thoả thuận", "Không"]),
           heading(1, "Cách xin nghỉ"),
-          orderedList("Tạo đơn trong mục Nghỉ phép trên Suzu One.", "Quản lý trực tiếp duyệt; nghỉ từ 5 ngày liên tục cần thêm trưởng phòng.", "Bàn giao công việc trước ngày nghỉ."),
+          orderedList("Tạo đơn trong mục Nghỉ phép trên SuZu One.", "Quản lý trực tiếp duyệt; nghỉ từ 5 ngày liên tục cần thêm trưởng phòng.", "Bàn giao công việc trước ngày nghỉ."),
           callout("warning", "Nghỉ phép năm từ 3 ngày trở lên cần báo trước ít nhất 5 ngày làm việc."),
           heading(1, "Chuyển phép sang năm sau"),
           paragraph("Tối đa ", bold("5 ngày"), " phép chưa dùng được chuyển sang năm sau và phải dùng trước ngày 31/3. Phần còn lại sẽ hết hạn."),
@@ -176,12 +179,13 @@ export async function seedKb(db: Db): Promise<string> {
   const ALL = [...PAGES, ...staged].sort((a, b) => (order.indexOf(a.key) < 0 ? 99 : order.indexOf(a.key)) - (order.indexOf(b.key) < 0 ? 99 : order.indexOf(b.key)));
 
   const people = new Map((await db.select({ id: person.id, name: person.fullName }).from(person)).map((row) => [row.name, row.id]));
-  const departments = new Map((await db.select({ id: department.id, code: department.code }).from(department)).map((row) => [row.code, row.id]));
+  const departments = new Map((await db.select({ id: orgUnit.id, code: orgUnit.code }).from(orgUnit)).map((row) => [row.code, row.id]));
   const entities = new Map((await db.select({ id: entity.id, code: entity.code }).from(entity)).map((row) => [row.code, row.id]));
   const who = (name: string) => people.get(name) ?? null;
   // "department:VID" in this file → "department:<uuid>" in the table.
   const subject = (key: string) => {
     const [type, code] = key.split(":");
+    if (type === "unit") return `unit:${departments.get(code)}`;
     if (type === "department") return `department:${departments.get(code)}`;
     if (type === "entity") return `entity:${entities.get(code)}`;
     return key;
@@ -194,7 +198,10 @@ export async function seedKb(db: Db): Promise<string> {
 
   const spaceIds = new Map<string, string>();
   for (const [index, space] of SPACES.entries()) {
-    const [row] = await db.insert(kbSpace).values({ key: space.key, name: space.name, icon: space.icon, description: space.description, kind: space.kind, entityId: space.entity ? entities.get(space.entity)! : null, sortOrder: index, createdByPersonId: who(MAI) }).returning();
+    const [row] = await db
+      .insert(kbSpace)
+      .values({ key: space.key, name: space.name, icon: space.icon, description: space.description, kind: space.kind, entityId: space.entity ? entities.get(space.entity)! : null, ownerUnitId: space.unit ? (departments.get(space.unit) ?? null) : null, sortOrder: index, createdByPersonId: who(MAI) })
+      .returning();
     spaceIds.set(space.key, row.id);
     await db.insert(kbAccess).values(space.access.map(([key, level]) => ({ spaceId: row.id, subjectKey: subject(key), level })));
   }

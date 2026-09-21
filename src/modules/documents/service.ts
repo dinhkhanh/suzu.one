@@ -105,10 +105,10 @@ async function buildContext(viewer: { principal: Principal; personId: string }, 
   // personal ── who they are and what they do.
   if (atLeast(template.tier, "personal")) {
     const [placement] = await db()
-      .select({ positionName: schema.position.name, departmentName: schema.department.name })
+      .select({ positionName: schema.position.name, departmentName: schema.orgUnit.name })
       .from(schema.assignment)
       .leftJoin(schema.position, eq(schema.position.id, schema.assignment.positionId))
-      .leftJoin(schema.department, eq(schema.department.id, schema.assignment.departmentId))
+      .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.assignment.departmentId))
       .where(and(eq(schema.assignment.employmentId, facts.employmentId ?? ""), eq(schema.assignment.kind, "primary")))
       .orderBy(desc(schema.assignment.validFrom))
       .limit(1);

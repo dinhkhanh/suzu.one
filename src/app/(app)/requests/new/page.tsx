@@ -23,7 +23,7 @@ export default async function NewRequestPage() {
         <Link href="/requests" className="text-sm text-muted-foreground hover:underline">
           ← {t("title")}
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("new")}</h1>
+        <h1>{t("new")}</h1>
         <p className="text-sm text-muted-foreground">{t("newDescription")}</p>
       </header>
       {types.length === 0 ? <p className="text-sm text-muted-foreground">{t("noTypes")}</p> : null}

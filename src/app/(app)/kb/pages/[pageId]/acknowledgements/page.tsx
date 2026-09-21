@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { canManageSpace, getAckReport, loadPage } from "@/modules/kb/service";
+import { canManageSpace, spaceOwner, getAckReport, loadPage } from "@/modules/kb/service";
 import { AckReportTools } from "@/modules/kb/ui/ack-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 
@@ -17,7 +17,7 @@ export default async function AckReportPage(props: PageProps<"/kb/pages/[pageId]
   const { pageId } = await props.params;
   const loaded = UUID.test(pageId) ? await loadPage(pageId) : null;
   // Who has and has not confirmed is the space's managers' business: everyone else gets "not found".
-  if (!loaded || loaded.page.deletedAt || !canManageSpace(user.principal, loaded.space)) notFound();
+  if (!loaded || loaded.page.deletedAt || !canManageSpace(user.principal, spaceOwner(loaded.space))) notFound();
 
   const t = await getTranslations("kb");
   const format = await getFormatter();
@@ -34,7 +34,7 @@ export default async function AckReportPage(props: PageProps<"/kb/pages/[pageId]
             {page.publishedTitle ?? page.title}
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("ack.reportTitle")}</h1>
+        <h1>{t("ack.reportTitle")}</h1>
         {page.ackRequired && report.versionNo ? (
           <p className="text-sm text-muted-foreground">{t("ack.reportLine", { n: report.versionNo, done: report.done, total: report.total, percent: percent(report.done, report.total), overdue: report.overdue, days: report.dueDays })}</p>
         ) : (

@@ -8,7 +8,7 @@ import type { ActionResult } from "@/lib/action";
 import { ACCESS_LEVELS, type AccessLevel, SUBJECT_TYPES, type SubjectType, subjectKey } from "../enums";
 
 type Option = { id: string; name: string };
-export type AccessChoices = { entities: Option[]; departments: Option[]; teams: Option[]; people: Option[]; roles: readonly string[] };
+export type AccessChoices = { entities: Option[]; units: Option[]; people: Option[]; roles: readonly string[] };
 export type AccessRowView = { subjectKey: string; level: AccessLevel; label: string };
 
 /** Who a space, or a page and everything under it, is open to. Saves the whole list at once. */
@@ -24,7 +24,7 @@ export function AccessForm({ target, rows, choices, action, levels = ACCESS_LEVE
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const options: Option[] = type === "entity" ? choices.entities : type === "department" ? choices.departments : type === "team" ? choices.teams : type === "person" ? choices.people : type === "role" ? choices.roles.map((role) => ({ id: role, name: tRoles(role as "owner") })) : [];
+  const options: Option[] = type === "entity" ? choices.entities : type === "unit" || type === "unit_only" ? choices.units : type === "person" ? choices.people : type === "role" ? choices.roles.map((role) => ({ id: role, name: tRoles(role as "owner") })) : [];
   const labelOf = (subjectType: SubjectType, option: Option | undefined) => (subjectType === "all" ? t("access.subject.all") : `${t(`access.subject.${subjectType}`)}: ${option?.name ?? ""}`);
 
   function add() {

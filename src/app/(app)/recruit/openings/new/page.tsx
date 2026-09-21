@@ -20,7 +20,7 @@ export default async function NewOpeningPage({ searchParams }: PageProps<"/recru
   const [pipelines, entities, departments] = await Promise.all([
     listPipelines(),
     db().select().from(schema.entity).orderBy(asc(schema.entity.code)),
-    db().select({ id: schema.department.id, name: schema.department.name }).from(schema.department).orderBy(asc(schema.department.name)),
+    db().select({ id: schema.orgUnit.id, name: schema.orgUnit.name }).from(schema.orgUnit).orderBy(asc(schema.orgUnit.name)),
   ]);
 
   const ask = typeof from === "string" ? await findHiringRequest(from) : undefined;
@@ -30,7 +30,7 @@ export default async function NewOpeningPage({ searchParams }: PageProps<"/recru
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("newOpening")}</h1>
+      <h1>{t("newOpening")}</h1>
       <OpeningForm
         value={{
           id: null,

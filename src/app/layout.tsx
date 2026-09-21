@@ -10,11 +10,11 @@ const sans = Inter({ variable: "--font-sans", subsets: ["latin", "vietnamese"] }
 const mono = JetBrains_Mono({ variable: "--font-mono", subsets: ["latin", "vietnamese"] });
 
 export const metadata: Metadata = {
-  title: { default: "Suzu One", template: "%s · Suzu One" },
-  description: "Suzu Group internal operations platform",
+  title: { default: "SuZu One", template: "%s · SuZu One" },
+  description: "SuZu Group internal operations platform",
   robots: { index: false, follow: false },
   // Installed on a phone: the home-screen name and icon on iOS (Android reads the manifest).
-  appleWebApp: { capable: true, title: "Suzu One", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "SuZu One", statusBarStyle: "default" },
   icons: { icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }], apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }] },
 };
 

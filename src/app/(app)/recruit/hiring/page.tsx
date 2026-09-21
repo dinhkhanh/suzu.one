@@ -20,7 +20,7 @@ export default async function HiringRequestsPage() {
     <div className="flex max-w-4xl flex-col gap-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("hiring")}</h1>
+          <h1>{t("hiring")}</h1>
           <p className="text-sm text-muted-foreground">{t("description")}</p>
         </div>
         <Link href="/recruit/hiring/new" className={buttonVariants({ size: "sm" })}>

@@ -12,7 +12,7 @@ export function CommentForm({ requestId }: { requestId: string }) {
   const t = useTranslations("approvals");
   const { onSubmit, pending, errorKey, saved } = useActionForm(commentApprovalAction, { extra: { requestId } });
   return (
-    <form onSubmit={onSubmit} key={saved ? "saved" : "open"} className="flex flex-wrap items-end gap-2">
+    <form onSubmit={onSubmit} key={saved ? "saved" : "open"} className="toolbar">
       <div className="min-w-0 flex-1">
         <Field name="comment" label={t("tools.comment")}>
           <Input id="comment-only" name="comment" maxLength={1000} required placeholder={t("tools.commentHint")} />

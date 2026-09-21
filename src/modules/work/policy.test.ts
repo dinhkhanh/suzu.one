@@ -23,8 +23,8 @@ const member = viewer("huy", { teams: { "team-video": "member" } });
 const colleague = viewer("bao");
 const otherEntity = viewer("khoi", { entityId: SZC });
 const owner = viewer("owner", { grants: [{ role: "owner", scope: { type: "group" } }] });
-const head = viewer("head", { grants: [{ role: "department_head", scope: { type: "department", id: VID } }] });
-const otherHead = viewer("chi", { entityId: SZC, grants: [{ role: "department_head", scope: { type: "department", id: "dept-des" } }] });
+const head = viewer("head", { grants: [{ role: "department_head", scope: { type: "unit", id: VID } }] });
+const otherHead = viewer("chi", { entityId: SZC, grants: [{ role: "department_head", scope: { type: "unit", id: "dept-des" } }] });
 const freelancer = viewer("bao-anh", { collaborator: true });
 
 describe("teams", () => {

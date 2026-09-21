@@ -4,8 +4,14 @@ import { ROLE_DEFINITIONS, type Permission, type Role, type Tier, tierRank } fro
 export type Scope =
   | { type: "group" }
   | { type: "entity"; id: string }
-  | { type: "department"; id: string }
-  | { type: "team"; id: string };
+  // One unit of the org tree — and, with it, every unit below (FR-PLT-16): a grant on Marketing
+  // covers Marketing › Social › Video Editing without naming them. `covers` is that subtree, read
+  // from the tree when the grant is loaded (`loadGrants`); without it the grant reaches the one
+  // unit alone, which is what a hand-built grant in a test means.
+  | { type: "unit"; id: string; covers?: readonly string[] };
+
+/** Every unit a unit grant reaches. */
+export const unitsCovered = (scope: Extract<Scope, { type: "unit" }>): readonly string[] => scope.covers ?? [scope.id];
 
 export type Grant = { role: Role; scope: Scope };
 
@@ -18,8 +24,13 @@ export type Principal = {
 // Where the thing being accessed sits in the organisation. Omit fields that do not apply.
 export type Target = {
   entityId?: string | null;
-  departmentId?: string | null;
-  teamId?: string | null;
+  /**
+   * The unit the thing sits in and every unit above it, root first — `person.org_unit_path`, or
+   * `unitPathOf(...)` for a record that names a unit. A grant matches when any of these units is
+   * one the grant covers. Passing the unit alone (`[unitId]`) is enough where the chain is not at
+   * hand: a loaded grant knows its own subtree.
+   */
+  unitPath?: readonly string[] | null;
   // For person-shaped resources.
   personId?: string | null;
   managerId?: string | null;
@@ -31,10 +42,11 @@ export function scopeCovers(scope: Scope, target: Target): boolean {
       return true;
     case "entity":
       return target.entityId === scope.id;
-    case "department":
-      return target.departmentId === scope.id;
-    case "team":
-      return target.teamId === scope.id;
+    case "unit": {
+      // Either side may carry the tree: the target's chain of ancestors, or the grant's subtree.
+      const covered = unitsCovered(scope);
+      return !!target.unitPath?.some((unitId) => covered.includes(unitId));
+    }
   }
 }
 
@@ -56,7 +68,7 @@ export function can(principal: Principal, permission: Exclude<Permission, "*">, 
 
 /**
  * The list form of `can`, for records that only know their entity (the audit log): which entities
- * does the principal hold `permission` over? Department and team grants cover no whole entity.
+ * does the principal hold `permission` over? A unit grant covers no whole entity.
  */
 export function entityReach(principal: Principal, permission: Exclude<Permission, "*">): { all: true } | { all: false; entityIds: string[] } {
   const entityIds: string[] = [];
@@ -104,12 +116,12 @@ export function canReadTier(principal: Principal, person: Target & { personId: s
 // reference semantics and a test keeps both in step with `canReadTier`.
 export type TierReach =
   | { all: true }
-  | { all: false; entityIds: string[]; departmentIds: string[]; teamIds: string[]; managerOf: string | null };
+  | { all: false; entityIds: string[]; unitIds: string[]; managerOf: string | null };
 
 export function tierReach(principal: Principal, tier: Tier): TierReach {
   if (tier === "public_internal" && principal.workforceType !== "collaborator") return { all: true };
 
-  const reach = { all: false as const, entityIds: [] as string[], departmentIds: [] as string[], teamIds: [] as string[], managerOf: null as string | null };
+  const reach = { all: false as const, entityIds: [] as string[], unitIds: [] as string[], managerOf: null as string | null };
   if (tierRank(tier) <= tierRank("personal")) reach.managerOf = principal.personId;
 
   for (const grant of principal.grants) {
@@ -118,8 +130,7 @@ export function tierReach(principal: Principal, tier: Tier): TierReach {
     if (!readsPeople || tierRank(definition.maxTier) < tierRank(tier)) continue;
     if (grant.scope.type === "group") return { all: true };
     if (grant.scope.type === "entity") reach.entityIds.push(grant.scope.id);
-    if (grant.scope.type === "department") reach.departmentIds.push(grant.scope.id);
-    if (grant.scope.type === "team") reach.teamIds.push(grant.scope.id);
+    if (grant.scope.type === "unit") reach.unitIds.push(...unitsCovered(grant.scope));
   }
   return reach;
 }
@@ -130,26 +141,24 @@ export function tierReach(principal: Principal, tier: Tier): TierReach {
  * line-manager clause: a permission comes from grants only. A test keeps it in step with `can`.
  */
 export function permissionReach(principal: Principal, permission: Exclude<Permission, "*">): TierReach {
-  const reach = { all: false as const, entityIds: [] as string[], departmentIds: [] as string[], teamIds: [] as string[], managerOf: null };
+  const reach = { all: false as const, entityIds: [] as string[], unitIds: [] as string[], managerOf: null };
   for (const grant of principal.grants) {
     const permissions = ROLE_DEFINITIONS[grant.role].permissions;
     if (!permissions.includes("*") && !permissions.includes(permission)) continue;
     if (grant.scope.type === "group") return { all: true };
     if (grant.scope.type === "entity") reach.entityIds.push(grant.scope.id);
-    if (grant.scope.type === "department") reach.departmentIds.push(grant.scope.id);
-    if (grant.scope.type === "team") reach.teamIds.push(grant.scope.id);
+    if (grant.scope.type === "unit") reach.unitIds.push(...unitsCovered(grant.scope));
   }
   return reach;
 }
 
-export const reachesNothing = (reach: TierReach): boolean => !reach.all && reach.entityIds.length + reach.departmentIds.length + reach.teamIds.length === 0 && !reach.managerOf;
+export const reachesNothing = (reach: TierReach): boolean => !reach.all && reach.entityIds.length + reach.unitIds.length === 0 && !reach.managerOf;
 
 export function matchesReach(reach: TierReach, person: Target): boolean {
   if (reach.all) return true;
   return (
     (!!person.entityId && reach.entityIds.includes(person.entityId)) ||
-    (!!person.departmentId && reach.departmentIds.includes(person.departmentId)) ||
-    (!!person.teamId && reach.teamIds.includes(person.teamId)) ||
+    !!person.unitPath?.some((unitId) => reach.unitIds.includes(unitId)) ||
     (!!reach.managerOf && person.managerId === reach.managerOf)
   );
 }

@@ -59,7 +59,7 @@ const wordingOf = (template: EmailTemplateRow, locale: string) =>
 
 /**
  * The facts a letter may name, assembled from the records — never from the form. `careers_url` is
- * the public list, which is the only Suzu One address a candidate is ever sent to.
+ * the public list, which is the only SuZu One address a candidate is ever sent to.
  */
 async function contextFor(applicationId: string, senderName: string): Promise<{ context: Record<string, string>; to: string; candidateName: string; openingCode: string; entityId: string | null }> {
   const application = await findApplication(applicationId);

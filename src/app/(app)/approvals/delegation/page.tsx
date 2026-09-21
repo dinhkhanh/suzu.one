@@ -28,7 +28,7 @@ export default async function DelegationPage() {
         <Link href="/approvals" className="text-sm text-muted-foreground hover:underline">
           ← {t("title")}
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("delegation.title")}</h1>
+        <h1>{t("delegation.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("delegation.description")}</p>
       </header>
       <DelegationForm people={people.filter((person) => person.id !== user.person.id)} requestTypes={[...registered.keys()].map((type) => ({ type, name: label(type) }))} today={today} />

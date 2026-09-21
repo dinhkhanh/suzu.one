@@ -26,7 +26,7 @@ const ids = {} as Record<"media" | "creative" | "owner" | "head" | "manager" | "
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "Suzu Media", shortName: "Media" }, { code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }]).returning();
+  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "SuZu Media", shortName: "Media" }, { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }]).returning();
   const person = async (name: string, entityId: string, managerId: string | null = null) => {
     const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, primaryEntityId: entityId, managerId }).returning();
     return row.id;

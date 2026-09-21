@@ -17,13 +17,13 @@ export default async function ReviewsPage() {
   return (
     <div className="flex max-w-4xl flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1>{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
       <PerformanceNav active="reviews" />
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-medium">{t("mine.title")}</h2>
+        <h2>{t("mine.title")}</h2>
         {mine.length === 0 ? <p className="text-sm text-muted-foreground">{t("mine.empty")}</p> : null}
         <ul className="flex flex-col divide-y rounded-xl border">
           {mine.map((line) => (
@@ -45,7 +45,7 @@ export default async function ReviewsPage() {
           wrote — only that somebody is waiting on me. */}
       {invitations.length > 0 ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-lg font-medium">{t("peers.invitations")}</h2>
+          <h2>{t("peers.invitations")}</h2>
           <ul className="flex flex-col divide-y rounded-xl border">
             {invitations.map((invitation) => (
               <li key={invitation.nominationId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
@@ -65,7 +65,7 @@ export default async function ReviewsPage() {
 
       {owed.length > 0 ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-lg font-medium">{t("owed.title")}</h2>
+          <h2>{t("owed.title")}</h2>
           <p className="text-sm text-muted-foreground">{t("owed.description")}</p>
           <ul className="flex flex-col divide-y rounded-xl border">
             {owed.map((line) => (

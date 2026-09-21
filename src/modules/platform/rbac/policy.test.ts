@@ -5,12 +5,17 @@ import { ROLES, TIERS } from "./roles";
 const ENTITY_A = "entity-a";
 const ENTITY_B = "entity-b";
 const DESIGN = "dept-design";
+// Design holds a big team, which holds a small one: the depth the tree is allowed (FR-PLT-16).
+const SOCIAL = "team-social";
+const EDITING = "team-editing";
+// A person's chain, root first, as `person.org_unit_path` stores it.
+const chain = [DESIGN, SOCIAL, EDITING];
 
 function principal(grants: Grant[], overrides: Partial<Principal> = {}): Principal {
   return { personId: "me", workforceType: "employee", grants, ...overrides };
 }
 
-const lan = { personId: "lan", entityId: ENTITY_A, departmentId: DESIGN, managerId: "manager-1" };
+const lan = { personId: "lan", entityId: ENTITY_A, unitPath: [DESIGN], managerId: "manager-1" };
 
 describe("can", () => {
   it("gives the owner everything, everywhere", () => {
@@ -66,9 +71,9 @@ describe("can", () => {
 
 describe("work and ops permissions (Phase 3)", () => {
   it("lets leaders run work management in their scope, and nobody else by role", () => {
-    const head = principal([{ role: "department_head", scope: { type: "department", id: DESIGN } }]);
-    expect(can(head, "work:manage", { departmentId: DESIGN, entityId: ENTITY_A })).toBe(true);
-    expect(can(head, "work:manage", { departmentId: "dept-video", entityId: ENTITY_A })).toBe(false);
+    const head = principal([{ role: "department_head", scope: { type: "unit", id: DESIGN } }]);
+    expect(can(head, "work:manage", { unitPath: [DESIGN], entityId: ENTITY_A })).toBe(true);
+    expect(can(head, "work:manage", { unitPath: ["dept-video"], entityId: ENTITY_A })).toBe(false);
     expect(can(principal([{ role: "entity_director", scope: { type: "entity", id: ENTITY_A } }]), "work:manage", { entityId: ENTITY_A })).toBe(true);
     expect(can(principal([{ role: "entity_director", scope: { type: "entity", id: ENTITY_A } }]), "work:manage", { entityId: ENTITY_B })).toBe(false);
     for (const role of ["hr_admin", "hr_staff", "payroll", "finance", "recruiter", "asset_admin", "auditor"] as const) expect(can(principal([{ role, scope: { type: "group" } }]), "work:manage")).toBe(false);
@@ -102,10 +107,10 @@ describe("work and ops permissions (Phase 3)", () => {
       for (const permission of ["performance:manage", "performance:goals", "performance:read"] as const) expect(can(principal([{ role, scope: group }]), permission)).toBe(false);
     }
     // A department head's grant covers the department's goal, not the group's or another department's.
-    const head = principal([{ role: "department_head", scope: { type: "department", id: DESIGN } }]);
-    expect(can(head, "performance:goals", { departmentId: DESIGN, entityId: ENTITY_A })).toBe(true);
+    const head = principal([{ role: "department_head", scope: { type: "unit", id: DESIGN } }]);
+    expect(can(head, "performance:goals", { unitPath: [DESIGN], entityId: ENTITY_A })).toBe(true);
     expect(can(head, "performance:goals", {})).toBe(false);
-    expect(can(head, "performance:goals", { departmentId: "dept-other" })).toBe(false);
+    expect(can(head, "performance:goals", { unitPath: ["dept-other"] })).toBe(false);
   });
 
   it("lets HR run the knowledge base, and leaders and HR post announcements within their scope", () => {
@@ -120,9 +125,43 @@ describe("work and ops permissions (Phase 3)", () => {
     expect(can(hr, "kb:manage", { entityId: null })).toBe(false);
     expect(can(hr, "kb:manage", { entityId: ENTITY_B })).toBe(false);
     // A department head announces to the department, not to the entity.
-    const head = principal([{ role: "department_head", scope: { type: "department", id: DESIGN } }]);
-    expect(can(head, "comms:manage", { departmentId: DESIGN })).toBe(true);
+    const head = principal([{ role: "department_head", scope: { type: "unit", id: DESIGN } }]);
+    expect(can(head, "comms:manage", { unitPath: [DESIGN] })).toBe(true);
     expect(can(head, "comms:manage", { entityId: ENTITY_A })).toBe(false);
+  });
+});
+
+describe("unit scopes reach down the tree (FR-PLT-16)", () => {
+  const head = principal([{ role: "department_head", scope: { type: "unit", id: DESIGN } }]);
+
+  it("covers a small team several levels below the unit the grant names", () => {
+    expect(can(head, "work:manage", { unitPath: chain, entityId: ENTITY_A })).toBe(true);
+    expect(can(head, "work:manage", { unitPath: [DESIGN, SOCIAL], entityId: ENTITY_A })).toBe(true);
+    // Sideways, not downwards: another department's small team is out of reach.
+    expect(can(head, "work:manage", { unitPath: ["dept-video", "team-shoot"], entityId: ENTITY_A })).toBe(false);
+  });
+
+  it("does not reach upwards: the head of a small team is not the head of its department", () => {
+    const teamLead = principal([{ role: "department_head", scope: { type: "unit", id: EDITING } }]);
+    expect(can(teamLead, "work:manage", { unitPath: chain, entityId: ENTITY_A })).toBe(true);
+    expect(can(teamLead, "work:manage", { unitPath: [DESIGN], entityId: ENTITY_A })).toBe(false);
+    expect(can(teamLead, "work:manage", { unitPath: [DESIGN, SOCIAL], entityId: ENTITY_A })).toBe(false);
+  });
+
+  it("matches a target that knows only its own unit, because the grant carries its subtree", () => {
+    // What a job opening or a work team can say about itself: one unit id, no chain.
+    const withSubtree = principal([{ role: "department_head", scope: { type: "unit", id: DESIGN, covers: chain } }]);
+    expect(can(withSubtree, "work:manage", { unitPath: [EDITING] })).toBe(true);
+    expect(can(withSubtree, "work:manage", { unitPath: ["team-shoot"] })).toBe(false);
+    // Without the subtree the grant reaches the one unit it names.
+    expect(can(head, "work:manage", { unitPath: [EDITING] })).toBe(false);
+    expect(can(head, "work:manage", { unitPath: [DESIGN] })).toBe(true);
+  });
+
+  it("reads a person below the unit at the role's tier, and a person outside it as a colleague", () => {
+    expect(readableTier(head, { ...lan, unitPath: chain })).toBe("personal");
+    expect(readableTier(head, { ...lan, unitPath: ["dept-video"] })).toBe("public_internal");
+    expect(matchesReach(tierReach(head, "personal"), { ...lan, unitPath: chain })).toBe(true);
   });
 });
 
@@ -143,9 +182,9 @@ describe("readableTier", () => {
   });
 
   it("gives a department head personal data for their department only", () => {
-    const head = principal([{ role: "department_head", scope: { type: "department", id: DESIGN } }]);
+    const head = principal([{ role: "department_head", scope: { type: "unit", id: DESIGN } }]);
     expect(readableTier(head, lan)).toBe("personal");
-    expect(readableTier(head, { ...lan, departmentId: "dept-video" })).toBe("public_internal");
+    expect(readableTier(head, { ...lan, unitPath: ["dept-video"] })).toBe("public_internal");
   });
 
   it("limits HR staff to restricted data and keeps compensation for payroll roles", () => {
@@ -175,8 +214,8 @@ describe("tierReach", () => {
     const scopes = [
       { type: "group" },
       { type: "entity", id: ENTITY_A },
-      { type: "department", id: DESIGN },
-      { type: "team", id: TEAM },
+      { type: "unit", id: DESIGN },
+      { type: "unit", id: TEAM },
     ] as const;
     const principals = [
       principal([]),
@@ -187,9 +226,9 @@ describe("tierReach", () => {
     ];
     const targets = [
       lan,
-      { ...lan, teamId: TEAM },
-      { ...lan, entityId: ENTITY_B, departmentId: "dept-video", managerId: null },
-      { personId: "loose", entityId: null, departmentId: null, teamId: null, managerId: null },
+      { ...lan, unitPath: [DESIGN, TEAM] },
+      { ...lan, entityId: ENTITY_B, unitPath: ["dept-video"], managerId: null },
+      { personId: "loose", entityId: null, unitPath: [], managerId: null },
     ];
     for (const who of principals) {
       for (const tier of TIERS) {
@@ -213,7 +252,7 @@ describe("entityReach", () => {
   const grants = (...list: Grant[]): Principal => ({ personId: "viewer", workforceType: "employee", grants: list });
 
   it("agrees with can() for every role, scope and entity", () => {
-    const scopes: Grant["scope"][] = [{ type: "group" }, { type: "entity", id: ENTITY_A }, { type: "department", id: DESIGN }, { type: "team", id: "team-1" }];
+    const scopes: Grant["scope"][] = [{ type: "group" }, { type: "entity", id: ENTITY_A }, { type: "unit", id: DESIGN }, { type: "unit", id: "team-1" }];
     for (const role of ROLES) {
       for (const scope of scopes) {
         const principal = grants({ role, scope });
@@ -252,9 +291,9 @@ describe("rule governance (FR-PLT-39)", () => {
 describe("permissionReach", () => {
   it("agrees with can() for every role, scope, permission and target", () => {
     const TEAM = "team-ui";
-    const scopes = [{ type: "group" }, { type: "entity", id: ENTITY_A }, { type: "department", id: DESIGN }, { type: "team", id: TEAM }] as const;
+    const scopes = [{ type: "group" }, { type: "entity", id: ENTITY_A }, { type: "unit", id: DESIGN }, { type: "unit", id: TEAM }] as const;
     const permissions = ["report:read", "person:manage", "person:read", "audit:read", "payroll:read"] as const;
-    const targets = [lan, { ...lan, teamId: TEAM }, { ...lan, entityId: ENTITY_B, departmentId: "dept-video" }, { personId: "loose", entityId: null, departmentId: null, teamId: null, managerId: null }];
+    const targets = [lan, { ...lan, unitPath: [DESIGN, TEAM] }, { ...lan, entityId: ENTITY_B, unitPath: ["dept-video"] }, { personId: "loose", entityId: null, unitPath: [], managerId: null }];
     for (const role of ROLES) {
       for (const scope of scopes) {
         // The viewer is also lan's line manager: that must never widen a permission.
@@ -270,6 +309,6 @@ describe("permissionReach", () => {
   it("is empty without a grant that carries the permission", () => {
     expect(reachesNothing(permissionReach(principal([]), "report:read"))).toBe(true);
     expect(reachesNothing(permissionReach(principal([{ role: "recruiter", scope: { type: "group" } }]), "report:read"))).toBe(true);
-    expect(permissionReach(principal([{ role: "department_head", scope: { type: "department", id: DESIGN } }]), "report:read")).toMatchObject({ all: false, departmentIds: [DESIGN], entityIds: [] });
+    expect(permissionReach(principal([{ role: "department_head", scope: { type: "unit", id: DESIGN } }]), "report:read")).toMatchObject({ all: false, unitIds: [DESIGN], entityIds: [] });
   });
 });

@@ -61,7 +61,7 @@ export default async function ObligationPage({ params }: PageProps<"/ops/obligat
             {t("title")}
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">{task.title}</h1>
+        <h1>{task.title}</h1>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge colour={colour} label={t(`enums.colour.${colour}`)} />
           <Badge variant="outline">{t(`enums.category.${template.category}`)}</Badge>

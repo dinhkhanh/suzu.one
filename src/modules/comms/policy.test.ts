@@ -11,7 +11,7 @@ const HUY = "00000000-0000-4000-8000-000000000101";
 const LONG = "00000000-0000-4000-8000-000000000102";
 
 const principal = (personId: string, grants: Principal["grants"] = [], workforceType: Principal["workforceType"] = "employee"): Principal => ({ personId, workforceType, grants });
-const head = principal(LONG, [{ role: "department_head", scope: { type: "department", id: VID } }]);
+const head = principal(LONG, [{ role: "department_head", scope: { type: "unit", id: VID } }]);
 const hrSzm = principal("hr", [{ role: "hr_staff", scope: { type: "entity", id: SZM } }]);
 const hrGroup = principal("hrg", [{ role: "hr_admin", scope: { type: "group" } }]);
 const employee = principal(HUY);
@@ -19,8 +19,8 @@ const employee = principal(HUY);
 const all = { key: "all", target: {} };
 const szm = { key: audienceKey("entity", SZM), target: { entityId: SZM } };
 const szc = { key: audienceKey("entity", SZC), target: { entityId: SZC } };
-const vid = { key: audienceKey("department", VID), target: { departmentId: VID, entityId: null } };
-const des = { key: audienceKey("department", DES), target: { departmentId: DES, entityId: null } };
+const vid = { key: audienceKey("unit", VID), target: { unitPath: [VID], entityId: null } };
+const des = { key: audienceKey("unit", DES), target: { unitPath: [DES], entityId: null } };
 
 describe("audience keys", () => {
   it("parses what it writes and refuses the rest", () => {
@@ -29,8 +29,8 @@ describe("audience keys", () => {
     for (const bad of ["", "everyone", "role:hr_staff", "entity:", "entity:not-a-uuid", "all:x"]) expect(parseAudienceKey(bad)).toBeNull();
   });
   it("a collaborator is reached by name only", () => {
-    const placement = { entityId: SZM, departmentId: VID, teamId: null, branchId: SZC };
-    expect(commsViewerKeys(employee, placement)).toEqual(["all", `entity:${SZM}`, `department:${VID}`, `branch:${SZC}`, `person:${HUY}`]);
+    const placement = { entityId: SZM, unitId: VID, unitPath: [VID], branchId: SZC };
+    expect(commsViewerKeys(employee, placement)).toEqual(["all", `entity:${SZM}`, `unit:${VID}`, `unit_only:${VID}`, `branch:${SZC}`, `person:${HUY}`]);
     expect(commsViewerKeys(principal(HUY, [], "collaborator"), placement)).toEqual([`person:${HUY}`]);
   });
 });
@@ -61,7 +61,7 @@ describe("posting", () => {
 describe("reading", () => {
   const now = new Date("2026-09-20T03:00:00Z");
   const live = { status: "published" as const, publishAt: new Date("2026-09-19T00:00:00Z"), expiresAt: null, authorPersonId: LONG };
-  const viewer = { principal: employee, personId: HUY, keys: ["all", `department:${VID}`, `person:${HUY}`] };
+  const viewer = { principal: employee, personId: HUY, keys: ["all", `unit:${VID}`, `person:${HUY}`] };
   it("knows the phases", () => {
     expect(phaseOf({ ...live, status: "draft" }, now)).toBe("draft");
     expect(phaseOf({ ...live, publishAt: new Date("2026-09-27T00:00:00Z") }, now)).toBe("scheduled");
@@ -70,15 +70,15 @@ describe("reading", () => {
     expect(phaseOf({ ...live, status: "archived" }, now)).toBe("archived");
   });
   it("shows a live announcement to its audience only", () => {
-    expect(canReadAnnouncement(viewer, live, [`department:${VID}`], now)).toBe(true);
-    expect(canReadAnnouncement(viewer, live, [`department:${DES}`], now)).toBe(false);
+    expect(canReadAnnouncement(viewer, live, [`unit:${VID}`], now)).toBe(true);
+    expect(canReadAnnouncement(viewer, live, [`unit:${DES}`], now)).toBe(false);
     expect(canReadAnnouncement(viewer, { ...live, publishAt: new Date("2026-09-27T00:00:00Z") }, ["all"], now)).toBe(false);
     expect(canReadAnnouncement(viewer, { ...live, status: "draft" }, ["all"], now)).toBe(false);
   });
 });
 
 describe("kudos", () => {
-  const to = { personId: LONG, status: "active", workforceType: "employee", entityId: SZM, departmentId: VID };
+  const to = { personId: LONG, status: "active", workforceType: "employee", entityId: SZM, unitPath: [VID] };
   it("goes from staff to other active staff", () => {
     expect(canGiveKudos(employee, to)).toBe(true);
     expect(canGiveKudos(employee, { ...to, personId: HUY })).toBe(false);
@@ -89,7 +89,7 @@ describe("kudos", () => {
   it("is removed by its sender or by comms:manage over the recipient", () => {
     expect(canRemoveKudos(employee, { fromPersonId: HUY }, to)).toBe(true);
     expect(canRemoveKudos(head, { fromPersonId: HUY }, to)).toBe(true);
-    expect(canRemoveKudos(hrSzm, { fromPersonId: HUY }, { ...to, entityId: SZC, departmentId: DES })).toBe(false);
+    expect(canRemoveKudos(hrSzm, { fromPersonId: HUY }, { ...to, entityId: SZC, unitPath: [DES] })).toBe(false);
     expect(canRemoveKudos(principal("other"), { fromPersonId: HUY }, to)).toBe(false);
   });
 });

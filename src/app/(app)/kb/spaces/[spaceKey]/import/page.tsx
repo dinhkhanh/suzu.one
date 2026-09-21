@@ -36,7 +36,7 @@ export default async function ImportPagePage(props: PageProps<"/kb/spaces/[space
             {loaded.space.name}
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("import.title")}</h1>
+        <h1>{t("import.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("import.help")}</p>
       </header>
       <ImportPageForm spaceId={loaded.space.id} parents={parents.map((node) => ({ id: node.id, title: node.title, depth: node.depth }))} defaultParentId={parents.some((node) => node.id === parentId) ? parentId : ""} />

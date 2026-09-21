@@ -37,7 +37,7 @@ export default async function FileRequestPage(props: PageProps<"/requests/new/[c
         <Link href="/requests/new" className="text-sm text-muted-foreground hover:underline">
           ← {t("new")}
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{locale === "en" ? type.nameEn : type.nameVi}</h1>
+        <h1>{locale === "en" ? type.nameEn : type.nameVi}</h1>
         <p className="text-sm text-muted-foreground">{(locale === "en" ? type.descriptionEn : type.descriptionVi) ?? ""}</p>
       </header>
       {type.code === EXPENSE_CLAIM_CODE ? (

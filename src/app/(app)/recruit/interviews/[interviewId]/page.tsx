@@ -49,7 +49,7 @@ export default async function InterviewPage({ params }: PageProps<"/recruit/inte
     <div className="flex max-w-3xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">{interview.title}</h1>
+          <h1>{interview.title}</h1>
           <p className="text-sm text-muted-foreground">
             {view.candidateName} ·{" "}
             {view.canSchedule ? (

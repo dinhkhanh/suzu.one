@@ -11,12 +11,12 @@ import { encodeQr } from "./engine/qr";
 import { type LabelRow, qrSvg, renderLabelSheetPdf, sheetVersion } from "./labels";
 
 const font = parseFont(readFileSync("src/modules/platform/pdf/fonts/Roboto-Subset-Regular.ttf"));
-const labels = { title: "Nhãn tài sản", footer: "Suzu One", scanHint: "Quét mã để mở hồ sơ" };
+const labels = { title: "Nhãn tài sản", footer: "SuZu One", scanHint: "Quét mã để mở hồ sơ" };
 const row = (index: number, over: Partial<LabelRow> = {}): LabelRow => ({
   code: `SZM-LAP-${String(index).padStart(4, "0")}`,
   name: "Máy quay Sony FX6",
   url: `https://one.suzu.vn/assets/qr/${String(index).padStart(32, "0")}`,
-  entityName: "Suzu Media",
+  entityName: "SuZu Media",
   ...over,
 });
 

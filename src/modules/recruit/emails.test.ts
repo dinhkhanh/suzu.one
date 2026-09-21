@@ -22,7 +22,7 @@ const sender = { personId: "", fullName: "Người tuyển dụng" };
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty Suzu Media", shortName: "Suzu Media" }).returning();
+  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty SuZu Media", shortName: "SuZu Media" }).returning();
   const [person] = await db().insert(schema.person).values({ fullName: "Người tuyển dụng", searchName: "nguoi tuyen dung", primaryEntityId: szm.id, status: "active" }).returning();
   ids.szm = szm.id;
   ids.recruiterPerson = person.id;
@@ -105,7 +105,7 @@ describe("sending", () => {
     const sent = await sendCandidateEmail(ids.applicationId, ids.inviteTemplateId, sender, "vi");
     expect(sent.to).toBe("mai@example.com");
     expect(sent.subject).toContain("Video Editor");
-    expect(sent.subject).toContain("Suzu Media");
+    expect(sent.subject).toContain("SuZu Media");
 
     const [email] = await db().select().from(schema.emailOutbox).where(eq(schema.emailOutbox.toEmail, "mai@example.com"));
     expect(email.status).toBe("pending");

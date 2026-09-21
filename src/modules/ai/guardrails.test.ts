@@ -55,7 +55,7 @@ import type { ToolOutcome } from "./enums";
 
 type Who = "owner" | "hr" | "manager" | "huy" | "lan";
 const ids = {} as Record<Who | "entity" | "actor" | "annual", string>;
-const users = {} as Record<Who, { person: { id: string; primaryEntityId: string | null; departmentId: string | null; teamId: string | null }; principal: Principal; reauthAt: Date | null }>;
+const users = {} as Record<Who, { person: { id: string; primaryEntityId: string | null; orgUnitId: string | null; orgUnitPath: readonly string[] }; principal: Principal; reauthAt: Date | null }>;
 
 const MONTH = "2026-08";
 const FRESH = () => new Date();
@@ -72,8 +72,8 @@ const summary = () => ({
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [entity] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media", wageRegion: 1 }).returning();
-  const [department] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
+  const [entity] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media", wageRegion: 1 }).returning();
+  const [department] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
   ids.entity = entity.id;
   ids.actor = actor.id;
@@ -84,19 +84,19 @@ beforeAll(async () => {
     hr: [{ role: "hr_staff", scope: { type: "entity", id: entity.id } }],
     // A department head is a line manager with a role — the hardest case, because they legitimately
     // read their reports' personal data and must still never read their pay.
-    manager: [{ role: "department_head", scope: { type: "department", id: department.id } }],
+    manager: [{ role: "department_head", scope: { type: "unit", id: department.id } }],
     huy: [],
     lan: [],
   };
 
   const hire = async (who: Who, name: string, startDate: string, managerId: string | null = null) => {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate, seniorityDate: null, placement: { workforceType: "employee", branchId: null, departmentId: department.id, teamId: null, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null } },
+      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate, seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null } },
       actor.id,
       { onboarding: false },
     );
     ids[who] = person.id;
-    users[who] = { person: { id: person.id, primaryEntityId: person.primaryEntityId, departmentId: person.departmentId, teamId: person.teamId }, principal: { personId: person.id, workforceType: "employee", grants: grants[who] }, reauthAt: FRESH() };
+    users[who] = { person: { id: person.id, primaryEntityId: person.primaryEntityId, orgUnitId: person.orgUnitId, orgUnitPath: person.orgUnitPath }, principal: { personId: person.id, workforceType: "employee", grants: grants[who] }, reauthAt: FRESH() };
     return person.id;
   };
 

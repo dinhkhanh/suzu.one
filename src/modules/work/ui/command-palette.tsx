@@ -2,6 +2,7 @@
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { PALETTE_EVENT } from "@/components/shell/palette-bus";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -54,6 +55,13 @@ export function CommandPalette({ pages, selfId }: { pages: { label: string; href
         .catch(() => setTargets({ teams: [], projects: [] }));
     }
   }, [targets]);
+
+  // The sidebar's quick-actions button opens the same palette.
+  useEffect(() => {
+    const onOpen = () => setMode((current) => (current === "closed" ? "search" : current));
+    window.addEventListener(PALETTE_EVENT, onOpen);
+    return () => window.removeEventListener(PALETTE_EVENT, onOpen);
+  }, []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -130,7 +138,7 @@ export function CommandPalette({ pages, selfId }: { pages: { label: string; href
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-[12vh]" role="dialog" aria-modal="true" aria-label={t("title")} onClick={(event) => (event.target === event.currentTarget ? close() : undefined)}>
-      <div className="w-full max-w-xl overflow-hidden rounded-xl border bg-background shadow-xl">
+      <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-background shadow-[0_24px_60px_-20px_oklch(0_0_0/35%)]">
         {mode === "search" ? (
           <>
             <Input
@@ -138,7 +146,7 @@ export function CommandPalette({ pages, selfId }: { pages: { label: string; href
               value={query}
               placeholder={t("placeholder")}
               aria-label={t("placeholder")}
-              className="h-11 rounded-none border-0 border-b focus-visible:ring-0"
+              className="h-12 rounded-none border-0 border-b shadow-none focus-visible:border-border focus-visible:ring-0"
               onChange={(event) => {
                 setQuery(event.target.value);
                 setCursor(0);
@@ -154,7 +162,7 @@ export function CommandPalette({ pages, selfId }: { pages: { label: string; href
             <ul className="max-h-80 overflow-y-auto p-1" role="listbox">
               {entries.map((entry, index) => (
                 <li key={entry.id} role="option" aria-selected={index === cursor}>
-                  <button type="button" className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm ${index === cursor ? "bg-muted" : ""}`} onMouseEnter={() => setCursor(index)} onClick={entry.run}>
+                  <button type="button" className={`flex h-9 w-full items-center gap-3 rounded-lg px-3 text-left text-sm ${index === cursor ? "bg-muted" : ""}`} onMouseEnter={() => setCursor(index)} onClick={entry.run}>
                     <span className="min-w-0 flex-1 truncate">{entry.label}</span>
                     {entry.hint ? <span className="shrink-0 text-xs text-muted-foreground">{entry.hint}</span> : null}
                   </button>

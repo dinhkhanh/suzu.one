@@ -49,11 +49,11 @@ export function AcknowledgeButton({ pageId }: { pageId: string }) {
 }
 
 type Option = { id: string; name: string };
-const AUDIENCE_TYPES = ["all", "entity", "department", "team", "person"] as const satisfies readonly SubjectType[];
+const AUDIENCE_TYPES = ["all", "entity", "unit", "unit_only", "person"] as const satisfies readonly SubjectType[];
 type AudienceType = (typeof AUDIENCE_TYPES)[number];
 
 /** "Must read": on or off, days to confirm, who must confirm. Saves the whole setting at once. */
-export function AckSettingsForm({ pageId, required, dueDays, audience, choices }: { pageId: string; required: boolean; dueDays: number; audience: { subjectKey: string; label: string }[]; choices: { entities: Option[]; departments: Option[]; teams: Option[]; people: Option[] } }) {
+export function AckSettingsForm({ pageId, required, dueDays, audience, choices }: { pageId: string; required: boolean; dueDays: number; audience: { subjectKey: string; label: string }[]; choices: { entities: Option[]; units: Option[]; people: Option[] } }) {
   const t = useTranslations("kb");
   const router = useRouter();
   const [on, setOn] = useState(required);
@@ -64,7 +64,7 @@ export function AckSettingsForm({ pageId, required, dueDays, audience, choices }
   const [pending, startTransition] = useTransition();
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [saved, setSaved] = useState<number | null>(null);
-  const options = type === "entity" ? choices.entities : type === "department" ? choices.departments : type === "team" ? choices.teams : type === "person" ? choices.people : [];
+  const options = type === "entity" ? choices.entities : type === "unit" || type === "unit_only" ? choices.units : type === "person" ? choices.people : [];
 
   function add() {
     if (type !== "all" && !id) return;

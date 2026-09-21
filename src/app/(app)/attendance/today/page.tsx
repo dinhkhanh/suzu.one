@@ -23,7 +23,7 @@ export default async function WhoIsInPage(props: PageProps<"/attendance/today">)
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1>{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{format.dateTime(new Date(`${presence.date}T00:00:00`), { weekday: "long", day: "numeric", month: "long" })}</p>
       </header>
 
@@ -38,7 +38,7 @@ export default async function WhoIsInPage(props: PageProps<"/attendance/today">)
       </ul>
 
       {presence.departments.length > 1 ? (
-        <nav className="flex flex-wrap gap-3 text-sm">
+        <nav className="tab-row">
           <Link href="/attendance/today" className={departmentId ? "underline-offset-4 hover:underline" : "font-medium"}>
             {t("everyone")}
           </Link>

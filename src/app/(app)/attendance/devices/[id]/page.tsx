@@ -29,7 +29,7 @@ export default async function DeviceUsersPage({ params }: PageProps<"/attendance
 
   return (
     <div className="flex flex-col gap-8">
-      <h2 className="text-lg font-medium">{device.name}</h2>
+      <h2>{device.name}</h2>
 
       {unmapped.length > 0 ? (
         <section className="flex flex-col gap-3 rounded-xl border border-destructive/40 p-4">

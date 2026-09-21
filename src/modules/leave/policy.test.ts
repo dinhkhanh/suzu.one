@@ -12,7 +12,7 @@ const principal = (personId: string, grants: Grant[] = [], workforceType: Princi
 const huy = { personId: "huy", entityId: MEDIA, departmentId: VIDEO, teamId: null, managerId: "long" };
 const employee = principal("huy");
 const colleague = principal("linh");
-const manager = principal("long", [{ role: "department_head", scope: { type: "department", id: VIDEO } }]);
+const manager = principal("long", [{ role: "department_head", scope: { type: "unit", id: VIDEO } }]);
 const plainManager = principal("long");
 const mediaHr = principal("bao", [{ role: "hr_staff", scope: { type: "entity", id: MEDIA } }]);
 const creativeHr = principal("chi", [{ role: "hr_staff", scope: { type: "entity", id: CREATIVE } }]);

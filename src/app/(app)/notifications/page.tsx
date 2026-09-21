@@ -25,7 +25,7 @@ export default async function NotificationsPage(props: PageProps<"/notifications
   return (
     <div className="flex max-w-3xl flex-col gap-8">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1>{t("title")}</h1>
         {rows.some((row) => !row.readAt) ? <MarkAllReadButton /> : null}
       </header>
 

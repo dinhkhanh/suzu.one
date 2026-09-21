@@ -4,7 +4,7 @@
 // lives in these tables. Value lists are in enums.ts and checked by the actions.
 import { sql } from "drizzle-orm";
 import { type AnyPgColumn, boolean, date, doublePrecision, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
-import { department, entity } from "../platform/org/schema";
+import { entity, orgUnit } from "../platform/org/schema";
 import { storedFile } from "../platform/files/schema";
 import { person } from "../platform/people/schema";
 import { task } from "../platform/tasks-engine/schema";
@@ -26,7 +26,7 @@ export const workTeam = pgTable(
     name: text("name").notNull(),
     description: text("description"),
     entityId: uuid("entity_id").references(() => entity.id),
-    departmentId: uuid("department_id").references(() => department.id),
+    departmentId: uuid("department_id").references(() => orgUnit.id),
     // What a new project of this team starts with (HR and finance teams: "private", FR-WRK-18).
     defaultVisibility: text("default_visibility").notNull().default("team"),
     // Last task number handed out.

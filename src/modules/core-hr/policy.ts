@@ -10,7 +10,7 @@ export function canBrowsePeople(principal: Principal): boolean {
 /** Filters and columns for personal-tier facts (workforce type, status): only for roles that read that tier. */
 export function canFilterByPersonalFacts(principal: Principal): boolean {
   const reach = tierReach({ ...principal, personId: null }, "personal");
-  return reach.all || reach.entityIds.length + reach.departmentIds.length + reach.teamIds.length > 0;
+  return reach.all || reach.entityIds.length + reach.unitIds.length > 0;
 }
 
 export function canHireInto(principal: Principal, placement: Target): boolean {

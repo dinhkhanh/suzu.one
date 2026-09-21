@@ -38,7 +38,7 @@ export default async function SalaryFilePage({ params }: PageProps<"/payroll/sal
         <Link href={file.canManage ? "/payroll/salaries" : "/payroll"} className="text-sm text-muted-foreground hover:underline">
           ← {file.canManage ? t("salaries.title") : t("title")}
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{file.person.fullName}</h1>
+        <h1>{file.person.fullName}</h1>
         <p className="font-mono text-xs text-muted-foreground">{file.person.employeeCode}</p>
       </header>
 

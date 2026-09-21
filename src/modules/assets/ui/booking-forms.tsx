@@ -96,7 +96,7 @@ export function DecideBookingForm({ bookingId }: { bookingId: string }) {
   const { onSubmit, pending, errorKey } = useActionForm(decideBookingAction, { extra: { bookingId }, onSuccess: () => router.refresh() });
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2">
+    <form onSubmit={onSubmit} className="toolbar">
       {refusing ? <input type="text" name="note" required maxLength={1000} placeholder={t("decide.reason")} className="h-9 min-w-56 flex-1 rounded-md border bg-transparent px-3 text-sm" /> : null}
       {refusing ? (
         <>
@@ -135,7 +135,7 @@ export function CancelBookingForm({ bookingId }: { bookingId: string }) {
       </Button>
     );
   return (
-    <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2">
+    <form onSubmit={onSubmit} className="toolbar">
       <input type="text" name="note" maxLength={1000} placeholder={t("cancel.reason")} className="h-9 min-w-56 flex-1 rounded-md border bg-transparent px-3 text-sm" />
       <Button type="submit" variant="destructive" disabled={pending}>
         {t("cancel.submit")}

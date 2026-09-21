@@ -20,7 +20,7 @@ export default async function ImportAssetsPage() {
     <div className="flex max-w-5xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <h1>{t("title")}</h1>
           <p className="max-w-3xl text-sm text-muted-foreground">{t("description")}</p>
         </div>
         <Link href="/assets" className={buttonVariants({ variant: "outline" })}>

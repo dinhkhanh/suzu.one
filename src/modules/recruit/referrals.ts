@@ -60,11 +60,11 @@ export async function listOpeningsForReferral(executor: Executor = db()): Promis
       id: schema.jobOpening.id,
       title: schema.jobOpening.title,
       code: schema.jobOpening.code,
-      departmentName: schema.department.name,
+      departmentName: schema.orgUnit.name,
       entityName: schema.entity.shortName,
     })
     .from(schema.jobOpening)
-    .leftJoin(schema.department, eq(schema.department.id, schema.jobOpening.departmentId))
+    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.jobOpening.departmentId))
     .leftJoin(schema.entity, eq(schema.entity.id, schema.jobOpening.entityId))
     .where(and(inArray(schema.jobOpening.status, [...OPENING_PUBLIC_STATUSES]), sql`${schema.jobOpening.publishedAt} is not null`))
     .orderBy(schema.jobOpening.title);

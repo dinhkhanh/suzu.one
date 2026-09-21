@@ -13,7 +13,7 @@
 // service; the app itself has a single path.
 import { eq, inArray, sql } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
-import { aiConversation, aiMessage, aiUnansweredQuestion, department, entity, kbAccess, kbPage, kbPageChunk, kbSpace, leaveLedgerEntry, leaveType, person, roleAssignment } from "../src/lib/db/schema";
+import { aiConversation, aiMessage, aiUnansweredQuestion, orgUnit, entity, kbAccess, kbPage, kbPageChunk, kbSpace, leaveLedgerEntry, leaveType, person, roleAssignment } from "../src/lib/db/schema";
 import { extractAnswer, rankPassages, renderExtractedAnswer, type Passage } from "../src/modules/ai/engine/answer";
 import { fakeEmbedding, cosine } from "../src/modules/kb/engine/fake-embedding";
 import { retrievalQuery } from "../src/modules/ai/engine/question";
@@ -40,14 +40,14 @@ export async function seedAi(db: Db): Promise<string> {
   const [existing] = await db.select({ id: aiConversation.id }).from(aiConversation).limit(1);
   if (existing) return "0 assistant conversations (already there)";
 
-  const people = await db.select({ id: person.id, name: person.fullName, entityId: person.primaryEntityId, departmentId: person.departmentId, workforceType: person.workforceType, managerId: person.managerId }).from(person);
+  const people = await db.select({ id: person.id, name: person.fullName, entityId: person.primaryEntityId, orgUnitId: person.orgUnitId, orgUnitPath: person.orgUnitPath, workforceType: person.workforceType, managerId: person.managerId }).from(person);
   const byName = new Map(people.map((row) => [row.name, row]));
   const grants = await db.select({ personId: roleAssignment.personId, role: roleAssignment.role }).from(roleAssignment);
   const rolesOf = new Map<string, string[]>();
   for (const grant of grants) rolesOf.set(grant.personId, [...(rolesOf.get(grant.personId) ?? []), grant.role]);
 
   // The subject keys `viewerKeys()` builds, repeated here because tsx cannot import it.
-  const keysOf = (who: NonNullable<ReturnType<typeof byName.get>>) => (who.workforceType === "collaborator" ? [`person:${who.id}`] : [...new Set(["all", ...(who.entityId ? [`entity:${who.entityId}`] : []), ...(who.departmentId ? [`department:${who.departmentId}`] : []), ...(rolesOf.get(who.id) ?? []).map((role) => `role:${role}`), `person:${who.id}`])]);
+  const keysOf = (who: NonNullable<ReturnType<typeof byName.get>>) => (who.workforceType === "collaborator" ? [`person:${who.id}`] : [...new Set(["all", ...(who.entityId ? [`entity:${who.entityId}`] : []), ...who.orgUnitPath.map((unitId) => `unit:${unitId}`), ...(who.orgUnitId ? [`unit_only:${who.orgUnitId}`] : []), ...(rolesOf.get(who.id) ?? []).map((role) => `role:${role}`), `person:${who.id}`])]);
 
   // Every published chunk with what decides whether a given person may read it: the access rows of
   // its space, and those of its page's access root when the page sits in a restricted subtree.
@@ -182,7 +182,7 @@ export async function seedAi(db: Db): Promise<string> {
   }
 
   // Keep the demo honest: departments and entities are referenced above only through the keys.
-  void department;
+  void orgUnit;
   void entity;
   return `${answered} answered assistant turns (knowledge base and the personal tools) and ${logged} unanswered questions`;
 }

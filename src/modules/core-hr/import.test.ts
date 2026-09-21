@@ -40,13 +40,13 @@ beforeAll(async () => {
   const [media, creative] = await db()
     .insert(schema.entity)
     .values([
-      { code: "SZM", legalName: "Suzu Media", shortName: "Media" },
-      { code: "SZC", legalName: "Suzu Creative", shortName: "Creative" },
+      { code: "SZM", legalName: "SuZu Media", shortName: "Media" },
+      { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" },
     ])
     .returning();
-  const [video] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
-  await db().insert(schema.department).values({ code: "STU", name: "Studio", entityId: creative.id });
-  await db().insert(schema.team).values({ departmentId: video.id, name: "Hậu kỳ" });
+  const [video] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
+  await db().insert(schema.orgUnit).values({ code: "STU", name: "Studio", entityId: creative.id });
+  await db().insert(schema.orgUnit).values({ kind: "team", parentId: video.id, name: "Hậu kỳ" });
   const [actor] = await db().insert(schema.person).values({ fullName: "Hr Admin", searchName: "hr admin" }).returning();
   Object.assign(ids, { media: media.id, creative: creative.id, actor: actor.id });
   hrAdmin = userWith([{ role: "hr_admin", scope: { type: "group" } }]);

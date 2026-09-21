@@ -24,7 +24,7 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/recru
     <div className="flex max-w-4xl flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("candidates")}</h1>
+          <h1>{t("candidates")}</h1>
           <p className="text-sm text-muted-foreground">{t("confidential")}</p>
         </div>
         <Link href="/recruit/candidates/new" className={buttonVariants({ size: "sm" })}>

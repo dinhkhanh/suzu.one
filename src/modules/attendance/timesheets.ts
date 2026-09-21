@@ -3,7 +3,7 @@
 // locked (week 5's monthly lock sets `locked_at`), after which it is never touched again.
 import "server-only";
 import { createHash } from "node:crypto";
-import { and, asc, between, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, arrayContains, asc, between, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { listEmploymentFacts } from "@/modules/core-hr/service";
@@ -208,12 +208,12 @@ export async function summarisePersonYear(personId: string, year: number, execut
  */
 export async function getMonthSummaryFor(principal: Principal, subjectPersonId: string, month: string): Promise<MonthSummary | null> {
   const [person] = await db()
-    .select({ id: schema.person.id, entityId: schema.person.primaryEntityId, departmentId: schema.person.departmentId, teamId: schema.person.teamId, managerId: schema.person.managerId })
+    .select({ id: schema.person.id, entityId: schema.person.primaryEntityId, unitPath: schema.person.orgUnitPath, managerId: schema.person.managerId })
     .from(schema.person)
     .where(eq(schema.person.id, subjectPersonId))
     .limit(1);
   if (!person) return null;
-  if (!canSeeTimesheetOf(principal, { personId: person.id, entityId: person.entityId, departmentId: person.departmentId, teamId: person.teamId, managerId: person.managerId })) return null;
+  if (!canSeeTimesheetOf(principal, { personId: person.id, entityId: person.entityId, unitPath: person.unitPath, managerId: person.managerId })) return null;
   return summariseMonth(subjectPersonId, month);
 }
 
@@ -227,7 +227,7 @@ export async function getPersonMonth(personId: string, month: string): Promise<P
 
 export type TeamMonthRow = { personId: string; fullName: string; employeeCode: string | null; departmentId: string | null; departmentName: string | null; days: TimesheetDayRow[]; summary: MonthSummary };
 
-const targetOf = (person: typeof schema.person.$inferSelect): Target & { personId: string } => ({ personId: person.id, entityId: person.primaryEntityId, departmentId: person.departmentId, teamId: person.teamId, managerId: person.managerId });
+const targetOf = (person: typeof schema.person.$inferSelect): Target & { personId: string } => ({ personId: person.id, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId });
 
 /**
  * The month grid of the people whose timesheets the viewer may read: their reports, whoever they
@@ -238,7 +238,7 @@ export async function getTeamMonth(viewer: { personId: string; principal: Princi
   const personalReach = tierReach(viewer.principal, "personal");
   const from = monthStart(month);
   const to = monthEnd(month);
-  const everyone = await db().select({ person: schema.person, departmentName: schema.department.name }).from(schema.person).leftJoin(schema.department, eq(schema.department.id, schema.person.departmentId));
+  const everyone = await db().select({ person: schema.person, departmentName: schema.orgUnit.name }).from(schema.person).leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.person.departmentId));
   const visible = everyone.filter(({ person }) => person.id !== viewer.personId && (person.managerId === viewer.personId || matchesReach(hrReach, targetOf(person)) || matchesReach(personalReach, targetOf(person))) && canSeeTimesheetOf(viewer.principal, targetOf(person)));
   const days = await getTimesheetDays(visible.map((row) => row.person.id), from, to);
   const withDays = new Set(days.map((day) => day.personId));
@@ -271,6 +271,7 @@ export async function peopleIn(scope: { entityId?: string | null; departmentId?:
   const rows = await executor
     .select({ id: schema.person.id })
     .from(schema.person)
-    .where(and(inArray(schema.person.status, ["active", "suspended"]), scope.entityId ? eq(schema.person.primaryEntityId, scope.entityId) : undefined, scope.departmentId ? eq(schema.person.departmentId, scope.departmentId) : undefined));
+    // A unit takes everyone below it too (FR-PLT-16): narrowing "Marketing" must not miss its teams.
+    .where(and(inArray(schema.person.status, ["active", "suspended"]), scope.entityId ? eq(schema.person.primaryEntityId, scope.entityId) : undefined, scope.departmentId ? arrayContains(schema.person.orgUnitPath, [scope.departmentId]) : undefined));
   return rows.map((row) => row.id);
 }

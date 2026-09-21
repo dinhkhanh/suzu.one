@@ -89,7 +89,7 @@ describe("calendar rows", () => {
 
 describe("assignmentFor", () => {
   const fact = (overrides: Partial<AssignmentFact>): AssignmentFact => ({ scope: "entity", entityId: null, departmentId: null, personId: null, scheduleId: "x", validFrom: "2026-01-01", validTo: null, ...overrides });
-  const person = { personId: "p1", entityId: "e1", departmentId: "d1" };
+  const person = { personId: "p1", entityId: "e1", unitPath: ["d1"].filter((id): id is string => !!id) };
   const rows = [
     fact({ scope: "entity", entityId: "e1", scheduleId: "entity" }),
     fact({ scope: "department", departmentId: "d1", scheduleId: "department" }),
@@ -102,9 +102,9 @@ describe("assignmentFor", () => {
     expect(assignmentFor(rows, person, "2026-08-12")?.scheduleId).toBe("person");
     expect(assignmentFor(rows, person, "2026-08-17")?.scheduleId).toBe("department-in-entity");
     expect(assignmentFor(rows, person, "2026-03-01")?.scheduleId).toBe("department");
-    expect(assignmentFor(rows, { ...person, departmentId: "d9" }, "2026-08-12")?.scheduleId).toBe("person");
-    expect(assignmentFor(rows, { personId: "p3", entityId: "e1", departmentId: null }, "2026-08-12")?.scheduleId).toBe("entity");
-    expect(assignmentFor(rows, { personId: "p3", entityId: "e3", departmentId: null }, "2026-08-12")).toBeNull();
+    expect(assignmentFor(rows, { ...person, unitPath: ["d9"] }, "2026-08-12")?.scheduleId).toBe("person");
+    expect(assignmentFor(rows, { personId: "p3", entityId: "e1", unitPath: [] }, "2026-08-12")?.scheduleId).toBe("entity");
+    expect(assignmentFor(rows, { personId: "p3", entityId: "e3", unitPath: [] }, "2026-08-12")).toBeNull();
     expect(assignmentFor(rows, person, "2025-12-31")).toBeNull();
   });
 });

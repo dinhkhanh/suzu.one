@@ -96,8 +96,8 @@ describe("what may be saved", () => {
 
 describe("rendering", () => {
   it("fills the holes", () => {
-    const { text, missing } = renderTemplate("Xác nhận {{person.fullName}} tại {{company.name}}.", { "person.fullName": "Hồ Gia Huy", "company.name": "Suzu Media" });
-    expect(text).toBe("Xác nhận Hồ Gia Huy tại Suzu Media.");
+    const { text, missing } = renderTemplate("Xác nhận {{person.fullName}} tại {{company.name}}.", { "person.fullName": "Hồ Gia Huy", "company.name": "SuZu Media" });
+    expect(text).toBe("Xác nhận Hồ Gia Huy tại SuZu Media.");
     expect(missing).toEqual([]);
   });
 

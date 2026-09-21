@@ -44,7 +44,7 @@ export default async function MyProfilePage() {
   return (
     <div className="flex max-w-5xl flex-col gap-8">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{person.fullName}</h1>
+        <h1>{person.fullName}</h1>
         <p className="text-sm text-muted-foreground">{[person.employeeCode, person.current?.positionName, person.current?.departmentName, person.entityName].filter(Boolean).join(" · ")}</p>
       </header>
 

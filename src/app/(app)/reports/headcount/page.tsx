@@ -43,7 +43,7 @@ export default async function HeadcountPage(props: PageProps<"/reports/headcount
     <div className="flex max-w-5xl flex-col gap-8">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <h1>{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("description")}</p>
           {report.scoped ? <p className="text-sm text-muted-foreground">{t("scoped")}</p> : null}
         </div>

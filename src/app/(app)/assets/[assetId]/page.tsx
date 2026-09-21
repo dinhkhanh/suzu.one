@@ -38,7 +38,7 @@ export default async function AssetPage({ params }: PageProps<"/assets/[assetId]
   const [people, teams, entities, categories] = manage
     ? await Promise.all([
         db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.status, "active")).orderBy(asc(schema.person.fullName)),
-        db().select({ id: schema.team.id, name: schema.team.name }).from(schema.team).orderBy(asc(schema.team.name)),
+        db().select({ id: schema.orgUnit.id, name: schema.orgUnit.name }).from(schema.orgUnit).orderBy(asc(schema.orgUnit.name)),
         db().select({ id: schema.entity.id, code: schema.entity.code, shortName: schema.entity.shortName }).from(schema.entity).orderBy(asc(schema.entity.code)),
         listCategories(),
       ])
@@ -57,7 +57,7 @@ export default async function AssetPage({ params }: PageProps<"/assets/[assetId]
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="font-mono text-xs text-muted-foreground">{view.asset.code}</p>
-          <h1 className="text-2xl font-semibold tracking-tight">{view.asset.name}</h1>
+          <h1>{view.asset.name}</h1>
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <StatusBadge status={view.asset.status} />
             {view.asset.categoryName} · {view.asset.entityName}

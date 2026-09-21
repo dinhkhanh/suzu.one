@@ -9,7 +9,7 @@ import { Select } from "@/components/ui/select";
 import { grantRoleAction, revokeRoleAction } from "../actions";
 import { ROLES } from "../roles";
 
-const SCOPE_TYPES = ["group", "entity", "department", "team"] as const;
+const SCOPE_TYPES = ["group", "entity", "unit"] as const;
 type ScopeType = (typeof SCOPE_TYPES)[number];
 type Option = { id: string; name: string };
 

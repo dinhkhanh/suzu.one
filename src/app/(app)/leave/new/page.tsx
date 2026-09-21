@@ -66,7 +66,7 @@ export default async function NewLeavePage(props: PageProps<"/leave/new">) {
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{amended ? t("request.amendTitle") : t("request.new")}</h1>
+        <h1>{amended ? t("request.amendTitle") : t("request.new")}</h1>
         <p className="text-sm text-muted-foreground">{onBehalf ? t("request.onBehalf") : t("request.hint")}</p>
       </header>
 

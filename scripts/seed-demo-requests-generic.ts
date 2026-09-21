@@ -262,7 +262,7 @@ function peopleFor(rules: Rule[], requester: PersonRow, everyone: PersonRow[], g
   const holdersOf = (roles: string[]) => {
     for (const grant of grants) {
       if (!roles.includes(grant.role)) continue;
-      const covers = grant.scopeType === "group" || (grant.scopeType === "entity" && grant.scopeId === requester.primaryEntityId) || (grant.scopeType === "department" && grant.scopeId === requester.departmentId);
+      const covers = grant.scopeType === "group" || (grant.scopeType === "entity" && grant.scopeId === requester.primaryEntityId) || (grant.scopeType === "unit" && !!grant.scopeId && requester.orgUnitPath.includes(grant.scopeId));
       if (covers && grant.personId) found.add(grant.personId);
     }
   };

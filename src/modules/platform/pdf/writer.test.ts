@@ -41,7 +41,7 @@ describe("reading the font", () => {
   });
 
   it("truncates to a width and marks what it dropped", () => {
-    const long = "Công ty Trách nhiệm hữu hạn Truyền thông Suzu Media Việt Nam";
+    const long = "Công ty Trách nhiệm hữu hạn Truyền thông SuZu Media Việt Nam";
     const cut = truncateToWidth(font, long, 9, 80);
     expect(cut.endsWith("…")).toBe(true);
     expect(widthOfText(font, cut, 9)).toBeLessThanOrEqual(80);
@@ -57,7 +57,7 @@ describe("writing a document", () => {
     page.textRight("12.345.678 đ", 547, 700);
     page.line(48, 690, 547, 690);
     page.rectangle(48, 640, 499, 24);
-    return renderPdf([page], font, { title: "Phiếu lương — Nguyễn Thị Hằng", author: "Suzu Media", createdAt: new Date("2026-09-05T10:00:00Z") });
+    return renderPdf([page], font, { title: "Phiếu lương — Nguyễn Thị Hằng", author: "SuZu Media", createdAt: new Date("2026-09-05T10:00:00Z") });
   };
 
   it("produces a file a reader can open: header, xref, trailer and EOF", () => {

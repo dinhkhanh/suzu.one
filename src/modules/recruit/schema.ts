@@ -15,7 +15,7 @@ import { sql } from "drizzle-orm";
 import { bigint, boolean, date, index, integer, jsonb, pgTable, smallint, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { documentTemplate } from "../documents/schema";
 import { approvalRequest } from "../platform/approvals/schema";
-import { department, entity, team } from "../platform/org/schema";
+import { entity, orgUnit } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
 import type {
   ApplicationEventType,
@@ -96,8 +96,8 @@ export const hiringRequest = pgTable(
     entityId: uuid("entity_id")
       .notNull()
       .references(() => entity.id),
-    departmentId: uuid("department_id").references(() => department.id),
-    teamId: uuid("team_id").references(() => team.id),
+    departmentId: uuid("department_id").references(() => orgUnit.id),
+    teamId: uuid("team_id").references(() => orgUnit.id),
     positionTitle: text("position_title").notNull(),
     jobLevel: text("job_level"),
     headcount: integer("headcount").notNull().default(1),
@@ -140,8 +140,8 @@ export const jobOpening = pgTable(
     entityId: uuid("entity_id")
       .notNull()
       .references(() => entity.id),
-    departmentId: uuid("department_id").references(() => department.id),
-    teamId: uuid("team_id").references(() => team.id),
+    departmentId: uuid("department_id").references(() => orgUnit.id),
+    teamId: uuid("team_id").references(() => orgUnit.id),
     positionName: text("position_name"),
     jobLevel: text("job_level"),
     employmentType: text("employment_type").$type<EmploymentType>().notNull().default("employee"),
@@ -584,8 +584,8 @@ export const jobOffer = pgTable(
     // ── The job, as offered ───────────────────────────────────────────────────────────────
     positionName: text("position_name").notNull(),
     jobLevel: text("job_level"),
-    departmentId: uuid("department_id").references(() => department.id),
-    teamId: uuid("team_id").references(() => team.id),
+    departmentId: uuid("department_id").references(() => orgUnit.id),
+    teamId: uuid("team_id").references(() => orgUnit.id),
     managerPersonId: uuid("manager_person_id").references(() => person.id),
     employmentType: text("employment_type").$type<EmploymentType>().notNull().default("employee"),
     workLocation: text("work_location"),

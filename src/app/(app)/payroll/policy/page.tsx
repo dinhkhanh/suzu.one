@@ -31,7 +31,7 @@ export default async function PayPolicyPage() {
         <Link href="/payroll" className="text-sm text-muted-foreground hover:underline">
           ← {t("title")}
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("policy.title")}</h1>
+        <h1>{t("policy.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("policy.description")}</p>
       </header>
       <ul className="flex flex-col gap-3">

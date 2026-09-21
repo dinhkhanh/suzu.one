@@ -26,7 +26,7 @@ const schema = z.object({
   STORAGE_BUCKET: z.string().regex(/^[a-z0-9-]+$/).default("suzu-private"),
   // Outgoing email (Resend). Unset = emails are written to the outbox and marked "skipped".
   RESEND_API_KEY: z.string().min(1).optional(),
-  EMAIL_FROM: z.string().default("Suzu One <no-reply@suzu.one>"),
+  EMAIL_FROM: z.string().default("SuZu One <no-reply@suzu.one>"),
   // Web push (VAPID, RFC 8292). Generate a pair with: pnpm push:keys. Unset = pushes are recorded as
   // "simulated" and nothing leaves the machine; browsers cannot subscribe without the public key.
   VAPID_PUBLIC_KEY: z.string().min(80).optional(),

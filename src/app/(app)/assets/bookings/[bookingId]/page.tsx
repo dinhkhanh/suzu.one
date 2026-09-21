@@ -34,7 +34,7 @@ export default async function BookingPage({ params }: PageProps<"/assets/booking
     <div className="flex max-w-3xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{booking.assetCode}</h1>
+          <h1>{booking.assetCode}</h1>
           <p className="text-sm text-muted-foreground">{booking.categoryName ?? booking.assetName}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -74,21 +74,21 @@ export default async function BookingPage({ params }: PageProps<"/assets/booking
 
       {booking.status === "requested" && mayDecide ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-lg font-medium">{t("decide.title")}</h2>
+          <h2>{t("decide.title")}</h2>
           <DecideBookingForm bookingId={booking.id} />
         </section>
       ) : null}
 
       {booking.status === "confirmed" && mayAct ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-lg font-medium">{t("move.outTitle")}</h2>
+          <h2>{t("move.outTitle")}</h2>
           <MoveBookingForm bookingId={booking.id} direction="out" defaultCondition="good" />
         </section>
       ) : null}
 
       {booking.status === "checked_out" && mayAct ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-lg font-medium">{t("move.inTitle")}</h2>
+          <h2>{t("move.inTitle")}</h2>
           <MoveBookingForm bookingId={booking.id} direction="in" defaultCondition={booking.conditionOut ?? "good"} />
         </section>
       ) : null}

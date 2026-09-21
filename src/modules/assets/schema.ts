@@ -3,7 +3,7 @@
 // whole history of the thing is an append-only event log. Value lists are in enums.ts.
 import { sql } from "drizzle-orm";
 import { bigint, boolean, date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
-import { entity, team } from "../platform/org/schema";
+import { entity, orgUnit } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
 import type { AssetCondition, AssetEventType, AssetKind, AssetStatus, BillingCycle, BookingStatus, HolderType, LicenceStatus } from "./enums";
 
@@ -84,7 +84,7 @@ export const assetAssignment = pgTable(
       .references(() => asset.id),
     holderType: text("holder_type").$type<HolderType>().notNull(),
     holderPersonId: uuid("holder_person_id").references(() => person.id),
-    holderTeamId: uuid("holder_team_id").references(() => team.id),
+    holderTeamId: uuid("holder_team_id").references(() => orgUnit.id),
     holderEntityId: uuid("holder_entity_id").references(() => entity.id),
     assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
     assignedByPersonId: uuid("assigned_by_person_id").references(() => person.id),

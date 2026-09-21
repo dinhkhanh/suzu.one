@@ -88,7 +88,7 @@ export function RateAssignment({ assignmentId, rating }: { assignmentId: string;
   const form = useActionForm(rateAssignmentAction, { extra: { assignmentId }, onSuccess: () => router.refresh() });
 
   return (
-    <form onSubmit={form.onSubmit} className="flex flex-wrap items-end gap-2">
+    <form onSubmit={form.onSubmit} className="toolbar">
       <Field name="rating" label={t("rating")}>
         <Select id={`rating-${assignmentId}`} name="rating" defaultValue={rating ? String(rating) : ""} required>
           <option value="" disabled>

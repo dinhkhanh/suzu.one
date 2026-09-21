@@ -46,8 +46,8 @@ let contractId: string;
 beforeAll(async () => {
   await migrateTestDb();
   await db().insert(schema.statutoryParameter).values(STATUTORY_SEED.map((seed) => ({ ...seed, status: "approved" as const })));
-  const [media] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" }).returning();
-  const [video] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
+  const [media] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
+  const [video] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
 
   const hire = async (name: string, managerId: string | null = null) => {
@@ -60,7 +60,7 @@ beforeAll(async () => {
         employeeCode: null,
         startDate: "2024-01-01",
         seniorityDate: null,
-        placement: { workforceType: "employee", branchId: null, departmentId: video.id, teamId: null, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
+        placement: { workforceType: "employee", branchId: null, orgUnitId: video.id, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
       },
       actor.id,
     );
@@ -74,14 +74,14 @@ beforeAll(async () => {
   const colleague = await hire("Some Colleague", manager);
   Object.assign(ids, { media: media.id, video: video.id, manager, head, hrStaff, hrAdmin, huy, colleague });
   await db().insert(schema.roleAssignment).values([
-    { personId: head, role: "department_head", scopeType: "department", scopeId: video.id, validFrom: "2024-01-01" },
+    { personId: head, role: "department_head", scopeType: "unit", scopeId: video.id, validFrom: "2024-01-01" },
     { personId: hrStaff, role: "hr_staff", scopeType: "entity", scopeId: media.id, validFrom: "2024-01-01" },
     { personId: hrAdmin, role: "hr_admin", scopeType: "group", validFrom: "2024-01-01" },
   ]);
   viewers = {
     self: principal(huy),
     lineManager: principal(manager),
-    departmentHead: principal(head, [{ role: "department_head", scope: { type: "department", id: video.id } }]),
+    departmentHead: principal(head, [{ role: "department_head", scope: { type: "unit", id: video.id } }]),
     colleague: principal(colleague),
     hrStaff: principal(hrStaff, [{ role: "hr_staff", scope: { type: "entity", id: media.id } }]),
     hrAdmin: principal(hrAdmin, [{ role: "hr_admin", scope: { type: "group" } }]),

@@ -27,14 +27,14 @@ export default async function PerformanceOverviewPage({ searchParams }: PageProp
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("overview.title")}</h1>
+        <h1>{t("overview.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("overview.description")}</p>
       </header>
       <PerformanceNav active="overview" />
       <MonthPicker month={month} href={(next) => `/performance/overview?month=${next}`} labels={{ previous: t("kpi.previousMonth"), next: t("kpi.nextMonth") }} />
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-medium">{t("overview.kpiTitle", { month: monthLabel(month) })}</h2>
+        <h2>{t("overview.kpiTitle", { month: monthLabel(month) })}</h2>
         {overview.entities.map((entity) => (
           <article key={entity.entityId} className="rounded-xl border">
             <header className="flex flex-wrap items-center gap-3 border-b px-3 py-2">
@@ -86,7 +86,7 @@ export default async function PerformanceOverviewPage({ searchParams }: PageProp
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">{t("overview.goalsTitle", { year: month.slice(0, 4) })}</h2>
+        <h2>{t("overview.goalsTitle", { year: month.slice(0, 4) })}</h2>
         {overview.goals.length === 0 ? <p className="text-sm text-muted-foreground">{t("company.empty")}</p> : null}
         <ul className="flex flex-col divide-y rounded-xl border">
           {overview.goals.map((goal) => (

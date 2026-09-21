@@ -29,7 +29,7 @@ export type HomeFeed = {
   newPages: KbPageCard[];
 };
 
-type FeedUser = { person: { id: string; primaryEntityId: string | null; departmentId: string | null; teamId: string | null }; principal: Principal };
+type FeedUser = { person: { id: string; primaryEntityId: string | null; orgUnitId: string | null; orgUnitPath: readonly string[] }; principal: Principal };
 
 export async function getHomeFeed(user: FeedUser, today: IsoDate = todayInVietnam()): Promise<HomeFeed> {
   const viewer = await commsViewerOf(user, today);

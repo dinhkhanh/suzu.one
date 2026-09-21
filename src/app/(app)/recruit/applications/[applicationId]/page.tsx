@@ -52,7 +52,7 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
     <div className="flex max-w-3xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{view.candidate.fullName}</h1>
+          <h1>{view.candidate.fullName}</h1>
           <p className="text-sm text-muted-foreground">
             <Link href={`/recruit/${view.opening.id}`} className="underline underline-offset-4">
               {view.opening.title}

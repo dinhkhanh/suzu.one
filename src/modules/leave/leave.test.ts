@@ -35,7 +35,7 @@ const principal = (personId: string, grants: Grant[] = []): Principal => ({ pers
 
 async function addPerson(name: string, options: { entityId?: string; managerId?: string | null; start?: string; end?: string | null; workforceType?: "employee" | "probation"; gender?: "male" | "female"; code: string }) {
   const entityId = options.entityId ?? ids.media;
-  const [person] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${options.code.toLowerCase()}@suzu.group`, workforceType: options.workforceType ?? "employee", status: "active", primaryEntityId: entityId, departmentId: ids.video, managerId: options.managerId ?? null }).returning();
+  const [person] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${options.code.toLowerCase()}@suzu.group`, workforceType: options.workforceType ?? "employee", status: "active", primaryEntityId: entityId, orgUnitId: ids.video, managerId: options.managerId ?? null }).returning();
   await db().insert(schema.employment).values({ personId: person.id, entityId, employeeCode: options.code, startDate: options.start ?? "2024-01-15", seniorityDate: options.start ?? "2024-01-15", endDate: options.end ?? null });
   await db().insert(schema.personProfile).values({ personId: person.id, gender: options.gender ?? "male" });
   return person.id;
@@ -52,9 +52,9 @@ beforeAll(async () => {
   vi.setSystemTime(new Date("2026-09-19T03:00:00Z"));
   await migrateTestDb();
 
-  const [media] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" }).returning();
-  const [creative] = await db().insert(schema.entity).values({ code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }).returning();
-  const [video] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
+  const [media] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
+  const [creative] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
+  const [video] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   Object.assign(ids, { media: media.id, creative: creative.id, video: video.id });
 
   ids.owner = await addPerson("The Owner", { code: "SZM-0001", start: "2019-03-01" });
@@ -68,7 +68,7 @@ beforeAll(async () => {
   ids.leaver = await addPerson("Leaver", { code: "SZM-0009", start: "2022-01-01", end: "2026-08-31", managerId: ids.head });
   await db().insert(schema.roleAssignment).values([
     { personId: ids.owner, role: "owner", scopeType: "group" },
-    { personId: ids.head, role: "department_head", scopeType: "department", scopeId: video.id },
+    { personId: ids.head, role: "department_head", scopeType: "unit", scopeId: video.id },
     { personId: ids.hr, role: "hr_staff", scopeType: "entity", scopeId: media.id },
   ]);
 
@@ -317,7 +317,7 @@ describe("the team calendar", () => {
     expect(asColleague.people.find((row) => row.personId === ids.nam)!.cells).toEqual([]);
     expect(asColleague.dates.find((day) => day.date === "2026-10-24")?.kind).toBe("untracked");
 
-    const asHead = await getTeamCalendar({ personId: ids.head, principal: principal(ids.head, [{ role: "department_head", scope: { type: "department", id: ids.video } }]) }, range);
+    const asHead = await getTeamCalendar({ personId: ids.head, principal: principal(ids.head, [{ role: "department_head", scope: { type: "unit", id: ids.video } }]) }, range);
     expect(asHead.people.find((row) => row.personId === ids.huy)!.cells[0]).toMatchObject({ typeCode: "ANNUAL", status: "approved" });
     expect(asHead.people.find((row) => row.personId === ids.nam)!.cells.map((cell) => cell.status)).toEqual(["pending", "pending"]);
     // Another entity's people are not on a Media employee's calendar.

@@ -24,7 +24,7 @@ export default async function CandidatePage({ params }: PageProps<"/recruit/cand
     <div className="flex max-w-3xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{candidate.fullName}</h1>
+          <h1>{candidate.fullName}</h1>
           <p className="text-sm text-muted-foreground">{[candidate.currentTitle, candidate.currentEmployer, candidate.location].filter(Boolean).join(" · ")}</p>
         </div>
         {view.canManage ? (

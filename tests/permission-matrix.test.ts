@@ -30,11 +30,12 @@ const PERMISSIONS = [
   "performance:goals",
   "performance:read",
   "kb:manage",
+  "kb:manage_unit",
   "comms:manage",
 ] as const satisfies readonly Exclude<Permission, "*">[];
 
 const ENTITY = "entity-a";
-const inScope = { entityId: ENTITY, departmentId: "dept-a", teamId: "team-a", personId: "someone", managerId: "their-manager" };
+const inScope = { entityId: ENTITY, unitPath: ["dept-a", "team-a"], personId: "someone", managerId: "their-manager" };
 const outOfScope = { ...inScope, entityId: "entity-b" };
 
 const table = (head: string[], rows: string[][]) => [`| ${head.join(" | ")} |`, `|${head.map(() => "---").join("|")}|`, ...rows.map((row) => `| ${row.join(" | ")} |`)].join("\n");

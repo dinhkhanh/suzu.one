@@ -1,7 +1,8 @@
 import { date, index, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { person } from "../people/schema";
 
-export const scopeType = pgEnum("scope_type", ["group", "entity", "department", "team"]);
+// One org unit covers everything below it (FR-PLT-16), so "department" and "team" are one scope.
+export const scopeType = pgEnum("scope_type", ["group", "entity", "unit"]);
 
 // A person holds any number of role + scope pairs. "Self" and "direct reports" access is
 // implicit (derived from identity and the manager chain), so it is not stored here.
@@ -14,7 +15,7 @@ export const roleAssignment = pgTable(
       .references(() => person.id),
     role: text("role").notNull(),
     scopeType: scopeType("scope_type").notNull(),
-    // null when scopeType = "group"; otherwise the entity / department / team id.
+    // null when scopeType = "group"; otherwise the entity or org-unit id.
     scopeId: uuid("scope_id"),
     validFrom: date("valid_from").notNull().defaultNow(),
     validTo: date("valid_to"),

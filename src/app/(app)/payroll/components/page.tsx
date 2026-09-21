@@ -36,7 +36,7 @@ export default async function ComponentsPage() {
         <Link href="/payroll" className="text-sm text-muted-foreground hover:underline">
           ← {t("title")}
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("components.title")}</h1>
+        <h1>{t("components.title")}</h1>
         <p className="max-w-3xl text-sm text-muted-foreground">{t("components.description")}</p>
       </header>
 

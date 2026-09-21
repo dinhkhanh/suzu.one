@@ -23,7 +23,7 @@ export default async function PersonKpisPage({ params, searchParams }: PageProps
     <div className="flex max-w-4xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("kpi.personTitle", { name: person.fullName })}</h1>
+          <h1>{t("kpi.personTitle", { name: person.fullName })}</h1>
           <p className="text-sm text-muted-foreground">{t("kpi.personDescription")}</p>
         </div>
         <div className="flex flex-wrap gap-3 text-sm">

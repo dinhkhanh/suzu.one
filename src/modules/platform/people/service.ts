@@ -70,8 +70,9 @@ export async function updatePersonIdentity(tx: Tx, personId: string, input: Pers
 }
 
 // Where the person sits today. Core HR owns the effective-dated history and mirrors the row in
-// force onto `person`, which is what sign-in and RBAC read.
-export type PersonPlacement = Pick<PersonRow, "workforceType" | "primaryEntityId" | "departmentId" | "teamId" | "managerId">;
+// force onto `person`, which is what sign-in and RBAC read. The unit is the only placement written:
+// `org_unit_path`, `department_id` and `team_id` follow from it in the database.
+export type PersonPlacement = Pick<PersonRow, "workforceType" | "primaryEntityId" | "orgUnitId" | "managerId">;
 
 export async function setPersonPlacement(tx: Tx, personId: string, placement: PersonPlacement): Promise<void> {
   await tx.update(schema.person).set({ ...placement, updatedAt: new Date() }).where(eq(schema.person.id, personId));

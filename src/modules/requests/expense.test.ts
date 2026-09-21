@@ -27,7 +27,7 @@ const line = (overrides: Partial<ExpenseLine> = {}): ExpenseLine => ({ lineDate:
 
 async function requester(personId: string) {
   const [row] = await db().select().from(schema.person).where(eq(schema.person.id, personId)).limit(1);
-  return { personId, entityId: row.primaryEntityId, departmentId: row.departmentId, teamId: row.teamId, managerId: row.managerId };
+  return { personId, entityId: row.primaryEntityId, unitPath: row.orgUnitPath, managerId: row.managerId };
 }
 
 /** A draft regular run for a month, the kind an approved claim looks for. */
@@ -62,13 +62,13 @@ beforeAll(async () => {
   const [group, other] = await db()
     .insert(schema.entity)
     .values([
-      { code: "SZM", legalName: "Suzu Media", shortName: "SZM", taxCode: "0101", wageRegion: 1 },
-      { code: "SZC", legalName: "Suzu Creative", shortName: "SZC", taxCode: "0102", wageRegion: 1 },
+      { code: "SZM", legalName: "SuZu Media", shortName: "SZM", taxCode: "0101", wageRegion: 1 },
+      { code: "SZC", legalName: "SuZu Creative", shortName: "SZC", taxCode: "0102", wageRegion: 1 },
     ])
     .returning();
   ids.entity = group.id;
   ids.other = other.id;
-  const [department] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
+  const [department] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
 
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
   const hire = async (fullName: string, managerId: string | null, entityId = ids.entity) =>
@@ -82,7 +82,7 @@ beforeAll(async () => {
           employeeCode: null,
           startDate: "2024-01-01",
           seniorityDate: null,
-          placement: { workforceType: "employee", branchId: null, departmentId: department.id, teamId: null, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
+          placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
         },
         actor.id,
         { onboarding: false },
@@ -148,7 +148,7 @@ describe("approving one", () => {
   });
 
   it("leaves the claim waiting when the entity has no open run", async () => {
-    const [lonely] = await db().insert(schema.entity).values({ code: "SZG", legalName: "Suzu Group", shortName: "SZG", taxCode: "0103", wageRegion: 1 }).returning();
+    const [lonely] = await db().insert(schema.entity).values({ code: "SZG", legalName: "SuZu Group", shortName: "SZG", taxCode: "0103", wageRegion: 1 }).returning();
     await db().update(schema.person).set({ primaryEntityId: lonely.id }).where(eq(schema.person.id, ids.huy));
     const filed = await fileAndApprove(ids.huy, [line({ amount: 90_000 })], [ids.boss]);
 
@@ -194,7 +194,7 @@ describe("paying it twice", () => {
 
 describe("a run cancelled underneath a claim", () => {
   it("puts the claim back to waiting and lets the next run take it", async () => {
-    const [entity] = await db().insert(schema.entity).values({ code: "SZX", legalName: "Suzu X", shortName: "SZX", taxCode: "0104", wageRegion: 1 }).returning();
+    const [entity] = await db().insert(schema.entity).values({ code: "SZX", legalName: "SuZu X", shortName: "SZX", taxCode: "0104", wageRegion: 1 }).returning();
     await db().update(schema.person).set({ primaryEntityId: entity.id }).where(eq(schema.person.id, ids.huy));
     const first = await openRun(entity.id, "2027-02");
     const filed = await fileAndApprove(ids.huy, [line({ amount: 333_000 })], [ids.boss]);
@@ -217,7 +217,7 @@ describe("a run cancelled underneath a claim", () => {
 
 describe("a run that has moved past calculated", () => {
   it("keeps the figure it was signed with", async () => {
-    const [entity] = await db().insert(schema.entity).values({ code: "SZY", legalName: "Suzu Y", shortName: "SZY", taxCode: "0105", wageRegion: 1 }).returning();
+    const [entity] = await db().insert(schema.entity).values({ code: "SZY", legalName: "SuZu Y", shortName: "SZY", taxCode: "0105", wageRegion: 1 }).returning();
     await db().update(schema.person).set({ primaryEntityId: entity.id }).where(eq(schema.person.id, ids.lan));
     const run = await openRun(entity.id, "2027-04");
     await fileAndApprove(ids.lan, [line({ amount: 55_000 })], [ids.boss]);

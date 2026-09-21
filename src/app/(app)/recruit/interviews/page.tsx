@@ -50,7 +50,7 @@ export default async function MyInterviewsPage() {
   return (
     <div className="flex max-w-3xl flex-col gap-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("mine")}</h1>
+        <h1>{t("mine")}</h1>
         <p className="text-sm text-muted-foreground">{t("mineDescription")}</p>
       </header>
 

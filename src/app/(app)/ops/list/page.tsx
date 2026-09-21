@@ -53,7 +53,7 @@ export default async function OpsListPage({ searchParams }: PageProps<"/ops/list
     <div className="flex max-w-5xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <h1>{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("description")}</p>
         </div>
         {canManageOps(user.principal) ? <SyncButton /> : null}

@@ -1,7 +1,7 @@
 {
   "app": {
-    "name": "Suzu One",
-    "tagline": "Nền tảng vận hành nội bộ của Suzu Group"
+    "name": "SuZu One",
+    "tagline": "Nền tảng vận hành nội bộ của SuZu Group"
   },
   "signIn": {
     "title": "Đăng nhập",
@@ -9,7 +9,7 @@
     "google": "Đăng nhập bằng Google",
     "errors": {
       "not_a_workspace_account": "Tài khoản Gmail cá nhân không được phép. Hãy dùng email công ty.",
-      "domain_not_allowed": "Tên miền email này không thuộc Suzu Group.",
+      "domain_not_allowed": "Tên miền email này không thuộc SuZu Group.",
       "not_provisioned": "Tài khoản của bạn chưa được tạo hồ sơ trong hệ thống. Vui lòng liên hệ phòng Nhân sự.",
       "access_revoked": "Quyền truy cập của bạn đã bị khóa. Vui lòng liên hệ phòng Nhân sự.",
       "email_not_verified": "Email chưa được Google xác minh.",
@@ -29,7 +29,7 @@
     "entities": "Pháp nhân",
     "soon": "Sắp có",
     "signOut": "Đăng xuất",
-    "org": "Phòng ban & nhóm",
+    "org": "Cơ cấu tổ chức",
     "roles": "Phân quyền",
     "audit": "Nhật ký hệ thống",
     "notifications": "Thông báo",
@@ -56,7 +56,11 @@
     "recruit": "Tuyển dụng",
     "interviews": "Lịch phỏng vấn",
     "referrals": "Giới thiệu ứng viên",
-    "assistant": "Hỏi Suzu"
+    "assistant": "Hỏi SuZu",
+    "quickActions": "Thao tác nhanh",
+    "general": "Chung",
+    "close": "Đóng",
+    "collapse": "Thu gọn thanh bên"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -214,6 +218,7 @@
       "status": "Trạng thái",
       "department": "Phòng ban",
       "team": "Nhóm",
+      "orgUnit": "Đơn vị",
       "branch": "Chi nhánh",
       "position": "Chức danh",
       "jobLevel": "Cấp bậc",
@@ -480,30 +485,30 @@
     }
   },
   "org": {
-    "title": "Phòng ban & nhóm",
-    "description": "Phòng ban mặc định dùng chung cho mọi pháp nhân; nhóm thuộc về một phòng ban.",
+    "title": "Cơ cấu tổ chức",
+    "description": "Một cây đơn vị: phòng ban, nhóm lớn, nhóm nhỏ — sâu bao nhiêu cấp cũng được. Đơn vị cấp trên bao trùm mọi đơn vị bên dưới.",
     "code": "Mã",
-    "name": "Tên phòng ban",
+    "name": "Tên đơn vị",
+    "kind": "Loại",
+    "kinds": {
+      "department": "Phòng ban",
+      "team": "Nhóm"
+    },
     "parent": "Trực thuộc",
-    "noParent": "Không trực thuộc",
+    "noParent": "Cấp cao nhất",
     "belongsTo": "Thuộc về",
     "shared": "Dùng chung",
     "active": "Hoạt động",
     "inactive": "Ngừng",
-    "teams": "Nhóm",
-    "noTeams": "Chưa có nhóm nào.",
-    "teamCount": "{count, plural, =0 {chưa có nhóm} other {# nhóm}}",
-    "teamName": "Tên nhóm",
-    "newTeam": "Nhóm mới",
-    "addTeam": "Thêm nhóm",
-    "addDepartment": "Thêm phòng ban",
+    "childCount": "{count, plural, other {# đơn vị trực thuộc}}",
+    "addInside": "Thêm đơn vị trong {name}",
+    "addUnit": "Thêm đơn vị",
     "save": "Lưu",
     "errors": {
-      "department_code_taken": "Mã phòng ban đã tồn tại.",
-      "department_parent_loop": "Phòng ban không thể trực thuộc chính nó hoặc phòng ban con của nó.",
-      "department_parent_not_found": "Không tìm thấy phòng ban cấp trên.",
-      "department_in_use": "Vẫn còn nhân sự thuộc phòng ban này nên chưa thể ngừng hoạt động.",
-      "team_in_use": "Vẫn còn nhân sự thuộc nhóm này nên chưa thể ngừng hoạt động.",
+      "unit_code_taken": "Mã đơn vị đã tồn tại.",
+      "unit_parent_loop": "Đơn vị không thể trực thuộc chính nó hoặc đơn vị con của nó.",
+      "unit_parent_not_found": "Không tìm thấy đơn vị cấp trên.",
+      "unit_in_use": "Vẫn còn nhân sự thuộc đơn vị này (hoặc đơn vị bên dưới) nên chưa thể ngừng hoạt động.",
       "not_found": "Không tìm thấy dữ liệu.",
       "forbidden": "Bạn không có quyền thực hiện thao tác này.",
       "invalid": "Vui lòng kiểm tra lại thông tin.",
@@ -533,8 +538,7 @@
     "scope": {
       "group": "Toàn tập đoàn",
       "entity": "Pháp nhân",
-      "department": "Phòng ban",
-      "team": "Nhóm"
+      "unit": "Đơn vị (và mọi đơn vị bên dưới)"
     },
     "errors": {
       "grant_dates": "Ngày kết thúc phải sau ngày bắt đầu.",
@@ -586,8 +590,8 @@
     "previous": "Trước",
     "next": "Sau",
     "page": "Trang {page}/{pageCount}",
-    "emailFooter": "Suzu One · Email tự động, vui lòng không trả lời.",
-    "digestSubject": "{count, plural, other {# thông báo mới}} trên Suzu One",
+    "emailFooter": "SuZu One · Email tự động, vui lòng không trả lời.",
+    "digestSubject": "{count, plural, other {# thông báo mới}} trên SuZu One",
     "preferences": {
       "title": "Cách nhận thông báo",
       "inApp": "Trong ứng dụng",
@@ -619,7 +623,7 @@
     "kinds": {
       "security_work_email_changed": {
         "title": "Email đăng nhập của bạn đã được thay đổi",
-        "body": "Email công ty dùng để đăng nhập Suzu One của bạn vừa được đổi từ {oldEmail} sang {newEmail}. Nếu bạn không biết về thay đổi này, hãy liên hệ phòng Nhân sự ngay."
+        "body": "Email công ty dùng để đăng nhập SuZu One của bạn vừa được đổi từ {oldEmail} sang {newEmail}. Nếu bạn không biết về thay đổi này, hãy liên hệ phòng Nhân sự ngay."
       },
       "security_role_granted": {
         "title": "Bạn được cấp vai trò mới",
@@ -854,7 +858,7 @@
     "push": {
       "title": "Thông báo đẩy trên thiết bị này",
       "notConfigured": "Máy chủ chưa được cấu hình thông báo đẩy.",
-      "unsupported": "Trình duyệt này không hỗ trợ thông báo đẩy. Trên iPhone, hãy thêm Suzu One vào màn hình chính trước.",
+      "unsupported": "Trình duyệt này không hỗ trợ thông báo đẩy. Trên iPhone, hãy thêm SuZu One vào màn hình chính trước.",
       "denied": "Thông báo của trang này đang bị chặn trong cài đặt trình duyệt.",
       "off": "Nhận yêu cầu phê duyệt và công việc ngay trên màn hình khoá, kể cả khi đã đóng ứng dụng.",
       "on": "Thiết bị này đang nhận thông báo đẩy.",
@@ -2038,7 +2042,7 @@
         "rejected": "Đã từ chối"
       },
       "install": {
-        "offer": "Cài Suzu One lên thiết bị để chấm công bằng một chạm.",
+        "offer": "Cài SuZu One lên thiết bị để chấm công bằng một chạm.",
         "ios": "Để chấm công bằng một chạm: bấm Chia sẻ rồi chọn “Thêm vào MH chính”.",
         "generic": "Mẹo: thêm ứng dụng này vào màn hình chính từ trình đơn của trình duyệt.",
         "button": "Cài đặt"
@@ -4730,6 +4734,7 @@
     "save": "Lưu",
     "saved": "Đã lưu.",
     "groups": {
+      "unit": "Của đơn vị bạn",
       "group": "Toàn tập đoàn",
       "entity": "Theo công ty",
       "archived": "Đã lưu trữ"
@@ -4754,6 +4759,7 @@
       "changeNote": "Ghi chú thay đổi (không bắt buộc)",
       "isMajor": "Thay đổi lớn",
       "spaceName": "Tên không gian",
+      "ownerUnit": "Không gian của đơn vị",
       "spaceKey": "Mã trên đường dẫn",
       "entity": "Thuộc",
       "kind": "Cách xuất bản",
@@ -4765,12 +4771,15 @@
       "new": "Tạo không gian mới",
       "create": "Tạo không gian",
       "groupWide": "Toàn tập đoàn",
+      "noOwnerUnit": "Không thuộc đơn vị nào",
       "kind": {
         "open": "Mở — người biên tập tự xuất bản",
         "controlled": "Có kiểm soát"
       },
       "controlledNote": "Không gian có kiểm soát: nội dung chỉ đến tay người đọc sau khi được duyệt xuất bản.",
       "pages": "{count, plural, =0 {Chưa có trang} other {# trang}}",
+      "documentsTitle": "Tài liệu",
+      "documentsHelp": "Mọi tệp đã tải lên không gian này, mới nhất trước. Tệp theo đúng quyền của không gian.",
       "pagesTitle": "Các trang",
       "empty": "Chưa có trang nào.",
       "settings": "Thiết lập không gian",
@@ -4868,8 +4877,8 @@
       "subject": {
         "all": "Toàn bộ nhân viên",
         "entity": "Công ty",
-        "department": "Phòng ban",
-        "team": "Nhóm",
+        "unit": "Đơn vị (gồm các đơn vị bên dưới)",
+        "unit_only": "Chỉ riêng đơn vị đó",
         "role": "Vai trò",
         "person": "Cá nhân"
       },
@@ -4908,6 +4917,7 @@
       "kb_version_not_found": "Không tìm thấy phiên bản.",
       "kb_space_key_invalid": "Mã chỉ gồm chữ thường, số và dấu gạch ngang (2–40 ký tự).",
       "kb_space_key_taken": "Mã này đã được dùng.",
+      "kb_space_unit_taken": "Đơn vị này đã có không gian riêng.",
       "kb_subject_unknown": "Đối tượng được chọn không tồn tại.",
       "kb_access_too_many": "Quá nhiều dòng phân quyền.",
       "file_empty": "Tệp trống.",
@@ -5019,8 +5029,8 @@
     "audience": {
       "all": "Toàn bộ nhân viên",
       "entity": "Pháp nhân",
-      "department": "Phòng ban",
-      "team": "Nhóm",
+      "unit": "Đơn vị (gồm các đơn vị bên dưới)",
+      "unit_only": "Chỉ riêng đơn vị đó",
       "branch": "Chi nhánh / địa điểm",
       "person": "Cá nhân"
     },
@@ -5910,7 +5920,7 @@
         "headcount": "người",
         "preparedBy": "Người lập biểu",
         "receivedBy": "Người chi tiền",
-        "sheetNote": "Người nhận ký và ghi rõ họ tên vào cột ký nhận. Bảng này do hệ thống Suzu One lập."
+        "sheetNote": "Người nhận ký và ghi rõ họ tên vào cột ký nhận. Bảng này do hệ thống SuZu One lập."
       },
       "errors": {
         "bank_unknown": "Hệ thống chưa có mẫu tệp cho ngân hàng này.",
@@ -6652,7 +6662,7 @@
     },
     "labels": {
       "title": "Nhãn tài sản",
-      "footer": "In ngày {at} · Suzu One",
+      "footer": "In ngày {at} · SuZu One",
       "scanHint": "Quét mã để mở hồ sơ tài sản"
     },
     "events": {
@@ -6880,7 +6890,7 @@
   },
   "documents": {
     "title": "Văn bản",
-    "pdfFooter": "Văn bản số {number} — tạo từ hệ thống Suzu One.",
+    "pdfFooter": "Văn bản số {number} — tạo từ hệ thống SuZu One.",
     "heading": "Văn bản đã cấp",
     "none": "Chưa cấp văn bản nào cho người này.",
     "noTemplates": "Không có mẫu văn bản nào bạn được phép cấp cho người này.",
@@ -7244,10 +7254,10 @@
       }
     },
     "careers": {
-      "brand": "Suzu Group · Tuyển dụng",
-      "footer": "© Suzu Group. Thông tin ứng tuyển được xử lý theo thông báo bảo mật trên trang ứng tuyển.",
+      "brand": "SuZu Group · Tuyển dụng",
+      "footer": "© SuZu Group. Thông tin ứng tuyển được xử lý theo thông báo bảo mật trên trang ứng tuyển.",
       "title": "Cơ hội nghề nghiệp",
-      "intro": "Những vị trí Suzu Group đang tìm người. Chọn một vị trí để xem mô tả và ứng tuyển.",
+      "intro": "Những vị trí SuZu Group đang tìm người. Chọn một vị trí để xem mô tả và ứng tuyển.",
       "noOpenings": "Hiện chưa có vị trí nào đang tuyển. Mời bạn quay lại sau.",
       "description": "Mô tả công việc",
       "requirements": "Yêu cầu",
@@ -7284,13 +7294,13 @@
       },
       "consent": {
         "title": "Thông báo xử lý dữ liệu cá nhân",
-        "body": "Khi gửi hồ sơ, bạn đồng ý để Suzu Group thu thập và xử lý thông tin trong hồ sơ này nhằm mục đích tuyển dụng cho vị trí bạn ứng tuyển.\nHồ sơ được lưu trong {months} tháng kể từ ngày ứng tuyển, sau đó được xoá hoặc ẩn danh, trừ khi bạn đồng ý để chúng tôi giữ lại cho các cơ hội khác.\nBạn có quyền yêu cầu xem, sửa hoặc xoá dữ liệu của mình bất kỳ lúc nào bằng cách liên hệ bộ phận nhân sự.",
-        "agree": "Tôi đồng ý cho Suzu Group xử lý hồ sơ này cho vị trí tôi ứng tuyển.",
-        "talentPool": "Tôi đồng ý để Suzu Group giữ hồ sơ cho các vị trí phù hợp khác trong tương lai."
+        "body": "Khi gửi hồ sơ, bạn đồng ý để SuZu Group thu thập và xử lý thông tin trong hồ sơ này nhằm mục đích tuyển dụng cho vị trí bạn ứng tuyển.\nHồ sơ được lưu trong {months} tháng kể từ ngày ứng tuyển, sau đó được xoá hoặc ẩn danh, trừ khi bạn đồng ý để chúng tôi giữ lại cho các cơ hội khác.\nBạn có quyền yêu cầu xem, sửa hoặc xoá dữ liệu của mình bất kỳ lúc nào bằng cách liên hệ bộ phận nhân sự.",
+        "agree": "Tôi đồng ý cho SuZu Group xử lý hồ sơ này cho vị trí tôi ứng tuyển.",
+        "talentPool": "Tôi đồng ý để SuZu Group giữ hồ sơ cho các vị trí phù hợp khác trong tương lai."
       },
       "thanks": {
         "title": "Đã nhận hồ sơ của bạn",
-        "body": "Cảm ơn bạn đã quan tâm đến Suzu Group. Nếu hồ sơ phù hợp, bộ phận tuyển dụng sẽ liên hệ với bạn qua email.",
+        "body": "Cảm ơn bạn đã quan tâm đến SuZu Group. Nếu hồ sơ phù hợp, bộ phận tuyển dụng sẽ liên hệ với bạn qua email.",
         "back": "Xem các vị trí khác"
       },
       "errors": {
@@ -7615,7 +7625,7 @@
     }
   },
   "assistant": {
-    "title": "Hỏi Suzu",
+    "title": "Hỏi SuZu",
     "intro": "Trả lời từ các trang Tri thức bạn được xem, kèm liên kết tới trang gốc. Chỉ những trang bạn mở được mới được dùng.",
     "askLabel": "Câu hỏi của bạn",
     "placeholder": "Ví dụ: Một năm được bao nhiêu ngày phép năm?",
@@ -7635,7 +7645,7 @@
     },
     "unanswered": {
       "link": "Câu hỏi chưa trả lời được",
-      "back": "Hỏi Suzu",
+      "back": "Hỏi SuZu",
       "title": "Câu hỏi chưa trả lời được",
       "intro": "Những gì mọi người hỏi mà Tri thức chưa có. Hỏi nhiều nhất xếp trước — đây là danh sách trang cần viết.",
       "open": "Chưa xử lý",

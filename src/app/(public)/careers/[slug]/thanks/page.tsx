@@ -11,7 +11,7 @@ export default async function CareersThanksPage() {
   const t = await getTranslations("recruit.careers");
   return (
     <div className="flex flex-col items-start gap-4">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("thanks.title")}</h1>
+      <h1>{t("thanks.title")}</h1>
       <p className="text-sm text-muted-foreground">{t("thanks.body")}</p>
       <Link href="/careers" className={buttonVariants({ variant: "outline", size: "sm" })}>
         {t("thanks.back")}

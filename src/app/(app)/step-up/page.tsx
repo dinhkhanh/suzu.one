@@ -21,7 +21,7 @@ export default async function StepUpPage({ searchParams }: PageProps<"/step-up">
   return (
     <div className="flex max-w-md flex-col gap-4">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1>{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("description", { minutes: STEP_UP_WINDOW_MINUTES })}</p>
       </header>
       {params.error ? (

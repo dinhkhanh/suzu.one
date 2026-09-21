@@ -45,8 +45,8 @@ const instancesOf = async (code: string) =>
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" }).returning();
-  const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }).returning();
+  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
+  const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
   await db().insert(schema.entity).values({ code: "OLD", legalName: "Closed", shortName: "Closed", isActive: false });
   Object.assign(ids, { szm: szm.id, szc: szc.id });
   const people: [keyof typeof ids, string, string][] = [["finance", "Tuan Vo", szc.id], ["hrSzm", "Bao Pham", szm.id], ["hrAdmin", "Mai Le", szc.id], ["ceo", "Ha Nguyen", szc.id], ["owner", "Khanh Tran", szc.id], ["newHire", "Thu Mai", szm.id]];

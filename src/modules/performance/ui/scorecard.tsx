@@ -40,7 +40,7 @@ export async function ScorecardView({ personId, month, basePath }: { personId: s
       ) : null}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">{t("kpi.year.title", { year })}</h2>
+        <h2>{t("kpi.year.title", { year })}</h2>
         <p className="text-sm text-muted-foreground">
           {results.closedMonths.length === 0 ? t("kpi.year.none") : t("kpi.year.summary", { score: bpText(format, results.scoreBp), closed: results.closedMonths.length, open: results.openMonths.length })}
           {results.final ? ` ${t("kpi.year.final")}` : ""}

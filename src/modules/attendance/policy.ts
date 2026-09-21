@@ -8,7 +8,7 @@ export const canOpenAttendanceSettings = (principal: Principal): boolean => can(
 /** Calendar rows, shifts and schedules belong to one entity, or (entity null) to the whole group — which takes a group-wide grant. */
 export const canManageAttendanceConfig = (principal: Principal, entityId: string | null): boolean => can(principal, "attendance:manage", entityId ? { entityId } : {});
 
-export type AssignmentScope = { scope: "entity" | "department" | "person"; entityId: string | null; departmentId: string | null };
+export type AssignmentScope = { scope: "entity" | "department" | "person"; entityId: string | null; departmentId: string | null; unitPath: readonly string[] };
 
 /**
  * Who follows which schedule. An entity's HR assigns for the entity, for a department narrowed to
@@ -16,7 +16,8 @@ export type AssignmentScope = { scope: "entity" | "department" | "person"; entit
  */
 export function canAssignSchedule(principal: Principal, assignment: AssignmentScope, person: (Target & { personId: string }) | null): boolean {
   if (assignment.scope === "person") return !!person && can(principal, "attendance:manage", person);
-  if (assignment.scope === "department") return can(principal, "attendance:manage", assignment.entityId ? { entityId: assignment.entityId, departmentId: assignment.departmentId } : { departmentId: assignment.departmentId });
+  // A schedule assigned to a unit covers everyone below it, so the grant is asked about the unit's path.
+  if (assignment.scope === "department") return can(principal, "attendance:manage", assignment.entityId ? { entityId: assignment.entityId, unitPath: assignment.unitPath } : { unitPath: assignment.unitPath });
   return can(principal, "attendance:manage", { entityId: assignment.entityId });
 }
 

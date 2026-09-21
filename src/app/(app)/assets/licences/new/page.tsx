@@ -19,7 +19,7 @@ export default async function NewLicencePage() {
   ]);
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("nav.new")}</h1>
+      <h1>{t("nav.new")}</h1>
       <LicenceForm value={null} entities={entities} people={people} canSeeMoney={canReadAssetMoney(user.principal)} />
     </div>
   );

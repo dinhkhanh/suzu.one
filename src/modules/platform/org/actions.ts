@@ -3,8 +3,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { can } from "../rbac/policy";
+import { ORG_UNIT_KINDS } from "./enums";
 import { departmentImport } from "./import";
-import { createBranch, createDepartment, createEntity, createTeam, findBranch, findDepartment, findTeam, updateBranch, updateDepartment, updateEntity, updateTeam } from "./service";
+import { createBranch, createEntity, createOrgUnit, findBranch, findOrgUnit, updateBranch, updateEntity, updateOrgUnit } from "./service";
 
 // Forms post every field; a blank one means "no value". A checkbox posts "on" or nothing at all.
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -100,84 +101,66 @@ export async function updateBranchAction(input: unknown) {
   return updateBranchPipeline(input);
 }
 
-// A shared department (no entity) belongs to the whole group, so only a group-wide grant may touch it.
-const departmentTarget = (department: { id?: string; entityId: string | null }) => (department.entityId ? { entityId: department.entityId, departmentId: department.id } : {});
+// A shared unit (no entity) belongs to the whole group, so only a group-wide grant may touch it;
+// an entity's own unit goes to whoever manages that entity — or to a grant over the unit itself,
+// which covers everything below it (FR-PLT-16).
+const unitTarget = (unit: { entityId: string | null; path?: readonly string[] }) => (unit.entityId ? { entityId: unit.entityId, unitPath: unit.path } : { unitPath: unit.path });
 
-const createDepartmentPipeline = createAction({
-  name: "department.create",
+const createOrgUnitPipeline = createAction({
+  name: "org_unit.create",
   input: z.object({
-    code: z.string().trim().min(2).max(12).regex(/^[A-Za-z0-9_-]+$/),
+    code: optional(z.string().trim().min(2).max(12).regex(/^[A-Za-z0-9_-]+$/)),
     name: z.string().trim().min(1).max(120),
+    kind: z.enum(ORG_UNIT_KINDS).default("team"),
     parentId: optional(z.uuid()),
     entityId: optional(z.uuid()),
   }),
-  authorize: (user, input) => can(user.principal, "org:manage", departmentTarget(input)),
+  authorize: async (user, input) => {
+    // Inside an existing unit the parent decides; a new root unit needs the entity (or the group).
+    const parent = input.parentId ? await findOrgUnit(input.parentId) : undefined;
+    if (input.parentId && !parent) return false;
+    return can(user.principal, "org:manage", parent ? unitTarget(parent) : unitTarget({ entityId: input.entityId }));
+  },
   run: async ({ input }) => {
-    const created = await createDepartment(input);
+    const created = await createOrgUnit(input);
     revalidatePath("/admin/org");
-    return { data: { id: created.id }, audit: { resource: { type: "department", id: created.id, entityId: created.entityId }, summary: created.code, after: created } };
+    return { data: { id: created.id }, audit: { resource: { type: "org_unit", id: created.id, entityId: created.entityId }, summary: created.name, after: created } };
   },
 });
 
-export async function createDepartmentAction(input: unknown) {
-  return createDepartmentPipeline(input);
+export async function createOrgUnitAction(input: unknown) {
+  return createOrgUnitPipeline(input);
 }
 
-const updateDepartmentPipeline = createAction({
-  name: "department.update",
-  input: z.object({ id: z.uuid(), name: z.string().trim().min(1).max(120), parentId: optional(z.uuid()), isActive: checkbox }),
+const updateOrgUnitPipeline = createAction({
+  name: "org_unit.update",
+  input: z.object({
+    id: z.uuid(),
+    name: z.string().trim().min(1).max(120),
+    kind: z.enum(ORG_UNIT_KINDS),
+    parentId: optional(z.uuid()),
+    isActive: checkbox,
+  }),
+  // Moving a unit is two questions: may you touch it where it is, and may you put it where it is going?
   authorize: async (user, input) => {
-    const department = await findDepartment(input.id);
-    return !!department && can(user.principal, "org:manage", departmentTarget(department));
+    const unit = await findOrgUnit(input.id);
+    if (!unit || !can(user.principal, "org:manage", unitTarget(unit))) return false;
+    if (input.parentId === unit.parentId) return true;
+    const parent = input.parentId ? await findOrgUnit(input.parentId) : undefined;
+    if (input.parentId && !parent) return false;
+    return can(user.principal, "org:manage", parent ? unitTarget(parent) : unitTarget({ entityId: unit.entityId }));
   },
   run: async ({ input }) => {
     const { id, ...details } = input;
-    const { before, after } = await updateDepartment(id, details);
+    const { before, after } = await updateOrgUnit(id, details);
     revalidatePath("/admin/org");
-    return { data: { id }, audit: { resource: { type: "department", id, entityId: after.entityId }, summary: after.code, before, after } };
+    revalidatePath("/kb");
+    return { data: { id }, audit: { resource: { type: "org_unit", id, entityId: after.entityId }, summary: after.name, before, after } };
   },
 });
 
-export async function updateDepartmentAction(input: unknown) {
-  return updateDepartmentPipeline(input);
-}
-
-const createTeamPipeline = createAction({
-  name: "team.create",
-  input: z.object({ departmentId: z.uuid(), name: z.string().trim().min(1).max(120) }),
-  authorize: async (user, input) => {
-    const department = await findDepartment(input.departmentId);
-    return !!department && can(user.principal, "org:manage", departmentTarget(department));
-  },
-  run: async ({ input }) => {
-    const created = await createTeam(input);
-    revalidatePath("/admin/org");
-    return { data: { id: created.id }, audit: { resource: { type: "team", id: created.id }, summary: created.name, after: created } };
-  },
-});
-
-export async function createTeamAction(input: unknown) {
-  return createTeamPipeline(input);
-}
-
-const updateTeamPipeline = createAction({
-  name: "team.update",
-  input: z.object({ id: z.uuid(), name: z.string().trim().min(1).max(120), isActive: checkbox }),
-  authorize: async (user, input) => {
-    const team = await findTeam(input.id);
-    const department = team && (await findDepartment(team.departmentId));
-    return !!department && can(user.principal, "org:manage", departmentTarget(department));
-  },
-  run: async ({ input }) => {
-    const { id, ...details } = input;
-    const { before, after } = await updateTeam(id, details);
-    revalidatePath("/admin/org");
-    return { data: { id }, audit: { resource: { type: "team", id }, summary: after.name, before, after } };
-  },
-});
-
-export async function updateTeamAction(input: unknown) {
-  return updateTeamPipeline(input);
+export async function updateOrgUnitAction(input: unknown) {
+  return updateOrgUnitPipeline(input);
 }
 
 export async function stageDepartmentImportAction(input: unknown) {

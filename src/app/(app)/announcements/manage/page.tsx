@@ -27,7 +27,7 @@ export default async function ManageAnnouncementsPage() {
               {t("list.title")}
             </Link>
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("manage.title")}</h1>
+          <h1>{t("manage.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("manage.help")}</p>
         </div>
         <Link href="/announcements/manage/new" className="text-sm underline underline-offset-2">

@@ -31,8 +31,8 @@ const ids = {} as Record<"entity" | "actor" | "manager" | "report", string>;
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [entity] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media", wageRegion: 1 }).returning();
-  const [department] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
+  const [entity] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media", wageRegion: 1 }).returning();
+  const [department] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
   ids.entity = entity.id;
   ids.actor = actor.id;
@@ -47,7 +47,7 @@ beforeAll(async () => {
         employeeCode: null,
         startDate: "2024-01-08",
         seniorityDate: null,
-        placement: { workforceType: "employee", branchId: null, departmentId: department.id, teamId: null, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
+        placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
       },
       actor.id,
       { onboarding: false },

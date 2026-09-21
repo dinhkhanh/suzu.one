@@ -10,10 +10,14 @@
 import { can, type Principal } from "../platform/rbac/policy";
 import { type AccessLevel, type SpaceKind, subjectKey } from "./enums";
 
-export type Placement = { entityId: string | null; departmentId: string | null; teamId: string | null };
+export type Placement = { entityId: string | null; unitId: string | null; unitPath: readonly string[] };
 export type KbViewer = { principal: Principal; personId: string; keys: readonly string[] };
 
-/** The subject keys that describe the viewer. Collaborators are nobody's "all staff": only rows naming them count. */
+/**
+ * The subject keys that describe the viewer: one per unit above them (so a row on any ancestor
+ * matches), plus `unit_only` for the unit they actually sit in. Collaborators are nobody's
+ * "all staff": only rows naming them count.
+ */
 export function viewerKeys(principal: Principal, placement: Placement): string[] {
   if (!principal.personId) return [];
   const own = subjectKey("person", principal.personId);
@@ -22,24 +26,31 @@ export function viewerKeys(principal: Principal, placement: Placement): string[]
     ...new Set([
       "all",
       ...(placement.entityId ? [subjectKey("entity", placement.entityId)] : []),
-      ...(placement.departmentId ? [subjectKey("department", placement.departmentId)] : []),
-      ...(placement.teamId ? [subjectKey("team", placement.teamId)] : []),
+      ...placement.unitPath.map((unitId) => subjectKey("unit", unitId)),
+      ...(placement.unitId ? [subjectKey("unit_only", placement.unitId)] : []),
       ...principal.grants.map((grant) => subjectKey("role", grant.role)),
       own,
     ]),
   ];
 }
 
-export type ViewerSource = { person: { id: string; primaryEntityId: string | null; departmentId: string | null; teamId: string | null }; principal: Principal };
+export type ViewerSource = { person: { id: string; primaryEntityId: string | null; orgUnitId: string | null; orgUnitPath: readonly string[] }; principal: Principal };
 
 export const kbViewerOf = (user: ViewerSource): KbViewer => ({
   principal: user.principal,
   personId: user.person.id,
-  keys: viewerKeys(user.principal, { entityId: user.person.primaryEntityId, departmentId: user.person.departmentId, teamId: user.person.teamId }),
+  keys: viewerKeys(user.principal, { entityId: user.person.primaryEntityId, unitId: user.person.orgUnitId, unitPath: user.person.orgUnitPath }),
 });
 
 export type AccessRow = { subjectKey: string; level: AccessLevel };
-export type SpaceFacts = { entityId: string | null; kind: SpaceKind; archived: boolean; access: readonly AccessRow[] };
+export type SpaceFacts = {
+  entityId: string | null;
+  kind: SpaceKind;
+  archived: boolean;
+  access: readonly AccessRow[];
+  /** A unit-owned space (FR-KB-13): the unit and its ancestors, so the heads above it inherit. */
+  ownerUnitPath?: readonly string[] | null;
+};
 export type PageFacts = {
   /** Has a published version and is neither archived nor deleted. */
   readable: boolean;
@@ -57,11 +68,20 @@ function matched(viewer: KbViewer, rows: readonly AccessRow[]): AccessLevel | nu
   return own.some((row) => row.level === "edit") ? "edit" : own.length ? "view" : null;
 }
 
-/** Create, archive, settings, access rows: a `kb:manage` grant over the space's entity (group-wide for a group space). */
-export const canManageSpace = (principal: Principal, space: { entityId: string | null }): boolean => can(principal, "kb:manage", { entityId: space.entityId });
+/**
+ * Create, archive, settings, access rows. Two ways in (FR-KB-13):
+ *  · `kb:manage` over the space's entity — HR, and group-wide for a company space;
+ *  · `kb:manage_unit` over the unit that owns it — its head, and the heads of the units above it,
+ *    because a unit grant carries its subtree.
+ */
+/** A space row as `canManageSpace` reads it. */
+export const spaceOwner = (space: { entityId: string | null; ownerUnitId: string | null }) => ({ entityId: space.entityId, ownerUnitPath: space.ownerUnitId ? [space.ownerUnitId] : null });
+
+export const canManageSpace = (principal: Principal, space: { entityId: string | null; ownerUnitPath?: readonly string[] | null }): boolean =>
+  can(principal, "kb:manage", { entityId: space.entityId }) || (!!space.ownerUnitPath?.length && can(principal, "kb:manage_unit", { unitPath: space.ownerUnitPath, entityId: space.entityId }));
 
 /** The "new space" button. Never guards data. */
-export const canManageAnySpace = (principal: Principal): boolean => can(principal, "kb:manage");
+export const canManageAnySpace = (principal: Principal): boolean => can(principal, "kb:manage") || can(principal, "kb:manage_unit");
 
 export function spaceLevel(viewer: KbViewer, space: SpaceFacts): KbLevel | null {
   if (canManageSpace(viewer.principal, space)) return "manage";

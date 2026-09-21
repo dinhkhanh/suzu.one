@@ -45,7 +45,7 @@ export default async function OpsCalendarPage({ searchParams }: PageProps<"/ops/
   return (
     <div className="flex max-w-6xl flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("calendar.title")}</h1>
+        <h1>{t("calendar.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("calendar.description")}</p>
       </header>
       <OpsNav active="calendar" reads />

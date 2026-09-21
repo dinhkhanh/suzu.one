@@ -8,7 +8,7 @@ import { listAssignments, listSchedules } from "@/modules/attendance/schedules";
 import { AssignmentForm, RowAction, ScheduleForm } from "@/modules/attendance/ui/settings-forms";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
-import { listDepartments } from "@/modules/platform/org/service";
+import { unitChoices, unitPathsOf } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { configOptions } from "../options";
 
@@ -19,11 +19,13 @@ export default async function SchedulesSettingsPage() {
   const t = await getTranslations("attendance.settings");
   const format = await getFormatter();
   const today = todayInVietnam();
-  const [schedules, assignments, options, departments, people] = await Promise.all([listSchedules(), listAssignments(), configOptions(user.principal), listDepartments(), listPersonNames()]);
+  const [schedules, assignments, options, departments, people] = await Promise.all([listSchedules(), listAssignments(), configOptions(user.principal), unitChoices(), listPersonNames()]);
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" });
   const ruleText = (rule: DayRule) => (rule.type === "working" ? rule.segments.map((segment) => `${segment.start}–${segment.end}`).join(" · ") : t(`schedules.dayTypes.${rule.type}`));
   // Whether the viewer may remove a person's assignment depends on where that person sits.
   const personTargets = new Map(await Promise.all([...new Set(assignments.flatMap((row) => (row.personId ? [row.personId] : [])))].map(async (id) => [id, await getPersonTarget(id)] as const)));
+  // A unit assignment is judged against that unit's whole chain: a grant above it covers it.
+  const unitPaths = await unitPathsOf(assignments.flatMap((row) => (row.departmentId ? [row.departmentId] : [])));
 
   return (
     <div className="flex flex-col gap-8">
@@ -80,7 +82,7 @@ export default async function SchedulesSettingsPage() {
                 <Badge variant="outline" className="ml-auto">
                   {t(`assignments.state.${state}`)}
                 </Badge>
-                {canAssignSchedule(user.principal, row, row.personId ? (personTargets.get(row.personId) ?? null) : null) ? <RowAction action="removeAssignment" id={row.id} label={t("remove")} confirm={t("removeConfirm")} /> : null}
+                {canAssignSchedule(user.principal, { ...row, unitPath: (row.departmentId ? unitPaths.get(row.departmentId) : null) ?? [] }, row.personId ? (personTargets.get(row.personId) ?? null) : null) ? <RowAction action="removeAssignment" id={row.id} label={t("remove")} confirm={t("removeConfirm")} /> : null}
               </li>
             );
           })}
@@ -88,7 +90,7 @@ export default async function SchedulesSettingsPage() {
         <AssignmentForm
           schedules={schedules.filter((schedule) => schedule.isActive).map((schedule) => ({ id: schedule.id, name: schedule.name }))}
           entities={options.entities}
-          departments={departments.filter((department) => department.isActive).map(({ id, name }) => ({ id, name }))}
+          departments={departments}
           people={people.map((person) => ({ id: person.id, name: person.fullName }))}
           today={today}
         />

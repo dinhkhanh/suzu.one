@@ -88,12 +88,12 @@ export async function getBalances(personIds: readonly string[], year: number, ex
  */
 export async function getLeaveBalanceFor(principal: Principal, subjectPersonId: string, year: number): Promise<Balance[] | null> {
   const [person] = await db()
-    .select({ id: schema.person.id, entityId: schema.person.primaryEntityId, departmentId: schema.person.departmentId, teamId: schema.person.teamId, managerId: schema.person.managerId })
+    .select({ id: schema.person.id, entityId: schema.person.primaryEntityId, unitPath: schema.person.orgUnitPath, managerId: schema.person.managerId })
     .from(schema.person)
     .where(eq(schema.person.id, subjectPersonId))
     .limit(1);
   if (!person) return null;
-  if (!canSeeBalancesOf(principal, { personId: person.id, entityId: person.entityId, departmentId: person.departmentId, teamId: person.teamId, managerId: person.managerId })) return null;
+  if (!canSeeBalancesOf(principal, { personId: person.id, entityId: person.entityId, unitPath: person.unitPath, managerId: person.managerId })) return null;
   return (await getBalances([subjectPersonId], year)).get(subjectPersonId) ?? [];
 }
 

@@ -5,7 +5,7 @@
 import { type AnyPgColumn, bigint, boolean, date, index, integer, jsonb, pgTable, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { position } from "../core-hr/schema";
-import { department, entity, team } from "../platform/org/schema";
+import { entity, orgUnit } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
 import type { KpiTrace } from "./engine/kpi-score";
 import type { ResultTrace } from "./engine/result";
@@ -26,8 +26,8 @@ export const goal = pgTable(
     // Where the goal sits: nothing for the group; a department goal may name the entity it is meant
     // for (departments are shared); a team goal carries its department; an individual goal its person.
     entityId: uuid("entity_id").references(() => entity.id),
-    departmentId: uuid("department_id").references(() => department.id),
-    teamId: uuid("team_id").references(() => team.id),
+    departmentId: uuid("department_id").references(() => orgUnit.id),
+    teamId: uuid("team_id").references(() => orgUnit.id),
     personId: uuid("person_id").references(() => person.id),
     // Accountable for the goal and the one who checks in.
     ownerPersonId: uuid("owner_person_id")
@@ -323,7 +323,7 @@ export const reviewParticipant = pgTable(
       .notNull()
       .references(() => person.id),
     entityId: uuid("entity_id").references(() => entity.id),
-    departmentId: uuid("department_id").references(() => department.id),
+    departmentId: uuid("department_id").references(() => orgUnit.id),
     managerPersonId: uuid("manager_person_id").references(() => person.id),
     // pending | self_done | manager_done | calibrated | released | acknowledged
     stage: text("stage").notNull().default("pending"),

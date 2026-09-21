@@ -39,7 +39,7 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs text-muted-foreground">{view.opening.code}</p>
-            <h1 className="text-2xl font-semibold tracking-tight">{view.opening.title}</h1>
+            <h1>{view.opening.title}</h1>
             <p className="text-sm text-muted-foreground">
               {[view.entityName, view.departmentName, view.teamName, t(`employmentType.${view.opening.employmentType}`), t(`workMode.${view.opening.workMode}`), view.opening.workLocation].filter(Boolean).join(" · ")}
             </p>

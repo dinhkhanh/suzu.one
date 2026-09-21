@@ -56,15 +56,15 @@ const run = async () => (await getRun(runId))!;
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [entity] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media", wageRegion: 1 }).returning();
-  const [department] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
+  const [entity] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media", wageRegion: 1 }).returning();
+  const [department] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
   ids.entity = entity.id;
   ids.actor = actor.id;
 
   const hire = async (name: string, startDate: string) => {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate, seniorityDate: null, placement: { workforceType: "employee", branchId: null, departmentId: department.id, teamId: null, positionName: null, jobLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId: entity.id, employeeCode: null, startDate, seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, jobLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
       actor.id,
       { onboarding: false },
     );
@@ -266,7 +266,7 @@ describe("a run is only paid when both channels are settled (FR-PAY-39)", () => 
 
   it("a cash sheet that was never opened blocks the run just as loudly", async () => {
     // A second entity's run with one Simple-profile person and nothing else.
-    const [other] = await db().insert(schema.entity).values({ code: "SZX", legalName: "Suzu X", shortName: "X", wageRegion: 1 }).returning();
+    const [other] = await db().insert(schema.entity).values({ code: "SZX", legalName: "SuZu X", shortName: "X", wageRegion: 1 }).returning();
     const [person] = await db().insert(schema.person).values({ fullName: "Cash Only", searchName: "cash only", status: "active", primaryEntityId: other.id }).returning();
     const [employment] = await db().insert(schema.employment).values({ personId: person.id, entityId: other.id, employeeCode: "SZX-1", startDate: "2026-01-01", seniorityDate: "2026-01-01" }).returning();
     await db().insert(schema.payProfile).values({ personId: person.id, employmentId: employment.id, entityId: other.id, profile: "simple", simpleBasis: "other", validFrom: "2026-01-01", status: "approved" });

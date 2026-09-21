@@ -44,10 +44,10 @@ const body = (title: string, text: string) => doc(heading(1, title), paragraph(t
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Suzu Media", shortName: "Media" }).returning();
-  const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }).returning();
-  const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
-  const [des] = await db().insert(schema.department).values({ code: "DES", name: "Design" }).returning();
+  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
+  const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
+  const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
+  const [des] = await db().insert(schema.orgUnit).values({ code: "DES", name: "Design" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id, vid: vid.id, des: des.id });
 
   const people: [Who, string, string, Grant["role"] | null, "group" | "entity" | null, "employee" | "collaborator"][] = [
@@ -60,12 +60,12 @@ beforeAll(async () => {
     ["ngo", szm.id, vid.id, null, null, "collaborator"],
   ];
   for (const [key, entityId, departmentId, role, scope, workforceType] of people) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: entityId, departmentId }).returning();
+    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: entityId, orgUnitId: departmentId }).returning();
     ids[key] = row.id;
     const grants: Grant[] = role ? [{ role, scope: scope === "group" ? { type: "group" } : { type: "entity", id: entityId } }] : [];
     if (role) await db().insert(schema.roleAssignment).values({ personId: row.id, role, scopeType: scope!, scopeId: scope === "entity" ? entityId : null, validFrom: "2024-01-01" });
     const principal: Principal = { personId: row.id, workforceType, grants };
-    viewers[key] = { principal, personId: row.id, keys: viewerKeys(principal, { entityId, departmentId, teamId: null }) };
+    viewers[key] = { principal, personId: row.id, keys: viewerKeys(principal, { entityId, unitId: departmentId, unitPath: departmentId ? [departmentId] : [] }) };
   }
 
   const make = async (key: string, over: { entityId?: string | null; kind?: "open" | "controlled" }, access: { subjectKey: string; level: "view" | "edit" }[]) =>
@@ -215,7 +215,7 @@ describe("policy acknowledgement", () => {
     expect(last.params).toMatchObject({ overdue: "yes" });
 
     // Someone who joins later owes it from their first day, and is told by the job.
-    const [newbie] = await db().insert(schema.person).values({ fullName: "Người mới", searchName: "nguoi moi", workEmail: "moi@suzu.group", status: "active", primaryEntityId: ids.szm, departmentId: ids.vid }).returning();
+    const [newbie] = await db().insert(schema.person).values({ fullName: "Người mới", searchName: "nguoi moi", workEmail: "moi@suzu.group", status: "active", primaryEntityId: ids.szm, orgUnitId: ids.vid }).returning();
     expect(await sendAckReminders(addDays(today, 20))).toMatchObject({ requested: 1, reminded: 0 });
     expect(await notices("kb.ack_requested", newbie.id)).toBe(1);
     await db().update(schema.person).set({ status: "offboarded" }).where(eq(schema.person.id, newbie.id));
@@ -265,12 +265,12 @@ describe("search", () => {
       if (publish) await publishPage(page.id, hr);
       return page.id;
     };
-    made.leave = await make(spaces.handbook, "Nghỉ phép năm", "Mỗi nhân viên có 12 ngày nghỉ phép năm hưởng nguyên lương. Đăng ký nghỉ phép trên Suzu One trước ít nhất ba ngày làm việc.");
+    made.leave = await make(spaces.handbook, "Nghỉ phép năm", "Mỗi nhân viên có 12 ngày nghỉ phép năm hưởng nguyên lương. Đăng ký nghỉ phép trên SuZu One trước ít nhất ba ngày làm việc.");
     made.training = await make(spaces.handbook, "Đào tạo và phát triển", "Công ty hỗ trợ chi phí đào tạo cho khoá học liên quan đến công việc.", made.leave);
     made.secret = await make(spaces.handbook, "Khung nghỉ phép của quản lý", "Quản lý cấp cao có thêm ngày nghỉ phép thâm niên.");
     await setPageAccess(made.secret, [{ subjectKey: `person:${ids.hrSzm}`, level: "view" }]);
     made.draft = await make(spaces.handbook, "Nghỉ phép không lương (nháp)", "Bản nháp về nghỉ phép không lương.", null, false);
-    made.szm = await make(spaces.szmHr, "Nghỉ phép bù tại SZM", "Quy định nghỉ phép bù riêng của Suzu Media.");
+    made.szm = await make(spaces.szmHr, "Nghỉ phép bù tại SZM", "Quy định nghỉ phép bù riêng của SuZu Media.");
     made.archived = await make(spaces.tools, "Nghỉ phép: mẹo cũ", "Trang cũ về nghỉ phép.");
     const { setPageArchived } = await import("./pages");
     await setPageArchived(made.archived, true);
@@ -423,8 +423,8 @@ describe("chunks and retrieval", () => {
     // The managers' restricted page: its reader gets it, a plain employee and another entity's never do.
     expect(await ask("hrSzm", "ngày nghỉ phép thâm niên của quản lý cấp cao")).toContain("Khung nghỉ phép của quản lý");
     expect(await ask("huy", "ngày nghỉ phép thâm niên của quản lý cấp cao", 50)).not.toContain("Khung nghỉ phép của quản lý");
-    expect(await ask("khoi", "quy định nghỉ phép bù của Suzu Media", 50)).not.toContain("Nghỉ phép bù tại SZM");
-    expect(await ask("huy", "quy định nghỉ phép bù của Suzu Media")).toContain("Nghỉ phép bù tại SZM");
+    expect(await ask("khoi", "quy định nghỉ phép bù của SuZu Media", 50)).not.toContain("Nghỉ phép bù tại SZM");
+    expect(await ask("huy", "quy định nghỉ phép bù của SuZu Media")).toContain("Nghỉ phép bù tại SZM");
     expect(await ask("ngo", "nghỉ phép", 50)).toEqual([]);
     // Drafts and archived pages have no passages at all.
     expect(await ask("owner", "nghỉ phép không lương bản nháp", 50)).not.toContain("Nghỉ phép không lương (nháp)");

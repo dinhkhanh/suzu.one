@@ -37,9 +37,9 @@ const punchInput = (key: keyof typeof ids, direction: "in" | "out", position: Re
 
 beforeAll(async () => {
   await migrateTestDb();
-  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "Suzu Media", shortName: "Media" }, { code: "SZC", legalName: "Suzu Creative", shortName: "Creative" }]).returning();
-  const [video] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
-  const person = async (name: string, entityId: string, managerId: string | null = null) => (await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), primaryEntityId: entityId, departmentId: video.id, managerId, status: "active" }).returning())[0].id;
+  const [media, creative] = await db().insert(schema.entity).values([{ code: "SZM", legalName: "SuZu Media", shortName: "Media" }, { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }]).returning();
+  const [video] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
+  const person = async (name: string, entityId: string, managerId: string | null = null) => (await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), primaryEntityId: entityId, orgUnitId: video.id, managerId, status: "active" }).returning())[0].id;
   const lead = await person("Long", media.id);
   Object.assign(ids, { media: media.id, creative: creative.id, video: video.id, lead, huy: await person("Huy", media.id, lead), nhu: await person("Nhu", media.id, lead), lan: await person("Lan", creative.id), hr: await person("Bao", media.id) });
   await saveSchedule({ id: null, entityId: null, name: "Office", kind: "fixed", pattern: WEEK, isDefault: true, isActive: true });

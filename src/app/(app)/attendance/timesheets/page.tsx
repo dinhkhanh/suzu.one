@@ -48,7 +48,7 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
     <div className="flex max-w-4xl flex-col gap-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <h1>{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("description")}</p>
         </div>
         <MonthNav month={month} hrefFor={href} thisMonth={thisMonth} />
@@ -90,7 +90,7 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-sm font-medium text-muted-foreground">{t("period.title", { entity: chosen.shortName })}</h2>
             {mine.length > 1 ? (
-              <nav className="flex flex-wrap gap-3 text-sm">
+              <nav className="tab-row">
                 {mine.map((entity) => (
                   <Link key={entity.id} href={`/attendance/timesheets?month=${month}&entity=${entity.id}`} className={entity.id === chosen.id ? "font-medium" : "underline-offset-4 hover:underline"}>
                     {entity.shortName}

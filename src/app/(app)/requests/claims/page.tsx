@@ -29,7 +29,7 @@ export default async function ExpenseClaimsPage() {
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("financeTitle")}</h1>
+          <h1>{t("financeTitle")}</h1>
           <p className="text-sm text-muted-foreground">{t("financeDescription", { count: waiting.length, amount: money(owed) })}</p>
         </div>
         <SweepClaimsButton label={t("sweep")} />

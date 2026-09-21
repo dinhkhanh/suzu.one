@@ -2,10 +2,12 @@
 // private storage through a signed URL; a reader gets a one-minute link from /api/kb/files/<id>
 // after the KB policy has said they may see the page the file belongs to.
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { db, schema } from "@/lib/db";
 import { beginUpload, completeUpload, createDownloadLink, findFile, listFilesOf, softDeleteFile, type StoredFileRow } from "../platform/files/service";
+import { pageVisibleSql } from "./access-sql";
 import { type Doc, fileIdsOf } from "./engine/doc";
 import { levelOf, type LoadedPage, loadPage } from "./pages";
 import { atLeast, type KbViewer } from "./policy";
@@ -52,4 +54,25 @@ export async function mayOpenPageFile(viewer: KbViewer, loaded: LoadedPage, file
   if (!loaded.page.publishedVersionId) return false;
   const [version] = await db().select({ content: schema.kbPageVersion.content }).from(schema.kbPageVersion).where(eq(schema.kbPageVersion.id, loaded.page.publishedVersionId)).limit(1);
   return !!version && fileIdsOf(version.content as Doc).includes(fileId.toLowerCase());
+}
+
+export type SpaceFileView = PageFileView & { pageId: string; pageTitle: string; uploadedByName: string | null };
+
+/**
+ * Every file in a space, in one list (FR-KB-15): a team finds an upload without remembering which
+ * page it hangs on. Permission-filtered in SQL exactly as the page tree is — a file of a page the
+ * viewer may not open is not in the list, and no separate sharing rule exists for files.
+ */
+export async function listSpaceFiles(viewer: KbViewer, spaceId: string): Promise<SpaceFileView[]> {
+  const uploader = alias(schema.person, "uploader");
+  const rows = await db()
+    .select({ file: schema.storedFile, pageId: schema.kbPage.id, pageTitle: schema.kbPage.title, uploadedByName: uploader.fullName })
+    .from(schema.storedFile)
+    // `stored_file.owner_id` is text: it names rows of several kinds, so the join casts.
+    .innerJoin(schema.kbPage, sql`${schema.kbPage.id}::text = ${schema.storedFile.ownerId}`)
+    .innerJoin(schema.kbSpace, eq(schema.kbSpace.id, schema.kbPage.spaceId))
+    .leftJoin(uploader, eq(uploader.id, schema.storedFile.uploadedByPersonId))
+    .where(and(eq(schema.storedFile.ownerType, PAGE_FILE_OWNER), eq(schema.storedFile.status, "ready"), isNull(schema.storedFile.deletedAt), eq(schema.kbPage.spaceId, spaceId), pageVisibleSql(viewer)))
+    .orderBy(desc(schema.storedFile.createdAt));
+  return rows.map(({ file, pageId, pageTitle, uploadedByName }) => ({ id: file.id, fileName: file.fileName, sizeBytes: file.sizeBytes, contentType: file.contentType, createdAt: file.createdAt, pageId, pageTitle, uploadedByName }));
 }
