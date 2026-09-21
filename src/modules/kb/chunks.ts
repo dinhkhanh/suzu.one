@@ -12,7 +12,7 @@ import { and, asc, eq, isNull, ne, notInArray, or, sql } from "drizzle-orm";
 import { db, schema, type Tx } from "@/lib/db";
 import { pagePublishedVisibleSql } from "./access-sql";
 import { embeddingDriver, embedTexts } from "./embeddings";
-import { chunkDoc, chunkEmbeddingText } from "./engine/chunk";
+import { CHUNK_FORMAT, chunkDoc, chunkEmbeddingText } from "./engine/chunk";
 import type { Doc } from "./engine/doc";
 import { cosine } from "./engine/fake-embedding";
 import { searchTokens } from "./engine/search";
@@ -35,7 +35,7 @@ export async function rebuildChunks(tx: Tx, page: { id: string }, version: { id:
         const contentHash = hashOf(chunk.headingPath, chunk.content);
         const kept = known.get(contentHash);
         if (kept) reused++;
-        return { pageId: page.id, versionId: version.id, chunkIndex: chunk.index, headingPath: chunk.headingPath, content: chunk.content, contentHash, tokenEstimate: chunk.tokenEstimate, embedding: kept?.embedding ?? null, embeddingModel: kept?.embeddingModel ?? null, embeddedAt: kept?.embeddedAt ?? null };
+        return { pageId: page.id, versionId: version.id, chunkIndex: chunk.index, headingPath: chunk.headingPath, anchor: chunk.anchor, format: CHUNK_FORMAT, content: chunk.content, contentHash, tokenEstimate: chunk.tokenEstimate, embedding: kept?.embedding ?? null, embeddingModel: kept?.embeddingModel ?? null, embeddedAt: kept?.embeddedAt ?? null };
       }),
     );
   }
@@ -69,19 +69,26 @@ export async function embedPendingChunks(limit = 2000): Promise<{ model: string;
   return { model: driver.model, embedded, remaining: pending.length - batch.length };
 }
 
-/** Pages published before chunking existed (or whose chunks were lost): cut them now. Used by the job. */
+/** Pages published before chunking existed, whose chunks were lost, or whose chunks are in an older `CHUNK_FORMAT`: cut them now. Used by the job. */
 export async function chunkUnchunkedPages(limit = 500): Promise<{ pages: number }> {
   const rows = await db()
     .select({ id: kbPage.id, versionId: schema.kbPageVersion.id, title: schema.kbPageVersion.title, content: schema.kbPageVersion.content })
     .from(kbPage)
     .innerJoin(schema.kbPageVersion, eq(schema.kbPageVersion.id, kbPage.publishedVersionId))
-    .where(and(isNull(kbPage.deletedAt), ne(kbPage.status, "archived"), sql`not exists (select 1 from ${kbPageChunk} where ${kbPageChunk.pageId} = ${kbPage.id} and ${kbPageChunk.versionId} = ${kbPage.publishedVersionId})`))
+    .where(
+      and(
+        isNull(kbPage.deletedAt),
+        ne(kbPage.status, "archived"),
+        // No chunks of the published version yet — or chunks written in an older format.
+        sql`(not exists (select 1 from ${kbPageChunk} where ${kbPageChunk.pageId} = ${kbPage.id} and ${kbPageChunk.versionId} = ${kbPage.publishedVersionId}) or exists (select 1 from ${kbPageChunk} where ${kbPageChunk.pageId} = ${kbPage.id} and ${kbPageChunk.format} < ${CHUNK_FORMAT}))`,
+      ),
+    )
     .limit(limit);
   for (const row of rows) await db().transaction((tx) => rebuildChunks(tx, { id: row.id }, { id: row.versionId, title: row.title, content: row.content }));
   return { pages: rows.length };
 }
 
-export type RetrievedChunk = { chunkId: string; pageId: string; pageTitle: string; spaceKey: string; spaceName: string; versionId: string; chunkIndex: number; headingPath: string; content: string; /** Cosine similarity to the question, -1..1; 0 when the chunk has no vector of the current model. */ score: number };
+export type RetrievedChunk = { chunkId: string; pageId: string; pageTitle: string; spaceKey: string; spaceName: string; versionId: string; chunkIndex: number; headingPath: string; anchor: string | null; content: string; /** Cosine similarity to the question, -1..1; 0 when the chunk has no vector of the current model. */ score: number };
 
 const CANDIDATE_CAP = 2000;
 
@@ -98,7 +105,7 @@ export async function retrieveKbChunks(viewer: KbViewer, input: { query: string;
   const limit = Math.max(1, Math.min(input.limit ?? 8, 200));
   const tokens = searchTokens(input.query);
   if (tokens.length === 0) return [];
-  const select = { chunkId: kbPageChunk.id, pageId: kbPage.id, pageTitle: kbPage.publishedTitle, spaceKey: kbSpace.key, spaceName: kbSpace.name, versionId: kbPageChunk.versionId, chunkIndex: kbPageChunk.chunkIndex, headingPath: kbPageChunk.headingPath, content: kbPageChunk.content, embedding: kbPageChunk.embedding, embeddingModel: kbPageChunk.embeddingModel };
+  const select = { chunkId: kbPageChunk.id, pageId: kbPage.id, pageTitle: kbPage.publishedTitle, spaceKey: kbSpace.key, spaceName: kbSpace.name, versionId: kbPageChunk.versionId, chunkIndex: kbPageChunk.chunkIndex, headingPath: kbPageChunk.headingPath, anchor: kbPageChunk.anchor, content: kbPageChunk.content, embedding: kbPageChunk.embedding, embeddingModel: kbPageChunk.embeddingModel };
   const visible = and(pagePublishedVisibleSql(viewer), eq(kbPageChunk.versionId, kbPage.publishedVersionId), input.spaceId ? eq(kbPage.spaceId, input.spaceId) : undefined);
   const from = () => db().select(select).from(kbPageChunk).innerJoin(kbPage, eq(kbPage.id, kbPageChunk.pageId)).innerJoin(kbSpace, eq(kbSpace.id, kbPage.spaceId));
   // Any word of the question, not all of them: a question is not a keyword search.

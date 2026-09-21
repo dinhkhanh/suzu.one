@@ -246,6 +246,10 @@ export const kbPageChunk = pgTable(
     versionId: uuid("version_id").notNull(),
     chunkIndex: integer("chunk_index").notNull(),
     headingPath: text("heading_path").notNull().default(""),
+    // The heading's anchor on the reading view (`h-3`), so a citation opens at the section.
+    anchor: text("anchor"),
+    // `CHUNK_FORMAT` when written; 1 is the plain text of the first version.
+    format: integer("format").notNull().default(1),
     content: text("content").notNull(),
     // sha256 of heading path + content: an unchanged passage keeps its vector across versions.
     contentHash: text("content_hash").notNull(),

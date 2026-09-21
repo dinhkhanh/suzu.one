@@ -7,7 +7,9 @@ import { FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { askAssistantAction } from "../actions";
+import { citationHref } from "../engine/answer";
 import { type ChatTurn as Turn, QUESTION_MAX, type ToolOutcome } from "../enums";
+import { AnswerMarkdown } from "./answer-markdown";
 
 /**
  * A personal tool's answer (FR-AI-02). The server sent message keys and numbers, never a sentence
@@ -68,7 +70,7 @@ function Citations({ turn }: { turn: Turn }) {
       {turn.citations.map((citation, index) => (
         <li key={citation.chunkId} className="text-xs text-muted-foreground">
           <span className="tabular-nums">[{index + 1}]</span>{" "}
-          <Link href={`/kb/pages/${citation.pageId}`} className="font-medium hover:underline">
+          <Link href={citationHref(citation)} className="font-medium hover:underline">
             {citation.pageTitle}
           </Link>
           <span> · {citation.spaceName}</span>
@@ -101,8 +103,10 @@ function Bubble({ turn }: { turn: Turn }) {
         </div>
       ) : (
         <>
-          {/* The knowledge base's own words, quoted. Plain text, never markup: nothing a page writes is rendered as anything but text. */}
-          <div className="rounded-2xl rounded-bl-sm border bg-card px-3.5 py-2 text-sm whitespace-pre-wrap">{turn.body}</div>
+          {/* Markdown turned into elements, never into HTML: see `answer-markdown.tsx`. */}
+          <div className="rounded-2xl rounded-bl-sm border bg-card px-3.5 py-2.5">
+            <AnswerMarkdown body={turn.body} citations={turn.citations} />
+          </div>
           <Citations turn={turn} />
         </>
       )}

@@ -23,7 +23,7 @@ export async function retrievePassages(viewer: KbViewer, question: string, optio
   const query = [...new Set(questionVariants(question).flatMap((variant) => retrievalQuery(variant).split(" ")))].filter(Boolean).join(" ");
   if (!query) return [];
   const chunks = await retrieveKbChunks(viewer, { query, limit: CANDIDATES, spaceId: options.spaceId ?? null });
-  const passages: Passage[] = chunks.map((chunk) => ({ chunkId: chunk.chunkId, pageId: chunk.pageId, pageTitle: chunk.pageTitle, spaceKey: chunk.spaceKey, spaceName: chunk.spaceName, headingPath: chunk.headingPath, content: chunk.content, vectorScore: chunk.score }));
+  const passages: Passage[] = chunks.map((chunk) => ({ chunkId: chunk.chunkId, pageId: chunk.pageId, pageTitle: chunk.pageTitle, spaceKey: chunk.spaceKey, spaceName: chunk.spaceName, headingPath: chunk.headingPath, anchor: chunk.anchor, content: chunk.content, vectorScore: chunk.score }));
   // The question, not the stripped query, decides the lexical score: "bao nhiêu ngày" tells us the
   // asker wants a number even though those words are not search terms.
   return rankPassages(question, passages);

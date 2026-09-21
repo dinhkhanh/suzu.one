@@ -6,10 +6,15 @@
 // could reach.
 import "server-only";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { createTranslator } from "next-intl";
+import { navFor } from "@/components/shell/nav";
 import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { type KbViewer, kbViewerOf, type ViewerSource } from "@/modules/kb/service";
+import en from "../../../messages/en.json";
+import vi from "../../../messages/vi.json";
 import type { Citation } from "./engine/answer";
+import { allowedAppLinks, appLinksFor } from "./engine/app-links";
 import { routeQuestion } from "./engine/routing";
 import type { ChatTurn, ToolOutcome } from "./enums";
 import { QUESTION_MAX } from "./enums";
@@ -36,9 +41,19 @@ export type Answer = { body: string; citations: Citation[]; score: number; answe
 export async function answerQuestion(viewer: KbViewer, question: string, locale: string): Promise<Answer> {
   const ranked = await retrievePassages(viewer, question);
   const driver = chatDriver();
-  const answer = await driver.complete({ question, passages: ranked, locale });
+  // The screens this asker's sidebar shows. Recruitment and the directory are left out: they
+  // depend on rows, not roles, and nothing in the link catalogue points at them.
+  const nav = new Set(navFor(viewer.principal, { people: false, recruit: false, interviews: false }).main.map((item) => item.key));
+  const t = createTranslator({ locale: locale === "en" ? "en" : "vi", messages: locale === "en" ? en : vi, namespace: "assistant.appLinks" });
+  const links = allowedAppLinks(nav).map((link) => ({ label: t(link.key as "leaveNew"), href: link.href }));
+  const answer = await driver.complete({ question, passages: ranked, locale, links });
   const citations = answer.extracted.passages.map((passage) => passage.citation);
-  return { body: answer.body, citations, score: ranked[0]?.score ?? 0, answered: answer.body.length > 0 && citations.length > 0, driver: driver.name, model: driver.model };
+  const answered = answer.body.length > 0 && citations.length > 0;
+  // "Where to do it": the screens the question or the quoted passages name, unless the answer
+  // already links to them.
+  const related = answered ? appLinksFor(question, answer.extracted.passages.map((passage) => passage.excerpt), nav).filter((link) => !answer.body.includes(`](${link.href})`)) : [];
+  const body = related.length ? `${answer.body}\n\n---\n\n**${t("title")}** ${related.map((link) => `[${t(link.key as "leaveNew")}](${link.href})`).join(" · ")}` : answer.body;
+  return { body, citations, score: ranked[0]?.score ?? 0, answered, driver: driver.name, model: driver.model };
 }
 
 /**

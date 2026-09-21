@@ -60,6 +60,7 @@ export async function seedAi(db: Db): Promise<string> {
       spaceKey: kbSpace.key,
       spaceName: kbSpace.name,
       headingPath: kbPageChunk.headingPath,
+      anchor: kbPageChunk.anchor,
       content: kbPageChunk.content,
       embedding: kbPageChunk.embedding,
       accessRootId: kbPage.accessRootId,
@@ -96,7 +97,7 @@ export async function seedAi(db: Db): Promise<string> {
     for (const [turn, question] of chat.questions.entries()) {
       const at = minutesAgo((CHATS.length - index) * 90 - turn * 4);
       const query = fakeEmbedding(retrievalQuery(question));
-      const passages: Passage[] = visible.map((chunk) => ({ chunkId: chunk.chunkId, pageId: chunk.pageId, pageTitle: chunk.pageTitle ?? "", spaceKey: chunk.spaceKey, spaceName: chunk.spaceName, headingPath: chunk.headingPath, content: chunk.content, vectorScore: chunk.embedding ? cosine(query, chunk.embedding) : 0 }));
+      const passages: Passage[] = visible.map((chunk) => ({ chunkId: chunk.chunkId, pageId: chunk.pageId, pageTitle: chunk.pageTitle ?? "", spaceKey: chunk.spaceKey, spaceName: chunk.spaceName, headingPath: chunk.headingPath, anchor: chunk.anchor, content: chunk.content, vectorScore: chunk.embedding ? cosine(query, chunk.embedding) : 0 }));
       const ranked = rankPassages(question, passages);
       const extracted = extractAnswer(question, ranked);
       const body = renderExtractedAnswer(extracted);

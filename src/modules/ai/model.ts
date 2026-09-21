@@ -19,7 +19,7 @@
 // of the Anthropic organisation the key belongs to. It is listed under "Needs the owner".
 import "server-only";
 import { env } from "@/lib/env";
-import { type ExtractedAnswer, extractAnswer, type RankedPassage, renderExtractedAnswer } from "./engine/answer";
+import { citationHref, type ExtractedAnswer, extractAnswer, type RankedPassage, renderExtractedAnswer } from "./engine/answer";
 import { assemblePrompt, type PromptSource } from "./engine/prompt";
 
 export type ChatRequest = {
@@ -27,6 +27,8 @@ export type ChatRequest = {
   /** Already permission-filtered and ranked. The driver may only use these. */
   passages: readonly RankedPassage[];
   locale: string;
+  /** The app screens this asker may be linked to, labelled in their language. */
+  links?: readonly { label: string; href: string }[];
 };
 
 export type ChatAnswer = {
@@ -62,14 +64,14 @@ function claudeDriver(apiKey: string, model: string): ChatDriver {
     name: "claude",
     isLocal: false,
     model,
-    complete: async ({ question, passages }) => {
+    complete: async ({ question, passages, links = [] }) => {
       // The citations are decided HERE, from what was retrieved — never parsed out of what the
       // model wrote. A model that cites a page it was not given, or invents one, changes nothing:
       // the links under the answer are the passages the asker's own permissions produced.
       const extracted = extractAnswer(question, passages);
       const used = passages.slice(0, CLAUDE_SOURCES);
-      const sources: PromptSource[] = used.map((passage, index) => ({ index: index + 1, pageTitle: passage.pageTitle, spaceName: passage.spaceName, headingPath: passage.headingPath, content: passage.content }));
-      const { system, user } = assemblePrompt(question, sources);
+      const sources: PromptSource[] = used.map((passage, index) => ({ index: index + 1, pageTitle: passage.pageTitle, spaceName: passage.spaceName, headingPath: passage.headingPath, href: citationHref(passage), content: passage.content }));
+      const { system, user } = assemblePrompt(question, sources, links);
 
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",

@@ -16,6 +16,9 @@ export type Passage = {
   spaceKey: string;
   spaceName: string;
   headingPath: string;
+  /** The section's anchor on the page (`h-3`); null for text above the first heading. */
+  anchor: string | null;
+  /** Markdown (`kb/engine/doc-markdown.ts`). */
   content: string;
   /** Cosine similarity from retrieval, -1..1; 0 when the chunk has no vector of the current model. */
   vectorScore: number;
@@ -23,7 +26,11 @@ export type Passage = {
 
 export type RankedPassage = Passage & { score: number; lexical: number };
 
-export type Citation = { pageId: string; pageTitle: string; spaceKey: string; spaceName: string; headingPath: string; chunkId: string; score: number };
+/** `anchor` is absent on citations stored before passages had one. */
+export type Citation = { pageId: string; pageTitle: string; spaceKey: string; spaceName: string; headingPath: string; anchor?: string | null; chunkId: string; score: number };
+
+/** Where a citation opens: the page, at the section when it has one. */
+export const citationHref = (citation: Pick<Citation, "pageId" | "anchor">): string => `/kb/pages/${citation.pageId}${citation.anchor ? `#${citation.anchor}` : ""}`;
 
 /** How a passage is weighed. The lexical half dominates: it is the half that is true on any driver. */
 const VECTOR_WEIGHT = 0.35;
@@ -113,9 +120,16 @@ export function excerpt(question: string, content: string, budget = MAX_PASSAGE_
       from--;
     }
   }
-  const head = from > 0 ? "… " : "";
-  const tail = to < lines.length - 1 ? " …" : "";
-  return `${head}${lines.slice(from, to + 1).join("\n")}${tail}`;
+  // A window that starts inside a table keeps the table's header, or the rows read as text.
+  const picked = lines.slice(from, to + 1);
+  if (lines[from].startsWith("|")) {
+    let start = from;
+    while (start > 0 && lines[start - 1].startsWith("|")) start--;
+    if (from === start + 1) picked.unshift(lines[start]);
+    else if (from > start + 1) picked.unshift(lines[start], lines[start + 1]);
+  }
+  // The ellipses are lines of their own: glued to a table row or a list item they break it.
+  return [...(from > 0 ? ["…", ""] : []), ...picked, ...(to < lines.length - 1 ? ["", "…"] : [])].join("\n").trim();
 }
 
 export type ExtractedAnswer = { passages: { citation: Citation; excerpt: string }[] };
@@ -141,13 +155,24 @@ export function extractAnswer(question: string, ranked: readonly RankedPassage[]
   }
   return {
     passages: chosen.map((passage, index) => ({
-      citation: { pageId: passage.pageId, pageTitle: passage.pageTitle, spaceKey: passage.spaceKey, spaceName: passage.spaceName, headingPath: passage.headingPath, chunkId: passage.chunkId, score: Math.round(passage.score * 1000) / 1000 },
+      citation: { pageId: passage.pageId, pageTitle: passage.pageTitle, spaceKey: passage.spaceKey, spaceName: passage.spaceName, headingPath: passage.headingPath, anchor: passage.anchor, chunkId: passage.chunkId, score: Math.round(passage.score * 1000) / 1000 },
       excerpt: excerpt(question, passage.content, index === 0 ? MAX_PASSAGE_CHARS : NEXT_PASSAGE_CHARS),
     })),
   };
 }
 
-/** The answer as one body of text: each quoted passage under the heading it came from. */
+const escapeLinkText = (text: string): string => text.replace(/([\\[\]*_`])/g, "\\$1");
+
+/**
+ * The answer as Markdown: each quoted passage under its section's name, which links to that
+ * section of the page, followed by the passage as the page shows it.
+ */
 export function renderExtractedAnswer(answer: ExtractedAnswer): string {
-  return answer.passages.map((passage) => `${passage.citation.headingPath}\n${passage.excerpt}`).join("\n\n");
+  return answer.passages
+    .map(({ citation, excerpt: text }) => {
+      const section = citation.headingPath.split("›").slice(1).map((part) => part.trim()).filter(Boolean).join(" › ") || citation.pageTitle;
+      const label = section === citation.pageTitle ? section : `${section} · ${citation.pageTitle}`;
+      return `#### [${escapeLinkText(label)}](${citationHref(citation)})\n\n${text}`;
+    })
+    .join("\n\n");
 }

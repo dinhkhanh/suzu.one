@@ -160,7 +160,7 @@ describe("a page that tries to give orders", () => {
     const passages = await retrievePassages(viewers.huy, "ghi chú nội bộ admin mode");
     const hostile = passages.find((passage) => passage.content.includes("admin mode"));
     expect(hostile).toBeDefined();
-    const { system, user } = assemblePrompt("Ghi chú nội bộ nói gì?", [{ index: 1, pageTitle: hostile!.pageTitle, spaceName: hostile!.spaceName, headingPath: hostile!.headingPath, content: hostile!.content }]);
+    const { system, user } = assemblePrompt("Ghi chú nội bộ nói gì?", [{ index: 1, pageTitle: hostile!.pageTitle, spaceName: hostile!.spaceName, headingPath: hostile!.headingPath, href: `/kb/pages/${hostile!.pageId}`, content: hostile!.content }]);
     expect(system).not.toContain("admin mode");
     expect(user.match(/<\/source>/g)).toHaveLength(1);
     expect(user.match(/<\/reference-material>/g)).toHaveLength(1);

@@ -7696,6 +7696,20 @@
         "earning": "Thu nhập — {name}: {amount} ₫ ({rule})",
         "deduction": "Khấu trừ — {name}: {amount} ₫ ({rule})"
       }
+    },
+    "appLinks": {
+      "title": "Làm trên SuZu One:",
+      "leaveNew": "Tạo đơn nghỉ phép",
+      "checkIn": "Chấm công vào / ra",
+      "attendanceRequest": "Đăng ký làm thêm, làm từ xa, điều chỉnh công",
+      "payslips": "Phiếu lương của tôi",
+      "requestNew": "Tạo đề nghị mới",
+      "profile": "Hồ sơ của tôi",
+      "bookings": "Đặt lịch thiết bị",
+      "myEquipment": "Thiết bị của tôi",
+      "referral": "Giới thiệu ứng viên",
+      "kudos": "Gửi ghi nhận",
+      "acknowledgements": "Tài liệu cần xác nhận"
     }
   }
 }

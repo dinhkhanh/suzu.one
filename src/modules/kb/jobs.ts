@@ -10,7 +10,7 @@ export const kbAckRemindersJob: JobDefinition = {
   run: async ({ today }) => ({ ...(await sendAckReminders(today)), reviewDue: (await sendReviewDueNotices(today)).notified }),
 };
 
-/** Midnight and morning: cut any published page that has no chunks yet, then embed what has no vector of the current model. */
+/** Midnight and morning: cut any published page that has no chunks yet (or chunks in an older format), then embed what has no vector of the current model. */
 export const kbEmbeddingsJob: JobDefinition = {
   name: "kb-embeddings",
   run: async () => ({ chunkedPages: (await chunkUnchunkedPages()).pages, ...(await embedPendingChunks()) }),

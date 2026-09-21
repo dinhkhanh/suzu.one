@@ -7696,6 +7696,20 @@
         "earning": "Earning — {name}: {amount} ₫ ({rule})",
         "deduction": "Deduction — {name}: {amount} ₫ ({rule})"
       }
+    },
+    "appLinks": {
+      "title": "Do it in SuZu One:",
+      "leaveNew": "Request leave",
+      "checkIn": "Check in / out",
+      "attendanceRequest": "Request overtime, remote work or a correction",
+      "payslips": "My payslips",
+      "requestNew": "New request",
+      "profile": "My profile",
+      "bookings": "Book equipment",
+      "myEquipment": "My equipment",
+      "referral": "Refer a candidate",
+      "kudos": "Give kudos",
+      "acknowledgements": "Pages to acknowledge"
     }
   }
 }
