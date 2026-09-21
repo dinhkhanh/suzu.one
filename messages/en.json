@@ -5250,7 +5250,8 @@
         "raise": "Raise",
         "promotion": "Promotion",
         "adjustment": "Adjustment",
-        "contract_renewal": "Contract renewal"
+        "contract_renewal": "Contract renewal",
+        "decrease": "Salary decrease"
       },
       "form": {
         "title": "Propose a salary change",
@@ -5273,7 +5274,20 @@
       "currentTerms": "Current",
       "proposedTerms": "Proposed",
       "figuresHidden": "You are not allowed to see the figures of this request.",
-      "steps": "Approval steps"
+      "steps": "Approval steps",
+      "openPayFile": "Open pay file",
+      "historyStepUp": "Salary figures need you to confirm who you are.",
+      "historyStepUpLink": "Confirm it is you",
+      "period": "Period",
+      "total": "Monthly total",
+      "changeColumn": "Change",
+      "decisionColumn": "Decision",
+      "totalChange": "Total",
+      "change": {
+        "up": "Increase",
+        "down": "Decrease",
+        "same": "No change to base salary"
+      }
     },
     "profiles": {
       "title": "Pay profile",

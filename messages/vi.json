@@ -5250,7 +5250,8 @@
         "raise": "Tăng lương",
         "promotion": "Điều chỉnh lương do thăng chức",
         "adjustment": "Điều chỉnh lương",
-        "contract_renewal": "Điều chỉnh lương khi tái ký hợp đồng"
+        "contract_renewal": "Điều chỉnh lương khi tái ký hợp đồng",
+        "decrease": "Giảm lương"
       },
       "form": {
         "title": "Đề xuất điều chỉnh lương",
@@ -5273,7 +5274,20 @@
       "currentTerms": "Hiện tại",
       "proposedTerms": "Đề xuất",
       "figuresHidden": "Bạn không có quyền xem số tiền của đề xuất này.",
-      "steps": "Các bước duyệt"
+      "steps": "Các bước duyệt",
+      "openPayFile": "Mở hồ sơ lương",
+      "historyStepUp": "Cần xác thực lại danh tính để xem số liệu lương.",
+      "historyStepUpLink": "Xác thực lại",
+      "period": "Thời gian",
+      "total": "Tổng thu nhập tháng",
+      "changeColumn": "Thay đổi",
+      "decisionColumn": "Quyết định",
+      "totalChange": "Tổng",
+      "change": {
+        "up": "Tăng",
+        "down": "Giảm",
+        "same": "Lương cơ bản không đổi"
+      }
     },
     "profiles": {
       "title": "Hồ sơ trả lương",

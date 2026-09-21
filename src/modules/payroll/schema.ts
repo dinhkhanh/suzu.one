@@ -164,7 +164,7 @@ export const payrollPolicy = pgTable(
 
 // ── Salary structures (FR-PAY-01, FR-PAY-04) ────────────────────────────────────────────────
 
-export const salaryChangeReason = pgEnum("salary_change_reason", ["initial", "probation_end", "raise", "promotion", "adjustment", "contract_renewal"]);
+export const salaryChangeReason = pgEnum("salary_change_reason", ["initial", "probation_end", "raise", "promotion", "adjustment", "contract_renewal", "decrease"]);
 
 // Effective-dated; one employment's structures never overlap. Every row comes out of an approved
 // `salary_change` request. `terms_enc` = { baseSalary, insuranceSalary, allowances: [{ code, amount }] }

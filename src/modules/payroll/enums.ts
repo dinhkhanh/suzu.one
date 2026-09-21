@@ -18,7 +18,7 @@ export const TAX_TREATMENTS = ["taxable", "exempt", "exempt_up_to_cap"] as const
 export const PRORATIONS = ["fixed", "attendance"] as const;
 export const ROUNDING_RULE_NAMES = Object.keys(ROUNDING_RULES) as (keyof typeof ROUNDING_RULES)[];
 
-export const SALARY_CHANGE_REASONS = ["initial", "probation_end", "raise", "promotion", "adjustment", "contract_renewal"] as const;
+export const SALARY_CHANGE_REASONS = ["initial", "probation_end", "raise", "promotion", "adjustment", "contract_renewal", "decrease"] as const;
 export type SalaryChangeReason = (typeof SALARY_CHANGE_REASONS)[number];
 
 /** A person's pay terms: what `salary_structure.terms_enc` holds once decrypted. Integer VND. */

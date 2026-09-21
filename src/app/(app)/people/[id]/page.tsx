@@ -13,10 +13,12 @@ import { EditPersonForm } from "@/modules/core-hr/ui/edit-person-form";
 import { RehireForm } from "@/modules/core-hr/ui/lifecycle-forms";
 import { PersonEquipment } from "@/modules/assets/ui/person-equipment";
 import { PersonDocuments } from "@/modules/documents/ui/person-documents";
+import { PersonSalaryHistory } from "@/modules/payroll/ui/person-salary-history";
 import { LifecycleSection } from "@/modules/core-hr/ui/lifecycle-section";
 import { RecordSections } from "@/modules/core-hr/ui/record-sections";
 import { RequestTable } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
+import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 import { listEntities } from "@/modules/platform/org/service";
 import { can } from "@/modules/platform/rbac/policy";
 
@@ -151,6 +153,9 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
             </Table>
             {options ? <AssignmentForm person={person} options={options} today={todayInVietnam()} /> : null}
           </section>
+
+          {/* Compensation tier: renders only for the person and C&B; a line manager sees nothing. */}
+          <PersonSalaryHistory viewer={{ personId: user.person.id, principal: user.principal }} personId={person.id} stepUpFresh={isStepUpFresh(user.reauthAt)} />
 
           <LifecycleSection principal={user.principal} personId={person.id} canManage={person.canManage} employed={personal.endDate === null} />
           <PersonEquipment principal={user.principal} personId={person.id} />

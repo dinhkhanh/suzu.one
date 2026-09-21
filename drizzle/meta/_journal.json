@@ -526,6 +526,13 @@
       "when": 1790008761019,
       "tag": "0074_kb_chunk_markdown",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1790009904806,
+      "tag": "0075_salary_decrease_reason",
+      "breakpoints": true
     }
   ]
 }

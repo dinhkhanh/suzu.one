@@ -1,0 +1,1 @@
+ALTER TYPE "public"."salary_change_reason" ADD VALUE 'decrease';
