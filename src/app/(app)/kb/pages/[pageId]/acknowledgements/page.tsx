@@ -67,7 +67,7 @@ export default async function AckReportPage(props: PageProps<"/kb/pages/[pageId]
               <TableRow>
                 <TableHead>{t("ack.person")}</TableHead>
                 <TableHead>{t("access.subject.entity")}</TableHead>
-                <TableHead>{t("access.subject.department")}</TableHead>
+                <TableHead>{t("ack.department")}</TableHead>
                 <TableHead>{t("ack.status")}</TableHead>
                 <TableHead>{t("ack.lastNotice")}</TableHead>
               </TableRow>

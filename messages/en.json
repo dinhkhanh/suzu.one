@@ -3742,7 +3742,8 @@
         "termination": "Termination",
         "long_leave": "Long leave starts",
         "long_leave_return": "Back from long leave",
-        "salary_change": "Salary change"
+        "salary_change": "Salary change",
+        "licence_renewal": "Licence renewal"
       },
       "evidence": {
         "file": "A file",
@@ -4986,7 +4987,8 @@
       "person": "Person",
       "status": "Status",
       "lastNotice": "Last notice (count)",
-      "myLink": "My acknowledgements"
+      "myLink": "My acknowledgements",
+      "department": "Department"
     },
     "search": {
       "title": "Search the knowledge base",

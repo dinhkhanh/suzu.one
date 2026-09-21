@@ -2,7 +2,7 @@
 import { TableKit } from "@tiptap/extension-table";
 import { type Editor, EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -144,6 +144,7 @@ function Toolbar({ editor, onUpload, uploading }: { editor: Editor; onUpload: (f
 
 export function PageEditor({ pageId, initialTitle, initialContent, canPublish, controlled }: { pageId: string; initialTitle: string; initialContent: unknown; canPublish: boolean; controlled: boolean }) {
   const t = useTranslations("kb");
+  const format = useFormatter();
   const router = useRouter();
   const [title, setTitle] = useState(initialTitle);
   const [changeNote, setChangeNote] = useState("");
@@ -177,14 +178,16 @@ export function PageEditor({ pageId, initialTitle, initialContent, canPublish, c
   function save(publish: boolean) {
     if (!editor) return;
     startTransition(async () => {
-      const content = editor.getJSON();
+      // Sent as a JSON string: passed as an object, React's action encoding delivered a node's
+      // `attrs` to the server as a function, and every heading, callout and table was refused.
+      const content = JSON.stringify(editor.getJSON());
       // In a controlled space an editor's "publish" is a request to the space's reviewers.
       const result = !publish ? await savePageDraftAction({ pageId, title, content }) : canPublish ? await publishPageAction({ pageId, title, content, changeNote, isMajor }) : await submitPageReviewAction({ pageId, title, content, changeNote, isMajor });
       setErrorKey(keyOf(result));
       if (!result.ok) return;
       if (publish) router.push(`/kb/pages/${pageId}`);
       else {
-        setSavedAt(new Date().toLocaleTimeString());
+        setSavedAt(format.dateTime(new Date(), { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
         router.refresh();
       }
     });

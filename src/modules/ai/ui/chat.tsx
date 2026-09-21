@@ -116,6 +116,7 @@ export function AssistantChat({ conversationId, turns, suggestions }: { conversa
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const asked = useRef("");
   const [shown, setShown] = useState<Turn[]>(turns);
   const [conversation, setConversation] = useState(conversationId);
 
@@ -125,7 +126,7 @@ export function AssistantChat({ conversationId, turns, suggestions }: { conversa
       setConversation(result.conversationId);
       setShown((before) => [
         ...before,
-        { id: `${result.messageId}-q`, role: "user", body: inputRef.current?.defaultValue ?? "", outcome: null, citations: [], tool: null },
+        { id: `${result.messageId}-q`, role: "user", body: asked.current, outcome: null, citations: [], tool: null },
         { id: result.messageId, role: "assistant", body: result.body, outcome: result.outcome, citations: result.citations, tool: result.tool },
       ]);
       formRef.current?.reset();
@@ -135,7 +136,7 @@ export function AssistantChat({ conversationId, turns, suggestions }: { conversa
 
   // The question is echoed from what was typed, so it has to be read before the form resets.
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    if (inputRef.current) inputRef.current.defaultValue = inputRef.current.value;
+    asked.current = inputRef.current?.value.trim() ?? "";
     form.onSubmit(event);
   }
 

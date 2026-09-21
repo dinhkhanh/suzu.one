@@ -3742,7 +3742,8 @@
         "termination": "Chấm dứt hợp đồng",
         "long_leave": "Bắt đầu nghỉ dài ngày",
         "long_leave_return": "Đi làm lại sau nghỉ dài ngày",
-        "salary_change": "Thay đổi lương"
+        "salary_change": "Thay đổi lương",
+        "licence_renewal": "Gia hạn giấy phép"
       },
       "evidence": {
         "file": "Tệp chứng từ",
@@ -4986,7 +4987,8 @@
       "person": "Nhân viên",
       "status": "Trạng thái",
       "lastNotice": "Nhắc gần nhất (số lần)",
-      "myLink": "Xác nhận của tôi"
+      "myLink": "Xác nhận của tôi",
+      "department": "Phòng ban"
     },
     "search": {
       "title": "Tìm trong kho tri thức",

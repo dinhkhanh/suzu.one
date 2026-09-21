@@ -38,6 +38,9 @@ export default async function AssistantPage(props: PageProps<"/assistant">) {
       </header>
 
       <AssistantChat
+        // A new instance per conversation: the chat keeps its turns in state, so opening another
+        // conversation (or "New chat") without a remount would keep showing the old one.
+        key={conversation?.id ?? "new"}
         conversationId={conversation?.id ?? null}
         turns={(conversation?.turns ?? []).map((turn) => ({ id: turn.id, role: turn.role, body: turn.body, outcome: turn.outcome, citations: turn.citations, tool: turn.tool }))}
         suggestions={[t("suggestions.leave"), t("suggestions.payday"), t("suggestions.balance"), t("suggestions.approver")]}
