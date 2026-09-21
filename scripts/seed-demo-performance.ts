@@ -5,7 +5,7 @@
 // so the screens are alive today) and 2027 (the company's tree, mostly at its start values).
 import { eq } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
-import { department, entity, goal, goalCheckIn, keyResult, person } from "../src/lib/db/schema";
+import { orgUnit, entity, goal, goalCheckIn, keyResult, person } from "../src/lib/db/schema";
 import { type GoalInput, goalProgress, weekStartOf } from "../src/modules/performance/engine/progress";
 import { type Confidence, type GoalLevel, type GoalStatus, type MetricType, scaleOf, yearOfPeriod } from "../src/modules/performance/enums";
 
@@ -131,7 +131,7 @@ export async function seedPerformance(db: Db): Promise<string> {
   if ((await db.select({ id: goal.id }).from(goal).limit(1)).length > 0) return "performance: goals already seeded, skipped";
   const people = new Map((await db.select().from(person)).map((row) => [row.fullName, row]));
   const entities = new Map((await db.select().from(entity)).map((row) => [row.code, row.id]));
-  const departments = new Map((await db.select().from(department)).map((row) => [row.code, row.id]));
+  const departments = new Map((await db.select().from(orgUnit)).map((row) => [row.code, row.id]));
   if (!people.has(HA)) return "performance: demo people missing, skipped";
 
   const ids = new Map<string, string>();

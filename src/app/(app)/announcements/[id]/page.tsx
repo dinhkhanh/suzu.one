@@ -38,7 +38,7 @@ export default async function AnnouncementPage(props: PageProps<"/announcements/
           </Link>
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{row.title}</h1>
+          <h1>{row.title}</h1>
           {row.pinned ? <Badge variant="secondary">{t("list.pinned")}</Badge> : null}
           {view.phase === "live" ? null : <Badge variant="outline">{t(`phase.${view.phase}`)}</Badge>}
         </div>

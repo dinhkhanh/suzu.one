@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
+import { unitPathOf } from "@/modules/platform/org/service";
 import { can } from "@/modules/platform/rbac/policy";
 import { RECORD_ONLY_EVENT_TYPES, TERMINATION_REASONS, WORKFORCE_TYPES } from "./enums";
 import { cancelRecordedEvent, cancelTermination, recordEvent, rehirePerson, terminateEmployment } from "./lifecycle";
@@ -99,10 +100,10 @@ const rehirePipeline = createAction({
     employeeCode: text(30),
     startDate: day,
     seniorityDate: optional(day),
-    placement: z.object({ workforceType: z.enum(WORKFORCE_TYPES), branchId: id, departmentId: id, teamId: id, positionName: text(120), jobLevel: text(60), managerId: id, dottedManagerId: id, workLocation: text(200) }),
+    placement: z.object({ workforceType: z.enum(WORKFORCE_TYPES), branchId: id, orgUnitId: id, positionName: text(120), jobLevel: text(60), managerId: id, dottedManagerId: id, workLocation: text(200) }),
   }),
   // Authority over where the person is going, and over the record being reopened.
-  authorize: async (user, input) => canHireInto(user.principal, { entityId: input.entityId, departmentId: input.placement.departmentId, teamId: input.placement.teamId }) && (await managesPerson(user, input.personId)),
+  authorize: async (user, input) => canHireInto(user.principal, { entityId: input.entityId, unitPath: await unitPathOf(input.placement.orgUnitId) }) && (await managesPerson(user, input.personId)),
   run: async ({ user, input }) => {
     const { personId, ...rehire } = input;
     const { person, employment, assignment, event } = await rehirePerson(personId, rehire, user.person.id);

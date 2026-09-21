@@ -122,10 +122,10 @@ const publicViewOf = (opening: OpeningRow, entityName: string, departmentName: s
 /** Every job on offer. Filtered in the database by the same rule `findOpeningBySlug` applies. */
 export async function listPublicOpenings(): Promise<PublicOpening[]> {
   const rows = await db()
-    .select({ opening: schema.jobOpening, entityName: schema.entity.shortName, departmentName: schema.department.name })
+    .select({ opening: schema.jobOpening, entityName: schema.entity.shortName, departmentName: schema.orgUnit.name })
     .from(schema.jobOpening)
     .innerJoin(schema.entity, eq(schema.entity.id, schema.jobOpening.entityId))
-    .leftJoin(schema.department, eq(schema.department.id, schema.jobOpening.departmentId))
+    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.jobOpening.departmentId))
     .where(and(inArray(schema.jobOpening.status, [...OPENING_PUBLIC_STATUSES]), isNotNull(schema.jobOpening.publishedAt)))
     .orderBy(asc(schema.jobOpening.title));
   return rows.map((row) => publicViewOf(row.opening, row.entityName, row.departmentName));
@@ -136,7 +136,7 @@ export async function findPublicOpening(slug: string): Promise<PublicOpening | n
   const opening = await findOpeningBySlug(slug);
   if (!opening) return null;
   const [entity] = await db().select({ name: schema.entity.shortName }).from(schema.entity).where(eq(schema.entity.id, opening.entityId)).limit(1);
-  const [department] = opening.departmentId ? await db().select({ name: schema.department.name }).from(schema.department).where(eq(schema.department.id, opening.departmentId)).limit(1) : [];
+  const [department] = opening.departmentId ? await db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, opening.departmentId)).limit(1) : [];
   return publicViewOf(opening, entity?.name ?? "", department?.name ?? null);
 }
 

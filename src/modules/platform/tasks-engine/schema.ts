@@ -3,7 +3,7 @@
 // tasks and the ops tracker's obligations as further kinds with their own views, on these rows.
 import { sql } from "drizzle-orm";
 import { type AnyPgColumn, boolean, date, index, integer, pgEnum, pgTable, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { department, entity } from "../org/schema";
+import { entity, orgUnit } from "../org/schema";
 import { person } from "../people/schema";
 
 // A generic status *category*. Phase 3's per-project workflows add their own named states, each
@@ -20,7 +20,7 @@ export const taskTemplate = pgTable(
     purpose: text("purpose").notNull(),
     name: text("name").notNull(),
     entityId: uuid("entity_id").references(() => entity.id),
-    departmentId: uuid("department_id").references(() => department.id),
+    departmentId: uuid("department_id").references(() => orgUnit.id),
     // A core-hr position. No foreign key: the platform does not depend on feature modules' tables.
     positionId: uuid("position_id"),
     // The record of a feature module that owns the template (a work team); null = shared. No foreign key, as above.

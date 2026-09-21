@@ -7,7 +7,8 @@ import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { toSearchKey } from "@/lib/text";
 import { featureEnabled } from "@/modules/platform/flags/service";
 import { notify, queueEmail } from "@/modules/platform/notifications/service";
-import { listBranches, listDepartments, listTeams } from "@/modules/platform/org/service";
+import { listBranches, orgUnitOptions, placementFor } from "@/modules/platform/org/service";
+import { unitsWithin } from "@/modules/platform/rbac/reach-sql";
 import { activatePerson, createPerson, listPersonNames, type PersonRow, setPersonPlacement, updatePersonIdentity, wouldCreateReportingLoop } from "@/modules/platform/people/service";
 import { can, matchesReach, type Principal, readableTier, type Target, tierReach, type TierReach } from "@/modules/platform/rbac/policy";
 import { type Tier, tierRank } from "@/modules/platform/rbac/roles";
@@ -62,13 +63,17 @@ function placementOn(today: IsoDate) {
 
 type Placement = ReturnType<typeof placementOn>;
 
-function reachCondition(reach: TierReach, { e, a }: Placement, selfId: string | null): SQL | undefined {
+/** A reach's units, widened to every unit below them — what an assignment's own unit is matched against. */
+const widenReach = async (reach: TierReach): Promise<string[]> => (reach.all ? [] : unitsWithin(reach.unitIds));
+
+// `unitIds` is the reach's units already widened to everything below them (`unitsWithin`), so a
+// grant on a department admits the assignment of someone in one of its small teams.
+function reachCondition(reach: TierReach, { e, a }: Placement, selfId: string | null, unitIds: readonly string[]): SQL | undefined {
   if (reach.all) return undefined;
   const clauses: (SQL | undefined)[] = [
     selfId ? eq(schema.person.id, selfId) : undefined,
     reach.entityIds.length ? inArray(e.entityId, reach.entityIds) : undefined,
-    reach.departmentIds.length ? inArray(a.departmentId, reach.departmentIds) : undefined,
-    reach.teamIds.length ? inArray(a.teamId, reach.teamIds) : undefined,
+    unitIds.length ? inArray(a.orgUnitId, [...unitIds]) : undefined,
     reach.managerOf ? eq(a.managerId, reach.managerOf) : undefined,
   ];
   return or(...clauses) ?? sql`false`;
@@ -103,15 +108,17 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
   const placement = placementOn(todayInVietnam());
   const { e, a } = placement;
   const manager = alias(schema.person, "manager");
+  const directoryReach = tierReach(principal, "public_internal");
   const personalReach = tierReach(principal, "personal");
+  const [directoryUnits, personalUnits] = await Promise.all([widenReach(directoryReach), widenReach(personalReach)]);
   const status = filters.status ?? "active";
   const needsPersonalTier = filters.workforceType !== undefined || status !== "active";
   const q = filters.q?.trim();
   const pattern = q ? `%${q.replace(/[\\%_]/g, "\\$&")}%` : null;
 
   const where = and(
-    reachCondition(tierReach(principal, "public_internal"), placement, principal.personId),
-    needsPersonalTier ? reachCondition(personalReach, placement, principal.personId) : undefined,
+    reachCondition(directoryReach, placement, principal.personId, directoryUnits),
+    needsPersonalTier ? reachCondition(personalReach, placement, principal.personId, personalUnits) : undefined,
     status === "all" ? undefined : eq(schema.person.status, status),
     filters.workforceType ? eq(a.workforceType, filters.workforceType) : undefined,
     filters.entityId ? eq(e.entityId, filters.entityId) : undefined,
@@ -133,7 +140,7 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
         entityId: e.entityId,
         entityName: schema.entity.shortName,
         departmentId: a.departmentId,
-        departmentName: schema.department.name,
+        departmentName: schema.orgUnit.name,
         teamId: a.teamId,
         positionName: schema.position.name,
         managerId: a.managerId,
@@ -144,7 +151,7 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
       .leftJoinLateral(e, sql`true`)
       .leftJoinLateral(a, sql`true`)
       .leftJoin(schema.entity, eq(schema.entity.id, e.entityId))
-      .leftJoin(schema.department, eq(schema.department.id, a.departmentId))
+      .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, a.departmentId))
       .leftJoin(schema.position, eq(schema.position.id, a.positionId))
       .leftJoin(manager, eq(manager.id, a.managerId))
       .where(where)
@@ -187,6 +194,7 @@ export async function listOrgChartPeople(principal: Principal, entityId?: string
   const placement = placementOn(todayInVietnam());
   const { e, a } = placement;
   const dottedManager = alias(schema.person, "dotted_manager");
+  const reach = tierReach(principal, "public_internal");
   return db()
     .select({
       id: schema.person.id,
@@ -195,7 +203,7 @@ export async function listOrgChartPeople(principal: Principal, entityId?: string
       sortKey: sql<string>`substring(${schema.person.searchName} from '[^ ]+$') || ' ' || ${schema.person.searchName}`,
       managerId: a.managerId,
       positionName: schema.position.name,
-      departmentName: schema.department.name,
+      departmentName: schema.orgUnit.name,
       entityName: schema.entity.shortName,
       dottedManagerName: dottedManager.fullName,
     })
@@ -203,17 +211,17 @@ export async function listOrgChartPeople(principal: Principal, entityId?: string
     .leftJoinLateral(e, sql`true`)
     .leftJoinLateral(a, sql`true`)
     .leftJoin(schema.entity, eq(schema.entity.id, e.entityId))
-    .leftJoin(schema.department, eq(schema.department.id, a.departmentId))
+    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, a.departmentId))
     .leftJoin(schema.position, eq(schema.position.id, a.positionId))
     .leftJoin(dottedManager, eq(dottedManager.id, a.dottedManagerId))
-    .where(and(reachCondition(tierReach(principal, "public_internal"), placement, principal.personId), eq(schema.person.status, "active"), entityId ? eq(e.entityId, entityId) : undefined));
+    .where(and(reachCondition(reach, placement, principal.personId, await widenReach(reach)), eq(schema.person.status, "active"), entityId ? eq(e.entityId, entityId) : undefined));
 }
 
 /** Where a person sits today, as an authorization target. */
 export async function getPersonTarget(personId: string, executor: Tx | ReturnType<typeof db> = db()): Promise<(Target & { personId: string }) | null> {
   const { e, a } = placementOn(todayInVietnam());
   const [row] = await executor
-    .select({ personId: schema.person.id, entityId: e.entityId, departmentId: a.departmentId, teamId: a.teamId, managerId: a.managerId })
+    .select({ personId: schema.person.id, entityId: e.entityId, unitPath: schema.person.orgUnitPath, managerId: a.managerId })
     .from(schema.person)
     .leftJoinLateral(e, sql`true`)
     .leftJoinLateral(a, sql`true`)
@@ -340,6 +348,8 @@ const PROFILE_FIELDS = {
 async function loadAssignments(employmentId: string): Promise<AssignmentView[]> {
   const manager = alias(schema.person, "manager");
   const dottedManager = alias(schema.person, "dotted_manager");
+  const departmentUnit = alias(schema.orgUnit, "department_unit");
+  const teamUnit = alias(schema.orgUnit, "team_unit");
   return db()
     .select({
       id: schema.assignment.id,
@@ -349,9 +359,9 @@ async function loadAssignments(employmentId: string): Promise<AssignmentView[]> 
       branchId: schema.assignment.branchId,
       branchName: schema.branch.name,
       departmentId: schema.assignment.departmentId,
-      departmentName: schema.department.name,
+      departmentName: departmentUnit.name,
       teamId: schema.assignment.teamId,
-      teamName: schema.team.name,
+      teamName: teamUnit.name,
       positionName: schema.position.name,
       jobLevel: schema.assignment.jobLevel,
       managerId: schema.assignment.managerId,
@@ -363,8 +373,8 @@ async function loadAssignments(employmentId: string): Promise<AssignmentView[]> 
     })
     .from(schema.assignment)
     .leftJoin(schema.branch, eq(schema.branch.id, schema.assignment.branchId))
-    .leftJoin(schema.department, eq(schema.department.id, schema.assignment.departmentId))
-    .leftJoin(schema.team, eq(schema.team.id, schema.assignment.teamId))
+    .leftJoin(departmentUnit, eq(departmentUnit.id, schema.assignment.departmentId))
+    .leftJoin(teamUnit, eq(teamUnit.id, schema.assignment.teamId))
     .leftJoin(schema.position, eq(schema.position.id, schema.assignment.positionId))
     .leftJoin(manager, eq(manager.id, schema.assignment.managerId))
     .leftJoin(dottedManager, eq(dottedManager.id, schema.assignment.dottedManagerId))
@@ -384,10 +394,10 @@ export async function listPositions(): Promise<{ id: string; name: string }[]> {
 
 /** Choices for the placement fields. Names only: nothing here is above the directory tier. */
 export async function loadPlacementOptions(entityId?: string) {
-  const [departments, teams, branches, positions, people] = await Promise.all([listDepartments(), listTeams(), listBranches(), listPositionNames(), listPersonNames()]);
+  const [units, branches, positions, people] = await Promise.all([orgUnitOptions({ activeOnly: true }), listBranches(), listPositionNames(), listPersonNames()]);
   return {
-    departments: departments.filter((row) => row.isActive && (row.entityId === null || !entityId || row.entityId === entityId)).map(({ id, name }) => ({ id, name })),
-    teams: teams.filter((row) => row.isActive).map(({ id, name, departmentId }) => ({ id, name, departmentId })),
+    // A unit of another entity is not a place this person can be put; shared units always are.
+    units: units.filter((unit) => unit.entityId === null || !entityId || unit.entityId === entityId).map(({ id, name, depth }) => ({ id, name: `${"— ".repeat(depth)}${name}` })),
     branches: branches.filter((row) => row.isActive && (!entityId || row.entityId === entityId)).map(({ id, name, entityId }) => ({ id, name, entityId })),
     positions,
     people,
@@ -424,8 +434,8 @@ export type ProfileInput = Omit<ProfileRow, "personId" | "createdAt" | "updatedA
 export type PlacementInput = {
   workforceType: WorkforceType;
   branchId: string | null;
-  departmentId: string | null;
-  teamId: string | null;
+  // One unit, at any depth (FR-PLT-16); `departmentId` and `teamId` are derived from it.
+  orgUnitId: string | null;
   positionName: string | null;
   jobLevel: string | null;
   managerId: string | null;
@@ -497,8 +507,7 @@ export async function openEmployment(
   await setPersonPlacement(tx, personId, {
     workforceType: values.workforceType,
     primaryEntityId: entity.id,
-    departmentId: values.departmentId,
-    teamId: values.teamId,
+    orgUnitId: values.orgUnitId,
     managerId: values.managerId,
   });
 
@@ -582,8 +591,7 @@ export async function changeAssignment(personId: string, input: { validFrom: Iso
       await setPersonPlacement(tx, personId, {
         workforceType: inForce.workforceType,
         primaryEntityId: employment.entityId,
-        departmentId: inForce.departmentId,
-        teamId: inForce.teamId,
+        orgUnitId: inForce.orgUnitId,
         managerId: inForce.managerId,
       });
     }
@@ -619,8 +627,8 @@ export async function rollOverPlacements(today: IsoDate): Promise<{ placementsUp
     .select({
       personId: schema.person.id,
       activate: sql<boolean>`${schema.person.status} = 'preboarding' and ${e.startDate} <= ${today}::date`,
-      moved: sql<boolean>`(${schema.person.workforceType}, ${schema.person.primaryEntityId}, ${schema.person.departmentId}, ${schema.person.teamId}, ${schema.person.managerId}) is distinct from (${a.workforceType}, ${e.entityId}, ${a.departmentId}, ${a.teamId}, ${a.managerId})`,
-      placement: { workforceType: a.workforceType, primaryEntityId: e.entityId, departmentId: a.departmentId, teamId: a.teamId, managerId: a.managerId },
+      moved: sql<boolean>`(${schema.person.workforceType}, ${schema.person.primaryEntityId}, ${schema.person.orgUnitId}, ${schema.person.managerId}) is distinct from (${a.workforceType}, ${e.entityId}, ${a.orgUnitId}, ${a.managerId})`,
+      placement: { workforceType: a.workforceType, primaryEntityId: e.entityId, orgUnitId: a.orgUnitId, managerId: a.managerId },
     })
     .from(schema.person)
     .innerJoinLateral(e, sql`true`)
@@ -666,13 +674,11 @@ export async function offboardLeavers(today: IsoDate, onlyPersonId?: string, exe
 
 // Checks that the pieces of a placement belong together and turns the position name into a row.
 export async function resolvePlacement(tx: Tx, input: PlacementInput, context: { entityId: string; personId: string | null }) {
-  if (input.teamId) {
-    const [team] = await tx.select().from(schema.team).where(eq(schema.team.id, input.teamId)).limit(1);
-    if (!team || team.departmentId !== input.departmentId) throw new ActionError("team_not_in_department");
-  }
-  if (input.departmentId) {
-    const [department] = await tx.select().from(schema.department).where(eq(schema.department.id, input.departmentId)).limit(1);
-    if (!department || (department.entityId !== null && department.entityId !== context.entityId)) throw new ActionError("department_not_in_entity");
+  // A unit belongs to the person's entity, or is shared by the group — as does every unit above
+  // it, so a shared department may still hold an entity's own team.
+  if (input.orgUnitId) {
+    const [unit] = await tx.select().from(schema.orgUnit).where(eq(schema.orgUnit.id, input.orgUnitId)).limit(1);
+    if (!unit || (unit.entityId !== null && unit.entityId !== context.entityId)) throw new ActionError("unit_not_in_entity");
   }
   if (input.branchId) {
     const [branch] = await tx.select().from(schema.branch).where(eq(schema.branch.id, input.branchId)).limit(1);
@@ -689,7 +695,10 @@ export async function resolvePlacement(tx: Tx, input: PlacementInput, context: {
   }
 
   const { positionName, ...rest } = input;
-  return { ...rest, positionId: positionName ? await findOrCreatePosition(tx, positionName) : null };
+  // The two legacy columns are written once, here, from the unit that was chosen: an assignment is
+  // history and must keep reading the same way after the tree is rearranged.
+  const derived = await placementFor(input.orgUnitId, tx);
+  return { ...rest, ...derived, positionId: positionName ? await findOrCreatePosition(tx, positionName) : null };
 }
 
 async function findOrCreatePosition(tx: Tx, name: string): Promise<string> {

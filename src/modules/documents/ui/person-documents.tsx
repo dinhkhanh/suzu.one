@@ -22,7 +22,7 @@ export async function PersonDocuments({ principal, personId }: { principal: Prin
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-medium">{t("heading")}</h2>
+      <h2>{t("heading")}</h2>
 
       {history.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("none")}</p>

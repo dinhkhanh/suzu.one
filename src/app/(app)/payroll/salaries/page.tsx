@@ -32,10 +32,10 @@ export default async function SalariesPage({ searchParams }: PageProps<"/payroll
         <Link href="/payroll" className="text-sm text-muted-foreground hover:underline">
           ← {t("title")}
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("salaries.title")}</h1>
+        <h1>{t("salaries.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("salaries.description")}</p>
       </header>
-      <form className="flex flex-wrap items-end gap-2" action="/payroll/salaries">
+      <form className="toolbar" action="/payroll/salaries">
         <input name="q" defaultValue={search ?? ""} placeholder={t("salaries.search")} className="h-9 rounded-md border bg-transparent px-3 text-sm" />
         <select name="entity" defaultValue={entityId ?? ""} className="h-9 rounded-md border bg-transparent px-2 text-sm">
           <option value="">{t("salaries.allEntities")}</option>

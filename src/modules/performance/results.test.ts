@@ -97,7 +97,7 @@ const partiesFor = async (personId: string) => {
 beforeAll(async () => {
   await migrateTestDb();
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
-  const [dept] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
+  const [dept] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   ids.szm = szm.id;
   // owner → long → tam → huy, and linh beside huy under tam.
   const people: [Who, Who | null][] = [

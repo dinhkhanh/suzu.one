@@ -37,7 +37,7 @@ export default async function WorkCalendarPage({ searchParams }: PageProps<"/wor
             {t("title")}
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("calendar.title")}</h1>
+        <h1>{t("calendar.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("calendar.description")}</p>
       </header>
       <CalendarView

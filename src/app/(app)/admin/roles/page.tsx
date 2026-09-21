@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
-import { listDepartments, listEntities, listTeams } from "@/modules/platform/org/service";
+import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { can } from "@/modules/platform/rbac/policy";
 import { listRoleAssignments } from "@/modules/platform/rbac/service";
@@ -19,14 +19,14 @@ export default async function RolesPage() {
   if (!can(user.principal, "rbac:manage", {})) notFound();
 
   const [t, roleName, format] = await Promise.all([getTranslations("rbac"), getTranslations("roles"), getFormatter()]);
-  const [grants, people, entities, departments, teams] = await Promise.all([listRoleAssignments(), listPersonNames(), listEntities(), listDepartments(), listTeams()]);
+  const [grants, people, entities, units] = await Promise.all([listRoleAssignments(), listPersonNames(), listEntities(), unitChoices()]);
   const today = todayInVietnam();
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00+07:00`), { dateStyle: "medium" });
 
   return (
     <div className="flex max-w-5xl flex-col gap-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1>{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
 
@@ -73,8 +73,7 @@ export default async function RolesPage() {
         people={people.map((person) => ({ id: person.id, name: person.fullName }))}
         scopes={{
           entity: entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName })),
-          department: departments.filter((department) => department.isActive).map((department) => ({ id: department.id, name: department.name })),
-          team: teams.filter((team) => team.isActive).map((team) => ({ id: team.id, name: team.name })),
+          unit: units,
         }}
       />
     </div>

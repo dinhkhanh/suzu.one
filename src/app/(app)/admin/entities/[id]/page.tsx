@@ -35,7 +35,7 @@ export default async function EntityPage({ params }: PageProps<"/admin/entities/
         <Link href="/admin/entities" className="text-sm text-muted-foreground hover:underline">
           ← {t("title")}
         </Link>
-        <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight">
+        <h1 className="flex items-center gap-3">
           {entity.shortName}
           <span className="font-mono text-sm text-muted-foreground">{entity.code}</span>
           {entity.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}

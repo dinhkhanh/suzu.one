@@ -39,7 +39,7 @@ export default async function TeamCalendarPage(props: PageProps<"/leave/calendar
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("calendar.title")}</h1>
+          <h1>{t("calendar.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("calendar.description")}</p>
         </div>
         <nav className="flex items-center gap-3 text-sm">
@@ -53,7 +53,7 @@ export default async function TeamCalendarPage(props: PageProps<"/leave/calendar
         </nav>
       </header>
       {calendar.departments.length > 1 ? (
-        <nav className="flex flex-wrap gap-3 text-sm">
+        <nav className="tab-row">
           <Link href={link(month, null)} className={departmentId ? "text-muted-foreground hover:underline" : "font-semibold"}>
             {t("calendar.everyone")}
           </Link>

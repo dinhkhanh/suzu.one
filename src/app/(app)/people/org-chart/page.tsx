@@ -65,14 +65,14 @@ export default async function OrgChartPage(props: PageProps<"/people/org-chart">
     <div className="flex max-w-5xl flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("orgChart.title")}</h1>
+          <h1>{t("orgChart.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("orgChart.description", { count: people.length })}</p>
         </div>
         <Link href="/people" className={buttonVariants({ variant: "outline" })}>
           {t("orgChart.backToList")}
         </Link>
       </header>
-      <form method="get" className="flex flex-wrap items-end gap-2">
+      <form method="get" className="toolbar">
         <div className="w-64">
           <Select name="entityId" defaultValue={entityId ?? ""} aria-label={t("fields.entity")}>
             <option value="">{t("orgChart.wholeGroup")}</option>

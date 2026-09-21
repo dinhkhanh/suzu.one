@@ -31,7 +31,7 @@ export default async function NewSchedulePage() {
             {t("title")}
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("new")}</h1>
+        <h1>{t("new")}</h1>
       </header>
       <ScheduleForm
         draft={{ id: null, reportKey: options[0].key, name: options[0].label, cadence: "weekly", dayOfWeek: 1, dayOfMonth: 1, locale, recipientPersonIds: [user.person.id] }}

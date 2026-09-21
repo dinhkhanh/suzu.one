@@ -98,25 +98,26 @@ export function linkManagers(rows: readonly Row[], existing: { personId: string;
 
 // Takes the executor: the commit runs inside the import's transaction.
 async function loadReferences(executor: Tx | ReturnType<typeof db> = db()) {
-  const [entities, departments, teams, people] = await Promise.all([
+  const [entities, units, people] = await Promise.all([
     executor.select().from(schema.entity),
-    executor.select().from(schema.department),
-    executor.select().from(schema.team),
+    executor.select().from(schema.orgUnit),
     executor
       .select({ personId: schema.person.id, workEmail: schema.person.workEmail, employeeCode: schema.employment.employeeCode, entityCode: schema.entity.code })
       .from(schema.person)
       .leftJoin(schema.employment, eq(schema.employment.personId, schema.person.id))
       .leftJoin(schema.entity, eq(schema.entity.id, schema.employment.entityId)),
   ]);
-  return { entities: new Map(entities.map((row) => [row.code, row])), departments: new Map(departments.map((row) => [row.code, row])), teams, people };
+  // Departments are matched by code, teams by name inside the department they sit in.
+  return { entities: new Map(entities.map((row) => [row.code, row])), departments: new Map(units.flatMap((row) => (row.code ? [[row.code, row] as const] : []))), units, people };
 }
 
-const findTeam = (teams: { id: string; name: string; departmentId: string }[], departmentId: string | undefined, name: string) => teams.find((team) => team.departmentId === departmentId && toSearchKey(team.name) === toSearchKey(name));
+type UnitRef = { id: string; name: string; parentId: string | null; path: string[] };
+const findTeam = (units: UnitRef[], parentId: string | undefined, name: string): UnitRef | undefined => units.find((unit) => unit.parentId === parentId && toSearchKey(unit.name) === toSearchKey(name));
 
 async function validate(rows: Row[], user: CurrentUser): Promise<Problem[]> {
   const problems: Problem[] = [];
   const flag = (row: number, field: keyof typeof employeeColumns, problem: string) => problems.push({ row, column: header(field), code: problem });
-  const { entities, departments, teams, people } = await loadReferences();
+  const { entities, departments, units, people } = await loadReferences();
   const emailsOnBooks = new Set(people.flatMap((person) => (person.workEmail ? [person.workEmail] : [])));
   const codesOnBooks = new Set(people.flatMap((person) => (person.employeeCode ? [`${person.entityCode}:${person.employeeCode}`] : [])));
   const idsOnBooks = await nationalIdsOnFile(rows.flatMap(({ values }) => (values.nationalId ? [values.nationalId] : [])));
@@ -130,10 +131,10 @@ async function validate(rows: Row[], user: CurrentUser): Promise<Problem[]> {
     if (values.entityCode && !entity?.isActive) flag(row, "entityCode", "entity_not_found");
     if (values.departmentCode && !department) flag(row, "departmentCode", "department_not_found");
     else if (department && entity && department.entityId !== null && department.entityId !== entity.id) flag(row, "departmentCode", "department_not_in_entity");
-    const team = values.teamName ? findTeam(teams, department?.id, values.teamName) : undefined;
+    const team = values.teamName ? findTeam(units, department?.id, values.teamName) : undefined;
     if (values.teamName && !team) flag(row, "teamName", "team_not_found");
     // The importer's authority is checked row by row: entity HR cannot slip people into another entity.
-    if (entity && !can(user.principal, "person:manage", { entityId: entity.id, departmentId: department?.id ?? null, teamId: team?.id ?? null })) flag(row, "entityCode", "out_of_reach");
+    if (entity && !can(user.principal, "person:manage", { entityId: entity.id, unitPath: (team ?? department)?.path ?? [] })) flag(row, "entityCode", "out_of_reach");
 
     if (values.workEmail) {
       if (!env().allowedWorkspaceDomains.includes(emailDomain(values.workEmail))) flag(row, "workEmail", "email_domain");
@@ -179,7 +180,7 @@ export const employeeImport = defineImport({
   authorize: (user) => can(user.principal, "person:manage"),
   validate,
   commit: async (rows, tx, user) => {
-    const { entities, departments, teams, people } = await loadReferences(tx);
+    const { entities, departments, units, people } = await loadReferences(tx);
     const links = linkManagers(rows, people);
     const created = new Map<number, { personId: string; assignmentId: string }>();
     let withRestricted = 0;
@@ -200,8 +201,8 @@ export const employeeImport = defineImport({
           placement: {
             workforceType: values.workforceType ?? "employee",
             branchId: null,
-            departmentId: department?.id ?? null,
-            teamId: values.teamName ? (findTeam(teams, department?.id, values.teamName)?.id ?? null) : null,
+            // The deepest unit the row names: its team if it has one, otherwise its department.
+            orgUnitId: (values.teamName ? findTeam(units, department?.id, values.teamName) : department)?.id ?? null,
             positionName: values.positionName,
             jobLevel: values.jobLevel,
             managerId: link.kind === "person" ? link.personId : null,

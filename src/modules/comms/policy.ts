@@ -8,18 +8,20 @@
 import { can, type Principal, type Target } from "../platform/rbac/policy";
 import { type AnnouncementPhase, type AnnouncementStatus, audienceKey } from "./enums";
 
-export type CommsPlacement = { entityId: string | null; departmentId: string | null; teamId: string | null; branchId: string | null };
+export type CommsPlacement = { entityId: string | null; unitPath: readonly string[]; unitId: string | null; branchId: string | null };
 export type CommsViewer = { principal: Principal; personId: string; keys: readonly string[] };
 
 export function commsViewerKeys(principal: Principal, placement: CommsPlacement): string[] {
   if (!principal.personId) return [];
   const own = audienceKey("person", principal.personId);
   if (principal.workforceType === "collaborator") return [own];
+  // One key per unit above the person, so a notice to "Marketing" reaches everyone in "Marketing ›
+  // Social"; `unit_only` names their own unit alone.
   return [
     "all",
     ...(placement.entityId ? [audienceKey("entity", placement.entityId)] : []),
-    ...(placement.departmentId ? [audienceKey("department", placement.departmentId)] : []),
-    ...(placement.teamId ? [audienceKey("team", placement.teamId)] : []),
+    ...placement.unitPath.map((unitId) => audienceKey("unit", unitId)),
+    ...(placement.unitId ? [audienceKey("unit_only", placement.unitId)] : []),
     ...(placement.branchId ? [audienceKey("branch", placement.branchId)] : []),
     own,
   ];

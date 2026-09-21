@@ -306,7 +306,7 @@ export function AssignmentRowForm({ assignment }: { assignment: { id: string; we
   const [toPeriod, setToPeriod] = useState(assignment.toPeriod ?? "");
   return (
     <div className="flex flex-col gap-2">
-      <form onSubmit={form.onSubmit} className="flex flex-wrap items-end gap-2">
+      <form onSubmit={form.onSubmit} className="toolbar">
         <Field name="weight" label={t("positions.weight")}>
           <Input name="weight" type="number" min={1} max={1000} defaultValue={assignment.weight} required className="w-24" />
         </Field>

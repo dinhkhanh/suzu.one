@@ -13,7 +13,7 @@ const hrAdmin = principal("hr-admin", [{ role: "hr_admin", scope: { type: "group
 const hrStaff = principal("hr-staff", [{ role: "hr_staff", scope: { type: "entity", id: SZM } }]);
 const finance = principal("finance", [{ role: "finance", scope: { type: "group" } }]);
 const ceo = principal("ceo", [{ role: "c_level", scope: { type: "group" } }]);
-const head = principal("head", [{ role: "department_head", scope: { type: "department", id: "d" } }]);
+const head = principal("head", [{ role: "department_head", scope: { type: "unit", id: "d" } }]);
 const employee = principal("employee");
 
 const holder = (personId: string, entityId = SZM) => ({ personId, entityId, departmentId: null, teamId: null, managerId: "head" });

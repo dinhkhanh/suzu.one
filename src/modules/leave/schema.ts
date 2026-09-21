@@ -4,7 +4,7 @@
 import { boolean, date, index, integer, pgEnum, pgTable, smallint, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { approvalRequest } from "../platform/approvals/schema";
 import { storedFile } from "../platform/files/schema";
-import { department, entity, team } from "../platform/org/schema";
+import { entity, orgUnit } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
 
 export const leaveCategory = pgEnum("leave_category", ["annual", "sick", "maternity", "paternity", "personal_paid", "unpaid", "compensatory", "company"]);
@@ -191,8 +191,8 @@ export const teamStaffingRule = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     entityId: uuid("entity_id").references(() => entity.id),
-    departmentId: uuid("department_id").references(() => department.id),
-    teamId: uuid("team_id").references(() => team.id),
+    departmentId: uuid("department_id").references(() => orgUnit.id),
+    teamId: uuid("team_id").references(() => orgUnit.id),
     minPresent: smallint("min_present").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

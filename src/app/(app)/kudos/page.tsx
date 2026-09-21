@@ -20,7 +20,7 @@ export default async function KudosPage() {
   return (
     <div className="flex max-w-3xl flex-col gap-8">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("kudos.title")}</h1>
+        <h1>{t("kudos.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("kudos.help")}</p>
       </header>
       <section className="flex flex-col gap-3">
@@ -36,7 +36,7 @@ export default async function KudosPage() {
         <KudosList
           cards={wall}
           empty={t("kudos.empty")}
-          action={(card) => (canRemoveKudos(user.principal, card, { entityId: card.toEntityId, departmentId: card.toDepartmentId, teamId: card.toTeamId, personId: card.toPersonId }) ? <RemoveKudosButton id={card.id} /> : null)}
+          action={(card) => (canRemoveKudos(user.principal, card, { entityId: card.toEntityId, unitPath: card.toUnitPath, personId: card.toPersonId }) ? <RemoveKudosButton id={card.id} /> : null)}
         />
       </section>
     </div>

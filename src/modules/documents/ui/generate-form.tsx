@@ -28,7 +28,7 @@ export function GenerateDocumentForm({ subjectPersonId, templates }: { subjectPe
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-end gap-2">
+      <div className="toolbar">
         <Select name="templateId" required defaultValue="" className="h-9 min-w-64">
           <option value="" disabled>
             {t("pickTemplate")}

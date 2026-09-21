@@ -40,7 +40,7 @@ export default async function ReviewCyclesPage({ searchParams }: PageProps<"/per
       <p className="max-w-3xl text-sm text-muted-foreground">{t("admin.description")}</p>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-medium">{t("admin.cycles", { year })}</h2>
+        <h2>{t("admin.cycles", { year })}</h2>
         {cycles.length === 0 ? <p className="text-sm text-muted-foreground">{t("admin.noCycles")}</p> : null}
         <ul className="flex flex-col gap-3">
           {cycles.map((cycle) => {
@@ -80,7 +80,7 @@ export default async function ReviewCyclesPage({ searchParams }: PageProps<"/per
 
       {open ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-lg font-medium">{t("admin.participants", { name: open.name })}</h2>
+          <h2>{t("admin.participants", { name: open.name })}</h2>
           <ul className="flex flex-col divide-y rounded-xl border">
             {participants.map((line) => (
               <li key={line.participantId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2">
@@ -98,7 +98,7 @@ export default async function ReviewCyclesPage({ searchParams }: PageProps<"/per
       ) : null}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">{t("admin.newCycle")}</h2>
+        <h2>{t("admin.newCycle")}</h2>
         {templates.filter((template) => template.isActive).length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("admin.noTemplates")}</p>
         ) : (
@@ -111,7 +111,7 @@ export default async function ReviewCyclesPage({ searchParams }: PageProps<"/per
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-medium">{t("admin.templates")}</h2>
+        <h2>{t("admin.templates")}</h2>
         <ul className="flex flex-col divide-y rounded-xl border">
           {templates.map((template) => (
             <li key={template.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm">

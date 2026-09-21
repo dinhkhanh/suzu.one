@@ -15,7 +15,7 @@ import { SavedViews } from "@/modules/core-hr/ui/saved-views";
 import { exportPeopleAction } from "@/modules/core-hr/export-actions";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { requireUser } from "@/modules/platform/auth/session";
-import { listDepartments, listEntities } from "@/modules/platform/org/service";
+import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { can } from "@/modules/platform/rbac/policy";
 
 export const metadata: Metadata = { title: "People" };
@@ -50,7 +50,7 @@ export default async function PeoplePage(props: PageProps<"/people">) {
   const [{ rows, total, pageSize }, entities, departments, views] = await Promise.all([
     listPeople(user.principal, filters),
     listEntities(),
-    listDepartments(),
+    unitChoices(),
     listSavedViews(user.person.id, "people"),
   ]);
   const page = filters.page ?? 1;
@@ -62,7 +62,7 @@ export default async function PeoplePage(props: PageProps<"/people">) {
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <h1>{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("count", { count: total })}</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -83,7 +83,7 @@ export default async function PeoplePage(props: PageProps<"/people">) {
         </div>
       </header>
 
-      <Form action="/people" className="flex flex-wrap items-end gap-2">
+      <Form action="/people" className="toolbar">
         <Input name="q" defaultValue={filters.q} placeholder={t("filters.search")} aria-label={t("filters.search")} className="w-full sm:w-64" />
         <Select name="entityId" defaultValue={filters.entityId ?? ""} aria-label={t("fields.entity")} className="w-auto">
           <option value="">{t("filters.allEntities")}</option>

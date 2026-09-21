@@ -56,6 +56,13 @@ Decisions added 2026-09-19 (owner's answers to the open questions):
 | D18 | **Two pay profiles** exist in every entity: **(1) Statutory** — full insurance, trade union, PIT, paid by bank transfer from the company account; **(2) Simple** — salary only, no insurance/union/PIT, paid in cash by the chief accountant. |
 | D17 | **Payroll governance**: the owner decides the rules · the HR lead proposes each monthly payroll · the CEO signs to approve it · the chief accountant prepares the bank transfer. |
 
+Decisions added 2026-09-21:
+
+| # | Decision |
+|---|---|
+| D20 | **One org-unit tree.** Departments and teams become one table — `org_unit`, with `parent_id` and a `kind` (department / team / …) — instead of two flat levels. Every feature that resolves an audience or a scope (RBAC, KB, comms, OKRs, schedules, reports) asks the same question of the same tree: "which units is this person in, up the chain?". The migration moves both existing tables' rows into it and rewrites the `department_id` / `team_id` references. |
+| D19 | **Every team may keep its own internal knowledge base and documents**, run by the team rather than by HR. **"Team" means a group at any level** — a department, a big team inside it, a small team inside that, and so on; the tree has no fixed depth (FR-PLT-16). Any such unit may own one space of its own; its head runs it, and the heads above it have the same rights over it. HR (`kb:manage`) keeps the group-wide and entity spaces and can reach any unit's space. Naming a unit as an audience anywhere in the KB reaches everyone below it too. |
+
 ### 1.4 Assumptions (please correct any that are wrong)
 
 | # | Assumption |
@@ -108,7 +115,7 @@ Decisions added 2026-09-19 (owner's answers to the open questions):
 
 Access = **role** × **scope** × **sensitivity tier**.
 
-- **Scope**: `group` → `entity` → `department` → `team` → `direct reports` → `self`.
+- **Scope**: `group` → `entity` → `department` → `team` → `direct reports` → `self`. Departments and teams nest to any depth (FR-PLT-16), so a scope on a unit covers every unit below it.
 - **Sensitivity tiers**: `public-internal` (name, title, work email), `personal` (phone, address, DOB), `restricted` (ID number, bank account, contracts, health/insurance), `compensation` (salary, payslips, payroll).
 - A line manager sees `personal` data of their reports but **never `compensation`** unless explicitly granted. Compensation is visible only to: the employee (self), C&B, entity director (optional, configurable), owner.
 
@@ -195,6 +202,7 @@ Two platform engines are deliberately shared:
 | FR-PLT-13 | Reporting lines: line manager (solid) and optional dotted-line manager. Org chart is generated from them. | M |
 | FR-PLT-14 | All org changes are effective-dated with history (who reported to whom, in which department, on any past date). | M |
 | FR-PLT-15 | Inter-entity transfer process: close employment in entity A, open in entity B, preserve seniority and leave balance per policy. | S |
+| FR-PLT-16 | **Org units nest to any depth** (D19, D20): one `org_unit` tree — a unit contains units, whatever they are called: department, big team, small team, squad. A person sits in exactly one unit and thereby belongs to every unit above it, up to the entity and the group. Anything that names a unit as an audience or a scope — KB access, announcements, acknowledgement audiences, schedules, OKRs, reports — **reaches the whole subtree**: naming "Marketing" reaches Marketing → Social → Video Editing without listing them. A unit has a head (its manager), and the heads above it inherit the same rights over it. | M |
 
 #### Approval engine
 
@@ -398,7 +406,7 @@ For HR, C&B and finance: never miss a recurring job, and be able to prove it was
 |---|---|---|
 | FR-KB-01 | **Spaces** (Company, HR policies, Finance procedures, per department, Brand guidelines, Client playbooks, Tools & how-tos) with nested pages. | M |
 | FR-KB-02 | Block-based rich editor: headings, lists, tables, callouts, code, images, video embeds (YouTube, Drive), file attachments, Drive/Figma/Canva embeds, page links, @mentions, templates. | M |
-| FR-KB-03 | Permissions per space and per page: view/edit by entity, department, role, person. | M |
+| FR-KB-03 | Permissions per space and per page: view/edit by entity, department, **team**, role, person. | M |
 | FR-KB-04 | Draft → review → publish flow for controlled spaces (policies), using the approval engine; version history with diff and restore. | M |
 | FR-KB-05 | **Policy acknowledgement**: mark a page "must read"; target audience; employees confirm; HR tracks completion and sends reminders; re-acknowledgement on major revision. Used in onboarding. | M |
 | FR-KB-06 | Full-text search (Vietnamese-aware, accent-insensitive), filters, recent and popular pages. | M |
@@ -408,6 +416,10 @@ For HR, C&B and finance: never miss a recurring job, and be able to prove it was
 | FR-KB-10 | Import from Google Docs / Markdown / Word. | S |
 | FR-KB-11 | Semantic search and AI answers with citations (see §4.13). | S |
 | FR-KB-12 | Simple learning paths: ordered list of pages + quiz for onboarding/training, with completion tracking. | C |
+| FR-KB-13 | **A space of one's own, at every level** (D19): any org unit — department, big team, small team (FR-PLT-16) — may have one space it owns. Its **head creates and runs it** without HR: settings, pages, archiving, and who outside the unit may see it. The unit's people, and everyone in the units below it, get access as the head sets it (edit by default for the unit itself); the heads of the units above inherit the head's rights; `kb:manage` holders reach any space, so nothing is orphaned when a unit is dissolved or its head leaves. Nobody else sees the space, in lists or in search, unless granted. | M |
+| FR-KB-14 | **Audiences are subtrees**: an access row, an acknowledgement audience or a search filter that names a unit covers every unit beneath it, now and as the tree changes — a person who moves between units gains and loses what that move implies, with no rows to rewrite. A row may name one unit **without** its children when a head deliberately narrows it. | M |
+| FR-KB-15 | **Unit documents**: a unit's space lists every file uploaded into it in one place (name, size, who uploaded it, which page it hangs on), so the team finds a file without remembering the page it hangs on. Files follow the space's permissions — no separate sharing rules, no public links. | S |
+| FR-KB-16 | A head can show an HR-run space (policies, handbook) inside their own space as a reference link, but cannot edit it. Company policy stays in one place; a unit's space never becomes a second copy of it. | C |
 
 ---
 

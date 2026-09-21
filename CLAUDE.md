@@ -13,7 +13,8 @@ Read `docs/SRS.md` (requirements, decisions D1–D18) and `docs/DEVELOPMENT_PLAN
 - Sensitivity tiers: `public_internal` < `personal` < `restricted` < `compensation`. Line managers never see compensation.
 - Calculation engines (payroll, timesheet, leave accrual) are pure functions with no I/O and have golden tests.
 - Money is integer VND. Legal rates, caps, brackets and holidays are effective-dated configuration, never constants in code.
-- Tables carry `entity_id` where the data belongs to a legal entity. Departments are shared across entities (`entity_id` null) unless stated.
+- Tables carry `entity_id` where the data belongs to a legal entity. Units are shared across entities (`entity_id` null) unless stated.
+- The organisation is one `org_unit` tree (D20, FR-PLT-16): departments, big teams and small teams nest to any depth. A person sits in one unit (`person.org_unit_id`); `org_unit.path`, `person.org_unit_path` and the derived `department_id` / `team_id` are written by database triggers, never by the application. Naming a unit — a role scope, an access row, an announcement audience — reaches everything below it; `unit_only:<id>` is the opt-out.
 - Every `pgTable(...)` ends with `.enableRLS()` and gets no policies: the app connects as the table owner, and Supabase's public API roles must see nothing. A migration test enforces this.
 - Pushing to `main` deploys to production and runs migrations there. Migrations must be backward-compatible with the currently deployed code.
 - The audit log is append-only (database trigger). Do not add update or delete paths.

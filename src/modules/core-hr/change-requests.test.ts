@@ -46,7 +46,7 @@ beforeAll(async () => {
       { code: "SZC", legalName: "SuZu Creative", shortName: "Creative" },
     ])
     .returning();
-  const [video] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
+  const [video] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
   const hire = async (name: string, entityId: string, managerId: string | null = null) => {
     const { person } = await hirePerson(
@@ -58,7 +58,7 @@ beforeAll(async () => {
         employeeCode: null,
         startDate: "2024-01-01",
         seniorityDate: null,
-        placement: { workforceType: "employee", branchId: null, departmentId: video.id, teamId: null, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
+        placement: { workforceType: "employee", branchId: null, orgUnitId: video.id, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
       },
       actor.id,
     );
@@ -78,7 +78,7 @@ beforeAll(async () => {
     [hrAdmin]: [{ role: "hr_admin", scope: { type: "group" } }],
     [otherHr]: [{ role: "hr_staff", scope: { type: "entity", id: creative.id } }],
     [payroll]: [{ role: "payroll", scope: { type: "group" } }],
-    [manager]: [{ role: "department_head", scope: { type: "department", id: video.id } }],
+    [manager]: [{ role: "department_head", scope: { type: "unit", id: video.id } }],
     [owner]: [{ role: "owner", scope: { type: "group" } }],
   };
   for (const [personId, list] of Object.entries(grants)) {
@@ -220,7 +220,7 @@ describe("deciding", () => {
     // Asked by the flow (imagine a role that manages people but reads only the personal tier).
     const [step] = await db().select().from(schema.approvalStep).where(eq(schema.approvalStep.requestId, request.id));
     await db().insert(schema.approvalAssignee).values({ stepId: step.id, requestId: request.id, approverPersonId: ids.manager });
-    const weakHr = { personId: ids.manager, principal: principal(ids.manager, [{ role: "department_head", scope: { type: "department", id: ids.video } }]) };
+    const weakHr = { personId: ids.manager, principal: principal(ids.manager, [{ role: "department_head", scope: { type: "unit", id: ids.video } }]) };
     expect((await getProfileChange(weakHr, request.id))?.canDecide).toBe(false);
     expect((await getProfileChange(weakHr, request.id))?.canReveal).toBe(false);
     expect(await revealProfileChange(weakHr, request.id)).toBeNull();

@@ -4,7 +4,7 @@
 // week, blocked, in review, done. Rows are written the way the work use-cases write them.
 import { and, eq, inArray } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
-import { department, entity, person, task, workActivity, workComment, workClient, workLabel, workProject, workProjectMember, workState, workTask, workTaskDependency, workTaskLabel, workTaskPerson, workTeam, workTeamMember } from "../src/lib/db/schema";
+import { orgUnit, entity, person, task, workActivity, workComment, workClient, workLabel, workProject, workProjectMember, workState, workTask, workTaskDependency, workTaskLabel, workTaskPerson, workTeam, workTeamMember } from "../src/lib/db/schema";
 import { CATEGORY_STATUS, type StateCategory, WORKFLOW_PRESETS } from "../src/modules/work/enums";
 
 type Db = ReturnType<typeof drizzle>;
@@ -158,7 +158,7 @@ export async function seedWork(db: Db, today: string): Promise<string> {
     return found.id;
   };
   const entities = new Map((await db.select().from(entity)).map((row) => [row.code, row.id]));
-  const departments = new Map((await db.select().from(department)).map((row) => [row.code, row.id]));
+  const departments = new Map((await db.select().from(orgUnit)).map((row) => [row.code, row.id]));
 
   return db.transaction(async (tx) => {
     const teamIds = new Map<string, string>();

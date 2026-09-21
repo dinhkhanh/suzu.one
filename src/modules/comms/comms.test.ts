@@ -27,7 +27,7 @@ import { findKudos, giveKudos, listKudos, mayRemoveKudos, removeKudos } from "./
 
 type Who = "owner" | "hrGroup" | "hrSzm" | "long" | "huy" | "linh" | "khoi" | "ngo" | "gone";
 const ids = {} as Record<Who | "szm" | "szc" | "vid" | "des" | "hcm" | "hn", string>;
-const users = {} as Record<Who, { person: { id: string; fullName: string; primaryEntityId: string | null; departmentId: string | null; teamId: string | null }; principal: Principal }>;
+const users = {} as Record<Who, { person: { id: string; fullName: string; primaryEntityId: string | null; orgUnitId: string | null; orgUnitPath: string[] }; principal: Principal }>;
 const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
 const TODAY = "2026-09-20";
 const draft = (over: Partial<AnnouncementInput>): AnnouncementInput => ({ title: "Thông báo", body: "Nội dung", kbPageId: null, pinned: false, mustAcknowledge: false, expiresAt: null, audience: ["all"], ...over });
@@ -36,8 +36,8 @@ beforeAll(async () => {
   await migrateTestDb();
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
-  const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
-  const [des] = await db().insert(schema.department).values({ code: "DES", name: "Design" }).returning();
+  const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
+  const [des] = await db().insert(schema.orgUnit).values({ code: "DES", name: "Design" }).returning();
   const [hcm] = await db().insert(schema.branch).values({ entityId: szm.id, name: "HCM" }).returning();
   const [hn] = await db().insert(schema.branch).values({ entityId: szm.id, name: "Hà Nội" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id, vid: vid.id, des: des.id, hcm: hcm.id, hn: hn.id });
@@ -55,13 +55,13 @@ beforeAll(async () => {
     ["gone", szm.id, vid.id, hcm.id, null, null, "employee", "offboarded", "1991-09-21", "2020-01-01"],
   ];
   for (const [key, entityId, departmentId, branchId, role, scope, workforceType, status, dateOfBirth, startDate] of people) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, primaryEntityId: entityId, departmentId, workforceType, status }).returning();
+    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, primaryEntityId: entityId, orgUnitId: departmentId, workforceType, status }).returning();
     ids[key] = row.id;
-    const grants: Grant[] = role ? [{ role, scope: scope === "group" ? { type: "group" } : scope === "entity" ? { type: "entity", id: entityId } : { type: "department", id: departmentId } }] : [];
+    const grants: Grant[] = role ? [{ role, scope: scope === "group" ? { type: "group" } : scope === "entity" ? { type: "entity", id: entityId } : { type: "unit", id: departmentId } }] : [];
     users[key] = { person: row, principal: { personId: row.id, workforceType, grants } };
     await db().insert(schema.personProfile).values({ personId: row.id, dateOfBirth });
     const [employment] = await db().insert(schema.employment).values({ personId: row.id, entityId, employeeCode: key, startDate, seniorityDate: startDate, endDate: status === "offboarded" ? "2026-01-31" : null }).returning();
-    await db().insert(schema.assignment).values({ employmentId: employment.id, workforceType, branchId, departmentId, validFrom: startDate, validTo: status === "offboarded" ? "2026-01-31" : null });
+    await db().insert(schema.assignment).values({ employmentId: employment.id, workforceType, branchId, orgUnitId: departmentId, departmentId, validFrom: startDate, validTo: status === "offboarded" ? "2026-01-31" : null });
   }
   await db().insert(schema.companyValue).values({ key: "teamwork", nameVi: "Đồng đội", nameEn: "Teamwork" });
 });
@@ -73,10 +73,10 @@ describe("announcements", () => {
   const made = {} as Record<"all" | "szm" | "vid" | "hn" | "ngo" | "later" | "draft" | "expired", string>;
 
   it("asks comms:manage over every target", async () => {
-    const vid = audienceKey("department", ids.vid);
+    const vid = audienceKey("unit", ids.vid);
     expect(await mayPostTo(users.long.principal, [vid])).toBe(true);
     expect(await mayPostTo(users.long.principal, ["all"])).toBe(false);
-    expect(await mayPostTo(users.long.principal, [vid, audienceKey("department", ids.des)])).toBe(false);
+    expect(await mayPostTo(users.long.principal, [vid, audienceKey("unit", ids.des)])).toBe(false);
     expect(await mayPostTo(users.hrSzm.principal, [audienceKey("entity", ids.szm), audienceKey("branch", ids.hn)])).toBe(true);
     expect(await mayPostTo(users.hrSzm.principal, [audienceKey("entity", ids.szc)])).toBe(false);
     expect(await mayPostTo(users.hrSzm.principal, [audienceKey("person", ids.khoi)])).toBe(false);
@@ -94,7 +94,7 @@ describe("announcements", () => {
     };
     await create("all", "hrGroup", { pinned: true, mustAcknowledge: true }, null);
     await create("szm", "hrSzm", { audience: [audienceKey("entity", ids.szm)] }, null);
-    await create("vid", "long", { audience: [audienceKey("department", ids.vid)] }, null);
+    await create("vid", "long", { audience: [audienceKey("unit", ids.vid)] }, null);
     await create("hn", "hrSzm", { audience: [audienceKey("branch", ids.hn)] }, null);
     await create("ngo", "hrGroup", { audience: [audienceKey("person", ids.ngo)] }, null);
     await create("later", "hrGroup", {}, new Date(Date.now() + 7 * 86_400_000));

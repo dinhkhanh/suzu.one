@@ -36,7 +36,7 @@ export default async function BonusSchemePage() {
         <Link href="/payroll/bonus" className="text-sm text-muted-foreground hover:underline">
           ← {t("title")}
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("scheme.title")}</h1>
+        <h1>{t("scheme.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("scheme.description")}</p>
       </header>
 

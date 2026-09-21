@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/modules/platform/auth/session";
-import { listEntities } from "@/modules/platform/org/service";
+import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { canManageAnySpace, canManageSpace, countMyPendingAcks, type KbPageCard, kbViewerOf, listPopularPages, listRecentlyPublished, listRecentlyViewed, listSpaces } from "@/modules/kb/service";
 import { KbSearchBox } from "@/modules/kb/ui/search-box";
 import { NewSpaceForm } from "@/modules/kb/ui/space-forms";
@@ -21,19 +21,23 @@ export default async function KnowledgeBasePage() {
     { key: "popular", pages: popular },
     { key: "updated", pages: updated },
   ];
-  // The form offers only what the action would accept.
+  // The form offers only what the action would accept: the entities the viewer's `kb:manage`
+  // covers, and the units they lead — their own and everything below them (FR-KB-13).
   const manageable = canManageAnySpace(user.principal) ? (await listEntities()).filter((entity) => canManageSpace(user.principal, { entityId: entity.id })) : [];
+  const units = canManageAnySpace(user.principal) ? (await unitChoices()).filter((unit) => canManageSpace(user.principal, { entityId: null, ownerUnitPath: [unit.id] }) && !spaces.some((space) => space.ownerUnitId === unit.id)) : [];
   const groupWide = canManageSpace(user.principal, { entityId: null });
   const groups = [
-    { key: "group", spaces: spaces.filter((space) => !space.entityId && !space.archivedAt) },
-    { key: "entity", spaces: spaces.filter((space) => space.entityId && !space.archivedAt) },
+    // A unit's own space first: for most people that is the one they came for.
+    { key: "unit", spaces: spaces.filter((space) => space.ownerUnitId && !space.archivedAt) },
+    { key: "group", spaces: spaces.filter((space) => !space.entityId && !space.ownerUnitId && !space.archivedAt) },
+    { key: "entity", spaces: spaces.filter((space) => space.entityId && !space.ownerUnitId && !space.archivedAt) },
     { key: "archived", spaces: spaces.filter((space) => space.archivedAt) },
   ].filter((group) => group.spaces.length > 0);
 
   return (
     <div className="flex max-w-5xl flex-col gap-8">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1>{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
       <div className="flex flex-wrap items-center gap-4">
@@ -95,11 +99,11 @@ export default async function KnowledgeBasePage() {
           ))}
         </div>
       ) : null}
-      {groupWide || manageable.length > 0 ? (
+      {groupWide || manageable.length > 0 || units.length > 0 ? (
         <details className="rounded-md border p-4">
           <summary className="cursor-pointer text-sm font-medium">{t("space.new")}</summary>
           <div className="pt-4">
-            <NewSpaceForm entities={manageable.map((entity) => ({ id: entity.id, name: entity.shortName }))} groupWide={groupWide} />
+            <NewSpaceForm entities={manageable.map((entity) => ({ id: entity.id, name: entity.shortName }))} units={units} groupWide={groupWide} />
           </div>
         </details>
       ) : null}

@@ -16,7 +16,7 @@ export default async function NewAssetPage() {
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("nav.new")}</h1>
+      <h1>{t("nav.new")}</h1>
       <AssetForm
         value={{ id: null, categoryId: categories[0]?.id ?? "", entityId: entities[0]?.id ?? "", name: "", brand: null, model: null, serial: null, purchaseDate: null, purchasePrice: null, supplier: null, warrantyUntil: null, condition: "new", location: null, notes: null }}
         options={{ entities, categories, people: [], teams: [], canSeeMoney: canReadAssetMoney(user.principal) }}

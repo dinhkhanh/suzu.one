@@ -39,7 +39,7 @@ export default async function ApprovalFlowsPage() {
   return (
     <div className="flex max-w-4xl flex-col gap-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("flows.title")}</h1>
+        <h1>{t("flows.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("flows.description")}</p>
       </header>
       <section className="flex flex-col gap-3">

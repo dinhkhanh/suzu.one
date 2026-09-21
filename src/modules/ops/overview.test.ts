@@ -38,15 +38,15 @@ beforeAll(async () => {
   await migrateTestDb();
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
-  const [fin] = await db().insert(schema.department).values({ code: "FIN", name: "Finance" }).returning();
+  const [fin] = await db().insert(schema.orgUnit).values({ code: "FIN", name: "Finance" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id, fin: fin.id });
   for (const key of ["finance", "head", "accountant", "hrSzm", "ceo", "owner", "employee"] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id, departmentId: key === "accountant" || key === "head" ? fin.id : null }).returning();
+    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id, orgUnitId: key === "accountant" || key === "head" ? fin.id : null }).returning();
     ids[key] = row.id;
   }
   await db().insert(schema.roleAssignment).values([
     { personId: ids.finance, role: "finance", scopeType: "group", scopeId: null, validFrom: "2020-01-01" },
-    { personId: ids.head, role: "department_head", scopeType: "department", scopeId: fin.id, validFrom: "2020-01-01" },
+    { personId: ids.head, role: "department_head", scopeType: "unit", scopeId: fin.id, validFrom: "2020-01-01" },
     { personId: ids.hrSzm, role: "hr_staff", scopeType: "entity", scopeId: szm.id, validFrom: "2020-01-01" },
     { personId: ids.ceo, role: "c_level", scopeType: "group", scopeId: null, validFrom: "2020-01-01" },
     { personId: ids.owner, role: "owner", scopeType: "group", scopeId: null, validFrom: "2020-01-01" },

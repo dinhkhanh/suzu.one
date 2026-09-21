@@ -36,7 +36,7 @@ export default async function ManageAnnouncementPage(props: PageProps<"/announce
           </Link>
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{row.title}</h1>
+          <h1>{row.title}</h1>
           <Badge variant={view.phase === "live" ? "default" : "outline"}>{t(`phase.${view.phase}`)}</Badge>
         </div>
         <div className="flex flex-wrap items-center gap-3">

@@ -70,14 +70,14 @@ const filled = (slugFor: string, overrides: Record<string, unknown> = {}) => ({
 beforeAll(async () => {
   await migrateTestDb();
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty SuZu Media", shortName: "SuZu Media" }).returning();
-  const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
+  const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   Object.assign(ids, { szm: szm.id, vid: vid.id });
   for (const [key, fullName] of [
     ["recruiterPerson", "Người tuyển dụng"],
     ["headPerson", "Trưởng phòng Video"],
     ["employeePerson", "Nhân viên thường"],
   ] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName, searchName: key, primaryEntityId: szm.id, departmentId: vid.id, status: "active" }).returning();
+    const [row] = await db().insert(schema.person).values({ fullName, searchName: key, primaryEntityId: szm.id, orgUnitId: vid.id, status: "active" }).returning();
     ids[key] = row.id;
   }
   for (const seed of PIPELINE_SEED) {
@@ -324,13 +324,13 @@ describe("who can reach a candidate's CV", () => {
 
   it("the recruiter who runs the opening, and the hiring manager on its team", () => {
     expect(canOpenCandidateFile(principal(ids.recruiterPerson, [{ role: "recruiter", scope: { type: "entity", id: ids.szm } }]), opening(), false)).toBe(true);
-    expect(canOpenCandidateFile(principal(ids.headPerson, [{ role: "department_head", scope: { type: "department", id: ids.vid } }]), opening(), true)).toBe(true);
+    expect(canOpenCandidateFile(principal(ids.headPerson, [{ role: "department_head", scope: { type: "unit", id: ids.vid } }]), opening(), true)).toBe(true);
   });
 
   it("nobody else in the company — not a colleague, not finance, not a head off the team", () => {
     expect(canOpenCandidateFile(principal(ids.employeePerson), opening(), false)).toBe(false);
     expect(canOpenCandidateFile(principal(ids.employeePerson, [{ role: "finance", scope: { type: "group" } }]), opening(), false)).toBe(false);
     expect(canOpenCandidateFile(principal(ids.employeePerson, [{ role: "auditor", scope: { type: "group" } }]), opening(), false)).toBe(false);
-    expect(canOpenCandidateFile(principal(ids.headPerson, [{ role: "department_head", scope: { type: "department", id: ids.vid } }]), opening(), false)).toBe(false);
+    expect(canOpenCandidateFile(principal(ids.headPerson, [{ role: "department_head", scope: { type: "unit", id: ids.vid } }]), opening(), false)).toBe(false);
   });
 });

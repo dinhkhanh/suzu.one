@@ -39,7 +39,7 @@ export default async function HomePage() {
   return (
     <div className="flex max-w-5xl flex-col gap-8">
       <header className="flex flex-col gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("home.greeting", { name: givenName })}</h1>
+        <h1>{t("home.greeting", { name: givenName })}</h1>
         <div className="flex flex-wrap gap-2">
           {user.principal.grants.length === 0 ? (
             <Badge variant="secondary">{t("home.noRoles")}</Badge>

@@ -1,6 +1,7 @@
 // Leave types and their effective-dated policies (FR-LVE-01..03): HR's configuration.
 import "server-only";
 import { and, asc, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
@@ -116,12 +117,14 @@ export async function saveLeavePolicy(input: LeavePolicyInput, actorPersonId: st
 // ── Minimum staffing ────────────────────────────────────────────────────────────────────────
 
 export async function listStaffingRules(executor: Executor = db()) {
+  const departmentUnit = alias(schema.orgUnit, "department_unit");
+  const teamUnit = alias(schema.orgUnit, "team_unit");
   return executor
-    .select({ rule: schema.teamStaffingRule, entityName: schema.entity.shortName, departmentName: schema.department.name, teamName: schema.team.name })
+    .select({ rule: schema.teamStaffingRule, entityName: schema.entity.shortName, departmentName: departmentUnit.name, teamName: teamUnit.name })
     .from(schema.teamStaffingRule)
     .leftJoin(schema.entity, eq(schema.entity.id, schema.teamStaffingRule.entityId))
-    .leftJoin(schema.department, eq(schema.department.id, schema.teamStaffingRule.departmentId))
-    .leftJoin(schema.team, eq(schema.team.id, schema.teamStaffingRule.teamId));
+    .leftJoin(departmentUnit, eq(departmentUnit.id, schema.teamStaffingRule.departmentId))
+    .leftJoin(teamUnit, eq(teamUnit.id, schema.teamStaffingRule.teamId));
 }
 
 export async function getStaffingRule(id: string): Promise<StaffingRuleRow | undefined> {

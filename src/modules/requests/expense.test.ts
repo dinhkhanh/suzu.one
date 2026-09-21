@@ -27,7 +27,7 @@ const line = (overrides: Partial<ExpenseLine> = {}): ExpenseLine => ({ lineDate:
 
 async function requester(personId: string) {
   const [row] = await db().select().from(schema.person).where(eq(schema.person.id, personId)).limit(1);
-  return { personId, entityId: row.primaryEntityId, departmentId: row.departmentId, teamId: row.teamId, managerId: row.managerId };
+  return { personId, entityId: row.primaryEntityId, unitPath: row.orgUnitPath, managerId: row.managerId };
 }
 
 /** A draft regular run for a month, the kind an approved claim looks for. */
@@ -68,7 +68,7 @@ beforeAll(async () => {
     .returning();
   ids.entity = group.id;
   ids.other = other.id;
-  const [department] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
+  const [department] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
 
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
   const hire = async (fullName: string, managerId: string | null, entityId = ids.entity) =>
@@ -82,7 +82,7 @@ beforeAll(async () => {
           employeeCode: null,
           startDate: "2024-01-01",
           seniorityDate: null,
-          placement: { workforceType: "employee", branchId: null, departmentId: department.id, teamId: null, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
+          placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, jobLevel: null, managerId, dottedManagerId: null, workLocation: null },
         },
         actor.id,
         { onboarding: false },

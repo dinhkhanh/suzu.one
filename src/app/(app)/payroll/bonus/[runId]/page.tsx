@@ -39,7 +39,7 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
           <Link href="/payroll/bonus" className="text-sm text-muted-foreground hover:underline">
             ← {t("title")}
           </Link>
-          <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight">
+          <h1 className="flex flex-wrap items-center gap-2">
             {run.name}
             <Badge variant={run.status === "paid" ? "secondary" : "outline"}>{t(`status.${run.status}`)}</Badge>
           </h1>
@@ -50,7 +50,7 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
       </header>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">{t("cost.title")}</h2>
+        <h2>{t("cost.title")}</h2>
         <p className="text-sm text-muted-foreground">{t("cost.hint")}</p>
         <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1 rounded-xl border p-4 text-sm">
           {cost.byEntity.map((entity) => (
@@ -84,7 +84,7 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
       ) : null}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">{t("lines.title")}</h2>
+        <h2>{t("lines.title")}</h2>
         <Table>
           <TableHeader>
             <TableRow>
@@ -119,7 +119,7 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
       {manages && scheme ? <WhatIfForm runId={runId} current={scheme.value} /> : null}
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-medium">{t("events.title")}</h2>
+        <h2>{t("events.title")}</h2>
         <ol className="flex flex-col divide-y rounded-xl border px-4 text-sm">
           {events.map((event) => (
             <li key={event.id} className="flex flex-wrap items-baseline justify-between gap-3 py-2">

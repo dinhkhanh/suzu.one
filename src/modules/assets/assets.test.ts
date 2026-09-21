@@ -50,8 +50,8 @@ beforeAll(async () => {
   await migrateTestDb();
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
-  const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
-  const [team] = await db().insert(schema.team).values({ departmentId: vid.id, name: "Quay dựng" }).returning();
+  const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
+  const [team] = await db().insert(schema.orgUnit).values({ kind: "team", parentId: vid.id, name: "Quay dựng" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id, vid: vid.id, team: team.id });
 
   const people: [keyof typeof ids, string, string | null][] = [
@@ -83,7 +83,7 @@ let personCounter = 0;
 /** A holder of their own, so one test's equipment never turns up in another test's counts. */
 async function newPerson(fullName = "Người mượn", managerId: string | null = null): Promise<string> {
   const key = `p${++personCounter}`;
-  const [row] = await db().insert(schema.person).values({ fullName, searchName: key, primaryEntityId: ids.szm, departmentId: ids.vid, status: "active", managerId }).returning();
+  const [row] = await db().insert(schema.person).values({ fullName, searchName: key, primaryEntityId: ids.szm, orgUnitId: ids.vid, status: "active", managerId }).returning();
   return row.id;
 }
 

@@ -4,7 +4,7 @@
 import { sql } from "drizzle-orm";
 import { type AnyPgColumn, boolean, check, date, doublePrecision, index, integer, jsonb, pgEnum, pgTable, smallint, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { approvalRequest } from "../platform/approvals/schema";
-import { department, entity } from "../platform/org/schema";
+import { entity, orgUnit } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
 import type { SchedulePattern, Segment } from "./engine/calendar";
 import type { DeviceMapping } from "./engine/device-log";
@@ -81,7 +81,7 @@ export const scheduleAssignment = pgTable(
     scope: scheduleScope("scope").notNull(),
     // entity scope: the entity. department scope: optional, narrows a shared department to one entity.
     entityId: uuid("entity_id").references(() => entity.id),
-    departmentId: uuid("department_id").references(() => department.id),
+    departmentId: uuid("department_id").references(() => orgUnit.id),
     personId: uuid("person_id").references(() => person.id),
     scheduleId: uuid("schedule_id")
       .notNull()

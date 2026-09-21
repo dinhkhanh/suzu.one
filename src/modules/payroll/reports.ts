@@ -99,7 +99,7 @@ export async function payrollRegister(principal: Principal, entityId: string, mo
   const personIds = [...new Set(runs.flatMap((loaded) => loaded.people.map((person) => person.personId)))];
   const facts = await listPayrollFacts({ personIds }, month);
   const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
-  const departments = await db().select({ id: schema.department.id, name: schema.department.name }).from(schema.department);
+  const departments = await db().select({ id: schema.orgUnit.id, name: schema.orgUnit.name }).from(schema.orgUnit);
   const departmentOf = new Map(departments.map((row) => [row.id, row.name]));
 
   // A month can hold a regular run and off-cycle runs; the register is the month, so they add up.
@@ -169,7 +169,7 @@ export async function costReport(principal: Principal, filter: ReportFilter): Pr
   const personIds = [...new Set(runs.flatMap((loaded) => loaded.people.map((person) => person.personId)))];
   const facts = await listPayrollFacts({ personIds }, runs[0].run.month);
   const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
-  const departments = await db().select({ id: schema.department.id, name: schema.department.name }).from(schema.department);
+  const departments = await db().select({ id: schema.orgUnit.id, name: schema.orgUnit.name }).from(schema.orgUnit);
   const departmentOf = new Map(departments.map((row) => [row.id, row.name]));
 
   const entityRows = new Map<string, CostRow>();

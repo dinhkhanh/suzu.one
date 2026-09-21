@@ -22,7 +22,7 @@ export default async function NewAnnouncementPage() {
             {t("manage.title")}
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("manage.new")}</h1>
+        <h1>{t("manage.new")}</h1>
       </header>
       <AnnouncementForm choices={choices} draft={{ id: null, title: "", body: "", kbPageId: null, pinned: false, mustAcknowledge: false, expiresAt: "", publishAt: "", audience: [], published: false }} />
     </div>

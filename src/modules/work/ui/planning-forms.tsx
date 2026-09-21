@@ -38,7 +38,7 @@ export function TemplateCreateForm({ owners, canShare }: { owners: { id: string;
   const { run, pending, errorKey } = useRun();
   return (
     <form
-      className="flex flex-wrap items-end gap-2"
+      className="toolbar"
       onSubmit={(event) => {
         event.preventDefault();
         const form = event.currentTarget;

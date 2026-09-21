@@ -60,11 +60,11 @@ export default async function NewAttendanceRequestPage({ searchParams }: PagePro
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{returned ? t("resubmitTitle") : t("newTitle")}</h1>
+        <h1>{returned ? t("resubmitTitle") : t("newTitle")}</h1>
         <p className="text-sm text-muted-foreground">{onBehalf && subject ? t("onBehalf", { name: subject.fullName }) : t("newDescription")}</p>
       </header>
       {returned ? null : (
-        <nav className="flex flex-wrap gap-2 text-sm">
+        <nav className="tab-row">
           {ATTENDANCE_REQUEST_TYPES.map((value) => (
             <Link key={value} href={href(value)} className={value === type ? "rounded-md bg-primary px-3 py-1.5 text-primary-foreground" : "rounded-md border px-3 py-1.5 hover:bg-muted"}>
               {t(`types.${value}`)}

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
 import { getPersonTarget } from "@/modules/core-hr/service";
+import { unitPathOf } from "@/modules/platform/org/service";
 import { canAssignSchedule, canManageAttendanceConfig } from "./policy";
 import { requestScopeRecompute, requestTimesheetRecompute } from "./recompute";
 import { assignSchedule, confirmCalendarDay, deleteCalendarDay, getAssignment, getCalendarDay, getSchedule, getShift, removeAssignment, saveCalendarDay, saveSchedule, saveShift, setRoster } from "./schedules";
@@ -153,7 +154,7 @@ export async function saveScheduleAction(input: unknown) {
 const assignPipeline = createAction({
   name: "attendance.schedule.assign",
   input: z.object({ scope: z.enum(["entity", "department", "person"]), entityId: optional(z.uuid()), departmentId: optional(z.uuid()), personId: optional(z.uuid()), scheduleId: z.uuid(), validFrom: day, validTo: optional(day), note: optional(z.string().trim().max(300)) }),
-  authorize: async (user, input) => canAssignSchedule(user.principal, input, input.scope === "person" && input.personId ? await getPersonTarget(input.personId) : null),
+  authorize: async (user, input) => canAssignSchedule(user.principal, { ...input, unitPath: await unitPathOf(input.departmentId) }, input.scope === "person" && input.personId ? await getPersonTarget(input.personId) : null),
   run: async ({ user, input }) => {
     // Only the columns of the chosen scope count, whatever else the form posted.
     const scoped = { ...input, entityId: input.scope === "person" ? null : input.entityId, departmentId: input.scope === "department" ? input.departmentId : null, personId: input.scope === "person" ? input.personId : null };
@@ -173,7 +174,7 @@ const removeAssignmentPipeline = createAction({
   input: z.object({ id: z.uuid() }),
   authorize: async (user, input) => {
     const row = await getAssignment(input.id);
-    return !!row && canAssignSchedule(user.principal, row, row.personId ? await getPersonTarget(row.personId) : null);
+    return !!row && canAssignSchedule(user.principal, { ...row, unitPath: await unitPathOf(row.departmentId) }, row.personId ? await getPersonTarget(row.personId) : null);
   },
   run: async ({ input }) => {
     const row = await removeAssignment(input.id);
@@ -192,7 +193,7 @@ export async function removeAssignmentAction(input: unknown) {
 const rosterPipeline = createAction({
   name: "attendance.roster.set",
   input: z.object({ personId: z.uuid(), from: day, to: day, shiftId: z.union([z.uuid(), z.literal("off"), z.literal("clear")]), note: optional(z.string().trim().max(200)) }),
-  authorize: async (user, input) => canAssignSchedule(user.principal, { scope: "person", entityId: null, departmentId: null }, await getPersonTarget(input.personId)),
+  authorize: async (user, input) => canAssignSchedule(user.principal, { scope: "person", entityId: null, departmentId: null, unitPath: [] }, await getPersonTarget(input.personId)),
   run: async ({ input }) => {
     const { dates } = await setRoster(input);
     await requestTimesheetRecompute([input.personId], input.from, input.to);

@@ -36,7 +36,7 @@ export default async function NewPagePage(props: PageProps<"/kb/spaces/[spaceKey
             {loaded.space.name}
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("page.new")}</h1>
+        <h1>{t("page.new")}</h1>
         <p className="text-sm text-muted-foreground">
           <Link href={`/kb/spaces/${loaded.space.key}/import${parentId ? `?parent=${parentId}` : ""}`} className="underline underline-offset-2">
             {t("import.link")}

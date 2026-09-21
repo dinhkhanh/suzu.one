@@ -68,7 +68,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
             {team.name}
           </Link>
         </p>
-        <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight">
+        <h1 className="flex flex-wrap items-center gap-2">
           {project.name}
           <Badge variant="outline">{t(`visibility.${project.visibility}`)}</Badge>
           {project.status === "active" ? null : <Badge variant="secondary">{t(`projects.status.${project.status}`)}</Badge>}

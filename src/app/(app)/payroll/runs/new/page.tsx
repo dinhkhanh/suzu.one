@@ -27,7 +27,7 @@ export default async function NewPayrollRunPage() {
         <Link href="/payroll/runs" className="text-sm text-muted-foreground hover:underline">
           ← {t("runs.title")}
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("runs.new.title")}</h1>
+        <h1>{t("runs.new.title")}</h1>
       </header>
       <NewRunForm entities={entities} months={months.map(({ entityId, month, hasRun }) => ({ entityId, month, hasRun }))} />
     </div>

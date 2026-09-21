@@ -30,7 +30,7 @@ export default async function WeightingPage() {
   return (
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-medium">{t("weighting.title")}</h2>
+        <h2>{t("weighting.title")}</h2>
         <p className="text-sm text-muted-foreground">{t("weighting.description")}</p>
       </section>
 

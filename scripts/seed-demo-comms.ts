@@ -5,7 +5,7 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
 import { addDays, todayInVietnam } from "../src/lib/dates";
-import { announcement, announcementAudience, announcementRead, assignment, companyValue, department, employment, entity, kbPage, kbSpace, kudos, lifecycleEvent, person, personProfile, position, task, taskTemplate, taskTemplateItem } from "../src/lib/db/schema";
+import { announcement, announcementAudience, announcementRead, assignment, companyValue, orgUnit, employment, entity, kbPage, kbSpace, kudos, lifecycleEvent, person, personProfile, position, task, taskTemplate, taskTemplateItem } from "../src/lib/db/schema";
 import { toSearchKey } from "../src/lib/text";
 import { planChecklist } from "../src/modules/platform/tasks-engine/engine/checklist";
 
@@ -19,7 +19,7 @@ export async function seedComms(db: Db): Promise<string> {
   const byEmail = (email: string) => people.find((row) => row.workEmail === email);
   const id = (email: string) => byEmail(email)?.id;
   const entities = await db.select().from(entity);
-  const departments = await db.select().from(department);
+  const departments = await db.select().from(orgUnit);
   const szm = entities.find((row) => row.code === "SZM");
   const szc = entities.find((row) => row.code === "SZC");
   const vid = departments.find((row) => row.code === "VID");
@@ -58,7 +58,7 @@ export async function seedComms(db: Db): Promise<string> {
     {
       title: "Phòng Video: lịch quay tuần tới và phân công thiết bị",
       body: "Tuần tới phòng có ba buổi quay ngoại cảnh (thứ Ba, thứ Năm, thứ Bảy). Bảng phân công máy quay, ống kính và đèn đã cập nhật trong dự án.\n\nMọi người kiểm tra thiết bị được giao, làm thủ tục mượn theo quy trình và báo lại cho anh Long nếu trùng lịch.",
-      author: long.id, audience: [`department:${vid.id}`], entityId: null, publishAt: ago(0, 6), kbPageId: pageId("Mượn và trả thiết bị quay"),
+      author: long.id, audience: [`unit:${vid.id}`], entityId: null, publishAt: ago(0, 6), kbPageId: pageId("Mượn và trả thiết bị quay"),
       readers: ["tam.bui@suzu.group"],
     },
     {
@@ -75,7 +75,7 @@ export async function seedComms(db: Db): Promise<string> {
     {
       title: "SuZu Creative: đăng ký workshop thiết kế thương hiệu (bản nháp)",
       body: "Dự kiến tổ chức workshop nội bộ về thiết kế thương hiệu trong tháng 10. Nội dung và lịch đang được hoàn thiện.",
-      author: mai.id, audience: [`entity:${szc.id}`, `department:${des.id}`], entityId: null, publishAt: null, status: "draft",
+      author: mai.id, audience: [`entity:${szc.id}`, `unit:${des.id}`], entityId: null, publishAt: null, status: "draft",
     },
   ];
   const existing = new Set((await db.select({ title: announcement.title }).from(announcement)).map((row) => row.title));
@@ -170,10 +170,10 @@ export async function seedComms(db: Db): Promise<string> {
   if (!byEmail(JOINER) && chi) {
     const start = addDays(today, -4);
     const name = "Lâm Gia Hân";
-    const [hired] = await db.insert(person).values({ fullName: name, searchName: toSearchKey(name), workEmail: JOINER, workforceType: "probation", status: "active", primaryEntityId: szc.id, departmentId: des.id, managerId: chi.id }).returning();
+    const [hired] = await db.insert(person).values({ fullName: name, searchName: toSearchKey(name), workEmail: JOINER, workforceType: "probation", status: "active", primaryEntityId: szc.id, orgUnitId: des.id, managerId: chi.id }).returning();
     await db.insert(personProfile).values({ personId: hired.id, nationality: "Việt Nam", dateOfBirth: "2000-03-12", gender: "female" });
     const [job] = await db.insert(employment).values({ personId: hired.id, entityId: szc.id, employeeCode: "SZC-0091", startDate: start, seniorityDate: start }).returning();
-    await db.insert(assignment).values({ employmentId: job.id, workforceType: "probation", departmentId: des.id, positionId: designer?.id ?? null, managerId: chi.id, validFrom: start });
+    await db.insert(assignment).values({ employmentId: job.id, workforceType: "probation", orgUnitId: des.id, departmentId: des.id, positionId: designer?.id ?? null, managerId: chi.id, validFrom: start });
     const [event] = await db.insert(lifecycleEvent).values({ personId: hired.id, employmentId: job.id, entityId: szc.id, type: "hire", effectiveDate: start, createdByPersonId: mai.id }).returning();
     const [template] = await db.select().from(taskTemplate).where(and(eq(taskTemplate.purpose, "onboarding"), eq(taskTemplate.isActive, true))).limit(1);
     if (template) {

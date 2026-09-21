@@ -45,7 +45,7 @@ export default async function PayrollReportsPage({ searchParams }: PageProps<"/p
         <Link href="/payroll" className="text-sm text-muted-foreground hover:underline">
           ← {t("back")}
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1>{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
 

@@ -174,7 +174,7 @@ export function MapUserForm({ deviceId, deviceUserId, people }: { deviceId: stri
   const t = useTranslations("attendance.devices");
   const { onSubmit, pending, errorKey, saved } = useActionForm(mapDeviceUserAction, { extra: { deviceId, ...(deviceUserId ? { deviceUserId } : {}) } });
   return (
-    <form onSubmit={onSubmit} key={saved ? "saved" : "open"} className="flex flex-wrap items-end gap-2">
+    <form onSubmit={onSubmit} key={saved ? "saved" : "open"} className="toolbar">
       {deviceUserId ? null : (
         <Field name="deviceUserId" label={t("map.deviceUserId")}>
           <Input id="deviceUserId" name="deviceUserId" required maxLength={40} className="w-28" />

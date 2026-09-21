@@ -6,6 +6,7 @@ import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import { orgUnitOptions, placementFor } from "../platform/org/service";
 import type { Principal } from "../platform/rbac/policy";
 import { type GoalInput, type GoalProgress, goalProgress, type ProgressLine, isStale, keyResultProgressBp, weekStartOf, weightedAverageBp } from "./engine/progress";
 import { type Confidence, type GoalLevel, type GoalStatus, isAnnual, isPeriodKey, levelRank, type MetricType, type Milestone, parseMetricValue, STALE_AFTER_DAYS, yearOfPeriod } from "./enums";
@@ -74,8 +75,8 @@ type UnitNames = { entities: Map<string, string>; departments: Map<string, strin
 async function loadUnitNames(executor: Executor = db()): Promise<UnitNames> {
   const [entities, departments, teams] = await Promise.all([
     executor.select({ id: schema.entity.id, name: schema.entity.shortName }).from(schema.entity),
-    executor.select({ id: schema.department.id, name: schema.department.name }).from(schema.department),
-    executor.select({ id: schema.team.id, name: schema.team.name }).from(schema.team),
+    executor.select({ id: schema.orgUnit.id, name: schema.orgUnit.name }).from(schema.orgUnit),
+    executor.select({ id: schema.orgUnit.id, name: schema.orgUnit.name }).from(schema.orgUnit),
   ]);
   const toMap = (rows: { id: string; name: string }[]) => new Map(rows.map((row) => [row.id, row.name]));
   return { entities: toMap(entities), departments: toMap(departments), teams: toMap(teams) };
@@ -198,15 +199,27 @@ export type GoalFormOptions = {
 };
 
 export async function goalFormOptions(viewer: Viewer): Promise<GoalFormOptions> {
-  const [directory, entities, departments, teams] = await Promise.all([
+  const [directory, entities, units] = await Promise.all([
     loadDirectory(),
     db().select().from(schema.entity).where(eq(schema.entity.isActive, true)).orderBy(asc(schema.entity.code)),
-    db().select().from(schema.department).where(eq(schema.department.isActive, true)).orderBy(asc(schema.department.name)),
-    db().select().from(schema.team).where(eq(schema.team.isActive, true)).orderBy(asc(schema.team.name)),
+    orgUnitOptions({ activeOnly: true }),
   ]);
-  const unit = (level: GoalLevel, ids: { entityId?: string | null; departmentId?: string | null; teamId?: string | null }): GoalParties => ({ level, entityId: ids.entityId ?? null, departmentId: ids.departmentId ?? null, teamId: ids.teamId ?? null, ownerPersonId: null, person: null });
+  // A unit goal is offered at whatever depth the unit sits; `kind` only decides which of the two
+  // columns it is stored in, so that "department goals" still roll up as they used to.
+  const departments = units.filter((row) => row.kind === "department");
+  const teams = units.filter((row) => row.kind === "team");
+  const pathOf = new Map<string, readonly string[]>(units.map((row) => [row.id, row.path]));
+  const unit = (level: GoalLevel, ids: { entityId?: string | null; departmentId?: string | null; teamId?: string | null }): GoalParties => ({
+    level,
+    entityId: ids.entityId ?? null,
+    departmentId: ids.departmentId ?? null,
+    teamId: ids.teamId ?? null,
+    unitPath: pathOf.get(ids.teamId ?? ids.departmentId ?? "") ?? [],
+    ownerPersonId: null,
+    person: null,
+  });
   const entityChoices = [null, ...entities.map((entity) => entity.id)];
-  const departmentOf = new Map(teams.map((team) => [team.id, team.departmentId]));
+  const departmentOf = new Map(teams.map((team) => [team.id, team.path.filter((id) => pathOf.has(id) && id !== team.id).at(-1) ?? null]));
   const options: GoalFormOptions = {
     levels: [],
     entities: entities.filter((entity) => canEditGoal(viewer.principal, unit("entity", { entityId: entity.id }))).map((entity) => ({ id: entity.id, name: entity.shortName })),
@@ -246,13 +259,17 @@ export async function resolveDraft(draft: GoalDraft, executor: Executor = db()):
     if (entity) values = { level: "entity", entityId: entity.id, departmentId: null, teamId: null, personId: null };
   }
   if (draft.level === "department" && draft.departmentId) {
-    const [department] = await executor.select().from(schema.department).where(eq(schema.department.id, draft.departmentId)).limit(1);
+    const [department] = await executor.select().from(schema.orgUnit).where(eq(schema.orgUnit.id, draft.departmentId)).limit(1);
     // An entity's own department belongs to that entity; a shared one may be narrowed to one.
     if (department) values = { level: "department", entityId: department.entityId ?? draft.entityId, departmentId: department.id, teamId: null, personId: null };
   }
   if (draft.level === "team" && draft.teamId) {
-    const [team] = await executor.select({ team: schema.team, departmentEntityId: schema.department.entityId }).from(schema.team).innerJoin(schema.department, eq(schema.department.id, schema.team.departmentId)).where(eq(schema.team.id, draft.teamId)).limit(1);
-    if (team) values = { level: "team", entityId: team.departmentEntityId ?? draft.entityId, departmentId: team.team.departmentId, teamId: team.team.id, personId: null };
+    const [team] = await executor.select().from(schema.orgUnit).where(eq(schema.orgUnit.id, draft.teamId)).limit(1);
+    // The team's department is the nearest one above it — which may be several levels up.
+    if (team) {
+      const { departmentId } = await placementFor(team.id, executor);
+      values = { level: "team", entityId: team.entityId ?? draft.entityId, departmentId, teamId: team.id, personId: null };
+    }
   }
   if (draft.level === "individual" && draft.personId) {
     const person = directory.get(draft.personId);

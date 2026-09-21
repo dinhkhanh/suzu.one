@@ -39,7 +39,7 @@ export default async function LeaveRequestPage(props: PageProps<"/approvals/leav
     <div className="flex max-w-3xl flex-col gap-8">
       <header className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{locale === "en" && type.nameEn ? type.nameEn : type.name}</h1>
+          <h1>{locale === "en" && type.nameEn ? type.nameEn : type.name}</h1>
           <RequestStatusBadge status={status} />
         </div>
         <p className="text-sm text-muted-foreground">

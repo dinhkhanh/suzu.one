@@ -8,7 +8,7 @@ export default function AppError({ error, retry }: { error: Error & { digest?: s
   const t = useTranslations("errors");
   return (
     <div className="flex max-w-md flex-col gap-3 py-16">
-      <h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1>
+      <h1>{t("title")}</h1>
       <p className="text-sm text-muted-foreground">{t("description")}</p>
       {error.digest ? <p className="font-mono text-xs text-muted-foreground">{t("reference", { digest: error.digest })}</p> : null}
       <div>

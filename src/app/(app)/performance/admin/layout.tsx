@@ -14,11 +14,11 @@ export default async function KpiAdminLayout({ children }: { children: ReactNode
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1>{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
       <PerformanceNav active="admin" />
-      <nav className="flex flex-wrap gap-4 text-sm">
+      <nav className="tab-row">
         {(["periods", "cycles", "weighting", "assignments", "positions", "library", "import"] as const).map((tab) => (
           <Link key={tab} href={`/performance/admin/${tab}`} className="underline-offset-4 hover:underline">
             {t(`tabs.${tab}`)}

@@ -34,7 +34,7 @@ export default async function SchedulesPage() {
               {t("back")}
             </Link>
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <h1>{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("description")}</p>
         </div>
         <Link href="/reports/schedules/new" className="rounded-lg border px-3 py-1.5 text-sm hover:bg-muted">

@@ -86,8 +86,8 @@ let templateId = "";
 beforeAll(async () => {
   await migrateTestDb();
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
-  const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
-  const [bod] = await db().insert(schema.department).values({ code: "BOD", name: "Board" }).returning();
+  const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
+  const [bod] = await db().insert(schema.orgUnit).values({ code: "BOD", name: "Board" }).returning();
   // A second entity nobody works at: a cycle aimed there has no participants.
   const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id, vid: vid.id, bod: bod.id });
@@ -103,7 +103,7 @@ beforeAll(async () => {
     ["ngo", vid.id, "tam", "active", "collaborator"],
   ];
   for (const [key, departmentId, manager, status, workforceType] of people) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status, workforceType, primaryEntityId: szm.id, departmentId, managerId: manager ? ids[manager] : null }).returning();
+    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status, workforceType, primaryEntityId: szm.id, orgUnitId: departmentId, managerId: manager ? ids[manager] : null }).returning();
     ids[key] = row.id;
   }
   templateId = (await saveReviewTemplate(null, template(), ids.mai)).after.id;

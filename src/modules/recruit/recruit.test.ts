@@ -66,8 +66,8 @@ beforeAll(async () => {
   await migrateTestDb();
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
-  const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
-  const [des] = await db().insert(schema.department).values({ code: "DES", name: "Design" }).returning();
+  const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
+  const [des] = await db().insert(schema.orgUnit).values({ code: "DES", name: "Design" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id, vid: vid.id, des: des.id });
 
   for (const [key, fullName] of [
@@ -78,7 +78,7 @@ beforeAll(async () => {
     ["hrPerson", "Giám đốc Nhân sự"],
     ["employeePerson", "Nhân viên thường"],
   ] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName, searchName: key, primaryEntityId: szm.id, departmentId: vid.id, status: "active" }).returning();
+    const [row] = await db().insert(schema.person).values({ fullName, searchName: key, primaryEntityId: szm.id, orgUnitId: vid.id, status: "active" }).returning();
     ids[key] = row.id;
   }
 
@@ -92,8 +92,8 @@ beforeAll(async () => {
   recruiter = principal(ids.recruiterPerson, [{ role: "recruiter", scope: { type: "entity", id: szm.id } }]);
   szcRecruiter = principal(ids.szcRecruiterPerson, [{ role: "recruiter", scope: { type: "entity", id: szc.id } }]);
   hrAdmin = principal(ids.hrPerson, [{ role: "hr_admin", scope: { type: "group" } }]);
-  head = principal(ids.headPerson, [{ role: "department_head", scope: { type: "department", id: vid.id } }]);
-  otherHead = principal(ids.otherHeadPerson, [{ role: "department_head", scope: { type: "department", id: des.id } }]);
+  head = principal(ids.headPerson, [{ role: "department_head", scope: { type: "unit", id: vid.id } }]);
+  otherHead = principal(ids.otherHeadPerson, [{ role: "department_head", scope: { type: "unit", id: des.id } }]);
   employee = principal(ids.employeePerson);
 });
 

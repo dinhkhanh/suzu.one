@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
 import { normalizeEmail } from "@/modules/platform/auth/sign-in-policy";
+import { unitPathOf } from "@/modules/platform/org/service";
 import { findPersonById } from "@/modules/platform/people/service";
 import { holdsRoleGrants } from "@/modules/platform/rbac/service";
 import { ASSIGNMENT_CHANGE_KINDS, GENDERS, MARITAL_STATUSES, WORKFORCE_TYPES } from "./enums";
@@ -35,8 +36,7 @@ const identityInput = {
 const placementInput = z.object({
   workforceType: z.enum(WORKFORCE_TYPES),
   branchId: id,
-  departmentId: id,
-  teamId: id,
+  orgUnitId: id,
   positionName: text(120),
   jobLevel: text(60),
   managerId: id,
@@ -56,7 +56,7 @@ const hirePipeline = createAction({
     // Ticked after HR has looked at the likely duplicates and decided this is someone new.
     confirmDuplicate: z.preprocess((value) => value === "on" || value === true, z.boolean()).default(false),
   }),
-  authorize: (user, input) => canHireInto(user.principal, { entityId: input.entityId, departmentId: input.placement.departmentId, teamId: input.placement.teamId }),
+  authorize: async (user, input) => canHireInto(user.principal, { entityId: input.entityId, unitPath: await unitPathOf(input.placement.orgUnitId) }),
   run: async ({ user, input }) => {
     if (!input.confirmDuplicate) {
       // One person, one record (FR-CHR-16): a returning employee is rehired from their old record.
@@ -111,7 +111,7 @@ const assignmentPipeline = createAction({
   authorize: async (user, input) => {
     const from = await getPersonTarget(input.personId);
     if (!from) return false;
-    return canReassign(user.principal, from, { entityId: from.entityId, departmentId: input.placement.departmentId, teamId: input.placement.teamId });
+    return canReassign(user.principal, from, { entityId: from.entityId, unitPath: await unitPathOf(input.placement.orgUnitId) });
   },
   run: async ({ user, input }) => {
     const { personId, ...change } = input;

@@ -289,7 +289,7 @@ export function TypeDesigner({ draft, entities, canGroup }: { draft: TypeDraft; 
                 </div>
               ) : null}
 
-              <div className="flex flex-wrap items-end gap-2">
+              <div className="toolbar">
                 <label className="flex flex-col gap-1.5">
                   <Label htmlFor={`when-${index}`}>{t("shownWhen")}</Label>
                   <Select

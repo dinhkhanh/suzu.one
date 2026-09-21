@@ -31,7 +31,7 @@ let actorId: string;
 const ids = {} as Record<"media" | "creative" | "video" | "design" | "long" | "tam" | "huy" | "chi" | "ctv" | "future", string>;
 
 function placement(overrides: Partial<HireInput["placement"]> = {}): HireInput["placement"] {
-  return { workforceType: "employee", branchId: null, departmentId: null, teamId: null, positionName: null, jobLevel: null, managerId: null, dottedManagerId: null, workLocation: null, ...overrides };
+  return { workforceType: "employee", branchId: null, orgUnitId: null, positionName: null, jobLevel: null, managerId: null, dottedManagerId: null, workLocation: null, ...overrides };
 }
 
 async function hire(name: string, entityId: string, overrides: Partial<HireInput> & { placement?: HireInput["placement"] } = {}) {
@@ -58,7 +58,7 @@ beforeAll(async () => {
     ])
     .returning();
   const [video, design] = await db()
-    .insert(schema.department)
+    .insert(schema.orgUnit)
     .values([
       { code: "VID", name: "Video" },
       { code: "DES", name: "Design" },
@@ -68,12 +68,12 @@ beforeAll(async () => {
 
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
   actorId = actor.id;
-  ids.long = await hire("Dang Hoang Long", ids.media, { placement: placement({ departmentId: ids.video }) });
-  ids.tam = await hire("Bui Thanh Tam", ids.media, { placement: placement({ departmentId: ids.video, managerId: ids.long }) });
-  ids.huy = await hire("Ho Gia Huy", ids.media, { placement: placement({ departmentId: ids.video, managerId: ids.tam, workforceType: "probation" }) });
-  ids.chi = await hire("Duong Thuy Chi", ids.creative, { placement: placement({ departmentId: ids.design }) });
-  ids.ctv = await hire("Ngo Bao Anh", ids.media, { workEmail: null, placement: placement({ departmentId: ids.video, workforceType: "collaborator" }) });
-  ids.future = await hire("Mai Anh Thu", ids.creative, { startDate: addDays(today, 30), placement: placement({ departmentId: ids.design, managerId: ids.chi }) });
+  ids.long = await hire("Dang Hoang Long", ids.media, { placement: placement({ orgUnitId: ids.video }) });
+  ids.tam = await hire("Bui Thanh Tam", ids.media, { placement: placement({ orgUnitId: ids.video, managerId: ids.long }) });
+  ids.huy = await hire("Ho Gia Huy", ids.media, { placement: placement({ orgUnitId: ids.video, managerId: ids.tam, workforceType: "probation" }) });
+  ids.chi = await hire("Duong Thuy Chi", ids.creative, { placement: placement({ orgUnitId: ids.design }) });
+  ids.ctv = await hire("Ngo Bao Anh", ids.media, { workEmail: null, placement: placement({ orgUnitId: ids.video, workforceType: "collaborator" }) });
+  ids.future = await hire("Mai Anh Thu", ids.creative, { startDate: addDays(today, 30), placement: placement({ orgUnitId: ids.design, managerId: ids.chi }) });
 });
 
 describe("hirePerson", () => {
@@ -90,7 +90,7 @@ describe("hirePerson", () => {
 
   it("marks a future starter as pre-boarding and mirrors the placement onto the person", async () => {
     const [row] = await db().select().from(schema.person).where(eqId(ids.future));
-    expect(row).toMatchObject({ status: "preboarding", primaryEntityId: ids.creative, departmentId: ids.design, managerId: ids.chi });
+    expect(row).toMatchObject({ status: "preboarding", primaryEntityId: ids.creative, orgUnitId: ids.design, orgUnitPath: [ids.design], departmentId: ids.design, managerId: ids.chi });
   });
 
   it("guards the sign-in identity: allowed domains, one owner per address, bootstrap addresses reserved", async () => {
@@ -135,7 +135,7 @@ describe("listPeople", () => {
       principal(ids.ctv, [], "collaborator"),
       principal(null, [{ role: "owner", scope: { type: "group" } }]),
       principal(null, [{ role: "hr_staff", scope: { type: "entity", id: ids.media } }]),
-      principal(null, [{ role: "department_head", scope: { type: "department", id: ids.design } }]),
+      principal(null, [{ role: "department_head", scope: { type: "unit", id: ids.design } }]),
       principal(null, [{ role: "asset_admin", scope: { type: "group" } }]),
       principal(null, [{ role: "recruiter", scope: { type: "group" } }]),
     ];
@@ -182,7 +182,7 @@ describe("getPersonView", () => {
 
 describe("changeAssignment", () => {
   const change = (personId: string, validFrom: string, overrides: Partial<HireInput["placement"]>) =>
-    changeAssignment(personId, { validFrom, changeReason: "test", placement: placement({ departmentId: ids.video, ...overrides }) }, actorId).catch((error: Error) =>
+    changeAssignment(personId, { validFrom, changeReason: "test", placement: placement({ orgUnitId: ids.video, ...overrides }) }, actorId).catch((error: Error) =>
       Promise.reject(new Error(error.message)),
     );
 
@@ -208,8 +208,11 @@ describe("changeAssignment", () => {
     await expect(change(ids.long, today, { managerId: ids.tam })).rejects.toThrow("manager_loop");
     await expect(change(ids.tam, today, { managerId: ids.tam })).rejects.toThrow("manager_is_self");
     await expect(change(ids.tam, "2023-01-01", {})).rejects.toThrow("assignment_before_employment_start");
-    const [team] = await db().insert(schema.team).values({ departmentId: ids.design, name: "UI" }).returning();
-    await expect(change(ids.tam, today, { teamId: team.id })).rejects.toThrow("team_not_in_department");
+    // A unit of another entity is not a place this person can be moved to; a shared one is.
+    const [ownUnit] = await db().insert(schema.orgUnit).values({ kind: "team", parentId: ids.design, name: "UI", entityId: ids.creative }).returning();
+    await expect(change(ids.tam, today, { orgUnitId: ownUnit.id })).rejects.toThrow("unit_not_in_entity");
+    const [shared] = await db().insert(schema.orgUnit).values({ kind: "team", parentId: ids.video, name: "Hậu kỳ" }).returning();
+    await expect(change(ids.tam, today, { orgUnitId: shared.id })).resolves.toBeTruthy();
   });
 });
 

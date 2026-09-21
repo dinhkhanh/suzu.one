@@ -6,7 +6,7 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { and, between, inArray, isNull } from "drizzle-orm";
-import { approvalFlow, assetCategory, attendancePolicy, payComponent, payrollPolicy, companyValue, documentTemplate, kbTemplate, kpiDefinition, calendarDay, department, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, recruitEmailTemplate, recruitPipeline, recruitPipelineStage, requestType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
+import { approvalFlow, assetCategory, attendancePolicy, payComponent, payrollPolicy, companyValue, documentTemplate, kbTemplate, kpiDefinition, calendarDay, orgUnit, deviceMappingProfile, entity, leavePolicy, leaveType, obligationTemplate, recruitEmailTemplate, recruitPipeline, recruitPipelineStage, requestType, statutoryParameter, taskTemplate, taskTemplateItem, workSchedule } from "../src/lib/db/schema";
 import { PROFILE_SEED } from "../src/modules/attendance/engine/device-log";
 import { CALENDAR_SEED, DEFAULT_POLICY_SEED, DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 import { leaveSeedRows } from "../src/modules/leave/seed-types";
@@ -57,7 +57,7 @@ async function main() {
   const db = drizzle(client);
 
   const entities = await db.insert(entity).values(ENTITIES).onConflictDoNothing({ target: entity.code }).returning();
-  const departments = await db.insert(department).values(DEPARTMENTS).onConflictDoNothing({ target: department.code }).returning();
+  const departments = await db.insert(orgUnit).values(DEPARTMENTS).onConflictDoNothing({ target: orgUnit.code }).returning();
   console.log(`Seeded ${entities.length} entities and ${departments.length} shared departments (existing codes skipped).`);
 
   // Statutory parameters: only keys that have no version at all, so nothing HR entered is touched.

@@ -41,7 +41,7 @@ export default async function BonusExplanationPage({ params }: PageProps<"/payro
         <Link href={`/payroll/bonus/${runId}`} className="text-sm text-muted-foreground hover:underline">
           ← {run.name}
         </Link>
-        <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight">
+        <h1 className="flex flex-wrap items-center gap-2">
           {line.personName}
           <Badge variant="outline">{run.year}</Badge>
         </h1>

@@ -34,7 +34,7 @@ describe("payroll imports", () => {
       { who: "CEO", grants: [{ role: "c_level", scope: { type: "group" } }], allowed: false },
       { who: "chief accountant", grants: [{ role: "finance", scope: { type: "group" } }], allowed: false },
       { who: "HR staff", grants: [{ role: "hr_staff", scope: { type: "entity", id: SZM } }], allowed: false },
-      { who: "department head", grants: [{ role: "department_head", scope: { type: "department", id: "d1" } }], allowed: false },
+      { who: "department head", grants: [{ role: "department_head", scope: { type: "unit", id: "d1" } }], allowed: false },
       { who: "an employee", grants: [], allowed: false },
     ];
 

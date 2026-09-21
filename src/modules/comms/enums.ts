@@ -5,7 +5,9 @@ export type AnnouncementStatus = (typeof ANNOUNCEMENT_STATUSES)[number];
 
 // Who an announcement is for. The same one-text-key scheme as the knowledge base, plus the
 // branch (location, FR-COM-01); no roles — an announcement goes to places and people.
-export const AUDIENCE_TYPES = ["all", "entity", "department", "team", "branch", "person"] as const;
+// `unit` means that org unit and everything below it; `unit_only` stops at the unit itself
+// (FR-KB-14), which is how a head narrows a notice to their own people.
+export const AUDIENCE_TYPES = ["all", "entity", "unit", "unit_only", "branch", "person"] as const;
 export type AudienceType = (typeof AUDIENCE_TYPES)[number];
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

@@ -43,7 +43,7 @@ export type FileClaimInput = { values: FormValues; lines: readonly ExpenseLine[]
  */
 export async function fileExpenseClaim(
   input: FileClaimInput,
-  requester: { personId: string; entityId: string | null; departmentId: string | null; teamId: string | null; managerId: string | null },
+  requester: { personId: string; entityId: string | null; unitPath: readonly string[]; managerId: string | null },
   formatMoney: (amount: number) => string,
 ): Promise<{ requestId: string; submissionId: string; outcome: string }> {
   const { lines, total } = checked(input.lines);

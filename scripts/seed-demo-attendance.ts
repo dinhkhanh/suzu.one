@@ -2,7 +2,7 @@
 // looks for what it would create. August 2026 is the full demo month, September the running one.
 import { and, eq, isNull } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
-import { calendarDay, department, entity, person, scheduleAssignment, shift, shiftRoster, workLocation, workSchedule } from "../src/lib/db/schema";
+import { calendarDay, orgUnit, entity, person, scheduleAssignment, shift, shiftRoster, workLocation, workSchedule } from "../src/lib/db/schema";
 import type { DayRule, SchedulePattern } from "../src/modules/attendance/engine/calendar";
 import { DEFAULT_SCHEDULE_SEED } from "../src/modules/attendance/seed-calendar";
 
@@ -22,7 +22,7 @@ const weekday = (date: string) => new Date(`${date}T00:00:00Z`).getUTCDay();
 
 export async function seedAttendance(db: Db): Promise<string> {
   const entities = new Map((await db.select().from(entity)).map((row) => [row.code, row]));
-  const departments = new Map((await db.select().from(department)).map((row) => [row.code, row]));
+  const departments = new Map((await db.select().from(orgUnit)).map((row) => [row.code, row]));
   const people = new Map((await db.select().from(person)).map((row) => [row.fullName, row]));
   const media = entities.get("SZM");
   const creative = entities.get("SZC");
@@ -199,7 +199,7 @@ export async function seedPunches(db: Db): Promise<string> {
     for (const date of eachDate(DEMO_FROM, DEMO_TO)) {
       if (date < job.startDate || (job.endDate && date > job.endDate)) continue;
       const rostered = roster.find((row) => row.personId === member.id && row.date === date);
-      const assignment = assignmentFor(assignments, { personId: member.id, entityId: member.primaryEntityId, departmentId: member.departmentId }, date);
+      const assignment = assignmentFor(assignments, { personId: member.id, entityId: member.primaryEntityId, unitPath: member.orgUnitPath }, date);
       const plan = dayPlan({ date, entityId: member.primaryEntityId, pattern: assignment ? (patternOf.get(assignment.scheduleId) ?? null) : (fallback?.pattern ?? null), calendar: calendarRows, roster: rostered ? { date, shift: rostered.shiftId && rostered.segments ? { id: rostered.shiftId, segments: rostered.segments, breakMinutes: rostered.breakMinutes ?? 0 } : null } : null });
       const scripted = SCRIPT[member.fullName]?.[date];
       const away = leaveDays.filter((row) => row.personId === member.id && row.date === date);

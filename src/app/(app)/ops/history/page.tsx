@@ -38,7 +38,7 @@ export default async function OpsHistoryPage({ searchParams }: PageProps<"/ops/h
   return (
     <div className="flex max-w-6xl flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("history.title")}</h1>
+        <h1>{t("history.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("history.description")}</p>
       </header>
       <OpsNav active="history" reads />

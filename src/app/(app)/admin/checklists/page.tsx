@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { listPositions } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
-import { listDepartments, listEntities } from "@/modules/platform/org/service";
+import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { can } from "@/modules/platform/rbac/policy";
 import { canManageTemplates } from "@/modules/platform/tasks-engine/policy";
@@ -17,12 +17,12 @@ export default async function ChecklistsPage() {
   const user = await requireUser();
   if (!canManageTemplates(user.principal)) notFound();
   const t = await getTranslations("checklists");
-  const [templates, entities, departments, positions, people] = await Promise.all([listTemplates(), listEntities(), listDepartments(), listPositions(), listPersonNames()]);
+  const [templates, entities, departments, positions, people] = await Promise.all([listTemplates(), listEntities(), unitChoices(), listPositions(), listPersonNames()]);
   const name = (list: { id: string; name: string }[], id: string | null) => list.find((row) => row.id === id)?.name;
   const entityOptions = entities.map((entity) => ({ id: entity.id, name: entity.shortName }));
   const options = {
     entities: entityOptions.filter((entity) => can(user.principal, "person:manage", { entityId: entity.id })),
-    departments: departments.filter((department) => department.isActive).map(({ id, name }) => ({ id, name })),
+    departments,
     positions,
     people,
     canShare: can(user.principal, "person:manage", {}),
@@ -31,7 +31,7 @@ export default async function ChecklistsPage() {
   return (
     <div className="flex max-w-5xl flex-col gap-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1>{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
       <ul className="flex flex-col gap-3">

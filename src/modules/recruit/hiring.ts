@@ -113,7 +113,7 @@ export async function submitHiringRequest(input: HiringRequestInput, budget: Hir
       payload: payload as unknown as Record<string, unknown>,
       conditionData: { headcount: hiringRequest.headcount },
       link: (requestId) => `/recruit/hiring/${hiringRequest.id}?request=${requestId}`,
-      target: { entityId: hiringRequest.entityId, departmentId: hiringRequest.departmentId, teamId: hiringRequest.teamId },
+      target: { entityId: hiringRequest.entityId, unitPath: [hiringRequest.departmentId, hiringRequest.teamId].filter((id): id is string => !!id) },
     });
     await tx.update(schema.hiringRequest).set({ approvalRequestId: request.id, updatedAt: new Date() }).where(eq(schema.hiringRequest.id, hiringRequest.id));
     return { hiringRequest: { ...hiringRequest, approvalRequestId: request.id }, requestId: request.id };
@@ -184,7 +184,7 @@ export async function getHiringRequestView(viewer: { principal: Principal; perso
   if (!approval && !mine && !can(viewer.principal, "recruit:manage", target)) return null;
 
   const [entity] = await db().select({ shortName: schema.entity.shortName }).from(schema.entity).where(eq(schema.entity.id, hiringRequest.entityId)).limit(1);
-  const [department] = hiringRequest.departmentId ? await db().select({ name: schema.department.name }).from(schema.department).where(eq(schema.department.id, hiringRequest.departmentId)).limit(1) : [undefined];
+  const [department] = hiringRequest.departmentId ? await db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, hiringRequest.departmentId)).limit(1) : [undefined];
   const [requester] = await db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, hiringRequest.requestedByPersonId)).limit(1);
   const [manager] = hiringRequest.hiringManagerPersonId
     ? await db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, hiringRequest.hiringManagerPersonId)).limit(1)

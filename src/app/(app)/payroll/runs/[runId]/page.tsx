@@ -48,7 +48,7 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
           <Link href="/payroll/runs" className="text-sm text-muted-foreground hover:underline">
             ← {t("runs.title")}
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1>
             {entity.code} · {run.month}
             {run.name ? ` — ${run.name}` : ""}
           </h1>

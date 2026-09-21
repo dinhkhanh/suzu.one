@@ -15,7 +15,7 @@ const grantPipeline = createAction({
   input: z.object({
     personId: z.uuid(),
     role: z.enum(ROLES),
-    scopeType: z.enum(["group", "entity", "department", "team"]),
+    scopeType: z.enum(["group", "entity", "unit"]),
     scopeId: optional(z.uuid()),
     validFrom: z.iso.date(),
     validTo: optional(z.iso.date()),

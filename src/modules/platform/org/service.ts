@@ -1,29 +1,65 @@
 import "server-only";
-import { and, asc, eq, ne } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { and, arrayContains, asc, eq, inArray, ne } from "drizzle-orm";
+import { db, schema, type Tx } from "@/lib/db";
 import { ActionError } from "@/lib/action";
+import { buildTree, flattenTree, placementOf, type TreeNode, type UnitNode, wouldLoop } from "./engine/tree";
+import type { OrgUnitKind } from "./enums";
+
+type Executor = Tx | ReturnType<typeof db>;
 
 export type EntityRow = typeof schema.entity.$inferSelect;
-export type DepartmentRow = typeof schema.department.$inferSelect;
+export type OrgUnitRow = typeof schema.orgUnit.$inferSelect;
 
 export async function listEntities(): Promise<EntityRow[]> {
   return db().select().from(schema.entity).orderBy(asc(schema.entity.code));
 }
 
-export type TeamRow = typeof schema.team.$inferSelect;
 export type BranchRow = typeof schema.branch.$inferSelect;
-
-export async function listTeams(): Promise<TeamRow[]> {
-  return db().select().from(schema.team).orderBy(asc(schema.team.name));
-}
 
 export async function listBranches(): Promise<BranchRow[]> {
   return db().select().from(schema.branch).orderBy(asc(schema.branch.name));
 }
 
-export async function listDepartments(): Promise<DepartmentRow[]> {
-  return db().select().from(schema.department).orderBy(asc(schema.department.name));
+export async function listOrgUnits(executor: Executor = db()): Promise<OrgUnitRow[]> {
+  return executor.select().from(schema.orgUnit).orderBy(asc(schema.orgUnit.name));
 }
+
+/** The units as a forest — what the admin screen draws and every unit picker flattens. */
+export async function orgUnitTree(executor: Executor = db()): Promise<TreeNode[]> {
+  return buildTree(await listOrgUnits(executor));
+}
+
+/** Units in tree order, for a `<select>`: each row knows its depth so the label can be indented. */
+export async function orgUnitOptions(options: { activeOnly?: boolean } = {}, executor: Executor = db()): Promise<{ id: string; name: string; kind: OrgUnitKind; depth: number; entityId: string | null; path: readonly string[]; isActive: boolean }[]> {
+  const units = await listOrgUnits(executor);
+  return flattenTree(buildTree(options.activeOnly ? units.filter((unit) => unit.isActive) : units)).map(({ id, name, kind, depth, entityId, path, isActive }) => ({ id, name, kind, depth, entityId, path, isActive }));
+}
+
+/**
+ * Units for a `<select>`: tree order, each name prefixed with one dash per level down, so a list
+ * of plain `{ id, name }` options still shows where each unit sits. Inactive units are left out.
+ */
+export async function unitChoices(executor: Executor = db()): Promise<{ id: string; name: string }[]> {
+  const options = await orgUnitOptions({ activeOnly: true }, executor);
+  return options.map((unit) => ({ id: unit.id, name: `${"— ".repeat(unit.depth)}${unit.name}` }));
+}
+
+/** The two legacy placement columns for a chosen unit; the database derives the same for `person`. */
+export async function placementFor(unitId: string | null, executor: Executor = db()): Promise<{ departmentId: string | null; teamId: string | null }> {
+  if (!unitId) return { departmentId: null, teamId: null };
+  const units = await listOrgUnits(executor);
+  return placementOf(unitId, new Map(units.map((unit) => [unit.id, unit as UnitNode])));
+}
+
+/** The ancestors-and-self of each unit, for the pure policy's `unitPath`. */
+export async function unitPathsOf(ids: readonly string[], executor: Executor = db()): Promise<Map<string, string[]>> {
+  const wanted = [...new Set(ids)];
+  if (wanted.length === 0) return new Map();
+  const rows = await executor.select({ id: schema.orgUnit.id, path: schema.orgUnit.path }).from(schema.orgUnit).where(inArray(schema.orgUnit.id, wanted));
+  return new Map(rows.map((row) => [row.id, row.path]));
+}
+
+export const unitPathOf = async (id: string | null | undefined, executor: Executor = db()): Promise<string[]> => (id ? ((await unitPathsOf([id], executor)).get(id) ?? []) : []);
 
 export type EntityInput = {
   code: string;
@@ -63,22 +99,28 @@ export async function findBranch(id: string): Promise<BranchRow | undefined> {
   return row;
 }
 
-export async function findDepartment(id: string): Promise<DepartmentRow | undefined> {
-  const [row] = await db().select().from(schema.department).where(eq(schema.department.id, id)).limit(1);
-  return row;
-}
-
-export async function findTeam(id: string): Promise<TeamRow | undefined> {
-  const [row] = await db().select().from(schema.team).where(eq(schema.team.id, id)).limit(1);
+export async function findOrgUnit(id: string, executor: Executor = db()): Promise<OrgUnitRow | undefined> {
+  const [row] = await executor.select().from(schema.orgUnit).where(eq(schema.orgUnit.id, id)).limit(1);
   return row;
 }
 
 // Switching something off while people still sit in it would leave them pointing at a dead unit.
-async function hasCurrentPeople(column: typeof schema.person.primaryEntityId | typeof schema.person.departmentId | typeof schema.person.teamId, id: string): Promise<boolean> {
+async function hasCurrentPeople(column: typeof schema.person.primaryEntityId, id: string): Promise<boolean> {
   const [row] = await db()
     .select({ id: schema.person.id })
     .from(schema.person)
     .where(and(eq(column, id), ne(schema.person.status, "offboarded")))
+    .limit(1);
+  return !!row;
+}
+
+// A unit with people anywhere below it is still in use: switching off "Marketing" would strand
+// everyone in "Marketing › Social" just as surely as stranding Marketing's own people.
+async function hasPeopleInSubtree(id: string): Promise<boolean> {
+  const [row] = await db()
+    .select({ id: schema.person.id })
+    .from(schema.person)
+    .where(and(arrayContains(schema.person.orgUnitPath, [id]), ne(schema.person.status, "offboarded")))
     .limit(1);
   return !!row;
 }
@@ -106,47 +148,36 @@ export async function updateBranch(id: string, details: Pick<BranchRow, "name" |
   return { before, after };
 }
 
-export type DepartmentDetails = Pick<DepartmentRow, "name" | "parentId" | "isActive">;
+export type OrgUnitDetails = Pick<OrgUnitRow, "name" | "kind" | "parentId" | "isActive">;
 
-// A department may not sit under itself, directly or through its own sub-departments.
-async function assertParentAllowed(departmentId: string | null, parentId: string | null): Promise<void> {
-  let cursor = parentId;
-  for (let depth = 0; cursor && depth < 20; depth++) {
-    if (cursor === departmentId) throw new ActionError("department_parent_loop");
-    const parent = await findDepartment(cursor);
-    if (!parent) throw new ActionError("department_parent_not_found");
-    cursor = parent.parentId;
-  }
+// A unit may not sit under itself, directly or through its own descendants. The database refuses
+// it too (`org_unit_path_set`); this is the error the form can show.
+async function assertParentAllowed(unitId: string | null, parentId: string | null): Promise<void> {
+  if (!parentId) return;
+  const parent = await findOrgUnit(parentId);
+  if (!parent) throw new ActionError("unit_parent_not_found");
+  if (unitId && wouldLoop(unitId, parentId, new Map((await listOrgUnits()).map((unit) => [unit.id, unit.parentId])))) throw new ActionError("unit_parent_loop");
 }
 
-export async function createDepartment(input: { code: string; name: string; parentId: string | null; entityId: string | null }): Promise<DepartmentRow> {
-  const code = input.code.trim().toUpperCase();
-  const [existing] = await db().select({ id: schema.department.id }).from(schema.department).where(eq(schema.department.code, code)).limit(1);
-  if (existing) throw new ActionError("department_code_taken");
+export async function createOrgUnit(input: { code: string | null; name: string; kind: OrgUnitKind; parentId: string | null; entityId: string | null }): Promise<OrgUnitRow> {
+  const code = input.code?.trim().toUpperCase() || null;
+  if (code) {
+    const [existing] = await db().select({ id: schema.orgUnit.id }).from(schema.orgUnit).where(eq(schema.orgUnit.code, code)).limit(1);
+    if (existing) throw new ActionError("unit_code_taken");
+  }
   await assertParentAllowed(null, input.parentId);
-  const [created] = await db().insert(schema.department).values({ ...input, code }).returning();
+  // A unit created inside another starts in its parent's entity unless the form says otherwise —
+  // a shared unit may still hold an entity-specific one (HR › HR Creative).
+  const parent = input.parentId ? await findOrgUnit(input.parentId) : undefined;
+  const [created] = await db().insert(schema.orgUnit).values({ ...input, code, entityId: input.entityId ?? parent?.entityId ?? null }).returning();
   return created;
 }
 
-export async function updateDepartment(id: string, details: DepartmentDetails): Promise<Change<DepartmentRow>> {
-  const before = await findDepartment(id);
+export async function updateOrgUnit(id: string, details: OrgUnitDetails): Promise<Change<OrgUnitRow>> {
+  const before = await findOrgUnit(id);
   if (!before) throw new ActionError("not_found");
   await assertParentAllowed(id, details.parentId);
-  if (before.isActive && !details.isActive && (await hasCurrentPeople(schema.person.departmentId, id))) throw new ActionError("department_in_use");
-  const [after] = await db().update(schema.department).set({ ...details, updatedAt: new Date() }).where(eq(schema.department.id, id)).returning();
-  return { before, after };
-}
-
-export async function createTeam(input: { departmentId: string; name: string }): Promise<TeamRow> {
-  if (!(await findDepartment(input.departmentId))) throw new ActionError("not_found");
-  const [created] = await db().insert(schema.team).values(input).returning();
-  return created;
-}
-
-export async function updateTeam(id: string, details: Pick<TeamRow, "name" | "isActive">): Promise<Change<TeamRow>> {
-  const before = await findTeam(id);
-  if (!before) throw new ActionError("not_found");
-  if (before.isActive && !details.isActive && (await hasCurrentPeople(schema.person.teamId, id))) throw new ActionError("team_in_use");
-  const [after] = await db().update(schema.team).set({ ...details, updatedAt: new Date() }).where(eq(schema.team.id, id)).returning();
+  if (before.isActive && !details.isActive && (await hasPeopleInSubtree(id))) throw new ActionError("unit_in_use");
+  const [after] = await db().update(schema.orgUnit).set({ ...details, updatedAt: new Date() }).where(eq(schema.orgUnit.id, id)).returning();
   return { before, after };
 }

@@ -16,13 +16,13 @@ export default async function NewHiringRequestPage() {
   const t = await getTranslations("recruit");
   const [entities, departments, people] = await Promise.all([
     db().select().from(schema.entity).orderBy(asc(schema.entity.code)),
-    db().select({ id: schema.department.id, name: schema.department.name }).from(schema.department).orderBy(asc(schema.department.name)),
+    db().select({ id: schema.orgUnit.id, name: schema.orgUnit.name }).from(schema.orgUnit).orderBy(asc(schema.orgUnit.name)),
     listPeople(user.principal, {}, { pageSize: 500 }),
   ]);
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("newHiring")}</h1>
+      <h1>{t("newHiring")}</h1>
       <HiringRequestForm
         entities={entities}
         departments={departments}

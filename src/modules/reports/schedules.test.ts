@@ -50,7 +50,7 @@ const PERIOD = { from: "2027-02-01", to: "2027-02-28" };
 beforeAll(async () => {
   await migrateTestDb();
   const [entity] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media", wageRegion: 1 }).returning();
-  const [department] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
+  const [department] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
   ids.entity = entity.id;
   ids.actor = actor.id;
@@ -59,7 +59,7 @@ beforeAll(async () => {
     // hr_admin holds `report:read` and `payroll:read`.
     hr: [{ role: "hr_admin", scope: { type: "entity", id: entity.id } }],
     // A department head holds `report:read` over their department and no payroll permission at all.
-    head: [{ role: "department_head", scope: { type: "department", id: department.id } }],
+    head: [{ role: "department_head", scope: { type: "unit", id: department.id } }],
     huy: [],
   };
 
@@ -73,7 +73,7 @@ beforeAll(async () => {
         employeeCode: null,
         startDate: "2024-01-01",
         seniorityDate: null,
-        placement: { workforceType: "employee", branchId: null, departmentId: department.id, teamId: null, positionName: null, jobLevel: null, managerId: null, dottedManagerId: null, workLocation: null },
+        placement: { workforceType: "employee", branchId: null, orgUnitId: department.id, positionName: null, jobLevel: null, managerId: null, dottedManagerId: null, workLocation: null },
       },
       actor.id,
       { onboarding: false },
@@ -94,7 +94,7 @@ beforeAll(async () => {
     .insert(schema.roleAssignment)
     .values([
       { personId: ids.hr, role: "hr_admin", scopeType: "entity" as const, scopeId: ids.entity, validFrom: "2024-01-01" },
-      { personId: ids.head, role: "department_head", scopeType: "department" as const, scopeId: department.id, validFrom: "2024-01-01" },
+      { personId: ids.head, role: "department_head", scopeType: "unit" as const, scopeId: department.id, validFrom: "2024-01-01" },
     ]);
 });
 

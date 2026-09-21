@@ -22,7 +22,7 @@ export default async function EditOfferPage({ params }: PageProps<"/recruit/offe
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("editTitle", { name: view.candidateName })}</h1>
+        <h1>{t("editTitle", { name: view.candidateName })}</h1>
         <p className="text-sm text-muted-foreground">{view.offer.number}</p>
       </header>
       <OfferForm

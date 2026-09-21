@@ -3,7 +3,7 @@
 // by `kb_access` rows keyed by one text `subject_key`, so list queries filter in SQL.
 import { sql } from "drizzle-orm";
 import { type AnyPgColumn, boolean, customType, date, index, integer, jsonb, pgEnum, pgTable, real, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
-import { entity } from "../platform/org/schema";
+import { entity, orgUnit } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
 
 const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" });
@@ -24,6 +24,11 @@ export const kbSpace = pgTable(
     icon: text("icon"),
     // null = a space of the whole group; otherwise run by that entity's KB managers.
     entityId: uuid("entity_id").references(() => entity.id),
+    /**
+     * The unit whose space this is (FR-KB-13): its head runs it without HR, and so does the head
+     * of any unit above it. null = a space of the company, run by `kb:manage` holders.
+     */
+    ownerUnitId: uuid("owner_unit_id").references(() => orgUnit.id),
     kind: kbSpaceKind("kind").notNull().default("open"),
     sortOrder: integer("sort_order").notNull().default(0),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
@@ -31,7 +36,7 @@ export const kbSpace = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("kb_space_entity_idx").on(t.entityId)],
+  (t) => [index("kb_space_entity_idx").on(t.entityId), index("kb_space_owner_unit_idx").on(t.ownerUnitId)],
 ).enableRLS();
 
 export const kbPage = pgTable(

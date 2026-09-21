@@ -52,7 +52,7 @@ export default async function BookingsPage({ searchParams }: PageProps<"/assets/
     <div className="flex max-w-6xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <h1>{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("description")}</p>
         </div>
         <Link href="/assets/mine" className="h-9 rounded-md border px-3 text-sm leading-9">
@@ -77,19 +77,19 @@ export default async function BookingsPage({ searchParams }: PageProps<"/assets/
 
       {waiting.length > 0 ? (
         <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-medium">{t("waiting")}</h2>
+          <h2>{t("waiting")}</h2>
           <BookingList rows={waiting} empty={t("noneWaiting")} />
         </section>
       ) : null}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">{t("mine")}</h2>
+        <h2>{t("mine")}</h2>
         <BookingList rows={mine} empty={t("noneMine")} />
       </section>
 
       {canBookAssets(user.principal) && assets.length > 0 ? (
         <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-medium">{t("form.title")}</h2>
+          <h2>{t("form.title")}</h2>
           <BookAssetForm assets={assets.map((asset) => ({ id: asset.id, code: asset.code, name: asset.name, categoryName: asset.categoryName }))} people={people} canBookForOthers={canDecideBookings(user.principal)} />
         </section>
       ) : null}

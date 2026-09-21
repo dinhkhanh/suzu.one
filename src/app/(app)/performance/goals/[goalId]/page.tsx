@@ -51,7 +51,7 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
           </p>
         ) : null}
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="min-w-0 flex-1 text-2xl font-semibold tracking-tight">{goal.title}</h1>
+          <h1 className="min-w-0 flex-1">{goal.title}</h1>
           <GoalStatusBadge status={goal.status} label={t(`enums.status.${goal.status}`)} />
           <ConfidenceBadge confidence={goal.progress.confidence} label={goal.progress.confidence ? t(`enums.confidence.${goal.progress.confidence}`) : ""} />
         </div>
@@ -63,7 +63,7 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
       </header>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-medium">{t("kr.heading")}</h2>
+        <h2>{t("kr.heading")}</h2>
         {goal.keyResults.length === 0 ? <p className="text-sm text-muted-foreground">{children.length > 0 ? t("mine.rollsUp") : t("mine.noKeyResults")}</p> : null}
         <ul className="flex flex-col divide-y rounded-xl border px-4 empty:hidden">
           {goal.keyResults.map((keyResult) => (
@@ -124,7 +124,7 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-medium">{t("trace.heading")}</h2>
+        <h2>{t("trace.heading")}</h2>
         <p className="text-sm text-muted-foreground">{t(`trace.source.${goal.progress.source}`)}</p>
         {goal.progress.lines.length > 0 ? (
           <table className="w-full text-sm">
@@ -155,7 +155,7 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
 
       <section className="flex flex-col gap-2">
         <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-lg font-medium">{t("detail.children")}</h2>
+          <h2>{t("detail.children")}</h2>
           <Link href={`/performance/goals/new?year=${goal.year}&parent=${goal.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
             {t("detail.addChild")}
           </Link>
@@ -174,7 +174,7 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-medium">{t("checkIn.history")}</h2>
+        <h2>{t("checkIn.history")}</h2>
         {checkIns.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("checkIn.none")}</p>
         ) : (
@@ -199,7 +199,7 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
 
       {rights.edit && open && options ? (
         <section className="flex flex-col gap-4 rounded-xl border p-4">
-          <h2 className="text-lg font-medium">{t("detail.edit")}</h2>
+          <h2>{t("detail.edit")}</h2>
           <EditGoalForm goal={{ id: goal.id, title: goal.title, description: goal.description, periodKey: goal.periodKey, year: goal.year, weight: goal.weight, ownerPersonId: goal.ownerPersonId, level: goal.level }} owners={options.owners} />
           <ReparentForm goal={{ id: goal.id, level: goal.level, periodKey: goal.periodKey, parentGoalId: goal.parentGoalId }} parents={parents} />
         </section>

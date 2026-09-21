@@ -26,7 +26,7 @@ export default async function PayslipQueriesPage() {
         <Link href="/payroll" className="text-sm text-muted-foreground hover:underline">
           ← {t("queue")}
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("queue")}</h1>
+        <h1>{t("queue")}</h1>
         <p className="text-sm text-muted-foreground">{t("queueDescription")}</p>
       </header>
 

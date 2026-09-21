@@ -32,7 +32,7 @@ export default async function MyGoalsPage({ searchParams }: PageProps<"/performa
     <div className="flex max-w-4xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <h1>{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("description")}</p>
         </div>
         <Link href={`/performance/goals/new?year=${year}`} className={buttonVariants()}>
@@ -49,7 +49,7 @@ export default async function MyGoalsPage({ searchParams }: PageProps<"/performa
       </nav>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">{t("mine.title")}</h2>
+        <h2>{t("mine.title")}</h2>
         {due > 0 ? <p className="text-sm text-amber-700 dark:text-amber-300">{t("mine.due", { count: due })}</p> : null}
         {mine.length === 0 ? <p className="text-sm text-muted-foreground">{t("mine.empty", { year })}</p> : null}
         {mine.map((goal) => {
@@ -89,7 +89,7 @@ export default async function MyGoalsPage({ searchParams }: PageProps<"/performa
 
       <section className="flex flex-col gap-2">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-lg font-medium">{t("company.title")}</h2>
+          <h2>{t("company.title")}</h2>
           <Link href={`/performance/goals?year=${year}`} className="text-sm underline">
             {t("company.all")}
           </Link>

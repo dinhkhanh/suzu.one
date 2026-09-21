@@ -25,7 +25,7 @@ export default async function LicencePage({ params }: PageProps<"/assets/licence
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{licence.name}</h1>
+      <h1>{licence.name}</h1>
       <LicenceForm
         value={{
           id: licence.id,

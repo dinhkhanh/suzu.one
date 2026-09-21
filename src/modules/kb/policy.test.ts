@@ -8,17 +8,17 @@ const SZC = "22222222-2222-4222-8222-222222222222";
 const VID = "33333333-3333-4333-8333-333333333333";
 const CREW = "44444444-4444-4444-8444-444444444444";
 
-const viewer = (personId: string, grants: Grant[] = [], placement = { entityId: SZM, departmentId: VID, teamId: null as string | null }, workforceType: Principal["workforceType"] = "employee"): KbViewer => {
+const viewer = (personId: string, grants: Grant[] = [], placement = { entityId: SZM, unitId: VID as string | null, unitPath: [VID] as string[] }, workforceType: Principal["workforceType"] = "employee"): KbViewer => {
   const principal: Principal = { personId, workforceType, grants };
   return { principal, personId, keys: viewerKeys(principal, placement) };
 };
 const owner = viewer("owner", [{ role: "owner", scope: { type: "group" } }]);
 const hrGroup = viewer("hr-group", [{ role: "hr_admin", scope: { type: "group" } }]);
 const hrSzm = viewer("hr-szm", [{ role: "hr_staff", scope: { type: "entity", id: SZM } }]);
-const head = viewer("head", [{ role: "department_head", scope: { type: "department", id: VID } }]);
-const huy = viewer("huy", [], { entityId: SZM, departmentId: VID, teamId: CREW });
-const khoi = viewer("khoi", [], { entityId: SZC, departmentId: "dept-des", teamId: null });
-const ngo = viewer("ngo", [], { entityId: SZM, departmentId: VID, teamId: null }, "collaborator");
+const head = viewer("head", [{ role: "department_head", scope: { type: "unit", id: VID } }]);
+const huy = viewer("huy", [], { entityId: SZM, unitId: CREW, unitPath: [VID, CREW] });
+const khoi = viewer("khoi", [], { entityId: SZC, unitId: "dept-des", unitPath: ["dept-des"] });
+const ngo = viewer("ngo", [], { entityId: SZM, unitId: VID, unitPath: [VID] }, "collaborator");
 
 const space = (over: Partial<SpaceFacts>): SpaceFacts => ({ entityId: null, kind: "open", archived: false, access: [], ...over });
 const published: PageFacts = { readable: true, deleted: false, rootAccess: null };
@@ -26,13 +26,13 @@ const draft: PageFacts = { readable: false, deleted: false, rootAccess: null };
 
 describe("viewerKeys", () => {
   it("describes a member of staff by everything an access row can name", () => {
-    expect(viewerKeys(huy.principal, { entityId: SZM, departmentId: VID, teamId: CREW })).toEqual(["all", `entity:${SZM}`, `department:${VID}`, `team:${CREW}`, "person:huy"]);
+    expect(viewerKeys(huy.principal, { entityId: SZM, unitId: CREW, unitPath: [VID, CREW] })).toEqual(["all", `entity:${SZM}`, `unit:${VID}`, `unit:${CREW}`, `unit_only:${CREW}`, "person:huy"]);
     expect(hrSzm.keys).toContain("role:hr_staff");
   });
 
   it("gives a collaborator only their own key, and nobody without a person any", () => {
     expect(ngo.keys).toEqual(["person:ngo"]);
-    expect(viewerKeys({ personId: null, workforceType: null, grants: [] }, { entityId: SZM, departmentId: null, teamId: null })).toEqual([]);
+    expect(viewerKeys({ personId: null, workforceType: null, grants: [] }, { entityId: SZM, unitId: null, unitPath: [] })).toEqual([]);
   });
 });
 
@@ -56,17 +56,46 @@ describe("spaces", () => {
   });
 
   it("scopes by entity, department and team", () => {
-    const video = space({ access: [{ subjectKey: `department:${VID}`, level: "edit" }] });
+    const video = space({ access: [{ subjectKey: `unit:${VID}`, level: "edit" }] });
     expect(spaceLevel(huy, video)).toBe("edit");
     expect(spaceLevel(khoi, video)).toBeNull();
     expect(spaceLevel(khoi, space({ access: [{ subjectKey: `entity:${SZM}`, level: "view" }] }))).toBeNull();
-    expect(spaceLevel(huy, space({ access: [{ subjectKey: `team:${CREW}`, level: "view" }] }))).toBe("view");
+    expect(spaceLevel(huy, space({ access: [{ subjectKey: `unit:${CREW}`, level: "view" }] }))).toBe("view");
   });
 
   it("keeps an archived space for its managers", () => {
     const archived = space({ archived: true, access: [{ subjectKey: "all", level: "edit" }] });
     expect(spaceLevel(huy, archived)).toBeNull();
     expect(spaceLevel(hrGroup, archived)).toBe("manage");
+  });
+});
+
+// FR-KB-13: a unit's own space is run by its head, and by the heads of the units above it.
+describe("a unit's own space", () => {
+  // Design › Crew, as the tree nests them; a loaded grant carries the subtree it covers.
+  const teamSpace = space({ access: [{ subjectKey: `unit:${CREW}`, level: "edit" }], ownerUnitPath: [CREW] });
+  const leadOfCrew = viewer("lead", [{ role: "department_head", scope: { type: "unit", id: CREW, covers: [CREW] } }]);
+  const headOfVid = viewer("long", [{ role: "department_head", scope: { type: "unit", id: VID, covers: [VID, CREW] } }]);
+  const headOfDes = viewer("chi", [{ role: "department_head", scope: { type: "unit", id: "dept-des", covers: ["dept-des"] } }]);
+
+  it("is run by the unit's head without HR, and by the head of a unit above it", () => {
+    expect(spaceLevel(leadOfCrew, teamSpace)).toBe("manage");
+    expect(spaceLevel(headOfVid, teamSpace)).toBe("manage");
+    expect(spaceLevel(hrGroup, teamSpace)).toBe("manage");
+  });
+
+  it("is not another team's to run, and the people in it only read what the rows say", () => {
+    expect(spaceLevel(headOfDes, teamSpace)).toBeNull();
+    // huy sits in Crew, so the unit row names him — as an editor, which is the default.
+    expect(spaceLevel(huy, teamSpace)).toBe("edit");
+    expect(spaceLevel(khoi, teamSpace)).toBeNull();
+    expect(spaceLevel(ngo, teamSpace)).toBeNull();
+  });
+
+  it("gives a head nothing over a space that belongs to no unit", () => {
+    expect(spaceLevel(headOfVid, space({ access: [{ subjectKey: "all", level: "view" }] }))).toBe("view");
+    expect(canManageSpace(headOfVid.principal, { entityId: null })).toBe(false);
+    expect(canManageSpace(headOfVid.principal, { entityId: null, ownerUnitPath: [CREW] })).toBe(true);
   });
 });
 

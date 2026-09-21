@@ -43,7 +43,7 @@ export default async function SalaryChangePage({ params }: PageProps<"/payroll/s
         <Link href={view.request.subjectPersonId && view.figures ? `/payroll/salaries/${view.request.subjectPersonId}` : "/approvals"} className="text-sm text-muted-foreground hover:underline">
           ← {view.subjectName}
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{view.request.summary}</h1>
+        <h1>{view.request.summary}</h1>
         <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <Badge variant="outline">{t(`salaries.requestStatus.${view.request.status}` as "salaries.requestStatus.pending")}</Badge>
           {t("salaries.requestedBy", { name: view.requesterName })} · {t("salaries.effective", { date: day(view.payload.validFrom) })}

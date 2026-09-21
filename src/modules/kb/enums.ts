@@ -10,9 +10,13 @@ export type AccessLevel = (typeof ACCESS_LEVELS)[number];
 export const PAGE_STATUSES = ["draft", "in_review", "published", "archived"] as const;
 export type PageStatus = (typeof PAGE_STATUSES)[number];
 
-// Who an access row (and, from week 2, an acknowledgement audience) names. One text key per
-// subject — "all", "entity:<uuid>", "role:hr_staff"… — so a list query can filter with `IN (keys)`.
-export const SUBJECT_TYPES = ["all", "entity", "department", "team", "role", "person"] as const;
+// Who an access row (and an acknowledgement audience) names. One text key per subject — "all",
+// "entity:<uuid>", "role:hr_staff"… — so a list query can filter with `IN (keys)`.
+// `unit:<id>` is that org unit **and every unit below it** (FR-KB-14): the viewer carries one key
+// per unit above them, so a row naming "Marketing" matches someone in "Marketing › Social"
+// without the row knowing that team exists. `unit_only:<id>` is the deliberate narrowing — it
+// matches only people whose own unit is that one.
+export const SUBJECT_TYPES = ["all", "entity", "unit", "unit_only", "role", "person"] as const;
 export type SubjectType = (typeof SUBJECT_TYPES)[number];
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -26,7 +30,7 @@ export function parseSubjectKey(key: string): { type: SubjectType; id: string | 
   const type = key.slice(0, at) as SubjectType;
   const id = key.slice(at + 1);
   if (type === "role") return (ROLES as readonly string[]).includes(id) ? { type, id } : null;
-  if (type === "entity" || type === "department" || type === "team" || type === "person") return UUID.test(id) ? { type, id: id.toLowerCase() } : null;
+  if (type === "entity" || type === "unit" || type === "unit_only" || type === "person") return UUID.test(id) ? { type, id: id.toLowerCase() } : null;
   return null;
 }
 

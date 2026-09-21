@@ -15,7 +15,7 @@ export default async function NewDocumentTemplatePage() {
   const [entities, t] = await Promise.all([db().select({ id: schema.entity.id, code: schema.entity.code, shortName: schema.entity.shortName }).from(schema.entity).orderBy(asc(schema.entity.code)), getTranslations("documents.designer")]);
   return (
     <div className="flex max-w-4xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{t("new")}</h1>
+      <h1>{t("new")}</h1>
       <DocumentTemplateForm value={null} entities={entities} />
     </div>
   );

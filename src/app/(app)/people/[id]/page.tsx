@@ -53,7 +53,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
     <div className="flex max-w-5xl flex-col gap-8">
       <header className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{person.fullName}</h1>
+          <h1>{person.fullName}</h1>
           {personal && personal.status !== "active" ? <Badge variant="outline">{t(`status.${personal.status}`)}</Badge> : null}
         </div>
         <p className="text-sm text-muted-foreground">

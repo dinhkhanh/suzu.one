@@ -25,7 +25,7 @@ export default async function IntakeFormPage({ params }: PageProps<"/work/intake
           </Link>{" "}
           · {found.team.name}
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">{found.form.name}</h1>
+        <h1>{found.form.name}</h1>
         {found.form.description ? <p className="text-sm whitespace-pre-line text-muted-foreground">{found.form.description}</p> : null}
       </header>
       <IntakeSubmitForm formId={found.form.id} fields={found.form.fields} />

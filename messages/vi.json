@@ -29,7 +29,7 @@
     "entities": "Pháp nhân",
     "soon": "Sắp có",
     "signOut": "Đăng xuất",
-    "org": "Phòng ban & nhóm",
+    "org": "Cơ cấu tổ chức",
     "roles": "Phân quyền",
     "audit": "Nhật ký hệ thống",
     "notifications": "Thông báo",
@@ -56,7 +56,11 @@
     "recruit": "Tuyển dụng",
     "interviews": "Lịch phỏng vấn",
     "referrals": "Giới thiệu ứng viên",
-    "assistant": "Hỏi SuZu"
+    "assistant": "Hỏi SuZu",
+    "quickActions": "Thao tác nhanh",
+    "general": "Chung",
+    "close": "Đóng",
+    "collapse": "Thu gọn thanh bên"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -214,6 +218,7 @@
       "status": "Trạng thái",
       "department": "Phòng ban",
       "team": "Nhóm",
+      "orgUnit": "Đơn vị",
       "branch": "Chi nhánh",
       "position": "Chức danh",
       "jobLevel": "Cấp bậc",
@@ -480,30 +485,30 @@
     }
   },
   "org": {
-    "title": "Phòng ban & nhóm",
-    "description": "Phòng ban mặc định dùng chung cho mọi pháp nhân; nhóm thuộc về một phòng ban.",
+    "title": "Cơ cấu tổ chức",
+    "description": "Một cây đơn vị: phòng ban, nhóm lớn, nhóm nhỏ — sâu bao nhiêu cấp cũng được. Đơn vị cấp trên bao trùm mọi đơn vị bên dưới.",
     "code": "Mã",
-    "name": "Tên phòng ban",
+    "name": "Tên đơn vị",
+    "kind": "Loại",
+    "kinds": {
+      "department": "Phòng ban",
+      "team": "Nhóm"
+    },
     "parent": "Trực thuộc",
-    "noParent": "Không trực thuộc",
+    "noParent": "Cấp cao nhất",
     "belongsTo": "Thuộc về",
     "shared": "Dùng chung",
     "active": "Hoạt động",
     "inactive": "Ngừng",
-    "teams": "Nhóm",
-    "noTeams": "Chưa có nhóm nào.",
-    "teamCount": "{count, plural, =0 {chưa có nhóm} other {# nhóm}}",
-    "teamName": "Tên nhóm",
-    "newTeam": "Nhóm mới",
-    "addTeam": "Thêm nhóm",
-    "addDepartment": "Thêm phòng ban",
+    "childCount": "{count, plural, other {# đơn vị trực thuộc}}",
+    "addInside": "Thêm đơn vị trong {name}",
+    "addUnit": "Thêm đơn vị",
     "save": "Lưu",
     "errors": {
-      "department_code_taken": "Mã phòng ban đã tồn tại.",
-      "department_parent_loop": "Phòng ban không thể trực thuộc chính nó hoặc phòng ban con của nó.",
-      "department_parent_not_found": "Không tìm thấy phòng ban cấp trên.",
-      "department_in_use": "Vẫn còn nhân sự thuộc phòng ban này nên chưa thể ngừng hoạt động.",
-      "team_in_use": "Vẫn còn nhân sự thuộc nhóm này nên chưa thể ngừng hoạt động.",
+      "unit_code_taken": "Mã đơn vị đã tồn tại.",
+      "unit_parent_loop": "Đơn vị không thể trực thuộc chính nó hoặc đơn vị con của nó.",
+      "unit_parent_not_found": "Không tìm thấy đơn vị cấp trên.",
+      "unit_in_use": "Vẫn còn nhân sự thuộc đơn vị này (hoặc đơn vị bên dưới) nên chưa thể ngừng hoạt động.",
       "not_found": "Không tìm thấy dữ liệu.",
       "forbidden": "Bạn không có quyền thực hiện thao tác này.",
       "invalid": "Vui lòng kiểm tra lại thông tin.",
@@ -533,8 +538,7 @@
     "scope": {
       "group": "Toàn tập đoàn",
       "entity": "Pháp nhân",
-      "department": "Phòng ban",
-      "team": "Nhóm"
+      "unit": "Đơn vị (và mọi đơn vị bên dưới)"
     },
     "errors": {
       "grant_dates": "Ngày kết thúc phải sau ngày bắt đầu.",
@@ -4730,6 +4734,7 @@
     "save": "Lưu",
     "saved": "Đã lưu.",
     "groups": {
+      "unit": "Của đơn vị bạn",
       "group": "Toàn tập đoàn",
       "entity": "Theo công ty",
       "archived": "Đã lưu trữ"
@@ -4754,6 +4759,7 @@
       "changeNote": "Ghi chú thay đổi (không bắt buộc)",
       "isMajor": "Thay đổi lớn",
       "spaceName": "Tên không gian",
+      "ownerUnit": "Không gian của đơn vị",
       "spaceKey": "Mã trên đường dẫn",
       "entity": "Thuộc",
       "kind": "Cách xuất bản",
@@ -4765,12 +4771,15 @@
       "new": "Tạo không gian mới",
       "create": "Tạo không gian",
       "groupWide": "Toàn tập đoàn",
+      "noOwnerUnit": "Không thuộc đơn vị nào",
       "kind": {
         "open": "Mở — người biên tập tự xuất bản",
         "controlled": "Có kiểm soát"
       },
       "controlledNote": "Không gian có kiểm soát: nội dung chỉ đến tay người đọc sau khi được duyệt xuất bản.",
       "pages": "{count, plural, =0 {Chưa có trang} other {# trang}}",
+      "documentsTitle": "Tài liệu",
+      "documentsHelp": "Mọi tệp đã tải lên không gian này, mới nhất trước. Tệp theo đúng quyền của không gian.",
       "pagesTitle": "Các trang",
       "empty": "Chưa có trang nào.",
       "settings": "Thiết lập không gian",
@@ -4868,8 +4877,8 @@
       "subject": {
         "all": "Toàn bộ nhân viên",
         "entity": "Công ty",
-        "department": "Phòng ban",
-        "team": "Nhóm",
+        "unit": "Đơn vị (gồm các đơn vị bên dưới)",
+        "unit_only": "Chỉ riêng đơn vị đó",
         "role": "Vai trò",
         "person": "Cá nhân"
       },
@@ -4908,6 +4917,7 @@
       "kb_version_not_found": "Không tìm thấy phiên bản.",
       "kb_space_key_invalid": "Mã chỉ gồm chữ thường, số và dấu gạch ngang (2–40 ký tự).",
       "kb_space_key_taken": "Mã này đã được dùng.",
+      "kb_space_unit_taken": "Đơn vị này đã có không gian riêng.",
       "kb_subject_unknown": "Đối tượng được chọn không tồn tại.",
       "kb_access_too_many": "Quá nhiều dòng phân quyền.",
       "file_empty": "Tệp trống.",
@@ -5019,8 +5029,8 @@
     "audience": {
       "all": "Toàn bộ nhân viên",
       "entity": "Pháp nhân",
-      "department": "Phòng ban",
-      "team": "Nhóm",
+      "unit": "Đơn vị (gồm các đơn vị bên dưới)",
+      "unit_only": "Chỉ riêng đơn vị đó",
       "branch": "Chi nhánh / địa điểm",
       "person": "Cá nhân"
     },

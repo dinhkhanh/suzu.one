@@ -140,17 +140,27 @@ export function eachDate(from: IsoDate, to: IsoDate): IsoDate[] {
 // ── Which schedule applies ──────────────────────────────────────────────────────────────────
 
 export type AssignmentFact = { scope: "entity" | "department" | "person"; entityId: string | null; departmentId: string | null; personId: string | null; scheduleId: string; validFrom: IsoDate; validTo: IsoDate | null };
-export type PersonPlace = { personId: string; entityId: string | null; departmentId: string | null };
+/** `unitPath`: the person's unit and every unit above it, root first (`person.org_unit_path`). */
+export type PersonPlace = { personId: string; entityId: string | null; unitPath: readonly string[] };
 
-/** The most specific assignment in force on a date: person › department in the entity › department › entity. */
+/**
+ * The most specific assignment in force on a date: person › the nearest unit that has one › entity.
+ * A schedule set on a unit applies to everything below it (FR-PLT-16), and the *deeper* unit wins:
+ * "Saturday off" on Marketing can be overruled by "Saturday on-site" on Marketing › Studio.
+ * Within one unit, an assignment narrowed to the person's entity still beats a shared one.
+ */
 export function assignmentFor(assignments: readonly AssignmentFact[], person: PersonPlace, date: IsoDate): AssignmentFact | null {
   const inForce = assignments.filter((row) => row.validFrom <= date && (row.validTo === null || row.validTo >= date));
+  const depthOf = (unitId: string | null): number => (unitId ? person.unitPath.indexOf(unitId) : -1);
+  // Person beats every unit; a unit beats the entity. Depth is worth two ranks so that "narrowed to
+  // my entity" (+1) can never lift a shallower unit above a deeper one.
   const rank = (row: AssignmentFact): number => {
-    if (row.scope === "person") return row.personId === person.personId ? 4 : 0;
+    if (row.scope === "person") return row.personId === person.personId ? 1_000_000 : 0;
     if (row.scope === "department") {
-      if (!person.departmentId || row.departmentId !== person.departmentId) return 0;
-      if (row.entityId === null) return 2;
-      return row.entityId === person.entityId ? 3 : 0;
+      const depth = depthOf(row.departmentId);
+      if (depth < 0) return 0;
+      if (row.entityId === null) return 2 + depth * 2;
+      return row.entityId === person.entityId ? 3 + depth * 2 : 0;
     }
     return person.entityId && row.entityId === person.entityId ? 1 : 0;
   };

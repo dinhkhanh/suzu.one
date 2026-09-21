@@ -23,7 +23,7 @@ export default async function MyAcknowledgementsPage() {
             {t("title")}
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("ack.mineTitle")}</h1>
+        <h1>{t("ack.mineTitle")}</h1>
         <p className="text-sm text-muted-foreground">{t("ack.mineHelp")}</p>
       </header>
 

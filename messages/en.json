@@ -29,7 +29,7 @@
     "entities": "Entities",
     "soon": "Soon",
     "signOut": "Sign out",
-    "org": "Departments & teams",
+    "org": "Org units",
     "roles": "Access",
     "audit": "Audit log",
     "notifications": "Notifications",
@@ -56,7 +56,11 @@
     "recruit": "Recruitment",
     "interviews": "Interviews",
     "referrals": "Refer a candidate",
-    "assistant": "Ask SuZu"
+    "assistant": "Ask SuZu",
+    "quickActions": "Quick actions",
+    "general": "General",
+    "close": "Close",
+    "collapse": "Toggle sidebar"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -214,6 +218,7 @@
       "status": "Status",
       "department": "Department",
       "team": "Team",
+      "orgUnit": "Org unit",
       "branch": "Branch",
       "position": "Position",
       "jobLevel": "Job level",
@@ -480,30 +485,30 @@
     }
   },
   "org": {
-    "title": "Departments & teams",
-    "description": "Departments are shared across all entities by default; a team belongs to one department.",
+    "title": "Org units",
+    "description": "One tree of units: departments, big teams, small teams — as deep as you need. A unit covers everything below it.",
     "code": "Code",
-    "name": "Department name",
-    "parent": "Reports into",
-    "noParent": "None",
+    "name": "Unit name",
+    "kind": "Kind",
+    "kinds": {
+      "department": "Department",
+      "team": "Team"
+    },
+    "parent": "Sits inside",
+    "noParent": "Top level",
     "belongsTo": "Belongs to",
     "shared": "Shared",
     "active": "Active",
     "inactive": "Inactive",
-    "teams": "Teams",
-    "noTeams": "No teams yet.",
-    "teamCount": "{count, plural, =0 {no teams} one {# team} other {# teams}}",
-    "teamName": "Team name",
-    "newTeam": "New team",
-    "addTeam": "Add team",
-    "addDepartment": "Add department",
+    "childCount": "{count, plural, one {# unit inside} other {# units inside}}",
+    "addInside": "Add a unit inside {name}",
+    "addUnit": "Add unit",
     "save": "Save",
     "errors": {
-      "department_code_taken": "That department code already exists.",
-      "department_parent_loop": "A department cannot report into itself or one of its own sub-departments.",
-      "department_parent_not_found": "Parent department not found.",
-      "department_in_use": "People still belong to this department, so it cannot be deactivated yet.",
-      "team_in_use": "People still belong to this team, so it cannot be deactivated yet.",
+      "unit_code_taken": "That unit code already exists.",
+      "unit_parent_loop": "A unit cannot sit inside itself or one of its own descendants.",
+      "unit_parent_not_found": "Parent unit not found.",
+      "unit_in_use": "People still belong to this unit (or one below it), so it cannot be deactivated yet.",
       "not_found": "Not found.",
       "forbidden": "You do not have permission to do this.",
       "invalid": "Please check the information.",
@@ -533,8 +538,7 @@
     "scope": {
       "group": "Whole group",
       "entity": "Entity",
-      "department": "Department",
-      "team": "Team"
+      "unit": "Org unit (and everything below it)"
     },
     "errors": {
       "grant_dates": "The end date must be after the start date.",
@@ -4730,6 +4734,7 @@
     "save": "Save",
     "saved": "Saved.",
     "groups": {
+      "unit": "Your team's own",
       "group": "Whole group",
       "entity": "By company",
       "archived": "Archived"
@@ -4754,6 +4759,7 @@
       "changeNote": "Change note (optional)",
       "isMajor": "Major revision",
       "spaceName": "Space name",
+      "ownerUnit": "A unit's own space",
       "spaceKey": "Key in the address",
       "entity": "Belongs to",
       "kind": "Publishing",
@@ -4765,12 +4771,15 @@
       "new": "Create a space",
       "create": "Create space",
       "groupWide": "Whole group",
+      "noOwnerUnit": "Not a unit's own space",
       "kind": {
         "open": "Open — editors publish themselves",
         "controlled": "Controlled"
       },
       "controlledNote": "A controlled space: content reaches readers only after its publication is approved.",
       "pages": "{count, plural, =0 {No pages yet} one {# page} other {# pages}}",
+      "documentsTitle": "Documents",
+      "documentsHelp": "Every file uploaded into this space, newest first. Files follow the space's permissions.",
       "pagesTitle": "Pages",
       "empty": "No pages yet.",
       "settings": "Space settings",
@@ -4868,8 +4877,8 @@
       "subject": {
         "all": "All staff",
         "entity": "Company",
-        "department": "Department",
-        "team": "Team",
+        "unit": "Org unit (including everything below)",
+        "unit_only": "That unit only",
         "role": "Role",
         "person": "Person"
       },
@@ -4908,6 +4917,7 @@
       "kb_version_not_found": "Version not found.",
       "kb_space_key_invalid": "The key takes lower-case letters, digits and hyphens (2–40 characters).",
       "kb_space_key_taken": "This key is already in use.",
+      "kb_space_unit_taken": "That unit already has a space of its own.",
       "kb_subject_unknown": "The chosen subject does not exist.",
       "kb_access_too_many": "Too many access rows.",
       "file_empty": "The file is empty.",
@@ -5019,8 +5029,8 @@
     "audience": {
       "all": "All staff",
       "entity": "Entity",
-      "department": "Department",
-      "team": "Team",
+      "unit": "Org unit (including everything below)",
+      "unit_only": "That unit only",
       "branch": "Branch / location",
       "person": "Person"
     },

@@ -151,7 +151,7 @@ export async function launchReviewCycle(cycleId: string, actorPersonId: string, 
     const directory = await loadDirectory(tx);
     const people = await eligibleParticipants(cycle, directory);
     if (people.length === 0) throw new ActionError("review_cycle_no_participants");
-    await tx.insert(schema.reviewParticipant).values(people.map((row) => ({ cycleId, personId: row.personId, entityId: row.entityId ?? null, departmentId: row.departmentId ?? null, managerPersonId: row.managerId ?? null }))).onConflictDoNothing();
+    await tx.insert(schema.reviewParticipant).values(people.map((row) => ({ cycleId, personId: row.personId, entityId: row.entityId ?? null, departmentId: directory.get(row.personId)?.departmentId ?? null, managerPersonId: row.managerId ?? null }))).onConflictDoNothing();
     const [after] = await tx
       .update(schema.reviewCycle)
       .set({ status: "active", formSnapshot: shape, launchedAt: new Date(), launchedByPersonId: actorPersonId, updatedAt: new Date() })

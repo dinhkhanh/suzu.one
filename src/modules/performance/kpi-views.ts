@@ -1,7 +1,7 @@
 // What the KPI screens read: the entry grid, the manager's dashboard and the owner's overview.
 // Every function takes the viewer and returns only what the policy lets them see.
 import "server-only";
-import { listDepartments, listEntities } from "../platform/org/service";
+import { listEntities, unitChoices } from "../platform/org/service";
 import { kpiMonthScore, type KpiLineInput } from "./engine/kpi-score";
 import { weightedAverageBp } from "./engine/progress";
 import type { Confidence } from "./enums";
@@ -90,7 +90,7 @@ export function spreadOf(scores: readonly (number | null)[]): Spread {
 export async function getOverview(viewer: Viewer, month: string, months: readonly string[], now: Date = new Date()): Promise<Overview | null> {
   const reach = overviewReach(viewer.principal);
   if (!reach.all && reach.entityIds.length === 0) return null;
-  const [entities, departments, directory] = await Promise.all([listEntities(), listDepartments(), loadDirectory()]);
+  const [entities, departments, directory] = await Promise.all([listEntities(), unitChoices(), loadDirectory()]);
   const visible = entities.filter((entity) => entity.isActive && (reach.all || reach.entityIds.includes(entity.id)));
   const entityIds = visible.map((entity) => entity.id);
   const year = Number(month.slice(0, 4));

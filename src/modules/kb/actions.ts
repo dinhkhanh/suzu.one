@@ -10,7 +10,7 @@ import { embeddingDriver } from "./embeddings";
 import { ACCESS_LEVELS, parseSubjectKey, SPACE_KEY, SPACE_KINDS } from "./enums";
 import { beginPageUpload, completePageUpload, findPageFile, removePageFile } from "./files";
 import { createPage, deletePage, type LoadedPage, loadPage, movePage, type PageRow, publishPage, restoreVersion, saveDraft, setPageAccess, setPageArchived, setPageMeta, unpublishPage } from "./pages";
-import { canCreatePage, canEditPage, canManageSpace, canOrganisePages, canPublishDirectly, canViewPage, kbViewerOf } from "./policy";
+import { canCreatePage, canEditPage, canManageSpace, canOrganisePages, canPublishDirectly, canViewPage, kbViewerOf, spaceOwner } from "./policy";
 import { decidePageReview, getPublishReview, submitPageForReview, withdrawPageReview } from "./publishing";
 import { docxToMarkdown, importMarkdownPage, MAX_IMPORT_CHARS, saveAsTemplate, setTemplateActive, templateContent } from "./templates";
 import { createSpace, loadSpace, setSpaceAccess, setSpaceArchived, type SpaceRow, updateSpace } from "./spaces";
@@ -73,8 +73,9 @@ const spaceFields = {
 
 const createSpacePipeline = createAction({
   name: "kb.space.create",
-  input: z.object({ key: z.string().trim().toLowerCase().regex(SPACE_KEY), entityId: optional(z.uuid()), ...spaceFields, access: accessRows }),
-  authorize: (user, input) => canManageSpace(user.principal, { entityId: input.entityId }),
+  input: z.object({ key: z.string().trim().toLowerCase().regex(SPACE_KEY), entityId: optional(z.uuid()), ownerUnitId: optional(z.uuid()), ...spaceFields, access: accessRows }),
+  // A head creates the space of their own unit (or of one below it); HR creates the rest.
+  authorize: (user, input) => canManageSpace(user.principal, { entityId: input.entityId, ownerUnitPath: input.ownerUnitId ? [input.ownerUnitId] : null }),
   run: async ({ user, input }) => {
     const { access, ...values } = input;
     const space = await createSpace(values, user.person.id, access);
@@ -88,7 +89,7 @@ export async function createSpaceAction(input: unknown) {
 
 const managesSpace = async (user: CurrentUser, spaceId: string) => {
   const loaded = await loadSpace({ id: spaceId });
-  return !!loaded && canManageSpace(user.principal, loaded.space);
+  return !!loaded && canManageSpace(user.principal, loaded.facts);
 };
 
 const updateSpacePipeline = createAction({
@@ -444,7 +445,7 @@ export async function removePageFileAction(input: unknown) {
 
 const managesPageSpace = async (user: CurrentUser, pageId: string) => {
   const loaded = await pageFor(user, pageId);
-  return !!loaded && !loaded.page.deletedAt && canManageSpace(user.principal, loaded.space);
+  return !!loaded && !loaded.page.deletedAt && canManageSpace(user.principal, spaceOwner(loaded.space));
 };
 
 const ackSettingsPipeline = createAction({

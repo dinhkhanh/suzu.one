@@ -123,7 +123,7 @@ const filePipeline = createAction({
   authorize: (user) => canFileRequests(user.principal),
   run: async ({ user, input }) => {
     const target = await getPersonTarget(user.person.id);
-    const filed = await fileRequest(input, { personId: user.person.id, entityId: target?.entityId ?? null, departmentId: target?.departmentId ?? null, teamId: target?.teamId ?? null, managerId: target?.managerId ?? null }, formatDong);
+    const filed = await fileRequest(input, { personId: user.person.id, entityId: target?.entityId ?? null, unitPath: target?.unitPath ?? [], managerId: target?.managerId ?? null }, formatDong);
     revalidatePath("/requests");
     revalidatePath("/approvals");
     return { data: filed, audit: { resource: { type: `approval:request:${input.code}`, id: filed.requestId, entityId: target?.entityId ?? null }, summary: input.code, after: { outcome: filed.outcome } } };

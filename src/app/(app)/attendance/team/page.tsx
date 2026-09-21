@@ -29,14 +29,14 @@ export default async function TeamTimesheetPage({ searchParams }: PageProps<"/at
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("team.title")}</h1>
+          <h1>{t("team.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("team.description")}</p>
         </div>
         <MonthNav month={month} hrefFor={(value) => href(value)} thisMonth={thisMonth} />
       </header>
       <div className="flex flex-wrap items-center justify-between gap-3">
         {departments.length > 1 ? (
-          <nav className="flex flex-wrap gap-3 text-sm">
+          <nav className="tab-row">
             <Link href={href(month, null)} className={departmentId ? "underline-offset-4 hover:underline" : "font-medium"}>
               {t("team.allDepartments")}
             </Link>

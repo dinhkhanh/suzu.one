@@ -24,7 +24,7 @@ export default async function ApprovalsPage() {
     <div className="flex max-w-5xl flex-col gap-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <h1>{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("description")}</p>
         </div>
         <Link href="/approvals/delegation" className="text-sm underline-offset-4 hover:underline">

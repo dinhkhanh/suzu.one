@@ -48,7 +48,7 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
   return (
     <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        <h1>{title}</h1>
         <p className="text-sm text-muted-foreground">
           {[opening.entityName, opening.departmentName, opening.workLocation, t(`workMode.${opening.workMode}` as "workMode.onsite"), t(`employmentType.${opening.employmentType}` as "employmentType.employee")].filter(Boolean).join(" · ")}
         </p>

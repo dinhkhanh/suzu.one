@@ -7,6 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  /* The desk the app card floats on, and the grey used for counts and other quiet numbers. */
+  --color-canvas: var(--canvas);
+  --color-faint: var(--faint);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --font-heading: var(--font-sans);
@@ -48,73 +51,83 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* A white app card on a light grey desk, hairline borders, one blue accent: the workspace look
+   the design reference sets out. Greys are neutral; only links, the primary button and the
+   selected state carry colour. */
 :root {
+  --canvas: oklch(0.957 0.0015 106);
   --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --foreground: oklch(0.21 0 0);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.21 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
+  --popover-foreground: oklch(0.21 0 0);
+  --primary: oklch(0.576 0.208 258.6);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.973 0 0);
+  --secondary-foreground: oklch(0.21 0 0);
+  --muted: oklch(0.968 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --faint: oklch(0.708 0 0);
+  --accent: oklch(0.962 0 0);
+  --accent-foreground: oklch(0.21 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --border: oklch(0.925 0 0);
+  --input: oklch(0.917 0 0);
+  --ring: oklch(0.576 0.208 258.6);
+  --chart-1: oklch(0.576 0.208 258.6);
+  --chart-2: oklch(0.7 0.16 162);
+  --chart-3: oklch(0.75 0.16 70);
+  --chart-4: oklch(0.6 0.2 300);
+  --chart-5: oklch(0.65 0.21 15);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.21 0 0);
+  --sidebar-primary: oklch(0.576 0.208 258.6);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.955 0 0);
+  --sidebar-accent-foreground: oklch(0.21 0 0);
+  --sidebar-border: oklch(0.925 0 0);
+  --sidebar-ring: oklch(0.576 0.208 258.6);
+  /* The card floats: a hairline, then a shadow shallow enough to read as paper rather than a modal. */
+  --shell-shadow: 0 0 0 1px oklch(0 0 0 / 4%), 0 1px 2px oklch(0 0 0 / 4%), 0 12px 32px -16px oklch(0 0 0 / 18%);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
+  --canvas: oklch(0.145 0 0);
+  --background: oklch(0.185 0 0);
+  --foreground: oklch(0.97 0 0);
+  --card: oklch(0.185 0 0);
+  --card-foreground: oklch(0.97 0 0);
   --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --popover-foreground: oklch(0.97 0 0);
+  --primary: oklch(0.62 0.19 258.6);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.255 0 0);
+  --secondary-foreground: oklch(0.97 0 0);
+  --muted: oklch(0.245 0 0);
+  --muted-foreground: oklch(0.7 0 0);
+  --faint: oklch(0.6 0 0);
+  --accent: oklch(0.265 0 0);
+  --accent-foreground: oklch(0.97 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.62 0.19 258.6);
+  --chart-1: oklch(0.62 0.19 258.6);
+  --chart-2: oklch(0.72 0.15 162);
+  --chart-3: oklch(0.78 0.15 70);
+  --chart-4: oklch(0.65 0.19 300);
+  --chart-5: oklch(0.68 0.2 15);
+  --sidebar: oklch(0.185 0 0);
+  --sidebar-foreground: oklch(0.97 0 0);
+  --sidebar-primary: oklch(0.62 0.19 258.6);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.255 0 0);
+  --sidebar-accent-foreground: oklch(0.97 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.62 0.19 258.6);
+  --shell-shadow: 0 0 0 1px oklch(1 0 0 / 8%), 0 12px 32px -16px oklch(0 0 0 / 60%);
 }
 
 @layer base {
@@ -122,10 +135,66 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-canvas text-foreground;
   }
   html {
     @apply font-sans;
+    /* The reference sets text slightly tight; Inter reads denser and more deliberate that way. */
+    letter-spacing: -0.011em;
+  }
+  /* Headings across the app share one scale: pages set no size of their own. */
+  h1 {
+    @apply text-[1.0625rem] leading-6 font-semibold tracking-[-0.015em];
+  }
+  h2 {
+    @apply text-[0.9375rem] leading-5 font-semibold tracking-[-0.01em];
+  }
+  h3 {
+    @apply text-sm leading-5 font-semibold;
+  }
+  ::selection {
+    @apply bg-primary/15;
+  }
+}
+
+@layer components {
+  /* The shell: one white card on the desk, its own scroll, hairlines inside it. */
+  .shell-card {
+    @apply flex min-h-0 flex-1 overflow-hidden bg-background md:rounded-2xl;
+    box-shadow: var(--shell-shadow);
+  }
+  /* A sidebar row: icon, label, and a quiet count pushed to the end. */
+  .nav-row {
+    @apply flex h-8 items-center gap-2.5 rounded-lg px-2 text-sm font-medium text-foreground/85 transition-colors hover:bg-sidebar-accent hover:text-foreground [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground;
+  }
+  .nav-row[aria-current="page"] {
+    @apply bg-sidebar-accent text-foreground [&>svg]:text-foreground;
+  }
+  .nav-section {
+    @apply px-2 pt-4 pb-1 text-xs font-medium text-faint;
+  }
+  .nav-count {
+    @apply ml-auto shrink-0 text-xs font-normal text-faint tabular-nums;
+  }
+  /* The row of filters and actions over a list. Aligned on the bottom edge: some of the controls
+     in it carry a label above them, and the plain ones have to line up with those. */
+  .toolbar {
+    @apply flex flex-wrap items-end gap-2;
+  }
+  /* A page's own sub-navigation, as the reference draws it: quiet pills rather than a row of
+     underlined links. The rule un-underlines its children, which arrive with `underline` on
+     them, so it has to outrank that utility. */
+  .tab-row {
+    @apply flex flex-wrap items-center gap-1 text-sm;
+  }
+  .tab-row > a,
+  .tab-row > button {
+    @apply flex h-8 items-center rounded-lg px-2.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground;
+    text-decoration: none !important;
+  }
+  .tab-row > a[aria-current="page"],
+  .tab-row > button[aria-current="page"] {
+    @apply bg-muted text-foreground;
   }
 }
 

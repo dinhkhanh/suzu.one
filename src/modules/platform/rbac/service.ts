@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
+import { and, arrayOverlaps, asc, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
@@ -26,19 +26,32 @@ export async function holdsRoleGrants(personId: string): Promise<boolean> {
   return !!row;
 }
 
-function toScope(scopeType: ScopeType, scopeId: string | null): Scope | null {
+// `covers` is only needed where a target names one unit without its chain; a target carrying the
+// whole path (a person) matches a unit grant on any ancestor without it.
+function toScope(scopeType: ScopeType, scopeId: string | null, covers: ReadonlyMap<string, string[]> = new Map()): Scope | null {
   if (scopeType === "group") return { type: "group" };
-  return scopeId ? { type: scopeType, id: scopeId } : null;
+  if (!scopeId) return null;
+  return scopeType === "unit" ? { type: "unit", id: scopeId, covers: covers.get(scopeId) } : { type: scopeType, id: scopeId };
 }
 
-/** The grants in force today. Unknown roles and broken scopes grant nothing. */
+/**
+ * The grants in force today. Unknown roles and broken scopes grant nothing.
+ * A unit grant is widened here, once, to the unit and everything below it (FR-PLT-16), so every
+ * later check can ask about one unit without walking the tree again.
+ */
 export async function loadGrants(personId: string, today: IsoDate = todayInVietnam(), executor: Executor = db()): Promise<Grant[]> {
   const rows = await executor
     .select()
     .from(schema.roleAssignment)
     .where(and(eq(schema.roleAssignment.personId, personId), lte(schema.roleAssignment.validFrom, today), notEnded(today)));
+  const unitIds = rows.flatMap((row) => (row.scopeType === "unit" && row.scopeId ? [row.scopeId] : []));
+  const covers = new Map<string, string[]>();
+  if (unitIds.length) {
+    const units = await executor.select({ id: schema.orgUnit.id, path: schema.orgUnit.path }).from(schema.orgUnit).where(arrayOverlaps(schema.orgUnit.path, unitIds));
+    for (const granted of unitIds) covers.set(granted, units.flatMap((unit) => (unit.path.includes(granted) ? [unit.id] : [])));
+  }
   return rows.flatMap((row) => {
-    const scope = toScope(row.scopeType, row.scopeId);
+    const scope = toScope(row.scopeType, row.scopeId, covers);
     const known = (ROLES as readonly string[]).includes(row.role);
     return scope && known ? [{ role: row.role as Role, scope }] : [];
   });
@@ -68,7 +81,7 @@ export async function listRoleAssignments(): Promise<RoleAssignmentView[]> {
       workEmail: schema.person.workEmail,
       role: schema.roleAssignment.role,
       scopeType: schema.roleAssignment.scopeType,
-      scopeName: sql<string | null>`coalesce(${schema.entity.shortName}, ${schema.department.name}, ${schema.team.name})`,
+      scopeName: sql<string | null>`coalesce(${schema.entity.shortName}, ${schema.orgUnit.name})`,
       validFrom: schema.roleAssignment.validFrom,
       validTo: schema.roleAssignment.validTo,
       grantedByName: grantor.fullName,
@@ -77,13 +90,12 @@ export async function listRoleAssignments(): Promise<RoleAssignmentView[]> {
     .innerJoin(schema.person, eq(schema.person.id, schema.roleAssignment.personId))
     .leftJoin(grantor, eq(grantor.id, schema.roleAssignment.grantedByPersonId))
     .leftJoin(schema.entity, and(eq(schema.roleAssignment.scopeType, "entity"), eq(schema.entity.id, schema.roleAssignment.scopeId)))
-    .leftJoin(schema.department, and(eq(schema.roleAssignment.scopeType, "department"), eq(schema.department.id, schema.roleAssignment.scopeId)))
-    .leftJoin(schema.team, and(eq(schema.roleAssignment.scopeType, "team"), eq(schema.team.id, schema.roleAssignment.scopeId)))
+    .leftJoin(schema.orgUnit, and(eq(schema.roleAssignment.scopeType, "unit"), eq(schema.orgUnit.id, schema.roleAssignment.scopeId)))
     .where(notEnded(todayInVietnam()))
     .orderBy(asc(schema.person.searchName), asc(schema.roleAssignment.role));
 }
 
-const SCOPE_TABLES = { entity: schema.entity, department: schema.department, team: schema.team } as const;
+const SCOPE_TABLES = { entity: schema.entity, unit: schema.orgUnit } as const;
 
 export type GrantInput = { personId: string; role: Role; scopeType: ScopeType; scopeId: string | null; validFrom: IsoDate; validTo: IsoDate | null };
 
@@ -160,8 +172,7 @@ async function describeGrant(grant: RoleAssignmentRow, actorPersonId: string) {
   if (grant.scopeType !== "group" && grant.scopeId) {
     const named = {
       entity: () => db().select({ name: schema.entity.shortName }).from(schema.entity).where(eq(schema.entity.id, grant.scopeId!)),
-      department: () => db().select({ name: schema.department.name }).from(schema.department).where(eq(schema.department.id, grant.scopeId!)),
-      team: () => db().select({ name: schema.team.name }).from(schema.team).where(eq(schema.team.id, grant.scopeId!)),
+      unit: () => db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, grant.scopeId!)),
     };
     scopeName = (await named[grant.scopeType]())[0]?.name ?? "";
   }

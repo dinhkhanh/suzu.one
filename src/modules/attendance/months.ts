@@ -25,7 +25,7 @@ export type TimesheetAdjustmentRow = typeof schema.timesheetAdjustment.$inferSel
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 export const isMonth = (value: string): boolean => MONTH.test(value);
 const monthIsOver = (month: string, today: IsoDate = todayInVietnam()) => monthEnd(month) < today;
-const targetOf = (person: typeof schema.person.$inferSelect): Target & { personId: string } => ({ personId: person.id, entityId: person.primaryEntityId, departmentId: person.departmentId, teamId: person.teamId, managerId: person.managerId });
+const targetOf = (person: typeof schema.person.$inferSelect): Target & { personId: string } => ({ personId: person.id, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId });
 
 export async function getMonthRow(personId: string, month: string, executor: Executor = db()): Promise<TimesheetMonthRow | null> {
   const [row] = await executor.select().from(schema.timesheetMonth).where(and(eq(schema.timesheetMonth.personId, personId), eq(schema.timesheetMonth.month, month))).limit(1);

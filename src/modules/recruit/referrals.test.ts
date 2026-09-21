@@ -45,7 +45,7 @@ beforeAll(async () => {
   await migrateTestDb();
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
-  const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
+  const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id, vid: vid.id });
 
   for (const [key, fullName] of [
@@ -53,7 +53,7 @@ beforeAll(async () => {
     ["referrerPerson", "Người giới thiệu"],
     ["otherReferrerPerson", "Đồng nghiệp khác"],
   ] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName, searchName: key, primaryEntityId: szm.id, departmentId: vid.id, status: "active" }).returning();
+    const [row] = await db().insert(schema.person).values({ fullName, searchName: key, primaryEntityId: szm.id, orgUnitId: vid.id, status: "active" }).returning();
     ids[key] = row.id;
   }
 

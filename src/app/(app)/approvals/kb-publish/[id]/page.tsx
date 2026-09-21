@@ -30,7 +30,7 @@ export default async function KbPublishReviewPage(props: PageProps<"/approvals/k
     <div className="flex max-w-3xl flex-col gap-8">
       <header className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{t("review.title")}</h1>
+          <h1>{t("review.title")}</h1>
           <RequestStatusBadge status={request.status} />
           {payload.isMajor ? <Badge variant="outline">{t("fields.isMajor")}</Badge> : null}
         </div>

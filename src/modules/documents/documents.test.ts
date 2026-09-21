@@ -37,10 +37,10 @@ let boss: { principal: Principal; personId: string };
 beforeAll(async () => {
   await migrateTestDb();
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty TNHH SuZu Media", shortName: "SuZu Media" }).returning();
-  const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Sản xuất Video" }).returning();
+  const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Sản xuất Video" }).returning();
   Object.assign(ids, { szm: szm.id, vid: vid.id });
 
-  const [boss1] = await db().insert(schema.person).values({ fullName: "Đặng Hoàng Long", searchName: "long", primaryEntityId: szm.id, departmentId: vid.id, status: "active" }).returning();
+  const [boss1] = await db().insert(schema.person).values({ fullName: "Đặng Hoàng Long", searchName: "long", primaryEntityId: szm.id, orgUnitId: vid.id, status: "active" }).returning();
   ids.boss = boss1.id;
   const [huy] = await db()
     .insert(schema.person)
@@ -58,11 +58,11 @@ beforeAll(async () => {
   // An employment and a primary assignment, so the personal placeholders have something to say.
   const [employment] = await db().insert(schema.employment).values({ personId: huy.id, entityId: szm.id, employeeCode: "SZM0008", startDate: "2023-07-17", seniorityDate: "2023-07-17" }).returning();
   const [position] = await db().insert(schema.position).values({ name: "Dựng phim", searchName: "dung phim" }).returning();
-  await db().insert(schema.assignment).values({ employmentId: employment.id, kind: "primary", workforceType: "employee", departmentId: vid.id, positionId: position.id, validFrom: "2023-07-17" });
+  await db().insert(schema.assignment).values({ employmentId: employment.id, kind: "primary", workforceType: "employee", orgUnitId: vid.id, departmentId: vid.id, positionId: position.id, validFrom: "2023-07-17" });
 
   lead = { principal: principal(ids.lead, [{ role: "hr_admin", scope: { type: "group" } }]), personId: ids.lead };
   officer = { principal: principal(ids.officer, [{ role: "hr_staff", scope: { type: "entity", id: szm.id } }]), personId: ids.officer };
-  boss = { principal: principal(ids.boss, [{ role: "department_head", scope: { type: "department", id: vid.id } }]), personId: ids.boss };
+  boss = { principal: principal(ids.boss, [{ role: "department_head", scope: { type: "unit", id: vid.id } }]), personId: ids.boss };
 });
 
 const LETTERHEAD = { companyName: "CÔNG TY TNHH SUZU MEDIA", address: "123 Nguyễn Văn Trỗi, TP. Hồ Chí Minh", taxCode: "0312345678", representative: "Nguyễn Thu Hà", representativeTitle: "Tổng Giám đốc", place: "TP. Hồ Chí Minh" };

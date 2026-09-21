@@ -275,7 +275,7 @@ export async function submitOfferForApproval(offerId: string, actorPersonId: str
       payload: payload as unknown as Record<string, unknown>,
       conditionData: { employmentType: offer.employmentType },
       link: (requestId) => `/recruit/offers/${offer.id}?request=${requestId}`,
-      target: { entityId: offer.entityId, departmentId: offer.departmentId, teamId: offer.teamId },
+      target: { entityId: offer.entityId, unitPath: [offer.departmentId, offer.teamId].filter((id): id is string => !!id) },
     });
 
     const [after] = await tx.update(schema.jobOffer).set({ status, approvalRequestId: request.id, updatedAt: now() }).where(eq(schema.jobOffer.id, offerId)).returning();
@@ -481,7 +481,7 @@ export async function getOfferView(viewer: { principal: Principal; personId: str
   const application = await findApplication(offer.applicationId);
 
   const [entity] = await db().select({ shortName: schema.entity.shortName }).from(schema.entity).where(eq(schema.entity.id, offer.entityId)).limit(1);
-  const [department] = offer.departmentId ? await db().select({ name: schema.department.name }).from(schema.department).where(eq(schema.department.id, offer.departmentId)).limit(1) : [undefined];
+  const [department] = offer.departmentId ? await db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, offer.departmentId)).limit(1) : [undefined];
   const [manager] = offer.managerPersonId ? await db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, offer.managerPersonId)).limit(1) : [undefined];
   const [maker] = await db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, offer.createdByPersonId)).limit(1);
 
@@ -643,7 +643,7 @@ export async function offerLetter(viewer: { principal: Principal; personId: stri
   if (atLeast(template.tier, "compensation") && !canReadOfferMoney(viewer.principal, target)) return null;
 
   const candidate = await findCandidate(offer.candidateId);
-  const [department] = offer.departmentId ? await db().select({ name: schema.department.name }).from(schema.department).where(eq(schema.department.id, offer.departmentId)).limit(1) : [undefined];
+  const [department] = offer.departmentId ? await db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, offer.departmentId)).limit(1) : [undefined];
 
   const context = offerLetterContext({
     offer,
@@ -729,8 +729,8 @@ export async function convertToEmployee(offerId: string, actorPersonId: string, 
         placement: {
           workforceType: offer.employmentType,
           branchId: null,
-          departmentId: offer.departmentId,
-          teamId: offer.teamId,
+          // The offer names a department and, if the job sits deeper, a team: the team is where the person lands.
+          orgUnitId: offer.teamId ?? offer.departmentId,
           positionName: offer.positionName,
           jobLevel: offer.jobLevel,
           managerId: offer.managerPersonId,

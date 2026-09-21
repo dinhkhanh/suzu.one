@@ -61,7 +61,7 @@ const slot = (offsetDays: number, startHour: number, minutes = 60) => {
 beforeAll(async () => {
   await migrateTestDb();
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "Công ty SuZu Media", shortName: "SuZu Media" }).returning();
-  const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
+  const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   ids.szm = szm.id;
   ids.vid = vid.id;
 
@@ -80,7 +80,7 @@ beforeAll(async () => {
   }
 
   recruiter = principal(ids.recruiterPerson, [{ role: "recruiter", scope: { type: "entity", id: szm.id } }]);
-  head = principal(ids.headPerson, [{ role: "department_head", scope: { type: "department", id: vid.id } }]);
+  head = principal(ids.headPerson, [{ role: "department_head", scope: { type: "unit", id: vid.id } }]);
   // The two interviewers hold **no recruitment role at all** — that is the point of them.
   alice = principal(ids.interviewerA);
   bao = principal(ids.interviewerB);

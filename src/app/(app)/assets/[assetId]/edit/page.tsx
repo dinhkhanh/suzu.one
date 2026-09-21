@@ -18,7 +18,7 @@ export default async function EditAssetPage({ params }: PageProps<"/assets/[asse
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">
+      <h1>
         {t("nav.edit")} · <span className="font-mono text-base">{asset.code}</span>
       </h1>
       <AssetForm

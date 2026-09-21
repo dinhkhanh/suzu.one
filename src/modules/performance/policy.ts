@@ -16,6 +16,8 @@ export type GoalParties = {
   entityId: string | null;
   departmentId: string | null;
   teamId: string | null;
+  /** The chain of the unit the goal sits on, so a grant above that unit covers it (FR-PLT-16). */
+  unitPath?: readonly string[];
   ownerPersonId: string | null;
   /** The person an individual goal belongs to; null for unit goals. */
   person: PersonContext | null;
@@ -33,14 +35,13 @@ export function chainAbove(managerOf: ReadonlyMap<string, string | null>, person
 }
 
 /** Where a unit goal sits, as an RBAC target. The group's goals take a group-wide grant (`{}`). */
-export function unitTarget(goal: Pick<GoalParties, "level" | "entityId" | "departmentId" | "teamId">): Target {
+export function unitTarget(goal: Pick<GoalParties, "level" | "entityId" | "departmentId" | "teamId" | "unitPath">): Target {
   switch (goal.level) {
     case "entity":
       return { entityId: goal.entityId };
     case "department":
-      return { departmentId: goal.departmentId, entityId: goal.entityId };
     case "team":
-      return { teamId: goal.teamId, departmentId: goal.departmentId, entityId: goal.entityId };
+      return { unitPath: goal.unitPath ?? [goal.departmentId, goal.teamId].filter((id): id is string => !!id), entityId: goal.entityId };
     default:
       return {};
   }

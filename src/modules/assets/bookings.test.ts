@@ -42,14 +42,14 @@ let huy: Principal;
 beforeAll(async () => {
   await migrateTestDb();
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
-  const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
+  const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
   ids.szm = szm.id;
   for (const [key, fullName] of [
     ["keeper", "Người giữ kho"],
     ["tam", "Bùi Thanh Tâm"],
     ["huy", "Hồ Gia Huy"],
   ] as const) {
-    const [row] = await db().insert(schema.person).values({ fullName, searchName: key, primaryEntityId: szm.id, departmentId: vid.id, status: "active" }).returning();
+    const [row] = await db().insert(schema.person).values({ fullName, searchName: key, primaryEntityId: szm.id, orgUnitId: vid.id, status: "active" }).returning();
     ids[key] = row.id;
   }
   const [camera] = await db().insert(schema.assetCategory).values({ code: "CAM", name: "Máy quay", kind: "production_gear", requiresSerial: true, bookable: true, sortOrder: 1 }).returning();

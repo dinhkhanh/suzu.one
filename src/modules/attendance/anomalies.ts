@@ -31,7 +31,7 @@ const DAY_KINDS: Record<string, { kind: AnomalyKind; fix: AnomalyFix; blocking: 
 
 const DAYS_OFF = ["rest", "holiday", "compensatory_off", "company_off"];
 
-const targetOf = (person: typeof schema.person.$inferSelect): Target & { personId: string } => ({ personId: person.id, entityId: person.primaryEntityId, departmentId: person.departmentId, teamId: person.teamId, managerId: person.managerId });
+const targetOf = (person: typeof schema.person.$inferSelect): Target & { personId: string } => ({ personId: person.id, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId });
 
 export type AnomalyFilters = { entityId?: string | null; departmentId?: string | null; personId?: string | null; kind?: AnomalyKind | null; /** Late / early days below this many minutes are left out. */ minMinutes?: number };
 

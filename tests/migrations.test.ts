@@ -3,6 +3,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { btree_gist } from "@electric-sql/pglite/contrib/btree_gist";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
+import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import * as schema from "@/lib/db/schema";
 
@@ -16,11 +17,11 @@ beforeAll(async () => {
 describe("migrations", () => {
   it("creates shared departments (no entity) and entity-specific ones", async () => {
     const [entity] = await db.insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
-    await db.insert(schema.department).values([
+    await db.insert(schema.orgUnit).values([
       { code: "HR", name: "Human Resources" },
       { code: "SZM-STUDIO", name: "Studio", entityId: entity.id },
     ]);
-    const departments = await db.select().from(schema.department);
+    const departments = await db.select().from(schema.orgUnit);
     expect(departments.filter((d) => d.entityId === null)).toHaveLength(1);
     expect(departments.filter((d) => d.entityId === entity.id)).toHaveLength(1);
   });
@@ -92,6 +93,53 @@ describe("migrations", () => {
        WHERE n.nspname = 'public' AND c.relkind = 'r' AND NOT c.relrowsecurity`,
     );
     expect(unprotected.rows.map((row) => row.relname)).toEqual([]);
+  });
+
+  // The org-unit tree (FR-PLT-16): the database, not the application, keeps `path` and the two
+  // derived placement columns true — including when a unit is moved to a different parent.
+  describe("the org-unit tree", () => {
+    const unit = async (name: string, parentId: string | null, kind: "department" | "team" = "team") =>
+      (await db.insert(schema.orgUnit).values({ name, kind, parentId }).returning())[0];
+
+    it("writes the path from the parent, and refuses a unit inside itself", async () => {
+      const marketing = await unit("Marketing", null, "department");
+      const social = await unit("Social", marketing.id);
+      const editing = await unit("Video editing", social.id);
+      expect(editing.path).toEqual([marketing.id, social.id, editing.id]);
+      // The database refuses it; drizzle wraps the message, so the reason is on the cause.
+      const loop = await db.update(schema.orgUnit).set({ parentId: editing.id }).where(eq(schema.orgUnit.id, marketing.id)).catch((error: Error) => error);
+      expect(String((loop as Error & { cause?: Error }).cause ?? loop)).toMatch(/inside itself/);
+    });
+
+    it("moves a subtree, and takes its people with it", async () => {
+      const [creative, media] = await Promise.all([unit("Creative", null, "department"), unit("Media", null, "department")]);
+      const design = await unit("Design", creative.id);
+      const ui = await unit("UI", design.id);
+      const [person] = await db.insert(schema.person).values({ fullName: "Đỗ Minh", searchName: "do minh", orgUnitId: ui.id }).returning();
+      expect(person.orgUnitPath).toEqual([creative.id, design.id, ui.id]);
+      // The derived columns: the deepest unit of each kind on the way down.
+      expect([person.departmentId, person.teamId]).toEqual([creative.id, ui.id]);
+
+      await db.update(schema.orgUnit).set({ parentId: media.id }).where(eq(schema.orgUnit.id, design.id));
+      const [movedUi] = await db.select().from(schema.orgUnit).where(eq(schema.orgUnit.id, ui.id));
+      expect(movedUi.path).toEqual([media.id, design.id, ui.id]);
+      const [moved] = await db.select().from(schema.person).where(eq(schema.person.id, person.id));
+      expect(moved.orgUnitPath).toEqual([media.id, design.id, ui.id]);
+      expect(moved.departmentId).toBe(media.id);
+    });
+
+    it("clears a person's placement with their unit, and refuses a unit that does not exist", async () => {
+      const [person] = await db.insert(schema.person).values({ fullName: "Vũ Hà", searchName: "vu ha" }).returning();
+      expect([person.orgUnitPath, person.departmentId, person.teamId]).toEqual([[], null, null]);
+      await expect(db.update(schema.person).set({ orgUnitId: "00000000-0000-4000-8000-00000000dead" }).where(eq(schema.person.id, person.id))).rejects.toThrow();
+    });
+
+    it("gives a unit at most one space of its own", async () => {
+      const team = await unit("Studio", null, "department");
+      const space = { name: "Studio", description: null, icon: null, ownerUnitId: team.id };
+      await db.insert(schema.kbSpace).values({ ...space, key: "studio" });
+      await expect(db.insert(schema.kbSpace).values({ ...space, key: "studio-2" })).rejects.toThrow();
+    });
   });
 
   it("keeps the audit log append-only", async () => {

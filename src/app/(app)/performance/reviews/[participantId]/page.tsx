@@ -79,7 +79,7 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
           {t("back")}
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">{nameOf(participant.personId)}</h1>
+          <h1>{nameOf(participant.personId)}</h1>
           <StageBadge stage={parties.stage} label={t(`stage.${parties.stage}`)} />
         </div>
         <p className="text-sm text-muted-foreground">
@@ -105,14 +105,14 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
 
       {shape && canWriteSelfReview(user.principal, parties) && mySelf?.status !== "submitted" ? (
         <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-medium">{t("form.kind.self")}</h2>
+          <h2>{t("form.kind.self")}</h2>
           <ReviewFormEditor value={{ participantId, kind: "self", shape, answers: mySelf?.answers ?? {}, comment: mySelf?.comment ?? null, submitted: false }} />
         </section>
       ) : null}
 
       {shape && canWriteManagerReview(user.principal, parties) && myManager?.status !== "submitted" ? (
         <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-medium">{t("form.kind.manager")}</h2>
+          <h2>{t("form.kind.manager")}</h2>
           {managerBlocked ? <p className="text-sm text-amber-700 dark:text-amber-300">{t("form.waitingForSelf", { date: cycle.selfDueOn ? formatDate(cycle.selfDueOn) : "—" })}</p> : null}
           <ReviewFormEditor value={{ participantId, kind: "manager", shape, answers: myManager?.answers ?? {}, comment: myManager?.comment ?? null, submitted: false }} />
         </section>
@@ -120,7 +120,7 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
 
       {shape && canWritePeerReview(user.principal, parties, nominated) && myPeer?.status !== "submitted" ? (
         <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-medium">{t("form.kind.peer")}</h2>
+          <h2>{t("form.kind.peer")}</h2>
           <ReviewFormEditor value={{ participantId, kind: "peer", shape, answers: myPeer?.answers ?? {}, comment: myPeer?.comment ?? null, submitted: false }} />
         </section>
       ) : null}
@@ -165,7 +165,7 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
       ) : null}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">{t("submitted.title")}</h2>
+        <h2>{t("submitted.title")}</h2>
         {readable.length === 0 && anonymousPeers.length === 0 ? <p className="text-sm text-muted-foreground">{t("submitted.empty")}</p> : null}
         {shape
           ? readable.map((form) => (

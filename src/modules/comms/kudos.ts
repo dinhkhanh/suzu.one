@@ -24,7 +24,7 @@ export async function listKudosRecipients(selfPersonId: string): Promise<{ id: s
 
 export async function findRecipient(personId: string): Promise<KudosRecipient | null> {
   const [row] = await db().select().from(person).where(eq(person.id, personId)).limit(1);
-  return row ? { personId: row.id, status: row.status, workforceType: row.workforceType, entityId: row.primaryEntityId, departmentId: row.departmentId, teamId: row.teamId, managerId: row.managerId } : null;
+  return row ? { personId: row.id, status: row.status, workforceType: row.workforceType, entityId: row.primaryEntityId, unitPath: row.orgUnitPath, managerId: row.managerId } : null;
 }
 
 export async function giveKudos(from: { personId: string; fullName: string; principal: Principal }, input: { toPersonId: string; valueKey: string; message: string }): Promise<KudosRow> {
@@ -53,14 +53,14 @@ export async function removeKudos(id: string, actorPersonId: string): Promise<Ku
   return row;
 }
 
-export type KudosCard = { id: string; fromPersonId: string; fromName: string; toPersonId: string; toName: string; toEntityId: string | null; toDepartmentId: string | null; toTeamId: string | null; valueKey: string; valueNameVi: string | null; valueNameEn: string | null; message: string; createdAt: Date };
+export type KudosCard = { id: string; fromPersonId: string; fromName: string; toPersonId: string; toName: string; toEntityId: string | null; toUnitPath: readonly string[]; valueKey: string; valueNameVi: string | null; valueNameEn: string | null; message: string; createdAt: Date };
 
 /** The wall, newest first. Staff-wide (`public_internal`); the caller keeps collaborators out. */
 export async function listKudos(options: { toPersonId?: string; fromPersonId?: string; limit?: number } = {}): Promise<KudosCard[]> {
   const giver = alias(person, "giver");
   const receiver = alias(person, "receiver");
   return db()
-    .select({ id: kudos.id, fromPersonId: kudos.fromPersonId, fromName: giver.fullName, toPersonId: kudos.toPersonId, toName: receiver.fullName, toEntityId: receiver.primaryEntityId, toDepartmentId: receiver.departmentId, toTeamId: receiver.teamId, valueKey: kudos.valueKey, valueNameVi: companyValue.nameVi, valueNameEn: companyValue.nameEn, message: kudos.message, createdAt: kudos.createdAt })
+    .select({ id: kudos.id, fromPersonId: kudos.fromPersonId, fromName: giver.fullName, toPersonId: kudos.toPersonId, toName: receiver.fullName, toEntityId: receiver.primaryEntityId, toUnitPath: receiver.orgUnitPath, valueKey: kudos.valueKey, valueNameVi: companyValue.nameVi, valueNameEn: companyValue.nameEn, message: kudos.message, createdAt: kudos.createdAt })
     .from(kudos)
     .innerJoin(giver, eq(giver.id, kudos.fromPersonId))
     .innerJoin(receiver, eq(receiver.id, kudos.toPersonId))

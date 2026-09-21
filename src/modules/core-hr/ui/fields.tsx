@@ -6,8 +6,8 @@ import { Select } from "@/components/ui/select";
 import { GENDERS, MARITAL_STATUSES, WORKFORCE_TYPES } from "../enums";
 
 export type PlacementOptions = {
-  departments: { id: string; name: string }[];
-  teams: { id: string; name: string; departmentId: string }[];
+  /** Every unit the person may be put in, in tree order, names already indented by depth. */
+  units: { id: string; name: string }[];
   branches: { id: string; name: string; entityId: string }[];
   positions: string[];
   people: { id: string; fullName: string }[];
@@ -85,8 +85,7 @@ export function IdentityFields({ defaults = {} }: { defaults?: IdentityDefaults 
 type PlacementDefaults = {
   workforceType?: string;
   branchId?: string | null;
-  departmentId?: string | null;
-  teamId?: string | null;
+  orgUnitId?: string | null;
   positionName?: string | null;
   jobLevel?: string | null;
   managerId?: string | null;
@@ -121,35 +120,16 @@ export function PlacementFields({ options, defaults = {}, exceptPersonId }: { op
           ))}
         </Select>
       </Field>
-      <Field name="placement.departmentId" label={t("fields.department")}>
-        <Select id="placement.departmentId" name="placement.departmentId" defaultValue={defaults.departmentId ?? ""}>
+      <Field name="placement.orgUnitId" label={t("fields.orgUnit")}>
+        <Select id="placement.orgUnitId" name="placement.orgUnitId" defaultValue={defaults.orgUnitId ?? ""}>
           <option value="">—</option>
-          {options.departments.map((department) => (
-            <option key={department.id} value={department.id}>
-              {department.name}
+          {options.units.map((unit) => (
+            <option key={unit.id} value={unit.id}>
+              {unit.name}
             </option>
           ))}
         </Select>
       </Field>
-      {options.teams.length > 0 ? (
-        <Field name="placement.teamId" label={t("fields.team")}>
-          <Select id="placement.teamId" name="placement.teamId" defaultValue={defaults.teamId ?? ""}>
-            <option value="">—</option>
-            {options.departments.map((department) => {
-              const teams = options.teams.filter((team) => team.departmentId === department.id);
-              return teams.length === 0 ? null : (
-                <optgroup key={department.id} label={department.name}>
-                  {teams.map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {team.name}
-                    </option>
-                  ))}
-                </optgroup>
-              );
-            })}
-          </Select>
-        </Field>
-      ) : null}
       <Field name="placement.positionName" label={t("fields.position")}>
         <Input id="placement.positionName" name="placement.positionName" list="position-names" maxLength={120} defaultValue={defaults.positionName ?? ""} />
         <datalist id="position-names">

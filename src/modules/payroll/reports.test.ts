@@ -50,16 +50,16 @@ beforeAll(async () => {
   await migrateTestDb();
   const [media] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media", wageRegion: 1 }).returning();
   const [creative] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative", wageRegion: 1 }).returning();
-  const [video] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
-  const [social] = await db().insert(schema.department).values({ code: "SOC", name: "Social" }).returning();
+  const [video] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
+  const [social] = await db().insert(schema.orgUnit).values({ code: "SOC", name: "Social" }).returning();
   const [actor] = await db().insert(schema.person).values({ fullName: "Seed Actor", searchName: "seed actor", status: "offboarded" }).returning();
   ids.media = media.id;
   ids.creative = creative.id;
   ids.actor = actor.id;
 
-  const hire = async (name: string, entityId: string, departmentId: string) => {
+  const hire = async (name: string, entityId: string, orgUnitId: string) => {
     const { person } = await hirePerson(
-      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId, employeeCode: null, startDate: "2025-01-01", seniorityDate: null, placement: { workforceType: "employee", branchId: null, departmentId, teamId: null, positionName: null, jobLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
+      { fullName: name, workEmail: `${name.toLowerCase().replace(/\s+/g, ".")}@suzu.group`, profile: { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null }, entityId, employeeCode: null, startDate: "2025-01-01", seniorityDate: null, placement: { workforceType: "employee", branchId: null, orgUnitId, positionName: null, jobLevel: null, managerId: null, dottedManagerId: null, workLocation: null } },
       actor.id,
       { onboarding: false },
     );

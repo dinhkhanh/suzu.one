@@ -7,6 +7,7 @@ import { and, asc, desc, eq, gte, inArray, isNull, lte, or, sql, type SQL, type 
 import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { permissionReach, type Principal, reachesNothing, type TierReach } from "@/modules/platform/rbac/policy";
+import { unitsWithin } from "@/modules/platform/rbac/reach-sql";
 import { headcountSnapshot, type HeadcountSnapshot, movement, type Movement, type Span } from "./engine/headcount";
 
 export type HeadcountFilters = { asOf: IsoDate; from: IsoDate; to: IsoDate; entityId?: string };
@@ -29,15 +30,10 @@ function spansOn(asOf: IsoDate) {
   return { e, a };
 }
 
-function within(reach: TierReach, { entityId, departmentId, teamId }: { entityId: SQLWrapper; departmentId: SQLWrapper; teamId: SQLWrapper }): SQL | undefined {
+// `unitIds`: the reach's units widened to everything below them (`unitsWithin`).
+function within(reach: TierReach, { entityId, orgUnitId }: { entityId: SQLWrapper; orgUnitId: SQLWrapper }, unitIds: readonly string[]): SQL | undefined {
   if (reach.all) return undefined;
-  return (
-    or(
-      reach.entityIds.length ? inArray(entityId, reach.entityIds) : undefined,
-      reach.departmentIds.length ? inArray(departmentId, reach.departmentIds) : undefined,
-      reach.teamIds.length ? inArray(teamId, reach.teamIds) : undefined,
-    ) ?? sql`false`
-  );
+  return or(reach.entityIds.length ? inArray(entityId, reach.entityIds) : undefined, unitIds.length ? inArray(orgUnitId, [...unitIds]) : undefined) ?? sql`false`;
 }
 
 /** null = the viewer holds `report:read` nowhere. */
@@ -45,7 +41,7 @@ export async function getHeadcountReport(principal: Principal, filters: Headcoun
   const reach = permissionReach(principal, "report:read");
   if (reachesNothing(reach)) return null;
   const { e, a } = spansOn(filters.asOf);
-  const scope = and(within(reach, { entityId: e.entityId, departmentId: a.departmentId, teamId: a.teamId }), filters.entityId ? eq(e.entityId, filters.entityId) : undefined);
+  const scope = and(within(reach, { entityId: e.entityId, orgUnitId: a.orgUnitId }, reach.all ? [] : await unitsWithin(reach.unitIds)), filters.entityId ? eq(e.entityId, filters.entityId) : undefined);
 
   const rows = await db()
     .select({
@@ -54,7 +50,7 @@ export async function getHeadcountReport(principal: Principal, filters: Headcoun
       endDate: e.endDate,
       seniorityDate: e.seniorityDate,
       entity: schema.entity.shortName,
-      department: schema.department.name,
+      department: schema.orgUnit.name,
       workforceType: a.workforceType,
       gender: schema.personProfile.gender,
       dateOfBirth: schema.personProfile.dateOfBirth,
@@ -62,7 +58,7 @@ export async function getHeadcountReport(principal: Principal, filters: Headcoun
     .from(e)
     .innerJoin(schema.entity, eq(schema.entity.id, e.entityId))
     .leftJoinLateral(a, sql`true`)
-    .leftJoin(schema.department, eq(schema.department.id, a.departmentId))
+    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, a.departmentId))
     .leftJoin(schema.personProfile, eq(schema.personProfile.personId, e.personId))
     .where(scope);
   const spans: Span[] = rows;
@@ -70,13 +66,13 @@ export async function getHeadcountReport(principal: Principal, filters: Headcoun
   const until = addDays(filters.asOf, EXPIRY_WINDOW_DAYS);
   const c = schema.contract;
   const due = await db()
-    .select({ personId: e.personId, fullName: schema.person.fullName, employeeCode: e.employeeCode, entity: schema.entity.shortName, department: schema.department.name, type: c.type, endDate: c.endDate })
+    .select({ personId: e.personId, fullName: schema.person.fullName, employeeCode: e.employeeCode, entity: schema.entity.shortName, department: schema.orgUnit.name, type: c.type, endDate: c.endDate })
     .from(c)
     .innerJoin(e, eq(e.id, c.employmentId))
     .innerJoin(schema.person, eq(schema.person.id, e.personId))
     .innerJoin(schema.entity, eq(schema.entity.id, e.entityId))
     .leftJoinLateral(a, sql`true`)
-    .leftJoin(schema.department, eq(schema.department.id, a.departmentId))
+    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, a.departmentId))
     .where(and(scope, isNull(c.deletedAt), isNull(c.terminatedOn), isNull(e.endDate), gte(c.endDate, filters.asOf), or(eq(c.type, "probation"), lte(c.endDate, until)), inArray(c.type, ["probation", "fixed_term", "service", "internship"])))
     .orderBy(asc(c.endDate));
   const lists = due.flatMap((row) => (row.endDate ? [{ ...row, endDate: row.endDate }] : []));

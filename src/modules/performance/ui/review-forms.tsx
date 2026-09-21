@@ -108,7 +108,7 @@ export function CalibrateForm({ participantId, currentPercent }: { participantId
   const router = useRouter();
   const form = useActionForm(calibrateReviewAction, { onSuccess: () => router.refresh() });
   return (
-    <form onSubmit={form.onSubmit} className="flex flex-wrap items-end gap-2">
+    <form onSubmit={form.onSubmit} className="toolbar">
       <FieldErrors value={form.fieldErrors}>
         <input type="hidden" name="participantId" value={participantId} />
         <Field name="ratingPercent" label={t("calibrate.rating")}>
@@ -183,7 +183,7 @@ export function NominatePeerForm({ participantId, candidates }: { participantId:
   const router = useRouter();
   const form = useActionForm(nominatePeerAction, { onSuccess: () => router.refresh() });
   return (
-    <form onSubmit={form.onSubmit} className="flex flex-wrap items-end gap-2">
+    <form onSubmit={form.onSubmit} className="toolbar">
       <FieldErrors value={form.fieldErrors}>
         <input type="hidden" name="participantId" value={participantId} />
         <Field name="peerPersonId" label={t("peers.add")}>

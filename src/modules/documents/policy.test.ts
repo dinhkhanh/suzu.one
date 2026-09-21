@@ -10,7 +10,7 @@ const owner = principal("owner", [{ role: "owner", scope: { type: "group" } }]);
 const hrAdmin = principal("hr-admin", [{ role: "hr_admin", scope: { type: "group" } }]);
 const hrStaff = principal("hr-staff", [{ role: "hr_staff", scope: { type: "entity", id: SZM } }]);
 const cAndB = principal("c-and-b", [{ role: "payroll", scope: { type: "entity", id: SZM } }]);
-const manager = principal("boss", [{ role: "department_head", scope: { type: "department", id: "d" } }]);
+const manager = principal("boss", [{ role: "department_head", scope: { type: "unit", id: "d" } }]);
 const finance = principal("finance", [{ role: "finance", scope: { type: "group" } }]);
 const employee = principal("employee");
 

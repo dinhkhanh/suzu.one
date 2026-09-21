@@ -11,7 +11,7 @@ function principal(grants: Grant[], overrides: Partial<Principal> = {}): Princip
 
 const owner = principal([{ role: "owner", scope: { type: "group" } }]);
 const hrOfA = principal([{ role: "hr_staff", scope: { type: "entity", id: ENTITY_A } }]);
-const head = principal([{ role: "department_head", scope: { type: "department", id: "dept-design" } }]);
+const head = principal([{ role: "department_head", scope: { type: "unit", id: "dept-design" } }]);
 
 describe("core HR policy", () => {
   it("keeps collaborators out of the people list", () => {
@@ -29,12 +29,12 @@ describe("core HR policy", () => {
   it("lets entity HR hire into its own entity only; readers cannot hire", () => {
     expect(canHireInto(hrOfA, { entityId: ENTITY_A })).toBe(true);
     expect(canHireInto(hrOfA, { entityId: ENTITY_B })).toBe(false);
-    expect(canHireInto(head, { entityId: ENTITY_A, departmentId: "dept-design" })).toBe(false);
+    expect(canHireInto(head, { entityId: ENTITY_A, unitPath: ["dept-design"] })).toBe(false);
     expect(canHireInto(principal([]), { entityId: ENTITY_A })).toBe(false);
   });
 
   it("needs authority over both ends of a reassignment", () => {
-    expect(canReassign(hrOfA, { entityId: ENTITY_A }, { entityId: ENTITY_A, departmentId: "dept-video" })).toBe(true);
+    expect(canReassign(hrOfA, { entityId: ENTITY_A }, { entityId: ENTITY_A, unitPath: ["dept-video"] })).toBe(true);
     expect(canReassign(hrOfA, { entityId: ENTITY_B }, { entityId: ENTITY_A })).toBe(false);
   });
 
@@ -47,7 +47,7 @@ describe("core HR policy", () => {
   });
 
   // A person in entity A, department "dept-design", reporting to "their-manager".
-  const someone = { personId: "someone", entityId: ENTITY_A, departmentId: "dept-design", managerId: "their-manager" };
+  const someone = { personId: "someone", entityId: ENTITY_A, unitPath: ["dept-design"], managerId: "their-manager" };
   const hrAdmin = principal([{ role: "hr_admin", scope: { type: "group" } }]);
   const lineManager = principal([], { personId: "their-manager" });
 

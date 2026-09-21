@@ -13,16 +13,16 @@ const principal = (personId: string, grants: Grant[] = [], workforceType: Princi
 
 // owner → ceo → long (head of VID) → tam → huy; chi heads DES at SZC.
 const managerOf = new Map<string, string | null>([["owner", null], ["ceo", "owner"], ["long", "ceo"], ["tam", "long"], ["huy", "tam"], ["linh", "long"], ["chi", "ceo"], ["khoi", "chi"]]);
-const person = (personId: string, entityId: string, departmentId: string): PersonContext => ({ personId, entityId, departmentId, teamId: null, managerId: managerOf.get(personId) ?? null, chainAbove: chainAbove(managerOf, personId) });
+const person = (personId: string, entityId: string, unitId: string): PersonContext => ({ personId, entityId, unitPath: [unitId], managerId: managerOf.get(personId) ?? null, chainAbove: chainAbove(managerOf, personId) });
 const huy = person("huy", SZM, VID);
 const khoi = person("khoi", SZC, DES);
-const individual = (who: PersonContext): GoalParties => ({ level: "individual", entityId: who.entityId ?? null, departmentId: who.departmentId ?? null, teamId: null, ownerPersonId: who.personId, person: who });
-const unit = (level: GoalParties["level"], over: Partial<GoalParties> = {}): GoalParties => ({ level, entityId: null, departmentId: null, teamId: null, ownerPersonId: "ceo", person: null, ...over });
+const individual = (who: PersonContext): GoalParties => ({ level: "individual", entityId: who.entityId ?? null, departmentId: null, teamId: null, unitPath: who.unitPath ?? [], ownerPersonId: who.personId, person: who });
+const unit = (level: GoalParties["level"], over: Partial<GoalParties> = {}): GoalParties => ({ level, entityId: null, departmentId: null, teamId: null, unitPath: [], ownerPersonId: "ceo", person: null, ...over });
 
 const owner = principal("owner", [{ role: "owner", scope: { type: "group" } }]);
 const hrSzm = principal("bao", [{ role: "hr_staff", scope: { type: "entity", id: SZM } }]);
-const headVid = principal("long", [{ role: "department_head", scope: { type: "department", id: VID } }]);
-const headDes = principal("chi", [{ role: "department_head", scope: { type: "department", id: DES } }]);
+const headVid = principal("long", [{ role: "department_head", scope: { type: "unit", id: VID } }]);
+const headDes = principal("chi", [{ role: "department_head", scope: { type: "unit", id: DES } }]);
 const auditor = principal("aud", [{ role: "auditor", scope: { type: "group" } }]);
 
 describe("chainAbove", () => {
@@ -82,19 +82,19 @@ describe("changing", () => {
     const ceo = principal("ceo", [{ role: "c_level", scope: { type: "group" } }]);
     expect(canEditGoal(ceo, unit("group"))).toBe(true);
     expect(canEditGoal(headVid, unit("group"))).toBe(false);
-    expect(canEditGoal(headVid, unit("department", { departmentId: VID, entityId: SZM }))).toBe(true);
-    expect(canEditGoal(headVid, unit("team", { teamId: "team-1", departmentId: VID }))).toBe(true);
-    expect(canEditGoal(headVid, unit("department", { departmentId: DES }))).toBe(false);
+    expect(canEditGoal(headVid, unit("department", { unitPath: [VID], entityId: SZM }))).toBe(true);
+    expect(canEditGoal(headVid, unit("team", { unitPath: [VID, "team-1"], teamId: "team-1", departmentId: VID }))).toBe(true);
+    expect(canEditGoal(headVid, unit("department", { unitPath: [DES], departmentId: DES }))).toBe(false);
     expect(canEditGoal(headVid, unit("entity", { entityId: SZM }))).toBe(false);
     expect(canEditGoal(hrSzm, unit("entity", { entityId: SZM }))).toBe(true);
     expect(canEditGoal(hrSzm, unit("entity", { entityId: SZC }))).toBe(false);
     expect(canEditGoal(hrSzm, unit("group"))).toBe(false);
     expect(canEditGoal(principal("director", [{ role: "entity_director", scope: { type: "entity", id: SZC } }]), unit("entity", { entityId: SZC }))).toBe(true);
-    expect(canEditGoal(principal("huy"), unit("department", { departmentId: VID }))).toBe(false);
+    expect(canEditGoal(principal("huy"), unit("department", { unitPath: [VID], departmentId: VID }))).toBe(false);
   });
 
   it("lets the accountable owner check in without any right to edit", () => {
-    const goal = unit("department", { departmentId: DES, ownerPersonId: "khoi" });
+    const goal = unit("department", { unitPath: [DES], ownerPersonId: "khoi" });
     expect(canCheckIn(principal("khoi"), goal)).toBe(true);
     expect(canEditGoal(principal("khoi"), goal)).toBe(false);
     expect(canCheckIn(principal("huy"), goal)).toBe(false);
@@ -105,9 +105,9 @@ describe("changing", () => {
     expect(canCloseGoal(principal("huy"), individual(huy))).toBe(false);
     expect(canCloseGoal(principal("tam"), individual(huy))).toBe(true);
     expect(canCloseGoal(hrSzm, individual(huy))).toBe(true);
-    expect(canCloseGoal(headVid, unit("department", { departmentId: VID }))).toBe(true);
+    expect(canCloseGoal(headVid, unit("department", { unitPath: [VID], departmentId: VID }))).toBe(true);
     expect(canReopenGoal(principal("tam"), individual(huy))).toBe(false);
-    expect(canReopenGoal(headVid, unit("department", { departmentId: VID }))).toBe(false);
+    expect(canReopenGoal(headVid, unit("department", { unitPath: [VID], departmentId: VID }))).toBe(false);
     expect(canReopenGoal(hrSzm, individual(huy))).toBe(true);
     expect(canReopenGoal(owner, unit("group"))).toBe(true);
   });

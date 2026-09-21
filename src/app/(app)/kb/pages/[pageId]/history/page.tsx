@@ -39,7 +39,7 @@ export default async function KbPageHistory(props: PageProps<"/kb/pages/[pageId]
             {loaded.page.publishedTitle ?? loaded.page.title}
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("history.title")}</h1>
+        <h1>{t("history.title")}</h1>
       </header>
 
       <ul className="flex flex-col divide-y rounded-md border">

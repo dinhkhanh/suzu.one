@@ -187,7 +187,7 @@ async function holderColumns(executor: Executor, holderType: HolderType, holderI
     return { holderPersonId: holderId, holderTeamId: null, holderEntityId: null };
   }
   if (holderType === "team") {
-    const [row] = await executor.select({ id: schema.team.id }).from(schema.team).where(eq(schema.team.id, holderId)).limit(1);
+    const [row] = await executor.select({ id: schema.orgUnit.id }).from(schema.orgUnit).where(eq(schema.orgUnit.id, holderId)).limit(1);
     if (!row) throw new ActionError("asset_holder_unknown");
     return { holderPersonId: null, holderTeamId: holderId, holderEntityId: null };
   }
@@ -318,7 +318,7 @@ export async function listAssets(viewer: Principal, filter: AssetFilter = {}): P
       categoryKind: schema.assetCategory.kind,
       assignment: schema.assetAssignment,
       holderPersonName: holderPerson.fullName,
-      holderTeamName: schema.team.name,
+      holderTeamName: schema.orgUnit.name,
       holderEntityName: schema.entity.shortName,
     })
     .from(schema.asset)
@@ -326,7 +326,7 @@ export async function listAssets(viewer: Principal, filter: AssetFilter = {}): P
     .leftJoin(schema.assetCategory, eq(schema.assetCategory.id, schema.asset.categoryId))
     .leftJoin(schema.assetAssignment, and(eq(schema.assetAssignment.assetId, schema.asset.id), openOnly))
     .leftJoin(holderPerson, eq(holderPerson.id, schema.assetAssignment.holderPersonId))
-    .leftJoin(schema.team, eq(schema.team.id, schema.assetAssignment.holderTeamId))
+    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.assetAssignment.holderTeamId))
     .where(
       and(
         scoped,
@@ -423,10 +423,10 @@ export async function getAssetView(viewer: Principal, assetId: string): Promise<
       .where(eq(schema.assetEvent.assetId, assetId))
       .orderBy(desc(schema.assetEvent.id)),
     db()
-      .select({ assignment: schema.assetAssignment, holderPersonName: holderPerson.fullName, holderTeamName: schema.team.name, assignedByName: assignedBy.fullName, returnedToName: returnedTo.fullName })
+      .select({ assignment: schema.assetAssignment, holderPersonName: holderPerson.fullName, holderTeamName: schema.orgUnit.name, assignedByName: assignedBy.fullName, returnedToName: returnedTo.fullName })
       .from(schema.assetAssignment)
       .leftJoin(holderPerson, eq(holderPerson.id, schema.assetAssignment.holderPersonId))
-      .leftJoin(schema.team, eq(schema.team.id, schema.assetAssignment.holderTeamId))
+      .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.assetAssignment.holderTeamId))
       .leftJoin(assignedBy, eq(assignedBy.id, schema.assetAssignment.assignedByPersonId))
       .leftJoin(returnedTo, eq(returnedTo.id, schema.assetAssignment.returnedToPersonId))
       .where(eq(schema.assetAssignment.assetId, assetId))

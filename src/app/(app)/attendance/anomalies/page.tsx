@@ -41,13 +41,13 @@ export default async function AnomaliesPage({ searchParams }: PageProps<"/attend
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <h1>{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("description")}</p>
         </div>
         <MonthNav month={month} hrefFor={(value) => href({ month: value })} thisMonth={thisMonth} />
       </header>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav className="flex flex-wrap gap-3 text-sm">
+        <nav className="tab-row">
           <Link href={href({ entity: null })} className={entityId ? "underline-offset-4 hover:underline" : "font-medium"}>
             {t("allEntities")}
           </Link>

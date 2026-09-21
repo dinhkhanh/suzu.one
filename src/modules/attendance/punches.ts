@@ -6,6 +6,7 @@ import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { getLeaveOnDays } from "@/modules/leave/service";
+import { personInReachSql } from "@/modules/platform/rbac/reach-sql";
 import { matchesReach, permissionReach, type Principal, tierReach } from "@/modules/platform/rbac/policy";
 import type { DayPlan } from "./engine/calendar";
 import { evaluatePunch, type Position, type PunchFlag, type WorkLocationRule } from "./engine/geofence";
@@ -168,7 +169,7 @@ export type FlaggedPunch = {
   nearestLocationName: string | null;
 };
 
-const personTarget = (person: typeof schema.person.$inferSelect) => ({ personId: person.id, entityId: person.primaryEntityId, departmentId: person.departmentId, teamId: person.teamId, managerId: person.managerId });
+const personTarget = (person: typeof schema.person.$inferSelect) => ({ personId: person.id, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId });
 
 /** Flagged punches of the people the viewer reviews (reports; HR's scope) — never the viewer's own. Waiting ones first. */
 export async function listFlaggedPunches(viewer: { personId: string; principal: Principal }, options: { sinceDays?: number; now?: Date } = {}): Promise<FlaggedPunch[]> {
@@ -178,7 +179,7 @@ export async function listFlaggedPunches(viewer: { personId: string; principal: 
     .select({ punch: schema.punch, person: schema.person })
     .from(schema.punch)
     .innerJoin(schema.person, eq(schema.person.id, schema.punch.personId))
-    .where(and(ne(schema.punch.reviewStatus, "none"), gte(schema.punch.at, since), reach.all ? undefined : or(eq(schema.person.managerId, viewer.personId), reach.entityIds.length ? inArray(schema.person.primaryEntityId, reach.entityIds) : undefined, reach.departmentIds.length ? inArray(schema.person.departmentId, reach.departmentIds) : undefined, reach.teamIds.length ? inArray(schema.person.teamId, reach.teamIds) : undefined)))
+    .where(and(ne(schema.punch.reviewStatus, "none"), gte(schema.punch.at, since), or(eq(schema.person.managerId, viewer.personId), personInReachSql(reach))))
     .orderBy(sql`${schema.punch.reviewStatus} = 'pending' desc`, desc(schema.punch.at))
     .limit(300);
   const mine = rows.filter(({ person }) => person.id !== viewer.personId && (person.managerId === viewer.personId || matchesReach(reach, personTarget(person))));
@@ -267,7 +268,7 @@ export type Presence = { date: IsoDate; rows: PresenceRow[]; departments: { id: 
  */
 export async function getWhoIsIn(viewer: { personId: string; principal: Principal }, options: { departmentId?: string | null } = {}, now: Date = new Date()): Promise<Presence> {
   const today = todayInVietnam(now);
-  const everyone = await db().select({ person: schema.person, departmentName: schema.department.name }).from(schema.person).leftJoin(schema.department, eq(schema.department.id, schema.person.departmentId)).where(eq(schema.person.status, "active"));
+  const everyone = await db().select({ person: schema.person, departmentName: schema.orgUnit.name }).from(schema.person).leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.person.departmentId)).where(eq(schema.person.status, "active"));
   const me = everyone.find((row) => row.person.id === viewer.personId)?.person;
   const hrReach = permissionReach(viewer.principal, "attendance:manage");
   const personalReach = tierReach(viewer.principal, "personal");

@@ -9,15 +9,16 @@ import { chainAbove, type PersonContext } from "./policy";
 
 type Executor = Tx | ReturnType<typeof db>;
 
-export type DirectoryPerson = PersonContext & { fullName: string; workforceType: string; status: string };
+// The two derived placement columns ride along: goals still hang on a department or a team.
+export type DirectoryPerson = PersonContext & { fullName: string; workforceType: string; status: string; departmentId: string | null; teamId: string | null };
 export type Directory = ReadonlyMap<string, DirectoryPerson>;
 
 export async function loadDirectory(executor: Executor = db()): Promise<Directory> {
   const rows = await executor
-    .select({ id: schema.person.id, fullName: schema.person.fullName, managerId: schema.person.managerId, entityId: schema.person.primaryEntityId, departmentId: schema.person.departmentId, teamId: schema.person.teamId, workforceType: schema.person.workforceType, status: schema.person.status })
+    .select({ id: schema.person.id, fullName: schema.person.fullName, managerId: schema.person.managerId, entityId: schema.person.primaryEntityId, unitPath: schema.person.orgUnitPath, departmentId: schema.person.departmentId, teamId: schema.person.teamId, workforceType: schema.person.workforceType, status: schema.person.status })
     .from(schema.person);
   const managerOf = new Map(rows.map((row) => [row.id, row.managerId]));
-  return new Map(rows.map((row) => [row.id, { personId: row.id, fullName: row.fullName, managerId: row.managerId, entityId: row.entityId, departmentId: row.departmentId, teamId: row.teamId, workforceType: row.workforceType, status: row.status, chainAbove: chainAbove(managerOf, row.id) }]));
+  return new Map(rows.map((row) => [row.id, { personId: row.id, fullName: row.fullName, managerId: row.managerId, entityId: row.entityId, unitPath: row.unitPath, departmentId: row.departmentId, teamId: row.teamId, workforceType: row.workforceType, status: row.status, chainAbove: chainAbove(managerOf, row.id) }]));
 }
 
 /** Everyone below `managerId`, at any depth. */

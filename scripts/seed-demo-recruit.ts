@@ -29,7 +29,7 @@ import {
   applicationEvent,
   assignment,
   candidate,
-  department,
+  orgUnit,
   documentTemplate,
   employeeCodeScheme,
   employment,
@@ -76,7 +76,7 @@ export async function seedRecruit(db: Db, today: string): Promise<RecruitSeedRes
   if (existing) return result;
 
   const entities = new Map((await db.select().from(entity)).map((row) => [row.code, row]));
-  const departments = new Map((await db.select().from(department)).map((row) => [row.code, row]));
+  const departments = new Map((await db.select().from(orgUnit)).map((row) => [row.code, row]));
   const people = new Map((await db.select().from(person)).map((row) => [row.workEmail ?? row.fullName, row]));
   const pipelines = new Map((await db.select().from(recruitPipeline)).map((row) => [row.code, row]));
   if (!pipelines.has("STANDARD")) throw new Error("Run `pnpm db:seed` first (no recruitment pipelines).");

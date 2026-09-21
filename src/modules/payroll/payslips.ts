@@ -156,7 +156,7 @@ export async function getPayslipView(principal: Principal, payslipId: string): P
         .where(and(eq(schema.assignment.employmentId, facts.employmentId), eq(schema.assignment.kind, "primary"), isNull(schema.assignment.validTo)))
         .limit(1)
     : [];
-  const [placementDepartment] = facts?.departmentId ? await db().select({ name: schema.department.name }).from(schema.department).where(eq(schema.department.id, facts.departmentId)).limit(1) : [];
+  const [placementDepartment] = facts?.departmentId ? await db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, facts.departmentId)).limit(1) : [];
 
   return {
     payslip,

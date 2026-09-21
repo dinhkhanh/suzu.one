@@ -45,9 +45,9 @@ beforeAll(async () => {
   await migrateTestDb();
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
-  const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
-  const [des] = await db().insert(schema.department).values({ code: "DES", name: "Design" }).returning();
-  const [bod] = await db().insert(schema.department).values({ code: "BOD", name: "Board" }).returning();
+  const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
+  const [des] = await db().insert(schema.orgUnit).values({ code: "DES", name: "Design" }).returning();
+  const [bod] = await db().insert(schema.orgUnit).values({ code: "BOD", name: "Board" }).returning();
   const [editor] = await db().insert(schema.position).values({ name: "Dựng phim", searchName: "dung phim" }).returning();
   const [designer] = await db().insert(schema.position).values({ name: "Thiết kế", searchName: "thiet ke" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id, vid: vid.id, des: des.id, editor: editor.id, designer: designer.id });
@@ -66,12 +66,12 @@ beforeAll(async () => {
   ];
   let number = 0;
   for (const [key, entityId, departmentId, manager, role, scope, positionId] of people) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: entityId, departmentId, managerId: manager ? ids[manager] : null }).returning();
+    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: entityId, orgUnitId: departmentId, managerId: manager ? ids[manager] : null }).returning();
     ids[key] = row.id;
-    const grants: Grant[] = role ? [{ role, scope: scope === "group" ? { type: "group" } : scope === "entity" ? { type: "entity", id: entityId } : { type: "department", id: departmentId } }] : [];
+    const grants: Grant[] = role ? [{ role, scope: scope === "group" ? { type: "group" } : scope === "entity" ? { type: "entity", id: entityId } : { type: "unit", id: departmentId } }] : [];
     viewers[key] = { principal: { personId: row.id, workforceType: "employee", grants } satisfies Principal, personId: row.id };
     const [employment] = await db().insert(schema.employment).values({ personId: row.id, entityId, employeeCode: `${entityId === szm.id ? "SZM" : "SZC"}-${String(++number).padStart(4, "0")}`, startDate: "2025-01-01", seniorityDate: "2025-01-01" }).returning();
-    await db().insert(schema.assignment).values({ employmentId: employment.id, workforceType: "employee", departmentId, positionId, managerId: manager ? ids[manager] : null, validFrom: "2025-01-01" });
+    await db().insert(schema.assignment).values({ employmentId: employment.id, workforceType: "employee", orgUnitId: departmentId, departmentId, positionId, managerId: manager ? ids[manager] : null, validFrom: "2025-01-01" });
   }
 
   const library = [

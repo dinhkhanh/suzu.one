@@ -1,5 +1,6 @@
-// Group → legal entities → branches; departments (shared across entities by default) → teams.
-import { type AnyPgColumn, boolean, index, pgTable, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
+// Group → legal entities → branches; and one tree of org units (D20, FR-PLT-16): a unit contains
+// units, whatever it is called — department, big team, small team. Depth is not fixed.
+import { type AnyPgColumn, boolean, index, pgEnum, pgTable, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -36,31 +37,30 @@ export const branch = pgTable(
   (t) => [index("branch_entity_id_idx").on(t.entityId)],
 ).enableRLS();
 
-export const department = pgTable(
-  "department",
+// What a unit is called. Nothing but the derived placement columns (`person.department_id`,
+// `person.team_id`) reads it: depth, not kind, is what the tree means.
+export const orgUnitKind = pgEnum("org_unit_kind", ["department", "team"]);
+
+export const orgUnit = pgTable(
+  "org_unit",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    code: text("code").notNull().unique(),
+    // Departments carry the codes the Excel import matches on; a team usually has none.
+    code: text("code").unique(),
     name: text("name").notNull(),
-    parentId: uuid("parent_id").references((): AnyPgColumn => department.id),
+    kind: orgUnitKind("kind").notNull().default("department"),
+    parentId: uuid("parent_id").references((): AnyPgColumn => orgUnit.id),
     // null = shared across every entity in the group (the default).
     entityId: uuid("entity_id").references(() => entity.id),
+    /**
+     * Every ancestor of this unit and the unit itself, root first — maintained by the database
+     * (`org_unit_path_set`), never written by the application. It is what makes "name a unit and
+     * reach everything below it" (FR-PLT-16) one array overlap instead of a walk up the tree, in
+     * SQL and in the pure policy alike. A move rewrites the paths of the whole subtree.
+     */
+    path: uuid("path").array().notNull().default([]),
     isActive: boolean("is_active").notNull().default(true),
     ...timestamps,
   },
-  (t) => [index("department_entity_id_idx").on(t.entityId)],
-).enableRLS();
-
-export const team = pgTable(
-  "team",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    departmentId: uuid("department_id")
-      .notNull()
-      .references(() => department.id),
-    name: text("name").notNull(),
-    isActive: boolean("is_active").notNull().default(true),
-    ...timestamps,
-  },
-  (t) => [index("team_department_id_idx").on(t.departmentId)],
+  (t) => [index("org_unit_entity_id_idx").on(t.entityId), index("org_unit_parent_idx").on(t.parentId), index("org_unit_path_idx").using("gin", t.path)],
 ).enableRLS();

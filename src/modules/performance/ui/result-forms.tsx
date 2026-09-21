@@ -80,7 +80,7 @@ export function OverrideResultForm({ resultId, currentPercent, reason }: { resul
     <form onSubmit={form.onSubmit} className="flex flex-col gap-2">
       <FieldErrors value={form.fieldErrors}>
         <input type="hidden" name="resultId" value={resultId} />
-        <div className="flex flex-wrap items-end gap-2">
+        <div className="toolbar">
           <Field name="scorePercent" label={t("override.score")}>
             <Input name="scorePercent" id="scorePercent" defaultValue={currentPercent} inputMode="decimal" maxLength={8} className="w-24" />
           </Field>

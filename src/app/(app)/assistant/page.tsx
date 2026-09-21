@@ -23,9 +23,9 @@ export default async function AssistantPage(props: PageProps<"/assistant">) {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1>{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("intro")}</p>
-        <nav className="flex flex-wrap gap-3 text-sm">
+        <nav className="tab-row">
           <Link href="/assistant" className="text-muted-foreground hover:underline">
             {t("newChat")}
           </Link>

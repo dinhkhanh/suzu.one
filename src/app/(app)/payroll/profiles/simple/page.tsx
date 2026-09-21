@@ -29,7 +29,7 @@ export default async function SimpleProfileReportPage() {
         <Link href="/payroll/profiles" className="text-sm text-muted-foreground hover:underline">
           ← {t("profiles.proposalsTitle")}
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("exposure.title")}</h1>
+        <h1>{t("exposure.title")}</h1>
         <p className="max-w-3xl text-sm text-muted-foreground">{t("exposure.description")}</p>
       </header>
       <ul className="flex flex-wrap gap-2 text-sm">

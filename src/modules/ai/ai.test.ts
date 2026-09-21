@@ -37,7 +37,7 @@ import { retrievePassages } from "./retrieval";
 type Who = "owner" | "hr" | "head" | "huy" | "khoi" | "ngo";
 const ids = {} as Record<Who | "szm" | "szc" | "vid" | "des", string>;
 const viewers = {} as Record<Who, KbViewer>;
-const users = {} as Record<Who, { person: { id: string; primaryEntityId: string | null; departmentId: string | null; teamId: string | null }; principal: Principal }>;
+const users = {} as Record<Who, { person: { id: string; primaryEntityId: string | null; orgUnitId: string | null; orgUnitPath: string[] }; principal: Principal }>;
 
 // What every answer must never contain, whoever asks.
 const SALARY = "Lương tháng của Hồ Gia Huy là 28.500.000 đồng";
@@ -49,8 +49,8 @@ beforeAll(async () => {
   await migrateTestDb();
   const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
   const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
-  const [vid] = await db().insert(schema.department).values({ code: "VID", name: "Video" }).returning();
-  const [des] = await db().insert(schema.department).values({ code: "DES", name: "Design" }).returning();
+  const [vid] = await db().insert(schema.orgUnit).values({ code: "VID", name: "Video" }).returning();
+  const [des] = await db().insert(schema.orgUnit).values({ code: "DES", name: "Design" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id, vid: vid.id, des: des.id });
 
   const people: [Who, string, string, Grant["role"] | null, "group" | "entity" | "department" | null, "employee" | "collaborator"][] = [
@@ -62,12 +62,12 @@ beforeAll(async () => {
     ["ngo", szm.id, vid.id, null, null, "collaborator"],
   ];
   for (const [key, entityId, departmentId, role, scope, workforceType] of people) {
-    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: entityId, departmentId }).returning();
+    const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", workforceType, primaryEntityId: entityId, orgUnitId: departmentId }).returning();
     ids[key] = row.id;
-    const grants: Grant[] = role ? [{ role, scope: scope === "group" ? { type: "group" } : scope === "entity" ? { type: "entity", id: entityId } : { type: "department", id: departmentId } }] : [];
+    const grants: Grant[] = role ? [{ role, scope: scope === "group" ? { type: "group" } : scope === "entity" ? { type: "entity", id: entityId } : { type: "unit", id: departmentId } }] : [];
     const principal: Principal = { personId: row.id, workforceType, grants };
-    viewers[key] = { principal, personId: row.id, keys: viewerKeys(principal, { entityId, departmentId, teamId: null }) };
-    users[key] = { person: { id: row.id, primaryEntityId: entityId, departmentId, teamId: null }, principal };
+    viewers[key] = { principal, personId: row.id, keys: viewerKeys(principal, { entityId, unitId: departmentId, unitPath: departmentId ? [departmentId] : [] }) };
+    users[key] = { person: { id: row.id, primaryEntityId: entityId, orgUnitId: departmentId, orgUnitPath: departmentId ? [departmentId] : [] }, principal };
   }
 
   const space = async (key: string, over: { entityId?: string | null }, access: { subjectKey: string; level: "view" | "edit" }[]) => (await createSpace({ key, name: key, description: null, icon: null, entityId: over.entityId ?? null, kind: "open", sortOrder: 0 }, ids.owner, access)).id;

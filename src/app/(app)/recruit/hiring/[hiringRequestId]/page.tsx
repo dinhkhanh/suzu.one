@@ -30,7 +30,7 @@ export default async function HiringRequestPage({ params }: PageProps<"/recruit/
     <div className="flex max-w-3xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1>
             {hiringRequest.positionTitle} × {hiringRequest.headcount}
           </h1>
           <p className="text-sm text-muted-foreground">{[view.entityName, view.departmentName, view.requesterName].filter(Boolean).join(" · ")}</p>

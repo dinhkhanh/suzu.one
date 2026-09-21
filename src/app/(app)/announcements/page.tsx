@@ -16,7 +16,7 @@ export default async function AnnouncementsPage() {
     <div className="flex max-w-3xl flex-col gap-6">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{t("list.title")}</h1>
+          <h1>{t("list.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("list.help")}</p>
         </div>
         {canPostAnywhere(user.principal) ? (

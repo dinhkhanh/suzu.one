@@ -29,7 +29,8 @@ export type OpeningTarget = { entityId: string; departmentId?: string | null; te
 /** Whether the asker is on this opening's hiring team. Resolved by the service; the rules only read it. */
 export type Membership = boolean;
 
-const over = (target: OpeningTarget | undefined): Target | undefined => (target ? { entityId: target.entityId, departmentId: target.departmentId ?? null, teamId: target.teamId ?? null } : undefined);
+// The opening's own units; a grant on a unit above them covers them (its subtree is on the grant).
+const over = (target: OpeningTarget | undefined): Target | undefined => (target ? { entityId: target.entityId, unitPath: [target.departmentId, target.teamId].filter((id): id is string => !!id) } : undefined);
 
 /**
  * The highest tier of data a principal's *recruitment* grants admit over this opening. Not

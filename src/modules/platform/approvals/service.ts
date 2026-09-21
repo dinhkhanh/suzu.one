@@ -48,7 +48,7 @@ export const defineRequestType = (definition: RequestTypeDefinition): RequestTyp
 async function subjectTarget(executor: Executor, personId: string | null): Promise<SubjectTarget | null> {
   if (!personId) return null;
   const [row] = await executor.select().from(schema.person).where(eq(schema.person.id, personId)).limit(1);
-  return row ? { personId: row.id, entityId: row.primaryEntityId, departmentId: row.departmentId, teamId: row.teamId, managerId: row.managerId } : null;
+  return row ? { personId: row.id, entityId: row.primaryEntityId, unitPath: row.orgUnitPath, managerId: row.managerId } : null;
 }
 
 async function managerAt(executor: Executor, personId: string, level: number): Promise<string | null> {

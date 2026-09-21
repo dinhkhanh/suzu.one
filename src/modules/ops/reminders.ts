@@ -43,9 +43,9 @@ async function sendIn(tx: Executor, today: IsoDate): Promise<ReminderResult> {
   /** The owner's department head, else their line manager — whoever is one step up from the person who is late. */
   const managersOf = (ownerId: string) =>
     once(`manager:${ownerId}`, async () => {
-      const [owner] = await tx.select({ departmentId: schema.person.departmentId, entityId: schema.person.primaryEntityId, managerId: schema.person.managerId }).from(schema.person).where(eq(schema.person.id, ownerId)).limit(1);
+      const [owner] = await tx.select({ unitPath: schema.person.orgUnitPath, entityId: schema.person.primaryEntityId, managerId: schema.person.managerId }).from(schema.person).where(eq(schema.person.id, ownerId)).limit(1);
       if (!owner) return [];
-      const heads = owner.departmentId ? (await listPeopleWithRole("department_head", { departmentId: owner.departmentId, entityId: owner.entityId }, tx)).filter((id) => id !== ownerId) : [];
+      const heads = owner.unitPath.length ? (await listPeopleWithRole("department_head", { unitPath: owner.unitPath, entityId: owner.entityId }, tx)).filter((id) => id !== ownerId) : [];
       return heads.length > 0 ? heads : owner.managerId ? [owner.managerId] : [];
     });
   const executivesOf = (entityId: string) => once(`executive:${entityId}`, async () => [...new Set([...(await listPeopleWithRole("finance", { entityId }, tx)), ...(await listPeopleWithRole("c_level", { entityId }, tx)), ...owners])]);

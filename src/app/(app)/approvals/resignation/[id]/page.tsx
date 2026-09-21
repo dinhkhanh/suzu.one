@@ -27,7 +27,7 @@ export default async function ResignationPage(props: PageProps<"/approvals/resig
     <div className="flex max-w-3xl flex-col gap-8">
       <header className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{t("resign.detailTitle")}</h1>
+          <h1>{t("resign.detailTitle")}</h1>
           <RequestStatusBadge status={request.status} />
         </div>
         <p className="text-sm text-muted-foreground">

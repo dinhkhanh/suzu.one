@@ -36,7 +36,7 @@ export default async function KbSearchPage(props: PageProps<"/kb/search">) {
             {t("title")}
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("search.title")}</h1>
+        <h1>{t("search.title")}</h1>
         <KbSearchBox query={query} spaceId={spaceId} />
         {query ? (
           <nav aria-label={t("search.filter")} className="flex flex-wrap gap-2 text-sm">
@@ -70,7 +70,7 @@ export default async function KbSearchPage(props: PageProps<"/kb/search">) {
         ))}
       </ol>
       {result.total > PAGE_SIZE ? (
-        <nav className="flex items-center gap-4 text-sm">
+        <nav className="tab-row">
           {pageNo > 1 ? (
             <Link href={href({ page: pageNo - 1 })} className="hover:underline">
               ← {t("search.previous")}
