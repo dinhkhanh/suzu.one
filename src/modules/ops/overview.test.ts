@@ -131,7 +131,7 @@ describe("dashboard, archive and export scoping", () => {
     expect(rows[0]).toMatchObject({ completedByName: "accountant", files: [] });
     const all = await getHistory(principal(ids.finance, [{ role: "finance", scope: { type: "group" } }]), {}, "2026-09-25");
     expect(all.map((row) => `${row.entityCode} ${row.periodKey} ${row.colour}`)).toEqual(["SZC 2026-08 overdue", "SZM 2026-08 overdue", "SZC 2026-07 done_late", "SZM 2026-07 done_late"]);
-    const file = await buildHistoryExport(entityViewer, { year: 2026 }, "en");
+    const file = await buildHistoryExport(entityViewer, { year: 2026 }, "en", today);
     expect(file.rowCount).toBe(1);
     expect(file.csv).toContain("SZM,VAT,VAT return");
     expect(await db().select().from(schema.obligationNoticeSent).where(and(inArray(schema.obligationNoticeSent.key, ["escalate:executive"]))).then((sent) => sent.length)).toBe(2);

@@ -72,8 +72,8 @@ export async function getHistory(viewer: Viewer, filter: { templateId?: string; 
 type Locale = "vi" | "en";
 const display = (date: IsoDate | null) => (date ? date.split("-").reverse().join("/") : null);
 
-export async function buildHistoryExport(viewer: Viewer, filter: { templateId?: string; entityId?: string | null; year?: number | null }, locale: Locale): Promise<CsvFile> {
-  const rows = await getHistory(viewer, filter);
+export async function buildHistoryExport(viewer: Viewer, filter: { templateId?: string; entityId?: string | null; year?: number | null }, locale: Locale, today: IsoDate = todayInVietnam()): Promise<CsvFile> {
+  const rows = await getHistory(viewer, filter, today);
   const t = createTranslator({ locale, messages: locale === "vi" ? vi : en });
   const columns: ExportColumn<HistoryRow>[] = [
     { header: t("ops.history.columns.entity"), value: (row) => row.entityCode },
@@ -90,5 +90,5 @@ export async function buildHistoryExport(viewer: Viewer, filter: { templateId?: 
     { header: t("ops.history.columns.amount"), value: (row) => row.amountPaid },
     { header: t("ops.history.columns.files"), value: (row) => row.files.map((file) => file.fileName).join("; ") },
   ];
-  return { fileName: `compliance-history-${todayInVietnam()}.csv`, csv: toCsv(columns, rows), rowCount: rows.length, truncated: rows.length >= EXPORT_ROW_LIMIT };
+  return { fileName: `compliance-history-${today}.csv`, csv: toCsv(columns, rows), rowCount: rows.length, truncated: rows.length >= EXPORT_ROW_LIMIT };
 }
