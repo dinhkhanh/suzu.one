@@ -5,6 +5,7 @@
 import "server-only";
 import { asc, eq } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 import { ROLES } from "../platform/rbac/roles";
 import { type DueRule, ruleProblems } from "./engine/due-rule";
@@ -37,8 +38,16 @@ export type TemplateInput = {
   isActive: boolean;
 };
 
-export async function listTemplates(executor: Executor = db()): Promise<ObligationTemplateRow[]> {
-  return executor.select().from(schema.obligationTemplate).orderBy(asc(schema.obligationTemplate.category), asc(schema.obligationTemplate.sortOrder), asc(schema.obligationTemplate.name));
+// The library is company reference data (no personal data) that changes a few times a year: the
+// whole table sits in the shared cache. Both writers below drop it once their change is committed;
+// the TTL covers the seed scripts, which write behind the app's back.
+const TEMPLATES_CACHE = "ops:templates";
+const TEMPLATES_TTL = 60 * 60;
+
+/** Every template. Inside a transaction pass it, and the rows come from that transaction, not the cache. */
+export async function listTemplates(executor?: Executor): Promise<ObligationTemplateRow[]> {
+  const load = (from: Executor) => from.select().from(schema.obligationTemplate).orderBy(asc(schema.obligationTemplate.category), asc(schema.obligationTemplate.sortOrder), asc(schema.obligationTemplate.name));
+  return executor ? load(executor) : cached(TEMPLATES_CACHE, TEMPLATES_TTL, () => load(db()));
 }
 
 export async function findTemplate(templateId: string, executor: Executor = db()): Promise<ObligationTemplateRow | undefined> {
@@ -73,7 +82,7 @@ export async function saveTemplate(templateId: string | null, input: TemplateInp
   const problem = templateProblem(input);
   if (problem) throw new ActionError(problem);
   const values = { ...input, ownerPersonId: input.ownerRule === "person" ? input.ownerPersonId : null, reviewerPersonId: input.reviewerRule === "person" ? input.reviewerPersonId : null, entityIds: input.entityIds?.length ? input.entityIds : null, reminderLeadDays: [...new Set(input.reminderLeadDays)].sort((a, b) => b - a) };
-  return db().transaction(async (tx) => {
+  const saved = await db().transaction(async (tx) => {
     const [clash] = await tx.select({ id: schema.obligationTemplate.id }).from(schema.obligationTemplate).where(eq(schema.obligationTemplate.code, input.code)).limit(1);
     if (clash && clash.id !== templateId) throw new ActionError("template_code_taken");
     if (!templateId) {
@@ -87,6 +96,8 @@ export async function saveTemplate(templateId: string | null, input: TemplateInp
     const [after] = await tx.update(schema.obligationTemplate).set({ ...values, ...review, updatedAt: new Date() }).where(eq(schema.obligationTemplate.id, templateId)).returning();
     return { before, after };
   });
+  await invalidate(TEMPLATES_CACHE);
+  return saved;
 }
 
 export async function setReviewStatus(templateId: string, reviewed: boolean, actorPersonId: string): Promise<{ before: ObligationTemplateRow; after: ObligationTemplateRow }> {
@@ -97,5 +108,6 @@ export async function setReviewStatus(templateId: string, reviewed: boolean, act
     .set(reviewed ? { reviewStatus: "reviewed", reviewedByPersonId: actorPersonId, reviewedAt: new Date(), updatedAt: new Date() } : { reviewStatus: "unreviewed", reviewedByPersonId: null, reviewedAt: null, updatedAt: new Date() })
     .where(eq(schema.obligationTemplate.id, templateId))
     .returning();
+  await invalidate(TEMPLATES_CACHE);
   return { before, after };
 }

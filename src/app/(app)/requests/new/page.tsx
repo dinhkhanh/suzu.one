@@ -11,9 +11,8 @@ export const metadata: Metadata = { title: "New request" };
 // The picker. Only types that are switched on and belong to the person's entity (or the group).
 export default async function NewRequestPage() {
   const user = await requireUser();
-  const t = await getTranslations("requests");
-  const locale = await getLocale();
-  const target = await getPersonTarget(user.person.id);
+  const [t, locale, target] = await Promise.all([getTranslations("requests"), getLocale(), getPersonTarget(user.person.id)]);
+  // The catalogue comes from the shared cache: no second round trip to the database.
   const types = await listAvailableTypes(target?.entityId ?? null);
   const byCategory = Map.groupBy(types, (type) => type.category);
 

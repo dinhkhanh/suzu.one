@@ -34,15 +34,15 @@ export default async function InterviewPage({ params }: PageProps<"/recruit/inte
   const view = await getInterviewView(viewer, interviewId);
   if (!view) notFound();
 
-  const t = await getTranslations("recruit.interview");
-  const tRecruit = await getTranslations("recruit");
-  const format = await getFormatter();
-  const cards = await scorecardsFor(viewer, interviewId);
   const { interview } = view;
-
-  const [options, clashes] = view.canSchedule
-    ? await Promise.all([interviewerOptions(view.openingId), clashesFor(view.interviewers.map((row) => row.personId), { from: interview.startAt, to: interview.endAt }, interview.id)])
-    : [[], []];
+  const [t, tRecruit, format, cards, options, clashes] = await Promise.all([
+    getTranslations("recruit.interview"),
+    getTranslations("recruit"),
+    getFormatter(),
+    scorecardsFor(viewer, interviewId),
+    view.canSchedule ? interviewerOptions(view.openingId) : [],
+    view.canSchedule ? clashesFor(view.interviewers.map((row) => row.personId), { from: interview.startAt, to: interview.endAt }, interview.id) : [],
+  ]);
   const parts = officeParts(interview.startAt);
 
   return (

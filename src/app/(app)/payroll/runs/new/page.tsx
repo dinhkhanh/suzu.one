@@ -6,7 +6,7 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { listEntityOptions } from "@/modules/payroll/options";
 import { compensationReach } from "@/modules/payroll/policy";
-import { listRunnableMonths } from "@/modules/payroll/run-views";
+import { listRunnableMonthsOf } from "@/modules/payroll/run-views";
 import { NewRunForm } from "@/modules/payroll/ui/run-forms";
 
 export const metadata: Metadata = { title: "New payroll run" };
@@ -19,7 +19,7 @@ export default async function NewPayrollRunPage() {
   requireStepUp(user, "/payroll/runs/new");
 
   const [t, entities] = await Promise.all([getTranslations("payroll"), listEntityOptions(reach)]);
-  const months = (await Promise.all(entities.map(async (entity) => (await listRunnableMonths(entity.id)).map((month) => ({ entityId: entity.id, ...month }))))).flat();
+  const months = await listRunnableMonthsOf(entities.map((entity) => entity.id));
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">

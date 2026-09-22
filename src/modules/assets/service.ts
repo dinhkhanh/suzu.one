@@ -9,6 +9,7 @@ import { randomBytes } from "node:crypto";
 import { and, asc, count, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate } from "@/lib/cache";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { cancelOpenTasksOfContext, createTasks } from "@/modules/platform/tasks-engine/service";
@@ -57,19 +58,29 @@ export async function nextAssetCode(executor: Executor, entityCode: string, cate
 
 export type CategoryInput = { code: string; name: string; kind: AssetKind; requiresSerial: boolean; defaultWarrantyMonths: number | null; bookable: boolean; sortOrder: number; isActive: boolean };
 
-export async function listCategories(executor: Executor = db()): Promise<AssetCategoryRow[]> {
-  return executor.select().from(schema.assetCategory).orderBy(asc(schema.assetCategory.sortOrder), asc(schema.assetCategory.name));
+// Categories are reference data read by every register screen and changed a few times a year: the
+// whole table sits in the shared cache. `saveCategory` drops it after each write; the TTL covers the
+// seed script, which writes behind the app's back.
+const CATEGORIES_CACHE = "assets:categories";
+const CATEGORIES_TTL = 60 * 60;
+
+/** Every category. Inside a transaction pass it, and the rows come from that transaction, not the cache. */
+export async function listCategories(executor?: Executor): Promise<AssetCategoryRow[]> {
+  const load = (from: Executor) => from.select().from(schema.assetCategory).orderBy(asc(schema.assetCategory.sortOrder), asc(schema.assetCategory.name));
+  return executor ? load(executor) : cached(CATEGORIES_CACHE, CATEGORIES_TTL, () => load(db()));
 }
 
 export async function saveCategory(categoryId: string | null, input: CategoryInput): Promise<{ before: AssetCategoryRow | null; after: AssetCategoryRow }> {
   const values = { ...input, code: input.code.toUpperCase(), updatedAt: now() };
   if (!categoryId) {
     const [after] = await db().insert(schema.assetCategory).values(values).returning();
+    await invalidate(CATEGORIES_CACHE);
     return { before: null, after };
   }
   const [before] = await db().select().from(schema.assetCategory).where(eq(schema.assetCategory.id, categoryId)).limit(1);
   if (!before) throw new ActionError("asset_category_not_found");
   const [after] = await db().update(schema.assetCategory).set(values).where(eq(schema.assetCategory.id, categoryId)).returning();
+  await invalidate(CATEGORIES_CACHE);
   return { before, after };
 }
 
@@ -305,7 +316,9 @@ export type AssetFilter = { entityId?: string; categoryId?: string; status?: Ass
 const openOnly = and(isNull(schema.assetAssignment.returnedAt));
 
 /** The register, as far as this reader may see it. Entity scope is a WHERE clause, not a filter in code. */
-export async function listAssets(viewer: Principal, filter: AssetFilter = {}): Promise<AssetListRow[]> {
+export const listAssets = (viewer: Principal, filter: AssetFilter = {}): Promise<AssetListRow[]> => queryAssets(viewer, filter, 500);
+
+async function queryAssets(viewer: Principal, filter: AssetFilter & { id?: string }, limit: number): Promise<AssetListRow[]> {
   const reach = assetReach(viewer);
   if (!reach.all && reach.entityIds.length === 0) return [];
   const scoped = reach.all ? undefined : inArray(schema.asset.entityId, reach.entityIds);
@@ -330,6 +343,7 @@ export async function listAssets(viewer: Principal, filter: AssetFilter = {}): P
     .where(
       and(
         scoped,
+        filter.id ? eq(schema.asset.id, filter.id) : undefined,
         filter.entityId ? eq(schema.asset.entityId, filter.entityId) : undefined,
         filter.categoryId ? eq(schema.asset.categoryId, filter.categoryId) : undefined,
         filter.kind ? eq(schema.assetCategory.kind, filter.kind) : undefined,
@@ -339,7 +353,7 @@ export async function listAssets(viewer: Principal, filter: AssetFilter = {}): P
       ),
     )
     .orderBy(asc(schema.asset.code))
-    .limit(500);
+    .limit(limit);
 
   return rows.map(({ asset, entityName, categoryName, categoryKind, assignment, holderPersonName, holderTeamName }) => {
     const money = canReadAssetMoney(viewer, asset.entityId);
@@ -399,23 +413,30 @@ export async function listLabelRows(viewer: Principal, filter: { entityId?: stri
 
 export type AssetHistoryEntry = { id: number; type: string; at: Date; actorName: string | null; note: string | null; detail: Record<string, unknown> | null };
 export type AssetSpell = AssetAssignmentRow & { holderName: string | null; assignedByName: string | null; returnedToName: string | null };
-export type AssetView = { asset: AssetListRow; history: AssetHistoryEntry[]; spells: AssetSpell[]; canSeeMoney: boolean };
+export type AssetView = { asset: AssetListRow; history: AssetHistoryEntry[]; spells: AssetSpell[]; canSeeMoney: boolean; /** For the asset's own QR label. */ qrToken: string; /** Shared production gear: the page shows its bookings. */ bookable: boolean };
 
 /** One asset with everything that ever happened to it. null = not found, or none of the viewer's business. */
 export async function getAssetView(viewer: Principal, assetId: string): Promise<AssetView | null> {
-  const asset = await findAsset(assetId);
-  if (!asset) return null;
-  const open = await openAssignment(db(), assetId);
+  // The asset, its category's bookable flag and its open assignment, in one round trip.
+  const [found] = await db()
+    .select({ asset: schema.asset, bookable: schema.assetCategory.bookable, open: schema.assetAssignment })
+    .from(schema.asset)
+    .leftJoin(schema.assetCategory, eq(schema.assetCategory.id, schema.asset.categoryId))
+    .leftJoin(schema.assetAssignment, and(eq(schema.assetAssignment.assetId, schema.asset.id), openOnly))
+    .where(eq(schema.asset.id, assetId))
+    .limit(1);
+  if (!found) return null;
+  const { asset, open } = found;
+  const bookable = found.bookable ?? false;
   // Shared production gear is common property: whether the category is bookable is part of who
   // may look at the thing at all (`canViewAsset`).
-  const [category] = await db().select({ bookable: schema.assetCategory.bookable }).from(schema.assetCategory).where(eq(schema.assetCategory.id, asset.categoryId)).limit(1);
-  if (!canViewAsset(viewer, { entityId: asset.entityId, bookable: category?.bookable ?? false }, open?.holderPersonId ?? null)) return null;
+  if (!canViewAsset(viewer, { entityId: asset.entityId, bookable }, open?.holderPersonId ?? null)) return null;
 
   const actor = alias(schema.person, "actor");
   const assignedBy = alias(schema.person, "assigned_by");
   const returnedTo = alias(schema.person, "returned_to");
   const [rows, history, spells] = await Promise.all([
-    listAssets(viewer, {}).then((all) => all.find((row) => row.id === assetId)),
+    queryAssets(viewer, { id: assetId }, 1).then(([row]) => row),
     db()
       .select({ id: schema.assetEvent.id, type: schema.assetEvent.type, at: schema.assetEvent.at, actorName: actor.fullName, note: schema.assetEvent.note, detail: schema.assetEvent.detail })
       .from(schema.assetEvent)
@@ -466,6 +487,8 @@ export async function getAssetView(viewer: Principal, assetId: string): Promise<
     asset: row,
     history,
     canSeeMoney: money,
+    qrToken: asset.qrToken,
+    bookable,
     spells: spells.map(({ assignment, holderPersonName, holderTeamName, assignedByName, returnedToName }) => ({
       ...assignment,
       holderName: assignment.holderType === "person" ? holderPersonName : assignment.holderType === "team" ? holderTeamName : null,
@@ -520,9 +543,16 @@ export async function findAssignment(assignmentId: string, executor: Executor = 
 }
 
 export async function summaryByStatus(viewer: Principal): Promise<Record<AssetStatus, number>> {
-  const rows = await listAssets(viewer, {});
   const tally = { in_stock: 0, assigned: 0, in_repair: 0, lost: 0, disposed: 0 } satisfies Record<AssetStatus, number>;
-  for (const row of rows) tally[row.status] += 1;
+  const reach = assetReach(viewer);
+  if (!reach.all && reach.entityIds.length === 0) return tally;
+  // Counted over the whole register in reach, not the first page of the list.
+  const rows = await db()
+    .select({ status: schema.asset.status, value: count() })
+    .from(schema.asset)
+    .where(reach.all ? undefined : inArray(schema.asset.entityId, reach.entityIds))
+    .groupBy(schema.asset.status);
+  for (const row of rows) tally[row.status] = row.value;
   return tally;
 }
 

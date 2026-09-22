@@ -20,13 +20,10 @@ export const metadata: Metadata = { title: "New request" };
 export default async function FileRequestPage(props: PageProps<"/requests/new/[code]">) {
   const user = await requireUser();
   const { code } = await props.params;
-  const type = await findRequestTypeByCode(code);
+  const [type, target, t, locale] = await Promise.all([findRequestTypeByCode(code), getPersonTarget(user.person.id), getTranslations("requests"), getLocale()]);
   if (!type || !type.active) notFound();
-  const target = await getPersonTarget(user.person.id);
   if (type.entityId && type.entityId !== target?.entityId) notFound();
 
-  const t = await getTranslations("requests");
-  const locale = await getLocale();
   const needsPeople = type.form.fields.some((field) => field.type === "person");
   const needsEntities = type.form.fields.some((field) => field.type === "entity");
   const [people, entities] = await Promise.all([needsPeople ? listPersonNames() : Promise.resolve([]), needsEntities ? listEntities() : Promise.resolve([])]);

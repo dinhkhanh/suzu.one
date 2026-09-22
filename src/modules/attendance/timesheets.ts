@@ -3,7 +3,7 @@
 // locked (week 5's monthly lock sets `locked_at`), after which it is never touched again.
 import "server-only";
 import { createHash } from "node:crypto";
-import { and, arrayContains, asc, between, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, arrayContains, asc, between, eq, getTableColumns, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { listEmploymentFacts } from "@/modules/core-hr/service";
@@ -14,6 +14,7 @@ import { loadPolicies, policyOn } from "./attendance-policies";
 import { eachDate, minutesOf } from "./engine/calendar";
 import { assignPunchesToDays, instantOf } from "./engine/merge";
 import { computeTimesheetDay, ENGINE_VERSION, type MonthSummary, type NightWindow, NO_REQUESTS, summariseDays, type TimesheetDayResult } from "./engine/timesheet";
+import { anyReachSql, latestEmployeeCode } from "./people-sql";
 import { canSeeTimesheetOf } from "./policy";
 import { listPunches } from "./punches";
 import { approvedRequestsFor } from "./request-inputs";
@@ -106,12 +107,20 @@ export async function recomputeDays(personIds: readonly string[], from: IsoDate,
   const dates = eachDate(from, until);
   const values: (typeof schema.timesheetDay.$inferInsert)[] = [];
   const stale: string[] = [];
+  const punchesOf = daysByPerson(punches);
+  const leaveOf = new Map<string, typeof leave>();
+  for (const item of leave) {
+    const key = `${item.personId}:${item.date}`;
+    const own = leaveOf.get(key);
+    if (own) own.push(item);
+    else leaveOf.set(key, [item]);
+  }
 
   for (const fact of facts) {
     const personPlans = plans.get(fact.personId);
     if (!personPlans) continue;
     const planOf = new Map(personPlans.days.map((day) => [day.date, day]));
-    const own = punches.filter((punch) => punch.personId === fact.personId);
+    const own = punchesOf.get(fact.personId) ?? [];
     const boundary = policyOn(policies, fact.entityId, from).dayBoundary;
     const assigned = assignPunchesToDays(personPlans.days.map((day) => ({ date: day.date, segments: day.segments })), own.map((punch) => ({ at: punch.at.getTime(), direction: punch.direction, source: punch.source })), boundary);
 
@@ -136,7 +145,7 @@ export async function recomputeDays(personIds: readonly string[], from: IsoDate,
       const input = {
         plan,
         punches: assigned.get(date) ?? [],
-        leave: leave.filter((item) => item.personId === fact.personId && item.date === date).map((item) => ({ portion: item.portion, amountCenti: item.amountCenti, minutes: item.minutes, isPaid: item.isPaid, typeCode: item.typeCode })),
+        leave: (leaveOf.get(key) ?? []).map((item) => ({ portion: item.portion, amountCenti: item.amountCenti, minutes: item.minutes, isPaid: item.isPaid, typeCode: item.typeCode })),
         requests: requests.get(key) ?? NO_REQUESTS,
         policy,
         night: date === until ? nightTo : nightFrom,
@@ -174,7 +183,33 @@ export async function getTimesheetDays(personIds: readonly string[], from: IsoDa
   return executor.select().from(schema.timesheetDay).where(and(inArray(schema.timesheetDay.personId, [...new Set(personIds)]), between(schema.timesheetDay.date, from, to))).orderBy(asc(schema.timesheetDay.date), asc(schema.timesheetDay.personId));
 }
 
-const summaryDay = (row: TimesheetDayRow) => ({
+/** A stored day without its explanation (`trace`): what grids and totals read. */
+export type TimesheetDayCell = Omit<TimesheetDayRow, "trace">;
+/** Every column of `timesheet_day` but the trace, for `select()`. */
+export const cellColumns = (() => {
+  const { trace, ...columns } = getTableColumns(schema.timesheetDay);
+  void trace;
+  return columns;
+})();
+
+/** `getTimesheetDays` without the trace — for month grids and summaries that never show it. */
+export async function getTimesheetDayCells(personIds: readonly string[], from: IsoDate, to: IsoDate, executor: Executor = db()): Promise<TimesheetDayCell[]> {
+  if (personIds.length === 0 || to < from) return [];
+  return executor.select(cellColumns).from(schema.timesheetDay).where(and(inArray(schema.timesheetDay.personId, [...new Set(personIds)]), between(schema.timesheetDay.date, from, to))).orderBy(asc(schema.timesheetDay.date), asc(schema.timesheetDay.personId));
+}
+
+/** Rows grouped by person, each group in the rows' order. */
+export function daysByPerson<T extends { personId: string }>(rows: readonly T[]): Map<string, T[]> {
+  const grouped = new Map<string, T[]>();
+  for (const row of rows) {
+    const own = grouped.get(row.personId);
+    if (own) own.push(row);
+    else grouped.set(row.personId, [row]);
+  }
+  return grouped;
+}
+
+const summaryDay = (row: TimesheetDayCell) => ({
   ...row,
   otWeekday: { day: row.otWeekdayMinutes, night: row.otWeekdayNightMinutes },
   otRestDay: { day: row.otRestDayMinutes, night: row.otRestDayNightMinutes },
@@ -182,7 +217,7 @@ const summaryDay = (row: TimesheetDayRow) => ({
   anomalies: row.anomalies as TimesheetDayResult["anomalies"],
 });
 
-export const summariseRows = (rows: readonly TimesheetDayRow[]): MonthSummary => summariseDays(rows.map(summaryDay));
+export const summariseRows = (rows: readonly TimesheetDayCell[]): MonthSummary => summariseDays(rows.map(summaryDay));
 
 /** One person's month ("2026-08") added up from the stored days. */
 export async function summariseMonth(personId: string, month: string, executor: Executor = db()): Promise<MonthSummary> {
@@ -225,9 +260,10 @@ export async function getPersonMonth(personId: string, month: string): Promise<P
   return { personId, month, days, summary: summariseRows(days) };
 }
 
-export type TeamMonthRow = { personId: string; fullName: string; employeeCode: string | null; departmentId: string | null; departmentName: string | null; days: TimesheetDayRow[]; summary: MonthSummary };
+export type TeamMonthRow = { personId: string; fullName: string; employeeCode: string | null; departmentId: string | null; departmentName: string | null; days: TimesheetDayCell[]; summary: MonthSummary };
 
-const targetOf = (person: typeof schema.person.$inferSelect): Target & { personId: string } => ({ personId: person.id, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId });
+type PersonPlace = { id: string; primaryEntityId: string | null; orgUnitPath: string[]; managerId: string | null };
+const targetOf = (person: PersonPlace): Target & { personId: string } => ({ personId: person.id, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId });
 
 /**
  * The month grid of the people whose timesheets the viewer may read: their reports, whoever they
@@ -238,19 +274,26 @@ export async function getTeamMonth(viewer: { personId: string; principal: Princi
   const personalReach = tierReach(viewer.principal, "personal");
   const from = monthStart(month);
   const to = monthEnd(month);
-  const everyone = await db().select({ person: schema.person, departmentName: schema.orgUnit.name }).from(schema.person).leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.person.departmentId));
-  const visible = everyone.filter(({ person }) => person.id !== viewer.personId && (person.managerId === viewer.personId || matchesReach(hrReach, targetOf(person)) || matchesReach(personalReach, targetOf(person))) && canSeeTimesheetOf(viewer.principal, targetOf(person)));
-  const days = await getTimesheetDays(visible.map((row) => row.person.id), from, to);
-  const withDays = new Set(days.map((day) => day.personId));
+  const candidates = await db()
+    .select({
+      person: { id: schema.person.id, fullName: schema.person.fullName, status: schema.person.status, primaryEntityId: schema.person.primaryEntityId, departmentId: schema.person.departmentId, orgUnitPath: schema.person.orgUnitPath, managerId: schema.person.managerId },
+      departmentName: schema.orgUnit.name,
+      employeeCode: latestEmployeeCode(),
+    })
+    .from(schema.person)
+    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.person.departmentId))
+    .where(and(ne(schema.person.id, viewer.personId), anyReachSql([hrReach, personalReach], eq(schema.person.managerId, viewer.personId))));
+  const visible = candidates.filter(({ person }) => person.id !== viewer.personId && (person.managerId === viewer.personId || matchesReach(hrReach, targetOf(person)) || matchesReach(personalReach, targetOf(person))) && canSeeTimesheetOf(viewer.principal, targetOf(person)));
+  const days = await getTimesheetDayCells(visible.map((row) => row.person.id), from, to);
+  const daysOf = daysByPerson(days);
   // People who left before the month or have not started have no rows and no line.
-  const shownAll = visible.filter((row) => withDays.has(row.person.id) || row.person.status === "active");
+  const shownAll = visible.filter((row) => daysOf.has(row.person.id) || row.person.status === "active");
   const departments = [...new Map(shownAll.flatMap((row) => (row.person.departmentId && row.departmentName ? [[row.person.departmentId, { id: row.person.departmentId, name: row.departmentName }] as const] : []))).values()].sort((a, b) => a.name.localeCompare(b.name));
   const shown = shownAll.filter((row) => (!options.departmentId || row.person.departmentId === options.departmentId) && (!options.entityId || row.person.primaryEntityId === options.entityId));
-  const codes = new Map((await listEmploymentFacts({ personIds: shown.map((row) => row.person.id) })).map((fact) => [fact.personId, fact.employeeCode]));
   const rows = shown
-    .map(({ person, departmentName }) => {
-      const own = days.filter((day) => day.personId === person.id);
-      return { personId: person.id, fullName: person.fullName, employeeCode: codes.get(person.id) ?? null, departmentId: person.departmentId, departmentName, days: own, summary: summariseRows(own) };
+    .map(({ person, departmentName, employeeCode }) => {
+      const own = daysOf.get(person.id) ?? [];
+      return { personId: person.id, fullName: person.fullName, employeeCode, departmentId: person.departmentId, departmentName, days: own, summary: summariseRows(own) };
     })
     .sort((a, b) => (a.departmentName ?? "").localeCompare(b.departmentName ?? "") || a.fullName.localeCompare(b.fullName));
   return { rows, departments };
@@ -258,7 +301,7 @@ export async function getTeamMonth(viewer: { personId: string; principal: Princi
 
 /** May the viewer read this person's timesheet? (self, personal-tier readers, HR.) Loads the person. */
 export async function timesheetTargetFor(viewer: Principal, personId: string): Promise<{ target: Target & { personId: string }; fullName: string } | null> {
-  const [person] = await db().select().from(schema.person).where(eq(schema.person.id, personId)).limit(1);
+  const [person] = await db().select({ id: schema.person.id, fullName: schema.person.fullName, primaryEntityId: schema.person.primaryEntityId, orgUnitPath: schema.person.orgUnitPath, managerId: schema.person.managerId }).from(schema.person).where(eq(schema.person.id, personId)).limit(1);
   if (!person) return null;
   const target = targetOf(person);
   return canSeeTimesheetOf(viewer, target) ? { target, fullName: person.fullName } : null;

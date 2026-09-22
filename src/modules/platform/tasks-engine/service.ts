@@ -210,7 +210,13 @@ export async function listTemplates(): Promise<TemplateView[]> {
     db().select().from(schema.taskTemplate).orderBy(asc(schema.taskTemplate.purpose), asc(schema.taskTemplate.name)),
     db().select().from(schema.taskTemplateItem).orderBy(asc(schema.taskTemplateItem.sortOrder), asc(schema.taskTemplateItem.dueOffsetDays)),
   ]);
-  return templates.filter((template) => isChecklistPurpose(template.purpose)).map((template) => ({ ...template, items: items.filter((item) => item.templateId === template.id) }));
+  const itemsOf = new Map<string, TaskTemplateItemRow[]>();
+  for (const item of items) {
+    const list = itemsOf.get(item.templateId);
+    if (list) list.push(item);
+    else itemsOf.set(item.templateId, [item]);
+  }
+  return templates.filter((template) => isChecklistPurpose(template.purpose)).map((template) => ({ ...template, items: itemsOf.get(template.id) ?? [] }));
 }
 
 export async function findTemplate(templateId: string): Promise<TaskTemplateRow | undefined> {

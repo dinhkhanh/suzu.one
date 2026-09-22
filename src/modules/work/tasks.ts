@@ -10,6 +10,7 @@ import { createTask, type TaskRow } from "../platform/tasks-engine/service";
 import { rankBetween, wouldCreateDependencyCycle, wouldCreateParentCycle } from "./engine/graph";
 import { CATEGORY_STATUS, type DependencyType, type StateCategory } from "./enums";
 import { notifyFollowers } from "./followers";
+import { projectsWithTeams, workDirectory } from "./directory";
 import { canViewProject, canViewTask, canViewTeamBacklog, type TaskFacts, type WorkViewer } from "./policy";
 import { projectFacts, type ProjectRow } from "./projects";
 import type { TaskChecklistItem, TaskLink } from "./schema";
@@ -29,29 +30,42 @@ export const taskKey = (teamKey: string, number: number) => `${teamKey}-${number
 export type LoadedTask = { task: TaskRow; work: WorkTaskRow; team: TeamRow; project: ProjectRow | null; /** Collaborators. */ peopleIds: string[]; followerIds: string[]; mutedIds: string[]; facts: TaskFacts };
 
 export async function loadTask(taskId: string, executor: Executor = db()): Promise<LoadedTask | undefined> {
-  const [row] = await executor
-    .select({ task: schema.task, work: schema.workTask, team: schema.workTeam, project: schema.workProject })
-    .from(schema.task)
-    .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
-    .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
-    .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workTask.projectId))
-    .where(and(eq(schema.task.id, taskId), live))
-    .limit(1);
-  if (!row) return undefined;
-  const people = await executor.select({ personId: schema.workTaskPerson.personId, role: schema.workTaskPerson.role }).from(schema.workTaskPerson).where(eq(schema.workTaskPerson.taskId, taskId));
-  // Following gives notifications, not rights: only collaborators count as people on the task.
-  const peopleIds = people.filter((person) => person.role === "collaborator").map((person) => person.personId);
-  const followerIds = people.filter((person) => person.role === "follower").map((person) => person.personId);
-  const mutedIds = people.filter((person) => person.role === "muted").map((person) => person.personId);
-  const facts: TaskFacts = {
-    team: teamFacts(row.team),
-    project: row.project ? projectFacts(row.project, row.team) : null,
-    assigneePersonId: row.task.assigneePersonId,
-    requesterPersonId: row.task.requesterPersonId,
-    createdByPersonId: row.task.createdByPersonId,
-    peopleIds,
-  };
-  return { ...row, peopleIds, followerIds, mutedIds, facts };
+  return (await loadTasks([taskId], executor)).get(taskId);
+}
+
+/** `loadTask` for many tasks in two queries. Deleted and unknown tasks are left out of the map. */
+export async function loadTasks(taskIds: readonly string[], executor: Executor = db()): Promise<Map<string, LoadedTask>> {
+  const ids = [...new Set(taskIds)];
+  const result = new Map<string, LoadedTask>();
+  if (ids.length === 0) return result;
+  const [rows, people] = await Promise.all([
+    executor
+      .select({ task: schema.task, work: schema.workTask, team: schema.workTeam, project: schema.workProject })
+      .from(schema.task)
+      .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
+      .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
+      .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workTask.projectId))
+      .where(and(ids.length === 1 ? eq(schema.task.id, ids[0]) : inArray(schema.task.id, ids), live)),
+    executor.select({ taskId: schema.workTaskPerson.taskId, personId: schema.workTaskPerson.personId, role: schema.workTaskPerson.role }).from(schema.workTaskPerson).where(ids.length === 1 ? eq(schema.workTaskPerson.taskId, ids[0]) : inArray(schema.workTaskPerson.taskId, ids)),
+  ]);
+  const peopleOf = Map.groupBy(people, (person) => person.taskId);
+  for (const row of rows) {
+    const own = peopleOf.get(row.task.id) ?? [];
+    // Following gives notifications, not rights: only collaborators count as people on the task.
+    const peopleIds = own.filter((person) => person.role === "collaborator").map((person) => person.personId);
+    const followerIds = own.filter((person) => person.role === "follower").map((person) => person.personId);
+    const mutedIds = own.filter((person) => person.role === "muted").map((person) => person.personId);
+    const facts: TaskFacts = {
+      team: teamFacts(row.team),
+      project: row.project ? projectFacts(row.project, row.team) : null,
+      assigneePersonId: row.task.assigneePersonId,
+      requesterPersonId: row.task.requesterPersonId,
+      createdByPersonId: row.task.createdByPersonId,
+      peopleIds,
+    };
+    result.set(row.task.id, { ...row, peopleIds, followerIds, mutedIds, facts });
+  }
+  return result;
 }
 
 // ── Activity ────────────────────────────────────────────────────────────────────────────────
@@ -416,7 +430,8 @@ export async function deleteWorkTask(taskId: string, actorPersonId: string): Pro
 export async function addDependency(blockerTaskId: string, blockedTaskId: string, type: DependencyType, actorPersonId: string): Promise<{ id: string }> {
   return db().transaction(async (tx) => {
     if (blockerTaskId === blockedTaskId) throw new ActionError("dependency_self");
-    const [blocker, blocked] = [await loadTask(blockerTaskId, tx), await loadTask(blockedTaskId, tx)];
+    const both = await loadTasks([blockerTaskId, blockedTaskId], tx);
+    const [blocker, blocked] = [both.get(blockerTaskId), both.get(blockedTaskId)];
     if (!blocker || !blocked) throw new ActionError("task_not_found");
     const existing = await tx.select().from(schema.workTaskDependency).where(or(and(eq(schema.workTaskDependency.blockerTaskId, blockerTaskId), eq(schema.workTaskDependency.blockedTaskId, blockedTaskId)), and(eq(schema.workTaskDependency.blockerTaskId, blockedTaskId), eq(schema.workTaskDependency.blockedTaskId, blockerTaskId), eq(schema.workTaskDependency.type, "relates"))));
     if (existing.length) throw new ActionError("dependency_exists");
@@ -496,14 +511,22 @@ export async function listItems(where: SQL | undefined, executor: Executor, limi
   const [labels, blocks, children] = await Promise.all([
     executor.select().from(schema.workTaskLabel).where(inArray(schema.workTaskLabel.taskId, ids)),
     executor
-      .select({ taskId: schema.workTaskDependency.blockedTaskId })
+      .select({ taskId: schema.workTaskDependency.blockedTaskId, count: sql<number>`count(*)::int` })
       .from(schema.workTaskDependency)
       .innerJoin(blocker, eq(blocker.id, schema.workTaskDependency.blockerTaskId))
-      .where(and(inArray(schema.workTaskDependency.blockedTaskId, ids), eq(schema.workTaskDependency.type, "blocks"), isNull(blocker.deletedAt), inArray(blocker.status, ["todo", "in_progress"]))),
-    executor.select({ parentId: schema.task.parentTaskId, status: schema.task.status }).from(schema.task).where(and(inArray(schema.task.parentTaskId, ids), live)),
+      .where(and(inArray(schema.workTaskDependency.blockedTaskId, ids), eq(schema.workTaskDependency.type, "blocks"), isNull(blocker.deletedAt), inArray(blocker.status, ["todo", "in_progress"])))
+      .groupBy(schema.workTaskDependency.blockedTaskId),
+    executor
+      .select({ parentId: schema.task.parentTaskId, done: sql<number>`count(*) filter (where ${schema.task.status} = 'done')::int`, total: sql<number>`count(*) filter (where ${schema.task.status} <> 'cancelled')::int` })
+      .from(schema.task)
+      .where(and(inArray(schema.task.parentTaskId, ids), live))
+      .groupBy(schema.task.parentTaskId),
   ]);
+  const labelsOf = Map.groupBy(labels, (label) => label.taskId);
+  const blockedBy = new Map(blocks.map((row) => [row.taskId, row.count]));
+  const subtasksOf = new Map(children.map((row) => [row.parentId, row]));
   return rows.map(({ task, work, teamKey, assigneeName }) => {
-    const own = children.filter((child) => child.parentId === task.id && child.status !== "cancelled");
+    const own = subtasksOf.get(task.id);
     return {
       id: task.id,
       key: taskKey(teamKey, work.number),
@@ -524,13 +547,29 @@ export async function listItems(where: SQL | undefined, executor: Executor, limi
       channel: work.channel,
       contentFormat: work.contentFormat,
       boardRank: work.boardRank,
-      labelIds: labels.filter((label) => label.taskId === task.id).map((label) => label.labelId),
-      blockedBy: blocks.filter((row) => row.taskId === task.id).length,
-      subtasks: { done: own.filter((child) => child.status === "done").length, total: own.length },
+      labelIds: (labelsOf.get(task.id) ?? []).map((label) => label.labelId),
+      blockedBy: blockedBy.get(task.id) ?? 0,
+      subtasks: { done: own?.done ?? 0, total: own?.total ?? 0 },
       checklist: { done: work.checklist.filter((item) => item.done).length, total: work.checklist.length },
       updatedAt: task.updatedAt.toISOString(),
     };
   });
+}
+
+/**
+ * The "link a task" picker of a task page: the open tasks of its project (or of its team's
+ * backlog), keys and titles only. The caller has checked the viewer may open that list.
+ */
+export async function listLinkableTasks(scope: { projectId: string | null; teamId: string }, limit = 2000): Promise<{ id: string; key: string; title: string }[]> {
+  const rows = await db()
+    .select({ id: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title })
+    .from(schema.task)
+    .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
+    .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId))
+    .where(and(eq(schema.task.kind, WORK_KIND), live, inArray(schema.task.status, ["todo", "in_progress"]), scope.projectId ? eq(schema.workTask.projectId, scope.projectId) : and(eq(schema.workTask.teamId, scope.teamId), isNull(schema.workTask.projectId))))
+    .orderBy(asc(schema.workTask.boardRank), asc(schema.workTask.number))
+    .limit(limit);
+  return rows.map((row) => ({ id: row.id, key: taskKey(row.teamKey, row.number), title: row.title }));
 }
 
 /** The caller has checked that the viewer may open the project. */
@@ -545,11 +584,11 @@ export const listTeamBacklog = (teamId: string, executor: Executor = db()) => li
  * requester, creator, collaborators) always see it — followers do not: following gives no rights. A PGlite test keeps this and
  * `canViewTask` in step.
  */
-export async function visibleTaskCondition(viewer: WorkViewer, executor: Executor = db()): Promise<SQL> {
-  const [projects, teams] = await Promise.all([
-    executor.select({ project: schema.workProject, team: schema.workTeam }).from(schema.workProject).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId)),
-    executor.select().from(schema.workTeam),
-  ]);
+export async function visibleTaskCondition(viewer: WorkViewer, executor?: Executor): Promise<SQL> {
+  // From the cached directory, unless a transaction asks to read its own rows.
+  const directory = await workDirectory(executor);
+  const projects = projectsWithTeams(directory);
+  const teams = directory.teams;
   const projectIds = projects.filter((row) => canViewProject(viewer, projectFacts(row.project, row.team))).map((row) => row.project.id);
   const teamIds = teams.filter((team) => canViewTeamBacklog(viewer, teamFacts(team))).map((team) => team.id);
   const self = viewer.principal.personId;
@@ -562,14 +601,14 @@ export async function visibleTaskCondition(viewer: WorkViewer, executor: Executo
       eq(schema.task.assigneePersonId, self),
       eq(schema.task.requesterPersonId, self),
       eq(schema.task.createdByPersonId, self),
-      exists(executor.select({ one: sql`1` }).from(schema.workTaskPerson).where(and(eq(schema.workTaskPerson.taskId, schema.task.id), eq(schema.workTaskPerson.personId, self), eq(schema.workTaskPerson.role, "collaborator")))),
+      exists((executor ?? db()).select({ one: sql`1` }).from(schema.workTaskPerson).where(and(eq(schema.workTaskPerson.taskId, schema.task.id), eq(schema.workTaskPerson.personId, self), eq(schema.workTaskPerson.role, "collaborator")))),
     );
   }
   return or(...clauses.filter((clause): clause is SQL => !!clause)) ?? sql`false`;
 }
 
-export async function listVisibleTaskIds(viewer: WorkViewer, executor: Executor = db()): Promise<string[]> {
-  const rows = await executor.select({ id: schema.task.id }).from(schema.task).innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id)).where(and(eq(schema.task.kind, WORK_KIND), live, await visibleTaskCondition(viewer, executor)));
+export async function listVisibleTaskIds(viewer: WorkViewer, executor?: Executor): Promise<string[]> {
+  const rows = await (executor ?? db()).select({ id: schema.task.id }).from(schema.task).innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id)).where(and(eq(schema.task.kind, WORK_KIND), live, await visibleTaskCondition(viewer, executor)));
   return rows.map((row) => row.id);
 }
 
@@ -616,23 +655,24 @@ export async function getTaskDetail(taskId: string, viewer: WorkViewer): Promise
   if (!loaded || !canViewTask(viewer, loaded.facts)) return undefined;
   const { task, work, team } = loaded;
   const personIds = [task.assigneePersonId, task.requesterPersonId, task.createdByPersonId, ...loaded.peopleIds].filter((id): id is string => !!id);
-  const [people, [state], [client], labels, roles, subtasks, dependencies, parent] = await Promise.all([
+  const [people, [state], [client], labels, subtasks, dependencies, parent] = await Promise.all([
     personIds.length ? db().select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, personIds)) : [],
     db().select({ name: schema.workState.name }).from(schema.workState).where(eq(schema.workState.id, work.stateId)),
     work.clientId ? db().select({ name: schema.workClient.name }).from(schema.workClient).where(eq(schema.workClient.id, work.clientId)) : [],
     db().select({ labelId: schema.workTaskLabel.labelId }).from(schema.workTaskLabel).where(eq(schema.workTaskLabel.taskId, taskId)),
-    db().select().from(schema.workTaskPerson).where(eq(schema.workTaskPerson.taskId, taskId)),
     listItems(eq(schema.task.parentTaskId, taskId), db()),
     db().select().from(schema.workTaskDependency).where(or(eq(schema.workTaskDependency.blockerTaskId, taskId), eq(schema.workTaskDependency.blockedTaskId, taskId))),
     task.parentTaskId ? loadTask(task.parentTaskId) : undefined,
   ]);
-  const nameOf = (id: string | null) => people.find((person) => person.id === id)?.name ?? null;
+  const names = new Map(people.map((person) => [person.id, person.name]));
+  const nameOf = (id: string | null) => (id ? (names.get(id) ?? null) : null);
 
   // A linked task in a project the viewer cannot open stays out of sight, title and all.
+  const otherOf = (dependency: (typeof dependencies)[number]) => (dependency.blockerTaskId === taskId ? dependency.blockedTaskId : dependency.blockerTaskId);
+  const others = await loadTasks(dependencies.map(otherOf));
   const linked: LinkedTask[] = [];
   for (const dependency of dependencies) {
-    const otherId = dependency.blockerTaskId === taskId ? dependency.blockedTaskId : dependency.blockerTaskId;
-    const other = await loadTask(otherId);
+    const other = others.get(otherOf(dependency));
     if (!other || !canViewTask(viewer, other.facts)) continue;
     const relation = dependency.type === "relates" ? "relates" : dependency.blockerTaskId === taskId ? "blocks" : "blocked_by";
     linked.push({ dependencyId: dependency.id, id: other.task.id, key: taskKey(other.team.key, other.work.number), title: other.task.title, status: other.task.status, relation });
@@ -647,7 +687,7 @@ export async function getTaskDetail(taskId: string, viewer: WorkViewer): Promise
     clientName: client?.name ?? null,
     parent: parent && canViewTask(viewer, parent.facts) ? { id: parent.task.id, key: taskKey(parent.team.key, parent.work.number), title: parent.task.title } : null,
     labelIds: labels.map((label) => label.labelId),
-    collaborators: roles.filter((role) => role.role === "collaborator").map((role) => ({ id: role.personId, name: nameOf(role.personId) ?? "" })),
+    collaborators: loaded.peopleIds.map((personId) => ({ id: personId, name: nameOf(personId) ?? "" })),
     subtasks,
     linked,
   };

@@ -43,7 +43,7 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
   if (!loaded || !canSeeParticipant(user.principal, loaded.parties, nominated)) notFound();
 
   const { participant, cycle, parties, shape, forms, nominations, directory } = loaded;
-  const [t, tr, format, locale] = await Promise.all([getTranslations("performance.reviews"), getTranslations("performance.results"), getFormatter(), getLocale()]);
+
   const today = todayInVietnam();
   const nameOf = (personId: string) => directory.get(personId)?.fullName ?? "—";
   const readable = forms.filter((form) => canReadReviewForm(user.principal, parties, { kind: form.kind as ReviewFormKind, authorPersonId: form.authorPersonId, status: form.status as "draft" | "submitted" }));
@@ -55,21 +55,26 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
   const managerBlocked = !selfSubmitted && !selfOverdue;
   // Anonymous peer feedback the subject may read: the content without its author.
   const anonymousPeers = canReadAnonymisedPeers(user.principal, parties) ? forms.filter((form) => form.kind === "peer" && form.status === "submitted") : [];
-  const formatDate = (value: string) => format.dateTime(new Date(`${value}T00:00:00Z`), { dateStyle: "medium" });
 
   // The evidence panel (FR-PRF-07) is for whoever writes or reads this review — it is the same
   // personal-tier data as the review itself, and a nominated peer is not shown it.
   const writesReview = canWriteManagerReview(user.principal, parties) || canWriteSelfReview(user.principal, parties);
   const showsEvidence = writesReview || canReleaseReview(user.principal, parties);
-  const evidence = showsEvidence ? await loadReviewEvidence({ personId: participant.personId, year: cycle.year }) : null;
-  // The person's own settled result, once it has been published to them (FR-PRF-09).
-  const published = canSeeNominations(user.principal, parties) ? await getPublishedResult(participant.personId, cycle.year) : null;
-
   const seesNominations = canSeeNominations(user.principal, parties);
   const mayNominate = canNominatePeer(user.principal, parties);
   const mayDecide = canDecideNomination(user.principal, parties);
   const approvedPeers = nominations.filter((row) => row.status === "approved").length;
-  const candidates = cycle.peersEnabled && mayNominate ? await peerCandidates(participantId) : [];
+  const [t, tr, format, locale, evidence, published, candidates] = await Promise.all([
+    getTranslations("performance.reviews"),
+    getTranslations("performance.results"),
+    getFormatter(),
+    getLocale(),
+    showsEvidence ? loadReviewEvidence({ personId: participant.personId, year: cycle.year }) : null,
+    // The person's own settled result, once it has been published to them (FR-PRF-09).
+    seesNominations ? getPublishedResult(participant.personId, cycle.year) : null,
+    cycle.peersEnabled && mayNominate ? peerCandidates(participantId) : [],
+  ]);
+  const formatDate = (value: string) => format.dateTime(new Date(`${value}T00:00:00Z`), { dateStyle: "medium" });
   const peerWrote = new Set(forms.filter((form) => form.kind === "peer").map((form) => form.authorPersonId));
 
   return (

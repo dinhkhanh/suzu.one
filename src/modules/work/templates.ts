@@ -10,6 +10,7 @@ import { getDaysOff } from "@/modules/attendance/service";
 import { notify } from "../platform/notifications/service";
 import { ROLE_KEY } from "../platform/tasks-engine/engine/checklist";
 import { type Anchor, planTree, roleKeysOf, type TreeItem } from "./engine/templates";
+import { invalidateWorkDirectory } from "./directory";
 import { createProjectIn, type ProjectInput, type ProjectRow } from "./projects";
 import { createWorkTaskIn } from "./tasks";
 import type { TeamRow } from "./teams";
@@ -142,9 +143,11 @@ export async function applyTemplate(use: TemplateUse, projectId: string, actorPe
 }
 
 export async function createProjectFromTemplate(input: ProjectInput, use: TemplateUse, actorPersonId: string): Promise<{ project: ProjectRow; template: WorkTemplateRow; taskIds: string[] }> {
-  return db().transaction(async (tx) => {
+  const created = await db().transaction(async (tx) => {
     const project = await createProjectIn(tx, input, actorPersonId);
     const [team] = await tx.select().from(schema.workTeam).where(eq(schema.workTeam.id, project.teamId)).limit(1);
     return { project, ...(await applyTemplateIn(tx, use, { team, project }, actorPersonId)) };
   });
+  await invalidateWorkDirectory();
+  return created;
 }

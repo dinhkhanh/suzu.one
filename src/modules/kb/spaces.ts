@@ -3,7 +3,7 @@ import "server-only";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
-import { unitChoices } from "../platform/org/service";
+import { listEntities, listOrgUnits, unitChoices } from "../platform/org/service";
 import { ROLES } from "../platform/rbac/roles";
 import { spaceVisibleSql } from "./access-sql";
 import { type AccessLevel, parseSubjectKey, SPACE_KEY, type SpaceKind, subjectKey } from "./enums";
@@ -159,16 +159,26 @@ export async function subjectOptions(): Promise<SubjectOptions> {
   return { entities, units, people, roles: ROLES };
 }
 
-/** Names for subject keys ("entity:<id>" → "Media"); roles and "all" are put into words by the screen. */
+/** Names for subject keys ("entity:<id>" → "Media"); roles and "all" are put into words by the screen. Entities and units come from the shared cache; people in one query. */
 export async function subjectNames(keys: readonly string[]): Promise<Map<string, string>> {
+  const idsOf = (type: string) => keys.flatMap((key) => (key.startsWith(`${type}:`) ? [key.slice(type.length + 1)] : []));
+  const entityIds = idsOf("entity");
+  const unitIds = [...idsOf("unit"), ...idsOf("unit_only")];
+  const personIds = idsOf("person");
+  const [entities, units, people] = await Promise.all([
+    entityIds.length ? listEntities() : [],
+    unitIds.length ? listOrgUnits() : [],
+    personIds.length ? db().select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, personIds)) : [],
+  ]);
   const names = new Map<string, string>();
-  const tables = { entity: [schema.entity, schema.entity.shortName], unit: [schema.orgUnit, schema.orgUnit.name], unit_only: [schema.orgUnit, schema.orgUnit.name], person: [schema.person, schema.person.fullName] } as const;
-  for (const type of ["entity", "unit", "unit_only", "person"] as const) {
-    const ids = keys.flatMap((key) => (key.startsWith(`${type}:`) ? [key.slice(type.length + 1)] : []));
-    if (ids.length === 0) continue;
-    const [table, column] = tables[type];
-    const rows = await db().select({ id: table.id, name: column }).from(table).where(inArray(table.id, ids));
-    for (const row of rows) names.set(`${type}:${row.id}`, row.name);
+  const wantedEntities = new Set(entityIds);
+  for (const entity of entities) if (wantedEntities.has(entity.id)) names.set(`entity:${entity.id}`, entity.shortName);
+  const wantedUnits = new Set(unitIds);
+  for (const unit of units) {
+    if (!wantedUnits.has(unit.id)) continue;
+    names.set(`unit:${unit.id}`, unit.name);
+    names.set(`unit_only:${unit.id}`, unit.name);
   }
+  for (const person of people) names.set(`person:${person.id}`, person.name);
   return names;
 }

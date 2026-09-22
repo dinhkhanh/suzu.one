@@ -14,10 +14,8 @@ export const metadata: Metadata = { title: "Delegation" };
 // "While I am away, my approvals go to …" — everyone manages their own (FR-PLT-22).
 export default async function DelegationPage() {
   const user = await requireUser();
-  const t = await getTranslations("approvals");
-  const format = await getFormatter();
   const today = todayInVietnam();
-  const [{ given, received }, people, registered] = await Promise.all([listDelegations(user.person.id), listPersonNames(), allRequestTypes()]);
+  const [t, format, { given, received }, people, registered] = await Promise.all([getTranslations("approvals"), getFormatter(), listDelegations(user.person.id), listPersonNames(), allRequestTypes()]);
   const label = (type: string) => registered.get(type)?.names?.vi ?? (t.has(`types.${type}`) ? t(`types.${type}` as "types.profile_change") : type);
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" });
   const types = (row: { requestTypes: string[] | null }) => (row.requestTypes ? row.requestTypes.map(label).join(", ") : t("delegation.allTypes"));

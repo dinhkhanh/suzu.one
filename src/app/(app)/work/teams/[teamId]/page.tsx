@@ -19,16 +19,14 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
   const user = await requireUser();
   const { teamId } = await params;
   const query = await searchParams;
-  const team = /^[0-9a-f-]{36}$/.test(teamId) ? await findTeam(teamId) : undefined;
-  const viewer = await loadViewer(user);
+  const [team, viewer, t] = await Promise.all([/^[0-9a-f-]{36}$/.test(teamId) ? findTeam(teamId) : undefined, loadViewer(user), getTranslations("work")]);
   if (!team || !canViewTeam(viewer, teamFacts(team))) notFound();
-  const t = await getTranslations("work");
   const facts = teamFacts(team);
   const admin = canAdminTeam(viewer, facts);
   const seesBacklog = canViewTeamBacklog(viewer, facts);
   const today = todayInVietnam();
 
-  const [members, states, labels, projects, backlog, clients, assignable] = await Promise.all([
+  const [members, states, labels, projects, backlog, clients, assignable, intakeForms, [people, entities, departments]] = await Promise.all([
     listTeamMembers(team.id),
     listStates([team.id]),
     listLabels([team.id]),
@@ -36,10 +34,10 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
     seesBacklog ? listTeamBacklog(team.id) : [],
     listClients({ activeOnly: true }),
     listAssignable(team.id, null),
+    listTeamIntakeForms(team.id),
+    admin ? Promise.all([listPersonNames(), listEntities(), unitChoices()]) : ([[], [], []] as [Awaited<ReturnType<typeof listPersonNames>>, Awaited<ReturnType<typeof listEntities>>, Awaited<ReturnType<typeof unitChoices>>]),
   ]);
-  const intakeForms = await listTeamIntakeForms(team.id);
   const intakeProjects = projects.filter((project) => project.teamId === team.id && project.status !== "archived" && project.status !== "done").map(({ id, name }) => ({ id, name }));
-  const [people, entities, departments] = admin ? await Promise.all([listPersonNames(), listEntities(), unitChoices()]) : [[], [], []];
   const filters: TaskFilters = Object.fromEntries(FILTER_KEYS.flatMap((key) => (typeof query[key] === "string" ? [[key, query[key]]] : [])));
   const grouping = GROUPINGS.includes(query.group as Grouping) ? (query.group as Grouping) : "none";
 

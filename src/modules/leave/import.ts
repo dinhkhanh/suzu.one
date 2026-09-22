@@ -10,7 +10,7 @@ import { code, type Column, day, integer, type ParsedRow, type Problem, template
 import { defineImport } from "@/modules/platform/import/service";
 import { can } from "@/modules/platform/rbac/policy";
 import { postEntry } from "./ledger";
-import { leaveTypesFor } from "./types";
+import { allLeaveTypes, leaveTypesOf } from "./types";
 
 // "7", "7.5", "7,5" → "7.5": kept as days so that the preview reads like the file; the commit turns
 // it into hundredths of a day. Balances may be negative (leave taken in advance).
@@ -40,9 +40,9 @@ export async function resolveOpeningRows(rows: Row[], user: { principal: Paramet
   const problems: Problem[] = [];
   const resolved: Resolved[] = [];
   const headers = { code: openingBalanceColumns.employeeCode.headers[0], type: openingBalanceColumns.typeCode.headers[0], year: openingBalanceColumns.year.headers[0], asOf: openingBalanceColumns.asOf.headers[0] };
-  const people = await listEmploymentFacts({ employeeCodes: rows.flatMap((row) => (row.values.employeeCode ? [row.values.employeeCode] : [])) }, executor);
+  const [people, allTypes] = await Promise.all([listEmploymentFacts({ employeeCodes: rows.flatMap((row) => (row.values.employeeCode ? [row.values.employeeCode] : [])) }, executor), allLeaveTypes(executor)]);
   const byCode = new Map(people.flatMap((person) => (person.employeeCode ? [[person.employeeCode.toUpperCase(), person] as const] : [])));
-  const typesByEntity = new Map<string | null, Awaited<ReturnType<typeof leaveTypesFor>>>();
+  const typesByEntity = new Map<string | null, ReturnType<typeof leaveTypesOf>>();
   const seen = new Set<string>();
 
   for (const row of rows) {
@@ -55,7 +55,7 @@ export async function resolveOpeningRows(rows: Row[], user: { principal: Paramet
       problems.push({ row: row.row, column: headers.code, code: "person_not_found" });
       continue;
     }
-    if (!typesByEntity.has(person.entityId)) typesByEntity.set(person.entityId, await leaveTypesFor(person.entityId, executor, { includeInactive: true }));
+    if (!typesByEntity.has(person.entityId)) typesByEntity.set(person.entityId, leaveTypesOf(allTypes, person.entityId, { includeInactive: true }));
     const type = typesByEntity.get(person.entityId)!.find((candidate) => candidate.code === typeCode);
     if (!type) problems.push({ row: row.row, column: headers.type, code: "leave_type_not_found" });
     else if (!type.tracksBalance) problems.push({ row: row.row, column: headers.type, code: "leave_type_keeps_no_balance" });

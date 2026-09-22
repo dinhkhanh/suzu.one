@@ -11,10 +11,10 @@
 // No authorization inside — `parallel-actions.ts` checks `payroll:propose` over the entity first.
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { fieldCipher } from "@/lib/crypto";
 import { db, schema, type Tx } from "@/lib/db";
-import { listPayrollFacts } from "@/modules/core-hr/service";
+import { listPayrollNames } from "@/modules/core-hr/service";
 import { parallelDeltaContext, parallelReferenceContext } from "./field-contexts";
 import { openResult } from "./run-storage";
 
@@ -192,13 +192,14 @@ const addFigures = (left: ReferenceFigures, right: ReferenceFigures): ReferenceF
  * what the person was paid, and the spreadsheet it is compared against will have it too.
  */
 export async function reconcile(entityId: string, month: string, executor: Executor = db()): Promise<Reconciliation> {
-  const runs = await executor
-    .select()
-    .from(schema.payrollRun)
-    .where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, month), ne(schema.payrollRun.status, "cancelled"), ne(schema.payrollRun.status, "draft")));
-  const people = runs.length === 0 ? [] : await executor.select().from(schema.payrollRunPerson).where(inArray(schema.payrollRunPerson.runId, runs.map((run) => run.id)));
-
-  const [references, findings] = await Promise.all([
+  // The month's calculated people (through their runs), the reference figures and the findings, together.
+  const [people, references, findings] = await Promise.all([
+    executor
+      .select({ row: schema.payrollRunPerson })
+      .from(schema.payrollRunPerson)
+      .innerJoin(schema.payrollRun, eq(schema.payrollRun.id, schema.payrollRunPerson.runId))
+      .where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.month, month), ne(schema.payrollRun.status, "cancelled"), ne(schema.payrollRun.status, "draft")))
+      .then((rows) => rows.map(({ row }) => row)),
     executor.select().from(schema.payrollParallelReference).where(and(eq(schema.payrollParallelReference.entityId, entityId), eq(schema.payrollParallelReference.month, month))),
     executor.select().from(schema.payrollParallelFinding).where(and(eq(schema.payrollParallelFinding.entityId, entityId), eq(schema.payrollParallelFinding.month, month))),
   ]);
@@ -208,8 +209,9 @@ export async function reconcile(entityId: string, month: string, executor: Execu
   const referenceByPerson = new Map(references.map((row) => [row.personId, openReference(row)]));
 
   const personIds = [...new Set([...systemByPerson.keys(), ...referenceByPerson.keys()])];
-  const facts = personIds.length === 0 ? [] : await listPayrollFacts({ personIds }, month, executor);
-  const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
+  // Only names are shown, so nothing about the people is decrypted.
+  const factOf = new Map((await listPayrollNames(personIds, executor)).map((fact) => [fact.personId, fact]));
+  const findingOf = new Map(findings.map((row) => [`${row.personId}:${row.field}`, row]));
 
   const rows = personIds.map((personId): ReconciliationRow => {
     const system = systemByPerson.get(personId);
@@ -221,7 +223,7 @@ export async function reconcile(entityId: string, month: string, executor: Execu
       const left = system?.[field] ?? 0;
       const right = reference?.[field] ?? 0;
       if (left === right) continue;
-      const finding = findings.find((row) => row.personId === personId && row.field === field);
+      const finding = findingOf.get(`${personId}:${field}`);
       // An explanation covers the difference it was written for and no other.
       const explained = finding ? openDelta(finding) === left - right : false;
       differences.push({

@@ -23,9 +23,7 @@ function FeedCard({ title, children }: { title: string; children: ReactNode }) {
 
 export default async function HomePage() {
   const user = await requireUser();
-  const t = await getTranslations();
-  const format = await getFormatter();
-  const feed = await getHomeFeed(user);
+  const [t, format, feed] = await Promise.all([getTranslations(), getFormatter(), getHomeFeed(user)]);
   const givenName = user.person.fullName.trim().split(/\s+/).at(-1) ?? user.person.fullName;
   const staff = user.principal.workforceType !== "collaborator";
   const year = Number(feed.today.slice(0, 4));

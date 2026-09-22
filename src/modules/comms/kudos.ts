@@ -4,6 +4,7 @@ import "server-only";
 import { and, asc, desc, eq, isNull, ne } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
+import { cached } from "@/lib/cache";
 import { db, schema } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
 import type { Principal } from "../platform/rbac/policy";
@@ -13,8 +14,14 @@ const { companyValue, kudos, person } = schema;
 export type KudosRow = typeof schema.kudos.$inferSelect;
 export type CompanyValueRow = typeof schema.companyValue.$inferSelect;
 
+// The company's values are reference data with no writer in the app (the seed adds them): the
+// whole table sits in the shared cache and the TTL is how a change arrives.
+const VALUES_KEY = "comms:company_values";
+const VALUES_TTL = 60 * 60;
+
 export async function listCompanyValues(options: { includeInactive?: boolean } = {}): Promise<CompanyValueRow[]> {
-  return db().select().from(companyValue).where(options.includeInactive ? undefined : eq(companyValue.isActive, true)).orderBy(asc(companyValue.sortOrder), asc(companyValue.key));
+  const rows = await cached(VALUES_KEY, VALUES_TTL, () => db().select().from(companyValue).orderBy(asc(companyValue.sortOrder), asc(companyValue.key)));
+  return options.includeInactive ? rows : rows.filter((row) => row.isActive);
 }
 
 /** Colleagues one can thank: active staff, no collaborators, not oneself. Names only. */

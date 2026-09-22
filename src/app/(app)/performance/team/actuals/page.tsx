@@ -16,11 +16,10 @@ export const metadata: Metadata = { title: "KPI actuals" };
 export default async function ActualsPage({ searchParams }: PageProps<"/performance/team/actuals">) {
   const user = await requireUser();
   const month = readMonth((await searchParams).month, todayInVietnam());
-  const rows = await getEntryGrid({ principal: user.principal, personId: user.person.id }, month);
-  const t = await getTranslations("performance");
-  const format = await getFormatter();
+  const [rows, t, format] = await Promise.all([getEntryGrid({ principal: user.principal, personId: user.person.id }, month), getTranslations("performance"), getFormatter()]);
   // Nobody to enter for in any month means this screen is not theirs; an empty month is just empty.
-  if (rows.length === 0 && (await getEntryGrid({ principal: user.principal, personId: user.person.id }, todayInVietnam().slice(0, 7))).length === 0) notFound();
+  const thisMonth = todayInVietnam().slice(0, 7);
+  if (rows.length === 0 && (month === thisMonth || (await getEntryGrid({ principal: user.principal, personId: user.person.id }, thisMonth)).length === 0)) notFound();
   const people: GridPerson[] = rows.map((row) => ({
     personId: row.personId,
     fullName: row.fullName,

@@ -11,6 +11,7 @@ import "server-only";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import type { IsoDate } from "@/lib/dates";
+import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "@/modules/platform/notifications/service";
 import { listOwnerPersonIds } from "@/modules/platform/rbac/service";
@@ -24,29 +25,40 @@ export type ResolvedBonusScheme = { id: string; entityId: string | null; validFr
 /** The day of a bonus year the scheme is read on: its last day, so the year's own version applies. */
 export const schemeDateOf = (year: number): IsoDate => `${year}-12-31`;
 
-export async function listBonusSchemeVersions(executor: Executor = db()): Promise<BonusSchemeRow[]> {
-  return executor.select().from(schema.bonusScheme).orderBy(asc(schema.bonusScheme.entityId), desc(schema.bonusScheme.validFrom), desc(schema.bonusScheme.createdAt));
+// Every version of every scheme lives in the shared cache (src/lib/cache): a few rows a year, with
+// dates resolved here so the entry never depends on "today". The writes below drop it once
+// committed. Inside a transaction, pass it: the rows come from there.
+const SCHEMES_CACHE = "payroll:bonus-schemes";
+const SCHEMES_TTL = 60 * 60;
+const readsCache = (executor?: Executor) => !executor || executor === db();
+
+const readVersions = (executor: Executor) => executor.select().from(schema.bonusScheme).orderBy(asc(schema.bonusScheme.entityId), desc(schema.bonusScheme.validFrom), desc(schema.bonusScheme.createdAt));
+
+export async function listBonusSchemeVersions(executor?: Executor): Promise<BonusSchemeRow[]> {
+  return readsCache(executor) ? cached(SCHEMES_CACHE, SCHEMES_TTL, () => readVersions(db())) : readVersions(executor!);
 }
 
 /**
  * The scheme an entity's bonus follows on `date`: its own approved version, else the group's.
  * A run refuses to be built without one — nobody computes a bonus off a default in code.
  */
-export async function getBonusScheme(entityId: string | null, date: IsoDate, executor: Executor = db()): Promise<ResolvedBonusScheme> {
-  const approved = await executor.select().from(schema.bonusScheme).where(eq(schema.bonusScheme.status, "approved"));
+export async function getBonusScheme(entityId: string | null, date: IsoDate, executor?: Executor): Promise<ResolvedBonusScheme> {
+  const approved = readsCache(executor) ? (await listBonusSchemeVersions()).filter((row) => row.status === "approved") : await executor!.select().from(schema.bonusScheme).where(eq(schema.bonusScheme.status, "approved"));
   const version = versionOn(approved.filter((row) => row.entityId === entityId), date) ?? versionOn(approved.filter((row) => row.entityId === null), date);
   if (!version) throw new ActionError("bonus_scheme_missing");
   return { id: version.id, entityId: version.entityId, validFrom: version.validFrom, value: bonusSchemeSchema.parse(version.value) };
 }
 
 /** Is there a scheme at all for this entity and date? What the screens ask before offering a run. */
-export async function hasBonusScheme(entityId: string | null, date: IsoDate, executor: Executor = db()): Promise<boolean> {
+export async function hasBonusScheme(entityId: string | null, date: IsoDate, executor?: Executor): Promise<boolean> {
   return getBonusScheme(entityId, date, executor).then(() => true).catch(() => false);
 }
 
 /** The exact version a stored line was computed by — for explaining an amount long afterwards. */
-export async function getBonusSchemeVersion(id: string, executor: Executor = db()): Promise<ResolvedBonusScheme> {
-  const [row] = await executor.select().from(schema.bonusScheme).where(eq(schema.bonusScheme.id, id)).limit(1);
+export async function getBonusSchemeVersion(id: string, executor?: Executor): Promise<ResolvedBonusScheme> {
+  // A version never changes its value once written; the cached table answers unless it lacks the id.
+  const hit = readsCache(executor) ? (await listBonusSchemeVersions()).find((candidate) => candidate.id === id) : undefined;
+  const [row] = hit ? [hit] : await (executor ?? db()).select().from(schema.bonusScheme).where(eq(schema.bonusScheme.id, id)).limit(1);
   if (!row) throw new ActionError("bonus_scheme_missing");
   return { id: row.id, entityId: row.entityId, validFrom: row.validFrom, value: bonusSchemeSchema.parse(row.value) };
 }
@@ -60,13 +72,14 @@ export function checkBonusSchemeValue(value: unknown): BonusSchemeValue {
 export async function proposeBonusScheme(input: { entityId: string | null; value: unknown; validFrom: IsoDate; note: string | null }, actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<BonusSchemeRow> {
   const value = checkBonusSchemeValue(input.value);
   const [created] = await executor.insert(schema.bonusScheme).values({ entityId: input.entityId, value, validFrom: input.validFrom, note: input.note, proposedByPersonId: actorPersonId }).returning();
+  await invalidate(SCHEMES_CACHE);
   await notify({ recipients: await listOwnerPersonIds(), kind: "payroll.rule_proposed", params: { rule: "Quy chế thưởng cuối năm", validFrom: created.validFrom }, link: "/payroll/bonus/scheme" });
   return created;
 }
 
 /** The owner's decision. Approving closes the version it succeeds the day before it starts. */
 export async function decideBonusScheme(id: string, decision: "approve" | "reject", actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<{ before: BonusSchemeRow; after: BonusSchemeRow }> {
-  return executor.transaction(async (tx) => {
+  const result = await executor.transaction(async (tx) => {
     const table = schema.bonusScheme;
     const [before] = await tx.select().from(table).where(eq(table.id, id)).limit(1).for("update");
     if (!before || before.status !== "proposed") throw new ActionError("proposal_not_found");
@@ -82,4 +95,6 @@ export async function decideBonusScheme(id: string, decision: "approve" | "rejec
     const [after] = await tx.update(table).set({ status: "approved", ...decided }).where(eq(table.id, id)).returning();
     return { before, after };
   });
+  await invalidate(SCHEMES_CACHE);
+  return result;
 }

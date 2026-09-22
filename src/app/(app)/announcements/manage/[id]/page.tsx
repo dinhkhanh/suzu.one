@@ -21,10 +21,8 @@ export default async function ManageAnnouncementPage(props: PageProps<"/announce
   // Readers have the announcement itself; this page — the form and who has read it — is its managers'.
   if (!view?.canManage) notFound();
 
-  const t = await getTranslations("comms");
-  const format = await getFormatter();
   const { row } = view;
-  const [choices, names, report] = await Promise.all([audienceOptionsFor(user.principal), audienceNames(view.audience), row.status === "published" ? getReadReport(id) : null]);
+  const [t, format, choices, names, report] = await Promise.all([getTranslations("comms"), getFormatter(), audienceOptionsFor(user.principal), audienceNames(view.audience), row.status === "published" ? getReadReport(id, view) : null]);
   const when = (date: Date | null) => (date ? format.dateTime(date, { dateStyle: "short", timeStyle: "short" }) : "—");
 
   return (

@@ -13,6 +13,7 @@ export {
   createSchedule,
   deleteSchedule,
   findSchedule,
+  getScheduleView,
   listSchedules,
   type RecipientOutcome,
   type RecipientView,

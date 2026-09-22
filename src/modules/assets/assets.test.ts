@@ -34,6 +34,7 @@ import {
   registerAsset,
   returnAsset,
   setAssetStatus,
+  summaryByStatus,
   updateAsset,
 } from "./service";
 
@@ -328,5 +329,22 @@ describe("the open-assignment index", () => {
     const spells = await db().select().from(schema.assetAssignment).where(eq(schema.assetAssignment.assetId, asset.id));
     expect(spells).toHaveLength(3);
     expect(await db().select().from(schema.assetAssignment).where(and(eq(schema.assetAssignment.assetId, asset.id), isNull(schema.assetAssignment.returnedAt)))).toHaveLength(0);
+  });
+});
+
+describe("the totals above the register", () => {
+  it("counts every asset in reach by status, past the first page of the list", async () => {
+    const before = await summaryByStatus(entityKeeperSzc);
+    const bulk = Array.from({ length: 520 }, (_, index) => ({ code: `SZC-BULK-${String(index).padStart(4, "0")}`, name: `Bulk ${index}`, entityId: ids.szc, categoryId: ids.laptop, qrToken: `bulk-${index}` }));
+    await db().insert(schema.asset).values(bulk);
+    const after = await summaryByStatus(entityKeeperSzc);
+    expect(after.in_stock).toBe(before.in_stock + 520);
+    expect((await listAssets(entityKeeperSzc, {})).length).toBe(500);
+
+    const all = await db().select({ entityId: schema.asset.entityId, status: schema.asset.status }).from(schema.asset);
+    const tally = (rows: typeof all) => Object.fromEntries(["in_stock", "assigned", "in_repair", "lost", "disposed"].map((status) => [status, rows.filter((row) => row.status === status).length]));
+    expect(await summaryByStatus(keeper)).toEqual(tally(all));
+    expect(after).toEqual(tally(all.filter((row) => row.entityId === ids.szc)));
+    expect(await summaryByStatus(huy)).toEqual({ in_stock: 0, assigned: 0, in_repair: 0, lost: 0, disposed: 0 });
   });
 });

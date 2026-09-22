@@ -3,12 +3,13 @@
 // checked compensation access — this file hands out restricted data (tax code, pay account), so
 // nothing else may call it, and what it returns must never be logged or put into an audit row.
 import "server-only";
-import { and, desc, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { cache } from "react";
 import { fieldCipher } from "@/lib/crypto";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { countDependentsInMonth } from "./engine/dependents";
-import { type EmploymentFacts, listEmploymentFacts } from "./employment-facts";
+import { type EmploymentFacts, listEmploymentFacts, peopleScope } from "./employment-facts";
 import { dependentContext, sensitiveContext } from "./field-contexts";
 import { recordLifecycleEvent } from "./lifecycle-events";
 import type { BankAccount } from "./records";
@@ -38,27 +39,37 @@ const monthBounds = (month: string): { first: IsoDate; last: IsoDate } => {
 
 /** Facts for a payroll month ("2026-08") about the given people, or everyone of the given entities. */
 export async function listPayrollFacts(filter: { personIds?: readonly string[]; entityIds?: readonly string[] }, month: string, executor: Executor = db()): Promise<PayrollPersonFacts[]> {
-  const facts = await listEmploymentFacts(filter, executor);
-  if (facts.length === 0) return [];
-  const ids = facts.map((fact) => fact.personId);
+  if (filter.personIds?.length === 0 || filter.entityIds?.length === 0) return [];
+  const scope = peopleScope(filter, executor);
   const { last } = monthBounds(month);
-  const [dependents, sensitive, contracts] = await Promise.all([
-    executor.select({ personId: schema.dependent.personId, deductionFrom: schema.dependent.deductionFrom, deductionTo: schema.dependent.deductionTo }).from(schema.dependent).where(and(inArray(schema.dependent.personId, ids), isNull(schema.dependent.deletedAt))),
-    executor.select().from(schema.personSensitive).where(inArray(schema.personSensitive.personId, ids)),
-    executor.select().from(schema.contract).where(and(inArray(schema.contract.personId, ids), isNull(schema.contract.deletedAt), inArray(schema.contract.type, ["probation", "fixed_term", "indefinite", "service", "internship"]))).orderBy(desc(schema.contract.startDate)),
+  // Everything in one round trip: each read names the same people by the same condition.
+  const [facts, dependents, sensitive, contracts] = await Promise.all([
+    listEmploymentFacts(filter, executor),
+    executor.select({ personId: schema.dependent.personId, deductionFrom: schema.dependent.deductionFrom, deductionTo: schema.dependent.deductionTo }).from(schema.dependent).where(and(scope(schema.dependent.personId), isNull(schema.dependent.deletedAt))),
+    executor.select().from(schema.personSensitive).where(scope(schema.personSensitive.personId)),
+    executor.select().from(schema.contract).where(and(scope(schema.contract.personId), isNull(schema.contract.deletedAt), inArray(schema.contract.type, ["probation", "fixed_term", "indefinite", "service", "internship"]))).orderBy(desc(schema.contract.startDate)),
   ]);
+  if (facts.length === 0) return [];
   const cipher = sensitive.some((row) => row.taxCode || row.bankAccounts || row.socialInsuranceNumber || row.nationalId) ? fieldCipher() : null;
   const open = (row: (typeof sensitive)[number] | undefined, field: "taxCode" | "socialInsuranceNumber" | "bankAccounts" | "nationalId") => (row?.[field] && cipher ? cipher.decrypt(row[field], sensitiveContext(field, row.personId)) : null);
+  const sensitiveOf = new Map(sensitive.map((row) => [row.personId, row]));
+  const group = <Row extends { personId: string }>(rows: readonly Row[]) => {
+    const by = new Map<string, Row[]>();
+    for (const row of rows) by.set(row.personId, [...(by.get(row.personId) ?? []), row]);
+    return by;
+  };
+  const dependentsOf = group(dependents);
+  const contractsOf = group(contracts);
 
   return facts.map((fact) => {
-    const row = sensitive.find((candidate) => candidate.personId === fact.personId);
+    const row = sensitiveOf.get(fact.personId);
     const accounts = open(row, "bankAccounts");
-    const mine = contracts.filter((contract) => contract.personId === fact.personId && contract.startDate <= last);
+    const mine = (contractsOf.get(fact.personId) ?? []).filter((contract) => contract.startDate <= last);
     const inForce = mine.find((contract) => (contract.terminatedOn ?? contract.endDate ?? "9999-12-31") >= last) ?? mine[0] ?? null;
     const taxCode = open(row, "taxCode");
     return {
       ...fact,
-      dependents: countDependentsInMonth(dependents.filter((dependent) => dependent.personId === fact.personId), month),
+      dependents: countDependentsInMonth(dependentsOf.get(fact.personId) ?? [], month),
       taxCode,
       hasTaxCode: !!taxCode,
       socialInsuranceNumber: open(row, "socialInsuranceNumber"),
@@ -67,6 +78,36 @@ export async function listPayrollFacts(filter: { personIds?: readonly string[]; 
       contract: inForce ? { type: inForce.type as "probation", startDate: inForce.startDate, endDate: inForce.terminatedOn ?? inForce.endDate } : null,
     };
   });
+}
+
+/**
+ * `listPayrollFacts` remembered for the rest of the request (React `cache`): a page whose parts
+ * each ask about the same people and month decrypts them once. Readers only — a caller inside a
+ * transaction, or one that has just written, calls `listPayrollFacts` itself.
+ */
+export function payrollFactsOf(personIds: readonly string[], month: string): Promise<PayrollPersonFacts[]> {
+  return factsByKey([...new Set(personIds)].sort().join(","), month);
+}
+const factsByKey = cache((key: string, month: string) => listPayrollFacts({ personIds: key ? key.split(",") : [] }, month));
+
+/** The same for everyone of one entity. */
+export const entityPayrollFactsOf = cache((entityId: string, month: string) => listPayrollFacts({ entityIds: [entityId] }, month));
+
+export type PayrollName = { personId: string; fullName: string; employeeCode: string | null; departmentId: string | null };
+
+/**
+ * Who the people are, for screens that only put a name beside a figure: the name, the code of the
+ * latest employment and the department. One query and nothing decrypted — cheaper than
+ * `listPayrollFacts`, which opens every tax code and pay account it reads.
+ */
+export async function listPayrollNames(personIds: readonly string[], executor: Executor = db()): Promise<PayrollName[]> {
+  if (personIds.length === 0) return [];
+  const latest = executor.select({ employeeCode: schema.employment.employeeCode }).from(schema.employment).where(eq(schema.employment.personId, schema.person.id)).orderBy(desc(schema.employment.startDate)).limit(1).as("latest");
+  return executor
+    .select({ personId: schema.person.id, fullName: schema.person.fullName, employeeCode: latest.employeeCode, departmentId: schema.person.departmentId })
+    .from(schema.person)
+    .leftJoinLateral(latest, sql`true`)
+    .where(inArray(schema.person.id, [...new Set(personIds)]));
 }
 
 /**

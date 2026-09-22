@@ -14,12 +14,11 @@ export default async function EntityPage({ params }: PageProps<"/admin/entities/
   const user = await requireUser();
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
-  const entity = await findEntity(id);
+  const [entity, allBranches, t] = await Promise.all([findEntity(id), listBranches(), getTranslations("entities")]);
   if (!entity || !can(user.principal, "org:read", { entityId: entity.id })) notFound();
 
-  const t = await getTranslations("entities");
   const canManage = can(user.principal, "org:manage", { entityId: entity.id });
-  const branches = (await listBranches()).filter((branch) => branch.entityId === entity.id);
+  const branches = allBranches.filter((branch) => branch.entityId === entity.id);
   const facts: [string, string | number | null][] = [
     [t("legalName"), entity.legalName],
     [t("legalRepresentative"), entity.legalRepresentative],

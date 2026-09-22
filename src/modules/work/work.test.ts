@@ -17,7 +17,7 @@ vi.mock("@/lib/action", () => ({
   createAction: () => async () => ({ ok: false, error: "failed" }),
 }));
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { Grant } from "@/modules/platform/rbac/policy";
 import { countMyOpenTasks, listMyTasks } from "@/modules/platform/tasks-engine/service";
@@ -26,7 +26,10 @@ import { migrateTestDb } from "../../../tests/helpers/db";
 import { canViewTask } from "./policy";
 import { createProject, setProjectMember, visibleProjects } from "./projects";
 import { addDependency, createWorkTask, deleteWorkTask, getTaskDetail, listActivity, listProjectTasks, listVisibleTaskIds, loadTask, searchTasks, updateWorkTask } from "./tasks";
-import { createTeam, listStates, saveState, setTeamMember } from "./teams";
+import { createTeam, listStates, saveClient, saveState, setTeamMember } from "./teams";
+import { getWorkAnalytics } from "./analytics";
+import { analyse, type AnalyticsTask } from "./engine/analytics";
+import { getPersonTaskStats } from "./stats";
 import { loadViewerWith } from "./viewer";
 
 const ids = {} as Record<"szm" | "szc" | "vidDept" | "owner" | "long" | "tam" | "huy" | "khoi" | "bao" | "freelancer" | "head" | "video" | "design" | "teamProject" | "entityProject" | "privateProject" | "designProject", string>;
@@ -236,5 +239,63 @@ describe("privacy in lists (FR-WRK-18)", () => {
     expect(hit.title).toBe("Write the script");
     expect((await searchTasks(huy, hit.key)).map((row) => row.id)).toContain(hit.id);
     expect(await searchTasks(huy, "%")).toEqual([]);
+  });
+});
+
+describe("analytics and person stats in SQL", () => {
+  it("count exactly what the pure engine counts, on the rows the viewer may see", async () => {
+    const client = (await saveClient(null, { code: "ACME", name: "Acme", kind: "client", parentId: null, entityId: null, note: null, isActive: true })).after;
+    const make = async (title: string, input: { assignee?: string; due?: string | null; estimate?: number; client?: string; teamId?: string; projectId?: string | null }) =>
+      (await createWorkTask({ teamId: input.teamId ?? ids.video, projectId: input.projectId === undefined ? ids.teamProject : input.projectId, title, assigneePersonId: input.assignee ?? null, dueDate: input.due ?? null, estimateMinutes: input.estimate ?? null, clientId: input.client ?? null }, ids.long)).task.id;
+    const finish = async (taskId: string, status: "done" | "cancelled", at: string, rounds = 0) => {
+      await db().update(schema.task).set({ status, completedAt: status === "done" ? new Date(at) : null, updatedAt: new Date(at) }).where(eq(schema.task.id, taskId));
+      await db().update(schema.workTask).set({ revisionRounds: rounds }).where(eq(schema.workTask.taskId, taskId));
+    };
+    await finish(await make("An: on time", { assignee: ids.huy, due: "2026-09-10", client: client.id }), "done", "2026-09-09T20:00:00Z", 2);
+    await finish(await make("An: late", { assignee: ids.tam, due: "2026-09-05" }), "done", "2026-09-08T03:00:00Z", 1);
+    // 23:30 UTC on the 30th is already 1 October in Vietnam: outside the period.
+    await finish(await make("An: after the period", { assignee: ids.huy, due: "2026-10-05", client: client.id }), "done", "2026-09-30T23:30:00Z");
+    await finish(await make("An: undated", { assignee: ids.huy }), "done", "2026-09-12T02:00:00Z");
+    await finish(await make("An: cancelled", { assignee: ids.bao, client: client.id }), "cancelled", "2026-09-14T02:00:00Z");
+    await make("An: open overdue", { assignee: ids.bao, due: "2026-09-01", estimate: 90, client: client.id });
+    await make("An: open later", { due: "2026-12-01", estimate: -5 });
+    await make("An: design", { teamId: ids.design, projectId: null, assignee: ids.khoi, due: "2026-09-02" });
+
+    const period = { from: "2026-09-01", to: "2026-09-30" };
+    const today = "2026-09-20";
+    for (const [personId, entityId, grants] of [[ids.long, ids.szm, []], [ids.khoi, ids.szc, []], [ids.owner, ids.szm, [{ role: "owner", scope: { type: "group" } }]]] as const) {
+      const viewer = await viewerOf(personId, entityId, [...grants] as Grant[]);
+      const visibleIds = await listVisibleTaskIds(viewer);
+      const rows = visibleIds.length
+        ? await db()
+            .select({ teamId: schema.workTask.teamId, clientId: schema.workTask.clientId, status: schema.task.status, dueDate: schema.task.dueDate, completedOn: sql<string | null>`(${schema.task.completedAt} at time zone 'Asia/Ho_Chi_Minh')::date`, updatedOn: sql<string>`(${schema.task.updatedAt} at time zone 'Asia/Ho_Chi_Minh')::date`, revisionRounds: schema.workTask.revisionRounds, assigneePersonId: schema.task.assigneePersonId, estimateMinutes: schema.task.estimateMinutes })
+            .from(schema.task)
+            .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
+            .where(inArray(schema.task.id, visibleIds))
+        : [];
+      const expected = analyse(rows as AnalyticsTask[], period, today);
+      const actual = await getWorkAnalytics(viewer, period, today);
+      expect(actual.total).toEqual(expected.total);
+      const byKey = (groups: { key: string; cell: unknown }[]) => Object.fromEntries(groups.map((group) => [group.key, group.cell]));
+      expect(byKey(actual.byTeam.map((group) => ({ key: group.id, cell: group.cell })))).toEqual(byKey(expected.byTeam));
+      expect(byKey(actual.byClient.map((group) => ({ key: group.id, cell: group.cell })))).toEqual(byKey(expected.byClient));
+      expect(actual.teams.map((team) => team.id).sort()).toEqual([...new Set(rows.map((row) => row.teamId))].sort());
+    }
+    const long = await getWorkAnalytics(await viewerOf(ids.long, ids.szm), period, today);
+    expect(long.byClient).toEqual([expect.objectContaining({ id: client.id, name: "Acme" })]);
+    expect(long.byClient[0].cell).toMatchObject({ completed: 1, cancelled: 1, open: 1, overdue: 1, openMinutes: 90, contributors: 2 });
+
+    const stats = await getPersonTaskStats({ personId: ids.huy, from: "2026-09-01", to: "2026-09-30", today });
+    // The same six numbers the way they were counted before: one query each.
+    const mine = and(eq(schema.task.kind, "work"), eq(schema.task.assigneePersonId, ids.huy), sql`${schema.task.deletedAt} is null`);
+    const countOf = async (where: ReturnType<typeof sql>) => (await db().select({ n: sql<number>`count(*)::int` }).from(schema.task).where(and(mine, where)))[0].n;
+    const done = sql`${schema.task.status} = 'done' and ${schema.task.completedAt}::date between '2026-09-01' and '2026-09-30'`;
+    const completed = await countOf(done);
+    const onTime = await countOf(sql`${done} and (${schema.task.dueDate} is null or ${schema.task.completedAt}::date <= ${schema.task.dueDate})`);
+    const open = await countOf(sql`${schema.task.status} in ('todo', 'in_progress')`);
+    const overdue = await countOf(sql`${schema.task.status} in ('todo', 'in_progress') and ${schema.task.dueDate} < ${today}::date`);
+    const cancelled = await countOf(sql`${schema.task.status} = 'cancelled' and ${schema.task.updatedAt}::date between '2026-09-01' and '2026-09-30'`);
+    expect(stats).toEqual({ from: "2026-09-01", to: "2026-09-30", completed, onTime, late: completed - onTime, open, overdue, cancelled });
+    expect(stats.completed).toBeGreaterThan(0);
   });
 });

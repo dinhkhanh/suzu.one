@@ -4,6 +4,7 @@
 // is simpler, and testable, where a recursive query per person would not be.
 import "server-only";
 import { eq } from "drizzle-orm";
+import { cache } from "react";
 import { db, schema, type Tx } from "@/lib/db";
 import { chainAbove, type PersonContext } from "./policy";
 
@@ -13,7 +14,14 @@ type Executor = Tx | ReturnType<typeof db>;
 export type DirectoryPerson = PersonContext & { fullName: string; workforceType: string; status: string; departmentId: string | null; teamId: string | null };
 export type Directory = ReadonlyMap<string, DirectoryPerson>;
 
-export async function loadDirectory(executor: Executor = db()): Promise<Directory> {
+/** Read once per request outside a transaction (no executor, or the pool itself); a transaction always reads its own rows. */
+export function loadDirectory(executor?: Executor): Promise<Directory> {
+  return executor && executor !== db() ? readDirectory(executor) : loadDirectoryOnce();
+}
+
+const loadDirectoryOnce = cache((): Promise<Directory> => readDirectory(db()));
+
+async function readDirectory(executor: Executor): Promise<Directory> {
   const rows = await executor
     .select({ id: schema.person.id, fullName: schema.person.fullName, managerId: schema.person.managerId, entityId: schema.person.primaryEntityId, unitPath: schema.person.orgUnitPath, departmentId: schema.person.departmentId, teamId: schema.person.teamId, workforceType: schema.person.workforceType, status: schema.person.status })
     .from(schema.person);

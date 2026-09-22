@@ -14,11 +14,9 @@ export const metadata: Metadata = { title: "Recruitment" };
 // on the hiring team of. A department head hiring one editor sees exactly one row here.
 export default async function RecruitPage() {
   const user = await requireUser();
-  if (!(await recruitModuleOpen(user.principal, user.person.id))) notFound();
-
-  const t = await getTranslations("recruit");
-  const format = await getFormatter();
-  const openings = await listOpenings(user.principal);
+  // The list is scoped by itself, so it can be read alongside the navigation check.
+  const [open, t, format, openings] = await Promise.all([recruitModuleOpen(user.principal, user.person.id), getTranslations("recruit"), getFormatter(), listOpenings(user.principal)]);
+  if (!open) notFound();
   const runs = canRunRecruitment(user.principal);
 
   return (

@@ -54,38 +54,40 @@ export async function getRecruitReport(principal: Principal, filters: RecruitRep
     filters.entityId ? eq(schema.jobOpening.entityId, filters.entityId) : undefined,
   );
 
-  const rows = await db()
-    .select({
-      category: schema.recruitPipelineStage.category,
-      status: schema.jobApplication.status,
-      source: schema.jobApplication.source,
-      days: daysToHire.as("days_to_hire"),
-    })
-    .from(schema.jobApplication)
-    .innerJoin(schema.jobOpening, eq(schema.jobOpening.id, schema.jobApplication.openingId))
-    .innerJoin(schema.recruitPipelineStage, eq(schema.recruitPipelineStage.id, schema.jobApplication.stageId))
-    .where(and(scope, period))
-    .limit(20_000);
+  // Grouped in the database: a handful of (stage, status, source, days) rows with a count, not every
+  // application. The engine still sees one row per application — the same object, repeated.
+  const days = daysToHire.as("days_to_hire");
+  const [rows, openings, [open]] = await Promise.all([
+    db()
+      .select({
+        category: schema.recruitPipelineStage.category,
+        status: schema.jobApplication.status,
+        source: schema.jobApplication.source,
+        days,
+        count: sql<number>`count(*)::int`.as("application_count"),
+      })
+      .from(schema.jobApplication)
+      .innerJoin(schema.jobOpening, eq(schema.jobOpening.id, schema.jobApplication.openingId))
+      .innerJoin(schema.recruitPipelineStage, eq(schema.recruitPipelineStage.id, schema.jobApplication.stageId))
+      .where(and(scope, period))
+      .groupBy(schema.recruitPipelineStage.category, schema.jobApplication.status, schema.jobApplication.source, sql`days_to_hire`),
+    db()
+      .select({ id: schema.jobOpening.id, code: schema.jobOpening.code, title: schema.jobOpening.title, entityName: schema.entity.shortName })
+      .from(schema.jobOpening)
+      .leftJoin(schema.entity, eq(schema.entity.id, schema.jobOpening.entityId))
+      .where(scope)
+      .orderBy(desc(schema.jobOpening.createdAt))
+      .limit(200),
+    db()
+      .select({ openNow: sql<number>`count(*)`.as("open_now") })
+      .from(schema.jobOpening)
+      .where(and(scope, inArray(schema.jobOpening.status, ["open"]))),
+  ]);
 
-  const applications: FunnelApplication[] = rows.map((row) => ({
-    category: row.category as StageCategory,
-    status: row.status as ApplicationStatus,
-    source: row.source as CandidateSource,
-    daysToHire: row.days === null ? null : Number(row.days),
-  }));
-
-  const openings = await db()
-    .select({ id: schema.jobOpening.id, code: schema.jobOpening.code, title: schema.jobOpening.title, entityName: schema.entity.shortName })
-    .from(schema.jobOpening)
-    .leftJoin(schema.entity, eq(schema.entity.id, schema.jobOpening.entityId))
-    .where(scope)
-    .orderBy(desc(schema.jobOpening.createdAt))
-    .limit(200);
-
-  const [open] = await db()
-    .select({ openNow: sql<number>`count(*)`.as("open_now") })
-    .from(schema.jobOpening)
-    .where(and(scope, inArray(schema.jobOpening.status, ["open"])));
+  const applications: FunnelApplication[] = rows.flatMap((row) => {
+    const application: FunnelApplication = { category: row.category as StageCategory, status: row.status as ApplicationStatus, source: row.source as CandidateSource, daysToHire: row.days === null ? null : Number(row.days) };
+    return Array.from({ length: Number(row.count) }, () => application);
+  });
 
   return { ...funnelReport(applications), openings, openOpenings: Number(open?.openNow ?? 0) };
 }

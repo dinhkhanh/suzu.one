@@ -12,17 +12,26 @@ export function worstColour(cell: DashboardCell): StatusColour | null {
   return COLOUR_SEVERITY.find((colour) => (cell.counts[colour] ?? 0) > 0) ?? null;
 }
 
+/** Items already counted per entity, month and colour (what the dashboard query returns). */
+export type DashboardCount = { entityId: string; month: string; colour: StatusColour; count: number; /** Of `count`, overdue items somebody above the owner has been told about. */ escalated: number };
+
 /** Cancelled ("not applicable") items are left out: they are neither work nor proof. An item sits in the month of its due date. */
 export function dashboardMatrix<Entity extends { id: string }>(entities: readonly Entity[], months: readonly string[], items: readonly DashboardItem[]): DashboardRow<Entity>[] {
+  const counts = items.flatMap((item): DashboardCount[] => (item.dueDate ? [{ entityId: item.entityId, month: item.dueDate.slice(0, 7), colour: item.colour, count: 1, escalated: item.escalationLevel > 0 && item.colour === "overdue" ? 1 : 0 }] : []));
+  return dashboardMatrixFromCounts(entities, months, counts);
+}
+
+/** The same matrix from pre-aggregated counts; cancelled and out-of-range counts are left out. */
+export function dashboardMatrixFromCounts<Entity extends { id: string }>(entities: readonly Entity[], months: readonly string[], counts: readonly DashboardCount[]): DashboardRow<Entity>[] {
   const cells = new Map<string, DashboardCell>();
   for (const entity of entities) for (const month of months) cells.set(`${entity.id}|${month}`, { month, total: 0, counts: {}, escalated: 0 });
-  for (const item of items) {
-    if (!item.dueDate || item.colour === "cancelled") continue;
-    const cell = cells.get(`${item.entityId}|${item.dueDate.slice(0, 7)}`);
+  for (const row of counts) {
+    if (row.colour === "cancelled" || row.count === 0) continue;
+    const cell = cells.get(`${row.entityId}|${row.month}`);
     if (!cell) continue;
-    cell.total += 1;
-    cell.counts[item.colour] = (cell.counts[item.colour] ?? 0) + 1;
-    if (item.escalationLevel > 0 && item.colour === "overdue") cell.escalated += 1;
+    cell.total += row.count;
+    cell.counts[row.colour] = (cell.counts[row.colour] ?? 0) + row.count;
+    if (row.colour === "overdue") cell.escalated += row.escalated;
   }
   return entities.map((entity) => ({ entity, cells: months.map((month) => cells.get(`${entity.id}|${month}`)!) }));
 }

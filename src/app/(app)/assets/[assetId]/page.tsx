@@ -6,7 +6,8 @@ import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { requireUser } from "@/modules/platform/auth/session";
-import { canBookAssets, canConfirmHandover, canManageAssets, findAsset, getAssetView, listBookings, listCategories } from "@/modules/assets/service";
+import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
+import { canBookAssets, canConfirmHandover, canManageAssets, getAssetView, listBookings, listCategories } from "@/modules/assets/service";
 import { AssignForm, ConfirmHandoverForm, ReturnForm, StatusForm } from "@/modules/assets/ui/asset-forms";
 import { BookingList } from "@/modules/assets/ui/booking-calendar";
 import { BookAssetForm } from "@/modules/assets/ui/booking-forms";
@@ -21,28 +22,26 @@ export default async function AssetPage({ params }: PageProps<"/assets/[assetId]
   // Not there, or not theirs — the same answer either way.
   if (!view) notFound();
 
-  const asset = await findAsset(assetId);
   const manage = canManageAssets(user.principal, view.asset.entityId);
   const open = view.spells.find((spell) => !spell.returnedAt);
   const mine = canConfirmHandover(user.principal, open?.holderPersonId ?? null) && !open?.handoverConfirmedAt;
-  const t = await getTranslations("assets");
-  const tField = await getTranslations("assets.form");
-  const tBooking = await getTranslations("assets.bookings");
-
   // Shared production gear carries its own booking panel; ordinary equipment does not.
-  const [category] = asset ? await db().select({ bookable: schema.assetCategory.bookable }).from(schema.assetCategory).where(eq(schema.assetCategory.id, asset.categoryId)).limit(1) : [];
-  const bookable = !!category?.bookable;
+  const bookable = view.bookable;
   const from = new Date();
-  const upcoming = bookable ? await listBookings({ from, to: new Date(from.getTime() + 90 * 86_400_000), assetId }) : [];
-
-  const [people, teams, entities, categories] = manage
-    ? await Promise.all([
-        db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.status, "active")).orderBy(asc(schema.person.fullName)),
-        db().select({ id: schema.orgUnit.id, name: schema.orgUnit.name }).from(schema.orgUnit).orderBy(asc(schema.orgUnit.name)),
-        db().select({ id: schema.entity.id, code: schema.entity.code, shortName: schema.entity.shortName }).from(schema.entity).orderBy(asc(schema.entity.code)),
-        listCategories(),
-      ])
-    : [[], [], [], []];
+  const [t, tField, tBooking, upcoming, [people, teams, entities, categories]] = await Promise.all([
+    getTranslations("assets"),
+    getTranslations("assets.form"),
+    getTranslations("assets.bookings"),
+    bookable ? listBookings({ from, to: new Date(from.getTime() + 90 * 86_400_000), assetId }) : [],
+    manage
+      ? Promise.all([
+          db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.status, "active")).orderBy(asc(schema.person.fullName)),
+          listOrgUnits().then((units) => units.map(({ id, name }) => ({ id, name }))),
+          listEntities().then((rows) => rows.map(({ id, code, shortName }) => ({ id, code, shortName }))),
+          listCategories(),
+        ])
+      : [[], [], [], []],
+  ]);
 
   const fact = (label: string, value: string | number | null) =>
     value === null || value === "" ? null : (
@@ -63,7 +62,7 @@ export default async function AssetPage({ params }: PageProps<"/assets/[assetId]
             {view.asset.categoryName} · {view.asset.entityName}
           </p>
         </div>
-        {asset ? <AssetQr url={`${env().BETTER_AUTH_URL}/assets/qr/${asset.qrToken}`} /> : null}
+        <AssetQr url={`${env().BETTER_AUTH_URL}/assets/qr/${view.qrToken}`} />
       </header>
 
       <dl className="grid grid-cols-2 gap-4 rounded-md border p-4 sm:grid-cols-4">

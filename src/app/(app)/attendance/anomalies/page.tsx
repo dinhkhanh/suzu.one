@@ -25,12 +25,15 @@ export default async function AnomaliesPage({ searchParams }: PageProps<"/attend
   const t = await getTranslations("attendance.console");
   const thisMonth = todayInVietnam().slice(0, 7);
   const month = typeof query.month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(query.month) && query.month <= thisMonth ? query.month : thisMonth;
-  const entities = (await listEntities()).filter((entity) => canLockPeriod(user.principal, entity.id));
-  const entityId = typeof query.entity === "string" && entities.some((entity) => entity.id === query.entity) ? query.entity : null;
   const personId = typeof query.person === "string" && UUID.test(query.person) ? query.person : null;
   const kind = ANOMALY_KINDS.find((value) => value === query.kind) ?? null;
+  // The list is read beside the entities, for the entity asked for; one the viewer may not lock is dropped and the list read again.
+  const asked = typeof query.entity === "string" && UUID.test(query.entity) ? query.entity : null;
+  const [allEntities, firstRead] = await Promise.all([listEntities(), listAnomalies(user.principal, month, { entityId: asked, personId, kind })]);
+  const entities = allEntities.filter((entity) => canLockPeriod(user.principal, entity.id));
+  const entityId = asked && entities.some((entity) => entity.id === asked) ? asked : null;
   const filters = { entityId, personId, kind };
-  const { lines, counts, people } = await listAnomalies(user.principal, month, filters);
+  const { lines, counts, people } = entityId === asked ? firstRead : await listAnomalies(user.principal, month, filters);
   const href = (changes: { month?: string; entity?: string | null; kind?: AnomalyKind | null; person?: string | null }) => {
     const next = { month, entity: entityId, kind, person: personId, ...changes };
     return `/attendance/anomalies?${Object.entries(next).flatMap(([key, value]) => (value ? [`${key}=${value}`] : [])).join("&")}`;

@@ -2,9 +2,10 @@
 // single-record checks use: project rows are few (hundreds), so every list starts from
 // `visibleProjects()` and SQL only ever sees ids the policy already allowed.
 import "server-only";
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
+import { invalidateWorkDirectory, projectsWithTeams, workDirectory } from "./directory";
 import type { ProjectStatus, TeamRole, Visibility } from "./enums";
 import { canContributeToProject, canContributeToTeam, canCreateProject, canViewProject, type ProjectFacts, type WorkViewer } from "./policy";
 import { teamFacts, type TeamRow } from "./teams";
@@ -26,32 +27,51 @@ export type ProjectSummary = ProjectRow & { teamKey: string; teamName: string; c
 /** Every project the viewer may open, with task counts. */
 export async function visibleProjects(viewer: WorkViewer, options: { today: string; includeArchived?: boolean; executor?: Executor } = { today: "9999-12-31" }): Promise<ProjectSummary[]> {
   const executor = options.executor ?? db();
-  const rows = await executor
-    .select({ project: schema.workProject, team: schema.workTeam, clientName: schema.workClient.name, leadName: schema.person.fullName })
-    .from(schema.workProject)
-    .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId))
-    .leftJoin(schema.workClient, eq(schema.workClient.id, schema.workProject.clientId))
-    .leftJoin(schema.person, eq(schema.person.id, schema.workProject.leadPersonId))
-    .orderBy(asc(schema.workProject.name));
-  const visible = rows.filter((row) => (options.includeArchived || row.project.status !== "archived") && canViewProject(viewer, projectFacts(row.project, row.team)));
-  if (visible.length === 0) return [];
+  // The policy picks the ids from the directory; SQL then reads only those projects, fresh.
+  const directory = await workDirectory(options.executor);
+  const teams = new Map(directory.teams.map((team) => [team.id, team]));
+  const allowed = (project: ProjectRow) => {
+    const team = teams.get(project.teamId);
+    return !!team && (options.includeArchived || project.status !== "archived") && canViewProject(viewer, projectFacts(project, team));
+  };
+  const ids = directory.projects.filter(allowed).map((project) => project.id);
+  if (ids.length === 0) return [];
 
-  const counts = await executor
-    .select({
-      projectId: schema.workTask.projectId,
-      open: sql<number>`count(*) filter (where ${schema.task.status} in ('todo', 'in_progress'))::int`,
-      done: sql<number>`count(*) filter (where ${schema.task.status} = 'done')::int`,
-      overdue: sql<number>`count(*) filter (where ${schema.task.status} in ('todo', 'in_progress') and ${schema.task.dueDate} < ${options.today})::int`,
-    })
-    .from(schema.workTask)
-    .innerJoin(schema.task, eq(schema.task.id, schema.workTask.taskId))
-    .where(and(inArray(schema.workTask.projectId, visible.map((row) => row.project.id)), isNull(schema.task.deletedAt)))
-    .groupBy(schema.workTask.projectId);
+  const [rows, counts] = await Promise.all([
+    executor
+      .select({ project: schema.workProject, clientName: schema.workClient.name, leadName: schema.person.fullName })
+      .from(schema.workProject)
+      .leftJoin(schema.workClient, eq(schema.workClient.id, schema.workProject.clientId))
+      .leftJoin(schema.person, eq(schema.person.id, schema.workProject.leadPersonId))
+      .where(inArray(schema.workProject.id, ids))
+      .orderBy(asc(schema.workProject.name)),
+    executor
+      .select({
+        projectId: schema.workTask.projectId,
+        open: sql<number>`count(*) filter (where ${schema.task.status} in ('todo', 'in_progress'))::int`,
+        done: sql<number>`count(*) filter (where ${schema.task.status} = 'done')::int`,
+        overdue: sql<number>`count(*) filter (where ${schema.task.status} in ('todo', 'in_progress') and ${schema.task.dueDate} < ${options.today})::int`,
+      })
+      .from(schema.workTask)
+      .innerJoin(schema.task, eq(schema.task.id, schema.workTask.taskId))
+      .where(and(inArray(schema.workTask.projectId, ids), isNull(schema.task.deletedAt)))
+      .groupBy(schema.workTask.projectId),
+  ]);
   const byProject = new Map(counts.map((row) => [row.projectId, row]));
-  return visible.map(({ project, team, clientName, leadName }) => {
+  // Checked again on the fresh row, so a directory entry a moment old never widens the list.
+  return rows.flatMap(({ project, clientName, leadName }) => {
+    const team = teams.get(project.teamId);
+    if (!team || !allowed(project)) return [];
     const tally = byProject.get(project.id);
-    return { ...project, teamKey: team.key, teamName: team.name, clientName, leadName, openTasks: tally?.open ?? 0, doneTasks: tally?.done ?? 0, overdueTasks: tally?.overdue ?? 0 };
+    return [{ ...project, teamKey: team.key, teamName: team.name, clientName, leadName, openTasks: tally?.open ?? 0, doneTasks: tally?.done ?? 0, overdueTasks: tally?.overdue ?? 0 }];
   });
+}
+
+/** The project picker of a task: the team's projects, not archived, that the viewer may open. */
+export async function listProjectOptions(viewer: WorkViewer, teamId: string): Promise<{ id: string; name: string }[]> {
+  return projectsWithTeams(await workDirectory())
+    .filter(({ project, team }) => project.teamId === teamId && project.status !== "archived" && canViewProject(viewer, projectFacts(project, team)))
+    .map(({ project }) => ({ id: project.id, name: project.name }));
 }
 
 export type ProjectInput = {
@@ -79,8 +99,13 @@ async function checkProjectInput(tx: Executor, input: ProjectInput): Promise<voi
 }
 
 /** The creator and the named lead become members, so a private project is never out of everyone's reach. */
-export const createProject = (input: ProjectInput, actorPersonId: string): Promise<ProjectRow> => db().transaction((tx) => createProjectIn(tx, input, actorPersonId));
+export async function createProject(input: ProjectInput, actorPersonId: string): Promise<ProjectRow> {
+  const project = await db().transaction((tx) => createProjectIn(tx, input, actorPersonId));
+  await invalidateWorkDirectory();
+  return project;
+}
 
+/** Inside the caller's transaction: the caller calls `invalidateWorkDirectory()` once it commits. */
 export async function createProjectIn(tx: Executor, input: ProjectInput, actorPersonId: string): Promise<ProjectRow> {
   {
     const [team] = await tx.select().from(schema.workTeam).where(eq(schema.workTeam.id, input.teamId)).limit(1);
@@ -96,7 +121,7 @@ export async function createProjectIn(tx: Executor, input: ProjectInput, actorPe
 
 /** The team stays: task numbers and workflow states belong to it. */
 export async function updateProject(projectId: string, input: Omit<ProjectInput, "teamId">): Promise<{ before: ProjectRow; after: ProjectRow }> {
-  return db().transaction(async (tx) => {
+  const updated = await db().transaction(async (tx) => {
     const found = await findProject(projectId, tx);
     if (!found) throw new ActionError("project_not_found");
     await checkProjectInput(tx, { ...input, teamId: found.project.teamId });
@@ -106,6 +131,8 @@ export async function updateProject(projectId: string, input: Omit<ProjectInput,
     }
     return { before: found.project, after };
   });
+  await invalidateWorkDirectory();
+  return updated;
 }
 
 export type ProjectMemberView = { personId: string; fullName: string; role: TeamRole; workforceType: string };
@@ -144,10 +171,9 @@ export type CreateTargets = { teams: { id: string; key: string; name: string; de
 
 /** Where may this viewer file a new task (quick-create) or start a project? */
 export async function listCreateTargets(viewer: WorkViewer): Promise<CreateTargets> {
-  const [teams, projects] = await Promise.all([
-    db().select().from(schema.workTeam).where(eq(schema.workTeam.isActive, true)).orderBy(asc(schema.workTeam.name)),
-    db().select({ project: schema.workProject, team: schema.workTeam }).from(schema.workProject).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId)).where(and(inArray(schema.workProject.status, ["planned", "active", "paused"]), eq(schema.workTeam.isActive, true))).orderBy(asc(schema.workProject.name)),
-  ]);
+  const directory = await workDirectory();
+  const teams = directory.teams.filter((team) => team.isActive);
+  const projects = projectsWithTeams(directory).filter((row) => ["planned", "active", "paused"].includes(row.project.status) && row.team.isActive);
   const open = projects.filter((row) => canContributeToProject(viewer, projectFacts(row.project, row.team))).map((row) => ({ id: row.project.id, teamId: row.project.teamId, name: row.project.name }));
   const listed = teams
     .map((team) => ({ id: team.id, key: team.key, name: team.name, defaultVisibility: team.defaultVisibility, canFileInBacklog: canContributeToTeam(viewer, teamFacts(team)), canCreateProject: canCreateProject(viewer, teamFacts(team)) }))
@@ -163,4 +189,17 @@ export async function listAssignable(teamId: string, projectId: string | null): 
   ]);
   const byId = new Map([...team, ...project].filter((person) => person.status !== "offboarded").map((person) => [person.id, person]));
   return [...byId.values()].sort((a, b) => a.searchName.localeCompare(b.searchName)).map(({ id, fullName }) => ({ id, fullName }));
+}
+
+/** `listAssignable(teamId, null)` for several teams in one query, keyed by team. */
+export async function listAssignableByTeam(teamIds: readonly string[]): Promise<Map<string, { id: string; fullName: string }[]>> {
+  const result = new Map<string, { id: string; fullName: string }[]>(teamIds.map((teamId) => [teamId, []]));
+  if (teamIds.length === 0) return result;
+  const rows = await db()
+    .select({ teamId: schema.workTeamMember.teamId, id: schema.person.id, fullName: schema.person.fullName, searchName: schema.person.searchName })
+    .from(schema.workTeamMember)
+    .innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId))
+    .where(and(inArray(schema.workTeamMember.teamId, [...teamIds]), ne(schema.person.status, "offboarded")));
+  for (const row of rows.sort((a, b) => a.searchName.localeCompare(b.searchName))) result.get(row.teamId)?.push({ id: row.id, fullName: row.fullName });
+  return result;
 }

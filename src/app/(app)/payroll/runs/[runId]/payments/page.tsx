@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { hasReached } from "@/modules/payroll/lifecycle";
-import { cashSheetRows, listPaymentFiles, listPayables, openFileTotal, planPayment, settlementOf } from "@/modules/payroll/payments";
+import { cashSheetOf, listCashPayments, listPaymentFiles, listPayables, openFileTotal, planPayment, settle } from "@/modules/payroll/payments";
 import { canManageCompensation, canPayPayroll, canReadPayroll } from "@/modules/payroll/policy";
 import { getRun } from "@/modules/payroll/runs";
 import { formatVnd } from "@/modules/payroll/ui/money";
@@ -32,15 +32,11 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
 
   const pays = canPayPayroll(user.principal, run);
   const manages = canManageCompensation(user.principal, run);
-  const [t, format, payables, files, cash, settlement] = await Promise.all([
-    getTranslations("payroll.payments"),
-    getFormatter(),
-    listPayables(run),
-    listPaymentFiles(runId),
-    cashSheetRows(run),
-    settlementOf(run),
-  ]);
+  // Each thing read once; the settlement and the cash sheet are worked out from it.
+  const [t, format, payables, files, cashRows] = await Promise.all([getTranslations("payroll.payments"), getFormatter(), listPayables(run), listPaymentFiles(runId), listCashPayments(runId)]);
   const plan = planPayment(payables);
+  const settlement = settle(plan, files, cashRows);
+  const cash = cashSheetOf(cashRows, payables);
   const today = new Date().toISOString().slice(0, 10);
 
   return (

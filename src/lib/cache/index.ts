@@ -38,6 +38,7 @@ function redis(): Client {
 
 /** Long enough to cover a slow region hop, short enough that a Redis outage costs little. */
 const TIMEOUT_MS = 400;
+const INVALIDATE_TIMEOUT_MS = 2_000;
 
 function withTimeout<T>(promise: Promise<T>): Promise<T | undefined> {
   return Promise.race([promise, new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), TIMEOUT_MS))]);
@@ -48,6 +49,15 @@ function warn(operation: string, error: unknown) {
 }
 
 /**
+ * What `invalidate()` leaves behind instead of deleting: for a short while the key holds this
+ * marker, readers go to Postgres and nobody may store a value. Without it a request that read the
+ * old rows just before a change could store them just after the change cleared the key — and a
+ * revoked role would keep working until the TTL ran out.
+ */
+const STALE = "\u0000stale";
+const STALE_SECONDS = 30;
+
+/**
  * Returns the cached value under `key`, or runs `load`, stores its result for `ttlSeconds` and
  * returns it. `undefined` is never cached (use null for "known to be absent").
  */
@@ -55,27 +65,46 @@ export async function cached<T>(key: string, ttlSeconds: number, load: () => Pro
   const connection = redis();
   if (!connection) return load();
   const fullKey = connection.prefix + key;
+  let hit: string | null | undefined;
   try {
-    const hit = await withTimeout(connection.redis.get<string>(fullKey));
-    if (typeof hit === "string") return decode<T>(hit);
+    hit = await withTimeout(connection.redis.get<string>(fullKey));
+    if (typeof hit === "string" && hit !== STALE) return decode<T>(hit);
   } catch (error) {
     warn(`get ${key}`, error);
   }
   const value = await load();
-  if (value !== undefined) {
-    connection.redis.set(fullKey, encode(value), { ex: ttlSeconds }).catch((error: unknown) => warn(`set ${key}`, error));
+  // Only into an empty key (NX): a marker left by a change in the meantime wins over this read.
+  // Awaited, because a serverless function may be frozen the moment the response is sent; a miss
+  // is rare, so the extra hop is too.
+  if (value !== undefined && hit !== STALE) {
+    try {
+      await withTimeout(connection.redis.set(fullKey, encode(value), { ex: ttlSeconds, nx: true }));
+    } catch (error) {
+      warn(`set ${key}`, error);
+    }
   }
   return value;
 }
 
-/** Drops entries after the data behind them changed. Call once the change is committed. */
+/**
+ * Marks entries stale after the data behind them changed. Call once the change is committed. Tried
+ * twice with a longer wait than reads get: a missed invalidation is what leaves stale data behind.
+ */
 export async function invalidate(...keys: string[]): Promise<void> {
   const connection = redis();
   if (!connection || !keys.length) return;
-  try {
-    await withTimeout(connection.redis.del(...keys.map((key) => connection.prefix + key)));
-  } catch (error) {
-    warn(`del ${keys.join(",")}`, error);
+  const mark = () => {
+    const batch = connection.redis.pipeline();
+    for (const key of keys) batch.set(connection.prefix + key, STALE, { ex: STALE_SECONDS });
+    return batch.exec();
+  };
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      await Promise.race([mark(), new Promise((_, reject) => setTimeout(() => reject(new Error("timed out")), INVALIDATE_TIMEOUT_MS))]);
+      return;
+    } catch (error) {
+      if (attempt === 2) console.error(`[cache] invalidate ${keys.join(",")} failed; entries may stay stale until their TTL:`, error instanceof Error ? error.message : error);
+    }
   }
 }
 

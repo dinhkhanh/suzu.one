@@ -1,5 +1,6 @@
 import "server-only";
 import { and, asc, desc, eq, gte, ilike, inArray, isNotNull, lt } from "drizzle-orm";
+import { cached } from "@/lib/cache";
 import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 
@@ -76,7 +77,15 @@ export async function listAuditEntries(reach: { all: true } | { all: false; enti
   return { rows, total };
 }
 
+/**
+ * The filter's choices. A DISTINCT over the whole log is the slowest query on the page, and the
+ * log only grows, so the list sits in the shared cache for a few minutes: a new type shows up late.
+ */
 export async function listAuditResourceTypes(): Promise<string[]> {
+  return cached("audit:resource-types", 10 * 60, loadAuditResourceTypes);
+}
+
+async function loadAuditResourceTypes(): Promise<string[]> {
   const rows = await db().selectDistinct({ type: schema.auditLog.resourceType }).from(schema.auditLog).where(isNotNull(schema.auditLog.resourceType)).orderBy(asc(schema.auditLog.resourceType));
   return rows.flatMap((row) => (row.type ? [row.type] : []));
 }

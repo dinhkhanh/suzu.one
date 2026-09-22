@@ -12,6 +12,7 @@
 import "server-only";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate } from "@/lib/cache";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "@/modules/platform/notifications/service";
@@ -26,30 +27,36 @@ export type ResolvedWeighting = { id: string; entityId: string | null; validFrom
 /** The last day of a year — the date a year's result is weighted as of. */
 export const weightingDateOf = (year: number): IsoDate => `${year}-12-31`;
 
-export async function listWeightingVersions(executor: Executor = db()): Promise<PerformanceWeightingRow[]> {
-  return executor.select().from(schema.performanceWeighting).orderBy(asc(schema.performanceWeighting.entityId), desc(schema.performanceWeighting.validFrom), desc(schema.performanceWeighting.createdAt));
+// The whole table is a handful of versions of configuration: cached, and cleared by the two writers below.
+const WEIGHTING_CACHE = "performance:weighting";
+const WEIGHTING_TTL = 60 * 60;
+
+/** Every version. Inside a transaction pass it, and the rows come from that transaction, not the cache. */
+export async function listWeightingVersions(executor?: Executor): Promise<PerformanceWeightingRow[]> {
+  const load = (from: Executor) => from.select().from(schema.performanceWeighting).orderBy(asc(schema.performanceWeighting.entityId), desc(schema.performanceWeighting.validFrom), desc(schema.performanceWeighting.createdAt));
+  return executor ? load(executor) : cached(WEIGHTING_CACHE, WEIGHTING_TTL, () => load(db()));
 }
 
 /**
  * The weighting an entity's results follow on `date`: its own approved version, else the group's.
  * Throws when there is none — a result is never computed by a rule nobody approved.
  */
-export async function getWeighting(entityId: string | null, date: IsoDate, executor: Executor = db()): Promise<ResolvedWeighting> {
-  const approved = await executor.select().from(schema.performanceWeighting).where(eq(schema.performanceWeighting.status, "approved"));
+export async function getWeighting(entityId: string | null, date: IsoDate, executor?: Executor): Promise<ResolvedWeighting> {
+  const approved = (await listWeightingVersions(executor)).filter((row) => row.status === "approved");
   const version = (entityId ? versionOn(approved.filter((row) => row.entityId === entityId), date) : undefined) ?? versionOn(approved.filter((row) => row.entityId === null), date);
   if (!version) throw new ActionError("weighting_missing");
   return { id: version.id, entityId: version.entityId, validFrom: version.validFrom, value: performanceWeightingSchema.parse(version.value) };
 }
 
 /** The exact version a stored result used — for reading a locked figure back years later. */
-export async function getWeightingVersion(id: string, executor: Executor = db()): Promise<ResolvedWeighting> {
-  const [row] = await executor.select().from(schema.performanceWeighting).where(eq(schema.performanceWeighting.id, id)).limit(1);
+export async function getWeightingVersion(id: string, executor?: Executor): Promise<ResolvedWeighting> {
+  const row = (await listWeightingVersions(executor)).find((version) => version.id === id);
   if (!row) throw new ActionError("weighting_missing");
   return { id: row.id, entityId: row.entityId, validFrom: row.validFrom, value: performanceWeightingSchema.parse(row.value) };
 }
 
 /** Is there a weighting at all for this year? Screens ask before offering to compute. */
-export async function hasWeighting(entityId: string | null, year: number, executor: Executor = db()): Promise<boolean> {
+export async function hasWeighting(entityId: string | null, year: number, executor?: Executor): Promise<boolean> {
   try {
     await getWeighting(entityId, weightingDateOf(year), executor);
     return true;
@@ -67,13 +74,14 @@ export function checkWeightingValue(value: unknown): PerformanceWeightingValue {
 export async function proposeWeighting(input: { entityId: string | null; value: unknown; validFrom: IsoDate; note: string | null }, actorPersonId: string, executor: Executor = db()): Promise<PerformanceWeightingRow> {
   const value = checkWeightingValue(input.value);
   const [created] = await executor.insert(schema.performanceWeighting).values({ entityId: input.entityId, value, validFrom: input.validFrom, note: input.note, proposedByPersonId: actorPersonId }).returning();
+  await invalidate(WEIGHTING_CACHE);
   await notify({ recipients: await listOwnerPersonIds(), kind: "performance.rule_proposed", params: { validFrom: created.validFrom }, link: "/performance/admin/weighting" });
   return created;
 }
 
 /** The owner's decision. Approving closes the version it succeeds the day before it starts. */
 export async function decideWeighting(id: string, decision: "approve" | "reject", actorPersonId: string, executor: ReturnType<typeof db> = db()): Promise<{ before: PerformanceWeightingRow; after: PerformanceWeightingRow }> {
-  return executor.transaction(async (tx) => {
+  const result = await executor.transaction(async (tx) => {
     const table = schema.performanceWeighting;
     const [before] = await tx.select().from(table).where(eq(table.id, id)).limit(1).for("update");
     if (!before || before.status !== "proposed") throw new ActionError("weighting_proposal_not_found");
@@ -89,4 +97,6 @@ export async function decideWeighting(id: string, decision: "approve" | "reject"
     const [after] = await tx.update(table).set({ status: "approved", ...decided }).where(eq(table.id, id)).returning();
     return { before, after };
   });
+  await invalidate(WEIGHTING_CACHE);
+  return result;
 }

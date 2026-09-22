@@ -25,10 +25,16 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
   if (!view) notFound();
   requireStepUp(user, `/payroll/runs/${runId}`);
 
-  const [t, format] = await Promise.all([getTranslations("payroll"), getFormatter()]);
   const { run, entity, totals, progress, variance, people, events, seesPayslips } = view;
-  // Payslips exist only once the CEO has signed (FR-PAY-32); before that there is nothing to show.
-  const payslips = seesPayslips && run.approvedAt ? await listPayslipsOfRun(run.id, run.month) : [];
+  const editable = run.status === "draft" || run.status === "calculated";
+  const [t, format, payslips, catalogue] = await Promise.all([
+    getTranslations("payroll"),
+    getFormatter(),
+    // Payslips exist only once the CEO has signed (FR-PAY-32); before that there is nothing to show.
+    // The names are the ones the variance check already read.
+    seesPayslips && run.approvedAt ? listPayslipsOfRun(run.id, variance.names) : [],
+    seesPayslips && editable ? resolveCatalogue(run.entityId, `${run.month}-01` as `${number}-${number}-${number}`) : [],
+  ]);
   const when = (value: Date | null) => (value ? format.dateTime(value, { dateStyle: "medium", timeStyle: "short" }) : "—");
 
   // Which of the steps the run allows is *this* person's to take (SRS D17). The action checks again.
@@ -38,8 +44,8 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
     "payroll:pay": canPayPayroll(user.principal, run),
   };
   const mySteps = view.steps.filter((step) => holds[RUN_STEPS[step].permission]);
-  const editable = run.status === "draft" || run.status === "calculated";
-  const inputCodes = seesPayslips && editable ? (await resolveCatalogue(run.entityId, `${run.month}-01` as `${number}-${number}-${number}`)).filter((component) => component.source === "input").map((component) => ({ code: component.code, name: `${component.code} — ${component.name}` })) : [];
+  const inputCodes = catalogue.filter((component) => component.source === "input").map((component) => ({ code: component.code, name: `${component.code} — ${component.name}` }));
+  const payslipOf = new Map(payslips.map((row) => [row.personId, row]));
 
   return (
     <div className="flex flex-col gap-6">
@@ -235,8 +241,8 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
                   <Link href={`/payroll/salaries/${person.personId}`} className="font-medium hover:underline">
                     {person.fullName}
                   </Link>
-                  {payslips.find((row) => row.personId === person.personId)?.payslipId ? (
-                    <Link href={`/payslips/${payslips.find((row) => row.personId === person.personId)!.payslipId}`} className="ml-2 text-xs text-muted-foreground hover:underline">
+                  {payslipOf.get(person.personId)?.payslipId ? (
+                    <Link href={`/payslips/${payslipOf.get(person.personId)!.payslipId}`} className="ml-2 text-xs text-muted-foreground hover:underline">
                       {t("payslips.open")}
                     </Link>
                   ) : null}

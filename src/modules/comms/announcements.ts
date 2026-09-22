@@ -6,9 +6,9 @@ import { and, arrayOverlaps, asc, desc, eq, inArray, isNull, lte, type SQL, sql 
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
-import { currentBranchOf, findBranchEntity, listPeopleAtBranches } from "../core-hr/service";
+import { currentBranchOf, listPeopleAtBranches } from "../core-hr/service";
 import { notify } from "../platform/notifications/service";
-import { unitChoices, unitPathsOf } from "../platform/org/service";
+import { listBranches, listEntities, listOrgUnits, unitChoices } from "../platform/org/service";
 import type { Principal } from "../platform/rbac/policy";
 import { type AnnouncementPhase, parseAudienceKey } from "./enums";
 import { type AudienceTarget, canManageAnnouncement, canPostTo, canReadAnnouncement, type CommsViewer, commsViewerKeys, phaseOf } from "./policy";
@@ -29,26 +29,51 @@ export async function commsViewerOf(user: ViewerSource, today: IsoDate = todayIn
 // ── The audience ────────────────────────────────────────────────────────────────────────────
 
 /** Where each audience key sits, for the posting rule. A key that names nothing gets `target: null` and is refused. */
-export async function resolveAudienceTargets(keys: readonly string[], executor: Executor = db()): Promise<AudienceTarget[]> {
-  const targets: AudienceTarget[] = [];
-  for (const key of [...new Set(keys)]) {
+export async function resolveAudienceTargets(keys: readonly string[], executor?: Executor): Promise<AudienceTarget[]> {
+  const byKey = await targetsOf(keys, executor);
+  return [...new Set(keys)].map((key) => ({ key, target: byKey.get(key) ?? null }));
+}
+
+/**
+ * Every key's target, a few queries for any number of keys (a list of announcements resolves all
+ * their audiences at once). Entities, units and branches come from the shared cache unless an
+ * executor is passed — inside a transaction they are read from it.
+ */
+async function targetsOf(keys: readonly string[], executor?: Executor): Promise<Map<string, AudienceTarget["target"]>> {
+  const ids = { entity: new Set<string>(), unit: new Set<string>(), branch: new Set<string>(), person: new Set<string>() };
+  for (const key of new Set(keys)) {
     const subject = parseAudienceKey(key);
-    if (!subject) targets.push({ key, target: null });
-    else if (subject.type === "all") targets.push({ key, target: {} });
-    else if (subject.type === "entity") {
-      const [row] = await executor.select({ id: entity.id }).from(entity).where(eq(entity.id, subject.id!)).limit(1);
-      targets.push({ key, target: row ? { entityId: row.id } : null });
-    } else if (subject.type === "unit" || subject.type === "unit_only") {
-      // Posting to a unit takes the permission over that unit — which a grant on any unit above it
-      // carries, so the path is the target.
-      const [row] = await executor.select({ id: orgUnit.id, entityId: orgUnit.entityId, path: orgUnit.path }).from(orgUnit).where(eq(orgUnit.id, subject.id!)).limit(1);
-      targets.push({ key, target: row ? { unitPath: row.path, entityId: row.entityId } : null });
+    if (!subject || subject.type === "all") continue;
+    ids[subject.type === "unit_only" ? "unit" : subject.type].add(subject.id!);
+  }
+  const listed = <T>(set: Set<string>, load: (wanted: string[]) => Promise<T[]>): Promise<T[]> => (set.size ? load([...set]) : Promise.resolve([]));
+  const [entities, units, branches, people] = await Promise.all([
+    listed(ids.entity, (wanted) => (executor ? executor.select({ id: entity.id }).from(entity).where(inArray(entity.id, wanted)) : listEntities())),
+    // Posting to a unit takes the permission over that unit — which a grant on any unit above it
+    // carries, so the path is the target.
+    listed(ids.unit, (wanted) => (executor ? executor.select({ id: orgUnit.id, entityId: orgUnit.entityId, path: orgUnit.path }).from(orgUnit).where(inArray(orgUnit.id, wanted)) : listOrgUnits())),
+    listed(ids.branch, (wanted) => (executor ? executor.select({ id: schema.branch.id, entityId: schema.branch.entityId }).from(schema.branch).where(inArray(schema.branch.id, wanted)) : listBranches())),
+    listed(ids.person, (wanted) => (executor ?? db()).select({ id: person.id, primaryEntityId: person.primaryEntityId, orgUnitPath: person.orgUnitPath, managerId: person.managerId }).from(person).where(inArray(person.id, wanted))),
+  ]);
+  const entityIds = new Set(entities.map((row) => row.id));
+  const unitById = new Map(units.map((row) => [row.id, row]));
+  const branchById = new Map(branches.map((row) => [row.id, row]));
+  const personById = new Map(people.map((row) => [row.id, row]));
+  const targets = new Map<string, AudienceTarget["target"]>();
+  for (const key of new Set(keys)) {
+    const subject = parseAudienceKey(key);
+    if (!subject) targets.set(key, null);
+    else if (subject.type === "all") targets.set(key, {});
+    else if (subject.type === "entity") targets.set(key, entityIds.has(subject.id!) ? { entityId: subject.id! } : null);
+    else if (subject.type === "unit" || subject.type === "unit_only") {
+      const row = unitById.get(subject.id!);
+      targets.set(key, row ? { unitPath: row.path, entityId: row.entityId } : null);
     } else if (subject.type === "branch") {
-      const row = await findBranchEntity(subject.id!, executor);
-      targets.push({ key, target: row ? { entityId: row.entityId } : null });
+      const row = branchById.get(subject.id!);
+      targets.set(key, row ? { entityId: row.entityId } : null);
     } else {
-      const [row] = await executor.select().from(person).where(eq(person.id, subject.id!)).limit(1);
-      targets.push({ key, target: row ? { personId: row.id, entityId: row.primaryEntityId, unitPath: row.orgUnitPath, managerId: row.managerId } : null });
+      const row = personById.get(subject.id!);
+      targets.set(key, row ? { personId: row.id, entityId: row.primaryEntityId, unitPath: row.orgUnitPath, managerId: row.managerId } : null);
     }
   }
   return targets;
@@ -135,10 +160,15 @@ export async function countUnreadAnnouncements(viewer: CommsViewer): Promise<num
 
 export type LoadedAnnouncement = { row: AnnouncementRow; audience: string[]; targets: AudienceTarget[]; authorName: string };
 
-export async function loadAnnouncement(id: string, executor: Executor = db()): Promise<LoadedAnnouncement | null> {
-  const [found] = await executor.select({ row: announcement, authorName: person.fullName }).from(announcement).innerJoin(person, eq(person.id, announcement.authorPersonId)).where(eq(announcement.id, id)).limit(1);
+/** Pass the transaction when inside one; without it the audience's places come from the shared cache. */
+export async function loadAnnouncement(id: string, executor?: Executor): Promise<LoadedAnnouncement | null> {
+  const from = executor ?? db();
+  const [[found], keys] = await Promise.all([
+    from.select({ row: announcement, authorName: person.fullName }).from(announcement).innerJoin(person, eq(person.id, announcement.authorPersonId)).where(eq(announcement.id, id)).limit(1),
+    from.select({ key: announcementAudience.subjectKey }).from(announcementAudience).where(eq(announcementAudience.announcementId, id)).orderBy(asc(announcementAudience.subjectKey)),
+  ]);
   if (!found) return null;
-  const audience = (await executor.select({ key: announcementAudience.subjectKey }).from(announcementAudience).where(eq(announcementAudience.announcementId, id)).orderBy(asc(announcementAudience.subjectKey))).map((row) => row.key);
+  const audience = keys.map((row) => row.key);
   return { ...found, audience, targets: await resolveAudienceTargets(audience, executor) };
 }
 
@@ -149,19 +179,19 @@ export type AnnouncementView = LoadedAnnouncement & { phase: AnnouncementPhase; 
 
 /** What the viewer may open: a live announcement aimed at them, or any they manage. null = not theirs to see. */
 export async function getAnnouncementView(viewer: CommsViewer, id: string): Promise<AnnouncementView | null> {
-  const loaded = await loadAnnouncement(id);
+  // The viewer's own mark is read alongside; it is only used once the announcement is theirs to see.
+  const [loaded, [mark]] = await Promise.all([loadAnnouncement(id), db().select().from(announcementRead).where(and(eq(announcementRead.announcementId, id), eq(announcementRead.personId, viewer.personId))).limit(1)]);
   if (!loaded) return null;
   const now = new Date();
   const canManage = mayManage(viewer.principal, loaded);
   const isReader = mayRead(viewer, loaded, now);
   if (!canManage && !isReader) return null;
-  const [mark] = await db().select().from(announcementRead).where(and(eq(announcementRead.announcementId, id), eq(announcementRead.personId, viewer.personId))).limit(1);
   return { ...loaded, phase: phaseOf(loaded.row, now), canManage, isReader, readAt: mark?.readAt ?? null, acknowledgedAt: mark?.acknowledgedAt ?? null };
 }
 
-/** Opening it is reading it. Idempotent; only someone in the audience leaves a mark. */
-export async function markAnnouncementRead(viewer: CommsViewer, id: string): Promise<boolean> {
-  const loaded = await loadAnnouncement(id);
+/** Opening it is reading it. Idempotent; only someone in the audience leaves a mark. Pass the announcement when it was just loaded. */
+export async function markAnnouncementRead(viewer: CommsViewer, id: string, preloaded?: LoadedAnnouncement): Promise<boolean> {
+  const loaded = preloaded?.row.id === id ? preloaded : await loadAnnouncement(id);
   if (!loaded || !mayRead(viewer, loaded)) return false;
   const fresh = await db().insert(announcementRead).values({ announcementId: id, personId: viewer.personId }).onConflictDoNothing().returning({ id: announcementRead.id });
   return fresh.length > 0;
@@ -181,16 +211,24 @@ export async function acknowledgeAnnouncement(viewer: CommsViewer, id: string): 
 
 export type ManagedRow = { id: string; title: string; phase: AnnouncementPhase; pinned: boolean; mustAcknowledge: boolean; publishAt: Date | null; expiresAt: Date | null; authorName: string; audience: string[]; updatedAt: Date };
 
-/** Everything the viewer may manage. The rule needs each row's resolved targets, so the (short) list is checked row by row with the pure policy. */
+/** Everything the viewer may manage. The rule needs each row's resolved targets: the (short) list and all its audiences are loaded at once, then checked row by row with the pure policy. */
 export async function listManagedAnnouncements(principal: Principal, limit = 200): Promise<ManagedRow[]> {
-  const rows = await db().select({ id: announcement.id }).from(announcement).orderBy(desc(announcement.updatedAt)).limit(limit);
+  const rows = await db().select({ row: announcement, authorName: person.fullName }).from(announcement).innerJoin(person, eq(person.id, announcement.authorPersonId)).orderBy(desc(announcement.updatedAt)).limit(limit);
+  if (!rows.length) return [];
+  const keys = await db()
+    .select({ announcementId: announcementAudience.announcementId, key: announcementAudience.subjectKey })
+    .from(announcementAudience)
+    .where(inArray(announcementAudience.announcementId, rows.map(({ row }) => row.id)))
+    .orderBy(asc(announcementAudience.subjectKey));
+  const audiences = Map.groupBy(keys, (found) => found.announcementId);
+  const targets = await targetsOf(keys.map((found) => found.key));
   const now = new Date();
   const result: ManagedRow[] = [];
-  for (const { id } of rows) {
-    const loaded = await loadAnnouncement(id);
-    if (!loaded || !mayManage(principal, loaded)) continue;
-    const { row } = loaded;
-    result.push({ id: row.id, title: row.title, phase: phaseOf(row, now), pinned: row.pinned, mustAcknowledge: row.mustAcknowledge, publishAt: row.publishAt, expiresAt: row.expiresAt, authorName: loaded.authorName, audience: loaded.audience, updatedAt: row.updatedAt });
+  for (const { row, authorName } of rows) {
+    const audience = (audiences.get(row.id) ?? []).map((found) => found.key);
+    const loaded: LoadedAnnouncement = { row, authorName, audience, targets: [...new Set(audience)].map((key) => ({ key, target: targets.get(key) ?? null })) };
+    if (!mayManage(principal, loaded)) continue;
+    result.push({ id: row.id, title: row.title, phase: phaseOf(row, now), pinned: row.pinned, mustAcknowledge: row.mustAcknowledge, publishAt: row.publishAt, expiresAt: row.expiresAt, authorName, audience: loaded.audience, updatedAt: row.updatedAt });
   }
   return result;
 }
@@ -300,14 +338,24 @@ export type ReadReport = {
   people: { personId: string; fullName: string; departmentName: string | null; readAt: Date | null; acknowledgedAt: Date | null }[];
 };
 
-export async function getReadReport(id: string): Promise<ReadReport | null> {
-  const loaded = await loadAnnouncement(id);
+/** Pass the announcement when the screen has just loaded it. */
+export async function getReadReport(id: string, preloaded?: Pick<LoadedAnnouncement, "row" | "audience">): Promise<ReadReport | null> {
+  const loaded = preloaded?.row.id === id ? preloaded : await loadAnnouncement(id);
   if (!loaded) return null;
-  const audience = await audiencePeople(loaded.audience);
-  const marks = new Map((await db().select().from(announcementRead).where(eq(announcementRead.announcementId, id))).map((mark) => [mark.personId, mark]));
+  const [audience, markRows] = await Promise.all([audiencePeople(loaded.audience), db().select({ personId: announcementRead.personId, readAt: announcementRead.readAt, acknowledgedAt: announcementRead.acknowledgedAt }).from(announcementRead).where(eq(announcementRead.announcementId, id))]);
+  const marks = new Map(markRows.map((mark) => [mark.personId, mark]));
   const people = audience.map((member) => ({ ...member, readAt: marks.get(member.personId)?.readAt ?? null, acknowledgedAt: marks.get(member.personId)?.acknowledgedAt ?? null }));
-  const byDepartment = [...Map.groupBy(people, (member) => member.departmentName)].map(([departmentName, members]) => ({ departmentName, total: members.length, read: members.filter((member) => member.readAt).length, acknowledged: members.filter((member) => member.acknowledgedAt).length }));
-  return { total: people.length, read: people.filter((member) => member.readAt).length, acknowledged: people.filter((member) => member.acknowledgedAt).length, byDepartment, people };
+  const count = (members: typeof people) => {
+    let read = 0;
+    let acknowledged = 0;
+    for (const member of members) {
+      if (member.readAt) read++;
+      if (member.acknowledgedAt) acknowledged++;
+    }
+    return { total: members.length, read, acknowledged };
+  };
+  const byDepartment = [...Map.groupBy(people, (member) => member.departmentName)].map(([departmentName, members]) => ({ departmentName, ...count(members) }));
+  return { ...count(people), byDepartment, people };
 }
 
 // ── The audience picker ─────────────────────────────────────────────────────────────────────
@@ -317,13 +365,14 @@ export type AudienceOptions = { all: boolean; entities: Option[]; units: Option[
 
 /** Only what the principal may address: a department head's picker holds their unit, the units below it and their people, nothing else. */
 export async function audienceOptionsFor(principal: Principal): Promise<AudienceOptions> {
-  const [entities, units, branches, people] = await Promise.all([
-    db().select().from(entity).orderBy(asc(entity.shortName)),
+  const [entities, units, branches, people, orgUnits] = await Promise.all([
+    db().select({ id: entity.id, shortName: entity.shortName }).from(entity).orderBy(asc(entity.shortName)),
     unitChoices(),
-    db().select().from(schema.branch).orderBy(asc(schema.branch.name)),
-    db().select().from(person).where(eq(person.status, "active")).orderBy(asc(person.searchName)),
+    listBranches(),
+    db().select({ id: person.id, fullName: person.fullName, primaryEntityId: person.primaryEntityId, orgUnitPath: person.orgUnitPath }).from(person).where(eq(person.status, "active")).orderBy(asc(person.searchName)),
+    listOrgUnits(),
   ]);
-  const unitPaths = await unitPathsOf(units.map((unit) => unit.id));
+  const unitPaths = new Map(orgUnits.map((unit) => [unit.id, unit.path]));
   const may = (target: AudienceTarget["target"]) => canPostTo(principal, [{ key: "", target }]);
   return {
     all: may({}),
@@ -334,16 +383,27 @@ export async function audienceOptionsFor(principal: Principal): Promise<Audience
   };
 }
 
-/** Names for audience keys ("entity:<id>" → "Media"); "all" and the type are put into words by the screen. */
+/** Names for audience keys ("entity:<id>" → "Media"); "all" and the type are put into words by the screen. Entities, units and branches come from the shared cache. */
 export async function audienceNames(keys: readonly string[]): Promise<Map<string, string>> {
+  const wanted = (type: string) => new Set(keys.flatMap((key) => (key.startsWith(`${type}:`) ? [key.slice(type.length + 1)] : [])));
+  const entityIds = wanted("entity");
+  const unitIds = new Set([...wanted("unit"), ...wanted("unit_only")]);
+  const branchIds = wanted("branch");
+  const personIds = wanted("person");
+  const [entities, units, branches, people] = await Promise.all([
+    entityIds.size ? listEntities() : [],
+    unitIds.size ? listOrgUnits() : [],
+    branchIds.size ? listBranches() : [],
+    personIds.size ? db().select({ id: person.id, name: person.fullName }).from(person).where(inArray(person.id, [...personIds])) : [],
+  ]);
   const names = new Map<string, string>();
-  const tables = { entity: [entity, entity.shortName], unit: [orgUnit, orgUnit.name], unit_only: [orgUnit, orgUnit.name], branch: [schema.branch, schema.branch.name], person: [person, person.fullName] } as const;
-  for (const type of ["entity", "unit", "unit_only", "branch", "person"] as const) {
-    const wanted = keys.flatMap((key) => (key.startsWith(`${type}:`) ? [key.slice(type.length + 1)] : []));
-    if (wanted.length === 0) continue;
-    const [table, column] = tables[type];
-    const rows = await db().select({ id: table.id, name: column }).from(table).where(inArray(table.id, wanted));
-    for (const row of rows) names.set(`${type}:${row.id}`, row.name);
+  for (const row of entities) if (entityIds.has(row.id)) names.set(`entity:${row.id}`, row.shortName);
+  for (const row of units) {
+    if (!unitIds.has(row.id)) continue;
+    names.set(`unit:${row.id}`, row.name);
+    names.set(`unit_only:${row.id}`, row.name);
   }
+  for (const row of branches) if (branchIds.has(row.id)) names.set(`branch:${row.id}`, row.name);
+  for (const row of people) names.set(`person:${row.id}`, row.name);
   return names;
 }

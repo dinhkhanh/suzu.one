@@ -5,7 +5,7 @@
 // **No authorization inside.** The caller (performance's evidence panel) has already decided that
 // this viewer may read this person's performance data.
 import "server-only";
-import { and, count, eq, gte, isNull, lte, sql } from "drizzle-orm";
+import { and, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import { db, schema, type Tx } from "@/lib/db";
 import type { IsoDate } from "@/lib/dates";
 import { WORK_KIND } from "./tasks";
@@ -32,26 +32,27 @@ export type PersonTaskStats = {
 const live = isNull(schema.task.deletedAt);
 const mine = (personId: string) => and(eq(schema.task.kind, WORK_KIND), eq(schema.task.assigneePersonId, personId), live);
 
-const countOf = async (executor: Executor, where: ReturnType<typeof and>): Promise<number> => {
-  const [row] = await executor.select({ n: count() }).from(schema.task).where(where);
-  return Number(row?.n ?? 0);
-};
-
 /**
- * One person's task statistics over a period — a year, for an annual review. Six counts in five
- * cheap queries; nothing that says what the work was.
+ * One person's task statistics over a period — a year, for an annual review. Six counts in one
+ * query over the person's tasks; nothing that says what the work was.
  */
 export async function getPersonTaskStats(input: { personId: string; from: IsoDate; to: IsoDate; today?: IsoDate }, executor: Executor = db()): Promise<PersonTaskStats> {
   const inPeriod = and(gte(sql`${schema.task.completedAt}::date`, input.from), lte(sql`${schema.task.completedAt}::date`, input.to));
-  const done = and(mine(input.personId), eq(schema.task.status, "done"), inPeriod);
+  const done = and(eq(schema.task.status, "done"), inPeriod);
+  const open = sql`${schema.task.status} IN ('todo', 'in_progress')`;
   const today = input.today ?? input.to;
-  const [completed, onTime, open, overdue, cancelled] = await Promise.all([
-    countOf(executor, done),
-    // No due date = nothing was missed, so it counts as on time.
-    countOf(executor, and(done, sql`(${schema.task.dueDate} IS NULL OR ${schema.task.completedAt}::date <= ${schema.task.dueDate})`)),
-    countOf(executor, and(mine(input.personId), sql`${schema.task.status} IN ('todo', 'in_progress')`)),
-    countOf(executor, and(mine(input.personId), sql`${schema.task.status} IN ('todo', 'in_progress')`, sql`${schema.task.dueDate} < ${today}::date`)),
-    countOf(executor, and(mine(input.personId), eq(schema.task.status, "cancelled"), and(gte(sql`${schema.task.updatedAt}::date`, input.from), lte(sql`${schema.task.updatedAt}::date`, input.to)))),
-  ]);
-  return { from: input.from, to: input.to, completed, onTime, late: completed - onTime, open, overdue, cancelled };
+  const [row] = await executor
+    .select({
+      completed: sql<number>`count(*) filter (where ${done})::int`,
+      // No due date = nothing was missed, so it counts as on time.
+      onTime: sql<number>`count(*) filter (where ${and(done, sql`(${schema.task.dueDate} IS NULL OR ${schema.task.completedAt}::date <= ${schema.task.dueDate})`)})::int`,
+      open: sql<number>`count(*) filter (where ${open})::int`,
+      overdue: sql<number>`count(*) filter (where ${open} and ${schema.task.dueDate} < ${today}::date)::int`,
+      cancelled: sql<number>`count(*) filter (where ${and(eq(schema.task.status, "cancelled"), gte(sql`${schema.task.updatedAt}::date`, input.from), lte(sql`${schema.task.updatedAt}::date`, input.to))})::int`,
+    })
+    .from(schema.task)
+    .where(mine(input.personId));
+  const completed = row?.completed ?? 0;
+  const onTime = row?.onTime ?? 0;
+  return { from: input.from, to: input.to, completed, onTime, late: completed - onTime, open: row?.open ?? 0, overdue: row?.overdue ?? 0, cancelled: row?.cancelled ?? 0 };
 }

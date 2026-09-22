@@ -10,10 +10,12 @@
 // `payroll:propose` over the entity. These exports name people and carry their tax codes and
 // national IDs, so they are C&B and the owner only — the same rule as the payroll register.
 import "server-only";
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, desc, eq, inArray, lte, ne } from "drizzle-orm";
+import { cache } from "react";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
-import { type DependantRegistration, listDependantRegistrations, listPayrollFacts, type PayrollPersonFacts } from "@/modules/core-hr/service";
+import { type DependantRegistration, listDependantRegistrations, listPayrollFacts, type PayrollPersonFacts, payrollFactsOf } from "@/modules/core-hr/service";
+import { listEntities } from "@/modules/platform/org/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import type { PersonPayResult } from "./engine/types";
 import { progressiveTax } from "./engine/pit";
@@ -40,22 +42,32 @@ export function monthsOfPeriod(period: string): string[] {
 
 export const lastMonthOf = (period: string): string => monthsOfPeriod(period).at(-1) ?? period;
 
-/** Every calculated person of an entity's runs in the given months. Draft and cancelled runs are nobody's filing. */
-async function loadPeople(entityId: string, months: readonly string[]): Promise<LoadedPerson[]> {
-  if (months.length === 0) return [];
+/**
+ * Every calculated person of an entity's runs in the given months. Draft and cancelled runs are
+ * nobody's filing. Remembered for the request (React `cache`): the statutory screen builds the
+ * insurance list, the PIT declaration and the finalization side by side over the same months.
+ */
+function loadPeople(entityId: string, months: readonly string[]): Promise<LoadedPerson[]> {
+  return months.length === 0 ? Promise.resolve([]) : loadPeopleOnce(entityId, months.join(","));
+}
+
+const loadPeopleOnce = cache(async (entityId: string, monthList: string): Promise<LoadedPerson[]> => {
+  const months = monthList.split(",");
   const runs = await db()
     .select()
     .from(schema.payrollRun)
     .where(and(eq(schema.payrollRun.entityId, entityId), inArray(schema.payrollRun.month, [...months]), ne(schema.payrollRun.status, "cancelled"), ne(schema.payrollRun.status, "draft")));
   if (runs.length === 0) return [];
   const rows = await db().select().from(schema.payrollRunPerson).where(inArray(schema.payrollRunPerson.runId, runs.map((run) => run.id)));
+  const runOf = new Map(runs.map((run) => [run.id, run]));
   return rows.flatMap((row) => {
-    const run = runs.find((candidate) => candidate.id === row.runId);
+    const run = runOf.get(row.runId);
     return run ? [{ personId: row.personId, profile: row.profile, result: openResult(row), run }] : [];
   });
-}
+});
 
-const entityOf = async (entityId: string) => (await db().select().from(schema.entity).where(eq(schema.entity.id, entityId)).limit(1))[0] ?? null;
+/** The entity, from the shared cache of entities. */
+const entityOf = async (entityId: string) => (await listEntities()).find((row) => row.id === entityId) ?? null;
 
 // ── Insurance increase / decrease (D02-LT) ──────────────────────────────────────────────────
 
@@ -66,32 +78,36 @@ const entityOf = async (entityId: string) => (await db().select().from(schema.en
  */
 export async function insuranceChanges(principal: Principal, entityId: string, month: string): Promise<{ entityCode: string; month: string; rows: D02ltRow[] } | null> {
   if (!canManageCompensation(principal, { entityId })) return null;
-  const entity = await entityOf(entityId);
-  if (!entity) return null;
-
   const previousMonth = shiftMonth(month, -1);
-  const [current, previous] = await Promise.all([loadPeople(entityId, [month]), loadPeople(entityId, [previousMonth])]);
+  const [entity, current, previous] = await Promise.all([entityOf(entityId), loadPeople(entityId, [month]), loadPeople(entityId, [previousMonth])]);
+  if (!entity) return null;
   if (current.length === 0 && previous.length === 0) return null;
 
-  const regular = (people: LoadedPerson[]) => people.filter((person) => person.run.kind === "regular");
-  const baseOf = (people: LoadedPerson[], personId: string): number | null => {
-    const person = regular(people).find((candidate) => candidate.personId === personId);
+  // Each person's regular-run line of the month, by id (the first one, as a scan would find it).
+  const regular = (people: LoadedPerson[]) => {
+    const byPerson = new Map<string, LoadedPerson>();
+    for (const person of people) if (person.run.kind === "regular" && !byPerson.has(person.personId)) byPerson.set(person.personId, person);
+    return byPerson;
+  };
+  const currentRegular = regular(current);
+  const previousRegular = regular(previous);
+  const baseOf = (people: Map<string, LoadedPerson>, personId: string): number | null => {
+    const person = people.get(personId);
     if (!person) return null;
     return person.result.insurance.covered ? person.result.insurance.bhxhBhytBase : 0;
   };
 
-  const personIds = [...new Set([...regular(current), ...regular(previous)].map((person) => person.personId))];
-  const facts = await listPayrollFacts({ personIds }, month);
+  const personIds = [...new Set([...currentRegular.keys(), ...previousRegular.keys()])];
+  const [facts, positions] = await Promise.all([payrollFactsOf(personIds, month), positionNames(personIds, `${month}-01` as IsoDate)]);
   const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
-  const positions = await positionNames(personIds, `${month}-01` as IsoDate);
 
   const rows: D02ltRow[] = [];
   for (const personId of personIds) {
-    const now = baseOf(current, personId);
-    const before = baseOf(previous, personId);
+    const now = baseOf(currentRegular, personId);
+    const before = baseOf(previousRegular, personId);
     if (now === before) continue;
     const fact = factOf.get(personId);
-    const person = regular(current).find((candidate) => candidate.personId === personId);
+    const person = currentRegular.get(personId);
     const reason = changeReason(before, now, person);
     if (!reason) continue;
     rows.push({
@@ -130,16 +146,15 @@ function changeReason(before: number | null, now: number | null, person: LoadedP
 
 async function positionNames(personIds: readonly string[], onDate: IsoDate): Promise<Map<string, string>> {
   if (personIds.length === 0) return new Map();
+  // The latest primary assignment that had started by the day — one row per person (DISTINCT ON).
   const rows = await db()
-    .select({ personId: schema.employment.personId, name: schema.position.name, validFrom: schema.assignment.validFrom })
+    .selectDistinctOn([schema.employment.personId], { personId: schema.employment.personId, name: schema.position.name })
     .from(schema.assignment)
     .innerJoin(schema.employment, eq(schema.employment.id, schema.assignment.employmentId))
     .innerJoin(schema.position, eq(schema.position.id, schema.assignment.positionId))
-    .where(and(inArray(schema.employment.personId, [...personIds]), eq(schema.assignment.kind, "primary")))
-    .orderBy(schema.assignment.validFrom);
-  const names = new Map<string, string>();
-  for (const row of rows) if (row.validFrom <= onDate) names.set(row.personId, row.name);
-  return names;
+    .where(and(inArray(schema.employment.personId, [...personIds]), eq(schema.assignment.kind, "primary"), lte(schema.assignment.validFrom, onDate)))
+    .orderBy(schema.employment.personId, desc(schema.assignment.validFrom));
+  return new Map(rows.map((row) => [row.personId, row.name]));
 }
 
 export function shiftMonth(month: string, by: number): string {
@@ -153,12 +168,10 @@ export function shiftMonth(month: string, by: number): string {
 /** One row per person for the period, with every run of every month in it added together. */
 export async function pitPeriodRows(principal: Principal, entityId: string, period: string): Promise<{ entityCode: string; period: string; rows: PitPersonRow[] } | null> {
   if (!canManageCompensation(principal, { entityId })) return null;
-  const entity = await entityOf(entityId);
+  const [entity, people] = await Promise.all([entityOf(entityId), loadPeople(entityId, monthsOfPeriod(period))]);
   if (!entity) return null;
-
-  const people = await loadPeople(entityId, monthsOfPeriod(period));
   if (people.length === 0) return null;
-  const facts = await listPayrollFacts({ personIds: [...new Set(people.map((person) => person.personId))] }, lastMonthOf(period));
+  const facts = await payrollFactsOf(people.map((person) => person.personId), lastMonthOf(period));
   const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
 
   const byPerson = new Map<string, PitPersonRow>();
@@ -204,26 +217,27 @@ export async function finalizationRows(principal: Principal, entityId: string, y
  * and the two must never be able to disagree.
  */
 async function buildFinalizationRows(entityId: string, year: number): Promise<{ entityCode: string; year: number; rows: FinalizationRow[] } | null> {
-  const entity = await entityOf(entityId);
-  if (!entity) return null;
-
   const months = monthsOfPeriod(String(year));
-  const people = await loadPeople(entityId, months);
-  const personIds = [...new Set(people.map((person) => person.personId))];
-  const ytd = await listYtdForPeople(personIds, year);
   // Somebody who only has imported figures still belongs in the finalization.
-  const imported = await db().select().from(schema.payrollYtd).where(and(eq(schema.payrollYtd.entityId, entityId), eq(schema.payrollYtd.year, year)));
-  for (const row of imported) if (!personIds.includes(row.personId)) personIds.push(row.personId);
+  const [entity, people, imported] = await Promise.all([
+    entityOf(entityId),
+    loadPeople(entityId, months),
+    db().select({ personId: schema.payrollYtd.personId }).from(schema.payrollYtd).where(and(eq(schema.payrollYtd.entityId, entityId), eq(schema.payrollYtd.year, year))),
+  ]);
+  if (!entity) return null;
+  const personIds = [...new Set([...people.map((person) => person.personId), ...imported.map((row) => row.personId)])];
   if (personIds.length === 0) return null;
 
-  const [facts, statutory] = await Promise.all([listPayrollFacts({ personIds }, `${year}-12`), loadStatutoryParams(`${year}-12-31` as IsoDate)]);
+  // The imported year-to-date figures of everyone in it (wherever they were imported), read once.
+  const [facts, statutory, ytd] = await Promise.all([payrollFactsOf(personIds, `${year}-12`), loadStatutoryParams(`${year}-12-31` as IsoDate), listYtdForPeople(personIds, year)]);
   const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
-  const ytdAll = await listYtdForPeople(personIds, year);
+  const peopleOf = new Map<string, LoadedPerson[]>();
+  for (const person of people) peopleOf.set(person.personId, [...(peopleOf.get(person.personId) ?? []), person]);
 
   const rows = personIds.map((personId): FinalizationRow => {
-    const mine = people.filter((person) => person.personId === personId);
+    const mine = peopleOf.get(personId) ?? [];
     const fact = factOf.get(personId);
-    const extra: YtdFigures | null = (ytdAll.get(personId) ?? ytd.get(personId))?.figures ?? null;
+    const extra: YtdFigures | null = ytd.get(personId)?.figures ?? null;
     const add = (pick: (result: PersonPayResult) => number) => mine.reduce((total, person) => total + pick(person.result), 0);
     const method = mine.at(-1)?.result.pit.method ?? "progressive";
 
@@ -263,9 +277,8 @@ async function buildFinalizationRows(entityId: string, year: number): Promise<{ 
 
 export async function dependantRows(principal: Principal, entityId: string, period: string): Promise<{ entityCode: string; period: string; rows: DependantRegistration[] } | null> {
   if (!canManageCompensation(principal, { entityId })) return null;
-  const entity = await entityOf(entityId);
+  const [entity, rows] = await Promise.all([entityOf(entityId), listDependantRegistrations({ entityIds: [entityId] }, lastMonthOf(period))]);
   if (!entity) return null;
-  const rows = await listDependantRegistrations({ entityIds: [entityId] }, lastMonthOf(period));
   return { entityCode: entity.code, period, rows };
 }
 
@@ -279,21 +292,22 @@ export async function withholdingCertificate(principal: Principal, input: { pers
   const own = !!principal.personId && principal.personId === input.personId;
   if (!own && !canManageCompensation(principal, { entityId: input.entityId })) return null;
 
-  const entity = await entityOf(input.entityId);
-  if (!entity) return null;
   // The whole-entity build is reused and then narrowed to this person, so a certificate and the
   // appendix the person appears in can never disagree. Access was decided above: either it is the
   // person's own year, or the viewer manages the entity's compensation.
-  const all = await buildFinalizationRows(input.entityId, input.year);
-  const person = all?.rows.find((row) => row.personId === input.personId);
-  if (!person) return null;
-
-  const facts = await listPayrollFacts({ personIds: [input.personId] }, `${input.year}-12`);
-  const months = await db()
+  const [entity, all, facts, months] = await Promise.all([
+    entityOf(input.entityId),
+    buildFinalizationRows(input.entityId, input.year),
+    listPayrollFacts({ personIds: [input.personId] }, `${input.year}-12`),
+    db()
     .selectDistinct({ month: schema.payrollRun.month })
     .from(schema.payrollRunPerson)
     .innerJoin(schema.payrollRun, eq(schema.payrollRun.id, schema.payrollRunPerson.runId))
-    .where(and(eq(schema.payrollRunPerson.personId, input.personId), eq(schema.payrollRun.entityId, input.entityId), ne(schema.payrollRun.status, "cancelled"), ne(schema.payrollRun.status, "draft")));
+    .where(and(eq(schema.payrollRunPerson.personId, input.personId), eq(schema.payrollRun.entityId, input.entityId), ne(schema.payrollRun.status, "cancelled"), ne(schema.payrollRun.status, "draft"))),
+  ]);
+  if (!entity) return null;
+  const person = all?.rows.find((row) => row.personId === input.personId);
+  if (!person) return null;
 
   return {
     entityName: entity.legalName,

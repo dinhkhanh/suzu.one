@@ -13,7 +13,7 @@ import "server-only";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
-import { listPayrollFacts } from "@/modules/core-hr/service";
+import { listPayrollNames } from "@/modules/core-hr/service";
 import { notify } from "@/modules/platform/notifications/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { listPeopleHolding } from "@/modules/platform/rbac/service";
@@ -23,7 +23,7 @@ import type { PersonPayResult } from "./engine/types";
 import { hasReached } from "./lifecycle";
 import { canManageCompensation, canViewCompensationOf, compensationReach } from "./policy";
 import { withinReach } from "./reach";
-import { openResult, type PayrollRunRow } from "./run-storage";
+import { loadRunPeople, openResult, type PayrollRunRow } from "./run-storage";
 
 type Executor = Tx | ReturnType<typeof db>;
 
@@ -75,22 +75,22 @@ export type MyPayslipRow = { id: string; month: string; entityCode: string; net:
 
 /** The person's own payslips, newest month first. Their own pay needs no permission. */
 export async function listMyPayslips(personId: string): Promise<MyPayslipRow[]> {
+  // The count of questions still open rides along as a correlated subquery: one round trip.
   const rows = await db()
-    .select({ payslip: schema.payslip, runKind: schema.payrollRun.kind, runName: schema.payrollRun.name, entityCode: schema.entity.code, person: schema.payrollRunPerson })
+    .select({
+      payslip: schema.payslip,
+      runKind: schema.payrollRun.kind,
+      runName: schema.payrollRun.name,
+      entityCode: schema.entity.code,
+      person: schema.payrollRunPerson,
+      openQueries: sql<number>`(select count(*)::int from ${schema.payslipQuery} where ${schema.payslipQuery.payslipId} = ${schema.payslip.id} and ${schema.payslipQuery.status} in ('open', 'answered'))`,
+    })
     .from(schema.payslip)
     .innerJoin(schema.payrollRun, eq(schema.payrollRun.id, schema.payslip.runId))
     .innerJoin(schema.entity, eq(schema.entity.id, schema.payslip.entityId))
     .innerJoin(schema.payrollRunPerson, and(eq(schema.payrollRunPerson.runId, schema.payslip.runId), eq(schema.payrollRunPerson.personId, schema.payslip.personId)))
     .where(eq(schema.payslip.personId, personId))
     .orderBy(desc(schema.payslip.month), desc(schema.payslip.publishedAt));
-  if (rows.length === 0) return [];
-
-  const open = await db()
-    .select({ payslipId: schema.payslipQuery.payslipId, count: sql<number>`count(*)::int` })
-    .from(schema.payslipQuery)
-    .where(and(inArray(schema.payslipQuery.payslipId, rows.map((row) => row.payslip.id)), inArray(schema.payslipQuery.status, ["open", "answered"])))
-    .groupBy(schema.payslipQuery.payslipId);
-  const openBy = new Map(open.map((row) => [row.payslipId, row.count]));
 
   return rows.map((row) => ({
     id: row.payslip.id,
@@ -101,7 +101,7 @@ export async function listMyPayslips(personId: string): Promise<MyPayslipRow[]> 
     firstViewedAt: row.payslip.firstViewedAt,
     kind: row.runKind,
     runName: row.runName,
-    openQueries: openBy.get(row.payslip.id) ?? 0,
+    openQueries: Number(row.openQueries),
   }));
 }
 
@@ -146,17 +146,28 @@ export async function getPayslipView(principal: Principal, payslipId: string): P
   // Self, C&B over the entity, or the owner. Nobody else — not the manager, not the CEO.
   if (!canViewCompensationOf(principal, { personId: payslip.personId, entityId: payslip.entityId })) return null;
 
-  const [facts] = await listPayrollFacts({ personIds: [payslip.personId] }, run.month);
-  // The position they held, from the employment the run knew about; the department from the person.
-  const [placement] = facts?.employmentId
-    ? await db()
-        .select({ positionName: schema.position.name })
-        .from(schema.assignment)
-        .leftJoin(schema.position, eq(schema.position.id, schema.assignment.positionId))
-        .where(and(eq(schema.assignment.employmentId, facts.employmentId), eq(schema.assignment.kind, "primary"), isNull(schema.assignment.validTo)))
-        .limit(1)
-    : [];
-  const [placementDepartment] = facts?.departmentId ? await db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, facts.departmentId)).limit(1) : [];
+  // Who they are, the component names and the questions, side by side. The position they held is
+  // the one of their latest employment's primary assignment; the department is the person's own.
+  const latest = db().select({ id: schema.employment.id, employeeCode: schema.employment.employeeCode }).from(schema.employment).where(eq(schema.employment.personId, schema.person.id)).orderBy(desc(schema.employment.startDate)).limit(1).as("latest");
+  const held = db()
+    .select({ positionName: schema.position.name })
+    .from(schema.assignment)
+    .leftJoin(schema.position, eq(schema.position.id, schema.assignment.positionId))
+    .where(and(eq(schema.assignment.employmentId, latest.id), eq(schema.assignment.kind, "primary"), isNull(schema.assignment.validTo)))
+    .limit(1)
+    .as("held");
+  const [[person], componentNames, queries] = await Promise.all([
+    db()
+      .select({ fullName: schema.person.fullName, employeeCode: latest.employeeCode, positionName: held.positionName, departmentName: schema.orgUnit.name })
+      .from(schema.person)
+      .leftJoinLateral(latest, sql`true`)
+      .leftJoinLateral(held, sql`true`)
+      .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.person.departmentId))
+      .where(eq(schema.person.id, payslip.personId))
+      .limit(1),
+    componentNamesOf(run.context as CalculationContext | null, payslip.entityId, run.month),
+    listQueryThreads(payslipId),
+  ]);
 
   return {
     payslip,
@@ -164,14 +175,14 @@ export async function getPayslipView(principal: Principal, payslipId: string): P
     entity,
     person: {
       id: payslip.personId,
-      fullName: facts?.fullName ?? "—",
-      employeeCode: facts?.employeeCode ?? null,
-      positionName: placement?.positionName ?? null,
-      departmentName: placementDepartment?.name ?? null,
+      fullName: person?.fullName ?? "—",
+      employeeCode: person?.employeeCode ?? null,
+      positionName: person?.positionName ?? null,
+      departmentName: person?.departmentName ?? null,
     },
     result: openResult(runPerson),
-    componentNames: await componentNamesOf(run.context as CalculationContext | null, payslip.entityId, run.month),
-    queries: await listQueryThreads(payslipId),
+    componentNames,
+    queries,
     isOwner: principal.personId === payslip.personId,
     manages: canManageCompensation(principal, { entityId: payslip.entityId }),
   };
@@ -188,17 +199,14 @@ export async function recordPayslipView(payslipId: string, personId: string): Pr
 
 export type RunPayslipRow = { payslipId: string | null; personId: string; fullName: string; employeeCode: string | null; publishedAt: Date | null; firstViewedAt: Date | null; openQueries: number };
 
-/** Who in a run has a payslip and who has read it — the C&B side of the release. */
-export async function listPayslipsOfRun(runId: string, month: string): Promise<RunPayslipRow[]> {
-  const rows = await db()
-    .select({ person: schema.payrollRunPerson, payslip: schema.payslip })
-    .from(schema.payrollRunPerson)
-    .leftJoin(schema.payslip, and(eq(schema.payslip.runId, schema.payrollRunPerson.runId), eq(schema.payslip.personId, schema.payrollRunPerson.personId)))
-    .where(eq(schema.payrollRunPerson.runId, runId));
-  if (rows.length === 0) return [];
-
-  const [facts, queries] = await Promise.all([
-    listPayrollFacts({ personIds: rows.map((row) => row.person.personId) }, month),
+/**
+ * Who in a run has a payslip and who has read it — the C&B side of the release. The run screen
+ * passes the names it already holds; the run's people come from the request's shared read.
+ */
+export async function listPayslipsOfRun(runId: string, names?: ReadonlyMap<string, { fullName: string; employeeCode: string | null }>): Promise<RunPayslipRow[]> {
+  const [people, payslips, queries] = await Promise.all([
+    loadRunPeople(runId),
+    db().select().from(schema.payslip).where(eq(schema.payslip.runId, runId)),
     db()
       .select({ payslipId: schema.payslipQuery.payslipId, count: sql<number>`count(*)::int` })
       .from(schema.payslipQuery)
@@ -206,19 +214,25 @@ export async function listPayslipsOfRun(runId: string, month: string): Promise<R
       .where(and(eq(schema.payslip.runId, runId), inArray(schema.payslipQuery.status, ["open", "answered"])))
       .groupBy(schema.payslipQuery.payslipId),
   ]);
-  const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
+  if (people.length === 0) return [];
+
+  const nameOf = names ?? new Map((await listPayrollNames(people.map((person) => person.row.personId))).map((row) => [row.personId, row]));
+  const payslipOf = new Map(payslips.map((row) => [row.personId, row]));
   const openBy = new Map(queries.map((row) => [row.payslipId, row.count]));
 
-  return rows
-    .map((row) => ({
-      payslipId: row.payslip?.id ?? null,
-      personId: row.person.personId,
-      fullName: factOf.get(row.person.personId)?.fullName ?? "—",
-      employeeCode: factOf.get(row.person.personId)?.employeeCode ?? null,
-      publishedAt: row.payslip?.publishedAt ?? null,
-      firstViewedAt: row.payslip?.firstViewedAt ?? null,
-      openQueries: row.payslip ? (openBy.get(row.payslip.id) ?? 0) : 0,
-    }))
+  return people
+    .map(({ row: person }) => {
+      const payslip = payslipOf.get(person.personId);
+      return {
+        payslipId: payslip?.id ?? null,
+        personId: person.personId,
+        fullName: nameOf.get(person.personId)?.fullName ?? "—",
+        employeeCode: nameOf.get(person.personId)?.employeeCode ?? null,
+        publishedAt: payslip?.publishedAt ?? null,
+        firstViewedAt: payslip?.firstViewedAt ?? null,
+        openQueries: payslip ? (openBy.get(payslip.id) ?? 0) : 0,
+      };
+    })
     .sort((left, right) => (left.employeeCode ?? "").localeCompare(right.employeeCode ?? "") || left.fullName.localeCompare(right.fullName));
 }
 
@@ -327,13 +341,13 @@ export async function listQueriesForManager(principal: Principal, includeClosed 
     .limit(200);
   if (rows.length === 0) return [];
 
+  // Only the last message of each thread: DISTINCT ON, newest first.
   const messages = await db()
-    .select({ queryId: schema.payslipQueryMessage.queryId, body: schema.payslipQueryMessage.body, createdAt: schema.payslipQueryMessage.createdAt })
+    .selectDistinctOn([schema.payslipQueryMessage.queryId], { queryId: schema.payslipQueryMessage.queryId, body: schema.payslipQueryMessage.body, createdAt: schema.payslipQueryMessage.createdAt })
     .from(schema.payslipQueryMessage)
     .where(inArray(schema.payslipQueryMessage.queryId, rows.map((row) => row.query.id)))
-    .orderBy(schema.payslipQueryMessage.createdAt);
-  const lastOf = new Map<string, { body: string; createdAt: Date }>();
-  for (const message of messages) lastOf.set(message.queryId, message);
+    .orderBy(schema.payslipQueryMessage.queryId, desc(schema.payslipQueryMessage.createdAt));
+  const lastOf = new Map(messages.map((message) => [message.queryId, message]));
 
   return rows.map((row) => ({ ...row, lastMessage: lastOf.get(row.query.id)?.body ?? "", lastAt: lastOf.get(row.query.id)?.createdAt ?? row.query.createdAt }));
 }

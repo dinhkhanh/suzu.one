@@ -25,13 +25,29 @@ export const hashInputs = (month: string, lines: readonly KpiLineInput[], missin
 export async function loadMonthLines(filter: { entityId?: string; personIds?: readonly string[] }, month: string, executor: Executor = db()): Promise<Map<string, KpiLineInput[]>> {
   const lines = new Map<string, KpiLineInput[]>();
   if (filter.personIds?.length === 0) return lines;
+  for (const { personId, line } of await dueLines({ entityIds: filter.entityId ? [filter.entityId] : undefined, personIds: filter.personIds }, month, executor)) lines.set(personId, [...(lines.get(personId) ?? []), line]);
+  return lines;
+}
+
+/** `loadMonthLines` for several entities in one read: per entity, per person. */
+export async function loadMonthLinesByEntity(entityIds: readonly string[], month: string, executor: Executor = db()): Promise<Map<string, Map<string, KpiLineInput[]>>> {
+  const result = new Map<string, Map<string, KpiLineInput[]>>(entityIds.map((entityId) => [entityId, new Map()]));
+  if (entityIds.length === 0) return result;
+  for (const { entityId, personId, line } of await dueLines({ entityIds }, month, executor)) {
+    const lines = result.get(entityId)!;
+    lines.set(personId, [...(lines.get(personId) ?? []), line]);
+  }
+  return result;
+}
+
+async function dueLines(filter: { entityIds?: readonly string[]; personIds?: readonly string[] }, month: string, executor: Executor): Promise<{ entityId: string; personId: string; line: KpiLineInput }[]> {
   const assignments = await executor
     .select({ assignment: schema.kpiAssignment, kpi: schema.kpiDefinition })
     .from(schema.kpiAssignment)
     .innerJoin(schema.kpiDefinition, eq(schema.kpiDefinition.id, schema.kpiAssignment.kpiId))
     .where(
       and(
-        filter.entityId ? eq(schema.kpiAssignment.entityId, filter.entityId) : undefined,
+        filter.entityIds ? inArray(schema.kpiAssignment.entityId, [...filter.entityIds]) : undefined,
         filter.personIds ? inArray(schema.kpiAssignment.personId, [...filter.personIds]) : undefined,
         lte(schema.kpiAssignment.fromPeriod, month),
         or(isNull(schema.kpiAssignment.toPeriod), gte(schema.kpiAssignment.toPeriod, month)),
@@ -41,15 +57,14 @@ export async function loadMonthLines(filter: { entityId?: string; personIds?: re
     const periodKey = periodDueIn(kpi.frequency as KpiFrequency, month);
     return periodKey ? [{ assignment, kpi, periodKey }] : [];
   });
-  if (due.length === 0) return lines;
+  if (due.length === 0) return [];
   const actuals = await executor.select().from(schema.kpiActual).where(inArray(schema.kpiActual.assignmentId, due.map((item) => item.assignment.id)));
   const actualOf = new Map(actuals.map((actual) => [`${actual.assignmentId}:${actual.periodKey}`, actual]));
-  for (const { assignment, kpi, periodKey } of due) {
+  return due.map(({ assignment, kpi, periodKey }) => {
     const actual = actualOf.get(`${assignment.id}:${periodKey}`);
     const line: KpiLineInput = { assignmentId: assignment.id, kpiCode: kpi.code, kpiName: kpi.name, unit: kpi.unit as KpiUnit, direction: kpi.direction as KpiDirection, frequency: kpi.frequency as KpiFrequency, periodKey, weight: assignment.weight, targetValue: assignment.targetValue, capBp: kpi.capBp, floorBp: kpi.floorBp, actualValue: actual?.actualValue ?? null, notApplicable: actual?.notApplicable ?? false, note: actual?.note ?? null };
-    lines.set(assignment.personId, [...(lines.get(assignment.personId) ?? []), line]);
-  }
-  return lines;
+    return { entityId: assignment.entityId, personId: assignment.personId, line };
+  });
 }
 
 export const isMissing = (line: Pick<KpiLineInput, "actualValue" | "notApplicable">): boolean => line.actualValue === null && !line.notApplicable;
@@ -180,12 +195,20 @@ export type CloseBlocker = { personId: string; personName: string; kpiCode: stri
 export type CloseResult = { period: KpiPeriodRow; people: number; scored: number; averageBp: number | null; exceptions: CloseBlocker[] };
 
 export async function closeBlockers(entityId: string, month: string, executor: Executor = db()): Promise<CloseBlocker[]> {
-  const lines = await loadMonthLines({ entityId }, month, executor);
-  const missing = [...lines.entries()].flatMap(([personId, items]) => items.filter(isMissing).map((line) => ({ personId, line })));
-  if (missing.length === 0) return [];
+  return (await closeBlockersOf([entityId], month, executor)).get(entityId) ?? [];
+}
+
+/** `closeBlockers` for several entities in one read. */
+export async function closeBlockersOf(entityIds: readonly string[], month: string, executor: Executor = db()): Promise<Map<string, CloseBlocker[]>> {
+  const byEntity = await loadMonthLinesByEntity(entityIds, month, executor);
+  const missing = [...byEntity.entries()].flatMap(([entityId, lines]) => [...lines.entries()].flatMap(([personId, items]) => items.filter(isMissing).map((line) => ({ entityId, personId, line }))));
+  const result = new Map<string, CloseBlocker[]>(entityIds.map((entityId) => [entityId, []]));
+  if (missing.length === 0) return result;
   const names = await executor.select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, [...new Set(missing.map((item) => item.personId))]));
   const nameOf = new Map(names.map((row) => [row.id, row.fullName]));
-  return missing.map(({ personId, line }) => ({ personId, personName: nameOf.get(personId) ?? "", kpiCode: line.kpiCode, kpiName: line.kpiName, periodKey: line.periodKey })).sort((a, b) => a.personName.localeCompare(b.personName) || a.kpiCode.localeCompare(b.kpiCode));
+  for (const { entityId, personId, line } of missing) result.get(entityId)!.push({ personId, personName: nameOf.get(personId) ?? "", kpiCode: line.kpiCode, kpiName: line.kpiName, periodKey: line.periodKey });
+  for (const blockers of result.values()) blockers.sort((a, b) => a.personName.localeCompare(b.personName) || a.kpiCode.localeCompare(b.kpiCode));
+  return result;
 }
 
 /**

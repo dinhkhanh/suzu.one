@@ -8,7 +8,7 @@ import type { Kind } from "../platform/notifications/kinds";
 import { notify } from "../platform/notifications/service";
 import { canViewTask } from "./policy";
 import { type LoadedTask, loadTask, taskKey } from "./tasks";
-import { viewerOfPerson } from "./viewer";
+import { viewersOfPeople } from "./viewer";
 
 type Executor = Tx | ReturnType<typeof db>;
 const taskLink = (taskId: string) => `/work/tasks/${taskId}`;
@@ -57,15 +57,13 @@ export async function setFollowing(taskId: string, personId: string, follow: boo
  * task — moved out of a private project — hears nothing.
  */
 export async function notifyFollowers(tx: Executor, loaded: LoadedTask, actorPersonId: string | null, kind: Kind, params: Record<string, string | number>, skip: readonly string[] = []): Promise<string[]> {
-  const recipients: string[] = [];
-  for (const personId of followersOf(loaded)) {
-    if (personId === actorPersonId || skip.includes(personId)) continue;
-    if (loaded.followerIds.includes(personId)) {
-      const viewer = await viewerOfPerson(tx, personId);
-      if (!viewer || !canViewTask(viewer, loaded.facts)) continue;
-    }
-    recipients.push(personId);
-  }
+  const candidates = followersOf(loaded).filter((personId) => personId !== actorPersonId && !skip.includes(personId));
+  const viewers = await viewersOfPeople(candidates.filter((personId) => loaded.followerIds.includes(personId)), tx);
+  const recipients = candidates.filter((personId) => {
+    if (!loaded.followerIds.includes(personId)) return true;
+    const viewer = viewers.get(personId);
+    return !!viewer && canViewTask(viewer, loaded.facts);
+  });
   await notify({ recipients, kind, params: { key: taskKey(loaded.team.key, loaded.work.number), title: loaded.task.title, ...params }, link: taskLink(loaded.task.id) }, tx);
   return recipients;
 }

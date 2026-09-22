@@ -4,8 +4,9 @@
 import "server-only";
 import { and, asc, eq, gte, inArray, isNull, or } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
-import { listPositionHolders } from "@/modules/core-hr/service";
+import { listPositionHolders, listPositions } from "@/modules/core-hr/service";
 import type { Principal } from "../platform/rbac/policy";
 import { targetProblem } from "./engine/kpi-score";
 import { coversMonth, isKpiMonth, type KpiDirection, type KpiFrequency, type KpiUnit, parseMetricValue, scoringMonthOf } from "./enums";
@@ -21,16 +22,27 @@ const asKpi = (row: typeof schema.kpiDefinition.$inferSelect): KpiRow => row as 
 
 // ── Library ─────────────────────────────────────────────────────────────────────────────────
 
-export async function listKpis(options: { includeInactive?: boolean } = {}, executor: Executor = db()): Promise<KpiRow[]> {
-  const rows = await executor.select().from(schema.kpiDefinition).where(options.includeInactive ? undefined : eq(schema.kpiDefinition.isActive, true)).orderBy(asc(schema.kpiDefinition.code));
-  return rows.map(asKpi);
+// The library and the position templates are configuration (tens of rows): cached whole, filtered
+// here, and cleared by the use-cases below once their change has committed.
+const KPI_CACHE = { library: "performance:kpis", positionKpis: "performance:position-kpis" } as const;
+const KPI_TTL = 60 * 60;
+
+/** The whole library, by code. Inside a transaction pass it, and the rows come from that transaction, not the cache. */
+function allKpis(executor?: Executor): Promise<(typeof schema.kpiDefinition.$inferSelect)[]> {
+  const load = (from: Executor) => from.select().from(schema.kpiDefinition).orderBy(asc(schema.kpiDefinition.code));
+  return executor ? load(executor) : cached(KPI_CACHE.library, KPI_TTL, () => load(db()));
+}
+
+export async function listKpis(options: { includeInactive?: boolean } = {}, executor?: Executor): Promise<KpiRow[]> {
+  const rows = await allKpis(executor);
+  return (options.includeInactive ? rows : rows.filter((row) => row.isActive)).map(asKpi);
 }
 
 export type KpiInput = { code: string; name: string; description: string | null; unit: KpiUnit; direction: KpiDirection; frequency: KpiFrequency; capBp: number; floorBp: number; isActive: boolean };
 
 export async function saveKpi(kpiId: string | null, input: KpiInput): Promise<{ before: KpiRow | null; after: KpiRow }> {
   if (input.floorBp > input.capBp) throw new ActionError("kpi_floor_above_cap");
-  return db().transaction(async (tx) => {
+  const saved = await db().transaction(async (tx): Promise<{ before: KpiRow | null; after: KpiRow }> => {
     const [clash] = await tx.select({ id: schema.kpiDefinition.id }).from(schema.kpiDefinition).where(eq(schema.kpiDefinition.code, input.code)).limit(1);
     if (clash && clash.id !== kpiId) throw new ActionError("kpi_code_taken");
     if (!kpiId) {
@@ -47,19 +59,40 @@ export async function saveKpi(kpiId: string | null, input: KpiInput): Promise<{ 
     const [after] = await tx.update(schema.kpiDefinition).set({ ...input, editedAt: new Date(), updatedAt: new Date() }).where(eq(schema.kpiDefinition.id, kpiId)).returning();
     return { before: asKpi(before), after: asKpi(after) };
   });
+  await invalidate(KPI_CACHE.library);
+  return saved;
 }
 
 // ── Templates per position ──────────────────────────────────────────────────────────────────
 
 export type PositionTemplate = { positionId: string; positionName: string; entityId: string | null; totalWeight: number; lines: { id: string; kpi: KpiRow; weight: number; targetValue: number; sortOrder: number }[] };
 
-export async function listPositionTemplates(executor: Executor = db()): Promise<PositionTemplate[]> {
-  const rows = await executor
-    .select({ line: schema.positionKpi, kpi: schema.kpiDefinition, positionName: schema.position.name })
-    .from(schema.positionKpi)
-    .innerJoin(schema.kpiDefinition, eq(schema.kpiDefinition.id, schema.positionKpi.kpiId))
-    .innerJoin(schema.position, eq(schema.position.id, schema.positionKpi.positionId))
-    .orderBy(asc(schema.position.searchName), asc(schema.positionKpi.sortOrder), asc(schema.kpiDefinition.code));
+/** Every position's lines. Outside a transaction: the three cached catalogues, joined here in the query's order. */
+async function templateRows(executor?: Executor): Promise<{ line: PositionKpiRow; kpi: typeof schema.kpiDefinition.$inferSelect; positionName: string }[]> {
+  if (executor) {
+    return executor
+      .select({ line: schema.positionKpi, kpi: schema.kpiDefinition, positionName: schema.position.name })
+      .from(schema.positionKpi)
+      .innerJoin(schema.kpiDefinition, eq(schema.kpiDefinition.id, schema.positionKpi.kpiId))
+      .innerJoin(schema.position, eq(schema.position.id, schema.positionKpi.positionId))
+      .orderBy(asc(schema.position.searchName), asc(schema.positionKpi.sortOrder), asc(schema.kpiDefinition.code));
+  }
+  const [lines, kpis, positions] = await Promise.all([cached(KPI_CACHE.positionKpis, KPI_TTL, () => db().select().from(schema.positionKpi)), allKpis(), listPositions()]);
+  const kpiOf = new Map(kpis.map((kpi) => [kpi.id, kpi]));
+  // The position catalogue comes ordered by search name: its index is the first sort key.
+  const positionOf = new Map(positions.map((position, index) => [position.id, { name: position.name, rank: index }]));
+  return lines
+    .flatMap((line) => {
+      const kpi = kpiOf.get(line.kpiId);
+      const position = positionOf.get(line.positionId);
+      return kpi && position ? [{ line, kpi, positionName: position.name, rank: position.rank }] : [];
+    })
+    .sort((a, b) => a.rank - b.rank || a.line.sortOrder - b.line.sortOrder || (a.kpi.code < b.kpi.code ? -1 : a.kpi.code > b.kpi.code ? 1 : 0))
+    .map(({ line, kpi, positionName }) => ({ line, kpi, positionName }));
+}
+
+export async function listPositionTemplates(executor?: Executor): Promise<PositionTemplate[]> {
+  const rows = await templateRows(executor);
   const templates = new Map<string, PositionTemplate>();
   for (const { line, kpi, positionName } of rows) {
     const key = `${line.positionId}:${line.entityId ?? ""}`;
@@ -90,7 +123,7 @@ export async function findPositionKpi(id: string, executor: Executor = db()): Pr
 }
 
 export async function savePositionKpi(input: { positionId: string; entityId: string | null; kpiId: string; weight: number; target: string; sortOrder: number }): Promise<{ before: PositionKpiRow | null; after: PositionKpiRow }> {
-  return db().transaction(async (tx) => {
+  const saved = await db().transaction(async (tx) => {
     const [kpi] = await tx.select().from(schema.kpiDefinition).where(eq(schema.kpiDefinition.id, input.kpiId)).limit(1);
     const [position] = await tx.select({ id: schema.position.id }).from(schema.position).where(eq(schema.position.id, input.positionId)).limit(1);
     if (!kpi || !position) throw new ActionError("kpi_not_found");
@@ -106,12 +139,15 @@ export async function savePositionKpi(input: { positionId: string; entityId: str
       : await tx.insert(schema.positionKpi).values({ positionId: input.positionId, entityId: input.entityId, kpiId: input.kpiId, ...values }).returning();
     return { before: before ?? null, after };
   });
+  await invalidate(KPI_CACHE.positionKpis);
+  return saved;
 }
 
 /** A template is a starting point, not a record: removing a line leaves the assignments made from it alone. */
 export async function removePositionKpi(id: string): Promise<PositionKpiRow> {
   const [row] = await db().delete(schema.positionKpi).where(eq(schema.positionKpi.id, id)).returning();
   if (!row) throw new ActionError("kpi_not_found");
+  await invalidate(KPI_CACHE.positionKpis);
   return row;
 }
 

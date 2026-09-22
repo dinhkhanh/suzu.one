@@ -5,7 +5,9 @@ import "server-only";
 import { and, asc, between, desc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate } from "@/lib/dates";
+import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
+import { listEntities } from "@/modules/platform/org/service";
 import { type AssignmentFact, assignmentFor, type CalendarDay, type CalendarDayKind, dayPlan, type DayPlan, eachDate, patternProblems, type RosterEntry, ruleProblems, type SchedulePattern, type Segment } from "./engine/calendar";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -13,6 +15,20 @@ export type CalendarDayRow = typeof schema.calendarDay.$inferSelect;
 export type ShiftRow = typeof schema.shift.$inferSelect;
 export type WorkScheduleRow = typeof schema.workSchedule.$inferSelect;
 export type ScheduleAssignmentRow = typeof schema.scheduleAssignment.$inferSelect;
+
+// The calendar, shifts, schedules and their assignments are small, change a few times a year and
+// are read on every attendance and leave screen: whole tables in the shared cache (src/lib/cache),
+// filtered by date here so an entry never depends on "today". Every write below drops its entry.
+const ATTENDANCE_CACHE = { calendar: "attendance:calendar-days", schedules: "attendance:work-schedules", assignments: "attendance:schedule-assignments", shifts: "attendance:shifts" } as const;
+const ATTENDANCE_TTL = 60 * 60;
+
+/** For writers outside this file (seeds): the calendar, schedules, shifts or assignments changed. */
+export const invalidateScheduleCache = () => invalidate(...Object.values(ATTENDANCE_CACHE));
+
+const listAllCalendarDays = (): Promise<CalendarDayRow[]> => cached(ATTENDANCE_CACHE.calendar, ATTENDANCE_TTL, () => db().select().from(schema.calendarDay).orderBy(asc(schema.calendarDay.date)));
+const listAllSchedules = (): Promise<WorkScheduleRow[]> => cached(ATTENDANCE_CACHE.schedules, ATTENDANCE_TTL, () => db().select().from(schema.workSchedule));
+const listAllAssignments = (): Promise<ScheduleAssignmentRow[]> => cached(ATTENDANCE_CACHE.assignments, ATTENDANCE_TTL, () => db().select().from(schema.scheduleAssignment));
+const listAllShifts = (): Promise<ShiftRow[]> => cached(ATTENDANCE_CACHE.shifts, ATTENDANCE_TTL, () => db().select().from(schema.shift));
 
 // ── Day plans ───────────────────────────────────────────────────────────────────────────────
 
@@ -23,34 +39,57 @@ export type PersonDayPlans = { personId: string; entityId: string | null; schedu
  * sit today (entity, department); a person nobody assigned a schedule follows the default one,
  * and without a default their days are "unscheduled".
  */
-export async function getDayPlans(personIds: readonly string[], from: IsoDate, to: IsoDate, executor: Executor = db()): Promise<Map<string, PersonDayPlans>> {
+export async function getDayPlans(personIds: readonly string[], from: IsoDate, to: IsoDate, executor?: Executor): Promise<Map<string, PersonDayPlans>> {
   const result = new Map<string, PersonDayPlans>();
   if (personIds.length === 0 || to < from) return result;
   const ids = [...new Set(personIds)];
-  const people = await executor.select({ personId: schema.person.id, entityId: schema.person.primaryEntityId, unitPath: schema.person.orgUnitPath }).from(schema.person).where(inArray(schema.person.id, ids));
-  const entityIds = [...new Set(people.flatMap((row) => (row.entityId ? [row.entityId] : [])))];
-  // Every unit above each person: a schedule set on a department applies to its teams as well.
-  const departmentIds = [...new Set(people.flatMap((row) => row.unitPath))];
-
-  const [assignments, schedules, calendar, roster] = await Promise.all([
-    executor
-      .select()
-      .from(schema.scheduleAssignment)
-      .where(
-        and(
-          lte(schema.scheduleAssignment.validFrom, to),
-          or(isNull(schema.scheduleAssignment.validTo), gte(schema.scheduleAssignment.validTo, from)),
-          or(inArray(schema.scheduleAssignment.personId, ids), departmentIds.length ? inArray(schema.scheduleAssignment.departmentId, departmentIds) : undefined, entityIds.length ? and(eq(schema.scheduleAssignment.scope, "entity"), inArray(schema.scheduleAssignment.entityId, entityIds)) : undefined),
-        ),
-      ),
-    executor.select().from(schema.workSchedule),
-    executor.select().from(schema.calendarDay).where(between(schema.calendarDay.date, from, to)),
-    executor
+  const reader = executor ?? db();
+  const [people, reference, roster] = await Promise.all([
+    reader.select({ personId: schema.person.id, entityId: schema.person.primaryEntityId, unitPath: schema.person.orgUnitPath }).from(schema.person).where(inArray(schema.person.id, ids)),
+    // Outside a transaction the calendar, the schedules and the assignments come from the shared cache.
+    executor ? null : Promise.all([listAllAssignments(), listAllSchedules(), listAllCalendarDays()]),
+    reader
       .select({ personId: schema.shiftRoster.personId, date: schema.shiftRoster.date, shiftId: schema.shiftRoster.shiftId, segments: schema.shift.segments, breakMinutes: schema.shift.breakMinutes })
       .from(schema.shiftRoster)
       .leftJoin(schema.shift, eq(schema.shift.id, schema.shiftRoster.shiftId))
       .where(and(inArray(schema.shiftRoster.personId, ids), between(schema.shiftRoster.date, from, to))),
   ]);
+  const entityIds = [...new Set(people.flatMap((row) => (row.entityId ? [row.entityId] : [])))];
+  // Every unit above each person: a schedule set on a department applies to its teams as well.
+  const departmentIds = [...new Set(people.flatMap((row) => row.unitPath))];
+
+  let assignments: ScheduleAssignmentRow[];
+  let schedules: WorkScheduleRow[];
+  let calendar: CalendarDayRow[];
+  if (reference) {
+    const [allAssignments, allSchedules, allDays] = reference;
+    const idSet = new Set(ids);
+    const departmentSet = new Set(departmentIds);
+    const entitySet = new Set(entityIds);
+    assignments = allAssignments.filter(
+      (row) =>
+        row.validFrom <= to &&
+        (row.validTo === null || row.validTo >= from) &&
+        ((!!row.personId && idSet.has(row.personId)) || (!!row.departmentId && departmentSet.has(row.departmentId)) || (row.scope === "entity" && !!row.entityId && entitySet.has(row.entityId))),
+    );
+    schedules = allSchedules;
+    calendar = allDays.filter((row) => row.date >= from && row.date <= to);
+  } else {
+    [assignments, schedules, calendar] = await Promise.all([
+      reader
+        .select()
+        .from(schema.scheduleAssignment)
+        .where(
+          and(
+            lte(schema.scheduleAssignment.validFrom, to),
+            or(isNull(schema.scheduleAssignment.validTo), gte(schema.scheduleAssignment.validTo, from)),
+            or(inArray(schema.scheduleAssignment.personId, ids), departmentIds.length ? inArray(schema.scheduleAssignment.departmentId, departmentIds) : undefined, entityIds.length ? and(eq(schema.scheduleAssignment.scope, "entity"), inArray(schema.scheduleAssignment.entityId, entityIds)) : undefined),
+          ),
+        ),
+      reader.select().from(schema.workSchedule),
+      reader.select().from(schema.calendarDay).where(between(schema.calendarDay.date, from, to)),
+    ]);
+  }
 
   const patterns = new Map(schedules.map((row) => [row.id, row.pattern]));
   const fallback = schedules.find((row) => row.isDefault && row.isActive) ?? null;
@@ -75,14 +114,16 @@ export async function getDayPlans(personIds: readonly string[], from: IsoDate, t
 
 export type CalendarDayView = CalendarDayRow & { entityName: string | null };
 
+/** Sorts like Postgres `order by name asc`: rows without a name last. */
+const byNameNullsLast = (a: string | null, b: string | null): number => (a === b ? 0 : a === null ? 1 : b === null ? -1 : a.localeCompare(b));
+
 export async function listCalendarDays(year: number): Promise<CalendarDayView[]> {
-  const rows = await db()
-    .select({ row: schema.calendarDay, entityName: schema.entity.shortName })
-    .from(schema.calendarDay)
-    .leftJoin(schema.entity, eq(schema.entity.id, schema.calendarDay.entityId))
-    .where(between(schema.calendarDay.date, `${year}-01-01`, `${year}-12-31`))
-    .orderBy(asc(schema.calendarDay.date), asc(schema.entity.shortName));
-  return rows.map(({ row, entityName }) => ({ ...row, entityName }));
+  const [days, entities] = await Promise.all([listAllCalendarDays(), listEntities()]);
+  const nameOf = new Map(entities.map((entity) => [entity.id, entity.shortName]));
+  return days
+    .filter((row) => row.date >= `${year}-01-01` && row.date <= `${year}-12-31`)
+    .map((row) => ({ ...row, entityName: row.entityId ? (nameOf.get(row.entityId) ?? null) : null }))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : byNameNullsLast(a.entityName, b.entityName)));
 }
 
 export type DayOff = { date: IsoDate; kind: CalendarDayKind; name: string };
@@ -92,12 +133,14 @@ export type DayOff = { date: IsoDate; kind: CalendarDayKind; name: string };
  * work calendar shades them, the ops tracker shifts due dates past them. An entity's row beats the
  * group's row for the same date; a working override removes the date.
  */
-export async function getDaysOff(entityId: string | null, from: IsoDate, to: IsoDate, executor: Executor = db()): Promise<DayOff[]> {
-  const rows = await executor
-    .select()
-    .from(schema.calendarDay)
-    .where(and(between(schema.calendarDay.date, from, to), entityId ? or(isNull(schema.calendarDay.entityId), eq(schema.calendarDay.entityId, entityId)) : isNull(schema.calendarDay.entityId)))
-    .orderBy(asc(schema.calendarDay.date));
+export async function getDaysOff(entityId: string | null, from: IsoDate, to: IsoDate, executor?: Executor): Promise<DayOff[]> {
+  const rows = executor
+    ? await executor
+        .select()
+        .from(schema.calendarDay)
+        .where(and(between(schema.calendarDay.date, from, to), entityId ? or(isNull(schema.calendarDay.entityId), eq(schema.calendarDay.entityId, entityId)) : isNull(schema.calendarDay.entityId)))
+        .orderBy(asc(schema.calendarDay.date))
+    : (await listAllCalendarDays()).filter((row) => row.date >= from && row.date <= to && (row.entityId === null || (!!entityId && row.entityId === entityId)));
   const byDate = new Map<IsoDate, (typeof rows)[number]>();
   for (const row of rows) if (!byDate.has(row.date) || row.entityId) byDate.set(row.date, row);
   return [...byDate.values()].filter((row) => row.kind !== "working_override").map((row) => ({ date: row.date, kind: row.kind, name: row.name }));
@@ -112,7 +155,7 @@ export type CalendarDayInput = { entityId: string | null; date: IsoDate; kind: C
 
 /** One row per entity (or the group) and date: saving the same date again replaces it, and confirms it. */
 export async function saveCalendarDay(input: CalendarDayInput): Promise<{ before: CalendarDayRow | null; after: CalendarDayRow }> {
-  return db().transaction(async (tx) => {
+  const saved = await db().transaction(async (tx) => {
     const [before] = await tx
       .select()
       .from(schema.calendarDay)
@@ -123,25 +166,30 @@ export async function saveCalendarDay(input: CalendarDayInput): Promise<{ before
     const [after] = before ? await tx.update(schema.calendarDay).set(values).where(eq(schema.calendarDay.id, before.id)).returning() : await tx.insert(schema.calendarDay).values({ entityId: input.entityId, date: input.date, ...values }).returning();
     return { before: before ?? null, after };
   });
+  await invalidate(ATTENDANCE_CACHE.calendar);
+  return saved;
 }
 
 export async function confirmCalendarDay(id: string): Promise<CalendarDayRow> {
   const [row] = await db().update(schema.calendarDay).set({ isConfirmed: true, updatedAt: new Date() }).where(eq(schema.calendarDay.id, id)).returning();
   if (!row) throw new ActionError("calendar_day_not_found");
+  await invalidate(ATTENDANCE_CACHE.calendar);
   return row;
 }
 
 export async function deleteCalendarDay(id: string): Promise<CalendarDayRow> {
   const [row] = await db().delete(schema.calendarDay).where(eq(schema.calendarDay.id, id)).returning();
   if (!row) throw new ActionError("calendar_day_not_found");
+  await invalidate(ATTENDANCE_CACHE.calendar);
   return row;
 }
 
 // ── Shifts ──────────────────────────────────────────────────────────────────────────────────
 
 export async function listShifts(): Promise<(ShiftRow & { entityName: string | null })[]> {
-  const rows = await db().select({ row: schema.shift, entityName: schema.entity.shortName }).from(schema.shift).leftJoin(schema.entity, eq(schema.entity.id, schema.shift.entityId)).orderBy(asc(schema.shift.code));
-  return rows.map(({ row, entityName }) => ({ ...row, entityName }));
+  const [shifts, entities] = await Promise.all([listAllShifts(), listEntities()]);
+  const nameOf = new Map(entities.map((entity) => [entity.id, entity.shortName]));
+  return shifts.map((row) => ({ ...row, entityName: row.entityId ? (nameOf.get(row.entityId) ?? null) : null })).sort((a, b) => a.code.localeCompare(b.code));
 }
 
 export async function getShift(id: string): Promise<ShiftRow | null> {
@@ -164,18 +212,16 @@ export async function saveShift(input: ShiftInput): Promise<{ before: ShiftRow |
   const values = { code: input.code, name: input.name, segments: input.segments, breakMinutes: input.breakMinutes, isActive: input.isActive, updatedAt: new Date() };
   // A shift stays with the entity it was made for.
   const [after] = before ? await db().update(schema.shift).set(values).where(eq(schema.shift.id, before.id)).returning() : await db().insert(schema.shift).values({ entityId: input.entityId, ...values }).returning();
+  await invalidate(ATTENDANCE_CACHE.shifts);
   return { before, after };
 }
 
 // ── Schedules ───────────────────────────────────────────────────────────────────────────────
 
 export async function listSchedules(): Promise<(WorkScheduleRow & { entityName: string | null })[]> {
-  const rows = await db()
-    .select({ row: schema.workSchedule, entityName: schema.entity.shortName })
-    .from(schema.workSchedule)
-    .leftJoin(schema.entity, eq(schema.entity.id, schema.workSchedule.entityId))
-    .orderBy(desc(schema.workSchedule.isDefault), asc(schema.workSchedule.name));
-  return rows.map(({ row, entityName }) => ({ ...row, entityName }));
+  const [schedules, entities] = await Promise.all([listAllSchedules(), listEntities()]);
+  const nameOf = new Map(entities.map((entity) => [entity.id, entity.shortName]));
+  return schedules.map((row) => ({ ...row, entityName: row.entityId ? (nameOf.get(row.entityId) ?? null) : null })).sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.name.localeCompare(b.name));
 }
 
 export async function getSchedule(id: string): Promise<WorkScheduleRow | null> {
@@ -190,7 +236,7 @@ export async function saveSchedule(input: ScheduleInput): Promise<{ before: Work
   if (problems.length > 0) throw new ActionError(`pattern_${problems[0]}`);
   // The default is what everyone without an assignment follows: it belongs to the group and must be usable.
   if (input.isDefault && (input.entityId || !input.isActive)) throw new ActionError("schedule_default_group_only");
-  return db().transaction(async (tx) => {
+  const saved = await db().transaction(async (tx) => {
     const [before] = input.id ? await tx.select().from(schema.workSchedule).where(eq(schema.workSchedule.id, input.id)).limit(1).for("update") : [];
     if (input.id && !before) throw new ActionError("schedule_not_found");
     if (before && before.entityId !== input.entityId) throw new ActionError("schedule_entity_fixed");
@@ -199,6 +245,8 @@ export async function saveSchedule(input: ScheduleInput): Promise<{ before: Work
     const [after] = before ? await tx.update(schema.workSchedule).set(values).where(eq(schema.workSchedule.id, before.id)).returning() : await tx.insert(schema.workSchedule).values({ entityId: input.entityId, ...values }).returning();
     return { before: before ?? null, after };
   });
+  await invalidate(ATTENDANCE_CACHE.schedules);
+  return saved;
 }
 
 // ── Assignments ─────────────────────────────────────────────────────────────────────────────
@@ -239,7 +287,7 @@ export async function assignSchedule(input: AssignmentInput, actorPersonId: stri
   const shape = input.scope === "person" ? !!input.personId && !input.departmentId && !input.entityId : input.scope === "department" ? !!input.departmentId && !input.personId : !!input.entityId && !input.departmentId && !input.personId;
   if (!shape) throw new ActionError("schedule_assignment_scope");
   if (input.validTo && input.validTo < input.validFrom) throw new ActionError("schedule_assignment_dates");
-  return db().transaction(async (tx) => {
+  const saved = await db().transaction(async (tx) => {
     const [schedule] = await tx.select().from(schema.workSchedule).where(eq(schema.workSchedule.id, input.scheduleId)).limit(1);
     if (!schedule || !schedule.isActive) throw new ActionError("schedule_not_found");
     // An entity's own schedule is for that entity's people.
@@ -255,11 +303,14 @@ export async function assignSchedule(input: AssignmentInput, actorPersonId: stri
     const [assignment] = await tx.insert(schema.scheduleAssignment).values({ ...input, createdByPersonId: actorPersonId }).returning();
     return { assignment, closed };
   });
+  await invalidate(ATTENDANCE_CACHE.assignments);
+  return saved;
 }
 
 export async function removeAssignment(id: string): Promise<ScheduleAssignmentRow> {
   const [row] = await db().delete(schema.scheduleAssignment).where(eq(schema.scheduleAssignment.id, id)).returning();
   if (!row) throw new ActionError("schedule_assignment_not_found");
+  await invalidate(ATTENDANCE_CACHE.assignments);
   return row;
 }
 

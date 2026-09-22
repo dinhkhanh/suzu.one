@@ -17,11 +17,13 @@ vi.mock("@/lib/action", () => ({
   createAction: () => async () => ({ ok: false, error: "failed" }),
 }));
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { Principal } from "../platform/rbac/policy";
 import type { DuplicateMatch } from "./engine/duplicates";
+import { type FunnelApplication, funnelReport } from "./engine/funnel";
+import { getRecruitReport } from "./reports";
 import { PIPELINE_SEED, pipelineSeedProblems } from "./seed-pipelines";
 import {
   createApplication,
@@ -420,5 +422,47 @@ describe("headcount planning (FR-CHR-17)", () => {
     expect(video).toMatchObject({ approvedHeads: 3, openHeads: 2, hired: 1 });
     // Somebody with no recruitment reach gets no plan at all.
     expect(await headcountPlan(employee)).toEqual([]);
+  });
+});
+
+describe("recruitment reports (FR-REC-11)", () => {
+  it("counts the grouped funnel exactly as it would one row per application", async () => {
+    // A spread of applications on a fresh opening: several stages, sources and outcomes, two hires.
+    const opening = await createOpening({ ...baseOpening(), title: "Report fixture" }, null, ids.recruiterPerson);
+    const stages = await stagesOf(ids.pipeline);
+    const candidates = await db().select({ id: schema.candidate.id }).from(schema.candidate);
+    const shapes = [
+      { stage: 0, status: "active", source: "careers_page" },
+      { stage: 0, status: "active", source: "careers_page" },
+      { stage: 3, status: "rejected", source: "referral" },
+      { stage: 3, status: "active", source: "referral" },
+      { stage: 7, status: "hired", source: "referral", days: 12 },
+      { stage: 7, status: "hired", source: "careers_page", days: 30 },
+      { stage: 1, status: "withdrawn", source: "careers_page" },
+    ] as const;
+    for (const [index, shape] of shapes.entries()) {
+      const candidateId = candidates[index]?.id ?? (await createCandidate({ fullName: `Ứng viên báo cáo ${index}`, email: `report${index}@example.com`, phone: null, currentTitle: null, currentEmployer: null, location: null, links: [], source: shape.source, sourceDetail: null, referredByPersonId: null, tags: [], notes: null }, ids.recruiterPerson, { confirmedNotDuplicate: true })).id;
+      const appliedAt = new Date("2026-03-01T00:00:00Z");
+      const closedAt = "days" in shape ? new Date(appliedAt.getTime() + shape.days * 86_400_000) : null;
+      await db().insert(schema.jobApplication).values({ candidateId, openingId: opening.id, stageId: stages[shape.stage].id, status: shape.status, source: shape.source, appliedAt, closedAt });
+    }
+    const rows = await db()
+      .select({
+        category: schema.recruitPipelineStage.category,
+        status: schema.jobApplication.status,
+        source: schema.jobApplication.source,
+        days: sql<number | null>`case when ${schema.jobApplication.status} = 'hired' then extract(day from coalesce(${schema.jobApplication.closedAt}, ${schema.jobApplication.updatedAt}) - ${schema.jobApplication.appliedAt})::int else null end`,
+      })
+      .from(schema.jobApplication)
+      .innerJoin(schema.recruitPipelineStage, eq(schema.recruitPipelineStage.id, schema.jobApplication.stageId));
+    expect(rows.length).toBeGreaterThan(shapes.length);
+    const expected = funnelReport(rows.map((row) => ({ category: row.category, status: row.status, source: row.source, daysToHire: row.days === null ? null : Number(row.days) }) as FunnelApplication));
+    const report = await getRecruitReport(hrAdmin);
+    expect({ ...report, openings: undefined, openOpenings: undefined }).toEqual({ ...expected, openings: undefined, openOpenings: undefined });
+    expect(report.openings.length).toBeGreaterThan(0);
+    expect(report.timeToHire.hires).toBeGreaterThanOrEqual(2);
+    expect(report.sources.length).toBeGreaterThanOrEqual(2);
+    // Nobody in reach, nothing counted.
+    expect((await getRecruitReport(employee)).applications).toBe(0);
   });
 });

@@ -17,7 +17,7 @@ import { todayInVietnam } from "@/lib/dates";
 import { normalizeEmployeeCode } from "./engine/employee-code";
 import { normalizeIdNumber } from "./field-contexts";
 import { nationalIdsOnFile, updateSensitiveFields } from "./records";
-import { hireInTransaction, type WorkforceType } from "./service";
+import { hireInTransaction, invalidatePositions, type WorkforceType } from "./service";
 
 const column = <Value>(definition: Column<Value>) => definition;
 const optionalText = (headers: readonly [string, ...string[]], max: number, example = "") => column<string>({ headers, parse: text(max), example });
@@ -248,5 +248,9 @@ export const employeeImport = defineImport({
     }
     return { created: created.size, withRestricted, managersLinked };
   },
-  onCommitted: () => revalidatePath("/people"),
+  onCommitted: async () => {
+    // A row may have named a new position.
+    await invalidatePositions();
+    revalidatePath("/people");
+  },
 });

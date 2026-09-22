@@ -43,38 +43,45 @@ export async function getHeadcountReport(principal: Principal, filters: Headcoun
   const { e, a } = spansOn(filters.asOf);
   const scope = and(within(reach, { entityId: e.entityId, orgUnitId: a.orgUnitId }, reach.all ? [] : await unitsWithin(reach.unitIds)), filters.entityId ? eq(e.entityId, filters.entityId) : undefined);
 
-  const rows = await db()
-    .select({
-      personId: e.personId,
-      startDate: e.startDate,
-      endDate: e.endDate,
-      seniorityDate: e.seniorityDate,
-      entity: schema.entity.shortName,
-      department: schema.orgUnit.name,
-      workforceType: a.workforceType,
-      gender: schema.personProfile.gender,
-      dateOfBirth: schema.personProfile.dateOfBirth,
-    })
-    .from(e)
-    .innerJoin(schema.entity, eq(schema.entity.id, e.entityId))
-    .leftJoinLateral(a, sql`true`)
-    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, a.departmentId))
-    .leftJoin(schema.personProfile, eq(schema.personProfile.personId, e.personId))
-    .where(scope);
-  const spans: Span[] = rows;
-
+  // Only the employments the figures can count: on the books somewhere between the opening day
+  // (the day before the period) and the report date or the day after the period, whichever is
+  // later. Joiners and leavers of the period fall inside that window (an employment never ends
+  // before it starts).
+  const earliest = [filters.asOf, addDays(filters.from, -1)].sort()[0];
+  const latest = [filters.asOf, addDays(filters.to, 1)].sort()[1];
   const until = addDays(filters.asOf, EXPIRY_WINDOW_DAYS);
   const c = schema.contract;
-  const due = await db()
-    .select({ personId: e.personId, fullName: schema.person.fullName, employeeCode: e.employeeCode, entity: schema.entity.shortName, department: schema.orgUnit.name, type: c.type, endDate: c.endDate })
-    .from(c)
-    .innerJoin(e, eq(e.id, c.employmentId))
-    .innerJoin(schema.person, eq(schema.person.id, e.personId))
-    .innerJoin(schema.entity, eq(schema.entity.id, e.entityId))
-    .leftJoinLateral(a, sql`true`)
-    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, a.departmentId))
-    .where(and(scope, isNull(c.deletedAt), isNull(c.terminatedOn), isNull(e.endDate), gte(c.endDate, filters.asOf), or(eq(c.type, "probation"), lte(c.endDate, until)), inArray(c.type, ["probation", "fixed_term", "service", "internship"])))
-    .orderBy(asc(c.endDate));
+  const [rows, due] = await Promise.all([
+    db()
+      .select({
+        personId: e.personId,
+        startDate: e.startDate,
+        endDate: e.endDate,
+        seniorityDate: e.seniorityDate,
+        entity: schema.entity.shortName,
+        department: schema.orgUnit.name,
+        workforceType: a.workforceType,
+        gender: schema.personProfile.gender,
+        dateOfBirth: schema.personProfile.dateOfBirth,
+      })
+      .from(e)
+      .innerJoin(schema.entity, eq(schema.entity.id, e.entityId))
+      .leftJoinLateral(a, sql`true`)
+      .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, a.departmentId))
+      .leftJoin(schema.personProfile, eq(schema.personProfile.personId, e.personId))
+      .where(and(scope, lte(e.startDate, latest), or(isNull(e.endDate), gte(e.endDate, earliest)))),
+    db()
+      .select({ personId: e.personId, fullName: schema.person.fullName, employeeCode: e.employeeCode, entity: schema.entity.shortName, department: schema.orgUnit.name, type: c.type, endDate: c.endDate })
+      .from(c)
+      .innerJoin(e, eq(e.id, c.employmentId))
+      .innerJoin(schema.person, eq(schema.person.id, e.personId))
+      .innerJoin(schema.entity, eq(schema.entity.id, e.entityId))
+      .leftJoinLateral(a, sql`true`)
+      .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, a.departmentId))
+      .where(and(scope, isNull(c.deletedAt), isNull(c.terminatedOn), isNull(e.endDate), gte(c.endDate, filters.asOf), or(eq(c.type, "probation"), lte(c.endDate, until)), inArray(c.type, ["probation", "fixed_term", "service", "internship"])))
+      .orderBy(asc(c.endDate)),
+  ]);
+  const spans: Span[] = rows;
   const lists = due.flatMap((row) => (row.endDate ? [{ ...row, endDate: row.endDate }] : []));
 
   return {

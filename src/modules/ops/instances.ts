@@ -2,7 +2,7 @@
 // (FR-OPS-05). The `task` row carries status, owner and due date (so the instance shows in My work
 // like any other task); everything the ops tracker adds is on `obligation_instance`.
 import "server-only";
-import { and, asc, desc, eq, gte, inArray, isNull, lte, or, type SQL, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lt, lte, or, type SQL, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
@@ -68,13 +68,30 @@ export type InstanceListItem = {
   instanceId: string;
 };
 
-export type InstanceFilter = { open?: boolean; entityId?: string | null; dueFrom?: IsoDate; dueTo?: IsoDate; templateId?: string; authority?: string | null; category?: string | null; ownerId?: string | null; limit?: number };
+export type InstanceFilter = { open?: boolean; entityId?: string | null; dueFrom?: IsoDate; dueTo?: IsoDate; templateId?: string; authority?: string | null; category?: string | null; ownerId?: string | null; limit?: number; /** Only these entities (the viewer's reach still applies). */ entityIds?: readonly string[]; /** Closed, or due before this day — the archive. */ pastOrClosedOn?: IsoDate };
 
 /** The SQL list form of `canViewInstance`: the entities the viewer reads, plus what is theirs to do or review. */
 function visibleTo(viewer: { principal: Principal; personId: string }): SQL | undefined {
   const reach = opsReach(viewer.principal);
   if (reach.all) return undefined;
   return or(reach.entityIds.length ? inArray(schema.obligationInstance.entityId, reach.entityIds) : undefined, eq(schema.task.assigneePersonId, viewer.personId), eq(schema.obligationInstance.reviewerPersonId, viewer.personId));
+}
+
+/** The filter as SQL (without the viewer's reach). Joins `task` and `obligation_template`. */
+export function instanceConditions(filter: InstanceFilter): SQL | undefined {
+  return and(
+    isNull(schema.task.deletedAt),
+    filter.open === undefined ? undefined : filter.open ? inArray(schema.task.status, ["todo", "in_progress"]) : inArray(schema.task.status, ["done", "cancelled"]),
+    filter.entityId ? eq(schema.obligationInstance.entityId, filter.entityId) : undefined,
+    filter.entityIds ? (filter.entityIds.length ? inArray(schema.obligationInstance.entityId, [...filter.entityIds]) : sql`false`) : undefined,
+    filter.templateId ? eq(schema.obligationInstance.templateId, filter.templateId) : undefined,
+    filter.authority ? eq(schema.obligationTemplate.authority, filter.authority) : undefined,
+    filter.category ? eq(schema.obligationTemplate.category, filter.category) : undefined,
+    filter.ownerId ? eq(schema.task.assigneePersonId, filter.ownerId) : undefined,
+    filter.dueFrom ? gte(schema.task.dueDate, filter.dueFrom) : undefined,
+    filter.dueTo ? lte(schema.task.dueDate, filter.dueTo) : undefined,
+    filter.pastOrClosedOn ? or(inArray(schema.task.status, ["done", "cancelled"]), lt(schema.task.dueDate, filter.pastOrClosedOn)) : undefined,
+  );
 }
 
 export async function listInstances(viewer: { principal: Principal; personId: string }, filter: InstanceFilter = {}, today: IsoDate = todayInVietnam()): Promise<InstanceListItem[]> {
@@ -90,20 +107,7 @@ export async function listInstances(viewer: { principal: Principal; personId: st
     .leftJoin(assignee, eq(assignee.id, schema.task.assigneePersonId))
     .leftJoin(subject, eq(subject.id, schema.task.subjectPersonId))
     .leftJoin(completer, eq(completer.id, schema.task.completedByPersonId))
-    .where(
-      and(
-        isNull(schema.task.deletedAt),
-        visibleTo(viewer),
-        filter.open === undefined ? undefined : filter.open ? inArray(schema.task.status, ["todo", "in_progress"]) : inArray(schema.task.status, ["done", "cancelled"]),
-        filter.entityId ? eq(schema.obligationInstance.entityId, filter.entityId) : undefined,
-        filter.templateId ? eq(schema.obligationInstance.templateId, filter.templateId) : undefined,
-        filter.authority ? eq(schema.obligationTemplate.authority, filter.authority) : undefined,
-        filter.category ? eq(schema.obligationTemplate.category, filter.category) : undefined,
-        filter.ownerId ? eq(schema.task.assigneePersonId, filter.ownerId) : undefined,
-        filter.dueFrom ? gte(schema.task.dueDate, filter.dueFrom) : undefined,
-        filter.dueTo ? lte(schema.task.dueDate, filter.dueTo) : undefined,
-      ),
-    )
+    .where(and(visibleTo(viewer), instanceConditions(filter)))
     .orderBy(filter.open === false ? desc(schema.task.dueDate) : sql`${schema.task.dueDate} asc nulls last`, asc(schema.entity.code), asc(schema.obligationTemplate.sortOrder))
     .limit(filter.limit ?? 500);
   const sentKeys = await sentKeysOf(rows.filter((row) => row.task.status === "todo" || row.task.status === "in_progress").map((row) => row.instance.id));
@@ -231,6 +235,14 @@ export async function reassignInstance(taskId: string, input: { assigneePersonId
 }
 
 // ── Evidence files (platform files module; signed-URL upload) ───────────────────────────────
+
+/** id → full name, in one query: the people an instance page names (owner, reviewer, uploaders…). */
+export async function personNamesOf(personIds: readonly (string | null | undefined)[]): Promise<Map<string, string>> {
+  const ids = [...new Set(personIds.filter((id): id is string => !!id))];
+  if (ids.length === 0) return new Map();
+  const rows = await db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, ids));
+  return new Map(rows.map((row) => [row.id, row.fullName]));
+}
 
 export const listEvidenceFiles = (instanceId: string) => listFilesOf(OBLIGATION_FILE_OWNER, instanceId);
 

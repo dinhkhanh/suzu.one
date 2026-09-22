@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { db, schema } from "@/lib/db";
 import { requireUser } from "@/modules/platform/auth/session";
+import { listEntities } from "@/modules/platform/org/service";
 import { canBookAssets, canDecideBookings, listBookableAssets, listBookingRequests, listBookings, listBookingsOfPerson, listCategories, shiftWeeks, weekStart } from "@/modules/assets/service";
 import { BookingCalendarFilters, BookingList, BookingWeek } from "@/modules/assets/ui/booking-calendar";
 import { BookAssetForm } from "@/modules/assets/ui/booking-forms";
@@ -29,7 +30,7 @@ export default async function BookingsPage({ searchParams }: PageProps<"/assets/
     listBookableAssets(filter),
     listBookings({ from: weekBegins, to: weekEnds, ...filter }),
     listCategories().then((rows) => rows.filter((row) => row.bookable && row.isActive)),
-    db().select().from(schema.entity).orderBy(asc(schema.entity.code)),
+    listEntities(),
     listBookingsOfPerson(user.person.id),
     canDecideBookings(user.principal) ? listBookingRequests(user.principal) : Promise.resolve([]),
     getTranslations("assets.bookings"),

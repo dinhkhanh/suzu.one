@@ -15,6 +15,7 @@ import "server-only";
 // not submitted theirs. A rule that lived in a component would be a rule that a hand-posted request
 // walks past; the test for it calls this function.
 import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, sql } from "drizzle-orm";
+import { cache } from "react";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -134,24 +135,29 @@ export type InterviewView = {
   amInterviewing: boolean;
 };
 
-export async function getInterviewView(viewer: { principal: Principal; personId: string | null }, interviewId: string): Promise<InterviewView | null> {
+// The page and its scorecard panel both ask, with the same viewer: once per request.
+export const getInterviewView = cache(async (viewer: { principal: Principal; personId: string | null }, interviewId: string): Promise<InterviewView | null> => {
   const interview = await findInterview(interviewId);
   if (!interview) return null;
-  const opening = await findOpening(interview.openingId);
-  const application = await findApplication(interview.applicationId);
+  const [opening, application, member, interviewing, interviewers] = await Promise.all([
+    findOpening(interview.openingId),
+    findApplication(interview.applicationId),
+    isOpeningMember(interview.openingId, viewer.personId),
+    isInterviewer(interviewId, viewer.personId),
+    interviewersOf([interviewId]),
+  ]);
   if (!opening || !application) return null;
 
-  const [member, interviewing] = await Promise.all([isOpeningMember(opening.id, viewer.personId), isInterviewer(interviewId, viewer.personId)]);
   const target = targetOf(opening);
   if (!canViewInterview(viewer.principal, target, member, interviewing)) return null;
 
-  const candidate = await findCandidate(application.candidateId);
+  const [candidate, stages] = await Promise.all([findCandidate(application.candidateId), interview.stageId ? stagesOf(opening.pipelineId) : []]);
   if (!candidate) return null;
-  const stage = interview.stageId ? (await stagesOf(opening.pipelineId)).find((row) => row.id === interview.stageId) : undefined;
+  const stage = interview.stageId ? stages.find((row) => row.id === interview.stageId) : undefined;
 
   return {
     interview,
-    interviewers: (await interviewersOf([interviewId])).get(interviewId) ?? [],
+    interviewers: interviewers.get(interviewId) ?? [],
     candidateName: candidate.fullName,
     candidateId: candidate.id,
     applicationId: application.id,
@@ -163,7 +169,7 @@ export async function getInterviewView(viewer: { principal: Principal; personId:
     canSchedule: canScheduleInterview(viewer.principal, target, member),
     amInterviewing: interviewing,
   };
-}
+});
 
 export type InterviewListRow = {
   id: string;

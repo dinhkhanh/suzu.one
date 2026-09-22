@@ -161,9 +161,12 @@ export async function listConversations(personId: string, limit = 20): Promise<{
 
 /** The turns of one conversation — the asker's own, or nothing. */
 export async function getConversation(personId: string, conversationId: string): Promise<{ id: string; title: string; turns: ConversationTurn[] } | null> {
-  const [row] = await db().select().from(aiConversation).where(and(eq(aiConversation.id, conversationId), eq(aiConversation.personId, personId))).limit(1);
+  // Both at once; the messages are only returned when the conversation is the asker's.
+  const [[row], messages] = await Promise.all([
+    db().select().from(aiConversation).where(and(eq(aiConversation.id, conversationId), eq(aiConversation.personId, personId))).limit(1),
+    db().select().from(aiMessage).where(eq(aiMessage.conversationId, conversationId)).orderBy(asc(aiMessage.createdAt)),
+  ]);
   if (!row) return null;
-  const messages = await db().select().from(aiMessage).where(eq(aiMessage.conversationId, conversationId)).orderBy(asc(aiMessage.createdAt));
   return { id: row.id, title: row.title, turns: messages.map(toTurn) };
 }
 

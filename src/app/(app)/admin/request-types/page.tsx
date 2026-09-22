@@ -16,9 +16,7 @@ export const metadata: Metadata = { title: "Request types" };
 export default async function RequestTypesPage() {
   const user = await requireUser();
   if (!canManageRequestTypes(user.principal)) notFound();
-  const t = await getTranslations("requests.designer");
-  const locale = await getLocale();
-  const [types, entities] = await Promise.all([listRequestTypes(), listEntities()]);
+  const [t, locale, types, entities] = await Promise.all([getTranslations("requests.designer"), getLocale(), listRequestTypes(), listEntities()]);
   const entityName = new Map(entities.map((entity) => [entity.id, entity.shortName]));
 
   return (

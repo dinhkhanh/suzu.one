@@ -38,7 +38,7 @@ import { hirePerson } from "@/modules/core-hr/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { buildReportFor, isSchedulable, listReportsFor, needsStepUp, REPORT_KEYS } from "./catalogue";
-import { createSchedule, runDueSchedules, runSchedule } from "./schedules";
+import { createSchedule, getScheduleView, listSchedules, runDueSchedules, runSchedule } from "./schedules";
 
 type Who = "hr" | "head" | "huy";
 const ids = {} as Record<Who | "entity" | "actor", string>;
@@ -226,5 +226,20 @@ describe("running a schedule", () => {
     expect(run.outcomes[0].outcome).toBe("not_permitted");
     expect(sent).toHaveLength(0);
     await db().update(schema.person).set({ status: "active" }).where(eq(schema.person.id, ids.head));
+  });
+
+  it("lists each schedule with its latest run, and only to whoever may edit it", async () => {
+    const schedule = await createSchedule(users.hr, { reportKey: "headcount", name: "Hai lần", parameters: {}, cadence: "daily", dayOfWeek: null, dayOfMonth: null, locale: "vi", recipientPersonIds: [ids.hr] }, "2027-06-01");
+    await runSchedule(schedule, "2027-06-01");
+    const latest = await runSchedule(schedule, "2027-06-02");
+    const hr = { personId: ids.hr, principal: users.hr.principal };
+    const listed = (await listSchedules(hr)).find((row) => row.id === schedule.id);
+    expect(listed?.lastRun?.id).toBe(latest.id);
+    expect(listed?.recipients.map((recipient) => recipient.personId)).toEqual([ids.hr]);
+    expect((await getScheduleView(hr, schedule.id))?.lastRun?.id).toBe(latest.id);
+    // Huy neither made it nor holds org:manage.
+    const huy = { personId: ids.huy, principal: users.huy.principal };
+    expect((await listSchedules(huy)).some((row) => row.id === schedule.id)).toBe(false);
+    expect(await getScheduleView(huy, schedule.id)).toBeUndefined();
   });
 });

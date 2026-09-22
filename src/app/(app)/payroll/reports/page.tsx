@@ -19,24 +19,25 @@ export const metadata: Metadata = { title: "Payroll reports" };
  */
 export default async function PayrollReportsPage({ searchParams }: PageProps<"/payroll/reports">) {
   const user = await requireUser();
-  const options = await reportOptions(user.principal);
+  const [options, params, t] = await Promise.all([reportOptions(user.principal), searchParams, getTranslations("payroll.reports")]);
   if (options.entities.length === 0) notFound();
   requireStepUp(user, "/payroll/reports");
 
-  const params = await searchParams;
   const asString = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
   const entityId = options.entities.find((entity) => entity.id === asString(params.entityId))?.id ?? options.entities[0].id;
   const month = options.months.find((value) => value === asString(params.month)) ?? options.months[0] ?? "";
   const named = seesNamedReports(user.principal);
+  // The trend covers the last two years: enough to see the shape, without reading every run ever made.
+  const now = new Date();
+  const trendFrom = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 23, 1)).toISOString().slice(0, 7);
 
-  const t = await getTranslations("payroll.reports");
   const [register, insurance, pit, cost, union, trend] = await Promise.all([
     named && month ? payrollRegister(user.principal, entityId, month) : null,
     named && month ? insuranceSummary(user.principal, entityId, month) : null,
     named && month ? pitSummary(user.principal, entityId, month) : null,
     month ? costReport(user.principal, { entityId, month }) : null,
     month ? unionReport(user.principal, { entityId, month }) : null,
-    costTrend(user.principal, { entityId }),
+    costTrend(user.principal, { entityId, fromMonth: trendFrom }),
   ]);
 
   return (

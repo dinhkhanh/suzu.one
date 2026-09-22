@@ -1,7 +1,7 @@
 // Intake forms (FR-WRK-16): a team's request form; a submission becomes a task in the team's
 // backlog with the requester set and the answers as its description.
 import "server-only";
-import { and, asc, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
@@ -23,19 +23,21 @@ const withNames = (executor: Executor) =>
     .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workIntakeForm.projectId))
     .$dynamic();
 
-async function countSubmissions(executor: Executor, formIds: readonly string[]): Promise<Map<string, number>> {
-  if (formIds.length === 0) return new Map();
-  const rows = await executor.select({ formId: schema.workTask.intakeFormId }).from(schema.workTask).innerJoin(schema.task, eq(schema.task.id, schema.workTask.taskId)).where(and(inArray(schema.workTask.intakeFormId, [...formIds]), isNull(schema.task.deletedAt)));
-  const counts = new Map<string, number>();
-  for (const row of rows) counts.set(row.formId!, (counts.get(row.formId!) ?? 0) + 1);
-  return counts;
-}
-
 /** Every form of a team, retired ones too — for the people who manage them. */
 export async function listTeamIntakeForms(teamId: string): Promise<IntakeFormView[]> {
-  const rows = await withNames(db()).where(eq(schema.workIntakeForm.teamId, teamId)).orderBy(desc(schema.workIntakeForm.isActive), asc(schema.workIntakeForm.name));
-  const counts = await countSubmissions(db(), rows.map((row) => row.form.id));
-  return rows.map(({ form, team, projectName }) => ({ ...form, teamName: team.name, teamKey: team.key, projectName, submissions: counts.get(form.id) ?? 0 }));
+  const rows = await db()
+    .select({
+      form: schema.workIntakeForm,
+      team: schema.workTeam,
+      projectName: schema.workProject.name,
+      submissions: sql<number>`(select count(*)::int from ${schema.workTask} inner join ${schema.task} on ${schema.task.id} = ${schema.workTask.taskId} where ${schema.workTask.intakeFormId} = ${schema.workIntakeForm.id} and ${schema.task.deletedAt} is null)`,
+    })
+    .from(schema.workIntakeForm)
+    .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workIntakeForm.teamId))
+    .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workIntakeForm.projectId))
+    .where(eq(schema.workIntakeForm.teamId, teamId))
+    .orderBy(desc(schema.workIntakeForm.isActive), asc(schema.workIntakeForm.name));
+  return rows.map(({ form, team, projectName, submissions }) => ({ ...form, teamName: team.name, teamKey: team.key, projectName, submissions }));
 }
 
 /** The active forms this viewer may fill in. */

@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import { requireUser } from "@/modules/platform/auth/session";
+import { listEntities } from "@/modules/platform/org/service";
 import { canManageLicences, canReadAssetMoney, findLicence } from "@/modules/assets/service";
 import { LicenceForm } from "@/modules/assets/ui/licence-forms";
 
@@ -17,7 +18,7 @@ export default async function LicencePage({ params }: PageProps<"/assets/licence
   if (!licence || !canManageLicences(user.principal, licence.entityId)) notFound();
 
   const [entities, people, t] = await Promise.all([
-    db().select({ id: schema.entity.id, code: schema.entity.code, shortName: schema.entity.shortName }).from(schema.entity).orderBy(asc(schema.entity.code)),
+    listEntities().then((rows) => rows.map(({ id, code, shortName }) => ({ id, code, shortName }))),
     db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.status, "active")).orderBy(asc(schema.person.fullName)),
     getTranslations("assets.licences"),
   ]);

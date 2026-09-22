@@ -6,6 +6,7 @@ import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { getDaysOff } from "@/modules/attendance/service";
 import { getLeaveOnDays } from "@/modules/leave/service";
+import { workDirectory } from "./directory";
 import { type AwayDay, type Week, weeksFrom, workload, type WorkloadRow } from "./engine/workload";
 import { canAdminTeam, type WorkViewer } from "./policy";
 import { WORK_KIND } from "./tasks";
@@ -18,7 +19,7 @@ export type WorkloadView = { weeks: Week[]; teams: { id: string; name: string; k
 
 /** Null when the viewer leads no team: there is nobody whose load is theirs to plan. */
 export async function getWorkload(viewer: WorkViewer, today: IsoDate, options: { teamId?: string | null } = {}): Promise<WorkloadView | null> {
-  const allTeams = await db().select().from(schema.workTeam).where(eq(schema.workTeam.isActive, true)).orderBy(asc(schema.workTeam.name));
+  const allTeams = (await workDirectory()).teams.filter((team) => team.isActive);
   const teams = allTeams.filter((team) => viewer.teamRoles.get(team.id) === "lead" || canAdminTeam(viewer, teamFacts(team)));
   if (teams.length === 0) return null;
   const chosen = options.teamId && teams.some((team) => team.id === options.teamId) ? teams.filter((team) => team.id === options.teamId) : teams;

@@ -3,7 +3,8 @@
 // move between profiles, is proposed by C&B and takes effect only when the owner approves — then
 // it is an event on the person's timeline.
 import "server-only";
-import { and, desc, eq, inArray, isNull, lte, gte, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lte, gte, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
@@ -45,16 +46,25 @@ export type ProfileProposal = PayProfileRow & { personName: string; proposedByNa
 /** Proposals waiting for the owner, within the entities the viewer reaches (filtered in SQL). */
 export async function listProfileProposals(reach: EntityReach, executor: Executor = db()): Promise<ProfileProposal[]> {
   const table = schema.payProfile;
+  const today = todayInVietnam();
+  // One query: the proposal, whose it is, who proposed it and the profile in force today.
+  const proposer = alias(schema.person, "proposer");
+  const current = alias(schema.payProfile, "current");
+  const inForce = executor
+    .select({ profile: current.profile })
+    .from(current)
+    .where(and(eq(current.personId, table.personId), eq(current.status, "approved"), lte(current.validFrom, today), or(isNull(current.validTo), gte(current.validTo, today))))
+    .limit(1)
+    .as("in_force");
   const rows = await executor
-    .select({ row: table, personName: schema.person.fullName })
+    .select({ row: table, personName: schema.person.fullName, proposedByName: proposer.fullName, currentProfile: inForce.profile })
     .from(table)
     .innerJoin(schema.person, eq(schema.person.id, table.personId))
+    .leftJoin(proposer, eq(proposer.id, table.proposedByPersonId))
+    .leftJoinLateral(inForce, sql`true`)
     .where(and(eq(table.status, "proposed"), withinReach(table.entityId, reach)))
     .orderBy(table.createdAt);
-  if (rows.length === 0) return [];
-  const proposers = await executor.select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, rows.flatMap(({ row }) => (row.proposedByPersonId ? [row.proposedByPersonId] : []))));
-  const current = await getProfilesOn(rows.map(({ row }) => row.personId), todayInVietnam(), executor);
-  return rows.map(({ row, personName }) => ({ ...row, personName, proposedByName: proposers.find((person) => person.id === row.proposedByPersonId)?.name ?? null, currentProfile: current.get(row.personId)?.profile ?? null }));
+  return rows.map(({ row, personName, proposedByName, currentProfile }) => ({ ...row, personName, proposedByName: proposedByName ?? null, currentProfile: currentProfile ?? null }));
 }
 
 function checkShape(input: ProfileInput) {

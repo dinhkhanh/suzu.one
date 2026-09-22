@@ -30,6 +30,7 @@ import { fieldCipher } from "@/lib/crypto";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { listEmploymentFacts } from "@/modules/core-hr/service";
+import { listEntities } from "@/modules/platform/org/service";
 import { getKpiResults, getOkrResults, listFinalResults, markScoresConsumed, type PerformanceResultRow, releaseConsumedScores, type ScoreUse } from "@/modules/performance/service";
 import { getBonusScheme, getBonusSchemeVersion, type ResolvedBonusScheme, schemeDateOf } from "./bonus-schemes";
 import { type BonusOkrLevel, type BonusRunStatus, type BonusSchemeValue, bonusSchemeSchema } from "./enums";
@@ -129,15 +130,20 @@ export async function listMyBonusLines(personId: string, executor: Executor = db
 export type BonusCost = { totals: BonusTotals; byEntity: { entityId: string; entityName: string; totals: BonusTotals }[] };
 
 export async function getBonusCost(runId: string, executor: Executor = db()): Promise<BonusCost> {
-  const lines = await listBonusLines(runId, {}, executor);
-  const entities = await executor.select({ id: schema.entity.id, name: schema.entity.shortName }).from(schema.entity);
-  const nameOf = new Map(entities.map((row) => [row.id, row.name]));
-  const byEntity = [...new Set(lines.map((line) => line.row.entityId))].sort().map((entityId) => ({
-    entityId,
-    entityName: nameOf.get(entityId) ?? "—",
-    totals: sumBonus(lines.filter((line) => line.row.entityId === entityId).map((line) => line.trace)),
-  }));
-  return { totals: sumBonus(lines.map((line) => line.trace)), byEntity };
+  return bonusCostOf(await listBonusLines(runId, {}, executor));
+}
+
+/** The same from lines already read — the run screen lists them anyway. Entity names come from the shared cache. */
+export async function bonusCostOf(lines: readonly BonusLineView[]): Promise<BonusCost> {
+  const nameOf = new Map((await listEntities()).map((row) => [row.id, row.shortName]));
+  return { totals: sumBonus(lines.map((line) => line.trace)), byEntity: costByEntity(lines.map((line) => ({ entityId: line.row.entityId, trace: line.trace })), nameOf) };
+}
+
+/** Per entity, in id order, each with its lines added up — one pass over the lines. */
+function costByEntity(lines: readonly { entityId: string; trace: BonusTrace }[], nameOf: ReadonlyMap<string, string>): BonusCost["byEntity"] {
+  const traces = new Map<string, BonusTrace[]>();
+  for (const line of lines) traces.set(line.entityId, [...(traces.get(line.entityId) ?? []), line.trace]);
+  return [...traces.keys()].sort().map((entityId) => ({ entityId, entityName: nameOf.get(entityId) ?? "—", totals: sumBonus(traces.get(entityId)!) }));
 }
 
 // ── Building and simulating ─────────────────────────────────────────────────────────────────
@@ -209,34 +215,47 @@ export type BonusSimulation = { cost: BonusCost; lines: { personId: string; pers
  * salary on the reference day, and the scheme in force. Pure reads — nothing is written, so this
  * is both what `simulateBonusRun` stores and what a what-if hands back.
  */
+const PERFORMANCE_READS_AT_ONCE = 4;
+
 async function buildLines(run: BonusRunRow, options: SimulationOptions = {}, executor: Executor = db()): Promise<{ lines: { input: BonusPersonInput; trace: BonusTrace; personId: string; personName: string; entityId: string; schemeVersionId: string; result: PerformanceResultRow | null; kpiScoreIds: string[] }[] }> {
   const entityIds = run.entityIds;
   const referenceDates = new Map<string, IsoDate>();
   const schemes = new Map<string, ResolvedBonusScheme>();
-  for (const entityId of entityIds) {
-    const scheme = options.schemeOverride ? { id: "", entityId: options.schemeOverride.entityId, validFrom: schemeDateOf(run.year), value: bonusSchemeSchema.parse(options.schemeOverride.value) } : await getBonusScheme(entityId, schemeDateOf(run.year), executor);
-    schemes.set(entityId, scheme);
-    referenceDates.set(entityId, `${run.year}-${scheme.value.referenceDay}`);
-  }
+  const resolved = await Promise.all(
+    entityIds.map((entityId) => (options.schemeOverride ? { id: "", entityId: options.schemeOverride.entityId, validFrom: schemeDateOf(run.year), value: bonusSchemeSchema.parse(options.schemeOverride.value) } : getBonusScheme(entityId, schemeDateOf(run.year), executor))),
+  );
+  entityIds.forEach((entityId, index) => {
+    schemes.set(entityId, resolved[index]);
+    referenceDates.set(entityId, `${run.year}-${resolved[index].value.referenceDay}`);
+  });
 
-  const [people, results] = await Promise.all([listEmploymentFacts({ entityIds }, executor), listFinalResults({ year: run.year, entityIds }, executor)]);
-
-  // One salary read per entity, on that entity's own reference day.
+  // The people, their results and one salary read per entity (on that entity's own reference day), together.
+  const [people, results, ...perEntity] = await Promise.all([
+    listEmploymentFacts({ entityIds }, executor),
+    listFinalResults({ year: run.year, entityIds }, executor),
+    ...entityIds.map((entityId) => listBaseSalariesOn([entityId], referenceDates.get(entityId)!, schemes.get(entityId)!.value.baseComponentCode, executor)),
+  ]);
   const salaries = new Map<string, number>();
-  for (const entityId of entityIds) {
-    const forEntity = await listBaseSalariesOn([entityId], referenceDates.get(entityId)!, schemes.get(entityId)!.value.baseComponentCode, executor);
-    for (const [personId, amount] of forEntity) salaries.set(personId, amount);
+  for (const forEntity of perEntity) for (const [personId, amount] of forEntity) salaries.set(personId, amount);
+
+  const inRun = people.filter((person) => person.entityId && entityIds.includes(person.entityId));
+  // Each person's OKR and KPI results, a few people at a time. Simulations run as server actions,
+  // where React's per-request cache does not apply, so every call reads the year's goals again:
+  // all at once would be dozens of full reads competing for the pool.
+  const performance: [Awaited<ReturnType<typeof getOkrResults>>, Awaited<ReturnType<typeof getKpiResults>>][] = [];
+  for (let start = 0; start < inRun.length; start += PERFORMANCE_READS_AT_ONCE) {
+    const batch = inRun.slice(start, start + PERFORMANCE_READS_AT_ONCE);
+    performance.push(...(await Promise.all(batch.map((person) => Promise.all([getOkrResults({ personId: person.personId, year: run.year }, executor), getKpiResults({ personId: person.personId, year: run.year }, executor)])))));
   }
 
   const lines = [];
-  for (const person of people) {
-    if (!person.entityId || !entityIds.includes(person.entityId)) continue;
+  for (const [index, person] of inRun.entries()) {
+    if (!person.entityId) continue;
     const scheme = schemes.get(person.entityId)!;
     const referenceDate = referenceDates.get(person.entityId)!;
     const result = results.get(person.personId) ?? null;
-    const okr = await getOkrResults({ personId: person.personId, year: run.year }, executor);
     // The stored month scores behind the result — what approval freezes.
-    const kpi = await getKpiResults({ personId: person.personId, year: run.year }, executor);
+    const [okr, kpi] = performance[index];
     const input: BonusPersonInput = {
       baseSalaryVnd: salaries.get(person.personId) ?? null,
       serviceMonths: serviceMonthsOn(person.seniorityDate ?? person.startDate, referenceDate),
@@ -257,9 +276,8 @@ export async function simulateWhatIf(runId: string, schemeValue: unknown, execut
   const run = await getBonusRun(runId, executor);
   if (!run) throw new ActionError("bonus_run_not_found");
   const { lines } = await buildLines(run, { schemeOverride: { entityId: null, value: schemeValue } }, executor);
-  const entities = await executor.select({ id: schema.entity.id, name: schema.entity.shortName }).from(schema.entity);
-  const nameOf = new Map(entities.map((row) => [row.id, row.name]));
-  const byEntity = [...new Set(lines.map((line) => line.entityId))].sort().map((entityId) => ({ entityId, entityName: nameOf.get(entityId) ?? "—", totals: sumBonus(lines.filter((line) => line.entityId === entityId).map((line) => line.trace)) }));
+  const nameOf = new Map((await listEntities()).map((row) => [row.id, row.shortName]));
+  const byEntity = costByEntity(lines, nameOf);
   return { cost: { totals: sumBonus(lines.map((line) => line.trace)), byEntity }, lines: lines.map((line) => ({ personId: line.personId, personName: line.personName, entityId: line.entityId, trace: line.trace })) };
 }
 

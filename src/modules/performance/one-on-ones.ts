@@ -7,7 +7,8 @@
 //
 // No authorization inside; `one-on-one-actions.ts` checks first.
 import "server-only";
-import { and, desc, eq, or } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import type { IsoDate } from "@/lib/dates";
@@ -32,27 +33,34 @@ export async function findOneOnOne(meetingId: string, executor: Executor = db())
  * rather than in the page means no screen can leak the column by forgetting to.
  */
 export async function loadOneOnOne(meetingId: string, options: { seesPrivate: boolean }, executor: Executor = db()): Promise<OneOnOneView | null> {
-  const manager = schema.person;
-  const [row] = await executor.select().from(schema.oneOnOne).where(eq(schema.oneOnOne.id, meetingId)).limit(1);
-  if (!row) return null;
-  const names = await executor.select({ id: manager.id, fullName: manager.fullName }).from(manager);
-  const nameOf = new Map(names.map((person) => [person.id, person.fullName]));
-  const actions = await executor.select().from(schema.oneOnOneAction).where(eq(schema.oneOnOneAction.meetingId, meetingId)).orderBy(schema.oneOnOneAction.createdAt);
-  return { ...row, privateNotes: options.seesPrivate ? row.privateNotes : null, managerName: nameOf.get(row.managerPersonId) ?? "—", personName: nameOf.get(row.personId) ?? "—", actions };
+  const [found, actions] = await Promise.all([
+    namedMeetings(executor).where(eq(schema.oneOnOne.id, meetingId)).limit(1),
+    executor.select().from(schema.oneOnOneAction).where(eq(schema.oneOnOneAction.meetingId, meetingId)).orderBy(schema.oneOnOneAction.createdAt),
+  ]);
+  const [meeting] = found;
+  if (!meeting) return null;
+  const { row, managerName, personName } = meeting;
+  return { ...row, privateNotes: options.seesPrivate ? row.privateNotes : null, managerName: managerName ?? "—", personName: personName ?? "—", actions };
+}
+
+/** Meetings with the two parties' names joined on. */
+function namedMeetings(executor: Executor) {
+  const manager = alias(schema.person, "manager");
+  const subject = alias(schema.person, "subject");
+  return executor
+    .select({ row: schema.oneOnOne, managerName: manager.fullName, personName: subject.fullName, actionCount: sql<number>`(${db().select({ value: sql<number>`count(*)::int` }).from(schema.oneOnOneAction).where(eq(schema.oneOnOneAction.meetingId, schema.oneOnOne.id))})` })
+    .from(schema.oneOnOne)
+    .leftJoin(manager, eq(manager.id, schema.oneOnOne.managerPersonId))
+    .leftJoin(subject, eq(subject.id, schema.oneOnOne.personId))
+    .$dynamic();
 }
 
 /** Every meeting this person is a party to — as the manager, as the subject, or both. */
 export async function listOneOnOnes(personId: string, executor: Executor = db()): Promise<{ row: OneOnOneRow; managerName: string; personName: string; actionCount: number }[]> {
-  const rows = await executor
-    .select()
-    .from(schema.oneOnOne)
+  const rows = await namedMeetings(executor)
     .where(or(eq(schema.oneOnOne.managerPersonId, personId), eq(schema.oneOnOne.personId, personId)))
     .orderBy(desc(schema.oneOnOne.meetingOn));
-  if (rows.length === 0) return [];
-  const names = await executor.select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person);
-  const nameOf = new Map(names.map((person) => [person.id, person.fullName]));
-  const actions = await executor.select({ meetingId: schema.oneOnOneAction.meetingId }).from(schema.oneOnOneAction);
-  return rows.map((row) => ({ row, managerName: nameOf.get(row.managerPersonId) ?? "—", personName: nameOf.get(row.personId) ?? "—", actionCount: actions.filter((action) => action.meetingId === row.id).length }));
+  return rows.map(({ row, managerName, personName, actionCount }) => ({ row, managerName: managerName ?? "—", personName: personName ?? "—", actionCount }));
 }
 
 export type OneOnOneInput = { personId: string; meetingOn: IsoDate; agenda: string | null; sharedNotes: string | null; privateNotes: string | null };

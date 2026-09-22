@@ -1,7 +1,7 @@
 // Recurring tasks (FR-WRK-11): a rule on a project that the daily job turns into tasks, each
 // occurrence once, `leadDays` before its date. The occurrence's date is the task's due date.
 import "server-only";
-import { and, asc, eq, inArray, ne } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
@@ -25,11 +25,13 @@ export async function listRecurrences(projectId: string, today: IsoDate): Promis
   const assigneeIds = rows.map((row) => row.draft.assigneePersonId).filter((id): id is string => !!id);
   const [people, made] = await Promise.all([
     assigneeIds.length ? db().select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, assigneeIds)) : [],
-    db().select({ recurrenceId: schema.workTask.recurrenceId }).from(schema.workTask).where(inArray(schema.workTask.recurrenceId, rows.map((row) => row.id))),
+    db().select({ recurrenceId: schema.workTask.recurrenceId, count: sql<number>`count(*)::int` }).from(schema.workTask).where(inArray(schema.workTask.recurrenceId, rows.map((row) => row.id))).groupBy(schema.workTask.recurrenceId),
   ]);
+  const names = new Map(people.map((person) => [person.id, person.name]));
+  const madeBy = new Map(made.map((row) => [row.recurrenceId, row.count]));
   return rows.map((row) => {
     const from = row.generatedThrough ? addDays(row.generatedThrough, 1) : today;
-    return { ...row, assigneeName: people.find((person) => person.id === row.draft.assigneePersonId)?.name ?? null, nextDate: row.isActive ? nextOccurrence(row.rule, row.startDate, from > today ? from : today, row.endDate) : null, made: made.filter((task) => task.recurrenceId === row.id).length };
+    return { ...row, assigneeName: row.draft.assigneePersonId ? (names.get(row.draft.assigneePersonId) ?? null) : null, nextDate: row.isActive ? nextOccurrence(row.rule, row.startDate, from > today ? from : today, row.endDate) : null, made: madeBy.get(row.id) ?? 0 };
   });
 }
 

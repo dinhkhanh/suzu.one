@@ -354,29 +354,37 @@ export type AttendanceRequestView = RequestView & { attendanceRequest: Attendanc
 export async function getAttendanceRequestView(viewer: { personId: string; principal: Principal }, approvalRequestId: string): Promise<AttendanceRequestView | null> {
   const row = await findByApproval(approvalRequestId);
   if (!row) return null;
+  // Authorized first: a viewer who may not open the request causes no write on the requester's rows.
   const view = await getRequest(viewer, REQUEST_DEFINITIONS[row.type], approvalRequestId);
   if (!view) return null;
   await syncWithdrawn(db(), row.personId);
   const attendanceRequest = (await findAttendanceRequest(row.id)) ?? row;
   const isOvertime = row.type === "overtime" || row.type === "holiday_work";
   const open = attendanceRequest.status === "pending";
-  const warnings = isOvertime && open ? await overtimeWarningsFor(row.personId, row.startDate, minutesOfRequest(row.details), row.id) : [];
-  const policy = row.type === "attendance_correction" && row.entityId ? await getAttendancePolicy(row.entityId, row.startDate) : null;
-  return { ...view, attendanceRequest, warnings, correctionsUsed: policy ? await correctionsUsed(db(), row.personId, monthOf(row.startDate)) : null, correctionCap: policy?.monthlyCorrectionCap ?? null };
+  const isCorrection = row.type === "attendance_correction" && !!row.entityId;
+  const [warnings, policy, used] = await Promise.all([
+    isOvertime && open ? overtimeWarningsFor(row.personId, row.startDate, minutesOfRequest(row.details), row.id) : [],
+    isCorrection ? getAttendancePolicy(row.entityId!, row.startDate) : null,
+    isCorrection ? correctionsUsed(db(), row.personId, monthOf(row.startDate)) : null,
+  ]);
+  return { ...view, attendanceRequest, warnings, correctionsUsed: policy ? used : null, correctionCap: policy?.monthlyCorrectionCap ?? null };
 }
 
 export type MyAttendanceRequest = AttendanceRequestRow & { approvalStatus: string | null };
 
 export async function listAttendanceRequestsOf(personId: string, options: { from?: IsoDate; to?: IsoDate; limit?: number } = {}): Promise<MyAttendanceRequest[]> {
-  await syncWithdrawn(db(), personId);
-  const rows = await db()
-    .select({ row: schema.attendanceRequest, approvalStatus: schema.approvalRequest.status })
-    .from(schema.attendanceRequest)
-    .leftJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.attendanceRequest.approvalRequestId))
-    .where(and(eq(schema.attendanceRequest.personId, personId), options.from ? gte(schema.attendanceRequest.endDate, options.from) : undefined, options.to ? lte(schema.attendanceRequest.startDate, options.to) : undefined))
-    .orderBy(desc(schema.attendanceRequest.startDate), desc(schema.attendanceRequest.createdAt))
-    .limit(options.limit ?? 50);
-  return rows.map(({ row, approvalStatus }) => ({ ...row, approvalStatus }));
+  // The sync runs beside the read rather than before it; the read applies the same rule itself.
+  const [rows] = await Promise.all([
+    db()
+      .select({ row: schema.attendanceRequest, approvalStatus: schema.approvalRequest.status })
+      .from(schema.attendanceRequest)
+      .leftJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.attendanceRequest.approvalRequestId))
+      .where(and(eq(schema.attendanceRequest.personId, personId), options.from ? gte(schema.attendanceRequest.endDate, options.from) : undefined, options.to ? lte(schema.attendanceRequest.startDate, options.to) : undefined))
+      .orderBy(desc(schema.attendanceRequest.startDate), desc(schema.attendanceRequest.createdAt))
+      .limit(options.limit ?? 50),
+    syncWithdrawn(db(), personId),
+  ]);
+  return rows.map(({ row, approvalStatus }) => ({ ...row, status: row.status === "pending" && (approvalStatus === "withdrawn" || approvalStatus === "cancelled") ? "withdrawn" : row.status, approvalStatus }));
 }
 
 /** Approved overtime / holiday work whose hours nobody knows yet: the day is here, punches show no overtime, and the manager has not confirmed any. */

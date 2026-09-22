@@ -2,7 +2,8 @@
 // in one read: where they sit, since when, on probation or not. Re-exported by service.ts, the
 // only door into this module. Nothing here is above the personal tier; the caller decides who sees it.
 import "server-only";
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, or } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, or, type SQL } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { recordLifecycleEvent } from "./lifecycle-events";
@@ -31,28 +32,50 @@ export type EmploymentFacts = {
   probation: { start: IsoDate; end: IsoDate | null }[];
 };
 
-/** Employment facts of the given people (or, without ids, of everyone in the given entities / the group). */
-export async function listEmploymentFacts(filter: { personIds?: readonly string[]; entityIds?: readonly string[]; employeeCodes?: readonly string[] } = {}, executor: Executor = db()): Promise<EmploymentFacts[]> {
-  if (filter.personIds?.length === 0 || filter.entityIds?.length === 0 || filter.employeeCodes?.length === 0) return [];
-  let personIds = filter.personIds ? [...filter.personIds] : null;
-  if (filter.employeeCodes) {
-    const rows = await executor.select({ personId: schema.employment.personId }).from(schema.employment).where(inArray(schema.employment.employeeCode, [...filter.employeeCodes]));
-    personIds = rows.map((row) => row.personId);
-    if (personIds.length === 0) return [];
+export type PeopleFilter = { personIds?: readonly string[]; entityIds?: readonly string[]; employeeCodes?: readonly string[] };
+
+/**
+ * The filter as a condition on a `person_id` column — the same people every read asks about, so
+ * the reads can go out together instead of each waiting for the id list of the one before.
+ * Employee codes win over person ids, as they always have; entities narrow either.
+ */
+export function peopleScope(filter: PeopleFilter, executor: Executor): (column: AnyPgColumn) => SQL | undefined {
+  // Plain ids need no subquery.
+  if (filter.personIds && !filter.employeeCodes && !filter.entityIds) {
+    const ids = [...filter.personIds];
+    return (column) => inArray(column, ids);
   }
-  const people = await executor
-    .select({ person: schema.person, gender: schema.personProfile.gender, dateOfBirth: schema.personProfile.dateOfBirth })
-    .from(schema.person)
-    .leftJoin(schema.personProfile, eq(schema.personProfile.personId, schema.person.id))
-    .where(and(personIds ? inArray(schema.person.id, personIds) : undefined, filter.entityIds ? inArray(schema.person.primaryEntityId, [...filter.entityIds]) : undefined));
-  if (people.length === 0) return [];
-  const ids = people.map((row) => row.person.id);
-  const [employments, contracts] = await Promise.all([
-    executor.select().from(schema.employment).where(inArray(schema.employment.personId, ids)).orderBy(desc(schema.employment.startDate)),
-    executor.select({ personId: schema.contract.personId, employmentId: schema.contract.employmentId, startDate: schema.contract.startDate, endDate: schema.contract.endDate, terminatedOn: schema.contract.terminatedOn }).from(schema.contract).where(and(inArray(schema.contract.personId, ids), eq(schema.contract.type, "probation"), isNull(schema.contract.deletedAt))),
+  const onPerson = and(
+    filter.employeeCodes
+      ? inArray(schema.person.id, executor.select({ id: schema.employment.personId }).from(schema.employment).where(inArray(schema.employment.employeeCode, [...filter.employeeCodes])))
+      : filter.personIds
+        ? inArray(schema.person.id, [...filter.personIds])
+        : undefined,
+    filter.entityIds ? inArray(schema.person.primaryEntityId, [...filter.entityIds]) : undefined,
+  );
+  return (column) => (onPerson ? inArray(column, executor.select({ id: schema.person.id }).from(schema.person).where(onPerson)) : undefined);
+}
+
+/** Employment facts of the given people (or, without ids, of everyone in the given entities / the group). */
+export async function listEmploymentFacts(filter: PeopleFilter = {}, executor: Executor = db()): Promise<EmploymentFacts[]> {
+  if (filter.personIds?.length === 0 || filter.entityIds?.length === 0 || filter.employeeCodes?.length === 0) return [];
+  const scope = peopleScope(filter, executor);
+  // One round trip: the people, each one's latest employment and the probation contracts, side by side.
+  const [people, employments, contracts] = await Promise.all([
+    executor
+      .select({ person: schema.person, gender: schema.personProfile.gender, dateOfBirth: schema.personProfile.dateOfBirth })
+      .from(schema.person)
+      .leftJoin(schema.personProfile, eq(schema.personProfile.personId, schema.person.id))
+      .where(scope(schema.person.id)),
+    executor.selectDistinctOn([schema.employment.personId]).from(schema.employment).where(scope(schema.employment.personId)).orderBy(schema.employment.personId, desc(schema.employment.startDate)),
+    executor.select({ personId: schema.contract.personId, employmentId: schema.contract.employmentId, startDate: schema.contract.startDate, endDate: schema.contract.endDate, terminatedOn: schema.contract.terminatedOn }).from(schema.contract).where(and(scope(schema.contract.personId), eq(schema.contract.type, "probation"), isNull(schema.contract.deletedAt))),
   ]);
+  if (people.length === 0) return [];
+  const latestOf = new Map(employments.map((row) => [row.personId, row]));
+  const probationOf = new Map<string, typeof contracts>();
+  for (const row of contracts) probationOf.set(row.personId, [...(probationOf.get(row.personId) ?? []), row]);
   return people.map(({ person, gender, dateOfBirth }) => {
-    const latest = employments.find((row) => row.personId === person.id) ?? null;
+    const latest = latestOf.get(person.id) ?? null;
     return {
       personId: person.id,
       fullName: person.fullName,
@@ -70,7 +93,7 @@ export async function listEmploymentFacts(filter: { personIds?: readonly string[
       startDate: latest?.startDate ?? null,
       seniorityDate: latest?.seniorityDate ?? null,
       endDate: latest?.endDate ?? null,
-      probation: contracts.filter((row) => row.personId === person.id && (!latest || row.employmentId === latest.id)).map((row) => ({ start: row.startDate, end: row.terminatedOn ?? row.endDate })),
+      probation: (probationOf.get(person.id) ?? []).filter((row) => !latest || row.employmentId === latest.id).map((row) => ({ start: row.startDate, end: row.terminatedOn ?? row.endDate })),
     };
   });
 }

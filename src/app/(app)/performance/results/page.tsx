@@ -9,15 +9,10 @@ import {
   canReadResultOf,
   canSettleResultOf,
   listOutcomes,
-  type DirectoryPerson,
-  getPublishedResult,
+  annualParticipantIds,
   hasWeighting,
-  listCycleParticipants,
-  listResults,
-  listReviewCycles,
+  listResultDetails,
   loadDirectory,
-  type PerformanceResultRow,
-  findResult,
 } from "@/modules/performance/service";
 import { PerformanceNav, readYear, yearChoices } from "@/modules/performance/ui/nav";
 import { BandBadge, percentText, ResultTraceTable, StatusBadge } from "@/modules/performance/ui/result";
@@ -41,34 +36,39 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
   const params = await searchParams;
   const today = todayInVietnam();
   const year = readYear(params.year, today);
-  const [t, format, locale, directory] = await Promise.all([getTranslations("performance.results"), getFormatter(), getLocale(), loadDirectory()]);
+  const [t, format, locale, directory, tOutcome, details, outcomes, participantIds, weightingReady] = await Promise.all([
+    getTranslations("performance.results"),
+    getFormatter(),
+    getLocale(),
+    loadDirectory(),
+    getTranslations("performance.oneOnOnes.outcomes"),
+    // Everything of the year, with the stored row behind each line (trace, provenance, override).
+    listResultDetails({ year }),
+    // What each settled result has led to (FR-PRF-06): a promotion, a salary proposal, a plan.
+    listOutcomes({ year }),
+    // HR's "compute the year" button: the people of the year's annual cycles.
+    annualParticipantIds(year),
+    hasWeighting(null, year),
+  ]);
 
-  const mine = await getPublishedResult(user.person.id, year);
-  // What each settled result has led to (FR-PRF-06): a promotion, a salary proposal, a plan.
-  const outcomes = await listOutcomes({ year });
-  const tOutcome = await getTranslations("performance.oneOnOnes.outcomes");
+  const mine = details.find(({ row }) => row.personId === user.person.id && row.status === "published")?.row ?? null;
+  const rowOf = new Map(details.map(({ line, row }) => [line.id, row]));
   // Everything the viewer may read: the policy decides person by person, not by a query filter.
-  const all = await listResults({ year });
-  const readable = all.filter((line) => {
-    const person = directory.get(line.personId);
-    return !!person && line.personId !== user.person.id && canReadResultOf(user.principal, person);
-  });
+  const readable = details
+    .map(({ line }) => line)
+    .filter((line) => {
+      const person = directory.get(line.personId);
+      return !!person && line.personId !== user.person.id && canReadResultOf(user.principal, person);
+    });
 
-  // HR's "compute the year" button: the people of the year's annual cycles that this viewer manages.
-  const cycles = (await listReviewCycles({ year })).filter((cycle) => cycle.kind === "annual" && cycle.status !== "draft");
-  const participants = (await Promise.all(cycles.map((cycle) => listCycleParticipants(cycle.id)))).flat();
-  const computable = [
-    ...new Set(
-      participants
-        .map((line) => directory.get(line.personId))
-        .filter((person): person is DirectoryPerson => !!person && canComputeResults(user.principal, person.entityId ?? null))
-        .map((person) => person.personId),
-    ),
-  ];
-  const weightingReady = await hasWeighting(null, year);
+  // Of those, the ones this viewer manages.
+  const computable = participantIds
+    .filter((personId) => {
+      const person = directory.get(personId);
+      return !!person && canComputeResults(user.principal, person.entityId ?? null);
+    })
+    .sort((a, b) => directory.get(a)!.fullName.localeCompare(directory.get(b)!.fullName));
   const mayOverride = canOverrideResult(user.principal);
-
-  const lineOf = async (personId: string): Promise<PerformanceResultRow | null> => findResult(personId, year);
 
   return (
     <div className="flex max-w-5xl flex-col gap-6">
@@ -114,9 +114,9 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
             <span className="text-xs text-muted-foreground">{t("list.count", { count: readable.length })}</span>
           </div>
           <ul className="flex flex-col gap-3">
-            {readable.map(async (line) => {
+            {readable.map((line) => {
               const person = directory.get(line.personId)!;
-              const row = await lineOf(line.personId);
+              const row = rowOf.get(line.id) ?? null;
               const maySettle = canSettleResultOf(user.principal, person);
               return (
                 <li key={line.id} className="flex flex-col gap-3 rounded-xl border p-3">

@@ -13,11 +13,11 @@
 //
 // No authorization inside; the actions check `payroll:pay` over the run's entity first.
 import "server-only";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { fieldCipher } from "@/lib/crypto";
 import { db, schema, type Tx } from "@/lib/db";
-import { listPayrollFacts } from "@/modules/core-hr/service";
+import { listPayrollFacts, listPayrollNames } from "@/modules/core-hr/service";
 import { notify } from "@/modules/platform/notifications/service";
 import { bankFormat, checkAccount, type SkippedRow, type TransferFile, type TransferRow } from "./exports/banks";
 import type { CashSheetRow } from "./exports/cash-sheet";
@@ -226,13 +226,17 @@ export const openCashAmount = (row: CashPaymentRow): number => Number(fieldCiphe
 export async function cashSheetRows(run: PayrollRunRow): Promise<CashSheetRow[]> {
   const rows = await listCashPayments(run.id);
   if (rows.length === 0) return [];
-  const facts = await listPayrollFacts({ personIds: rows.map((row) => row.personId) }, run.month);
-  const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
+  return cashSheetOf(rows, await listPayrollNames(rows.map((row) => row.personId)));
+}
+
+/** The same from rows already read — the payments screen has the names from its payables. */
+export function cashSheetOf(rows: readonly CashPaymentRow[], names: readonly { personId: string; fullName: string; employeeCode: string | null }[]): CashSheetRow[] {
+  const nameOf = new Map(names.map((name) => [name.personId, name]));
   return rows
     .map((row) => ({
       personId: row.personId,
-      employeeCode: factOf.get(row.personId)?.employeeCode ?? null,
-      fullName: factOf.get(row.personId)?.fullName ?? "—",
+      employeeCode: nameOf.get(row.personId)?.employeeCode ?? null,
+      fullName: nameOf.get(row.personId)?.fullName ?? "—",
       amount: openCashAmount(row),
       disbursedOn: row.disbursedOn,
       receiptConfirmed: !!row.receiptConfirmedAt,
@@ -274,8 +278,8 @@ export async function listCashAwaitingReceipt(personId: string): Promise<{ runId
     .select({ payment: schema.payrollCashPayment, month: schema.payrollRun.month })
     .from(schema.payrollCashPayment)
     .innerJoin(schema.payrollRun, eq(schema.payrollRun.id, schema.payrollCashPayment.runId))
-    .where(eq(schema.payrollCashPayment.personId, personId));
-  return rows.filter((row) => !row.payment.receiptConfirmedAt).map((row) => ({ runId: row.payment.runId, month: row.month, amount: openCashAmount(row.payment), disbursedOn: row.payment.disbursedOn }));
+    .where(and(eq(schema.payrollCashPayment.personId, personId), isNull(schema.payrollCashPayment.receiptConfirmedAt)));
+  return rows.map((row) => ({ runId: row.payment.runId, month: row.month, amount: openCashAmount(row.payment), disbursedOn: row.payment.disbursedOn }));
 }
 
 // ── When may a run be called "paid"? (FR-PAY-39) ────────────────────────────────────────────
@@ -308,10 +312,12 @@ export async function settlementOf(run: PayrollRunRow, executor: Executor = db()
   // The executor is threaded through on purpose: the lifecycle asks this **inside** the
   // transaction that moves the run to "paid", so the answer must come from that same snapshot —
   // and on one connection a second one would simply wait for the first for ever.
-  const payables = await listPayables(run, executor);
-  const plan = planPayment(payables);
-  const [files, cash] = await Promise.all([listPaymentFiles(run.id, executor), listCashPayments(run.id, executor)]);
+  const [payables, files, cash] = await Promise.all([listPayables(run, executor), listPaymentFiles(run.id, executor), listCashPayments(run.id, executor)]);
+  return settle(planPayment(payables), files, cash);
+}
 
+/** The settlement worked out from what has already been read — no queries (the payments screen has it all). */
+export function settle(plan: PaymentPlan, files: readonly PaymentFileRow[], cash: readonly CashPaymentRow[]): Settlement {
   const bankPeople = plan.banks.reduce((count, group) => count + group.people.length, 0) + plan.unroutable.length;
   const covered = plan.banks.filter((group) => files.some((file) => file.bank === group.key)).reduce((count, group) => count + group.people.length, 0);
   const bankFiles = files.filter((file) => file.channel === "bank");

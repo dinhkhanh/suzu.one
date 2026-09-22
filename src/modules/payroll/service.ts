@@ -44,7 +44,7 @@ export { type SalaryChangeInput, submitSalaryChange } from "./salaries";
  * Nothing here is authorized inside; the pages and `bonus-actions.ts` check first.
  */
 export { canAdjustBonusLine, canApproveBonusRun, canDecideBonusScheme, canManageBonusRun, canPayBonusRun, canProposeBonusRun, canProposeBonusScheme, canReadBonusRun, canViewBonusOf } from "./policy";
-export { availableBonusSteps, type BonusCost, type BonusLineView, type BonusRunEventRow, type BonusRunLineRow, type BonusRunRow, type BonusStep, getBonusCost, getBonusLine, getBonusRun, isOpenForEditing as isBonusRunOpen, isSettled as isBonusRunSettled, listBonusLines, listBonusRunEvents, listBonusRuns, listMyBonusLines, openTotals as openBonusTotals } from "./bonus";
+export { availableBonusSteps, bonusCostOf, type BonusCost, type BonusLineView, type BonusRunEventRow, type BonusRunLineRow, type BonusRunRow, type BonusStep, getBonusCost, getBonusLine, getBonusRun, isOpenForEditing as isBonusRunOpen, isSettled as isBonusRunSettled, listBonusLines, listBonusRunEvents, listBonusRuns, listMyBonusLines, openTotals as openBonusTotals } from "./bonus";
 export { type BonusSchemeRow, getBonusScheme, getBonusSchemeVersion, hasBonusScheme, listBonusSchemeVersions, type ResolvedBonusScheme, schemeDateOf } from "./bonus-schemes";
 export { type BonusExclusion, type BonusSchemeValue, bonusSchemeSchema, DEFAULT_BONUS_SCHEME } from "./enums";
 export type { BonusTotals, BonusTrace, BonusTraceStep } from "./engine/bonus";

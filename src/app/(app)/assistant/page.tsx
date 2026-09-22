@@ -15,10 +15,8 @@ export default async function AssistantPage(props: PageProps<"/assistant">) {
   if (!canAskAssistant(user.principal)) notFound();
   const params = await props.searchParams;
   const wanted = typeof params.c === "string" && UUID.test(params.c) ? params.c : null;
-  const t = await getTranslations("assistant");
-
   // `getConversation` matches on the asker as well as the id: somebody else's link opens nothing.
-  const [conversation, recent] = await Promise.all([wanted ? getConversation(user.person.id, wanted) : Promise.resolve(null), listConversations(user.person.id, 8)]);
+  const [t, conversation, recent] = await Promise.all([getTranslations("assistant"), wanted ? getConversation(user.person.id, wanted) : Promise.resolve(null), listConversations(user.person.id, 8)]);
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">

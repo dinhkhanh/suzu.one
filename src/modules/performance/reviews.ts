@@ -11,8 +11,9 @@
 // No authorization inside: `review-actions.ts` checks `review-policy.ts` first, exactly as the
 // goal and KPI use-cases do.
 import "server-only";
-import { and, asc, desc, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate } from "@/lib/cache";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { missingRequired, type ReviewScoreTrace, scoreReviewForm } from "./engine/review-score";
@@ -30,13 +31,18 @@ export type ReviewPeerNominationRow = typeof schema.reviewPeerNomination.$inferS
 
 // ── Templates ───────────────────────────────────────────────────────────────────────────────
 
-export async function listReviewTemplates(executor: Executor = db()): Promise<ReviewTemplateRow[]> {
-  return executor.select().from(schema.reviewTemplate).orderBy(desc(schema.reviewTemplate.isActive), asc(schema.reviewTemplate.name));
+// Templates are configuration, a few rows: cached whole, cleared by `saveReviewTemplate`.
+const TEMPLATES_CACHE = "performance:review-templates";
+const TEMPLATES_TTL = 60 * 60;
+
+/** Every template. Inside a transaction pass it, and the rows come from that transaction, not the cache. */
+export async function listReviewTemplates(executor?: Executor): Promise<ReviewTemplateRow[]> {
+  const load = (from: Executor) => from.select().from(schema.reviewTemplate).orderBy(desc(schema.reviewTemplate.isActive), asc(schema.reviewTemplate.name));
+  return executor ? load(executor) : cached(TEMPLATES_CACHE, TEMPLATES_TTL, () => load(db()));
 }
 
-export async function findReviewTemplate(templateId: string, executor: Executor = db()): Promise<ReviewTemplateRow | null> {
-  const [row] = await executor.select().from(schema.reviewTemplate).where(eq(schema.reviewTemplate.id, templateId)).limit(1);
-  return row ?? null;
+export async function findReviewTemplate(templateId: string, executor?: Executor): Promise<ReviewTemplateRow | null> {
+  return (await listReviewTemplates(executor)).find((row) => row.id === templateId) ?? null;
 }
 
 export type TemplateInput = { name: string; nameEn: string | null; description: string | null; sections: ReviewSection[]; ratingScale: RatingPoint[]; isActive: boolean };
@@ -57,11 +63,13 @@ export async function saveReviewTemplate(templateId: string | null, input: Templ
   const values = { name: input.name, nameEn: input.nameEn, description: input.description, sections: input.sections, ratingScale: input.ratingScale, isActive: input.isActive, updatedAt: new Date() };
   if (!templateId) {
     const [after] = await db().insert(schema.reviewTemplate).values({ ...values, createdByPersonId: actorPersonId }).returning();
+    await invalidate(TEMPLATES_CACHE);
     return { before: null, after };
   }
   const before = await findReviewTemplate(templateId);
   if (!before) throw new ActionError("review_template_not_found");
   const [after] = await db().update(schema.reviewTemplate).set(values).where(eq(schema.reviewTemplate.id, templateId)).returning();
+  await invalidate(TEMPLATES_CACHE);
   return { before, after };
 }
 
@@ -380,10 +388,13 @@ export async function acknowledgeParticipant(participantId: string, note: string
 
 /** Who may be asked: the cycle's people, minus the subject, minus whoever is already nominated. */
 export async function peerCandidates(participantId: string, executor: Executor = db()): Promise<{ id: string; fullName: string }[]> {
-  const found = await findParticipant(participantId, executor);
+  const [found, directory, nominated] = await Promise.all([
+    findParticipant(participantId, executor),
+    loadDirectory(executor),
+    executor.select({ peerPersonId: schema.reviewPeerNomination.peerPersonId }).from(schema.reviewPeerNomination).where(eq(schema.reviewPeerNomination.participantId, participantId)),
+  ]);
   if (!found) return [];
-  const directory = await loadDirectory(executor);
-  const taken = new Set((await executor.select({ peerPersonId: schema.reviewPeerNomination.peerPersonId }).from(schema.reviewPeerNomination).where(eq(schema.reviewPeerNomination.participantId, participantId))).map((row) => row.peerPersonId));
+  const taken = new Set(nominated.map((row) => row.peerPersonId));
   return [...directory.values()]
     .filter((row) => row.status === "active" && row.workforceType !== "collaborator" && row.personId !== found.participant.personId && !taken.has(row.personId))
     .map((row) => ({ id: row.personId, fullName: row.fullName }))
@@ -475,11 +486,13 @@ export async function listPeerInvitations(personId: string, executor: Executor =
     .where(and(eq(schema.reviewPeerNomination.peerPersonId, personId), eq(schema.reviewPeerNomination.status, "approved"), inArray(schema.reviewCycle.status, ["active", "calibration"])))
     .orderBy(desc(schema.reviewCycle.year));
   if (rows.length === 0) return [];
-  const forms = await executor
-    .select({ participantId: schema.reviewForm.participantId, status: schema.reviewForm.status })
-    .from(schema.reviewForm)
-    .where(and(eq(schema.reviewForm.authorPersonId, personId), eq(schema.reviewForm.kind, "peer"), inArray(schema.reviewForm.participantId, rows.map((row) => row.participant.id))));
-  const directory = await loadDirectory(executor);
+  const [forms, directory] = await Promise.all([
+    executor
+      .select({ participantId: schema.reviewForm.participantId, status: schema.reviewForm.status })
+      .from(schema.reviewForm)
+      .where(and(eq(schema.reviewForm.authorPersonId, personId), eq(schema.reviewForm.kind, "peer"), inArray(schema.reviewForm.participantId, rows.map((row) => row.participant.id)))),
+    loadDirectory(executor),
+  ]);
   return rows.map(({ nomination, participant, cycle }) => {
     const form = forms.find((row) => row.participantId === participant.id);
     return {
@@ -587,22 +600,24 @@ const joined = (executor: Executor) => executor.select({ participant: schema.rev
 
 /** My own reviews, newest cycle first. */
 export async function listMyParticipations(personId: string, executor: Executor = db()): Promise<ParticipantLine[]> {
-  const rows = await joined(executor).where(and(eq(schema.reviewParticipant.personId, personId), ne(schema.reviewCycle.status, "draft"))).orderBy(desc(schema.reviewCycle.year));
-  return toLines(rows, await loadDirectory(executor), executor);
+  const [rows, directory] = await Promise.all([joined(executor).where(and(eq(schema.reviewParticipant.personId, personId), ne(schema.reviewCycle.status, "draft"))).orderBy(desc(schema.reviewCycle.year)), loadDirectory(executor)]);
+  return toLines(rows, directory, executor);
 }
 
 /** The reviews I owe as somebody's manager: the people snapshotted to me in a live cycle. */
 export async function listReviewsIOwe(personId: string, executor: Executor = db()): Promise<ParticipantLine[]> {
-  const rows = await joined(executor)
-    .where(and(eq(schema.reviewParticipant.managerPersonId, personId), inArray(schema.reviewCycle.status, ["active", "calibration"])))
-    .orderBy(desc(schema.reviewCycle.year));
-  return toLines(rows, await loadDirectory(executor), executor);
+  const [rows, directory] = await Promise.all([
+    joined(executor)
+      .where(and(eq(schema.reviewParticipant.managerPersonId, personId), inArray(schema.reviewCycle.status, ["active", "calibration"])))
+      .orderBy(desc(schema.reviewCycle.year)),
+    loadDirectory(executor),
+  ]);
+  return toLines(rows, directory, executor);
 }
 
 /** Every participant of one cycle — HR's and a manager's view; the caller filters by policy. */
 export async function listCycleParticipants(cycleId: string, executor: Executor = db()): Promise<ParticipantLine[]> {
-  const rows = await joined(executor).where(eq(schema.reviewParticipant.cycleId, cycleId)).orderBy(asc(schema.reviewParticipant.createdAt));
-  const directory = await loadDirectory(executor);
+  const [rows, directory] = await Promise.all([joined(executor).where(eq(schema.reviewParticipant.cycleId, cycleId)).orderBy(asc(schema.reviewParticipant.createdAt)), loadDirectory(executor)]);
   const lines = await toLines(rows, directory, executor);
   return lines.sort((a, b) => a.personName.localeCompare(b.personName));
 }
@@ -619,13 +634,13 @@ export type LoadedParticipant = {
 
 /** Everything one review screen needs, unfiltered: the page drops what the viewer may not read. */
 export async function loadParticipant(participantId: string, executor: Executor = db()): Promise<LoadedParticipant | null> {
-  const found = await findParticipant(participantId, executor);
-  if (!found) return null;
-  const [directory, forms, nominations] = await Promise.all([
+  const [found, directory, forms, nominations] = await Promise.all([
+    findParticipant(participantId, executor),
     loadDirectory(executor),
     listFormsOf(participantId, executor),
     executor.select().from(schema.reviewPeerNomination).where(eq(schema.reviewPeerNomination.participantId, participantId)).orderBy(asc(schema.reviewPeerNomination.createdAt)),
   ]);
+  if (!found) return null;
   const parties = partiesOfParticipant(found.participant, found.cycle, directory);
   if (!parties) return null;
   return { ...found, parties, shape: found.cycle.formSnapshot, forms, nominations, directory };
@@ -635,22 +650,45 @@ export async function loadParticipant(participantId: string, executor: Executor 
 export async function cycleProgress(cycleIds: readonly string[], executor: Executor = db()): Promise<Map<string, { participants: number; selfDone: number; managerDone: number; released: number }>> {
   const result = new Map<string, { participants: number; selfDone: number; managerDone: number; released: number }>();
   if (cycleIds.length === 0) return result;
-  const rows = await executor.select().from(schema.reviewParticipant).where(inArray(schema.reviewParticipant.cycleId, [...cycleIds]));
-  const submitted = await executor
-    .select({ cycleId: schema.reviewForm.cycleId, participantId: schema.reviewForm.participantId, kind: schema.reviewForm.kind })
-    .from(schema.reviewForm)
-    .where(and(inArray(schema.reviewForm.cycleId, [...cycleIds]), eq(schema.reviewForm.status, "submitted")));
+  const participant = schema.reviewParticipant;
+  const form = schema.reviewForm;
+  const [people, submitted] = await Promise.all([
+    executor
+      .select({ cycleId: participant.cycleId, participants: sql<number>`count(*)::int`, released: sql<number>`(count(*) filter (where ${participant.releasedAt} is not null))::int` })
+      .from(participant)
+      .where(inArray(participant.cycleId, [...cycleIds]))
+      .groupBy(participant.cycleId),
+    executor
+      .select({
+        cycleId: form.cycleId,
+        selfDone: sql<number>`(count(distinct ${form.participantId}) filter (where ${form.kind} = 'self'))::int`,
+        managerDone: sql<number>`(count(distinct ${form.participantId}) filter (where ${form.kind} = 'manager'))::int`,
+      })
+      .from(form)
+      .where(and(inArray(form.cycleId, [...cycleIds]), eq(form.status, "submitted")))
+      .groupBy(form.cycleId),
+  ]);
+  const peopleOf = new Map(people.map((row) => [row.cycleId, row]));
+  const submittedOf = new Map(submitted.map((row) => [row.cycleId, row]));
   for (const cycleId of cycleIds) {
-    const mine = rows.filter((row) => row.cycleId === cycleId);
-    const theirs = submitted.filter((row) => row.cycleId === cycleId);
     result.set(cycleId, {
-      participants: mine.length,
-      selfDone: new Set(theirs.filter((row) => row.kind === "self").map((row) => row.participantId)).size,
-      managerDone: new Set(theirs.filter((row) => row.kind === "manager").map((row) => row.participantId)).size,
-      released: mine.filter((row) => row.releasedAt !== null).length,
+      participants: peopleOf.get(cycleId)?.participants ?? 0,
+      selfDone: submittedOf.get(cycleId)?.selfDone ?? 0,
+      managerDone: submittedOf.get(cycleId)?.managerDone ?? 0,
+      released: peopleOf.get(cycleId)?.released ?? 0,
     });
   }
   return result;
+}
+
+/** Who takes part in a year's annual cycles past draft — whose final result there is to compute. */
+export async function annualParticipantIds(year: number, executor: Executor = db()): Promise<string[]> {
+  const rows = await executor
+    .selectDistinct({ personId: schema.reviewParticipant.personId })
+    .from(schema.reviewParticipant)
+    .innerJoin(schema.reviewCycle, eq(schema.reviewCycle.id, schema.reviewParticipant.cycleId))
+    .where(and(eq(schema.reviewCycle.year, year), eq(schema.reviewCycle.kind, "annual"), ne(schema.reviewCycle.status, "draft")));
+  return rows.map((row) => row.personId);
 }
 
 /** For week 2's final yearly result: the released review figure per person for a year. */

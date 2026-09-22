@@ -34,10 +34,18 @@ export default async function NewAttendanceRequestPage({ searchParams }: PagePro
   const target = await getPersonTarget(personId);
   if (!target || !canFileAttendanceRequestFor(user.principal, target)) notFound();
   const onBehalf = personId !== user.person.id;
-  const [subject] = onBehalf ? await db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, personId)).limit(1) : [];
   const date = typeof query.date === "string" && DATE.test(query.date) ? query.date : todayInVietnam();
-
   const row = returned?.attendanceRequest;
+  // What the person should know before asking: corrections left this month, overtime already on the books.
+  const isCorrection = type === "attendance_correction" && !!target.entityId;
+  const [[subject], policy, correctionsSoFar, warnings] = await Promise.all([
+    onBehalf ? db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, personId)).limit(1) : [],
+    isCorrection ? getAttendancePolicy(target.entityId!, date) : null,
+    isCorrection ? correctionsUsed(db(), personId, date.slice(0, 7), row?.id ?? null) : null,
+    type === "overtime" || type === "holiday_work" ? overtimeWarningsFor(personId, date, 0, row?.id ?? null) : [],
+  ]);
+  const used = policy?.monthlyCorrectionCap ? correctionsSoFar : null;
+
   const details = row?.details;
   const defaults: RequestDefaults = row && details
     ? {
@@ -51,10 +59,6 @@ export default async function NewAttendanceRequestPage({ searchParams }: PagePro
       }
     : { startDate: date };
 
-  // What the person should know before asking: corrections left this month, overtime already on the books.
-  const policy = type === "attendance_correction" && target.entityId ? await getAttendancePolicy(target.entityId, date) : null;
-  const used = policy?.monthlyCorrectionCap ? await correctionsUsed(db(), personId, date.slice(0, 7), row?.id ?? null) : null;
-  const warnings = type === "overtime" || type === "holiday_work" ? await overtimeWarningsFor(personId, date, 0, row?.id ?? null) : [];
   const href = (value: string) => `/attendance/requests/new?type=${value}&date=${date}${onBehalf ? `&person=${personId}` : ""}`;
 
   return (

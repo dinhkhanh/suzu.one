@@ -21,14 +21,15 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
   // A refused opening answers exactly like one that does not exist.
   if (!view) notFound();
 
-  const t = await getTranslations("recruit");
-  const format = await getFormatter();
-  const applications = await listApplications({ principal: user.principal, personId: user.person.id }, openingId);
-  const people = view.canEdit ? (await listPeople(user.principal, {}, { pageSize: 500 })).rows.map((row) => ({ id: row.id, fullName: row.fullName })) : [];
   // Candidates this person may already see, minus the ones on this opening — the rest of the
   // database stays out of reach exactly as it is on /recruit/candidates.
-  const applied = new Set(applications.map((row) => row.candidateId));
-  const candidates = view.canEdit ? (await listCandidates(user.principal)).filter((row) => !applied.has(row.id) && !row.anonymised).map((row) => ({ id: row.id, fullName: row.fullName })) : [];
+  const [t, format, applications, people, candidates] = await Promise.all([
+    getTranslations("recruit"),
+    getFormatter(),
+    listApplications({ principal: user.principal, personId: user.person.id }, openingId),
+    view.canEdit ? listPeople(user.principal, {}, { pageSize: 500 }).then((page) => page.rows.map((row) => ({ id: row.id, fullName: row.fullName }))) : [],
+    view.canEdit ? listCandidates(user.principal, { notAppliedTo: openingId, identifiedOnly: true }).then((rows) => rows.map((row) => ({ id: row.id, fullName: row.fullName }))) : [],
+  ]);
 
   const byStage = view.stages.map((stage) => ({ stage, rows: applications.filter((row) => row.stageId === stage.id && row.status === "active") }));
   const closed = applications.filter((row) => row.status !== "active");

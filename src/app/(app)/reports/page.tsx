@@ -48,8 +48,7 @@ function Figure({ label, value, tone }: { label: string; value: ReactNode; tone?
 export default async function ReportsOverviewPage() {
   const user = await requireUser();
   const today = todayInVietnam();
-  const dashboard = await getDashboard(user, today);
-  const [t, tSchedules, format] = await Promise.all([getTranslations("reports.overview"), getTranslations("reports.schedules"), getFormatter()]);
+  const [dashboard, t, tSchedules, format] = await Promise.all([getDashboard(user, today), getTranslations("reports.overview"), getTranslations("reports.schedules"), getFormatter()]);
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "VND", maximumFractionDigits: 0 });
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" });
   const stepUpFresh = isStepUpFresh(user.reauthAt);

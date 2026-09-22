@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { asc } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { db, schema } from "@/lib/db";
 import { listPeople } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
+import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
 import { canFileHiringRequest, canSetRecruitMoney } from "@/modules/recruit/service";
 import { HiringRequestForm } from "@/modules/recruit/ui/hiring-forms";
 
@@ -15,8 +14,8 @@ export default async function NewHiringRequestPage() {
   if (!canFileHiringRequest(user.principal)) notFound();
   const t = await getTranslations("recruit");
   const [entities, departments, people] = await Promise.all([
-    db().select().from(schema.entity).orderBy(asc(schema.entity.code)),
-    db().select({ id: schema.orgUnit.id, name: schema.orgUnit.name }).from(schema.orgUnit).orderBy(asc(schema.orgUnit.name)),
+    listEntities(),
+    listOrgUnits().then((units) => units.map((unit) => ({ id: unit.id, name: unit.name }))),
     listPeople(user.principal, {}, { pageSize: 500 }),
   ]);
 

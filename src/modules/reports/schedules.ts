@@ -15,6 +15,7 @@ import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
 import { queueRawEmail } from "@/modules/platform/notifications/service";
+import { can } from "@/modules/platform/rbac/policy";
 import { loadGrants } from "@/modules/platform/rbac/service";
 import { buildReportFor, findReport, isSchedulable, type Locale, type ReportViewer, reportToText } from "./catalogue";
 import { clampDayOfMonth, clampDayOfWeek, nextRunAfter, nextRunOnOrAfter, periodFor } from "./engine/cadence";
@@ -57,24 +58,44 @@ async function recipientsOf(scheduleIds: readonly string[]): Promise<Map<string,
 
 /** The schedules the viewer may see: their own, plus every one for `org:manage` holders. */
 export async function listSchedules(viewer: ScheduleViewer): Promise<ScheduleView[]> {
+  return loadScheduleViews(viewer);
+}
+
+/** One schedule, as `listSchedules` would show it; undefined when the viewer may not see it. */
+export async function getScheduleView(viewer: ScheduleViewer, id: string): Promise<ScheduleView | undefined> {
+  const [view] = await loadScheduleViews(viewer, id);
+  return view;
+}
+
+async function loadScheduleViews(viewer: ScheduleViewer, id?: string): Promise<ScheduleView[]> {
   const rows = await db()
     .select({ schedule: schema.reportSchedule, createdByName: schema.person.fullName })
     .from(schema.reportSchedule)
     .leftJoin(schema.person, eq(schema.person.id, schema.reportSchedule.createdByPersonId))
-    .where(live)
+    .where(
+      and(
+        live,
+        id ? eq(schema.reportSchedule.id, id) : undefined,
+        // canEditSchedule in SQL; it is still applied below.
+        can(viewer.principal, "org:manage") ? undefined : viewer.personId ? eq(schema.reportSchedule.createdByPersonId, viewer.personId) : sql`false`,
+      ),
+    )
     .orderBy(asc(schema.reportSchedule.nextRunOn), asc(schema.reportSchedule.name));
   const mine = rows.filter((row) => canEditSchedule(viewer, row.schedule));
+  const ids = mine.map((row) => row.schedule.id);
   const [recipients, runs] = await Promise.all([
-    recipientsOf(mine.map((row) => row.schedule.id)),
-    mine.length
+    recipientsOf(ids),
+    // Only each schedule's latest run.
+    ids.length
       ? db()
-          .select()
+          .selectDistinctOn([schema.reportScheduleRun.scheduleId])
           .from(schema.reportScheduleRun)
-          .where(inArray(schema.reportScheduleRun.scheduleId, mine.map((row) => row.schedule.id)))
-          .orderBy(desc(schema.reportScheduleRun.runOn), desc(schema.reportScheduleRun.createdAt))
+          .where(inArray(schema.reportScheduleRun.scheduleId, ids))
+          .orderBy(schema.reportScheduleRun.scheduleId, desc(schema.reportScheduleRun.runOn), desc(schema.reportScheduleRun.createdAt))
       : [],
   ]);
-  return mine.map((row) => ({ ...row.schedule, createdByName: row.createdByName, recipients: recipients.get(row.schedule.id) ?? [], lastRun: runs.find((run) => run.scheduleId === row.schedule.id) ?? null }));
+  const lastRuns = new Map(runs.map((run) => [run.scheduleId, run]));
+  return mine.map((row) => ({ ...row.schedule, createdByName: row.createdByName, recipients: recipients.get(row.schedule.id) ?? [], lastRun: lastRuns.get(row.schedule.id) ?? null }));
 }
 
 export async function findSchedule(id: string): Promise<ScheduleRow | undefined> {

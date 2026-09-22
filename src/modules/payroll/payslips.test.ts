@@ -241,7 +241,7 @@ describe("who may read a payslip (SRS §2.2, FR-ACL-04)", () => {
   });
 
   it("shows C&B who has been released a payslip and who has read it", async () => {
-    const rows = await listPayslipsOfRun(runId, "2026-08");
+    const rows = await listPayslipsOfRun(runId);
     expect(rows).toHaveLength(2);
     expect(rows.every((row) => row.payslipId)).toBe(true);
     expect(rows.find((row) => row.personId === ids.huy)?.firstViewedAt).toBeInstanceOf(Date);

@@ -24,8 +24,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const user = await requireUser();
   const { projectId } = await params;
   const query = await searchParams;
-  const found = /^[0-9a-f-]{36}$/.test(projectId) ? await findProject(projectId) : undefined;
-  const viewer = await loadViewer(user);
+  const [found, viewer] = await Promise.all([/^[0-9a-f-]{36}$/.test(projectId) ? findProject(projectId) : undefined, loadViewer(user)]);
   // A project the viewer may not open does not exist, as far as they can tell.
   if (!found || !canViewProject(viewer, projectFacts(found.project, found.team))) notFound();
   const { project, team } = found;

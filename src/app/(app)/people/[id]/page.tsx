@@ -48,8 +48,13 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
   const personLink = (personId: string | null, name: string | null) => (personId && name ? <Link href={`/people/${personId}`} className="hover:underline">{name}</Link> : null);
   const { personal } = person;
   // HR sees what the employee has asked to change; listProfileChanges answers null to everyone else.
-  const changeRequests = person.id === user.person.id ? null : await listProfileChanges({ personId: user.person.id, principal: user.principal }, person.id, "pending");
-  const options = person.canManage && person.entityId ? await loadPlacementOptions(person.entityId) : null;
+  const rehiring = person.canManage && personal?.status === "offboarded";
+  const [changeRequests, options, rehireOptions, entities] = await Promise.all([
+    person.id === user.person.id ? null : listProfileChanges({ personId: user.person.id, principal: user.principal }, person.id, "pending"),
+    person.canManage && person.entityId ? loadPlacementOptions(person.entityId) : null,
+    rehiring ? loadPlacementOptions() : null,
+    rehiring ? listEntities() : [],
+  ]);
 
   return (
     <div className="flex max-w-5xl flex-col gap-8">
@@ -161,13 +166,13 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
           <PersonEquipment principal={user.principal} personId={person.id} />
           <PersonDocuments principal={user.principal} personId={person.id} />
           {/* A former employee comes back on the same record (FR-CHR-16). */}
-          {person.canManage && personal.status === "offboarded" ? (
+          {rehiring && rehireOptions ? (
             <RehireForm
               personId={person.id}
               today={todayInVietnam()}
               defaultEntityId={person.entityId}
-              options={await loadPlacementOptions()}
-              entities={(await listEntities()).filter((entity) => entity.isActive && can(user.principal, "person:manage", { entityId: entity.id })).map((entity) => ({ id: entity.id, name: entity.shortName }))}
+              options={rehireOptions}
+              entities={entities.filter((entity) => entity.isActive && can(user.principal, "person:manage", { entityId: entity.id })).map((entity) => ({ id: entity.id, name: entity.shortName }))}
             />
           ) : null}
         </>

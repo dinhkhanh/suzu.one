@@ -28,8 +28,7 @@ export default async function RequestTypePage(props: PageProps<"/admin/request-t
   const type = UUID.test(id) ? await findRequestType(id) : null;
   if (!type || !canManageRequestTypes(user.principal, type.entityId)) notFound();
 
-  const t = await getTranslations("requests.designer");
-  const [entities, people, flows] = await Promise.all([listEntities(), listPersonNames(), listFlows()]);
+  const [t, entities, people, flows] = await Promise.all([getTranslations("requests.designer"), listEntities(), listPersonNames(), listFlows()]);
   const approvalType = approvalTypeOf(type.code);
   const mine = flows.filter((flow) => flow.requestType === approvalType);
   const options = {

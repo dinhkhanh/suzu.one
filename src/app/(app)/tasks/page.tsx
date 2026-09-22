@@ -18,10 +18,8 @@ export const metadata: Metadata = { title: "My work" };
 // side by side; each item is worked on in its own screen, checklist steps right here.
 export default async function MyWorkPage() {
   const user = await requireUser();
-  const t = await getTranslations("tasks");
-  const format = await getFormatter();
   const today = todayInVietnam();
-  const [{ open, recentlyDone }, workItems, reviews, approvals] = await Promise.all([listMyTasks(user.person.id), listMyWorkItems(user.person.id), listReviewsWaitingFor(user.person.id), listInbox(user.person.id)]);
+  const [t, format, { open, recentlyDone }, workItems, reviews, approvals] = await Promise.all([getTranslations("tasks"), getFormatter(), listMyTasks(user.person.id), listMyWorkItems(user.person.id), listReviewsWaitingFor(user.person.id), listInbox(user.person.id)]);
   const linkFor = (task: { id: string; kind: string }) => (task.kind === "work" ? `/work/tasks/${task.id}` : task.kind === "obligation" ? `/ops/obligations/${task.id}` : null);
   const work = sortInbox(workItems, today);
   const obligations = sortInbox(open.filter((task) => task.kind === "obligation"), today);

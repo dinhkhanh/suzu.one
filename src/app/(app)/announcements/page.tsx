@@ -9,8 +9,7 @@ export const metadata: Metadata = { title: "Announcements" };
 
 export default async function AnnouncementsPage() {
   const user = await requireUser();
-  const t = await getTranslations("comms");
-  const cards = await listAnnouncementsFor(await commsViewerOf(user), { limit: 100 });
+  const [t, cards] = await Promise.all([getTranslations("comms"), commsViewerOf(user).then((viewer) => listAnnouncementsFor(viewer, { limit: 100 }))]);
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">

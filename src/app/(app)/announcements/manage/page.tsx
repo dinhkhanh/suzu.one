@@ -13,9 +13,7 @@ export const metadata: Metadata = { title: "Manage announcements" };
 export default async function ManageAnnouncementsPage() {
   const user = await requireUser();
   if (!canPostAnywhere(user.principal)) notFound();
-  const t = await getTranslations("comms");
-  const format = await getFormatter();
-  const rows = await listManagedAnnouncements(user.principal);
+  const [t, format, rows] = await Promise.all([getTranslations("comms"), getFormatter(), listManagedAnnouncements(user.principal)]);
   const names = await audienceNames(rows.flatMap((row) => row.audience));
 
   return (

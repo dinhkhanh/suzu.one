@@ -6,14 +6,16 @@
 // on contributes nothing, not even to a count; the numbers here are a different shape of the same
 // rows, never a wider set. Filtering happens in SQL, so nothing the viewer may not see is loaded.
 //
-// The figures themselves are worked out by the pure engine (`engine/analytics.ts`).
+// The figures follow the definitions of the pure engine (`engine/analytics.ts`); Postgres counts them.
 import "server-only";
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
-import { analyse, type AnalyticsCell, type AnalyticsTask, type WorkAnalyticsResult } from "./engine/analytics";
+import { workDirectory } from "./directory";
+import { type AnalyticsCell, summarise } from "./engine/analytics";
 import type { WorkViewer } from "./policy";
 import { visibleTaskCondition, WORK_KIND } from "./tasks";
+import { listClients } from "./teams";
 
 export type { AnalyticsCell, WorkAnalyticsResult } from "./engine/analytics";
 
@@ -36,23 +38,34 @@ export function defaultAnalyticsPeriod(today: IsoDate = todayInVietnam()): { fro
 }
 
 /**
- * The report. One query for the rows the viewer may see, one for the names; the arithmetic is pure.
- * Rows outside the period are still loaded — open work has no completion date to filter on, and
- * "what is still open" is half the report.
+ * The report, counted by Postgres in one pass: the whole scope, each team and each client
+ * (GROUPING SETS), with the definitions of `engine/analytics.ts` written as FILTER clauses. A
+ * PGlite test keeps the two in step. Rows outside the period still count — open work has no
+ * completion date to filter on, and "what is still open" is half the report.
  */
 export async function getWorkAnalytics(viewer: WorkViewer, filter: AnalyticsFilter, today: IsoDate = todayInVietnam()): Promise<WorkAnalytics> {
-  const visible = await visibleTaskCondition(viewer);
+  const [visible, directory, allClients] = await Promise.all([visibleTaskCondition(viewer), workDirectory(), listClients()]);
+  const completedOn = sql`(${schema.task.completedAt} at time zone 'Asia/Ho_Chi_Minh')::date`;
+  const updatedOn = sql`(${schema.task.updatedAt} at time zone 'Asia/Ho_Chi_Minh')::date`;
+  const completed = sql`${schema.task.status} = 'done' and ${completedOn} between ${filter.from}::date and ${filter.to}::date`;
+  const cancelled = sql`${schema.task.status} = 'cancelled' and ${updatedOn} between ${filter.from}::date and ${filter.to}::date`;
+  const open = sql`${schema.task.status} in ('todo', 'in_progress')`;
   const rows = await db()
     .select({
+      level: sql<number>`grouping(${schema.workTask.teamId}, ${schema.workTask.clientId})::int`,
       teamId: schema.workTask.teamId,
       clientId: schema.workTask.clientId,
-      status: schema.task.status,
-      dueDate: schema.task.dueDate,
-      completedOn: sql<string | null>`(${schema.task.completedAt} at time zone 'Asia/Ho_Chi_Minh')::date`,
-      updatedOn: sql<string>`(${schema.task.updatedAt} at time zone 'Asia/Ho_Chi_Minh')::date`,
-      revisionRounds: schema.workTask.revisionRounds,
-      assigneePersonId: schema.task.assigneePersonId,
-      estimateMinutes: schema.task.estimateMinutes,
+      completed: sql<number>`count(*) filter (where ${completed})::int`,
+      dated: sql<number>`count(*) filter (where ${completed} and ${schema.task.dueDate} is not null)::int`,
+      onTime: sql<number>`count(*) filter (where ${completed} and ${completedOn} <= ${schema.task.dueDate})::int`,
+      late: sql<number>`count(*) filter (where ${completed} and ${completedOn} > ${schema.task.dueDate})::int`,
+      undated: sql<number>`count(*) filter (where ${completed} and ${schema.task.dueDate} is null)::int`,
+      cancelled: sql<number>`count(*) filter (where ${cancelled})::int`,
+      open: sql<number>`count(*) filter (where ${open})::int`,
+      overdue: sql<number>`count(*) filter (where ${open} and ${schema.task.dueDate} < ${today}::date)::int`,
+      contributors: sql<number>`count(distinct ${schema.task.assigneePersonId}) filter (where (${completed}) or (${open}))::int`,
+      revisionRounds: sql<number>`coalesce(sum(greatest(0, ${schema.workTask.revisionRounds})) filter (where ${completed}), 0)::int`,
+      openMinutes: sql<number>`coalesce(sum(greatest(0, coalesce(${schema.task.estimateMinutes}, 0))) filter (where ${open}), 0)::int`,
     })
     .from(schema.task)
     .innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id))
@@ -64,20 +77,38 @@ export async function getWorkAnalytics(viewer: WorkViewer, filter: AnalyticsFilt
         filter.teamId ? eq(schema.workTask.teamId, filter.teamId) : undefined,
         filter.clientId ? eq(schema.workTask.clientId, filter.clientId) : undefined,
       ),
-    );
+    )
+    .groupBy(sql`grouping sets ((), (${schema.workTask.teamId}), (${schema.workTask.clientId}))`);
 
-  const tasks: AnalyticsTask[] = rows.map((row) => ({ ...row, status: row.status as AnalyticsTask["status"] }));
-  const result: WorkAnalyticsResult = analyse(tasks, { from: filter.from, to: filter.to }, today);
+  const cellOf = (row: (typeof rows)[number]): AnalyticsCell => ({
+    completed: row.completed,
+    dated: row.dated,
+    onTime: row.onTime,
+    late: row.late,
+    undated: row.undated,
+    onTimeRate: row.dated > 0 ? row.onTime / row.dated : null,
+    cancelled: row.cancelled,
+    open: row.open,
+    overdue: row.overdue,
+    contributors: row.contributors,
+    revisionRounds: row.revisionRounds,
+    revisionsPerTask: row.completed > 0 ? row.revisionRounds / row.completed : null,
+    openMinutes: row.openMinutes,
+  });
+  // grouping(): 3 = the whole scope, 1 = one team, 2 = one client (a task with no client has none).
+  const totalRow = rows.find((row) => row.level === 3);
+  const total = totalRow ? cellOf(totalRow) : summarise([], filter, today);
+  const byTeam = rows.filter((row) => row.level === 1).map((row) => ({ key: row.teamId, cell: cellOf(row) }));
+  const byClient = rows.filter((row): row is typeof row & { clientId: string } => row.level === 2 && row.clientId !== null).map((row) => ({ key: row.clientId, cell: cellOf(row) }));
 
-  const teamIds = [...new Set(tasks.map((task) => task.teamId))];
-  const clientIds = [...new Set(tasks.map((task) => task.clientId).filter((id): id is string => !!id))];
-  const [teams, clients] = await Promise.all([
-    teamIds.length ? db().select({ id: schema.workTeam.id, name: schema.workTeam.name }).from(schema.workTeam).where(inArray(schema.workTeam.id, teamIds)).orderBy(asc(schema.workTeam.name)) : [],
-    clientIds.length ? db().select({ id: schema.workClient.id, name: schema.workClient.name }).from(schema.workClient).where(inArray(schema.workClient.id, clientIds)).orderBy(asc(schema.workClient.name)) : [],
-  ]);
+  // The filter bar offers the teams and clients the viewer has work in, by name.
+  const teamIds = new Set(byTeam.map((group) => group.key));
+  const clientIds = new Set(byClient.map((group) => group.key));
+  const teams = directory.teams.filter((team) => teamIds.has(team.id)).map(({ id, name }) => ({ id, name }));
+  const clients = allClients.filter((client) => clientIds.has(client.id)).map(({ id, name }) => ({ id, name }));
   const name = (list: { id: string; name: string }[], id: string) => list.find((row) => row.id === id)?.name ?? id;
   const named = (groups: { key: string; cell: AnalyticsCell }[], list: { id: string; name: string }[]): NamedGroup[] =>
     groups.map((group) => ({ id: group.key, name: name(list, group.key), cell: group.cell })).sort((left, right) => right.cell.completed - left.cell.completed || left.name.localeCompare(right.name));
 
-  return { period: result.period, today, total: result.total, byTeam: named(result.byTeam, teams), byClient: named(result.byClient, clients), teams, clients };
+  return { period: { from: filter.from, to: filter.to }, today, total, byTeam: named(byTeam, teams), byClient: named(byClient, clients), teams, clients };
 }

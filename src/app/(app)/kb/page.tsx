@@ -15,7 +15,8 @@ export default async function KnowledgeBasePage() {
   const user = await requireUser();
   const t = await getTranslations("kb");
   const viewer = kbViewerOf(user);
-  const [spaces, recent, popular, updated, pendingAcks] = await Promise.all([listSpaces(viewer), listRecentlyViewed(viewer), listPopularPages(viewer), listRecentlyPublished(viewer), countMyPendingAcks(viewer)]);
+  const managesAny = canManageAnySpace(user.principal);
+  const [spaces, recent, popular, updated, pendingAcks, entities, unitRows] = await Promise.all([listSpaces(viewer), listRecentlyViewed(viewer), listPopularPages(viewer), listRecentlyPublished(viewer), countMyPendingAcks(viewer), managesAny ? listEntities() : [], managesAny ? unitChoices() : []]);
   const lists: { key: "recent" | "popular" | "updated"; pages: KbPageCard[] }[] = [
     { key: "recent", pages: recent },
     { key: "popular", pages: popular },
@@ -23,8 +24,8 @@ export default async function KnowledgeBasePage() {
   ];
   // The form offers only what the action would accept: the entities the viewer's `kb:manage`
   // covers, and the units they lead — their own and everything below them (FR-KB-13).
-  const manageable = canManageAnySpace(user.principal) ? (await listEntities()).filter((entity) => canManageSpace(user.principal, { entityId: entity.id })) : [];
-  const units = canManageAnySpace(user.principal) ? (await unitChoices()).filter((unit) => canManageSpace(user.principal, { entityId: null, ownerUnitPath: [unit.id] }) && !spaces.some((space) => space.ownerUnitId === unit.id)) : [];
+  const manageable = entities.filter((entity) => canManageSpace(user.principal, { entityId: entity.id }));
+  const units = unitRows.filter((unit) => canManageSpace(user.principal, { entityId: null, ownerUnitPath: [unit.id] }) && !spaces.some((space) => space.ownerUnitId === unit.id));
   const groupWide = canManageSpace(user.principal, { entityId: null });
   const groups = [
     // A unit's own space first: for most people that is the one they came for.

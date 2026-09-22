@@ -22,12 +22,16 @@ export default async function SpacePage(props: PageProps<"/kb/spaces/[spaceKey]"
   const level = loaded ? spaceLevel(viewer, loaded.facts) : null;
   if (!loaded || !level) notFound();
 
-  const t = await getTranslations("kb");
-  const tRoles = await getTranslations("roles");
   const { space } = loaded;
-  const [tree, files] = await Promise.all([listTree(viewer, loaded), listSpaceFiles(viewer, loaded.space.id)]);
   const manages = level === "manage";
-  const [names, choices] = manages ? await Promise.all([subjectNames(loaded.access.map((row) => row.subjectKey)), subjectOptions()]) : [new Map<string, string>(), null];
+  const [t, tRoles, tree, files, names, choices] = await Promise.all([
+    getTranslations("kb"),
+    getTranslations("roles"),
+    listTree(viewer, loaded),
+    listSpaceFiles(viewer, loaded.space.id),
+    manages ? subjectNames(loaded.access.map((row) => row.subjectKey)) : new Map<string, string>(),
+    manages ? subjectOptions() : null,
+  ]);
   const rows = loaded.access.map((row) => {
     const subject = parseSubjectKey(row.subjectKey);
     const name = subject?.type === "role" ? tRoles(subject.id as "owner") : (names.get(row.subjectKey) ?? "");

@@ -6,7 +6,7 @@ import type { DayRule, Weekday } from "@/modules/attendance/engine/calendar";
 import { canAssignSchedule, canManageAttendanceConfig } from "@/modules/attendance/policy";
 import { listAssignments, listSchedules } from "@/modules/attendance/schedules";
 import { AssignmentForm, RowAction, ScheduleForm } from "@/modules/attendance/ui/settings-forms";
-import { getPersonTarget } from "@/modules/core-hr/service";
+import { getPersonTargets } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { unitChoices, unitPathsOf } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
@@ -23,7 +23,7 @@ export default async function SchedulesSettingsPage() {
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" });
   const ruleText = (rule: DayRule) => (rule.type === "working" ? rule.segments.map((segment) => `${segment.start}–${segment.end}`).join(" · ") : t(`schedules.dayTypes.${rule.type}`));
   // Whether the viewer may remove a person's assignment depends on where that person sits.
-  const personTargets = new Map(await Promise.all([...new Set(assignments.flatMap((row) => (row.personId ? [row.personId] : [])))].map(async (id) => [id, await getPersonTarget(id)] as const)));
+  const personTargets = await getPersonTargets(assignments.flatMap((row) => (row.personId ? [row.personId] : [])));
   // A unit assignment is judged against that unit's whole chain: a grant above it covers it.
   const unitPaths = await unitPathsOf(assignments.flatMap((row) => (row.departmentId ? [row.departmentId] : [])));
 

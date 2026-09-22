@@ -14,11 +14,10 @@ export const metadata: Metadata = { title: "Notifications" };
 
 export default async function NotificationsPage(props: PageProps<"/notifications">) {
   const user = await requireUser();
-  const [t, anyText, format] = await Promise.all([getTranslations("notifications"), getTranslations(), getFormatter()]);
   const query = await props.searchParams;
   const page = Number.parseInt(typeof query.page === "string" ? query.page : "1", 10) || 1;
 
-  const [{ rows, total }, preferences, devices] = await Promise.all([listNotifications(user.person.id, page), getPreferences(user.person.id), listPushSubscriptions(user.person.id)]);
+  const [t, anyText, format, { rows, total }, preferences, devices] = await Promise.all([getTranslations("notifications"), getTranslations(), getFormatter(), listNotifications(user.person.id, page), getPreferences(user.person.id), listPushSubscriptions(user.person.id)]);
   const pageCount = Math.max(1, Math.ceil(total / NOTIFICATIONS_PAGE_SIZE));
   const now = new Date();
 

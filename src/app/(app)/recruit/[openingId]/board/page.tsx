@@ -14,11 +14,13 @@ export const metadata: Metadata = { title: "Pipeline" };
 export default async function OpeningBoardPage({ params }: PageProps<"/recruit/[openingId]/board">) {
   const { openingId } = await params;
   const user = await requireUser();
-  const view = await getOpeningView({ principal: user.principal, personId: user.person.id }, openingId);
+  // `listApplications` checks the opening for itself, so it can be read beside the view.
+  const [view, t, applications] = await Promise.all([
+    getOpeningView({ principal: user.principal, personId: user.person.id }, openingId),
+    getTranslations("recruit"),
+    listApplications({ principal: user.principal, personId: user.person.id }, openingId, { status: "active" }),
+  ]);
   if (!view) notFound();
-
-  const t = await getTranslations("recruit");
-  const applications = await listApplications({ principal: user.principal, personId: user.person.id }, openingId, { status: "active" });
 
   return (
     <div className="flex flex-col gap-6">

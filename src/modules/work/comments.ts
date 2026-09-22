@@ -10,7 +10,7 @@ import { REACTIONS, type Reaction } from "./enums";
 import { autoFollow, followersOf, followStateOf, notifyFollowers } from "./followers";
 import { canViewTask } from "./policy";
 import { type LoadedTask, loadTask, logActivity, taskKey } from "./tasks";
-import { viewerOfPerson } from "./viewer";
+import { viewersOfPeople } from "./viewer";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type CommentRow = typeof schema.workComment.$inferSelect;
@@ -41,12 +41,12 @@ export async function findComment(commentId: string, executor: Executor = db()):
 
 /** Mentions that may stand: people who exist, are still here and may see the task. */
 async function allowedMentions(tx: Executor, loaded: LoadedTask, body: string): Promise<Set<string>> {
-  const allowed = new Set<string>();
-  for (const personId of extractMentionIds(body).slice(0, 20)) {
-    const viewer = await viewerOfPerson(tx, personId);
-    if (viewer && canViewTask(viewer, loaded.facts)) allowed.add(personId);
-  }
-  return allowed;
+  const candidates = extractMentionIds(body).slice(0, 20);
+  const viewers = await viewersOfPeople(candidates, tx);
+  return new Set(candidates.filter((personId) => {
+    const viewer = viewers.get(personId);
+    return !!viewer && canViewTask(viewer, loaded.facts);
+  }));
 }
 
 const excerpt = (body: string) => {
@@ -128,11 +128,12 @@ export async function listMentionable(loaded: LoadedTask): Promise<{ id: string;
   ]);
   const ids = [...new Set([...teamMembers, ...projectMembers].map((row) => row.id).concat(followersOf(loaded), loaded.task.createdByPersonId ?? []))];
   if (ids.length === 0) return [];
-  const people = await db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, ids)).orderBy(asc(schema.person.fullName));
-  const visible: { id: string; fullName: string }[] = [];
-  for (const person of people) {
-    const viewer = await viewerOfPerson(db(), person.id);
-    if (viewer && canViewTask(viewer, loaded.facts)) visible.push(person);
-  }
-  return visible;
+  const [people, viewers] = await Promise.all([
+    db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, ids)).orderBy(asc(schema.person.fullName)),
+    viewersOfPeople(ids),
+  ]);
+  return people.filter((person) => {
+    const viewer = viewers.get(person.id);
+    return !!viewer && canViewTask(viewer, loaded.facts);
+  });
 }

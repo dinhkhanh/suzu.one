@@ -27,7 +27,7 @@ export default async function OpsHistoryPage({ searchParams }: PageProps<"/ops/h
   const entityId = isUuid(params.entity) && entities.some((entity) => entity.id === params.entity) ? params.entity : null;
   const thisYear = Number(today.slice(0, 4));
   const year = typeof params.year === "string" && /^\d{4}$/.test(params.year) ? Number(params.year) : params.year === "all" ? null : thisYear;
-  const rows = (await getHistory({ principal: user.principal, personId: user.person.id }, { templateId: templateId ?? undefined, entityId, year }, today)).filter((row) => entities.some((entity) => entity.id === row.entityId));
+  const rows = await getHistory({ principal: user.principal, personId: user.person.id }, { templateId: templateId ?? undefined, entityId, year, entityIds: entities.map((entity) => entity.id) }, today);
 
   const t = await getTranslations("ops");
   const format = await getFormatter();

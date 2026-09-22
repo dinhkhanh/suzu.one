@@ -8,8 +8,9 @@
 // simply approved, and finance reads it. Types whose approval must *do* something belong to the
 // module that owns the doing.
 import "server-only";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 import { decideRequest, defineRequestType, getRequest, type RequestTypeDefinition, type RequestView, resubmitRequest, type SubmitInput, submitRequest } from "@/modules/platform/approvals/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
@@ -55,21 +56,29 @@ export function genericRequestType(row: Pick<RequestTypeRow, "code" | "form" | "
 
 // ── Reading the catalogue ───────────────────────────────────────────────────────────────────
 
+// The catalogue is reference data read by every inbox and picker, so the whole (small) table lives
+// in the shared cache (src/lib/cache). `saveRequestType` and `setRequestTypeActive` drop it once
+// their change is committed; the TTL bounds writers outside the app (the seed script).
+const TYPES_CACHE = "requests:types";
+const TYPES_TTL = 60 * 60;
+
+const readTypes = (executor: Executor) => executor.select().from(schema.requestType).orderBy(schema.requestType.sortOrder, schema.requestType.code);
+const cachedTypes = () => cached(TYPES_CACHE, TYPES_TTL, () => readTypes(db()));
+
 export async function listRequestTypes(options: { activeOnly?: boolean; executor?: Executor } = {}): Promise<RequestTypeRow[]> {
-  const executor = options.executor ?? db();
-  return executor
-    .select()
-    .from(schema.requestType)
-    .where(options.activeOnly ? eq(schema.requestType.active, true) : undefined)
-    .orderBy(schema.requestType.sortOrder, schema.requestType.code);
+  // A transaction reads its own rows; everything else the cached catalogue.
+  const rows = options.executor ? await readTypes(options.executor) : await cachedTypes();
+  return options.activeOnly ? rows.filter((row) => row.active) : rows;
 }
 
+/** Read fresh, not from the cache: actions authorize on it. */
 export async function findRequestType(id: string): Promise<RequestTypeRow | null> {
   const [row] = await db().select().from(schema.requestType).where(eq(schema.requestType.id, id)).limit(1);
   return row ?? null;
 }
 
-export async function findRequestTypeByCode(code: string, executor: Executor = db()): Promise<RequestTypeRow | null> {
+export async function findRequestTypeByCode(code: string, executor?: Executor): Promise<RequestTypeRow | null> {
+  if (!executor) return (await cachedTypes()).find((row) => row.code === code) ?? null;
   const [row] = await executor.select().from(schema.requestType).where(eq(schema.requestType.code, code)).limit(1);
   return row ?? null;
 }
@@ -104,7 +113,7 @@ export async function saveRequestType(id: string | null, input: SaveTypeInput, a
   if (problems.length > 0) throw new ActionError(`form_${problems[0]}`);
   if (input.slaEscalateAfterDays > 0 && input.slaRemindAfterDays > 0 && input.slaEscalateAfterDays < input.slaRemindAfterDays) throw new ActionError("sla_escalate_before_remind");
 
-  return db().transaction(async (tx) => {
+  const result = await db().transaction(async (tx) => {
     const [before] = id ? await tx.select().from(schema.requestType).where(eq(schema.requestType.id, id)).limit(1).for("update") : [];
     if (id && !before) throw new ActionError("request_type_not_found");
     // A code is part of every request already filed under it; renaming it would orphan them.
@@ -118,16 +127,20 @@ export async function saveRequestType(id: string | null, input: SaveTypeInput, a
       : await tx.insert(schema.requestType).values(values).returning();
     return { before: before ?? null, after };
   });
+  await invalidate(TYPES_CACHE);
+  return result;
 }
 
 /** Switching a type off keeps every request filed under it; it only disappears from the picker. */
 export async function setRequestTypeActive(id: string, active: boolean, actorPersonId: string): Promise<{ before: RequestTypeRow; after: RequestTypeRow }> {
-  return db().transaction(async (tx) => {
+  const result = await db().transaction(async (tx) => {
     const [before] = await tx.select().from(schema.requestType).where(eq(schema.requestType.id, id)).limit(1).for("update");
     if (!before) throw new ActionError("request_type_not_found");
     const [after] = await tx.update(schema.requestType).set({ active, updatedByPersonId: actorPersonId, updatedAt: new Date() }).where(eq(schema.requestType.id, id)).returning();
     return { before, after };
   });
+  await invalidate(TYPES_CACHE);
+  return result;
 }
 
 // ── Filing one ──────────────────────────────────────────────────────────────────────────────
@@ -380,6 +393,7 @@ export async function registeredGenericTypes(): Promise<{ row: RequestTypeRow; d
 export async function requestTypeNames(approvalTypes: readonly string[]): Promise<Map<string, { vi: string; en: string }>> {
   const codes = [...new Set(approvalTypes.map(codeOfApprovalType).filter((code): code is string => !!code))];
   if (codes.length === 0) return new Map();
-  const rows = await db().select({ code: schema.requestType.code, nameVi: schema.requestType.nameVi, nameEn: schema.requestType.nameEn }).from(schema.requestType).where(inArray(schema.requestType.code, codes));
+  const wanted = new Set(codes);
+  const rows = (await cachedTypes()).filter((row) => wanted.has(row.code));
   return new Map(rows.map((row) => [approvalTypeOf(row.code), { vi: row.nameVi, en: row.nameEn }]));
 }

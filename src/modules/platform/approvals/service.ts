@@ -5,8 +5,9 @@
 // here takes that transaction, so a request is never approved without its effect or the reverse.
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, getTableColumns, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { cache } from "react";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../notifications/service";
@@ -438,16 +439,29 @@ const listQuery = () =>
 const myTurn = (personId: string) =>
   and(eq(schema.approvalAssignee.approverPersonId, personId), eq(schema.approvalAssignee.status, "pending"), eq(schema.approvalStep.status, "pending"), eq(schema.approvalRequest.status, "pending"));
 
-/** Requests waiting for this person's answer, oldest first. */
-export async function listInbox(personId: string): Promise<RequestListRow[]> {
-  return listQuery()
+/**
+ * Requests waiting for this person's answer, oldest first, each with its full row (what a type's
+ * `bulkApprovable` looks at). Once per request: the inbox page and the task list share it.
+ */
+export const listInboxWithRows = cache(async (personId: string): Promise<(RequestListRow & { request: ApprovalRequestRow })[]> =>
+  db()
+    .select({ ...LIST_COLUMNS, request: getTableColumns(schema.approvalRequest) })
+    .from(schema.approvalRequest)
+    .innerJoin(requester, eq(requester.id, schema.approvalRequest.requesterPersonId))
+    .leftJoin(subject, eq(subject.id, schema.approvalRequest.subjectPersonId))
     .innerJoin(schema.approvalAssignee, eq(schema.approvalAssignee.requestId, schema.approvalRequest.id))
     .innerJoin(schema.approvalStep, eq(schema.approvalStep.id, schema.approvalAssignee.stepId))
     .where(myTurn(personId))
-    .orderBy(asc(schema.approvalRequest.createdAt));
+    .orderBy(asc(schema.approvalRequest.createdAt)),
+);
+
+/** Requests waiting for this person's answer, oldest first. */
+export async function listInbox(personId: string): Promise<RequestListRow[]> {
+  return (await listInboxWithRows(personId)).map(({ id, type, summary, status, link, createdAt, decidedAt, requesterName, subjectName }) => ({ id, type, summary, status, link, createdAt, decidedAt, requesterName, subjectName }));
 }
 
-export async function countInbox(personId: string): Promise<number> {
+/** Once per request: the home feed and the dashboard both show it. */
+export const countInbox = cache(async (personId: string): Promise<number> => {
   const [row] = await db()
     .select({ value: count() })
     .from(schema.approvalAssignee)
@@ -455,7 +469,7 @@ export async function countInbox(personId: string): Promise<number> {
     .innerJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.approvalAssignee.requestId))
     .where(myTurn(personId));
   return row?.value ?? 0;
-}
+});
 
 export async function listMyRequests(personId: string, limit = 50): Promise<RequestListRow[]> {
   return listQuery().where(eq(schema.approvalRequest.requesterPersonId, personId)).orderBy(desc(schema.approvalRequest.createdAt)).limit(limit);

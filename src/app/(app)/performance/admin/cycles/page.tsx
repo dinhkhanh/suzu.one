@@ -28,10 +28,9 @@ export default async function ReviewCyclesPage({ searchParams }: PageProps<"/per
   if (manageable.length === 0 && !groupWide) notFound();
 
   const cycles = allCycles.filter((cycle) => canManageCycle(user.principal, cycle.entityId));
-  const progress = await cycleProgress(cycles.map((cycle) => cycle.id));
   const openId = typeof params.cycle === "string" ? params.cycle : null;
   const open = cycles.find((cycle) => cycle.id === openId) ?? null;
-  const participants = open ? await listCycleParticipants(open.id) : [];
+  const [progress, participants] = await Promise.all([cycleProgress(cycles.map((cycle) => cycle.id)), open ? listCycleParticipants(open.id) : []]);
   const entityName = (entityId: string | null) => (entityId ? (entities.find((row) => row.id === entityId)?.shortName ?? "—") : t("cycle.wholeGroup"));
   const formatDate = (value: string) => format.dateTime(new Date(`${value}T00:00:00Z`), { dateStyle: "medium" });
 

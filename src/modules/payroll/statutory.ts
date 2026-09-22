@@ -2,12 +2,11 @@
 // engine needs as it stood on the period's last day, with the version id of each — stored with a
 // run's results so a payslip can be explained and reproduced.
 import "server-only";
-import { inArray } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import type { IsoDate } from "@/lib/dates";
-import { db, schema, type Tx } from "@/lib/db";
+import type { db, Tx } from "@/lib/db";
 import { type ParameterKey, PARAMETERS } from "@/modules/platform/statutory/catalogue";
-import { getParameterSnapshot } from "@/modules/platform/statutory/service";
+import { getParameterSnapshot, getParameterVersions } from "@/modules/platform/statutory/service";
 import { STATUTORY_KEYS, type StatutoryParams } from "./engine/types";
 
 export type LoadedStatutoryParams = {
@@ -18,7 +17,7 @@ export type LoadedStatutoryParams = {
   unverified: string[];
 };
 
-export async function loadStatutoryParams(periodEnd: IsoDate, executor: Tx | ReturnType<typeof db> = db()): Promise<LoadedStatutoryParams> {
+export async function loadStatutoryParams(periodEnd: IsoDate, executor?: Tx | ReturnType<typeof db>): Promise<LoadedStatutoryParams> {
   const names = Object.keys(STATUTORY_KEYS) as (keyof StatutoryParams)[];
   const snapshot = await getParameterSnapshot(names.map((name) => STATUTORY_KEYS[name]) as ParameterKey[], periodEnd, executor);
   const params: Record<string, unknown> = {};
@@ -46,10 +45,10 @@ export async function loadStatutoryParams(periodEnd: IsoDate, executor: Tx | Ret
  * Recomputing a paid month to derive a retro difference must use these and not what is in force
  * today, or a change in the law would look like a change in the person's pay (FR-PAY-17, 20).
  */
-export async function loadStatutoryParamsByVersion(versionIds: Record<string, string>, executor: Tx | ReturnType<typeof db> = db()): Promise<LoadedStatutoryParams> {
+export async function loadStatutoryParamsByVersion(versionIds: Record<string, string>, executor?: Tx | ReturnType<typeof db>): Promise<LoadedStatutoryParams> {
   const names = Object.keys(STATUTORY_KEYS) as (keyof StatutoryParams)[];
   const ids = [...new Set(Object.values(versionIds))];
-  const rows = ids.length > 0 ? await executor.select().from(schema.statutoryParameter).where(inArray(schema.statutoryParameter.id, ids)) : [];
+  const rows = await getParameterVersions(ids, executor);
   const byId = new Map(rows.map((row) => [row.id, row]));
   const params: Record<string, unknown> = {};
   const versions: Record<string, string> = {};

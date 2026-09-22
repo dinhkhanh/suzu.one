@@ -19,8 +19,7 @@ export const metadata: Metadata = { title: "Scheduled reports" };
 export default async function SchedulesPage() {
   const user = await requireUser();
   if (!canManageSchedules(user.principal)) notFound();
-  const schedules = await listSchedules({ personId: user.person.id, principal: user.principal });
-  const [t, tCatalogue, format] = await Promise.all([getTranslations("reports.schedules"), getTranslations("reports.catalogue"), getFormatter()]);
+  const [schedules, t, tCatalogue, format] = await Promise.all([listSchedules({ personId: user.person.id, principal: user.principal }), getTranslations("reports.schedules"), getTranslations("reports.catalogue"), getFormatter()]);
   const reportName = (key: string) => (tCatalogue.has(`${key}.name` as never) ? tCatalogue(`${key}.name` as never) : key);
   const day = (value: string | null) => (value ? format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" }) : "—");
   const emailConfigured = !!env().RESEND_API_KEY;

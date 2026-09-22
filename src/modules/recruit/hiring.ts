@@ -18,6 +18,7 @@ import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { decideRequest, defineRequestType, getRequest, type RequestView, submitRequest } from "@/modules/platform/approvals/service";
 import { notify } from "@/modules/platform/notifications/service";
+import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
 import { listPeopleHolding } from "@/modules/platform/rbac/service";
 import type { EmploymentType } from "./enums";
@@ -183,12 +184,18 @@ export async function getHiringRequestView(viewer: { principal: Principal; perso
   // to the request; everybody else goes through the module's own rule.
   if (!approval && !mine && !can(viewer.principal, "recruit:manage", target)) return null;
 
-  const [entity] = await db().select({ shortName: schema.entity.shortName }).from(schema.entity).where(eq(schema.entity.id, hiringRequest.entityId)).limit(1);
-  const [department] = hiringRequest.departmentId ? await db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, hiringRequest.departmentId)).limit(1) : [undefined];
-  const [requester] = await db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, hiringRequest.requestedByPersonId)).limit(1);
-  const [manager] = hiringRequest.hiringManagerPersonId
-    ? await db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, hiringRequest.hiringManagerPersonId)).limit(1)
-    : [undefined];
+  const [entities, units, people] = await Promise.all([
+    listEntities(),
+    hiringRequest.departmentId ? listOrgUnits() : [],
+    db()
+      .select({ id: schema.person.id, fullName: schema.person.fullName })
+      .from(schema.person)
+      .where(inArray(schema.person.id, [hiringRequest.requestedByPersonId, ...(hiringRequest.hiringManagerPersonId ? [hiringRequest.hiringManagerPersonId] : [])])),
+  ]);
+  const entity = entities.find((row) => row.id === hiringRequest.entityId);
+  const department = hiringRequest.departmentId ? units.find((row) => row.id === hiringRequest.departmentId) : undefined;
+  const requester = people.find((row) => row.id === hiringRequest.requestedByPersonId);
+  const manager = hiringRequest.hiringManagerPersonId ? people.find((row) => row.id === hiringRequest.hiringManagerPersonId) : undefined;
 
   return {
     hiringRequest,

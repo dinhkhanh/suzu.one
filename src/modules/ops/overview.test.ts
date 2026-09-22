@@ -20,6 +20,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { Principal } from "../platform/rbac/policy";
+import { dashboardMatrix } from "./engine/dashboard";
 import { NO_EVIDENCE } from "./enums";
 import { completeInstance, listInstances } from "./instances";
 import { buildHistoryExport, getDashboard, getHistory } from "./overview";
@@ -112,6 +113,30 @@ describe("dashboard, archive and export scoping", () => {
     const accountant = principal(ids.accountant, []);
     expect((await getDashboard(accountant, {}, today)).rows).toEqual([]);
     expect((await listInstances(accountant, { open: true }, today)).length).toBeGreaterThan(0);
+  });
+
+  it("counts in SQL exactly what the list would give, colours and escalations included", async () => {
+    const viewer = principal(ids.ceo, [{ role: "c_level", scope: { type: "group" } }]);
+    // On days either side of the due dates, so every colour shows up.
+    for (const day of ["2026-08-15", "2026-08-27", "2026-09-14", "2026-09-25"]) {
+      const dashboard = await getDashboard(viewer, {}, day);
+      // (The last month ends past the 28th, but nothing is due that late in it.)
+      const items = await listInstances(viewer, { dueFrom: `${dashboard.months[0]}-01`, dueTo: `${dashboard.months.at(-1)}-28`, limit: 5000 }, day);
+      expect(dashboard.rows).toEqual(dashboardMatrix(dashboard.rows.map((row) => row.entity), dashboard.months, items));
+      expect(dashboard.totals).toEqual({ overdue: items.filter((item) => item.colour === "overdue").length, dueSoon: items.filter((item) => item.colour === "due_soon").length, escalated: items.filter((item) => item.colour === "overdue" && item.escalationLevel > 0).length });
+    }
+  });
+
+  it("counts an escalated overdue item in its cell and the totals", async () => {
+    const viewer = principal(ids.ceo, [{ role: "c_level", scope: { type: "group" } }]);
+    // The August returns are late by 29 September; mark one as escalated to the manager.
+    const [august] = (await listInstances(viewer, { open: true }, "2026-09-29")).filter((item) => item.periodKey === "2026-08");
+    await db().insert(schema.obligationNoticeSent).values({ instanceId: august.instanceId, key: "escalate:manager" });
+    const dashboard = await getDashboard(viewer, {}, "2026-09-29");
+    expect(dashboard.totals).toMatchObject({ overdue: 2, escalated: 1 });
+    const cell = dashboard.rows.find((row) => row.entity.id === august.entityId)!.cells.find((c) => c.month === "2026-09")!;
+    expect(cell).toMatchObject({ counts: { overdue: 1 }, escalated: 1 });
+    await db().delete(schema.obligationNoticeSent).where(and(eq(schema.obligationNoticeSent.instanceId, august.instanceId), eq(schema.obligationNoticeSent.key, "escalate:manager")));
   });
 
   it("filters by authority, category and owner", async () => {

@@ -8,10 +8,13 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { and, asc, count, desc, eq, exists, inArray, isNull, notExists, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { cache } from "react";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate } from "@/lib/cache";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { listFileNames } from "@/modules/platform/files/service";
+import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
 import { entityReach, type Principal } from "@/modules/platform/rbac/policy";
 import { toSearchKey } from "@/lib/text";
 import {
@@ -89,36 +92,40 @@ export async function nextOpeningCode(executor: Executor, entityCode: string, ye
 
 // ── Pipelines ───────────────────────────────────────────────────────────────────────────────
 
-export async function listPipelines(executor: Executor = db()): Promise<(PipelineRow & { stages: PipelineStageRow[] })[]> {
-  const pipelines = await executor.select().from(schema.recruitPipeline).orderBy(desc(schema.recruitPipeline.isDefault), asc(schema.recruitPipeline.name));
-  if (pipelines.length === 0) return [];
-  const stages = await executor
-    .select()
-    .from(schema.recruitPipelineStage)
-    .where(
-      inArray(
-        schema.recruitPipelineStage.pipelineId,
-        pipelines.map((row) => row.id),
-      ),
-    )
-    .orderBy(asc(schema.recruitPipelineStage.sortOrder));
+// Pipelines and their stages are configuration (a few rows): cached together, read from the
+// transaction when one is passed, and cleared by `savePipeline` once it has committed.
+const PIPELINES_CACHE = "recruit:pipelines";
+const PIPELINES_TTL = 60 * 60;
+type PipelineTables = { pipelines: PipelineRow[]; stages: PipelineStageRow[] };
+
+async function readPipelineTables(executor: Executor): Promise<PipelineTables> {
+  const [pipelines, stages] = await Promise.all([
+    executor.select().from(schema.recruitPipeline).orderBy(desc(schema.recruitPipeline.isDefault), asc(schema.recruitPipeline.name)),
+    executor.select().from(schema.recruitPipelineStage).orderBy(asc(schema.recruitPipelineStage.sortOrder)),
+  ]);
+  return { pipelines, stages };
+}
+
+const pipelineTables = (executor?: Executor): Promise<PipelineTables> => (executor ? readPipelineTables(executor) : cached(PIPELINES_CACHE, PIPELINES_TTL, () => readPipelineTables(db())));
+
+export async function listPipelines(executor?: Executor): Promise<(PipelineRow & { stages: PipelineStageRow[] })[]> {
+  const { pipelines, stages } = await pipelineTables(executor);
   return pipelines.map((pipeline) => ({ ...pipeline, stages: stages.filter((stage) => stage.pipelineId === pipeline.id) }));
 }
 
-export async function stagesOf(pipelineId: string, executor: Executor = db()): Promise<PipelineStageRow[]> {
-  return executor.select().from(schema.recruitPipelineStage).where(eq(schema.recruitPipelineStage.pipelineId, pipelineId)).orderBy(asc(schema.recruitPipelineStage.sortOrder));
+export async function stagesOf(pipelineId: string, executor?: Executor): Promise<PipelineStageRow[]> {
+  return (await pipelineTables(executor)).stages.filter((stage) => stage.pipelineId === pipelineId);
 }
 
 /** Where a new application starts: the first stage of the opening's pipeline. */
-export async function firstStageOf(pipelineId: string, executor: Executor = db()): Promise<PipelineStageRow> {
-  const [stage] = await executor.select().from(schema.recruitPipelineStage).where(eq(schema.recruitPipelineStage.pipelineId, pipelineId)).orderBy(asc(schema.recruitPipelineStage.sortOrder)).limit(1);
+export async function firstStageOf(pipelineId: string, executor?: Executor): Promise<PipelineStageRow> {
+  const [stage] = await stagesOf(pipelineId, executor);
   if (!stage) throw new ActionError("recruit_pipeline_empty");
   return stage;
 }
 
-export async function findPipeline(pipelineId: string, executor: Executor = db()): Promise<PipelineRow | undefined> {
-  const [row] = await executor.select().from(schema.recruitPipeline).where(eq(schema.recruitPipeline.id, pipelineId)).limit(1);
-  return row;
+export async function findPipeline(pipelineId: string, executor?: Executor): Promise<PipelineRow | undefined> {
+  return (await pipelineTables(executor)).pipelines.find((row) => row.id === pipelineId);
 }
 
 export type PipelineInput = { code: string; name: string; nameEn: string | null; description: string | null; isDefault: boolean; isActive: boolean; stages: { key: string; name: string; nameEn: string | null; category: PipelineStageRow["category"] }[] };
@@ -133,7 +140,7 @@ export async function savePipeline(pipelineId: string | null, input: PipelineInp
   if (!input.stages.some((stage) => stage.category === "applied")) throw new ActionError("recruit_pipeline_no_entry");
   if (new Set(input.stages.map((stage) => stage.key)).size !== input.stages.length) throw new ActionError("recruit_stage_key_duplicate");
 
-  return inTransaction(async (tx) => {
+  const saved = await inTransaction(async (tx) => {
     const values = { code: input.code.toUpperCase(), name: input.name, nameEn: input.nameEn, description: input.description, isDefault: input.isDefault, isActive: input.isActive, updatedAt: now() };
     let before: PipelineRow | null = null;
     let after: PipelineRow;
@@ -163,6 +170,8 @@ export async function savePipeline(pipelineId: string | null, input: PipelineInp
     }
     return { before, after };
   });
+  await invalidate(PIPELINES_CACHE);
+  return saved;
 }
 
 // ── Who may see which openings ──────────────────────────────────────────────────────────────
@@ -199,8 +208,15 @@ export async function recruitModuleOpen(principal: Principal, personId: string |
 }
 
 /** Is this person on the opening's hiring team? The one fact `policy.ts` cannot work out for itself. */
-export async function isOpeningMember(openingId: string, personId: string | null, executor: Executor = db()): Promise<boolean> {
+export async function isOpeningMember(openingId: string, personId: string | null, executor?: Executor): Promise<boolean> {
   if (!personId) return false;
+  return executor && executor !== db() ? readOpeningMember(openingId, personId, executor) : openingMemberOnce(openingId, personId);
+}
+
+// A page, its authorize steps and the lists under it ask the same question: once per request.
+const openingMemberOnce = cache((openingId: string, personId: string): Promise<boolean> => readOpeningMember(openingId, personId, db()));
+
+async function readOpeningMember(openingId: string, personId: string, executor: Executor): Promise<boolean> {
   const [row] = await executor
     .select({ id: schema.jobOpeningMember.id })
     .from(schema.jobOpeningMember)
@@ -228,21 +244,14 @@ export type OpeningListRow = {
 };
 
 export async function listOpenings(principal: Principal, filters: { status?: OpeningStatus; entityId?: string; query?: string } = {}): Promise<OpeningListRow[]> {
-  // Two counts off the same table, so the aliases have to differ: drizzle emits the *column*
-  // alias unqualified, and two subqueries both calling theirs "value" is an ambiguous reference
-  // that fails at run time while typecheck, lint and the build all pass.
-  const active = db()
-    .select({ openingId: schema.jobApplication.openingId, value: count().as("active_count") })
-    .from(schema.jobApplication)
-    .where(eq(schema.jobApplication.status, "active"))
-    .groupBy(schema.jobApplication.openingId)
-    .as("active_applications");
-  const hired = db()
-    .select({ openingId: schema.jobApplication.openingId, value: count().as("hired_count") })
-    .from(schema.jobApplication)
-    .where(eq(schema.jobApplication.status, "hired"))
-    .groupBy(schema.jobApplication.openingId)
-    .as("hired_applications");
+  // Counted per returned row (at most 200), off the (opening, status) index — not by grouping the
+  // whole application table. Built with the query builder: a column written straight into `sql` in
+  // a select list renders unqualified, and `opening_id = id` would compare the application's own.
+  const applicationsIn = (status: ApplicationStatus) =>
+    sql<number>`(${db()
+      .select({ value: sql<number>`count(*)::int` })
+      .from(schema.jobApplication)
+      .where(and(eq(schema.jobApplication.openingId, schema.jobOpening.id), eq(schema.jobApplication.status, status)))})`;
 
   const rows = await db()
     .select({
@@ -255,14 +264,12 @@ export async function listOpenings(principal: Principal, filters: { status?: Ope
       headcount: schema.jobOpening.headcount,
       publishedAt: schema.jobOpening.publishedAt,
       createdAt: schema.jobOpening.createdAt,
-      activeApplications: active.value,
-      hiredCount: hired.value,
+      activeApplications: applicationsIn("active"),
+      hiredCount: applicationsIn("hired"),
     })
     .from(schema.jobOpening)
     .leftJoin(schema.entity, eq(schema.entity.id, schema.jobOpening.entityId))
     .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.jobOpening.departmentId))
-    .leftJoin(active, eq(active.openingId, schema.jobOpening.id))
-    .leftJoin(hired, eq(hired.openingId, schema.jobOpening.id))
     .where(
       and(
         openingScope(principal),
@@ -277,7 +284,14 @@ export async function listOpenings(principal: Principal, filters: { status?: Ope
   return rows.map((row) => ({ ...row, activeApplications: Number(row.activeApplications ?? 0), hiredCount: Number(row.hiredCount ?? 0) }));
 }
 
-export async function findOpening(openingId: string, executor: Executor = db()): Promise<OpeningRow | undefined> {
+export async function findOpening(openingId: string, executor?: Executor): Promise<OpeningRow | undefined> {
+  return executor && executor !== db() ? readOpening(openingId, executor) : openingOnce(openingId);
+}
+
+// Outside a transaction, once per request: the page, the lists under it and their checks share it.
+const openingOnce = cache((openingId: string): Promise<OpeningRow | undefined> => readOpening(openingId, db()));
+
+async function readOpening(openingId: string, executor: Executor): Promise<OpeningRow | undefined> {
   const [row] = await executor.select().from(schema.jobOpening).where(eq(schema.jobOpening.id, openingId)).limit(1);
   return row;
 }
@@ -313,29 +327,31 @@ export type OpeningView = {
 };
 
 export async function getOpeningView(viewer: { principal: Principal; personId: string | null }, openingId: string): Promise<OpeningView | null> {
-  const opening = await findOpening(openingId);
+  const [opening, member] = await Promise.all([findOpening(openingId), isOpeningMember(openingId, viewer.personId)]);
   if (!opening) return null;
-  const member = await isOpeningMember(openingId, viewer.personId);
   const target = targetOf(opening);
   if (!canViewOpening(viewer.principal, target, member)) return null;
 
-  const [pipeline] = await db().select().from(schema.recruitPipeline).where(eq(schema.recruitPipeline.id, opening.pipelineId)).limit(1);
-  const stages = await stagesOf(opening.pipelineId);
-  const members = await db()
-    .select({ personId: schema.jobOpeningMember.personId, fullName: schema.person.fullName, role: schema.jobOpeningMember.role })
-    .from(schema.jobOpeningMember)
-    .innerJoin(schema.person, eq(schema.person.id, schema.jobOpeningMember.personId))
-    .where(eq(schema.jobOpeningMember.openingId, openingId))
-    .orderBy(asc(schema.jobOpeningMember.role), asc(schema.person.fullName));
-  const [entity] = opening.entityId ? await db().select({ shortName: schema.entity.shortName }).from(schema.entity).where(eq(schema.entity.id, opening.entityId)).limit(1) : [undefined];
-  const [department] = opening.departmentId ? await db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, opening.departmentId)).limit(1) : [undefined];
-  const [team] = opening.teamId ? await db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, opening.teamId)).limit(1) : [undefined];
+  const [pipelines, members, entities, units] = await Promise.all([
+    pipelineTables(),
+    db()
+      .select({ personId: schema.jobOpeningMember.personId, fullName: schema.person.fullName, role: schema.jobOpeningMember.role })
+      .from(schema.jobOpeningMember)
+      .innerJoin(schema.person, eq(schema.person.id, schema.jobOpeningMember.personId))
+      .where(eq(schema.jobOpeningMember.openingId, openingId))
+      .orderBy(asc(schema.jobOpeningMember.role), asc(schema.person.fullName)),
+    listEntities(),
+    listOrgUnits(),
+  ]);
+  const pipeline = pipelines.pipelines.find((row) => row.id === opening.pipelineId)!;
+  const stages = pipelines.stages.filter((stage) => stage.pipelineId === opening.pipelineId);
+  const unitName = (unitId: string | null) => (unitId ? (units.find((unit) => unit.id === unitId)?.name ?? null) : null);
 
   return {
     opening,
-    entityName: entity?.shortName ?? null,
-    departmentName: department?.name ?? null,
-    teamName: team?.name ?? null,
+    entityName: entities.find((entity) => entity.id === opening.entityId)?.shortName ?? null,
+    departmentName: unitName(opening.departmentId),
+    teamName: unitName(opening.teamId),
     pipeline,
     stages,
     members,
@@ -555,7 +571,7 @@ export type CandidateListRow = { id: string; fullName: string; currentTitle: str
  *     only, because a candidate row carries no entity of its own and there is nothing to scope a
  *     narrower grant against.
  */
-export async function listCandidates(principal: Principal, filters: { query?: string; tag?: string; source?: CandidateSource } = {}): Promise<CandidateListRow[]> {
+export async function listCandidates(principal: Principal, filters: { query?: string; tag?: string; source?: CandidateSource; /** Leave out whoever already applied here. */ notAppliedTo?: string; /** Leave out anonymised rows. */ identifiedOnly?: boolean } = {}): Promise<CandidateListRow[]> {
   if (!canBrowseCandidates(principal)) return [];
   const reach = entityReach(principal, "recruit:manage");
 
@@ -579,11 +595,8 @@ export async function listCandidates(principal: Principal, filters: { query?: st
     reach.all ? sql`true` : sql`false`,
   );
 
-  const applications = db()
-    .select({ candidateId: schema.jobApplication.candidateId, value: count().as("value") })
-    .from(schema.jobApplication)
-    .groupBy(schema.jobApplication.candidateId)
-    .as("application_count");
+  // Counted for the rows returned only (at most 200), off the candidate index.
+  const applications = sql<number>`(${db().select({ value: sql<number>`count(*)::int` }).from(schema.jobApplication).where(eq(schema.jobApplication.candidateId, schema.candidate.id))})`;
 
   const query = filters.query?.trim();
   const rows = await db()
@@ -595,15 +608,23 @@ export async function listCandidates(principal: Principal, filters: { query?: st
       tags: schema.candidate.tags,
       createdAt: schema.candidate.createdAt,
       anonymisedAt: schema.candidate.anonymisedAt,
-      applications: applications.value,
+      applications,
     })
     .from(schema.candidate)
-    .leftJoin(applications, eq(applications.candidateId, schema.candidate.id))
     .where(
       and(
         or(reachable, unapplied),
         filters.tag ? sql`${filters.tag} = any(${schema.candidate.tags})` : undefined,
         filters.source ? eq(schema.candidate.source, filters.source) : undefined,
+        filters.notAppliedTo
+          ? notExists(
+              db()
+                .select({ one: sql`1` })
+                .from(schema.jobApplication)
+                .where(and(eq(schema.jobApplication.candidateId, schema.candidate.id), eq(schema.jobApplication.openingId, filters.notAppliedTo))),
+            )
+          : undefined,
+        filters.identifiedOnly ? isNull(schema.candidate.anonymisedAt) : undefined,
         query ? sql`(${schema.candidate.searchName} like ${`%${toSearchKey(query)}%`} or ${schema.candidate.emailKey} like ${`%${query.toLowerCase()}%`})` : undefined,
       ),
     )
@@ -623,37 +644,34 @@ export type CandidateView = {
 };
 
 export async function getCandidateView(viewer: { principal: Principal; personId: string | null }, candidateId: string): Promise<CandidateView | null> {
-  const candidate = await findCandidate(candidateId);
+  const [candidate, applications] = await Promise.all([
+    findCandidate(candidateId),
+    db()
+      .select({
+        applicationId: schema.jobApplication.id,
+        openingId: schema.jobOpening.id,
+        openingCode: schema.jobOpening.code,
+        openingTitle: schema.jobOpening.title,
+        stageName: schema.recruitPipelineStage.name,
+        status: schema.jobApplication.status,
+        appliedAt: schema.jobApplication.appliedAt,
+      })
+      .from(schema.jobApplication)
+      .innerJoin(schema.jobOpening, eq(schema.jobOpening.id, schema.jobApplication.openingId))
+      .innerJoin(schema.recruitPipelineStage, eq(schema.recruitPipelineStage.id, schema.jobApplication.stageId))
+      .where(and(eq(schema.jobApplication.candidateId, candidateId), openingScope(viewer.principal)))
+      .orderBy(desc(schema.jobApplication.appliedAt)),
+  ]);
   if (!candidate) return null;
-
-  const applications = await db()
-    .select({
-      applicationId: schema.jobApplication.id,
-      openingId: schema.jobOpening.id,
-      openingCode: schema.jobOpening.code,
-      openingTitle: schema.jobOpening.title,
-      stageName: schema.recruitPipelineStage.name,
-      status: schema.jobApplication.status,
-      appliedAt: schema.jobApplication.appliedAt,
-    })
-    .from(schema.jobApplication)
-    .innerJoin(schema.jobOpening, eq(schema.jobOpening.id, schema.jobApplication.openingId))
-    .innerJoin(schema.recruitPipelineStage, eq(schema.recruitPipelineStage.id, schema.jobApplication.stageId))
-    .where(and(eq(schema.jobApplication.candidateId, candidateId), openingScope(viewer.principal)))
-    .orderBy(desc(schema.jobApplication.appliedAt));
 
   // A candidate is reached either by browsing the database or through an opening you may see.
   // Somebody with neither gets the same answer as a candidate that does not exist.
   if (!canBrowseCandidates(viewer.principal) && applications.length === 0) return null;
-  if (canBrowseCandidates(viewer.principal) && applications.length === 0) {
-    const [anyApplication] = await db().select({ id: schema.jobApplication.id }).from(schema.jobApplication).where(eq(schema.jobApplication.candidateId, candidateId)).limit(1);
-    const reach = entityReach(viewer.principal, "recruit:manage");
-    if (anyApplication && !reach.all) return null;
-  }
-
-  const [referrer] = candidate.referredByPersonId
-    ? await db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, candidate.referredByPersonId)).limit(1)
-    : [undefined];
+  const [[anyApplication], [referrer]] = await Promise.all([
+    canBrowseCandidates(viewer.principal) && applications.length === 0 ? db().select({ id: schema.jobApplication.id }).from(schema.jobApplication).where(eq(schema.jobApplication.candidateId, candidateId)).limit(1) : [undefined],
+    candidate.referredByPersonId ? db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, candidate.referredByPersonId)).limit(1) : [undefined],
+  ]);
+  if (anyApplication && !entityReach(viewer.principal, "recruit:manage").all) return null;
 
   return { candidate, applications, referredByName: referrer?.fullName ?? null, canManage: canBrowseCandidates(viewer.principal) };
 }
@@ -791,9 +809,9 @@ export type ApplicationListRow = {
 
 /** Every application on one opening, in stage order — the list the kanban board (week 2) groups. */
 export async function listApplications(viewer: { principal: Principal; personId: string | null }, openingId: string, filters: { status?: ApplicationStatus } = {}): Promise<ApplicationListRow[]> {
-  const opening = await findOpening(openingId);
+  const [opening, member] = await Promise.all([findOpening(openingId), isOpeningMember(openingId, viewer.personId)]);
   if (!opening) return [];
-  if (!canViewOpening(viewer.principal, targetOf(opening), await isOpeningMember(openingId, viewer.personId))) return [];
+  if (!canViewOpening(viewer.principal, targetOf(opening), member)) return [];
 
   return db()
     .select({
@@ -837,40 +855,42 @@ export type ApplicationView = {
 export async function getApplicationView(viewer: { principal: Principal; personId: string | null }, applicationId: string): Promise<ApplicationView | null> {
   const application = await findApplication(applicationId);
   if (!application) return null;
-  const opening = await findOpening(application.openingId);
+  const fromStage = alias(schema.recruitPipelineStage, "from_stage");
+  const toStage = alias(schema.recruitPipelineStage, "to_stage");
+  // Everything at once; nothing of it leaves here unless the viewer passes the check below.
+  const [opening, member, candidate, events, cvFileName] = await Promise.all([
+    findOpening(application.openingId),
+    isOpeningMember(application.openingId, viewer.personId),
+    findCandidate(application.candidateId),
+    db()
+      .select({
+        id: schema.applicationEvent.id,
+        type: schema.applicationEvent.type,
+        at: schema.applicationEvent.at,
+        actorName: schema.person.fullName,
+        note: schema.applicationEvent.note,
+        fromStageName: fromStage.name,
+        toStageName: toStage.name,
+        detail: schema.applicationEvent.detail,
+      })
+      .from(schema.applicationEvent)
+      .leftJoin(schema.person, eq(schema.person.id, schema.applicationEvent.actorPersonId))
+      .leftJoin(fromStage, eq(fromStage.id, schema.applicationEvent.fromStageId))
+      .leftJoin(toStage, eq(toStage.id, schema.applicationEvent.toStageId))
+      .where(eq(schema.applicationEvent.applicationId, applicationId))
+      .orderBy(desc(schema.applicationEvent.id)),
+    application.cvFileId ? listFileNames([application.cvFileId]).then((names) => names.get(application.cvFileId!) ?? null) : null,
+  ]);
   if (!opening) return null;
-  const member = await isOpeningMember(opening.id, viewer.personId);
   const target = targetOf(opening);
   if (!canViewOpening(viewer.principal, target, member)) return null;
 
-  const candidate = await findCandidate(application.candidateId);
   if (!candidate) return null;
   const stages = await stagesOf(opening.pipelineId);
   const stage = stages.find((row) => row.id === application.stageId);
   if (!stage) return null;
 
-  const fromStage = alias(schema.recruitPipelineStage, "from_stage");
-  const toStage = alias(schema.recruitPipelineStage, "to_stage");
-  const events = await db()
-    .select({
-      id: schema.applicationEvent.id,
-      type: schema.applicationEvent.type,
-      at: schema.applicationEvent.at,
-      actorName: schema.person.fullName,
-      note: schema.applicationEvent.note,
-      fromStageName: fromStage.name,
-      toStageName: toStage.name,
-      detail: schema.applicationEvent.detail,
-    })
-    .from(schema.applicationEvent)
-    .leftJoin(schema.person, eq(schema.person.id, schema.applicationEvent.actorPersonId))
-    .leftJoin(fromStage, eq(fromStage.id, schema.applicationEvent.fromStageId))
-    .leftJoin(toStage, eq(toStage.id, schema.applicationEvent.toStageId))
-    .where(eq(schema.applicationEvent.applicationId, applicationId))
-    .orderBy(desc(schema.applicationEvent.id));
-
   const money = canReadRecruitMoney(viewer.principal, target);
-  const cvFileName = application.cvFileId ? ((await listFileNames([application.cvFileId])).get(application.cvFileId) ?? null) : null;
   return {
     application,
     candidate,

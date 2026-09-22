@@ -13,11 +13,9 @@ export const metadata: Metadata = { title: "New person" };
 export default async function NewPersonPage() {
   const user = await requireUser();
   if (!(await peopleModuleOpen(user))) notFound();
-  const entities = (await listEntities()).filter((entity) => entity.isActive && canHireInto(user.principal, { entityId: entity.id }));
+  const [allEntities, t, options] = await Promise.all([listEntities(), getTranslations("people"), loadPlacementOptions()]);
+  const entities = allEntities.filter((entity) => entity.isActive && canHireInto(user.principal, { entityId: entity.id }));
   if (entities.length === 0) notFound();
-
-  const t = await getTranslations("people");
-  const options = await loadPlacementOptions();
 
   return (
     <div className="flex max-w-5xl flex-col gap-8">

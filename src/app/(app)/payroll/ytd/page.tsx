@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { listPayrollFacts } from "@/modules/core-hr/service";
+import { listPayrollNames } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
@@ -24,19 +24,18 @@ export const metadata: Metadata = { title: "Year-to-date import" };
  */
 export default async function YtdPage({ searchParams }: PageProps<"/payroll/ytd">) {
   const user = await requireUser();
-  const entities = await listEntityOptions(compensationReach(user.principal));
+  const [entities, params, t] = await Promise.all([listEntityOptions(compensationReach(user.principal)), searchParams, getTranslations("payroll.ytd")]);
   if (entities.length === 0) notFound();
   requireStepUp(user, "/payroll/ytd");
 
-  const params = await searchParams;
   const asString = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
   const entityId = entities.find((entity) => entity.id === asString(params.entityId))?.id ?? entities[0].id;
   if (!canManageCompensation(user.principal, { entityId })) notFound();
   const year = /^\d{4}$/.test(asString(params.year) ?? "") ? (asString(params.year) as string) : String(new Date().getFullYear());
 
-  const t = await getTranslations("payroll.ytd");
   const rows = await listYtd(entityId, Number(year));
-  const facts = await listPayrollFacts({ personIds: rows.map((row) => row.row.personId) }, `${year}-12`);
+  // Only names beside the figures: nothing about the people is decrypted.
+  const facts = await listPayrollNames(rows.map((row) => row.row.personId));
   const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
 
   return (

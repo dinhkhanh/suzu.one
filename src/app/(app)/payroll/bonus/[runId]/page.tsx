@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
-import { availableBonusSteps, canAdjustBonusLine, canManageBonusRun, canReadBonusRun, getBonusCost, getBonusRun, getBonusScheme, listBonusLines, listBonusRunEvents, schemeDateOf } from "@/modules/payroll/service";
+import { availableBonusSteps, canAdjustBonusLine, canManageBonusRun, canReadBonusRun, bonusCostOf, getBonusRun, getBonusScheme, listBonusLines, listBonusRunEvents, schemeDateOf } from "@/modules/payroll/service";
 import { BonusStepForm, PayBonusRunButton, SimulateButton, WhatIfForm } from "@/modules/payroll/ui/bonus-forms";
 import { formatVnd } from "@/modules/payroll/ui/money";
 
@@ -26,11 +26,18 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
   if (!run || !canReadBonusRun(user.principal, run.entityIds)) notFound();
   requireStepUp(user, `/payroll/bonus/${runId}`);
 
-  const [t, format, cost, lines, events] = await Promise.all([getTranslations("payroll.bonus"), getFormatter(), getBonusCost(runId), listBonusLines(runId), listBonusRunEvents(runId)]);
   const manages = canManageBonusRun(user.principal, run.entityIds);
+  const [t, format, lines, events, scheme] = await Promise.all([
+    getTranslations("payroll.bonus"),
+    getFormatter(),
+    listBonusLines(runId),
+    listBonusRunEvents(runId),
+    // The scheme in force for the first entity — what the what-if form starts from.
+    manages ? getBonusScheme(run.entityIds[0] ?? null, schemeDateOf(run.year)).catch(() => null) : null,
+  ]);
+  // The cost is the lines added up: worked out from the ones just read, not read again.
+  const cost = await bonusCostOf(lines);
   const steps = availableBonusSteps(run);
-  // The scheme in force for the first entity — what the what-if form starts from.
-  const scheme = manages ? await getBonusScheme(run.entityIds[0] ?? null, schemeDateOf(run.year)).catch(() => null) : null;
 
   return (
     <div className="flex flex-col gap-8">

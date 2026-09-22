@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { todayInVietnam } from "@/lib/dates";
-import { canCloseKpiMonth, canReopenKpiMonth, closeBlockers, consumedMonths, listPeriods } from "@/modules/performance/service";
+import { canCloseKpiMonth, canReopenKpiMonth, closeBlockersOf, consumedMonths, listPeriods } from "@/modules/performance/service";
 import { MonthPicker, monthLabel, readMonth, ScoreState } from "@/modules/performance/ui/kpi";
 import { CloseMonthForm, ReopenMonthForm } from "@/modules/performance/ui/kpi-forms";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -21,12 +21,9 @@ export default async function KpiPeriodsPage({ searchParams }: PageProps<"/perfo
   // Months a year-end bonus run has already been approved from cannot be reopened (FR-PAY-21).
   const [periods, consumed, t, format] = await Promise.all([listPeriods({ month, entityIds }), consumedMonths(entityIds), getTranslations("performance"), getFormatter()]);
   const over = month < today.slice(0, 7);
-  const rows = await Promise.all(
-    entities.map(async (entity) => {
-      const period = periods.find((row) => row.entityId === entity.id) ?? null;
-      return { entity, period, blockers: period?.status === "closed" ? [] : await closeBlockers(entity.id, month) };
-    }),
-  );
+  const periodOf = (entityId: string) => periods.find((row) => row.entityId === entityId) ?? null;
+  const blockersOf = await closeBlockersOf(entities.filter((entity) => periodOf(entity.id)?.status !== "closed").map((entity) => entity.id), month);
+  const rows = entities.map((entity) => ({ entity, period: periodOf(entity.id), blockers: blockersOf.get(entity.id) ?? [] }));
 
   return (
     <div className="flex flex-col gap-4">

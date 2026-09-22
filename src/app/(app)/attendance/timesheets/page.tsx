@@ -28,13 +28,13 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
   const month = typeof query.month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(query.month) && query.month <= thisMonth ? query.month : lastMonth;
   const viewer = { personId: user.person.id, principal: user.principal };
 
-  const [team, entities] = await Promise.all([listMonthsToApprove(viewer, month), listEntities()]);
+  const entities = await listEntities();
   const mine = entities.filter((entity) => canLockPeriod(user.principal, entity.id));
   const chosen = typeof query.entity === "string" ? mine.find((entity) => entity.id === query.entity) : mine[0];
-  const [overview, adjustments, toConfirm] = await Promise.all([
+  const [[team, toConfirm], overview, adjustments] = await Promise.all([
+    listMonthsToApprove(viewer, month).then(async (rows) => [rows, await listHoursToConfirm(rows.filter((row) => row.canApprove).map((row) => row.personId), monthStart(month), monthEnd(month) < today ? monthEnd(month) : today)] as const),
     chosen ? getPeriodOverview(chosen.id, month) : null,
     chosen ? listAdjustments({ entityId: chosen.id, month }) : [],
-    listHoursToConfirm(team.filter((row) => row.canApprove).map((row) => row.personId), monthStart(month), monthEnd(month) < today ? monthEnd(month) : today),
   ]);
   const hours = (minutes: number) => format.number(minutes / 60, { maximumFractionDigits: 1 });
   const days = (centi: number) => format.number(centi / 100, { maximumFractionDigits: 2 });

@@ -1,7 +1,9 @@
 import "server-only";
 import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { cache } from "react";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { toSearchKey } from "@/lib/text";
@@ -128,8 +130,10 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
       : undefined,
   );
 
+  // The count joins a placement only when a condition reads it: each join is one row per person at most.
+  const limitedReach = !directoryReach.all || (needsPersonalTier && !personalReach.all);
   const page = Math.max(1, filters.page ?? 1);
-  const [rows, [{ total }]] = await Promise.all([
+  const [rows, total] = await Promise.all([
     db()
       .select({
         id: schema.person.id,
@@ -159,7 +163,10 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
       .orderBy(sql`substring(${schema.person.searchName} from '[^ ]+$')`, asc(schema.person.searchName))
       .limit(pageSize)
       .offset((page - 1) * pageSize),
-    db().select({ total: count() }).from(schema.person).leftJoinLateral(e, sql`true`).leftJoinLateral(a, sql`true`).where(where),
+    countPeople(where, placement, {
+      e: !!(filters.entityId || pattern || limitedReach),
+      a: !!(filters.workforceType || filters.departmentId || limitedReach),
+    }),
   ]);
 
   return {
@@ -181,6 +188,15 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
       };
     }),
   };
+}
+
+async function countPeople(where: SQL | undefined, { e, a }: Placement, joins: { e: boolean; a: boolean }): Promise<number> {
+  let query = db().select({ total: count() }).from(schema.person).$dynamic();
+  // `a` reads `e`, so it never joins alone.
+  if (joins.e || joins.a) query = query.leftJoinLateral(e, sql`true`);
+  if (joins.a) query = query.leftJoinLateral(a, sql`true`);
+  const [{ total }] = await query.where(where);
+  return total;
 }
 
 export type OrgChartPerson = { id: string; fullName: string; sortKey: string; managerId: string | null; positionName: string | null; departmentName: string | null; entityName: string | null; dottedManagerName: string | null };
@@ -217,8 +233,31 @@ export async function listOrgChartPeople(principal: Principal, entityId?: string
     .where(and(reachCondition(reach, placement, principal.personId, await widenReach(reach)), eq(schema.person.status, "active"), entityId ? eq(e.entityId, entityId) : undefined));
 }
 
-/** Where a person sits today, as an authorization target. */
-export async function getPersonTarget(personId: string, executor: Tx | ReturnType<typeof db> = db()): Promise<(Target & { personId: string }) | null> {
+/**
+ * Where a person sits today, as an authorization target. Without an executor it is read once per
+ * request (a person page asks for it from every section); a transaction always reads its own rows.
+ */
+export function getPersonTarget(personId: string, executor?: Tx | ReturnType<typeof db>): Promise<(Target & { personId: string }) | null> {
+  return executor ? readPersonTarget(personId, executor) : readPersonTargetOnce(personId);
+}
+
+/** `getPersonTarget` for many people in one query; people who do not exist are absent from the map. */
+export async function getPersonTargets(personIds: readonly string[]): Promise<Map<string, Target & { personId: string }>> {
+  const ids = [...new Set(personIds)];
+  if (ids.length === 0) return new Map();
+  const { e, a } = placementOn(todayInVietnam());
+  const rows = await db()
+    .select({ personId: schema.person.id, entityId: e.entityId, unitPath: schema.person.orgUnitPath, managerId: a.managerId })
+    .from(schema.person)
+    .leftJoinLateral(e, sql`true`)
+    .leftJoinLateral(a, sql`true`)
+    .where(inArray(schema.person.id, ids));
+  return new Map(rows.map((row) => [row.personId, row]));
+}
+
+const readPersonTargetOnce = cache((personId: string) => readPersonTarget(personId, db()));
+
+async function readPersonTarget(personId: string, executor: Tx | ReturnType<typeof db>): Promise<(Target & { personId: string }) | null> {
   const { e, a } = placementOn(todayInVietnam());
   const [row] = await executor
     .select({ personId: schema.person.id, entityId: e.entityId, unitPath: schema.person.orgUnitPath, managerId: a.managerId })
@@ -275,21 +314,24 @@ export type PersonView = {
 
 /** One person, shaped by what the viewer's tier allows. null = the viewer may not see them at all. */
 export async function getPersonView(principal: Principal, personId: string): Promise<PersonView | null> {
-  const target = await getPersonTarget(personId);
-  if (!target) return null;
+  // All in one round: the rows are only returned once the viewer's tier is known, below.
+  const [target, [person], [employment], history, [profile]] = await Promise.all([
+    getPersonTarget(personId),
+    db().select().from(schema.person).where(eq(schema.person.id, personId)).limit(1),
+    db()
+      .select({ row: schema.employment, entityName: schema.entity.shortName })
+      .from(schema.employment)
+      .innerJoin(schema.entity, eq(schema.entity.id, schema.employment.entityId))
+      .where(eq(schema.employment.personId, personId))
+      .orderBy(desc(schema.employment.startDate))
+      .limit(1),
+    loadAssignments(latestEmploymentOf(personId)),
+    db().select(PROFILE_FIELDS).from(schema.personProfile).where(eq(schema.personProfile.personId, personId)).limit(1),
+  ]);
+  if (!target || !person) return null;
   const tier = readableTier(principal, target);
   if (!tier) return null;
 
-  const [person] = await db().select().from(schema.person).where(eq(schema.person.id, personId)).limit(1);
-  const [employment] = await db()
-    .select({ row: schema.employment, entityName: schema.entity.shortName })
-    .from(schema.employment)
-    .innerJoin(schema.entity, eq(schema.entity.id, schema.employment.entityId))
-    .where(eq(schema.employment.personId, personId))
-    .orderBy(desc(schema.employment.startDate))
-    .limit(1);
-
-  const history = employment ? await loadAssignments(employment.row.id) : [];
   // Same rule as placementOn(): history is newest first, so this is the latest row already in force.
   const today = todayInVietnam();
   const asOf = employment && employment.row.startDate > today ? employment.row.startDate : today;
@@ -301,7 +343,6 @@ export async function getPersonView(principal: Principal, personId: string): Pro
 
   let personal: PersonView["personal"] = null;
   if (seesPersonal) {
-    const [profile] = await db().select(PROFILE_FIELDS).from(schema.personProfile).where(eq(schema.personProfile.personId, personId)).limit(1);
     personal = {
       status: person.status,
       startDate: employment?.row.startDate ?? null,
@@ -344,8 +385,12 @@ const PROFILE_FIELDS = {
   currentAddress: schema.personProfile.currentAddress,
 };
 
+// The id of the person's latest employment, as a subquery (what getPersonView reads alongside).
+const latestEmploymentOf = (personId: string): SQL =>
+  sql`(${db().select({ id: schema.employment.id }).from(schema.employment).where(eq(schema.employment.personId, personId)).orderBy(desc(schema.employment.startDate)).limit(1)})`;
+
 // Newest first.
-async function loadAssignments(employmentId: string): Promise<AssignmentView[]> {
+async function loadAssignments(employmentId: string | SQL): Promise<AssignmentView[]> {
   const manager = alias(schema.person, "manager");
   const dottedManager = alias(schema.person, "dotted_manager");
   const departmentUnit = alias(schema.orgUnit, "department_unit");
@@ -382,14 +427,25 @@ async function loadAssignments(employmentId: string): Promise<AssignmentView[]> 
     .orderBy(desc(schema.assignment.validFrom));
 }
 
+// The position catalogue is reference data (names only) that grows when a placement names a new
+// one, so it lives in the shared cache (src/lib/cache). `findOrCreatePosition` drops the entry when
+// it adds a row, and again once the transaction has committed (`inTransaction`, the import's
+// `onCommitted`); the TTL bounds writers outside the app (the demo seeds).
+const POSITIONS_CACHE = "core-hr:positions";
+const POSITIONS_TTL = 10 * 60;
+
+/** For writers outside this file: the position catalogue changed. */
+export const invalidatePositions = () => invalidate(POSITIONS_CACHE);
+
+const loadPositions = () => cached(POSITIONS_CACHE, POSITIONS_TTL, () => db().select({ id: schema.position.id, name: schema.position.name }).from(schema.position).orderBy(asc(schema.position.searchName)));
+
 export async function listPositionNames(): Promise<string[]> {
-  const rows = await db().select({ name: schema.position.name }).from(schema.position).orderBy(asc(schema.position.searchName));
-  return rows.map((row) => row.name);
+  return (await loadPositions()).map((row) => row.name);
 }
 
 /** The shared position catalogue, for pickers that key on a position (checklist templates). */
 export async function listPositions(): Promise<{ id: string; name: string }[]> {
-  return db().select({ id: schema.position.id, name: schema.position.name }).from(schema.position).orderBy(asc(schema.position.searchName));
+  return loadPositions();
 }
 
 /** Choices for the placement fields. Names only: nothing here is above the directory tier. */
@@ -416,7 +472,13 @@ const CONSTRAINT_ERRORS: Record<string, string> = {
 
 export async function inTransaction<T>(work: (tx: Tx) => Promise<T>): Promise<T> {
   try {
-    return await db().transaction(work);
+    let addedPosition = false;
+    const result = await db().transaction((tx) => {
+      positionsAdded.set(tx, () => (addedPosition = true));
+      return work(tx);
+    });
+    if (addedPosition) await invalidatePositions();
+    return result;
   } catch (error) {
     for (let cause: unknown = error; cause instanceof Error; cause = cause.cause) {
       const details = cause as { constraint_name?: string; constraint?: string };
@@ -704,10 +766,19 @@ export async function resolvePlacement(tx: Tx, input: PlacementInput, context: {
 async function findOrCreatePosition(tx: Tx, name: string): Promise<string> {
   const cleaned = name.trim().replace(/\s+/g, " ");
   const searchName = toSearchKey(cleaned);
-  await tx.insert(schema.position).values({ name: cleaned, searchName }).onConflictDoNothing({ target: schema.position.searchName });
+  const inserted = await tx.insert(schema.position).values({ name: cleaned, searchName }).onConflictDoNothing({ target: schema.position.searchName }).returning({ id: schema.position.id });
+  if (inserted.length) {
+    // Now, so no other caller keeps reading the old list, and again after commit where the caller can tell us.
+    positionsAdded.get(tx)?.();
+    await invalidatePositions();
+    return inserted[0].id;
+  }
   const [row] = await tx.select({ id: schema.position.id }).from(schema.position).where(eq(schema.position.searchName, searchName)).limit(1);
   return row.id;
 }
+
+// Transactions opened by `inTransaction`, and what to call when one of them adds a position.
+const positionsAdded = new WeakMap<Tx, () => void>();
 
 async function employeeCodeExists(tx: Tx, entityId: string, employeeCode: string): Promise<boolean> {
   const [row] = await tx
@@ -770,7 +841,7 @@ export async function deleteSavedView(ownerPersonId: string, id: string): Promis
 export { cancelLongLeave, type EmploymentFacts, listEmploymentFacts, listPositionHolders, recordLongLeave } from "./employment-facts";
 // `BankAccount` travels with the payroll facts: payroll writes bank files from it (FR-PAY-33).
 export type { BankAccount } from "./records";
-export { type DependantRegistration, listDependantRegistrations, listPayrollFacts, type PayrollPersonFacts, recordPayEvent } from "./payroll-facts";
+export { type DependantRegistration, entityPayrollFactsOf, listDependantRegistrations, listPayrollFacts, listPayrollNames, type PayrollName, type PayrollPersonFacts, payrollFactsOf, recordPayEvent } from "./payroll-facts";
 export { type LifecycleEventFact, listLifecycleEventFacts } from "./lifecycle-events";
 export { currentBranchOf, findBranchEntity, listPeopleAtBranches, listStaffOccasionFacts, type StaffOccasionFacts } from "./feed-facts";
 /**

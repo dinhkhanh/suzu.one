@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { todayInVietnam } from "@/lib/dates";
@@ -31,31 +32,36 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
   const level = loaded ? levelOf(viewer, loaded) : null;
   if (!loaded || !level) notFound();
 
-  const t = await getTranslations("kb");
-  const tRoles = await getTranslations("roles");
-  const format = await getFormatter();
   const { page, space } = loaded;
   const editor = atLeast(level, "edit");
-  const [view, tree] = await Promise.all([getReadingView(loaded, level, query.draft === "1"), listTree(viewer, loaded)]);
-  if (view.showing === "published") await recordView(page.id, user.person.id, todayInVietnam());
+  const organises = canOrganisePages(viewer, loaded.facts);
+  const publishes = canPublishDirectly(viewer, loaded.facts, loaded.pageFacts);
+  const manages = canManageSpace(user.principal, spaceOwner(space));
+  const [t, tRoles, format, view, tree, ownRows, choices, ack, ackAudience] = await Promise.all([
+    getTranslations("kb"),
+    getTranslations("roles"),
+    getFormatter(),
+    getReadingView(loaded, level, query.draft === "1"),
+    listTree(viewer, loaded),
+    organises ? listPageAccess(page.id) : [],
+    editor ? subjectOptions() : null,
+    getAckStatus(page, user.person.id),
+    manages ? getAckSettings(page.id) : [],
+  ]);
+  // The view count is not what the reader waits for: it is written once the page is sent.
+  if (view.showing === "published") after(() => recordView(page.id, user.person.id, todayInVietnam()));
 
   const trail = breadcrumbOf(tree, page.id);
   const outline = outlineOf(view.content);
-  const organises = canOrganisePages(viewer, loaded.facts);
-  const publishes = canPublishDirectly(viewer, loaded.facts, loaded.pageFacts);
-  const [ownRows, choices] = await Promise.all([organises ? listPageAccess(page.id) : [], editor ? subjectOptions() : null]);
-  const names = organises ? await subjectNames(ownRows.map((row) => row.subjectKey)) : new Map<string, string>();
+  const names = organises || manages ? await subjectNames([...(organises ? ownRows.map((row) => row.subjectKey) : []), ...(manages ? ackAudience : [])]) : new Map<string, string>();
   const accessRows = ownRows.map((row) => {
     const subject = parseSubjectKey(row.subjectKey);
     const name = subject?.type === "role" ? tRoles(subject.id as "owner") : (names.get(row.subjectKey) ?? "");
     return { ...row, label: !subject || subject.type === "all" ? t("access.subject.all") : `${t(`access.subject.${subject.type}`)}: ${name}` };
   });
-  const manages = canManageSpace(user.principal, spaceOwner(space));
-  const [ack, ackAudience] = await Promise.all([getAckStatus(page, user.person.id), manages ? getAckSettings(page.id) : []]);
-  const audienceNames = manages ? await subjectNames(ackAudience) : new Map<string, string>();
   const audienceRows = ackAudience.map((key) => {
     const subject = parseSubjectKey(key);
-    return { subjectKey: key, label: !subject || subject.type === "all" ? t("access.subject.all") : `${t(`access.subject.${subject.type}`)}: ${audienceNames.get(key) ?? ""}` };
+    return { subjectKey: key, label: !subject || subject.type === "all" ? t("access.subject.all") : `${t(`access.subject.${subject.type}`)}: ${names.get(key) ?? ""}` };
   });
   const siblings = tree.filter((node) => node.parentId === (page.parentId ?? null) && node.id !== page.id);
   const hasChildren = tree.some((node) => node.parentId === page.id);

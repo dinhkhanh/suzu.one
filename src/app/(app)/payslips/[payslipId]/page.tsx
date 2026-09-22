@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -23,7 +24,8 @@ export default async function PayslipPage({ params }: PageProps<"/payslips/[pays
   requireStepUp(user, `/payslips/${payslipId}`);
 
   const [t, format] = await Promise.all([getTranslations("payroll.payslips"), getFormatter()]);
-  if (view.isOwner) await recordPayslipView(payslipId, user.person.id);
+  // Counted once the page has gone out: a courtesy, never in the way of reading the payslip.
+  if (view.isOwner) after(() => recordPayslipView(payslipId, user.person.id));
 
   return (
     <div className="flex max-w-4xl flex-col gap-6">

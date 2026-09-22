@@ -20,7 +20,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { Grant, Principal } from "../platform/rbac/policy";
-import { acknowledgeAnnouncement, type AnnouncementInput, audiencePeople, commsViewerOf, countUnreadAnnouncements, createAnnouncement, getAnnouncementView, getReadReport, listAnnouncementsFor, listManagedAnnouncements, loadAnnouncement, markAnnouncementRead, mayPostTo, mayRead, notifyDueAnnouncements, publishAnnouncement, setAnnouncementState } from "./announcements";
+import { acknowledgeAnnouncement, type AnnouncementInput, audienceNames, audiencePeople, commsViewerOf, countUnreadAnnouncements, createAnnouncement, getAnnouncementView, getReadReport, listAnnouncementsFor, listManagedAnnouncements, loadAnnouncement, markAnnouncementRead, mayPostTo, mayRead, notifyDueAnnouncements, publishAnnouncement, setAnnouncementState } from "./announcements";
 import { audienceKey } from "./enums";
 import { getHomeFeed } from "./feed";
 import { findKudos, giveKudos, listKudos, mayRemoveKudos, removeKudos } from "./kudos";
@@ -133,6 +133,12 @@ describe("announcements", () => {
     // A note to one person is managed by whoever holds comms:manage over that person.
     expect((await listManagedAnnouncements(users.long.principal)).map((row) => row.title).sort()).toEqual(["ngo", "vid"]);
     expect((await listManagedAnnouncements(users.hrSzm.principal)).map((row) => row.title).sort()).toEqual(["hn", "ngo", "szm"]);
+    // Every row carries its audience, as one announcement loaded alone does.
+    for (const row of await listManagedAnnouncements(users.hrGroup.principal)) expect([row.title, row.audience]).toEqual([row.title, (await loadAnnouncement(row.id))!.audience]);
+    const names = await audienceNames([audienceKey("person", ids.ngo), audienceKey("unit_only", ids.vid), audienceKey("person", ids.gone), "all"]);
+    expect(names.get(audienceKey("person", ids.ngo))).toBe("ngo");
+    expect(names.get(audienceKey("unit_only", ids.vid))).toBeTruthy();
+    expect(names.has("all")).toBe(false);
   });
 
   it("told the audience at publication, and tells a scheduled one once when its hour has come", async () => {

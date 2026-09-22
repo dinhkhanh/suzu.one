@@ -3,19 +3,19 @@
 // are frozen in `timesheet_month.summary`, and later corrections are `timesheet_adjustment` rows
 // that payroll takes into its next open month as retro items.
 import "server-only";
-import { and, asc, desc, eq, gte, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
-import { listEmploymentFacts } from "@/modules/core-hr/service";
 import { postCompensatoryLeave } from "@/modules/leave/service";
 import { notify } from "@/modules/platform/notifications/service";
 import { matchesReach, permissionReach, type Principal, type Target } from "@/modules/platform/rbac/policy";
 import { canLock, type LockIssue, lockIssues, type LockPersonInput, type MonthStatus, timeOffCenti } from "./engine/requests";
 import type { MonthSummary } from "./engine/timesheet";
+import { anyReachSql, latestEmployeeCode } from "./people-sql";
 import { canApproveMonthOf } from "./policy";
 import type { AdjustmentDeltas } from "./schema";
-import { getTimesheetDays, monthEnd, monthStart, recomputeDays, summariseRows, type TimesheetDayRow } from "./timesheets";
+import { cellColumns, daysByPerson, getTimesheetDayCells, getTimesheetDays, monthEnd, monthStart, recomputeDays, summariseRows, type TimesheetDayRow } from "./timesheets";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type TimesheetMonthRow = typeof schema.timesheetMonth.$inferSelect;
@@ -25,7 +25,7 @@ export type TimesheetAdjustmentRow = typeof schema.timesheetAdjustment.$inferSel
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 export const isMonth = (value: string): boolean => MONTH.test(value);
 const monthIsOver = (month: string, today: IsoDate = todayInVietnam()) => monthEnd(month) < today;
-const targetOf = (person: typeof schema.person.$inferSelect): Target & { personId: string } => ({ personId: person.id, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId });
+const targetOf = (person: { id: string; primaryEntityId: string | null; orgUnitPath: string[]; managerId: string | null }): Target & { personId: string } => ({ personId: person.id, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId });
 
 export async function getMonthRow(personId: string, month: string, executor: Executor = db()): Promise<TimesheetMonthRow | null> {
   const [row] = await executor.select().from(schema.timesheetMonth).where(and(eq(schema.timesheetMonth.personId, personId), eq(schema.timesheetMonth.month, month))).limit(1);
@@ -106,13 +106,15 @@ export type PeriodOverview = { entityId: string; month: string; period: Timeshee
 export async function getPeriodOverview(entityId: string, month: string, executor: Executor = db()): Promise<PeriodOverview> {
   const from = monthStart(month);
   const to = monthEnd(month);
-  const days = await executor.select().from(schema.timesheetDay).where(and(eq(schema.timesheetDay.entityId, entityId), gte(schema.timesheetDay.date, from), lte(schema.timesheetDay.date, to))).orderBy(asc(schema.timesheetDay.date));
+  const [days, [period]] = await Promise.all([
+    executor.select(cellColumns).from(schema.timesheetDay).where(and(eq(schema.timesheetDay.entityId, entityId), gte(schema.timesheetDay.date, from), lte(schema.timesheetDay.date, to))).orderBy(asc(schema.timesheetDay.date)),
+    executor.select().from(schema.timesheetPeriod).where(and(eq(schema.timesheetPeriod.entityId, entityId), eq(schema.timesheetPeriod.month, month))).limit(1),
+  ]);
   const personIds = [...new Set(days.map((day) => day.personId))];
-  const [period] = await executor.select().from(schema.timesheetPeriod).where(and(eq(schema.timesheetPeriod.entityId, entityId), eq(schema.timesheetPeriod.month, month))).limit(1);
   if (personIds.length === 0) return { entityId, month, period: period ?? null, isOver: monthIsOver(month), people: [], issues: [], counts: { open: 0, confirmed: 0, approved: 0, locked: 0 } };
 
-  const [people, months, reviews, requests, facts] = await Promise.all([
-    executor.select().from(schema.person).where(inArray(schema.person.id, personIds)),
+  const [people, months, reviews, requests] = await Promise.all([
+    executor.select({ id: schema.person.id, fullName: schema.person.fullName, managerId: schema.person.managerId, employeeCode: latestEmployeeCode() }).from(schema.person).where(inArray(schema.person.id, personIds)),
     executor.select().from(schema.timesheetMonth).where(and(inArray(schema.timesheetMonth.personId, personIds), eq(schema.timesheetMonth.month, month))),
     executor
       .select({ personId: schema.punch.personId, value: sql<number>`count(*)::int` })
@@ -124,16 +126,20 @@ export async function getPeriodOverview(entityId: string, month: string, executo
       .from(schema.attendanceRequest)
       .leftJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.attendanceRequest.approvalRequestId))
       .where(and(inArray(schema.attendanceRequest.personId, personIds), lte(schema.attendanceRequest.startDate, to), gte(schema.attendanceRequest.endDate, from), inArray(schema.attendanceRequest.status, ["pending", "approved"]))),
-    listEmploymentFacts({ personIds }, executor),
   ]);
 
+  const daysOf = daysByPerson(days);
+  const statusOf = new Map(months.map((row) => [row.personId, row.status]));
+  const reviewsOf = new Map(reviews.map((row) => [row.personId, row.value]));
+  const requestsOf = new Map<string, typeof requests>();
+  for (const request of requests) requestsOf.set(request.row.personId, [...(requestsOf.get(request.row.personId) ?? []), request]);
   const rows: PeriodPerson[] = [];
   const inputs: LockPersonInput[] = [];
   for (const person of people) {
-    const own = days.filter((day) => day.personId === person.id);
+    const own = daysOf.get(person.id) ?? [];
     const summary = summariseRows(own);
-    const status = (months.find((row) => row.personId === person.id)?.status ?? "open") as MonthStatus;
-    const mine = requests.filter(({ row }) => row.personId === person.id);
+    const status = (statusOf.get(person.id) ?? "open") as MonthStatus;
+    const mine = requestsOf.get(person.id) ?? [];
     const pendingRequests = mine.filter(({ row, approvalStatus }) => row.status === "pending" && (approvalStatus === "pending" || approvalStatus === "returned")).length;
     // Approved holiday work that produced no holiday overtime and carries no confirmed hours: nobody knows what was worked.
     const unconfirmedHolidayWork = mine.filter(({ row }) => {
@@ -141,11 +147,12 @@ export async function getPeriodOverview(entityId: string, month: string, executo
       const day = own.find((candidate) => candidate.date === row.startDate);
       return !day || day.otRestDayMinutes + day.otRestDayNightMinutes + day.otHolidayMinutes + day.otHolidayNightMinutes === 0;
     }).length;
-    inputs.push({ personId: person.id, monthStatus: status, missingPunchDays: summary.missingPunchDays, punchesToReview: reviews.find((row) => row.personId === person.id)?.value ?? 0, pendingRequests, unconfirmedHolidayWork, absentDays: summary.absentDays, unapprovedOvertimeDays: own.filter((day) => day.otUnapprovedMinutes > 0).length });
-    rows.push({ personId: person.id, fullName: person.fullName, employeeCode: facts.find((fact) => fact.personId === person.id)?.employeeCode ?? null, managerId: person.managerId, status, summary, issues: [] });
+    inputs.push({ personId: person.id, monthStatus: status, missingPunchDays: summary.missingPunchDays, punchesToReview: reviewsOf.get(person.id) ?? 0, pendingRequests, unconfirmedHolidayWork, absentDays: summary.absentDays, unapprovedOvertimeDays: own.filter((day) => day.otUnapprovedMinutes > 0).length });
+    rows.push({ personId: person.id, fullName: person.fullName, employeeCode: person.employeeCode, managerId: person.managerId, status, summary, issues: [] });
   }
   const issues = lockIssues(inputs);
-  for (const row of rows) row.issues = issues.filter((issue) => issue.personId === row.personId);
+  const issuesOf = daysByPerson(issues);
+  for (const row of rows) row.issues = issuesOf.get(row.personId) ?? [];
   rows.sort((a, b) => a.fullName.localeCompare(b.fullName));
   const counts = { open: 0, confirmed: 0, approved: 0, locked: 0 };
   for (const row of rows) counts[row.status] += 1;
@@ -293,7 +300,7 @@ export async function getLockedTimesheets(entityId: string, month: string, execu
   const [period] = await executor.select().from(schema.timesheetPeriod).where(and(eq(schema.timesheetPeriod.entityId, entityId), eq(schema.timesheetPeriod.month, month), eq(schema.timesheetPeriod.status, "locked"))).limit(1);
   if (!period?.lockedAt) return null;
   const months = await executor.select().from(schema.timesheetMonth).where(and(eq(schema.timesheetMonth.entityId, entityId), eq(schema.timesheetMonth.month, month), eq(schema.timesheetMonth.status, "locked")));
-  const codes = new Map((await listEmploymentFacts({ personIds: months.map((row) => row.personId) }, executor)).map((fact) => [fact.personId, fact.employeeCode]));
+  const codes = new Map((months.length ? await executor.select({ personId: schema.person.id, employeeCode: latestEmployeeCode() }).from(schema.person).where(inArray(schema.person.id, months.map((row) => row.personId))) : []).map((row) => [row.personId, row.employeeCode]));
   const people = months.map((row): LockedTimesheet => {
     const summary = row.summary as unknown as MonthSummary;
     return {
@@ -349,16 +356,21 @@ export type TeamMonthStatus = { personId: string; fullName: string; status: Mont
 /** The months of the people whose timesheet the viewer may approve: reports, and HR's reach. */
 export async function listMonthsToApprove(viewer: { personId: string; principal: Principal }, month: string, options: { entityId?: string | null } = {}): Promise<TeamMonthStatus[]> {
   const reach = permissionReach(viewer.principal, "attendance:manage");
-  const everyone = await db().select().from(schema.person);
-  const mine = everyone.filter((person) => person.id !== viewer.personId && (person.managerId === viewer.personId || matchesReach(reach, targetOf(person))) && (!options.entityId || person.primaryEntityId === options.entityId));
+  const candidates = await db()
+    .select({ id: schema.person.id, fullName: schema.person.fullName, primaryEntityId: schema.person.primaryEntityId, orgUnitPath: schema.person.orgUnitPath, managerId: schema.person.managerId })
+    .from(schema.person)
+    .where(and(ne(schema.person.id, viewer.personId), anyReachSql([reach], eq(schema.person.managerId, viewer.personId)), options.entityId ? eq(schema.person.primaryEntityId, options.entityId) : undefined));
+  const mine = candidates.filter((person) => person.id !== viewer.personId && (person.managerId === viewer.personId || matchesReach(reach, targetOf(person))) && (!options.entityId || person.primaryEntityId === options.entityId));
   if (mine.length === 0) return [];
   const ids = mine.map((person) => person.id);
-  const [days, months] = await Promise.all([getTimesheetDays(ids, monthStart(month), monthEnd(month)), db().select().from(schema.timesheetMonth).where(and(inArray(schema.timesheetMonth.personId, ids), eq(schema.timesheetMonth.month, month)))]);
+  const [days, months] = await Promise.all([getTimesheetDayCells(ids, monthStart(month), monthEnd(month)), db().select().from(schema.timesheetMonth).where(and(inArray(schema.timesheetMonth.personId, ids), eq(schema.timesheetMonth.month, month)))]);
+  const daysOf = daysByPerson(days);
+  const rowOf = new Map(months.map((row) => [row.personId, row]));
   return mine
-    .filter((person) => days.some((day) => day.personId === person.id))
+    .filter((person) => daysOf.has(person.id))
     .map((person) => {
-      const row = months.find((candidate) => candidate.personId === person.id);
-      return { personId: person.id, fullName: person.fullName, status: (row?.status ?? "open") as MonthStatus, summary: summariseRows(days.filter((day) => day.personId === person.id)), confirmedAt: row?.confirmedAt ?? null, canApprove: canApproveMonthOf(viewer.principal, targetOf(person)) };
+      const row = rowOf.get(person.id);
+      return { personId: person.id, fullName: person.fullName, status: (row?.status ?? "open") as MonthStatus, summary: summariseRows(daysOf.get(person.id) ?? []), confirmedAt: row?.confirmedAt ?? null, canApprove: canApproveMonthOf(viewer.principal, targetOf(person)) };
     })
     .sort((a, b) => a.fullName.localeCompare(b.fullName));
 }

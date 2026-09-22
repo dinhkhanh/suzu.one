@@ -16,9 +16,8 @@ export const metadata: Metadata = { title: "1:1 meeting" };
 export default async function OneOnOnePage({ params }: PageProps<"/performance/one-on-ones/[meetingId]">) {
   const user = await requireUser();
   const { meetingId } = await params;
-  const found = await findOneOnOne(meetingId);
+  const [found, directory] = await Promise.all([findOneOnOne(meetingId), loadDirectory()]);
   if (!found) notFound();
-  const directory = await loadDirectory();
   const subject = directory.get(found.personId);
   if (!subject) notFound();
   const parties = { managerPersonId: found.managerPersonId, person: subject };

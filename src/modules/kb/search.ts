@@ -8,9 +8,11 @@
 // immutable (it cannot back a generated column or an index without a wrapper function) and lives
 // in a different schema on Supabase than on plain Postgres and PGlite. Same result, no extension.
 import "server-only";
-import { and, desc, eq, gte, inArray, type SQL, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, ne, type SQL, sql } from "drizzle-orm";
+import { cached } from "@/lib/cache";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
+import { rowsOf } from "@/lib/db/rows";
 import { pagePublishedVisibleSql } from "./access-sql";
 import { snippetOf, toTsQuery } from "./engine/search";
 import type { KbViewer } from "./policy";
@@ -20,27 +22,32 @@ const { kbPage, kbPageVersion, kbPageView, kbSpace } = schema;
 export type KbSearchHit = { pageId: string; title: string; spaceId: string; spaceKey: string; spaceName: string; /** Titles from the top of the space down to the page's parent. */ path: string[]; snippet: string; rank: number; publishedAt: Date | null };
 export type KbSearchResult = { hits: KbSearchHit[]; total: number };
 
-/** Titles of the pages above each hit, only as far as the viewer may see them. */
+/**
+ * Titles of the pages above each hit, only as far as the viewer may see them: one recursive
+ * query walks up from every hit at once, at most 12 levels, and stops at a parent the viewer
+ * may not open.
+ */
 async function pathsOf(viewer: KbViewer, pages: readonly { pageId: string; parentId: string | null }[]): Promise<Map<string, string[]>> {
   const paths = new Map<string, string[]>(pages.map((page) => [page.pageId, []]));
-  let frontier = new Map(pages.filter((page) => page.parentId).map((page) => [page.pageId, page.parentId!]));
-  for (let depth = 0; depth < 12 && frontier.size > 0; depth++) {
-    const ids = [...new Set(frontier.values())];
-    const rows = await db()
-      .select({ id: kbPage.id, parentId: kbPage.parentId, title: kbPage.publishedTitle })
-      .from(kbPage)
-      .innerJoin(kbSpace, eq(kbSpace.id, kbPage.spaceId))
-      .where(and(inArray(kbPage.id, ids), pagePublishedVisibleSql(viewer)));
-    const byId = new Map(rows.map((row) => [row.id, row]));
-    const next = new Map<string, string>();
-    for (const [pageId, parentId] of frontier) {
-      const parent = byId.get(parentId);
-      if (!parent) continue;
-      paths.get(pageId)!.unshift(parent.title ?? "");
-      if (parent.parentId) next.set(pageId, parent.parentId);
-    }
-    frontier = next;
-  }
+  const starts = pages.filter((page) => page.parentId);
+  if (!starts.length) return paths;
+  const visible = pagePublishedVisibleSql(viewer);
+  const result = await db().execute(sql`
+    with recursive hit(hit_id, parent_id) as (values ${sql.join(
+      starts.map((page) => sql`(${page.pageId}::uuid, ${page.parentId}::uuid)`),
+      sql`, `,
+    )}),
+    ancestor(hit_id, parent_id, title, depth) as (
+      select hit.hit_id, ${kbPage.parentId}, ${kbPage.publishedTitle}, 1
+      from hit join ${kbPage} on ${kbPage.id} = hit.parent_id join ${kbSpace} on ${kbSpace.id} = ${kbPage.spaceId}
+      where ${visible}
+      union all
+      select ancestor.hit_id, ${kbPage.parentId}, ${kbPage.publishedTitle}, ancestor.depth + 1
+      from ancestor join ${kbPage} on ${kbPage.id} = ancestor.parent_id join ${kbSpace} on ${kbSpace.id} = ${kbPage.spaceId}
+      where ancestor.depth < 12 and ${visible}
+    )
+    select hit_id, title, depth from ancestor order by hit_id, depth desc`);
+  for (const row of rowsOf<{ hit_id: string; title: string | null; depth: number }>(result)) paths.get(row.hit_id)?.push(row.title ?? "");
   return paths;
 }
 
@@ -91,8 +98,47 @@ export async function listRecentlyViewed(viewer: KbViewer, limit = 6): Promise<K
   return rows.map((row) => toCard(row, row.at ? new Date(row.at) : null));
 }
 
+// Popularity is the same for everyone: the 30-day counts are aggregated once per day and hour
+// into the shared cache — page ids and counts only, never titles — and each request keeps the
+// pages its viewer may open.
+const POPULAR_TOP = 50;
+const POPULAR_TTL = 60 * 60;
+
+async function popularPageCounts(today: IsoDate): Promise<{ pageId: string; views: number }[]> {
+  const views = sql<number>`count(*)::int`;
+  return cached(`kb:popular:${today}`, POPULAR_TTL, () =>
+    db()
+      .select({ pageId: kbPage.id, views })
+      .from(kbPageView)
+      .innerJoin(kbPage, eq(kbPage.id, kbPageView.pageId))
+      .where(and(gte(kbPageView.viewedOn, addDays(today, -30)), isNull(kbPage.deletedAt), isNotNull(kbPage.publishedVersionId), ne(kbPage.status, "archived")))
+      .groupBy(kbPage.id)
+      .orderBy(desc(views), desc(kbPage.publishedAt))
+      .limit(POPULAR_TOP),
+  );
+}
+
 /** The most-read pages of the last 30 days (one view per reader and day), among those the viewer may open. */
 export async function listPopularPages(viewer: KbViewer, limit = 6, today: IsoDate = todayInVietnam()): Promise<KbPageCard[]> {
+  const counts = await popularPageCounts(today);
+  if (!counts.length) return [];
+  const viewsOf = new Map(counts.map((row) => [row.pageId, row.views]));
+  const rows = await db()
+    .select({ ...card, at: kbPage.publishedAt })
+    .from(kbPage)
+    .innerJoin(kbSpace, eq(kbSpace.id, kbPage.spaceId))
+    .where(and(inArray(kbPage.id, [...viewsOf.keys()]), pagePublishedVisibleSql(viewer)));
+  // A reader who may open only a few of the group's top pages still gets a full list: the exact
+  // per-reader ranking, as before the cache.
+  if (rows.length < limit && counts.length >= POPULAR_TOP) return popularPagesFor(viewer, limit, today);
+  return rows
+    .map((row) => toCard(row, row.at, viewsOf.get(row.pageId) ?? 0))
+    // As Postgres orders `published_at desc`: a missing date first.
+    .sort((a, b) => b.views! - a.views! || (b.at?.getTime() ?? Number.MAX_SAFE_INTEGER) - (a.at?.getTime() ?? Number.MAX_SAFE_INTEGER))
+    .slice(0, limit);
+}
+
+async function popularPagesFor(viewer: KbViewer, limit: number, today: IsoDate): Promise<KbPageCard[]> {
   const views = sql<number>`count(*)::int`;
   const rows = await db()
     .select({ ...card, at: kbPage.publishedAt, views })

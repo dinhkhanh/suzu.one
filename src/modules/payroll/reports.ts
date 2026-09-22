@@ -11,9 +11,11 @@
 // These reports are entity-level and department-level; the only one that names people is the
 // register, which is the C&B working document and therefore takes `payroll:propose`.
 import "server-only";
-import { and, desc, eq, inArray, ne } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, ne } from "drizzle-orm";
+import { cache } from "react";
 import { db, schema } from "@/lib/db";
-import { listPayrollFacts } from "@/modules/core-hr/service";
+import { payrollFactsOf } from "@/modules/core-hr/service";
+import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import type { PersonPayResult } from "./engine/types";
 import { canManageCompensation, compensationReach, payrollReadReach } from "./policy";
@@ -28,12 +30,20 @@ type LoadedRun = { run: PayrollRunRow; entityCode: string; entityName: string; p
 /**
  * Loads the runs a report needs, filtered in SQL. Cancelled runs are never in a report, and
  * neither are runs that have not been calculated — a draft is nobody's cost.
+ *
+ * The reports screen asks five reports about the same entity and month at once; the load is
+ * remembered for the request (React `cache`, keyed on plain values), so the runs and their people
+ * are read and decrypted once, not once per report.
  */
-async function loadRuns(principal: Principal, filter: ReportFilter, options: { withPeople?: boolean } = {}): Promise<LoadedRun[]> {
+function loadRuns(principal: Principal, filter: ReportFilter, options: { withPeople?: boolean } = {}): Promise<LoadedRun[]> {
+  return loadRunsOnce(principal, filter.entityId ?? null, filter.month ?? null, filter.fromMonth ?? null, filter.toMonth ?? null, !!options.withPeople);
+}
+
+const loadRunsOnce = cache(async (principal: Principal, entityId: string | null, month: string | null, fromMonth: string | null, toMonth: string | null, withPeople: boolean): Promise<LoadedRun[]> => {
   const reach = payrollReadReach(principal);
   if (!reach.all && reach.entityIds.length === 0) return [];
 
-  const rows = await db()
+  const wanted = await db()
     .select({ run: schema.payrollRun, entityCode: schema.entity.code, entityName: schema.entity.shortName })
     .from(schema.payrollRun)
     .innerJoin(schema.entity, eq(schema.entity.id, schema.payrollRun.entityId))
@@ -42,28 +52,32 @@ async function loadRuns(principal: Principal, filter: ReportFilter, options: { w
         withinReach(schema.payrollRun.entityId, reach),
         ne(schema.payrollRun.status, "cancelled"),
         ne(schema.payrollRun.status, "draft"),
-        filter.entityId ? eq(schema.payrollRun.entityId, filter.entityId) : undefined,
-        filter.month ? eq(schema.payrollRun.month, filter.month) : undefined,
+        entityId ? eq(schema.payrollRun.entityId, entityId) : undefined,
+        month ? eq(schema.payrollRun.month, month) : undefined,
+        fromMonth ? gte(schema.payrollRun.month, fromMonth) : undefined,
+        toMonth ? lte(schema.payrollRun.month, toMonth) : undefined,
       ),
     )
     .orderBy(desc(schema.payrollRun.month), schema.payrollRun.createdAt);
 
-  const wanted = rows.filter((row) => inRange(row.run.month, filter));
   if (wanted.length === 0) return [];
-  if (!options.withPeople) return wanted.map((row) => ({ ...row, people: [] }));
+  if (!withPeople) return wanted.map((row) => ({ ...row, people: [] }));
 
   const people = await db()
     .select()
     .from(schema.payrollRunPerson)
     .where(inArray(schema.payrollRunPerson.runId, wanted.map((row) => row.run.id)));
+  const peopleOf = new Map<string, LoadedRun["people"]>();
+  for (const person of people) peopleOf.set(person.runId, [...(peopleOf.get(person.runId) ?? []), { personId: person.personId, profile: person.profile, result: openResult(person) }]);
 
-  return wanted.map((row) => ({
-    ...row,
-    people: people.filter((person) => person.runId === row.run.id).map((person) => ({ personId: person.personId, profile: person.profile, result: openResult(person) })),
-  }));
-}
+  return wanted.map((row) => ({ ...row, people: peopleOf.get(row.run.id) ?? [] }));
+});
 
-const inRange = (month: string, filter: ReportFilter) => (!filter.fromMonth || month >= filter.fromMonth) && (!filter.toMonth || month <= filter.toMonth);
+/** Everyone paid in the runs, and the facts about them — one read shared by the reports of a month. */
+const factsOfRuns = (runs: readonly LoadedRun[], month: string) => payrollFactsOf(runs.flatMap((loaded) => loaded.people.map((person) => person.personId)), month);
+
+/** Unit id → name, from the shared cache of the unit tree. */
+const departmentNames = async () => new Map((await listOrgUnits()).map((row) => [row.id, row.name]));
 
 // ── The payroll register (FR-PAY-34) ────────────────────────────────────────────────────────
 
@@ -96,11 +110,8 @@ export async function payrollRegister(principal: Principal, entityId: string, mo
   const runs = await loadRuns(principal, { entityId, month }, { withPeople: true });
   if (runs.length === 0) return null;
 
-  const personIds = [...new Set(runs.flatMap((loaded) => loaded.people.map((person) => person.personId)))];
-  const facts = await listPayrollFacts({ personIds }, month);
+  const [facts, departmentOf] = await Promise.all([factsOfRuns(runs, month), departmentNames()]);
   const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
-  const departments = await db().select({ id: schema.orgUnit.id, name: schema.orgUnit.name }).from(schema.orgUnit);
-  const departmentOf = new Map(departments.map((row) => [row.id, row.name]));
 
   // A month can hold a regular run and off-cycle runs; the register is the month, so they add up.
   const byPerson = new Map<string, RegisterLine>();
@@ -166,11 +177,8 @@ export async function costReport(principal: Principal, filter: ReportFilter): Pr
   const month = filter.month ?? "";
   if (runs.length === 0) return { month, byEntity: [], byDepartment: [], total: { key: "total", label: "", headcount: 0, gross: 0, employerInsurance: 0, unionFund: 0, employerCost: 0 } };
 
-  const personIds = [...new Set(runs.flatMap((loaded) => loaded.people.map((person) => person.personId)))];
-  const facts = await listPayrollFacts({ personIds }, runs[0].run.month);
+  const [facts, departmentOf] = await Promise.all([factsOfRuns(runs, runs[0].run.month), departmentNames()]);
   const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
-  const departments = await db().select({ id: schema.orgUnit.id, name: schema.orgUnit.name }).from(schema.orgUnit);
-  const departmentOf = new Map(departments.map((row) => [row.id, row.name]));
 
   const entityRows = new Map<string, CostRow>();
   const departmentRows = new Map<string, CostRow>();
@@ -215,11 +223,13 @@ export type InsuranceSummary = { month: string; entityCode: string; lines: Insur
 export async function insuranceSummary(principal: Principal, entityId: string, month: string): Promise<InsuranceSummary | null> {
   if (!canManageCompensation(principal, { entityId })) return null;
   // Only the regular run contributes: an off-cycle bonus never re-opens the month's insurance.
-  const runs = (await loadRuns(principal, { entityId, month }, { withPeople: true })).filter((loaded) => loaded.run.kind === "regular");
+  const all = await loadRuns(principal, { entityId, month }, { withPeople: true });
+  const runs = all.filter((loaded) => loaded.run.kind === "regular");
   if (runs.length === 0) return null;
 
   const people = runs.flatMap((loaded) => loaded.people);
-  const facts = await listPayrollFacts({ personIds: people.map((person) => person.personId) }, month);
+  // Asked about everyone in the month's runs, so the read is the one the register and PIT share.
+  const facts = await factsOfRuns(all, month);
   const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
 
   const lines = people
@@ -264,7 +274,7 @@ export async function pitSummary(principal: Principal, entityId: string, month: 
   const runs = await loadRuns(principal, { entityId, month }, { withPeople: true });
   if (runs.length === 0) return null;
 
-  const facts = await listPayrollFacts({ personIds: [...new Set(runs.flatMap((loaded) => loaded.people.map((person) => person.personId)))] }, month);
+  const facts = await factsOfRuns(runs, month);
   const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
 
   // A month's off-cycle runs are part of the same withholding: they add up per person.
@@ -366,10 +376,12 @@ export async function costTrend(principal: Principal, filter: ReportFilter): Pro
 export async function reportOptions(principal: Principal): Promise<{ entities: { id: string; code: string; shortName: string }[]; months: string[] }> {
   const reach = payrollReadReach(principal);
   if (!reach.all && reach.entityIds.length === 0) return { entities: [], months: [] };
-  const [entities, months] = await Promise.all([
-    db().select({ id: schema.entity.id, code: schema.entity.code, shortName: schema.entity.shortName }).from(schema.entity).where(withinReach(schema.entity.id, reach)).orderBy(schema.entity.code),
+  const [all, months] = await Promise.all([
+    listEntities(),
     db().selectDistinct({ month: schema.payrollRun.month }).from(schema.payrollRun).where(and(withinReach(schema.payrollRun.entityId, reach), ne(schema.payrollRun.status, "cancelled"))).orderBy(desc(schema.payrollRun.month)),
   ]);
+  // The entities come from the shared cache (ordered by code), narrowed to the reach here.
+  const entities = all.filter((row) => reach.all || reach.entityIds.includes(row.id)).map((row) => ({ id: row.id, code: row.code, shortName: row.shortName }));
   return { entities, months: months.map((row) => row.month) };
 }
 

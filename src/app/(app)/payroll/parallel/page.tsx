@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { listPayrollFacts } from "@/modules/core-hr/service";
+import { listEmploymentFacts } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
@@ -25,23 +25,22 @@ export const metadata: Metadata = { title: "Parallel run" };
  */
 export default async function ParallelRunPage({ searchParams }: PageProps<"/payroll/parallel">) {
   const user = await requireUser();
-  const entities = await listEntityOptions(compensationReach(user.principal));
+  const [entities, params, t] = await Promise.all([listEntityOptions(compensationReach(user.principal)), searchParams, getTranslations("payroll.parallel")]);
   if (entities.length === 0) notFound();
   requireStepUp(user, "/payroll/parallel");
 
-  const params = await searchParams;
   const asString = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
   const entityId = entities.find((entity) => entity.id === asString(params.entityId))?.id ?? entities[0].id;
   // Re-checked here although the entity came from the viewer's own reach: the id is in the URL.
   if (!canManageCompensation(user.principal, { entityId })) notFound();
 
-  const known = await listParallelMonths(entityId);
+  // The reference form only needs names: the entity's people, nothing decrypted.
+  const [known, people] = await Promise.all([listParallelMonths(entityId), listEmploymentFacts({ entityIds: [entityId] })]);
   const today = new Date();
   const wanted = asString(params.month);
   const month = wanted && /^\d{4}-(0[1-9]|1[0-2])$/.test(wanted) ? wanted : (known[0] ?? `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`);
 
-  const t = await getTranslations("payroll.parallel");
-  const [report, people] = await Promise.all([reconcile(entityId, month), listPayrollFacts({ entityIds: [entityId] }, month)]);
+  const report = await reconcile(entityId, month);
   const summary = report.summary;
 
   return (

@@ -1,15 +1,17 @@
 // Check-in and check-out from the app (FR-ATT-03, 04), the review of flagged check-ins, and
 // "who's in today" (FR-ATT-15). The time of a punch is the server's clock, always.
 import "server-only";
-import { and, asc, desc, eq, gte, inArray, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { getLeaveOnDays } from "@/modules/leave/service";
-import { personInReachSql } from "@/modules/platform/rbac/reach-sql";
 import { matchesReach, permissionReach, type Principal, tierReach } from "@/modules/platform/rbac/policy";
 import type { DayPlan } from "./engine/calendar";
 import { evaluatePunch, type Position, type PunchFlag, type WorkLocationRule } from "./engine/geofence";
+import { listAllLocations } from "./locations";
+import { anyReachSql } from "./people-sql";
 import { canSeePunchDetailOf } from "./policy";
 import { requestTimesheetRecompute } from "./recompute";
 import { declaredOffSiteLocations } from "./request-inputs";
@@ -126,7 +128,7 @@ export type CheckInState = {
 
 export async function getCheckInState(person: { id: string; primaryEntityId: string | null }, now: Date = new Date()): Promise<CheckInState> {
   const today = todayInVietnam(now);
-  const [plans, rows, last, leave, locations] = await Promise.all([
+  const [plans, rows, last, leave, allLocations] = await Promise.all([
     getDayPlans([person.id], today, today),
     db()
       .select({ punch: schema.punch, locationName: schema.workLocation.name })
@@ -136,8 +138,9 @@ export async function getCheckInState(person: { id: string; primaryEntityId: str
       .orderBy(asc(schema.punch.at)),
     lastOpenPunch(db(), person.id, now),
     getLeaveOnDays([person.id], today, today),
-    person.primaryEntityId ? db().$count(schema.workLocation, and(eq(schema.workLocation.entityId, person.primaryEntityId), eq(schema.workLocation.isActive, true))) : 0,
+    person.primaryEntityId ? listAllLocations() : [],
   ]);
+  const locations = allLocations.filter((row) => row.entityId === person.primaryEntityId && row.isActive).length;
   return {
     today,
     plan: plans.get(person.id)?.days[0] ?? null,
@@ -169,7 +172,7 @@ export type FlaggedPunch = {
   nearestLocationName: string | null;
 };
 
-const personTarget = (person: typeof schema.person.$inferSelect) => ({ personId: person.id, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId });
+const personTarget = (person: { id: string; primaryEntityId: string | null; orgUnitPath: string[]; managerId: string | null }) => ({ personId: person.id, entityId: person.primaryEntityId, unitPath: person.orgUnitPath, managerId: person.managerId });
 
 /** Flagged punches of the people the viewer reviews (reports; HR's scope) — never the viewer's own. Waiting ones first. */
 export async function listFlaggedPunches(viewer: { personId: string; principal: Principal }, options: { sinceDays?: number; now?: Date } = {}): Promise<FlaggedPunch[]> {
@@ -179,7 +182,7 @@ export async function listFlaggedPunches(viewer: { personId: string; principal: 
     .select({ punch: schema.punch, person: schema.person })
     .from(schema.punch)
     .innerJoin(schema.person, eq(schema.person.id, schema.punch.personId))
-    .where(and(ne(schema.punch.reviewStatus, "none"), gte(schema.punch.at, since), or(eq(schema.person.managerId, viewer.personId), personInReachSql(reach))))
+    .where(and(ne(schema.punch.reviewStatus, "none"), gte(schema.punch.at, since), ne(schema.person.id, viewer.personId), anyReachSql([reach], eq(schema.person.managerId, viewer.personId))))
     .orderBy(sql`${schema.punch.reviewStatus} = 'pending' desc`, desc(schema.punch.at))
     .limit(300);
   const mine = rows.filter(({ person }) => person.id !== viewer.personId && (person.managerId === viewer.personId || matchesReach(reach, personTarget(person))));
@@ -188,7 +191,7 @@ export async function listFlaggedPunches(viewer: { personId: string; principal: 
   const reviewerIds = [...new Set(mine.flatMap(({ punch }) => (punch.reviewedByPersonId ? [punch.reviewedByPersonId] : [])))];
   const [reviewers, locations] = await Promise.all([
     reviewerIds.length ? db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, reviewerIds)) : [],
-    db().select({ id: schema.workLocation.id, entityId: schema.workLocation.entityId, name: schema.workLocation.name }).from(schema.workLocation).where(eq(schema.workLocation.isActive, true)),
+    listAllLocations().then((rows) => rows.filter((row) => row.isActive)),
   ]);
   return mine.map(({ punch, person }) => {
     const entityLocations = locations.filter((row) => row.entityId === punch.entityId);
@@ -214,8 +217,16 @@ export async function listFlaggedPunches(viewer: { personId: string; principal: 
   });
 }
 
+/** How many flagged punches wait for the viewer — the same people as `listFlaggedPunches`, counted in the database. */
 export async function countPunchesToReview(viewer: { personId: string; principal: Principal }, options: { now?: Date } = {}): Promise<number> {
-  return (await listFlaggedPunches(viewer, options)).filter((row) => row.reviewStatus === "pending").length;
+  const since = startOfVietnamDay(addDays(todayInVietnam(options.now), -31));
+  const reach = permissionReach(viewer.principal, "attendance:manage");
+  const [{ value }] = await db()
+    .select({ value: sql<number>`count(*)::int` })
+    .from(schema.punch)
+    .innerJoin(schema.person, eq(schema.person.id, schema.punch.personId))
+    .where(and(eq(schema.punch.reviewStatus, "pending"), gte(schema.punch.at, since), ne(schema.person.id, viewer.personId), anyReachSql([reach], eq(schema.person.managerId, viewer.personId))));
+  return value;
 }
 
 export async function getPunch(id: string, executor: Executor = db()): Promise<PunchRow | null> {
@@ -268,13 +279,24 @@ export type Presence = { date: IsoDate; rows: PresenceRow[]; departments: { id: 
  */
 export async function getWhoIsIn(viewer: { personId: string; principal: Principal }, options: { departmentId?: string | null } = {}, now: Date = new Date()): Promise<Presence> {
   const today = todayInVietnam(now);
-  const everyone = await db().select({ person: schema.person, departmentName: schema.orgUnit.name }).from(schema.person).leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.person.departmentId)).where(eq(schema.person.status, "active"));
-  const me = everyone.find((row) => row.person.id === viewer.personId)?.person;
   const hrReach = permissionReach(viewer.principal, "attendance:manage");
   const personalReach = tierReach(viewer.principal, "personal");
+  const collaborator = viewer.principal.workforceType === "collaborator";
+  // The viewer's own group, asked of the viewer's row in the same query: their team, or without one their department within the entity.
+  const viewerRow = alias(schema.person, "me");
+  const inMyGroup = sql`exists (select 1 from ${schema.person} as ${sql.identifier("me")} where ${viewerRow.id} = ${viewer.personId} and ${viewerRow.status} = 'active' and (case when ${viewerRow.teamId} is not null then ${schema.person.teamId} = ${viewerRow.teamId} else ${viewerRow.departmentId} is not null and ${schema.person.departmentId} = ${viewerRow.departmentId} and ${schema.person.primaryEntityId} is not distinct from ${viewerRow.primaryEntityId} end))`;
+  const everyone = await db()
+    .select({
+      person: { id: schema.person.id, fullName: schema.person.fullName, primaryEntityId: schema.person.primaryEntityId, departmentId: schema.person.departmentId, teamId: schema.person.teamId, orgUnitPath: schema.person.orgUnitPath, managerId: schema.person.managerId },
+      departmentName: schema.orgUnit.name,
+    })
+    .from(schema.person)
+    .leftJoin(schema.orgUnit, eq(schema.orgUnit.id, schema.person.departmentId))
+    .where(and(eq(schema.person.status, "active"), anyReachSql([hrReach, personalReach], eq(schema.person.id, viewer.personId), eq(schema.person.managerId, viewer.personId), collaborator ? undefined : inMyGroup)));
+  const me = everyone.find((row) => row.person.id === viewer.personId)?.person;
   // Collaborators have no directory: they see themselves only.
-  const sameGroup = (person: typeof schema.person.$inferSelect) =>
-    !!me && viewer.principal.workforceType !== "collaborator" && (me.teamId ? person.teamId === me.teamId : !!me.departmentId && person.departmentId === me.departmentId && person.primaryEntityId === me.primaryEntityId);
+  const sameGroup = (person: (typeof everyone)[number]["person"]) =>
+    !!me && !collaborator && (me.teamId ? person.teamId === me.teamId : !!me.departmentId && person.departmentId === me.departmentId && person.primaryEntityId === me.primaryEntityId);
   const visible = everyone.filter(({ person }) => person.id === viewer.personId || sameGroup(person) || person.managerId === viewer.personId || matchesReach(hrReach, personTarget(person)) || matchesReach(personalReach, personTarget(person)));
   const departments = [...new Map(visible.flatMap((row) => (row.person.departmentId && row.departmentName ? [[row.person.departmentId, { id: row.person.departmentId, name: row.departmentName }] as const] : []))).values()].sort((a, b) => a.name.localeCompare(b.name));
   const shown = visible.filter((row) => !options.departmentId || row.person.departmentId === options.departmentId);
@@ -293,14 +315,18 @@ export async function getWhoIsIn(viewer: { personId: string; principal: Principa
       : [],
   ]);
 
+  const punchesOf = new Map<string, typeof punches>();
+  for (const row of punches) punchesOf.set(row.personId, [...(punchesOf.get(row.personId) ?? []), row]);
+  const leaveOf = new Map<string, typeof leave>();
+  for (const day of leave) leaveOf.set(day.personId, [...(leaveOf.get(day.personId) ?? []), day]);
   const counts = { in: 0, out: 0, not_yet: 0, on_leave: 0, off_site: 0, untracked: 0, rest: 0, holiday: 0, unscheduled: 0 } satisfies Record<PresenceStatus, number>;
   const rows = shown
     .map(({ person, departmentName }): PresenceRow => {
       const plan = plans.get(person.id)?.days[0];
-      const own = punches.filter((row) => row.personId === person.id);
+      const own = punchesOf.get(person.id) ?? [];
       const todays = own.filter((row) => row.at >= dayStart);
       const last = own.at(-1);
-      const away = leave.filter((day) => day.personId === person.id);
+      const away = leaveOf.get(person.id) ?? [];
       const fullDayLeave = away.some((day) => day.portion === "full");
 
       let status: PresenceStatus;

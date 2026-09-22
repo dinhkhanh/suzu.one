@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
-import { canAdminTeam, canManageTemplate, listAssignable, listCreateTargets, listTeams, listWorkTemplates, loadViewer, teamFacts } from "@/modules/work/service";
+import { canAdminTeam, canManageTemplate, listAssignableByTeam, listCreateTargets, listTeams, listWorkTemplates, loadViewer, teamFacts } from "@/modules/work/service";
 import { TemplateCard, TemplateCreateForm, TemplateUseForm } from "@/modules/work/ui/planning-forms";
 
 export const metadata: Metadata = { title: "Templates" };
@@ -12,16 +12,14 @@ export const metadata: Metadata = { title: "Templates" };
 export default async function WorkTemplatesPage() {
   const user = await requireUser();
   const viewer = await loadViewer(user);
-  const t = await getTranslations("work.templates");
-  const tWork = await getTranslations("work");
-  const [teams, all, targets] = await Promise.all([listTeams(), listWorkTemplates(), listCreateTargets(viewer)]);
+  const [t, tWork, teams, all, targets] = await Promise.all([getTranslations("work.templates"), getTranslations("work"), listTeams(), listWorkTemplates(), listCreateTargets(viewer)]);
   const teamOf = (id: string | null) => teams.find((team) => team.id === id);
   const canShare = canManageTemplate(viewer, null);
   const owners = teams.filter((team) => team.isActive && canAdminTeam(viewer, teamFacts(team)));
   // A team's templates are its own business: its members and whoever runs it.
   const templates = all.filter((template) => !template.ownerId || viewer.teamRoles.has(template.ownerId) || owners.some((team) => team.id === template.ownerId));
   const createTeams = targets.teams.filter((team) => team.canCreateProject);
-  const peopleByTeam = Object.fromEntries(await Promise.all(createTeams.map(async (team) => [team.id, await listAssignable(team.id, null)] as const)));
+  const peopleByTeam = Object.fromEntries(await listAssignableByTeam(createTeams.map((team) => team.id)));
 
   return (
     <div className="flex max-w-5xl flex-col gap-8">

@@ -16,7 +16,7 @@ export { getPerformanceResults, type PerformanceResults } from "./results";
 
 // ── KPIs (week 2) ───────────────────────────────────────────────────────────────────────────
 export { type AssignmentView, type KpiRow, listAssignments, listKpis, listPositionTemplates, type PositionTemplate, templateFor } from "./kpis";
-export { closeBlockers, type CloseBlocker, getScorecard, isMissing, listPeriods, type KpiPeriodRow, type Scorecard } from "./kpi-scores";
+export { closeBlockers, closeBlockersOf, type CloseBlocker, getScorecard, isMissing, listPeriods, type KpiPeriodRow, type Scorecard } from "./kpi-scores";
 export { type EntryRow, getEntryGrid, getOverview, getTeamDashboard, type Overview, type OverviewEntity, type Spread, type TeamRow } from "./kpi-views";
 export { loadDirectory, reportsBelow, type DirectoryPerson } from "./people";
 export type { AnnualKpiLine, KpiLineFlag, KpiTrace, KpiTraceLine } from "./engine/kpi-score";
@@ -24,6 +24,7 @@ export type { AnnualKpiLine, KpiLineFlag, KpiTrace, KpiTraceLine } from "./engin
 // ── Review cycles (Phase 8 week 1, FR-PRF-03, 08) ───────────────────────────────────────────
 export { canAcknowledgeReview, canManageCycle, canManageReviewTemplates, canReadAnonymisedPeers, canReadReviewForm, canReleaseReview, canSeeParticipant, canWriteManagerReview, canWritePeerReview, canWriteSelfReview, isReviewingManager, type ReviewParties } from "./review-policy";
 export {
+  annualParticipantIds,
   cycleProgress,
   eligibleParticipants,
   findParticipant,
@@ -63,7 +64,7 @@ export { getWeighting, getWeightingVersion, hasWeighting, listWeightingVersions,
  * **settled** results only — locked or published — with the trace that explains each figure.
  * No authorization inside: payroll decides who may see an amount built on them.
  */
-export { findResult, findResultById, getFinalResult, getPublishedResult, listFinalResults, listResults, type PerformanceResultRow, previewResult, type ResultLine, resultYears } from "./final-results";
+export { findResult, findResultById, getFinalResult, getPublishedResult, listFinalResults, listResultDetails, listResults, type PerformanceResultRow, previewResult, type ResultLine, resultYears } from "./final-results";
 /**
  * The other half of the bonus contract: once a run is approved, payroll records the stored KPI
  * scores it was computed from, and `reopenMonth` then refuses to take those months back.

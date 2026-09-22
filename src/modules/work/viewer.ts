@@ -1,6 +1,6 @@
 // The viewer as the work policy wants them: the principal plus their team and project memberships.
 import "server-only";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { cache } from "react";
 import { db, schema, type Tx } from "@/lib/db";
 import type { Principal } from "../platform/rbac/policy";
@@ -33,7 +33,35 @@ export const loadViewer = cache((user: ViewerSource): Promise<WorkViewer> => loa
  * a follower still belongs on a task. null = unknown or gone.
  */
 export async function viewerOfPerson(executor: Executor, personId: string): Promise<WorkViewer | null> {
-  const [person] = await executor.select({ id: schema.person.id, primaryEntityId: schema.person.primaryEntityId, workforceType: schema.person.workforceType, status: schema.person.status }).from(schema.person).where(eq(schema.person.id, personId)).limit(1);
-  if (!person || person.status === "offboarded") return null;
-  return loadViewerWith(executor, { person, principal: { personId: person.id, workforceType: person.workforceType, grants: await loadGrants(person.id, undefined, executor) } });
+  return (await viewersOfPeople(personId ? [personId] : [], executor)).get(personId) ?? null;
+}
+
+/**
+ * `viewerOfPerson` for many people at once, in a fixed number of queries. People unknown or gone
+ * are left out of the map. Without an executor the grants come from the shared cache; inside a
+ * transaction pass it, and everything is read there.
+ */
+export async function viewersOfPeople(personIds: readonly string[], executor?: Executor): Promise<Map<string, WorkViewer>> {
+  const ids = [...new Set(personIds)];
+  const result = new Map<string, WorkViewer>();
+  if (ids.length === 0) return result;
+  const from = executor ?? db();
+  const [people, teams, projects] = await Promise.all([
+    from.select({ id: schema.person.id, primaryEntityId: schema.person.primaryEntityId, workforceType: schema.person.workforceType, status: schema.person.status }).from(schema.person).where(inArray(schema.person.id, ids)),
+    from.select({ personId: schema.workTeamMember.personId, id: schema.workTeamMember.teamId, role: schema.workTeamMember.role }).from(schema.workTeamMember).where(inArray(schema.workTeamMember.personId, ids)),
+    from.select({ personId: schema.workProjectMember.personId, id: schema.workProjectMember.projectId, role: schema.workProjectMember.role }).from(schema.workProjectMember).where(inArray(schema.workProjectMember.personId, ids)),
+  ]);
+  const present = people.filter((person) => person.status !== "offboarded");
+  const grants = await Promise.all(present.map((person) => loadGrants(person.id, undefined, executor)));
+  const teamsOf = Map.groupBy(teams, (row) => row.personId);
+  const projectsOf = Map.groupBy(projects, (row) => row.personId);
+  present.forEach((person, index) => {
+    result.set(person.id, {
+      principal: { personId: person.id, workforceType: person.workforceType, grants: grants[index] },
+      entityId: person.primaryEntityId,
+      teamRoles: new Map((teamsOf.get(person.id) ?? []).map((row) => [row.id, row.role as TeamRole])),
+      projectRoles: new Map((projectsOf.get(person.id) ?? []).map((row) => [row.id, row.role as TeamRole])),
+    });
+  });
+  return result;
 }

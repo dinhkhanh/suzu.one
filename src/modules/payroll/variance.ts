@@ -6,10 +6,10 @@
 import "server-only";
 import { and, eq, ne } from "drizzle-orm";
 import { db, schema, type Tx } from "@/lib/db";
-import { listPayrollFacts } from "@/modules/core-hr/service";
+import { listPayrollFacts, payrollFactsOf } from "@/modules/core-hr/service";
 import { compareRuns, type VarianceReport } from "./engine/variance";
 import { getPayrollPolicyVersion } from "./policies";
-import { openResult, type PayrollRunRow } from "./run-storage";
+import { loadRunPeople, openResult, type PayrollRunPersonRow, type PayrollRunRow } from "./run-storage";
 
 type Executor = Tx | ReturnType<typeof db>;
 
@@ -32,25 +32,24 @@ export type RunVariance = VarianceReport & {
  * stand now**, not as they stood when the run was calculated — the point is whether this payroll
  * can be paid and declared today.
  */
-export async function getRunVariance(run: PayrollRunRow, executor: Executor = db()): Promise<RunVariance> {
+export async function getRunVariance(run: PayrollRunRow, executor?: Executor): Promise<RunVariance> {
   const month = previousMonth(run.month);
-  const [currentRows, previousRun] = await Promise.all([
-    executor.select().from(schema.payrollRunPerson).where(eq(schema.payrollRunPerson.runId, run.id)),
-    lastComparableRun(run, month, executor),
-  ]);
-  const previousRows = previousRun ? await executor.select().from(schema.payrollRunPerson).where(eq(schema.payrollRunPerson.runId, previousRun.id)) : [];
+  const from = executor ?? db();
+  // One round trip for everything the comparison stands on, then one for the people's records.
+  const [currentPeople, previousRows, thresholdBp] = await Promise.all([loadRunPeople(run.id, executor), lastComparableRun(run, month, from), thresholdOf(run, from)]);
+  const hasPrevious = previousRows.length > 0;
 
-  const current = currentRows.map((row) => ({ personId: row.personId, result: openResult(row) }));
-  const previous = previousRows.map((row) => ({ personId: row.personId, result: openResult(row) }));
+  const current = currentPeople.map((person) => ({ personId: person.row.personId, result: person.result }));
+  const previous = previousRows.flatMap((row) => (row.person ? [{ personId: row.person.personId, result: openResult(row.person) }] : []));
 
   const personIds = [...new Set([...current.map((row) => row.personId), ...previous.map((row) => row.personId)])];
-  const facts = personIds.length > 0 ? await listPayrollFacts({ personIds }, run.month, executor) : [];
+  const facts = personIds.length === 0 ? [] : executor ? await listPayrollFacts({ personIds }, run.month, executor) : await payrollFactsOf(personIds, run.month);
   const profileOf = new Map(current.map((row) => [row.personId, row.result.profile]));
 
   const report = compareRuns({
     current,
     previous,
-    thresholdBp: await thresholdOf(run, executor),
+    thresholdBp,
     facts: facts.map((fact) => {
       const profile = profileOf.get(fact.personId) ?? "statutory";
       return {
@@ -67,21 +66,24 @@ export async function getRunVariance(run: PayrollRunRow, executor: Executor = db
   return {
     ...report,
     previousMonth: month,
-    hasPrevious: !!previousRun,
+    hasPrevious,
     names: new Map(facts.map((fact) => [fact.personId, { fullName: fact.fullName, employeeCode: fact.employeeCode }])),
   };
 }
 
-/** The regular run of the month before — the only one worth comparing a month with. */
-async function lastComparableRun(run: PayrollRunRow, month: string, executor: Executor): Promise<PayrollRunRow | null> {
+/**
+ * The regular run of the month before — the only one worth comparing a month with — with its
+ * people, in one query (a run with nobody in it still comes back, as one row without a person).
+ */
+async function lastComparableRun(run: PayrollRunRow, month: string, executor: Executor): Promise<{ person: PayrollRunPersonRow | null }[]> {
   // An off-cycle run is compared with nothing: a bonus has no "last month".
-  if (run.kind !== "regular") return null;
-  const [previous] = await executor
-    .select()
+  if (run.kind !== "regular") return [];
+  // At most one such run exists (`payroll_run_regular_key`).
+  return executor
+    .select({ person: schema.payrollRunPerson })
     .from(schema.payrollRun)
-    .where(and(eq(schema.payrollRun.entityId, run.entityId), eq(schema.payrollRun.month, month), eq(schema.payrollRun.kind, "regular"), ne(schema.payrollRun.status, "cancelled")))
-    .limit(1);
-  return previous ?? null;
+    .leftJoin(schema.payrollRunPerson, eq(schema.payrollRunPerson.runId, schema.payrollRun.id))
+    .where(and(eq(schema.payrollRun.entityId, run.entityId), eq(schema.payrollRun.month, month), eq(schema.payrollRun.kind, "regular"), ne(schema.payrollRun.status, "cancelled")));
 }
 
 /**
@@ -99,7 +101,7 @@ async function thresholdOf(run: PayrollRunRow, executor: Executor): Promise<numb
 export const DEFAULT_THRESHOLD_BP = 1000;
 
 /** People in the run who are missing something the payment or the declaration needs. */
-export async function runBlockers(run: PayrollRunRow, executor: Executor = db()): Promise<{ personId: string; flags: string[] }[]> {
+export async function runBlockers(run: PayrollRunRow, executor?: Executor): Promise<{ personId: string; flags: string[] }[]> {
   const variance = await getRunVariance(run, executor);
   return variance.flagged
     .filter((person) => person.flags.includes("missing_bank_account") || person.flags.includes("missing_tax_code") || person.flags.includes("negative_net"))

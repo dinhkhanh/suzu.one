@@ -24,16 +24,17 @@ import "server-only";
 // sets a salary (SRS D17: C&B proposes, the owner decides). Recruitment hands each of them what
 // the candidate already typed and gets out of the way — that, and not a copy-and-paste screen, is
 // what "no retyping" means.
-import { and, asc, desc, eq, inArray, like, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, inArray, like, or, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
-import { hireInTransaction, listPositionNames } from "@/modules/core-hr/service";
+import { hireInTransaction, invalidatePositions, listPositionNames } from "@/modules/core-hr/service";
 import { atLeast, type LetterheadFields, renderTemplate, vietnameseWords } from "@/modules/documents/service";
 import { decideRequest, defineRequestType, getRequest, type RequestView, submitRequest } from "@/modules/platform/approvals/service";
 import { notify } from "@/modules/platform/notifications/service";
-import type { Principal } from "@/modules/platform/rbac/policy";
-import type { Tier } from "@/modules/platform/rbac/roles";
+import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
+import { type Principal, unitsCovered } from "@/modules/platform/rbac/policy";
+import { ROLE_DEFINITIONS, type Tier } from "@/modules/platform/rbac/roles";
 import { listPeopleHolding } from "@/modules/platform/rbac/service";
 import { submitSalaryChange } from "@/modules/payroll/service";
 import {
@@ -467,23 +468,32 @@ export type OfferView = {
 export async function getOfferView(viewer: { principal: Principal; personId: string | null }, offerId: string, today: IsoDate = todayInVietnam()): Promise<OfferView | null> {
   const offer = await findOffer(offerId);
   if (!offer) return null;
-  const opening = await findOpening(offer.openingId);
+  // The approval is read **with** the opening, before the check: `getRequest` returns null unless
+  // the viewer is a party to it, which is how somebody the flow asked — and who runs no recruitment
+  // at all — reaches the offer they have been asked to approve.
+  const [opening, member, approval] = await Promise.all([
+    findOpening(offer.openingId),
+    isOpeningMember(offer.openingId, viewer.personId),
+    offer.approvalRequestId && viewer.personId ? getRequest({ principal: viewer.principal, personId: viewer.personId }, offerRequestType, offer.approvalRequestId) : null,
+  ]);
   if (!opening) return null;
-  const member = await isOpeningMember(opening.id, viewer.personId);
   const target = targetOf(opening);
-  // The approval is read **first**: `getRequest` returns null unless the viewer is a party to it,
-  // which is how somebody the flow asked — and who runs no recruitment at all — reaches the offer
-  // they have been asked to approve.
-  const approval = offer.approvalRequestId && viewer.personId ? await getRequest({ principal: viewer.principal, personId: viewer.personId }, offerRequestType, offer.approvalRequestId) : null;
   if (!canViewOffer(viewer.principal, target, member, !!approval)) return null;
 
-  const candidate = await findCandidate(offer.candidateId);
-  const application = await findApplication(offer.applicationId);
-
-  const [entity] = await db().select({ shortName: schema.entity.shortName }).from(schema.entity).where(eq(schema.entity.id, offer.entityId)).limit(1);
-  const [department] = offer.departmentId ? await db().select({ name: schema.orgUnit.name }).from(schema.orgUnit).where(eq(schema.orgUnit.id, offer.departmentId)).limit(1) : [undefined];
-  const [manager] = offer.managerPersonId ? await db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, offer.managerPersonId)).limit(1) : [undefined];
-  const [maker] = await db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, offer.createdByPersonId)).limit(1);
+  const [candidate, application, entities, units, people] = await Promise.all([
+    findCandidate(offer.candidateId),
+    findApplication(offer.applicationId),
+    listEntities(),
+    offer.departmentId ? listOrgUnits() : [],
+    db()
+      .select({ id: schema.person.id, fullName: schema.person.fullName })
+      .from(schema.person)
+      .where(inArray(schema.person.id, [offer.createdByPersonId, ...(offer.managerPersonId ? [offer.managerPersonId] : [])])),
+  ]);
+  const entity = entities.find((row) => row.id === offer.entityId);
+  const department = offer.departmentId ? units.find((row) => row.id === offer.departmentId) : undefined;
+  const manager = offer.managerPersonId ? people.find((row) => row.id === offer.managerPersonId) : undefined;
+  const maker = people.find((row) => row.id === offer.createdByPersonId);
 
   const status = effectiveOfferStatus({ status: offer.status, expiresOn: offer.expiresOn as IsoDate }, today);
   const money = canReadOfferMoney(viewer.principal, target)
@@ -518,8 +528,41 @@ export async function getOfferView(viewer: { principal: Principal; personId: str
 export type OfferListRow = { id: string; number: string; candidateName: string; positionName: string; openingCode: string; status: OfferStatus; startDate: IsoDate; expiresOn: IsoDate; entityName: string | null; hiredPersonId: string | null };
 
 /** Every offer the reader may see, newest first. No figure: this is a list, and a list is glanced at. */
+/**
+ * `canViewOffer` (without the approval-party clause) as a WHERE clause, so the list reads only the
+ * offers it may show: `recruit:manage` over the opening's entity or one of its units, or a seat on
+ * its hiring team. The page still runs `canViewOffer` on every row.
+ */
+function offerScope(principal: Principal, personId: string | null) {
+  const entityIds: string[] = [];
+  const unitIds: string[] = [];
+  for (const grant of principal.grants) {
+    const permissions = ROLE_DEFINITIONS[grant.role].permissions as readonly string[];
+    if (!permissions.includes("*") && !permissions.includes("recruit:manage")) continue;
+    if (grant.scope.type === "group") return undefined;
+    if (grant.scope.type === "entity") entityIds.push(grant.scope.id);
+    if (grant.scope.type === "unit") unitIds.push(...unitsCovered(grant.scope));
+  }
+  const member =
+    personId && principal.personId
+      ? exists(
+          db()
+            .select({ one: sql`1` })
+            .from(schema.jobOpeningMember)
+            .where(and(eq(schema.jobOpeningMember.openingId, schema.jobOffer.openingId), eq(schema.jobOpeningMember.personId, personId))),
+        )
+      : undefined;
+  return (
+    or(
+      entityIds.length > 0 ? inArray(schema.jobOpening.entityId, entityIds) : undefined,
+      unitIds.length > 0 ? or(inArray(schema.jobOpening.departmentId, unitIds), inArray(schema.jobOpening.teamId, unitIds)) : undefined,
+      member,
+    ) ?? sql`false`
+  );
+}
+
 export async function listOffers(principal: Principal, personId: string | null, filters: { status?: OfferStatus } = {}, today: IsoDate = todayInVietnam()): Promise<OfferListRow[]> {
-  const rows = await db()
+  const rowsQuery = db()
     .select({
       id: schema.jobOffer.id,
       number: schema.jobOffer.number,
@@ -541,13 +584,19 @@ export async function listOffers(principal: Principal, personId: string | null, 
     .innerJoin(schema.jobOpening, eq(schema.jobOpening.id, schema.jobOffer.openingId))
     .innerJoin(schema.jobApplication, eq(schema.jobApplication.id, schema.jobOffer.applicationId))
     .leftJoin(schema.entity, eq(schema.entity.id, schema.jobOffer.entityId))
+    .where(offerScope(principal, personId))
     .orderBy(desc(schema.jobOffer.createdAt));
 
-  const memberOf = personId
-    ? new Set(
-        (await db().select({ openingId: schema.jobOpeningMember.openingId }).from(schema.jobOpeningMember).where(eq(schema.jobOpeningMember.personId, personId))).map((row) => row.openingId),
-      )
-    : new Set<string>();
+  const [rows, memberOf] = await Promise.all([
+    rowsQuery,
+    personId
+      ? db()
+          .select({ openingId: schema.jobOpeningMember.openingId })
+          .from(schema.jobOpeningMember)
+          .where(eq(schema.jobOpeningMember.personId, personId))
+          .then((members) => new Set(members.map((row) => row.openingId)))
+      : new Set<string>(),
+  ]);
 
   return rows
     .filter((row) => canViewOffer(principal, { entityId: row.openingEntityId, departmentId: row.openingDepartmentId, teamId: row.openingTeamId }, memberOf.has(row.openingId)))
@@ -754,6 +803,8 @@ export async function convertToEmployee(offerId: string, actorPersonId: string, 
 
     return { personId: person.id, employeeCode: employment.employeeCode, offer, candidateName: candidate.fullName };
   });
+  // The hire may have added a position; core-HR's cached list is cleared once it is committed.
+  await invalidatePositions();
 
   // Outside the hire's transaction on purpose: the person exists whatever payroll makes of the
   // figure, and `submitSalaryChange` opens its own.

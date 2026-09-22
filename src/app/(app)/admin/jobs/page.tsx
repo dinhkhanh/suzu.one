@@ -14,8 +14,7 @@ export default async function JobsPage() {
   // System health is a group-level concern, same audience as the full audit log.
   if (!can(user.principal, "audit:read", {})) notFound();
 
-  const [t, format] = await Promise.all([getTranslations("jobs"), getFormatter()]);
-  const runs = await listRecentJobRuns(100);
+  const [t, format, runs] = await Promise.all([getTranslations("jobs"), getFormatter(), listRecentJobRuns(100)]);
 
   return (
     <div className="flex max-w-5xl flex-col gap-6">

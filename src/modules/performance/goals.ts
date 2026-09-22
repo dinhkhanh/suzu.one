@@ -3,10 +3,11 @@
 // from the key results, whose current values only ever change through an append-only check-in.
 import "server-only";
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { cache } from "react";
 import { ActionError } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
-import { orgUnitOptions, placementFor } from "../platform/org/service";
+import { listEntities, listOrgUnits, orgUnitOptions, placementFor } from "../platform/org/service";
 import type { Principal } from "../platform/rbac/policy";
 import { type GoalInput, type GoalProgress, goalProgress, type ProgressLine, isStale, keyResultProgressBp, weekStartOf, weightedAverageBp } from "./engine/progress";
 import { type Confidence, type GoalLevel, type GoalStatus, isAnnual, isPeriodKey, levelRank, type MetricType, type Milestone, parseMetricValue, STALE_AFTER_DAYS, yearOfPeriod } from "./enums";
@@ -39,7 +40,14 @@ export type GoalView = Omit<GoalRow, "level" | "status"> & {
 type Year = { goals: Map<string, GoalRow>; keyResults: Map<string, KeyResultRow[]>; inputs: Map<string, GoalInput> };
 
 /** Every goal of a year with its key results: parents and children share a year, so a roll-up never needs more. */
-async function loadYear(year: number, executor: Executor = db()): Promise<Year> {
+function loadYear(year: number, executor?: Executor): Promise<Year> {
+  return executor && executor !== db() ? readYear(year, executor) : loadYearOnce(year);
+}
+
+// Once per request for the screens; a transaction reads its own rows.
+const loadYearOnce = cache((year: number): Promise<Year> => readYear(year, db()));
+
+async function readYear(year: number, executor: Executor): Promise<Year> {
   const goals = await executor.select().from(schema.goal).where(eq(schema.goal.year, year)).orderBy(asc(schema.goal.createdAt), asc(schema.goal.id));
   const keyResultRows = goals.length === 0 ? [] : await executor.select().from(schema.keyResult).where(inArray(schema.keyResult.goalId, goals.map((goal) => goal.id))).orderBy(asc(schema.keyResult.sortOrder), asc(schema.keyResult.createdAt));
   const keyResults = new Map<string, KeyResultRow[]>();
@@ -72,15 +80,12 @@ export const partiesOf = (goal: Pick<GoalRow, "level" | "entityId" | "department
 });
 
 type UnitNames = { entities: Map<string, string>; departments: Map<string, string>; teams: Map<string, string> };
-async function loadUnitNames(executor: Executor = db()): Promise<UnitNames> {
-  const [entities, departments, teams] = await Promise.all([
-    executor.select({ id: schema.entity.id, name: schema.entity.shortName }).from(schema.entity),
-    executor.select({ id: schema.orgUnit.id, name: schema.orgUnit.name }).from(schema.orgUnit),
-    executor.select({ id: schema.orgUnit.id, name: schema.orgUnit.name }).from(schema.orgUnit),
-  ]);
-  const toMap = (rows: { id: string; name: string }[]) => new Map(rows.map((row) => [row.id, row.name]));
-  return { entities: toMap(entities), departments: toMap(departments), teams: toMap(teams) };
-}
+// Department and team goals both name an org unit; the two maps are the same one.
+const loadUnitNames = cache(async (): Promise<UnitNames> => {
+  const [entities, units] = await Promise.all([listEntities(), listOrgUnits()]);
+  const unitNames = new Map(units.map((row) => [row.id, row.name]));
+  return { entities: new Map(entities.map((row) => [row.id, row.shortName])), departments: unitNames, teams: unitNames };
+});
 
 function unitNameOf(goal: GoalRow, names: UnitNames, directory: Directory): string | null {
   const entity = goal.entityId ? (names.entities.get(goal.entityId) ?? null) : null;
@@ -151,13 +156,17 @@ export type LoadedGoal = {
 export async function loadGoal(viewer: Viewer, goalId: string, now: Date = new Date()): Promise<LoadedGoal | null> {
   const [row] = await db().select().from(schema.goal).where(eq(schema.goal.id, goalId)).limit(1);
   if (!row) return null;
-  const [year, directory, names] = await Promise.all([loadYear(row.year), loadDirectory(), loadUnitNames()]);
+  const [year, directory, names, checkIns] = await Promise.all([
+    loadYear(row.year),
+    loadDirectory(),
+    loadUnitNames(),
+    db().select().from(schema.goalCheckIn).where(eq(schema.goalCheckIn.goalId, goalId)).orderBy(desc(schema.goalCheckIn.createdAt)).limit(200),
+  ]);
   const parties = partiesOf(row, directory);
   if (!canSeeGoal(viewer.principal, parties)) return null;
   const visible = (goal: GoalRow) => canSeeGoal(viewer.principal, partiesOf(goal, directory));
   const goal = toView(row, year, names, directory, visible, now);
   const parentRow = row.parentGoalId ? year.goals.get(row.parentGoalId) : undefined;
-  const checkIns = await db().select().from(schema.goalCheckIn).where(eq(schema.goalCheckIn.goalId, goalId)).orderBy(desc(schema.goalCheckIn.createdAt)).limit(200);
   const children = goal.childIds.map((id) => toView(year.goals.get(id)!, year, names, directory, visible, now));
   const lineTitles: Record<string, string> = {};
   for (const keyResult of goal.keyResults) lineTitles[keyResult.id] = keyResult.title;
@@ -201,7 +210,7 @@ export type GoalFormOptions = {
 export async function goalFormOptions(viewer: Viewer): Promise<GoalFormOptions> {
   const [directory, entities, units] = await Promise.all([
     loadDirectory(),
-    db().select().from(schema.entity).where(eq(schema.entity.isActive, true)).orderBy(asc(schema.entity.code)),
+    listEntities().then((rows) => rows.filter((entity) => entity.isActive)),
     orgUnitOptions({ activeOnly: true }),
   ]);
   // A unit goal is offered at whatever depth the unit sits; `kind` only decides which of the two
@@ -473,7 +482,7 @@ export type OkrResults = { individual: OkrFigure; units: { team: OkrFigure; depa
  * same owner is already inside its parent (or deliberately beside it) and is listed, not averaged
  * twice. No authorization here: the caller decides who sees the result.
  */
-export async function getOkrResults(input: { personId: string; year: number }, executor: Executor = db()): Promise<OkrResults> {
+export async function getOkrResults(input: { personId: string; year: number }, executor?: Executor): Promise<OkrResults> {
   const [year, directory] = await Promise.all([loadYear(input.year, executor), loadDirectory(executor)]);
   const person = directory.get(input.personId);
   const counted = [...year.goals.values()].filter((goal) => goal.status === "active" || goal.status === "closed");

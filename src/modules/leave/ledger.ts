@@ -11,7 +11,7 @@ import { getParameter } from "@/modules/platform/statutory/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { accrualPostings, carryOverExpiryDate, carryOverLapse, terminationPayout, yearEndCarryOver } from "./engine/entitlement";
 import { canSeeBalancesOf } from "./policy";
-import { type LeavePolicyRow, type LeaveTypeRow, leaveTypesFor, listPolicies, policyOn, policyRules } from "./types";
+import { allLeaveTypes, type LeavePolicyRow, type LeaveTypeRow, leaveTypesFor, leaveTypesOf, listPolicies, policyOn, policyRules } from "./types";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type LedgerEntryRow = typeof schema.leaveLedgerEntry.$inferSelect;
@@ -43,12 +43,14 @@ export type Balance = {
 };
 
 /** Balances of balance-tracked types, per person. Only types with a ledger row or a policy-less zero are listed when `types` is given. */
-export async function getBalances(personIds: readonly string[], year: number, executor: Executor = db()): Promise<Map<string, Balance[]>> {
+export async function getBalances(personIds: readonly string[], year: number, executor?: Executor): Promise<Map<string, Balance[]>> {
   const result = new Map<string, Balance[]>(personIds.map((id) => [id, []]));
   if (personIds.length === 0) return result;
   const ids = [...personIds];
-  const [sums, pending, people] = await Promise.all([
-    executor
+  const from = executor ?? db();
+  // Types come from the executor when one is given (a transaction), else from the shared cache.
+  const [sums, pending, people, allTypes] = await Promise.all([
+    from
       .select({
         personId: schema.leaveLedgerEntry.personId,
         leaveTypeId: schema.leaveLedgerEntry.leaveTypeId,
@@ -58,15 +60,17 @@ export async function getBalances(personIds: readonly string[], year: number, ex
       .from(schema.leaveLedgerEntry)
       .where(and(inArray(schema.leaveLedgerEntry.personId, ids), eq(schema.leaveLedgerEntry.leaveYear, year)))
       .groupBy(schema.leaveLedgerEntry.personId, schema.leaveLedgerEntry.leaveTypeId),
-    pendingByType(executor, ids, year),
-    executor.select({ id: schema.person.id, entityId: schema.person.primaryEntityId }).from(schema.person).where(inArray(schema.person.id, ids)),
+    pendingByType(from, ids, year),
+    from.select({ id: schema.person.id, entityId: schema.person.primaryEntityId }).from(schema.person).where(inArray(schema.person.id, ids)),
+    allLeaveTypes(executor),
   ]);
+  const sumOf = new Map(sums.map((row) => [`${row.personId}:${row.leaveTypeId}`, row]));
   const typesByEntity = new Map<string | null, LeaveTypeRow[]>();
   for (const person of people) {
-    if (!typesByEntity.has(person.entityId)) typesByEntity.set(person.entityId, await leaveTypesFor(person.entityId, executor, { includeInactive: true }));
+    if (!typesByEntity.has(person.entityId)) typesByEntity.set(person.entityId, leaveTypesOf(allTypes, person.entityId, { includeInactive: true }));
     const rows: Balance[] = [];
     for (const type of typesByEntity.get(person.entityId)!) {
-      const sum = sums.find((row) => row.personId === person.id && row.leaveTypeId === type.id);
+      const sum = sumOf.get(`${person.id}:${type.id}`);
       if (!type.tracksBalance || (!type.isActive && !sum)) continue;
       const pendingCenti = pending.get(`${person.id}:${type.id}`) ?? 0;
       const balanceCenti = sum?.balance ?? 0;
@@ -196,13 +200,12 @@ export async function runLeaveAccruals(today: IsoDate = todayInVietnam(), option
   const counts = { people: people.length, accruals: 0, yearsClosed: 0, lapsed: 0, payouts: 0 };
   if (people.length === 0) return counts;
 
-  const policies = await listPolicies();
-  const current = await getParameter("leave.annual", today);
-  const statutory: Record<number, typeof current | null> = { [year - 1]: await getParameter("leave.annual", `${year - 1}-12-31`).catch(() => null), [year]: current };
+  const [policies, current, previous, allTypes] = await Promise.all([listPolicies(undefined, db()), getParameter("leave.annual", today), getParameter("leave.annual", `${year - 1}-12-31`).catch(() => null), allLeaveTypes(db())]);
+  const statutory: Record<number, typeof current | null> = { [year - 1]: previous, [year]: current };
   const typesByEntity = new Map<string | null, LeaveTypeRow[]>();
 
   for (const facts of people) {
-    if (!typesByEntity.has(facts.entityId)) typesByEntity.set(facts.entityId, (await leaveTypesFor(facts.entityId, db(), { includeInactive: true })).filter((type) => type.tracksBalance));
+    if (!typesByEntity.has(facts.entityId)) typesByEntity.set(facts.entityId, leaveTypesOf(allTypes, facts.entityId, { includeInactive: true }).filter((type) => type.tracksBalance));
     for (const type of typesByEntity.get(facts.entityId)!) {
       await db().transaction(async (tx) => {
         const entries = await tx.select().from(schema.leaveLedgerEntry).where(and(eq(schema.leaveLedgerEntry.personId, facts.personId), eq(schema.leaveLedgerEntry.leaveTypeId, type.id), gte(schema.leaveLedgerEntry.leaveYear, year - 1)));

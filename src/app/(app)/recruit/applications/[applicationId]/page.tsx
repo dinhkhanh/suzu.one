@@ -29,23 +29,26 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
   const view = await getApplicationView({ principal: user.principal, personId: user.person.id }, applicationId);
   if (!view) notFound();
 
-  const t = await getTranslations("recruit");
-  const tInterview = await getTranslations("recruit.interview");
-  const format = await getFormatter();
   const closed = APPLICATION_CLOSED.includes(view.application.status);
-  const tAssignment = await getTranslations("recruit.assignment");
-  const tOffer = await getTranslations("recruit.offer");
   // The offers on this application, and whether this reader may draft another one.
-  const offers = await listOffersOfApplication(applicationId);
   const mayOffer = canMakeOffer(user.principal, { entityId: view.opening.entityId, departmentId: view.opening.departmentId, teamId: view.opening.teamId });
   // The caller has already been checked by `getApplicationView`; the panels are the same audience.
-  const interviews = await listInterviewsOfApplication(applicationId);
-  const assignments = await listAssignments(applicationId);
-  const options = view.canAct ? await interviewerOptions(view.opening.id) : [];
   // The take-home link is absolute so a recruiter can paste it straight into an email. Read from
   // the request, not from configuration: on a laptop it is localhost, in production it is the
   // deployment's own host, and neither should be guessed.
-  const requestHeaders = await headers();
+  const [t, tInterview, format, tAssignment, tOffer, offers, interviews, assignments, options, emailTemplates, requestHeaders] = await Promise.all([
+    getTranslations("recruit"),
+    getTranslations("recruit.interview"),
+    getFormatter(),
+    getTranslations("recruit.assignment"),
+    getTranslations("recruit.offer"),
+    listOffersOfApplication(applicationId),
+    listInterviewsOfApplication(applicationId),
+    listAssignments(applicationId),
+    view.canAct ? interviewerOptions(view.opening.id) : [],
+    view.canAct ? listEmailTemplates() : [],
+    headers(),
+  ]);
   const origin = `${requestHeaders.get("x-forwarded-proto") ?? "http"}://${requestHeaders.get("host") ?? ""}`;
 
   return (
@@ -225,7 +228,7 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
       {view.canAct ? (
         <SendCandidateEmail
           applicationId={applicationId}
-          templates={(await listEmailTemplates()).map((template) => ({ id: template.id, name: template.name, kind: template.kind }))}
+          templates={emailTemplates.map((template) => ({ id: template.id, name: template.name, kind: template.kind }))}
           hasEmail={!!view.candidate.email}
         />
       ) : null}

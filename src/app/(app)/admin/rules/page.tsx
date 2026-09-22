@@ -39,8 +39,7 @@ export default async function RulesPage() {
   const canDecide = can(user.principal, "payroll:rules", {});
   if (!canPropose && !canDecide && !can(user.principal, "payroll:read", {})) notFound();
 
-  const [t, formatter] = await Promise.all([getTranslations("rules"), getFormatter()]);
-  const versions = await listParameterVersions();
+  const [t, formatter, versions] = await Promise.all([getTranslations("rules"), getFormatter(), listParameterVersions()]);
   const today = todayInVietnam();
   const day = (value: string) => formatter.dateTime(new Date(`${value}T00:00:00+07:00`), { dateStyle: "medium" });
   const format = (amount: number, unit: "rate" | "plain") => (unit === "rate" ? `${formatter.number(amount / 100, { maximumFractionDigits: 2 })}%` : formatter.number(amount));

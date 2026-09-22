@@ -6,7 +6,7 @@ import { kpiMonthScore, type KpiLineInput } from "./engine/kpi-score";
 import { weightedAverageBp } from "./engine/progress";
 import type { Confidence } from "./enums";
 import { listGoals, type Viewer } from "./goals";
-import { isMissing, listPeriods, listStoredScores, loadMonthLines } from "./kpi-scores";
+import { isMissing, listPeriods, listStoredScores, loadMonthLines, loadMonthLinesByEntity } from "./kpi-scores";
 import { type DirectoryPerson, loadDirectory } from "./people";
 import { canEnterActualsFor, overviewReach, readablePeople } from "./policy";
 
@@ -90,22 +90,28 @@ export function spreadOf(scores: readonly (number | null)[]): Spread {
 export async function getOverview(viewer: Viewer, month: string, months: readonly string[], now: Date = new Date()): Promise<Overview | null> {
   const reach = overviewReach(viewer.principal);
   if (!reach.all && reach.entityIds.length === 0) return null;
+  const year = Number(month.slice(0, 4));
+  const goalsLoading = listGoals(viewer, { year }, now);
+  // Awaited below; a failure of the batch in between must not leave this rejection unhandled.
+  goalsLoading.catch(() => undefined);
   const [entities, departments, directory] = await Promise.all([listEntities(), unitChoices(), loadDirectory()]);
   const visible = entities.filter((entity) => entity.isActive && (reach.all || reach.entityIds.includes(entity.id)));
   const entityIds = visible.map((entity) => entity.id);
-  const year = Number(month.slice(0, 4));
-  const [periods, stored, goals] = await Promise.all([listPeriods({ year, entityIds }), listStoredScores({ month, entityIds }), listGoals(viewer, { year }, now)]);
+  const [periods, stored, goals] = await Promise.all([listPeriods({ year, entityIds }), listStoredScores({ month, entityIds }), goalsLoading]);
   const departmentName = new Map(departments.map((department) => [department.id, department.name]));
+  const isClosed = (entityId: string) => periods.some((period) => period.entityId === entityId && period.month === month && period.status === "closed");
+  // The open entities' lines, all at once rather than one entity after another.
+  const openLines = await loadMonthLinesByEntity(visible.filter((entity) => !isClosed(entity.id)).map((entity) => entity.id), month);
 
   const result: OverviewEntity[] = [];
   for (const entity of visible) {
-    const closed = periods.some((period) => period.entityId === entity.id && period.month === month && period.status === "closed");
+    const closed = isClosed(entity.id);
     // Closed: the stored scores. Open: the provisional figures over what has been entered so far.
     const scores = new Map<string, number | null>();
     let missing = 0;
     if (closed) for (const score of stored.filter((row) => row.entityId === entity.id)) scores.set(score.personId, score.scoreBp);
     else {
-      for (const [personId, items] of await loadMonthLines({ entityId: entity.id }, month)) {
+      for (const [personId, items] of openLines.get(entity.id)!) {
         scores.set(personId, kpiMonthScore(month, items, { missingAs: "excluded" }).scoreBp);
         missing += items.filter(isMissing).length;
       }

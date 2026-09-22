@@ -19,14 +19,15 @@ export default async function AnnouncementPage(props: PageProps<"/announcements/
   const viewer = await commsViewerOf(user);
   const view = UUID.test(id) ? await getAnnouncementView(viewer, id) : null;
   if (!view) notFound();
-  // Opening it is reading it — for the people it was written for.
-  if (view.isReader && !view.readAt) await markAnnouncementRead(viewer, id);
-
-  const t = await getTranslations("comms");
-  const format = await getFormatter();
   const { row } = view;
-  // The linked page's title only if this reader may open that page.
-  const linked = row.kbPageId ? await loadPage(row.kbPageId) : null;
+  const [t, format, linked] = await Promise.all([
+    getTranslations("comms"),
+    getFormatter(),
+    // The linked page's title only if this reader may open that page.
+    row.kbPageId ? loadPage(row.kbPageId) : null,
+    // Opening it is reading it — for the people it was written for.
+    view.isReader && !view.readAt ? markAnnouncementRead(viewer, id, view) : false,
+  ]);
   const page = linked && canViewPage(kbViewerOf(user), linked.facts, linked.pageFacts) ? linked.page : null;
 
   return (

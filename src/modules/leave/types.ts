@@ -1,10 +1,12 @@
 // Leave types and their effective-dated policies (FR-LVE-01..03): HR's configuration.
 import "server-only";
-import { and, asc, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate } from "@/lib/cache";
 import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import { listEntities } from "@/modules/platform/org/service";
 import type { PolicyRules } from "./engine/entitlement";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -12,29 +14,45 @@ export type LeaveTypeRow = typeof schema.leaveType.$inferSelect;
 export type LeavePolicyRow = typeof schema.leavePolicy.$inferSelect;
 export type StaffingRuleRow = typeof schema.teamStaffingRule.$inferSelect;
 
-/** Every type, group-wide ones first. For the administration screens. */
-export async function listLeaveTypes(executor: Executor = db()): Promise<(LeaveTypeRow & { entityName: string | null })[]> {
-  const rows = await executor
-    .select({ type: schema.leaveType, entityName: schema.entity.shortName })
-    .from(schema.leaveType)
-    .leftJoin(schema.entity, eq(schema.entity.id, schema.leaveType.entityId))
-    .orderBy(asc(schema.leaveType.sortOrder), asc(schema.leaveType.code));
-  return rows.map((row) => ({ ...row.type, entityName: row.entityName }));
+// Types, policies and staffing rules are HR's configuration: small, read on every leave screen and
+// changed a few times a year, so the whole tables sit in the shared cache (src/lib/cache). Readers
+// handed an executor (a transaction) read from it instead; every write below drops its entry.
+const LEAVE_CACHE = { types: "leave:types", policies: "leave:policies", staffingRules: "leave:staffing-rules" } as const;
+const LEAVE_TTL = 30 * 60;
+
+/** For writers outside this file (seeds, imports): leave configuration changed. */
+export const invalidateLeaveConfigCache = () => invalidate(...Object.values(LEAVE_CACHE));
+
+/** Every type row, in display order. From `executor` when given, else from the shared cache. */
+export async function allLeaveTypes(executor?: Executor): Promise<LeaveTypeRow[]> {
+  const load = (from: Executor) => from.select().from(schema.leaveType).orderBy(asc(schema.leaveType.sortOrder), asc(schema.leaveType.code));
+  return executor ? load(executor) : cached(LEAVE_CACHE.types, LEAVE_TTL, () => load(db()));
 }
 
-/** The types someone in this entity can pick from: the group's, with the entity's own row winning per code. */
-export async function leaveTypesFor(entityId: string | null, executor: Executor = db(), options: { includeInactive?: boolean } = {}): Promise<LeaveTypeRow[]> {
-  const rows = await executor
-    .select()
-    .from(schema.leaveType)
-    .where(entityId ? or(isNull(schema.leaveType.entityId), eq(schema.leaveType.entityId, entityId)) : isNull(schema.leaveType.entityId))
-    .orderBy(asc(schema.leaveType.sortOrder), asc(schema.leaveType.code));
+/** Every type, group-wide ones first. For the administration screens. */
+export async function listLeaveTypes(executor?: Executor): Promise<(LeaveTypeRow & { entityName: string | null })[]> {
+  const [types, entities] = await Promise.all([allLeaveTypes(executor), listEntities()]);
+  const names = new Map(entities.map((entity) => [entity.id, entity.shortName]));
+  return types.map((type) => ({ ...type, entityName: type.entityId ? (names.get(type.entityId) ?? null) : null }));
+}
+
+/** `leaveTypesFor` over rows already loaded (`allLeaveTypes`): the group's, with the entity's own row winning per code. */
+export function leaveTypesOf(rows: readonly LeaveTypeRow[], entityId: string | null, options: { includeInactive?: boolean } = {}): LeaveTypeRow[] {
   const byCode = new Map<string, LeaveTypeRow>();
-  for (const row of rows) if (!byCode.has(row.code) || row.entityId) byCode.set(row.code, row);
+  for (const row of rows) {
+    if (row.entityId !== null && row.entityId !== entityId) continue;
+    if (!byCode.has(row.code) || row.entityId) byCode.set(row.code, row);
+  }
   return [...byCode.values()].filter((row) => options.includeInactive || row.isActive);
 }
 
-export async function getLeaveType(id: string, executor: Executor = db()): Promise<LeaveTypeRow | undefined> {
+/** The types someone in this entity can pick from: the group's, with the entity's own row winning per code. */
+export async function leaveTypesFor(entityId: string | null, executor?: Executor, options: { includeInactive?: boolean } = {}): Promise<LeaveTypeRow[]> {
+  return leaveTypesOf(await allLeaveTypes(executor), entityId, options);
+}
+
+export async function getLeaveType(id: string, executor?: Executor): Promise<LeaveTypeRow | undefined> {
+  if (!executor) return (await allLeaveTypes()).find((row) => row.id === id);
   const [row] = await executor.select().from(schema.leaveType).where(eq(schema.leaveType.id, id)).limit(1);
   return row;
 }
@@ -48,12 +66,14 @@ export async function saveLeaveType(input: LeaveTypeInput): Promise<{ before: Le
   try {
     if (!id) {
       const [after] = await db().insert(schema.leaveType).values(values).returning();
+      await invalidate(LEAVE_CACHE.types);
       return { before: null, after };
     }
     const [before] = await db().select().from(schema.leaveType).where(eq(schema.leaveType.id, id)).limit(1);
     if (!before) throw new ActionError("leave_type_not_found");
     // A type keeps its owner and its code: ledger rows and requests point at it.
     const [after] = await db().update(schema.leaveType).set({ ...values, entityId: before.entityId, code: before.code, updatedAt: new Date() }).where(eq(schema.leaveType.id, id)).returning();
+    await invalidate(LEAVE_CACHE.types);
     return { before, after };
   } catch (error) {
     for (let cause: unknown = error; cause instanceof Error; cause = cause.cause) {
@@ -85,8 +105,14 @@ export function policyOn(policies: readonly LeavePolicyRow[], leaveTypeId: strin
   return inForce.find((row) => entityId !== null && row.entityId === entityId) ?? inForce.find((row) => row.entityId === null) ?? null;
 }
 
-export async function listPolicies(leaveTypeIds?: readonly string[], executor: Executor = db()): Promise<LeavePolicyRow[]> {
+export async function listPolicies(leaveTypeIds?: readonly string[], executor?: Executor): Promise<LeavePolicyRow[]> {
   if (leaveTypeIds?.length === 0) return [];
+  if (!executor) {
+    const all = await cached(LEAVE_CACHE.policies, LEAVE_TTL, () => db().select().from(schema.leavePolicy).orderBy(asc(schema.leavePolicy.leaveTypeId), desc(schema.leavePolicy.validFrom)));
+    if (!leaveTypeIds) return all;
+    const wanted = new Set(leaveTypeIds);
+    return all.filter((row) => wanted.has(row.leaveTypeId));
+  }
   return executor.select().from(schema.leavePolicy).where(leaveTypeIds ? inArray(schema.leavePolicy.leaveTypeId, [...leaveTypeIds]) : undefined).orderBy(asc(schema.leavePolicy.leaveTypeId), desc(schema.leavePolicy.validFrom));
 }
 
@@ -98,7 +124,7 @@ export type LeavePolicyInput = Omit<typeof schema.leavePolicy.$inferInsert, "id"
  */
 export async function saveLeavePolicy(input: LeavePolicyInput, actorPersonId: string): Promise<{ before: LeavePolicyRow | null; after: LeavePolicyRow }> {
   if (input.carryOverExpiry && !/^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(input.carryOverExpiry)) throw new ActionError("leave_policy_expiry_invalid");
-  return db().transaction(async (tx) => {
+  const saved = await db().transaction(async (tx) => {
     const table = schema.leavePolicy;
     const sameScope = and(eq(table.leaveTypeId, input.leaveTypeId), input.entityId ? eq(table.entityId, input.entityId) : isNull(table.entityId));
     const [later] = await tx.select({ id: table.id }).from(table).where(and(sameScope, gt(table.validFrom, input.validFrom))).limit(1);
@@ -112,6 +138,8 @@ export async function saveLeavePolicy(input: LeavePolicyInput, actorPersonId: st
     const [after] = await tx.insert(table).values({ ...input, createdByPersonId: actorPersonId }).returning();
     return { before: current ?? null, after };
   });
+  await invalidate(LEAVE_CACHE.policies);
+  return saved;
 }
 
 // ── Minimum staffing ────────────────────────────────────────────────────────────────────────
@@ -127,6 +155,11 @@ export async function listStaffingRules(executor: Executor = db()) {
     .leftJoin(teamUnit, eq(teamUnit.id, schema.teamStaffingRule.teamId));
 }
 
+/** The raw rules, for `staffingRuleFor`. From `executor` when given, else from the shared cache. */
+export async function staffingRuleRows(executor?: Executor): Promise<StaffingRuleRow[]> {
+  return executor ? executor.select().from(schema.teamStaffingRule) : cached(LEAVE_CACHE.staffingRules, LEAVE_TTL, () => db().select().from(schema.teamStaffingRule));
+}
+
 export async function getStaffingRule(id: string): Promise<StaffingRuleRow | undefined> {
   const [row] = await db().select().from(schema.teamStaffingRule).where(eq(schema.teamStaffingRule.id, id)).limit(1);
   return row;
@@ -139,12 +172,14 @@ export async function saveStaffingRule(input: { entityId: string | null; departm
     .values(input)
     .onConflictDoUpdate({ target: [schema.teamStaffingRule.entityId, schema.teamStaffingRule.departmentId, schema.teamStaffingRule.teamId], set: { minPresent: input.minPresent, updatedAt: new Date() } })
     .returning();
+  await invalidate(LEAVE_CACHE.staffingRules);
   return row;
 }
 
 export async function deleteStaffingRule(id: string): Promise<StaffingRuleRow> {
   const [row] = await db().delete(schema.teamStaffingRule).where(eq(schema.teamStaffingRule.id, id)).returning();
   if (!row) throw new ActionError("leave_staffing_not_found");
+  await invalidate(LEAVE_CACHE.staffingRules);
   return row;
 }
 

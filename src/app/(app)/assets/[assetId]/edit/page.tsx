@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { asc } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
 import { requireUser } from "@/modules/platform/auth/session";
+import { listEntities } from "@/modules/platform/org/service";
 import { canManageAssets, canReadAssetMoney, findAsset, listCategories } from "@/modules/assets/service";
 import { AssetForm } from "@/modules/assets/ui/asset-forms";
 
@@ -14,7 +13,7 @@ export default async function EditAssetPage({ params }: PageProps<"/assets/[asse
   const { assetId } = await params;
   const asset = await findAsset(assetId);
   if (!asset || !canManageAssets(user.principal, asset.entityId)) notFound();
-  const [categories, entities, t] = await Promise.all([listCategories(), db().select().from(schema.entity).orderBy(asc(schema.entity.code)), getTranslations("assets")]);
+  const [categories, entities, t] = await Promise.all([listCategories(), listEntities(), getTranslations("assets")]);
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">

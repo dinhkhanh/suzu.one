@@ -1,6 +1,6 @@
 // Pages: the tree, the working copy, publishing, versions (FR-KB-01, 02, 04).
 import "server-only";
-import { and, asc, count, desc, eq, inArray, isNotNull, isNull, max, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, max, type SQL, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
@@ -11,7 +11,7 @@ import { rebuildChunks, removeChunks } from "./chunks";
 import { type DiffLine, diffLines } from "./engine/diff";
 import { type Doc, docToPlainText, EMPTY_DOC, validateDoc } from "./engine/doc";
 import { type AccessRow, atLeast, type KbLevel, type KbViewer, type PageFacts, pageLevel, spaceLevel } from "./policy";
-import { type LoadedSpace, loadSpace, replaceAccess } from "./spaces";
+import { type LoadedSpace, replaceAccess, spaceFacts } from "./spaces";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type PageRow = typeof schema.kbPage.$inferSelect;
@@ -26,14 +26,30 @@ async function pageAccessRows(executor: Executor, pageId: string): Promise<Acces
   return executor.select({ subjectKey: schema.kbAccess.subjectKey, level: schema.kbAccess.level }).from(schema.kbAccess).where(eq(schema.kbAccess.pageId, pageId)).orderBy(asc(schema.kbAccess.createdAt));
 }
 
-/** A page with everything the policy asks about it. No authorization here: callers ask `levelOf`. */
+/** An access list as one JSON column, in the order the rows were written. */
+const accessJson = (where: SQL) =>
+  sql<AccessRow[]>`coalesce((select json_agg(json_build_object('subjectKey', ${schema.kbAccess.subjectKey}, 'level', ${schema.kbAccess.level}) order by ${schema.kbAccess.createdAt}) from ${schema.kbAccess} where ${where}), '[]'::json)`;
+
+/**
+ * A page with everything the policy asks about it — the page, its space, the space's access rows
+ * and those of the page's access root, in one round trip. No authorization here: callers ask `levelOf`.
+ */
 export async function loadPage(pageId: string, executor: Executor = db()): Promise<LoadedPage | null> {
-  const [page] = await executor.select().from(schema.kbPage).where(eq(schema.kbPage.id, pageId)).limit(1);
-  if (!page) return null;
-  const space = await loadSpace({ id: page.spaceId }, executor);
-  if (!space) return null;
-  const rootAccess = page.accessRootId ? await pageAccessRows(executor, page.accessRootId) : null;
-  return { ...space, page, rootAccess, pageFacts: pageFacts(page, rootAccess) };
+  const [row] = await executor
+    .select({
+      page: schema.kbPage,
+      space: schema.kbSpace,
+      access: accessJson(sql`${schema.kbAccess.spaceId} = ${schema.kbSpace.id} and ${schema.kbAccess.pageId} is null`),
+      rootAccess: accessJson(sql`${schema.kbAccess.pageId} = ${schema.kbPage.accessRootId}`),
+    })
+    .from(schema.kbPage)
+    .innerJoin(schema.kbSpace, eq(schema.kbSpace.id, schema.kbPage.spaceId))
+    .where(eq(schema.kbPage.id, pageId))
+    .limit(1);
+  if (!row) return null;
+  const { page, space, access } = row;
+  const rootAccess = page.accessRootId ? row.rootAccess : null;
+  return { space, access, facts: spaceFacts(space, access), page, rootAccess, pageFacts: pageFacts(page, rootAccess) };
 }
 
 export const levelOf = (viewer: KbViewer, loaded: LoadedPage): KbLevel | null => pageLevel(viewer, loaded.facts, loaded.pageFacts);

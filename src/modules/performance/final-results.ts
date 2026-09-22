@@ -255,7 +255,12 @@ const toLine = (row: PerformanceResultRow, directory: Directory): ResultLine => 
  * page filters by `canReadPerformanceOf`, and the bonus run (payroll) decides for itself.
  */
 export async function listResults(filter: { year: number; entityIds?: readonly string[]; statuses?: readonly PerformanceResultStatus[] }, executor: Executor = db()): Promise<ResultLine[]> {
-  const rows = await executor
+  return (await listResultDetails(filter, executor)).map(({ line }) => line);
+}
+
+/** `listResults` with each stored row alongside its line — the trace, the provenance, the override. */
+export async function listResultDetails(filter: { year: number; entityIds?: readonly string[]; statuses?: readonly PerformanceResultStatus[] }, executor: Executor = db()): Promise<{ line: ResultLine; row: PerformanceResultRow }[]> {
+  const rowsQuery = executor
     .select()
     .from(schema.performanceResult)
     .where(
@@ -266,8 +271,8 @@ export async function listResults(filter: { year: number; entityIds?: readonly s
       ),
     )
     .orderBy(desc(schema.performanceResult.finalScoreBp), asc(schema.performanceResult.createdAt));
-  const directory = await loadDirectory(executor);
-  return rows.map((row) => toLine(row, directory));
+  const [rows, directory] = await Promise.all([rowsQuery, loadDirectory(executor)]);
+  return rows.map((row) => ({ line: toLine(row, directory), row }));
 }
 
 /**

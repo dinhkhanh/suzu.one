@@ -9,8 +9,9 @@ import "server-only";
 // the application, the opening and the person clicking send. Nothing the *recruiter typed into
 // this screen* reaches the letter, so a wording cannot be turned into a way to send arbitrary
 // text to an address of somebody's choosing.
-import { and, asc, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate } from "@/lib/cache";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { queueRawEmail } from "@/modules/platform/notifications/service";
@@ -20,17 +21,20 @@ import { findApplication, findCandidate, findOpening, inTransaction, recordAppli
 
 export type EmailTemplateRow = typeof schema.recruitEmailTemplate.$inferSelect;
 
+// The wordings are configuration (a dozen rows): cached whole, cleared by `saveEmailTemplate`.
+const TEMPLATES_CACHE = "recruit:email-templates";
+const TEMPLATES_TTL = 60 * 60;
+
+const allTemplates = (): Promise<EmailTemplateRow[]> =>
+  cached(TEMPLATES_CACHE, TEMPLATES_TTL, () => db().select().from(schema.recruitEmailTemplate).orderBy(asc(schema.recruitEmailTemplate.kind), asc(schema.recruitEmailTemplate.name)));
+
 export async function listEmailTemplates(onlyActive = true): Promise<EmailTemplateRow[]> {
-  return db()
-    .select()
-    .from(schema.recruitEmailTemplate)
-    .where(onlyActive ? eq(schema.recruitEmailTemplate.isActive, true) : undefined)
-    .orderBy(asc(schema.recruitEmailTemplate.kind), asc(schema.recruitEmailTemplate.name));
+  const rows = await allTemplates();
+  return onlyActive ? rows.filter((row) => row.isActive) : rows;
 }
 
 export async function findEmailTemplate(templateId: string): Promise<EmailTemplateRow | undefined> {
-  const [row] = await db().select().from(schema.recruitEmailTemplate).where(and(eq(schema.recruitEmailTemplate.id, templateId), eq(schema.recruitEmailTemplate.isActive, true))).limit(1);
-  return row;
+  return (await allTemplates()).find((row) => row.id === templateId && row.isActive);
 }
 
 export type EmailTemplateInput = { code: string; name: string; kind: RecruitEmailKind; subject: string; body: string; subjectEn: string | null; bodyEn: string | null; isActive: boolean };
@@ -45,11 +49,13 @@ export async function saveEmailTemplate(templateId: string | null, input: EmailT
   const values = { ...input, updatedByPersonId: actorPersonId, updatedAt: new Date() };
   if (!templateId) {
     const [after] = await db().insert(schema.recruitEmailTemplate).values(values).returning();
+    await invalidate(TEMPLATES_CACHE);
     return { before: null, after };
   }
   const [before] = await db().select().from(schema.recruitEmailTemplate).where(eq(schema.recruitEmailTemplate.id, templateId)).limit(1);
   if (!before) throw new ActionError("recruit_email_template_not_found");
   const [after] = await db().update(schema.recruitEmailTemplate).set(values).where(eq(schema.recruitEmailTemplate.id, templateId)).returning();
+  await invalidate(TEMPLATES_CACHE);
   return { before, after };
 }
 

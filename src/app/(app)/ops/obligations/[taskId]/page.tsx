@@ -4,13 +4,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { todayInVietnam } from "@/lib/dates";
-import { canManageInstance, canReadOps, canViewInstance, canWorkInstance, escalationLevelOf, listEvidenceFiles, loadInstance, periodLabel, statusColour } from "@/modules/ops/service";
+import { canManageInstance, canReadOps, canViewInstance, canWorkInstance, escalationLevelOf, listEvidenceFiles, loadInstance, periodLabel, personNamesOf, statusColour } from "@/modules/ops/service";
 import { InstancePanel, ReassignForm } from "@/modules/ops/ui/instance-panel";
 import { StatusBadge } from "@/modules/ops/ui/status-badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
-import { findEntity } from "@/modules/platform/org/service";
-import { findPersonById, listPersonNames } from "@/modules/platform/people/service";
+import { listEntities } from "@/modules/platform/org/service";
+import { listPersonNames } from "@/modules/platform/people/service";
 
 export const metadata: Metadata = { title: "Obligation" };
 
@@ -28,18 +28,17 @@ export default async function ObligationPage({ params }: PageProps<"/ops/obligat
   const canWork = canWorkInstance(user.principal, loaded.parties);
   const canManage = canManageInstance(user.principal, loaded.parties);
   const open = task.status === "todo" || task.status === "in_progress";
-  const [level, files, entity, owner, reviewer, subject, completedBy, people] = await Promise.all([
+  const [level, files, entity, names, people] = await Promise.all([
     open ? escalationLevelOf(instance.id) : 0,
     listEvidenceFiles(instance.id),
-    findEntity(instance.entityId),
-    task.assigneePersonId ? findPersonById(task.assigneePersonId) : undefined,
-    instance.reviewerPersonId ? findPersonById(instance.reviewerPersonId) : undefined,
-    task.subjectPersonId ? findPersonById(task.subjectPersonId) : undefined,
-    task.completedByPersonId ? findPersonById(task.completedByPersonId) : undefined,
+    listEntities().then((entities) => entities.find((row) => row.id === instance.entityId)),
+    personNamesOf([task.assigneePersonId, instance.reviewerPersonId, task.subjectPersonId, task.completedByPersonId]),
     canManage && open ? listPersonNames() : [],
   ]);
-  const uploaders = new Map<string, string>();
-  for (const file of files) if (file.uploadedByPersonId && !uploaders.has(file.uploadedByPersonId)) uploaders.set(file.uploadedByPersonId, (await findPersonById(file.uploadedByPersonId))?.fullName ?? "");
+  const named = (id: string | null) => (id && names.has(id) ? { fullName: names.get(id)! } : undefined);
+  const [owner, reviewer, subject, completedBy] = [named(task.assigneePersonId), named(instance.reviewerPersonId), named(task.subjectPersonId), named(task.completedByPersonId)];
+  // Uploaders are mostly the owner or reviewer, already named above; the rest in one query.
+  const uploaders = new Map([...names, ...(await personNamesOf(files.map((file) => file.uploadedByPersonId).filter((id) => id && !names.has(id))))]);
   const day = (date: string) => format.dateTime(new Date(`${date}T00:00:00`), { dateStyle: "medium" });
   const colour = statusColour({ status: task.status, dueDate: task.dueDate, completedLate: instance.completedLate }, today);
   const facts: [string, string][] = [

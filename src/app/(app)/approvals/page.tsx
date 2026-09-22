@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { getRequestRows, listInbox, listMyRequests } from "@/modules/platform/approvals/service";
+import { listInboxWithRows, listMyRequests } from "@/modules/platform/approvals/service";
 import { BulkInbox } from "@/modules/platform/approvals/ui/bulk-inbox";
 import { RequestTable } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -13,12 +13,10 @@ export const metadata: Metadata = { title: "Approvals" };
 // One inbox for every kind of request. Each row opens the page of the module that owns its type.
 export default async function ApprovalsPage() {
   const user = await requireUser();
-  const [inbox, mine] = await Promise.all([listInbox(user.person.id), listMyRequests(user.person.id)]);
-  const t = await getTranslations("approvals");
   // Which waiting requests may be approved unopened is their type's call (the registry knows every type).
-  const [full, registered] = await Promise.all([getRequestRows(inbox.map((row) => row.id)).then((rows) => new Map(rows.map((row) => [row.id, row]))), allRequestTypes()]);
+  const [inbox, mine, registered, t] = await Promise.all([listInboxWithRows(user.person.id), listMyRequests(user.person.id), allRequestTypes(), getTranslations("approvals")]);
   const labels = new Map([...registered].flatMap(([type, entry]) => (entry.names ? [[type, entry.names.vi] as const] : [])));
-  const inboxRows = inbox.map((row) => ({ id: row.id, type: row.type, summary: row.summary, link: row.link, createdAt: row.createdAt, requesterName: row.requesterName, bulk: !!(full.get(row.id) && registered.get(row.type)?.definition.bulkApprovable?.(full.get(row.id)!)) }));
+  const inboxRows = inbox.map((row) => ({ id: row.id, type: row.type, summary: row.summary, link: row.link, createdAt: row.createdAt, requesterName: row.requesterName, bulk: !!registered.get(row.type)?.definition.bulkApprovable?.(row.request) }));
 
   return (
     <div className="flex max-w-5xl flex-col gap-8">

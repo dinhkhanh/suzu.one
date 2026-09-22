@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { db, schema } from "@/lib/db";
-import { asc } from "drizzle-orm";
 import { requireUser } from "@/modules/platform/auth/session";
+import { listEntities } from "@/modules/platform/org/service";
 import { type AssetStatus, ASSET_STATUSES, canManageAssets, canReadAssetMoney, canReadRegister, listAssets, listCategories, summaryByStatus } from "@/modules/assets/service";
 import { RegisterFilterBar, RegisterTable } from "@/modules/assets/ui/register-views";
 
@@ -24,7 +23,7 @@ export default async function AssetsPage({ searchParams }: PageProps<"/assets">)
   const [rows, categories, entities, totals, t] = await Promise.all([
     listAssets(user.principal, filter),
     listCategories(),
-    db().select().from(schema.entity).orderBy(asc(schema.entity.code)),
+    listEntities(),
     summaryByStatus(user.principal),
     getTranslations("assets"),
   ]);

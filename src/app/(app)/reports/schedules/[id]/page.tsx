@@ -5,26 +5,26 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
-import { canEditSchedule, listReportsFor, listSchedules } from "@/modules/reports/service";
+import { canEditSchedule, getScheduleView, listReportsFor } from "@/modules/reports/service";
 import { ScheduleForm } from "@/modules/reports/ui/schedule-forms";
 
 export const metadata: Metadata = { title: "Schedule" };
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** One schedule: its settings, and what its last runs actually delivered — and withheld. */
 export default async function SchedulePage({ params }: PageProps<"/reports/schedules/[id]">) {
   const user = await requireUser();
   const { id } = await params;
-  const schedules = await listSchedules({ personId: user.person.id, principal: user.principal });
-  const schedule = schedules.find((row) => row.id === id);
-  if (!schedule || !canEditSchedule({ personId: user.person.id, principal: user.principal }, schedule)) notFound();
-
-  const [reports, people, t, tCatalogue, format] = await Promise.all([
+  const [schedule, reports, people, t, tCatalogue, format] = await Promise.all([
+    UUID.test(id) ? getScheduleView({ personId: user.person.id, principal: user.principal }, id) : undefined,
     listReportsFor(user, { forScheduling: true }),
     listPersonNames(),
     getTranslations("reports.schedules"),
     getTranslations("reports.catalogue"),
     getFormatter(),
   ]);
+  if (!schedule || !canEditSchedule({ personId: user.person.id, principal: user.principal }, schedule)) notFound();
   const label = (key: string) => (tCatalogue.has(`${key}.name` as never) ? tCatalogue(`${key}.name` as never) : key);
   // The schedule's own report stays on the list even if this reader may no longer choose it anew,
   // so the select has something to show; saving re-checks and refuses.

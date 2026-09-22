@@ -3,6 +3,9 @@ import "server-only";
 import { and, asc, count, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
+import { cache } from "react";
+import { cached, invalidate } from "@/lib/cache";
+import { invalidateWorkDirectory } from "./directory";
 import { isOpenCategory, type StateCategory, type TeamRole, type Visibility, WORKFLOW_PRESETS, type WorkflowPreset } from "./enums";
 import type { TeamFacts } from "./policy";
 
@@ -11,6 +14,13 @@ export type TeamRow = typeof schema.workTeam.$inferSelect;
 export type StateRow = typeof schema.workState.$inferSelect;
 export type LabelRow = typeof schema.workLabel.$inferSelect;
 export type ClientRow = typeof schema.workClient.$inferSelect;
+
+// Workflow states, labels and clients are small reference tables read by every work screen: each
+// sits whole in the shared cache and is filtered here; every writer below drops its entry once
+// committed, and the TTL bounds anything written behind the app's back (a seed).
+const WORK_CACHE = { states: "work:states", labels: "work:labels", clients: "work:clients" } as const;
+const WORK_CACHE_TTL = 30 * 60;
+const invalidateWorkStates = () => invalidate(WORK_CACHE.states);
 
 export const teamFacts = (team: Pick<TeamRow, "id" | "entityId" | "departmentId" | "defaultVisibility">): TeamFacts => ({ id: team.id, entityId: team.entityId, departmentId: team.departmentId, defaultVisibility: team.defaultVisibility as Visibility });
 
@@ -23,20 +33,21 @@ export async function findTeam(teamId: string, executor: Executor = db()): Promi
 
 export type TeamSummary = TeamRow & { memberCount: number; entityName: string | null };
 
-export async function listTeams(): Promise<TeamSummary[]> {
+/** Once per request: the pickers of one page share it. */
+export const listTeams = cache(async (): Promise<TeamSummary[]> => {
   const rows = await db()
     .select({ team: schema.workTeam, entityName: schema.entity.shortName, memberCount: sql<number>`(select count(*)::int from ${schema.workTeamMember} where ${schema.workTeamMember.teamId} = ${schema.workTeam.id})` })
     .from(schema.workTeam)
     .leftJoin(schema.entity, eq(schema.entity.id, schema.workTeam.entityId))
     .orderBy(asc(schema.workTeam.name));
   return rows.map(({ team, ...rest }) => ({ ...team, ...rest }));
-}
+});
 
 export type TeamInput = { key: string; name: string; description: string | null; entityId: string | null; departmentId: string | null; defaultVisibility: Visibility; isActive: boolean };
 
 /** A new team starts with a workflow preset and its creator as lead. */
 export async function createTeam(input: TeamInput, preset: WorkflowPreset, stateNames: Record<string, string>, actorPersonId: string): Promise<TeamRow> {
-  return db().transaction(async (tx) => {
+  const created = await db().transaction(async (tx) => {
     const [taken] = await tx.select({ id: schema.workTeam.id }).from(schema.workTeam).where(eq(schema.workTeam.key, input.key)).limit(1);
     if (taken) throw new ActionError("team_key_taken");
     const [team] = await tx.insert(schema.workTeam).values(input).returning();
@@ -44,6 +55,8 @@ export async function createTeam(input: TeamInput, preset: WorkflowPreset, state
     await tx.insert(schema.workTeamMember).values({ teamId: team.id, personId: actorPersonId, role: "lead" });
     return team;
   });
+  await Promise.all([invalidateWorkDirectory(), invalidateWorkStates()]);
+  return created;
 }
 
 /** The key stays: task numbers ("VID-12") are quoted in chats and briefs. */
@@ -51,6 +64,7 @@ export async function updateTeam(teamId: string, input: Omit<TeamInput, "key">):
   const before = await findTeam(teamId);
   if (!before) throw new ActionError("team_not_found");
   const [after] = await db().update(schema.workTeam).set({ ...input, updatedAt: new Date() }).where(eq(schema.workTeam.id, teamId)).returning();
+  await invalidateWorkDirectory();
   return { before, after };
 }
 
@@ -93,9 +107,14 @@ export async function setTeamMember(teamId: string, personId: string, role: Team
 
 // ── Workflow states ─────────────────────────────────────────────────────────────────────────
 
-export async function listStates(teamIds: readonly string[], executor: Executor = db()): Promise<StateRow[]> {
+/** Inside a transaction pass it, and the rows come from there, not the cache. */
+export async function listStates(teamIds: readonly string[], executor?: Executor): Promise<StateRow[]> {
   if (teamIds.length === 0) return [];
-  return executor.select().from(schema.workState).where(inArray(schema.workState.teamId, [...teamIds])).orderBy(asc(schema.workState.sortOrder), asc(schema.workState.createdAt));
+  const order = [asc(schema.workState.sortOrder), asc(schema.workState.createdAt)];
+  if (executor) return executor.select().from(schema.workState).where(inArray(schema.workState.teamId, [...teamIds])).orderBy(...order);
+  const all = await cached(WORK_CACHE.states, WORK_CACHE_TTL, () => db().select().from(schema.workState).orderBy(...order, asc(schema.workState.id)));
+  const wanted = new Set(teamIds);
+  return all.filter((state) => wanted.has(state.teamId));
 }
 
 export async function findState(stateId: string, executor: Executor = db()): Promise<StateRow | undefined> {
@@ -106,7 +125,7 @@ export async function findState(stateId: string, executor: Executor = db()): Pro
 export type StateInput = { name: string; category: StateCategory; sortOrder: number; isActive: boolean };
 
 export async function saveState(teamId: string, stateId: string | null, input: StateInput): Promise<{ before: StateRow | null; after: StateRow }> {
-  return db().transaction(async (tx) => {
+  const saved = await db().transaction(async (tx) => {
     if (!stateId) {
       const [after] = await tx.insert(schema.workState).values({ teamId, ...input }).returning();
       return { before: null, after };
@@ -129,6 +148,8 @@ export async function saveState(teamId: string, stateId: string | null, input: S
     if ((stillOpen[0]?.value ?? 0) === 0 || (stillDone[0]?.value ?? 0) === 0) throw new ActionError("workflow_needs_start_and_done");
     return { before, after };
   });
+  await invalidateWorkStates();
+  return saved;
 }
 
 /** Where a new task lands: the first active "to do" state, else the first backlog state. */
@@ -145,8 +166,11 @@ export function entryState(states: readonly StateRow[], preferBacklog = false): 
 // ── Labels ──────────────────────────────────────────────────────────────────────────────────
 
 /** A team's own labels and the shared ones. */
-export async function listLabels(teamIds: readonly string[], executor: Executor = db()): Promise<LabelRow[]> {
-  return executor.select().from(schema.workLabel).where(teamIds.length ? or(isNull(schema.workLabel.teamId), inArray(schema.workLabel.teamId, [...teamIds])) : isNull(schema.workLabel.teamId)).orderBy(asc(schema.workLabel.name));
+export async function listLabels(teamIds: readonly string[], executor?: Executor): Promise<LabelRow[]> {
+  if (executor) return executor.select().from(schema.workLabel).where(teamIds.length ? or(isNull(schema.workLabel.teamId), inArray(schema.workLabel.teamId, [...teamIds])) : isNull(schema.workLabel.teamId)).orderBy(asc(schema.workLabel.name));
+  const all = await cached(WORK_CACHE.labels, WORK_CACHE_TTL, () => db().select().from(schema.workLabel).orderBy(asc(schema.workLabel.name), asc(schema.workLabel.id)));
+  const wanted = new Set(teamIds);
+  return all.filter((label) => label.teamId === null || wanted.has(label.teamId));
 }
 
 export async function findLabel(labelId: string): Promise<LabelRow | undefined> {
@@ -157,17 +181,20 @@ export async function findLabel(labelId: string): Promise<LabelRow | undefined> 
 export async function saveLabel(labelId: string | null, input: { teamId: string | null; name: string; color: string }): Promise<{ before: LabelRow | null; after: LabelRow }> {
   if (!labelId) {
     const [after] = await db().insert(schema.workLabel).values(input).returning();
+    await invalidate(WORK_CACHE.labels);
     return { before: null, after };
   }
   const before = await findLabel(labelId);
   if (!before) throw new ActionError("label_not_found");
   const [after] = await db().update(schema.workLabel).set({ name: input.name, color: input.color }).where(eq(schema.workLabel.id, labelId)).returning();
+  await invalidate(WORK_CACHE.labels);
   return { before, after };
 }
 
 export async function deleteLabel(labelId: string): Promise<LabelRow> {
   const [row] = await db().delete(schema.workLabel).where(eq(schema.workLabel.id, labelId)).returning();
   if (!row) throw new ActionError("label_not_found");
+  await invalidate(WORK_CACHE.labels);
   return row;
 }
 
@@ -176,7 +203,8 @@ export async function deleteLabel(labelId: string): Promise<LabelRow> {
 export type ClientView = ClientRow & { parentName: string | null; openTasks: number };
 
 export async function listClients(options: { activeOnly?: boolean } = {}): Promise<ClientRow[]> {
-  return db().select().from(schema.workClient).where(options.activeOnly ? eq(schema.workClient.isActive, true) : undefined).orderBy(asc(schema.workClient.name));
+  const all = await cached(WORK_CACHE.clients, WORK_CACHE_TTL, () => db().select().from(schema.workClient).orderBy(asc(schema.workClient.name), asc(schema.workClient.id)));
+  return options.activeOnly ? all.filter((client) => client.isActive) : all;
 }
 
 export async function findClient(clientId: string, executor: Executor = db()): Promise<ClientRow | undefined> {
@@ -187,7 +215,7 @@ export async function findClient(clientId: string, executor: Executor = db()): P
 export type ClientInput = { code: string; name: string; kind: "client" | "brand"; parentId: string | null; entityId: string | null; note: string | null; isActive: boolean };
 
 export async function saveClient(clientId: string | null, input: ClientInput): Promise<{ before: ClientRow | null; after: ClientRow }> {
-  return db().transaction(async (tx) => {
+  const saved = await db().transaction(async (tx) => {
     const [taken] = await tx.select({ id: schema.workClient.id }).from(schema.workClient).where(eq(schema.workClient.code, input.code)).limit(1);
     if (taken && taken.id !== clientId) throw new ActionError("client_code_taken");
     if (input.parentId) {
@@ -204,4 +232,6 @@ export async function saveClient(clientId: string | null, input: ClientInput): P
     const [after] = await tx.update(schema.workClient).set({ ...input, updatedAt: new Date() }).where(eq(schema.workClient.id, clientId)).returning();
     return { before, after };
   });
+  await invalidate(WORK_CACHE.clients);
+  return saved;
 }

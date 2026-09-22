@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
-import { canDecideReview, canDeleteTask, canEditTask, canModerateTask, canSubmitDeliverable, listDeliverables, followersOf, followStateOf, getTaskDetail, listActivity, listComments, listMentionable, listTaskFiles, listAssignable, listClients, listLabels, listProjectTasks, listStates, listTeamBacklog, loadViewer, visibleProjects } from "@/modules/work/service";
+import { canDecideReview, canDeleteTask, canEditTask, canModerateTask, canSubmitDeliverable, listDeliverables, followersOf, followStateOf, getTaskDetail, listActivity, listComments, listMentionable, listTaskFiles, listAssignable, listClients, listLabels, listLinkableTasks, listProjectOptions, listStates, loadViewer } from "@/modules/work/service";
 import { TaskDetailView } from "@/modules/work/ui/task-detail";
 import { FollowButton, TaskDiscussion, TaskFiles } from "@/modules/work/ui/task-discussion";
 import { TaskReview } from "@/modules/work/ui/task-review";
@@ -28,8 +28,8 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
     listLabels([team.id]),
     listClients({ activeOnly: true }),
     listAssignable(team.id, work.projectId),
-    canEdit ? visibleProjects(viewer, { today: "9999-12-31" }) : [],
-    canEdit ? (work.projectId ? listProjectTasks(work.projectId) : listTeamBacklog(team.id)) : [],
+    canEdit ? listProjectOptions(viewer, team.id) : [],
+    canEdit ? listLinkableTasks({ projectId: work.projectId, teamId: team.id }) : [],
     listActivity(task.id),
     listComments(task.id),
     listTaskFiles(task.id),
@@ -96,8 +96,8 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
           people,
           labels: labels.map(({ id, name, color }) => ({ id, name, color })),
           clients: clients.map(({ id, name }) => ({ id, name })),
-          projects: projects.filter((row) => row.teamId === team.id && row.status !== "archived").map(({ id, name }) => ({ id, name })),
-          linkable: siblings.filter((row) => !linkedIds.has(row.id) && (row.status === "todo" || row.status === "in_progress")).map(({ id, key, title }) => ({ id, key, title })),
+          projects,
+          linkable: siblings.filter((row) => !linkedIds.has(row.id)),
         }}
         subtasks={detail.subtasks.map(({ id, key, title, status, stateId, assigneeName, dueDate }) => ({ id, key, title, status, stateId, assigneeName, dueDate }))}
         linked={detail.linked}

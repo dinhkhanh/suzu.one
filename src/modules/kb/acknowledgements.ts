@@ -230,7 +230,17 @@ export async function listMyPendingAcks(viewer: KbViewer, today: IsoDate = today
     .sort((a, b) => a.dueOn.localeCompare(b.dueOn) || a.title.localeCompare(b.title, "vi"));
 }
 
-export const countMyPendingAcks = async (viewer: KbViewer): Promise<number> => (await listMyPendingAcks(viewer)).length;
+/** How many `listMyPendingAcks` would list — the same filter, counted in SQL. */
+export async function countMyPendingAcks(viewer: KbViewer): Promise<number> {
+  const [row] = await db()
+    .select({ n: sql<number>`count(*)::int` })
+    .from(kbPage)
+    .innerJoin(kbSpace, eq(kbSpace.id, kbPage.spaceId))
+    .innerJoin(kbPageVersion, eq(kbPageVersion.id, kbPage.ackVersionId))
+    .innerJoin(person, eq(person.id, viewer.personId))
+    .where(and(collectingSql(), pagePublishedVisibleSql(viewer), eq(person.status, "active"), inAudienceSql(), sql`not ${confirmedSql()}`));
+  return row?.n ?? 0;
+}
 
 export type DoneAck = { pageId: string; title: string; versionNo: number; acknowledgedAt: Date; current: boolean };
 

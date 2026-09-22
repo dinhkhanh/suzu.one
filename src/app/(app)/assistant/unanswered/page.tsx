@@ -17,9 +17,7 @@ export default async function UnansweredPage(props: PageProps<"/assistant/unansw
   if (!canReadUnansweredLog(user.principal)) notFound();
   const params = await props.searchParams;
   const resolved = params.show === "resolved";
-  const t = await getTranslations("assistant.unanswered");
-  const format = await getFormatter();
-  const rows = await listUnanswered({ resolved });
+  const [t, format, rows] = await Promise.all([getTranslations("assistant.unanswered"), getFormatter(), listUnanswered({ resolved })]);
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">

@@ -23,18 +23,16 @@ export const metadata: Metadata = { title: "Statutory data" };
  */
 export default async function StatutoryExportsPage({ searchParams }: PageProps<"/payroll/statutory">) {
   const user = await requireUser();
-  const entities = await listEntityOptions(compensationReach(user.principal));
+  const [entities, params, t] = await Promise.all([listEntityOptions(compensationReach(user.principal)), searchParams, getTranslations("payroll.statutory")]);
   if (entities.length === 0) notFound();
   requireStepUp(user, "/payroll/statutory");
 
-  const params = await searchParams;
   const asString = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
   const entityId = entities.find((entity) => entity.id === asString(params.entityId))?.id ?? entities[0].id;
   const today = new Date();
   const year = /^\d{4}$/.test(asString(params.year) ?? "") ? (asString(params.year) as string) : String(today.getFullYear());
   const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(asString(params.month) ?? "") ? (asString(params.month) as string) : `${year}-${String(today.getMonth() + 1).padStart(2, "0")}`;
 
-  const t = await getTranslations("payroll.statutory");
   const [insurance, pit, finalization, dependants] = await Promise.all([
     insuranceChanges(user.principal, entityId, month),
     pitPeriodRows(user.principal, entityId, month),

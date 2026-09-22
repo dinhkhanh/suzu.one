@@ -32,15 +32,16 @@ export type HomeFeed = {
 type FeedUser = { person: { id: string; primaryEntityId: string | null; orgUnitId: string | null; orgUnitPath: readonly string[] }; principal: Principal };
 
 export async function getHomeFeed(user: FeedUser, today: IsoDate = todayInVietnam()): Promise<HomeFeed> {
-  const viewer = await commsViewerOf(user, today);
+  // The viewer's branch is one query; only the announcement lists wait for it.
+  const viewer = commsViewerOf(user, today);
   const kbViewer = kbViewerOf(user);
   const staff = user.principal.workforceType !== "collaborator";
 
   const [acks, mustAck, approvals, announcements, newPages, facts, kudos] = await Promise.all([
     listMyPendingAcks(kbViewer, today),
-    listAnnouncementsFor(viewer, { onlyPendingAck: true, limit: 10 }),
+    viewer.then((found) => listAnnouncementsFor(found, { onlyPendingAck: true, limit: 10 })),
     countInbox(user.person.id),
-    listAnnouncementsFor(viewer, { limit: 6 }),
+    viewer.then((found) => listAnnouncementsFor(found, { limit: 6 })),
     listRecentlyPublished(kbViewer, { firstVersionsOnly: true, since: new Date(Date.now() - 30 * 86_400_000), limit: 6 }),
     staff ? listStaffOccasionFacts(today) : Promise.resolve([]),
     staff ? listKudos({ limit: 6 }) : Promise.resolve([]),

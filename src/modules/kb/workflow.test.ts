@@ -20,7 +20,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { Grant, Principal } from "../platform/rbac/policy";
-import { acknowledgePage, getAckReport, getAckStatus, listMyAcknowledgements, listMyPendingAcks, remindPendingNow, sendAckReminders, sendReviewDueNotices, setAckRequirement } from "./acknowledgements";
+import { acknowledgePage, countMyPendingAcks, getAckReport, getAckStatus, listMyAcknowledgements, listMyPendingAcks, remindPendingNow, sendAckReminders, sendReviewDueNotices, setAckRequirement } from "./acknowledgements";
 import { doc, heading, paragraph } from "./engine/build";
 import { createPage, loadPage, publishPage, saveDraft, setPageAccess, setPageMeta } from "./pages";
 import { type KbViewer, viewerKeys } from "./policy";
@@ -172,6 +172,7 @@ describe("policy acknowledgement", () => {
 
     expect((await listMyPendingAcks(viewers.huy)).map((row) => row.pageId)).toEqual([policy]);
     expect(await listMyPendingAcks(viewers.ngo)).toEqual([]);
+    expect([await countMyPendingAcks(viewers.huy), await countMyPendingAcks(viewers.ngo)]).toEqual([1, 0]);
     const report = await getAckReport(published);
     expect(report).toMatchObject({ versionNo: 1, total: 7, done: 0 });
     expect(report.byEntity).toEqual([{ name: "Creative", total: 1, done: 0 }, { name: "Media", total: 6, done: 0 }]);
@@ -295,6 +296,28 @@ describe("search", () => {
     expect(hit).toMatchObject({ spaceKey: "handbook", path: ["Nghỉ phép năm"] });
     expect(hit.snippet).toContain("đào tạo");
     expect((await searchKb(viewers.huy, { query: "" })).total).toBe(0);
+  });
+
+  it("shows each hit's path only as far up as the viewer may see", async () => {
+    const hr = { personId: ids.hrGroup };
+    const publish = async (title: string, parentId: string, text: string) => {
+      const page = await createPage({ spaceId: spaces.handbook, parentId, title, content: body(title, text) }, hr);
+      await publishPage(page.id, hr);
+      return page.id;
+    };
+    // Two levels below an open page: the whole chain, top first.
+    await publish("Phụ lục kiểm toán nội bộ", made.training, "Phụ lục kiểm toán nội bộ hằng năm.");
+    const [deep] = (await searchKb(viewers.huy, { query: "kiem toan" })).hits;
+    expect(deep.path).toEqual(["Nghỉ phép năm", "Đào tạo và phát triển"]);
+    // Under a page the reader may not open: the path stops there.
+    const child = await publish("Bảo mật lương thưởng", made.secret, "Quy trình bảo mật dữ liệu lương thưởng.");
+    await setPageAccess(child, [
+      { subjectKey: `person:${ids.huy}`, level: "view" },
+      { subjectKey: `person:${ids.hrSzm}`, level: "view" },
+    ]);
+    const pathFor = async (who: Who) => (await searchKb(viewers[who], { query: "bao mat luong" })).hits.find((hit) => hit.pageId === child)?.path;
+    expect(await pathFor("huy")).toEqual([]);
+    expect(await pathFor("hrSzm")).toEqual(["Khung nghỉ phép của quản lý"]);
   });
 
   it("filters by permission in SQL: no drafts, restricted subtrees, other entities' spaces or archived pages — and agrees with the policy", async () => {

@@ -15,12 +15,11 @@ import "server-only";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { Principal } from "@/modules/platform/rbac/policy";
-import { listPayrollFacts } from "@/modules/core-hr/service";
 import type { PayInput, PersonPayResult } from "./engine/types";
 import { availableSteps, listRunEvents, type PayrollRunEventRow, type RunStep } from "./lifecycle";
 import { canManageCompensation, canReadPayroll, payrollReadReach } from "./policy";
 import { type CalcProgress, progressOf } from "./run-calculation";
-import { openResult, openTotals, type PayrollRunRow, type RunTotals } from "./run-storage";
+import { loadRunPeople, openTotals, type PayrollRunRow, type RunTotals } from "./run-storage";
 import { listRunInputs } from "./runs";
 import { getRunVariance, type RunVariance } from "./variance";
 
@@ -113,20 +112,17 @@ export async function getRunView(principal: Principal, runId: string): Promise<R
 
   const { run, entity } = found;
   const seesPayslips = canManageCompensation(principal, run);
+  // The variance check reads the same people (shared for the request) and already knows their names.
   const [personRows, events, variance, inputs] = await Promise.all([
-    db().select().from(schema.payrollRunPerson).where(eq(schema.payrollRunPerson.runId, runId)),
+    loadRunPeople(runId),
     listRunEvents(runId),
     getRunVariance(run),
     seesPayslips ? listRunInputs(runId) : Promise.resolve(new Map<string, PayInput[]>()),
   ]);
 
-  const facts = personRows.length > 0 ? await listPayrollFacts({ personIds: personRows.map((row) => row.personId) }, run.month) : [];
-  const nameOf = new Map(facts.map((fact) => [fact.personId, fact]));
-
   const people = personRows
-    .map((row): RunPersonRow => {
-      const result = openResult(row);
-      const fact = nameOf.get(row.personId);
+    .map(({ row, result }): RunPersonRow => {
+      const fact = variance.names.get(row.personId);
       return {
         personId: row.personId,
         fullName: fact?.fullName ?? "—",
@@ -156,15 +152,27 @@ export async function getRunView(principal: Principal, runId: string): Promise<R
 
 /** The months an entity could still be run for: what the "new run" form offers. */
 export async function listRunnableMonths(entityId: string, limit = 6): Promise<{ month: string; lockedAt: Date; hasRun: boolean }[]> {
+  return (await listRunnableMonthsOf([entityId], limit)).map((row) => ({ month: row.month, lockedAt: row.lockedAt, hasRun: row.hasRun }));
+}
+
+/** The same for several entities in one round trip: the latest `limit` locked months of each. */
+export async function listRunnableMonthsOf(entityIds: readonly string[], limit = 6): Promise<{ entityId: string; month: string; lockedAt: Date; hasRun: boolean }[]> {
+  if (entityIds.length === 0) return [];
   const [locked, runs] = await Promise.all([
     db()
-      .select({ month: schema.timesheetPeriod.month, lockedAt: schema.timesheetPeriod.lockedAt })
+      .select({ entityId: schema.timesheetPeriod.entityId, month: schema.timesheetPeriod.month, lockedAt: schema.timesheetPeriod.lockedAt })
       .from(schema.timesheetPeriod)
-      .where(and(eq(schema.timesheetPeriod.entityId, entityId), eq(schema.timesheetPeriod.status, "locked")))
-      .orderBy(desc(schema.timesheetPeriod.month))
-      .limit(limit),
-    db().select({ month: schema.payrollRun.month, status: schema.payrollRun.status }).from(schema.payrollRun).where(and(eq(schema.payrollRun.entityId, entityId), eq(schema.payrollRun.kind, "regular"))),
+      .where(and(inArray(schema.timesheetPeriod.entityId, [...entityIds]), eq(schema.timesheetPeriod.status, "locked")))
+      .orderBy(desc(schema.timesheetPeriod.month)),
+    db().select({ entityId: schema.payrollRun.entityId, month: schema.payrollRun.month, status: schema.payrollRun.status }).from(schema.payrollRun).where(and(inArray(schema.payrollRun.entityId, [...entityIds]), eq(schema.payrollRun.kind, "regular"))),
   ]);
-  const taken = new Set(runs.filter((row) => row.status !== "cancelled").map((row) => row.month));
-  return locked.filter((row) => row.lockedAt).map((row) => ({ month: row.month, lockedAt: row.lockedAt!, hasRun: taken.has(row.month) }));
+  const taken = new Set(runs.filter((row) => row.status !== "cancelled").map((row) => `${row.entityId}:${row.month}`));
+  const seen = new Map<string, number>();
+  return locked.flatMap((row) => {
+    // Newest first per entity, the first `limit` of each — what a LIMIT per entity would have kept.
+    const count = seen.get(row.entityId) ?? 0;
+    seen.set(row.entityId, count + 1);
+    if (count >= limit || !row.lockedAt) return [];
+    return [{ entityId: row.entityId, month: row.month, lockedAt: row.lockedAt, hasRun: taken.has(`${row.entityId}:${row.month}`) }];
+  });
 }

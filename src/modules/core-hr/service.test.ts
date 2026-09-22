@@ -21,7 +21,7 @@ import { migrate } from "drizzle-orm/pglite/migrator";
 import { db, schema } from "@/lib/db";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { canReadTier, type Grant, type Principal } from "@/modules/platform/rbac/policy";
-import { changeAssignment, getPersonTarget, getPersonView, hirePerson, type HireInput, listPeople, rollOverPlacements, updatePersonBasics } from "./service";
+import { changeAssignment, getPersonTarget, getPersonTargets, getPersonView, hirePerson, type HireInput, listPeople, rollOverPlacements, updatePersonBasics } from "./service";
 
 const NO_PROFILE = { dateOfBirth: null, gender: null, maritalStatus: null, nationality: null, phone: null, personalEmail: null, permanentAddress: null, currentAddress: null };
 const today = todayInVietnam();
@@ -140,7 +140,10 @@ describe("listPeople", () => {
       principal(null, [{ role: "recruiter", scope: { type: "group" } }]),
     ];
     for (const viewer of viewers) {
-      const listed = new Set((await listPeople(viewer, { status: "all" })).rows.map((row) => row.id));
+      const result = await listPeople(viewer, { status: "all" });
+      // The count joins placements only when a condition needs them; it still counts the same rows.
+      expect(result.total).toBe(result.rows.length);
+      const listed = new Set(result.rows.map((row) => row.id));
       for (const personId of everyone()) {
         const target = (await getPersonTarget(personId))!;
         expect(listed.has(personId), `${JSON.stringify(viewer)} → ${personId}`).toBe(canReadTier(viewer, target, "personal"));
@@ -148,10 +151,16 @@ describe("listPeople", () => {
     }
   });
 
+  it("answers getPersonTargets exactly as getPersonTarget, one query for many", async () => {
+    const targets = await getPersonTargets([...everyone(), ids.huy, "00000000-0000-4000-8000-000000000000"]);
+    expect(targets.size).toBe(everyone().length);
+    for (const personId of everyone()) expect(targets.get(personId)).toEqual(await getPersonTarget(personId));
+  });
+
   it("searches without accents and by employee code, and sorts by given name", async () => {
     const owner = principal(null, [{ role: "owner", scope: { type: "group" } }]);
     expect((await listPeople(owner, { q: "gia huy" })).rows.map((row) => row.id)).toEqual([ids.huy]);
-    expect((await listPeople(owner, { q: "szc-0001" })).rows.map((row) => row.id)).toEqual([ids.chi]);
+    expect(await listPeople(owner, { q: "szc-0001" })).toMatchObject({ total: 1, rows: [{ id: ids.chi }] });
     expect((await listPeople(owner, { q: "100%_" })).rows).toEqual([]);
     const names = (await listPeople(owner, { entityId: ids.media, departmentId: ids.video })).rows.map((row) => row.fullName);
     expect(names).toEqual(["Ngo Bao Anh", "Ho Gia Huy", "Dang Hoang Long", "Bui Thanh Tam"]);

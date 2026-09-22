@@ -22,7 +22,7 @@ import { resolveCatalogue } from "./components";
 import { type SalaryChangeReason, type SalaryTerms, salaryTermsSchema } from "./enums";
 import { salaryChangeContext, salaryTermsContext } from "./field-contexts";
 import { canDecideSalaryChange, canManageCompensation, canViewCompensationOf, compensationReach } from "./policy";
-import { getProfilesOn, listProfileHistory, type PayProfileRow } from "./profiles";
+import { listProfileHistory, type PayProfileRow } from "./profiles";
 import { withinReach } from "./reach";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -103,36 +103,60 @@ export type SalaryOverviewRow = {
 export async function listSalaryOverview(principal: Principal, filter: { entityId?: string | null; search?: string | null } = {}, today: IsoDate = todayInVietnam(), executor: Executor = db()): Promise<SalaryOverviewRow[]> {
   const reach = compensationReach(principal);
   const search = filter.search?.trim() ? `%${toSearchKey(filter.search)}%` : null;
+  const table = schema.salaryStructure;
+  // One query: each person with, beside them, the latest employment's code, the structure in force
+  // (its own entity in reach too: pay set by another entity stays with that entity's C&B), the pay
+  // profile in force and whether a salary change is open. The terms stay encrypted until below.
+  const employment = executor.select({ employeeCode: schema.employment.employeeCode }).from(schema.employment).where(eq(schema.employment.personId, schema.person.id)).orderBy(desc(schema.employment.startDate)).limit(1).as("employment");
+  const structure = executor
+    .select({ id: table.id, validFrom: table.validFrom, termsEnc: table.termsEnc })
+    .from(table)
+    .where(and(eq(table.personId, schema.person.id), withinReach(table.entityId, reach), inForce(table, today, today)))
+    .limit(1)
+    .as("structure");
+  const profiles = schema.payProfile;
+  const profile = executor
+    .select({ profile: profiles.profile, simpleBasis: profiles.simpleBasis })
+    .from(profiles)
+    .where(and(eq(profiles.personId, schema.person.id), eq(profiles.status, "approved"), lte(profiles.validFrom, today), or(isNull(profiles.validTo), gte(profiles.validTo, today))))
+    .limit(1)
+    .as("profile");
+  const requests = schema.approvalRequest;
   const people = await executor
-    .select({ id: schema.person.id, fullName: schema.person.fullName, entityId: schema.person.primaryEntityId, departmentId: schema.person.departmentId, workforceType: schema.person.workforceType })
+    .select({
+      id: schema.person.id,
+      fullName: schema.person.fullName,
+      entityId: schema.person.primaryEntityId,
+      departmentId: schema.person.departmentId,
+      workforceType: schema.person.workforceType,
+      employeeCode: employment.employeeCode,
+      structureId: structure.id,
+      structureValidFrom: structure.validFrom,
+      termsEnc: structure.termsEnc,
+      profile: profile.profile,
+      simpleBasis: profile.simpleBasis,
+      hasOpenChange: sql<boolean>`exists (select 1 from ${requests} where ${requests.type} = ${salaryChangeRequest.type} and ${requests.subjectPersonId} = ${schema.person.id} and ${requests.status} in ('pending', 'returned'))`,
+    })
     .from(schema.person)
+    .leftJoinLateral(employment, sql`true`)
+    .leftJoinLateral(structure, sql`true`)
+    .leftJoinLateral(profile, sql`true`)
     .where(and(withinReach(schema.person.primaryEntityId, reach), inArray(schema.person.status, ["preboarding", "active", "suspended"]), filter.entityId ? eq(schema.person.primaryEntityId, filter.entityId) : undefined, search ? ilike(schema.person.searchName, search) : undefined))
     .orderBy(sql`substring(${schema.person.searchName} from '[^ ]+$') || ' ' || ${schema.person.searchName}`);
-  if (people.length === 0) return [];
-  const ids = people.map((row) => row.id);
-  const table = schema.salaryStructure;
-  const [structures, profiles, employments, open] = await Promise.all([
-    // The structure's own entity must be in reach too: pay set by another entity stays with that entity's C&B.
-    executor.select().from(table).where(and(inArray(table.personId, ids), withinReach(table.entityId, reach), inForce(table, today, today))),
-    getProfilesOn(ids, today, executor),
-    listEmploymentFacts({ personIds: ids }, executor),
-    executor.select({ personId: schema.approvalRequest.subjectPersonId }).from(schema.approvalRequest).where(and(eq(schema.approvalRequest.type, salaryChangeRequest.type), inArray(schema.approvalRequest.subjectPersonId, ids), inArray(schema.approvalRequest.status, ["pending", "returned"]))),
-  ]);
+
   return people.map((row) => {
-    const structure = structures.find((candidate) => candidate.personId === row.id);
-    const view = structure ? openTerms(structure) : null;
-    const profile = profiles.get(row.id) ?? null;
+    const terms = row.structureId && row.termsEnc ? salaryTermsSchema.parse(JSON.parse(fieldCipher().decrypt(row.termsEnc, salaryTermsContext(row.structureId)))) : null;
     return {
       personId: row.id,
       fullName: row.fullName,
-      employeeCode: employments.find((fact) => fact.personId === row.id)?.employeeCode ?? null,
+      employeeCode: row.employeeCode ?? null,
       entityId: row.entityId,
       departmentId: row.departmentId,
       workforceType: row.workforceType,
-      profile: profile?.profile ?? null,
-      simpleBasis: profile?.simpleBasis ?? null,
-      structure: view ? { id: view.id, validFrom: view.validFrom, baseSalary: view.terms.baseSalary, insuranceSalary: view.terms.insuranceSalary, allowancesTotal: view.terms.allowances.reduce((sum, line) => sum + line.amount, 0) } : null,
-      hasOpenChange: open.some((request) => request.personId === row.id),
+      profile: row.profile ?? null,
+      simpleBasis: row.simpleBasis ?? null,
+      structure: terms && row.structureId && row.structureValidFrom ? { id: row.structureId, validFrom: row.structureValidFrom, baseSalary: terms.baseSalary, insuranceSalary: terms.insuranceSalary, allowancesTotal: terms.allowances.reduce((sum, line) => sum + line.amount, 0) } : null,
+      hasOpenChange: !!row.hasOpenChange,
     };
   });
 }

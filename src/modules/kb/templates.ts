@@ -2,6 +2,7 @@
 import "server-only";
 import { asc, eq } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate } from "@/lib/cache";
 import { db, schema } from "@/lib/db";
 import { type Doc, validateDoc } from "./engine/doc";
 import { mammothHtmlToMarkdown } from "./engine/docx-html";
@@ -11,9 +12,20 @@ import { type Actor, createPage, type PageRow } from "./pages";
 export type TemplateRow = typeof schema.kbTemplate.$inferSelect;
 export type TemplateOption = { id: string; key: string; name: string; description: string | null; isSystem: boolean; isActive: boolean };
 
+// The template list (names only, not content) is read by every "new page" screen and changes
+// when someone saves or switches off a template: it sits in the shared cache, and both writers
+// below drop it. The seed script only adds rows; the TTL covers it.
+const TEMPLATES_KEY = "kb:templates";
+const TEMPLATES_TTL = 60 * 60;
+
 export async function listTemplates(options: { includeInactive?: boolean } = {}): Promise<TemplateOption[]> {
-  const rows = await db().select().from(schema.kbTemplate).orderBy(asc(schema.kbTemplate.sortOrder), asc(schema.kbTemplate.name));
-  return rows.filter((row) => options.includeInactive || row.isActive).map((row) => ({ id: row.id, key: row.key, name: row.name, description: row.description, isSystem: row.isSystem, isActive: row.isActive }));
+  const rows = await cached(TEMPLATES_KEY, TEMPLATES_TTL, () =>
+    db()
+      .select({ id: schema.kbTemplate.id, key: schema.kbTemplate.key, name: schema.kbTemplate.name, description: schema.kbTemplate.description, isSystem: schema.kbTemplate.isSystem, isActive: schema.kbTemplate.isActive })
+      .from(schema.kbTemplate)
+      .orderBy(asc(schema.kbTemplate.sortOrder), asc(schema.kbTemplate.name)),
+  );
+  return rows.filter((row) => options.includeInactive || row.isActive);
 }
 
 /** The document a new page starts from. An unknown or switched-off template is a refusal, not an empty page. */
@@ -44,6 +56,7 @@ export async function saveAsTemplate(input: { name: string; description: string 
   let key = base;
   for (let n = 2; taken.has(key); n++) key = `${base}_${n}`;
   const [row] = await db().insert(schema.kbTemplate).values({ key, name: input.name.trim().slice(0, 120), description: input.description, content: checked.doc, isSystem: false, sortOrder: 1000, createdByPersonId: actor.personId }).returning();
+  await invalidate(TEMPLATES_KEY);
   return row;
 }
 
@@ -51,6 +64,7 @@ export async function setTemplateActive(templateId: string, isActive: boolean): 
   const [before] = await db().select().from(schema.kbTemplate).where(eq(schema.kbTemplate.id, templateId)).limit(1);
   if (!before) throw new ActionError("kb_template_not_found");
   const [after] = await db().update(schema.kbTemplate).set({ isActive, updatedAt: new Date() }).where(eq(schema.kbTemplate.id, templateId)).returning();
+  await invalidate(TEMPLATES_KEY);
   return { before, after };
 }
 
