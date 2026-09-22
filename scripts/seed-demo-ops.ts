@@ -26,7 +26,7 @@ const addDays = (date: string, days: number) => new Date(Date.parse(`${date}T00:
 async function main() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set (see .env.example)");
-  if (!["127.0.0.1", "localhost"].includes(new URL(url).hostname)) throw new Error("Demo data is for a local database only.");
+  if (!["127.0.0.1", "localhost"].includes(new URL(url).hostname) && process.env.DEMO_SEED_ALLOW_REMOTE !== "1") throw new Error("Demo data is for a local database only (set DEMO_SEED_ALLOW_REMOTE=1 for a staging database).");
   const base = process.env.RECOMPUTE_URL ?? "http://localhost:3000";
   if (!["localhost", "127.0.0.1"].includes(new URL(base).hostname)) throw new Error("seed-demo-ops.ts only talks to a local server.");
   const secret = process.env.CRON_SECRET;

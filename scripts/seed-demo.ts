@@ -1,5 +1,5 @@
 // Seeds a small fake company for local development: people, employments, assignments and role grants.
-// Refuses to run against anything but a local database. Run `pnpm db:seed` first, then `pnpm db:seed:demo`.
+// Refuses to run against anything but a local database unless DEMO_SEED_ALLOW_REMOTE=1. Run `pnpm db:seed` first, then `pnpm db:seed:demo`.
 import { config } from "dotenv";
 import { randomUUID } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
@@ -69,7 +69,8 @@ const PEOPLE: Demo[] = [
 async function main() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set (see .env.example)");
-  if (!["127.0.0.1", "localhost"].includes(new URL(url).hostname)) throw new Error("Demo data is for a local database only.");
+  // A pre-release staging database may opt in explicitly; anything else must be local.
+  if (!["127.0.0.1", "localhost"].includes(new URL(url).hostname) && process.env.DEMO_SEED_ALLOW_REMOTE !== "1") throw new Error("Demo data is for a local database only (set DEMO_SEED_ALLOW_REMOTE=1 for a staging database).");
   const client = postgres(url, { prepare: false, max: 1 });
   const db = drizzle(client);
 
