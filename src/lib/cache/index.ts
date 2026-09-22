@@ -1,8 +1,8 @@
 import "server-only";
-import { createHash } from "node:crypto";
 import { Redis } from "@upstash/redis";
 import { env } from "@/lib/env";
 import { decode, encode } from "./codec";
+import { cachePrefix } from "./prefix";
 
 // A shared read-through cache in front of Postgres (Upstash Redis). What may go in it: reference
 // data (org tree, entities, types, policies, rates, calendars) and a person's role grants — never
@@ -12,24 +12,15 @@ import { decode, encode } from "./codec";
 // `invalidate()` with the entry's key after its change is committed. Redis being slow or down is
 // never an error: the read falls through to Postgres.
 
-/** Bump when the shape of a cached value changes, so old deployments' entries are never read. */
-const CACHE_VERSION = "v1";
-
 type Client = { redis: Redis; prefix: string } | null;
 let client: Client | undefined;
 
 function connect(): Client {
   const config = env();
   if (!config.KV_REST_API_URL || !config.KV_REST_API_TOKEN) return null;
-  // One Upstash database may serve a laptop, previews and production at once. Entries are scoped
-  // by the Postgres database they were read from: deployments on the same database share entries
-  // (so a write through any of them clears them for all), deployments on different ones never meet.
-  // User, host and database name — not the port, so a pooled and a session connection agree.
-  const url = new URL(config.DATABASE_URL);
-  const database = createHash("sha256").update(`${url.username}@${url.hostname}${url.pathname}`).digest("hex").slice(0, 10);
   return {
     redis: new Redis({ url: config.KV_REST_API_URL, token: config.KV_REST_API_TOKEN, automaticDeserialization: false, enableTelemetry: false }),
-    prefix: `suzu:${database}:${CACHE_VERSION}:`,
+    prefix: cachePrefix(config.DATABASE_URL),
   };
 }
 

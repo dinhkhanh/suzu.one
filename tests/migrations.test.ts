@@ -95,6 +95,17 @@ describe("migrations", () => {
     expect(unprotected.rows.map((row) => row.relname)).toEqual([]);
   });
 
+  it("keeps read functions in the private `app` schema, callable by the owner only", async () => {
+    const functions = await client.query<{ name: string; acl: string | null }>(
+      `SELECT p.proname AS name, array_to_string(p.proacl, ',') AS acl FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'app'`,
+    );
+    expect(functions.rows.length).toBeGreaterThan(0);
+    // No ACL means the default, which lets PUBLIC execute; "=X/" is an explicit grant to PUBLIC.
+    expect(functions.rows.filter((row) => row.acl === null || /(^|,)=X\//.test(row.acl)).map((row) => row.name)).toEqual([]);
+    const schemaAcl = await client.query<{ acl: string | null }>(`SELECT array_to_string(nspacl, ',') AS acl FROM pg_namespace WHERE nspname = 'app'`);
+    expect(schemaAcl.rows[0].acl ?? "").not.toMatch(/(^|,)=U/);
+  });
+
   // The org-unit tree (FR-PLT-16): the database, not the application, keeps `path` and the two
   // derived placement columns true — including when a unit is moved to a different parent.
   describe("the org-unit tree", () => {
