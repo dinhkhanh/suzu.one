@@ -69,6 +69,20 @@ Decisions added 2026-09-22:
 |---|---|
 | D21 | **The app is the system of record for daily work.** HRM is usable; the next build is **project & daily work management (PJM, §4.6b)**: every employee plans, executes, hands off and delivers their work in the app — briefs, plans, tasks, daily reports, hand-offs, client approvals, publish logs, acceptance and the billing hand-off. Chat stays for conversation only. Existing task trackers and work spreadsheets are retired on a cut-over date announced by the owner (Q23). |
 
+Decisions added 2026-09-23 (owner's answers to Q17–Q25):
+
+| # | Decision |
+|---|---|
+| D22 | **Every team logs time** (Q17). Time entries carry the billable flag, and **team leads approve the week**: the defaults of `daily_team_policy` are `time = required`, `timesheet approval = on`. Time remains a work record: it never reaches payroll (§4.6b design rule 3). |
+| D23 | **The morning plan and the end-of-day report are required of everyone** (Q18), including people who belong to no work team, on every day the person is scheduled to work (so on the work-from-home Saturday of D15, never on leave, holidays or days off). **The report is due at 23:00**; a report filed later is marked late. **Everyone above the person in the management chain may read** their plans, reports, time and weekly reports — colleagues and unrelated leaders may not. |
+| D24 | **Clients review through an expiring, no-login link** at `/preview/<token>` (Q19), beside the account manager's own recording of a decision. This is the **second public surface** of the app (A8 amended): the page shows one deliverable version and nothing else of the company, the link expires (14 days by default), can be revoked, takes one decision (approve · approve with changes · request changes, with the decider's name and a comment) and writes the same client decision record as FR-PJM-51, freezing the approved version. |
+| D25 | **Job numbers** keep the built scheme (Q20, left to the build): `<ENTITY CODE>-<YY>-<NNN>`, e.g. `SZM-26-042`, sequential per entity and calendar year, restarting each year; a group project without an entity uses `SZ`. It stays a pure function, so a per-entity scheme can be configured later without touching the numbers already issued. |
+| D26 | **A project's lead and its account manager see their own project's money** (Q21) — fee, money budget, retainer fee and billing amounts — as do `pjm:commercial` holders (C-level, entity directors, finance) over the entity. **Changing** an amount stays with `pjm:commercial`. Nobody else sees an amount, and nothing salary-derived is visible without `pjm:cost`. |
+| D27 | **Every client's work is accepted before it is billed** (Q22): a signed biên bản nghiệm thu per client-facing milestone and per retainer month for **all clients**, not a chosen few. Close-out refuses an unaccepted client project unless the lead overrides with a recorded reason. The template's wording still needs counsel or the chief accountant. |
+| D28 | **PJM replaces the Google Sheets** the teams run their work in, with a **cut-over in October 2026** (Q23): from the announced date, work that is not in the app does not count. |
+| D29 | **Every team is a pilot team** (Q24): the rollout is the whole company at once rather than two teams first, so the feature flag is not used to stage PJM. |
+| D30 | **The owner and `pjm:portfolio` holders may open a private project** (Q25) — read it, its plan, its tasks and its documents. They remain outsiders: they do not contribute, are not assignable, do not decide reviews, and cannot be handed its work. A read of a private project by someone who is not one of its people is recorded in the audit log. |
+
 ### 1.4 Assumptions (please correct any that are wrong)
 
 | # | Assumption |
@@ -80,10 +94,10 @@ Decisions added 2026-09-22:
 | A5 | Web app, mobile-first responsive, installable as a PWA. No native iOS/Android app in v1. |
 | A6 | Hosting is managed cloud (Vercel + Supabase Postgres in Singapore) — confirmed, D10. |
 | A7 | Two-factor authentication is enforced at the Google Workspace level, not re-implemented in the app. |
-| A8 | The app is internal only. The single public surface is the careers page / job application form. |
-| A9 | PJM: clients never sign in. Client feedback and approvals are recorded by the account manager with evidence (FR-PJM-51); an expiring client review link is an open question (Q19), not assumed. |
-| A10 | PJM: time logging is required only for teams whose work is billed or budgeted in hours (production, video, design); optional elsewhere (Q17). Time logs never feed payroll. |
-| A11 | PJM: the morning plan and end-of-day report are on for every team by default, Monday–Friday, and off on untracked Saturdays (D15) and leave days (Q18). |
+| A8 | The app is internal only. It has **two public surfaces**: the careers page / job application form, and the expiring client review link `/preview/<token>` (D24). Both are unauthenticated, rate-limited and `noindex`. |
+| A9 | PJM: clients never sign in. A client's decision is either recorded by the account manager with evidence (FR-PJM-51) or made by the client on an expiring review link (D24, FR-PJM-51a); both produce the same record. |
+| A10 | PJM: **every team logs time**, with the billable flag and weekly approval by the lead (D22). Time logs never feed payroll. |
+| A11 | PJM: the morning plan and the end-of-day report are required of everyone on every scheduled working day, including the work-from-home Saturday, with the report due at 23:00 (D23). |
 
 ### 1.5 Glossary
 
@@ -416,7 +430,7 @@ Design rules for the whole of PJM:
 1. **Write once.** Reports (daily, weekly, project status, client report) are *prefilled from recorded activity*; the person adds only judgement — blockers, plan, health. No typing the same thing twice.
 2. **Money is not shown to people who do not need it.** Hours are visible to project leads; fees and budgets in VND need `pjm:commercial`; anything derived from salary (cost rates, margin) needs `pjm:cost` and is `compensation`-tier data. Rollups, status updates, exports and the AI assistant respect the same split.
 3. **Work records never drive pay automatically.** Time logs, daily reports and delivery statistics are evidence for leads and reviews (FR-WRK-20 principle); they are not attendance (the legal record, §4.3) and never feed payroll.
-4. **Clients have no accounts (D14, A8).** Client feedback and approval are recorded *by the account person* with evidence (§ Delivery).
+4. **Clients have no accounts (D14).** A client's feedback and approval either are recorded *by the account person* with evidence, or come from the client on an expiring review link that shows one deliverable version and nothing else (D24, § Delivery).
 5. **Every rule is configurable per team**, with a curated default, so a small team is not buried in process (daily report on/off, time logging required/optional/off, hand-off packages, cycles).
 
 #### Changes to §4.6 (WRK)
@@ -492,6 +506,7 @@ Design rules for the whole of PJM:
 |---|---|---|
 | FR-PJM-50 | **Review chains**: a deliverable's review can have several ordered stages (e.g. peer → lead → account manager → client), set per project or deliverable type, each with a reviewer rule and due time; a stage may start automatically when the earlier one approves. Decisions: approved, **approved with changes**, changes required. Extends FR-WRK-08. | M |
 | FR-PJM-51 | **Client decision record**: since clients have no accounts, the account manager records the client's decision on a specific deliverable version — decision, date, channel (email, Zalo, meeting, call), who decided on the client side, the client's comments, **evidence required** (screenshot, email file or link). Client revision rounds are counted separately from internal ones. A change after approval creates a new version; the approved one is frozen. | M |
+| FR-PJM-51a | **Client review link** (D24): the account manager creates an expiring, no-login link `/preview/<token>` to one deliverable version — random token stored only as a hash, default 14 days, revocable, viewer-facing page limited to the client/brand, the project, the version and the sender's message, `noindex`, rate-limited. When the link allows it the client decides on it (approve · approve with changes · request changes, with their name and a comment) and the app writes the same client decision record as FR-PJM-51, freezing an approved version; a decided, expired or revoked link says only that it is no longer active. | M |
 | FR-PJM-52 | **Visual feedback on files**: pin comments to a point on an image or a timecode on a video, per version; compare two versions side by side. | S (images) / C (video timecode) |
 | FR-PJM-53 | **Delivery record**: final files/links (Drive), delivered date, by whom, to whom, the version delivered; marks the deliverables-register line delivered. | M |
 | FR-PJM-54 | **Publish log** for social/content work: planned date and time, platform, page/account, published URL, published by, boosted yes/no and ad account; a *Published* state requires the URL; the content calendar shows planned vs published and flags late or missing posts. | M |
@@ -836,6 +851,8 @@ Employee and payroll data is personal and sensitive data under the PDPL. Options
 
 Resolved on 2026-09-19: Q1 → D8 · Q2 → D9 · Q3 → D10 · Q4 → D11 · Q6 → D12 · Q7 → D13 · Q8 → D14 · Q9 → D15 · Q10 → D16 · Q11 → D17.
 
+Resolved on 2026-09-23 (owner): Q17 → D22 · Q18 → D23 · Q19 → D24 · Q20 → D25 · Q21 → D26 · Q22 → D27 · Q23 → D28 · Q24 → D29 · Q25 → D30.
+
 Still open:
 
 | # | Question | Needed by |
@@ -846,15 +863,6 @@ Still open:
 | Q14 | Year-end bonus formula: the first version of the scheme in FR-PAY-21 (weights of KPI vs OKR vs review rating, service-time factor, multiplier bands). | Phase 8 |
 | Q15 | Is Saturday WFH a full or a half working day, and does it count toward the month's standard working days for pro-rating? (Assumed: full day, counted.) | Phase 2 |
 | Q16 | PDPL legal work for offshore hosting (deferred by D10). | Before payroll go-live |
-| Q17 | Time logging: which teams must log time, is billable/non-billable used, and do leads approve weekly timesheets (FR-PJM-24, 25)? Default A10. | PJM release 3 |
-| Q18 | Daily plan and EOD report: mandatory for everyone or only some teams; cut-off times; who reads them above the team lead (A11)? | PJM release 2 |
-| Q19 | Client review: record-only by the account manager (default, A9) or also an expiring, no-login client review link — which would be a second public surface beside the careers page (A8)? | PJM release 4 |
-| Q20 | Job-number scheme per entity (prefix, year, sequence; restart yearly?). | PJM release 1 |
-| Q21 | Who may see fees and money budgets (`pjm:commercial`) — should project leads and account managers see their own project's fee? | PJM release 1 |
-| Q22 | Acceptance: which clients require a signed biên bản nghiệm thu, per milestone or per month; the template wording (to be read by the chief accountant or counsel). | PJM release 4 |
-| Q23 | Which tools and spreadsheets PJM replaces (Trello, ClickUp, Google Sheets content calendars, Zalo groups for approvals…) and the cut-over date (D21). | Before the PJM pilot |
-| Q24 | The two pilot teams and their leads for PJM (one social/content retainer team, one video production team). | Before PJM release 1 |
-| Q25 | Should the owner and `pjm:portfolio` holders be able to open *private* projects (Phase 3 left it closed)? | PJM release 1 |
 
 ---
 
