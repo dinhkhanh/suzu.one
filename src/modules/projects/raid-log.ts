@@ -1,14 +1,16 @@
 // The risks, issues, decisions and assumptions log (FR-PJM-29). Items are written by the people
 // working in the project; an issue can be turned into a task in the project, once, and the item
 // keeps the link. Decisions carry the day they were taken and their proof — a file kept by the
-// files module or an https link — and may come from a meeting (FR-PJM-30). No authorization here:
-// the actions check `canAddRaid` / `canEditRaidItem` / `canCloseRaidItem` first.
+// files module or an https link — and may come from a meeting (FR-PJM-30). Whoever an item is
+// given to hears about it. No authorization here: the actions check `canAddRaid` /
+// `canEditRaidItem` / `canCloseRaidItem` first.
 import "server-only";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import { notify } from "../platform/notifications/service";
 import { createWorkTaskIn, listAssignable, taskKey } from "../work/service";
 import { isProjectPerson } from "./membership";
 import { canBecomeTask, normaliseRaid, type RaidKind, raidProblems, type RaidSeverity, type RaidStatus, sortRaid } from "./engine/raid";
@@ -54,6 +56,17 @@ function checked(input: RaidInput, today: IsoDate): RaidInput {
   return clean;
 }
 
+/**
+ * Tells the new owner that an item of the log is theirs to look after. Only on a change of hands,
+ * and never to the person who made the change — they know. The project and the item's title,
+ * nothing else: a risk may be about money and a notification is read on a lock screen.
+ */
+async function tellNewOwner(item: RaidRow, previousOwnerId: string | null, actorPersonId: string): Promise<void> {
+  if (!item.ownerPersonId || item.ownerPersonId === previousOwnerId || item.ownerPersonId === actorPersonId) return;
+  const [project] = await db().select({ name: schema.workProject.name }).from(schema.workProject).where(eq(schema.workProject.id, item.projectId)).limit(1);
+  await notify({ recipients: [item.ownerPersonId], kind: "projects.raid_assigned", params: { project: project?.name ?? "", title: item.title }, link: `/projects/${item.projectId}/risks` });
+}
+
 /** Adds an item, or changes one of this project's. The kind of an existing item stays what it was. */
 export async function saveRaidItem(projectId: string, itemId: string | null, input: RaidInput, actorPersonId: string, today: IsoDate = todayInVietnam()): Promise<{ before: RaidRow | null; after: RaidRow }> {
   const before = itemId ? ((await findRaidItem(itemId)) ?? null) : null;
@@ -66,9 +79,11 @@ export async function saveRaidItem(projectId: string, itemId: string | null, inp
       .set({ ...values, kind: before.kind, updatedAt: new Date() })
       .where(eq(schema.projectRaidItem.id, before.id))
       .returning();
+    await tellNewOwner(after, before.ownerPersonId, actorPersonId);
     return { before, after };
   }
   const [after] = await db().insert(schema.projectRaidItem).values({ projectId, ...values, createdByPersonId: actorPersonId }).returning();
+  await tellNewOwner(after, null, actorPersonId);
   return { before: null, after };
 }
 

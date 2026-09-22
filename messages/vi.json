@@ -998,6 +998,14 @@
       "tasks_review_overdue": {
         "title": "Quá hạn duyệt: {stage}",
         "body": "“{task}” đang chờ bạn duyệt ở bước {stage} và đã quá hạn. Hãy duyệt hoặc yêu cầu chỉnh sửa."
+      },
+      "projects_raid_assigned": {
+        "title": "Bạn phụ trách một mục trong nhật ký rủi ro",
+        "body": "“{title}” của dự án {project} được giao cho bạn theo dõi."
+      },
+      "tasks_team_added": {
+        "title": "Bạn được thêm vào nhóm {team}",
+        "body": "{actor} vừa thêm bạn vào nhóm {team}. Mở nhóm để xem công việc, quy trình và những người cùng nhóm."
       }
     },
     "errors": {
@@ -3334,7 +3342,8 @@
       "empty": "Chưa có thành viên.",
       "person": "Nhân sự",
       "pickPerson": "Chọn nhân sự…",
-      "add": "Thêm"
+      "add": "Thêm",
+      "narrowed": "Danh sách chỉ gồm những người bạn được phép thêm: nhân sự thuộc pháp nhân và bộ phận của nhóm này. Muốn thêm người ở nơi khác, hãy nhờ người quản lý công việc ở nơi đó."
     },
     "states": {
       "title": "Quy trình",
@@ -9852,7 +9861,11 @@
       "retainer_month_out_of_range": "Tháng nằm ngoài khoảng cho phép: sớm nhất là {min}, muộn nhất là {max}.",
       "retainer_terms_need_commercial": "Đổi tháng bắt đầu, tháng kết thúc hay trạng thái chạy của retainer cần quyền xem phí (pjm:commercial) ở pháp nhân của dự án.",
       "acceptance_project_exists": "Dự án đã có một biên bản nghiệm thu toàn dự án chưa huỷ.",
-      "person_not_in_project": "Người này không thuộc dự án hoặc nhóm làm dự án."
+      "person_not_in_project": "Người này không thuộc dự án hoặc nhóm làm dự án.",
+      "meeting_time_invalid": "Giờ bắt đầu không hợp lệ.",
+      "meeting_duration_invalid": "Thời lượng phải từ 5 phút đến 12 tiếng.",
+      "meeting_time_required": "Hãy nhập giờ bắt đầu trước khi đưa cuộc họp lên lịch.",
+      "meeting_not_in_calendar": "Cuộc họp này chưa có trên lịch."
     },
     "timeline": {
       "title": "Biểu đồ tiến độ",
@@ -10333,7 +10346,7 @@
       "record": "Lưu cuộc họp",
       "save": "Lưu thay đổi",
       "edit": "Sửa hoặc bổ sung",
-      "calendarNote": "Lời mời lịch chưa gửi được từ đây: hệ thống chưa kết nối Google Calendar cho dự án. Hãy tạo sự kiện trên lịch như bình thường rồi ghi lại cuộc họp ở đây.",
+      "calendarNote": "Lưu cuộc họp trước, rồi mở cuộc họp đó để đưa lên lịch và gửi lời mời cho người tham dự.",
       "titleHint": "VD: Họp tuần 42 với khách hàng",
       "externalHint": "Người ngoài công ty, VD: chị Mai (Brand Manager, Bibo)",
       "decisionsHint": "Mỗi quyết định được đưa vào nhật ký quyết định của dự án, ghi ngày theo ngày họp.",
@@ -10371,7 +10384,26 @@
         "actions": "Việc cần làm",
         "action": "Việc cần làm",
         "assignee": "Người phụ trách",
-        "due": "Hạn"
+        "due": "Hạn",
+        "startTime": "Giờ bắt đầu",
+        "durationMinutes": "Thời lượng (phút)"
+      },
+      "timeHint": "Có giờ bắt đầu thì mới đưa được cuộc họp lên lịch.",
+      "atTime": "{time} · {minutes} phút",
+      "inCalendar": "Đã lên lịch",
+      "calendar": {
+        "title": "Lịch và lời mời",
+        "needsTime": "Cuộc họp chưa có giờ bắt đầu nên chưa đưa lên lịch được. Hãy nhập giờ ở phần sửa bên dưới.",
+        "put": "Đưa lên lịch",
+        "update": "Cập nhật sự kiện",
+        "remove": "Gỡ khỏi lịch",
+        "removeConfirm": "Huỷ sự kiện trên lịch của cuộc họp này?",
+        "join": "Mở link họp trực tuyến",
+        "status": {
+          "simulated": "Chưa kết nối Google Calendar: sự kiện chỉ được ghi trong SuZu One, chưa có lời mời nào được gửi đi.",
+          "sent": "Đã tạo sự kiện trên lịch công ty và gửi lời mời cho người tham dự có email công việc.",
+          "failed": "Lịch công ty chưa nhận được sự kiện này."
+        }
       }
     },
     "documents": {

@@ -4,6 +4,11 @@
 // task in the project, made by the work module and linked through `project_meeting_task`. Written
 // in one transaction: a meeting is never saved with half its action items.
 //
+// A meeting given an hour can also be put in the company calendar through the platform's adapter
+// (`platform/calendar`): the event is created, updated when the meeting changes and cancelled when
+// it is taken out again. With no service account the adapter records `simulated` and the page says
+// so — the notes are the meeting, an invitation is a convenience on top of them.
+//
 // The retrospective is a meeting of kind "retro" too, but it is held on the close-out page
 // (`close.ts`), once per project; here it is only listed.
 import "server-only";
@@ -11,8 +16,11 @@ import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
+import { env } from "@/lib/env";
+import { TIME_ZONE } from "@/i18n/config";
+import { type CalendarDelivery, putInCalendar, removeFromCalendar } from "../platform/calendar/service";
 import { createWorkTaskIn, listAssignable, taskKey } from "../work/service";
-import { type ActionItem, type MeetingKind, meetingProblems } from "./engine/raid";
+import { type ActionItem, type MeetingKind, meetingProblems, meetingWindow, normaliseMeetingTime } from "./engine/raid";
 import { listRaid, type RaidView } from "./raid-log";
 
 export type MeetingRow = typeof schema.projectMeeting.$inferSelect;
@@ -21,6 +29,9 @@ export type MeetingInput = {
   kind: Exclude<MeetingKind, "retro">;
   title: string;
   heldOn: IsoDate;
+  /** Vietnam-local "HH:MM", and how long it runs. Optional: notes are often written up afterwards. */
+  startTime: string | null;
+  durationMinutes: number | null;
   attendeeIds: string[];
   externalAttendees: string | null;
   agenda: string | null;
@@ -50,7 +61,8 @@ export async function saveMeeting(projectId: string, meetingId: string | null, i
   const attendeeIds = [...new Set(input.attendeeIds)];
   // An attendee who has since left the project stays on the notes they were in.
   const known = new Set([...people.map((person) => person.id), ...(before?.attendeeIds ?? [])]);
-  const [problem] = meetingProblems({ ...input, attendeeIds }, { today, people: known });
+  const values = normaliseMeetingTime({ ...input, attendeeIds });
+  const [problem] = meetingProblems(values, { today, people: known });
   if (problem) throw new ActionError(problem);
   // Assignees must be people of the project now, not merely people who once attended.
   const current = new Set(people.map((person) => person.id));
@@ -58,7 +70,7 @@ export async function saveMeeting(projectId: string, meetingId: string | null, i
   const [project] = await db().select({ teamId: schema.workProject.teamId }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
   if (!project) throw new ActionError("project_not_found");
 
-  const fields = { kind: input.kind, title: input.title.trim(), heldOn: input.heldOn, attendeeIds, externalAttendees: input.externalAttendees, agenda: input.agenda, notes: input.notes };
+  const fields = { kind: input.kind, title: input.title.trim(), heldOn: input.heldOn, startTime: values.startTime, durationMinutes: values.durationMinutes, attendeeIds, externalAttendees: input.externalAttendees, agenda: input.agenda, notes: input.notes };
   return db().transaction(async (tx) => {
     const [after] = before
       ? await tx.update(schema.projectMeeting).set({ ...fields, updatedAt: new Date() }).where(eq(schema.projectMeeting.id, before.id)).returning()
@@ -77,6 +89,86 @@ export async function saveMeeting(projectId: string, meetingId: string | null, i
     if (taskIds.length) await tx.insert(schema.projectMeetingTask).values(taskIds.map((taskId) => ({ meetingId: after.id, taskId })));
     return { before, after, decisionIds: decisions.map((row) => row.id), taskIds };
   });
+}
+
+// ── The calendar invitation (FR-PJM-30) ─────────────────────────────────────────────────────
+
+/** Stable across changes, so the calendar updates one event rather than collecting copies of it. */
+const uidFor = (meetingId: string): string => `project-meeting-${meetingId}@suzu.one`;
+
+const meetingLink = (projectId: string, meetingId: string): string => `${env().BETTER_AUTH_URL.replace(/\/$/, "")}/projects/${projectId}/meetings/${meetingId}`;
+
+/**
+ * The event a meeting is worth: its title with the project's, the hour it was given, the people on
+ * the notes who have a work address, and an agenda with a link back to the page the notes live on.
+ * Nothing commercial: an invitation is read on a phone, on a train, by whoever glances over.
+ */
+async function eventFor(meeting: MeetingRow): Promise<Parameters<typeof putInCalendar>[0]> {
+  const window = meetingWindow(meeting);
+  if (!window) throw new ActionError("meeting_time_required");
+  const [project] = await db().select({ name: schema.workProject.name }).from(schema.workProject).where(eq(schema.workProject.id, meeting.projectId)).limit(1);
+  if (!project) throw new ActionError("project_not_found");
+  const attendees = meeting.attendeeIds.length
+    ? await db()
+        .select({ fullName: schema.person.fullName, workEmail: schema.person.workEmail })
+        .from(schema.person)
+        .where(and(inArray(schema.person.id, meeting.attendeeIds), sql`${schema.person.workEmail} is not null`, sql`${schema.person.status} <> 'offboarded'`))
+        .orderBy(asc(schema.person.searchName))
+    : [];
+  const link = meetingLink(meeting.projectId, meeting.id);
+  return {
+    uid: uidFor(meeting.id),
+    summary: `${meeting.title} — ${project.name}`,
+    description: [meeting.agenda, link].filter(Boolean).join("\n\n"),
+    location: null,
+    start: window.start,
+    end: window.end,
+    timeZone: TIME_ZONE,
+    attendees: attendees.map((person) => ({ email: person.workEmail!, name: person.fullName })),
+    // A project meeting is a call unless somebody says otherwise; ask for the Meet link once.
+    wantsMeeting: !meeting.meetingUrl,
+  };
+}
+
+/** What the calendar did, written back on the meeting so the page can say what really happened. */
+async function recordDelivery(meetingId: string, delivery: CalendarDelivery): Promise<MeetingRow> {
+  const [after] = await db()
+    .update(schema.projectMeeting)
+    .set({
+      calendarEventId: delivery.eventId,
+      calendarDriver: delivery.driver,
+      calendarStatus: delivery.status,
+      calendarError: delivery.error,
+      // A Meet link, once given, survives a push that brought none back.
+      ...(delivery.meetingUrl ? { meetingUrl: delivery.meetingUrl } : {}),
+      updatedAt: new Date(),
+    })
+    .where(eq(schema.projectMeeting.id, meetingId))
+    .returning();
+  return after;
+}
+
+/**
+ * Puts the meeting in the company calendar, or rewrites the event it already has. The push happens
+ * outside any transaction — it is a network call, and a calendar that is down must not lose notes
+ * everybody has already agreed to — and its outcome is stored, `simulated` included.
+ */
+export async function putMeetingInCalendar(projectId: string, meetingId: string): Promise<{ meeting: MeetingRow; delivery: CalendarDelivery }> {
+  const meeting = await findMeeting(meetingId);
+  if (!meeting || meeting.projectId !== projectId || meeting.kind === "retro") throw new ActionError("meeting_not_found");
+  const delivery = await putInCalendar(await eventFor(meeting), meeting.calendarEventId);
+  return { meeting: await recordDelivery(meeting.id, delivery), delivery };
+}
+
+/** Calls the event off — the meeting is not happening, or its notes are leaving the calendar. */
+export async function removeMeetingFromCalendar(projectId: string, meetingId: string): Promise<{ meeting: MeetingRow; delivery: CalendarDelivery }> {
+  const meeting = await findMeeting(meetingId);
+  if (!meeting || meeting.projectId !== projectId) throw new ActionError("meeting_not_found");
+  if (!meeting.calendarEventId) throw new ActionError("meeting_not_in_calendar");
+  const delivery = await removeFromCalendar(meeting.calendarEventId);
+  // The Meet link belonged to the event that has just been called off.
+  const [after] = await db().update(schema.projectMeeting).set({ calendarEventId: null, calendarDriver: delivery.driver, calendarStatus: delivery.status, calendarError: delivery.error, meetingUrl: null, updatedAt: new Date() }).where(eq(schema.projectMeeting.id, meeting.id)).returning();
+  return { meeting: after, delivery };
 }
 
 export type MeetingListItem = MeetingRow & { authorName: string | null; decisions: number; actionItems: number; openActionItems: number };

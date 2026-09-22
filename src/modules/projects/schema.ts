@@ -5,7 +5,8 @@
 // status updates, RAID, meetings, bookings, acceptance, billing items and client reports.
 // Money is integer VND and is only ever read with `pjm:commercial` (fees) — cost rates never live here.
 import { sql } from "drizzle-orm";
-import { bigint, boolean, date, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { bigint, boolean, date, index, integer, jsonb, pgTable, primaryKey, text, time, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import type { CalendarDeliveryStatus } from "../platform/calendar/enums";
 import { entity } from "../platform/org/schema";
 import { storedFile } from "../platform/files/schema";
 import { person } from "../platform/people/schema";
@@ -337,12 +338,24 @@ export const projectMeeting = pgTable(
     kind: text("kind").notNull().default("weekly"),
     title: text("title").notNull(),
     heldOn: date("held_on").notNull(),
+    // Vietnam-local wall-clock time and how long it runs — both optional, because notes are often
+    // written up for a meeting nobody put an hour on. Together with `held_on` they are what the
+    // calendar event is made of.
+    startTime: time("start_time"),
+    durationMinutes: integer("duration_minutes"),
     attendeeIds: jsonb("attendee_ids").$type<string[]>().notNull().default([]),
     externalAttendees: text("external_attendees"),
     agenda: text("agenda"),
     notes: text("notes"),
     retro: jsonb("retro").$type<MeetingRetro>(),
+    // The calendar invitation (FR-PJM-30), through the platform's adapter: which driver ran, how it
+    // went, the event it made and the Meet link it gave back. With no service account the status is
+    // `simulated` and the page says so.
     calendarEventId: text("calendar_event_id"),
+    calendarDriver: text("calendar_driver"),
+    calendarStatus: text("calendar_status").$type<CalendarDeliveryStatus>(),
+    calendarError: text("calendar_error"),
+    meetingUrl: text("meeting_url"),
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     ...timestamps,
   },

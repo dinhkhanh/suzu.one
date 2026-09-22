@@ -1,13 +1,14 @@
 // Teams with their members and workflow, labels, and the client / brand list.
 import "server-only";
-import { and, asc, count, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { cache } from "react";
 import { cached, invalidate } from "@/lib/cache";
+import { notify } from "../platform/notifications/service";
 import { invalidateWorkDirectory } from "./directory";
 import { isOpenCategory, type StateCategory, type TeamRole, type Visibility, WORKFLOW_PRESETS, type WorkflowPreset } from "./enums";
-import type { PersonPlacement, TeamFacts } from "./policy";
+import { canAddTeamMember, type PersonPlacement, type TeamFacts, type WorkViewer } from "./policy";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type TeamRow = typeof schema.workTeam.$inferSelect;
@@ -98,9 +99,37 @@ export async function isTeamMember(teamId: string, personId: string, executor: E
   return !!row;
 }
 
-/** `role` null removes the person. A team keeps at least one lead. */
-export async function setTeamMember(teamId: string, personId: string, role: TeamRole | null): Promise<{ before: TeamRole | null; after: TeamRole | null }> {
-  return db().transaction(async (tx) => {
+export type MemberChoice = { id: string; fullName: string };
+
+/**
+ * Who this viewer may actually put in the team (`canAddTeamMember`), for the picker on the team
+ * page: a lead reaches the team's own place, a `work:manage` holder reaches everyone in their
+ * scope. `narrowed` says the list is shorter than the company, so the page can explain why rather
+ * than leave somebody looking for a colleague who is not in it.
+ */
+export async function addableMembers(viewer: WorkViewer, team: TeamFacts): Promise<{ people: MemberChoice[]; narrowed: boolean }> {
+  const rows = await db()
+    .select({ id: schema.person.id, fullName: schema.person.fullName, entityId: schema.person.primaryEntityId, unitPath: schema.person.orgUnitPath })
+    .from(schema.person)
+    .where(ne(schema.person.status, "offboarded"))
+    .orderBy(asc(schema.person.searchName));
+  const people = rows.filter((row) => canAddTeamMember(viewer, team, { entityId: row.entityId, unitPath: row.unitPath }));
+  return { people: people.map(({ id, fullName }) => ({ id, fullName })), narrowed: people.length < rows.length };
+}
+
+/** Somebody was put in a team: they hear about it, unless they did it themselves. Never a role change. */
+async function tellAddedToTeam(teamId: string, personId: string, actorPersonId: string): Promise<void> {
+  const [team] = await db().select({ name: schema.workTeam.name }).from(schema.workTeam).where(eq(schema.workTeam.id, teamId)).limit(1);
+  const [actor] = await db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, actorPersonId)).limit(1);
+  await notify({ recipients: [personId], kind: "tasks.team_added", params: { team: team?.name ?? "", actor: actor?.fullName ?? "" }, link: `/work/teams/${teamId}` });
+}
+
+/**
+ * `role` null removes the person. A team keeps at least one lead. The actor is who is doing it —
+ * a seed or a migration has none, and then nobody is told.
+ */
+export async function setTeamMember(teamId: string, personId: string, role: TeamRole | null, actorPersonId: string | null = null): Promise<{ before: TeamRole | null; after: TeamRole | null }> {
+  const change = await db().transaction(async (tx) => {
     const members = await tx.select().from(schema.workTeamMember).where(eq(schema.workTeamMember.teamId, teamId));
     const current = members.find((member) => member.personId === personId);
     const before = (current?.role as TeamRole | undefined) ?? null;
@@ -116,6 +145,9 @@ export async function setTeamMember(teamId: string, personId: string, role: Team
     }
     return { before, after: role };
   });
+  // Once it is committed: being in a team puts your day in front of its leads, so you are told.
+  if (change.before === null && change.after !== null && actorPersonId && actorPersonId !== personId) await tellAddedToTeam(teamId, personId, actorPersonId);
+  return change;
 }
 
 // ── Workflow states ─────────────────────────────────────────────────────────────────────────

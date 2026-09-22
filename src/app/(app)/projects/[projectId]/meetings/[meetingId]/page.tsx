@@ -5,8 +5,8 @@ import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
-import { canEditMeeting, getMeeting, type MeetingKind, meetingPeople, openProject } from "@/modules/projects/service";
-import { MeetingForm } from "@/modules/projects/ui/collab-forms";
+import { canEditMeeting, DEFAULT_MEETING_MINUTES, getMeeting, type MeetingKind, meetingPeople, openProject } from "@/modules/projects/service";
+import { MeetingCalendar, MeetingForm } from "@/modules/projects/ui/collab-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
 
 export const metadata: Metadata = { title: "Meeting" };
@@ -42,7 +42,7 @@ export default async function ProjectMeetingPage({ params }: PageProps<"/project
           <Badge variant="outline">{t(`kinds.${meeting.kind as MeetingKind}`)}</Badge>
           <h2 className="text-lg font-medium">{meeting.title}</h2>
         </div>
-        <p className="text-sm text-muted-foreground">{[date(meeting.heldOn), meeting.authorName ? t("recordedBy", { name: meeting.authorName }) : null].filter(Boolean).join(" · ")}</p>
+        <p className="text-sm text-muted-foreground">{[date(meeting.heldOn), meeting.startTime ? t("atTime", { time: meeting.startTime.slice(0, 5), minutes: meeting.durationMinutes ?? DEFAULT_MEETING_MINUTES }) : null, meeting.authorName ? t("recordedBy", { name: meeting.authorName }) : null].filter(Boolean).join(" · ")}</p>
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-xs text-muted-foreground">{t("fields.attendees")}</dt>
@@ -99,15 +99,19 @@ export default async function ProjectMeetingPage({ params }: PageProps<"/project
       </section>
 
       {edits ? (
-        <section className="flex flex-col gap-3 rounded-xl border p-4">
-          <h2 className="text-base font-medium">{t("edit")}</h2>
-          <MeetingForm
-            projectId={project.id}
-            people={people}
-            today={todayInVietnam()}
-            meeting={{ id: meeting.id, kind: meeting.kind, title: meeting.title, heldOn: meeting.heldOn, attendeeIds: meeting.attendeeIds, externalAttendees: meeting.externalAttendees, agenda: meeting.agenda, notes: meeting.notes }}
-          />
-        </section>
+        <>
+          {/* FR-PJM-30: the invitation, which says what the adapter really did — "simulated" included. */}
+          <MeetingCalendar projectId={project.id} meeting={{ id: meeting.id, startTime: meeting.startTime, calendarEventId: meeting.calendarEventId, calendarStatus: meeting.calendarStatus, calendarError: meeting.calendarError, meetingUrl: meeting.meetingUrl }} />
+          <section className="flex flex-col gap-3 rounded-xl border p-4">
+            <h2 className="text-base font-medium">{t("edit")}</h2>
+            <MeetingForm
+              projectId={project.id}
+              people={people}
+              today={todayInVietnam()}
+              meeting={{ id: meeting.id, kind: meeting.kind, title: meeting.title, heldOn: meeting.heldOn, startTime: meeting.startTime, durationMinutes: meeting.durationMinutes, attendeeIds: meeting.attendeeIds, externalAttendees: meeting.externalAttendees, agenda: meeting.agenda, notes: meeting.notes }}
+            />
+          </section>
+        </>
       ) : null}
     </div>
   );

@@ -29,7 +29,7 @@ import { moveTaskToTeam } from "./move";
 import { createProject } from "./projects";
 import { loggedMinutesByTask } from "./table";
 import { createWorkTask, listActivity, listProjectTasks, listTeamBacklog, loadTask, resolveTaskKey, searchTasks, updateWorkTask } from "./tasks";
-import { createTeam, listStates, saveLabel, setTeamMember } from "./teams";
+import { addableMembers, createTeam, findTeam, listStates, saveLabel, setTeamMember, teamFacts } from "./teams";
 import { acceptTriage, declineTriage, listTriage, listTriageForLead, mergeTriage, saveTriageRule, snoozeTriage, wakeSnoozedTriage } from "./triage";
 import { viewerOfPerson } from "./viewer";
 
@@ -260,5 +260,38 @@ describe("blockers (FR-PJM-28)", () => {
     const entry = { personId: ids.huy, date: "2026-09-21", weekStart: "2026-09-21", taskId: task.id, projectId: ids.project };
     await db().insert(schema.timeEntry).values([{ ...entry, minutes: 90 }, { ...entry, minutes: 45 }, { ...entry, minutes: 600, deletedAt: new Date() }]);
     expect((await loggedMinutesByTask([task.id])).get(task.id)).toBe(135);
+  });
+});
+
+describe("putting somebody in a team", () => {
+  it("offers a lead only the people they may add, and tells whoever is added", async () => {
+    const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
+    const [outsider] = await db().insert(schema.person).values({ fullName: "ngoai", searchName: "ngoai", workEmail: "ngoai@suzu.group", status: "active", primaryEntityId: szc.id }).returning();
+    const [gone] = await db().insert(schema.person).values({ fullName: "cu", searchName: "cu", status: "offboarded", primaryEntityId: ids.szm }).returning();
+    const lead = await viewer("long");
+    const video = teamFacts((await findTeam(ids.video))!);
+
+    // Video belongs to SuZu Media: its lead reaches that entity's people and nobody else's.
+    const offered = await addableMembers(lead, video);
+    expect(offered.people.map((person) => person.id)).toContain(ids.duc);
+    expect(offered.people.map((person) => person.id)).not.toContain(outsider.id);
+    expect(offered.people.map((person) => person.id)).not.toContain(gone.id);
+    expect(offered.narrowed).toBe(true);
+    // A leader whose grant covers the whole group reaches everybody, and the page says nothing.
+    const owner = { ...lead, principal: { ...lead.principal, grants: [{ role: "owner" as const, scope: { type: "group" as const } }] } };
+    const all = await addableMembers(owner, video);
+    expect(all.people.map((person) => person.id)).toContain(outsider.id);
+    expect(all.narrowed).toBe(false);
+
+    // Being put in a team is news. A role change is not, and nobody is told about themselves.
+    await setTeamMember(ids.video, ids.duc, "member", ids.long);
+    expect(await noticesOf(ids.duc, "tasks.team_added")).toHaveLength(1);
+    await setTeamMember(ids.video, ids.duc, "lead", ids.long);
+    expect(await noticesOf(ids.duc, "tasks.team_added")).toHaveLength(1);
+    await setTeamMember(ids.video, ids.khoi, "member", ids.khoi);
+    expect(await noticesOf(ids.khoi, "tasks.team_added")).toHaveLength(0);
+    // A seed has no actor, so it tells nobody.
+    await setTeamMember(ids.social, ids.duc, "member");
+    expect(await noticesOf(ids.duc, "tasks.team_added")).toHaveLength(1);
   });
 });

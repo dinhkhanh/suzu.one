@@ -617,6 +617,13 @@
       "when": 1790091699733,
       "tag": "0087_kb_project_space_owner",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1790099154210,
+      "tag": "0088_meeting_calendar",
+      "breakpoints": true
     }
   ]
 }

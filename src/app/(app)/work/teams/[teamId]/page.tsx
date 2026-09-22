@@ -7,9 +7,8 @@ import { todayInVietnam } from "@/lib/dates";
 import { DailyRulesSection } from "@/modules/daily/ui/team-rules-section";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, unitChoices } from "@/modules/platform/org/service";
-import { listPersonNames } from "@/modules/platform/people/service";
 import { readFilters, readGrouping, readSort } from "@/modules/work/engine/filter";
-import { canAdminTeam, canContributeToTeam, canManageWorkspace, canViewTeam, canViewTeamBacklog, findTeam, listAssignable, listClients, listTeamIntakeForms, listLabels, listStates, listTeamBacklog, listTeamMembers, loadViewer, teamFacts, visibleProjects } from "@/modules/work/service";
+import { addableMembers, canAdminTeam, canContributeToTeam, canManageWorkspace, canViewTeam, canViewTeamBacklog, findTeam, listAssignable, listClients, listTeamIntakeForms, listLabels, listStates, listTeamBacklog, listTeamMembers, loadViewer, teamFacts, visibleProjects } from "@/modules/work/service";
 import { TaskListView } from "@/modules/work/ui/task-list-view";
 import { canManageCustomFields, canSeeLoggedTime, canViewTriage, countTriage, listCustomFields, loggedMinutesByTask, toFieldViews } from "@/modules/work/service";
 import { CustomFieldManager } from "@/modules/work/ui/custom-fields";
@@ -32,7 +31,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
   const seesBacklog = canViewTeamBacklog(viewer, facts);
   const today = todayInVietnam();
 
-  const [members, states, labels, projects, backlog, clients, assignable, intakeForms, [people, entities, departments]] = await Promise.all([
+  const [members, states, labels, projects, backlog, clients, assignable, intakeForms, [addable, entities, departments]] = await Promise.all([
     listTeamMembers(team.id),
     listStates([team.id]),
     listLabels([team.id]),
@@ -41,7 +40,8 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
     listClients({ activeOnly: true }),
     listAssignable(team.id, null),
     listTeamIntakeForms(team.id),
-    admin ? Promise.all([listPersonNames(), listEntities(), unitChoices()]) : ([[], [], []] as [Awaited<ReturnType<typeof listPersonNames>>, Awaited<ReturnType<typeof listEntities>>, Awaited<ReturnType<typeof unitChoices>>]),
+    // The picker offers only the people this viewer may actually add (`canAddTeamMember`).
+    admin ? Promise.all([addableMembers(viewer, facts), listEntities(), unitChoices()]) : ([{ people: [], narrowed: false }, [], []] as [Awaited<ReturnType<typeof addableMembers>>, Awaited<ReturnType<typeof listEntities>>, Awaited<ReturnType<typeof unitChoices>>]),
   ]);
   const [fieldRows, triageCounts] = await Promise.all([listCustomFields({ teamId: team.id }, { includeInactive: true }), canViewTriage(viewer, facts) ? countTriage([team.id]) : null]);
   const fields = toFieldViews(fieldRows);
@@ -141,7 +141,9 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">{t("members.title")}</h2>
-        <MemberManager members={members} people={people} canManage={admin} target={{ teamId: team.id }} />
+        {/* A lead adds people from the team's own place; anyone else takes `work:manage` over where they sit. */}
+        {admin && addable.narrowed ? <p className="text-xs text-muted-foreground">{t("members.narrowed")}</p> : null}
+        <MemberManager members={members} people={addable.people} canManage={admin} target={{ teamId: team.id }} />
       </section>
 
       <section className="flex flex-col gap-3">

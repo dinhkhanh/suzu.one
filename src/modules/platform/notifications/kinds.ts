@@ -140,6 +140,8 @@ export const KINDS = {
   "tasks.automation": "tasks",
   // A review-chain stage past its due time (FR-PJM-50), to the stage's reviewer: the task and the stage.
   "tasks.review_overdue": "tasks",
+  // Somebody put you in a work team (FR-WRK-02): the team and who added you.
+  "tasks.team_added": "tasks",
   // Phase 10 — projects.
   "projects.status_posted": "projects",
   "projects.status_due": "projects",
@@ -153,6 +155,9 @@ export const KINDS = {
   "projects.billing_invoiced": "projects",
   "projects.booking_changed": "projects",
   "projects.kpi_proposed": "projects",
+  // A risk, issue, decision or assumption in the log is now yours to look after (FR-PJM-29): the
+  // project and the item's title, nothing of what it costs.
+  "projects.raid_assigned": "projects",
   // Phase 10 — the day.
   "daily.plan_reminder": "daily",
   "daily.report_reminder": "daily",

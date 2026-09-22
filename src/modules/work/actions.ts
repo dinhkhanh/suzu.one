@@ -91,8 +91,8 @@ const teamMemberPipeline = createAction({
     const placement = await personPlacement(input.personId);
     return !!placement && canAddTeamMember(viewer, teamFacts(team), placement);
   },
-  run: async ({ input }) => {
-    const change = await setTeamMember(input.teamId, input.personId, input.role);
+  run: async ({ user, input }) => {
+    const change = await setTeamMember(input.teamId, input.personId, input.role, user.person.id);
     revalidatePath(`/work/teams/${input.teamId}`);
     return { data: change, audit: { resource: { type: "work_team", id: input.teamId }, summary: `member ${input.personId}: ${change.before ?? "—"} → ${change.after ?? "—"}`, before: { personId: input.personId, role: change.before }, after: { personId: input.personId, role: change.after } } };
   },

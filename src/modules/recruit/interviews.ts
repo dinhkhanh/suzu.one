@@ -4,8 +4,8 @@ import "server-only";
 // Two things in this file carry the weight.
 //
 // **Scheduling runs on internal data.** Google Calendar is not available — no keys, and the
-// incremental OAuth scopes were never set up — so the `interview` row is the schedule, `calendar.ts`
-// is an adapter that may also push it to Google when somebody configures one, and `engine/ics.ts`
+// incremental OAuth scopes were never set up — so the `interview` row is the schedule, the
+// platform's calendar adapter may also push it to Google when somebody configures one, and `engine/ics.ts`
 // hands every participant a file their own calendar reads. Nothing here depends on an integration
 // existing, which is why it works today.
 //
@@ -21,9 +21,9 @@ import { db, schema, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
 import { TIME_ZONE } from "@/i18n/config";
 import { getLeaveOnDays } from "@/modules/leave/service";
+import { calendarDriver, type CalendarResult } from "@/modules/platform/calendar/service";
 import { notify } from "@/modules/platform/notifications/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
-import { calendarDriver, type CalendarResult } from "./calendar";
 import {
   DEFAULT_INTERVIEW_KIT,
   INTERVIEW_CLOSED,

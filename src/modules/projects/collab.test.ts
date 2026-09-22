@@ -35,7 +35,7 @@ import type { Principal } from "../platform/rbac/policy";
 import { createProject, setProjectMember } from "../work/projects";
 import { createTeam, setTeamMember } from "../work/teams";
 import { ensureProjectSpace, getProjectDocuments, projectSpaceKey } from "./documents";
-import { getMeeting, listMeetings, saveMeeting } from "./meetings";
+import { getMeeting, listMeetings, putMeetingInCalendar, removeMeetingFromCalendar, saveMeeting } from "./meetings";
 import { loadRaidCounts, loadStatusFacts } from "./metrics";
 import { ensurePlan } from "./plans";
 import { issueToTask, listRaid, saveRaidItem, setRaidStatus } from "./raid-log";
@@ -98,6 +98,24 @@ describe("the RAID log (FR-PJM-29)", () => {
     expect(await fails(issueToTask(risk.id, { assigneePersonId: null, dueDate: null }, ids.tam))).toBe("raid_not_convertible");
   });
 
+  it("tells whoever an item is given to — once, and never the person doing the giving", async () => {
+    const notices = async (personId: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, "projects.raid_assigned")));
+    // An earlier item of this log already went to Huy, so it is the change that is counted here.
+    const before = (await notices(ids.huy)).length;
+    const { after } = await saveRaidItem(ids.project, null, { ...blank, kind: "risk", title: "Thiếu bối cảnh dự phòng", severity: "medium", ownerPersonId: ids.huy }, ids.tam, today);
+    expect(await notices(ids.huy)).toHaveLength(before + 1);
+    // Saving it again without moving it says nothing new.
+    await saveRaidItem(ids.project, after.id, { ...blank, kind: "risk", title: "Thiếu bối cảnh dự phòng", severity: "high", ownerPersonId: ids.huy }, ids.tam, today);
+    expect(await notices(ids.huy)).toHaveLength(before + 1);
+    // Handing it on tells the new owner; taking it yourself tells nobody.
+    await saveRaidItem(ids.project, after.id, { ...blank, kind: "risk", title: "Thiếu bối cảnh dự phòng", severity: "high", ownerPersonId: ids.lan }, ids.tam, today);
+    const [notice] = await notices(ids.lan);
+    expect(notice.params).toEqual({ project: "TVC Tết 2027", title: "Thiếu bối cảnh dự phòng" });
+    await saveRaidItem(ids.project, after.id, { ...blank, kind: "risk", title: "Thiếu bối cảnh dự phòng", severity: "high", ownerPersonId: ids.tam }, ids.tam, today);
+    expect(await notices(ids.tam)).toHaveLength(0);
+    await setRaidStatus(after.id, "closed");
+  });
+
   it("feeds open high risks and open issues to the status facts and the portfolio", async () => {
     const plan = await ensurePlan(ids.project);
     expect(await loadStatusFacts(ids.project, plan, today)).toMatchObject({ highRisks: 1, openIssues: 1 });
@@ -109,7 +127,7 @@ describe("the RAID log (FR-PJM-29)", () => {
 });
 
 describe("meetings (FR-PJM-30)", () => {
-  const meeting = { kind: "client" as const, title: "Họp khách hàng tuần 42", heldOn: "2026-10-19", attendeeIds: [] as string[], externalAttendees: "Chị Mai (Bibo)", agenda: "Duyệt kịch bản", notes: "Khách chọn KV B.", decisions: [] as { title: string; description: string | null }[], actionItems: [] as { title: string; assigneePersonId: string | null; dueDate: string | null }[] };
+  const meeting = { kind: "client" as const, title: "Họp khách hàng tuần 42", heldOn: "2026-10-19", startTime: null as string | null, durationMinutes: null as number | null, attendeeIds: [] as string[], externalAttendees: "Chị Mai (Bibo)", agenda: "Duyệt kịch bản", notes: "Khách chọn KV B.", decisions: [] as { title: string; description: string | null }[], actionItems: [] as { title: string; assigneePersonId: string | null; dueDate: string | null }[] };
 
   it("takes attendees and assignees from the project's people only", async () => {
     expect(await fails(saveMeeting(ids.project, null, { ...meeting, attendeeIds: [ids.tam, ids.khoi] }, ids.tam, today))).toBe("meeting_attendee_not_member");
@@ -168,6 +186,32 @@ describe("meetings (FR-PJM-30)", () => {
     expect(listed).toMatchObject({ id: after.id, decisions: 2, actionItems: 3, openActionItems: 3 });
     // Another project's meeting is not this project's to change.
     expect(await fails(saveMeeting(ids.otherTeam, after.id, meeting, ids.tam, today))).toBe("meeting_not_found");
+  });
+
+  it("keeps the hour, and drops a length nobody gave an hour to hang on", async () => {
+    const { after } = await saveMeeting(ids.project, null, { ...meeting, startTime: "09:30", durationMinutes: 90 }, ids.tam, today);
+    expect(after).toMatchObject({ startTime: "09:30:00", durationMinutes: 90 });
+    const cleared = await saveMeeting(ids.project, after.id, { ...meeting, startTime: null, durationMinutes: 90 }, ids.tam, today);
+    expect(cleared.after).toMatchObject({ startTime: null, durationMinutes: null });
+  });
+
+  it("puts a meeting with an hour in the calendar, says out loud that nothing was sent, and takes it out again", async () => {
+    const { after } = await saveMeeting(ids.project, null, { ...meeting, startTime: "14:00", durationMinutes: 60, attendeeIds: [ids.tam, ids.huy] }, ids.tam, today);
+    // With no service account the local driver runs: the event is ours alone and the row says so.
+    const put = await putMeetingInCalendar(ids.project, after.id);
+    expect(put.delivery).toMatchObject({ driver: "local", status: "simulated" });
+    expect(put.meeting).toMatchObject({ calendarDriver: "local", calendarStatus: "simulated", calendarEventId: null, calendarError: null });
+    // Nothing to take out of a calendar that never took it, and never another project's meeting.
+    expect(await fails(removeMeetingFromCalendar(ids.project, after.id))).toBe("meeting_not_in_calendar");
+    expect(await fails(putMeetingInCalendar(ids.otherTeam, after.id))).toBe("meeting_not_found");
+    // A meeting nobody put an hour on has no event to make.
+    const { after: undated } = await saveMeeting(ids.project, null, meeting, ids.tam, today);
+    expect(await fails(putMeetingInCalendar(ids.project, undated.id))).toBe("meeting_time_required");
+
+    // Once an event does exist — pretend Google answered — the meeting can be taken out of the calendar.
+    await db().update(schema.projectMeeting).set({ calendarEventId: "evt-1", calendarStatus: "sent", calendarDriver: "google", meetingUrl: "https://meet.google.com/abc-defg-hij" }).where(eq(schema.projectMeeting.id, after.id));
+    const removed = await removeMeetingFromCalendar(ids.project, after.id);
+    expect(removed.meeting).toMatchObject({ calendarEventId: null, meetingUrl: null, calendarStatus: "simulated" });
   });
 });
 

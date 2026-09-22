@@ -50,8 +50,8 @@ export { ACCEPTANCE_TEMPLATE_CODE, seedAcceptanceTemplate } from "./seed";
  * decisions and action items, and the project's document space on the knowledge base.
  */
 export { canAddRaid, canCloseRaidItem, canCreateProjectSpace, canEditMeeting, canEditRaidItem, canRecordMeeting, canViewMeetings, canViewRaid, type RaidItemFacts } from "./policy";
-export { canBecomeTask, hasSeverity, MEETING_KINDS, type MeetingKind, RAID_KINDS, RAID_SEVERITIES, RAID_STATUSES, type RaidCounts, raidCounts, type RaidKind, type RaidSeverity, RECORDABLE_MEETING_KINDS } from "./engine/raid";
+export { canBecomeTask, DEFAULT_MEETING_MINUTES, hasSeverity, MEETING_KINDS, type MeetingKind, meetingWindow, RAID_KINDS, RAID_SEVERITIES, RAID_STATUSES, type RaidCounts, raidCounts, type RaidKind, type RaidSeverity, RECORDABLE_MEETING_KINDS } from "./engine/raid";
 export { findRaidItem, listRaid, type RaidView } from "./raid-log";
-export { findMeeting, getMeeting, listMeetings, type MeetingActionView, type MeetingListItem, meetingPeople, type MeetingView } from "./meetings";
+export { findMeeting, getMeeting, listMeetings, type MeetingActionView, type MeetingListItem, meetingPeople, type MeetingView, putMeetingInCalendar, removeMeetingFromCalendar } from "./meetings";
 export { getProjectDocuments, type ProjectDocuments, projectSpaceKey } from "./documents";
 export { loadRaidCounts } from "./metrics";

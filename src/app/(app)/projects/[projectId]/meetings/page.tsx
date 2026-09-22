@@ -14,7 +14,8 @@ export const metadata: Metadata = { title: "Project meetings" };
 /**
  * Meeting notes (FR-PJM-30): kick-offs, weekly and client meetings, and the retrospective held on
  * the close-out page. Each meeting's decisions go to the decision log and its action items become
- * tasks in the project. Calendar invitations are not sent from here (see the page's note).
+ * tasks in the project. A meeting given an hour can be put in the company calendar from its own
+ * page, which says what the adapter really managed.
  */
 export default async function ProjectMeetingsPage({ params }: PageProps<"/projects/[projectId]/meetings">) {
   const user = await requireUser();
@@ -42,9 +43,10 @@ export default async function ProjectMeetingsPage({ params }: PageProps<"/projec
                     <Badge variant="outline">{t(`kinds.${meeting.kind as MeetingKind}`)}</Badge>
                     <span className="truncate font-medium">{meeting.title}</span>
                   </span>
-                  <span className="text-xs text-muted-foreground">{[date(meeting.heldOn), meeting.authorName, t("attendeesCount", { count: meeting.attendeeIds.length })].filter(Boolean).join(" · ")}</span>
+                  <span className="text-xs text-muted-foreground">{[date(meeting.heldOn), meeting.startTime ? meeting.startTime.slice(0, 5) : null, meeting.authorName, t("attendeesCount", { count: meeting.attendeeIds.length })].filter(Boolean).join(" · ")}</span>
                 </span>
                 <span className="flex flex-wrap gap-1.5 text-xs">
+                  {meeting.calendarEventId ? <Badge variant="outline">{t("inCalendar")}</Badge> : null}
                   {meeting.decisions ? <Badge variant="secondary">{t("decisionsCount", { count: meeting.decisions })}</Badge> : null}
                   {meeting.actionItems ? <Badge variant={meeting.openActionItems ? "warning" : "success"}>{t("actionsCount", { open: meeting.openActionItems, total: meeting.actionItems })}</Badge> : null}
                 </span>

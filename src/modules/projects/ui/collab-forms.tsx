@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { FileLink } from "@/modules/platform/files/ui/signed-upload";
-import { beginRaidEvidenceAction, completeRaidEvidenceAction, createProjectSpaceAction, issueToTaskAction, openRaidEvidenceAction, saveMeetingAction, saveRaidItemAction, setRaidStatusAction } from "../collab-actions";
+import { beginRaidEvidenceAction, completeRaidEvidenceAction, createProjectSpaceAction, issueToTaskAction, meetingCalendarAction, openRaidEvidenceAction, saveMeetingAction, saveRaidItemAction, setRaidStatusAction } from "../collab-actions";
 import { RAID_KINDS, RAID_SEVERITIES, type RaidKind, RECORDABLE_MEETING_KINDS } from "../engine/raid";
 import { UploadField } from "./commercial-forms";
 import { ActionButton, ActionForm } from "./plan-forms";
@@ -156,7 +156,7 @@ export function RaidEdit({ projectId, people, item, today }: { projectId: string
 
 // ── Meetings (FR-PJM-30) ────────────────────────────────────────────────────────────────────
 
-export type MeetingValues = { id: string; kind: string; title: string; heldOn: string; attendeeIds: string[]; externalAttendees: string | null; agenda: string | null; notes: string | null };
+export type MeetingValues = { id: string; kind: string; title: string; heldOn: string; startTime: string | null; durationMinutes: number | null; attendeeIds: string[]; externalAttendees: string | null; agenda: string | null; notes: string | null };
 
 const BLANK_ROWS = 3;
 
@@ -200,6 +200,16 @@ export function MeetingForm({ projectId, people, meeting, today }: { projectId: 
         <Field name="heldOn" label={t("fields.heldOn")}>
           <Input id={`m-date-${id}`} name="heldOn" type="date" required defaultValue={meeting?.heldOn ?? today} />
         </Field>
+      </div>
+      {/* The hour is what a calendar invitation is made of (FR-PJM-30); notes written up afterwards need none. */}
+      <div className="grid gap-3 sm:grid-cols-[10rem_10rem_1fr]">
+        <Field name="startTime" label={t("fields.startTime")}>
+          <Input id={`m-time-${id}`} name="startTime" type="time" defaultValue={meeting?.startTime?.slice(0, 5) ?? ""} />
+        </Field>
+        <Field name="durationMinutes" label={t("fields.durationMinutes")}>
+          <Input id={`m-len-${id}`} name="durationMinutes" type="number" min={5} max={720} step={5} defaultValue={meeting?.durationMinutes ?? ""} placeholder="60" />
+        </Field>
+        <p className="self-end pb-2 text-xs text-muted-foreground">{t("timeHint")}</p>
       </div>
       <fieldset className="flex flex-col gap-1.5">
         <legend className="text-sm font-medium">{t("fields.attendees")}</legend>
@@ -256,6 +266,41 @@ export function MeetingForm({ projectId, people, meeting, today }: { projectId: 
         ))}
       </fieldset>
     </ActionForm>
+  );
+}
+
+export type MeetingCalendarValues = { id: string; startTime: string | null; calendarEventId: string | null; calendarStatus: string | null; calendarError: string | null; meetingUrl: string | null };
+
+/**
+ * "Put it in the calendar" (FR-PJM-30). The invitation goes out through the platform's adapter,
+ * which on a machine with no Google service account records `simulated` — so this says exactly
+ * that, and never pretends an invitation reached anybody's mailbox.
+ */
+export function MeetingCalendar({ projectId, meeting }: { projectId: string; meeting: MeetingCalendarValues }) {
+  const t = useTranslations("projects.meetings.calendar");
+  const inCalendar = !!meeting.calendarEventId;
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border p-4">
+      <h2 className="text-base font-medium">{t("title")}</h2>
+      {meeting.startTime ? null : <p className="text-sm text-muted-foreground">{t("needsTime")}</p>}
+      {meeting.calendarStatus ? (
+        <p className="text-sm">
+          {t(`status.${meeting.calendarStatus as "simulated"}`)}
+          {meeting.calendarError ? <span className="text-destructive"> · {meeting.calendarError.slice(0, 120)}</span> : null}
+        </p>
+      ) : null}
+      {meeting.meetingUrl ? (
+        <a href={meeting.meetingUrl} className="text-sm underline" target="_blank" rel="noreferrer">
+          {t("join")}
+        </a>
+      ) : null}
+      {meeting.startTime ? (
+        <div className="flex flex-wrap gap-2">
+          <ActionButton action={meetingCalendarAction} input={{ projectId, meetingId: meeting.id }} label={inCalendar ? t("update") : t("put")} variant={inCalendar ? "outline" : "default"} />
+          {inCalendar ? <ActionButton action={meetingCalendarAction} input={{ projectId, meetingId: meeting.id, remove: "on" }} label={t("remove")} variant="ghost" confirm={t("removeConfirm")} /> : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

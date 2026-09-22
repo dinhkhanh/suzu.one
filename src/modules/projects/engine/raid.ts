@@ -98,24 +98,52 @@ export type MeetingKind = (typeof MEETING_KINDS)[number];
 export const RECORDABLE_MEETING_KINDS = ["kickoff", "weekly", "client", "other"] as const satisfies readonly MeetingKind[];
 
 export type ActionItem = { title: string; assigneePersonId: string | null; dueDate: IsoDate | null };
-export type MeetingDraft = {
+/** "HH:MM" or "HH:MM:SS" — what a time input posts, and what the `time` column reads back. */
+export type WallClock = string;
+export type MeetingTime = { heldOn: IsoDate; startTime: WallClock | null; durationMinutes: number | null };
+export type MeetingDraft = MeetingTime & {
   title: string;
-  heldOn: IsoDate;
   attendeeIds: readonly string[];
   decisions: readonly { title: string }[];
   actionItems: readonly ActionItem[];
 };
-export type MeetingProblem = "meeting_title_required" | "meeting_decisions_before_held" | "meeting_attendee_not_member" | "meeting_assignee_not_member" | "meeting_action_due_before";
+export type MeetingProblem = "meeting_title_required" | "meeting_decisions_before_held" | "meeting_attendee_not_member" | "meeting_assignee_not_member" | "meeting_action_due_before" | "meeting_time_invalid" | "meeting_duration_invalid";
+
+/** How long a meeting runs when it has an hour but nobody said how long. */
+export const DEFAULT_MEETING_MINUTES = 60;
+const MAX_MEETING_MINUTES = 12 * 60;
+const WALL_CLOCK = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+
+/**
+ * What the meeting is worth in instants: the day is Vietnam-local (DR-04) and so is the hour, and
+ * Vietnam has no daylight saving, so the +07:00 offset is exact all year round. null when nobody
+ * put an hour on the meeting — notes written up afterwards need none, and there is no event to put
+ * in a calendar either.
+ */
+export function meetingWindow(meeting: MeetingTime): { start: Date; end: Date } | null {
+  if (!meeting.startTime || !WALL_CLOCK.test(meeting.startTime)) return null;
+  const [hours, minutes] = meeting.startTime.split(":");
+  const start = new Date(`${meeting.heldOn}T${hours}:${minutes}:00+07:00`);
+  if (Number.isNaN(start.getTime())) return null;
+  const length = meeting.durationMinutes && meeting.durationMinutes > 0 ? meeting.durationMinutes : DEFAULT_MEETING_MINUTES;
+  return { start, end: new Date(start.getTime() + length * 60_000) };
+}
+
+/** A length with no hour to hang it on says nothing, so it is dropped rather than half-kept. */
+export const normaliseMeetingTime = <Draft extends MeetingTime>(draft: Draft): Draft => ({ ...draft, durationMinutes: draft.startTime ? draft.durationMinutes : null });
 
 /**
  * A meeting may be written up before it is held (the agenda) and after (notes, decisions, action
  * items). Decisions only once it has been held: a decision is dated by the meeting that took it.
  * Attendees and the people action items go to are picked from the project's people; an action
- * item is not due before the meeting that gave it.
+ * item is not due before the meeting that gave it. The hour is optional — a meeting that has one
+ * can be put in the calendar — but a bad hour or a length nobody could sit through is refused.
  */
 export function meetingProblems(draft: MeetingDraft, context: { today: IsoDate; people: ReadonlySet<string> }): MeetingProblem[] {
   const problems: MeetingProblem[] = [];
   if (!draft.title.trim()) problems.push("meeting_title_required");
+  if (draft.startTime !== null && !WALL_CLOCK.test(draft.startTime)) problems.push("meeting_time_invalid");
+  if (draft.durationMinutes !== null && (draft.durationMinutes < 5 || draft.durationMinutes > MAX_MEETING_MINUTES)) problems.push("meeting_duration_invalid");
   if (draft.decisions.length > 0 && draft.heldOn > context.today) problems.push("meeting_decisions_before_held");
   if (draft.attendeeIds.some((id) => !context.people.has(id))) problems.push("meeting_attendee_not_member");
   if (draft.actionItems.some((item) => item.assigneePersonId !== null && !context.people.has(item.assigneePersonId))) problems.push("meeting_assignee_not_member");

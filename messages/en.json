@@ -998,6 +998,14 @@
       "tasks_review_overdue": {
         "title": "Review overdue: {stage}",
         "body": "“{task}” has been waiting for your review at the {stage} stage past its due time. Approve it or ask for changes."
+      },
+      "projects_raid_assigned": {
+        "title": "An item in the risk log is yours",
+        "body": "“{title}” on {project} is now yours to look after."
+      },
+      "tasks_team_added": {
+        "title": "You were added to {team}",
+        "body": "{actor} added you to the team {team}. Open it to see its work, its workflow and who else is in it."
       }
     },
     "errors": {
@@ -3334,7 +3342,8 @@
       "empty": "No members yet.",
       "person": "Person",
       "pickPerson": "Pick a person…",
-      "add": "Add"
+      "add": "Add",
+      "narrowed": "The list holds only the people you may add: those in this team's entity and department. For anyone else, ask whoever manages work where they sit."
     },
     "states": {
       "title": "Workflow",
@@ -9852,7 +9861,11 @@
       "retainer_month_out_of_range": "That month is out of range: {min} at the earliest, {max} at the latest.",
       "retainer_terms_need_commercial": "Changing the retainer's start month, end month or whether it runs needs pjm:commercial over the project's entity.",
       "acceptance_project_exists": "This project already has a whole-project acceptance record that has not been voided.",
-      "person_not_in_project": "This person is not on the project or its team."
+      "person_not_in_project": "This person is not on the project or its team.",
+      "meeting_time_invalid": "That is not a valid start time.",
+      "meeting_duration_invalid": "A meeting runs between 5 minutes and 12 hours.",
+      "meeting_time_required": "Give the meeting a start time before putting it in the calendar.",
+      "meeting_not_in_calendar": "This meeting is not in the calendar."
     },
     "timeline": {
       "title": "Timeline",
@@ -10333,7 +10346,7 @@
       "record": "Save meeting",
       "save": "Save changes",
       "edit": "Edit or add to it",
-      "calendarNote": "Calendar invitations cannot be sent from here yet: Google Calendar is not connected for projects. Create the event in your calendar as usual, then record the meeting here.",
+      "calendarNote": "Save the meeting first, then open it to put it in the calendar and invite the people in it.",
       "titleHint": "E.g. Week 42 client check-in",
       "externalHint": "People outside the company, e.g. Mai (Brand Manager, Bibo)",
       "decisionsHint": "Each decision goes into the project's decision log, dated by the meeting.",
@@ -10371,7 +10384,26 @@
         "actions": "Action items",
         "action": "Action item",
         "assignee": "Owner",
-        "due": "Due"
+        "due": "Due",
+        "startTime": "Start time",
+        "durationMinutes": "Length (minutes)"
+      },
+      "timeHint": "A meeting needs a start time before it can go in the calendar.",
+      "atTime": "{time} · {minutes} min",
+      "inCalendar": "In the calendar",
+      "calendar": {
+        "title": "Calendar and invitations",
+        "needsTime": "This meeting has no start time yet, so it cannot go in a calendar. Add one in the form below.",
+        "put": "Put it in the calendar",
+        "update": "Update the event",
+        "remove": "Take it out of the calendar",
+        "removeConfirm": "Cancel this meeting's calendar event?",
+        "join": "Open the video call",
+        "status": {
+          "simulated": "Google Calendar is not connected: the event is recorded in SuZu One only and no invitation was sent.",
+          "sent": "The event is in the company calendar and the attendees with a work address were invited.",
+          "failed": "The company calendar did not take this event."
+        }
       }
     },
     "documents": {

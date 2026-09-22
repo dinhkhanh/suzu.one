@@ -12,8 +12,8 @@ import { beginUpload, completeUpload, createDownloadLink, findFile } from "../pl
 import type { WorkViewer } from "../work/policy";
 import { ensureProjectSpace } from "./documents";
 import { RAID_KINDS, RAID_SEVERITIES, RAID_STATUSES, RECORDABLE_MEETING_KINDS } from "./engine/raid";
-import { idList, isoDate, optional, rows, text } from "./form-inputs";
-import { findMeeting, saveMeeting } from "./meetings";
+import { checkbox, idList, isoDate, optional, rows, text } from "./form-inputs";
+import { findMeeting, putMeetingInCalendar, removeMeetingFromCalendar, saveMeeting } from "./meetings";
 import { canAddRaid, canCloseRaidItem, canCreateProjectSpace, canEditMeeting, canEditRaidItem, canRecordMeeting, canViewRaid, type PlanFacts } from "./policy";
 import { findRaidItem, issueToTask, RAID_EVIDENCE, raidWithEvidence, saveRaidItem, setRaidStatus } from "./raid-log";
 import { planProjectFor } from "./views";
@@ -165,6 +165,9 @@ const meetingPipeline = createAction({
     kind: z.enum(RECORDABLE_MEETING_KINDS),
     title: z.string().trim().min(1).max(200),
     heldOn: isoDate,
+    // The hour is optional; a meeting that has one can be put in the calendar (FR-PJM-30).
+    startTime: optional(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)),
+    durationMinutes: optional(z.coerce.number().int().min(5).max(720)),
     attendeeIds: idList,
     externalAttendees: text(1000),
     agenda: text(8000),
@@ -180,16 +183,45 @@ const meetingPipeline = createAction({
   run: async ({ user, input }) => {
     const { projectId, meetingId, actions, ...fields } = input;
     const { before, after, decisionIds, taskIds } = await saveMeeting(projectId, meetingId, { ...fields, actionItems: actions }, user.person.id);
+    // A meeting already in the calendar keeps up with itself: the hour moved, somebody else is
+    // coming. The outcome lands on the row, so a calendar that is down changes nothing here.
+    const calendar = after.calendarEventId ? (await putMeetingInCalendar(projectId, after.id)).delivery.status : null;
     refresh(projectId);
     revalidatePath(`/projects/${projectId}/meetings/${after.id}`);
     return {
-      data: { id: after.id, decisions: decisionIds.length, tasks: taskIds.length },
-      audit: { resource: { type: "project_meeting", id: after.id }, summary: `${after.kind} ${after.heldOn}: ${after.title}`, before: before ? { title: before.title, heldOn: before.heldOn, attendees: before.attendeeIds.length } : null, after: { projectId, title: after.title, heldOn: after.heldOn, attendees: after.attendeeIds.length, decisionIds, taskIds } },
+      data: { id: after.id, decisions: decisionIds.length, tasks: taskIds.length, calendar },
+      audit: { resource: { type: "project_meeting", id: after.id }, summary: `${after.kind} ${after.heldOn}: ${after.title}`, before: before ? { title: before.title, heldOn: before.heldOn, startTime: before.startTime, attendees: before.attendeeIds.length } : null, after: { projectId, title: after.title, heldOn: after.heldOn, startTime: after.startTime, attendees: after.attendeeIds.length, decisionIds, taskIds, calendar } },
     };
   },
 });
 export async function saveMeetingAction(input: unknown) {
   return meetingPipeline(input);
+}
+
+/**
+ * "Put it in the calendar" (FR-PJM-30): the event is made — or rewritten, when the meeting already
+ * has one — for whoever may edit the meeting. What the adapter managed is stored on the meeting and
+ * comes back, so the page can say `simulated` rather than claim an invitation went out.
+ */
+const meetingCalendarPipeline = createAction({
+  name: "projects.meeting.calendar",
+  input: z.object({ projectId: z.uuid(), meetingId: z.uuid(), remove: checkbox.default(false) }),
+  authorize: async (user, input) => {
+    const meeting = await findMeeting(input.meetingId);
+    return !!meeting && meeting.projectId === input.projectId && may(user, input.projectId, (viewer, facts) => canEditMeeting(viewer, facts, meeting));
+  },
+  run: async ({ input }) => {
+    const { meeting, delivery } = input.remove ? await removeMeetingFromCalendar(input.projectId, input.meetingId) : await putMeetingInCalendar(input.projectId, input.meetingId);
+    refresh(input.projectId);
+    revalidatePath(`/projects/${input.projectId}/meetings/${meeting.id}`);
+    return {
+      data: { status: delivery.status, driver: delivery.driver, meetingUrl: meeting.meetingUrl },
+      audit: { resource: { type: "project_meeting", id: meeting.id }, summary: `calendar ${input.remove ? "cancel" : "put"}: ${delivery.driver} ${delivery.status}`, after: { projectId: input.projectId, eventId: meeting.calendarEventId, status: delivery.status, error: delivery.error } },
+    };
+  },
+});
+export async function meetingCalendarAction(input: unknown) {
+  return meetingCalendarPipeline(input);
 }
 
 // ── The document space (FR-PJM-31) ──────────────────────────────────────────────────────────

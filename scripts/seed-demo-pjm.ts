@@ -195,6 +195,8 @@ async function main() {
     kind: "client",
     title: "Họp khách duyệt kịch bản",
     heldOn: addDays(today, -3),
+    startTime: "09:30",
+    durationMinutes: 90,
     attendeeIds: [id.tam, id.duc, id.long],
     externalAttendees: "Chị Mai Phương (Mộc An)",
     agenda: "Duyệt kịch bản phân cảnh, dự toán, lịch quay.",

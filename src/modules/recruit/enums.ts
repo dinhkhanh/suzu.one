@@ -127,12 +127,11 @@ export type InterviewStatus = (typeof INTERVIEW_STATUSES)[number];
 export const INTERVIEW_CLOSED: readonly InterviewStatus[] = ["completed", "cancelled", "no_show"];
 
 /**
- * What the calendar adapter managed to do (`calendar.ts`). `simulated` is the honest answer on a
- * machine with no Google credentials: the internal event exists, the `.ics` works, and nothing
- * left the building.
+ * What the calendar adapter managed to do. The adapter is the platform's — interviews and project
+ * meetings share it — and `simulated` is the honest answer on a machine with no Google
+ * credentials: the internal event exists, the `.ics` works, and nothing left the building.
  */
-export const CALENDAR_DELIVERY_STATUSES = ["simulated", "sent", "failed"] as const;
-export type CalendarDeliveryStatus = (typeof CALENDAR_DELIVERY_STATUSES)[number];
+export { CALENDAR_DELIVERY_STATUSES, type CalendarDeliveryStatus } from "../platform/calendar/enums";
 
 /**
  * One line of an interview kit (FR-REC-06: structured scorecards). The kit lives on the **opening**
