@@ -1,7 +1,7 @@
 // The catalogue of notifications. Plain module: shared by the server and the preferences screen.
 // Wording lives in messages/*.json under `notifications.kinds.<kind>` (dots become underscores).
 
-export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks", "attendance", "ops", "kb", "comms", "payroll", "recruit", "performance"] as const;
+export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks", "attendance", "ops", "kb", "comms", "payroll", "recruit", "performance", "projects", "daily"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const EMAIL_CHANNELS = ["instant", "digest", "off"] as const;
@@ -37,6 +37,12 @@ export const CATEGORY_DEFINITIONS: Record<Category, { defaults: ChannelChoice; /
   // result is published. A deadline to meet or a page to read — never a score and never an amount:
   // the figure is personal tier and the bonus it drives is compensation.
   performance: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false },
+  // Projects (Phase 10): a status update, a milestone coming due, a budget or quota running out,
+  // a change request or acceptance to act on, a billing item for finance. Never a fee or an amount.
+  projects: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false },
+  // The day (Phase 10): plan and report reminders, a lead's comment on a report, timesheets.
+  // On the phone, not in the mailbox: a reminder by email tomorrow is no reminder.
+  daily: { defaults: { inApp: true, email: "off", push: true }, mandatory: false },
 };
 
 export const KINDS = {
@@ -117,6 +123,43 @@ export const KINDS = {
   "performance.result_published": "performance",
   // The owner has a weighting version to decide (FR-PRF-09 is configuration, not code).
   "performance.rule_proposed": "performance",
+  // Phase 10 — tasks: blocked on you, a hand-off to accept or that came back, triage, cover, exit
+  // handover, a client decision recorded, a post due to go out, an automation's message.
+  "tasks.blocked": "tasks",
+  "tasks.unblocked": "tasks",
+  "tasks.handoff_received": "tasks",
+  "tasks.handoff_accepted": "tasks",
+  "tasks.handoff_returned": "tasks",
+  "tasks.triage_new": "tasks",
+  "tasks.cover_requested": "tasks",
+  "tasks.cover_handed_back": "tasks",
+  "tasks.exit_handover": "tasks",
+  "tasks.client_decision": "tasks",
+  "tasks.publish_due": "tasks",
+  "tasks.publish_missed": "tasks",
+  "tasks.automation": "tasks",
+  // Phase 10 — projects.
+  "projects.status_posted": "projects",
+  "projects.status_due": "projects",
+  "projects.milestone_due": "projects",
+  "projects.milestone_missed": "projects",
+  "projects.budget_alert": "projects",
+  "projects.quota_alert": "projects",
+  "projects.change_decided": "projects",
+  "projects.acceptance_signed": "projects",
+  "projects.billing_ready": "projects",
+  "projects.billing_invoiced": "projects",
+  "projects.booking_changed": "projects",
+  "projects.kpi_proposed": "projects",
+  // Phase 10 — the day.
+  "daily.plan_reminder": "daily",
+  "daily.report_reminder": "daily",
+  "daily.report_nudge": "daily",
+  "daily.report_commented": "daily",
+  "daily.weekly_report": "daily",
+  "daily.timesheet_reminder": "daily",
+  "daily.timesheet_submitted": "daily",
+  "daily.timesheet_decided": "daily",
 } as const satisfies Record<string, Category>;
 export type Kind = keyof typeof KINDS;
 

@@ -10,6 +10,8 @@ import { person } from "../platform/people/schema";
 import { task } from "../platform/tasks-engine/schema";
 import type { IntakeField } from "./engine/intake";
 
+export type CustomFieldValue = string | number | boolean | string[] | null;
+
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -82,6 +84,8 @@ export const workClient = pgTable(
     parentId: uuid("parent_id").references((): AnyPgColumn => workClient.id),
     entityId: uuid("entity_id").references(() => entity.id),
     note: text("note"),
+    // Who owns the relationship (FR-PJM-46): changing it takes a hand-off note.
+    accountManagerPersonId: uuid("account_manager_person_id").references(() => person.id),
     isActive: boolean("is_active").notNull().default(true),
     ...timestamps,
   },
@@ -176,6 +180,20 @@ export const workTask = pgTable(
     occurrenceDate: date("occurrence_date"),
     // Came in through an intake form (FR-WRK-16, week 5). No foreign key: the form may be retired, the task stays.
     intakeFormId: uuid("intake_form_id"),
+    // Custom fields (FR-PJM-35): { [fieldId]: value }, checked against work_custom_field by the service.
+    customValues: jsonb("custom_values").$type<Record<string, CustomFieldValue>>().notNull().default({}),
+    // Triage (FR-PJM-32): work from outside the team waits here until a lead accepts it.
+    // null = not in triage (made by the team itself) | pending | accepted | declined | snoozed.
+    triageStatus: text("triage_status"),
+    // intake | handoff | request
+    triageSource: text("triage_source"),
+    triageSnoozedUntil: date("triage_snoozed_until"),
+    triageDecidedByPersonId: uuid("triage_decided_by_person_id").references(() => person.id),
+    triageDecidedAt: timestamp("triage_decided_at", { withTimezone: true }),
+    triageNote: text("triage_note"),
+    // Cycles (FR-PJM-10): the time box the task is planned in, and how often it rolled over.
+    cycleId: uuid("cycle_id"),
+    cycleRollovers: integer("cycle_rollovers").notNull().default(0),
   },
   (t) => [
     unique("work_task_number_unique").on(t.teamId, t.number),
@@ -185,6 +203,8 @@ export const workTask = pgTable(
     index("work_task_client_idx").on(t.clientId),
     // Deliverables waiting for this reviewer: a badge in the app frame on every page.
     index("work_task_reviewer_idx").on(t.reviewerPersonId).where(sql`${t.reviewStatus} = 'submitted'`),
+    index("work_task_triage_idx").on(t.teamId).where(sql`${t.triageStatus} IN ('pending', 'snoozed')`),
+    index("work_task_cycle_idx").on(t.cycleId),
   ],
 ).enableRLS();
 
@@ -342,6 +362,11 @@ export const workDeliverable = pgTable(
     decidedByPersonId: uuid("decided_by_person_id").references(() => person.id),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
     decisionComment: text("decision_comment"),
+    // Review chains (FR-PJM-50): which chain the version runs through and the stage it waits at.
+    chainId: uuid("chain_id"),
+    stageIndex: integer("stage_index").notNull().default(0),
+    // Set when the client approved this version (FR-PJM-51): it can no longer change.
+    frozenAt: timestamp("frozen_at", { withTimezone: true }),
   },
   (t) => [unique("work_deliverable_version_unique").on(t.taskId, t.version)],
 ).enableRLS();
@@ -404,4 +429,405 @@ export const workIntakeForm = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("work_intake_form_team_idx").on(t.teamId)],
+).enableRLS();
+
+// ── Phase 10 (PJM) on the task foundation ───────────────────────────────────────────────────
+
+// A team's (or one project's) extra fields (FR-PJM-35). Values live on work_task.custom_values.
+export type CustomFieldOption = { id: string; label: string; color?: string };
+export const workCustomField = pgTable(
+  "work_custom_field",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id").references(() => workTeam.id, { onDelete: "cascade" }),
+    // Set = a field of this project only; null = every task of the team.
+    projectId: uuid("project_id").references(() => workProject.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    // text | number | select | multi_select | date | person | url | checkbox | duration
+    type: text("type").notNull(),
+    options: jsonb("options").$type<CustomFieldOption[]>().notNull().default([]),
+    showOnCard: boolean("show_on_card").notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [index("work_custom_field_team_idx").on(t.teamId), index("work_custom_field_project_idx").on(t.projectId)],
+).enableRLS();
+
+// A task moved to another team gets a new number; the old one still finds it (FR-PJM-34).
+export const workTaskNumberAlias = pgTable(
+  "work_task_number_alias",
+  {
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => workTeam.id),
+    number: integer("number").notNull(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.teamId, t.number] }), index("work_task_number_alias_task_idx").on(t.taskId)],
+).enableRLS();
+
+// Triage rules (FR-PJM-32): what incoming work gets on arrival.
+export type TriageMatch = { source?: string; intakeFormId?: string; keyword?: string };
+export type TriageSet = { assigneePersonId?: string; projectId?: string; labelIds?: string[]; priority?: number };
+export const workTriageRule = pgTable(
+  "work_triage_rule",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => workTeam.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    match: jsonb("match").$type<TriageMatch>().notNull().default({}),
+    set: jsonb("set").$type<TriageSet>().notNull().default({}),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [index("work_triage_rule_team_idx").on(t.teamId)],
+).enableRLS();
+
+// A task marked blocked (FR-PJM-28): open while resolved_at is null; blocked time = resolved − raised.
+export const workBlocker = pgTable(
+  "work_blocker",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    reason: text("reason").notNull(),
+    // Who or what the task waits for.
+    neededPersonId: uuid("needed_person_id").references(() => person.id),
+    raisedByPersonId: uuid("raised_by_person_id")
+      .notNull()
+      .references(() => person.id),
+    raisedAt: timestamp("raised_at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolvedByPersonId: uuid("resolved_by_person_id").references(() => person.id),
+    resolution: text("resolution"),
+  },
+  (t) => [index("work_blocker_task_idx").on(t.taskId), uniqueIndex("work_blocker_open_unique").on(t.taskId).where(sql`${t.resolvedAt} IS NULL`), index("work_blocker_needed_idx").on(t.neededPersonId).where(sql`${t.resolvedAt} IS NULL`)],
+).enableRLS();
+
+// Cycles (FR-PJM-10): a team's time boxes, made ahead by the daily job.
+export const workCycle = pgTable(
+  "work_cycle",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => workTeam.id, { onDelete: "cascade" }),
+    number: integer("number").notNull(),
+    startDate: date("start_date").notNull(),
+    endDate: date("end_date").notNull(),
+    // Filled when the cycle closes: planned, done, rolled over.
+    summary: jsonb("summary").$type<{ planned: number; done: number; rolled: number }>(),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("work_cycle_number_unique").on(t.teamId, t.number), index("work_cycle_dates_idx").on(t.teamId, t.startDate)],
+).enableRLS();
+
+// Hand-off packages (FR-PJM-40): what a workflow transition requires.
+export type HandoffField = { key: string; label: string; type: "text" | "url" | "date" | "number"; required: boolean };
+export type HandoffCheck = { id: string; text: string };
+export const workHandoffPackage = pgTable(
+  "work_handoff_package",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => workTeam.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    // null = from any state.
+    fromStateId: uuid("from_state_id").references(() => workState.id, { onDelete: "cascade" }),
+    toStateId: uuid("to_state_id")
+      .notNull()
+      .references(() => workState.id, { onDelete: "cascade" }),
+    fields: jsonb("fields").$type<HandoffField[]>().notNull().default([]),
+    checklist: jsonb("checklist").$type<HandoffCheck[]>().notNull().default([]),
+    requireLink: boolean("require_link").notNull().default(false),
+    requireFile: boolean("require_file").notNull().default(false),
+    // The receiver must accept (FR-PJM-41); off = the package is recorded, nobody accepts it.
+    requireAccept: boolean("require_accept").notNull().default(true),
+    isActive: boolean("is_active").notNull().default(true),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [index("work_handoff_package_team_idx").on(t.teamId)],
+).enableRLS();
+
+// One hand-off note, whatever moves (FR-PJM-43).
+export type HandoffNote = { context?: string; state?: string; done?: string; next?: string; questions?: string; links?: string[]; contacts?: string };
+export const workHandoff = pgTable(
+  "work_handoff",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    // stage | cross_team | cover | cover_return | exit | account
+    kind: text("kind").notNull(),
+    packageId: uuid("package_id").references(() => workHandoffPackage.id, { onDelete: "set null" }),
+    fromPersonId: uuid("from_person_id").references(() => person.id),
+    toPersonId: uuid("to_person_id").references(() => person.id),
+    toTeamId: uuid("to_team_id").references(() => workTeam.id),
+    fromStateId: uuid("from_state_id").references(() => workState.id, { onDelete: "set null" }),
+    toStateId: uuid("to_state_id").references(() => workState.id, { onDelete: "set null" }),
+    note: jsonb("note").$type<HandoffNote>().notNull().default({}),
+    packageValues: jsonb("package_values").$type<Record<string, string>>().notNull().default({}),
+    checklist: jsonb("checklist").$type<(HandoffCheck & { done: boolean })[]>().notNull().default([]),
+    fileId: uuid("file_id").references(() => storedFile.id),
+    // pending | accepted | returned | cancelled | recorded (no acceptance needed)
+    status: text("status").notNull().default("pending"),
+    respondedByPersonId: uuid("responded_by_person_id").references(() => person.id),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
+    returnReason: text("return_reason"),
+    // A cross-team hand-off makes a task in the receiving team.
+    targetTaskId: uuid("target_task_id").references(() => task.id, { onDelete: "set null" }),
+    // Where it came from: { leaveRequestId } / { lifecycleEventId } / { clientId }.
+    sourceRef: jsonb("source_ref").$type<Record<string, string>>(),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("work_handoff_task_idx").on(t.taskId, t.createdAt), index("work_handoff_to_idx").on(t.toPersonId).where(sql`${t.status} = 'pending'`), index("work_handoff_team_idx").on(t.toTeamId).where(sql`${t.status} = 'pending'`)],
+).enableRLS();
+
+// Leave cover (FR-PJM-44): one plan per leave request, one row per thing covered.
+export const workCoverPlan = pgTable(
+  "work_cover_plan",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    leaveRequestId: uuid("leave_request_id").notNull().unique(),
+    fromDate: date("from_date").notNull(),
+    toDate: date("to_date").notNull(),
+    // draft | submitted | handed_back | cancelled
+    status: text("status").notNull().default("draft"),
+    defaultCoverPersonId: uuid("default_cover_person_id").references(() => person.id),
+    note: jsonb("note").$type<HandoffNote>().notNull().default({}),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("work_cover_plan_person_idx").on(t.personId, t.fromDate)],
+).enableRLS();
+
+export const workCoverItem = pgTable(
+  "work_cover_item",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => workCoverPlan.id, { onDelete: "cascade" }),
+    // task | review | recurrence | booking
+    itemType: text("item_type").notNull(),
+    itemId: uuid("item_id").notNull(),
+    coverPersonId: uuid("cover_person_id").references(() => person.id),
+    handoffId: uuid("handoff_id").references(() => workHandoff.id, { onDelete: "set null" }),
+    acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
+    handedBackAt: timestamp("handed_back_at", { withTimezone: true }),
+  },
+  (t) => [unique("work_cover_item_unique").on(t.planId, t.itemType, t.itemId), index("work_cover_item_cover_idx").on(t.coverPersonId)],
+).enableRLS();
+
+// Exit and transfer handover (FR-PJM-45): pulled from lifecycle events; the gate is computed live.
+export const workExitHandover = pgTable(
+  "work_exit_handover",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    lifecycleEventId: uuid("lifecycle_event_id").notNull().unique(),
+    // termination | transfer
+    reason: text("reason").notNull(),
+    lastDay: date("last_day"),
+    // The checklist task the gate guards (kind "handover"), in the person's offboarding.
+    taskId: uuid("task_id").references(() => task.id, { onDelete: "set null" }),
+    // open | done | cancelled
+    status: text("status").notNull().default("open"),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("work_exit_handover_person_idx").on(t.personId)],
+).enableRLS();
+
+// Review chains (FR-PJM-50): ordered stages a deliverable version passes through.
+// reviewer: task_reviewer | project_lead | team_lead | account_manager | client | person:<id>
+export type ReviewStage = { key: string; name: string; reviewer: string; dueHours: number | null };
+export const workReviewChain = pgTable(
+  "work_review_chain",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id").references(() => workTeam.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id").references(() => workProject.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    // Applies to tasks of this content format; null = every task in scope.
+    contentFormat: text("content_format"),
+    stages: jsonb("stages").$type<ReviewStage[]>().notNull().default([]),
+    isActive: boolean("is_active").notNull().default(true),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [index("work_review_chain_team_idx").on(t.teamId), index("work_review_chain_project_idx").on(t.projectId)],
+).enableRLS();
+
+// Every decision on a deliverable version, stage by stage — the client's included (FR-PJM-50, 51).
+export type ClientDecisionFacts = { channel: string; decidedByName: string; decidedOn: string; evidenceFileId?: string | null; evidenceUrl?: string | null };
+export const workDeliverableDecision = pgTable(
+  "work_deliverable_decision",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    deliverableId: uuid("deliverable_id")
+      .notNull()
+      .references(() => workDeliverable.id, { onDelete: "cascade" }),
+    stageIndex: integer("stage_index").notNull().default(0),
+    stageName: text("stage_name"),
+    // approved | approved_with_changes | changes_required
+    decision: text("decision").notNull(),
+    // Who pressed the button; for a client stage, the account person who recorded it.
+    decidedByPersonId: uuid("decided_by_person_id")
+      .notNull()
+      .references(() => person.id),
+    comment: text("comment"),
+    isClient: boolean("is_client").notNull().default(false),
+    client: jsonb("client").$type<ClientDecisionFacts>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("work_deliverable_decision_idx").on(t.deliverableId, t.createdAt)],
+).enableRLS();
+
+// Comments pinned to a point of an image or a moment of a video (FR-PJM-52). x, y in 0..1.
+export const workDeliverablePin = pgTable(
+  "work_deliverable_pin",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    deliverableId: uuid("deliverable_id")
+      .notNull()
+      .references(() => workDeliverable.id, { onDelete: "cascade" }),
+    x: doublePrecision("x"),
+    y: doublePrecision("y"),
+    timecodeMs: integer("timecode_ms"),
+    body: text("body").notNull(),
+    authorPersonId: uuid("author_person_id")
+      .notNull()
+      .references(() => person.id),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolvedByPersonId: uuid("resolved_by_person_id").references(() => person.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("work_deliverable_pin_idx").on(t.deliverableId)],
+).enableRLS();
+
+// What went to the client, when, and which version (FR-PJM-53).
+export const workDelivery = pgTable(
+  "work_delivery",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    deliverableId: uuid("deliverable_id").references(() => workDeliverable.id, { onDelete: "set null" }),
+    deliveredOn: date("delivered_on").notNull(),
+    deliveredByPersonId: uuid("delivered_by_person_id")
+      .notNull()
+      .references(() => person.id),
+    recipient: text("recipient"),
+    links: jsonb("links").$type<string[]>().notNull().default([]),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("work_delivery_task_idx").on(t.taskId)],
+).enableRLS();
+
+// The publish log of content (FR-PJM-54).
+export const workPublish = pgTable(
+  "work_publish",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    platform: text("platform").notNull(),
+    page: text("page"),
+    plannedAt: timestamp("planned_at", { withTimezone: true }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    url: text("url"),
+    publishedByPersonId: uuid("published_by_person_id").references(() => person.id),
+    boosted: boolean("boosted").notNull().default(false),
+    adAccount: text("ad_account"),
+    // planned | published | cancelled
+    status: text("status").notNull().default("planned"),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [index("work_publish_task_idx").on(t.taskId), index("work_publish_planned_idx").on(t.plannedAt).where(sql`${t.status} = 'planned'`)],
+).enableRLS();
+
+// Results of a published post (FR-PJM-57). Money in integer VND.
+export type PublishMetrics = { reach?: number; views?: number; engagement?: number; clicks?: number; spendVnd?: number };
+export const workPublishResult = pgTable(
+  "work_publish_result",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    publishId: uuid("publish_id")
+      .notNull()
+      .references(() => workPublish.id, { onDelete: "cascade" }),
+    recordedOn: date("recorded_on").notNull(),
+    metrics: jsonb("metrics").$type<PublishMetrics>().notNull().default({}),
+    // manual | csv
+    source: text("source").notNull().default("manual"),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("work_publish_result_idx").on(t.publishId, t.recordedOn)],
+).enableRLS();
+
+// Automations (FR-PJM-33): when <trigger> [and <conditions>] then <actions>.
+export type AutomationTrigger = { type: string; stateId?: string; field?: string; decision?: string; percent?: number };
+export type AutomationCondition = { field: string; op: "eq" | "neq" | "set" | "unset"; value?: string | number | null };
+export type AutomationAction = { type: string; stateId?: string; personId?: string; labelId?: string; days?: number; templateId?: string; text?: string; to?: string };
+export const workAutomation = pgTable(
+  "work_automation",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => workTeam.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id").references(() => workProject.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    trigger: jsonb("trigger").$type<AutomationTrigger>().notNull(),
+    conditions: jsonb("conditions").$type<AutomationCondition[]>().notNull().default([]),
+    actions: jsonb("actions").$type<AutomationAction[]>().notNull().default([]),
+    isActive: boolean("is_active").notNull().default(true),
+    runCount: integer("run_count").notNull().default(0),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [index("work_automation_team_idx").on(t.teamId)],
+).enableRLS();
+
+export const workAutomationRun = pgTable(
+  "work_automation_run",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    automationId: uuid("automation_id")
+      .notNull()
+      .references(() => workAutomation.id, { onDelete: "cascade" }),
+    taskId: uuid("task_id").references(() => task.id, { onDelete: "cascade" }),
+    trigger: text("trigger").notNull(),
+    // ok | skipped | failed, with what each action did.
+    outcome: text("outcome").notNull(),
+    detail: jsonb("detail").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("work_automation_run_idx").on(t.automationId, t.createdAt)],
 ).enableRLS();

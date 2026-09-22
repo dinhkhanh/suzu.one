@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Grant } from "../platform/rbac/policy";
-import type { TeamRole } from "./enums";
-import { canAdminTeam, canContributeToProject, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canViewProject, canViewTask, canViewTeam, type ProjectFacts, type TaskFacts, type TeamFacts, type WorkViewer } from "./policy";
+import type { ProjectRole, TeamRole } from "./enums";
+import { canActForClient, canAdminTeam, canContributeToProject, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canViewProject, canViewTask, canViewTeam, type ProjectFacts, type TaskFacts, type TeamFacts, type WorkViewer } from "./policy";
 
 const SZM = "entity-szm";
 const SZC = "entity-szc";
 const VID = "dept-vid";
 
-const viewer = (personId: string, options: { entityId?: string | null; grants?: Grant[]; teams?: Record<string, TeamRole>; projects?: Record<string, TeamRole>; collaborator?: boolean } = {}): WorkViewer => ({
+const viewer = (personId: string, options: { entityId?: string | null; grants?: Grant[]; teams?: Record<string, TeamRole>; projects?: Record<string, ProjectRole>; collaborator?: boolean } = {}): WorkViewer => ({
   principal: { personId, workforceType: options.collaborator ? "collaborator" : "employee", grants: options.grants ?? [] },
   entityId: options.entityId === undefined ? SZM : options.entityId,
   teamRoles: new Map(Object.entries(options.teams ?? {})),
@@ -113,5 +113,33 @@ describe("tasks", () => {
     expect(canDeleteTask(member, taskIn({ createdByPersonId: "huy" }))).toBe(true);
     // A creator who has since left the team keeps no rights over the task.
     expect(canDeleteTask(colleague, taskIn({ createdByPersonId: "bao" }))).toBe(false);
+  });
+});
+
+describe("project roles (FR-PJM-14)", () => {
+  const privateProject = project("private");
+  const viewerOnly = viewer("xem", { projects: { [privateProject.id]: "viewer" } });
+  const accountManager = viewer("am", { projects: { [privateProject.id]: "account_manager" } });
+  const projectMember = viewer("tv", { projects: { [privateProject.id]: "member" } });
+
+  it("lets a viewer look and nothing more", () => {
+    expect(canViewProject(viewerOnly, privateProject)).toBe(true);
+    expect(canContributeToProject(viewerOnly, privateProject)).toBe(false);
+    expect(canEditTask(viewerOnly, taskIn({ project: privateProject }))).toBe(false);
+    expect(canActForClient(viewerOnly, privateProject)).toBe(false);
+  });
+
+  it("gives the account manager the client side, not the project's settings", () => {
+    expect(canContributeToProject(accountManager, privateProject)).toBe(true);
+    expect(canActForClient(accountManager, privateProject)).toBe(true);
+    expect(canManageProject(accountManager, privateProject)).toBe(false);
+    expect(canActForClient(projectMember, privateProject)).toBe(false);
+    expect(canActForClient(lead, privateProject)).toBe(true);
+  });
+
+  it("opens non-private projects in scope to pjm:portfolio, never private ones", () => {
+    const portfolio = viewer("port", { entityId: SZC, grants: [{ role: "entity_director", scope: { type: "entity", id: SZM } }] });
+    expect(canViewProject(portfolio, project("team"))).toBe(true);
+    expect(canViewProject(portfolio, privateProject)).toBe(false);
   });
 });

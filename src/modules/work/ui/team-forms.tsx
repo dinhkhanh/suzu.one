@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { createTeamAction, deleteLabelAction, saveLabelAction, saveStateAction, setProjectMemberAction, setTeamMemberAction, updateTeamAction } from "../actions";
-import { LABEL_COLORS, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "../enums";
+import { LABEL_COLORS, PROJECT_ROLES, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "../enums";
 
 type Option = { id: string; name: string };
 type Team = { id: string; key: string; name: string; description: string | null; entityId: string | null; departmentId: string | null; defaultVisibility: string; isActive: boolean };
@@ -127,6 +127,7 @@ export function MemberManager({ members, people, canManage, target }: { members:
   const { run, pending, errorKey } = useRun();
   const form = useRef<HTMLFormElement>(null);
   const action = "teamId" in target ? setTeamMemberAction : setProjectMemberAction;
+  const roles: readonly string[] = "teamId" in target ? TEAM_ROLES : PROJECT_ROLES;
   const outsiders = people.filter((person) => !members.some((member) => member.personId === person.id));
   return (
     <div className="flex flex-col gap-3">
@@ -138,7 +139,7 @@ export function MemberManager({ members, people, canManage, target }: { members:
             {canManage ? (
               <>
                 <Select aria-label={t("role")} className="w-36" value={member.role} disabled={pending} onChange={(event) => run(action, { ...target, personId: member.personId, role: event.target.value })}>
-                  {TEAM_ROLES.map((role) => (
+                  {roles.map((role) => (
                     <option key={role} value={role}>
                       {t(`roles.${role}`)}
                     </option>
@@ -176,7 +177,7 @@ export function MemberManager({ members, people, canManage, target }: { members:
             ))}
           </Select>
           <Select name="role" aria-label={t("role")} className="w-36" defaultValue="member">
-            {TEAM_ROLES.map((role) => (
+            {roles.map((role) => (
               <option key={role} value={role}>
                 {t(`roles.${role}`)}
               </option>

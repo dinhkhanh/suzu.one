@@ -8,14 +8,14 @@
 //   private → the project's members and the team's leads. `work:manage` does not open a private
 //             project: an HR or finance project stays with the people in it.
 import { can, type Principal } from "../platform/rbac/policy";
-import type { TeamRole, Visibility } from "./enums";
+import type { ProjectRole, TeamRole, Visibility } from "./enums";
 
 export type WorkViewer = {
   principal: Principal;
   /** The viewer's primary entity. */
   entityId: string | null;
   teamRoles: ReadonlyMap<string, TeamRole>;
-  projectRoles: ReadonlyMap<string, TeamRole>;
+  projectRoles: ReadonlyMap<string, ProjectRole>;
 };
 
 export type TeamFacts = { id: string; entityId: string | null; departmentId: string | null; defaultVisibility: Visibility };
@@ -53,12 +53,18 @@ export function canViewTeam(viewer: WorkViewer, team: TeamFacts): boolean {
 function seesByVisibility(viewer: WorkViewer, visibility: Visibility, entityId: string | null, team: TeamFacts): boolean {
   if (viewer.teamRoles.get(team.id) === "lead") return true;
   if (visibility === "private") return false;
-  if (viewer.teamRoles.has(team.id) || canManageWorkspace(viewer, team)) return true;
+  // `pjm:portfolio` (FR-PJM-8): leaders read every non-private project in their scope.
+  if (viewer.teamRoles.has(team.id) || canManageWorkspace(viewer, team) || can(viewer.principal, "pjm:portfolio", scopeOf(team))) return true;
   return visibility === "entity" && !isCollaborator(viewer) && (entityId === null || entityId === viewer.entityId);
 }
 
 export function canViewProject(viewer: WorkViewer, project: ProjectFacts): boolean {
   return viewer.projectRoles.has(project.id) || seesByVisibility(viewer, project.visibility, project.entityId, project.team);
+}
+
+/** The client side of a project (FR-PJM-14): client decisions, acceptance, change requests, billing hand-off. */
+export function canActForClient(viewer: WorkViewer, project: ProjectFacts): boolean {
+  return viewer.projectRoles.get(project.id) === "account_manager" || canManageProject(viewer, project);
 }
 
 /** Settings, members, archive. */
@@ -71,9 +77,10 @@ export function canCreateProject(viewer: WorkViewer, team: TeamFacts): boolean {
   return viewer.teamRoles.has(team.id) || canAdminTeam(viewer, team);
 }
 
-/** Create and change tasks in a project: the people working in it, not everyone who may look. */
+/** Create and change tasks in a project: the people working in it, not everyone who may look — a viewer only looks. */
 export function canContributeToProject(viewer: WorkViewer, project: ProjectFacts): boolean {
-  if (viewer.projectRoles.has(project.id) || canManageProject(viewer, project)) return true;
+  const role = viewer.projectRoles.get(project.id);
+  if ((role && role !== "viewer") || canManageProject(viewer, project)) return true;
   return project.visibility !== "private" && viewer.teamRoles.has(project.team.id);
 }
 

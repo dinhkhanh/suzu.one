@@ -32,6 +32,9 @@ const PERMISSIONS = [
   "kb:manage",
   "kb:manage_unit",
   "comms:manage",
+  "pjm:commercial",
+  "pjm:cost",
+  "pjm:portfolio",
 ] as const satisfies readonly Exclude<Permission, "*">[];
 
 const ENTITY = "entity-a";

@@ -6,7 +6,7 @@ import { and, asc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { invalidateWorkDirectory, projectsWithTeams, workDirectory } from "./directory";
-import type { ProjectStatus, TeamRole, Visibility } from "./enums";
+import type { ProjectRole, ProjectStatus, Visibility } from "./enums";
 import { canContributeToProject, canContributeToTeam, canCreateProject, canViewProject, type ProjectFacts, type WorkViewer } from "./policy";
 import { teamFacts, type TeamRow } from "./teams";
 
@@ -113,7 +113,7 @@ export async function createProjectIn(tx: Executor, input: ProjectInput, actorPe
     await checkProjectInput(tx, input);
     const leadPersonId = input.leadPersonId ?? actorPersonId;
     const [project] = await tx.insert(schema.workProject).values({ ...input, leadPersonId, entityId: team.entityId, createdByPersonId: actorPersonId }).returning();
-    const members = new Map<string, TeamRole>([[actorPersonId, "member"], [leadPersonId, "lead"]]);
+    const members = new Map<string, ProjectRole>([[actorPersonId, "member"], [leadPersonId, "lead"]]);
     await tx.insert(schema.workProjectMember).values([...members].map(([personId, role]) => ({ projectId: project.id, personId, role })));
     return project;
   }
@@ -135,7 +135,7 @@ export async function updateProject(projectId: string, input: Omit<ProjectInput,
   return updated;
 }
 
-export type ProjectMemberView = { personId: string; fullName: string; role: TeamRole; workforceType: string };
+export type ProjectMemberView = { personId: string; fullName: string; role: ProjectRole; workforceType: string };
 
 export async function listProjectMembers(projectId: string): Promise<ProjectMemberView[]> {
   const rows = await db()
@@ -144,15 +144,15 @@ export async function listProjectMembers(projectId: string): Promise<ProjectMemb
     .innerJoin(schema.person, eq(schema.person.id, schema.workProjectMember.personId))
     .where(eq(schema.workProjectMember.projectId, projectId))
     .orderBy(asc(schema.workProjectMember.role), asc(schema.person.searchName));
-  return rows.map((row) => ({ ...row, role: row.role as TeamRole }));
+  return rows.map((row) => ({ ...row, role: row.role as ProjectRole }));
 }
 
 /** `role` null removes the person. A private project keeps at least one lead among its members or its team. */
-export async function setProjectMember(projectId: string, personId: string, role: TeamRole | null): Promise<{ before: TeamRole | null; after: TeamRole | null }> {
+export async function setProjectMember(projectId: string, personId: string, role: ProjectRole | null): Promise<{ before: ProjectRole | null; after: ProjectRole | null }> {
   return db().transaction(async (tx) => {
     const members = await tx.select().from(schema.workProjectMember).where(eq(schema.workProjectMember.projectId, projectId));
     const current = members.find((member) => member.personId === personId);
-    const before = (current?.role as TeamRole | undefined) ?? null;
+    const before = (current?.role as ProjectRole | undefined) ?? null;
     if (role === null) {
       if (members.length === 1 && current) throw new ActionError("project_last_member");
       if (current) await tx.delete(schema.workProjectMember).where(eq(schema.workProjectMember.id, current.id));

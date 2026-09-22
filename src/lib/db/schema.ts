@@ -17,6 +17,8 @@ export * from "../../modules/core-hr/schema";
 export * from "../../modules/attendance/schema";
 export * from "../../modules/leave/schema";
 export * from "../../modules/work/schema";
+export * from "../../modules/projects/schema";
+export * from "../../modules/daily/schema";
 export * from "../../modules/ops/schema";
 export * from "../../modules/performance/schema";
 export * from "../../modules/kb/schema";

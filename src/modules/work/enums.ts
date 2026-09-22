@@ -22,6 +22,13 @@ export type Visibility = (typeof VISIBILITIES)[number];
 export const TEAM_ROLES = ["lead", "member"] as const;
 export type TeamRole = (typeof TEAM_ROLES)[number];
 
+/**
+ * A project's own roles (FR-PJM-14): the lead runs it, the account manager owns the client side
+ * (client decisions, acceptance, billing hand-off), members do the work, viewers only look.
+ */
+export const PROJECT_ROLES = ["lead", "account_manager", "member", "viewer"] as const;
+export type ProjectRole = (typeof PROJECT_ROLES)[number];
+
 export const PROJECT_STATUSES = ["planned", "active", "paused", "done", "archived"] as const;
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 

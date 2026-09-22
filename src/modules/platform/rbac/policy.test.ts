@@ -129,6 +129,22 @@ describe("work and ops permissions (Phase 3)", () => {
     expect(can(head, "comms:manage", { unitPath: [DESIGN] })).toBe(true);
     expect(can(head, "comms:manage", { entityId: ENTITY_A })).toBe(false);
   });
+
+  it("splits project money from project work (Phase 10): fees, cost rates, portfolio", () => {
+    const group = { type: "group" } as const;
+    // Fees and the billing queue: leaders and finance; never HR, payroll clerks or department heads.
+    for (const role of ["c_level", "entity_director", "finance"] as const) expect(can(principal([{ role, scope: group }]), "pjm:commercial")).toBe(true);
+    for (const role of ["hr_admin", "hr_staff", "payroll", "department_head", "recruiter", "asset_admin", "auditor"] as const) expect(can(principal([{ role, scope: group }]), "pjm:commercial")).toBe(false);
+    // Cost rates come from salaries: C-level and finance only — not an entity director (restricted tier).
+    for (const role of ["c_level", "finance"] as const) expect(can(principal([{ role, scope: group }]), "pjm:cost")).toBe(true);
+    for (const role of ["entity_director", "hr_admin", "hr_staff", "payroll", "department_head", "recruiter", "asset_admin", "auditor"] as const) expect(can(principal([{ role, scope: group }]), "pjm:cost")).toBe(false);
+    for (const role of ["c_level", "entity_director", "department_head"] as const) expect(can(principal([{ role, scope: group }]), "pjm:portfolio")).toBe(true);
+    for (const role of ["hr_admin", "hr_staff", "payroll", "finance", "recruiter", "asset_admin", "auditor"] as const) expect(can(principal([{ role, scope: group }]), "pjm:portfolio")).toBe(false);
+    // A department head's portfolio is the department's, not the entity's.
+    const head = principal([{ role: "department_head", scope: { type: "unit", id: DESIGN } }]);
+    expect(can(head, "pjm:portfolio", { unitPath: [DESIGN] })).toBe(true);
+    expect(can(head, "pjm:portfolio", { entityId: ENTITY_A })).toBe(false);
+  });
 });
 
 describe("unit scopes reach down the tree (FR-PLT-16)", () => {

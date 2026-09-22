@@ -616,7 +616,9 @@
         "comms": "Thông báo nội bộ & ghi nhận",
         "payroll": "Lương & bảng lương",
         "recruit": "Tuyển dụng",
-        "performance": "Đánh giá hiệu suất"
+        "performance": "Đánh giá hiệu suất",
+        "projects": "Dự án",
+        "daily": "Kế hoạch & báo cáo ngày"
       },
       "push": "Đẩy"
     },
@@ -848,6 +850,138 @@
       "performance_rule_proposed": {
         "title": "Có đề xuất trọng số kết quả hiệu suất",
         "body": "Một phiên bản trọng số mới được đề xuất, hiệu lực từ {validFrom}. Chỉ có hiệu lực sau khi bạn phê duyệt."
+      },
+      "tasks_blocked": {
+        "title": "Một việc đang chờ bạn",
+        "body": "{actor} đánh dấu “{task}” bị vướng: {reason}"
+      },
+      "tasks_unblocked": {
+        "title": "Hết vướng",
+        "body": "{actor} đã gỡ vướng cho “{task}”."
+      },
+      "tasks_handoff_received": {
+        "title": "Bạn nhận một bàn giao",
+        "body": "{actor} bàn giao “{task}” cho bạn. Hãy nhận hoặc trả lại kèm lý do."
+      },
+      "tasks_handoff_accepted": {
+        "title": "Bàn giao đã được nhận",
+        "body": "{actor} đã nhận bàn giao “{task}”."
+      },
+      "tasks_handoff_returned": {
+        "title": "Bàn giao bị trả lại",
+        "body": "{actor} trả lại bàn giao “{task}”: {reason}"
+      },
+      "tasks_triage_new": {
+        "title": "Việc mới chờ phân loại",
+        "body": "“{task}” vừa vào hàng chờ phân loại của {team}."
+      },
+      "tasks_cover_requested": {
+        "title": "Nhờ bạn làm thay",
+        "body": "{actor} nghỉ từ {from} đến {to} và nhờ bạn làm thay {count} việc."
+      },
+      "tasks_cover_handed_back": {
+        "title": "Việc làm thay đã được trả lại",
+        "body": "{actor} đã đi làm lại và nhận lại {count} việc."
+      },
+      "tasks_exit_handover": {
+        "title": "Cần bàn giao công việc",
+        "body": "{person} sắp nghỉ hoặc chuyển bộ phận: còn {count} việc phải bàn giao."
+      },
+      "tasks_client_decision": {
+        "title": "Đã ghi nhận ý kiến khách hàng",
+        "body": "{actor} ghi nhận quyết định của khách hàng cho “{task}”."
+      },
+      "tasks_publish_due": {
+        "title": "Sắp đến giờ đăng bài",
+        "body": "“{task}” lên lịch đăng lúc {time}."
+      },
+      "tasks_publish_missed": {
+        "title": "Bài chưa được đăng",
+        "body": "“{task}” đã quá giờ đăng dự kiến mà chưa có đường dẫn bài đăng."
+      },
+      "tasks_automation": {
+        "title": "{rule}",
+        "body": "“{task}”: {text}"
+      },
+      "projects_status_posted": {
+        "title": "Cập nhật tình hình dự án",
+        "body": "{actor} vừa cập nhật tình hình dự án {project}."
+      },
+      "projects_status_due": {
+        "title": "Đến hạn cập nhật dự án",
+        "body": "Dự án {project} chưa có cập nhật tình hình trong kỳ này."
+      },
+      "projects_milestone_due": {
+        "title": "Mốc sắp đến hạn",
+        "body": "Mốc “{milestone}” của {project} đến hạn ngày {date}."
+      },
+      "projects_milestone_missed": {
+        "title": "Mốc đã trễ",
+        "body": "Mốc “{milestone}” của {project} đã quá hạn."
+      },
+      "projects_budget_alert": {
+        "title": "Ngân sách giờ sắp hết",
+        "body": "Dự án {project} đã dùng {percent}% ngân sách giờ."
+      },
+      "projects_quota_alert": {
+        "title": "Hạn mức retainer",
+        "body": "{project}: “{line}” đã đạt {percent}% hạn mức tháng."
+      },
+      "projects_change_decided": {
+        "title": "Yêu cầu thay đổi đã có quyết định",
+        "body": "Yêu cầu thay đổi “{title}” của {project} đã được xử lý."
+      },
+      "projects_acceptance_signed": {
+        "title": "Biên bản nghiệm thu đã ký",
+        "body": "Biên bản nghiệm thu số {number} của {project} đã được khách hàng ký."
+      },
+      "projects_billing_ready": {
+        "title": "Có khoản chờ xuất hoá đơn",
+        "body": "Dự án {project} (mã {job}) có một khoản sẵn sàng xuất hoá đơn."
+      },
+      "projects_billing_invoiced": {
+        "title": "Đã xuất hoá đơn",
+        "body": "Khoản của dự án {project} (mã {job}) đã được xuất hoá đơn."
+      },
+      "projects_booking_changed": {
+        "title": "Lịch phân bổ thay đổi",
+        "body": "{actor} đã thay đổi lịch phân bổ của bạn ở dự án {project}, tuần {week}."
+      },
+      "projects_kpi_proposed": {
+        "title": "Có số liệu KPI đề xuất",
+        "body": "Số liệu thực tế của KPI “{kpi}” kỳ {period} đã được đề xuất từ dữ liệu công việc, chờ bạn xác nhận."
+      },
+      "daily_plan_reminder": {
+        "title": "Lên kế hoạch hôm nay",
+        "body": "Chọn những việc bạn sẽ làm hôm nay."
+      },
+      "daily_report_reminder": {
+        "title": "Nộp báo cáo cuối ngày",
+        "body": "Báo cáo hôm nay đã được điền sẵn — chỉ cần thêm vướng mắc và kế hoạch ngày mai, trước {deadline}."
+      },
+      "daily_report_nudge": {
+        "title": "Nhắc nộp báo cáo ngày",
+        "body": "{actor} nhắc bạn nộp báo cáo công việc hôm nay."
+      },
+      "daily_report_commented": {
+        "title": "Nhận xét về báo cáo của bạn",
+        "body": "{actor} đã nhận xét báo cáo ngày {date} của bạn."
+      },
+      "daily_weekly_report": {
+        "title": "Báo cáo tuần",
+        "body": "Báo cáo tuần {week} của {subject} đã sẵn sàng."
+      },
+      "daily_timesheet_reminder": {
+        "title": "Nộp bảng giờ tuần",
+        "body": "Bảng giờ tuần {week} của bạn chưa được nộp."
+      },
+      "daily_timesheet_submitted": {
+        "title": "Bảng giờ chờ duyệt",
+        "body": "{person} đã nộp bảng giờ tuần {week}."
+      },
+      "daily_timesheet_decided": {
+        "title": "Bảng giờ đã được xử lý",
+        "body": "Bảng giờ tuần {week} của bạn đã được duyệt hoặc trả lại."
       }
     },
     "errors": {
@@ -2992,7 +3126,9 @@
       "role": "Vai trò",
       "roles": {
         "lead": "Trưởng nhóm",
-        "member": "Thành viên"
+        "member": "Thành viên",
+        "account_manager": "Phụ trách khách hàng",
+        "viewer": "Người xem"
       },
       "remove": "Gỡ",
       "empty": "Chưa có thành viên.",

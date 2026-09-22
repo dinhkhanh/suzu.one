@@ -6,7 +6,7 @@ import { findOrgUnit } from "../platform/org/service";
 import { addComment, deleteComment, editComment, findComment, toggleReaction } from "./comments";
 import { beginTaskUpload, completeTaskUpload, findTaskFile, removeTaskFile, taskFileLink } from "./attachments";
 import { setFollowing } from "./followers";
-import { CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "./enums";
+import { CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_ROLES, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "./enums";
 import { canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canModerateTask, canViewTask } from "./policy";
 import { createProject, findProject, projectFacts, setProjectMember, updateProject } from "./projects";
 import { addDependency, createWorkTask, deleteWorkTask, findDependency, loadTask, removeDependency, updateWorkTask } from "./tasks";
@@ -224,7 +224,7 @@ export async function updateProjectAction(input: unknown) {
 
 const projectMemberPipeline = createAction({
   name: "work.project.member",
-  input: z.object({ projectId: z.uuid(), personId: z.uuid(), role: z.preprocess(blankToNull, z.enum(TEAM_ROLES).nullable()) }),
+  input: z.object({ projectId: z.uuid(), personId: z.uuid(), role: z.preprocess(blankToNull, z.enum(PROJECT_ROLES).nullable()) }),
   authorize: (user, input) => managesProject(user, input.projectId),
   run: async ({ input }) => {
     const change = await setProjectMember(input.projectId, input.personId, input.role);

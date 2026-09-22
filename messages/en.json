@@ -616,7 +616,9 @@
         "comms": "Announcements & kudos",
         "payroll": "Pay & payroll",
         "recruit": "Recruitment",
-        "performance": "Performance reviews"
+        "performance": "Performance reviews",
+        "projects": "Projects",
+        "daily": "Daily plan & report"
       },
       "push": "Push"
     },
@@ -848,6 +850,138 @@
       "performance_rule_proposed": {
         "title": "A performance weighting version is waiting",
         "body": "A new weighting version has been proposed, effective from {validFrom}. It takes effect only once you approve it."
+      },
+      "tasks_blocked": {
+        "title": "Something is waiting on you",
+        "body": "{actor} marked “{task}” as blocked: {reason}"
+      },
+      "tasks_unblocked": {
+        "title": "Unblocked",
+        "body": "{actor} cleared the blocker on “{task}”."
+      },
+      "tasks_handoff_received": {
+        "title": "A hand-off for you",
+        "body": "{actor} handed “{task}” to you. Accept it, or return it with a reason."
+      },
+      "tasks_handoff_accepted": {
+        "title": "Hand-off accepted",
+        "body": "{actor} accepted the hand-off of “{task}”."
+      },
+      "tasks_handoff_returned": {
+        "title": "Hand-off returned",
+        "body": "{actor} returned the hand-off of “{task}”: {reason}"
+      },
+      "tasks_triage_new": {
+        "title": "New work to triage",
+        "body": "“{task}” arrived in {team}'s triage."
+      },
+      "tasks_cover_requested": {
+        "title": "Can you cover?",
+        "body": "{actor} is away from {from} to {to} and asks you to cover {count} item(s)."
+      },
+      "tasks_cover_handed_back": {
+        "title": "Cover handed back",
+        "body": "{actor} is back and took back {count} item(s)."
+      },
+      "tasks_exit_handover": {
+        "title": "Work to hand over",
+        "body": "{person} is leaving or moving: {count} item(s) still need a new owner."
+      },
+      "tasks_client_decision": {
+        "title": "Client decision recorded",
+        "body": "{actor} recorded the client's decision on “{task}”."
+      },
+      "tasks_publish_due": {
+        "title": "Post going out soon",
+        "body": "“{task}” is scheduled for {time}."
+      },
+      "tasks_publish_missed": {
+        "title": "Post not published",
+        "body": "“{task}” is past its planned time and has no published link."
+      },
+      "tasks_automation": {
+        "title": "{rule}",
+        "body": "“{task}”: {text}"
+      },
+      "projects_status_posted": {
+        "title": "Project update",
+        "body": "{actor} posted a status update on {project}."
+      },
+      "projects_status_due": {
+        "title": "Project update due",
+        "body": "{project} has no status update for this period yet."
+      },
+      "projects_milestone_due": {
+        "title": "Milestone coming up",
+        "body": "Milestone “{milestone}” of {project} is due on {date}."
+      },
+      "projects_milestone_missed": {
+        "title": "Milestone missed",
+        "body": "Milestone “{milestone}” of {project} is past due."
+      },
+      "projects_budget_alert": {
+        "title": "Hours budget running out",
+        "body": "{project} has used {percent}% of its hours budget."
+      },
+      "projects_quota_alert": {
+        "title": "Retainer quota",
+        "body": "{project}: “{line}” reached {percent}% of this month's quota."
+      },
+      "projects_change_decided": {
+        "title": "Change request decided",
+        "body": "Change request “{title}” on {project} has been decided."
+      },
+      "projects_acceptance_signed": {
+        "title": "Acceptance signed",
+        "body": "Acceptance record no. {number} of {project} was signed by the client."
+      },
+      "projects_billing_ready": {
+        "title": "Ready to invoice",
+        "body": "{project} (job {job}) has an item ready to invoice."
+      },
+      "projects_billing_invoiced": {
+        "title": "Invoiced",
+        "body": "The item of {project} (job {job}) has been invoiced."
+      },
+      "projects_booking_changed": {
+        "title": "Booking changed",
+        "body": "{actor} changed your booking on {project} for the week of {week}."
+      },
+      "projects_kpi_proposed": {
+        "title": "KPI actual proposed",
+        "body": "The actual of KPI “{kpi}” for {period} was proposed from work data and waits for your confirmation."
+      },
+      "daily_plan_reminder": {
+        "title": "Plan your day",
+        "body": "Pick what you will work on today."
+      },
+      "daily_report_reminder": {
+        "title": "End-of-day report",
+        "body": "Today's report is already filled in — add blockers and tomorrow's plan before {deadline}."
+      },
+      "daily_report_nudge": {
+        "title": "Daily report reminder",
+        "body": "{actor} reminds you to submit today's report."
+      },
+      "daily_report_commented": {
+        "title": "Comment on your report",
+        "body": "{actor} commented on your report of {date}."
+      },
+      "daily_weekly_report": {
+        "title": "Weekly report",
+        "body": "The weekly report of {subject} for the week of {week} is ready."
+      },
+      "daily_timesheet_reminder": {
+        "title": "Submit your timesheet",
+        "body": "Your timesheet for the week of {week} has not been submitted."
+      },
+      "daily_timesheet_submitted": {
+        "title": "Timesheet to approve",
+        "body": "{person} submitted the timesheet for the week of {week}."
+      },
+      "daily_timesheet_decided": {
+        "title": "Timesheet decided",
+        "body": "Your timesheet for the week of {week} was approved or returned."
       }
     },
     "errors": {
@@ -2992,7 +3126,9 @@
       "role": "Role",
       "roles": {
         "lead": "Lead",
-        "member": "Member"
+        "member": "Member",
+        "account_manager": "Account manager",
+        "viewer": "Viewer"
       },
       "remove": "Remove",
       "empty": "No members yet.",

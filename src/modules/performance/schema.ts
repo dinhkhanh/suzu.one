@@ -123,6 +123,9 @@ export const kpiDefinition = pgTable("kpi_definition", {
   frequency: text("frequency").notNull().default("monthly"),
   capBp: integer("cap_bp").notNull().default(12000),
   floorBp: integer("floor_bp").notNull().default(0),
+  // FR-PJM-62: a KPI measured from work (on_time_rate | deliverables_accepted | utilisation |
+  // revision_rounds …) gets its monthly actual proposed from PJM data; a person confirms it.
+  workMetric: text("work_metric"),
   isActive: boolean("is_active").notNull().default(true),
   // Set on the first edit through the screen: re-seeding the starter library leaves such rows alone.
   editedAt: timestamp("edited_at", { withTimezone: true }),

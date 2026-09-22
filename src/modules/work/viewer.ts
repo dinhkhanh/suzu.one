@@ -5,7 +5,7 @@ import { cache } from "react";
 import { db, schema, type Tx } from "@/lib/db";
 import type { Principal } from "../platform/rbac/policy";
 import { loadGrants } from "../platform/rbac/service";
-import type { TeamRole } from "./enums";
+import type { ProjectRole, TeamRole } from "./enums";
 import type { WorkViewer } from "./policy";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -20,7 +20,7 @@ export async function loadViewerWith(executor: Executor, user: ViewerSource): Pr
     principal: user.principal,
     entityId: user.person.primaryEntityId,
     teamRoles: new Map(teams.map((row) => [row.id, row.role as TeamRole])),
-    projectRoles: new Map(projects.map((row) => [row.id, row.role as TeamRole])),
+    projectRoles: new Map(projects.map((row) => [row.id, row.role as ProjectRole])),
   };
 }
 
@@ -60,7 +60,7 @@ export async function viewersOfPeople(personIds: readonly string[], executor?: E
       principal: { personId: person.id, workforceType: person.workforceType, grants: grants[index] },
       entityId: person.primaryEntityId,
       teamRoles: new Map((teamsOf.get(person.id) ?? []).map((row) => [row.id, row.role as TeamRole])),
-      projectRoles: new Map((projectsOf.get(person.id) ?? []).map((row) => [row.id, row.role as TeamRole])),
+      projectRoles: new Map((projectsOf.get(person.id) ?? []).map((row) => [row.id, row.role as ProjectRole])),
     });
   });
   return result;
