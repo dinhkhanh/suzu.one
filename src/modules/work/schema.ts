@@ -70,7 +70,7 @@ export const workState = pgTable(
   (t) => [index("work_state_team_idx").on(t.teamId, t.sortOrder)],
 ).enableRLS();
 
-// A client or one of its brands. Deliberately light: the CRM (Phase 10) promotes these rows to
+// A client or one of its brands. Deliberately light: the CRM (Phase 11) promotes these rows to
 // full accounts without moving the tasks that point at them.
 export const workClient = pgTable(
   "work_client",

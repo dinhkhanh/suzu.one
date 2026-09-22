@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Version** | 0.2 (owner's answers of 2026-09-19 incorporated) |
-| **Date** | 2026-09-19 |
+| **Version** | 0.3 (Phase 10 — projects & daily work management — added) |
+| **Date** | 2026-09-22 |
 | **Companion doc** | [SRS.md](./SRS.md) — requirement IDs below (FR-…, NFR-…) refer to it |
 
 ---
@@ -32,7 +32,8 @@ Four principles drive the order of work:
 | **7** | Recruitment (ATS) | 4 wks | **M7** — careers page live, candidate → employee flow |
 | **8** | Performance reviews + performance-driven year-end bonus | 3 wks | **M8** — review cycle in-system; 2027 year-end bonus computed from KPI/OKR results |
 | **9** | AI assistant + analytics | 3 wks | **M9** — "Ask SuZu" and owner dashboard v2 |
-| **10** | CRM | separate SRS | — |
+| **10** | Projects & daily work management (PJM) — six releases | 12 wks | **M10** — every team plans, executes, hands off and delivers in the app; old trackers retired (SRS D21) |
+| **11** | CRM | separate SRS | — |
 
 Build time for the full HRM suite (phases 0–9) is roughly **41 weeks ≈ 9–10 months**. Starting late September 2026, that puts M1 in early November 2026, M2 in mid-December 2026, M3 in late January 2027, M3.5 in February 2027 and the first official payroll (M5) around mid-2027. The payroll parallel run overlaps phases 6–7.
 
@@ -488,9 +489,41 @@ This phase must be live by **November 2027** to serve the year-end review and th
 >
 > **Deferred:** **FR-AI-03 (confirm-to-act shortcuts) and FR-AI-04 (drafting helpers) were not built** — both are C items and neither was nearly free: each needs its own routing, actions and guardrail pairs. FR-AI-05 (natural-language questions over reports) likewise. Manager-scope tools (resolving a name to a person, then re-checking `readableTier`). Streaming answers. Feedback on an answer ("this was wrong"). pgvector and an HNSW index — `retrieveKbChunks` still ranks in the application over at most 2,000 permission-filtered candidates, which is right for a handbook and wrong for a large corpus, and it is still the single seam to change. A schedule editor for report parameters beyond the catalogue's defaults. `.xlsx` scheduled reports (CSV today).
 
-### Phase 10 — CRM
+### Phase 10 — Projects & daily work management (PJM) (12 weeks, six releases) → **M10**
 
-A separate SRS will be written near the end of Phase 8. It will reuse org, RBAC, the approval and task engines, clients/brands from the Work module, files, notifications and AI. The target outcome is deal → project → tasks → time → cost → **client profitability**.
+**Why now.** HRM is usable (phases 0–9 are on `main`). The owner's next goal (SRS D21) is that employees do *all* their daily work in the app — planning, executing, hand-off and delivery. Phase 3 built the task foundation (teams, workflows, projects, tasks, reviews, templates, My work, leader view, workload, intake); PJM adds the project layer above it, the daily loop around it, and the hand-off and delivery records after it. No second task model (ADR-10): everything hangs on `task`, `work_project` and `work_team`.
+
+**Scope:** SRS §4.6b, FR-PJM-01..64, and the §4.6 upgrades it lists (FR-WRK-04, 05, 12 raised to M).
+
+**Architecture notes**
+
+- New module `src/modules/projects/` for the project layer (brief, phases, milestones, register, retainers, change requests, status updates, RAID, meetings, acceptance, billing, close-out) and new module `src/modules/daily/` for the person's day (plan, EOD report, time entries, timesheet weeks). Hand-offs, triage, custom fields, automations and the review chain extend `src/modules/work/`. Each keeps the usual `schema.ts` / `service.ts` / `policy.ts` / `actions.ts` / `engine/` / `ui/` shape; cross-module reads go through `service.ts`.
+- **Pure engines with golden tests:** EOD prefill (activity → report draft), budget burn and alerts, retainer period generation and quota consumption with rollover, overservicing, timeline scheduling (dependency shift, working days), capacity (schedule − leave − holidays − bookings), utilisation, job-number formatting, hand-off package completeness, automation rule matching, project health facts, close-out report.
+- **Pulled, not pushed** (Phase 3 decision kept): leave cover reads approved/pending `leave_request` rows; exit handover reads `lifecycle_event` rows; KPI actuals are proposed by a job that reads PJM tables. HR modules never import PJM.
+- **Money split:** hours are ordinary work data; fees need `pjm:commercial`; cost rates are compensation tier, computed by a payroll-owned function that returns only aggregates, read only with `pjm:cost`.
+- Automations run in the same transaction as the triggering change, bounded (no rule may trigger rules more than one level deep), and are written to `work_activity`.
+
+| Release | Weeks | Content | SRS |
+|---|---|---|---|
+| **R1 — Plan** | 2 | Project types, job numbers, project roles (lead, account manager, member, viewer), brief + kick-off gate on the approval engine, phases and milestones, deliverables register, hours budget with burn, **project status updates with health**, portfolio view, project templates v2, custom fields, table view with bulk edit, moving tasks between teams; permissions `pjm:commercial`, `pjm:cost`, `pjm:portfolio` | FR-PJM-01..05, 08, 09 (hours), 14, 15, 27, 34..36 |
+| **R2 — Daily loop** | 2 | **Today** page as the landing page, morning plan, **EOD report prefilled from activity** with the team daily board and one-click remind, weekly report, blockers, **triage inbox** per team (intake forms and cross-team requests land there), mobile quick actions | FR-PJM-20..23, 28, 32, 37 |
+| **R3 — Time & capacity** | 2 | Time entries (timer + manual, billable), weekly timesheet submit → approve → lock, time vs attendance hint, bookings with placeholders (tentative / confirmed) on the workload data, utilisation, cycles, baselines, **timeline / Gantt**, fee budgets | FR-PJM-07, 09 (fee), 10, 12, 13, 24..26, 61 |
+| **R4 — Hand-off** | 2 | Stage hand-off packages on workflow transitions, accept / return, cross-team hand-off through triage, one hand-off note format, **leave cover** from leave requests, **exit / transfer handover** gate in the offboarding checklist, account handover | FR-PJM-40..46 |
+| **R5 — Delivery** | 2 | Review chains, **client decision records** with evidence and frozen approved versions, image pin comments and version compare, delivery records, **publish log**, **retainers** with monthly quota and overservicing, change requests, **acceptance (nghiệm thu)** generated from the register, billing hand-off queue for finance, client report PDF, close-out with retrospective | FR-PJM-06, 11, 50..59 |
+| **R6 — Insight & automation** | 2 | Automations (when … then …), RAID-lite and decision log, meeting notes with action items, project document spaces on the KB engine, delivery dashboards, KPI actuals proposed from work, profitability (owner / finance), AI drafting of EOD reports, status updates and hand-off notes | FR-PJM-29..31, 33, 60, 62..64 |
+
+**Rollout.** Each release goes to the two pilot teams first (SRS Q24) behind the `pjm` feature flag, one week of use, then the rest. The owner announces the cut-over date after R4 (Q23): from then on, work not in the app does not count.
+
+**Exit criteria**
+- Two pilot teams (one retainer/social, one video production) run a full month in the app: brief → plan → daily reports → hand-offs → client decisions → publish log → signed acceptance → billing item, with no parallel tracker.
+- ≥ 90 % of pilot members submit the EOD report on required days for two consecutive weeks, median submit time ≤ 60 s.
+- Every open task of a leaver or a person on ≥ 2 days' leave is covered or reassigned before the leave starts or the checklist closes (verified on real cases).
+- Finance receives every billing item for the pilot month from the queue, not from chat.
+- No fee is visible to a person without `pjm:commercial` and no cost rate to a person without `pjm:cost` — proven by PGlite tests on every list, export and rollup.
+
+### Phase 11 — CRM
+
+A separate SRS will be written after Phase 10. It will reuse org, RBAC, the approval and task engines, clients/brands from the Work module, files, notifications and AI. The target outcome is deal → project → tasks → time → cost → **client profitability**.
 
 ---
 
@@ -529,6 +562,8 @@ A separate SRS will be written near the end of Phase 8. It will reuse org, RBAC,
 | R3 | Personal-data compliance (PDPL, cross-border hosting). The owner chose Singapore hosting and deferred the legal work (SRS D10) | Legal exposure | Tracked as open item Q16; close it before payroll data goes live; portable architecture; consent/notice flows; retention jobs |
 | R4 | Scope is very large for an owner + Claude Code team | Delays, half-finished modules | Strict phase exit criteria; M-priority first; S/C items deferred; re-baseline after Phase 1; the owner's build time is the critical resource — protect it |
 | R5 | Low adoption of task management (teams stay on chat/Trello) | Wasted build | Build with two pilot teams; speed and mobile UX are requirements, not extras; owner-announced cut-over; templates that match real workflows |
+| R12 | PJM report fatigue and time-tracking resentment (people fill reports on Friday, or pad estimates) | Fiction instead of data; lost trust | Reports prefilled from activity, manual part limited to blockers and plan; time logging only where work is billed in hours (SRS A10); never tied to pay; no company-wide individual rankings |
+| R13 | Client approvals recorded without client accounts can be disputed | Rework at the client's expense argued as ours | Evidence required on every client decision, approved version frozen, acceptance signed as biên bản nghiệm thu (FR-PJM-51, 55) |
 | R6 | Biometric device integration varies by model | Attendance gaps | File import first (works with any device); direct integration only after models are confirmed |
 | R7 | Two-workspace Google setup friction (consent screens, calendar scopes) | Login/integration issues | External OAuth client, both admins trust the app, incremental scopes, tested with accounts from both domains in CI |
 | R8 | The owner is the only developer | Bus factor; the owner's time competes with running the company | Documented ADRs, conventional structure, high test coverage, runbooks, infrastructure as configuration |
@@ -542,9 +577,10 @@ A separate SRS will be written near the end of Phase 8. It will reuse org, RBAC,
 
 | # | Action | Who |
 |---|---|---|
-| 1 | Start Phase 0: scaffold the Next.js app, tooling, database schema for org/auth/RBAC/audit, sign-in with the two-domain check, app shell | Owner + Claude Code — **in progress** |
-| 2 | Create the Google Cloud project and an **External** OAuth client; authorised redirect URIs for `http://localhost:3000` and `https://suzu.one`; put the client ID/secret in `.env.local`; ask both Workspace admins to mark the app as trusted | Owner |
-| 3 | Create the Supabase project (Singapore) and the Vercel project; point `suzu.one` at Vercel | Owner + Claude Code |
-| 4 | Replace the seed entities and departments with the real ones in the admin screen (available at the end of Phase 0) | Owner |
-| 5 | Nominate two pilot team leaders for the Phase 2 and Phase 3 pilots | Owner |
-| 6 | HR starts filling the employee import template (available in Phase 1, week 3) and collecting 3 months of payroll Excel files for the golden tests | HR lead |
+| 1 | Build Phase 10 release R1 (Plan) on branch `phase-10-pjm` | Owner + Claude Code — **in progress** |
+| 2 | Name the two PJM pilot teams and their leads (SRS Q24) | Owner |
+| 3 | Decide the job-number scheme per entity, who sees fees, and whether private projects stay closed to the owner (Q20, Q21, Q25) | Owner |
+| 4 | List the trackers and spreadsheets PJM will replace and pick a cut-over date (Q23) | Owner |
+| 5 | Decide which teams log time and whether EOD reports are required for everyone (Q17, Q18) | Owner + team leads |
+| 6 | Collect one real brief, one retainer scope and one signed biên bản nghiệm thu per pilot client as template sources (Q22) | Account managers |
+| 7 | Everything in `docs/MVP_STATUS.md` §4 still stands for the HRM go-live | Owner |

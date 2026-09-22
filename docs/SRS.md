@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Product** | SuZu One (working name) — internal HRM + work platform for SuZu Group, CRM to follow |
-| **Version** | 0.2 (owner's answers of 2026-09-19 incorporated) |
-| **Date** | 2026-09-19 |
+| **Version** | 0.3 (projects & daily work management — PJM — added 2026-09-22) |
+| **Date** | 2026-09-22 |
 | **Owner** | Company owner (product owner and final approver) |
 | **Companion doc** | [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) |
 
@@ -23,7 +23,7 @@ SuZu Group runs social media marketing and media/creative services across severa
 One login, one place for everything an employee, a leader, HR, finance and the owner need to run the company's internal operations:
 
 1. **HRM first** — employee lifecycle, attendance, leave, full Vietnamese payroll, recruitment, performance.
-2. **Work management** — leaders assign and track work (Linear-style speed, but built for marketing/creative teams, not software teams).
+2. **Work management, then projects & daily work (PJM)** — leaders assign and track work (Linear-style speed, but built for marketing/creative teams, not software teams); then every employee plans, executes, hands off and delivers their daily work in the app, from the client brief to the signed acceptance (D21, §4.6b).
 3. **Operations & compliance tracker** — HR and finance never miss a recurring internal job (payroll, PIT, insurance) or an external obligation (tax filings, financial statements, government reports), per legal entity.
 4. **Knowledge base and internal comms** — policies, SOPs, brand guidelines, announcements, with an AI assistant on top.
 5. **CRM later** — sharing the same people, org, task and permission foundation so clients, deals, projects and staff cost connect.
@@ -63,6 +63,12 @@ Decisions added 2026-09-21:
 | D20 | **One org-unit tree.** Departments and teams become one table — `org_unit`, with `parent_id` and a `kind` (department / team / …) — instead of two flat levels. Every feature that resolves an audience or a scope (RBAC, KB, comms, OKRs, schedules, reports) asks the same question of the same tree: "which units is this person in, up the chain?". The migration moves both existing tables' rows into it and rewrites the `department_id` / `team_id` references. |
 | D19 | **Every team may keep its own internal knowledge base and documents**, run by the team rather than by HR. **"Team" means a group at any level** — a department, a big team inside it, a small team inside that, and so on; the tree has no fixed depth (FR-PLT-16). Any such unit may own one space of its own; its head runs it, and the heads above it have the same rights over it. HR (`kb:manage`) keeps the group-wide and entity spaces and can reach any unit's space. Naming a unit as an audience anywhere in the KB reaches everyone below it too. |
 
+Decisions added 2026-09-22:
+
+| # | Decision |
+|---|---|
+| D21 | **The app is the system of record for daily work.** HRM is usable; the next build is **project & daily work management (PJM, §4.6b)**: every employee plans, executes, hands off and delivers their work in the app — briefs, plans, tasks, daily reports, hand-offs, client approvals, publish logs, acceptance and the billing hand-off. Chat stays for conversation only. Existing task trackers and work spreadsheets are retired on a cut-over date announced by the owner (Q23). |
+
 ### 1.4 Assumptions (please correct any that are wrong)
 
 | # | Assumption |
@@ -75,6 +81,9 @@ Decisions added 2026-09-21:
 | A6 | Hosting is managed cloud (Vercel + Supabase Postgres in Singapore) — confirmed, D10. |
 | A7 | Two-factor authentication is enforced at the Google Workspace level, not re-implemented in the app. |
 | A8 | The app is internal only. The single public surface is the careers page / job application form. |
+| A9 | PJM: clients never sign in. Client feedback and approvals are recorded by the account manager with evidence (FR-PJM-51); an expiring client review link is an open question (Q19), not assumed. |
+| A10 | PJM: time logging is required only for teams whose work is billed or budgeted in hours (production, video, design); optional elsewhere (Q17). Time logs never feed payroll. |
+| A11 | PJM: the morning plan and end-of-day report are on for every team by default, Monday–Friday, and off on untracked Saturdays (D15) and leave days (Q18). |
 
 ### 1.5 Glossary
 
@@ -89,6 +98,14 @@ Decisions added 2026-09-21:
 | C&B | Compensation & benefits (payroll team) |
 | Obligation | A recurring internal or external job with a deadline (e.g. monthly PIT declaration for Entity X) |
 | PDPL | Law No. 91/2025/QH15 on Personal Data Protection, in force from 2026-01-01 |
+| Job number | The code of a project per entity and year (e.g. `SZM-26-042`) that ties tasks, time and billing together |
+| Deliverable (register) | An output promised to the client (quantity × format × channel); distinct from a *deliverable version* handed in for review on a task |
+| Retainer | A client agreement with a recurring monthly scope (deliverable quota and/or hours) |
+| Overservicing | Delivering more than the retainer covers; delivered ÷ contracted |
+| Hand-off | A structured transfer of work between stages, teams or people, accepted or returned by the receiver |
+| EOD report | End-of-day work report (báo cáo công việc ngày), prefilled from activity |
+| Nghiệm thu | Acceptance of delivered work by the client, recorded in a signed *biên bản nghiệm thu*; usually the trigger for invoicing |
+| Booking | A reservation of a person's (or placeholder role's) hours on a project, tentative or confirmed |
 
 ---
 
@@ -104,8 +121,9 @@ Decisions added 2026-09-21:
 | **HR admin / HR staff** | Employee records, contracts, onboarding/offboarding, leave and attendance administration, recruitment, policies. |
 | **C&B / payroll specialist** | Salary data, payroll runs, insurance and PIT, payslips. |
 | **Finance / accountant** | Payroll cost, bank files, statutory filing tracker, expense and purchase requests. |
-| **Department head / team leader** | Approve leave/OT/requests, assign and track tasks, review team performance, see team attendance. |
-| **Employee** | Check in, request leave, see payslip, do tasks, read policies, find colleagues. |
+| **Department head / team leader** | Approve leave/OT/requests, assign and track tasks, review team performance, see team attendance. Triage incoming work, read the team's daily reports, approve timesheets. |
+| **Project lead (PM) / account manager** | Brief, plan and staff a project; post status updates; record client decisions; run acceptance and the billing hand-off; close the project. A per-project role, not a company role (FR-PJM-14). |
+| **Employee** | Check in, request leave, see payslip, plan the day, do and hand off tasks, log time, submit the end-of-day report, read policies, find colleagues. |
 | **Recruiter / hiring manager** | Job openings, candidate pipeline, interviews, feedback. |
 | **IT / asset admin** | Asset register, handover. |
 | **Auditor (read-only)** | Time-boxed read access for audits. |
@@ -142,8 +160,9 @@ Access = **role** × **scope** × **sensitivity tier**.
 │                     Finance console · Owner dashboard · Careers page  │
 ├───────────────────────────────────────────────────────────────────────┤
 │  HRM                │ Work                 │ Company                  │
-│  · Core HR          │ · Tasks & projects   │ · Knowledge base         │
-│  · Attendance       │ · Operations &       │ · Announcements & feed   │
+│  · Core HR          │ · Tasks & projects,  │ · Knowledge base         │
+│  · Attendance       │   daily work (PJM)   │ · Announcements & feed   │
+│                     │ · Operations &       │                          │
 │  · Leave            │   compliance tracker │ · Surveys & kudos        │
 │  · Payroll          │ · Requests &         │ · AI assistant           │
 │  · Recruitment      │   approvals          │                          │
@@ -165,8 +184,8 @@ Two platform engines are deliberately shared:
 | System | Use | Pri |
 |---|---|---|
 | Google OAuth (both workspaces) | Sign-in | M |
-| Google Calendar | Leave on calendar, interview scheduling, task due dates (opt-in) | S |
-| Google Drive | Attach Drive files/folders to tasks, KB pages, employee documents (link + picker) | S |
+| Google Calendar | Leave on calendar, interview scheduling, task due dates (opt-in), meetings on Today and meeting notes (FR-PJM-20, 30) | S |
+| Google Drive | Attach Drive files/folders to tasks, KB pages, employee documents (link + picker); a project's Drive folder; final deliverables and archives (FR-PJM-31, 53, 59) | S |
 | Google Admin Directory | Optional: suggest account creation on onboarding, suspension on offboarding; sync avatar and org unit | C |
 | Google Chat / email | Notifications | M (email), S (Chat) |
 | Biometric attendance devices | Log import (file upload first; device API/push later) | M |
@@ -379,6 +398,127 @@ Goal: Linear-level speed and clarity, shaped for social media, content and creat
 
 ---
 
+### 4.6b Projects & daily work management (PJM)
+
+**Goal (D21):** the app is the **system of record for everyday work** — every employee plans, executes, hands off and delivers in it. Chat (Zalo, Google Chat) stays for conversation; decisions, files, status, hand-offs and client approvals are recorded in the app, or they did not happen.
+
+PJM builds on the WRK foundation above (teams, workflows, projects, tasks, reviews, templates, My work) — it adds no second task model (ADR-10). It follows one lifecycle:
+
+```
+ PLAN                     EXECUTE                     HAND OFF                 DELIVER
+ brief → job number   →   today plan → work → log  →  stage hand-off /     →   client decision → delivery
+ scope · milestones       blockers · EOD report        leave cover /            publish log → acceptance
+ budget · bookings        weekly project update        exit handover            (nghiệm thu) → billing → close
+```
+
+Design rules for the whole of PJM:
+
+1. **Write once.** Reports (daily, weekly, project status, client report) are *prefilled from recorded activity*; the person adds only judgement — blockers, plan, health. No typing the same thing twice.
+2. **Money is not shown to people who do not need it.** Hours are visible to project leads; fees and budgets in VND need `pjm:commercial`; anything derived from salary (cost rates, margin) needs `pjm:cost` and is `compensation`-tier data. Rollups, status updates, exports and the AI assistant respect the same split.
+3. **Work records never drive pay automatically.** Time logs, daily reports and delivery statistics are evidence for leads and reviews (FR-WRK-20 principle); they are not attendance (the legal record, §4.3) and never feed payroll.
+4. **Clients have no accounts (D14, A8).** Client feedback and approval are recorded *by the account person* with evidence (§ Delivery).
+5. **Every rule is configurable per team**, with a curated default, so a small team is not buried in process (daily report on/off, time logging required/optional/off, hand-off packages, cycles).
+
+#### Changes to §4.6 (WRK)
+
+| Requirement | Change |
+|---|---|
+| FR-WRK-04 custom fields | S → **M** — needed for team-specific data (aspect ratio, duration, platform, ad account…). See FR-PJM-35. |
+| FR-WRK-05 views | Timeline/Gantt and table view S → **M** (FR-PJM-07, FR-PJM-36). |
+| FR-WRK-12 keyboard/bulk edit | Bulk edit and inline editing S → **M** (FR-PJM-36). |
+| FR-WRK-14 time logging | Replaced by FR-PJM-24..26. |
+| FR-WRK-15 cycles | Replaced by FR-PJM-10 (S). |
+| FR-WRK-19 project dashboard | Replaced by FR-PJM-60..61. |
+| FR-WRK-20 performance evidence | Extended by FR-PJM-62 (KPI actuals from work, confirmed by a person). |
+
+#### Planning
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-PJM-01 | **Project types**: client project (one-off), **retainer** (recurring monthly scope), pitch/proposal, internal. The type decides which planning and delivery features apply. | M |
+| FR-PJM-02 | **Job number** per project, per entity and year from a configurable scheme (e.g. `SZM-26-042`), shown on tasks, time entries, acceptance records and billing requests so accounting can tie work to money across entities. | M |
+| FR-PJM-03 | **Project brief / charter**: objective, scope in and out, client and brand, client contacts (names and roles as text — not CRM contacts yet), key dates, success criteria, assumptions, links (Drive folder, brief file). A **kick-off gate**: the brief is approved (approval engine; approver = team lead or account lead by rule) before the project becomes Active. Brief templates per project type. | M |
+| FR-PJM-04 | **Phases and milestones**: a project has ordered phases (e.g. Pre-production → Shoot → Post → Delivery) and milestones with date, owner and linked tasks; progress rolls up from tasks. A milestone may be marked *client-facing* (an acceptance point, FR-PJM-55) and/or *billing* (FR-PJM-56). | M |
+| FR-PJM-05 | **Deliverables register** (the promise to the client): line items of quantity × format × channel (e.g. "12 × Facebook post", "1 × 30s TVC, 3 cut-downs"), each with due date/milestone and linked tasks; status promised → in production → client review → accepted → published/delivered. Progress = accepted ÷ promised. This is what acceptance and client reports are built from. | M |
+| FR-PJM-06 | **Retainers**: a retainer defines, per month, a deliverable quota (from FR-PJM-05 line items) and optionally an hours allowance; a period instance is generated each month (like recurring tasks) with its own register; unused/over quantities either reset or roll over (rule per retainer). **Overservicing** = delivered ÷ contracted — warnings to the account lead at 80% / 100% of any line, and a monthly retainer report. | M |
+| FR-PJM-07 | **Timeline / Gantt**: phases, milestones and tasks as bars with dependency arrows; drag to move or resize; moving a task can shift its dependents (asks first); days off from the working calendar shaded; baseline vs current dates (FR-PJM-12). Critical path highlighting is C. | M |
+| FR-PJM-08 | **Portfolio view**: every project the viewer may see, with type, client, lead, phase, health (FR-PJM-27), next milestone, dates, % deliverables accepted, hours used vs budget; group by team, client, lead, entity; saved views. Money columns only with `pjm:commercial`. | M |
+| FR-PJM-09 | **Budget**: hours budget per project (optionally per phase and per role/service, e.g. "Video editing 40 h"); optional fee in VND (`pjm:commercial`). Burn = logged + remaining estimates vs budget, alerts at 80% and 100%. A retainer's budget is per period. | M (hours) / S (fee) |
+| FR-PJM-10 | **Cycles** (optional per team): weekly or bi-weekly time boxes, created automatically; unfinished tasks roll over with a count of how often they rolled; cycle review (planned vs done). | S |
+| FR-PJM-11 | **Change requests** (scope change): logged on the project with description, requested by (client or internal), impact on deliverables, hours, fee and dates, client-approval evidence; approved via the approval engine (account lead; fee change also `pjm:commercial`); on approval the deliverables register, budget and dates change and the history keeps *original + change requests = current*. | M |
+| FR-PJM-12 | **Baselines**: the dates and budget at kick-off are kept as the baseline; the portfolio and close-out report show slip against it. | S |
+| FR-PJM-13 | **Resource planning**: bookings of a person (or a **placeholder role**, e.g. "Motion designer – TBD") on a project per week in hours or %; **tentative** (pitch, unsigned) vs **confirmed**; capacity from the person's work schedule minus approved leave and holidays (the FR-WRK-13 workload data); over-allocation warnings; search people by skill (FR-CHR-14) and availability. Tentative bookings do not count as load until confirmed. | S |
+| FR-PJM-14 | **Project team and roles**: per project — lead (PM), account manager (owns the client relationship and client decisions), members, viewers. Project roles grant rights on that project only, never outside it. | M |
+| FR-PJM-15 | **Project templates v2**: a project template carries the task tree (existing) plus phases, milestones, deliverable line items, hours budget by role, hand-off packages (FR-PJM-40) and the brief template. | M |
+
+#### Daily execution
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-PJM-20 | **Today** — the default landing page for employees: tasks I planned for today, due today/overdue, reviews and hand-offs waiting for me, blockers I raised, my bookings this week, today's meetings (Google Calendar, S), and a quick-add. Works one-handed on a phone. | M |
+| FR-PJM-21 | **Morning plan**: the person picks today's tasks from My work (estimates shown against their hours today); the plan can be skipped on untracked days (D15) or leave days. Plan cut-off time per team (e.g. 09:30). | M |
+| FR-PJM-22 | **End-of-day report** (báo cáo công việc ngày): **prefilled** with what the person did today from activity — tasks moved or completed, deliverables submitted, reviews done, hand-offs sent, time logged, comments — plus *planned but not done*. The person adds: blockers, notes, tomorrow's plan (carried into tomorrow's morning plan). Submitted to the team lead; the lead sees a team daily board (submitted / missing, blockers first), comments or reacts, one-click reminds the missing. Per team: on / off, required days, deadline time. Target: ≤ 60 seconds to submit. | M |
+| FR-PJM-23 | **Weekly report**: generated per person, team and project from the week's daily reports and activity (done, slipped, blockers, hours by project); the lead adds a summary; scheduled send to the chain above (reuses scheduled reports, FR-RPT-05). | S |
+| FR-PJM-24 | **Time logging**: time entries on a task (or on a non-project category: internal, admin, pitch, training, idle) by timer or manual entry per day, with optional note; billable / non-billable (default from the project type). Quick log from the EOD report. | M (where a team requires it) |
+| FR-PJM-25 | **Timesheet approval**: a week of entries is submitted by the person → approved by the team lead (project leads see their project's rows) → locked; reopening needs the approver. Missing-week reminders. Per team: required / optional / off. | S |
+| FR-PJM-26 | Time vs attendance hint: the person and their lead see logged hours beside attended hours per day (§4.3) as information; neither changes the other. | C |
+| FR-PJM-27 | **Project status update**: the lead posts on a cadence (weekly default) — **health** (on track / at risk / off track, required), summary, highlights, next steps; prefilled with facts (tasks done/overdue, milestone slip, hours burn, open blockers and risks); a missing update shows as *stale* in the portfolio; followers and the chain above are notified. History kept. | M |
+| FR-PJM-28 | **Blockers**: flag a task *blocked* with reason and who/what is needed; the named person and the team lead are notified; blocked time is measured; blockers show first in the EOD board, leader view and status update. | M |
+| FR-PJM-29 | **Risks, issues and decisions log** (RAID-lite): per project, with owner, date, severity, status; an issue can become a task; **decisions** record who decided what and when (e.g. "client approved KV option B, 12/10"), with evidence. | S |
+| FR-PJM-30 | **Meetings**: notes per project (kick-off, weekly, client meeting, retrospective) — date, attendees, agenda, notes, decisions (→ decision log), **action items that become tasks**. Created from a Google Calendar event (S) or by hand. | S |
+| FR-PJM-31 | **Project documents**: every project has a document space on the KB engine (briefs, scripts, shot lists, meeting notes) with the project's members as its audience, and one list of all its files (FR-KB-15 pattern); Drive folder link on the project. | M |
+| FR-PJM-32 | **Triage inbox per team**: work arriving from outside the team — intake forms, cross-team hand-offs, requests from other teams — lands in triage; a lead accepts (sets assignee, project, due), declines with reason, merges into an existing task or snoozes. Triage rules may pre-fill assignee/labels. | M |
+| FR-PJM-33 | **Automations**: per team or project, "when … then …" rules. Triggers: state entered, field changed, due date reached, all sub-tasks done, deliverable approved / changes requested, client decision recorded, hand-off accepted/returned, quota threshold. Actions: move state, assign, add label/follower, set due date (relative), create task from template, request review, notify, post a comment. Only team leads create rules; every rule run is in the task's activity. | S |
+| FR-PJM-34 | **Task hierarchy and moves**: moving a task (with its sub-tasks) to another team's workflow, mapping states by category, keeping its history and giving it a new number with the old one resolvable. | M |
+| FR-PJM-35 | **Custom fields** per team and per project: text, number, select, multi-select, date, person, URL, checkbox, duration; filterable, sortable, groupable; shown in list, table and board cards; included in templates and exports. | M |
+| FR-PJM-36 | **Table view** with inline editing, multi-select and **bulk edit** (state, assignee, dates, labels, custom fields), column sums of estimates and logged time. | M |
+| FR-PJM-37 | **Mobile quick actions**: change state, log time, submit the EOD report, accept a hand-off, record a client decision, each in ≤ 3 taps from Today or a notification. | M |
+
+#### Hand-off
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-PJM-40 | **Stage hand-off package**: a team can require a package on a workflow transition (e.g. *Script → Design*: approved script version, brand assets link, deadline, notes; *Edit → Client review*: export link, duration, aspect ratios, subtitles checked). A package = required fields, links/files and a checklist. The transition is refused until it is complete. | M |
+| FR-PJM-41 | **Accept or return**: the receiver (next assignee or receiving team's triage) **accepts** or **returns** with a reason; returned hand-offs count per task and per stage (a quality signal); waiting time is measured. | M |
+| FR-PJM-42 | **Cross-team hand-off**: send a task, or a linked follow-on task, to another team (e.g. Social → Video Production) through its triage (FR-PJM-32) with a package; the sender sees the receiving task's status on their own task. | M |
+| FR-PJM-43 | **Hand-off note standard**: context, current state, what is done, next steps, open questions, links, client contacts — the same shape everywhere (stage, cross-team, cover, exit), shown on the task's history. | M |
+| FR-PJM-44 | **Leave cover**: when leave of ≥ N working days (per team, default 2) is submitted, the person sees their open tasks, reviews, bookings and recurrences falling in the absence and names a **cover person** per item or for all, with a hand-off note; the approver sees this list next to the leave request; the cover person acknowledges. On return, items can be handed back. Leaders see "away — covered by X" on the person's tasks. | M |
+| FR-PJM-45 | **Exit and transfer handover**: termination or transfer (lifecycle events, §4.2) creates a *work handover* step in the offboarding checklist listing everything the person owns — open tasks, projects led, account-manager roles, review duties, recurrences, intake forms, automations, team-lead roles, open time weeks; the step cannot close until every item is reassigned or closed. Bulk reassign with a note. | M |
+| FR-PJM-46 | **Account handover**: changing a client/brand's account manager requires a hand-off note and moves the account-manager role on the client's open projects. | S |
+
+#### Delivery
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-PJM-50 | **Review chains**: a deliverable's review can have several ordered stages (e.g. peer → lead → account manager → client), set per project or deliverable type, each with a reviewer rule and due time; a stage may start automatically when the earlier one approves. Decisions: approved, **approved with changes**, changes required. Extends FR-WRK-08. | M |
+| FR-PJM-51 | **Client decision record**: since clients have no accounts, the account manager records the client's decision on a specific deliverable version — decision, date, channel (email, Zalo, meeting, call), who decided on the client side, the client's comments, **evidence required** (screenshot, email file or link). Client revision rounds are counted separately from internal ones. A change after approval creates a new version; the approved one is frozen. | M |
+| FR-PJM-52 | **Visual feedback on files**: pin comments to a point on an image or a timecode on a video, per version; compare two versions side by side. | S (images) / C (video timecode) |
+| FR-PJM-53 | **Delivery record**: final files/links (Drive), delivered date, by whom, to whom, the version delivered; marks the deliverables-register line delivered. | M |
+| FR-PJM-54 | **Publish log** for social/content work: planned date and time, platform, page/account, published URL, published by, boosted yes/no and ad account; a *Published* state requires the URL; the content calendar shows planned vs published and flags late or missing posts. | M |
+| FR-PJM-55 | **Acceptance (nghiệm thu)**: per milestone, per retainer month or per project — an acceptance record listing the promised vs delivered/accepted items (from the register and publish log), generated as a *biên bản nghiệm thu* from a document template (FR-CHR-06 generator), the signed scan attached, status draft → sent → signed. | M |
+| FR-PJM-56 | **Billing hand-off**: a signed acceptance or a billing milestone creates a **"ready to invoice"** item for finance in the project's entity — job number, client, contract/PO reference, amount per the agreement (`pjm:commercial`), acceptance attached; finance marks it invoiced (invoice number, date). No invoicing in the app (CRM/accounting later). | M |
+| FR-PJM-57 | **Performance results** of published content: reach, views, engagement and spend entered or imported (CSV) per post/campaign, feeding the client report. Platform API import is L. | C |
+| FR-PJM-58 | **Client report**: a monthly or end-of-campaign report generated from the register, publish log, results and status updates, exported as PDF with the entity's letterhead; edited before sending. | S |
+| FR-PJM-59 | **Project close-out**: a close checklist (all tasks done or cancelled, deliverables accepted, time weeks approved, billing items invoiced or waived, files archived to Drive, retrospective held); a **retrospective** template (went well, improve, actions — lessons can be published to the team's KB space); a final report of baseline vs actual dates, hours, revision rounds (internal/client), returned hand-offs. Closed projects become read-only. | M |
+
+#### Reporting and HRM links
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-PJM-60 | **Delivery dashboards** (scope-filtered): portfolio health, milestone slip, on-time delivery rate, deliverables accepted vs promised, hours burn, retainer consumption and overservicing, revision rounds (internal vs client), returned hand-offs and hand-off wait time, blocked time, EOD-report and timesheet compliance. | M |
+| FR-PJM-61 | **Utilisation**: logged hours ÷ available hours per person/team/week; billable ratio. Leads see their teams; no ranking of individuals in company-wide views. | S |
+| FR-PJM-62 | **KPI actuals from work**: KPIs defined with a work source (on-time delivery %, deliverables accepted, utilisation, revision rounds) get their monthly actual proposed from PJM data (`kpi_actual.source = work`); a person (the KPI's scorer) confirms or corrects it — never an automatic score. | S |
+| FR-PJM-63 | **Profitability** (`pjm:cost`, owner/finance/C-level only): per project and client — fee (or retainer fee) vs cost, where cost = logged hours × a monthly **loaded cost rate** per person computed from the locked payroll (compensation tier, never shown per person to anyone else). | C |
+| FR-PJM-64 | **AI help** (on the FR-AI-06 guardrails): draft the EOD report and weekly project update from activity, summarise a task's thread into a hand-off note, list what is blocked or at risk across my projects. The person always edits and submits. | C |
+
+#### Access rules specific to PJM
+
+- A project's content is readable by its members and roles, by the owning team's leads, and — for *entity*-visibility projects — read-only by the entity (FR-WRK-18 unchanged). Private stays private, even from the owner (Phase 3 decision, still open to the owner, §8).
+- **Time entries and daily reports** are visible to the person, their team leads and line-management chain, and — for rows on a project — that project's lead. Colleagues do not see each other's reports.
+- **New permissions:** `pjm:commercial` (fees, money budgets, billing queue — owner, c_level, entity_director, finance), `pjm:cost` (cost rates, profitability — owner, c_level, finance), `pjm:portfolio` (read every non-private project and its status in scope — c_level, entity_director, department_head). New role cases go into `policy.test.ts`.
+
+---
+
 ### 4.7 Operations & compliance tracker (OPS)
 
 For HR, C&B and finance: never miss a recurring job, and be able to prove it was done. Built on the task engine, with its own calendar and dashboard.
@@ -511,9 +651,9 @@ For HR, C&B and finance: never miss a recurring job, and be able to prove it was
 | FR-RPT-01 | **Owner dashboard**: headcount and movement, payroll cost trend per entity, attendance today, leave today, open positions, overdue obligations, tasks at risk, pending approvals waiting on me. | M |
 | FR-RPT-02 | HR reports: headcount by entity/department/type/gender/age/seniority, joiners and leavers, turnover rate, contract expiries, probation pipeline, attendance anomalies, leave usage and liability, OT hours vs. legal caps. | M |
 | FR-RPT-03 | Payroll & cost reports (see FR-PAY-34). | M |
-| FR-RPT-04 | Work reports: throughput, on-time rate, workload, revision rounds by team/client. | S |
+| FR-RPT-04 | Work reports: throughput, on-time rate, workload, revision rounds by team/client. Extended by the PJM delivery dashboards (FR-PJM-60, 61). | S |
 | FR-RPT-05 | Every report is scope-filtered by the viewer's permissions, exportable, and schedulable by email. | S |
-| FR-RPT-06 | Utilisation and per-client cost (time logs × loaded salary cost) — foundation for agency profitability once CRM revenue exists. Visible to owner/finance only. | C |
+| FR-RPT-06 | Utilisation and per-client cost (time logs × loaded salary cost) — foundation for agency profitability once CRM revenue exists. Visible to owner/finance only. Specified as FR-PJM-61, 63. | C |
 
 ---
 
@@ -523,7 +663,7 @@ Not specified in detail now; listed so the foundation is built to receive it.
 
 - Accounts (clients/brands), contacts, leads, deal pipeline, activities, quotes/proposals, client contracts and retainers, renewal reminders.
 - Gmail and Calendar sync for client communication history.
-- Link **deal → project → tasks → time logs → staff cost → client profitability**.
+- Link **deal → project → tasks → time logs → staff cost → client profitability**. PJM (§4.6b) builds everything from the project onward; the CRM adds the deal before it and the invoice after the billing hand-off (FR-PJM-56).
 - Client portal for deliverable review and approval.
 - Invoicing handoff to accounting.
 
@@ -548,6 +688,10 @@ PayrollRun (entity, period) 1─* Payslip 1─* PayslipLine (inputs, formula ver
 StatutoryParameterSet (effective-dated, versioned)
 ApprovalFlow ─ ApprovalRequest ─ ApprovalStep ─ ApprovalAction
 Team(work) ─ Project ─ Task ─ Subtask · Comment · Attachment · Review · TimeLog ; Client
+Project ─ Brief · Phase ─ Milestone · DeliverableLine (register) · ChangeRequest · StatusUpdate · RaidItem · Meeting · Booking
+Retainer ─ RetainerPeriod ─ DeliverableLine ; Task ─ HandOff (package, note, accept/return) · ClientDecision · DeliveryRecord · PublishLog
+Person ─ DailyPlan ─ DailyReport ; Person ─ TimeEntry ─ TimesheetWeek (submit/approve/lock)
+AcceptanceRecord (nghiệm thu) ─ BillingItem ; CustomFieldDef ─ CustomFieldValue ; AutomationRule ─ AutomationRun
 ObligationTemplate ─ ObligationInstance (= Task + evidence)
 Space ─ Page ─ PageVersion ─ Acknowledgement
 JobOpening ─ Application ─ Candidate ─ Interview ─ Scorecard ─ Offer
@@ -611,6 +755,7 @@ Initial load via import templates: entities and org structure, people and employ
 | NFR-PRF-03 | Payroll calculation for 500 employees completes in < 2 min as a background job with progress. |
 | NFR-PRF-04 | Handles morning check-in peak (everyone within 15 minutes) without degradation. |
 | NFR-PRF-05 | Designed for 1,000 people, 5 years of attendance and payroll history, 1M tasks. |
+| NFR-PRF-06 | PJM: the Today page renders in < 1 s; submitting the prefilled EOD report takes a person ≤ 60 s; a timeline of 500 tasks scrolls and drags smoothly; the table view with 2,000 rows filters instantly. |
 
 ### 6.4 Availability, backup, operations
 
@@ -631,6 +776,7 @@ Initial load via import templates: entities and org structure, people and employ
 | NFR-UX-03 | Consistent design system; light and dark themes; WCAG 2.1 AA for contrast and keyboard navigation. |
 | NFR-UX-04 | An employee can request leave in ≤ 4 taps and a manager can approve in ≤ 2 from the notification. |
 | NFR-UX-05 | Vietnamese-first microcopy written with HR, not machine-translated. |
+| NFR-UX-06 | PJM adoption: no double entry anywhere (reports are prefilled from activity); every daily action (state change, time log, EOD report, hand-off accept, client decision) is ≤ 3 taps on a phone; notifications deep-link to the action. |
 
 ### 6.6 Maintainability
 
@@ -700,6 +846,15 @@ Still open:
 | Q14 | Year-end bonus formula: the first version of the scheme in FR-PAY-21 (weights of KPI vs OKR vs review rating, service-time factor, multiplier bands). | Phase 8 |
 | Q15 | Is Saturday WFH a full or a half working day, and does it count toward the month's standard working days for pro-rating? (Assumed: full day, counted.) | Phase 2 |
 | Q16 | PDPL legal work for offshore hosting (deferred by D10). | Before payroll go-live |
+| Q17 | Time logging: which teams must log time, is billable/non-billable used, and do leads approve weekly timesheets (FR-PJM-24, 25)? Default A10. | PJM release 3 |
+| Q18 | Daily plan and EOD report: mandatory for everyone or only some teams; cut-off times; who reads them above the team lead (A11)? | PJM release 2 |
+| Q19 | Client review: record-only by the account manager (default, A9) or also an expiring, no-login client review link — which would be a second public surface beside the careers page (A8)? | PJM release 4 |
+| Q20 | Job-number scheme per entity (prefix, year, sequence; restart yearly?). | PJM release 1 |
+| Q21 | Who may see fees and money budgets (`pjm:commercial`) — should project leads and account managers see their own project's fee? | PJM release 1 |
+| Q22 | Acceptance: which clients require a signed biên bản nghiệm thu, per milestone or per month; the template wording (to be read by the chief accountant or counsel). | PJM release 4 |
+| Q23 | Which tools and spreadsheets PJM replaces (Trello, ClickUp, Google Sheets content calendars, Zalo groups for approvals…) and the cut-over date (D21). | Before the PJM pilot |
+| Q24 | The two pilot teams and their leads for PJM (one social/content retainer team, one video production team). | Before PJM release 1 |
+| Q25 | Should the owner and `pjm:portfolio` holders be able to open *private* projects (Phase 3 left it closed)? | PJM release 1 |
 
 ---
 

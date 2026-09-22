@@ -28,7 +28,7 @@ Phases 1–9 are built on **local branch `mvp`** (stacked on `phase-0-remainder`
 | 8 Performance reviews + bonus | `performance`, `payroll` — review cycles, peer/360, evidence panel, final yearly result, year-end bonus scheme and run, 1:1 notes | 0066–0068 | 2,383 |
 | 9 AI assistant + analytics | `ai`, `reports` — Ask SuZu (KB retrieval with citations, four personal tools), owner dashboard v2, scheduled reports, work analytics | 0069–0071 | 2,498 |
 
-Phase 10 (CRM) is **not started** and needs its own SRS.
+Phase 10 is projects & daily work management (PJM, SRS §4.6b). Phase 11 (CRM) is **not started** and needs its own SRS.
 
 ## 3. The shape of the thing, in one paragraph
 
@@ -116,7 +116,7 @@ Nothing here blocks go-live; all of it was consciously left out.
 - **Phase 7:** AI CV parsing and JD drafting, a pipeline editor screen, an interview-kit editor, cost per hire, the offer email to the candidate.
 - **Phase 8:** a structured band-table editor for the bonus scheme (JSON today, fully validated), calibration sessions as their own screen, training completion in the evidence panel.
 - **Phase 9:** **FR-AI-03 confirm-to-act shortcuts and FR-AI-04 drafting helpers were not built** — both C items, neither was nearly free. Also FR-AI-05 (natural-language questions over reports), manager-scope tools, streaming answers, feedback on an answer, pgvector with an HNSW index, and `.xlsx` scheduled reports.
-- **Phase 10 (CRM):** not started; it needs its own SRS.
+- **Phase 11 (CRM):** not started; it needs its own SRS.
 
 ## 5b. Built after the MVP: nested org units and unit-owned KB spaces
 
