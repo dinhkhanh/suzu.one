@@ -5,7 +5,7 @@
 import { getTranslations } from "next-intl/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createAction } from "@/lib/action";
+import { ActionError, createAction } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { type CsvFile, EXPORT_ROW_LIMIT, toCsv } from "@/modules/platform/export/csv";
 import { canViewTask, loadTask, loadViewer } from "@/modules/work/service";
@@ -16,7 +16,7 @@ import { TIME_CATEGORIES, type TimeCategory } from "./enums";
 import { loadReportReader, loadSubjects } from "./people";
 import { canApproveTimesheet } from "./policy";
 import { deleteTimeEntry, logTime, setCellMinutes, startTimer, stopRunningTimer, updateTimeEntry, withinTimeWindow } from "./time";
-import { decideWeek, findTimesheetWeekById, submitWeek } from "./timesheets";
+import { approveWeeks, decideWeek, findTimesheetWeekById, submitWeek } from "./timesheets";
 import { getUtilisation } from "./utilisation";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -65,7 +65,7 @@ export async function logTimeAction(input: unknown) {
 const deleteTimePipeline = createAction({
   name: "daily.time.delete",
   input: z.object({ id: z.uuid() }),
-  // The service refuses anyone else's entry and a locked week.
+  // The service refuses anyone else's entry, a locked week and an entry older than the window.
   authorize: () => true,
   run: async ({ user, input }) => {
     const entry = await deleteTimeEntry(user.person.id, input.id);
@@ -85,7 +85,7 @@ const updateTimePipeline = createAction({
     note: optional(z.string().trim().max(500)),
     billable: z.preprocess((value) => value === "on" || value === true || value === "true", z.boolean()),
   }),
-  // The service refuses anyone else's entry and a locked week.
+  // The service refuses anyone else's entry, a locked week and an entry older than the window.
   authorize: () => true,
   run: async ({ user, input }) => {
     const { before, after } = await updateTimeEntry(user.person.id, input.id, { minutes: input.minutes, note: input.note, billable: input.billable });
@@ -130,8 +130,9 @@ const startTimerPipeline = createAction({
     const { started, stopped } = await startTimer(user.person.id, input);
     refresh();
     return {
-      data: { id: started.id, stopped: stopped && !stopped.deletedAt ? { id: stopped.id, minutes: stopped.minutes } : null },
-      audit: { resource: { type: "time_entry", id: started.id }, summary: `timer on ${input.taskId ?? input.category}${stopped ? `; stopped ${stopped.id} at ${stopped.minutes} min` : ""}`, before: stopped ?? undefined, after: started },
+      // The timer it replaced ran into a week submitted meanwhile: its minutes were not kept, and the person is told.
+      data: { id: started.id, stopped: stopped && !stopped.deletedAt ? { id: stopped.id, minutes: stopped.minutes } : null, ...(stopped?.weekLocked ? { notice: "timer_week_locked" } : {}) },
+      audit: { resource: { type: "time_entry", id: started.id }, summary: `timer on ${input.taskId ?? input.category}${stopped ? `; stopped ${stopped.id} at ${stopped.minutes} min${stopped.weekLocked ? " (week locked, discarded)" : ""}` : ""}`, before: stopped ?? undefined, after: started },
     };
   },
 });
@@ -147,8 +148,8 @@ const stopTimerPipeline = createAction({
     const stopped = await stopRunningTimer(user.person.id);
     refresh();
     return {
-      data: stopped ? { id: stopped.id, minutes: stopped.deletedAt ? 0 : stopped.minutes, capped: stopped.capped } : null,
-      audit: { resource: { type: "time_entry", id: stopped?.id ?? null }, summary: stopped ? `timer stopped: ${stopped.deletedAt ? "discarded" : `${stopped.minutes} min${stopped.capped ? " (capped)" : ""}`}` : "no timer", after: stopped ?? undefined },
+      data: stopped ? { id: stopped.id, minutes: stopped.deletedAt ? 0 : stopped.minutes, capped: stopped.capped, ...(stopped.weekLocked ? { notice: "timer_week_locked" } : {}) } : null,
+      audit: { resource: { type: "time_entry", id: stopped?.id ?? null }, summary: stopped ? `timer stopped: ${stopped.weekLocked ? "week locked, discarded" : stopped.deletedAt ? "discarded" : `${stopped.minutes} min${stopped.capped ? " (capped)" : ""}`}` : "no timer", after: stopped ?? undefined },
     };
   },
 });
@@ -210,13 +211,15 @@ const bulkApprovePipeline = createAction({
   authorize: async (user, input) => (await Promise.all(input.ids.map((id) => mayDecide(user.person.id, id)))).every(Boolean),
   run: async ({ user, input }) => {
     const reader = await loadReportReader(user.person.id);
-    const approved: string[] = [];
-    for (const id of new Set(input.ids)) {
-      const { after } = await decideWeek(reader, id, { type: "approve" });
-      approved.push(after.id);
-      refreshDecided(after.personId);
-    }
-    return { data: { approved: approved.length }, audit: { resource: { type: "timesheet_week", id: null }, summary: `approved ${approved.length} weeks`, after: { approved } } };
+    // Week by week, never throwing half-way: what was approved is audited, whatever failed after it.
+    const { approved, failed } = await approveWeeks(reader, input.ids);
+    for (const personId of new Set(approved.map((week) => week.personId))) refreshDecided(personId);
+    // Nothing was written: the first reason is the answer.
+    if (approved.length === 0) throw new ActionError(failed[0]?.error ?? "timesheet_not_found");
+    return {
+      data: { approved: approved.length, failed: failed.length, ...(failed.length > 0 ? { notice: "timesheet_bulk_partial" } : {}) },
+      audit: { resource: { type: "timesheet_week", id: null }, summary: `approved ${approved.length} weeks${failed.length ? `, ${failed.length} not` : ""}`, after: { approved: approved.map((week) => week.id), failed } },
+    };
   },
 });
 export async function bulkApproveWeeksAction(input: unknown) {
@@ -253,8 +256,8 @@ const exportUtilisationPipeline = createAction({
     const [t, view] = await Promise.all([getTranslations("daily.utilisation"), getUtilisation({ personId: user.person.id, principal: user.principal }, todayInVietnam())]);
     const rows: ExportRow[] = [];
     for (const group of view.groups) {
-      const name = group.kind === "reports" ? t("myReports") : group.name;
-      if (group.kind !== "portfolio") for (const person of group.people) view.weeks.forEach((week, index) => rows.push({ group: name, person: person.name, week, cell: person.weeks[index] }));
+      const name = group.kind === "reports" ? t("myReports") : group.kind === "portfolio_other" ? t("otherTeams", { count: group.teams }) : group.name;
+      if (group.kind === "team" || group.kind === "reports") for (const person of group.people) view.weeks.forEach((week, index) => rows.push({ group: name, person: person.name, week, cell: person.weeks[index] }));
       view.weeks.forEach((week, index) => rows.push({ group: name, person: t("teamTotal"), week, cell: group.total[index] }));
     }
     const kept = rows.slice(0, EXPORT_ROW_LIMIT);
@@ -272,7 +275,7 @@ const exportUtilisationPipeline = createAction({
       kept,
     );
     const file: CsvFile = { fileName: `utilisation-${view.weeks[0]}_${view.weeks.at(-1)}.csv`, csv, rowCount: kept.length, truncated: rows.length > kept.length };
-    return { data: file, audit: { resource: { type: "export:daily_utilisation" }, summary: `${file.rowCount} rows`, after: { weeks: view.weeks, groups: view.groups.map((group) => (group.kind === "reports" ? "reports" : `${group.kind}:${group.teamId}`)), rowCount: file.rowCount } } };
+    return { data: file, audit: { resource: { type: "export:daily_utilisation" }, summary: `${file.rowCount} rows`, after: { weeks: view.weeks, groups: view.groups.map((group) => (group.kind === "reports" || group.kind === "portfolio_other" ? group.kind : `${group.kind}:${group.teamId}`)), rowCount: file.rowCount } } };
   },
 });
 export async function exportUtilisationAction(input: unknown) {

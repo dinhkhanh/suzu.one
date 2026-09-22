@@ -7,7 +7,7 @@ import { cache } from "react";
 import { cached, invalidate } from "@/lib/cache";
 import { invalidateWorkDirectory } from "./directory";
 import { isOpenCategory, type StateCategory, type TeamRole, type Visibility, WORKFLOW_PRESETS, type WorkflowPreset } from "./enums";
-import type { TeamFacts } from "./policy";
+import type { PersonPlacement, TeamFacts } from "./policy";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type TeamRow = typeof schema.workTeam.$inferSelect;
@@ -85,6 +85,17 @@ export async function listTeamMembers(teamId: string, executor: Executor = db())
 async function activePerson(tx: Executor, personId: string): Promise<void> {
   const [row] = await tx.select({ status: schema.person.status }).from(schema.person).where(eq(schema.person.id, personId)).limit(1);
   if (!row || row.status === "offboarded") throw new ActionError("person_not_found");
+}
+
+/** Where a person sits, as `canAddTeamMember` weighs it. undefined = unknown or gone. */
+export async function personPlacement(personId: string, executor: Executor = db()): Promise<PersonPlacement | undefined> {
+  const [row] = await executor.select({ entityId: schema.person.primaryEntityId, unitPath: schema.person.orgUnitPath, status: schema.person.status }).from(schema.person).where(eq(schema.person.id, personId)).limit(1);
+  return row && row.status !== "offboarded" ? { entityId: row.entityId, unitPath: row.unitPath } : undefined;
+}
+
+export async function isTeamMember(teamId: string, personId: string, executor: Executor = db()): Promise<boolean> {
+  const [row] = await executor.select({ id: schema.workTeamMember.id }).from(schema.workTeamMember).where(and(eq(schema.workTeamMember.teamId, teamId), eq(schema.workTeamMember.personId, personId))).limit(1);
+  return !!row;
 }
 
 /** `role` null removes the person. A team keeps at least one lead. */

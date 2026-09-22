@@ -182,7 +182,8 @@ export type PlanFacts = {
   handedOff?: boolean;
 };
 
-export type SkipReason = "no_task" | "no_person" | "unchanged" | "invalid" | "handed_off";
+/** `no_access`: the person named may not open the task (or the project) — set by the service, which knows who may. */
+export type SkipReason = "no_task" | "no_person" | "unchanged" | "invalid" | "handed_off" | "no_access";
 export type PlannedAction =
   | { type: "move_state"; stateId: string }
   | { type: "assign"; personId: string }

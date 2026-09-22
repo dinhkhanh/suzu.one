@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { FormError } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
 import { startTimerAction, stopTimerAction } from "../time-actions";
+import { RunNotice } from "./run-notice";
 import { useRun } from "./use-run";
 
 const elapsedOf = (startedAt: string, now: number) => {
@@ -19,12 +20,13 @@ const elapsedOf = (startedAt: string, now: number) => {
 /** Start a timer on this task, or stop it when it is the one running. Starting stops any other. */
 export function TimerButton({ taskId, running }: { taskId: string; running: boolean }) {
   const t = useTranslations("daily.time");
-  const { run, pending, errorKey } = useRun();
+  const { run, pending, errorKey, notice, dismiss } = useRun();
   return (
     <>
       <Button type="button" size="xs" variant={running ? "default" : "ghost"} disabled={pending} onClick={() => (running ? run(stopTimerAction, {}) : run(startTimerAction, { taskId }))} aria-label={running ? t("stop") : t("start")}>
         {running ? <Square aria-hidden /> : <Play aria-hidden />} {running ? t("stop") : t("start")}
       </Button>
+      <RunNotice notice={notice} dismiss={dismiss} />
       <FormError namespace="daily.errors" errorKey={errorKey} />
     </>
   );
@@ -33,7 +35,7 @@ export function TimerButton({ taskId, running }: { taskId: string; running: bool
 /** The running timer: what it is on, how long it has run, and Stop. */
 export function RunningTimer({ label, startedAt }: { label: string; startedAt: string }) {
   const t = useTranslations("daily.time");
-  const { run, pending, errorKey } = useRun();
+  const { run, pending, errorKey, notice, dismiss } = useRun();
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
     // Set on the client only: the server's render and the first paint must agree.
@@ -54,6 +56,7 @@ export function RunningTimer({ label, startedAt }: { label: string; startedAt: s
           <Square aria-hidden /> {t("stop")}
         </Button>
       </div>
+      <RunNotice notice={notice} dismiss={dismiss} />
       <FormError namespace="daily.errors" errorKey={errorKey} />
     </div>
   );

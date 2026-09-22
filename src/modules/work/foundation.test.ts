@@ -106,10 +106,11 @@ describe("bulk edit (FR-PJM-36)", () => {
 
     const outcome = await bulkEditTasks(await viewer("huy"), [mine.id, also.id, theirs.id, secret.id], { stateId: inProgress.id, assigneePersonId: ids.huy, dueDate: "2026-10-01", addLabelIds: [ids.sharedLabel], removeLabelIds: [ids.videoLabel], customValues: { [ids.editor]: ids.tam } }, ids.huy);
     expect(outcome.updated.map((row) => row.key).sort()).toEqual(["VID-3", "VID-4"]);
-    // Huy works in Social too, but a Video state is not in Social's workflow; the private pitch is not his.
+    // Huy works in Social too, but a Video state is not in Social's workflow. The private pitch is
+    // not his to see at all: it answers as if it were not there, with no task key to read off.
     expect(outcome.refused).toEqual([
       { id: theirs.id, key: "SOC-1", reason: "state_not_found" },
-      { id: secret.id, key: "VID-5", reason: "forbidden" },
+      { id: secret.id, key: null, reason: "task_not_found" },
     ]);
     const after = (await loadTask(mine.id))!;
     expect([after.work.stateId, after.task.assigneePersonId, after.task.dueDate, after.work.customValues[ids.editor]]).toEqual([inProgress.id, ids.huy, "2026-10-01", ids.tam]);
@@ -168,7 +169,7 @@ describe("triage (FR-PJM-32)", () => {
     expect(await noticesOf(ids.huy, "tasks.work_assigned")).toHaveLength(0);
     expect(await noticesOf(ids.long, "tasks.intake_submitted")).toHaveLength(1);
 
-    expect((await listTriage(ids.video)).map((item) => [item.key, item.source, item.formName])).toEqual([[sent.key, "intake", "Yêu cầu quay dựng"]]);
+    expect((await listTriage(ids.video, await viewer("long"))).map((item) => [item.key, item.source, item.formName])).toEqual([[sent.key, "intake", "Yêu cầu quay dựng"]]);
     expect((await listTriageForLead(ids.long)).map((item) => item.id)).toEqual([sent.taskId]);
     expect(await listTriageForLead(ids.huy)).toEqual([]);
     expect((await listMyWorkItems(ids.huy)).some((item) => item.id === sent.taskId)).toBe(false);
@@ -213,7 +214,7 @@ describe("triage (FR-PJM-32)", () => {
     expect(await fails(snoozeTriage(sent.taskId, "2026-09-22", ids.long, "2026-09-22"))).toBe("triage_snooze_date");
     await snoozeTriage(sent.taskId, "2026-11-01", ids.long, "2026-09-22");
     expect((await listTriageForLead(ids.long)).some((item) => item.id === sent.taskId)).toBe(false);
-    expect((await listTriage(ids.video)).find((item) => item.id === sent.taskId)).toMatchObject({ triageStatus: "snoozed", snoozedUntil: "2026-11-01" });
+    expect((await listTriage(ids.video, await viewer("long"))).find((item) => item.id === sent.taskId)).toMatchObject({ triageStatus: "snoozed", snoozedUntil: "2026-11-01" });
     const before = (await noticesOf(ids.long, "tasks.triage_new")).length;
     expect(await wakeSnoozedTriage("2026-10-31")).toEqual({ woken: 0 });
     expect(await wakeSnoozedTriage("2026-11-01")).toEqual({ woken: 1 });

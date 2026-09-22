@@ -10,7 +10,9 @@ import { notify } from "@/modules/platform/notifications/service";
 import { listPeopleWithRole } from "@/modules/platform/rbac/service";
 import { listWorkActivityBetween } from "@/modules/work/service";
 import { daysOf } from "./days";
+import { type ShownPersonWeek, type ShownTeamWeek, showPersonWeek, showTeamWeek } from "./engine/redact";
 import { type PersonWeek, summarisePersonWeek, summariseTeamWeek, type TeamWeek, type WeekDayReport } from "./engine/weekly";
+import { loadSeen, readsOwn } from "./labels";
 import { loadSubjects } from "./people";
 import { canOverseeReport, canViewReport, type ReportReader } from "./policy";
 import { listTimeOf } from "./time";
@@ -98,28 +100,62 @@ export async function generateWeek(weekStart: IsoDate, options: { teamIds?: read
   return { people: weeks.size, teams: teams.length, notified };
 }
 
-export type WeeklyTeamView = { row: WeeklyRow; team: { id: string; name: string }; content: TeamWeek };
-export type WeeklyPersonView = { row: WeeklyRow; personId: string; name: string; content: PersonWeek; canSummarise: boolean };
+/** The stored row without its `content`: what the reader may see of it is `content` beside it, resolved for them. */
+export type WeeklyRowView = Omit<WeeklyRow, "content">;
+export type WeeklyTeamView = { row: WeeklyRowView; team: { id: string; name: string }; content: ShownTeamWeek };
+export type WeeklyPersonView = { row: WeeklyRowView; personId: string; name: string; content: ShownPersonWeek; canSummarise: boolean };
+
+const rowView = (row: WeeklyRow): WeeklyRowView => {
+  // The stored content never leaves this function: what the reader may see of it is built beside it.
+  const { content, ...rest } = row;
+  void content;
+  return rest;
+};
 
 /**
  * The weekly reports a reader may see for a week: the teams they may run (`canRunTeam`, the work
  * policy's team admin — the team's leads and `work:manage` over it, the department head among
  * them), and the people whose daily reports they may read.
+ *
+ * Running a team is not the same as reading its people's reports: a `work:manage` holder who is
+ * neither their lead nor above them in the reporting line gets the team's totals and hours, not the
+ * people's lines or their blockers (`showTeamWeek`). And in every week, a task or a project the
+ * reader may not open is shown as private work with its hours only.
  */
 export async function listWeekly(reader: ReportReader, weekStart: IsoDate, canRunTeam: (team: { id: string; entityId: string | null; departmentId: string | null; defaultVisibility: string }) => boolean): Promise<{ teams: WeeklyTeamView[]; people: WeeklyPersonView[] }> {
   const rows = await db().select().from(schema.dailyWeeklyReport).where(eq(schema.dailyWeeklyReport.weekStart, weekStart)).orderBy(desc(schema.dailyWeeklyReport.updatedAt));
   const teamRows = rows.filter((row) => row.subjectType === "team");
   const teamFacts = teamRows.length ? await db().select({ id: schema.workTeam.id, name: schema.workTeam.name, entityId: schema.workTeam.entityId, departmentId: schema.workTeam.departmentId, defaultVisibility: schema.workTeam.defaultVisibility }).from(schema.workTeam).where(inArray(schema.workTeam.id, teamRows.map((row) => row.subjectId))) : [];
-  const teams = teamRows.flatMap((row) => {
+  const runnable = teamRows.flatMap((row) => {
     const team = teamFacts.find((facts) => facts.id === row.subjectId);
-    return team && canRunTeam(team) ? [{ row, team: { id: team.id, name: team.name }, content: row.content as unknown as TeamWeek }] : [];
+    return team && canRunTeam(team) ? [{ row: rowView(row), team: { id: team.id, name: team.name }, content: row.content as unknown as TeamWeek }] : [];
   });
   const personRows = rows.filter((row) => row.subjectType === "person");
-  const subjects = await loadSubjects(personRows.map((row) => row.subjectId));
-  const people = personRows.flatMap((row) => {
+  // Everyone named anywhere on the page: the person rows and the people inside each team's week.
+  const subjects = await loadSubjects([...personRows.map((row) => row.subjectId), ...runnable.flatMap((view) => view.content.people.map((person) => person.personId))]);
+  const mayRead = (personId: string) => {
+    const subject = subjects.get(personId);
+    return !!subject && canViewReport(reader, subject);
+  };
+  const mine = personRows.flatMap((row) => {
     const subject = subjects.get(row.subjectId);
-    return subject && canViewReport(reader, subject) ? [{ row, personId: subject.personId, name: subject.fullName, content: row.content as unknown as PersonWeek, canSummarise: canOverseeReport(reader, subject) }] : [];
+    return subject && canViewReport(reader, subject) ? [{ row: rowView(row), subject, content: row.content as unknown as PersonWeek }] : [];
   });
+
+  // One read-time check for every task and project the page would name, for this reader.
+  const seen = await loadSeen(reader.personId, {
+    taskIds: mine.filter((view) => !readsOwn(reader, view.subject.personId)).flatMap((view) => [...view.content.done, ...view.content.slipped]).map((line) => line.taskId),
+    projectIds: [...runnable.flatMap((view) => view.content.hoursByProject), ...mine.flatMap((view) => view.content.hoursByProject)].map((group) => group.projectId),
+  });
+  const teams = runnable.map((view) => ({ ...view, content: showTeamWeek(view.content, seen, mayRead) }));
+  const people = mine.map((view) => ({
+    row: view.row,
+    personId: view.subject.personId,
+    name: view.subject.fullName,
+    // The person's own week is theirs as they lived it; anyone else's is named for this reader.
+    content: readsOwn(reader, view.subject.personId) ? view.content : showPersonWeek(view.content, seen),
+    canSummarise: canOverseeReport(reader, view.subject),
+  }));
   people.sort((a, b) => Number(b.personId === reader.personId) - Number(a.personId === reader.personId) || a.name.localeCompare(b.name, "vi"));
   teams.sort((a, b) => a.team.name.localeCompare(b.team.name, "vi"));
   return { teams, people };

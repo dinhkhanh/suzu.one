@@ -2,6 +2,12 @@
 // daily module's Today page, morning plan and end-of-day report (FR-PJM-20..23). No authorization
 // inside: every question is about the person's own work (their tasks, their activity, what is
 // addressed to them); the daily module decides who may see a report built from it.
+//
+// **Every title, key, project name, blocker reason and hand-off name here is the person's own view
+// of their day.** Showing any of it to somebody else — a lead, a manager, a weekly report — goes
+// through the daily module's read-time check first (`daily/labels.ts` + `daily/engine/redact.ts`,
+// which ask `canViewTask` / `canViewProject` for that reader): reading someone's report is not
+// permission to read the private project they worked on.
 import "server-only";
 import { and, asc, eq, exists, gte, inArray, isNotNull, isNull, lt, ne, or, type SQL, sql } from "drizzle-orm";
 import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
@@ -98,7 +104,7 @@ export type FeedEvent = { personId: string; kind: FeedKind; taskId: string; key:
  * Everything the people did to work tasks between two dates (inclusive, Vietnam-local), oldest
  * first: state moves and completions, deliverables handed in, reviews decided, comments,
  * hand-offs sent and received, blockers raised and resolved. The prefill engine turns it into a
- * report; nothing here is filtered for a reader.
+ * report; nothing here is filtered for a reader (see the note at the top of this file).
  */
 export async function listWorkActivityBetween(personIds: readonly string[], from: IsoDate, to: IsoDate): Promise<FeedEvent[]> {
   const people = [...new Set(personIds)];
@@ -213,7 +219,8 @@ export type OpenBlocker = { blockerId: string; taskId: string; key: string; titl
 
 /**
  * Open blockers (FR-PJM-28) raised by any of these people — the board asks for a whole team at
- * once; blockers waiting on someone are `listBlockersWaitingOn` (blockers.ts).
+ * once; blockers waiting on someone are `listBlockersWaitingOn` (blockers.ts). The reason and the
+ * task's title are the raiser's: a caller showing them to anyone else labels them for that reader.
  */
 export async function listOpenBlockersRaisedBy(personIds: readonly string[]): Promise<OpenBlocker[]> {
   const raisedBy = [...new Set(personIds)];

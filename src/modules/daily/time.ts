@@ -8,7 +8,7 @@
 import "server-only";
 import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
-import { addDays, type IsoDate } from "@/lib/dates";
+import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { taskKey } from "@/modules/work/service";
 import { weekStartOf } from "./engine/rules";
@@ -37,15 +37,32 @@ export async function weekStatusOf(personId: string, weekStart: IsoDate, executo
   return (week?.status as TimesheetStatus | undefined) ?? null;
 }
 
-async function assertWeekOpen(personId: string, date: IsoDate, executor: Executor = db()): Promise<void> {
-  if (!isWeekEditable(await weekStatusOf(personId, weekStartOf(date), executor))) throw new ActionError("time_week_locked");
+/**
+ * Takes the week's lock for the rest of the transaction and says whether the week is still open.
+ * Every write of time — a log, a cell, a correction, a deletion, a timer stopping — and the
+ * submission of the week take this same lock, so a submission never races an entry into the week it
+ * is locking: whichever comes second sees the other's result. An advisory lock rather than a row
+ * lock because a week that was never submitted has no row to lock.
+ */
+export async function lockTimesheetWeek(tx: Tx, personId: string, weekStart: IsoDate): Promise<TimesheetStatus | null> {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`timesheet_week:${personId}:${weekStart}`}))`);
+  return weekStatusOf(personId, weekStart, tx);
 }
+
+async function assertWeekOpen(tx: Tx, personId: string, date: IsoDate): Promise<TimesheetStatus | null> {
+  const status = await lockTimesheetWeek(tx, personId, weekStartOf(date));
+  if (!isWeekEditable(status)) throw new ActionError("time_week_locked");
+  return status;
+}
+
+/** The window rule itself: not in the future, and recent — or in a week the approver returned. */
+const inWindow = (date: IsoDate, today: IsoDate, status: TimesheetStatus | null) => date <= today && (date >= addDays(today, -TIME_BACKFILL_DAYS) || status === "returned");
 
 /** May the person still write on this date: not in the future, and recent — or in a returned week. */
 export async function withinTimeWindow(personId: string, date: IsoDate, today: IsoDate): Promise<boolean> {
   if (date > today) return false;
   if (date >= addDays(today, -TIME_BACKFILL_DAYS)) return true;
-  return (await weekStatusOf(personId, weekStartOf(date))) === "returned";
+  return inWindow(date, today, await weekStatusOf(personId, weekStartOf(date)));
 }
 
 /** Whether time on this project is billed by default: client projects and retainers are. */
@@ -77,49 +94,71 @@ async function placeOf(target: Target, billable: boolean | null, executor: Execu
   return { taskId: target.taskId, category: target.taskId ? null : target.category, projectId, billable: billable ?? (await billableByDefault(projectId, executor)) };
 }
 
-export async function logTime(input: NewTimeEntry, executor: Executor = db()): Promise<TimeEntryRow> {
-  if (!input.taskId === !input.category) throw new ActionError("time_task_or_category");
-  await assertWeekOpen(input.personId, input.date, executor);
-  const place = await placeOf(input, input.billable, executor);
-  const [row] = await executor
+/** Writes one entry inside `tx`, whose caller already holds the week's lock and found it open. */
+async function insertEntry(tx: Tx, input: NewTimeEntry): Promise<TimeEntryRow> {
+  const place = await placeOf(input, input.billable, tx);
+  const [row] = await tx
     .insert(schema.timeEntry)
     .values({ personId: input.personId, date: input.date, weekStart: weekStartOf(input.date), ...place, minutes: input.minutes, note: input.note, source: "manual" })
     .returning();
   return row;
 }
 
-/** One of the person's own stopped entries, not deleted. */
-async function ownEntry(personId: string, entryId: string, executor: Executor): Promise<TimeEntryRow> {
-  const [entry] = await executor
+export async function logTime(input: NewTimeEntry): Promise<TimeEntryRow> {
+  if (!input.taskId === !input.category) throw new ActionError("time_task_or_category");
+  return db().transaction(async (tx) => {
+    await assertWeekOpen(tx, input.personId, input.date);
+    return insertEntry(tx, input);
+  });
+}
+
+/** One of the person's own stopped entries, not deleted — locked for the change that follows. */
+async function ownEntry(personId: string, entryId: string, tx: Tx): Promise<TimeEntryRow> {
+  const [entry] = await tx
     .select()
     .from(schema.timeEntry)
     .where(and(eq(schema.timeEntry.id, entryId), isNull(schema.timeEntry.deletedAt)))
+    .for("update")
     .limit(1);
   if (!entry || entry.personId !== personId || entry.timerStartedAt) throw new ActionError("time_entry_not_found");
   return entry;
 }
 
-/** Only the person's own entries, and only in an open week. Soft delete: the week's history keeps it. */
-export async function deleteTimeEntry(personId: string, entryId: string): Promise<TimeEntryRow> {
-  const entry = await ownEntry(personId, entryId, db());
-  await assertWeekOpen(personId, entry.date);
-  const [row] = await db().update(schema.timeEntry).set({ deletedAt: new Date(), updatedAt: new Date() }).where(eq(schema.timeEntry.id, entryId)).returning();
-  return row;
+/**
+ * An entry the person may still change: theirs, in an open week (the week's lock held from here to
+ * the end of `tx`) and inside the window logging has — an old entry is not reached through its id
+ * when it could not be logged any more.
+ */
+async function changeableEntry(tx: Tx, personId: string, entryId: string, today: IsoDate): Promise<TimeEntryRow> {
+  const entry = await ownEntry(personId, entryId, tx);
+  const status = await assertWeekOpen(tx, personId, entry.date);
+  if (!inWindow(entry.date, today, status)) throw new ActionError("time_window_closed");
+  return entry;
+}
+
+/** Only the person's own entries, and only in an open, recent week. Soft delete: the week's history keeps it. */
+export async function deleteTimeEntry(personId: string, entryId: string, today: IsoDate = todayInVietnam()): Promise<TimeEntryRow> {
+  return db().transaction(async (tx) => {
+    await changeableEntry(tx, personId, entryId, today);
+    const [row] = await tx.update(schema.timeEntry).set({ deletedAt: new Date(), updatedAt: new Date() }).where(eq(schema.timeEntry.id, entryId)).returning();
+    return row;
+  });
 }
 
 export type TimeEntryChange = { minutes: number; note: string | null; billable: boolean };
 
-/** The person corrects an entry of an open week: its length, its note, whether it is billed. */
-export async function updateTimeEntry(personId: string, entryId: string, change: TimeEntryChange): Promise<{ before: TimeEntryRow; after: TimeEntryRow }> {
-  const before = await ownEntry(personId, entryId, db());
-  await assertWeekOpen(personId, before.date);
-  // A corrected entry is no longer the timer's guess: the flag has done its job.
-  const [after] = await db()
-    .update(schema.timeEntry)
-    .set({ ...change, capped: false, updatedAt: new Date() })
-    .where(eq(schema.timeEntry.id, entryId))
-    .returning();
-  return { before, after };
+/** The person corrects an entry of an open, recent week: its length, its note, whether it is billed. */
+export async function updateTimeEntry(personId: string, entryId: string, change: TimeEntryChange, today: IsoDate = todayInVietnam()): Promise<{ before: TimeEntryRow; after: TimeEntryRow }> {
+  return db().transaction(async (tx) => {
+    const before = await changeableEntry(tx, personId, entryId, today);
+    // A corrected entry is no longer the timer's guess: the flag has done its job.
+    const [after] = await tx
+      .update(schema.timeEntry)
+      .set({ ...change, capped: false, updatedAt: new Date() })
+      .where(eq(schema.timeEntry.id, entryId))
+      .returning();
+    return { before, after };
+  });
 }
 
 /**
@@ -129,7 +168,7 @@ export async function updateTimeEntry(personId: string, entryId: string, change:
 export async function setCellMinutes(personId: string, date: IsoDate, target: Target, minutes: number): Promise<{ before: number; after: number; changed: string[] }> {
   if (!target.taskId === !target.category) throw new ActionError("time_task_or_category");
   return db().transaction(async (tx) => {
-    await assertWeekOpen(personId, date, tx);
+    await assertWeekOpen(tx, personId, date);
     const entries = await tx
       .select({ id: schema.timeEntry.id, minutes: schema.timeEntry.minutes, createdAt: schema.timeEntry.createdAt })
       .from(schema.timeEntry)
@@ -154,7 +193,7 @@ export async function setCellMinutes(personId: string, date: IsoDate, target: Ta
       await tx.update(schema.timeEntry).set({ deletedAt: now, updatedAt: now }).where(inArray(schema.timeEntry.id, plan.deletes));
       changed.push(...plan.deletes);
     }
-    if (plan.insert) changed.push((await logTime({ personId, date, ...target, minutes: plan.insert, note: null, billable: null }, tx)).id);
+    if (plan.insert) changed.push((await insertEntry(tx, { personId, date, ...target, minutes: plan.insert, note: null, billable: null })).id);
     return { before, after: Math.max(0, Math.round(minutes)), changed };
   });
 }
@@ -178,11 +217,17 @@ export async function getRunningTimer(personId: string): Promise<RunningTimer | 
   return { ...rest, key: number !== null && teamKey ? taskKey(teamKey, number) : null, startedAt: startedAt! };
 }
 
+/** A stopped timer's entry; `weekLocked` when its week was submitted meanwhile and the minutes were not kept. */
+export type StoppedTimer = TimeEntryRow & { weekLocked: boolean };
+
 /**
  * Stops the running timer inside `tx`: the entry takes the start date and the minutes, rounded, cut
- * at 16 hours with a flag. A timer stopped within half a minute leaves nothing behind.
+ * at 16 hours with a flag. A timer stopped within half a minute leaves nothing behind. A timer whose
+ * week was submitted or approved while it ran does not write into that week: it is stopped with
+ * nothing kept (`weekLocked`), and the person is told — they add the time again once the approver
+ * returns the week, if it belongs there.
  */
-async function stopIn(tx: Tx, personId: string, now: Date): Promise<TimeEntryRow | null> {
+async function stopIn(tx: Tx, personId: string, now: Date): Promise<StoppedTimer | null> {
   const [running] = await tx
     .select()
     .from(schema.timeEntry)
@@ -191,15 +236,16 @@ async function stopIn(tx: Tx, personId: string, now: Date): Promise<TimeEntryRow
     .limit(1);
   if (!running) return null;
   const stopped = stopTimer(running.timerStartedAt!, now);
+  const weekLocked = stopped.minutes > 0 && !isWeekEditable(await lockTimesheetWeek(tx, personId, weekStartOf(stopped.date)));
   const [row] = await tx
     .update(schema.timeEntry)
-    .set(stopped.minutes > 0 ? { date: stopped.date, weekStart: weekStartOf(stopped.date), minutes: stopped.minutes, capped: stopped.capped, timerStartedAt: null, updatedAt: now } : { timerStartedAt: null, deletedAt: now, updatedAt: now })
+    .set(stopped.minutes > 0 && !weekLocked ? { date: stopped.date, weekStart: weekStartOf(stopped.date), minutes: stopped.minutes, capped: stopped.capped, timerStartedAt: null, updatedAt: now } : { minutes: 0, timerStartedAt: null, deletedAt: now, updatedAt: now })
     .where(eq(schema.timeEntry.id, running.id))
     .returning();
-  return row;
+  return { ...row, weekLocked };
 }
 
-export async function stopRunningTimer(personId: string, now: Date = new Date()): Promise<TimeEntryRow | null> {
+export async function stopRunningTimer(personId: string, now: Date = new Date()): Promise<StoppedTimer | null> {
   return db().transaction((tx) => stopIn(tx, personId, now));
 }
 
@@ -207,10 +253,10 @@ export async function stopRunningTimer(personId: string, now: Date = new Date())
  * Starts a timer on a task (or a category) now. One timer per person: a running one is stopped
  * first, in the same transaction, and becomes an entry.
  */
-export async function startTimer(personId: string, target: Target, now: Date = new Date()): Promise<{ started: TimeEntryRow; stopped: TimeEntryRow | null }> {
+export async function startTimer(personId: string, target: Target, now: Date = new Date()): Promise<{ started: TimeEntryRow; stopped: StoppedTimer | null }> {
   const date = vietnamDateOf(now);
   return db().transaction(async (tx) => {
-    await assertWeekOpen(personId, date, tx);
+    await assertWeekOpen(tx, personId, date);
     const place = await placeOf(target, null, tx);
     const stopped = await stopIn(tx, personId, now);
     const [started] = await tx
@@ -225,7 +271,11 @@ export async function startTimer(personId: string, target: Target, now: Date = n
 
 export type TimeEntryView = { id: string; date: IsoDate; taskId: string | null; key: string | null; title: string | null; projectId: string | null; projectName: string | null; category: string | null; minutes: number; billable: boolean; note: string | null; source: string; capped: boolean; createdAt: Date };
 
-/** Entries between two dates, newest first. No authorization: callers pass people they may read. */
+/**
+ * Entries between two dates, newest first. No authorization: callers pass people they may read —
+ * and the task titles and project names here are the person's own view of their week, so a caller
+ * showing them to anyone else labels them for that reader first (`loadSeen` + `showTimeLabels`).
+ */
 export async function listTimeOf(personIds: readonly string[], from: IsoDate, to: IsoDate, order: "newest" | "oldest" = "newest"): Promise<(TimeEntryView & { personId: string })[]> {
   if (personIds.length === 0) return [];
   const rows = await db()

@@ -94,10 +94,13 @@ const feePipeline = createAction({
   name: "projects.plan.fee",
   input: z.object({ projectId: z.uuid(), feeVnd: vnd }),
   authorize: (user, input) => may(user, input.projectId, canEditFees),
-  run: async ({ input }) => {
+  run: async ({ user, input }) => {
+    const found = await projectFor(user, input.projectId);
     const change = await setFee(input.projectId, input.feeVnd);
     refresh(input.projectId);
-    return { data: { ok: true }, audit: { resource: auditProject(input.projectId), summary: "fee", before: { feeVnd: change.before }, after: { feeVnd: change.after } } };
+    // The log says the fee changed, never what it is: an audit reader is not a `pjm:commercial`
+    // holder. The entity is on the record so the reading itself is kept to the project's own.
+    return { data: { ok: true }, audit: { resource: auditProject(input.projectId, found?.project.entityId ?? null), summary: "fee", before: { feeSet: change.before !== null }, after: { feeSet: change.after !== null, feeChanged: change.before !== change.after } } };
   },
 });
 export async function setFeeAction(input: unknown) {
@@ -245,7 +248,7 @@ const milestonePipeline = createAction({
     const { before, after } = await saveMilestone(projectId, milestoneId, { ...values, ...amount });
     refresh(projectId);
     const shape = (row: typeof after | null) => (row ? { name: row.name, dueDate: row.dueDate, phaseId: row.phaseId, ownerPersonId: row.ownerPersonId, isClientFacing: row.isClientFacing, isBilling: row.isBilling } : null);
-    return { data: { id: after.id }, audit: { resource: auditProject(projectId), summary: `milestone: ${after.name}`, before: shape(before), after: { ...shape(after), billingAmountChanged: "billingAmountVnd" in amount } } };
+    return { data: { id: after.id }, audit: { resource: auditProject(projectId, found?.project.entityId ?? null), summary: `milestone: ${after.name}`, before: shape(before), after: { ...shape(after), billingAmountChanged: "billingAmountVnd" in amount } } };
   },
 });
 export async function saveMilestoneAction(input: unknown) {

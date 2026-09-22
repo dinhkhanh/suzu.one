@@ -6,7 +6,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema } from "@/lib/db";
-import { canEditTask, type WorkViewer } from "./policy";
+import { canEditTask, canViewTask, type WorkViewer } from "./policy";
 import { type ActivityEntry, loadTasks, taskKey, updateWorkTaskIn, type WorkTaskPatch } from "./tasks";
 
 export const MAX_BULK = 200;
@@ -35,6 +35,12 @@ export async function bulkEditTasks(viewer: WorkViewer, taskIds: readonly string
   for (const id of ids) {
     const found = loaded.get(id);
     if (!found) {
+      outcome.refused.push({ id, key: null, reason: "task_not_found" });
+      continue;
+    }
+    // A task the viewer may not even open is not there as far as they can tell: answering
+    // "forbidden" with its key would turn bulk edit into a way of asking whether a task exists.
+    if (!canViewTask(viewer, found.facts)) {
       outcome.refused.push({ id, key: null, reason: "task_not_found" });
       continue;
     }

@@ -29,7 +29,7 @@ import { loadReportReader, loadSubjects, loadTimeReader } from "./people";
 import { canApproveTimesheet } from "./policy";
 import { saveTeamRules } from "./team-rules";
 import { deleteTimeEntry, getRunningTimer, logTime, setCellMinutes, startTimer, stopRunningTimer, updateTimeEntry } from "./time";
-import { decideWeek, findTimesheetWeek, getMyTimeWeek, getTimesheetView, listApprovals, listProjectTime, submitWeek } from "./timesheets";
+import { approveWeeks, decideWeek, findTimesheetWeek, getMyTimeWeek, getTimesheetView, listApprovals, listProjectTime, submitWeek } from "./timesheets";
 import { loggedMinutesByPersonWeek, sumLoggedMinutesByProject, sumLoggedMinutesByTask } from "./totals";
 import { getUtilisation } from "./utilisation";
 
@@ -128,7 +128,7 @@ describe("the timer", () => {
     const forgotten = await stopRunningTimer(ids.bao, vn("2026-09-24", "11:00"));
     expect(forgotten).toMatchObject({ date: "2026-09-23", minutes: 960, capped: true });
     // Correcting it clears the flag.
-    const { after } = await updateTimeEntry(ids.bao, forgotten!.id, { minutes: 480, note: "Quên tắt đồng hồ", billable: true });
+    const { after } = await updateTimeEntry(ids.bao, forgotten!.id, { minutes: 480, note: "Quên tắt đồng hồ", billable: true }, TODAY);
     expect(after).toMatchObject({ minutes: 480, capped: false, note: "Quên tắt đồng hồ" });
   });
 });
@@ -175,12 +175,17 @@ describe("the attendance hint", () => {
     ]);
     const week = (await getMyTimeWeek(ids.huy, W, TODAY))!;
     expect(week.days.map((row) => row.hint)).toEqual([{ kind: "attended", minutes: 450 }, { kind: "attended", minutes: 360 }, { kind: "none" }, { kind: "none" }, { kind: "none" }, { kind: "untracked" }, { kind: "none" }]);
-    // The approver sees it too; the manager's manager sees the week but not attendance.
+    // The line-management chain sees it: the manager and the manager's manager (security review, finding 4).
     const tam = (await getTimesheetView(await loadTimeReader(ids.tam), ids.huy, W, TODAY))!;
     expect(tam.days[0].hint).toEqual({ kind: "attended", minutes: 450 });
     const chi = (await getTimesheetView(await loadTimeReader(ids.chi), ids.huy, W, TODAY))!;
     expect(chi.grid.total).toBe(505);
-    expect(chi.days[0].hint).toBeNull();
+    expect(chi.days[0].hint).toEqual({ kind: "attended", minutes: 450 });
+    // The lead of Huy's team reads the week and approves it — attendance is still not his to read.
+    const long = (await getTimesheetView(await loadTimeReader(ids.long), ids.huy, W, TODAY))!;
+    expect(long.canApprove).toBe(true);
+    expect(long.grid.total).toBe(505);
+    expect(long.days.every((day) => day.hint === null)).toBe(true);
   });
 
   it("a project's lead sees only the rows on their project; a colleague sees nothing", async () => {
@@ -189,6 +194,8 @@ describe("the attendance hint", () => {
     const view = (await getTimesheetView(vy, ids.huy, W, TODAY))!;
     expect(view.partial).toBe(true);
     expect(view.grid.rows.map((row) => row.key)).toEqual([`task:${ids.t1}`]);
+    // The project she leads is hers to read: those rows keep their names (the rest of the week is not here at all).
+    expect(view.labels[`task:${ids.t1}`]).toMatchObject({ title: "Rough cut", projectName: "TVC Tết" });
     expect(view.days.every((day) => day.hint === null && day.kind === null)).toBe(true);
     expect(view.week).toBeNull();
     expect(await getTimesheetView(await loadTimeReader(ids.bao), ids.huy, W, TODAY)).toBeNull();
@@ -247,8 +254,8 @@ describe("the weekly timesheet", () => {
     const { after } = await decideWeek(await loadReportReader(ids.tam), week.id, { type: "approve" });
     expect(after).toMatchObject({ status: "approved", decidedByPersonId: ids.tam });
     const [entry] = (await getMyTimeWeek(ids.huy, W, TODAY))!.entries;
-    expect(await fails(updateTimeEntry(ids.huy, entry.id, { minutes: 5, note: null, billable: false }))).toBe("time_week_locked");
-    expect(await fails(deleteTimeEntry(ids.huy, entry.id))).toBe("time_week_locked");
+    expect(await fails(updateTimeEntry(ids.huy, entry.id, { minutes: 5, note: null, billable: false }, TODAY))).toBe("time_week_locked");
+    expect(await fails(deleteTimeEntry(ids.huy, entry.id, TODAY))).toBe("time_week_locked");
     expect(await fails(setCellMinutes(ids.huy, "2026-09-25", { taskId: null, category: "admin" }, 30))).toBe("time_week_locked");
     expect(await fails(decideWeek(await loadReportReader(ids.long), week.id, { type: "approve" }))).toBe("timesheet_not_submitted");
     // A timer cannot be started on a locked day either.
@@ -347,5 +354,80 @@ describe("totals for other modules", () => {
     expect(weeks.get(ids.huy)!.get(W)).toEqual({ minutes: 595, billable: 250 });
     expect(weeks.get(ids.lan)!.get(W)).toEqual({ minutes: 960, billable: 0 });
     expect(weeks.get(ids.huy)!.has("2026-09-14")).toBe(false);
+  });
+});
+
+// ── Security review, findings 15, 16, 17 and 22 ──────────────────────────────────────────────
+
+describe("the window on old time", () => {
+  it("an entry older than 35 days cannot be corrected or deleted through its id", async () => {
+    const old = await logTime({ personId: ids.sang, date: "2026-07-01", taskId: null, category: "internal", minutes: 60, note: null, billable: null });
+    expect(await fails(updateTimeEntry(ids.sang, old.id, { minutes: 480, note: null, billable: false }, TODAY))).toBe("time_window_closed");
+    expect(await fails(deleteTimeEntry(ids.sang, old.id, TODAY))).toBe("time_window_closed");
+    // A week the approver returned stays open to fix, however old it is.
+    await db().insert(schema.timesheetWeek).values({ personId: ids.sang, weekStart: "2026-06-29", status: "returned" });
+    const { after } = await updateTimeEntry(ids.sang, old.id, { minutes: 90, note: "Sửa theo yêu cầu", billable: false }, TODAY);
+    expect(after.minutes).toBe(90);
+    await deleteTimeEntry(ids.sang, old.id, TODAY);
+    // A recent entry is the person's to correct as before.
+    const recent = await logTime({ personId: ids.sang, date: "2026-09-24", taskId: null, category: "admin", minutes: 30, note: null, billable: null });
+    expect((await updateTimeEntry(ids.sang, recent.id, { minutes: 45, note: null, billable: false }, TODAY)).after.minutes).toBe(45);
+  });
+});
+
+describe("a timer running into a week that was locked meanwhile", () => {
+  it("is stopped with nothing kept, and says so", async () => {
+    await startTimer(ids.vy, { taskId: ids.t1, category: null }, vn(W, "09:00"));
+    // The approver decides the week while the timer runs (the person forgot to stop it).
+    await db().insert(schema.timesheetWeek).values({ personId: ids.vy, weekStart: W, status: "approved", minutes: 0 });
+    const stopped = (await stopRunningTimer(ids.vy, vn(W, "11:00")))!;
+    expect(stopped).toMatchObject({ weekLocked: true, minutes: 0, timerStartedAt: null });
+    expect(stopped.deletedAt).not.toBeNull();
+    expect(await getRunningTimer(ids.vy)).toBeNull();
+    // Nothing was written into the approved week.
+    const week = (await getMyTimeWeek(ids.vy, W, TODAY))!;
+    expect(week.grid.total).toBe(0);
+    expect(week.entries).toEqual([]);
+  });
+});
+
+describe("approving several weeks at once", () => {
+  it("approves what it can and never throws half-way (finding 17)", async () => {
+    const long = await loadReportReader(ids.long);
+    const huy = (await findTimesheetWeek(ids.huy, W))!;
+    const bao = (await findTimesheetWeek(ids.bao, W))!;
+    // Huy's week is decided by his other lead a moment before the batch runs.
+    await decideWeek(await loadReportReader(ids.mai), huy.id, { type: "approve" });
+    const result = await approveWeeks(long, [huy.id, bao.id, "00000000-0000-4000-8000-000000000000"]);
+    expect(result.approved.map((week) => week.personId)).toEqual([ids.bao]);
+    expect(result.failed).toEqual([
+      { id: huy.id, error: "timesheet_not_submitted" },
+      { id: "00000000-0000-4000-8000-000000000000", error: "timesheet_not_found" },
+    ]);
+    expect((await findTimesheetWeek(ids.bao, W))!.status).toBe("approved");
+  });
+});
+
+describe("utilisation of teams that are one person (finding 22)", () => {
+  it("leaves them out rather than reporting one person as a team", async () => {
+    const [dept] = await db().select().from(schema.orgUnit).limit(1);
+    const [copy] = await db().insert(schema.workTeam).values({ key: "CPY", name: "Copywriting", entityId: ids.szm, departmentId: dept.id }).returning();
+    await db().insert(schema.workTeamMember).values({ teamId: copy.id, personId: ids.vy, role: "lead" });
+    const principal = async () => ({ personId: ids.chi, principal: { personId: ids.chi, workforceType: "employee" as const, grants: await loadGrants(ids.chi) } });
+    const one = await getUtilisation(await principal(), TODAY);
+    expect(one.groups.map((group) => group.kind)).toEqual(["reports", "portfolio"]);
+    expect(JSON.stringify(one)).not.toContain(ids.vy);
+    expect(JSON.stringify(one)).not.toContain("Copywriting");
+
+    // A second one-person team: together they are a group, shown as "other teams" with no names.
+    const [studio] = await db().insert(schema.workTeam).values({ key: "STU", name: "Studio", entityId: ids.szm, departmentId: dept.id }).returning();
+    await db().insert(schema.workTeamMember).values({ teamId: studio.id, personId: ids.mai, role: "lead" });
+    const two = await getUtilisation(await principal(), TODAY);
+    const other = two.groups.find((group) => group.kind === "portfolio_other")!;
+    expect(other).toMatchObject({ kind: "portfolio_other", teams: 2, headcount: 2 });
+    expect(JSON.stringify(two)).not.toContain("Copywriting");
+    expect(JSON.stringify(two)).not.toContain(ids.mai);
+    // Video, big enough to stand on its own, is still its own row.
+    expect(two.groups.filter((group) => group.kind === "portfolio").map((group) => group.kind === "portfolio" && group.name)).toEqual(["Video"]);
   });
 });

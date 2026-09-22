@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canApproveTimesheet, canCommentOnReport, canOverseeReport, canViewReport, canViewTimeEntry, canViewTimesheet, canViewUtilisation, type ReportReader, type ReportSubject, type TimeReader } from "./policy";
+import { canApproveTimesheet, canCommentOnReport, canViewAttendanceHint, canOverseeReport, canViewReport, canViewTimeEntry, canViewTimesheet, canViewUtilisation, type ReportReader, type ReportSubject, type TimeReader } from "./policy";
 
 const reader = (personId: string, led: string[] = []): ReportReader => ({ personId, ledTeamIds: new Set(led) });
 
@@ -101,5 +101,26 @@ describe("utilisation", () => {
     expect(canViewUtilisation(reader("chi"), huy)).toBe(true);
     expect(canViewUtilisation(reader("huy"), huy)).toBe(false);
     expect(canViewUtilisation(reader("bao"), huy)).toBe(false);
+  });
+});
+
+describe("the attendance hint (security review, finding 4)", () => {
+  it("is the person's and their line-management chain's", () => {
+    expect(canViewAttendanceHint(reader("huy"), huy)).toBe(true);
+    expect(canViewAttendanceHint(reader("tam"), huy)).toBe(true);
+    expect(canViewAttendanceHint(reader("chi"), huy)).toBe(true);
+  });
+
+  it("not a work team's lead, though they read the week and approve it", () => {
+    expect(canApproveTimesheet(reader("long", ["team-video"]), huy)).toBe(true);
+    expect(canViewAttendanceHint(reader("long", ["team-video"]), huy)).toBe(false);
+    expect(canViewAttendanceHint(reader("mai", ["team-design"]), huy)).toBe(false);
+  });
+
+  it("not a colleague, someone below, or nobody", () => {
+    expect(canViewAttendanceHint(reader("bao"), huy)).toBe(false);
+    // Somebody Huy manages: the chain runs upwards only.
+    expect(canViewAttendanceHint(reader("intern"), huy)).toBe(false);
+    expect(canViewAttendanceHint({ personId: null, ledTeamIds: new Set() }, huy)).toBe(false);
   });
 });

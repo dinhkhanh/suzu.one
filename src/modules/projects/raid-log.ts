@@ -10,6 +10,7 @@ import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { createWorkTaskIn, listAssignable, taskKey } from "../work/service";
+import { isProjectPerson } from "./membership";
 import { canBecomeTask, normaliseRaid, type RaidKind, raidProblems, type RaidSeverity, type RaidStatus, sortRaid } from "./engine/raid";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -88,6 +89,8 @@ export async function issueToTask(itemId: string, input: { assigneePersonId: str
     const [item] = await tx.select().from(schema.projectRaidItem).where(eq(schema.projectRaidItem.id, itemId)).limit(1).for("update");
     if (!item) throw new ActionError("raid_not_found");
     if (!canBecomeTask(item)) throw new ActionError("raid_not_convertible");
+    // The task goes to a person of the project, like the item's owner — ids come from the browser.
+    if (input.assigneePersonId && !(await isProjectPerson(tx, item.projectId, input.assigneePersonId))) throw new ActionError("raid_owner_not_member");
     const [project] = await tx.select({ teamId: schema.workProject.teamId }).from(schema.workProject).where(eq(schema.workProject.id, item.projectId)).limit(1);
     if (!project) throw new ActionError("project_not_found");
     const { task, key } = await createWorkTaskIn(tx, { teamId: project.teamId, projectId: item.projectId, title: item.title, description: item.description, assigneePersonId: input.assigneePersonId ?? item.ownerPersonId, dueDate: input.dueDate ?? item.dueDate }, actorPersonId);

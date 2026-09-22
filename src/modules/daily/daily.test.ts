@@ -28,6 +28,8 @@ import { listOverseen, loadReportReader, loadSubjects } from "./people";
 import { addToPlan, getPlanPage, savePlan } from "./plans";
 import { canViewReport } from "./policy";
 import { buildDraft, commentOnReport, getReportView, getTeamBoard, remindMissing, submitReport } from "./reports";
+import { getTimesheetView } from "./timesheets";
+import { loadTimeReader } from "./people";
 import { saveTeamRules } from "./team-rules";
 import { deleteTimeEntry, logTime } from "./time";
 import { getToday } from "./today";
@@ -37,7 +39,7 @@ import { generateWeek, listWeekly } from "./weekly";
 const D = "2026-09-21";
 const PEOPLE = ["long", "huy", "bao", "tam", "chi", "khoi", "mai", "sang", "lan"] as const;
 type Key = (typeof PEOPLE)[number];
-const ids = {} as Record<Key | "szm" | "video" | "design" | "social" | "dept" | "client" | "internal" | "t1" | "t2" | "t3" | "t4" | "t5", string>;
+const ids = {} as Record<Key | "szm" | "video" | "design" | "social" | "dept" | "client" | "internal" | "t1" | "t2" | "t3" | "t4" | "t5" | "hr" | "t6", string>;
 const names: Record<Key, string> = { long: "Long Dang", huy: "Huy Ho", bao: "Bao Tran", tam: "Tam Bui", chi: "Chi Vo", khoi: "Khoi Ly", mai: "Mai Pham", sang: "Sang Le", lan: "Lan Do" };
 const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
 const noticesOf = async (personId: string, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
@@ -318,11 +320,117 @@ describe("quick time log", () => {
     const forced = await logTime({ personId: ids.huy, date: D, taskId: ids.t5, category: null, minutes: 10, note: null, billable: true });
     expect(forced.billable).toBe(true);
     expect(await fails(logTime({ personId: ids.huy, date: D, taskId: ids.t2, category: "admin", minutes: 10, note: null, billable: null }))).toBe("time_task_or_category");
-    expect(await fails(deleteTimeEntry(ids.bao, admin.id))).toBe("time_entry_not_found");
-    await deleteTimeEntry(ids.huy, admin.id);
+    expect(await fails(deleteTimeEntry(ids.bao, admin.id, D))).toBe("time_entry_not_found");
+    await deleteTimeEntry(ids.huy, admin.id, D);
     await db().insert(schema.timesheetWeek).values({ personId: ids.huy, weekStart: D, status: "approved" });
     expect(await fails(logTime({ personId: ids.huy, date: D, taskId: ids.t2, category: null, minutes: 10, note: null, billable: null }))).toBe("time_week_locked");
-    expect(await fails(deleteTimeEntry(ids.huy, client.id))).toBe("time_week_locked");
+    expect(await fails(deleteTimeEntry(ids.huy, client.id, D))).toBe("time_week_locked");
     expect(instantOf(D, "18:00").toISOString()).toBe("2026-09-21T11:00:00.000Z");
+  });
+});
+
+// ── Security review, findings 5, 14 and 23 ───────────────────────────────────────────────────
+//
+// Huy also works in Design, where a private project (HR's hiring) is none of Video's business. His
+// line manager and his Video lead read his report, his week and his time — they must not learn what
+// he is doing in there.
+describe("private work in someone else's report", () => {
+  beforeAll(async () => {
+    // The week was approved by the quick-log test above; the approver reopens it.
+    await db().update(schema.timesheetWeek).set({ status: "open" }).where(eq(schema.timesheetWeek.personId, ids.huy));
+    ids.hr = (await db().insert(schema.workProject).values({ teamId: ids.design, entityId: ids.szm, name: "Tuyển Art Director", visibility: "private", leadPersonId: ids.mai }).returning())[0].id;
+    await db().insert(schema.projectPlan).values({ projectId: ids.hr, kind: "internal" });
+    const doing = (await listStates([ids.design])).find((state) => state.category === "in_progress")!;
+    ids.t6 = (await createWorkTask({ teamId: ids.design, projectId: ids.hr, title: "Sơ tuyển ứng viên", assigneePersonId: ids.huy, stateId: doing.id }, ids.mai)).task.id;
+    await db().insert(schema.workBlocker).values({ taskId: ids.t6, reason: "Chờ mức lương duyệt", raisedByPersonId: ids.huy, raisedAt: at("16:00") });
+    await logTime({ personId: ids.huy, date: D, taskId: ids.t6, category: null, minutes: 45, note: null, billable: null });
+    await addToPlan(ids.huy, D, ids.t6);
+    await submitReport(ids.huy, D, { blockers: "Chờ kịch bản", notes: null, tomorrow: [], secondsToSubmit: 10 }, at("20:30"));
+  });
+
+  const reportId = async () => (await db().select().from(schema.dailyReport).where(and(eq(schema.dailyReport.personId, ids.huy), eq(schema.dailyReport.date, D))))[0].id;
+
+  it("the person reads their own day whole", async () => {
+    const view = (await getReportView(await loadReportReader(ids.huy), await reportId()))!;
+    const line = view.report.notDone.find((row) => row.taskId === ids.t6)!;
+    expect(line.title).toBe("Sơ tuyển ứng viên");
+    expect(line.hidden).toBeUndefined();
+    expect(view.openBlockers.map((blocker) => blocker.reason)).toContain("Chờ mức lương duyệt");
+  });
+
+  it("a lead outside the project reads the hours, never the titles", async () => {
+    const view = (await getReportView(await loadReportReader(ids.long), await reportId()))!;
+    const hidden = view.report.notDone.find((line) => line.taskId === ids.t6)!;
+    expect(hidden).toMatchObject({ hidden: true, title: "", ref: null });
+    // The rest of his day is Video's work, and stays legible.
+    expect(view.report.notDone.find((line) => line.taskId === ids.t2)).toMatchObject({ title: "Subtitles" });
+    const logged = view.report.activity.find((item) => item.taskId === ids.t6 && item.kind === "time_logged")!;
+    expect(logged).toMatchObject({ hidden: true, title: "", ref: null, detail: "45" });
+    const blocker = view.openBlockers.find((row) => row.taskId === ids.t6)!;
+    expect(blocker).toMatchObject({ hidden: true, title: "", reason: "" });
+    expect(JSON.stringify(view)).not.toContain("Sơ tuyển ứng viên");
+    expect(JSON.stringify(view)).not.toContain("Chờ mức lương duyệt");
+    // The line manager, in neither team, reads the report and none of the work in it.
+    const tam = (await getReportView(await loadReportReader(ids.tam), await reportId()))!;
+    expect(JSON.stringify(tam)).not.toContain("Sơ tuyển ứng viên");
+  });
+
+  it("Design's lead, who runs the private project, reads it as it is", async () => {
+    const view = (await getReportView(await loadReportReader(ids.mai), await reportId()))!;
+    expect(view.report.notDone.find((line) => line.taskId === ids.t6)).toMatchObject({ title: "Sơ tuyển ứng viên" });
+    expect(view.openBlockers.find((row) => row.taskId === ids.t6)!.reason).toBe("Chờ mức lương duyệt");
+  });
+
+  it("the week of time shows the hours under 'private work'", async () => {
+    const own = (await getTimesheetView(await loadTimeReader(ids.huy), ids.huy, D, D))!;
+    expect(own.labels[`task:${ids.t6}`]).toMatchObject({ title: "Sơ tuyển ứng viên" });
+    const long = (await getTimesheetView(await loadTimeReader(ids.long), ids.huy, D, D))!;
+    expect(long.grid.total).toBe(own.grid.total);
+    expect(long.labels[`task:${ids.t6}`]).toMatchObject({ hidden: true, title: null, taskKey: null, projectName: null });
+    expect(JSON.stringify(long)).not.toContain("Sơ tuyển ứng viên");
+    expect(JSON.stringify(long)).not.toContain("Tuyển Art Director");
+  });
+
+  it("the weekly report keeps the hours and drops the names", async () => {
+    await generateWeek(D, { notify: false });
+    const mine = (await listWeekly(await loadReportReader(ids.huy), D, () => false)).people.find((row) => row.personId === ids.huy)!;
+    expect(mine.content.hoursByProject.map((group) => group.name)).toContain("Tuyển Art Director");
+    const { people } = await listWeekly(await loadReportReader(ids.long), D, () => false);
+    const huy = people.find((row) => row.personId === ids.huy)!;
+    expect(huy.content.slipped.find((line) => line.taskId === ids.t6)).toMatchObject({ hidden: true, title: "" });
+    const hr = huy.content.hoursByProject.find((group) => group.projectId === ids.hr)!;
+    expect(hr).toMatchObject({ hidden: true, name: null, minutes: 45 });
+    expect(JSON.stringify(people)).not.toContain("Tuyển Art Director");
+  });
+
+  it("running a team is not reading its people's weeks (finding 14)", async () => {
+    // Khoi leads Social only; `canRunTeam` stands for a `work:manage` grant over every team.
+    const { teams } = await listWeekly(await loadReportReader(ids.khoi), D, () => true);
+    const video = teams.find((row) => row.team.id === ids.video)!;
+    expect(video.content.people).toEqual([]);
+    expect(video.content.blockers).toEqual([]);
+    // The totals of the team he runs stay whole.
+    expect(video.content.totalMinutes).toBeGreaterThan(0);
+    expect(video.content.done + video.content.slipped).toBeGreaterThan(0);
+    const social = teams.find((row) => row.team.id === ids.social)!;
+    expect(social.content.people.map((person) => person.name).sort()).toEqual(["Khoi Ly", "Lan Do", "Sang Le"]);
+    // The team's hours name no project he may not open.
+    expect(JSON.stringify(teams)).not.toContain("Tuyển Art Director");
+  });
+
+  it("a reply only tells earlier commenters who may still read the report (finding 23)", async () => {
+    const id = await reportId();
+    const before = (await noticesOf(ids.long, "daily.report_commented")).length;
+    await commentOnReport(await loadReportReader(ids.long), id, { body: "Ổn nhé", reaction: null }, names.long);
+    // Long leaves Video: he is no longer anyone's lead, and the thread is no longer his.
+    await db().update(schema.workTeamMember).set({ role: "member" }).where(and(eq(schema.workTeamMember.teamId, ids.video), eq(schema.workTeamMember.personId, ids.long)));
+    await commentOnReport(await loadReportReader(ids.huy), id, { body: "Vâng anh", reaction: null }, names.huy);
+    expect(await noticesOf(ids.long, "daily.report_commented")).toHaveLength(before);
+    // Mai still leads Design, so her earlier comment still gets answers.
+    await commentOnReport(await loadReportReader(ids.mai), id, { body: "Nhớ gửi CV", reaction: null }, names.mai);
+    const maiBefore = (await noticesOf(ids.mai, "daily.report_commented")).length;
+    await commentOnReport(await loadReportReader(ids.huy), id, { body: "Vâng chị", reaction: null }, names.huy);
+    expect(await noticesOf(ids.mai, "daily.report_commented")).toHaveLength(maiBefore + 1);
+    await db().update(schema.workTeamMember).set({ role: "lead" }).where(and(eq(schema.workTeamMember.teamId, ids.video), eq(schema.workTeamMember.personId, ids.long)));
   });
 });

@@ -12,8 +12,9 @@
 // Fees and money budgets are not here at all (hours only), so the dashboard needs no
 // `pjm:commercial` split; profitability is its own screen behind `pjm:cost`.
 import "server-only";
+import { getTranslations } from "next-intl/server";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
-import { daysOf, loadReportReader, weekStartOf } from "@/modules/daily/service";
+import { daysOf, foldSmallGroups, loadReportReader, weekStartOf } from "@/modules/daily/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import type { PersonRow } from "@/modules/platform/people/service";
 import { listPortfolio, type PortfolioRow } from "@/modules/projects/service";
@@ -26,6 +27,7 @@ import { loadRetainerFacts } from "./retainer-source";
 export type DeliveryReader = { person: Pick<PersonRow, "id" | "primaryEntityId">; principal: Principal };
 export type DeliveryFilter = { from: IsoDate; to: IsoDate; teamId?: string | null };
 
+/** `teamId` "other" is the small teams added together (engine/privacy.ts): a team of one is one person. */
 export type TeamCompliance = { teamId: string; name: string; people: number; reports: Compliance; timesheets: Compliance };
 export type DeliveryDashboard = {
   period: { from: IsoDate; to: IsoDate };
@@ -114,6 +116,11 @@ export async function getDeliveryDashboard(reader: DeliveryReader, filter: Deliv
 /**
  * EOD-report and timesheet compliance for the teams the reader oversees, over the period's days up
  * to yesterday (today's report is not late yet), capped at `COMPLIANCE_MAX_DAYS` back from its end.
+ *
+ * Team totals only, and only where a total is a group: a team of one person, seen through
+ * `pjm:portfolio` rather than led by the reader, is that person's compliance record under a team's
+ * name. Such teams are added together into "other teams", and people who cannot be hidden even
+ * there are left out of the totals as well (security review, finding 22).
  */
 async function getCompliance(reader: DeliveryReader, filter: DeliveryFilter, today: IsoDate): Promise<DeliveryDashboard["compliance"]> {
   const [readerTeams, allTeams] = await Promise.all([loadReportReader(reader.person.id), listTeams()]);
@@ -123,11 +130,16 @@ async function getCompliance(reader: DeliveryReader, filter: DeliveryFilter, tod
   const until = filter.to < today ? filter.to : addDays(today, -1);
   const earliest = addDays(until, -(COMPLIANCE_MAX_DAYS - 1));
   const from = filter.from > earliest ? filter.from : earliest;
-  const members = await activeMembersByTeam(teamIds);
+  const all = await activeMembersByTeam(teamIds);
+  const folded = foldSmallGroups(teamIds.map((teamId) => ({ key: teamId, personIds: all.get(teamId) ?? [] })), readerTeams.ledTeamIds);
+  const members = new Map<string, string[]>([...folded.kept.map((teamId): [string, string[]] => [teamId, all.get(teamId) ?? []]), ...(folded.other ? ([["other", folded.other.personIds]] as [string, string[]][]) : [])]);
+  const shownTeams = [...members.keys()];
+  if (shownTeams.length === 0) return null;
+  const nameOf = async (teamId: string) => (teamId === "other" ? (await getTranslations("reports.delivery.compliance"))("otherTeams", { count: folded.other!.keys.length }) : active.find((team) => team.id === teamId)!.name);
   const people = [...new Set([...members.values()].flat())];
   const empty = { due: 0, met: 0, rate: null } satisfies Compliance;
   if (people.length === 0 || until < from) {
-    const teams = teamIds.map((teamId) => ({ teamId, name: active.find((team) => team.id === teamId)!.name, people: members.get(teamId)?.length ?? 0, reports: empty, timesheets: empty }));
+    const teams = await Promise.all(shownTeams.map(async (teamId) => ({ teamId, name: await nameOf(teamId), people: members.get(teamId)?.length ?? 0, reports: empty, timesheets: empty })));
     return { teams, total: { reports: empty, timesheets: empty } };
   }
 
@@ -150,12 +162,14 @@ async function getCompliance(reader: DeliveryReader, filter: DeliveryFilter, tod
     });
     ofPerson.set(personId, { reports: reportCompliance(reportDays), timesheets: timesheetCompliance(sheetWeeks) });
   }
-  const teams = teamIds
-    .map((teamId): TeamCompliance => {
-      const own = (members.get(teamId) ?? []).map((personId) => ofPerson.get(personId)!);
-      return { teamId, name: active.find((team) => team.id === teamId)!.name, people: own.length, reports: addCompliance(own.map((row) => row.reports)), timesheets: addCompliance(own.map((row) => row.timesheets)) };
-    })
-    .sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  const teams = (
+    await Promise.all(
+      shownTeams.map(async (teamId): Promise<TeamCompliance> => {
+        const own = (members.get(teamId) ?? []).map((personId) => ofPerson.get(personId)!);
+        return { teamId, name: await nameOf(teamId), people: own.length, reports: addCompliance(own.map((row) => row.reports)), timesheets: addCompliance(own.map((row) => row.timesheets)) };
+      }),
+    )
+  ).sort((a, b) => Number(a.teamId === "other") - Number(b.teamId === "other") || a.name.localeCompare(b.name, "vi"));
   // A person in two teams counts once in the total.
   const everyone = [...ofPerson.values()];
   return { teams, total: { reports: addCompliance(everyone.map((row) => row.reports)), timesheets: addCompliance(everyone.map((row) => row.timesheets)) } };

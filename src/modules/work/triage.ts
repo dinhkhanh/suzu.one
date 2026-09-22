@@ -13,7 +13,8 @@ import { notify } from "../platform/notifications/service";
 import { matchTriageRules, type TriageSetDef, type TriageSource, triageRuleProblem } from "./engine/triage";
 import { autoFollow } from "./followers";
 import { settleCrossTeamHandoff } from "./handoff-settle";
-import { type LoadedTask, listItems, loadTask, logActivity, type TaskListItem, taskKey, updateWorkTaskIn, type WorkTaskPatch } from "./tasks";
+import { canViewTask, type WorkViewer } from "./policy";
+import { type LoadedTask, listItems, loadTask, loadTasks, logActivity, type TaskListItem, taskKey, updateWorkTaskIn, type WorkTaskPatch } from "./tasks";
 import { listStates } from "./teams";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -190,9 +191,18 @@ export async function wakeSnoozedTriage(today: IsoDate): Promise<{ woken: number
 
 export type TriageItem = TaskListItem & { source: string | null; snoozedUntil: string | null; requesterName: string | null; createdAt: string; description: string | null; formName: string | null; projectName: string | null };
 
-/** A team's queue: pending first (oldest first — first come, first served), then snoozed by wake-up date. */
-export async function listTriage(teamId: string): Promise<TriageItem[]> {
-  const items = await listItems(and(eq(schema.workTask.teamId, teamId), inArray(schema.workTask.triageStatus, WAITING)), db(), 500);
+/**
+ * A team's queue: pending first (oldest first — first come, first served), then snoozed by wake-up
+ * date. Only what the viewer may open — a request a rule has already routed into a private project
+ * is that project's business, not the whole team's.
+ */
+export async function listTriage(teamId: string, viewer: WorkViewer): Promise<TriageItem[]> {
+  const waiting = await listItems(and(eq(schema.workTask.teamId, teamId), inArray(schema.workTask.triageStatus, WAITING)), db(), 500);
+  const loaded = await loadTasks(waiting.map((item) => item.id));
+  const items = waiting.filter((item) => {
+    const task = loaded.get(item.id);
+    return !!task && canViewTask(viewer, task.facts);
+  });
   if (items.length === 0) return [];
   const requester = alias(schema.person, "requester");
   const extras = await db()
@@ -285,8 +295,8 @@ export async function deleteTriageRule(ruleId: string): Promise<TriageRuleRow> {
   return row;
 }
 
-/** What a request may be merged into: the team's open tasks that are not waiting in triage themselves. */
-export async function listMergeTargets(teamId: string): Promise<{ id: string; key: string; title: string }[]> {
+/** What a request may be merged into: the team's open tasks that are not waiting in triage themselves — and that the viewer may open. */
+export async function listMergeTargets(teamId: string, viewer: WorkViewer): Promise<{ id: string; key: string; title: string }[]> {
   const rows = await db()
     .select({ id: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title })
     .from(schema.workTask)
@@ -295,5 +305,6 @@ export async function listMergeTargets(teamId: string): Promise<{ id: string; ke
     .where(and(eq(schema.workTask.teamId, teamId), sql`coalesce(${schema.workTask.triageStatus}, '') not in ('pending', 'snoozed')`))
     .orderBy(desc(schema.workTask.number))
     .limit(500);
-  return rows.map(({ number, teamKey, ...row }) => ({ ...row, key: taskKey(teamKey, number) }));
+  const loaded = await loadTasks(rows.map((row) => row.id));
+  return rows.filter((row) => canViewTask(viewer, loaded.get(row.id)!.facts)).map(({ number, teamKey, ...row }) => ({ ...row, key: taskKey(teamKey, number) }));
 }

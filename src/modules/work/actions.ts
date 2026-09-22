@@ -8,10 +8,10 @@ import { beginTaskUpload, completeTaskUpload, findTaskFile, removeTaskFile, task
 import { FILTER_KEYS, isFilterKey } from "./engine/filter";
 import { setFollowing } from "./followers";
 import { CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_ROLES, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "./enums";
-import { canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canModerateTask, canViewTask } from "./policy";
+import { canAddTeamMember, canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canModerateTask, canViewTask } from "./policy";
 import { createProject, findProject, projectFacts, setProjectMember, updateProject } from "./projects";
 import { addDependency, createWorkTask, deleteWorkTask, findDependency, loadTask, removeDependency, updateWorkTask } from "./tasks";
-import { createTeam, deleteLabel, findLabel, findTeam, saveClient, saveLabel, saveState, setTeamMember, teamFacts, updateTeam } from "./teams";
+import { createTeam, deleteLabel, findLabel, findTeam, isTeamMember, personPlacement, saveClient, saveLabel, saveState, setTeamMember, teamFacts, updateTeam } from "./teams";
 import { loadViewer } from "./viewer";
 import { createSavedView, deleteSavedView, findSavedView } from "./views";
 
@@ -80,7 +80,17 @@ const adminsTeam = async (user: Parameters<typeof loadViewer>[0], teamId: string
 const teamMemberPipeline = createAction({
   name: "work.team.member",
   input: z.object({ teamId: z.uuid(), personId: z.uuid(), role: z.preprocess(blankToNull, z.enum(TEAM_ROLES).nullable()) }),
-  authorize: (user, input) => adminsTeam(user, input.teamId),
+  // Bringing someone new in is weighed against where they sit (`canAddTeamMember`); a member's role
+  // change or removal is the team's own business.
+  authorize: async (user, input) => {
+    const team = await findTeam(input.teamId);
+    if (!team) return false;
+    const viewer = await loadViewer(user);
+    if (!canAdminTeam(viewer, teamFacts(team))) return false;
+    if (input.role === null || (await isTeamMember(team.id, input.personId))) return true;
+    const placement = await personPlacement(input.personId);
+    return !!placement && canAddTeamMember(viewer, teamFacts(team), placement);
+  },
   run: async ({ input }) => {
     const change = await setTeamMember(input.teamId, input.personId, input.role);
     revalidatePath(`/work/teams/${input.teamId}`);

@@ -5,26 +5,32 @@
 // left (exit-guard.ts), and the handover page reassigns in bulk, with one note, as `exit` hand-offs.
 import "server-only";
 import { and, asc, eq, inArray, isNull, notInArray, or, sql } from "drizzle-orm";
+import { createTranslator } from "next-intl";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import vi from "../../../messages/vi.json";
 import { listLifecycleEventFacts } from "../core-hr/service";
 import { notify } from "../platform/notifications/service";
 import { createTask, setTaskStatus } from "../platform/tasks-engine/service";
 import { invalidateWorkDirectory } from "./directory";
-import { HANDOVER_EVENT_TYPES, type OwnedItem, type OwnershipKind, ownershipSummary, reassignProblem } from "./engine/exit";
+import { HANDOVER_EVENT_TYPES, isReassignable, type OwnedItem, type OwnershipKind, ownershipSummary, reassignProblem } from "./engine/exit";
 import { normalizeNote, type Note, noteIsEmpty } from "./engine/handoff";
-import type { ExitHandoverFacts } from "./policy";
-import { taskKey, updateWorkTaskIn, WORK_KIND } from "./tasks";
-import { invalidateWorkClients } from "./teams";
+import { canAdminTeam, canChangeAccountManager, canManageProject, canModerateTask, canViewProject, canViewTask, canViewTeamBacklog, type ExitHandoverFacts, type WorkViewer } from "./policy";
+import { projectFacts } from "./projects";
+import { loadTasks, taskKey, updateWorkTaskIn, WORK_KIND } from "./tasks";
+import { invalidateWorkClients, teamFacts } from "./teams";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type ExitHandoverRow = typeof schema.workExitHandover.$inferSelect;
 
 /** An event older than this when the job first sees it is history (an import), not a handover to run. */
 export const HANDOVER_LOOKBACK_DAYS = 60;
-/** The checklist step's title: data, like every checklist step HR writes, in the company's language. */
-export const HANDOVER_STEP_TITLE = "Bàn giao công việc";
+/**
+ * The checklist step's title. It is stored on the task, so it is written once, in the company's
+ * language — from the messages, never as a literal in the code.
+ */
+export const HANDOVER_STEP_TITLE = createTranslator({ locale: "vi", messages: vi, namespace: "work.exit" })("stepTitle");
 export const handoverLink = (handoverId: string) => `/work/handover/${handoverId}`;
 
 const OPEN_TASK = ["todo", "in_progress"] as const;
@@ -124,6 +130,87 @@ export async function listOwnership(personId: string, executor: Executor = db(),
   ];
 }
 
+// ── Who may hand each item on, and to whom ──────────────────────────────────────────────────
+
+/**
+ * What the person running the handover may do with one owned item. A handover is run by the line
+ * manager, team leads, HR and work leaders — which is not the same as running every project the
+ * leaver worked in: an item of a project (or a team) the runner does not run is listed without its
+ * name ("ask its lead") and is reassigned by someone who does run it.
+ */
+export type ItemGate = { /** May the runner read the item's name? */ visible: boolean; /** May the runner hand it on? */ manage: boolean; /** Who to ask when they may not. */ ownerName: string | null; /** Who may receive it: the people of its project and team; null = no place decides (a client relationship). */ eligible: ReadonlySet<string> | null };
+
+const gateKey = (item: { kind: OwnershipKind; id: string }) => `${item.kind}:${item.id}`;
+const CLOSED_GATE: ItemGate = { visible: false, manage: false, ownerName: null, eligible: new Set() };
+/** The item as the runner may see it: `label` null where they may not read its name. */
+export type OwnedItemView = Omit<OwnedItem, "label"> & { label: string | null; canReassign: boolean; ownerName: string | null };
+
+export async function gateOwnership(executor: Executor, viewer: WorkViewer, items: readonly OwnedItem[], options: { leaverId: string }): Promise<Map<string, ItemGate>> {
+  const idsOf = (...kinds: OwnershipKind[]) => items.filter((item) => kinds.includes(item.kind)).map((item) => item.id);
+  const taskIds = idsOf("task", "review");
+  const projectIds = idsOf("project_lead", "account_manager");
+  const recurrenceIds = idsOf("recurrence");
+  const formIds = idsOf("intake_form");
+  const automationIds = idsOf("automation");
+  const clientIds = idsOf("client_account");
+  const [tasks, projects, recurrences, forms, automations, clients, ledTeams] = await Promise.all([
+    loadTasks(taskIds, executor),
+    projectIds.length ? executor.select({ project: schema.workProject, team: schema.workTeam }).from(schema.workProject).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId)).where(inArray(schema.workProject.id, projectIds)) : [],
+    recurrenceIds.length ? executor.select({ id: schema.workRecurrence.id, project: schema.workProject, team: schema.workTeam }).from(schema.workRecurrence).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workRecurrence.teamId)).leftJoin(schema.workProject, eq(schema.workProject.id, schema.workRecurrence.projectId)).where(inArray(schema.workRecurrence.id, recurrenceIds)) : [],
+    formIds.length ? executor.select({ id: schema.workIntakeForm.id, team: schema.workTeam }).from(schema.workIntakeForm).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workIntakeForm.teamId)).where(inArray(schema.workIntakeForm.id, formIds)) : [],
+    automationIds.length ? executor.select({ id: schema.workAutomation.id, projectId: schema.workAutomation.projectId, team: schema.workTeam }).from(schema.workAutomation).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workAutomation.teamId)).where(inArray(schema.workAutomation.id, automationIds)) : [],
+    clientIds.length ? executor.select().from(schema.workClient).where(inArray(schema.workClient.id, clientIds)) : [],
+    idsOf("team_lead").length ? executor.select().from(schema.workTeam).where(inArray(schema.workTeam.id, idsOf("team_lead"))) : [],
+  ]);
+
+  // Who may take work in each place: its team's and its project's people who have not left.
+  const teamIds = [...new Set([...[...tasks.values()].map((task) => task.team.id), ...projects.map((row) => row.team.id), ...recurrences.map((row) => row.team.id), ...forms.map((row) => row.team.id), ...automations.map((row) => row.team.id), ...ledTeams.map((team) => team.id)])];
+  const allProjectIds = [...new Set([...[...tasks.values()].flatMap((task) => (task.work.projectId ? [task.work.projectId] : [])), ...projects.map((row) => row.project.id), ...recurrences.flatMap((row) => (row.project ? [row.project.id] : []))])];
+  const notGone = sql`${schema.person.status} <> 'offboarded'`;
+  const [teamPeople, projectPeople] = await Promise.all([
+    teamIds.length ? executor.select({ scopeId: schema.workTeamMember.teamId, personId: schema.workTeamMember.personId }).from(schema.workTeamMember).innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId)).where(and(inArray(schema.workTeamMember.teamId, teamIds), notGone)) : [],
+    allProjectIds.length ? executor.select({ scopeId: schema.workProjectMember.projectId, personId: schema.workProjectMember.personId }).from(schema.workProjectMember).innerJoin(schema.person, eq(schema.person.id, schema.workProjectMember.personId)).where(and(inArray(schema.workProjectMember.projectId, allProjectIds), notGone)) : [],
+  ]);
+  const byTeam = Map.groupBy(teamPeople, (row) => row.scopeId);
+  const byProject = Map.groupBy(projectPeople, (row) => row.scopeId);
+  const peopleOf = (teamId: string | null, projectId: string | null) => new Set([...(teamId ? (byTeam.get(teamId) ?? []) : []), ...(projectId ? (byProject.get(projectId) ?? []) : [])].map((row) => row.personId).filter((id) => id !== options.leaverId));
+
+  // The lead to ask about work the runner may not open.
+  const leadIds = [...new Set([...[...tasks.values()].map((task) => task.project?.leadPersonId), ...projects.map((row) => row.project.leadPersonId), ...recurrences.map((row) => row.project?.leadPersonId)].filter((id): id is string => !!id))];
+  const leadNames = new Map((leadIds.length ? await executor.select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, leadIds)) : []).map((row) => [row.id, row.name]));
+
+  const gates = new Map<string, ItemGate>();
+  for (const item of items) {
+    const key = gateKey(item);
+    if (item.kind === "task" || item.kind === "review") {
+      const task = tasks.get(item.id);
+      if (!task) continue;
+      gates.set(key, { visible: canViewTask(viewer, task.facts), manage: canModerateTask(viewer, task.facts), ownerName: leadNames.get(task.project?.leadPersonId ?? "") ?? null, eligible: peopleOf(task.team.id, task.work.projectId) });
+    } else if (item.kind === "project_lead" || item.kind === "account_manager") {
+      const row = projects.find((entry) => entry.project.id === item.id);
+      if (!row) continue;
+      const facts = projectFacts(row.project, row.team);
+      gates.set(key, { visible: canViewProject(viewer, facts), manage: canManageProject(viewer, facts), ownerName: leadNames.get(row.project.leadPersonId ?? "") ?? null, eligible: peopleOf(row.team.id, row.project.id) });
+    } else if (item.kind === "recurrence") {
+      const row = recurrences.find((entry) => entry.id === item.id);
+      if (!row) continue;
+      const facts = row.project ? projectFacts(row.project, row.team) : null;
+      gates.set(key, { visible: facts ? canViewProject(viewer, facts) : canViewTeamBacklog(viewer, teamFacts(row.team)), manage: facts ? canManageProject(viewer, facts) : canAdminTeam(viewer, teamFacts(row.team)), ownerName: leadNames.get(row.project?.leadPersonId ?? "") ?? null, eligible: peopleOf(row.team.id, row.project?.id ?? null) });
+    } else if (item.kind === "intake_form" || item.kind === "automation" || item.kind === "team_lead") {
+      const team = item.kind === "intake_form" ? forms.find((entry) => entry.id === item.id)?.team : item.kind === "automation" ? automations.find((entry) => entry.id === item.id)?.team : ledTeams.find((entry) => entry.id === item.id);
+      const projectId = item.kind === "automation" ? (automations.find((entry) => entry.id === item.id)?.projectId ?? null) : null;
+      if (!team) continue;
+      const runs = canAdminTeam(viewer, teamFacts(team));
+      gates.set(key, { visible: runs || !projectId, manage: runs, ownerName: null, eligible: peopleOf(team.id, projectId) });
+    } else if (item.kind === "client_account") {
+      const client = clients.find((entry) => entry.id === item.id);
+      if (!client) continue;
+      gates.set(key, { visible: true, manage: canChangeAccountManager(viewer, client), ownerName: null, eligible: null });
+    }
+  }
+  return gates;
+}
+
 // ── Opening handovers from lifecycle events (the job) ───────────────────────────────────────
 
 async function teamLeadsOf(executor: Executor, personId: string): Promise<string[]> {
@@ -188,7 +275,7 @@ export async function syncExitHandovers(now: Date, today: IsoDate): Promise<{ op
 
 // ── Reading one handover ────────────────────────────────────────────────────────────────────
 
-export type ExitHandoverView = ExitHandoverRow & { personName: string; managerId: string | null; entityId: string | null; teamIds: string[]; step: { id: string; status: string; assigneeName: string | null } | null; owned: OwnedItem[]; summary: ReturnType<typeof ownershipSummary>; facts: ExitHandoverFacts };
+export type ExitHandoverView = ExitHandoverRow & { personName: string; managerId: string | null; entityId: string | null; teamIds: string[]; step: { id: string; status: string; assigneeName: string | null } | null; owned: OwnedItemView[]; summary: ReturnType<typeof ownershipSummary>; facts: ExitHandoverFacts };
 
 export async function findExitHandover(handoverId: string, executor: Executor = db()): Promise<ExitHandoverRow | undefined> {
   const [row] = await executor.select().from(schema.workExitHandover).where(eq(schema.workExitHandover.id, handoverId)).limit(1);
@@ -204,7 +291,11 @@ export async function exitHandoverFacts(handover: Pick<ExitHandoverRow, "personI
   return { personId: handover.personId, managerId: person?.managerId ?? null, entityId: person?.entityId ?? null, teamIds: teams.map((row) => row.teamId) };
 }
 
-export async function getExitHandover(handoverId: string): Promise<ExitHandoverView | undefined> {
+/**
+ * One handover as `viewer` runs it: everything the person still owns, each item saying whether this
+ * runner may hand it on and — where they may not open it — without its name.
+ */
+export async function getExitHandover(handoverId: string, viewer: WorkViewer): Promise<ExitHandoverView | undefined> {
   const handover = await findExitHandover(handoverId);
   if (!handover) return undefined;
   const assignee = schema.person;
@@ -214,7 +305,13 @@ export async function getExitHandover(handoverId: string): Promise<ExitHandoverV
     db().select({ name: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, handover.personId)).limit(1),
     handover.taskId ? db().select({ id: schema.task.id, status: schema.task.status, assigneeName: assignee.fullName }).from(schema.task).leftJoin(assignee, eq(assignee.id, schema.task.assigneePersonId)).where(eq(schema.task.id, handover.taskId)).limit(1) : [],
   ]);
-  return { ...handover, personName: person?.name ?? "", managerId: facts.managerId, entityId: facts.entityId, teamIds: [...facts.teamIds], step: step ?? null, owned, summary: ownershipSummary(owned), facts };
+  const gates = await gateOwnership(db(), viewer, owned, { leaverId: handover.personId });
+  const shown = owned.map((item): OwnedItemView => {
+    // A time week is the person's own and is never reassigned: it has no gate and no name to hide.
+    const gate = item.kind === "time_week" ? { visible: true, manage: false, ownerName: null } : (gates.get(gateKey(item)) ?? CLOSED_GATE);
+    return { ...item, label: gate.visible ? item.label : null, context: gate.visible ? item.context : null, canReassign: gate.manage && isReassignable(item.kind), ownerName: gate.ownerName };
+  });
+  return { ...handover, personName: person?.name ?? "", managerId: facts.managerId, entityId: facts.entityId, teamIds: [...facts.teamIds], step: step ?? null, owned: shown, summary: ownershipSummary(owned), facts };
 }
 
 /** Open handovers a person runs as line manager or team lead — for "My work". */
@@ -240,7 +337,7 @@ export type ReassignResult = { moved: { kind: OwnershipKind; id: string; label: 
  * Items the person no longer owns are skipped (someone else was quicker). The new owner of a task
  * hears as for any task handed to them.
  */
-export async function reassignOwnership(handoverId: string, input: { items: { kind: OwnershipKind; id: string }[]; toPersonId: string; note: Note }, actor: { personId: string; fullName: string }): Promise<ReassignResult> {
+export async function reassignOwnership(handoverId: string, input: { items: { kind: OwnershipKind; id: string }[]; toPersonId: string; note: Note }, actor: { personId: string; fullName: string }, viewer: WorkViewer): Promise<ReassignResult> {
   const result = await db().transaction(async (tx) => {
     const handover = await findExitHandover(handoverId, tx);
     if (!handover || handover.status !== "open") throw new ActionError("exit_handover_closed");
@@ -248,11 +345,20 @@ export async function reassignOwnership(handoverId: string, input: { items: { ki
     if (problem) throw new ActionError(problem);
     const note = normalizeNote(input.note);
     if (noteIsEmpty(note)) throw new ActionError("handoff_note_required");
-    const [to] = await tx.select({ id: schema.person.id, status: schema.person.status }).from(schema.person).where(eq(schema.person.id, input.toPersonId)).limit(1);
+    const [to] = await tx.select({ id: schema.person.id, status: schema.person.status, workforceType: schema.person.workforceType }).from(schema.person).where(eq(schema.person.id, input.toPersonId)).limit(1);
     if (!to || to.status === "offboarded") throw new ActionError("person_not_found");
 
     const owned = await listOwnership(handover.personId, tx, { timeWeeks: false });
     const chosen = owned.filter((item) => input.items.some((wanted) => wanted.kind === item.kind && wanted.id === item.id));
+    // Each item on its own: the runner must run the place it belongs to, and the new owner must be
+    // someone that place can give work to (a client relationship goes to an employee of the company).
+    const gates = await gateOwnership(tx, viewer, chosen, { leaverId: handover.personId });
+    for (const item of chosen) {
+      const gate = gates.get(gateKey(item)) ?? CLOSED_GATE;
+      if (!gate.manage) throw new ActionError("exit_item_not_yours", gate.visible ? { item: item.label } : undefined);
+      const fits = gate.eligible ? gate.eligible.has(to.id) : to.workforceType !== "collaborator";
+      if (!fits) throw new ActionError("person_not_assignable", gate.visible ? { item: item.label } : undefined);
+    }
     const leaver = handover.personId;
     const sourceRef = { lifecycleEventId: handover.lifecycleEventId, handoverId: handover.id };
     const record = (values: { taskId?: string | null; clientId?: string | null; ref?: Record<string, string> }) =>

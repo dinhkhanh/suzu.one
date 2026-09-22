@@ -88,8 +88,7 @@ export const spaceOwner = (space: { entityId: string | null; ownerUnitId: string
 // A project's document space is managed by nobody through a role: it opens to the project's people
 // by its access row, and `kb:manage` stops at its door (FR-PJM-31; see kb_space.owner_project_id).
 export const canManageSpace = (principal: Principal, space: { entityId: string | null; ownerUnitPath?: readonly string[] | null; ownerProjectId?: string | null }): boolean =>
-  !space.ownerProjectId &&
-  can(principal, "kb:manage", { entityId: space.entityId }) || (!!space.ownerUnitPath?.length && can(principal, "kb:manage_unit", { unitPath: space.ownerUnitPath, entityId: space.entityId }));
+  !space.ownerProjectId && (can(principal, "kb:manage", { entityId: space.entityId }) || (!!space.ownerUnitPath?.length && can(principal, "kb:manage_unit", { unitPath: space.ownerUnitPath, entityId: space.entityId })));
 
 /** The "new space" button. Never guards data. */
 export const canManageAnySpace = (principal: Principal): boolean => can(principal, "kb:manage") || can(principal, "kb:manage_unit");

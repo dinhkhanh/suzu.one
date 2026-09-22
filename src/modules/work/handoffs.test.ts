@@ -171,8 +171,8 @@ describe("leave cover (FR-PJM-44)", () => {
     const requestId = await leave("lan", from, to, "approved", 5);
 
     expect(await syncCoverPlans(TODAY)).toMatchObject({ drafted: 1 });
-    expect(await getCoverPlanForLeave(short)).toBeUndefined();
-    const draft = (await getCoverPlanForLeave(requestId))!;
+    expect(await getCoverPlanForLeave(short, await viewer("lan"))).toBeUndefined();
+    const draft = (await getCoverPlanForLeave(requestId, await viewer("lan")))!;
     expect(draft).toMatchObject({ status: "draft", personName: "lan", fromDate: from, toDate: to });
     expect(draft.items.map((item) => [item.itemType, item.itemId])).toEqual([["task", due.id]]);
     expect(draft.items.map((item) => item.itemId)).not.toContain(later.id);
@@ -193,13 +193,13 @@ describe("leave cover (FR-PJM-44)", () => {
     expect(await syncCoverPlans(from)).toMatchObject({ applied: 1 });
     expect(await syncCoverPlans(from)).toMatchObject({ applied: 0 });
     expect((await loadTask(due.id))!.task.assigneePersonId).toBe(ids.bao);
-    const plan = (await getCoverPlan(draft.id))!;
+    const plan = (await getCoverPlan(draft.id, await viewer("lan")))!;
     expect(plan.items[0]).toMatchObject({ effectiveCoverName: "bao", handoffStatus: "accepted" });
 
-    const { returned } = await handBackCover(draft.id, actor("lan"));
+    const { returned } = await handBackCover(draft.id, actor("lan"), to, { whole: true });
     expect(returned).toBe(1);
     expect((await loadTask(due.id))!.task.assigneePersonId).toBe(ids.lan);
-    expect((await getCoverPlan(draft.id))!.status).toBe("handed_back");
+    expect((await getCoverPlan(draft.id, await viewer("lan")))!.status).toBe("handed_back");
     expect(await noticesOf("bao", "tasks.cover_handed_back")).toHaveLength(1);
     expect((await listTaskHandoffs(due.id, await viewer("long"))).map((row) => row.kind)).toEqual(["cover_return", "cover"]);
   });
@@ -208,10 +208,10 @@ describe("leave cover (FR-PJM-44)", () => {
     await createWorkTask({ teamId: ids.video, projectId: ids.project, title: "Việc của Huy", assigneePersonId: ids.huy, dueDate: addDays(TODAY, 21) }, ids.long);
     const requestId = await leave("huy", addDays(TODAY, 20), addDays(TODAY, 22), "pending", 3);
     await syncCoverPlans(TODAY, { personId: ids.huy });
-    expect((await getCoverPlanForLeave(requestId))!.status).toBe("draft");
+    expect((await getCoverPlanForLeave(requestId, await viewer("huy")))!.status).toBe("draft");
     await db().update(schema.leaveRequest).set({ status: "withdrawn" }).where(eq(schema.leaveRequest.id, requestId));
     expect(await syncCoverPlans(TODAY, { personId: ids.huy })).toMatchObject({ cancelled: 1 });
-    expect((await getCoverPlanForLeave(requestId))!.status).toBe("cancelled");
+    expect((await getCoverPlanForLeave(requestId, await viewer("huy")))!.status).toBe("cancelled");
   });
 
   it("lists stay readable with an absence under way, and show who covers", async () => {
@@ -242,15 +242,15 @@ describe("exit handover (FR-PJM-45)", () => {
     expect(step).toMatchObject({ kind: "checklist", assigneePersonId: ids.long, contextType: "lifecycle_event", contextId: event.id, subjectPersonId: leaver, linkUrl: `/work/handover/${row.id}` });
     expect(await noticesOf("long", "tasks.exit_handover")).toHaveLength(1);
 
-    const handover = (await getExitHandover(row.id))!;
+    const handover = (await getExitHandover(row.id, await viewer("long")))!;
     expect(handover.summary.blocking).toEqual(["task", "review", "team_lead"]);
     const refusal = (await failure(setTaskStatus(step.id, "done", ids.long))) as Error & { details: { count: number } };
     expect(refusal.message).toBe("work_handover_open");
     expect(refusal.details.count).toBe(handover.owned.length);
 
-    expect(await fails(reassignOwnership(row.id, { items: handover.owned, toPersonId: ids.bao, note: {} }, actor("long")))).toBe("handoff_note_required");
-    expect(await fails(reassignOwnership(row.id, { items: handover.owned, toPersonId: leaver, note: { context: "x" } }, actor("long")))).toBe("exit_reassign_to_self");
-    const result = await reassignOwnership(row.id, { items: handover.owned, toPersonId: ids.bao, note: { context: "Huy nghỉ việc", next: "Bảo tiếp nhận" } }, actor("long"));
+    expect(await fails(reassignOwnership(row.id, { items: handover.owned, toPersonId: ids.bao, note: {} }, actor("long"), await viewer("long")))).toBe("handoff_note_required");
+    expect(await fails(reassignOwnership(row.id, { items: handover.owned, toPersonId: leaver, note: { context: "x" } }, actor("long"), await viewer("long")))).toBe("exit_reassign_to_self");
+    const result = await reassignOwnership(row.id, { items: handover.owned, toPersonId: ids.bao, note: { context: "Huy nghỉ việc", next: "Bảo tiếp nhận" } }, actor("long"), await viewer("long"));
     expect(result.remaining).toBe(0);
     expect(await listOwnership(leaver)).toEqual([]);
     expect((await loadTask(reviewTask.id))!.work.reviewerPersonId).toBe(ids.bao);
@@ -259,7 +259,7 @@ describe("exit handover (FR-PJM-45)", () => {
     expect((await listTaskHandoffs(reviewTask.id, await viewer("long")))[0]).toMatchObject({ kind: "exit", toName: "bao", note: { context: "Huy nghỉ việc" } });
 
     await setTaskStatus(step.id, "done", ids.long);
-    expect((await getExitHandover(row.id))!.status).toBe("done");
+    expect((await getExitHandover(row.id, await viewer("long")))!.status).toBe("done");
   });
 });
 
@@ -267,8 +267,8 @@ describe("account handover (FR-PJM-46)", () => {
   it("needs a note and moves the account-manager role on the client's open projects", async () => {
     await setProjectMember(ids.project, ids.lan, "account_manager");
     await db().update(schema.workClient).set({ accountManagerPersonId: ids.lan }).where(eq(schema.workClient.id, ids.client));
-    expect(await fails(changeAccountManager(ids.client, { toPersonId: ids.bao, note: {} }, actor("long")))).toBe("handoff_note_required");
-    const result = await changeAccountManager(ids.client, { toPersonId: ids.bao, note: { context: "Lan chuyển sang khách khác", contacts: "Chị Mai – brand manager" } }, actor("long"));
+    expect(await fails(changeAccountManager(ids.client, { toPersonId: ids.bao, note: {} }, actor("long"), await viewer("long")))).toBe("handoff_note_required");
+    const result = await changeAccountManager(ids.client, { toPersonId: ids.bao, note: { context: "Lan chuyển sang khách khác", contacts: "Chị Mai – brand manager" } }, actor("long"), await viewer("long"));
     expect(result).toMatchObject({ before: ids.lan, after: ids.bao, skipped: [] });
     expect(result.projects.map((project) => project.id)).toEqual([ids.project]);
     const roles = await db().select({ personId: schema.workProjectMember.personId, role: schema.workProjectMember.role }).from(schema.workProjectMember).where(eq(schema.workProjectMember.projectId, ids.project));
@@ -276,7 +276,7 @@ describe("account handover (FR-PJM-46)", () => {
     expect(roles.find((row) => row.personId === ids.lan)?.role).toBe("member");
     expect(result.handoff).toMatchObject({ kind: "account", clientId: ids.client, fromPersonId: ids.lan, toPersonId: ids.bao, status: "recorded" });
     // The lead of a project is not also its account manager: that project keeps its lead and is named back.
-    const led = await changeAccountManager(ids.client, { toPersonId: ids.tam, note: { context: "Tâm nhận khách" } }, actor("long"));
+    const led = await changeAccountManager(ids.client, { toPersonId: ids.tam, note: { context: "Tâm nhận khách" } }, actor("long"), await viewer("long"));
     expect(led.skipped.map((project) => project.id)).toEqual([ids.project]);
   });
 });

@@ -9,6 +9,7 @@ import { notify } from "../platform/notifications/service";
 import { CHANNELS, CONTENT_FORMATS } from "../work/enums";
 import { createWorkTaskIn, loadTasks } from "../work/service";
 import { billMilestone } from "./billing";
+import { checkProjectPerson } from "./membership";
 import { ensurePlan } from "./plans";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -80,10 +81,8 @@ export async function saveMilestone(projectId: string, milestoneId: string | nul
   return db().transaction(async (tx) => {
     await ensurePlan(projectId, tx);
     await phaseOf(tx, projectId, input.phaseId);
-    if (input.ownerPersonId) {
-      const [owner] = await tx.select({ status: schema.person.status }).from(schema.person).where(eq(schema.person.id, input.ownerPersonId)).limit(1);
-      if (!owner || owner.status === "offboarded") throw new ActionError("person_not_found");
-    }
+    // A milestone is owned by one of the project's people, not by anyone in the directory.
+    await checkProjectPerson(tx, projectId, input.ownerPersonId);
     const { billingAmountVnd, ...rest } = input;
     const values = { ...rest, ...(billingAmountVnd === undefined ? {} : { billingAmountVnd: rest.isBilling ? billingAmountVnd : null }) };
     if (!milestoneId) {
@@ -212,6 +211,8 @@ export async function createTasksForLine(deliverableId: string, input: LineTasks
     if (line.cancelledAt) throw new ActionError("deliverable_cancelled");
     const [project] = await tx.select().from(schema.workProject).where(eq(schema.workProject.id, line.projectId)).limit(1);
     if (!project || project.status === "archived") throw new ActionError("project_archived");
+    // The line's tasks go to one of the project's people.
+    await checkProjectPerson(tx, line.projectId, input.assigneePersonId);
     const milestone = line.milestoneId ? await milestoneOf(tx, line.projectId, line.milestoneId) : null;
     const [linked] = await tx.select({ value: count() }).from(schema.projectTaskLink).where(eq(schema.projectTaskLink.deliverableId, line.id));
     const plan = await ensurePlan(line.projectId, tx);

@@ -10,10 +10,10 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { decideRequest, defineRequestType, getRequest, type RequestTypeDefinition, type RequestView, resubmitRequest, submitRequest } from "../platform/approvals/service";
-import { can, type Principal } from "../platform/rbac/policy";
+import type { Principal } from "../platform/rbac/policy";
 import { captureProjectBaseline, captureTaskBaselines } from "./baselines";
 import { briefProblems, type BriefStatus, briefSubmittable, type ProjectKind } from "./engine/brief";
-import { ensurePlan, type PlanRow } from "./plans";
+import { ensurePlan, type PlanRow, reconcileBrief } from "./plans";
 
 export type BriefRequestPayload = { projectId: string; jobNumber: string | null; projectName: string };
 
@@ -25,14 +25,19 @@ export const projectBriefRequest = defineRequestType({
   flow: { steps: [{ key: "team_lead", mode: "any", approvers: [{ rule: "permission", permission: "work:manage" }] }] },
   // A kick-off is read, not ticked: the approver opens the brief.
   bulkApprovable: () => false,
-  // Leaders who run the workspace follow every kick-off; the approvers are parties anyway.
-  canView: (viewer: Principal) => can(viewer, "work:manage", {}),
+  // Nobody reads a kick-off for holding a permission: a private project's brief stays with its
+  // people. Its requester and its approvers are the parties, and nobody else opens the request.
+  canView: () => false,
 });
 
-/** The type with the leads of the project's team as the approvers. */
-const briefFlowFor = (leadIds: readonly string[]): RequestTypeDefinition => ({
+/**
+ * The type with the leads of the project's team as the approvers. With none, a private project's
+ * step names nobody, so the engine asks the owners — never the `work:manage` holders of the default
+ * flow, who may not open a private project.
+ */
+const briefFlowFor = (leadIds: readonly string[], isPrivate: boolean): RequestTypeDefinition => ({
   ...projectBriefRequest,
-  flow: leadIds.length ? { steps: [{ key: "team_lead", mode: "any", approvers: leadIds.map((personId) => ({ rule: "person" as const, personId })) }] } : projectBriefRequest.flow,
+  flow: leadIds.length ? { steps: [{ key: "team_lead", mode: "any", approvers: leadIds.map((personId) => ({ rule: "person" as const, personId })) }] } : isPrivate ? { steps: [{ key: "team_lead", mode: "any", approvers: [] }] } : projectBriefRequest.flow,
 });
 
 async function lockPlan(tx: Tx, projectId: string): Promise<PlanRow> {
@@ -44,7 +49,9 @@ async function lockPlan(tx: Tx, projectId: string): Promise<PlanRow> {
 /** The author sends the brief to the gate — or, after a return, sends the same request round again. */
 export async function submitBrief(projectId: string, actorPersonId: string): Promise<{ plan: PlanRow; requestId: string; resubmitted: boolean }> {
   return db().transaction(async (tx) => {
-    const plan = await lockPlan(tx, projectId);
+    // A kick-off withdrawn or returned from the approvals inbox left the brief "submitted": it is
+    // the author's again before this submission is judged (reads never write it back).
+    const plan = await reconcileBrief(tx, await lockPlan(tx, projectId));
     if (!briefSubmittable(plan.briefStatus as BriefStatus)) throw new ActionError("brief_not_submittable");
     const problems = briefProblems(plan.brief, plan.kind as ProjectKind);
     if (problems.length) throw new ActionError("brief_incomplete", { fields: problems });
@@ -60,7 +67,7 @@ export async function submitBrief(projectId: string, actorPersonId: string): Pro
     }
 
     const leads = await tx.select({ personId: schema.workTeamMember.personId }).from(schema.workTeamMember).where(and(eq(schema.workTeamMember.teamId, project.teamId), eq(schema.workTeamMember.role, "lead"))).orderBy(asc(schema.workTeamMember.createdAt));
-    const { request, outcome } = await submitRequest(tx, briefFlowFor(leads.map((row) => row.personId)), {
+    const { request, outcome } = await submitRequest(tx, briefFlowFor(leads.map((row) => row.personId), project.visibility === "private"), {
       entityId: project.entityId,
       requesterPersonId: actorPersonId,
       subjectPersonId: null,
@@ -115,22 +122,6 @@ export async function decideBrief(actorPersonId: string, requestId: string, deci
     }
     return { projectId, outcome, plan, entityId: request.entityId, before: { status: before.status } };
   });
-}
-
-/**
- * The engine's own "withdraw" knows nothing of plans: a brief whose request was withdrawn or
- * cancelled is the author's draft again the next time the plan is read.
- */
-export async function syncBriefState(plan: PlanRow): Promise<PlanRow> {
-  if (plan.briefStatus !== "submitted" || !plan.briefApprovalRequestId) return plan;
-  const [request] = await db().select({ status: schema.approvalRequest.status }).from(schema.approvalRequest).where(eq(schema.approvalRequest.id, plan.briefApprovalRequestId)).limit(1);
-  if (request?.status === "pending") return plan;
-  const [after] = await db()
-    .update(schema.projectPlan)
-    .set({ briefStatus: request?.status === "returned" ? "returned" : "draft", briefApprovalRequestId: request?.status === "returned" ? plan.briefApprovalRequestId : null, updatedAt: new Date() })
-    .where(and(eq(schema.projectPlan.projectId, plan.projectId), eq(schema.projectPlan.briefStatus, "submitted")))
-    .returning();
-  return after ?? plan;
 }
 
 /** The kick-off request as the viewer may see it; null = none, or none of their business. */

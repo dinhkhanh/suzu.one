@@ -1,14 +1,14 @@
 // Opening a project for its plan pages: the work policy decides whether the viewer may, the plan
-// is made if missing and brought up to date (account manager, a withdrawn kick-off), and the money
-// is taken out unless the viewer holds `pjm:commercial` over the project's entity.
+// is read as it stands (its defaults when nothing has made it yet; the account manager and a
+// withdrawn kick-off as they are now) without writing anything, and the money is taken out unless
+// the viewer holds `pjm:commercial` over the project's entity.
 import "server-only";
-import { db } from "@/lib/db";
 import type { CurrentUser } from "../platform/auth/session";
 import type { RequestView } from "../platform/approvals/service";
 import type { WorkViewer } from "../work/policy";
 import { findProject, loadViewer, projectFacts } from "../work/service";
-import { getBriefRequest, syncBriefState } from "./kickoff";
-import { ensurePlan, isProjectClosed, type PlanRow, type PlanView, shapePlan, syncAccountManager } from "./plans";
+import { getBriefRequest } from "./kickoff";
+import { defaultPlan, isProjectClosed, planAsItStands, type PlanRow, type PlanView, readPlan, shapePlan } from "./plans";
 import { canEditClientSide, canEditFees, canEditPlan, canPostStatus, canSeeFees, canViewPlan, type PlanFacts } from "./policy";
 
 type Found = NonNullable<Awaited<ReturnType<typeof findProject>>>;
@@ -24,11 +24,6 @@ export type ProjectContext = {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function freshPlan(projectId: string): Promise<PlanRow> {
-  const plan = await syncAccountManager(db(), await ensurePlan(projectId));
-  return syncBriefState(plan);
-}
-
 /** null = no such project, or one the viewer may not open — the page answers notFound() either way. */
 export async function openProject(user: Pick<CurrentUser, "person" | "principal">, projectId: string): Promise<ProjectContext | null> {
   if (!UUID.test(projectId)) return null;
@@ -36,7 +31,7 @@ export async function openProject(user: Pick<CurrentUser, "person" | "principal"
   if (!found) return null;
   const workFacts = projectFacts(found.project, found.team);
   if (!canViewPlan(viewer, workFacts)) return null;
-  const plan = await freshPlan(projectId);
+  const plan = await planAsItStands((await readPlan(projectId)) ?? defaultPlan(found.project));
   const facts: PlanFacts = { ...workFacts, closed: !!plan.closedAt };
   const seeFees = canSeeFees(viewer, facts);
   return {
@@ -57,7 +52,8 @@ export async function openBriefForApprover(user: Pick<CurrentUser, "person" | "p
   if (!UUID.test(projectId)) return null;
   const found = await findProject(projectId);
   if (!found) return null;
-  const plan = await ensurePlan(projectId);
+  const plan = await readPlan(projectId);
+  if (!plan) return null;
   const request = await getBriefRequest({ personId: user.person.id, principal: user.principal }, plan);
   if (!request) return null;
   return { projectName: found.project.name, plan: { brief: plan.brief, kind: plan.kind, jobNumber: plan.jobNumber, briefStatus: plan.briefStatus }, request };

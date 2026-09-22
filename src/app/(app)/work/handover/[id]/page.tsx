@@ -16,7 +16,9 @@ export const metadata: Metadata = { title: "Work handover" };
 export default async function ExitHandoverPage({ params }: PageProps<"/work/handover/[id]">) {
   const user = await requireUser();
   const { id } = await params;
-  const [handover, viewer, t, format] = await Promise.all([/^[0-9a-f-]{36}$/.test(id) ? getExitHandover(id) : undefined, loadViewer(user), getTranslations("work"), getFormatter()]);
+  const [viewer, t, format] = await Promise.all([loadViewer(user), getTranslations("work"), getFormatter()]);
+  // Work of a project the runner does not run is listed without its name: they reassign what they run.
+  const handover = /^[0-9a-f-]{36}$/.test(id) ? await getExitHandover(id, viewer) : undefined;
   if (!handover || !canViewExitHandover(viewer, handover.facts)) notFound();
   const run = canRunExitHandover(viewer, handover.facts);
   const people = run ? (await listPersonNames()).filter((person) => person.id !== handover.personId) : [];

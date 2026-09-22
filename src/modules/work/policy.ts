@@ -45,6 +45,24 @@ export function canAdminTeam(viewer: WorkViewer, team: TeamFacts): boolean {
   return viewer.teamRoles.get(team.id) === "lead" || canManageWorkspace(viewer, team);
 }
 
+export type PersonPlacement = { entityId: string | null; /** `person.org_unit_path`: the person's unit and every unit above it. */ unitPath: readonly string[] };
+
+/**
+ * Adding someone to a team. Being in a team puts a person's day in front of its leads — their
+ * reports, plans and time, and their timesheets to approve — so a lead adds only people inside the
+ * team's own place: the team's entity (any, for a group team) and, when the team hangs off an org
+ * unit, that unit's subtree. Anyone else — a peer in another entity, the finance director — takes
+ * `work:manage` over where the person sits. Changing the role of someone already in the team, or
+ * taking them out, needs only the right to run the team.
+ */
+export function canAddTeamMember(viewer: WorkViewer, team: TeamFacts, person: PersonPlacement): boolean {
+  if (!canAdminTeam(viewer, team)) return false;
+  if (can(viewer.principal, "work:manage", { entityId: person.entityId, unitPath: person.unitPath })) return true;
+  const inEntity = team.entityId === null || person.entityId === team.entityId;
+  const inUnit = !team.departmentId || person.unitPath.includes(team.departmentId);
+  return inEntity && inUnit;
+}
+
 /** A team's name, members and workflow are directory information — not for collaborators who are not in it. */
 export function canViewTeam(viewer: WorkViewer, team: TeamFacts): boolean {
   return viewer.teamRoles.has(team.id) || canAdminTeam(viewer, team) || !isCollaborator(viewer);
@@ -221,13 +239,15 @@ export function canHandOff(viewer: WorkViewer, task: TaskFacts): boolean {
 }
 
 /**
- * Accepting or returning a hand-off: the person it was handed to, or whoever runs the team (a lead
- * may take it in for someone who is away) — never the sender, who cannot accept their own work.
+ * Accepting or returning a hand-off: the person it was handed to, or whoever runs the work it is on
+ * (a lead may take it in for someone who is away) — never the sender, who cannot accept their own
+ * work. "Whoever runs it" is the task's own answer (`canModerateTask`): a private project's
+ * hand-offs are answered inside the project, not by anyone with `work:manage` over the team.
  */
 export function canRespondToHandoff(viewer: WorkViewer, task: TaskFacts, handoff: { fromPersonId: string | null; toPersonId: string | null }): boolean {
   const self = viewer.principal.personId;
   if (!self || self === handoff.fromPersonId) return false;
-  return handoff.toPersonId === self || canAdminTeam(viewer, task.team);
+  return handoff.toPersonId === self || canModerateTask(viewer, task);
 }
 
 /**
@@ -261,7 +281,11 @@ export function canAcknowledgeCover(viewer: WorkViewer, plan: Pick<CoverPlanFact
   return !!self && plan.coverIds.includes(self);
 }
 
-/** Handing back after the leave: the person back at work, a cover returning it, or whoever may submit the plan. */
+/**
+ * Handing back after the leave: the person back at work, a cover returning what they hold, or
+ * whoever may submit the plan. How much goes back is the service's call (`handBackCover`): a cover
+ * hands back only their own items, and nobody hands anything back before the leave's last day.
+ */
 export function canHandBackCover(viewer: WorkViewer, plan: CoverPlanFacts): boolean {
   return canViewCoverPlan(viewer, plan);
 }
@@ -285,9 +309,13 @@ export function canViewExitHandover(viewer: WorkViewer, handover: ExitHandoverFa
   return viewer.principal.personId === handover.personId || canRunExitHandover(viewer, handover);
 }
 
-/** Account handover (FR-PJM-46): the client list is kept by leaders with `work:manage`, and so is who owns each relationship. */
-export function canChangeAccountManager(viewer: WorkViewer): boolean {
-  return canManageWorkspace(viewer);
+/**
+ * Account handover (FR-PJM-46): the client list is kept by leaders with `work:manage`, and so is who
+ * owns each relationship — over the client's entity; a group client (no entity) takes a group-wide
+ * grant. The projects the role moves on are weighed one by one (`canManageProject`).
+ */
+export function canChangeAccountManager(viewer: WorkViewer, client: { entityId: string | null }): boolean {
+  return canManageWorkspace(viewer, { entityId: client.entityId, departmentId: null });
 }
 
 // ── Delivery (FR-PJM-50..57) ────────────────────────────────────────────────────────────────
@@ -352,9 +380,12 @@ export function canManagePublish(viewer: WorkViewer, task: TaskFacts): boolean {
 /**
  * Keeping a team's rules — and a project's own: only whoever runs the team. A rule acts on everyone's
  * work without asking (moves, assigns, sets dates), so it is the lead's call, not a project member's.
+ * A project's own rules also need the right to run that project: `work:manage` over the team does
+ * not reach into a private project, and neither do rules written from there.
  */
-export function canManageAutomations(viewer: WorkViewer, team: TeamFacts): boolean {
-  return canAdminTeam(viewer, team);
+export function canManageAutomations(viewer: WorkViewer, team: TeamFacts, project: ProjectFacts | null = null): boolean {
+  if (!canAdminTeam(viewer, team)) return false;
+  return !project || (project.team.id === team.id && canManageProject(viewer, project));
 }
 
 /** Reading the rules and their runs: the team's own people — the rules are how the team works. */

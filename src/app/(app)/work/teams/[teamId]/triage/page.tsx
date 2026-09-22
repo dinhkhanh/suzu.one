@@ -20,13 +20,13 @@ export default async function TriagePage({ params }: PageProps<"/work/teams/[tea
   const today = todayInVietnam();
 
   const [items, people, labels, projects, forms, rules, mergeTargets] = await Promise.all([
-    listTriage(team.id),
+    listTriage(team.id, viewer),
     listAssignable(team.id, null),
     listLabels([team.id]),
     visibleProjects(viewer, { today }),
     decide ? listTeamIntakeForms(team.id) : [],
     decide ? listTriageRules(team.id) : [],
-    decide ? listMergeTargets(team.id) : [],
+    decide ? listMergeTargets(team.id, viewer) : [],
   ]);
   const choices = {
     people,

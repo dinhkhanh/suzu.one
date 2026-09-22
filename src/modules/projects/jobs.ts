@@ -10,7 +10,8 @@ import { notify } from "../platform/notifications/service";
 import { alertsDue } from "./engine/budget";
 import { milestoneReminder, updateDueOn } from "./engine/status";
 import { loadBurns } from "./metrics";
-import { backfillPlans } from "./plans";
+import { reconcileChanges } from "./change-requests";
+import { backfillPlans, reconcilePlans } from "./plans";
 import { runRetainers, sendQuotaAlerts } from "./retainers";
 
 const RUNNING = ["planned", "active", "paused"];
@@ -110,8 +111,12 @@ export async function sendStatusReminders(today: IsoDate): Promise<{ reminded: n
   return { reminded };
 }
 
-/** At midnight: every project has its plan and job number before anyone opens the portfolio. */
-export const projectPlansJob: JobDefinition = { name: "project-plans", run: () => backfillPlans() };
+/**
+ * At midnight: every project has its plan and job number, and what pages read without writing — the
+ * account manager of the member roles, kick-offs and changes withdrawn or returned from the approvals
+ * inbox — is stored.
+ */
+export const projectPlansJob: JobDefinition = { name: "project-plans", run: async () => ({ ...(await backfillPlans()), ...(await reconcilePlans()), ...(await reconcileChanges()) }) };
 
 /** In the morning: milestones, budget and retainer quota alerts, status updates due — read with the day's first coffee. */
 export const projectRemindersJob: JobDefinition = {

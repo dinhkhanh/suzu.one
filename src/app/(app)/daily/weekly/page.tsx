@@ -3,7 +3,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { addDays, todayInVietnam } from "@/lib/dates";
-import { listWeekly, loadReportReader, type PersonWeek, type TeamWeek, weekStartOf } from "@/modules/daily/service";
+import { listWeekly, loadReportReader, type ShownPersonWeek, type ShownTeamWeek, weekStartOf } from "@/modules/daily/service";
+import { TaskLines } from "@/modules/daily/ui/activity-list";
 import { hoursOf } from "@/modules/daily/ui/format";
 import { GenerateWeekButton, WeeklySummaryForm } from "@/modules/daily/ui/weekly-forms";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -12,7 +13,9 @@ import { canAdminTeam, listTeams, loadViewer, teamFacts } from "@/modules/work/s
 export const metadata: Metadata = { title: "Weekly reports" };
 
 // FR-PJM-23: the week of each team the viewer runs and of each person whose reports they read —
-// generated on Monday morning for the week before; the lead adds a summary.
+// generated on Monday morning for the week before; the lead adds a summary. A team's people and
+// their blockers are listed only for a reader who may read their reports, and work on a project or
+// task the reader may not open shows as private work with its hours (`listWeekly`).
 export default async function WeeklyPage({ searchParams }: PageProps<"/daily/weekly">) {
   const user = await requireUser();
   const today = todayInVietnam();
@@ -24,12 +27,12 @@ export default async function WeeklyPage({ searchParams }: PageProps<"/daily/wee
   const { teams: teamWeeks, people } = await listWeekly(reader, weekStart, runs);
   const notGenerated = teams.filter((team) => team.isActive && runs(team) && !teamWeeks.some((row) => row.team.id === team.id));
   const day = (iso: string) => format.dateTime(new Date(`${iso}T12:00:00Z`), { day: "numeric", month: "short" });
-  const hoursList = (week: PersonWeek | TeamWeek) =>
+  const hoursList = (week: ShownPersonWeek | ShownTeamWeek) =>
     week.hoursByProject.length > 0 ? (
       <ul className="flex flex-col gap-0.5 text-sm">
         {week.hoursByProject.map((group) => (
           <li key={group.projectId ?? group.category ?? "none"} className="flex gap-2">
-            <span className="min-w-0 flex-1">{group.name ?? (group.category ? t(`time.categories.${group.category as "admin"}`) : "—")}</span>
+            <span className="min-w-0 flex-1">{group.hidden ? <span className="text-muted-foreground italic">{t("privateWork")}</span> : (group.name ?? (group.category ? t(`time.categories.${group.category as "admin"}`) : "—"))}</span>
             <span className="tabular-nums">{t("hours", { value: hoursOf(group.minutes) })}</span>
           </li>
         ))}
@@ -114,28 +117,12 @@ export default async function WeeklyPage({ searchParams }: PageProps<"/daily/wee
               <div className="mt-3 flex flex-col gap-3 text-sm">
                 <div>
                   <h3 className="text-xs font-medium text-muted-foreground">{t("weekly.done", { count: content.done.length })}</h3>
-                  <ul className="flex flex-col gap-0.5">
-                    {content.done.map((line) => (
-                      <li key={line.taskId}>
-                        <Link href={`/work/tasks/${line.taskId}`} className="hover:underline">
-                          <span className="font-mono text-xs text-muted-foreground">{line.ref}</span> {line.title}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
+                  <TaskLines lines={content.done} empty={t("report.noneDone")} />
                 </div>
                 {content.slipped.length > 0 ? (
                   <div>
                     <h3 className="text-xs font-medium text-muted-foreground">{t("weekly.slipped", { count: content.slipped.length })}</h3>
-                    <ul className="flex flex-col gap-0.5">
-                      {content.slipped.map((line) => (
-                        <li key={line.taskId}>
-                          <Link href={`/work/tasks/${line.taskId}`} className="hover:underline">
-                            <span className="font-mono text-xs text-muted-foreground">{line.ref}</span> {line.title}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
+                    <TaskLines lines={content.slipped} empty={t("report.noneDone")} />
                   </div>
                 ) : null}
                 {content.blockers.length > 0 ? (

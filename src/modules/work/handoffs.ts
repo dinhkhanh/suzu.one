@@ -4,15 +4,18 @@
 // they leave. Every kind writes one `work_handoff` row with the same note shape (FR-PJM-43).
 import "server-only";
 import { and, asc, desc, eq, gte, inArray, isNull, ne, notInArray, sql } from "drizzle-orm";
+import { createTranslator } from "next-intl";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
+import vi from "../../../messages/vi.json";
 import { notify } from "../platform/notifications/service";
 import { runTaskAutomations } from "./automations";
 import { invalidateWorkDirectory } from "./directory";
 import { type HandoffStatus, keptValues, missingItems, normalizeNote, type Note, noteIsEmpty, packageProblem, type PackageField, stageOutcome } from "./engine/handoff";
 import { findPackageFor, type HandoffPackageRow } from "./handoff-gate";
-import { canViewTask, type WorkViewer } from "./policy";
+import { canManageProject, canViewTask, type WorkViewer } from "./policy";
+import { projectFacts } from "./projects";
 import { type LoadedTask, createWorkTaskIn, loadTask, loadTasks, logActivity, taskKey, updateWorkTaskIn } from "./tasks";
 import { invalidateWorkClients } from "./teams";
 import { sendToTriage } from "./triage";
@@ -26,10 +29,10 @@ const keyOf = (loaded: LoadedTask) => taskKey(loaded.team.key, loaded.work.numbe
 const named = (loaded: LoadedTask) => `${keyOf(loaded)} ${loaded.task.title}`;
 const newId = () => crypto.randomUUID().slice(0, 8);
 
-async function activePerson(tx: Executor, personId: string): Promise<{ id: string; name: string }> {
-  const [row] = await tx.select({ id: schema.person.id, name: schema.person.fullName, status: schema.person.status }).from(schema.person).where(eq(schema.person.id, personId)).limit(1);
+async function activePerson(tx: Executor, personId: string): Promise<{ id: string; name: string; workforceType: string | null }> {
+  const [row] = await tx.select({ id: schema.person.id, name: schema.person.fullName, status: schema.person.status, workforceType: schema.person.workforceType }).from(schema.person).where(eq(schema.person.id, personId)).limit(1);
   if (!row || row.status === "offboarded") throw new ActionError("person_not_found");
-  return { id: row.id, name: row.name };
+  return { id: row.id, name: row.name, workforceType: row.workforceType };
 }
 
 // ── Packages (FR-PJM-40) ────────────────────────────────────────────────────────────────────
@@ -255,17 +258,22 @@ export async function sendToTeam(taskId: string, input: CrossTeamInput, actor: A
   });
 }
 
-/** The note in the receiving task's brief, so triage reads it without opening anything else. */
+/**
+ * The note in the receiving task's brief, so triage reads it without opening anything else. The
+ * section names are stored in the task's description, so they are written once in the company's
+ * language, from the messages — never as literals here.
+ */
 function describeNote(note: Note, from: string): string {
+  const label = createTranslator({ locale: "vi", messages: vi, namespace: "work.handoff.note" });
   const parts: [string, string | undefined][] = [
     ["↪", from],
-    ["Bối cảnh / Context", note.context],
-    ["Hiện trạng / State", note.state],
-    ["Đã làm / Done", note.done],
-    ["Việc tiếp theo / Next", note.next],
-    ["Câu hỏi mở / Questions", note.questions],
-    ["Liên hệ / Contacts", note.contacts],
-    ["Links", note.links?.join("\n")],
+    [label("context"), note.context],
+    [label("state"), note.state],
+    [label("done"), note.done],
+    [label("next"), note.next],
+    [label("questions"), note.questions],
+    [label("contacts"), note.contacts],
+    [label("links"), note.links?.join("\n")],
   ];
   return parts
     .filter(([, value]) => value)
@@ -276,28 +284,40 @@ function describeNote(note: Note, from: string): string {
 
 // ── Account handover (FR-PJM-46) ────────────────────────────────────────────────────────────
 
-export type AccountHandoverResult = { before: string | null; after: string; projects: { id: string; name: string }[]; skipped: { id: string; name: string }[]; handoff: HandoffRow };
+export type AccountHandoverResult = { before: string | null; after: string; projects: { id: string; name: string }[]; skipped: { id: string; name: string }[]; /** Open projects the actor may not run: left as they were, and not named. */ withheld: number; handoff: HandoffRow };
 
 /**
  * A client's relationship changes hands with a note: the client's account manager, and the
  * `account_manager` role on its open projects (the member role is what grants the rights; the
  * project layer's own column follows it). A project whose lead is the new manager keeps its lead
  * and is named back — a lead is not also its own account manager (FR-PJM-14).
+ *
+ * The role is a door into each project, so it moves only where the actor may run the project
+ * (`canManageProject`): a private project — or one of another entity — keeps its account manager
+ * and is only counted, never named. The new manager is an employee who has not left: an outside
+ * collaborator does not own a client relationship.
  */
-export async function changeAccountManager(clientId: string, input: { toPersonId: string; note: Note }, actor: Actor): Promise<AccountHandoverResult> {
+export async function changeAccountManager(clientId: string, input: { toPersonId: string; note: Note }, actor: Actor, viewer: WorkViewer): Promise<AccountHandoverResult> {
   const result = await db().transaction(async (tx) => {
     const [client] = await tx.select().from(schema.workClient).where(eq(schema.workClient.id, clientId)).limit(1);
     if (!client) throw new ActionError("client_not_found");
     const note = normalizeNote(input.note);
     if (noteIsEmpty(note)) throw new ActionError("handoff_note_required");
     const to = await activePerson(tx, input.toPersonId);
+    if (to.workforceType === "collaborator") throw new ActionError("account_manager_ineligible");
     if (client.accountManagerPersonId === to.id) throw new ActionError("account_manager_unchanged");
     await tx.update(schema.workClient).set({ accountManagerPersonId: to.id, updatedAt: new Date() }).where(eq(schema.workClient.id, clientId));
 
-    const projects = await tx.select({ id: schema.workProject.id, name: schema.workProject.name }).from(schema.workProject).where(and(eq(schema.workProject.clientId, clientId), notInArray(schema.workProject.status, ["done", "archived"])));
+    const rows = await tx.select({ project: schema.workProject, team: schema.workTeam }).from(schema.workProject).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId)).where(and(eq(schema.workProject.clientId, clientId), notInArray(schema.workProject.status, ["done", "archived"])));
     const moved: { id: string; name: string }[] = [];
     const skipped: { id: string; name: string }[] = [];
-    for (const project of projects) {
+    let withheld = 0;
+    for (const row of rows) {
+      const project = { id: row.project.id, name: row.project.name };
+      if (!canManageProject(viewer, projectFacts(row.project, row.team))) {
+        withheld += 1;
+        continue;
+      }
       const members = await tx.select().from(schema.workProjectMember).where(eq(schema.workProjectMember.projectId, project.id));
       const current = members.find((member) => member.personId === to.id);
       if (current?.role === "lead") {
@@ -311,7 +331,7 @@ export async function changeAccountManager(clientId: string, input: { toPersonId
       moved.push(project);
     }
     const [handoff] = await tx.insert(schema.workHandoff).values({ kind: "account", clientId, fromPersonId: client.accountManagerPersonId, toPersonId: to.id, note, status: "recorded", sourceRef: { clientId }, createdByPersonId: actor.personId }).returning();
-    return { before: client.accountManagerPersonId, after: to.id, projects: moved, skipped, handoff };
+    return { before: client.accountManagerPersonId, after: to.id, projects: moved, skipped, withheld, handoff };
   });
   await Promise.all([invalidateWorkClients(), invalidateWorkDirectory()]);
   return result;

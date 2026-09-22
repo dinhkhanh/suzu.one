@@ -295,7 +295,7 @@ describe("acceptance and billing (FR-PJM-55, 56)", () => {
     expect(await noticesOf(ids.ke, "projects.acceptance_signed")).toHaveLength(1);
 
     // The paper: the entity's letterhead, the items, and no money anywhere.
-    const paper = await acceptanceDocument((await findAcceptance(acceptance.id))!, { scope: { milestone: "Theo mốc", retainer_period: "Theo tháng", project: "Toàn dự án" }, promised: "Cam kết", delivered: "Đã giao", accepted: "Đã duyệt", totals: (totals) => `${totals.accepted}/${totals.promised}` });
+    const paper = await acceptanceDocument((await findAcceptance(acceptance.id))!, { title: "Biên bản nghiệm thu", scope: { milestone: "Theo mốc", retainer_period: "Theo tháng", project: "Toàn dự án" }, promised: "Cam kết", delivered: "Đã giao", accepted: "Đã duyệt", totals: (totals) => `${totals.accepted}/${totals.promised}` });
     expect(paper.letterhead).toMatchObject({ companyName: "Công ty TNHH SuZu Media", taxCode: "0312345678" });
     expect(paper.number).toMatch(/^SZM-\d{2}-\d{3}\/NT-01$/);
     expect(paper.title).toBe("Biên bản nghiệm thu");
@@ -377,7 +377,7 @@ describe("close-out (FR-PJM-59)", () => {
     expect(checklist.filter((item) => !item.met).map((item) => item.key)).toEqual(expect.arrayContaining(["drive", "retro", "billing"]));
     expect(await fails(closeProject(ids.tvc, { overrideReason: null }, ids.tam))).toBe("close_unmet");
 
-    await saveRetro(ids.tvc, { title: "Retrospective", heldOn: "2026-09-20", attendeeIds: [], retro: { wentWell: "Đúng hạn", improve: "Brief rõ hơn", actions: "Mẫu brief mới" } }, ids.tam);
+    await saveRetro(ids.tvc, { heldOn: "2026-09-20", attendeeIds: [], retro: { wentWell: "Đúng hạn", improve: "Brief rõ hơn", actions: "Mẫu brief mới" } }, ids.tam);
     expect((await getCloseChecklist(ids.tvc)).find((item) => item.key === "retro")?.met).toBe(true);
 
     const { plan, report } = await closeProject(ids.tvc, { overrideReason: "Khách chưa thanh toán, đã báo C-level" }, ids.tam);

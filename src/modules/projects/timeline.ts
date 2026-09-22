@@ -16,7 +16,7 @@ import { getTeamRules } from "@/modules/daily/service";
 import { canEditTask, listProjectTasks, loadTask, loadTasks, type WorkViewer } from "../work/service";
 import { baselineSlip, taskSlip } from "./engine/baseline";
 import { type DateChange, type Dependency, type MovePlan, planMove, workCalendar, type WorkCalendar } from "./engine/schedule";
-import { ensurePlan } from "./plans";
+import { readPlan } from "./plans";
 import { listStructure } from "./structure";
 
 export type TimelineTask = {
@@ -82,7 +82,7 @@ const maxDate = (dates: (IsoDate | null | undefined)[]) => dates.reduce<IsoDate 
 
 /** Everything the timeline draws. The caller has checked the viewer may read the plan. */
 export async function getTimeline(viewer: WorkViewer, project: { id: string; teamId: string; entityId: string | null; startDate: IsoDate | null; dueDate: IsoDate | null }, today: IsoDate = todayInVietnam()): Promise<TimelineView> {
-  const [items, structure, plan] = await Promise.all([listProjectTasks(project.id), listStructure(project.id), ensurePlan(project.id)]);
+  const [items, structure, plan] = await Promise.all([listProjectTasks(project.id), listStructure(project.id), readPlan(project.id).then((row) => row ?? { baseline: null, budgetMinutes: null })]);
   const live = items.filter((task) => task.status !== "cancelled").slice(0, MAX_TASKS);
   const ids = live.map((task) => task.id);
   const [links, dependencies, loaded] = await Promise.all([linksOf(ids), dependenciesAmong(ids), loadTasks(ids)]);

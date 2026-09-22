@@ -30,6 +30,7 @@ export async function GET(_request: Request, context: RouteContext<"/projects/[p
 
   const [t, tDocuments] = await Promise.all([getTranslations("projects.acceptance"), getTranslations("documents")]);
   const document = await acceptanceDocument(acceptance, {
+    title: t("documentTitle"),
     scope: { milestone: t("scopes.milestone"), retainer_period: t("scopes.retainer_period"), project: t("scopes.project") },
     promised: t("promised"),
     delivered: t("delivered"),

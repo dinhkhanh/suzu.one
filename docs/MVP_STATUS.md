@@ -130,6 +130,12 @@ Nothing here blocks go-live; all of it was consciously left out.
 
 **Needs the owner:** the real shape of the tree — which departments hold which teams, and how deep — since the migration leaves every existing department at the top level; and which heads get `department_head` grants on which units, because that grant is now what lets someone run their team's own knowledge base.
 
+## 5c. Phase 10: projects & daily work management (PJM)
+
+**Built 2026-09-22/23 on branch `phase-10-pjm`** (SRS D21, §4.6b; plan and full status in `DEVELOPMENT_PLAN.md` Phase 10). The app becomes the system of record for daily work: project briefs with a kick-off gate, job numbers, milestones, the deliverables register, budgets, status updates, portfolio, timeline, bookings, retainers, change requests, acceptance (nghiệm thu) and a billing queue for finance, close-out; `/today` as the landing page, morning plan, end-of-day report prefilled from activity, timesheets, utilisation; custom fields, table view, triage, blockers, cycles, hand-offs (stage packages, cross-team, leave cover, exit handover), review chains up to the client, client decision records, publish log, automations; delivery dashboard, KPI actuals from work, profitability, AI drafts. Migrations 0078–0087, additive.
+
+**Needs the owner, in addition to §4:** decide SRS Q17–Q25 (who logs time, whether EOD reports are mandatory, client review links, job-number scheme, who sees fees, cut-over date, pilot teams, private projects and the owner); name two pilot teams; `pnpm db:seed` on production (project template plans, the acceptance template — a draft for counsel); the new evening cron; Supabase's upload limit for video deliverables.
+
 ## 6. What has never been seen in a real browser
 
 Every phase was verified by tests and by exercising pages and server actions over HTTP with forged sessions — several real bugs were found that way and no other. But no phase has been clicked through by a person in a browser. The **Tiptap editor** (toolbar, tables, uploads, paste), the **English rendering** throughout, mobile layouts, and the whole of the AI chat are the places where that gap is widest.

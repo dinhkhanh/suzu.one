@@ -69,5 +69,14 @@ export function canApproveTimesheet(reader: ReportReader, subject: ReportSubject
   return leadsThem(reader, subject) || subject.chainAbove[0] === reader.personId;
 }
 
+/**
+ * The attendance hint beside each day of a week (FR-PJM-26) is attendance data: the person's and
+ * their line-management chain's, never a work team's lead as such — a lead chooses who joins their
+ * team, and joining must not open the newcomer's attendance to them.
+ */
+export function canViewAttendanceHint(reader: ReportReader, subject: ReportSubject): boolean {
+  return isSelf(reader, subject) || managesThem(reader, subject);
+}
+
 /** A person's utilisation (FR-PJM-61) is for the people above them, as their reports are. */
 export const canViewUtilisation = canOverseeReport;

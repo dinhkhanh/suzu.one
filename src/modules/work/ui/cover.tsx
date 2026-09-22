@@ -15,7 +15,8 @@ import { acknowledgeCoverAction, checkMyCoverPlansAction, handBackCoverAction, s
 import { HandoffNoteFields, HandoffNoteView, readNote } from "./handoff";
 
 type Result = { ok: boolean; error?: string; message?: string; data?: unknown };
-export type CoverItemRow = { id: string; itemType: "task" | "review" | "recurrence" | "booking"; label: string; detail: string | null; href: string | null; coverPersonId: string | null; effectiveCoverName: string | null; acknowledgedAt: string | null; handedBackAt: string | null; handoffStatus: string | null };
+/** `label` null: work the reader may not open. `assignableIds`: who may cover the item. */
+export type CoverItemRow = { id: string; itemType: "task" | "review" | "recurrence" | "booking"; label: string | null; detail: string | null; href: string | null; coverPersonId: string | null; effectiveCoverName: string | null; acknowledgedAt: string | null; handedBackAt: string | null; handoffStatus: string | null; assignableIds: string[] };
 export type CoverPlanData = { id: string; status: string; personName: string; fromDate: string; toDate: string; defaultCoverPersonId: string | null; defaultCoverName: string | null; note: Note; appliedAt: string | null; items: CoverItemRow[] };
 
 function useRun() {
@@ -102,6 +103,8 @@ export function CoverPlanForm({ plan, people, canSubmit, canAcknowledge, canHand
                   <Link href={item.href} className="font-medium hover:underline">
                     {item.label}
                   </Link>
+                ) : item.label === null ? (
+                  <span className="italic text-muted-foreground">{t("privateItem")}</span>
                 ) : (
                   <span className="font-medium">{item.label}</span>
                 )}
@@ -110,9 +113,9 @@ export function CoverPlanForm({ plan, people, canSubmit, canAcknowledge, canHand
               {item.itemType === "booking" ? (
                 <span className="text-xs text-muted-foreground">{t("bookingInfo")}</span>
               ) : draft ? (
-                <Select name={`cover.${item.id}`} aria-label={t("coverFor", { label: item.label })} defaultValue={item.coverPersonId ?? ""} className="w-48">
+                <Select name={`cover.${item.id}`} aria-label={t("coverFor", { label: item.label ?? t("privateItem") })} defaultValue={item.coverPersonId ?? ""} className="w-48">
                   <option value="">{t("useDefault")}</option>
-                  {choices.map((person) => (
+                  {choices.filter((person) => item.assignableIds.includes(person.id)).map((person) => (
                     <option key={person.id} value={person.id}>
                       {person.fullName}
                     </option>

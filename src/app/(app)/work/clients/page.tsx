@@ -23,8 +23,10 @@ export default async function ClientsPage() {
   const manage = canManageWorkspace(viewer);
   const [clients, entities] = await Promise.all([listClients(), manage ? listEntities() : []]);
   // FR-PJM-46: who owns each relationship, and the notes it changed hands with.
-  const handsOver = canChangeAccountManager(viewer);
-  const [people, handoffs] = await Promise.all([listPersonNames(), handsOver ? listAccountHandoffs(clients.map((client) => client.id)) : new Map<string, AccountHandoffView[]>()]);
+  // Per client: the grant must reach the client's entity (a group client, the whole group).
+  const handsOver = (client: { entityId: string | null }) => canChangeAccountManager(viewer, client);
+  const handedOver = clients.filter(handsOver);
+  const [people, handoffs] = await Promise.all([listPersonNames(), handedOver.length ? listAccountHandoffs(handedOver.map((client) => client.id)) : new Map<string, AccountHandoffView[]>()]);
   const nameOf = (personId: string | null) => (personId ? (people.find((person) => person.id === personId)?.fullName ?? null) : null);
   const [tHandoff, format] = await Promise.all([getTranslations("work.handoff.account"), getFormatter()]);
   const entityOptions = entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }));
@@ -47,7 +49,7 @@ export default async function ClientsPage() {
             <ClientForm client={client} parents={parents} entities={entityOptions} />
           </div>
         ) : null}
-        {handsOver ? (
+        {handsOver(client) ? (
           <div className="flex flex-col gap-3 pt-3">
             <AccountHandoverForm clientId={client.id} currentName={nameOf(client.accountManagerPersonId)} people={people.filter((person) => person.id !== client.accountManagerPersonId)} />
             {(handoffs.get(client.id) ?? []).map((handoff) => (

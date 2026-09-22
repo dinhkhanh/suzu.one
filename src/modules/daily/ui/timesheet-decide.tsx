@@ -9,6 +9,7 @@ import { FormError } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
 import { bulkApproveWeeksAction, decideWeekAction, reopenWeekAction } from "../time-actions";
 import { TEXTAREA } from "./format";
+import { RunNotice } from "./run-notice";
 import { useRun } from "./use-run";
 
 export function DecideWeek({ weekId, status }: { weekId: string; status: string }) {
@@ -66,7 +67,7 @@ export type WaitingRow = { id: string; href: string; name: string; week: string;
 /** Weeks waiting for the approver: open one to read it, or tick several and approve them together. */
 export function WaitingList({ rows }: { rows: WaitingRow[] }) {
   const t = useTranslations("daily.timesheets");
-  const { run, pending, errorKey } = useRun();
+  const { run, pending, errorKey, notice, dismiss } = useRun();
   const [picked, setPicked] = useState<string[]>([]);
   const all = picked.length === rows.length;
   return (
@@ -91,6 +92,7 @@ export function WaitingList({ rows }: { rows: WaitingRow[] }) {
           </li>
         ))}
       </ul>
+      <RunNotice notice={notice} dismiss={dismiss} />
       <FormError namespace="daily.errors" errorKey={errorKey} />
     </div>
   );

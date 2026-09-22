@@ -2065,7 +2065,8 @@
         "people": "People",
         "reports": "End-of-day reports",
         "timesheets": "Weekly timesheets",
-        "hint": "Up to yesterday, at most the last {days} days. Days off, leave and weeks with no timesheet due are not counted. Team totals only — no list of individuals."
+        "hint": "Up to yesterday, at most the last {days} days. Days off, leave and weeks with no timesheet due are not counted. Team totals only — no list of individuals.",
+        "otherTeams": "{count} smaller teams"
       },
       "columns": {
         "team": "Team",
@@ -3743,7 +3744,13 @@
       "automation_template_invalid": "Pick one of the team's active task templates.",
       "automation_text_required": "Enter the text.",
       "automation_not_found": "This rule was not found.",
-      "automation_preset_unavailable": "The team's workflow has no review step, so this starter rule does not fit it yet."
+      "automation_preset_unavailable": "The team's workflow has no review step, so this starter rule does not fit it yet.",
+      "account_manager_ineligible": "The account manager must be an employee who is still working here, not an outside collaborator.",
+      "cover_not_assignable": "A cover must be someone in the item's team or project.",
+      "cover_plan_not_started": "The leave has not started: only the person on leave withdraws this plan.",
+      "cover_hand_back_early": "Nothing can be handed back before the last day of the leave ({date}).",
+      "cover_nothing_to_hand_back": "You are not covering anything that is still to be handed back.",
+      "exit_item_not_yours": "This belongs to a project or team you do not run: whoever runs it hands it over."
     },
     "views": {
       "list": "List",
@@ -4422,7 +4429,8 @@
         "hint": "The account manager role on this client's open projects moves to the new person too.",
         "skipped": "Kept where the new person leads the project: {projects}",
         "submit": "Hand over the client",
-        "history": "{from} → {to} · {by} · {date}"
+        "history": "{from} → {to} · {by} · {date}",
+        "withheld": "{count} projects you do not run keep their account manager."
       }
     },
     "cover": {
@@ -4473,7 +4481,8 @@
       "toAcknowledge": "{count} items to acknowledge",
       "toHandBack": "Ready to hand back",
       "away": "Away",
-      "awayCovered": "Away — covered by {name}"
+      "awayCovered": "Away — covered by {name}",
+      "privateItem": "Private work"
     },
     "exit": {
       "title": "Work handover of {name}",
@@ -4510,7 +4519,10 @@
       "reassign": "Reassign {count} items",
       "complete": "Complete the handover step",
       "completeBlocked": "{count} items left — cannot complete yet",
-      "sectionTitle": "Work handovers ({count})"
+      "sectionTitle": "Work handovers ({count})",
+      "stepTitle": "Work handover",
+      "privateItem": "Private work — whoever runs it hands it over",
+      "privateItemAsk": "Private work — ask {name}"
     },
     "cycles": {
       "title": "Cycles",
@@ -9201,7 +9213,8 @@
       "submittedAt": "Submitted {time}",
       "returnedBy": "Returned by {name}: {comment}",
       "approvedBy": "Approved by {name}, {time}",
-      "reopenedBy": "Reopened by {name}: {comment}"
+      "reopenedBy": "Reopened by {name}: {comment}",
+      "privateWork": "Private work"
     },
     "plan": {
       "title": "Today's plan",
@@ -9251,7 +9264,8 @@
         "blocker_raised": "Blocked",
         "blocker_resolved": "Unblocked",
         "time_logged": "Logged"
-      }
+      },
+      "privateWork": "Private work"
     },
     "report": {
       "title": "Daily report",
@@ -9397,7 +9411,8 @@
       "timesheet_timer_running": "A timer is still running in this week — stop it before submitting.",
       "timesheet_not_found": "Timesheet not found.",
       "timesheet_changed": "Someone else has just decided this timesheet. Reload the page to see it.",
-      "publish_required": "Record the published post with its link before moving to a published state."
+      "publish_required": "Record the published post with its link before moving to a published state.",
+      "time_window_closed": "This entry is older than the 35-day window and cannot be changed unless the approver returns that week."
     },
     "timesheets": {
       "title": "Timesheets",
@@ -9447,7 +9462,14 @@
         "billable": "Billable hours",
         "utilisation": "Utilisation (%)",
         "billableRatio": "Billable share (%)"
-      }
+      },
+      "otherTeams": "{count} smaller teams"
+    },
+    "privateWork": "Private work",
+    "notices": {
+      "ok": "Got it",
+      "timer_week_locked": "That week's timesheet was submitted or approved while the timer ran, so the minutes were not kept. Ask your approver to reopen the week if the time belongs there.",
+      "timesheet_bulk_partial": "Some weeks were not approved — someone may have just decided them. Reload the list to see what is left."
     }
   },
   "projects": {
@@ -9826,7 +9848,11 @@
       "meeting_attendee_not_member": "Attendees must be members of the project or its team.",
       "meeting_assignee_not_member": "Action items must go to members of the project or its team.",
       "meeting_action_due_before": "An action item cannot be due before the meeting.",
-      "meeting_not_found": "This meeting was not found in the project."
+      "meeting_not_found": "This meeting was not found in the project.",
+      "retainer_month_out_of_range": "That month is out of range: {min} at the earliest, {max} at the latest.",
+      "retainer_terms_need_commercial": "Changing the retainer's start month, end month or whether it runs needs pjm:commercial over the project's entity.",
+      "acceptance_project_exists": "This project already has a whole-project acceptance record that has not been voided.",
+      "person_not_in_project": "This person is not on the project or its team."
     },
     "timeline": {
       "title": "Timeline",
@@ -9997,7 +10023,9 @@
       "periodStatus": {
         "open": "Open",
         "closed": "Closed"
-      }
+      },
+      "billingDescription": "Retainer fee for {month}",
+      "monthsLocked": "Only someone who may see fees (pjm:commercial) can change the retainer's start month, end month and whether it runs."
     },
     "changes": {
       "ledger": "Original + changes = current",
@@ -10088,7 +10116,8 @@
       "signedScan": "Signed scan",
       "signedOn": "Signed on",
       "signedBy": "Signed by (client)",
-      "signedInfo": "Signed by {name} on {date}"
+      "signedInfo": "Signed by {name} on {date}",
+      "documentTitle": "Acceptance record"
     },
     "billing": {
       "title": "Ready to invoice",

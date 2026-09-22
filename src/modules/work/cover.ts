@@ -16,8 +16,11 @@ import { notify } from "../platform/notifications/service";
 import { type CoverCandidates, type CoverItemType, type CoverSelection, coverOf, coverStartsOn, movesOnCover, needsCover, reconcileItems, selectCoverItems } from "./engine/cover";
 import { normalizeNote, type Note } from "./engine/handoff";
 import type { RecurrenceRule } from "./engine/recurrence";
-import type { CoverPlanFacts } from "./policy";
-import { logActivity, taskKey, updateWorkTaskIn, WORK_KIND } from "./tasks";
+import { canViewProject, canViewTask, canViewTeamBacklog, type CoverPlanFacts, type WorkViewer } from "./policy";
+import { projectFacts } from "./projects";
+import { loadTasks, logActivity, taskKey, updateWorkTaskIn, WORK_KIND } from "./tasks";
+import { teamFacts } from "./teams";
+import { viewerOfPerson } from "./viewer";
 
 type Executor = Tx | ReturnType<typeof db>;
 // The daily module (team rules) and the project layer (bookings) both build on work: work reads
@@ -78,6 +81,48 @@ async function refreshItems(tx: Executor, plan: CoverPlanRow, fresh: CoverSelect
   if (add.length) await tx.insert(schema.workCoverItem).values(add.map((item) => ({ planId: plan.id, ...item }))).onConflictDoNothing();
   if (remove.length) await tx.delete(schema.workCoverItem).where(inArray(schema.workCoverItem.id, remove.map((item) => item.id)));
 }
+
+/**
+ * Who may take each item over: the people of its team and of its project who have not left — the
+ * same people a task there can be given to (`listAssignable`). A private project's task never goes
+ * to someone outside it. Keyed by item; bookings are information, not duties, and are not here.
+ */
+async function eligibleCovers(tx: Executor, items: readonly Pick<CoverItemRow, "id" | "itemType" | "itemId">[]): Promise<Map<string, Set<string>>> {
+  const taskIds = items.filter((item) => item.itemType === "task" || item.itemType === "review").map((item) => item.itemId);
+  const recurrenceIds = items.filter((item) => item.itemType === "recurrence").map((item) => item.itemId);
+  const [tasks, recurrences] = await Promise.all([
+    taskIds.length ? tx.select({ id: schema.workTask.taskId, teamId: schema.workTask.teamId, projectId: schema.workTask.projectId }).from(schema.workTask).where(inArray(schema.workTask.taskId, taskIds)) : [],
+    recurrenceIds.length ? tx.select({ id: schema.workRecurrence.id, teamId: schema.workRecurrence.teamId, projectId: schema.workRecurrence.projectId }).from(schema.workRecurrence).where(inArray(schema.workRecurrence.id, recurrenceIds)) : [],
+  ]);
+  const scopes = new Map([...tasks, ...recurrences].map((row) => [row.id, row]));
+  const teamIds = [...new Set([...scopes.values()].map((scope) => scope.teamId))];
+  const projectIds = [...new Set([...scopes.values()].flatMap((scope) => (scope.projectId ? [scope.projectId] : [])))];
+  const active = sql`${schema.person.status} <> 'offboarded'`;
+  const [teamPeople, projectPeople] = await Promise.all([
+    teamIds.length ? tx.select({ scopeId: schema.workTeamMember.teamId, personId: schema.workTeamMember.personId }).from(schema.workTeamMember).innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId)).where(and(inArray(schema.workTeamMember.teamId, teamIds), active)) : [],
+    projectIds.length ? tx.select({ scopeId: schema.workProjectMember.projectId, personId: schema.workProjectMember.personId }).from(schema.workProjectMember).innerJoin(schema.person, eq(schema.person.id, schema.workProjectMember.personId)).where(and(inArray(schema.workProjectMember.projectId, projectIds), active)) : [],
+  ]);
+  const byTeam = Map.groupBy(teamPeople, (row) => row.scopeId);
+  const byProject = Map.groupBy(projectPeople, (row) => row.scopeId);
+  const result = new Map<string, Set<string>>();
+  for (const item of items) {
+    const scope = scopes.get(item.itemId);
+    if (!scope) continue;
+    const people = [...(byTeam.get(scope.teamId) ?? []), ...(scope.projectId ? (byProject.get(scope.projectId) ?? []) : [])];
+    result.set(item.id, new Set(people.map((row) => row.personId)));
+  }
+  return result;
+}
+
+/**
+ * Who covers an item: its own cover, or the one for all where that person may take it — a default
+ * cover outside an item's project leaves the item uncovered, for the person to choose someone else.
+ */
+const coverWithin = (item: Pick<CoverItemRow, "id" | "itemType" | "coverPersonId">, defaultCoverPersonId: string | null, eligible: ReadonlyMap<string, ReadonlySet<string>>): string | null => {
+  if (item.coverPersonId) return item.coverPersonId;
+  if (!defaultCoverPersonId) return null;
+  return !movesOnCover(item.itemType as CoverItemType) || eligible.get(item.id)?.has(defaultCoverPersonId) ? defaultCoverPersonId : null;
+};
 
 // ── The job, and the on-demand check ────────────────────────────────────────────────────────
 
@@ -152,9 +197,12 @@ async function applyCoverPlan(tx: Executor, planId: string): Promise<boolean> {
   const [plan] = await tx.update(schema.workCoverPlan).set({ appliedAt: new Date(), updatedAt: new Date() }).where(and(eq(schema.workCoverPlan.id, planId), eq(schema.workCoverPlan.status, "submitted"), isNull(schema.workCoverPlan.appliedAt))).returning();
   if (!plan) return false;
   const items = await tx.select().from(schema.workCoverItem).where(eq(schema.workCoverItem.planId, planId));
+  // Checked again on the day: a cover who has left the project since the plan was submitted does
+  // not take its work over — the item stays with the person.
+  const eligible = await eligibleCovers(tx, items);
   for (const item of items) {
     const cover = coverOf(item, plan.defaultCoverPersonId);
-    if (!cover || !movesOnCover(item.itemType as CoverItemType)) continue;
+    if (!cover || !movesOnCover(item.itemType as CoverItemType) || !eligible.get(item.id)?.has(cover)) continue;
     await moveItem(tx, item, plan.personId, cover, null);
   }
   return true;
@@ -201,29 +249,43 @@ export async function coverPlanFacts(plan: CoverPlanRow, executor: Executor = db
   return { personId: plan.personId, entityId: person?.entityId ?? null, coverIds };
 }
 
-export type CoverItemView = { id: string; itemType: CoverItemType; itemId: string; label: string; detail: string | null; href: string | null; coverPersonId: string | null; coverName: string | null; effectiveCoverName: string | null; acknowledgedAt: Date | null; handedBackAt: Date | null; handoffStatus: string | null };
+/**
+ * `label` null: work the reader may not open (a private project's task, its bookings) — shown as
+ * "private work" with no link, never by name. `assignableIds`: who may cover the item.
+ */
+export type CoverItemView = { id: string; itemType: CoverItemType; itemId: string; label: string | null; detail: string | null; href: string | null; coverPersonId: string | null; coverName: string | null; effectiveCoverName: string | null; acknowledgedAt: Date | null; handedBackAt: Date | null; handoffStatus: string | null; assignableIds: string[] };
 export type CoverPlanView = CoverPlanRow & { personName: string; defaultCoverName: string | null; items: CoverItemView[] };
 
-export async function getCoverPlan(planId: string): Promise<CoverPlanView | undefined> {
+/** The plan as `viewer` may read it: the names of work they may not open are left out. */
+export async function getCoverPlan(planId: string, viewer: WorkViewer): Promise<CoverPlanView | undefined> {
   const plan = await findCoverPlan(planId);
-  return plan ? viewOf(plan) : undefined;
+  return plan ? viewOf(plan, viewer) : undefined;
 }
 
 /** The plan beside a leave request (the approver's panel on the leave page, FR-PJM-44). */
-export async function getCoverPlanForLeave(leaveRequestId: string): Promise<CoverPlanView | undefined> {
+export async function getCoverPlanForLeave(leaveRequestId: string, viewer: WorkViewer): Promise<CoverPlanView | undefined> {
   const [plan] = await db().select().from(schema.workCoverPlan).where(eq(schema.workCoverPlan.leaveRequestId, leaveRequestId)).limit(1);
-  return plan ? viewOf(plan) : undefined;
+  return plan ? viewOf(plan, viewer) : undefined;
 }
 
-async function viewOf(plan: CoverPlanRow): Promise<CoverPlanView> {
+/** The same, for a panel that knows only who is looking (the leave approval page). */
+export async function getCoverPlanForLeaveAs(leaveRequestId: string, personId: string): Promise<CoverPlanView | undefined> {
+  const viewer = await viewerOfPerson(db(), personId);
+  return viewer ? getCoverPlanForLeave(leaveRequestId, viewer) : undefined;
+}
+
+async function viewOf(plan: CoverPlanRow, viewer: WorkViewer): Promise<CoverPlanView> {
   const items = await db().select({ item: schema.workCoverItem, coverName: schema.person.fullName, handoffStatus: schema.workHandoff.status }).from(schema.workCoverItem).leftJoin(schema.person, eq(schema.person.id, schema.workCoverItem.coverPersonId)).leftJoin(schema.workHandoff, eq(schema.workHandoff.id, schema.workCoverItem.handoffId)).where(eq(schema.workCoverItem.planId, plan.id));
   const idsOf = (type: CoverItemType) => items.filter((row) => row.item.itemType === type).map((row) => row.item.itemId);
   const taskIds = [...idsOf("task"), ...idsOf("review")];
-  const [people, tasks, recurrences, bookings] = await Promise.all([
+  const [people, loaded, recurrences, bookings, eligible] = await Promise.all([
     db().select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, [plan.personId, plan.defaultCoverPersonId].filter((id): id is string => !!id))),
-    taskIds.length ? db().select({ id: schema.task.id, title: schema.task.title, dueDate: schema.task.dueDate, number: schema.workTask.number, teamKey: schema.workTeam.key }).from(schema.task).innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id)).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId)).where(inArray(schema.task.id, taskIds)) : [],
-    idsOf("recurrence").length ? db().select({ id: schema.workRecurrence.id, title: schema.workRecurrence.title }).from(schema.workRecurrence).where(inArray(schema.workRecurrence.id, idsOf("recurrence"))) : [],
-    idsOf("booking").length ? bookingLabels(plan, idsOf("booking")) : [],
+    loadTasks(taskIds),
+    idsOf("recurrence").length
+      ? db().select({ recurrence: schema.workRecurrence, team: schema.workTeam, project: schema.workProject }).from(schema.workRecurrence).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workRecurrence.teamId)).leftJoin(schema.workProject, eq(schema.workProject.id, schema.workRecurrence.projectId)).where(inArray(schema.workRecurrence.id, idsOf("recurrence")))
+      : [],
+    idsOf("booking").length ? bookingLabels(plan, idsOf("booking"), viewer) : [],
+    eligibleCovers(db(), items.map((row) => row.item)),
   ]);
   const nameOf = (id: string | null) => (id ? (people.find((person) => person.id === id)?.name ?? null) : null);
   const defaultCoverName = nameOf(plan.defaultCoverPersonId);
@@ -234,24 +296,30 @@ async function viewOf(plan: CoverPlanRow): Promise<CoverPlanView> {
     defaultCoverName,
     items: items
       .map(({ item, coverName, handoffStatus }): CoverItemView => {
-        const task = tasks.find((row) => row.id === item.itemId);
-        const recurrence = recurrences.find((row) => row.id === item.itemId);
-        const booking = bookings.find((row) => row.id === item.itemId);
+        const found = loaded.get(item.itemId);
+        const task = found && canViewTask(viewer, found.facts) ? found : null;
+        const row = recurrences.find((entry) => entry.recurrence.id === item.itemId);
+        const recurrence = row && (row.project ? canViewProject(viewer, projectFacts(row.project, row.team)) : canViewTeamBacklog(viewer, teamFacts(row.team))) ? row.recurrence : null;
+        const booking = bookings.find((entry) => entry.id === item.itemId);
         const type = item.itemType as CoverItemType;
-        const label = task ? `${taskKey(task.teamKey, task.number)} ${task.title}` : (recurrence?.title ?? booking?.label ?? "—");
-        const detail = task?.dueDate ? formatDay(task.dueDate) : (booking?.detail ?? null);
-        const href = task ? `/work/tasks/${task.id}` : null;
-        const effective = item.coverPersonId ? coverName : type === "booking" ? null : defaultCoverName;
-        return { id: item.id, itemType: type, itemId: item.itemId, label, detail, href, coverPersonId: item.coverPersonId, coverName, effectiveCoverName: effective, acknowledgedAt: item.acknowledgedAt, handedBackAt: item.handedBackAt, handoffStatus };
+        const label = task ? `${taskKey(task.team.key, task.work.number)} ${task.task.title}` : (recurrence?.title ?? booking?.label ?? null);
+        const detail = task?.task.dueDate ? formatDay(task.task.dueDate) : (booking?.detail ?? null);
+        const href = task ? `/work/tasks/${task.task.id}` : null;
+        // The one for all counts only where that person may take the item.
+        const effective = item.coverPersonId ? coverName : type === "booking" || !coverWithin(item, plan.defaultCoverPersonId, eligible) ? null : defaultCoverName;
+        const assignableIds = label === null ? [] : [...(eligible.get(item.id) ?? [])];
+        return { id: item.id, itemType: type, itemId: item.itemId, label, detail, href, coverPersonId: item.coverPersonId, coverName, effectiveCoverName: effective, acknowledgedAt: item.acknowledgedAt, handedBackAt: item.handedBackAt, handoffStatus, assignableIds };
       })
-      .sort((a, b) => order.indexOf(a.itemType) - order.indexOf(b.itemType) || a.label.localeCompare(b.label, "vi")),
+      .sort((a, b) => order.indexOf(a.itemType) - order.indexOf(b.itemType) || (a.label ?? "").localeCompare(b.label ?? "", "vi")),
   };
 }
 
-async function bookingLabels(plan: CoverPlanRow, bookingIds: string[]): Promise<{ id: string; label: string; detail: string }[]> {
+/** A booking reads as its project's name — for a reader who may open that project. */
+async function bookingLabels(plan: CoverPlanRow, bookingIds: string[], viewer: WorkViewer): Promise<{ id: string; label: string; detail: string }[]> {
   const { listProjectBookings, mondayOf } = await projectsService();
-  const projects = await db().select({ id: schema.workProject.id, name: schema.workProject.name }).from(schema.workProjectMember).innerJoin(schema.workProject, eq(schema.workProject.id, schema.workProjectMember.projectId)).where(eq(schema.workProjectMember.personId, plan.personId));
-  const rows = (await Promise.all(projects.map(async (project) => (await listProjectBookings(project.id, mondayOf(plan.fromDate), plan.toDate)).map((booking) => ({ booking, project }))))).flat();
+  const projects = await db().select({ project: schema.workProject, team: schema.workTeam }).from(schema.workProjectMember).innerJoin(schema.workProject, eq(schema.workProject.id, schema.workProjectMember.projectId)).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId)).where(eq(schema.workProjectMember.personId, plan.personId));
+  const readable = projects.filter(({ project, team }) => canViewProject(viewer, projectFacts(project, team))).map(({ project }) => project);
+  const rows = (await Promise.all(readable.map(async (project) => (await listProjectBookings(project.id, mondayOf(plan.fromDate), plan.toDate)).map((booking) => ({ booking, project }))))).flat();
   return rows.filter(({ booking }) => bookingIds.includes(booking.id)).map(({ booking, project }) => ({ id: booking.id, label: project.name, detail: `${formatDay(booking.weekStart)} · ${Math.round(booking.minutes / 60)}h` }));
 }
 
@@ -286,7 +354,7 @@ export async function listCoverPlansFor(personId: string, today: IsoDate): Promi
     items: Number(row.items),
     mine: row.personId === personId,
     toAcknowledge: row.status === "submitted" ? Number(row.toAcknowledge) : 0,
-    canHandBack: row.status === "submitted" && !!row.appliedAt && row.toDate < today,
+    canHandBack: row.status === "submitted" && !!row.appliedAt && row.toDate <= today,
   }));
 }
 
@@ -294,7 +362,8 @@ export async function listCoverPlansFor(personId: string, today: IsoDate): Promi
 
 export type CoverChoice = { defaultCoverPersonId: string | null; items: { id: string; coverPersonId: string | null }[]; note: Note };
 
-async function saveChoice(tx: Executor, plan: CoverPlanRow, choice: CoverChoice): Promise<CoverItemRow[]> {
+/** Saves the choices; a cover named for an item must be someone who may take it (`eligibleCovers`). */
+async function saveChoice(tx: Executor, plan: CoverPlanRow, choice: CoverChoice): Promise<{ items: CoverItemRow[]; eligible: Map<string, Set<string>> }> {
   const covers = [...new Set([choice.defaultCoverPersonId, ...choice.items.map((item) => item.coverPersonId)].filter((id): id is string => !!id))];
   if (covers.includes(plan.personId)) throw new ActionError("cover_self");
   if (covers.length) {
@@ -308,14 +377,23 @@ async function saveChoice(tx: Executor, plan: CoverPlanRow, choice: CoverChoice)
     if (item.coverPersonId !== wanted.coverPersonId) await tx.update(schema.workCoverItem).set({ coverPersonId: wanted.coverPersonId }).where(eq(schema.workCoverItem.id, item.id));
     item.coverPersonId = wanted.coverPersonId;
   }
+  const eligible = await eligibleCovers(tx, items);
+  const outside = items.filter((item) => item.coverPersonId && movesOnCover(item.itemType as CoverItemType) && !eligible.get(item.id)?.has(item.coverPersonId));
+  if (outside.length) throw new ActionError("cover_not_assignable", { count: outside.length });
   await tx.update(schema.workCoverPlan).set({ defaultCoverPersonId: choice.defaultCoverPersonId, note: normalizeNote(choice.note), updatedAt: new Date() }).where(eq(schema.workCoverPlan.id, plan.id));
-  return items;
+  return { items, eligible };
+}
+
+/** The plan row, locked for the rest of the transaction: two submits (or hand-backs) at once run one after the other. */
+async function lockCoverPlan(tx: Executor, planId: string): Promise<CoverPlanRow | undefined> {
+  const [row] = await tx.select().from(schema.workCoverPlan).where(eq(schema.workCoverPlan.id, planId)).limit(1).for("update");
+  return row;
 }
 
 /** Saves the choices of a draft without asking anyone yet. */
 export async function saveCoverPlan(planId: string, choice: CoverChoice): Promise<CoverPlanRow> {
   return db().transaction(async (tx) => {
-    const plan = await findCoverPlan(planId, tx);
+    const plan = await lockCoverPlan(tx, planId);
     if (!plan || plan.status !== "draft") throw new ActionError("cover_plan_not_draft");
     await saveChoice(tx, plan, choice);
     return (await findCoverPlan(planId, tx))!;
@@ -323,21 +401,23 @@ export async function saveCoverPlan(planId: string, choice: CoverChoice): Promis
 }
 
 /**
- * Every item that moves must have a cover (its own or the one for all); bookings are only
- * information. Each cover gets one notice however many items they cover.
+ * Every item that moves must have a cover (its own, or the one for all where that person may take
+ * it); bookings are only information. Each cover gets one notice however many items they cover.
+ * The plan row is locked first, so a double submit makes one set of hand-offs, not two.
  */
 export async function submitCoverPlan(planId: string, choice: CoverChoice, actor: { personId: string; fullName: string }, today: IsoDate): Promise<{ plan: CoverPlanRow; covers: string[]; applied: boolean }> {
   return db().transaction(async (tx) => {
-    const plan = await findCoverPlan(planId, tx);
+    const plan = await lockCoverPlan(tx, planId);
     if (!plan || plan.status !== "draft") throw new ActionError("cover_plan_not_draft");
-    const items = await saveChoice(tx, plan, choice);
+    const { items, eligible } = await saveChoice(tx, plan, choice);
+    const coverFor = (item: CoverItemRow) => coverWithin(item, choice.defaultCoverPersonId, eligible);
     const moving = items.filter((item) => movesOnCover(item.itemType as CoverItemType));
-    const uncovered = moving.filter((item) => !coverOf(item, choice.defaultCoverPersonId));
+    const uncovered = moving.filter((item) => !coverFor(item));
     if (uncovered.length) throw new ActionError("cover_item_uncovered", { count: uncovered.length });
     const note = normalizeNote(choice.note);
     const [person] = await tx.select({ name: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, plan.personId)).limit(1);
     for (const item of items) {
-      const cover = coverOf(item, choice.defaultCoverPersonId);
+      const cover = coverFor(item);
       if (!cover) continue;
       const onTask = item.itemType === "task" || item.itemType === "review";
       const [handoff] = await tx
@@ -349,8 +429,8 @@ export async function submitCoverPlan(planId: string, choice: CoverChoice, actor
     }
     const [after] = await tx.update(schema.workCoverPlan).set({ status: "submitted", submittedAt: new Date(), updatedAt: new Date() }).where(eq(schema.workCoverPlan.id, planId)).returning();
     const byCover = Map.groupBy(
-      items.filter((item) => coverOf(item, choice.defaultCoverPersonId)),
-      (item) => coverOf(item, choice.defaultCoverPersonId)!,
+      items.filter((item) => coverFor(item)),
+      (item) => coverFor(item)!,
     );
     for (const [cover, own] of byCover) await notify({ recipients: [cover], kind: "tasks.cover_requested", params: { actor: person?.name ?? actor.fullName, from: formatDay(plan.fromDate), to: formatDay(plan.toDate), count: own.length }, link: coverLink(plan.id) }, tx);
     const applied = coverStartsOn({ from: plan.fromDate, to: plan.toDate }, today) ? await applyCoverPlan(tx, planId) : false;
@@ -376,18 +456,27 @@ export async function acknowledgeCover(planId: string, actor: { personId: string
 /**
  * Back from leave: what the covers still hold goes back to the person, each as a `cover_return`
  * hand-off; covers hear once each. Before the leave has started there is nothing to give back —
- * the plan is simply withdrawn and the covers' requests cancelled.
+ * the plan is simply withdrawn and the covers' requests cancelled, which only the person (or whoever
+ * may submit for them) does.
+ *
+ * `whole`: the person, or whoever may submit the plan, hands back everything; a cover hands back only
+ * what they hold. Either way not before the leave's last day — a cover cannot drop the work halfway
+ * through the absence. The plan is over once nothing is left with a cover.
  */
-export async function handBackCover(planId: string, actor: { personId: string; fullName: string }): Promise<{ returned: number; covers: string[] }> {
+export async function handBackCover(planId: string, actor: { personId: string; fullName: string }, today: IsoDate, options: { whole: boolean }): Promise<{ returned: number; covers: string[] }> {
   return db().transaction(async (tx) => {
-    const plan = await findCoverPlan(planId, tx);
+    const plan = await lockCoverPlan(tx, planId);
     if (!plan || plan.status !== "submitted") throw new ActionError("cover_plan_not_submitted");
-    const items = await tx.select().from(schema.workCoverItem).where(and(eq(schema.workCoverItem.planId, planId), isNull(schema.workCoverItem.handedBackAt)));
+    const pending = await tx.select().from(schema.workCoverItem).where(and(eq(schema.workCoverItem.planId, planId), isNull(schema.workCoverItem.handedBackAt)));
     if (!plan.appliedAt) {
+      if (!options.whole) throw new ActionError("cover_plan_not_started");
       await tx.update(schema.workCoverPlan).set({ status: "cancelled", updatedAt: new Date() }).where(eq(schema.workCoverPlan.id, planId));
       await cancelCoverHandoffs(tx, planId);
       return { returned: 0, covers: [] };
     }
+    if (today < plan.toDate) throw new ActionError("cover_hand_back_early", { date: formatDay(plan.toDate) });
+    const items = options.whole ? pending : pending.filter((item) => coverOf(item, plan.defaultCoverPersonId) === actor.personId);
+    if (items.length === 0) throw new ActionError("cover_nothing_to_hand_back");
     const [person] = await tx.select({ name: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, plan.personId)).limit(1);
     const returnedBy = new Map<string, number>();
     let returned = 0;
@@ -404,7 +493,9 @@ export async function handBackCover(planId: string, actor: { personId: string; f
         await logActivity(tx, item.itemId, actor.personId, [{ type: "cover_handed_back", to: { id: plan.personId, name: person?.name ?? "" } }]);
       }
     }
-    await tx.update(schema.workCoverPlan).set({ status: "handed_back", updatedAt: new Date() }).where(eq(schema.workCoverPlan.id, planId));
+    // Bookings are never handed back (they never moved): the plan is over when no duty is left with a cover.
+    const left = pending.filter((item) => !items.includes(item) && movesOnCover(item.itemType as CoverItemType) && coverOf(item, plan.defaultCoverPersonId));
+    if (left.length === 0) await tx.update(schema.workCoverPlan).set({ status: "handed_back", updatedAt: new Date() }).where(eq(schema.workCoverPlan.id, planId));
     for (const [cover, count] of returnedBy) await notify({ recipients: [cover], kind: "tasks.cover_handed_back", params: { actor: person?.name ?? actor.fullName, count }, link: coverLink(plan.id) }, tx);
     return { returned, covers: [...returnedBy.keys()] };
   });

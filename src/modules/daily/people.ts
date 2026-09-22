@@ -4,16 +4,16 @@
 // request.
 import "server-only";
 import { and, eq, inArray, or } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { db, schema, type Tx } from "@/lib/db";
 import { loadDirectory, reportsBelow } from "@/modules/performance/service";
 import { canViewReport, type ReportReader, type ReportSubject, type TimeReader } from "./policy";
 import { rulesOfPeople } from "./team-rules";
 
 export type Subject = ReportSubject & { fullName: string };
 
-/** The reader: who they are and which active work teams they lead. */
-export async function loadReportReader(personId: string): Promise<ReportReader> {
-  const rows = await db()
+/** The reader: who they are and which active work teams they lead. Inside a transaction, pass it. */
+export async function loadReportReader(personId: string, executor: Tx | ReturnType<typeof db> = db()): Promise<ReportReader> {
+  const rows = await executor
     .select({ teamId: schema.workTeamMember.teamId })
     .from(schema.workTeamMember)
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTeamMember.teamId))

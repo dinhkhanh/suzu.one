@@ -17,7 +17,7 @@ import type { ProjectKind } from "./engine/brief";
 import { type Health, isStale } from "./engine/status";
 import type { RaidCounts } from "./engine/raid";
 import { loadBurns, loadRaidCounts, loadRegisters } from "./metrics";
-import { ensurePlans } from "./plans";
+import { readPlans } from "./plans";
 import { canSeeFees } from "./policy";
 
 export type PortfolioRow = {
@@ -67,7 +67,7 @@ export async function listPortfolio(viewer: WorkViewer, options: { today: IsoDat
   const projects = (await visibleProjects(viewer, { today: options.today })).filter((project) => options.includeDone || project.status !== "done");
   if (projects.length === 0) return [];
   const ids = projects.map((project) => project.id);
-  const plans = await ensurePlans(ids);
+  const plans = await readPlans(ids);
   const managerIds = [...new Set([...plans.values()].flatMap((plan) => (plan.accountManagerPersonId ? [plan.accountManagerPersonId] : [])))];
   const entityIds = [...new Set(projects.flatMap((project) => (project.entityId ? [project.entityId] : [])))];
   const [registers, burns, milestones, phases, managers, entities, raid] = await Promise.all([

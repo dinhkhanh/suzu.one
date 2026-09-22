@@ -16,12 +16,15 @@ export const metadata: Metadata = { title: "Leave cover" };
 export default async function CoverPlanPage({ params }: PageProps<"/work/cover/[planId]">) {
   const user = await requireUser();
   const { planId } = await params;
-  const [plan, viewer, t] = await Promise.all([/^[0-9a-f-]{36}$/.test(planId) ? getCoverPlan(planId) : undefined, loadViewer(user), getTranslations("work")]);
+  const [viewer, t] = await Promise.all([loadViewer(user), getTranslations("work")]);
+  // The work of a private project the reader may not open is listed without its name.
+  const plan = /^[0-9a-f-]{36}$/.test(planId) ? await getCoverPlan(planId, viewer) : undefined;
   if (!plan) notFound();
   const facts = await coverPlanFacts(plan);
   if (!canViewCoverPlan(viewer, facts)) notFound();
   const submit = canSubmitCoverPlan(viewer, facts);
-  // Anyone active may cover — a colleague from another team too; never the person on leave.
+  // Anyone active may be the cover for all — a colleague from another team too; never the person on
+  // leave. Each item takes only someone of its team or project (the list beside it is narrowed).
   const people = submit && plan.status === "draft" ? (await listPersonNames()).filter((person) => person.id !== plan.personId) : [];
 
   return (

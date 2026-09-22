@@ -161,7 +161,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           {automations ? (
             <section className="flex flex-col gap-2">
               <h2 className="text-sm font-medium text-muted-foreground">{t("automations.title")}</h2>
-              <AutomationManager teamId={team.id} projectId={project.id} rules={automations.rules} options={automations.options} runs={automations.runs} canManage={canManageAutomations(viewer, teamFacts(team))} />
+              <AutomationManager teamId={team.id} projectId={project.id} rules={automations.rules} options={automations.options} runs={automations.runs} canManage={canManageAutomations(viewer, teamFacts(team), facts)} />
             </section>
           ) : null}
           {manage ? <ProjectForm project={project} teams={[]} clients={clients.map(({ id, name }) => ({ id, name }))} people={assignable} /> : null}

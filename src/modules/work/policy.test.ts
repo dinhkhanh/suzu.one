@@ -4,7 +4,7 @@ import type { ProjectRole, TeamRole } from "./enums";
 import { canManageAutomations, canViewAutomations } from "./policy";
 import { canChangeDeliverable, canDecideStage, canManagePublish, canManageReviewChains, canPinFeedback, canRecordClientDecision, canRecordDelivery, canResolvePin } from "./policy";
 import { canAcknowledgeCover, canChangeAccountManager, canHandBackCover, canHandOff, canManageHandoffPackages, canRespondToHandoff, canRunExitHandover, canSendToTeam, canSubmitCoverPlan, canViewCoverPlan, canViewExitHandover } from "./policy";
-import { canActForClient, canAdminTeam, canDecideTriage, canManageCustomFields, canMoveTask, canRaiseBlocker, canResolveBlocker, canSeeLoggedTime, canViewTriage, canContributeToProject, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canViewProject, canViewTask, canViewTeam, type ProjectFacts, type TaskFacts, type TeamFacts, type WorkViewer } from "./policy";
+import { canAddTeamMember, canActForClient, canAdminTeam, canDecideTriage, canManageCustomFields, canMoveTask, canRaiseBlocker, canResolveBlocker, canSeeLoggedTime, canViewTriage, canContributeToProject, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canViewProject, canViewTask, canViewTeam, type ProjectFacts, type TaskFacts, type TeamFacts, type WorkViewer } from "./policy";
 
 const SZM = "entity-szm";
 const SZC = "entity-szc";
@@ -46,6 +46,27 @@ describe("teams", () => {
     expect(canViewTeam(freelancer, video)).toBe(false);
     expect(canViewTeam(viewer("bao-anh", { collaborator: true, teams: { "team-video": "member" } }), video)).toBe(true);
   });
+  it("take in only people of their own place, unless the leader's grant reaches the person", () => {
+    const inside = { entityId: SZM, unitPath: [VID] };
+    const otherUnit = { entityId: SZM, unitPath: ["dept-des"] };
+    const otherEntityPerson = { entityId: SZC, unitPath: [VID] };
+    // The team hangs off Video: its lead adds people of that subtree and of its entity.
+    expect(canAddTeamMember(lead, video, inside)).toBe(true);
+    expect(canAddTeamMember(lead, video, otherUnit)).toBe(false);
+    expect(canAddTeamMember(lead, video, otherEntityPerson)).toBe(false);
+    // A leader whose grant reaches where the person sits may put anyone in.
+    expect(canAddTeamMember(owner, video, otherEntityPerson)).toBe(true);
+    expect(canAddTeamMember(head, video, otherUnit)).toBe(false);
+    // A team of no unit takes anyone of its entity; a group team, anyone.
+    const design: TeamFacts = { id: "team-design", entityId: SZM, departmentId: null, defaultVisibility: "team" };
+    const designLead = viewer("dl", { teams: { "team-design": "lead" } });
+    expect(canAddTeamMember(designLead, design, otherUnit)).toBe(true);
+    expect(canAddTeamMember(designLead, design, otherEntityPerson)).toBe(false);
+    expect(canAddTeamMember(designLead, { ...design, entityId: null }, otherEntityPerson)).toBe(true);
+    // Running the team is still the first condition.
+    expect(canAddTeamMember(member, video, inside)).toBe(false);
+  });
+
   it("let their members start projects", () => {
     expect(canCreateProject(member, video)).toBe(true);
     expect(canCreateProject(colleague, video)).toBe(false);
@@ -219,6 +240,13 @@ describe("hand-offs (FR-PJM-40..46)", () => {
     expect(canRespondToHandoff(member, taskIn(), handoff)).toBe(false);
     expect(canRespondToHandoff(otherEntity, taskIn(), handoff)).toBe(false);
     expect(canRespondToHandoff(lead, taskIn(), { fromPersonId: "long", toPersonId: "bao" })).toBe(false);
+    // On a private project's task only the people who run that project stand in for the receiver:
+    // `work:manage` over the team does not reach in.
+    const secret = taskIn({ project: project("private") });
+    expect(canRespondToHandoff(owner, secret, handoff)).toBe(false);
+    expect(canRespondToHandoff(head, secret, handoff)).toBe(false);
+    expect(canRespondToHandoff(lead, secret, handoff)).toBe(true);
+    expect(canRespondToHandoff(viewer("tam", { projects: { "project-private": "lead" } }), secret, handoff)).toBe(true);
   });
 
   it("work goes to another team's triage from whoever may move it — not to its own team, not by a collaborator", () => {
@@ -253,10 +281,17 @@ describe("hand-offs (FR-PJM-40..46)", () => {
     expect(canViewExitHandover(colleague, handover)).toBe(false);
   });
 
-  it("the account manager of a client is changed by leaders who keep the client list", () => {
-    expect(canChangeAccountManager(owner)).toBe(true);
-    expect(canChangeAccountManager(lead)).toBe(false);
-    expect(canChangeAccountManager(head)).toBe(true);
+  it("the account manager of a client is changed by leaders whose grant reaches the client's entity", () => {
+    const vinamilk = { entityId: SZM };
+    expect(canChangeAccountManager(owner, vinamilk)).toBe(true);
+    expect(canChangeAccountManager(lead, vinamilk)).toBe(false);
+    expect(canChangeAccountManager(director, vinamilk)).toBe(true);
+    // A department head's unit grant covers no whole entity, and another entity's leader is out.
+    expect(canChangeAccountManager(head, vinamilk)).toBe(false);
+    expect(canChangeAccountManager(director, { entityId: SZC })).toBe(false);
+    // A group client (no entity of its own) takes a group-wide grant.
+    expect(canChangeAccountManager(director, { entityId: null })).toBe(false);
+    expect(canChangeAccountManager(owner, { entityId: null })).toBe(true);
   });
 });
 
@@ -331,6 +366,13 @@ describe("automations (FR-PJM-33)", () => {
     for (const who of [lead, owner, head]) expect(canManageAutomations(who, video)).toBe(true);
     const projectLead = viewer("tam", { projects: { "project-team": "lead" } });
     for (const who of [member, colleague, otherHead, freelancer, projectLead]) expect(canManageAutomations(who, video)).toBe(false);
+  });
+  it("of a project also need the right to run that project — a private project's rules stay inside it", () => {
+    for (const who of [lead, owner, head]) expect(canManageAutomations(who, video, project("team"))).toBe(true);
+    expect(canManageAutomations(lead, video, project("private"))).toBe(true);
+    for (const who of [owner, head]) expect(canManageAutomations(who, video, project("private"))).toBe(false);
+    // The project must be the team's own.
+    expect(canManageAutomations(lead, { ...video, id: "team-design" }, project("team"))).toBe(false);
   });
   it("are read by the team's own people", () => {
     for (const who of [lead, member, owner]) expect(canViewAutomations(who, video)).toBe(true);

@@ -8,14 +8,18 @@ import "server-only";
 import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
+import { createTranslator } from "next-intl";
 import { db, schema } from "@/lib/db";
+import vi from "../../../messages/vi.json";
 import { rulesOfPeople, sumLoggedMinutesByProject } from "../daily/service";
 import { canCreatePage, createPage, type Doc, type DocNode, type KbViewer, loadSpace } from "../kb/service";
 import { countOpenBilling } from "./billing";
 import { adapterReturnedHandoffs, adapterRevisionRounds } from "./delivery-adapter";
 import { type ChecklistItem, type CloseFacts, closeChecklist, closeRefusal, type CloseReport, closeReport, unmetChecks } from "./engine/close";
+import { monthOf } from "./engine/retainer";
+import { meetingPeople } from "./meetings";
 import { withLineStatus } from "./metrics";
-import { ensurePlan, type PlanRow } from "./plans";
+import { ensurePlan, type PlanRow, readPlan } from "./plans";
 import type { MeetingRetro } from "./schema";
 
 export type MeetingRow = typeof schema.projectMeeting.$inferSelect;
@@ -67,14 +71,14 @@ export async function loadCloseFacts(projectId: string, plan: Pick<PlanRow, "dri
 }
 
 export async function getCloseChecklist(projectId: string): Promise<ChecklistItem[]> {
-  return closeChecklist(await loadCloseFacts(projectId, await ensurePlan(projectId)));
+  return closeChecklist(await loadCloseFacts(projectId, (await readPlan(projectId)) ?? { driveUrl: null }));
 }
 
 // ── Closing ─────────────────────────────────────────────────────────────────────────────────
 
 const dayInVietnam = (value: Date | null): IsoDate | null => (value ? todayInVietnam(value) : null);
 
-async function buildReport(projectId: string, plan: PlanRow, closedOn: IsoDate): Promise<CloseReport> {
+async function buildReport(projectId: string, plan: Pick<PlanRow, "baseline" | "budgetMinutes">, closedOn: IsoDate): Promise<CloseReport> {
   const [[project], logged, rounds, returned, tasks, milestones] = await Promise.all([
     db().select({ startDate: schema.workProject.startDate, dueDate: schema.workProject.dueDate }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1),
     sumLoggedMinutesByProject([projectId]),
@@ -103,7 +107,7 @@ async function buildReport(projectId: string, plan: PlanRow, closedOn: IsoDate):
 
 /** The report as it would read if the project closed today — for the close page before the button. */
 export async function previewCloseReport(projectId: string): Promise<CloseReport> {
-  return buildReport(projectId, await ensurePlan(projectId), todayInVietnam());
+  return buildReport(projectId, (await readPlan(projectId)) ?? { baseline: null, budgetMinutes: null }, todayInVietnam());
 }
 
 export type StoredCloseReport = CloseReport & { unmet: string[]; overrideReason: string | null };
@@ -127,6 +131,16 @@ export async function closeProject(projectId: string, input: { overrideReason: s
     const now = new Date();
     const [after] = await tx.update(schema.projectPlan).set({ closedAt: now, closedByPersonId: actorPersonId, closeReport: report, updatedAt: now }).where(eq(schema.projectPlan.projectId, projectId)).returning();
     await tx.update(schema.workProject).set({ status: "done", updatedAt: now }).where(eq(schema.workProject.id, projectId));
+    // A closed project bills no further month (FR-PJM-06, 59): an open-ended retainer ends here,
+    // in the same transaction, rather than going on making and billing months at midnight.
+    const closedMonth = monthOf(todayInVietnam(now));
+    const [retainer] = await tx.select().from(schema.projectRetainer).where(eq(schema.projectRetainer.projectId, projectId)).limit(1).for("update");
+    if (retainer) {
+      await tx
+        .update(schema.projectRetainer)
+        .set({ isActive: false, endMonth: retainer.endMonth && retainer.endMonth < closedMonth ? retainer.endMonth : closedMonth, updatedAt: now })
+        .where(eq(schema.projectRetainer.id, retainer.id));
+    }
     return { plan: after, report, projectStatusBefore: project?.status ?? "" };
   });
 }
@@ -135,19 +149,28 @@ export async function closeProject(projectId: string, input: { overrideReason: s
 
 export const getRetro = async (projectId: string): Promise<MeetingRow | undefined> => (await db().select().from(schema.projectMeeting).where(and(eq(schema.projectMeeting.projectId, projectId), eq(schema.projectMeeting.kind, "retro"))).limit(1))[0];
 
-export type RetroInput = { title: string; heldOn: IsoDate; attendeeIds: string[]; retro: MeetingRetro };
+export type RetroInput = { heldOn: IsoDate; attendeeIds: string[]; retro: MeetingRetro };
+
+// The retrospective's title is stored with the meeting, so it is written once, in Vietnamese, from
+// the messages — the same wording the close page shows (FR-PLT-02).
+const label = createTranslator({ locale: "vi", messages: vi, namespace: "projects.close.retro" });
 
 /** One retrospective per project: held once, edited as the team's thoughts settle. */
 export async function saveRetro(projectId: string, input: RetroInput, actorPersonId: string): Promise<{ before: MeetingRow | null; after: MeetingRow }> {
   if (input.heldOn > todayInVietnam()) throw new ActionError("retro_in_future");
   const before = (await getRetro(projectId)) ?? null;
+  // Attendees are the project's people — with whoever was on the notes already, who may since have left it.
+  const known = new Set([...(await meetingPeople(projectId)).map((person) => person.id), ...(before?.attendeeIds ?? [])]);
+  const attendeeIds = [...new Set(input.attendeeIds)];
+  if (attendeeIds.some((personId) => !known.has(personId))) throw new ActionError("person_not_in_project");
+  const values = { title: label("title"), heldOn: input.heldOn, attendeeIds, retro: input.retro };
   if (before) {
-    const [after] = await db().update(schema.projectMeeting).set({ ...input, updatedAt: new Date() }).where(eq(schema.projectMeeting.id, before.id)).returning();
+    const [after] = await db().update(schema.projectMeeting).set({ ...values, updatedAt: new Date() }).where(eq(schema.projectMeeting.id, before.id)).returning();
     return { before, after };
   }
   const [after] = await db()
     .insert(schema.projectMeeting)
-    .values({ projectId, kind: "retro", ...input, createdByPersonId: actorPersonId })
+    .values({ projectId, kind: "retro", ...values, createdByPersonId: actorPersonId })
     .returning();
   return { before: null, after };
 }

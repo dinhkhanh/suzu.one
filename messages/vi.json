@@ -2065,7 +2065,8 @@
         "people": "Số người",
         "reports": "Báo cáo cuối ngày",
         "timesheets": "Bảng giờ tuần",
-        "hint": "Tính đến hôm qua, tối đa {days} ngày gần nhất. Ngày nghỉ, ngày phép và tuần không phải nộp bảng giờ không bị tính. Chỉ có số của cả nhóm, không có danh sách từng người."
+        "hint": "Tính đến hôm qua, tối đa {days} ngày gần nhất. Ngày nghỉ, ngày phép và tuần không phải nộp bảng giờ không bị tính. Chỉ có số của cả nhóm, không có danh sách từng người.",
+        "otherTeams": "{count} nhóm nhỏ khác"
       },
       "columns": {
         "team": "Nhóm",
@@ -3743,7 +3744,13 @@
       "automation_template_invalid": "Hãy chọn một mẫu công việc đang dùng của nhóm.",
       "automation_text_required": "Hãy nhập nội dung.",
       "automation_not_found": "Không tìm thấy quy tắc này.",
-      "automation_preset_unavailable": "Quy trình của nhóm chưa có bước duyệt nên chưa dùng được quy tắc mẫu này."
+      "automation_preset_unavailable": "Quy trình của nhóm chưa có bước duyệt nên chưa dùng được quy tắc mẫu này.",
+      "account_manager_ineligible": "Người phụ trách khách hàng phải là nhân viên đang làm việc, không phải cộng tác viên.",
+      "cover_not_assignable": "Người làm thay phải ở trong nhóm hoặc dự án của việc đó.",
+      "cover_plan_not_started": "Kỳ nghỉ chưa bắt đầu: chỉ người nghỉ mới rút lại kế hoạch này.",
+      "cover_hand_back_early": "Chưa thể nhận lại trước ngày cuối của kỳ nghỉ ({date}).",
+      "cover_nothing_to_hand_back": "Không còn việc nào bạn đang làm thay để trả lại.",
+      "exit_item_not_yours": "Mục này thuộc dự án hoặc nhóm bạn không phụ trách: người phụ trách nơi đó bàn giao."
     },
     "views": {
       "list": "Danh sách",
@@ -4422,7 +4429,8 @@
         "hint": "Vai trò phụ trách khách hàng trên các dự án đang chạy của khách này cũng chuyển sang người mới.",
         "skipped": "Giữ nguyên ở các dự án người mới đang làm trưởng dự án: {projects}",
         "submit": "Bàn giao khách hàng",
-        "history": "{from} → {to} · {by} · {date}"
+        "history": "{from} → {to} · {by} · {date}",
+        "withheld": "{count} dự án bạn không phụ trách vẫn giữ người phụ trách cũ."
       }
     },
     "cover": {
@@ -4473,7 +4481,8 @@
       "toAcknowledge": "Cần xác nhận {count} việc",
       "toHandBack": "Có thể trả lại",
       "away": "Đang nghỉ",
-      "awayCovered": "Đang nghỉ — {name} làm thay"
+      "awayCovered": "Đang nghỉ — {name} làm thay",
+      "privateItem": "Việc riêng tư"
     },
     "exit": {
       "title": "Bàn giao công việc của {name}",
@@ -4510,7 +4519,10 @@
       "reassign": "Giao lại {count} mục",
       "complete": "Hoàn tất bước bàn giao",
       "completeBlocked": "Còn {count} mục — chưa hoàn tất được",
-      "sectionTitle": "Bàn giao khi nghỉ việc ({count})"
+      "sectionTitle": "Bàn giao khi nghỉ việc ({count})",
+      "stepTitle": "Bàn giao công việc",
+      "privateItem": "Việc riêng tư — người phụ trách nơi đó bàn giao",
+      "privateItemAsk": "Việc riêng tư — hỏi {name}"
     },
     "cycles": {
       "title": "Chu kỳ",
@@ -9201,7 +9213,8 @@
       "submittedAt": "Nộp lúc {time}",
       "returnedBy": "{name} trả lại: {comment}",
       "approvedBy": "{name} đã duyệt lúc {time}",
-      "reopenedBy": "{name} đã mở lại: {comment}"
+      "reopenedBy": "{name} đã mở lại: {comment}",
+      "privateWork": "Việc riêng tư"
     },
     "plan": {
       "title": "Kế hoạch hôm nay",
@@ -9251,7 +9264,8 @@
         "blocker_raised": "Báo vướng",
         "blocker_resolved": "Gỡ vướng",
         "time_logged": "Ghi giờ"
-      }
+      },
+      "privateWork": "Việc riêng tư"
     },
     "report": {
       "title": "Báo cáo công việc ngày",
@@ -9397,7 +9411,8 @@
       "timesheet_timer_running": "Đồng hồ bấm giờ còn đang chạy trong tuần này — dừng nó trước khi nộp.",
       "timesheet_not_found": "Không tìm thấy bảng giờ này.",
       "timesheet_changed": "Bảng giờ vừa được người khác xử lý. Tải lại trang để xem.",
-      "publish_required": "Cần ghi nhận bài đã đăng kèm đường dẫn trước khi chuyển sang trạng thái đã đăng."
+      "publish_required": "Cần ghi nhận bài đã đăng kèm đường dẫn trước khi chuyển sang trạng thái đã đăng.",
+      "time_window_closed": "Dòng giờ này đã quá hạn sửa (35 ngày), trừ khi người duyệt trả tuần đó về."
     },
     "timesheets": {
       "title": "Duyệt bảng giờ",
@@ -9447,7 +9462,14 @@
         "billable": "Giờ tính phí",
         "utilisation": "Tỷ lệ sử dụng (%)",
         "billableRatio": "Tỷ lệ tính phí (%)"
-      }
+      },
+      "otherTeams": "{count} nhóm nhỏ khác"
+    },
+    "privateWork": "Việc riêng tư",
+    "notices": {
+      "ok": "Đã hiểu",
+      "timer_week_locked": "Tuần đó đã nộp hoặc đã duyệt bảng giờ trong lúc đồng hồ đang chạy, nên số giờ không được ghi. Nhờ người duyệt mở lại tuần nếu cần ghi bổ sung.",
+      "timesheet_bulk_partial": "Một vài bảng giờ chưa được duyệt — có thể người khác vừa xử lý. Tải lại danh sách để xem những tuần còn lại."
     }
   },
   "projects": {
@@ -9826,7 +9848,11 @@
       "meeting_attendee_not_member": "Người tham dự phải là thành viên dự án hoặc của nhóm.",
       "meeting_assignee_not_member": "Người nhận việc phải là thành viên dự án hoặc của nhóm.",
       "meeting_action_due_before": "Hạn của việc cần làm không được trước ngày họp.",
-      "meeting_not_found": "Không tìm thấy cuộc họp này trong dự án."
+      "meeting_not_found": "Không tìm thấy cuộc họp này trong dự án.",
+      "retainer_month_out_of_range": "Tháng nằm ngoài khoảng cho phép: sớm nhất là {min}, muộn nhất là {max}.",
+      "retainer_terms_need_commercial": "Đổi tháng bắt đầu, tháng kết thúc hay trạng thái chạy của retainer cần quyền xem phí (pjm:commercial) ở pháp nhân của dự án.",
+      "acceptance_project_exists": "Dự án đã có một biên bản nghiệm thu toàn dự án chưa huỷ.",
+      "person_not_in_project": "Người này không thuộc dự án hoặc nhóm làm dự án."
     },
     "timeline": {
       "title": "Biểu đồ tiến độ",
@@ -9997,7 +10023,9 @@
       "periodStatus": {
         "open": "Đang mở",
         "closed": "Đã khoá"
-      }
+      },
+      "billingDescription": "Phí retainer tháng {month}",
+      "monthsLocked": "Chỉ người có quyền xem phí (pjm:commercial) mới đổi được tháng bắt đầu, tháng kết thúc và trạng thái chạy của retainer."
     },
     "changes": {
       "ledger": "Ban đầu + thay đổi = hiện tại",
@@ -10088,7 +10116,8 @@
       "signedScan": "Bản scan đã ký",
       "signedOn": "Ngày ký",
       "signedBy": "Người ký phía khách hàng",
-      "signedInfo": "{name} ký ngày {date}"
+      "signedInfo": "{name} ký ngày {date}",
+      "documentTitle": "Biên bản nghiệm thu"
     },
     "billing": {
       "title": "Chờ xuất hoá đơn",

@@ -11,8 +11,10 @@ import { notify } from "@/modules/platform/notifications/service";
 import { type DayTask, listDayTasks, listOpenBlockersRaisedBy, listOpenWorkOf, listWorkActivityBetween, type OpenBlocker } from "@/modules/work/service";
 import { dayOf, type PersonDay } from "./days";
 import { prefillReport, type ReportDraft } from "./engine/prefill";
+import { type ShownActivity, type ShownLine, showActivity, showLine } from "./engine/redact";
 import { isLate, type NotRequiredReason } from "./engine/rules";
-import { listOverseen, loadSubjects, readerMaySee, type Subject } from "./people";
+import { loadSeen, readsOwn } from "./labels";
+import { listOverseen, loadReportReader, loadSubjects, readerMaySee, type Subject } from "./people";
 import { findPlan } from "./plans";
 import { canOverseeReport, canViewReport, type ReportReader } from "./policy";
 import type { PlannedItem } from "./schema";
@@ -108,15 +110,24 @@ export async function findReportById(reportId: string): Promise<ReportRow | null
 }
 
 export type ReportCommentView = { id: string; authorPersonId: string; authorName: string | null; body: string; reaction: string | null; createdAt: Date };
-export type ReportView = { report: ReportRow; subject: Subject; comments: ReportCommentView[]; openBlockers: OpenBlocker[] };
+/** The report's task lines as the reader may see them (engine/redact.ts): stored titles are never shown to another reader on their own word. */
+export type ShownReport = Omit<ReportRow, "done" | "notDone" | "activity"> & { done: ShownLine[]; notDone: ShownLine[]; activity: ShownActivity[] };
+/** An open blocker as the reader may see it: on a task they may not open, only that there is one. */
+export type ShownBlocker = OpenBlocker & { hidden?: true };
+export type ReportView = { report: ShownReport; subject: Subject; comments: ReportCommentView[]; openBlockers: ShownBlocker[]; /** The plan carried into the next day, as the tasks stand now. */ tomorrow: ShownLine[] };
 
-/** One report with its thread — null when it does not exist or the reader may not see it. */
+/**
+ * One report with its thread — null when it does not exist or the reader may not see it. A lead or
+ * a manager reads the report, not every task in it: each task (done, not done, the activity, the
+ * open blockers, tomorrow's plan) is named only where the reader may open it now, and shows as
+ * private work with its minutes otherwise. The person reads their own as they wrote it.
+ */
 export async function getReportView(reader: ReportReader, reportId: string): Promise<ReportView | null> {
   const report = await findReportById(reportId);
   if (!report) return null;
   const subject = await readerMaySee(reader, report.personId);
   if (!subject) return null;
-  const [comments, openBlockers] = await Promise.all([
+  const [comments, openBlockers, tomorrowTasks] = await Promise.all([
     db()
       .select({ id: schema.dailyReportComment.id, authorPersonId: schema.dailyReportComment.authorPersonId, authorName: schema.person.fullName, body: schema.dailyReportComment.body, reaction: schema.dailyReportComment.reaction, createdAt: schema.dailyReportComment.createdAt })
       .from(schema.dailyReportComment)
@@ -124,8 +135,21 @@ export async function getReportView(reader: ReportReader, reportId: string): Pro
       .where(eq(schema.dailyReportComment.reportId, reportId))
       .orderBy(asc(schema.dailyReportComment.createdAt)),
     listOpenBlockersRaisedBy([report.personId]),
+    listDayTasks(report.tomorrow.map((item) => item.taskId)),
   ]);
-  return { report, subject, comments, openBlockers };
+  // In the report's order; a task deleted since is left out.
+  const tomorrow = report.tomorrow.flatMap((item) => {
+    const task = tomorrowTasks.find((row) => row.taskId === item.taskId);
+    return task ? [{ taskId: task.taskId, title: task.title, ref: task.key }] : [];
+  });
+  if (readsOwn(reader, report.personId)) return { report, subject, comments, openBlockers, tomorrow };
+
+  const seen = await loadSeen(reader.personId, {
+    taskIds: [...report.done, ...report.notDone, ...report.activity, ...openBlockers, ...tomorrow].map((row) => row.taskId),
+  });
+  const shown: ShownReport = { ...report, done: report.done.map((line) => showLine(line, seen)), notDone: report.notDone.map((line) => showLine(line, seen)), activity: report.activity.map((item) => showActivity(item, seen)) };
+  const blockers = openBlockers.map((blocker): ShownBlocker => (seen.tasks.has(blocker.taskId) ? blocker : { ...blocker, key: "", title: "", reason: "", neededPersonId: null, neededName: null, hidden: true }));
+  return { report: shown, subject, comments, openBlockers: blockers, tomorrow: tomorrow.map((line) => showLine(line, seen)) };
 }
 
 /** The person's own recent reports. */
@@ -154,8 +178,11 @@ export async function commentOnReport(reader: ReportReader, reportId: string, in
     let recipients: string[] = [];
     if (author !== report.personId) recipients = [report.personId];
     else {
+      // Whoever wrote here before — as long as they may still read the report: a lead who has left
+      // the team, or a manager no longer above the person, hears nothing more of it.
       const earlier = await tx.selectDistinct({ personId: schema.dailyReportComment.authorPersonId }).from(schema.dailyReportComment).where(eq(schema.dailyReportComment.reportId, reportId));
-      recipients = earlier.map((row) => row.personId).filter((id) => id !== author);
+      const readers = await Promise.all(earlier.map((row) => row.personId).filter((id) => id !== author).map((personId) => loadReportReader(personId, tx)));
+      recipients = readers.filter((earlierReader) => canViewReport(earlierReader, subject)).map((earlierReader) => earlierReader.personId!);
     }
     await notify({ recipients, kind: "daily.report_commented", params: { actor: actorName, date: dayLabel(report.date) }, link: `/daily/reports/${reportId}` }, tx);
     return { comment, report };

@@ -10,12 +10,12 @@ import { ActivityList, TaskLines } from "@/modules/daily/ui/activity-list";
 import { hoursOf } from "@/modules/daily/ui/format";
 import { ReportThread } from "@/modules/daily/ui/report-thread";
 import { requireUser } from "@/modules/platform/auth/session";
-import { listDayTasks } from "@/modules/work/service";
 
 export const metadata: Metadata = { title: "Daily report" };
 
 // One report, for the person, their team leads and their line-management chain — nobody else
-// (the policy answers inside `getReportView`; anyone else gets "not found").
+// (the policy answers inside `getReportView`; anyone else gets "not found"). What the report says
+// about a task the reader may not open is shown as private work, never by its title.
 export default async function ReportViewPage({ params }: PageProps<"/daily/reports/[reportId]">) {
   const user = await requireUser();
   const { reportId } = await params;
@@ -26,8 +26,6 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
   const { report, subject } = view;
   const mine = report.personId === user.person.id;
   const today = todayInVietnam();
-  // The plan the report carried into the next day, as the tasks stand now.
-  const tomorrow = await listDayTasks(report.tomorrow.map((item) => item.taskId));
   const editable = mine && report.date >= addDays(today, -REPORT_BACKFILL_DAYS);
 
   return (
@@ -60,10 +58,16 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
             <ul className="flex flex-col gap-1 text-sm">
               {view.openBlockers.map((blocker) => (
                 <li key={blocker.blockerId}>
-                  <Link href={`/work/tasks/${blocker.taskId}`} className="hover:underline">
-                    <span className="font-mono text-xs text-muted-foreground">{blocker.key}</span> {blocker.title}
-                  </Link>{" "}
-                  <span className="text-xs text-muted-foreground">· {blocker.reason}</span>
+                  {blocker.hidden ? (
+                    <span className="text-muted-foreground italic">{t("privateWork")}</span>
+                  ) : (
+                    <>
+                      <Link href={`/work/tasks/${blocker.taskId}`} className="hover:underline">
+                        <span className="font-mono text-xs text-muted-foreground">{blocker.key}</span> {blocker.title}
+                      </Link>{" "}
+                      <span className="text-xs text-muted-foreground">· {blocker.reason}</span>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
@@ -87,7 +91,7 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
       ) : null}
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-medium text-muted-foreground">{t("report.tomorrowPlanned", { count: report.tomorrow.length })}</h2>
-        <TaskLines lines={tomorrow.map((task) => ({ taskId: task.taskId, title: task.title, ref: task.key }))} empty={t("report.noTomorrow")} />
+        <TaskLines lines={view.tomorrow} empty={t("report.noTomorrow")} />
       </section>
       <details className="rounded-xl border p-3">
         <summary className="cursor-pointer text-sm font-medium text-muted-foreground">{t("report.activity", { count: report.activity.length })}</summary>

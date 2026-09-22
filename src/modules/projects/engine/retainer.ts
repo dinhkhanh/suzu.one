@@ -55,6 +55,25 @@ export function monthsDue(terms: Pick<RetainerTerms, "startMonth" | "endMonth">,
   return monthsBetween(terms.startMonth, last);
 }
 
+// How far a retainer's months may reach (FR-PJM-06). A retainer bills real money month after month,
+// so its terms may not name a month out of the blue: one month before the plan was made is as far
+// back as it goes (the retainer set up a few days into the month it started), and two years ahead
+// is as far forward. `MAX_CATCH_UP` bounds what one run of the midnight job may make in arrears,
+// so a retainer switched back on after a long pause does not bill a year at once.
+export const MAX_MONTHS_AHEAD = 24;
+export const MAX_CATCH_UP = 3;
+
+/** The months a retainer's terms may name, given the month its plan was made and today's month. */
+export function monthBounds(planMonth: Month, currentMonth: Month): { min: Month; max: Month } {
+  return { min: addMonths(planMonth, -1), max: addMonths(currentMonth, MAX_MONTHS_AHEAD) };
+}
+
+/** The months of `monthsDue` a run may actually make: never before the terms were saved, never more than the catch-up. */
+export function monthsToMake(months: readonly Month[], savedMonth: Month, today: IsoDate): Month[] {
+  const floor = addMonths(savedMonth, -1) > addMonths(monthOf(today), -MAX_CATCH_UP) ? addMonths(savedMonth, -1) : addMonths(monthOf(today), -MAX_CATCH_UP);
+  return months.filter((month) => month >= floor);
+}
+
 /**
  * The share of a month the retainer covers, between 0 and 1: all of it, unless the project starts
  * or ends inside it. Counted in calendar days, both ends included.

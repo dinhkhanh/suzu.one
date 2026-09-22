@@ -10,7 +10,7 @@
 // Amounts are `pjm:commercial`: finance's queue is theirs by definition; anywhere else the amount
 // is taken out for a reader without it (`shapeBillingItem`).
 import "server-only";
-import { and, count, desc, eq, inArray, isNull, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, ne, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import type { IsoDate } from "@/lib/dates";
@@ -89,9 +89,38 @@ export async function attachAcceptance(tx: Tx, itemId: string, acceptanceId: str
   await tx.update(schema.projectBillingItem).set({ acceptanceId, updatedAt: new Date() }).where(and(eq(schema.projectBillingItem.id, itemId), isNull(schema.projectBillingItem.acceptanceId)));
 }
 
-/** A billing milestone marked done earns its item — once, whatever happens to the milestone afterwards. */
+/**
+ * The project's plan row, locked: every path that bills a share of the fee — a milestone, the
+ * whole-project acceptance's remainder — takes it first, so two of them never read "billed so far"
+ * at the same moment and bill the same money twice.
+ */
+export async function lockFee(tx: Tx, projectId: string): Promise<void> {
+  await ensurePlan(projectId, tx);
+  await tx.select({ projectId: schema.projectPlan.projectId }).from(schema.projectPlan).where(eq(schema.projectPlan.projectId, projectId)).for("update");
+}
+
+/** Has a whole-project acceptance already billed the project's fee (an item finance did not waive)? */
+async function wholeProjectBilled(tx: Tx, projectId: string): Promise<boolean> {
+  const [row] = await tx
+    .select({ id: schema.projectBillingItem.id })
+    .from(schema.projectBillingItem)
+    .innerJoin(schema.projectAcceptance, eq(schema.projectAcceptance.id, schema.projectBillingItem.acceptanceId))
+    .where(and(eq(schema.projectBillingItem.projectId, projectId), eq(schema.projectAcceptance.scope, "project"), ne(schema.projectBillingItem.status, "waived")))
+    .limit(1);
+  return !!row;
+}
+
+/**
+ * A billing milestone marked done (or its acceptance signed) earns its item — once, whatever
+ * happens to the milestone afterwards. Not when a whole-project acceptance has billed the fee
+ * already: that item took what was left of the fee, this milestone's share included. null = no item.
+ */
 export async function billMilestone(tx: Tx, milestone: typeof schema.projectMilestone.$inferSelect, actorPersonId: string | null): Promise<{ item: BillingItemRow; created: boolean } | null> {
   if (!milestone.isBilling) return null;
+  await lockFee(tx, milestone.projectId);
+  const [existing] = await tx.select().from(schema.projectBillingItem).where(and(eq(schema.projectBillingItem.milestoneId, milestone.id), eq(schema.projectBillingItem.source, "milestone"))).limit(1);
+  if (existing) return { item: existing, created: false };
+  if (await wholeProjectBilled(tx, milestone.projectId)) return null;
   return ensureBillingItem(tx, { projectId: milestone.projectId, source: "milestone", milestoneId: milestone.id, description: milestone.name, amountVnd: milestone.billingAmountVnd, createdByPersonId: actorPersonId });
 }
 

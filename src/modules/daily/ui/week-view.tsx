@@ -21,6 +21,8 @@ export async function TimeWeek({ view, openTasks = [] }: { view: TimeWeekView; o
       if (task) return { label: `${task.key} ${task.title}`, sub: task.projectName };
       return key.startsWith("category:") ? { label: categoryName(key.slice("category:".length)), sub: null } : { label: "—", sub: null };
     }
+    // A task this reader may not open: its hours belong on their screen, its name does not.
+    if (label.hidden) return { label: t("privateWork"), sub: null };
     return label.taskId ? { label: [label.taskKey, label.title].filter(Boolean).join(" ") || "—", sub: label.projectName } : { label: categoryName(label.category), sub: null };
   };
   const dayLabel = (date: string) => format.dateTime(new Date(`${date}T12:00:00Z`), { weekday: "short", day: "numeric", month: "numeric" });
@@ -40,7 +42,7 @@ export async function TimeWeek({ view, openTasks = [] }: { view: TimeWeekView; o
   const entries: EntryView[] = view.entries.map((entry) => ({
     id: entry.id,
     day: format.dateTime(new Date(`${entry.date}T12:00:00Z`), { weekday: "short", day: "numeric" }),
-    ...(entry.taskId ? { label: [entry.key, entry.title].filter(Boolean).join(" ") || "—", sub: entry.projectName } : { label: categoryName(entry.category), sub: null }),
+    ...(entry.hidden ? { label: t("privateWork"), sub: null } : entry.taskId ? { label: [entry.key, entry.title].filter(Boolean).join(" ") || "—", sub: entry.projectName } : { label: categoryName(entry.category), sub: null }),
     minutes: entry.minutes,
     billable: entry.billable,
     note: entry.note,

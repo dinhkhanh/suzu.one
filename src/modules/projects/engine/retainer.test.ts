@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, carryFrom, hoursUsage, lastDayOf, monthsBetween, monthsDue, monthShare, monthsToClose, planPeriod, quotaAlertsDue, type RetainerTerms, totalUsage, usage } from "./retainer";
+import { addMonths, carryFrom, MAX_MONTHS_AHEAD, monthBounds, monthsToMake, hoursUsage, lastDayOf, monthsBetween, monthsDue, monthShare, monthsToClose, planPeriod, quotaAlertsDue, type RetainerTerms, totalUsage, usage } from "./retainer";
 
 const lines = [
   { title: "Bài đăng Facebook", quantity: 12, format: "post", channel: "facebook" },
@@ -24,6 +24,16 @@ describe("months (FR-PJM-06)", () => {
     expect(monthsDue(terms(), "2026-12-15")).toEqual(["2026-10", "2026-11", "2026-12"]);
     expect(monthsDue(terms(), "2027-06-01")).toEqual(["2026-10", "2026-11", "2026-12", "2027-01", "2027-02", "2027-03"]);
     expect(monthsDue(terms({ endMonth: null }), "2027-06-01")).toHaveLength(9);
+  });
+
+  it("bounds the months the terms may name, and the months one run may make", () => {
+    // A plan made in October: September at the earliest (a retainer set up a few days late), two years ahead at the latest.
+    expect(monthBounds("2026-10", "2026-10")).toEqual({ min: "2026-09", max: addMonths("2026-10", MAX_MONTHS_AHEAD) });
+    expect(monthBounds("2024-01", "2026-10")).toEqual({ min: "2023-12", max: "2028-10" });
+    // Terms saved in October make October and the month before it, never the months of a start month in 2000.
+    expect(monthsToMake(["2000-01", "2000-02", "2026-09", "2026-10"], "2026-10", "2026-10-15")).toEqual(["2026-09", "2026-10"]);
+    // A job that missed three months catches up; a retainer switched on after a year does not bill the year.
+    expect(monthsToMake(monthsBetween("2026-01", "2026-12"), "2026-01", "2026-12-01")).toEqual(["2026-09", "2026-10", "2026-11", "2026-12"]);
   });
 
   it("closes the open months that are over", () => {

@@ -92,6 +92,15 @@ describe("a unit's own space", () => {
     expect(spaceLevel(ngo, teamSpace)).toBeNull();
   });
 
+  it("keeps a project's space out of every role's reach — the unit head's too (FR-PJM-31)", () => {
+    const projectSpace = { entityId: SZM, ownerUnitPath: [VID], ownerProjectId: "project-1" };
+    expect(canManageSpace(hrSzm.principal, projectSpace)).toBe(false);
+    expect(canManageSpace(headOfVid.principal, projectSpace)).toBe(false);
+    expect(canManageSpace(owner.principal, projectSpace)).toBe(false);
+    // Without an owning project both ways in still work.
+    expect(canManageSpace(headOfVid.principal, { ...projectSpace, ownerProjectId: null })).toBe(true);
+  });
+
   it("gives a head nothing over a space that belongs to no unit", () => {
     expect(spaceLevel(headOfVid, space({ access: [{ subjectKey: "all", level: "view" }] }))).toBe("view");
     expect(canManageSpace(headOfVid.principal, { entityId: null })).toBe(false);

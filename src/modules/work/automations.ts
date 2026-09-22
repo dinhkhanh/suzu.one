@@ -20,10 +20,11 @@ import { stateOnSubmit } from "./engine/review";
 import { planTree } from "./engine/templates";
 import type { StateCategory } from "./enums";
 import { autoFollow } from "./followers";
-import { canViewTask, type WorkViewer } from "./policy";
+import { canManageProject, canViewProject, canViewTask, type ProjectFacts, type WorkViewer } from "./policy";
 import { createWorkTaskIn, type LoadedTask, loadTask, loadTasks, logActivity, taskKey, updateWorkTaskIn } from "./tasks";
-import { listAssignable } from "./projects";
+import { listAssignable, projectFacts } from "./projects";
 import { listLabels, listStates } from "./teams";
+import { viewersOfPeople } from "./viewer";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type AutomationRow = typeof schema.workAutomation.$inferSelect;
@@ -154,9 +155,9 @@ async function dayOffCheck(tx: Executor, entityId: string | null, today: IsoDate
   return officeDayOff(new Set(days.map((day) => day.date)));
 }
 
-type Target = { loaded: LoadedTask | null; teamId: string; projectId: string | null; entityId: string | null; projectLeadId: string | null; label: string };
+type Target = { loaded: LoadedTask | null; teamId: string; projectId: string | null; entityId: string | null; projectLeadId: string | null; label: string; /** The project as the policy sees it, for a rule with no task (a quota alert). */ project: ProjectFacts | null };
 
-const targetOfTask = (loaded: LoadedTask): Target => ({ loaded, teamId: loaded.team.id, projectId: loaded.work.projectId, entityId: loaded.task.entityId, projectLeadId: loaded.project?.leadPersonId ?? null, label: `${taskKey(loaded.team.key, loaded.work.number)} ${loaded.task.title}` });
+const targetOfTask = (loaded: LoadedTask): Target => ({ loaded, teamId: loaded.team.id, projectId: loaded.work.projectId, entityId: loaded.task.entityId, projectLeadId: loaded.project?.leadPersonId ?? null, label: `${taskKey(loaded.team.key, loaded.work.number)} ${loaded.task.title}`, project: loaded.facts.project });
 
 async function planFactsFor(tx: Executor, rule: AutomationRow, target: Target, event: AutomationEvent): Promise<PlanFacts> {
   const today = todayInVietnam();
@@ -277,14 +278,81 @@ const eventDetail = (event: AutomationEvent, target: Target, depth: number): Rec
   ...(event.type === "field_changed" ? { fields: event.fields } : {}),
 });
 
-/** One rule, in a savepoint; each action in one of its own. Never throws: a failure is the run's outcome. */
-async function executeRule(tx: Tx, rule: AutomationRow, target: Target, event: AutomationEvent, depth: number): Promise<StepResult[]> {
+/**
+ * A rule acts with its author's reach, not beyond it. On a private project's work it runs only while
+ * whoever wrote it may run that project: a team-wide rule kept by a leader outside the project —
+ * `work:manage` does not open a private project — does not reach into it, nor does a rule whose
+ * author has since left the project.
+ */
+async function ruleMayAct(tx: Executor, rule: AutomationRow, target: Target): Promise<boolean> {
+  if (target.project?.visibility !== "private") return true;
+  if (!rule.createdByPersonId) return false;
+  const author = (await viewersOfPeople([rule.createdByPersonId], tx)).get(rule.createdByPersonId);
+  return !!author && canManageProject(author, target.project);
+}
+
+export type DroppedPerson = { action: string; personId: string };
+
+/**
+ * The people a rule names — whoever it assigns, adds as a follower, asks for a review or tells — are
+ * checked against the task as it stands: someone who may not open it (a teammate outside a private
+ * project, a person the rule was written for before the project closed its doors) is left out, and
+ * the run records whom it left out. An action left with nobody is skipped.
+ */
+async function withinReach(tx: Executor, steps: PlannedAction[], target: Target): Promise<{ steps: PlannedAction[]; dropped: DroppedPerson[] }> {
+  const named = steps.flatMap((step) => (step.type === "assign" ? [step.personId] : step.type === "add_follower" ? step.personIds : step.type === "request_review" ? [step.reviewerPersonId] : step.type === "notify" ? step.recipients : []));
+  if (named.length === 0) return { steps, dropped: [] };
+  const viewers = await viewersOfPeople(named, tx);
+  const reaches = (personId: string) => {
+    const viewer = viewers.get(personId);
+    if (!viewer) return false;
+    if (target.loaded) return canViewTask(viewer, target.loaded.facts);
+    return !!target.project && canViewProject(viewer, target.project);
+  };
+  const dropped: DroppedPerson[] = [];
+  const keep = (action: string, ids: readonly string[]) => {
+    const kept: string[] = [];
+    for (const personId of ids) {
+      if (reaches(personId)) kept.push(personId);
+      else dropped.push({ action, personId });
+    }
+    return kept;
+  };
+  const skipped = (action: string): PlannedAction => ({ type: "skip", action, reason: "no_access" });
+  const checked = steps.map((step): PlannedAction => {
+    switch (step.type) {
+      case "assign":
+        return keep(step.type, [step.personId]).length ? step : skipped(step.type);
+      case "request_review":
+        return keep(step.type, [step.reviewerPersonId]).length ? step : skipped(step.type);
+      case "add_follower": {
+        const personIds = keep(step.type, step.personIds);
+        return personIds.length ? { ...step, personIds } : skipped(step.type);
+      }
+      case "notify": {
+        const recipients = keep(step.type, step.recipients);
+        return recipients.length ? { ...step, recipients } : skipped(step.type);
+      }
+      default:
+        return step;
+    }
+  });
+  return { steps: checked, dropped };
+}
+
+/**
+ * One rule, in a savepoint; each action in one of its own. Never throws: a failure is the run's
+ * outcome. null = the rule may not act here (`ruleMayAct`): no run, nothing recorded on the task.
+ */
+async function executeRule(tx: Tx, rule: AutomationRow, target: Target, event: AutomationEvent, depth: number): Promise<StepResult[] | null> {
+  if (!(await ruleMayAct(tx, rule, target))) return null;
   const base = eventDetail(event, target, depth);
   try {
     return await tx.transaction(async (sp) => {
       const facts = await planFactsFor(sp, rule, target, event);
       const results: StepResult[] = [];
-      for (const step of planActions(rule.actions, facts)) {
+      const { steps, dropped } = await withinReach(sp, planActions(rule.actions, facts), target);
+      for (const step of steps) {
         if (step.type === "skip") {
           results.push({ action: step.action, status: "skipped", reason: step.reason });
           continue;
@@ -296,7 +364,7 @@ async function executeRule(tx: Tx, rule: AutomationRow, target: Target, event: A
           results.push({ action: step.type, status: "failed", error: error instanceof Error ? error.message : String(error) });
         }
       }
-      await recordRun(sp, rule, target, event, runOutcome(results), { ...base, results });
+      await recordRun(sp, rule, target, event, runOutcome(results), { ...base, results, ...(dropped.length ? { dropped } : {}) });
       return results;
     });
   } catch (error) {
@@ -324,8 +392,7 @@ export async function runTaskAutomations(tx: Executor, taskId: string, event: Au
     const labels = await tx.select({ labelId: schema.workTaskLabel.labelId }).from(schema.workTaskLabel).where(eq(schema.workTaskLabel.taskId, taskId));
     const snapshot = { priority: loaded.task.priority, assigneePersonId: loaded.task.assigneePersonId, labelIds: labels.map((label) => label.labelId), channel: loaded.work.channel, contentFormat: loaded.work.contentFormat, customValues: loaded.work.customValues };
     if (!conditionsHold(rule.conditions, snapshot)) continue;
-    await executeRule(tx as Tx, rule, targetOfTask(loaded), event, depth);
-    ran += 1;
+    if (await executeRule(tx as Tx, rule, targetOfTask(loaded), event, depth)) ran += 1;
   }
   return ran;
 }
@@ -341,10 +408,13 @@ export async function fireProjectAutomations(tx: Tx, projectId: string, trigger:
   if (!found) return 0;
   const event: AutomationEvent = { type: "quota_threshold", percent: trigger.percent, key: trigger.key ?? null };
   const rules = (await activeRules(tx, found.team.id)).filter((rule) => ruleCovers(rule, { teamId: found.team.id, projectId }) && matchesTrigger(rule.trigger, event) && conditionsHold(rule.conditions, null));
-  const target: Target = { loaded: null, teamId: found.team.id, projectId, entityId: found.project.entityId, projectLeadId: found.project.leadPersonId, label: found.project.name };
+  const target: Target = { loaded: null, teamId: found.team.id, projectId, entityId: found.project.entityId, projectLeadId: found.project.leadPersonId, label: found.project.name, project: projectFacts(found.project, found.team) };
   let ran = 0;
   for (const rule of rules) {
     if (trigger.key) {
+      // Two alerts raised at once for the same mark wait for each other here, so the second finds
+      // the first's run: the lock is the transaction's, as the due-date job's is.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`${rule.id}:${projectId}:${trigger.key}`}))`);
       const [seen] = await tx
         .select({ id: schema.workAutomationRun.id })
         .from(schema.workAutomationRun)
@@ -352,8 +422,7 @@ export async function fireProjectAutomations(tx: Tx, projectId: string, trigger:
         .limit(1);
       if (seen) continue;
     }
-    await executeRule(tx, rule, target, event, 0);
-    ran += 1;
+    if (await executeRule(tx, rule, target, event, 0)) ran += 1;
   }
   return ran;
 }
@@ -403,8 +472,7 @@ export async function runDueDateAutomations(today: IsoDate): Promise<{ dueRuns: 
         if (!current?.isActive || !loaded) return false;
         const labels = await tx.select({ labelId: schema.workTaskLabel.labelId }).from(schema.workTaskLabel).where(eq(schema.workTaskLabel.taskId, task.id));
         if (!conditionsHold(rule.conditions, { priority: loaded.task.priority, assigneePersonId: loaded.task.assigneePersonId, labelIds: labels.map((label) => label.labelId), channel: loaded.work.channel, contentFormat: loaded.work.contentFormat, customValues: loaded.work.customValues })) return false;
-        await executeRule(tx, rule, targetOfTask(loaded), { type: "due_date_reached", dueDate: task.dueDate! }, 0);
-        return true;
+        return !!(await executeRule(tx, rule, targetOfTask(loaded), { type: "due_date_reached", dueDate: task.dueDate! }, 0));
       });
       if (ran) dueRuns += 1;
     }
@@ -424,18 +492,21 @@ export type AutomationPanel = {
  * The rules of a team (every project's own included) or of one project (with the team's it
  * inherits), everything the builder may name, and the latest runs — on a project's page, the runs
  * on that project only. The page has checked `canViewAutomations`; a run on a task the viewer may
- * not open (a private project) shows no task.
+ * not open (a private project) shows no task, and the rules of a project the viewer may not open
+ * are not listed at all — their names and texts are that project's.
  */
 export async function automationPanel(scope: { teamId: string; projectId: string | null }, viewer: WorkViewer): Promise<AutomationPanel> {
-  const [rules, states, labels, fields, templates, people, projects] = await Promise.all([
+  const [allRules, states, labels, fields, templates, people, projects] = await Promise.all([
     listAutomations({ teamId: scope.teamId, projectId: scope.projectId ?? undefined }),
     listStates([scope.teamId]),
     listLabels([scope.teamId]),
     listCustomFields({ teamId: scope.teamId, projectId: scope.projectId, withProjects: !scope.projectId }),
     listTaskTemplates(scope.teamId),
     listAssignable(scope.teamId, scope.projectId),
-    db().select({ id: schema.workProject.id, name: schema.workProject.name }).from(schema.workProject).where(eq(schema.workProject.teamId, scope.teamId)),
+    db().select({ project: schema.workProject, team: schema.workTeam }).from(schema.workProject).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId)).where(eq(schema.workProject.teamId, scope.teamId)),
   ]);
+  const opens = new Set(projects.filter(({ project, team }) => canViewProject(viewer, projectFacts(project, team))).map(({ project }) => project.id));
+  const rules = allRules.filter((rule) => !rule.projectId || opens.has(rule.projectId));
   const runs = (await listAutomationRuns(rules.map((rule) => rule.id), scope.projectId ? 100 : 30)).filter((run) => !scope.projectId || run.detail.projectId === scope.projectId).slice(0, 30);
   const tasks = await loadTasks(runs.flatMap((run) => (run.taskId ? [run.taskId] : [])));
   const visible = (taskId: string | null) => !!taskId && !!tasks.get(taskId) && canViewTask(viewer, tasks.get(taskId)!.facts);
@@ -445,7 +516,7 @@ export async function automationPanel(scope: { teamId: string; projectId: string
     return results.find((result) => result.status === "failed")?.error ?? null;
   };
   return {
-    rules: rules.map((rule) => ({ id: rule.id, name: rule.name, projectId: rule.projectId, trigger: rule.trigger, conditions: rule.conditions, actions: rule.actions, isActive: rule.isActive, runCount: rule.runCount, projectName: rule.projectId && !scope.projectId ? (projects.find((project) => project.id === rule.projectId)?.name ?? null) : null, lastRunAt: rule.lastRunAt?.toISOString() ?? null })),
+    rules: rules.map((rule) => ({ id: rule.id, name: rule.name, projectId: rule.projectId, trigger: rule.trigger, conditions: rule.conditions, actions: rule.actions, isActive: rule.isActive, runCount: rule.runCount, projectName: rule.projectId && !scope.projectId ? (projects.find(({ project }) => project.id === rule.projectId)?.project.name ?? null) : null, lastRunAt: rule.lastRunAt?.toISOString() ?? null })),
     options: {
       states: states.filter((state) => state.isActive).map((state) => ({ id: state.id, name: state.name })),
       labels: labels.map((label) => ({ id: label.id, name: label.name })),

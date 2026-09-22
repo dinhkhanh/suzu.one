@@ -27,7 +27,7 @@ import { CHANGE_REQUESTERS } from "./engine/change-request";
 import { RETAINER_ROLLOVERS } from "./engine/retainer";
 import { checkbox, hours, hoursDelta, idList, isoDate, month, optional, rows, text, vnd, vndDelta } from "./form-inputs";
 import { canCloseProject, canDecideBilling, canEditFees, canHoldRetro, canManageAcceptance, canManageChanges, canEditRetainer, canViewPlan, canWriteClientReport, type PlanFacts } from "./policy";
-import { ensureCurrentPeriods, saveRetainer } from "./retainers";
+import { ensureCurrentPeriods, getRetainer, saveRetainer } from "./retainers";
 import { planProjectFor } from "./views";
 
 const may = async (user: CurrentUser, projectId: string | null, rule: (viewer: WorkViewer, facts: PlanFacts) => boolean) => {
@@ -76,9 +76,16 @@ const retainerPipeline = createAction({
   authorize: (user, input) => may(user, input.projectId, canEditRetainer),
   run: async ({ user, input }) => {
     const found = (await planProjectFor(user, input.projectId))!;
+    const editsFees = canEditFees(found.viewer, found.facts);
     // The fee is written only by someone who may read it; for anyone else it stays as it was.
-    const fee = canEditFees(found.viewer, found.facts) && input.feePerMonthVnd !== undefined ? { feePerMonthVnd: input.feePerMonthVnd } : {};
-    const { before, after } = await saveRetainer(input.projectId, { startMonth: input.startMonth, endMonth: input.endMonth, lines: input.lines.map((row) => ({ title: row.title, quantity: row.quantity, format: row.format, channel: row.channel })), minutesPerMonth: input.hoursPerMonth, rollover: input.rollover, isActive: input.isActive, ...fee });
+    const fee = editsFees && input.feePerMonthVnd !== undefined ? { feePerMonthVnd: input.feePerMonthVnd } : {};
+    // The months and the switch are money too: they decide how many months are billed, and for how
+    // long. Only a `pjm:commercial` holder moves them — the account manager keeps the scope lines.
+    const stored = await getRetainer(input.projectId);
+    const months = editsFees ? { startMonth: input.startMonth, endMonth: input.endMonth, isActive: input.isActive } : stored ? { startMonth: stored.startMonth, endMonth: stored.endMonth, isActive: stored.isActive } : null;
+    if (!months) throw new ActionError("retainer_terms_need_commercial");
+    if (!editsFees && (input.startMonth !== months.startMonth || input.endMonth !== months.endMonth || input.isActive !== months.isActive)) throw new ActionError("retainer_terms_need_commercial");
+    const { before, after } = await saveRetainer(input.projectId, { ...months, lines: input.lines.map((row) => ({ title: row.title, quantity: row.quantity, format: row.format, channel: row.channel })), minutesPerMonth: input.hoursPerMonth, rollover: input.rollover, ...fee });
     // This month is made now rather than at midnight: the account manager sees it at once.
     const made = after.isActive ? await ensureCurrentPeriods(after.id) : { periods: 0, closed: 0, billed: 0 };
     refresh(input.projectId);
@@ -407,7 +414,7 @@ const retroPipeline = createAction({
   authorize: (user, input) => may(user, input.projectId, canHoldRetro),
   run: async ({ user, input }) => {
     const retro = Object.fromEntries(Object.entries({ wentWell: input.wentWell, improve: input.improve, actions: input.actions }).filter(([, value]) => value !== null)) as Record<string, string>;
-    const { before, after } = await saveRetro(input.projectId, { title: "Retrospective", heldOn: input.heldOn, attendeeIds: input.attendeeIds, retro }, user.person.id);
+    const { before, after } = await saveRetro(input.projectId, { heldOn: input.heldOn, attendeeIds: input.attendeeIds, retro }, user.person.id);
     refresh(input.projectId);
     return { data: { id: after.id }, audit: { resource: auditProject(input.projectId), summary: `retrospective ${after.heldOn}`, before: before ? { heldOn: before.heldOn } : null, after: { heldOn: after.heldOn, parts: Object.keys(retro) } } };
   },

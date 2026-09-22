@@ -17,7 +17,7 @@ import { decideRequest, defineRequestType, getRequest, type RequestTypeDefinitio
 import { notify } from "../platform/notifications/service";
 import { can, type Principal } from "../platform/rbac/policy";
 import { applyChange, type ChangeLedger, changeLedger, changeProblems, type ChangeRequester, type ChangeStatus, changeEditable, hasFeeChange, withoutFee } from "./engine/change-request";
-import { ensurePlan } from "./plans";
+import { ensurePlan, readPlan } from "./plans";
 import type { ChangeImpact } from "./schema";
 
 export type ChangeRow = typeof schema.projectChangeRequest.$inferSelect;
@@ -34,13 +34,25 @@ export const changeRequestType = defineRequestType({
   conditionFields: ["feeChange"],
   // A change moves scope, hours and perhaps the fee: it is read before it is approved.
   bulkApprovable: () => false,
-  canView: (viewer: Principal) => can(viewer, "work:manage", {}),
+  // Nobody reads a change for holding a permission: a private project's changes stay with its
+  // people. Its requester and its approvers are the parties, and nobody else opens the request.
+  canView: () => false,
 });
 
-/** The type with the project's leads — else the owning team's — named on the first step. */
-const changeFlowFor = (leadIds: readonly string[]): RequestTypeDefinition => ({
+/**
+ * The type with the project's leads — else the owning team's — named on the first step. With none,
+ * a private project's first step names nobody, so the engine asks the owners — never the
+ * `work:manage` holders of the default flow, who may not open a private project.
+ */
+const changeFlowFor = (leadIds: readonly string[], isPrivate: boolean): RequestTypeDefinition => ({
   ...changeRequestType,
-  flow: { steps: changeRequestType.flow.steps.map((step, index) => (index === 0 && leadIds.length ? { ...step, approvers: leadIds.map((personId) => ({ rule: "person" as const, personId })) } : step)) },
+  flow: {
+    steps: changeRequestType.flow.steps.map((step, index) => {
+      if (index !== 0) return step;
+      if (leadIds.length) return { ...step, approvers: leadIds.map((personId) => ({ rule: "person" as const, personId })) };
+      return isPrivate ? { ...step, approvers: [] } : step;
+    }),
+  },
 });
 
 export const findChange = async (changeId: string): Promise<ChangeRow | undefined> => (await db().select().from(schema.projectChangeRequest).where(eq(schema.projectChangeRequest.id, changeId)).limit(1))[0];
@@ -50,6 +62,13 @@ async function lockChange(tx: Tx, changeId: string): Promise<ChangeRow> {
   if (!row) throw new ActionError("change_not_found");
   return row;
 }
+
+/**
+ * The same for the author's own moves (drafting, submitting, withdrawing): a request withdrawn,
+ * cancelled or returned from the approvals inbox leaves the change "submitted" until something
+ * writes it back, and reads no longer do — so this does, under the row's lock.
+ */
+const lockOwnChange = async (tx: Tx, changeId: string): Promise<ChangeRow> => reconcileChange(tx, await lockChange(tx, changeId));
 
 // ── Drafting ────────────────────────────────────────────────────────────────────────────────
 
@@ -76,7 +95,7 @@ export async function saveChange(projectId: string, changeId: string | null, inp
       const owned = await tx.select({ id: schema.projectDeliverable.id }).from(schema.projectDeliverable).where(and(eq(schema.projectDeliverable.projectId, projectId), inArray(schema.projectDeliverable.id, cancelIds)));
       if (owned.length !== cancelIds.length) throw new ActionError("deliverable_not_found");
     }
-    const before = changeId ? await lockChange(tx, changeId) : null;
+    const before = changeId ? await lockOwnChange(tx, changeId) : null;
     if (before && (before.projectId !== projectId || !changeEditable(before.status as ChangeStatus))) throw new ActionError("change_locked");
     const { feeDeltaVnd, ...rest } = input.impact;
     const fee = options.withFee ? feeDeltaVnd : before?.impact.feeDeltaVnd;
@@ -113,7 +132,7 @@ async function leadsFor(tx: Tx, project: { id: string; teamId: string }, authorP
  */
 export async function submitChange(changeId: string, actorPersonId: string): Promise<{ change: ChangeRow; requestId: string; resubmitted: boolean }> {
   return db().transaction(async (tx) => {
-    const change = await lockChange(tx, changeId);
+    const change = await lockOwnChange(tx, changeId);
     if (!changeEditable(change.status as ChangeStatus)) throw new ActionError("change_locked");
     const problems = changeProblems({ title: change.title, requestedBy: change.requestedBy as ChangeRequester, impact: change.impact, evidenceFileId: change.evidenceFileId, evidenceUrl: change.evidenceUrl });
     if (problems.length) throw new ActionError(problems[0], { problems });
@@ -130,7 +149,7 @@ export async function submitChange(changeId: string, actorPersonId: string): Pro
     }
 
     const leads = await leadsFor(tx, project, actorPersonId);
-    const { request, outcome } = await submitRequest(tx, changeFlowFor(leads), {
+    const { request, outcome } = await submitRequest(tx, changeFlowFor(leads, project.visibility === "private"), {
       entityId: project.entityId,
       requesterPersonId: actorPersonId,
       subjectPersonId: null,
@@ -209,7 +228,7 @@ export async function decideChange(actorPersonId: string, requestId: string, dec
 /** The author takes a change back while it waits (or after a return). */
 export async function withdrawChange(changeId: string, actorPersonId: string): Promise<{ before: ChangeRow; after: ChangeRow }> {
   return db().transaction(async (tx) => {
-    const before = await lockChange(tx, changeId);
+    const before = await lockOwnChange(tx, changeId);
     if (before.status !== "submitted" && before.status !== "draft") throw new ActionError("change_locked");
     if (before.approvalRequestId) {
       const [request] = await tx.select({ status: schema.approvalRequest.status }).from(schema.approvalRequest).where(eq(schema.approvalRequest.id, before.approvalRequestId)).limit(1);
@@ -221,27 +240,43 @@ export async function withdrawChange(changeId: string, actorPersonId: string): P
 }
 
 /**
- * The engine's own inbox can withdraw or cancel a request without this module hearing: a change
- * whose request is no longer pending, and was not decided here, is brought in line when read.
+ * The engine's own inbox can withdraw, cancel or return a request without this module hearing: a
+ * submitted change whose request is no longer pending is withdrawn (or, returned, a draft again).
+ * null = nothing to change.
  */
-async function syncChanges(rows: ChangeRow[]): Promise<ChangeRow[]> {
+export function changeStatusNow(row: Pick<ChangeRow, "status" | "approvalRequestId">, requestStatus: string | null | undefined): ChangeStatus | null {
+  if (row.status !== "submitted" || !row.approvalRequestId) return null;
+  return requestStatus === "withdrawn" || requestStatus === "cancelled" ? "withdrawn" : requestStatus === "returned" ? "draft" : null;
+}
+
+/** `changeStatusNow` written back, inside a change that holds the row's lock. */
+async function reconcileChange(tx: Tx, row: ChangeRow): Promise<ChangeRow> {
+  if (row.status !== "submitted" || !row.approvalRequestId) return row;
+  const [request] = await tx.select({ status: schema.approvalRequest.status }).from(schema.approvalRequest).where(eq(schema.approvalRequest.id, row.approvalRequestId)).limit(1);
+  const next = changeStatusNow(row, request?.status);
+  if (!next) return row;
+  const [after] = await tx.update(schema.projectChangeRequest).set({ status: next, updatedAt: new Date() }).where(eq(schema.projectChangeRequest.id, row.id)).returning();
+  return after;
+}
+
+/** Reading never writes: the changes as they stand, each status as the engine now has it. */
+async function asTheyStand(rows: ChangeRow[]): Promise<ChangeRow[]> {
   const waiting = rows.filter((row) => row.status === "submitted" && row.approvalRequestId);
   if (waiting.length === 0) return rows;
   const requests = await db().select({ id: schema.approvalRequest.id, status: schema.approvalRequest.status }).from(schema.approvalRequest).where(inArray(schema.approvalRequest.id, waiting.map((row) => row.approvalRequestId!)));
   const statusOf = new Map(requests.map((row) => [row.id, row.status]));
-  const synced = new Map<string, ChangeRow>();
-  for (const row of waiting) {
-    const status = statusOf.get(row.approvalRequestId!);
-    const next = status === "withdrawn" || status === "cancelled" ? "withdrawn" : status === "returned" ? "draft" : null;
-    if (!next) continue;
-    const [after] = await db()
-      .update(schema.projectChangeRequest)
-      .set({ status: next, updatedAt: new Date() })
-      .where(and(eq(schema.projectChangeRequest.id, row.id), eq(schema.projectChangeRequest.status, "submitted")))
-      .returning();
-    if (after) synced.set(after.id, after);
-  }
-  return rows.map((row) => synced.get(row.id) ?? row);
+  return rows.map((row) => {
+    const next = changeStatusNow(row, row.approvalRequestId ? statusOf.get(row.approvalRequestId) : null);
+    return next ? { ...row, status: next } : row;
+  });
+}
+
+/** The nightly job's half of the same: every change left "submitted" behind a request that moved on, stored. */
+export async function reconcileChanges(): Promise<{ changes: number }> {
+  const rows = await db().select().from(schema.projectChangeRequest).where(eq(schema.projectChangeRequest.status, "submitted"));
+  const stale = (await asTheyStand(rows)).filter((row) => row.status !== "submitted");
+  for (const row of stale) await db().transaction((tx) => lockOwnChange(tx, row.id));
+  return { changes: stale.length };
 }
 
 // ── Reading ─────────────────────────────────────────────────────────────────────────────────
@@ -256,7 +291,7 @@ export async function listChanges(projectId: string, seesFees: boolean): Promise
     .leftJoin(schema.person, eq(schema.person.id, schema.projectChangeRequest.createdByPersonId))
     .where(eq(schema.projectChangeRequest.projectId, projectId))
     .orderBy(desc(schema.projectChangeRequest.number));
-  const synced = await syncChanges(rows.map((row) => row.change));
+  const synced = await asTheyStand(rows.map((row) => row.change));
   const cancelIds = [...new Set(synced.flatMap((row) => row.impact.cancelDeliverableIds ?? []))];
   const titles = cancelIds.length ? new Map((await db().select({ id: schema.projectDeliverable.id, title: schema.projectDeliverable.title }).from(schema.projectDeliverable).where(inArray(schema.projectDeliverable.id, cancelIds))).map((row) => [row.id, row.title])) : new Map<string, string>();
   return synced.map((change, index) => ({
@@ -269,7 +304,7 @@ export async function listChanges(projectId: string, seesFees: boolean): Promise
 
 /** Original + changes = current, for the project's figures. The fee is left out entirely without `pjm:commercial`. */
 export async function getChangeLedger(projectId: string, seesFees: boolean): Promise<ChangeLedger> {
-  const plan = await ensurePlan(projectId);
+  const plan = (await readPlan(projectId)) ?? { budgetMinutes: null, feeVnd: null };
   const [project] = await db().select({ dueDate: schema.workProject.dueDate }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
   const applied = await db().select().from(schema.projectChangeRequest).where(and(eq(schema.projectChangeRequest.projectId, projectId), eq(schema.projectChangeRequest.status, "approved"))).orderBy(asc(schema.projectChangeRequest.appliedAt));
   const ledger = changeLedger({ budgetMinutes: plan.budgetMinutes, feeVnd: plan.feeVnd, dueDate: project?.dueDate ?? null }, applied);

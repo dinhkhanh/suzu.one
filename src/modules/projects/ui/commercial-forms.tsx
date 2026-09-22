@@ -120,16 +120,22 @@ export function UploadField({ label, name, begin, complete, required, initial }:
 
 export type RetainerValues = { startMonth: string; endMonth: string | null; lines: Line[]; minutesPerMonth: number | null; feePerMonthVnd?: number | null; rollover: string; isActive: boolean };
 
+/**
+ * The terms. The months and the switch decide what is billed and for how long, so they are the
+ * fee-holder's (`editFee`) — for anyone else they are shown as they stand and posted unchanged,
+ * and the action refuses a change all the same.
+ */
 export function RetainerForm({ projectId, values, rollovers, editFee, defaultMonth }: { projectId: string; values: RetainerValues | null; rollovers: readonly string[]; editFee: boolean; defaultMonth: string }) {
   const t = useTranslations("projects.retainer");
   return (
     <ActionForm action={saveRetainerAction} extra={{ projectId }} submit={t("save")}>
+      {editFee ? null : <p className="text-xs text-muted-foreground">{t("monthsLocked")}</p>}
       <div className="grid gap-3 sm:grid-cols-3">
         <Field name="startMonth" label={t("startMonth")}>
-          <Input id="startMonth" name="startMonth" type="month" required defaultValue={values?.startMonth ?? defaultMonth} />
+          <Input id="startMonth" name="startMonth" type="month" required readOnly={!editFee} defaultValue={values?.startMonth ?? defaultMonth} />
         </Field>
         <Field name="endMonth" label={t("endMonth")}>
-          <Input id="endMonth" name="endMonth" type="month" defaultValue={values?.endMonth ?? ""} />
+          <Input id="endMonth" name="endMonth" type="month" readOnly={!editFee} defaultValue={values?.endMonth ?? ""} />
         </Field>
         <Field name="rollover" label={t("rollover")}>
           <Select id="rollover" name="rollover" defaultValue={values?.rollover ?? "reset"}>
@@ -156,7 +162,9 @@ export function RetainerForm({ projectId, values, rollovers, editFee, defaultMon
           </Field>
         ) : null}
         <label className="flex items-center gap-2 self-end pb-2 text-sm">
-          <input type="checkbox" name="isActive" defaultChecked={values?.isActive ?? true} />
+          <input type="checkbox" name="isActive" disabled={!editFee} defaultChecked={values?.isActive ?? true} />
+          {/* A disabled checkbox posts nothing: the value it shows is sent beside it, unchanged. */}
+          {editFee ? null : values?.isActive ? <input type="hidden" name="isActive" value="on" /> : null}
           {t("active")}
         </label>
       </div>

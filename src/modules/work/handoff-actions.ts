@@ -178,14 +178,18 @@ export async function sendToTeamAction(input: unknown) {
 const accountPipeline = createAction({
   name: "work.client.account_manager",
   input: z.object({ clientId: z.uuid(), toPersonId: z.uuid(), note: noteInput }),
-  authorize: async (user, input) => !!(await findClient(input.clientId)) && canChangeAccountManager(await loadViewer(user)),
+  authorize: async (user, input) => {
+    const client = await findClient(input.clientId);
+    return !!client && canChangeAccountManager(await loadViewer(user), client);
+  },
   run: async ({ user, input }) => {
-    const result = await changeAccountManager(input.clientId, { toPersonId: input.toPersonId, note: input.note }, actorOf(user));
+    const client = await findClient(input.clientId);
+    const result = await changeAccountManager(input.clientId, { toPersonId: input.toPersonId, note: input.note }, actorOf(user), await loadViewer(user));
     revalidatePath("/work/clients");
     for (const project of result.projects) revalidatePath(`/work/projects/${project.id}`);
     return {
-      data: { projects: result.projects.length, skipped: result.skipped.map((project) => project.name) },
-      audit: { resource: { type: "work_client", id: input.clientId }, summary: `account manager → ${input.toPersonId} (${result.projects.length} projects)`, before: { accountManagerPersonId: result.before }, after: { accountManagerPersonId: result.after, projects: result.projects, skipped: result.skipped, note: result.handoff.note } },
+      data: { projects: result.projects.length, skipped: result.skipped.map((project) => project.name), withheld: result.withheld },
+      audit: { resource: { type: "work_client", id: input.clientId, entityId: client?.entityId ?? null }, summary: `account manager → ${input.toPersonId} (${result.projects.length} projects)`, before: { accountManagerPersonId: result.before }, after: { accountManagerPersonId: result.after, projects: result.projects, skipped: result.skipped, withheld: result.withheld, note: result.handoff.note } },
     };
   },
 });
@@ -270,7 +274,10 @@ const handBackPipeline = createAction({
     return !!found && canHandBackCover(await loadViewer(user), found.facts);
   },
   run: async ({ user, input }) => {
-    const { returned, covers } = await handBackCover(input.planId, actorOf(user));
+    // Whoever may submit the plan hands back all of it; a cover hands back only what they hold.
+    const found = await coverPlanOf(input.planId);
+    const whole = !!found && canSubmitCoverPlan(await loadViewer(user), found.facts);
+    const { returned, covers } = await handBackCover(input.planId, actorOf(user), todayInVietnam(), { whole });
     revalidatePath(`/work/cover/${input.planId}`);
     revalidatePath("/tasks");
     return { data: { returned }, audit: { resource: { type: "work_cover_plan", id: input.planId }, summary: `handed back ${returned} items`, after: { covers } } };
@@ -308,7 +315,7 @@ const reassignPipeline = createAction({
   authorize: (user, input) => runsHandover(user, input.handoverId),
   run: async ({ user, input }) => {
     const { handoverId, ...rest } = input;
-    const result = await reassignOwnership(handoverId, rest, actorOf(user));
+    const result = await reassignOwnership(handoverId, rest, actorOf(user), await loadViewer(user));
     revalidatePath(`/work/handover/${handoverId}`);
     revalidatePath("/tasks");
     revalidatePath("/work", "layout");

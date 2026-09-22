@@ -8,14 +8,16 @@
 // manager and the lead at 80% and 100% of any line, once per line and threshold.
 import "server-only";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { createTranslator } from "next-intl";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import vi from "../../../messages/vi.json";
 import { notify } from "../platform/notifications/service";
 import { fireProjectAutomations } from "../work/service";
 import { ensureBillingItem } from "./billing";
 import { unitsConsumed } from "./engine/register";
-import { addMonths, hoursUsage, isMonth, lastDayOf, type Month, monthOf, monthsDue, planPeriod, type PreviousPeriod, quotaAlertsDue, type RetainerRollover, type RetainerTerms, totalUsage, type Usage, usage } from "./engine/retainer";
+import { addMonths, hoursUsage, isMonth, lastDayOf, type Month, monthBounds, monthOf, monthsDue, monthsToMake, planPeriod, type PreviousPeriod, quotaAlertsDue, type RetainerRollover, type RetainerTerms, totalUsage, type Usage, usage } from "./engine/retainer";
 import { loadLineUnits, withLineStatus } from "./metrics";
 import { ensurePlan } from "./plans";
 import type { RetainerLineTemplate } from "./schema";
@@ -24,6 +26,11 @@ import type { DeliverableRow } from "./structure";
 type Executor = Tx | ReturnType<typeof db>;
 export type RetainerRow = typeof schema.projectRetainer.$inferSelect;
 export type PeriodRow = typeof schema.projectRetainerPeriod.$inferSelect;
+
+// The description finance reads on a retainer month's billing item is stored with the item, so it
+// is written once, in Vietnamese, from the messages — never a literal in the code (FR-PLT-02).
+const label = createTranslator({ locale: "vi", messages: vi, namespace: "projects.retainer" });
+export const retainerMonthLabel = (month: Month): string => label("billingDescription", { month });
 
 export const getRetainer = async (projectId: string, executor: Executor = db()): Promise<RetainerRow | undefined> => (await executor.select().from(schema.projectRetainer).where(eq(schema.projectRetainer.projectId, projectId)).limit(1))[0];
 
@@ -43,6 +50,11 @@ export type RetainerInput = {
 /**
  * Sets a retainer's terms. Only a project of kind "retainer" has one. A change of the line
  * template applies from the next month made: a month already made keeps the lines it promised.
+ *
+ * The months are bounded (`monthBounds`): a retainer bills month after month, so its first month
+ * may not be moved into the distant past — that would make hundreds of closed months, each with a
+ * full month's fee — nor its last one years ahead. A month already stored is left alone, whatever
+ * bounds it was saved under.
  */
 export async function saveRetainer(projectId: string, input: RetainerInput): Promise<{ before: RetainerRow | null; after: RetainerRow }> {
   if (!isMonth(input.startMonth) || (input.endMonth && (!isMonth(input.endMonth) || input.endMonth < input.startMonth))) throw new ActionError("retainer_months_invalid");
@@ -53,8 +65,14 @@ export async function saveRetainer(projectId: string, input: RetainerInput): Pro
   return db().transaction(async (tx) => {
     const plan = await ensurePlan(projectId, tx);
     if (plan.kind !== "retainer") throw new ActionError("retainer_not_retainer_project");
-    const [project] = await tx.select({ clientId: schema.workProject.clientId }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
+    const [project] = await tx.select({ clientId: schema.workProject.clientId, startDate: schema.workProject.startDate }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
     const before = (await getRetainer(projectId, tx)) ?? null;
+    const bounds = monthBounds(monthOf(todayInVietnam(plan.createdAt)), monthOf(todayInVietnam()));
+    const floor = project?.startDate && monthOf(project.startDate) < bounds.min ? monthOf(project.startDate) : bounds.min;
+    for (const [month, stored] of [[input.startMonth, before?.startMonth], [input.endMonth, before?.endMonth]] as const) {
+      if (!month || month === stored) continue;
+      if (month < floor || month > bounds.max) throw new ActionError("retainer_month_out_of_range", { min: floor, max: bounds.max });
+    }
     const { feePerMonthVnd, ...terms } = input;
     const values = { ...terms, clientId: project?.clientId ?? null, ...(feePerMonthVnd === undefined ? {} : { feePerMonthVnd }), updatedAt: new Date() };
     const [after] = before
@@ -159,7 +177,7 @@ export async function closePeriod(periodId: string, actorPersonId: string | null
     if (closed) await tx.update(schema.projectRetainerPeriod).set({ status: "closed", closedAt: new Date() }).where(eq(schema.projectRetainerPeriod.id, periodId));
     const fee = periodFee(retainer, project ?? { startDate: null, dueDate: null }, period.month);
     if (!fee) return { closed, billed: false };
-    const { created } = await ensureBillingItem(tx, { projectId: retainer.projectId, source: "retainer", retainerPeriodId: period.id, description: `Retainer ${period.month}`, amountVnd: fee, createdByPersonId: actorPersonId });
+    const { created } = await ensureBillingItem(tx, { projectId: retainer.projectId, source: "retainer", retainerPeriodId: period.id, description: retainerMonthLabel(period.month), amountVnd: fee, createdByPersonId: actorPersonId });
     return { closed, billed: created };
   });
 }
@@ -170,12 +188,20 @@ export async function closePeriod(periodId: string, actorPersonId: string | null
  */
 export async function runRetainers(today: IsoDate, onlyRetainerId?: string): Promise<{ periods: number; closed: number; billed: number }> {
   const retainers = await db()
-    .select()
+    .select({ retainer: schema.projectRetainer, closedAt: schema.projectPlan.closedAt })
     .from(schema.projectRetainer)
+    .leftJoin(schema.projectPlan, eq(schema.projectPlan.projectId, schema.projectRetainer.projectId))
     .where(onlyRetainerId ? eq(schema.projectRetainer.id, onlyRetainerId) : eq(schema.projectRetainer.isActive, true));
   const result = { periods: 0, closed: 0, billed: 0 };
-  for (const retainer of retainers) {
-    for (const month of monthsDue(retainer, today)) if (await makePeriod(retainer.id, month)) result.periods += 1;
+  for (const { retainer, closedAt } of retainers) {
+    // A closed project bills nothing more (FR-PJM-59): closing deactivates its retainer, and a row
+    // that escaped that — closed before this rule, or closed while a run was under way — stops here.
+    if (closedAt) continue;
+    // Asked for one retainer by name (the page right after the terms are saved), a paused one makes nothing.
+    if (!retainer.isActive) continue;
+    // Never a month before the terms were saved, and never more than the catch-up in one run.
+    const saved = monthOf(todayInVietnam(retainer.createdAt));
+    for (const month of monthsToMake(monthsDue(retainer, today), saved, today)) if (await makePeriod(retainer.id, month)) result.periods += 1;
     const open = await db()
       .select({ id: schema.projectRetainerPeriod.id, month: schema.projectRetainerPeriod.month })
       .from(schema.projectRetainerPeriod)

@@ -14,6 +14,7 @@ import { getDayPlans } from "@/modules/attendance/service";
 import { getLeaveOnDays } from "@/modules/leave/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
 import { listTeams } from "@/modules/work/service";
+import { foldSmallGroups } from "./engine/privacy";
 import { lastWeeks, personWeeks, type PlanKind, type ScheduledDay, totalOf, type Utilisation } from "./engine/utilisation";
 import { listOverseen, loadReportReader, loadSubjects } from "./people";
 import { canViewUtilisation } from "./policy";
@@ -26,7 +27,9 @@ export type UtilisationGroup =
   | { kind: "team"; teamId: string; name: string; people: UtilisationPerson[]; total: Utilisation[] }
   | { kind: "reports"; people: UtilisationPerson[]; total: Utilisation[] }
   /** A team in the viewer's `pjm:portfolio` scope that they do not lead: its totals, no people. */
-  | { kind: "portfolio"; teamId: string; name: string; headcount: number; total: Utilisation[] };
+  | { kind: "portfolio"; teamId: string; name: string; headcount: number; total: Utilisation[] }
+  /** Teams too small to stand on their own (engine/privacy.ts), added together: the page names them "other teams". */
+  | { kind: "portfolio_other"; teams: number; headcount: number; total: Utilisation[] };
 export type UtilisationView = { weeks: IsoDate[]; groups: UtilisationGroup[] };
 
 /** Each person's weeks, in a fixed number of queries. */
@@ -70,7 +73,12 @@ export async function getUtilisation(viewer: { personId: string; principal: Prin
     const subject = subjects.get(personId);
     return !!subject && canViewUtilisation(reader, subject);
   });
-  const numbers = await utilisationOfPeople([...visible, ...portfolio.flatMap((team) => team.personIds)], weeks, today);
+  // A team of one person is that person: the small ones are added together, and if even that would
+  // be one person they are left out (security review, finding 22). The reader's own teams are theirs.
+  const folded = foldSmallGroups(portfolio.map((team) => ({ key: team.id, personIds: team.personIds })), new Set());
+  const shownTeams = portfolio.filter((team) => folded.kept.includes(team.id));
+  const otherPeople = folded.other?.personIds ?? [];
+  const numbers = await utilisationOfPeople([...visible, ...shownTeams.flatMap((team) => team.personIds), ...otherPeople], weeks, today);
   const person = (personId: string): UtilisationPerson => ({ personId, name: subjects.get(personId)!.fullName, weeks: numbers.get(personId)! });
   const totals = (people: readonly UtilisationPerson[]) => weeks.map((_, index) => totalOf(people.map((row) => row.weeks[index])));
   const groups: UtilisationGroup[] = [];
@@ -82,11 +90,12 @@ export async function getUtilisation(viewer: { personId: string; principal: Prin
     if (people.length === 0) continue;
     groups.push(group.kind === "team" ? { kind: "team", teamId: group.teamId, name: group.name, people, total: totals(people) } : { kind: "reports", people, total: totals(people) });
   }
-  for (const team of portfolio) {
+  // Summed here, on the server: the page receives a team's numbers and never its people's.
+  const totalsOf = (personIds: readonly string[]) => weeks.map((_, index) => totalOf(personIds.map((personId) => numbers.get(personId)![index])));
+  for (const team of shownTeams) {
     if (team.personIds.length === 0) continue;
-    // Summed here, on the server: the page receives the team's numbers and never its people's.
-    const total = weeks.map((_, index) => totalOf(team.personIds.map((personId) => numbers.get(personId)![index])));
-    groups.push({ kind: "portfolio", teamId: team.id, name: team.name, headcount: team.personIds.length, total });
+    groups.push({ kind: "portfolio", teamId: team.id, name: team.name, headcount: team.personIds.length, total: totalsOf(team.personIds) });
   }
+  if (folded.other) groups.push({ kind: "portfolio_other", teams: folded.other.keys.length, headcount: otherPeople.length, total: totalsOf(otherPeople) });
   return { weeks, groups };
 }

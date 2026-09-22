@@ -7,21 +7,19 @@ import { ActionError, createAction } from "@/lib/action";
 import { addPresetAutomation, findAutomation, removeAutomation, saveAutomation, setAutomationActive } from "./automations";
 import { AUTOMATION_ACTIONS, AUTOMATION_PRESETS, AUTOMATION_TRIGGERS, CLIENT_DECISIONS, CONDITION_OPS, MAX_RULE_ACTIONS, MAX_RULE_CONDITIONS, PERSON_ROLES } from "./engine/automation";
 import { canManageAutomations } from "./policy";
-import { findProject, listAssignable } from "./projects";
+import { findProject, listAssignable, projectFacts } from "./projects";
 import { findTeam, teamFacts } from "./teams";
 import { loadViewer } from "./viewer";
 
 type User = Parameters<typeof loadViewer>[0];
 
-/** Whoever runs the team keeps its rules, and a project's own (the project must be the team's). */
+/** Whoever runs the team keeps its rules, and a project's own when they may also run the project (the project must be the team's). */
 async function managesRulesOf(user: User, teamId: string, projectId: string | null): Promise<boolean> {
   const team = await findTeam(teamId);
   if (!team) return false;
-  if (projectId) {
-    const found = await findProject(projectId);
-    if (!found || found.team.id !== teamId) return false;
-  }
-  return canManageAutomations(await loadViewer(user), teamFacts(team));
+  const found = projectId ? await findProject(projectId) : null;
+  if (projectId && (!found || found.team.id !== teamId)) return false;
+  return canManageAutomations(await loadViewer(user), teamFacts(team), found ? projectFacts(found.project, found.team) : null);
 }
 
 function refresh(teamId: string, projectId: string | null) {

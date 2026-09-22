@@ -1,34 +1,42 @@
 // A report's lines — done, not done, the day's activity — for the form and the read-only view.
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import type { ActivityItem, DailyTaskLine } from "../schema";
+import type { ShownActivity, ShownLine } from "../engine/redact";
 import { hoursOf } from "./format";
 
 const ACTIVITY_KINDS = ["created", "moved", "completed", "submitted", "reviewed", "commented", "handoff_sent", "handoff_received", "blocker_raised", "blocker_resolved", "time_logged"] as const;
 
-export function TaskLines({ lines, empty }: { lines: readonly DailyTaskLine[]; empty: string }) {
+/** `hidden` lines are work on something this reader may not open: said, never named (SRS §4.6b). */
+export function TaskLines({ lines, empty }: { lines: readonly ShownLine[]; empty: string }) {
+  const t = useTranslations("daily");
   if (lines.length === 0) return <p className="text-sm text-muted-foreground">{empty}</p>;
   return (
     <ul className="flex flex-col gap-1 text-sm">
       {lines.map((line) => (
         <li key={line.taskId}>
-          <Link href={`/work/tasks/${line.taskId}`} className="hover:underline">
-            {line.ref ? <span className="font-mono text-xs text-muted-foreground">{line.ref}</span> : null} {line.title}
-          </Link>
+          {line.hidden ? (
+            <span className="text-muted-foreground italic">{t("privateWork")}</span>
+          ) : (
+            <Link href={`/work/tasks/${line.taskId}`} className="hover:underline">
+              {line.ref ? <span className="font-mono text-xs text-muted-foreground">{line.ref}</span> : null} {line.title}
+            </Link>
+          )}
         </li>
       ))}
     </ul>
   );
 }
 
-export function ActivityList({ items }: { items: readonly ActivityItem[] }) {
+export function ActivityList({ items }: { items: readonly ShownActivity[] }) {
   const t = useTranslations("daily.activity");
   if (items.length === 0) return <p className="text-sm text-muted-foreground">{t("empty")}</p>;
   return (
     <ul className="flex flex-col gap-1.5 text-sm">
       {items.map((item, index) => {
         const kind = (ACTIVITY_KINDS as readonly string[]).includes(item.kind) ? (item.kind as (typeof ACTIVITY_KINDS)[number]) : null;
-        const title = item.taskId ? (
+        const title = item.hidden ? (
+          <span className="text-muted-foreground italic">{t("privateWork")}</span>
+        ) : item.taskId ? (
           <Link href={`/work/tasks/${item.taskId}`} className="hover:underline">
             {item.ref ? <span className="font-mono text-xs text-muted-foreground">{item.ref}</span> : null} {item.title}
           </Link>

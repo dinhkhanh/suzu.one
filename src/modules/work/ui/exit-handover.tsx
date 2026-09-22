@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { isReassignable, type OwnedItem, OWNERSHIP_KINDS } from "../engine/exit";
+import { isReassignable, OWNERSHIP_KINDS } from "../engine/exit";
+import type { OwnedItemView } from "../exit";
 import { changeAccountManagerAction, completeExitHandoverAction, reassignOwnershipAction } from "../handoff-actions";
 import { HandoffNoteFields, readNote } from "./handoff";
 
@@ -41,16 +42,17 @@ function ErrorLine({ errorKey }: { errorKey: string | null }) {
   );
 }
 
-export function ExitHandoverForm({ handoverId, owned, people, canRun, open }: { handoverId: string; owned: OwnedItem[]; people: { id: string; fullName: string }[]; canRun: boolean; open: boolean }) {
+export function ExitHandoverForm({ handoverId, owned, people, canRun, open }: { handoverId: string; owned: OwnedItemView[]; people: { id: string; fullName: string }[]; canRun: boolean; open: boolean }) {
   const t = useTranslations("work.exit");
   const format = useFormatter();
   const { run, pending, errorKey } = useRun();
-  const reassignable = owned.filter((item) => isReassignable(item.kind));
+  const reassignable = owned.filter((item) => item.canReassign);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
-  const keyOf = (item: OwnedItem) => `${item.kind}:${item.id}`;
+  const keyOf = (item: OwnedItemView) => `${item.kind}:${item.id}`;
   const groups = OWNERSHIP_KINDS.map((kind) => ({ kind, items: owned.filter((item) => item.kind === kind) })).filter((group) => group.items.length);
   const toggle = (key: string, on: boolean) => setChosen((current) => new Set(on ? [...current, key] : [...current].filter((row) => row !== key)));
-  const label = (item: OwnedItem) => (item.kind === "time_week" ? t("week", { date: format.dateTime(new Date(`${item.label}T00:00:00`), { dateStyle: "medium" }) }) : item.label);
+  // Work of a place this runner does not run has no name here: they are told whom to ask.
+  const label = (item: OwnedItemView) => (item.label === null ? (item.ownerName ? t("privateItemAsk", { name: item.ownerName }) : t("privateItem")) : item.kind === "time_week" ? t("week", { date: format.dateTime(new Date(`${item.label}T00:00:00`), { dateStyle: "medium" }) }) : item.label);
 
   return (
     <div className="flex flex-col gap-4">
@@ -70,7 +72,7 @@ export function ExitHandoverForm({ handoverId, owned, people, canRun, open }: { 
             <h3 className="flex items-center gap-2 text-sm font-medium">
               {t(`kinds.${group.kind}`)} <Badge variant="secondary">{group.items.length}</Badge>
               {canRun && open && isReassignable(group.kind) ? (
-                <button type="button" className="text-xs font-normal underline" onClick={() => setChosen((current) => new Set([...current, ...group.items.map(keyOf)]))}>
+                <button type="button" className="text-xs font-normal underline" onClick={() => setChosen((current) => new Set([...current, ...group.items.filter((item) => item.canReassign).map(keyOf)]))}>
                   {t("selectAll")}
                 </button>
               ) : null}
@@ -78,7 +80,7 @@ export function ExitHandoverForm({ handoverId, owned, people, canRun, open }: { 
             <ul className="flex flex-col divide-y rounded-xl border text-sm">
               {group.items.map((item) => (
                 <li key={keyOf(item)} className="flex items-center gap-3 p-2.5">
-                  {canRun && open && isReassignable(item.kind) ? <input type="checkbox" aria-label={label(item)} checked={chosen.has(keyOf(item))} onChange={(event) => toggle(keyOf(item), event.target.checked)} /> : null}
+                  {canRun && open && item.canReassign ? <input type="checkbox" aria-label={label(item)} checked={chosen.has(keyOf(item))} onChange={(event) => toggle(keyOf(item), event.target.checked)} /> : null}
                   <span className="min-w-0 flex-1 truncate">{label(item)}</span>
                   {item.context ? <span className="text-xs text-muted-foreground">{item.context}</span> : null}
                   {item.kind === "time_week" ? <span className="text-xs text-muted-foreground">{t("submitWeek")}</span> : null}
@@ -126,6 +128,7 @@ export function AccountHandoverForm({ clientId, currentName, people }: { clientI
   const t = useTranslations("work.handoff.account");
   const { run, pending, errorKey } = useRun();
   const [skipped, setSkipped] = useState<string[] | null>(null);
+  const [withheld, setWithheld] = useState(0);
   return (
     <form
       className="flex flex-col gap-3 rounded-xl border p-3"
@@ -137,7 +140,9 @@ export function AccountHandoverForm({ clientId, currentName, people }: { clientI
         run(
           () => changeAccountManagerAction(input),
           (result) => {
-            setSkipped((result.data as { skipped: string[] }).skipped);
+            const data = result.data as { skipped: string[]; withheld: number };
+            setSkipped(data.skipped);
+            setWithheld(data.withheld);
             form.reset();
           },
         );
@@ -162,6 +167,7 @@ export function AccountHandoverForm({ clientId, currentName, people }: { clientI
       <HandoffNoteFields required />
       <ErrorLine errorKey={errorKey} />
       {skipped?.length ? <p className="text-sm text-muted-foreground">{t("skipped", { projects: skipped.join(", ") })}</p> : null}
+      {withheld ? <p className="text-sm text-muted-foreground">{t("withheld", { count: withheld })}</p> : null}
       <Button type="submit" size="sm" disabled={pending} className="self-start">
         {t("submit")}
       </Button>

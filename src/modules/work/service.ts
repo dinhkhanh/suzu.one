@@ -64,7 +64,7 @@ export { listMoveTargets } from "./move";
 export { canAcknowledgeCover, canChangeAccountManager, canHandBackCover, canHandOff, canManageHandoffPackages, canRespondToHandoff, canRunExitHandover, canSendToTeam, canSubmitCoverPlan, canViewCoverPlan, canViewExitHandover } from "./policy";
 export { type HandoffPackageRow, type HandoffRequirement, listPackages } from "./handoff-gate";
 export { type AccountHandoffView, handoffReturnsByTask, handoffStatsByStage, type HandoffView, listAccountHandoffs, listPendingHandoffsFor, listTaskHandoffs, type StageHandoffStats } from "./handoffs";
-export { coverPlanFacts, type CoverPlanSummary, type CoverPlanView, getCoverPlan, getCoverPlanForLeave, listCoverPlansFor } from "./cover";
+export { coverPlanFacts, type CoverPlanSummary, type CoverPlanView, getCoverPlan, getCoverPlanForLeave, getCoverPlanForLeaveAs, listCoverPlansFor } from "./cover";
 export { exitHandoverFacts, type ExitHandoverView, getExitHandover, listExitHandoversFor } from "./exit";
 export { type CyclePage, type CycleRow, getCyclePage, listOpenCycles, listTeamCycles } from "./cycles";
 export { HANDOFF_KINDS, NOTE_PARTS } from "./engine/handoff";
