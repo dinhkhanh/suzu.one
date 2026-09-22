@@ -108,3 +108,74 @@ export function chatDriver(): ChatDriver {
   const { ANTHROPIC_API_KEY: apiKey, ANTHROPIC_MODEL: model } = env();
   return apiKey ? claudeDriver(apiKey, model) : localDriver;
 }
+
+// ── Drafting (FR-PJM-64) ────────────────────────────────────────────────────────────────────
+//
+// The same two drivers for the drafting helpers. The local driver has nothing to add: the caller
+// already holds the extractive draft (`engine/drafts.ts`) and uses it. The Claude driver is given
+// the facts — already permission-checked and passed through `redactCompensation` — and asked to
+// write them up; like the chat driver it is **unverified until run against a real key**, and any
+// failure, refusal or empty answer falls back to the extractive draft, never to an error the
+// person has to understand. Nothing a driver returns is saved: the person edits and submits.
+
+export type DraftRequest = {
+  /** What to write, in one or two sentences. */
+  instruction: string;
+  /** The recorded facts, as plain text. The only material the model may use. */
+  facts: string;
+  locale: string;
+  /** When set, the answer must be JSON of this shape (structured output). */
+  schema?: Record<string, unknown>;
+};
+
+export type DraftDriver = { name: string; isLocal: boolean; model: string; draft: (request: DraftRequest) => Promise<string | null> };
+
+const DRAFT_SYSTEM = [
+  "You draft short work texts for employees of a Vietnamese agency, who will edit them before anyone sees them.",
+  "Use only the facts you are given. Do not add tasks, people, dates, numbers or opinions that are not in the facts.",
+  "Never write about pay, salaries, bonuses or amounts of money; where the facts show [...], leave it out.",
+  "Write plainly, without headings or greetings.",
+].join(" ");
+
+const localDraftDriver: DraftDriver = { name: LOCAL_DRIVER_NAME, isLocal: true, model: LOCAL_DRIVER_NAME, draft: async () => null };
+
+function claudeDraftDriver(apiKey: string, model: string): DraftDriver {
+  return {
+    name: "claude",
+    isLocal: false,
+    model,
+    draft: async ({ instruction, facts, locale, schema }) => {
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+          body: JSON.stringify({
+            model,
+            max_tokens: 2000,
+            system: DRAFT_SYSTEM,
+            // A short rewrite of a few recorded facts: low effort is enough, and quick.
+            output_config: { effort: "low", ...(schema ? { format: { type: "json_schema", schema } } : {}) },
+            messages: [{ role: "user", content: `${instruction}\nLanguage: ${locale === "en" ? "English" : "Vietnamese"}.\n\n<facts>\n${facts}\n</facts>` }],
+          }),
+          signal: AbortSignal.timeout(30_000),
+        });
+        if (!response.ok) return null;
+        const body = (await response.json()) as { stop_reason?: string; content?: { type: string; text?: string }[] };
+        if (body.stop_reason === "refusal" || body.stop_reason === "max_tokens") return null;
+        const text = (body.content ?? [])
+          .filter((block) => block.type === "text")
+          .map((block) => block.text ?? "")
+          .join("")
+          .trim();
+        return text || null;
+      } catch {
+        return null;
+      }
+    },
+  };
+}
+
+export function draftDriver(): DraftDriver {
+  const { ANTHROPIC_API_KEY: apiKey, ANTHROPIC_MODEL: model } = env();
+  return apiKey ? claudeDraftDriver(apiKey, model) : localDraftDriver;
+}

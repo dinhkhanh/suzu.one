@@ -5,9 +5,16 @@ import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import type { JobDefinition } from "../platform/jobs/service";
 import { notify } from "../platform/notifications/service";
+import { runDueDateAutomations } from "./automations";
+import { syncCoverPlans } from "./cover";
+import { runCycles } from "./cycles";
 import { type ReminderKind, reminderFor } from "./engine/reminders";
+import { syncExitHandovers } from "./exit";
+import { sendPublishReminders } from "./publish";
 import { generateOccurrences } from "./recurrences";
+import { sendReviewOverdueReminders } from "./reviews";
 import { taskKey, WORK_KIND } from "./tasks";
+import { wakeSnoozedTriage } from "./triage";
 
 /**
  * Due tomorrow / overdue (FR-WRK-17), to the assignee: one notice per person, kind and day however
@@ -43,7 +50,34 @@ export async function sendWorkReminders(today: IsoDate): Promise<{ dueSoon: numb
   return { dueSoon: sent.due_soon, overdue: sent.overdue, people: people.size };
 }
 
-export const workRemindersJob: JobDefinition = { name: "work-reminders", run: ({ today }) => sendWorkReminders(today) };
+/**
+ * The morning's work reminders: due and overdue tasks, review-chain stages past their due time
+ * (FR-PJM-50), posts planned for today or missed (FR-PJM-54 — there is no hourly slot, so "due"
+ * is the morning of the day), and the "due date reached" automations (FR-PJM-33), whose notices
+ * belong to the same moment.
+ */
+export const workRemindersJob: JobDefinition = {
+  name: "work-reminders",
+  run: async ({ today }) => {
+    const now = new Date();
+    return { ...(await sendWorkReminders(today)), ...(await sendReviewOverdueReminders(now)), publish: await sendPublishReminders(now), ...(await runDueDateAutomations(today)) };
+  },
+};
 
 /** Recurring tasks (FR-WRK-11): at midnight, so the morning's reminders and digest already know them. */
 export const workRecurringJob: JobDefinition = { name: "work-recurring", run: ({ today }) => generateOccurrences(today) };
+
+/** Snoozed triage (FR-PJM-32) wakes at midnight: back in the queue before the leads' morning. */
+export const workTriageWakeJob: JobDefinition = { name: "work-triage-wake", run: ({ today }) => wakeSnoozedTriage(today) };
+
+/** Cycles (FR-PJM-10) at midnight: yesterday's ended cycle is reviewed and its open work is in the new one before anyone plans the day. */
+export const workCyclesJob: JobDefinition = { name: "work-cycles", run: ({ today }) => runCycles(today) };
+
+/**
+ * Leave cover (FR-PJM-44) at midnight: drafts for leave filed since, plans of called-off leave
+ * cancelled, and the covers of a leave starting today take the work over before the day begins.
+ */
+export const workCoverJob: JobDefinition = { name: "work-cover", run: ({ today }) => syncCoverPlans(today) };
+
+/** Exit and transfer handovers (FR-PJM-45) at midnight, from the lifecycle events recorded since. */
+export const workExitHandoverJob: JobDefinition = { name: "work-exit-handover", run: ({ today }) => syncExitHandovers(new Date(), today) };

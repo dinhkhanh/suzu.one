@@ -7,7 +7,7 @@ import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { KPI_DIRECTIONS, KPI_FREQUENCIES, KPI_UNITS, type KpiDirection, type KpiFrequency, type KpiUnit, metricValueText } from "../enums";
+import { KPI_DIRECTIONS, KPI_FREQUENCIES, KPI_UNITS, type KpiDirection, type KpiFrequency, type KpiUnit, metricValueText, WORK_METRIC_UNITS, WORK_METRICS, type WorkMetric } from "../enums";
 import { applyTemplatesAction, closeKpiMonthAction, endAssignmentAction, removePositionKpiAction, reopenKpiMonthAction, saveActualsAction, saveAssignmentAction, saveKpiAction, savePositionKpiAction } from "../kpi-actions";
 
 type Option = { id: string; name: string };
@@ -16,7 +16,8 @@ const ERRORS = "performance.errors";
 // ── Actuals grid ────────────────────────────────────────────────────────────────────────────
 
 export type GridLine = { assignmentId: string; periodKey: string; kpiCode: string; kpiName: string; unit: KpiUnit; direction: KpiDirection; targetText: string; actualValue: number | null; notApplicable: boolean; note: string | null };
-export type GridPerson = { personId: string; fullName: string; closed: boolean; lines: GridLine[] };
+/** `proposals`: assignment → the figure the work job proposed, as text in the KPI's unit (FR-PJM-62). */
+export type GridPerson = { personId: string; fullName: string; closed: boolean; lines: GridLine[]; proposals?: Record<string, string> };
 
 /** One form for everyone the viewer enters for: the whole grid is saved through one action, all or nothing. */
 export function ActualsGrid({ people }: { people: GridPerson[] }) {
@@ -50,7 +51,10 @@ export function ActualsGrid({ people }: { people: GridPerson[] }) {
                     <>
                       <input type="hidden" name={`${name}.assignmentId`} value={line.assignmentId} />
                       <input type="hidden" name={`${name}.periodKey`} value={line.periodKey} />
-                      <Input name={`${name}.actual`} defaultValue={line.actualValue === null ? "" : metricValueText(line.unit, line.actualValue)} inputMode="decimal" maxLength={30} aria-label={`${person.fullName} — ${line.kpiName}: ${t("entry.actual")}`} placeholder={t("entry.actual")} />
+                      <div className="flex flex-col gap-1">
+                        <Input id={`actual-${line.assignmentId}`} name={`${name}.actual`} defaultValue={line.actualValue === null ? "" : metricValueText(line.unit, line.actualValue)} inputMode="decimal" maxLength={30} aria-label={`${person.fullName} — ${line.kpiName}: ${t("entry.actual")}`} placeholder={t("entry.actual")} />
+                        {person.proposals?.[line.assignmentId] !== undefined ? <ProposalHint inputId={`actual-${line.assignmentId}`} value={person.proposals[line.assignmentId]} /> : null}
+                      </div>
                     </>
                   )}
                   {person.closed ? (
@@ -82,9 +86,32 @@ export function ActualsGrid({ people }: { people: GridPerson[] }) {
   );
 }
 
+/**
+ * A figure proposed from work data (FR-PJM-62). It is not in the box: saving the grid must never
+ * confirm it by accident. The scorer takes it with one tap (then saves), or types their own.
+ */
+function ProposalHint({ inputId, value }: { inputId: string; value: string }) {
+  const t = useTranslations("performance.workMetrics");
+  const take = () => {
+    const input = document.getElementById(inputId);
+    if (input instanceof HTMLInputElement) {
+      input.value = value;
+      input.focus();
+    }
+  };
+  return (
+    <span className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+      {t("proposed", { value })}
+      <button type="button" onClick={take} className="underline underline-offset-2 hover:text-foreground">
+        {t("use")}
+      </button>
+    </span>
+  );
+}
+
 // ── Library ─────────────────────────────────────────────────────────────────────────────────
 
-export type KpiFormValue = { id: string | null; code: string; name: string; description: string | null; unit: KpiUnit; direction: KpiDirection; frequency: KpiFrequency; capBp: number; floorBp: number; isActive: boolean };
+export type KpiFormValue = { id: string | null; code: string; name: string; description: string | null; unit: KpiUnit; direction: KpiDirection; frequency: KpiFrequency; capBp: number; floorBp: number; isActive: boolean; workMetric?: WorkMetric | null };
 
 export function KpiForm({ value }: { value: KpiFormValue }) {
   const t = useTranslations("performance");
@@ -126,6 +153,19 @@ export function KpiForm({ value }: { value: KpiFormValue }) {
             <input type="checkbox" name="isActive" defaultChecked={value.isActive} />
             {t("library.active")}
           </label>
+          <div className="sm:col-span-3">
+            <Field name="workMetric" label={t("workMetrics.field")}>
+              <Select id={`workMetric-${value.id ?? "new"}`} name="workMetric" defaultValue={value.workMetric ?? ""}>
+                <option value="">{t("workMetrics.none")}</option>
+                {WORK_METRICS.map((metric) => (
+                  <option key={metric} value={metric}>
+                    {t(`workMetrics.metrics.${metric}`)} ({t(`kpi.unit.${WORK_METRIC_UNITS[metric]}`)})
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <p className="pt-1 text-xs text-muted-foreground">{t("workMetrics.hint")}</p>
+          </div>
         </div>
         <Field name="description" label={t("library.descriptionField")}>
           <Input name="description" defaultValue={value.description ?? ""} maxLength={2000} />

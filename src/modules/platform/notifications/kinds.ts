@@ -138,6 +138,8 @@ export const KINDS = {
   "tasks.publish_due": "tasks",
   "tasks.publish_missed": "tasks",
   "tasks.automation": "tasks",
+  // A review-chain stage past its due time (FR-PJM-50), to the stage's reviewer: the task and the stage.
+  "tasks.review_overdue": "tasks",
   // Phase 10 — projects.
   "projects.status_posted": "projects",
   "projects.status_due": "projects",

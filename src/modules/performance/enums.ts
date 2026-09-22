@@ -242,3 +242,15 @@ export type OutcomeStatus = (typeof OUTCOME_STATUSES)[number];
 
 export const ONE_ON_ONE_STATUSES = ["draft", "shared"] as const;
 export type OneOnOneStatus = (typeof ONE_ON_ONE_STATUSES)[number];
+
+// ── KPIs measured from work (FR-PJM-62) ─────────────────────────────────────────────────────
+// A KPI may name one of these as its work source; the monthly job then proposes its actual from
+// PJM data and the scorer confirms or corrects it. Each metric is only meaningful in one unit.
+
+export const WORK_METRICS = ["on_time_rate", "deliverables_accepted", "utilisation", "revision_rounds_avg", "eod_compliance"] as const;
+export type WorkMetric = (typeof WORK_METRICS)[number];
+export const WORK_METRIC_UNITS: Record<WorkMetric, KpiUnit> = { on_time_rate: "percent", deliverables_accepted: "number", utilisation: "percent", revision_rounds_avg: "number", eod_compliance: "percent" };
+export const isWorkMetric = (value: unknown): value is WorkMetric => typeof value === "string" && (WORK_METRICS as readonly string[]).includes(value);
+/** The status of an actual: entered by a person, proposed by the work job, or a proposal turned down. */
+export const KPI_ACTUAL_STATUSES = ["confirmed", "proposed", "dismissed"] as const;
+export type KpiActualStatus = (typeof KPI_ACTUAL_STATUSES)[number];

@@ -9,6 +9,7 @@ import { listGoals, type Viewer } from "./goals";
 import { isMissing, listPeriods, listStoredScores, loadMonthLines, loadMonthLinesByEntity } from "./kpi-scores";
 import { type DirectoryPerson, loadDirectory } from "./people";
 import { canEnterActualsFor, overviewReach, readablePeople } from "./policy";
+import { proposalsFor } from "./work-actuals";
 
 const byName = (a: { fullName: string }, b: { fullName: string }) => a.fullName.localeCompare(b.fullName, "vi");
 const CONFIDENCE_ORDER: Confidence[] = ["on_track", "at_risk", "off_track"];
@@ -16,7 +17,8 @@ const worst = (values: (Confidence | null)[]): Confidence | null => values.reduc
 
 // ── Entry grid ──────────────────────────────────────────────────────────────────────────────
 
-export type EntryRow = { personId: string; fullName: string; entityId: string | null; closed: boolean; lines: KpiLineInput[] };
+/** `proposals`: assignment → the figure the work job proposed and nobody has decided yet (FR-PJM-62). */
+export type EntryRow = { personId: string; fullName: string; entityId: string | null; closed: boolean; lines: KpiLineInput[]; proposals: Record<string, number> };
 
 /** The people the viewer may enter actuals for (never themself), with the lines due in `month`. */
 export async function getEntryGrid(viewer: Viewer, month: string): Promise<EntryRow[]> {
@@ -24,10 +26,14 @@ export async function getEntryGrid(viewer: Viewer, month: string): Promise<Entry
   const people = [...directory.values()].filter((person) => person.status !== "offboarded" && canEnterActualsFor(viewer.principal, person));
   const [lines, periods] = await Promise.all([loadMonthLines({ personIds: people.map((person) => person.personId) }, month), listPeriods({ month })]);
   const closed = new Set(periods.filter((period) => period.status === "closed").map((period) => period.entityId));
+  const proposals = await proposalsFor([...lines.values()].flat());
   return people
     .filter((person) => lines.has(person.personId))
     .sort(byName)
-    .map((person) => ({ personId: person.personId, fullName: person.fullName, entityId: person.entityId ?? null, closed: !!person.entityId && closed.has(person.entityId), lines: [...lines.get(person.personId)!].sort((a, b) => a.kpiCode.localeCompare(b.kpiCode)) }));
+    .map((person) => {
+      const own = [...lines.get(person.personId)!].sort((a, b) => a.kpiCode.localeCompare(b.kpiCode));
+      return { personId: person.personId, fullName: person.fullName, entityId: person.entityId ?? null, closed: !!person.entityId && closed.has(person.entityId), lines: own, proposals: Object.fromEntries(own.flatMap((line) => (proposals.has(line.assignmentId) ? [[line.assignmentId, proposals.get(line.assignmentId)!]] : []))) };
+    });
 }
 
 // ── Manager dashboard ───────────────────────────────────────────────────────────────────────

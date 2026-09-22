@@ -55,3 +55,11 @@ export type { BonusTotals, BonusTrace, BonusTraceStep } from "./engine/bonus";
  * reader with no reach gets an empty list, not a refusal. Nothing here names a person.
  */
 export { costTrend, type ReportFilter, reportOptions, type TrendPoint } from "./reports";
+/**
+ * Phase 10 (FR-PJM-63): a loaded cost rate per person and month — gross + employer contributions
+ * from the signed regular run ÷ the month's standard working time — for project profitability.
+ * Compensation tier. It answers only `pjm:cost` holders, within the entities their grant covers,
+ * and the caller must roll the rates up before anything is shown: never a rate, or one person's
+ * cost, per person to anybody.
+ */
+export { type LoadedCostRate, loadedCostRates } from "./cost-rates";

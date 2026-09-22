@@ -16,6 +16,7 @@ import { STARTER_COMPANY_VALUES } from "../src/modules/comms/seed-values";
 import { kbTemplateSeedRows } from "../src/modules/kb/seed-templates";
 import { kpiSeedRows } from "../src/modules/performance/seed-kpis";
 import { WORK_TEMPLATE_SEED } from "../src/modules/work/seed-templates";
+import { seedAcceptanceTemplate, seedProjectTemplatePlans } from "../src/modules/projects/seed";
 import { STATUTORY_SEED } from "../src/modules/platform/statutory/seed-values";
 import { DEFAULT_PAYROLL_POLICY } from "../src/modules/payroll/enums";
 import { PAY_COMPONENT_SEED_VALID_FROM, payComponentSeedRows } from "../src/modules/payroll/seed-components";
@@ -98,6 +99,11 @@ async function main() {
     workTemplates++;
   }
   console.log(`Seeded ${workTemplates} work templates (names that already exist skipped).`);
+
+  // The plan half of the starter project templates (FR-PJM-15): phases, milestones, register lines,
+  // hours by role and a brief. A template that already has one — perhaps edited — is left alone.
+  const { seeded: templatePlans } = await seedProjectTemplatePlans(db);
+  console.log(`Seeded ${templatePlans} project template plans (existing ones skipped).`);
 
   // The obligation library (FR-OPS-03): a draft, every row unreviewed. Codes that exist are left
   // alone, so nothing the chief accountant corrected or reviewed is ever overwritten.
@@ -183,6 +189,9 @@ async function main() {
   if (leaky.length) throw new Error(`document template seed is invalid: ${leaky.map((seed) => `${seed.code} (${templateProblems({ name: seed.name, body: seed.body, tier: seed.tier }).join(", ")})`).join("; ")}`);
   if (newDocTemplates.length) await db.insert(documentTemplate).values(newDocTemplates.map((row) => ({ ...row })));
   console.log(`Seeded ${newDocTemplates.length} document templates (existing codes left untouched).`);
+  // The acceptance record (biên bản nghiệm thu, FR-PJM-55): a draft for counsel to read, never money.
+  const { seeded: acceptanceTemplates } = await seedAcceptanceTemplate(db);
+  console.log(`Seeded ${acceptanceTemplates} acceptance template (existing code left untouched).`);
 
   // Hiring pipelines (FR-REC-02): only codes that do not exist yet, so a pipeline whose stages a
   // recruiter has renamed or reordered is never overwritten. The seed is validated first — a

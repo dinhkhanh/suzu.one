@@ -29,6 +29,13 @@ export const kbSpace = pgTable(
      * of any unit above it. null = a space of the company, run by `kb:manage` holders.
      */
     ownerUnitId: uuid("owner_unit_id").references(() => orgUnit.id),
+    /**
+     * The project whose document space this is (FR-PJM-31). Its readers are the project's people
+     * (a `project:<id>` access row); `kb:manage` does **not** reach it, so a private project's
+     * documents stay with the people in it, as the work policy keeps its tasks. No foreign key:
+     * the knowledge base does not depend on the work module's tables.
+     */
+    ownerProjectId: uuid("owner_project_id"),
     kind: kbSpaceKind("kind").notNull().default("open"),
     sortOrder: integer("sort_order").notNull().default(0),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
@@ -36,7 +43,7 @@ export const kbSpace = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("kb_space_entity_idx").on(t.entityId), index("kb_space_owner_unit_idx").on(t.ownerUnitId)],
+  (t) => [index("kb_space_entity_idx").on(t.entityId), index("kb_space_owner_unit_idx").on(t.ownerUnitId), index("kb_space_owner_project_idx").on(t.ownerProjectId)],
 ).enableRLS();
 
 export const kbPage = pgTable(

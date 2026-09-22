@@ -26,3 +26,10 @@ export {
   setScheduleActive,
   updateSchedule,
 } from "./schedules";
+
+// ── Phase 10: delivery insight (FR-PJM-60, 62, 63) ───────────────────────────────────────────
+export { COMPLIANCE_MAX_DAYS, type DeliveryDashboard, type DeliveryFilter, type DeliveryTile, defaultDeliveryPeriod, getDeliveryDashboard, getDeliveryTile, type TeamCompliance } from "./delivery";
+export type { Compliance, DeliverySummary, RetainerSummary } from "./engine/delivery";
+export { canOpenDelivery, canReadProfitability, canSeeProfitabilityOf, complianceTeamIds } from "./pjm-policy";
+export { type ClientLine, type CostGroup, getProfitability, type ProfitabilityFilter, type ProfitabilityView, type ProjectLine } from "./profitability";
+export { kpiFromWorkJob, runKpiFromWork } from "./kpi-from-work";

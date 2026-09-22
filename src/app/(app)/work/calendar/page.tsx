@@ -6,7 +6,7 @@ import { getDaysOff } from "@/modules/attendance/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { isMonthKey, monthGrid } from "@/modules/work/engine/calendar";
 import { FILTER_KEYS, type TaskFilters } from "@/modules/work/engine/filter";
-import { listCalendarTasks, listClients, listLabels, listTeams, loadViewer, canViewTeam, teamFacts } from "@/modules/work/service";
+import { contentCalendar, listCalendarTasks, listClients, listLabels, listTeams, loadViewer, canViewTeam, teamFacts } from "@/modules/work/service";
 import { CalendarView } from "@/modules/work/ui/calendar-view";
 
 export const metadata: Metadata = { title: "Content calendar" };
@@ -23,7 +23,9 @@ export default async function WorkCalendarPage({ searchParams }: PageProps<"/wor
   const grid = monthGrid(month);
 
   const [tasks, teams, clients, daysOff] = await Promise.all([listCalendarTasks(viewer, grid), listTeams(), listClients({ activeOnly: true }), getDaysOff(user.person.primaryEntityId, grid.from, grid.to)]);
-  const ownTeams = teams.filter((team) => team.isActive && canViewTeam(viewer, teamFacts(team)) && tasks.some((task) => task.teamId === team.id));
+  // FR-PJM-54: the posts of the publish log over the tasks — planned against published, late and missing flagged.
+  const content = await contentCalendar(viewer, grid, tasks);
+  const ownTeams = teams.filter((team) => team.isActive && canViewTeam(viewer, teamFacts(team)) && (tasks.some((task) => task.teamId === team.id) || content.posts.some((post) => post.teamId === team.id)));
   const labels = await listLabels(ownTeams.map((team) => team.id));
   // People to filter by: whoever holds a task on this calendar.
   const people = [...new Map(tasks.flatMap((task) => (task.assigneePersonId && task.assigneeName ? [[task.assigneePersonId, { id: task.assigneePersonId, fullName: task.assigneeName }] as const] : []))).values()].sort((a, b) => a.fullName.localeCompare(b.fullName));
@@ -50,6 +52,8 @@ export default async function WorkCalendarPage({ searchParams }: PageProps<"/wor
         initialExtra={{ team: typeof query.team === "string" ? query.team : undefined, channel: typeof query.channel === "string" ? query.channel : undefined }}
         selfId={user.person.id}
         today={today}
+        posts={content.posts}
+        missingTaskIds={content.missingTaskIds}
       />
     </div>
   );

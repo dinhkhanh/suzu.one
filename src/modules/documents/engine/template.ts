@@ -17,7 +17,7 @@ export type Placeholder = {
   /** The tier of the fact this reveals. A template naming it must be at least this sensitive. */
   tier: Tier;
   /** Message key for the designer's field list: `documents.placeholders.<key>`. */
-  group: "company" | "person" | "employment" | "salary" | "document" | "offer";
+  group: "company" | "person" | "employment" | "salary" | "document" | "offer" | "project";
 };
 
 const RANK: Record<Tier, number> = { public_internal: 0, personal: 1, restricted: 2, compensation: 3 };
@@ -70,6 +70,17 @@ export const PLACEHOLDERS: readonly Placeholder[] = [
   { key: "offer.expiryDate", tier: "personal", group: "offer" },
   { key: "offer.probationMonths", tier: "personal", group: "offer" },
   { key: "offer.probationSalary", tier: "compensation", group: "offer" },
+
+  // Project paperwork — the acceptance record, biên bản nghiệm thu (FR-PJM-55). Which project,
+  // which client, and what was promised, delivered and accepted, counted in units. Nothing here
+  // is personal and nothing is money: the acceptance record states quantities, never fees, so it
+  // is a public_internal document that a project's account person may print.
+  { key: "project.name", tier: "public_internal", group: "project" },
+  { key: "project.jobNumber", tier: "public_internal", group: "project" },
+  { key: "client.name", tier: "public_internal", group: "project" },
+  { key: "acceptance.scope", tier: "public_internal", group: "project" },
+  { key: "acceptance.items", tier: "public_internal", group: "project" },
+  { key: "acceptance.totals", tier: "public_internal", group: "project" },
 ];
 
 const BY_KEY = new Map(PLACEHOLDERS.map((placeholder) => [placeholder.key, placeholder]));

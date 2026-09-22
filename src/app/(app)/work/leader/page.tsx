@@ -31,6 +31,7 @@ export default async function LeaderPage() {
         <p className="text-sm text-muted-foreground">{t("description")}</p>
         <p className="flex flex-wrap gap-2 pt-1 text-sm">
           <Badge variant="outline">{t("open", { count: view.totals.open })}</Badge>
+          {view.totals.blocked ? <Badge variant="destructive">{t("flagged", { count: view.totals.blocked })}</Badge> : null}
           <Badge variant={view.totals.overdue ? "destructive" : "outline"}>{t("overdue", { count: view.totals.overdue })}</Badge>
           <Badge variant={view.totals.atRisk ? "secondary" : "outline"}>{t("atRisk", { count: view.totals.atRisk })}</Badge>
         </p>
@@ -41,6 +42,9 @@ export default async function LeaderPage() {
           <h2 className="flex flex-wrap items-center gap-2 text-sm font-medium">
             {person.name ?? t("unassigned")}
             <span className="text-xs font-normal text-muted-foreground">{t("counts", person.counts)}</span>
+            {person.blocked ? <Badge variant="destructive">{t("flagged", { count: person.blocked })}</Badge> : null}
+            {/* FR-PJM-44: on leave under a submitted cover plan. */}
+            {person.tasks[0]?.away ? <Badge variant="outline">{person.tasks[0].away.coverName ? tWork("cover.awayCovered", { name: person.tasks[0].away.coverName }) : tWork("cover.away")}</Badge> : null}
             {person.overdue ? <Badge variant="destructive">{t("overdue", { count: person.overdue })}</Badge> : null}
             {person.atRisk ? <Badge variant="secondary">{t("atRisk", { count: person.atRisk })}</Badge> : null}
           </h2>
@@ -52,7 +56,7 @@ export default async function LeaderPage() {
                     <span className="font-mono text-xs text-muted-foreground">{task.key}</span> {task.title}
                   </Link>
                   <p className="text-xs text-muted-foreground">
-                    {[task.projectName, task.stateName, task.dueDate ? t("due", { date: format.dateTime(new Date(`${task.dueDate}T00:00:00`), { dateStyle: "medium" }) }) : null, task.blockedBy ? t("blocked", { count: task.blockedBy }) : null, t(`mine.${task.mine}`)].filter(Boolean).join(" · ")}
+                    {[task.blocker ? t("flaggedReason", { reason: task.blocker.neededName ? `${task.blocker.reason} (${tWork("blockers.waitingOn", { name: task.blocker.neededName })})` : task.blocker.reason }) : null, task.projectName, task.stateName, task.dueDate ? t("due", { date: format.dateTime(new Date(`${task.dueDate}T00:00:00`), { dateStyle: "medium" }) }) : null, task.blockedBy ? t("blocked", { count: task.blockedBy }) : null, t(`mine.${task.mine}`)].filter(Boolean).join(" · ")}
                   </p>
                 </div>
                 {task.risk === "overdue" ? <Badge variant="destructive">{t("risk.overdue")}</Badge> : task.risk === "at_risk" ? <Badge variant="secondary">{t("risk.at_risk")}</Badge> : null}

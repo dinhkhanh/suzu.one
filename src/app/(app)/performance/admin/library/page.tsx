@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
-import { canManageKpiLibrary, listKpis } from "@/modules/performance/service";
+import { canManageKpiLibrary, isWorkMetric, listKpis } from "@/modules/performance/service";
 import { bpText } from "@/modules/performance/ui/kpi";
 import { KpiForm } from "@/modules/performance/ui/kpi-forms";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -21,9 +21,9 @@ export default async function KpiLibraryPage() {
             <details>
               <summary className="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1">
                 <span className={`font-medium ${kpi.isActive ? "" : "text-muted-foreground line-through"}`}>{kpi.name}</span>
-                <span className="text-xs text-muted-foreground">{[kpi.code, t(`kpi.unit.${kpi.unit}`), t(`kpi.direction.${kpi.direction}`), t(`kpi.frequency.${kpi.frequency}`), t("library.capFloor", { cap: bpText(format, kpi.capBp), floor: bpText(format, kpi.floorBp) })].join(" · ")}</span>
+                <span className="text-xs text-muted-foreground">{[kpi.code, t(`kpi.unit.${kpi.unit}`), t(`kpi.direction.${kpi.direction}`), t(`kpi.frequency.${kpi.frequency}`), t("library.capFloor", { cap: bpText(format, kpi.capBp), floor: bpText(format, kpi.floorBp) }), ...(isWorkMetric(kpi.workMetric) ? [t("workMetrics.fromWork", { metric: t(`workMetrics.metrics.${kpi.workMetric}`) })] : [])].join(" · ")}</span>
               </summary>
-              <div className="pt-3">{manages ? <KpiForm value={{ id: kpi.id, code: kpi.code, name: kpi.name, description: kpi.description, unit: kpi.unit, direction: kpi.direction, frequency: kpi.frequency, capBp: kpi.capBp, floorBp: kpi.floorBp, isActive: kpi.isActive }} /> : <p className="text-sm text-muted-foreground">{kpi.description ?? "—"}</p>}</div>
+              <div className="pt-3">{manages ? <KpiForm value={{ id: kpi.id, code: kpi.code, name: kpi.name, description: kpi.description, unit: kpi.unit, direction: kpi.direction, frequency: kpi.frequency, capBp: kpi.capBp, floorBp: kpi.floorBp, isActive: kpi.isActive, workMetric: isWorkMetric(kpi.workMetric) ? kpi.workMetric : null }} /> : <p className="text-sm text-muted-foreground">{kpi.description ?? "—"}</p>}</div>
             </details>
           </li>
         ))}

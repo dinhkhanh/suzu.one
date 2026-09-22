@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Grant } from "../platform/rbac/policy";
 import type { ProjectRole, TeamRole } from "./enums";
-import { canActForClient, canAdminTeam, canContributeToProject, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canViewProject, canViewTask, canViewTeam, type ProjectFacts, type TaskFacts, type TeamFacts, type WorkViewer } from "./policy";
+import { canManageAutomations, canViewAutomations } from "./policy";
+import { canChangeDeliverable, canDecideStage, canManagePublish, canManageReviewChains, canPinFeedback, canRecordClientDecision, canRecordDelivery, canResolvePin } from "./policy";
+import { canAcknowledgeCover, canChangeAccountManager, canHandBackCover, canHandOff, canManageHandoffPackages, canRespondToHandoff, canRunExitHandover, canSendToTeam, canSubmitCoverPlan, canViewCoverPlan, canViewExitHandover } from "./policy";
+import { canActForClient, canAdminTeam, canDecideTriage, canManageCustomFields, canMoveTask, canRaiseBlocker, canResolveBlocker, canSeeLoggedTime, canViewTriage, canContributeToProject, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canViewProject, canViewTask, canViewTeam, type ProjectFacts, type TaskFacts, type TeamFacts, type WorkViewer } from "./policy";
 
 const SZM = "entity-szm";
 const SZC = "entity-szc";
@@ -141,5 +144,196 @@ describe("project roles (FR-PJM-14)", () => {
     const portfolio = viewer("port", { entityId: SZC, grants: [{ role: "entity_director", scope: { type: "entity", id: SZM } }] });
     expect(canViewProject(portfolio, project("team"))).toBe(true);
     expect(canViewProject(portfolio, privateProject)).toBe(false);
+  });
+});
+
+describe("PJM task foundation", () => {
+  const design: TeamFacts = { id: "team-design", entityId: SZM, departmentId: "dept-des", defaultVisibility: "team" };
+  const designProject: ProjectFacts = { id: "project-design", entityId: SZM, visibility: "team", team: design };
+  const projectLead = viewer("tam", { teams: { "team-video": "member" }, projects: { "project-team": "lead" } });
+  const both = viewer("huy", { teams: { "team-video": "member", "team-design": "member" } });
+
+  it("custom fields: a team's by whoever runs the team, a project's by whoever runs the project", () => {
+    for (const who of [lead, owner, head]) expect(canManageCustomFields(who, video)).toBe(true);
+    for (const who of [member, projectLead, colleague]) expect(canManageCustomFields(who, video)).toBe(false);
+    expect(canManageCustomFields(projectLead, video, project("team"))).toBe(true);
+    expect(canManageCustomFields(member, video, project("team"))).toBe(false);
+    // A project is managed in its own team's settings only.
+    expect(canManageCustomFields(lead, design, project("team"))).toBe(false);
+  });
+
+  it("triage: the team sees its queue, only the leads decide", () => {
+    expect(canViewTriage(member, video)).toBe(true);
+    expect(canViewTriage(colleague, video)).toBe(false);
+    for (const who of [lead, owner, head]) expect(canDecideTriage(who, video)).toBe(true);
+    for (const who of [member, colleague, otherHead]) expect(canDecideTriage(who, video)).toBe(false);
+  });
+
+  it("blockers: raised by the people who work on the task; resolved by them, the raiser or the person it waits for", () => {
+    expect(canRaiseBlocker(member, taskIn())).toBe(true);
+    expect(canRaiseBlocker(colleague, taskIn())).toBe(false);
+    expect(canRaiseBlocker(colleague, taskIn({ assigneePersonId: "bao" }))).toBe(true);
+    const raised = { raisedByPersonId: "huy", neededPersonId: "bao" };
+    expect(canResolveBlocker(colleague, taskIn(), raised)).toBe(true);
+    expect(canResolveBlocker(member, taskIn(), raised)).toBe(true);
+    expect(canResolveBlocker(otherEntity, taskIn(), raised)).toBe(false);
+  });
+
+  it("moves: edit here and contribute there — never to the same team or a project of another team", () => {
+    expect(canMoveTask(both, taskIn(), { team: design, project: null })).toBe(true);
+    expect(canMoveTask(both, taskIn(), { team: design, project: designProject })).toBe(true);
+    expect(canMoveTask(member, taskIn(), { team: design, project: null })).toBe(false);
+    expect(canMoveTask(lead, taskIn(), { team: design, project: null })).toBe(false);
+    expect(canMoveTask(owner, taskIn(), { team: design, project: designProject })).toBe(true);
+    expect(canMoveTask(both, taskIn(), { team: video, project: null })).toBe(false);
+    expect(canMoveTask(both, taskIn(), { team: design, project: project("team") })).toBe(false);
+    expect(canMoveTask(colleague, taskIn(), { team: design, project: null })).toBe(false);
+  });
+
+  it("logged time per task: the project's lead and the team's leads, not every member", () => {
+    expect(canSeeLoggedTime(projectLead, { team: video, project: project("team") })).toBe(true);
+    expect(canSeeLoggedTime(lead, { team: video, project: project("team") })).toBe(true);
+    expect(canSeeLoggedTime(member, { team: video, project: project("team") })).toBe(false);
+    expect(canSeeLoggedTime(lead, { team: video, project: null })).toBe(true);
+    expect(canSeeLoggedTime(projectLead, { team: video, project: null })).toBe(false);
+  });
+});
+
+describe("hand-offs (FR-PJM-40..46)", () => {
+  const design: TeamFacts = { id: "team-design", entityId: SZM, departmentId: null, defaultVisibility: "team" };
+  const hr = viewer("hr", { grants: [{ role: "hr_staff", scope: { type: "entity", id: SZM } }] });
+  const otherHr = viewer("hr-szc", { entityId: SZC, grants: [{ role: "hr_staff", scope: { type: "entity", id: SZC } }] });
+  const director = viewer("director", { grants: [{ role: "entity_director", scope: { type: "entity", id: SZM } }] });
+
+  it("packages are defined by whoever runs the team", () => {
+    for (const who of [lead, owner, head]) expect(canManageHandoffPackages(who, video)).toBe(true);
+    for (const who of [member, colleague, otherHead]) expect(canManageHandoffPackages(who, video)).toBe(false);
+  });
+
+  it("the people who move a task hand it off; a hand-off is accepted or returned by its receiver or a lead, never by its sender", () => {
+    expect(canHandOff(member, taskIn())).toBe(true);
+    expect(canHandOff(colleague, taskIn())).toBe(false);
+    const handoff = { fromPersonId: "huy", toPersonId: "bao" };
+    expect(canRespondToHandoff(colleague, taskIn(), handoff)).toBe(true);
+    expect(canRespondToHandoff(lead, taskIn(), handoff)).toBe(true);
+    expect(canRespondToHandoff(member, taskIn(), handoff)).toBe(false);
+    expect(canRespondToHandoff(otherEntity, taskIn(), handoff)).toBe(false);
+    expect(canRespondToHandoff(lead, taskIn(), { fromPersonId: "long", toPersonId: "bao" })).toBe(false);
+  });
+
+  it("work goes to another team's triage from whoever may move it — not to its own team, not by a collaborator", () => {
+    expect(canSendToTeam(member, taskIn(), design)).toBe(true);
+    expect(canSendToTeam(member, taskIn(), video)).toBe(false);
+    expect(canSendToTeam(colleague, taskIn(), design)).toBe(false);
+    const inProject = viewer("bao-anh", { collaborator: true, projects: { "project-team": "member" } });
+    expect(canEditTask(inProject, taskIn())).toBe(true);
+    expect(canSendToTeam(inProject, taskIn(), design)).toBe(false);
+  });
+
+  it("a cover plan is submitted by the person or work:manage over their entity; covers see it and acknowledge it", () => {
+    const plan = { personId: "huy", entityId: SZM, coverIds: ["bao"] };
+    expect(canSubmitCoverPlan(member, plan)).toBe(true);
+    expect(canSubmitCoverPlan(owner, plan)).toBe(true);
+    expect(canSubmitCoverPlan(colleague, plan)).toBe(false);
+    expect(canSubmitCoverPlan(lead, plan)).toBe(false);
+    expect(canViewCoverPlan(colleague, plan)).toBe(true);
+    expect(canViewCoverPlan(otherEntity, plan)).toBe(false);
+    expect(canAcknowledgeCover(colleague, plan)).toBe(true);
+    expect(canAcknowledgeCover(member, plan)).toBe(false);
+    expect(canHandBackCover(member, plan)).toBe(true);
+    expect(canHandBackCover(colleague, plan)).toBe(true);
+    expect(canHandBackCover(otherEntity, plan)).toBe(false);
+  });
+
+  it("an exit handover is run by the line manager, the person's team leads, and work or HR leaders of the entity — not by the leaver", () => {
+    const handover = { personId: "huy", managerId: "manager", entityId: SZM, teamIds: ["team-video"] };
+    for (const who of [viewer("manager"), lead, hr, director, owner]) expect(canRunExitHandover(who, handover)).toBe(true);
+    for (const who of [member, colleague, otherHr, viewer("design-lead", { teams: { "team-design": "lead" } })]) expect(canRunExitHandover(who, handover)).toBe(false);
+    expect(canViewExitHandover(member, handover)).toBe(true);
+    expect(canViewExitHandover(colleague, handover)).toBe(false);
+  });
+
+  it("the account manager of a client is changed by leaders who keep the client list", () => {
+    expect(canChangeAccountManager(owner)).toBe(true);
+    expect(canChangeAccountManager(lead)).toBe(false);
+    expect(canChangeAccountManager(head)).toBe(true);
+  });
+});
+
+describe("delivery (FR-PJM-50..57)", () => {
+  const am = viewer("an", { projects: { "project-team": "account_manager" } });
+  const pl = viewer("pl", { projects: { "project-team": "lead" } });
+  const projectViewer = viewer("vi", { projects: { "project-team": "viewer" } });
+  const doer = viewer("huy", { teams: { "team-video": "member" } });
+  const task = taskIn({ assigneePersonId: "huy" });
+  const backlog = taskIn({ project: null, assigneePersonId: "huy" });
+  const noClientAm = { accountManagerPersonId: null };
+
+  it("review chains are kept by the team's leads, and a project's own by whoever runs the project", () => {
+    expect(canManageReviewChains(lead, video)).toBe(true);
+    expect(canManageReviewChains(head, video)).toBe(true);
+    for (const who of [member, am, pl, colleague]) expect(canManageReviewChains(who, video)).toBe(false);
+    expect(canManageReviewChains(pl, video, project("team"))).toBe(true);
+    expect(canManageReviewChains(lead, video, project("team"))).toBe(true);
+    for (const who of [am, member, projectViewer]) expect(canManageReviewChains(who, video, project("team"))).toBe(false);
+    // A project of another team is no place for this team's chain.
+    expect(canManageReviewChains(lead, { ...video, id: "team-design" }, project("team"))).toBe(false);
+  });
+
+  it("an internal stage is decided by its reviewer or whoever runs the project, never by the submitter", () => {
+    const stage = { isClient: false, reviewerPersonId: "bao", submittedByPersonId: "huy" };
+    expect(canDecideStage(viewer("bao"), task, stage, noClientAm)).toBe(true);
+    expect(canDecideStage(lead, task, stage, noClientAm)).toBe(true);
+    expect(canDecideStage(pl, task, stage, noClientAm)).toBe(true);
+    expect(canDecideStage(doer, task, stage, noClientAm)).toBe(false);
+    expect(canDecideStage(am, task, stage, noClientAm)).toBe(false);
+    expect(canDecideStage(viewer("bao"), task, { ...stage, submittedByPersonId: "bao" }, noClientAm)).toBe(false);
+  });
+
+  it("a client stage, and any client decision, is recorded by the account side only", () => {
+    const stage = { isClient: true, reviewerPersonId: "an", submittedByPersonId: "huy" };
+    for (const who of [am, pl, lead]) expect(canDecideStage(who, task, stage, noClientAm)).toBe(true);
+    for (const who of [doer, colleague, projectViewer, viewer("bao")]) expect(canDecideStage(who, task, stage, noClientAm)).toBe(false);
+    expect(canRecordClientDecision(am, task, noClientAm)).toBe(true);
+    expect(canRecordClientDecision(doer, task, noClientAm)).toBe(false);
+    // Outside a project: the client's account manager, or the team's leads.
+    expect(canRecordClientDecision(viewer("an"), backlog, { accountManagerPersonId: "an" })).toBe(true);
+    expect(canRecordClientDecision(lead, backlog, noClientAm)).toBe(true);
+    expect(canRecordClientDecision(doer, backlog, { accountManagerPersonId: "an" })).toBe(false);
+  });
+
+  it("a frozen version cannot change", () => {
+    expect(canChangeDeliverable({ frozenAt: null })).toBe(true);
+    expect(canChangeDeliverable({ frozenAt: new Date() })).toBe(false);
+    expect(canChangeDeliverable({ frozenAt: "2026-09-22T00:00:00Z" })).toBe(false);
+  });
+
+  it("pins are for whoever may open the task; resolving them for their author and the people doing the work", () => {
+    // A project viewer only looks — but may point at what is wrong.
+    expect(canPinFeedback(projectViewer, task)).toBe(true);
+    expect(canPinFeedback(colleague, task)).toBe(false);
+    expect(canResolvePin(projectViewer, task, { authorPersonId: "vi" })).toBe(true);
+    expect(canResolvePin(doer, task, { authorPersonId: "lan" })).toBe(true);
+    expect(canResolvePin(projectViewer, task, { authorPersonId: "lan" })).toBe(false);
+  });
+
+  it("deliveries are recorded by the people doing the work and the account side; the publish log by whoever may change the task", () => {
+    for (const who of [doer, am, pl, lead]) expect(canRecordDelivery(who, task)).toBe(true);
+    for (const who of [colleague, projectViewer]) expect(canRecordDelivery(who, task)).toBe(false);
+    expect(canManagePublish(doer, task)).toBe(true);
+    expect(canManagePublish(projectViewer, task)).toBe(false);
+    expect(canManagePublish(colleague, task)).toBe(false);
+  });
+});
+
+describe("automations (FR-PJM-33)", () => {
+  it("are kept by whoever runs the team only — a project's lead or member does not write rules", () => {
+    for (const who of [lead, owner, head]) expect(canManageAutomations(who, video)).toBe(true);
+    const projectLead = viewer("tam", { projects: { "project-team": "lead" } });
+    for (const who of [member, colleague, otherHead, freelancer, projectLead]) expect(canManageAutomations(who, video)).toBe(false);
+  });
+  it("are read by the team's own people", () => {
+    for (const who of [lead, member, owner]) expect(canViewAutomations(who, video)).toBe(true);
+    for (const who of [colleague, freelancer, otherEntity]) expect(canViewAutomations(who, video)).toBe(false);
   });
 });

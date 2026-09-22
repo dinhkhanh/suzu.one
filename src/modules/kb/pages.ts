@@ -5,7 +5,7 @@ import { ActionError } from "@/lib/action";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { toSearchKey } from "@/lib/text";
-import { pageVisibleSql } from "./access-sql";
+import { pageVisibleSql, projectPeopleSql } from "./access-sql";
 import { ackOnPublish } from "./acknowledgements";
 import { rebuildChunks, removeChunks } from "./chunks";
 import { type DiffLine, diffLines } from "./engine/diff";
@@ -23,12 +23,12 @@ export type LoadedPage = LoadedSpace & { page: PageRow; rootAccess: AccessRow[] 
 export const pageFacts = (page: Pick<PageRow, "publishedVersionId" | "status" | "deletedAt">, rootAccess: readonly AccessRow[] | null): PageFacts => ({ readable: !!page.publishedVersionId && page.status !== "archived", deleted: !!page.deletedAt, rootAccess });
 
 async function pageAccessRows(executor: Executor, pageId: string): Promise<AccessRow[]> {
-  return executor.select({ subjectKey: schema.kbAccess.subjectKey, level: schema.kbAccess.level }).from(schema.kbAccess).where(eq(schema.kbAccess.pageId, pageId)).orderBy(asc(schema.kbAccess.createdAt));
+  return executor.select({ subjectKey: schema.kbAccess.subjectKey, level: schema.kbAccess.level, people: projectPeopleSql() }).from(schema.kbAccess).where(eq(schema.kbAccess.pageId, pageId)).orderBy(asc(schema.kbAccess.createdAt));
 }
 
-/** An access list as one JSON column, in the order the rows were written. */
+/** An access list as one JSON column, in the order the rows were written; a project row with its people. */
 const accessJson = (where: SQL) =>
-  sql<AccessRow[]>`coalesce((select json_agg(json_build_object('subjectKey', ${schema.kbAccess.subjectKey}, 'level', ${schema.kbAccess.level}) order by ${schema.kbAccess.createdAt}) from ${schema.kbAccess} where ${where}), '[]'::json)`;
+  sql<AccessRow[]>`coalesce((select json_agg(json_build_object('subjectKey', ${schema.kbAccess.subjectKey}, 'level', ${schema.kbAccess.level}, 'people', ${projectPeopleSql()}) order by ${schema.kbAccess.createdAt}) from ${schema.kbAccess} where ${where}), '[]'::json)`;
 
 /**
  * A page with everything the policy asks about it — the page, its space, the space's access rows

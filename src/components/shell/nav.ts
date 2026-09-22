@@ -23,6 +23,16 @@ export function navFor(principal: Principal, open: { people: boolean; recruit: b
     // claims desk rather than their own filed requests.
     { key: "requests", href: can(principal, "payroll:pay") ? "/requests/claims" : "/requests" },
     { key: "work", href: "/work" },
+    // Projects & daily work (Phase 10): the portfolio lists only what the reader may open; the day
+    // (plans, reports, the team board for leads) decides the rest on its pages.
+    { key: "projects", href: "/projects" },
+    { key: "daily", href: "/daily" },
+    // Time on tasks (FR-PJM-24); approving weeks and utilisation are reached from the day's pages.
+    { key: "time", href: "/daily/time" },
+    // Finance's ready-to-invoice queue (FR-PJM-56): whoever holds `pjm:commercial` anywhere.
+    ...(can(principal, "pjm:commercial") ? [{ key: "billing", href: "/projects/billing" }] : []),
+    // Capacity (FR-PJM-13) for leaders over a scope; team leads also reach it from their projects.
+    ...(can(principal, "work:manage") || can(principal, "pjm:portfolio") ? [{ key: "capacity", href: "/projects/capacity" }] : []),
     // Equipment: everyone has their own, so the entry always shows; the register behind it is for
     // whoever keeps one, and /assets sends anybody else to their own list.
     { key: "assets", href: can(principal, "asset:manage") ? "/assets" : "/assets/mine" },

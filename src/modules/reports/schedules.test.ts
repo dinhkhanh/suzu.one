@@ -110,7 +110,10 @@ describe("the catalogue", () => {
     expect(forHead).toContain("headcount");
     expect(forHead).not.toContain("payroll_cost");
     // A person with no role at all: only the report whose scope is membership, not permission.
-    expect(forHuy).toEqual(["work_analytics"]);
+    expect(forHuy).toEqual(["work_analytics", "delivery"]);
+    // Profitability is salary-derived (FR-PJM-63): `pjm:cost` only, never HR or a department head.
+    expect(forHead).not.toContain("profitability");
+    expect(forHr).not.toContain("profitability");
   });
 
   it("keeps the payroll cost report off the schedulable list even for somebody who may read it", async () => {
@@ -130,11 +133,13 @@ describe("the catalogue", () => {
     expect(await buildReportFor(users.hr, "salaries_of_everyone", {}, PERIOD, "vi")).toBeNull();
   });
 
-  it("asks for a fresh proof of identity for the compensation report and for nothing else", () => {
+  it("asks for a fresh proof of identity for the compensation reports and for nothing else", () => {
     // An export must not become the quiet way past step-up (FR-PLT-06); `exportReportAction` asks
-    // this before it builds anything.
+    // this before it builds anything. Profitability (FR-PJM-63) is salary-derived: the same rule.
     expect(needsStepUp("payroll_cost")).toBe(true);
-    expect(REPORT_KEYS.filter((key) => needsStepUp(key))).toEqual(["payroll_cost"]);
+    expect(REPORT_KEYS.filter((key) => needsStepUp(key))).toEqual(["payroll_cost", "profitability"]);
+    expect(isSchedulable("profitability")).toBe(false);
+    expect(isSchedulable("delivery")).toBe(true);
   });
 });
 

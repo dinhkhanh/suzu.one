@@ -198,8 +198,14 @@ export const kpiActual = pgTable(
     // "Did not apply this period" (no campaign ran): left out, the other weights renormalised. Needs a note.
     notApplicable: boolean("not_applicable").notNull().default(false),
     note: text("note"),
-    // manual | import
+    // manual | import | work (FR-PJM-62: proposed from PJM data by the monthly job)
     source: text("source").notNull().default("manual"),
+    // FR-PJM-62: `proposed` is a figure the work job suggested and nobody has confirmed yet. It is
+    // never scored — the score engine reads a proposed line as missing — until the KPI's scorer
+    // confirms it (status → confirmed, source stays `work`) or corrects it (source → manual).
+    status: text("status").notNull().default("confirmed"),
+    // What the job proposed, kept after a correction so the difference stays visible.
+    proposedValue: bigint("proposed_value", { mode: "number" }),
     enteredByPersonId: uuid("entered_by_person_id").references(() => person.id),
     ...timestamps,
   },

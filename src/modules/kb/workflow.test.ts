@@ -363,9 +363,10 @@ describe("search", () => {
 });
 
 describe("templates and imports", () => {
-  it("seeds six valid templates, offers only the active ones, and keeps a page as a new one", async () => {
+  it("seeds nine valid templates, offers only the active ones, and keeps a page as a new one", async () => {
     const rows = kbTemplateSeedRows();
-    expect(rows.map((row) => row.key)).toEqual(["sop", "policy", "meeting_notes", "campaign_post_mortem", "client_playbook", "onboarding_guide"]);
+    // The last three are the starters of a project's document space (FR-PJM-31), with "meeting_notes".
+    expect(rows.map((row) => row.key)).toEqual(["sop", "policy", "meeting_notes", "campaign_post_mortem", "client_playbook", "onboarding_guide", "project_brief", "video_script", "shot_list"]);
     for (const row of rows) expect([row.key, validateDoc(row.content).ok]).toEqual([row.key, true]);
     await db().insert(schema.kbTemplate).values(rows);
     const [sop] = await listTemplates();

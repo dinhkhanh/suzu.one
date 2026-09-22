@@ -21,6 +21,9 @@ import { kbPublishRequest } from "@/modules/kb/service";
 import { decideLeaveAction } from "@/modules/leave/actions";
 import { leaveRequestType } from "@/modules/leave/requests";
 import type { RequestTypeDefinition } from "@/modules/platform/approvals/service";
+import { decideBriefAction } from "@/modules/projects/actions";
+import { decideChangeAction } from "@/modules/projects/commercial-actions";
+import { changeRequestType, projectBriefRequest } from "@/modules/projects/service";
 import { decideHiringRequestAction } from "@/modules/recruit/actions";
 import { hiringRequestType } from "@/modules/recruit/hiring";
 import { decideOfferAction } from "@/modules/recruit/offer-actions";
@@ -49,6 +52,10 @@ const REGISTERED: RegisteredRequestType[] = [
   // An offer is a salary (FR-REC-08). Its figure is on its own page and nowhere in the summary, so
   // approving one from the inbox without reading it is exactly what must not happen.
   { definition: offerRequestType, approve: (requestId) => decideOfferAction({ requestId, decision: "approve", comment: null }) },
+  // A kick-off is read before it is approved (FR-PJM-03): never bulk-approvable; registered for the flow administration.
+  { definition: projectBriefRequest, approve: (requestId) => decideBriefAction({ requestId, decision: "approve", comment: null }) },
+  // A change request moves scope, hours and perhaps the fee (FR-PJM-11): read before it is approved, never bulk-approvable.
+  { definition: changeRequestType, approve: (requestId) => decideChangeAction({ requestId, decision: "approve", comment: null }) },
 ];
 
 export const REQUEST_TYPES: ReadonlyMap<string, RegisteredRequestType> = new Map(REGISTERED.map((entry) => [entry.definition.type, entry]));

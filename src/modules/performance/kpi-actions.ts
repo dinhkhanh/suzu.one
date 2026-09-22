@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
-import { KPI_DIRECTIONS, KPI_FREQUENCIES, KPI_UNITS, MONTH_KEY } from "./enums";
+import { KPI_DIRECTIONS, KPI_FREQUENCIES, KPI_UNITS, MONTH_KEY, WORK_METRICS } from "./enums";
 import { kpiActualImport } from "./kpi-import";
 import { closeMonth, peopleOfEntries, reopenMonth, saveActuals } from "./kpi-scores";
 import { applyTemplates, createAssignment, endAssignment, findAssignment, findPositionKpi, type KpiRow, removePositionKpi, saveKpi, savePositionKpi, updateAssignment } from "./kpis";
@@ -19,7 +19,7 @@ const weight = z.coerce.number().int().min(1).max(1000);
 const percentBp = (fallback: number) => z.preprocess((value) => (blankToNull(value) === null ? fallback / 100 : value), z.coerce.number().min(0).max(1000)).transform((value) => Math.round(value * 100));
 
 const refresh = () => revalidatePath("/performance", "layout");
-const kpiFacts = (kpi: KpiRow) => ({ code: kpi.code, name: kpi.name, unit: kpi.unit, direction: kpi.direction, frequency: kpi.frequency, capBp: kpi.capBp, floorBp: kpi.floorBp, isActive: kpi.isActive });
+const kpiFacts = (kpi: KpiRow) => ({ code: kpi.code, name: kpi.name, unit: kpi.unit, direction: kpi.direction, frequency: kpi.frequency, capBp: kpi.capBp, floorBp: kpi.floorBp, isActive: kpi.isActive, workMetric: kpi.workMetric });
 
 // ── Library ─────────────────────────────────────────────────────────────────────────────────
 
@@ -36,10 +36,12 @@ const saveKpiPipeline = createAction({
     capPercent: percentBp(12000),
     floorPercent: percentBp(0),
     isActive: checkbox,
+    // FR-PJM-62: blank = entered by hand.
+    workMetric: optional(z.enum(WORK_METRICS)),
   }),
   authorize: (user) => canManageKpiLibrary(user.principal),
   run: async ({ input }) => {
-    const { before, after } = await saveKpi(input.kpiId, { code: input.code, name: input.name, description: input.description, unit: input.unit, direction: input.direction, frequency: input.frequency, capBp: input.capPercent, floorBp: input.floorPercent, isActive: input.isActive });
+    const { before, after } = await saveKpi(input.kpiId, { code: input.code, name: input.name, description: input.description, unit: input.unit, direction: input.direction, frequency: input.frequency, capBp: input.capPercent, floorBp: input.floorPercent, isActive: input.isActive, workMetric: input.workMetric });
     refresh();
     return { data: { id: after.id }, audit: { resource: { type: "kpi_definition", id: after.id }, summary: after.code, before: before ? kpiFacts(before) : undefined, after: kpiFacts(after) } };
   },

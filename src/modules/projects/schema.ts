@@ -9,7 +9,7 @@ import { bigint, boolean, date, index, integer, jsonb, pgTable, primaryKey, text
 import { entity } from "../platform/org/schema";
 import { storedFile } from "../platform/files/schema";
 import { person } from "../platform/people/schema";
-import { task } from "../platform/tasks-engine/schema";
+import { task, taskTemplate } from "../platform/tasks-engine/schema";
 import { workClient, workProject } from "../work/schema";
 
 const timestamps = {
@@ -29,6 +29,8 @@ export type ProjectBrief = {
   clientContacts?: ClientContact[];
   links?: string[];
 };
+/** Hours budget per role or service, e.g. "Video editing 40 h" (FR-PJM-09). */
+export type RoleBudget = { role: string; minutes: number };
 export type ProjectBaseline = { startDate: string | null; dueDate: string | null; budgetMinutes: number | null; milestones: { id: string; dueDate: string | null }[]; takenAt: string };
 
 // The plan of a project (FR-PJM-01..04, 09, 12, 27, 59): 1:1 with work_project.
@@ -49,6 +51,7 @@ export const projectPlan = pgTable(
     briefApprovalRequestId: uuid("brief_approval_request_id"),
     briefApprovedAt: timestamp("brief_approved_at", { withTimezone: true }),
     budgetMinutes: integer("budget_minutes"),
+    budgetByRole: jsonb("budget_by_role").$type<RoleBudget[]>().notNull().default([]),
     // Fee in VND (`pjm:commercial`).
     feeVnd: bigint("fee_vnd", { mode: "number" }),
     // Budget alerts already sent (80, 100) so each fires once.
@@ -69,6 +72,27 @@ export const projectPlan = pgTable(
   },
   (t) => [index("project_plan_am_idx").on(t.accountManagerPersonId)],
 ).enableRLS();
+
+// The plan half of a project template (FR-PJM-15), beside the task tree the task engine keeps for
+// the same template: phases, milestones and register lines with days from the anchor date (the
+// same day 0 as the template's steps), the hours budget by role and the brief to start from.
+export type TemplatePhase = { name: string; startDay: number; endDay: number };
+export type TemplateMilestone = { name: string; day: number; /** Index into phases. */ phase: number | null; isClientFacing: boolean; isBilling: boolean };
+export type TemplateLine = { title: string; quantity: number; format: string | null; channel: string | null; /** Index into milestones. */ milestone: number | null; day: number | null };
+export const projectTemplatePlan = pgTable("project_template_plan", {
+  templateId: uuid("template_id")
+    .primaryKey()
+    .references(() => taskTemplate.id, { onDelete: "cascade" }),
+  // The project type a project made from the template starts as.
+  kind: text("kind").notNull().default("client"),
+  phases: jsonb("phases").$type<TemplatePhase[]>().notNull().default([]),
+  milestones: jsonb("milestones").$type<TemplateMilestone[]>().notNull().default([]),
+  deliverables: jsonb("deliverables").$type<TemplateLine[]>().notNull().default([]),
+  budgetByRole: jsonb("budget_by_role").$type<RoleBudget[]>().notNull().default([]),
+  brief: jsonb("brief").$type<ProjectBrief>().notNull().default({}),
+  updateCadenceDays: integer("update_cadence_days").notNull().default(7),
+  ...timestamps,
+}).enableRLS();
 
 // Job-number counters per prefix and year (FR-PJM-02).
 export const projectJobCounter = pgTable(
@@ -210,7 +234,16 @@ export const projectTaskLink = pgTable(
 ).enableRLS();
 
 // Change requests (FR-PJM-11): a delta on scope, hours, fee and dates, approved before it applies.
-export type ChangeImpact = { deliverables?: RetainerLineTemplate[]; minutesDelta?: number; feeDeltaVnd?: number; dueDateTo?: string | null };
+export type ChangeImpact = {
+  deliverables?: RetainerLineTemplate[];
+  /** Register lines the change takes away (cancelled on approval, never deleted). */
+  cancelDeliverableIds?: string[];
+  minutesDelta?: number;
+  feeDeltaVnd?: number;
+  dueDateTo?: string | null;
+  /** What the plan said just before the change was applied — the history reads "original + changes = current" from it. */
+  applied?: { budgetMinutesBefore: number | null; feeVndBefore: number | null; dueDateBefore: string | null };
+};
 export const projectChangeRequest = pgTable(
   "project_change_request",
   {
@@ -239,7 +272,8 @@ export const projectChangeRequest = pgTable(
 ).enableRLS();
 
 // Status updates (FR-PJM-27).
-export type StatusFacts = { tasksDone: number; tasksOpen: number; overdue: number; blocked: number; milestoneSlipDays: number | null; nextMilestone: { name: string; dueDate: string | null } | null; minutesLogged: number; budgetMinutes: number | null; deliverablesAccepted: number; deliverablesPromised: number };
+// `highRisks` and `openIssues` come from the RAID log (FR-PJM-29); updates posted before it existed lack them.
+export type StatusFacts = { tasksDone: number; tasksOpen: number; overdue: number; blocked: number; milestoneSlipDays: number | null; nextMilestone: { name: string; dueDate: string | null } | null; minutesLogged: number; budgetMinutes: number | null; deliverablesAccepted: number; deliverablesPromised: number; highRisks?: number; openIssues?: number };
 export const projectStatusUpdate = pgTable(
   "project_status_update",
   {
@@ -413,6 +447,8 @@ export const projectBillingItem = pgTable(
     index("project_billing_item_entity_idx").on(t.entityId, t.status),
     uniqueIndex("project_billing_item_acceptance_unique").on(t.acceptanceId).where(sql`${t.acceptanceId} IS NOT NULL`),
     uniqueIndex("project_billing_item_milestone_unique").on(t.milestoneId).where(sql`${t.milestoneId} IS NOT NULL AND ${t.source} = 'milestone'`),
+    // One fee item per retainer month, however often the month-end job runs.
+    uniqueIndex("project_billing_item_retainer_unique").on(t.retainerPeriodId).where(sql`${t.retainerPeriodId} IS NOT NULL AND ${t.source} = 'retainer'`),
   ],
 ).enableRLS();
 
@@ -429,6 +465,8 @@ export const projectClientReport = pgTable(
     periodTo: date("period_to").notNull(),
     summary: text("summary"),
     nextPlan: text("next_plan"),
+    // Internal hours are left out of what the client reads unless the author ticks this.
+    showHours: boolean("show_hours").notNull().default(false),
     fileId: uuid("file_id").references(() => storedFile.id),
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     ...timestamps,

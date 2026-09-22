@@ -11,6 +11,7 @@ import { notify } from "../notifications/service";
 import type { Principal } from "../rbac/policy";
 import type { Permission } from "../rbac/roles";
 import { listPeopleHolding } from "../rbac/service";
+import { checkCompletion } from "./completion-guards";
 import { type AssigneeRule, isChecklistPurpose, parseAssigneeRule, pickTemplate, planChecklist } from "./engine/checklist";
 import { canManageTask, canMoveTask, movesThroughEngine } from "./policy";
 
@@ -125,6 +126,11 @@ export async function setTaskStatus(taskId: string, status: TaskStatus, actorId:
   const before = await findTask(taskId, executor);
   if (!before) throw new ActionError("task_not_found");
   const done = status === "done";
+  // A module may hold a task open until its own condition is met (completion-guards.ts).
+  if (done && before.status !== "done") {
+    const refusal = await checkCompletion(executor, before);
+    if (refusal) throw new ActionError(refusal.reason, refusal.details);
+  }
   const [after] = await executor
     .update(schema.task)
     .set({ status, completedAt: done ? new Date() : null, completedByPersonId: done ? actorId : null, updatedAt: new Date() })

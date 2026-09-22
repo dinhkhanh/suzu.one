@@ -11,8 +11,8 @@ export { listSavedViews, type SavedViewRow } from "./views";
 export { type CalendarItem, listCalendarTasks, withEditable } from "./calendar";
 export { type CommentView, listComments, listMentionable } from "./comments";
 export { type FollowState, followersOf, followStateOf } from "./followers";
-export { listTaskFiles, type TaskFileView } from "./attachments";
-export { countReviewsWaitingFor, type DeliverableView, listDeliverables, listReviewsWaitingFor, pendingDeliverable, type ReviewWaiting } from "./reviews";
+export { listTaskFiles, TASK_FILE_OWNER, type TaskFileView } from "./attachments";
+export { clientOfTask, countReviewsWaitingFor, type DecisionView, type DeliverableView, listDeliverables, listReviewsWaitingFor, pendingDeliverable, type ReviewWaiting } from "./reviews";
 export { listWorkTemplates, WORK_TEMPLATE_PURPOSES, type WorkTemplateView } from "./templates";
 export { listRecurrences, type RecurrenceView } from "./recurrences";
 export { getLeaderView, type LeaderTask, type LeaderView, listMyWorkItems, type MyWorkItem } from "./leader";
@@ -31,3 +31,63 @@ export { getPersonTaskStats, type PersonTaskStats } from "./stats";
  * report is a different shape of the rows the viewer may already open, never a wider set.
  */
 export { type AnalyticsCell, type AnalyticsFilter, defaultAnalyticsPeriod, getWorkAnalytics, type NamedGroup, type WorkAnalytics } from "./analytics";
+/** Phase 10 (FR-PJM-20..23): the person's own work and activity for Today, the plan and the EOD report — no authorization inside; the daily module decides who reads the result. */
+export { type DayTask, type FeedEvent, type FeedKind, type HandoffWaiting, listDayTasks, listHandoffsWaitingFor, listOpenBlockersRaisedBy, listOpenWorkOf, listWorkActivityBetween, type OpenBlocker } from "./day-feed";
+/**
+ * Phase 10 (FR-PJM-01..27): the project layer builds on projects and tasks. Work never imports
+ * projects — the plan half of a template is applied through `createProjectFromTemplate`'s callback.
+ */
+export { invalidateWorkDirectory } from "./directory";
+export { createProjectFromTemplate, findWorkTemplate, type ProjectCreatedHook, type TemplateUse } from "./templates";
+export { loadTasks, type LoadedTask } from "./tasks";
+export { viewersOfPeople } from "./viewer";
+/**
+ * Phase 10 on the task foundation: custom fields (FR-PJM-35), bulk edit (FR-PJM-36), moves between
+ * teams (FR-PJM-34), triage (FR-PJM-32) and blockers (FR-PJM-28). `sendToTriage` runs inside the
+ * caller's transaction (a cross-team hand-off puts the receiving task there); the blocker reads
+ * carry no authorization — the caller holds task ids or a person it may already read about.
+ */
+export { canDecideTriage, canManageCustomFields, canMoveTask, canRaiseBlocker, canResolveBlocker, canSeeLoggedTime, canViewTriage } from "./policy";
+export { asFieldDef, type CustomFieldRow, listCustomFields, toFieldViews } from "./custom-fields";
+export { countTriage, listMergeTargets, listTriage, listTriageForLead, listTriageRules, sendToTriage, type TriageItem, triageLink, type TriageRuleRow, type TriageWaiting } from "./triage";
+export { blockedMinutes, type BlockerView, listBlockersRaisedOn, listBlockersWaitingOn, listOpenBlockers, listTaskBlockers, type RaisedBlocker } from "./blockers";
+export { loggedMinutesByTask } from "./table";
+export { resolveTaskKey } from "./tasks";
+export { listMoveTargets } from "./move";
+/**
+ * Phase 10 hand-offs (FR-PJM-40..46) and cycles (FR-PJM-10). Stage hand-offs are enforced inside
+ * `updateWorkTaskIn` — every change of state passes the gate. Reads here carry no authorization
+ * beyond what their names say; the statistics are aggregates for the delivery dashboards, for the
+ * teams the caller names. Leave cover reads the leave module; exit handover reads core HR's
+ * lifecycle events and guards the offboarding step (registered in schema.ts).
+ */
+export { canAcknowledgeCover, canChangeAccountManager, canHandBackCover, canHandOff, canManageHandoffPackages, canRespondToHandoff, canRunExitHandover, canSendToTeam, canSubmitCoverPlan, canViewCoverPlan, canViewExitHandover } from "./policy";
+export { type HandoffPackageRow, type HandoffRequirement, listPackages } from "./handoff-gate";
+export { type AccountHandoffView, handoffReturnsByTask, handoffStatsByStage, type HandoffView, listAccountHandoffs, listPendingHandoffsFor, listTaskHandoffs, type StageHandoffStats } from "./handoffs";
+export { coverPlanFacts, type CoverPlanSummary, type CoverPlanView, getCoverPlan, getCoverPlanForLeave, listCoverPlansFor } from "./cover";
+export { exitHandoverFacts, type ExitHandoverView, getExitHandover, listExitHandoversFor } from "./exit";
+export { type CyclePage, type CycleRow, getCyclePage, listOpenCycles, listTeamCycles } from "./cycles";
+export { HANDOFF_KINDS, NOTE_PARTS } from "./engine/handoff";
+export { OWNERSHIP_KINDS, type OwnedItem } from "./engine/exit";
+/**
+ * Phase 10 delivery (FR-PJM-50..57): review chains, client decisions, pins, delivery records, the
+ * publish log and its results. The `...ByTask` reads and `revisionRoundsByTask` carry no
+ * authorization — the caller names tasks it may already read (the projects register, the client
+ * report, the close-out). `deliveryFactsByTask` is what the deliverables register marks its lines by:
+ * client-approved (a frozen version), delivered, published, and the latest client decision.
+ */
+export { canChangeDeliverable, canDecideStage, canManagePublish, canManageReviewChains, canPinFeedback, canRecordClientDecision, canRecordDelivery, canResolvePin } from "./policy";
+export { listReviewChains, type ReviewChainRow } from "./chains";
+export { listTaskPins, type PinView } from "./pins";
+export { type DeliveryView, listDeliveriesByTask } from "./deliveries";
+export { type CalendarPublish, type ContentCalendar, contentCalendar, listCalendarPublishes, listPublishesByTask, listResultsByTask, publishCountsByTask, type PublishView, type ResultView } from "./publish";
+export { type DeliveryFacts, deliveryFactsByTask, type LastClientDecision, type RevisionRounds, revisionRoundsByTask } from "./delivery-facts";
+export { CLIENT_CHANNELS, REVIEWER_RULES, STAGE_DECISIONS } from "./engine/delivery";
+/**
+ * Phase 10 automations (FR-PJM-33): a team's (or a project's own) "when … then …" rules. They run
+ * inside the work module's own changes; `fireProjectAutomations` is for the projects module's quota
+ * alerts, called inside its transaction with the alert's key so a repeated alert runs nothing twice.
+ */
+export { canManageAutomations, canViewAutomations } from "./policy";
+export { type AutomationPanel, automationPanel, type AutomationRow, type AutomationRunView, fireProjectAutomations, listAutomationRuns, listAutomations, listTaskTemplates } from "./automations";
+export { AUTOMATION_ACTIONS, AUTOMATION_PRESETS, AUTOMATION_TRIGGERS, CLIENT_DECISIONS, CONDITION_FIELDS, CONDITION_OPS, QUOTA_PERCENTS, ROLES_FOR, WATCHED_FIELDS } from "./engine/automation";

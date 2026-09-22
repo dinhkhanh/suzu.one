@@ -1,6 +1,6 @@
 import "server-only";
 import { env } from "@/lib/env";
-import { MAX_FILE_BYTES } from "./rules";
+import { MAX_UPLOAD_BYTES } from "./rules";
 
 // A thin client for Supabase Storage's REST API: only what the files service needs, no SDK.
 // The service-role key never leaves the server; browsers only ever get short-lived signed URLs.
@@ -32,15 +32,21 @@ async function fail(response: Response, what: string): Promise<never> {
 
 let bucketReady: Promise<void> | undefined;
 
-/** Creates the private bucket on first use. Safe to race: "already exists" is success. */
-function ensureBucket(maxFileBytes: number): Promise<void> {
+/**
+ * Creates the private bucket on first use, or brings an existing one's size limit up to the largest
+ * file any owner may take (a bucket made when the cap was 20 MB would refuse a video before our own
+ * checks ever saw it). Each file's own cap is the files service's check. Safe to race.
+ */
+function ensureBucket(): Promise<void> {
   return (bucketReady ??= (async () => {
     const { bucket } = config();
-    const response = await call("/bucket", { method: "POST", json: { id: bucket, name: bucket, public: false, file_size_limit: maxFileBytes } });
-    if (response.ok || response.status === 409) return;
+    const settings = { public: false, file_size_limit: MAX_UPLOAD_BYTES };
+    const response = await call("/bucket", { method: "POST", json: { id: bucket, name: bucket, ...settings } });
+    if (response.ok) return;
     const body = await response.text();
-    if (/exist/i.test(body)) return;
-    throw new StorageError(`create bucket: ${response.status} ${body.slice(0, 200)}`);
+    if (response.status !== 409 && !/exist/i.test(body)) throw new StorageError(`create bucket: ${response.status} ${body.slice(0, 200)}`);
+    const updated = await call(`/bucket/${encodeURIComponent(bucket)}`, { method: "PUT", json: settings });
+    if (!updated.ok) await fail(updated, "update bucket");
   })().catch((error) => {
     bucketReady = undefined;
     throw error;
@@ -48,8 +54,8 @@ function ensureBucket(maxFileBytes: number): Promise<void> {
 }
 
 /** A URL the browser can PUT one file to, once, within two hours. */
-export async function createSignedUploadUrl(objectPath: string, maxFileBytes: number): Promise<string> {
-  await ensureBucket(maxFileBytes);
+export async function createSignedUploadUrl(objectPath: string): Promise<string> {
+  await ensureBucket();
   const { base, bucket } = config();
   const response = await call(`/object/upload/sign/${bucket}/${encodePath(objectPath)}`, { method: "POST" });
   if (!response.ok) await fail(response, "sign upload");
@@ -64,7 +70,7 @@ export async function createSignedUploadUrl(objectPath: string, maxFileBytes: nu
  * inside the request, is checked in memory, and only then lands here.
  */
 export async function putObject(objectPath: string, bytes: Uint8Array, contentType: string): Promise<void> {
-  await ensureBucket(MAX_FILE_BYTES);
+  await ensureBucket();
   const { bucket } = config();
   const response = await call(`/object/${bucket}/${encodePath(objectPath)}`, {
     method: "POST",

@@ -158,3 +158,206 @@ export function canSubmitIntake(viewer: WorkViewer, team: TeamFacts, audience: "
   if (isCollaborator(viewer) || !viewer.principal.personId) return false;
   return audience === "group" || team.entityId === null || team.entityId === viewer.entityId || canManageWorkspace(viewer, team);
 }
+
+// ── Phase 10 (PJM) on the task foundation ───────────────────────────────────────────────────
+
+/** Custom fields (FR-PJM-35): a team's are kept by whoever runs the team, a project's own by whoever runs the project. */
+export function canManageCustomFields(viewer: WorkViewer, team: TeamFacts, project: ProjectFacts | null = null): boolean {
+  return project ? project.team.id === team.id && canManageProject(viewer, project) : canAdminTeam(viewer, team);
+}
+
+/** The triage queue (FR-PJM-32) is the team's own business: its members may look at it. */
+export function canViewTriage(viewer: WorkViewer, team: TeamFacts): boolean {
+  return canContributeToTeam(viewer, team);
+}
+
+/**
+ * Accepting, declining, merging or snoozing incoming work — and keeping the triage rules — is the
+ * lead's call: it commits the team's time. A member who simply picks a request up would bypass that.
+ */
+export function canDecideTriage(viewer: WorkViewer, team: TeamFacts): boolean {
+  return canAdminTeam(viewer, team);
+}
+
+/** Flagging a task blocked (FR-PJM-28): anyone who works on it. */
+export function canRaiseBlocker(viewer: WorkViewer, task: TaskFacts): boolean {
+  return canEditTask(viewer, task);
+}
+
+/** Resolving: the people on the task, whoever raised the blocker, and whoever it waits for — they are the ones who unblock it. */
+export function canResolveBlocker(viewer: WorkViewer, task: TaskFacts, blocker: { raisedByPersonId: string; neededPersonId: string | null }): boolean {
+  const self = viewer.principal.personId;
+  return (!!self && (blocker.raisedByPersonId === self || blocker.neededPersonId === self)) || canEditTask(viewer, task);
+}
+
+/**
+ * Moving a task to another team (FR-PJM-34): the right to change it here and to put work there —
+ * into the target project, or the target team's backlog. A project of another team is no target.
+ */
+export function canMoveTask(viewer: WorkViewer, task: TaskFacts, target: { team: TeamFacts; project: ProjectFacts | null }): boolean {
+  if (target.team.id === task.team.id || (target.project && target.project.team.id !== target.team.id)) return false;
+  if (!canEditTask(viewer, task)) return false;
+  return target.project ? canContributeToProject(viewer, target.project) : canContributeToTeam(viewer, target.team);
+}
+
+/**
+ * Hours logged on a project's (or a backlog's) tasks, summed per task in the table view: time
+ * entries are for the project's lead and the team's leads (PJM access rules), not for every member.
+ */
+export function canSeeLoggedTime(viewer: WorkViewer, scope: { team: TeamFacts; project: ProjectFacts | null }): boolean {
+  return scope.project ? canManageProject(viewer, scope.project) : canAdminTeam(viewer, scope.team);
+}
+
+// ── Hand-offs (FR-PJM-40..46) ───────────────────────────────────────────────────────────────
+
+/** Which transitions need a package, and what it asks: the team's leads — it sets how the team works. */
+export function canManageHandoffPackages(viewer: WorkViewer, team: TeamFacts): boolean {
+  return canAdminTeam(viewer, team);
+}
+
+/** Filling a package and handing the task on: whoever may move the task. */
+export function canHandOff(viewer: WorkViewer, task: TaskFacts): boolean {
+  return canEditTask(viewer, task);
+}
+
+/**
+ * Accepting or returning a hand-off: the person it was handed to, or whoever runs the team (a lead
+ * may take it in for someone who is away) — never the sender, who cannot accept their own work.
+ */
+export function canRespondToHandoff(viewer: WorkViewer, task: TaskFacts, handoff: { fromPersonId: string | null; toPersonId: string | null }): boolean {
+  const self = viewer.principal.personId;
+  if (!self || self === handoff.fromPersonId) return false;
+  return handoff.toPersonId === self || canAdminTeam(viewer, task.team);
+}
+
+/**
+ * Sending work on to another team (FR-PJM-42): whoever may move the task, into any other team's
+ * triage — a request, not a right to see that team's work. Outside collaborators work inside their
+ * projects only.
+ */
+export function canSendToTeam(viewer: WorkViewer, task: TaskFacts, target: TeamFacts): boolean {
+  return target.id !== task.team.id && !isCollaborator(viewer) && canEditTask(viewer, task);
+}
+
+export type CoverPlanFacts = { personId: string; entityId: string | null; coverIds: readonly string[] };
+
+/**
+ * A cover plan (FR-PJM-44) is the person's own: they fill and submit it. `work:manage` over their
+ * entity may do it for them — someone taken ill does not fill forms.
+ */
+export function canSubmitCoverPlan(viewer: WorkViewer, plan: Pick<CoverPlanFacts, "personId" | "entityId">): boolean {
+  return viewer.principal.personId === plan.personId || can(viewer.principal, "work:manage", { entityId: plan.entityId });
+}
+
+/** The person, the covers named in it, and whoever may submit it. (Approvers see it beside the leave request, which checks its own access.) */
+export function canViewCoverPlan(viewer: WorkViewer, plan: CoverPlanFacts): boolean {
+  const self = viewer.principal.personId;
+  return (!!self && plan.coverIds.includes(self)) || canSubmitCoverPlan(viewer, plan);
+}
+
+/** Only a cover acknowledges what they were asked to cover. */
+export function canAcknowledgeCover(viewer: WorkViewer, plan: Pick<CoverPlanFacts, "coverIds">): boolean {
+  const self = viewer.principal.personId;
+  return !!self && plan.coverIds.includes(self);
+}
+
+/** Handing back after the leave: the person back at work, a cover returning it, or whoever may submit the plan. */
+export function canHandBackCover(viewer: WorkViewer, plan: CoverPlanFacts): boolean {
+  return canViewCoverPlan(viewer, plan);
+}
+
+export type ExitHandoverFacts = { personId: string; managerId: string | null; entityId: string | null; /** The work teams the person is in. */ teamIds: readonly string[] };
+
+/**
+ * An exit or transfer handover (FR-PJM-45) is run by the line manager, the leads of the person's
+ * teams, and leaders or HR over the person's entity. The leaver may look at it but reassigns
+ * nothing: where their work goes is their manager's decision.
+ */
+export function canRunExitHandover(viewer: WorkViewer, handover: ExitHandoverFacts): boolean {
+  const self = viewer.principal.personId;
+  if (!self || self === handover.personId) return false;
+  if (handover.managerId === self || handover.teamIds.some((teamId) => viewer.teamRoles.get(teamId) === "lead")) return true;
+  const scope = { entityId: handover.entityId };
+  return can(viewer.principal, "work:manage", scope) || can(viewer.principal, "person:manage", scope);
+}
+
+export function canViewExitHandover(viewer: WorkViewer, handover: ExitHandoverFacts): boolean {
+  return viewer.principal.personId === handover.personId || canRunExitHandover(viewer, handover);
+}
+
+/** Account handover (FR-PJM-46): the client list is kept by leaders with `work:manage`, and so is who owns each relationship. */
+export function canChangeAccountManager(viewer: WorkViewer): boolean {
+  return canManageWorkspace(viewer);
+}
+
+// ── Delivery (FR-PJM-50..57) ────────────────────────────────────────────────────────────────
+
+/** Review chains: a team's are kept by whoever runs the team, a project's own by whoever runs the project. */
+export function canManageReviewChains(viewer: WorkViewer, team: TeamFacts, project: ProjectFacts | null = null): boolean {
+  return project ? project.team.id === team.id && canManageProject(viewer, project) : canAdminTeam(viewer, team);
+}
+
+/**
+ * Recording what the client decided (FR-PJM-51): clients have no accounts, so the account side
+ * records it — the project's account manager or whoever runs the project; for work outside a
+ * project, the client's account manager or the team's leads.
+ */
+export function canRecordClientDecision(viewer: WorkViewer, task: TaskFacts, client: { accountManagerPersonId: string | null }): boolean {
+  if (task.project) return canActForClient(viewer, task.project);
+  const self = viewer.principal.personId;
+  return (!!self && client.accountManagerPersonId === self) || canAdminTeam(viewer, task.team);
+}
+
+export type StageFacts = { isClient: boolean; reviewerPersonId: string | null; submittedByPersonId: string };
+
+/**
+ * Deciding a stage of a review chain (FR-PJM-50). An internal stage: its reviewer or whoever runs
+ * the project — never the person who handed the work in. A client stage is the client's decision,
+ * recorded by the account side (the recorder may have made the work: the client decides, not them).
+ */
+export function canDecideStage(viewer: WorkViewer, task: TaskFacts, stage: StageFacts, client: { accountManagerPersonId: string | null }): boolean {
+  if (stage.isClient) return canRecordClientDecision(viewer, task, client);
+  const self = viewer.principal.personId;
+  if (!self || self === stage.submittedByPersonId) return false;
+  return stage.reviewerPersonId === self || canModerateTask(viewer, task);
+}
+
+/** A version the client approved is frozen (FR-PJM-51): nobody changes or removes it, or the file behind it; a change is a new version. */
+export function canChangeDeliverable(deliverable: { frozenAt: Date | string | null }): boolean {
+  return deliverable.frozenAt === null;
+}
+
+/** Pinning feedback on a version (FR-PJM-52): whoever may open the task, as with comments. Collaborators too — they are asked for feedback. */
+export function canPinFeedback(viewer: WorkViewer, task: TaskFacts): boolean {
+  return canViewTask(viewer, task);
+}
+
+/** Resolving a pin: whoever pinned it, and the people doing the work — they are the ones who act on it. */
+export function canResolvePin(viewer: WorkViewer, task: TaskFacts, pin: { authorPersonId: string }): boolean {
+  return viewer.principal.personId === pin.authorPersonId || canEditTask(viewer, task);
+}
+
+/** Recording what went to the client (FR-PJM-53): the people doing the work, and the account side. */
+export function canRecordDelivery(viewer: WorkViewer, task: TaskFacts): boolean {
+  return canEditTask(viewer, task) || (!!task.project && canActForClient(viewer, task.project));
+}
+
+/** The publish log and its results (FR-PJM-54, 57): whoever may change the task — they post it. */
+export function canManagePublish(viewer: WorkViewer, task: TaskFacts): boolean {
+  return canEditTask(viewer, task);
+}
+
+// ── Automations (FR-PJM-33) ─────────────────────────────────────────────────────────────────
+
+/**
+ * Keeping a team's rules — and a project's own: only whoever runs the team. A rule acts on everyone's
+ * work without asking (moves, assigns, sets dates), so it is the lead's call, not a project member's.
+ */
+export function canManageAutomations(viewer: WorkViewer, team: TeamFacts): boolean {
+  return canAdminTeam(viewer, team);
+}
+
+/** Reading the rules and their runs: the team's own people — the rules are how the team works. */
+export function canViewAutomations(viewer: WorkViewer, team: TeamFacts): boolean {
+  return canContributeToTeam(viewer, team);
+}

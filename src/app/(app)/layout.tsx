@@ -18,13 +18,16 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     recruit: canRunRecruitment(user.principal) || counts.onHiringTeam,
     interviews: counts.interviewer,
   });
-  const { unread, inbox: waiting, openTasks, reviews } = counts;
-  // "My work" is one inbox (FR-WRK-06): tasks of every kind, deliverables to review, requests to approve.
-  const tasks = openTasks + reviews + waiting;
+  const { unread, inbox: waiting, openTasks, reviews, handoffs, blockers } = counts;
+  // "My work" is one inbox (FR-WRK-06): tasks of every kind, deliverables to review, requests to
+  // approve, hand-offs to accept and blockers waiting on me (FR-PJM-40, 28).
+  const tasks = openTasks + reviews + waiting + handoffs + blockers;
 
   const label = (key: string) => t(`nav.${key}`);
   // What waits for this person, at the top of the sidebar; then the modules, then the admin desk.
   const pinned: NavRow[] = [
+    // The day starts here (FR-PJM-20): the landing page after sign-in.
+    { key: "today", href: "/today", label: label("today") },
     { key: "tasks", href: "/tasks", label: label("tasks"), count: tasks },
     { key: "approvals", href: "/approvals", label: label("approvals"), count: waiting },
     { key: "notifications", href: "/notifications", label: label("notifications"), count: unread },
@@ -61,7 +64,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       </AppFrame>
       <CommandPalette
         selfId={user.person.id}
-        pages={[...nav.main, { key: "tasks", href: "/tasks" }, { key: "approvals", href: "/approvals" }, { key: "notifications", href: "/notifications" }, ...nav.admin].flatMap((item) => (item.href ? [{ label: label(item.key), href: item.href }] : []))}
+        pages={[{ key: "today", href: "/today" }, ...nav.main, { key: "tasks", href: "/tasks" }, { key: "approvals", href: "/approvals" }, { key: "notifications", href: "/notifications" }, ...nav.admin].flatMap((item) => (item.href ? [{ label: label(item.key), href: item.href }] : []))}
       />
     </>
   );

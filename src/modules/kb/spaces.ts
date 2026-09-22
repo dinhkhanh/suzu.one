@@ -5,7 +5,7 @@ import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { listEntities, listOrgUnits, unitChoices } from "../platform/org/service";
 import { ROLES } from "../platform/rbac/roles";
-import { spaceVisibleSql } from "./access-sql";
+import { projectPeopleSql, spaceVisibleSql } from "./access-sql";
 import { type AccessLevel, parseSubjectKey, SPACE_KEY, type SpaceKind, subjectKey } from "./enums";
 import { type AccessRow, type KbLevel, type KbViewer, type SpaceFacts, spaceLevel } from "./policy";
 
@@ -15,24 +15,25 @@ export type LoadedSpace = { space: SpaceRow; access: AccessRow[]; facts: SpaceFa
 
 // `ownerUnitPath` is the owning unit alone: a loaded grant carries the units below it, so a head
 // of a unit above still matches without the chain being read here.
-export const spaceFacts = (space: Pick<SpaceRow, "entityId" | "kind" | "archivedAt" | "ownerUnitId">, access: readonly AccessRow[]): SpaceFacts => ({
+export const spaceFacts = (space: Pick<SpaceRow, "entityId" | "kind" | "archivedAt" | "ownerUnitId" | "ownerProjectId">, access: readonly AccessRow[]): SpaceFacts => ({
   entityId: space.entityId,
   kind: space.kind,
   archived: !!space.archivedAt,
   access,
   ownerUnitPath: space.ownerUnitId ? [space.ownerUnitId] : null,
+  ownerProjectId: space.ownerProjectId,
 });
 
 async function spaceAccessRows(executor: Executor, spaceIds: readonly string[]): Promise<Map<string, AccessRow[]>> {
   const rows = spaceIds.length
     ? await executor
-        .select({ spaceId: schema.kbAccess.spaceId, subjectKey: schema.kbAccess.subjectKey, level: schema.kbAccess.level })
+        .select({ spaceId: schema.kbAccess.spaceId, subjectKey: schema.kbAccess.subjectKey, level: schema.kbAccess.level, people: projectPeopleSql() })
         .from(schema.kbAccess)
         .where(and(inArray(schema.kbAccess.spaceId, [...spaceIds]), isNull(schema.kbAccess.pageId)))
         .orderBy(asc(schema.kbAccess.createdAt))
     : [];
   const bySpace = new Map<string, AccessRow[]>(spaceIds.map((id) => [id, []]));
-  for (const row of rows) bySpace.get(row.spaceId)!.push({ subjectKey: row.subjectKey, level: row.level });
+  for (const row of rows) bySpace.get(row.spaceId)!.push({ subjectKey: row.subjectKey, level: row.level, ...(row.people ? { people: row.people } : {}) });
   return bySpace;
 }
 
@@ -64,11 +65,12 @@ export async function listSpaces(viewer: KbViewer): Promise<SpaceListRow[]> {
   });
 }
 
-export type SpaceInput = { key: string; name: string; description: string | null; icon: string | null; entityId: string | null; ownerUnitId?: string | null; kind: SpaceKind; sortOrder: number };
+export type SpaceInput = { key: string; name: string; description: string | null; icon: string | null; entityId: string | null; ownerUnitId?: string | null; ownerProjectId?: string | null; kind: SpaceKind; sortOrder: number };
 
-export async function createSpace(input: SpaceInput, actorPersonId: string, access: readonly AccessRow[] = []): Promise<SpaceRow> {
+/** Makes a space; inside the caller's transaction when given one (a project's space is made with its link). */
+export async function createSpace(input: SpaceInput, actorPersonId: string, access: readonly AccessRow[] = [], executor?: Tx): Promise<SpaceRow> {
   if (!SPACE_KEY.test(input.key)) throw new ActionError("kb_space_key_invalid");
-  return db().transaction(async (tx) => {
+  const run = async (tx: Tx) => {
     const [taken] = await tx.select({ id: schema.kbSpace.id }).from(schema.kbSpace).where(eq(schema.kbSpace.key, input.key)).limit(1);
     if (taken) throw new ActionError("kb_space_key_taken");
     if (input.entityId) {
@@ -87,7 +89,8 @@ export async function createSpace(input: SpaceInput, actorPersonId: string, acce
     const rows = input.ownerUnitId && access.length === 0 ? [{ subjectKey: subjectKey("unit", input.ownerUnitId), level: "edit" as const }] : access;
     if (rows.length) await replaceAccess(tx, space.id, null, rows);
     return space;
-  });
+  };
+  return executor ? run(executor) : db().transaction(run);
 }
 
 /** The key and the entity stay: the key is in every link, and the entity decides who manages the space. */
@@ -110,7 +113,7 @@ export async function setSpaceArchived(spaceId: string, archived: boolean): Prom
 /** Every key names something that exists; the same subject is listed once (the higher level wins). */
 async function checkedRows(executor: Executor, rows: readonly AccessRow[]): Promise<AccessRow[]> {
   const byKey = new Map<string, AccessLevel>();
-  const ids: Record<"entity" | "unit" | "unit_only" | "person", string[]> = { entity: [], unit: [], unit_only: [], person: [] };
+  const ids: Record<"entity" | "unit" | "unit_only" | "person" | "project", string[]> = { entity: [], unit: [], unit_only: [], person: [], project: [] };
   for (const row of rows) {
     const parsed = parseSubjectKey(row.subjectKey);
     if (!parsed) throw new ActionError("kb_subject_unknown");
@@ -120,8 +123,8 @@ async function checkedRows(executor: Executor, rows: readonly AccessRow[]): Prom
     } else if (parsed.type !== "all") ids[parsed.type].push(parsed.id!);
     byKey.set(key, byKey.get(key) === "edit" ? "edit" : row.level);
   }
-  const tables = { entity: schema.entity, unit: schema.orgUnit, unit_only: schema.orgUnit, person: schema.person } as const;
-  for (const type of ["entity", "unit", "unit_only", "person"] as const) {
+  const tables = { entity: schema.entity, unit: schema.orgUnit, unit_only: schema.orgUnit, person: schema.person, project: schema.workProject } as const;
+  for (const type of ["entity", "unit", "unit_only", "person", "project"] as const) {
     const wanted = [...new Set(ids[type])];
     if (wanted.length === 0) continue;
     const found = await executor.select({ id: tables[type].id }).from(tables[type]).where(inArray(tables[type].id, wanted));
@@ -165,10 +168,12 @@ export async function subjectNames(keys: readonly string[]): Promise<Map<string,
   const entityIds = idsOf("entity");
   const unitIds = [...idsOf("unit"), ...idsOf("unit_only")];
   const personIds = idsOf("person");
-  const [entities, units, people] = await Promise.all([
+  const projectIds = idsOf("project");
+  const [entities, units, people, projects] = await Promise.all([
     entityIds.length ? listEntities() : [],
     unitIds.length ? listOrgUnits() : [],
     personIds.length ? db().select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, personIds)) : [],
+    projectIds.length ? db().select({ id: schema.workProject.id, name: schema.workProject.name }).from(schema.workProject).where(inArray(schema.workProject.id, projectIds)) : [],
   ]);
   const names = new Map<string, string>();
   const wantedEntities = new Set(entityIds);
@@ -180,5 +185,6 @@ export async function subjectNames(keys: readonly string[]): Promise<Map<string,
     names.set(`unit_only:${unit.id}`, unit.name);
   }
   for (const person of people) names.set(`person:${person.id}`, person.name);
+  for (const project of projects) names.set(`project:${project.id}`, project.name);
   return names;
 }

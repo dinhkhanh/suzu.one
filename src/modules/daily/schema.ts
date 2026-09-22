@@ -2,7 +2,7 @@
 // plan, the end-of-day report prefilled from activity, time entries and the weekly timesheet, and
 // each work team's rules for them. Work records, never pay records: nothing here feeds payroll.
 import { sql } from "drizzle-orm";
-import { boolean, date, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { person } from "../platform/people/schema";
 import { task } from "../platform/tasks-engine/schema";
 import { workProject, workTeam } from "../work/schema";
@@ -137,6 +137,8 @@ export const timeEntry = pgTable(
     // manual | timer
     source: text("source").notNull().default("manual"),
     timerStartedAt: timestamp("timer_started_at", { withTimezone: true }),
+    // A timer left running past 16 hours was stopped at 16: the person (and their lead) should look.
+    capped: boolean("capped").notNull().default(false),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     ...timestamps,
   },
@@ -144,7 +146,8 @@ export const timeEntry = pgTable(
     index("time_entry_person_idx").on(t.personId, t.date),
     index("time_entry_project_idx").on(t.projectId, t.date),
     index("time_entry_task_idx").on(t.taskId),
-    index("time_entry_timer_idx").on(t.personId).where(sql`${t.timerStartedAt} IS NOT NULL AND ${t.deletedAt} IS NULL`),
+    // One running timer per person, held by the database: two quick taps cannot start two.
+    uniqueIndex("time_entry_timer_idx").on(t.personId).where(sql`${t.timerStartedAt} IS NOT NULL AND ${t.deletedAt} IS NULL`),
   ],
 ).enableRLS();
 

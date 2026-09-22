@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkUpload, cleanFileName, matchesSignature, MAX_FILE_BYTES } from "./rules";
+import { acceptAttributeFor, checkUpload, cleanFileName, matchesSignature, MAX_FILE_BYTES, MAX_VIDEO_BYTES, maxBytesFor } from "./rules";
 
 const bytes = (...values: number[]) => new Uint8Array(values);
 
@@ -42,5 +42,35 @@ describe("matchesSignature", () => {
   it("accepts text for csv and refuses binary", () => {
     expect(matchesSignature("a.csv", new TextEncoder().encode("họ tên,mã\n"))).toBe(true);
     expect(matchesSignature("a.csv", bytes(0x4d, 0x5a, 0x00, 0x01))).toBe(false);
+  });
+});
+
+describe("video (FR-PJM-52)", () => {
+  // An MP4's first box: its size, then "ftyp" and the brand.
+  const mp4 = bytes(0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d);
+  const oldMov = bytes(0x00, 0x00, 0x00, 0x08, 0x77, 0x69, 0x64, 0x65);
+
+  it("is taken on a work task only, with a larger cap", () => {
+    expect(checkUpload({ fileName: "Cut v3.mp4", sizeBytes: 150 * 1024 * 1024 }, "work_task")).toEqual({ ok: true, fileName: "Cut v3.mp4", contentType: "video/mp4" });
+    expect(checkUpload({ fileName: "take.MOV", sizeBytes: 1000 }, "work_task")).toMatchObject({ ok: true, contentType: "video/quicktime" });
+    expect(checkUpload({ fileName: "cut.mp4", sizeBytes: MAX_VIDEO_BYTES + 1 }, "work_task")).toEqual({ ok: false, problem: "file_too_large" });
+    // Everywhere else a video is no document: an HR record, a CV, a page.
+    expect(checkUpload({ fileName: "cut.mp4", sizeBytes: 1000 }, "person_document")).toEqual({ ok: false, problem: "file_type_not_allowed" });
+    expect(checkUpload({ fileName: "cut.mp4", sizeBytes: 1000 })).toEqual({ ok: false, problem: "file_type_not_allowed" });
+    // A document on a task keeps the ordinary cap.
+    expect(checkUpload({ fileName: "brief.pdf", sizeBytes: MAX_FILE_BYTES + 1 }, "work_task")).toEqual({ ok: false, problem: "file_too_large" });
+    expect([maxBytesFor("cut.mov", "work_task"), maxBytesFor("cut.mov"), maxBytesFor("brief.pdf", "work_task")]).toEqual([MAX_VIDEO_BYTES, MAX_FILE_BYTES, MAX_FILE_BYTES]);
+    expect(acceptAttributeFor("work_task")).toContain(".mp4");
+    expect(acceptAttributeFor("work_task")).toContain(".mov");
+    expect(acceptAttributeFor()).not.toContain(".mp4");
+  });
+
+  it("checks the box type at byte 4, so a renamed executable fails", () => {
+    expect(matchesSignature("cut.mp4", mp4, "work_task")).toBe(true);
+    expect(matchesSignature("cut.mov", mp4, "work_task")).toBe(true);
+    expect(matchesSignature("cut.mov", oldMov, "work_task")).toBe(true);
+    expect(matchesSignature("cut.mp4", oldMov, "work_task")).toBe(false);
+    expect(matchesSignature("cut.mp4", bytes(0x4d, 0x5a, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00), "work_task")).toBe(false);
+    expect(matchesSignature("cut.mp4", mp4)).toBe(false);
   });
 });

@@ -8,7 +8,7 @@ import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 import { can } from "@/modules/platform/rbac/policy";
-import { canManageSchedules, getDashboard } from "@/modules/reports/service";
+import { canManageSchedules, canReadProfitability, getDashboard } from "@/modules/reports/service";
 
 export const metadata: Metadata = { title: "Overview" };
 
@@ -168,6 +168,20 @@ export default async function ReportsOverviewPage() {
     );
   }
 
+  if (dashboard.delivery) {
+    const tile = dashboard.delivery;
+    tiles.push(
+      <Tile key="delivery" title={t("tiles.delivery")} href="/reports/delivery" openLabel={t("open")}>
+        <Figure label={t("delivery.onTrack")} value={tile.health.on_track} />
+        <Figure label={t("delivery.atRisk")} value={tile.health.at_risk} />
+        <Figure label={t("delivery.offTrack")} value={tile.health.off_track} tone={tile.health.off_track > 0 ? "danger" : undefined} />
+        <Figure label={t("delivery.stale")} value={tile.stale} tone={tile.stale > 0 ? "danger" : undefined} />
+        <Figure label={t("delivery.overdueMilestones")} value={tile.overdueMilestones} tone={tile.overdueMilestones > 0 ? "danger" : undefined} />
+        <p className="text-xs text-muted-foreground">{t("delivery.of", { total: tile.projects })}</p>
+      </Tile>,
+    );
+  }
+
   tiles.push(
     <Tile key="approvals" title={t("tiles.approvals")} href="/approvals" openLabel={t("open")}>
       {dashboard.approvals.waiting > 0 ? <p className="text-lg font-semibold tabular-nums">{t("approvals.waiting", { count: dashboard.approvals.waiting })}</p> : <p className="text-muted-foreground">{t("approvals.none")}</p>}
@@ -191,6 +205,14 @@ export default async function ReportsOverviewPage() {
           <Link href="/work/analytics" className="underline underline-offset-4">
             {t("tiles.work")}
           </Link>
+          <Link href="/reports/delivery" className="underline underline-offset-4">
+            {t("tiles.delivery")}
+          </Link>
+          {canReadProfitability(user.principal) ? (
+            <Link href="/reports/profitability" className="underline underline-offset-4">
+              {t("tiles.profitability")}
+            </Link>
+          ) : null}
           {canManageSchedules(user.principal) ? (
             <Link href="/reports/schedules" className="underline underline-offset-4">
               {tSchedules("title")}

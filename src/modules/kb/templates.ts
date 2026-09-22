@@ -1,6 +1,6 @@
 // Page templates (FR-KB-09) and imports (FR-KB-10): both end in an ordinary draft page.
 import "server-only";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { cached, invalidate } from "@/lib/cache";
 import { db, schema } from "@/lib/db";
@@ -8,6 +8,7 @@ import { type Doc, validateDoc } from "./engine/doc";
 import { mammothHtmlToMarkdown } from "./engine/docx-html";
 import { markdownToDoc } from "./engine/markdown";
 import { type Actor, createPage, type PageRow } from "./pages";
+import { kbTemplateSeedRows, PROJECT_STARTER_TEMPLATES } from "./seed-templates";
 
 export type TemplateRow = typeof schema.kbTemplate.$inferSelect;
 export type TemplateOption = { id: string; key: string; name: string; description: string | null; isSystem: boolean; isActive: boolean };
@@ -35,6 +36,22 @@ export async function templateContent(templateId: string): Promise<Doc> {
   const checked = validateDoc(row.content);
   if (!checked.ok) throw new ActionError("kb_content_invalid");
   return checked.doc;
+}
+
+/**
+ * The starter pages of a project's document space (FR-PJM-31): each starter template as it is in
+ * the database — HR may have rewritten it — or as seeded when it was never seeded here. A starter
+ * someone switched off is left out, not brought back.
+ */
+export async function projectStarters(): Promise<{ key: string; name: string; content: Doc }[]> {
+  const rows = await db().select().from(schema.kbTemplate).where(inArray(schema.kbTemplate.key, [...PROJECT_STARTER_TEMPLATES]));
+  const seeded = new Map(kbTemplateSeedRows().map((row) => [row.key, row]));
+  return PROJECT_STARTER_TEMPLATES.flatMap((key) => {
+    const row = rows.find((template) => template.key === key) ?? seeded.get(key);
+    if (!row || ("isActive" in row && !row.isActive)) return [];
+    const checked = validateDoc(row.content);
+    return checked.ok ? [{ key, name: row.name, content: checked.doc }] : [];
+  });
 }
 
 const slug = (name: string) =>

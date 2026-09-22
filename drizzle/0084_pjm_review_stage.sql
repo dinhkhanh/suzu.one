@@ -1,0 +1,4 @@
+ALTER TABLE "work_deliverable" ADD COLUMN "stage_reviewer_person_id" uuid;--> statement-breakpoint
+ALTER TABLE "work_deliverable" ADD COLUMN "stage_due_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "work_deliverable" ADD CONSTRAINT "work_deliverable_stage_reviewer_person_id_person_id_fk" FOREIGN KEY ("stage_reviewer_person_id") REFERENCES "public"."person"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "work_deliverable_stage_reviewer_idx" ON "work_deliverable" USING btree ("stage_reviewer_person_id") WHERE "work_deliverable"."decision" = 'pending';

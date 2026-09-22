@@ -4,13 +4,19 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { todayInVietnam } from "@/lib/dates";
+import { DailyRulesSection } from "@/modules/daily/ui/team-rules-section";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
-import { FILTER_KEYS, GROUPINGS, type Grouping, type TaskFilters } from "@/modules/work/engine/filter";
+import { readFilters, readGrouping, readSort } from "@/modules/work/engine/filter";
 import { canAdminTeam, canContributeToTeam, canManageWorkspace, canViewTeam, canViewTeamBacklog, findTeam, listAssignable, listClients, listTeamIntakeForms, listLabels, listStates, listTeamBacklog, listTeamMembers, loadViewer, teamFacts, visibleProjects } from "@/modules/work/service";
 import { TaskListView } from "@/modules/work/ui/task-list-view";
+import { canManageCustomFields, canSeeLoggedTime, canViewTriage, countTriage, listCustomFields, loggedMinutesByTask, toFieldViews } from "@/modules/work/service";
+import { CustomFieldManager } from "@/modules/work/ui/custom-fields";
+import { ViewTabs } from "@/modules/work/ui/filter-bar";
+import { TaskTableView } from "@/modules/work/ui/task-table-view";
 import { IntakeFormManager } from "@/modules/work/ui/intake-forms";
+import { canViewAutomations, listOpenCycles } from "@/modules/work/service";
 import { LabelManager, MemberManager, StateManager, TeamForm } from "@/modules/work/ui/team-forms";
 
 export const metadata: Metadata = { title: "Team" };
@@ -37,9 +43,16 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
     listTeamIntakeForms(team.id),
     admin ? Promise.all([listPersonNames(), listEntities(), unitChoices()]) : ([[], [], []] as [Awaited<ReturnType<typeof listPersonNames>>, Awaited<ReturnType<typeof listEntities>>, Awaited<ReturnType<typeof unitChoices>>]),
   ]);
+  const [fieldRows, triageCounts] = await Promise.all([listCustomFields({ teamId: team.id }, { includeInactive: true }), canViewTriage(viewer, facts) ? countTriage([team.id]) : null]);
+  const fields = toFieldViews(fieldRows);
+  // FR-PJM-10: the team's open cycles, for the filter and bulk edit.
+  const cycles = (await listOpenCycles([team.id])).map((cycle) => ({ id: cycle.id, label: t("cycles.label", { number: cycle.number, from: cycle.startDate.split("-").reverse().slice(0, 2).join("/"), to: cycle.endDate.split("-").reverse().slice(0, 2).join("/") }) }));
+  const backlogView = query.view === "table" ? "table" : "list";
+  const logged = seesBacklog && backlogView === "table" && canSeeLoggedTime(viewer, { team: facts, project: null }) ? Object.fromEntries(await loggedMinutesByTask(backlog.map((task) => task.id))) : null;
   const intakeProjects = projects.filter((project) => project.teamId === team.id && project.status !== "archived" && project.status !== "done").map(({ id, name }) => ({ id, name }));
-  const filters: TaskFilters = Object.fromEntries(FILTER_KEYS.flatMap((key) => (typeof query[key] === "string" ? [[key, query[key]]] : [])));
-  const grouping = GROUPINGS.includes(query.group as Grouping) ? (query.group as Grouping) : "none";
+  const filters = readFilters(query);
+  const grouping = readGrouping(query.group);
+  const sort = readSort(query.sort);
 
   return (
     <div className="flex max-w-6xl flex-col gap-8">
@@ -54,6 +67,27 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
           {team.isActive ? null : <Badge variant="outline">{t("teams.inactive")}</Badge>}
         </h1>
         {team.description ? <p className="text-sm text-muted-foreground">{team.description}</p> : null}
+        <p className="flex flex-wrap gap-x-4 pt-1 text-sm">
+          {triageCounts ? (
+            <Link href={`/work/teams/${team.id}/triage`} className="underline">
+              {t("teams.triageCount", { count: triageCounts.get(team.id) ?? 0 })}
+            </Link>
+          ) : null}
+          <Link href={`/work/teams/${team.id}/cycles`} className="underline">
+            {t("cycles.title")}
+          </Link>
+          <Link href={`/work/teams/${team.id}/handoffs`} className="underline">
+            {t("handoff.packages.title")}
+          </Link>
+          <Link href={`/work/teams/${team.id}/reviews`} className="underline">
+            {t("chains.title")}
+          </Link>
+          {canViewAutomations(viewer, facts) ? (
+            <Link href={`/work/teams/${team.id}/automations`} className="underline">
+              {t("automations.title")}
+            </Link>
+          ) : null}
+        </p>
       </header>
 
       <section className="flex flex-col gap-3">
@@ -77,16 +111,31 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
       {seesBacklog ? (
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-medium text-muted-foreground">{t("teams.backlog")}</h2>
-          <TaskListView
-            tasks={backlog}
-            options={{ states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })), people: assignable, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })) }}
-            scope={{ teamId: team.id, projectId: null }}
-            initialFilters={filters}
-            initialGrouping={grouping}
-            selfId={user.person.id}
-            today={today}
-            canContribute={canContributeToTeam(viewer, facts)}
-          />
+          <ViewTabs current={backlogView} views={["list", "table"]} />
+          {backlogView === "table" ? (
+            <TaskTableView
+              tasks={backlog}
+              options={{ states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })), people: assignable, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })), fields: fields.filter((field) => field.projectId === null), cycles }}
+              initialFilters={filters}
+              initialSort={sort}
+              selfId={user.person.id}
+              today={today}
+              canContribute={canContributeToTeam(viewer, facts)}
+              logged={logged}
+            />
+          ) : (
+            <TaskListView
+              tasks={backlog}
+              options={{ states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })), people: assignable, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })), fields: fields.filter((field) => field.projectId === null), cycles }}
+              scope={{ teamId: team.id, projectId: null }}
+              initialFilters={filters}
+              initialGrouping={grouping}
+              initialSort={sort}
+              selfId={user.person.id}
+              today={today}
+              canContribute={canContributeToTeam(viewer, facts)}
+            />
+          )}
         </section>
       ) : null}
 
@@ -107,9 +156,16 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
       </section>
 
       <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-medium text-muted-foreground">{t("customFields.title")}</h2>
+        <CustomFieldManager teamId={team.id} projectId={null} fields={fields} canManage={canManageCustomFields(viewer, facts)} />
+      </section>
+
+      <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">{t("intake.title")}</h2>
         <IntakeFormManager teamId={team.id} forms={intakeForms.map(({ id, name, description, projectId, audience, fields, isActive, submissions }) => ({ id, name, description, projectId, audience, fields, isActive, submissions }))} projects={intakeProjects} canManage={admin} />
       </section>
+
+      <DailyRulesSection teamId={team.id} canManage={admin} />
 
       {admin ? (
         <section className="flex flex-col gap-3">

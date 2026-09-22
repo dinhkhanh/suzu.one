@@ -61,7 +61,10 @@ async function dueLines(filter: { entityIds?: readonly string[]; personIds?: rea
   const actuals = await executor.select().from(schema.kpiActual).where(inArray(schema.kpiActual.assignmentId, due.map((item) => item.assignment.id)));
   const actualOf = new Map(actuals.map((actual) => [`${actual.assignmentId}:${actual.periodKey}`, actual]));
   return due.map(({ assignment, kpi, periodKey }) => {
-    const actual = actualOf.get(`${assignment.id}:${periodKey}`);
+    // A figure the work job proposed (FR-PJM-62) is not an actual until the scorer confirms it:
+    // it reads as missing here, so no scorecard, dashboard or close can ever score it.
+    const entered = actualOf.get(`${assignment.id}:${periodKey}`);
+    const actual = entered && entered.status !== "confirmed" ? undefined : entered;
     const line: KpiLineInput = { assignmentId: assignment.id, kpiCode: kpi.code, kpiName: kpi.name, unit: kpi.unit as KpiUnit, direction: kpi.direction as KpiDirection, frequency: kpi.frequency as KpiFrequency, periodKey, weight: assignment.weight, targetValue: assignment.targetValue, capBp: kpi.capBp, floorBp: kpi.floorBp, actualValue: actual?.actualValue ?? null, notApplicable: actual?.notApplicable ?? false, note: actual?.note ?? null };
     return { entityId: assignment.entityId, personId: assignment.personId, line };
   });
@@ -136,11 +139,14 @@ export async function saveActuals(actorPersonId: string, entries: readonly Actua
       const [before] = await tx.select().from(schema.kpiActual).where(and(eq(schema.kpiActual.assignmentId, assignment.id), eq(schema.kpiActual.periodKey, entry.periodKey))).limit(1);
       const facts = (row: { actualValue: number | null; notApplicable: boolean; note: string | null }): ActualFacts => ({ assignmentId: assignment.id, personId: assignment.personId, kpiCode: kpi.code, periodKey: entry.periodKey, actualValue: row.actualValue, notApplicable: row.notApplicable, note: row.note });
       const nothing = actualValue === null && !entry.notApplicable;
-      if (nothing && !before) {
+      // An empty line over a dismissed proposal is the same empty line: keep the dismissal.
+      if (nothing && (!before || before.status === "dismissed")) {
         result.unchanged++;
         continue;
       }
-      if (before && !nothing && before.actualValue === actualValue && before.notApplicable === entry.notApplicable && before.note === note) {
+      // A proposed figure saved as it stands is a confirmation, not "unchanged" (FR-PJM-62).
+      const proposed = before?.status === "proposed";
+      if (before && !proposed && !nothing && before.actualValue === actualValue && before.notApplicable === entry.notApplicable && before.note === note) {
         result.unchanged++;
         continue;
       }
@@ -148,12 +154,21 @@ export async function saveActuals(actorPersonId: string, entries: readonly Actua
       if (!result.entityIds.includes(assignment.entityId)) result.entityIds.push(assignment.entityId);
       if (before) result.before.push(facts(before));
       if (nothing) {
+        if (proposed) {
+          // Turning a proposal down: the row stays, dismissed, so the work job does not propose the
+          // same figure again tomorrow. It still reads as missing, like any empty line.
+          await tx.update(schema.kpiActual).set({ status: "dismissed", actualValue: null, enteredByPersonId: actorPersonId, updatedAt: new Date() }).where(eq(schema.kpiActual.id, before!.id));
+          result.cleared++;
+          continue;
+        }
         // Taking a figure back while the month is open; the audit entry keeps what it was.
         await tx.delete(schema.kpiActual).where(eq(schema.kpiActual.id, before!.id));
         result.cleared++;
         continue;
       }
-      const values = { actualValue, notApplicable: entry.notApplicable, note, source, enteredByPersonId: actorPersonId, updatedAt: new Date() };
+      // Confirming a proposal as proposed keeps its source (`work`); any other figure is the scorer's own.
+      const confirmsProposal = proposed && !entry.notApplicable && actualValue === before!.proposedValue;
+      const values = { actualValue, notApplicable: entry.notApplicable, note, source: confirmsProposal ? "work" : source, status: "confirmed", enteredByPersonId: actorPersonId, updatedAt: new Date() };
       if (before) await tx.update(schema.kpiActual).set(values).where(eq(schema.kpiActual.id, before.id));
       else await tx.insert(schema.kpiActual).values({ assignmentId: assignment.id, personId: assignment.personId, kpiId: assignment.kpiId, periodKey: entry.periodKey, ...values });
       result.after.push(facts(values));

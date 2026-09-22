@@ -8,7 +8,9 @@ import { Select } from "@/components/ui/select";
 import { updateTaskAction } from "../actions";
 import { boardColumns, isSamePlace, planDrop } from "../engine/board";
 import { filterTasks, type TaskFilters } from "../engine/filter";
+import { CustomValueText } from "./custom-fields";
 import { FilterBar, useUrlFilters } from "./filter-bar";
+import { useHandoffGate } from "./handoff";
 import type { ListOptions, ListTask } from "./task-list-view";
 import { LabelChip } from "./team-forms";
 
@@ -31,15 +33,19 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
   const [dragging, setDragging] = useState<string | null>(null);
   const [target, setTarget] = useState<{ stateId: string; index: number } | null>(null);
   const [, startTransition] = useTransition();
+  // A column that needs a hand-off package (FR-PJM-40): the card snaps back, the reason shows, the sheet opens.
+  const gate = useHandoffGate();
   const [shown, applyOptimistic] = useOptimistic(tasks, (current: BoardTask[], move: { id: string; stateId: string; boardRank: number; status: BoardTask["status"] }) => current.map((task) => (task.id === move.id ? { ...task, ...move } : task)));
 
+  const fields = useMemo(() => (options.fields ?? []).filter((field) => field.isActive), [options.fields]);
+  const cardFields = fields.filter((field) => field.showOnCard);
   const states = useMemo(() => options.states.filter((state) => state.isActive || shown.some((task) => task.stateId === state.id)), [options.states, shown]);
   const columns = useMemo(() => {
     const since = new Date(Date.parse(`${today}T00:00:00Z`) - RECENT_DAYS * 86_400_000).toISOString();
     // The board always has its "done" columns; without "show closed" they hold the last two weeks only.
-    const visible = filterTasks(shown, { ...filters, closed: "1" }, { selfId, today }).filter((task) => filters.closed === "1" || task.status === "todo" || task.status === "in_progress" || task.updatedAt >= since);
+    const visible = filterTasks(shown, { ...filters, closed: "1" }, { selfId, today, fields }).filter((task) => filters.closed === "1" || task.status === "todo" || task.status === "in_progress" || task.updatedAt >= since);
     return boardColumns(visible, states.map((state) => state.id));
-  }, [shown, filters, selfId, today, states]);
+  }, [shown, filters, selfId, today, states, fields]);
 
   const statusOf = (stateId: string): BoardTask["status"] => {
     const category = options.states.find((state) => state.id === stateId)?.category;
@@ -54,6 +60,7 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
     startTransition(async () => {
       applyOptimistic({ id: task.id, stateId, boardRank, status: statusOf(stateId) });
       const result = await updateTaskAction({ taskId: task.id, ...(stateId === task.stateId ? {} : { stateId }), position });
+      gate.intercept(result);
       setErrorKey(result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
       router.refresh();
     });
@@ -71,6 +78,7 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
   return (
     <div className="flex flex-col gap-3">
       <FilterBar filters={filters} setFilter={setFilter} clear={clear} options={options} />
+      {gate.sheet}
       {errorKey ? (
         <p role="alert" className="text-sm text-destructive">
           {tWork.has(`errors.${errorKey}`) ? tWork(`errors.${errorKey}`) : tWork("errors.generic")}
@@ -133,12 +141,24 @@ export function BoardView({ tasks, options, initialFilters, selfId, today, canCo
                         {task.title}
                       </Link>
                       <div className="flex flex-wrap items-center gap-1">
+                        {task.blocker ? (
+                          <Badge variant="destructive" title={task.blocker.reason}>
+                            {tWork("blockers.badge")}
+                          </Badge>
+                        ) : null}
                         {task.blockedBy > 0 ? <Badge variant="destructive">{tWork("list.blocked")}</Badge> : null}
                         {task.labelIds.map((id) => {
                           const label = options.labels.find((row) => row.id === id);
                           return label ? <LabelChip key={id} name={label.name} color={label.color} /> : null;
                         })}
                         {task.subtasks.total > 0 ? <span className="text-xs text-muted-foreground">{tWork("list.subtasks", task.subtasks)}</span> : null}
+                        {cardFields.map((field) =>
+                          task.customValues?.[field.id] === undefined ? null : (
+                            <span key={field.id} className="text-xs text-muted-foreground" title={field.name}>
+                              <CustomValueText field={field} value={task.customValues[field.id]} people={options.people} />
+                            </span>
+                          ),
+                        )}
                         {task.checklist.total > 0 ? (
                           <span className="text-xs text-muted-foreground">
                             ☑ {task.checklist.done}/{task.checklist.total}

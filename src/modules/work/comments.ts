@@ -18,20 +18,22 @@ const taskLink = (taskId: string) => `/work/tasks/${taskId}`;
 
 // ── Comments ────────────────────────────────────────────────────────────────────────────────
 
-export type CommentView = { id: string; parentId: string | null; authorPersonId: string; authorName: string; body: string; reactions: Record<string, string[]>; editedAt: Date | null; deleted: boolean; createdAt: Date };
+/** `authorPersonId` null = posted by an automation (FR-PJM-33); `authorName` is then the rule's name. */
+export type CommentView = { id: string; parentId: string | null; authorPersonId: string | null; authorName: string; byAutomation: boolean; body: string; reactions: Record<string, string[]>; editedAt: Date | null; deleted: boolean; createdAt: Date };
 
 /** Oldest first. A deleted comment keeps its place (its replies still make sense) but not its words. */
 export async function listComments(taskId: string): Promise<CommentView[]> {
   const rows = await db()
-    .select({ comment: schema.workComment, authorName: schema.person.fullName })
+    .select({ comment: schema.workComment, personName: schema.person.fullName, ruleName: schema.workAutomation.name })
     .from(schema.workComment)
-    .innerJoin(schema.person, eq(schema.person.id, schema.workComment.authorPersonId))
+    .leftJoin(schema.person, eq(schema.person.id, schema.workComment.authorPersonId))
+    .leftJoin(schema.workAutomation, eq(schema.workAutomation.id, schema.workComment.automationId))
     .where(eq(schema.workComment.taskId, taskId))
     .orderBy(asc(schema.workComment.createdAt), asc(schema.workComment.id));
   const withReplies = new Set(rows.map((row) => row.comment.parentId).filter(Boolean));
   return rows
     .filter((row) => !row.comment.deletedAt || withReplies.has(row.comment.id))
-    .map(({ comment, authorName }) => ({ id: comment.id, parentId: comment.parentId, authorPersonId: comment.authorPersonId, authorName, body: comment.deletedAt ? "" : comment.body, reactions: comment.deletedAt ? {} : comment.reactions, editedAt: comment.editedAt, deleted: !!comment.deletedAt, createdAt: comment.createdAt }));
+    .map(({ comment, personName, ruleName }) => ({ id: comment.id, parentId: comment.parentId, authorPersonId: comment.authorPersonId, authorName: personName ?? ruleName ?? "", byAutomation: !comment.authorPersonId, body: comment.deletedAt ? "" : comment.body, reactions: comment.deletedAt ? {} : comment.reactions, editedAt: comment.editedAt, deleted: !!comment.deletedAt, createdAt: comment.createdAt }));
 }
 
 export async function findComment(commentId: string, executor: Executor = db()): Promise<CommentRow | undefined> {

@@ -1,7 +1,8 @@
 // The owner dashboard, v2 (FR-RPT-01, FR-RPT-05).
 //
-// Eight tiles: headcount and movement, payroll cost, attendance today, leave today, open
-// positions, overdue obligations, work at risk, approvals waiting on me.
+// Nine tiles: headcount and movement, payroll cost, attendance today, leave today, open
+// positions, overdue obligations, work at risk, project health and overdue milestones (Phase 10,
+// FR-PJM-60), approvals waiting on me.
 //
 // **This file owns no data.** Every tile is one call into the owning module's `service.ts` with
 // *the reader's own principal*, and each of those calls already scopes itself — that is the whole
@@ -26,6 +27,7 @@ import type { PersonRow } from "@/modules/platform/people/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
 import { canReadRecruitReports, defaultReportFrom, getRecruitReport } from "@/modules/recruit/service";
 import { getLeaderView, loadViewer } from "@/modules/work/service";
+import { type DeliveryTile, getDeliveryTile } from "./delivery";
 
 export type DashboardViewer = { person: PersonRow; principal: Principal };
 
@@ -49,6 +51,8 @@ export type Dashboard = {
   recruit: RecruitTile | null;
   ops: OpsTile | null;
   work: WorkTile | null;
+  /** Health and overdue milestones of the running projects the reader may open (FR-PJM-60). */
+  delivery: DeliveryTile | null;
   approvals: ApprovalsTile;
 };
 
@@ -78,7 +82,7 @@ export async function getDashboard(user: DashboardViewer, today: IsoDate = today
   const period = { from: `${today.slice(0, 8)}01`, to: today };
   const viewerId = { personId: user.person.id, principal: user.principal };
 
-  const [headcount, payroll, attendance, leave, recruit, ops, work, waiting] = await Promise.all([
+  const [headcount, payroll, attendance, leave, recruit, ops, work, delivery, waiting] = await Promise.all([
     tile("headcount", async () => {
       if (!can(user.principal, "report:read")) return null;
       const report = await getHeadcountReport(user.principal, { asOf: today, from: period.from, to: period.to });
@@ -140,8 +144,11 @@ export async function getDashboard(user: DashboardViewer, today: IsoDate = today
       return view.totals satisfies WorkTile;
     }),
 
+    // Projects the reader may open, and nothing else: the same rows as the portfolio.
+    tile("delivery", () => getDeliveryTile(user, today)),
+
     countInbox(user.person.id),
   ]);
 
-  return { today, period, headcount, payroll, attendance, leave, recruit, ops, work, approvals: { waiting } };
+  return { today, period, headcount, payroll, attendance, leave, recruit, ops, work, delivery, approvals: { waiting } };
 }

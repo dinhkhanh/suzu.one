@@ -4,16 +4,22 @@ import "server-only";
 import { and, asc, desc, eq, exists, ilike, inArray, isNull, or, type SQL, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
+import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
 import { createTask, type TaskRow } from "../platform/tasks-engine/service";
+import { runTaskAutomations } from "./automations";
+import { customValueChanges } from "./custom-fields";
+import { changedFields } from "./engine/automation";
+import { requirementFor } from "./handoff-gate";
+import { assertPublishable } from "./publish-gate";
 import { rankBetween, wouldCreateDependencyCycle, wouldCreateParentCycle } from "./engine/graph";
 import { CATEGORY_STATUS, type DependencyType, type StateCategory } from "./enums";
 import { notifyFollowers } from "./followers";
 import { projectsWithTeams, workDirectory } from "./directory";
 import { canViewProject, canViewTask, canViewTeamBacklog, type TaskFacts, type WorkViewer } from "./policy";
 import { projectFacts, type ProjectRow } from "./projects";
-import type { TaskChecklistItem, TaskLink } from "./schema";
+import type { CustomFieldValue, TaskChecklistItem, TaskLink } from "./schema";
 import { entryState, listStates, teamFacts, type StateRow, type TeamRow } from "./teams";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -137,6 +143,15 @@ async function parentOfTeam(tx: Executor, parentTaskId: string, teamId: string):
   return row;
 }
 
+/** A cycle of the task's own team; planning into a closed cycle is refused (FR-PJM-10). */
+async function cycleNamed(tx: Executor, cycleId: string | null, teamId: string, options: { mustBeOpen?: boolean } = {}): Promise<Named> {
+  if (!cycleId) return null;
+  const [row] = await tx.select().from(schema.workCycle).where(eq(schema.workCycle.id, cycleId)).limit(1);
+  if (!row || row.teamId !== teamId) throw new ActionError("cycle_not_found");
+  if (options.mustBeOpen && row.closedAt) throw new ActionError("cycle_closed");
+  return { id: row.id, name: `#${row.number}` };
+}
+
 async function nextRank(tx: Executor, stateId: string): Promise<number> {
   const [row] = await tx.select({ value: sql<number | null>`max(${schema.workTask.boardRank})` }).from(schema.workTask).where(eq(schema.workTask.stateId, stateId));
   return rankBetween(row?.value ?? null, null);
@@ -257,6 +272,10 @@ export type WorkTaskPatch = Partial<{
   links: TaskLink[];
   /** Board drop: the neighbours the card landed between, in the target state. */
   position: { beforeTaskId: string | null; afterTaskId: string | null };
+  /** FR-PJM-35: { [fieldId]: value }; only the fields named change, blank clears one. */
+  customValues: Record<string, unknown>;
+  /** FR-PJM-10: the team's cycle the task is planned in; null takes it out. */
+  cycleId: string | null;
 }>;
 
 const changed = <T>(next: T | undefined, current: T): next is T => next !== undefined && next !== current;
@@ -264,7 +283,30 @@ const changed = <T>(next: T | undefined, current: T): next is T => next !== unde
 export const updateWorkTask = (taskId: string, patch: WorkTaskPatch, actorPersonId: string) => db().transaction((tx) => updateWorkTaskIn(tx, taskId, patch, actorPersonId));
 
 /** Inside someone else's transaction: the review step moves a task as part of handing in a deliverable. */
-export async function updateWorkTaskIn(tx: Executor, taskId: string, patch: WorkTaskPatch, actorPersonId: string, options: { /** The caller sends its own, more specific notice about the move. */ quiet?: boolean } = {}): Promise<{ before: LoadedTask; changes: ActivityEntry[] }> {
+export async function updateWorkTaskIn(
+  tx: Executor,
+  taskId: string,
+  patch: WorkTaskPatch,
+  /** null = the system (a triage rule), not a person. */
+  actorPersonId: string | null,
+  options: {
+    /** The caller sends its own, more specific notice about the move. */ quiet?: boolean;
+    /** Nobody is told anything (work still waiting in triage). */ silent?: boolean;
+    /**
+     * The hand-off gate (FR-PJM-40). Absent: a move into a state that requires a package is refused
+     * with what the sheet needs. "filled" = the caller is the hand-off itself, package checked;
+     * "system" = a move nobody chose as a stage transition (triage cancelling a declined request,
+     * a returned hand-off going back, a review decision); "automation" = a rule's move (FR-PJM-33):
+     * no sheet to fill, but the publish gate still holds.
+     */
+    handoff?: "filled" | "system" | "automation";
+    /**
+     * How many automation rules deep this change is (FR-PJM-33): 0 = a person's change, 1 = a
+     * rule's. The rules it sets off run at this depth, and only one level deep.
+     */
+    automationDepth?: number;
+  } = {},
+): Promise<{ before: LoadedTask; changes: ActivityEntry[] }> {
   {
     const before = await loadTask(taskId, tx);
     if (!before) throw new ActionError("task_not_found");
@@ -341,6 +383,12 @@ export async function updateWorkTaskIn(tx: Executor, taskId: string, patch: Work
     if (changed(patch.stateId, work.stateId)) {
       const [from] = await tx.select().from(schema.workState).where(eq(schema.workState.id, work.stateId)).limit(1);
       const to = await stateOfTeam(tx, patch.stateId, team.id);
+      // The publish gate first (FR-PJM-54): a hand-off sheet filled for a post that is not out yet would be lost.
+      if (options.handoff !== "system") await assertPublishable(tx, { id: taskId, channel: workSet.channel === undefined ? work.channel : (workSet.channel ?? null) }, to);
+      if (!options.handoff) {
+        const handoff = await requirementFor(tx, before, to.id, actorPersonId);
+        if (handoff) throw new ActionError("handoff_required", { handoff });
+      }
       workSet.stateId = to.id;
       const fields = statusFields(to.category as StateCategory, actorPersonId);
       // Moving between two "done" states (Published → Reported) keeps the first completion time.
@@ -380,6 +428,21 @@ export async function updateWorkTaskIn(tx: Executor, taskId: string, patch: Work
       changes.push(...removed.map((row) => ({ type: "person_removed", from: { id: row.id, name: row.name } })));
     }
 
+    if (patch.customValues && Object.keys(patch.customValues).length > 0) {
+      // Checked against the fields of the project the task ends up in.
+      const custom = await customValueChanges(tx, { teamId: team.id, projectId: workSet.projectId === undefined ? work.projectId : workSet.projectId, customValues: work.customValues }, patch.customValues);
+      if (custom.changes.length) {
+        workSet.customValues = custom.values;
+        changes.push(...custom.changes);
+      }
+    }
+
+    if (changed(patch.cycleId, work.cycleId)) {
+      const [from, to] = [await cycleNamed(tx, work.cycleId, team.id), await cycleNamed(tx, patch.cycleId, team.id, { mustBeOpen: true })];
+      workSet.cycleId = patch.cycleId;
+      plain("cycle", from, to);
+    }
+
     if (patch.checklist && JSON.stringify(patch.checklist) !== JSON.stringify(work.checklist)) {
       workSet.checklist = patch.checklist;
       const tally = (items: TaskChecklistItem[]) => ({ done: items.filter((item) => item.done).length, total: items.length });
@@ -395,6 +458,7 @@ export async function updateWorkTaskIn(tx: Executor, taskId: string, patch: Work
     await logActivity(tx, taskId, actorPersonId, changes);
 
     const recipients = [newAssignee, ...newCollaborators].filter((id): id is string => !!id && id !== actorPersonId);
+    if (options.silent) return { before, changes };
     await notify({ recipients, kind: "tasks.work_assigned", params: { key: taskKey(team.key, work.number), title: patch.title ?? task.title }, link: taskLink(taskId) }, tx);
     // A move to another state reaches everyone following the task (FR-WRK-17) — except whoever was
     // just handed it: one notice per event per person.
@@ -404,7 +468,30 @@ export async function updateWorkTaskIn(tx: Executor, taskId: string, patch: Work
       const [actor] = actorPersonId ? await tx.select({ name: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, actorPersonId)).limit(1) : [];
       if (after) await notifyFollowers(tx, after, actorPersonId, "tasks.status_changed", { name: actor?.name ?? "", state: (stateChange.to as { name: string }).name }, recipients);
     }
+    await automateChange(tx, before, changes, taskSet.status, options.automationDepth ?? 0, options.handoff === "filled");
     return { before, changes };
+  }
+}
+
+/**
+ * The rules a change sets off (FR-PJM-33), in the same transaction: the state it entered, the
+ * fields it changed, and — when it closed the last open sub-task — "all sub-tasks done" on the parent.
+ */
+async function automateChange(tx: Executor, before: LoadedTask, changes: readonly ActivityEntry[], status: string | undefined, depth: number, handedOff: boolean): Promise<void> {
+  if (changes.length === 0) return;
+  // Most teams have no rules: one indexed look, and nothing more. (A parent is always of the same team.)
+  const [any] = await tx.select({ id: schema.workAutomation.id }).from(schema.workAutomation).where(and(eq(schema.workAutomation.teamId, before.team.id), eq(schema.workAutomation.isActive, true))).limit(1);
+  if (!any) return;
+  const taskId = before.task.id;
+  const state = changes.find((change) => change.field === "state")?.to as { id: string } | undefined;
+  if (state) await runTaskAutomations(tx, taskId, { type: "state_entered", stateId: state.id, handedOff }, depth);
+  const fields = changedFields(changes).filter((field) => field !== "state");
+  if (fields.length) await runTaskAutomations(tx, taskId, { type: "field_changed", fields }, depth);
+  const parentId = before.task.parentTaskId;
+  if (parentId && (status === "done" || status === "cancelled")) {
+    const [open] = await tx.select({ id: schema.task.id }).from(schema.task).where(and(eq(schema.task.parentTaskId, parentId), live, inArray(schema.task.status, ["todo", "in_progress"]))).limit(1);
+    const [done] = open ? [] : await tx.select({ id: schema.task.id }).from(schema.task).where(and(eq(schema.task.parentTaskId, parentId), live, eq(schema.task.status, "done"))).limit(1);
+    if (!open && done) await runTaskAutomations(tx, parentId, { type: "all_subtasks_done" }, depth);
   }
 }
 
@@ -492,6 +579,16 @@ export type TaskListItem = {
   subtasks: { done: number; total: number };
   checklist: { done: number; total: number };
   updatedAt: string;
+  /** FR-PJM-35. */
+  customValues: Record<string, CustomFieldValue>;
+  /** FR-PJM-32: null = not in triage. */
+  triageStatus: string | null;
+  /** FR-PJM-28: the open blocker raised on the task, if any. */
+  blocker: { reason: string; neededName: string | null; raisedAt: string } | null;
+  /** FR-PJM-10. */
+  cycleId: string | null;
+  /** FR-PJM-44: the assignee is on leave with a submitted cover plan — "away, covered by X". */
+  away: { until: string; coverName: string | null } | null;
 };
 
 export async function listItems(where: SQL | undefined, executor: Executor, limit = 2000): Promise<TaskListItem[]> {
@@ -508,7 +605,9 @@ export async function listItems(where: SQL | undefined, executor: Executor, limi
   if (rows.length === 0) return [];
   const ids = rows.map((row) => row.task.id);
   const blocker = alias(schema.task, "blocker");
-  const [labels, blocks, children] = await Promise.all([
+  const needed = alias(schema.person, "needed");
+  const assignees = [...new Set(rows.map((row) => row.task.assigneePersonId).filter((id): id is string => !!id))];
+  const [labels, blocks, children, raised, away] = await Promise.all([
     executor.select().from(schema.workTaskLabel).where(inArray(schema.workTaskLabel.taskId, ids)),
     executor
       .select({ taskId: schema.workTaskDependency.blockedTaskId, count: sql<number>`count(*)::int` })
@@ -521,7 +620,14 @@ export async function listItems(where: SQL | undefined, executor: Executor, limi
       .from(schema.task)
       .where(and(inArray(schema.task.parentTaskId, ids), live))
       .groupBy(schema.task.parentTaskId),
+    executor
+      .select({ taskId: schema.workBlocker.taskId, reason: schema.workBlocker.reason, neededName: needed.fullName, raisedAt: schema.workBlocker.raisedAt })
+      .from(schema.workBlocker)
+      .leftJoin(needed, eq(needed.id, schema.workBlocker.neededPersonId))
+      .where(and(inArray(schema.workBlocker.taskId, ids), isNull(schema.workBlocker.resolvedAt))),
+    awayToday(executor, assignees),
   ]);
+  const blockerOf = new Map(raised.map((row) => [row.taskId, { reason: row.reason, neededName: row.neededName, raisedAt: row.raisedAt.toISOString() }]));
   const labelsOf = Map.groupBy(labels, (label) => label.taskId);
   const blockedBy = new Map(blocks.map((row) => [row.taskId, row.count]));
   const subtasksOf = new Map(children.map((row) => [row.parentId, row]));
@@ -552,8 +658,32 @@ export async function listItems(where: SQL | undefined, executor: Executor, limi
       subtasks: { done: own?.done ?? 0, total: own?.total ?? 0 },
       checklist: { done: work.checklist.filter((item) => item.done).length, total: work.checklist.length },
       updatedAt: task.updatedAt.toISOString(),
+      customValues: work.customValues,
+      triageStatus: work.triageStatus,
+      blocker: blockerOf.get(task.id) ?? null,
+      cycleId: work.cycleId,
+      away: (task.assigneePersonId && away.get(task.assigneePersonId)) || null,
     };
   });
+}
+
+/**
+ * Who of these people is away today under a submitted cover plan (FR-PJM-44), until when, and who
+ * covers: the plan's cover for everything, else the first cover named on one of its items.
+ */
+export async function awayToday(executor: Executor, personIds: readonly string[]): Promise<Map<string, { until: string; coverName: string | null }>> {
+  if (personIds.length === 0) return new Map();
+  const today = todayInVietnam();
+  const rows = await executor
+    .select({
+      personId: schema.workCoverPlan.personId,
+      until: schema.workCoverPlan.toDate,
+      // Spelled out: in a one-table query drizzle leaves columns unqualified, and "id" would be ambiguous inside the subqueries.
+      coverName: sql<string | null>`coalesce((select p.full_name from person p where p.id = work_cover_plan.default_cover_person_id), (select p.full_name from work_cover_item i join person p on p.id = i.cover_person_id where i.plan_id = work_cover_plan.id order by p.full_name limit 1))`,
+    })
+    .from(schema.workCoverPlan)
+    .where(and(inArray(schema.workCoverPlan.personId, [...personIds]), eq(schema.workCoverPlan.status, "submitted"), sql`${schema.workCoverPlan.fromDate} <= ${today} and ${schema.workCoverPlan.toDate} >= ${today}`));
+  return new Map(rows.map((row) => [row.personId, { until: row.until, coverName: row.coverName }]));
 }
 
 /**
@@ -612,6 +742,32 @@ export async function listVisibleTaskIds(viewer: WorkViewer, executor?: Executor
   return rows.map((row) => row.id);
 }
 
+/** A number the task had before it moved team (FR-PJM-34): "VID-123" keeps finding it. */
+const aliasMatches = (number: number, teamKey: string | null) => {
+  const oldTeam = alias(schema.workTeam, "old_team");
+  return exists(
+    db()
+      .select({ one: sql`1` })
+      .from(schema.workTaskNumberAlias)
+      .innerJoin(oldTeam, eq(oldTeam.id, schema.workTaskNumberAlias.teamId))
+      .where(and(eq(schema.workTaskNumberAlias.taskId, schema.task.id), eq(schema.workTaskNumberAlias.number, number), teamKey ? eq(oldTeam.key, teamKey.toUpperCase()) : undefined)),
+  );
+};
+
+/**
+ * "VID-123" → the task that has, or had, that number. Current numbers first; a number left behind
+ * by a move still resolves. No access check: the caller opens the task through `getTaskDetail`.
+ */
+export async function resolveTaskKey(key: string, executor: Executor = db()): Promise<string | null> {
+  const match = /^([a-z][a-z0-9]{1,7})-(\d{1,7})$/i.exec(key.trim());
+  if (!match) return null;
+  const [teamKey, number] = [match[1].toUpperCase(), Number(match[2])];
+  const [current] = await executor.select({ id: schema.workTask.taskId }).from(schema.workTask).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId)).where(and(eq(schema.workTeam.key, teamKey), eq(schema.workTask.number, number))).limit(1);
+  if (current) return current.id;
+  const [moved] = await executor.select({ id: schema.workTaskNumberAlias.taskId }).from(schema.workTaskNumberAlias).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTaskNumberAlias.teamId)).where(and(eq(schema.workTeam.key, teamKey), eq(schema.workTaskNumberAlias.number, number))).limit(1);
+  return moved?.id ?? null;
+}
+
 export type TaskSearchHit = { id: string; key: string; title: string; status: TaskRow["status"]; projectName: string | null };
 
 /** Command palette: by title, or by key ("VID-12", "12"). */
@@ -620,7 +776,7 @@ export async function searchTasks(viewer: WorkViewer, query: string, limit = 12)
   if (text.length < 2 && !/^\d+$/.test(text)) return [];
   const keyMatch = /^(?:([a-z0-9]{2,8})-)?(\d{1,7})$/i.exec(text);
   const escaped = text.replace(/[\\%_]/g, (character) => `\\${character}`);
-  const matches = or(ilike(schema.task.title, `%${escaped}%`), keyMatch ? and(eq(schema.workTask.number, Number(keyMatch[2])), keyMatch[1] ? eq(schema.workTeam.key, keyMatch[1].toUpperCase()) : undefined) : undefined);
+  const matches = or(ilike(schema.task.title, `%${escaped}%`), keyMatch ? and(eq(schema.workTask.number, Number(keyMatch[2])), keyMatch[1] ? eq(schema.workTeam.key, keyMatch[1].toUpperCase()) : undefined) : undefined, keyMatch ? aliasMatches(Number(keyMatch[2]), keyMatch[1] ?? null) : undefined);
   const rows = await db()
     .select({ id: schema.task.id, number: schema.workTask.number, teamKey: schema.workTeam.key, title: schema.task.title, status: schema.task.status, projectName: schema.workProject.name })
     .from(schema.task)

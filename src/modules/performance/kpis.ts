@@ -9,7 +9,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import { listPositionHolders, listPositions } from "@/modules/core-hr/service";
 import type { Principal } from "../platform/rbac/policy";
 import { targetProblem } from "./engine/kpi-score";
-import { coversMonth, isKpiMonth, type KpiDirection, type KpiFrequency, type KpiUnit, parseMetricValue, scoringMonthOf } from "./enums";
+import { coversMonth, isKpiMonth, type KpiDirection, type KpiFrequency, type KpiUnit, parseMetricValue, scoringMonthOf, WORK_METRIC_UNITS, type WorkMetric } from "./enums";
 import { type Directory, loadDirectory } from "./people";
 import { canManageAssignmentsOf } from "./policy";
 
@@ -38,10 +38,13 @@ export async function listKpis(options: { includeInactive?: boolean } = {}, exec
   return (options.includeInactive ? rows : rows.filter((row) => row.isActive)).map(asKpi);
 }
 
-export type KpiInput = { code: string; name: string; description: string | null; unit: KpiUnit; direction: KpiDirection; frequency: KpiFrequency; capBp: number; floorBp: number; isActive: boolean };
+/** `workMetric` (FR-PJM-62): the work metric the KPI's actual is proposed from, or null for a KPI entered by hand. */
+export type KpiInput = { code: string; name: string; description: string | null; unit: KpiUnit; direction: KpiDirection; frequency: KpiFrequency; capBp: number; floorBp: number; isActive: boolean; workMetric?: WorkMetric | null };
 
 export async function saveKpi(kpiId: string | null, input: KpiInput): Promise<{ before: KpiRow | null; after: KpiRow }> {
   if (input.floorBp > input.capBp) throw new ActionError("kpi_floor_above_cap");
+  // A work metric is a percentage or a count; a KPI measured in another unit could not take its figure.
+  if (input.workMetric && WORK_METRIC_UNITS[input.workMetric] !== input.unit) throw new ActionError("kpi_work_metric_unit");
   const saved = await db().transaction(async (tx): Promise<{ before: KpiRow | null; after: KpiRow }> => {
     const [clash] = await tx.select({ id: schema.kpiDefinition.id }).from(schema.kpiDefinition).where(eq(schema.kpiDefinition.code, input.code)).limit(1);
     if (clash && clash.id !== kpiId) throw new ActionError("kpi_code_taken");

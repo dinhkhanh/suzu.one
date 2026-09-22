@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Sign in" };
 const KNOWN_ERRORS = ["not_a_workspace_account", "domain_not_allowed", "not_provisioned", "access_revoked", "email_not_verified"] as const;
 
 export default async function SignInPage({ searchParams }: PageProps<"/sign-in">) {
-  if (await getCurrentUser()) redirect("/home");
+  if (await getCurrentUser()) redirect("/today");
 
   const t = await getTranslations();
   const { error } = await searchParams;

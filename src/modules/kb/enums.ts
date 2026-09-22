@@ -16,8 +16,13 @@ export type PageStatus = (typeof PAGE_STATUSES)[number];
 // per unit above them, so a row naming "Marketing" matches someone in "Marketing › Social"
 // without the row knowing that team exists. `unit_only:<id>` is the deliberate narrowing — it
 // matches only people whose own unit is that one.
+//
+// `project:<id>` is the people of one project (FR-PJM-31): its members in any role, its lead and
+// the leads of its owning team, as they are *now* — a person added to the project reads its
+// documents at once, one removed stops. It is not in `SUBJECT_TYPES` (the access form's list):
+// the row is written when a project's document space is made, never picked by hand.
 export const SUBJECT_TYPES = ["all", "entity", "unit", "unit_only", "role", "person"] as const;
-export type SubjectType = (typeof SUBJECT_TYPES)[number];
+export type SubjectType = (typeof SUBJECT_TYPES)[number] | "project";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -30,7 +35,7 @@ export function parseSubjectKey(key: string): { type: SubjectType; id: string | 
   const type = key.slice(0, at) as SubjectType;
   const id = key.slice(at + 1);
   if (type === "role") return (ROLES as readonly string[]).includes(id) ? { type, id } : null;
-  if (type === "entity" || type === "unit" || type === "unit_only" || type === "person") return UUID.test(id) ? { type, id: id.toLowerCase() } : null;
+  if (type === "entity" || type === "unit" || type === "unit_only" || type === "person" || type === "project") return UUID.test(id) ? { type, id: id.toLowerCase() } : null;
   return null;
 }
 

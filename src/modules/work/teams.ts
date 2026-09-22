@@ -21,6 +21,8 @@ export type ClientRow = typeof schema.workClient.$inferSelect;
 const WORK_CACHE = { states: "work:states", labels: "work:labels", clients: "work:clients" } as const;
 const WORK_CACHE_TTL = 30 * 60;
 const invalidateWorkStates = () => invalidate(WORK_CACHE.states);
+/** After a write to `work_client` outside `saveClient` (an account handover) has committed. */
+export const invalidateWorkClients = () => invalidate(WORK_CACHE.clients);
 
 export const teamFacts = (team: Pick<TeamRow, "id" | "entityId" | "departmentId" | "defaultVisibility">): TeamFacts => ({ id: team.id, entityId: team.entityId, departmentId: team.departmentId, defaultVisibility: team.defaultVisibility as Visibility });
 

@@ -5,7 +5,7 @@ import { ActionError } from "@/lib/action";
 import { db, schema } from "@/lib/db";
 import { recordAudit } from "../audit/service";
 import { type Tier, tierRank } from "../rbac/roles";
-import { checkUpload, matchesSignature, MAX_FILE_BYTES } from "./rules";
+import { checkUpload, matchesSignature, MAX_FILE_BYTES, maxBytesFor } from "./rules";
 import { createSignedDownloadUrl, createSignedUploadUrl, currentBucket, inspectObject, putObject, removeObject } from "./storage";
 
 // This service checks *what* is uploaded. *Who* may upload to or open the files of a record is
@@ -19,14 +19,14 @@ const DOWNLOAD_LINK_SECONDS = 60;
 
 /** Step 1 of an upload: checks the announcement and returns where the browser may PUT the bytes. */
 export async function beginUpload(owner: FileOwner, file: { fileName: string; sizeBytes: number }, actor: Actor): Promise<{ fileId: string; uploadUrl: string; contentType: string }> {
-  const checked = checkUpload(file);
+  const checked = checkUpload(file, owner.ownerType);
   if (!checked.ok) throw new ActionError(checked.problem);
 
   const fileId = randomUUID();
   const extension = checked.fileName.split(".").pop()!.toLowerCase();
   // Nothing the uploader typed ends up in the path.
   const objectPath = `${owner.ownerType}/${new Date().getUTCFullYear()}/${fileId}.${extension}`;
-  const uploadUrl = await createSignedUploadUrl(objectPath, MAX_FILE_BYTES);
+  const uploadUrl = await createSignedUploadUrl(objectPath);
   await db().insert(schema.storedFile).values({
     id: fileId,
     bucket: currentBucket(),
@@ -51,7 +51,8 @@ export async function completeUpload(fileId: string, actor: Actor): Promise<Stor
 
   const stored = await inspectObject(file.objectPath);
   if (!stored) throw new ActionError("file_not_uploaded");
-  const problem = stored.sizeBytes > MAX_FILE_BYTES ? "file_too_large" : matchesSignature(file.fileName, stored.head) ? null : "file_content_mismatch";
+  // The cap and the types are the owner's (a work task takes video), as when the upload was begun.
+  const problem = stored.sizeBytes > maxBytesFor(file.fileName, file.ownerType) ? "file_too_large" : matchesSignature(file.fileName, stored.head, file.ownerType) ? null : "file_content_mismatch";
   if (problem) {
     await removeObject(file.objectPath);
     await db().update(schema.storedFile).set({ status: "rejected" }).where(eq(schema.storedFile.id, fileId));

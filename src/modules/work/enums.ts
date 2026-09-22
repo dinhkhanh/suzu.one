@@ -77,8 +77,8 @@ export type WorkflowPreset = keyof typeof WORKFLOW_PRESETS;
 export const REACTIONS = ["👍", "❤️", "🎉", "👀", "✅"] as const;
 export type Reaction = (typeof REACTIONS)[number];
 
-/** The ways to look at a project's tasks (FR-WRK-05). */
-export const WORK_VIEWS = ["list", "board", "calendar"] as const;
+/** The ways to look at a project's tasks (FR-WRK-05; the table, FR-PJM-36). */
+export const WORK_VIEWS = ["list", "board", "calendar", "table"] as const;
 export type WorkView = (typeof WORK_VIEWS)[number];
 
 export const INTAKE_AUDIENCES = ["entity", "group"] as const;

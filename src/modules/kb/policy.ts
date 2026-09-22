@@ -42,7 +42,13 @@ export const kbViewerOf = (user: ViewerSource): KbViewer => ({
   keys: viewerKeys(user.principal, { entityId: user.person.primaryEntityId, unitId: user.person.orgUnitId, unitPath: user.person.orgUnitPath }),
 });
 
-export type AccessRow = { subjectKey: string; level: AccessLevel };
+/**
+ * An access row. A `project:<id>` row also carries `people`: whom the project names at the moment
+ * the row was read (its members, its lead, the leads of its owning team), filled in by the loader
+ * in the same query (`access-sql.ts`). The viewer's keys stay synchronous — `kbViewerOf` needs no
+ * database — and the pure policy still decides alone. A row read without `people` names nobody.
+ */
+export type AccessRow = { subjectKey: string; level: AccessLevel; people?: readonly string[] | null };
 export type SpaceFacts = {
   entityId: string | null;
   kind: SpaceKind;
@@ -50,6 +56,8 @@ export type SpaceFacts = {
   access: readonly AccessRow[];
   /** A unit-owned space (FR-KB-13): the unit and its ancestors, so the heads above it inherit. */
   ownerUnitPath?: readonly string[] | null;
+  /** A project's document space (FR-PJM-31): no role manages it. */
+  ownerProjectId?: string | null;
 };
 export type PageFacts = {
   /** Has a published version and is neither archived nor deleted. */
@@ -64,7 +72,7 @@ const RANK: Record<KbLevel, number> = { view: 1, edit: 2, manage: 3 };
 export const atLeast = (level: KbLevel | null, wanted: KbLevel): boolean => !!level && RANK[level] >= RANK[wanted];
 
 function matched(viewer: KbViewer, rows: readonly AccessRow[]): AccessLevel | null {
-  const own = rows.filter((row) => viewer.keys.includes(row.subjectKey));
+  const own = rows.filter((row) => viewer.keys.includes(row.subjectKey) || (!!row.people && row.people.includes(viewer.personId)));
   return own.some((row) => row.level === "edit") ? "edit" : own.length ? "view" : null;
 }
 
@@ -75,9 +83,12 @@ function matched(viewer: KbViewer, rows: readonly AccessRow[]): AccessLevel | nu
  *    because a unit grant carries its subtree.
  */
 /** A space row as `canManageSpace` reads it. */
-export const spaceOwner = (space: { entityId: string | null; ownerUnitId: string | null }) => ({ entityId: space.entityId, ownerUnitPath: space.ownerUnitId ? [space.ownerUnitId] : null });
+export const spaceOwner = (space: { entityId: string | null; ownerUnitId: string | null; ownerProjectId?: string | null }) => ({ entityId: space.entityId, ownerUnitPath: space.ownerUnitId ? [space.ownerUnitId] : null, ownerProjectId: space.ownerProjectId ?? null });
 
-export const canManageSpace = (principal: Principal, space: { entityId: string | null; ownerUnitPath?: readonly string[] | null }): boolean =>
+// A project's document space is managed by nobody through a role: it opens to the project's people
+// by its access row, and `kb:manage` stops at its door (FR-PJM-31; see kb_space.owner_project_id).
+export const canManageSpace = (principal: Principal, space: { entityId: string | null; ownerUnitPath?: readonly string[] | null; ownerProjectId?: string | null }): boolean =>
+  !space.ownerProjectId &&
   can(principal, "kb:manage", { entityId: space.entityId }) || (!!space.ownerUnitPath?.length && can(principal, "kb:manage_unit", { unitPath: space.ownerUnitPath, entityId: space.entityId }));
 
 /** The "new space" button. Never guards data. */

@@ -8,14 +8,21 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { getDaysOff } from "@/modules/attendance/service";
 import { isMonthKey, monthGrid } from "@/modules/work/engine/calendar";
-import { FILTER_KEYS, GROUPINGS, type Grouping, type TaskFilters } from "@/modules/work/engine/filter";
+import { readFilters, readGrouping, readSort } from "@/modules/work/engine/filter";
 import { canContributeToProject, canManageProject, canViewProject, findProject, listAssignable, listClients, listLabels, listProjectMembers, listProjectTasks, listRecurrences, listSavedViews, listStates, listWorkTemplates, loadViewer, projectFacts, withEditable, WORK_VIEWS, type WorkView } from "@/modules/work/service";
+import { canManageCustomFields, canSeeLoggedTime, listCustomFields, listOpenCycles, loggedMinutesByTask, teamFacts, toFieldViews } from "@/modules/work/service";
+import { automationPanel, canManageAutomations, canManageReviewChains, canViewAutomations, contentCalendar, listReviewChains } from "@/modules/work/service";
+import { AutomationManager } from "@/modules/work/ui/automations";
+import { ReviewChainManager } from "@/modules/work/ui/review-chains";
+import { CustomFieldManager } from "@/modules/work/ui/custom-fields";
+import { TaskTableView } from "@/modules/work/ui/task-table-view";
 import { BoardView } from "@/modules/work/ui/board-view";
 import { CalendarView } from "@/modules/work/ui/calendar-view";
 import { ViewTabs } from "@/modules/work/ui/filter-bar";
 import { RecurrenceManager, TemplateUseForm } from "@/modules/work/ui/planning-forms";
 import { ProjectForm } from "@/modules/work/ui/project-forms";
 import { TaskListView } from "@/modules/work/ui/task-list-view";
+import { ProjectTabs } from "@/modules/projects/ui/project-tabs";
 import { MemberManager } from "@/modules/work/ui/team-forms";
 
 export const metadata: Metadata = { title: "Project" };
@@ -33,7 +40,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const manage = canManageProject(viewer, facts);
   const today = todayInVietnam();
 
-  const [views, tasks, states, labels, clients, members, assignable, people, recurrences, templates] = await Promise.all([
+  const [views, tasks, states, labels, clients, members, assignable, people, recurrences, templates, fieldRows] = await Promise.all([
     listSavedViews(project.id, user.person.id),
     listProjectTasks(project.id),
     listStates([team.id]),
@@ -44,16 +51,24 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
     manage ? listPersonNames() : [],
     listRecurrences(project.id, today),
     listWorkTemplates([team.id], { activeOnly: true }),
+    listCustomFields({ teamId: team.id, projectId: project.id }, { includeInactive: true }),
   ]);
-  const filters: TaskFilters = Object.fromEntries(FILTER_KEYS.flatMap((key) => (typeof query[key] === "string" ? [[key, query[key]]] : [])));
-  const grouping = GROUPINGS.includes(query.group as Grouping) ? (query.group as Grouping) : "none";
+  const [chains, automations] = await Promise.all([listReviewChains({ teamId: team.id, projectId: project.id }), canViewAutomations(viewer, teamFacts(team)) ? automationPanel({ teamId: team.id, projectId: project.id }, viewer) : null]);
+  const filters = readFilters(query);
+  const grouping = readGrouping(query.group);
+  const sort = readSort(query.sort);
+  const fields = toFieldViews(fieldRows);
   const clientName = clients.find((client) => client.id === project.clientId)?.name;
   const view: WorkView = WORK_VIEWS.includes(query.view as WorkView) ? (query.view as WorkView) : "list";
-  const options = { states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })), people: assignable, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })) };
+  // FR-PJM-10: the owning team's open cycles, for the filter and bulk edit.
+  const cycles = (await listOpenCycles([team.id])).map((cycle) => ({ id: cycle.id, label: t("cycles.label", { number: cycle.number, from: cycle.startDate.split("-").reverse().slice(0, 2).join("/"), to: cycle.endDate.split("-").reverse().slice(0, 2).join("/") }) }));
+  const options = { states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })), people: assignable, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })), fields, cycles };
   const canContribute = canContributeToProject(viewer, facts) && project.status !== "archived";
+  // Logged time per task is for the project's lead and the team's leads (PJM access rules).
+  const logged = view === "table" && canSeeLoggedTime(viewer, { team: teamFacts(team), project: facts }) ? Object.fromEntries(await loggedMinutesByTask(tasks.map((task) => task.id))) : null;
   const month = isMonthKey(query.month) ? query.month : today.slice(0, 7);
   const grid = monthGrid(month);
-  const [calendarTasks, daysOff] = view === "calendar" ? await Promise.all([withEditable(viewer, tasks), getDaysOff(project.entityId ?? team.entityId, grid.from, grid.to)]) : [[], []];
+  const [calendarTasks, daysOff, content] = view === "calendar" ? await Promise.all([withEditable(viewer, tasks), getDaysOff(project.entityId ?? team.entityId, grid.from, grid.to), contentCalendar(viewer, { ...grid, projectId: project.id }, tasks.filter((task) => task.dueDate && task.dueDate >= grid.from && task.dueDate <= grid.to))]) : [[], [], null];
 
   return (
     <div className="flex max-w-6xl flex-col gap-6">
@@ -75,8 +90,11 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
         <p className="text-sm text-muted-foreground">{[clientName, project.description].filter(Boolean).join(" · ")}</p>
       </header>
 
+      <ProjectTabs projectId={project.id} current="tasks" />
       <ViewTabs current={view} />
-      {view === "board" ? (
+      {view === "table" ? (
+        <TaskTableView tasks={tasks} options={options} initialFilters={filters} initialSort={sort} selfId={user.person.id} today={today} canContribute={canContribute} logged={logged} />
+      ) : view === "board" ? (
         <BoardView tasks={tasks} options={options} initialFilters={filters} selfId={user.person.id} today={today} canContribute={canContribute} />
       ) : view === "calendar" ? (
         <CalendarView
@@ -88,6 +106,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           initialExtra={{ channel: typeof query.channel === "string" ? query.channel : undefined }}
           selfId={user.person.id}
           today={today}
+          posts={content?.posts}
+          missingTaskIds={content?.missingTaskIds}
         />
       ) : (
         <TaskListView
@@ -96,6 +116,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           scope={{ teamId: team.id, projectId: project.id }}
           initialFilters={filters}
           initialGrouping={grouping}
+          initialSort={sort}
           selfId={user.person.id}
           today={today}
           canContribute={canContribute}
@@ -129,6 +150,20 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
         <summary className="cursor-pointer text-sm font-medium">{t("projects.membersAndSettings", { count: members.length })}</summary>
         <div className="flex flex-col gap-6 pt-4">
           <MemberManager members={members} people={people} canManage={manage} target={{ projectId: project.id }} />
+          <section className="flex flex-col gap-2">
+            <h2 className="text-sm font-medium text-muted-foreground">{t("customFields.title")}</h2>
+            <CustomFieldManager teamId={team.id} projectId={project.id} fields={fields} canManage={canManageCustomFields(viewer, teamFacts(team), facts)} />
+          </section>
+          <section className="flex flex-col gap-2">
+            <h2 className="text-sm font-medium text-muted-foreground">{t("chains.title")}</h2>
+            <ReviewChainManager teamId={team.id} projectId={project.id} chains={chains.map(({ id, name, projectId: chainProject, contentFormat, isActive, stages }) => ({ id, name, projectId: chainProject, contentFormat, isActive, stages }))} people={assignable} canManage={canManageReviewChains(viewer, teamFacts(team), facts)} />
+          </section>
+          {automations ? (
+            <section className="flex flex-col gap-2">
+              <h2 className="text-sm font-medium text-muted-foreground">{t("automations.title")}</h2>
+              <AutomationManager teamId={team.id} projectId={project.id} rules={automations.rules} options={automations.options} runs={automations.runs} canManage={canManageAutomations(viewer, teamFacts(team))} />
+            </section>
+          ) : null}
           {manage ? <ProjectForm project={project} teams={[]} clients={clients.map(({ id, name }) => ({ id, name }))} people={assignable} /> : null}
         </div>
       </details>

@@ -2,7 +2,7 @@
 // with days from an anchor date and a role per step. Using one asks who plays each role, then
 // makes the whole tree as work tasks — in a new project, or inside an existing one.
 import "server-only";
-import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
@@ -142,11 +142,22 @@ export async function applyTemplate(use: TemplateUse, projectId: string, actorPe
   });
 }
 
-export async function createProjectFromTemplate(input: ProjectInput, use: TemplateUse, actorPersonId: string): Promise<{ project: ProjectRow; template: WorkTemplateRow; taskIds: string[] }> {
+/**
+ * What else is made with the project, in the same transaction. The project layer (FR-PJM-15) adds
+ * the plan half of the template here — phases, milestones, register — without work importing it.
+ */
+export type ProjectCreatedHook = (tx: Tx, made: { project: ProjectRow; template: WorkTemplateRow; taskIds: string[]; use: TemplateUse; lastStepDay: number }) => Promise<void>;
+
+export async function createProjectFromTemplate(input: ProjectInput, use: TemplateUse, actorPersonId: string, onCreated?: ProjectCreatedHook): Promise<{ project: ProjectRow; template: WorkTemplateRow; taskIds: string[] }> {
   const created = await db().transaction(async (tx) => {
     const project = await createProjectIn(tx, input, actorPersonId);
     const [team] = await tx.select().from(schema.workTeam).where(eq(schema.workTeam.id, project.teamId)).limit(1);
-    return { project, ...(await applyTemplateIn(tx, use, { team, project }, actorPersonId)) };
+    const made = { project, ...(await applyTemplateIn(tx, use, { team, project }, actorPersonId)) };
+    if (onCreated) {
+      const [last] = await tx.select({ day: sql<number | null>`max(${schema.taskTemplateItem.dueOffsetDays})` }).from(schema.taskTemplateItem).where(eq(schema.taskTemplateItem.templateId, made.template.id));
+      await onCreated(tx, { ...made, use, lastStepDay: last?.day ?? 0 });
+    }
+    return made;
   });
   await invalidateWorkDirectory();
   return created;

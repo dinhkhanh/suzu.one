@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
-import { canManageWorkspace, listClients, loadViewer } from "@/modules/work/service";
+import { listPersonNames } from "@/modules/platform/people/service";
+import { type AccountHandoffView, canChangeAccountManager, canManageWorkspace, listAccountHandoffs, listClients, loadViewer } from "@/modules/work/service";
+import { AccountHandoverForm } from "@/modules/work/ui/exit-handover";
+import { HandoffNoteView } from "@/modules/work/ui/handoff";
 import { ClientForm } from "@/modules/work/ui/project-forms";
 
 export const metadata: Metadata = { title: "Clients" };
@@ -19,6 +22,11 @@ export default async function ClientsPage() {
   const tWork = await getTranslations("work");
   const manage = canManageWorkspace(viewer);
   const [clients, entities] = await Promise.all([listClients(), manage ? listEntities() : []]);
+  // FR-PJM-46: who owns each relationship, and the notes it changed hands with.
+  const handsOver = canChangeAccountManager(viewer);
+  const [people, handoffs] = await Promise.all([listPersonNames(), handsOver ? listAccountHandoffs(clients.map((client) => client.id)) : new Map<string, AccountHandoffView[]>()]);
+  const nameOf = (personId: string | null) => (personId ? (people.find((person) => person.id === personId)?.fullName ?? null) : null);
+  const [tHandoff, format] = await Promise.all([getTranslations("work.handoff.account"), getFormatter()]);
   const entityOptions = entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }));
   const parents = clients.filter((client) => !client.parentId && client.kind === "client").map(({ id, name }) => ({ id, name }));
   const tops = clients.filter((client) => !client.parentId);
@@ -32,10 +40,22 @@ export default async function ClientsPage() {
           <Badge variant="outline">{t(`kinds.${client.kind}`)}</Badge>
           {client.isActive ? null : <Badge variant="secondary">{t("inactive")}</Badge>}
           {client.note ? <span className="text-xs text-muted-foreground">{client.note}</span> : null}
+          {client.accountManagerPersonId ? <span className="text-xs text-muted-foreground">{tHandoff("current", { name: nameOf(client.accountManagerPersonId) ?? "—" })}</span> : null}
         </summary>
         {manage ? (
           <div className="pt-3">
             <ClientForm client={client} parents={parents} entities={entityOptions} />
+          </div>
+        ) : null}
+        {handsOver ? (
+          <div className="flex flex-col gap-3 pt-3">
+            <AccountHandoverForm clientId={client.id} currentName={nameOf(client.accountManagerPersonId)} people={people.filter((person) => person.id !== client.accountManagerPersonId)} />
+            {(handoffs.get(client.id) ?? []).map((handoff) => (
+              <div key={handoff.id} className="flex flex-col gap-1 rounded-lg bg-muted/40 p-2">
+                <p className="text-xs text-muted-foreground">{tHandoff("history", { from: handoff.fromName ?? "—", to: handoff.toName ?? "—", by: handoff.byName ?? "—", date: format.dateTime(handoff.createdAt, { dateStyle: "medium" }) })}</p>
+                <HandoffNoteView note={handoff.note} />
+              </div>
+            ))}
           </div>
         ) : null}
       </details>

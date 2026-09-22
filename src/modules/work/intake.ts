@@ -9,6 +9,7 @@ import { checkAnswers, describeAnswers, dueDateFrom, fieldKey, formProblem, type
 import type { IntakeAudience } from "./enums";
 import { canSubmitIntake, type WorkViewer } from "./policy";
 import { createWorkTaskIn, taskKey } from "./tasks";
+import { sendToTriage, triageLink } from "./triage";
 import { entryState, findTeam, listStates, teamFacts, type TeamRow } from "./teams";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -79,7 +80,8 @@ export type IntakeSubmission = { taskId: string; key: string; title: string };
 
 /**
  * A request becomes a task: first backlog state, requester = the person asking (so they see and
- * follow it, whatever the project's privacy), no assignee — triage is the team's. The leads are told.
+ * follow it, whatever the project's privacy), waiting in the team's triage for a lead to accept it.
+ * The leads are told.
  */
 export async function submitIntake(formId: string, input: { title: string; answers: Record<string, unknown> }, actor: { personId: string; fullName: string }): Promise<IntakeSubmission> {
   return db().transaction(async (tx) => {
@@ -91,8 +93,11 @@ export async function submitIntake(formId: string, input: { title: string; answe
     const state = entryState(await listStates([team.id], tx), true);
     const created = await createWorkTaskIn(tx, { teamId: team.id, projectId: form.projectId, title: input.title, description: describeAnswers(form.name, form.fields, answers), stateId: state?.id ?? null, requesterPersonId: actor.personId, dueDate: dueDateFrom(form.fields, answers) }, actor.personId, { notify: false });
     await tx.update(schema.workTask).set({ intakeFormId: form.id }).where(eq(schema.workTask.taskId, created.task.id));
+    // Into the team's triage (FR-PJM-32): its rules pre-fill, a lead decides. The leads hear of it
+    // below, in words that say who asked and through which form.
+    await sendToTriage(tx, created.task.id, "intake", { notify: false, actorPersonId: actor.personId });
     const leads = (await tx.select({ personId: schema.workTeamMember.personId }).from(schema.workTeamMember).where(and(eq(schema.workTeamMember.teamId, team.id), eq(schema.workTeamMember.role, "lead")))).map((row) => row.personId).filter((id) => id !== actor.personId);
-    if (leads.length > 0) await notify({ recipients: leads, kind: "tasks.intake_submitted", params: { name: actor.fullName, form: form.name, key: taskKey(team.key, created.work.number), title: created.task.title }, link: `/work/tasks/${created.task.id}` }, tx);
+    if (leads.length > 0) await notify({ recipients: leads, kind: "tasks.intake_submitted", params: { name: actor.fullName, form: form.name, key: taskKey(team.key, created.work.number), title: created.task.title }, link: triageLink(team.id) }, tx);
     return { taskId: created.task.id, key: taskKey(team.key, created.work.number), title: created.task.title };
   });
 }

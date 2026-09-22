@@ -5,6 +5,7 @@ import { createAction } from "@/lib/action";
 import { findOrgUnit } from "../platform/org/service";
 import { addComment, deleteComment, editComment, findComment, toggleReaction } from "./comments";
 import { beginTaskUpload, completeTaskUpload, findTaskFile, removeTaskFile, taskFileLink } from "./attachments";
+import { FILTER_KEYS, isFilterKey } from "./engine/filter";
 import { setFollowing } from "./followers";
 import { CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_ROLES, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "./enums";
 import { canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canModerateTask, canViewTask } from "./policy";
@@ -291,6 +292,9 @@ export async function createTaskAction(input: unknown) {
   return createTaskPipeline(input);
 }
 
+/** FR-PJM-35: values are checked against the field's type by the service (engine/custom-fields.ts). */
+const customValuesInput = z.record(z.uuid(), z.union([z.string().max(1000), z.number(), z.boolean(), z.array(z.string().max(40)).max(50), z.null()])).refine((values) => Object.keys(values).length <= 30);
+
 const checklistItem = z.object({ id: z.string().min(1).max(40), text: z.string().trim().min(1).max(200), done: z.boolean() });
 const linkItem = z.object({ id: z.string().min(1).max(40), url: z.url({ protocol: /^https$/ }).max(1000), title: optional(z.string().trim().max(120)) });
 
@@ -318,6 +322,8 @@ const updateTaskPipeline = createAction({
     checklist: z.array(checklistItem).max(50).optional(),
     links: z.array(linkItem).max(30).optional(),
     position: z.object({ beforeTaskId: optional(z.uuid()), afterTaskId: optional(z.uuid()) }).optional(),
+    customValues: customValuesInput.optional(),
+    cycleId: patchable(z.uuid()),
   }),
   authorize: async (user, input) => {
     const task = await loadTask(input.taskId);
@@ -406,11 +412,12 @@ export async function removeDependencyAction(input: unknown) {
 
 // ── Saved filters ───────────────────────────────────────────────────────────────────────────
 
-const VIEW_PARAMETERS = ["q", "assignee", "state", "priority", "label", "client", "due", "closed", "group"];
+// The list's filters (a custom field's too, `cf.<fieldId>`), its grouping and its order.
+const VIEW_PARAMETERS = [...FILTER_KEYS, "group", "sort"] as readonly string[];
 
 const saveViewPipeline = createAction({
   name: "work.view.save",
-  input: z.object({ projectId: z.uuid(), name: z.string().trim().min(1).max(60), isShared: checkbox.default(false), filters: z.record(z.string(), z.string().max(200)).refine((filters) => Object.keys(filters).every((key) => VIEW_PARAMETERS.includes(key))) }),
+  input: z.object({ projectId: z.uuid(), name: z.string().trim().min(1).max(60), isShared: checkbox.default(false), filters: z.record(z.string(), z.string().max(200)).refine((filters) => Object.keys(filters).every((key) => VIEW_PARAMETERS.includes(key) || isFilterKey(key))) }),
   // Anyone who can open the project keeps their own filters; a shared one is put in front of the
   // whole project, which is for the people working in it.
   authorize: async (user, input) => {

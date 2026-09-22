@@ -1,0 +1,328 @@
+// The person's day against a real Postgres (PGlite): plan → activity → prefilled report → submit
+// (on time and late), the team board against the policy, reminders, comments, weekly reports and
+// the quick time log.
+import { beforeAll, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
+vi.mock("@/lib/env", () => ({ env: () => ({ BETTER_AUTH_URL: "https://suzu.one" }) }));
+vi.mock("@/lib/action", () => ({
+  ActionError: class ActionError extends Error {
+    constructor(
+      message: string,
+      readonly details?: unknown,
+    ) {
+      super(message);
+    }
+  },
+  createAction: () => async () => ({ ok: false, error: "failed" }),
+}));
+
+import { and, eq } from "drizzle-orm";
+import { db, schema } from "@/lib/db";
+import { createWorkTask, listStates } from "@/modules/work/service";
+import { migrateTestDb } from "../../../tests/helpers/db";
+import { dayOf } from "./days";
+import { DEFAULT_TEAM_RULES, instantOf } from "./engine/rules";
+import { sendPlanReminders, sendReportReminders } from "./jobs";
+import { listOverseen, loadReportReader, loadSubjects } from "./people";
+import { addToPlan, getPlanPage, savePlan } from "./plans";
+import { canViewReport } from "./policy";
+import { buildDraft, commentOnReport, getReportView, getTeamBoard, remindMissing, submitReport } from "./reports";
+import { saveTeamRules } from "./team-rules";
+import { deleteTimeEntry, logTime } from "./time";
+import { getToday } from "./today";
+import { generateWeek, listWeekly } from "./weekly";
+
+// 2026-09-21 is a Monday.
+const D = "2026-09-21";
+const PEOPLE = ["long", "huy", "bao", "tam", "chi", "khoi", "mai", "sang", "lan"] as const;
+type Key = (typeof PEOPLE)[number];
+const ids = {} as Record<Key | "szm" | "video" | "design" | "social" | "dept" | "client" | "internal" | "t1" | "t2" | "t3" | "t4" | "t5", string>;
+const names: Record<Key, string> = { long: "Long Dang", huy: "Huy Ho", bao: "Bao Tran", tam: "Tam Bui", chi: "Chi Vo", khoi: "Khoi Ly", mai: "Mai Pham", sang: "Sang Le", lan: "Lan Do" };
+const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
+const noticesOf = async (personId: string, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
+const at = (time: string) => new Date(`${D}T${time}:00+07:00`);
+
+beforeAll(async () => {
+  await migrateTestDb();
+  const [szm] = await db().insert(schema.entity).values({ code: "SZM", legalName: "SuZu Media", shortName: "Media" }).returning();
+  ids.szm = szm.id;
+  const [dept] = await db().insert(schema.orgUnit).values({ name: "Marketing", kind: "department", entityId: szm.id }).returning();
+  ids.dept = dept.id;
+  for (const key of PEOPLE) {
+    const [row] = await db().insert(schema.person).values({ fullName: names[key], searchName: names[key].toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
+    ids[key] = row.id;
+  }
+  // Huy reports to Tam, Tam to Chi. Chi heads Marketing, where Video sits.
+  await db().update(schema.person).set({ managerId: ids.tam }).where(eq(schema.person.id, ids.huy));
+  await db().update(schema.person).set({ managerId: ids.chi }).where(eq(schema.person.id, ids.tam));
+  await db().insert(schema.roleAssignment).values({ personId: ids.chi, role: "department_head", scopeType: "unit", scopeId: dept.id, validFrom: "2026-01-01" });
+
+  // Teams, their workflow and members as rows: the work module's own tests cover how they are made.
+  const team = async (key: string, name: string, lead: Key, members: Key[], departmentId: string | null = null) => {
+    const [row] = await db().insert(schema.workTeam).values({ key, name, entityId: szm.id, departmentId }).returning();
+    await db().insert(schema.workState).values([
+      { teamId: row.id, name: "Đang làm", category: "in_progress", sortOrder: 1 },
+      { teamId: row.id, name: "Đã xong", category: "done", sortOrder: 2 },
+    ]);
+    await db().insert(schema.workTeamMember).values([{ teamId: row.id, personId: ids[lead], role: "lead" }, ...members.map((member) => ({ teamId: row.id, personId: ids[member], role: "member" }))]);
+    return row.id;
+  };
+  ids.video = await team("VID", "Video", "long", ["huy", "bao"], dept.id);
+  ids.design = await team("DES", "Design", "mai", ["huy"]);
+  ids.social = await team("SOC", "Social", "khoi", ["sang", "lan"]);
+  // Video plans every morning and reports by 18:00; Design keeps the defaults (18:30).
+  await saveTeamRules(ids.video, { ...DEFAULT_TEAM_RULES, planMode: "required", reportDeadline: "18:00" });
+
+  const project = async (name: string) => (await db().insert(schema.workProject).values({ teamId: ids.video, entityId: szm.id, name, leadPersonId: ids.long }).returning())[0].id;
+  ids.client = await project("TVC Tết");
+  ids.internal = await project("Showreel");
+  await db().insert(schema.projectPlan).values([
+    { projectId: ids.client, kind: "client" },
+    { projectId: ids.internal, kind: "internal" },
+  ]);
+
+  const states = await listStates([ids.video]);
+  const doing = states.find((state) => state.category === "in_progress")!;
+  const task = async (title: string, assignee: Key, extra: { dueDate?: string; estimateMinutes?: number; projectId?: string; collaboratorIds?: string[] } = {}) => (await createWorkTask({ teamId: ids.video, projectId: extra.projectId ?? ids.client, title, assigneePersonId: ids[assignee], stateId: doing.id, ...extra }, ids.long)).task.id;
+  ids.t1 = await task("Rough cut", "huy", { dueDate: D, estimateMinutes: 120 });
+  ids.t2 = await task("Subtitles", "huy", { estimateMinutes: 60 });
+  ids.t3 = await task("Color grade", "bao", { collaboratorIds: [ids.huy] });
+  ids.t4 = await task("Old teaser", "huy", { dueDate: "2026-09-18" });
+  ids.t5 = await task("Reel cut", "huy", { projectId: ids.internal });
+
+  // Lan is on approved leave on D.
+  const [type] = await db().insert(schema.leaveType).values({ code: "AL", name: "Annual", category: "annual", isPaid: true, payrollTreatment: "paid_company" }).returning();
+  const [request] = await db().insert(schema.leaveRequest).values({ personId: ids.lan, entityId: szm.id, leaveTypeId: type.id, startDate: D, endDate: D, totalCenti: 100, status: "approved" }).returning();
+  await db().insert(schema.leaveRequestDay).values({ requestId: request.id, personId: ids.lan, date: D, portion: "full", amountCenti: 100 });
+  // 2 September is a public holiday.
+  await db().insert(schema.calendarDay).values({ entityId: null, date: "2026-09-02", kind: "public_holiday", name: "Quốc khánh", isConfirmed: true });
+});
+
+describe("the day's rules", () => {
+  it("merges the teams: Huy (Video + Design) plans and reports by 18:00; Lan is on leave", async () => {
+    const days = await dayOf([ids.huy, ids.lan, ids.tam], D);
+    expect(days.get(ids.huy)!.rules).toMatchObject({ planMode: "required", reportMode: "required", reportDeadline: "18:00" });
+    expect(days.get(ids.huy)!.report).toEqual({ required: true, reason: null });
+    expect(days.get(ids.huy)!.minutes).toBe(480);
+    expect(days.get(ids.lan)!.report).toEqual({ required: false, reason: "leave" });
+    expect(days.get(ids.lan)!.dayOff).toBe(true);
+    // Tam is in no work team: nothing asked.
+    expect(days.get(ids.tam)!.report).toEqual({ required: false, reason: "optional" });
+  });
+});
+
+describe("plan → activity → prefilled report → submit", () => {
+  it("the plan offers my work, overdue first, and saves only my own tasks", async () => {
+    const page = await getPlanPage(ids.huy, D);
+    expect(page.candidates[0].taskId).toBe(ids.t4);
+    expect(page.candidates.map((task) => task.taskId).sort()).toEqual([ids.t1, ids.t2, ids.t3, ids.t4, ids.t5].sort());
+    expect(page.selected).toEqual([]);
+    expect(await fails(savePlan(ids.bao, D, [{ taskId: ids.t1, minutes: 60 }], null))).toBe("plan_task_not_yours");
+    const { after } = await savePlan(ids.huy, D, [{ taskId: ids.t1, minutes: 120 }, { taskId: ids.t2, minutes: 60 }], "Ưu tiên bản dựng");
+    expect(after.items.map((item) => item.taskId)).toEqual([ids.t1, ids.t2]);
+    expect(after.submittedAt).not.toBeNull();
+  });
+
+  it("the plan reminder skips who planned and tells the rest once", async () => {
+    // Bao and Long (Video — a lead plans too) have not planned; Huy has. Design and Social do not require a plan.
+    expect((await sendPlanReminders(D)).reminded).toBe(2);
+    expect(await noticesOf(ids.bao, "daily.plan_reminder")).toHaveLength(1);
+    expect(await noticesOf(ids.mai, "daily.plan_reminder")).toHaveLength(0);
+    expect(await noticesOf(ids.huy, "daily.plan_reminder")).toHaveLength(0);
+    expect((await sendPlanReminders(D)).reminded).toBe(0);
+    // A holiday asks nothing of anyone.
+    expect((await sendPlanReminders("2026-09-02")).reminded).toBe(0);
+  });
+
+  it("the day's activity prefills the report", async () => {
+    const done = (await listStates([ids.video])).find((state) => state.category === "done")!;
+    // Huy moves the rough cut to done at 10:00 on D — as the work module records it.
+    await db().update(schema.workTask).set({ stateId: done.id }).where(eq(schema.workTask.taskId, ids.t1));
+    await db().update(schema.task).set({ status: "done", completedAt: at("10:00"), completedByPersonId: ids.huy }).where(eq(schema.task.id, ids.t1));
+    await db().insert(schema.workActivity).values({ taskId: ids.t1, actorPersonId: ids.huy, type: "field_changed", field: "state", fromValue: { name: "Đang làm", category: "in_progress" }, toValue: { id: done.id, name: done.name, category: "done" }, createdAt: at("10:00") });
+    await db().insert(schema.workComment).values([
+      { taskId: ids.t2, authorPersonId: ids.huy, body: "Đang dịch phụ đề", createdAt: at("11:00") },
+      { taskId: ids.t2, authorPersonId: ids.huy, body: "Còn 2 cảnh", createdAt: at("14:00") },
+    ]);
+    await db().insert(schema.workBlocker).values({ taskId: ids.t2, reason: "Chờ khách gửi kịch bản tiếng Anh", neededPersonId: ids.long, raisedByPersonId: ids.huy, raisedAt: at("15:00") });
+    await logTime({ personId: ids.huy, date: D, taskId: ids.t1, category: null, minutes: 90, note: null, billable: null });
+
+    const draft = await buildDraft(ids.huy, D);
+    expect(draft.done.map((line) => line.taskId)).toEqual([ids.t1]);
+    expect(draft.notDone.map((line) => line.taskId)).toEqual([ids.t2]);
+    expect(draft.minutesLogged).toBe(90);
+    expect(draft.activity.map((item) => [item.kind, item.taskId, item.detail])).toEqual(
+      expect.arrayContaining([
+        ["completed", ids.t1, done.name],
+        ["commented", ids.t2, "2"],
+        ["blocker_raised", ids.t2, "Chờ khách gửi kịch bản tiếng Anh"],
+        ["time_logged", ids.t1, "90"],
+      ]),
+    );
+  });
+
+  it("submits on time before the deadline and late after it; a later edit keeps the record", async () => {
+    const { after } = await submitReport(ids.huy, D, { blockers: "Chờ kịch bản tiếng Anh", notes: null, tomorrow: [ids.t2], secondsToSubmit: 42 }, at("17:30"));
+    expect(after).toMatchObject({ status: "submitted", late: false, secondsToSubmit: 42, minutesLogged: 90 });
+    expect(after.tomorrow).toEqual([{ taskId: ids.t2, minutes: 60 }]);
+    const again = await submitReport(ids.huy, D, { blockers: "Chờ kịch bản", notes: "Đã hỏi khách", tomorrow: [ids.t2], secondsToSubmit: 5 }, at("20:00"));
+    expect(again.after).toMatchObject({ late: false, secondsToSubmit: 42, notes: "Đã hỏi khách" });
+    expect(again.after.submittedAt).toEqual(after.submittedAt);
+
+    // Video's deadline is 18:00.
+    const bao = await submitReport(ids.bao, D, { blockers: null, notes: null, tomorrow: [], secondsToSubmit: 30 }, at("18:45"));
+    expect(bao.after.late).toBe(true);
+    // Not somebody else's task for tomorrow, not a date in the future.
+    expect(await fails(submitReport(ids.bao, D, { blockers: null, notes: null, tomorrow: [ids.t1], secondsToSubmit: null }, at("19:00")))).toBe("plan_task_not_yours");
+    expect(await fails(submitReport(ids.bao, "2026-09-22", { blockers: null, notes: null, tomorrow: [], secondsToSubmit: null }, at("19:00")))).toBe("report_date_invalid");
+  });
+
+  it("tomorrow's plan starts from the report's 'tomorrow'", async () => {
+    const next = await getPlanPage(ids.huy, "2026-09-22");
+    expect(next.selected).toEqual([{ taskId: ids.t2, minutes: 60 }]);
+    expect(next.carried).toBe(true);
+    const plan = await addToPlan(ids.huy, "2026-09-22", ids.t4);
+    expect(plan.items.map((item) => item.taskId)).toEqual([ids.t2, ids.t4]);
+  });
+
+  it("the report reminder tells who is missing, with their deadline, once", async () => {
+    // Required and missing on D: Sang and the three leads. Lan is on leave; Huy and Bao reported.
+    expect((await sendReportReminders(D)).reminded).toBe(4);
+    const [notice] = await noticesOf(ids.sang, "daily.report_reminder");
+    expect(notice.params).toEqual({ deadline: "18:30" });
+    expect((await noticesOf(ids.long, "daily.report_reminder"))[0].params).toEqual({ deadline: "18:00" });
+    expect(await noticesOf(ids.huy, "daily.report_reminder")).toHaveLength(0);
+    expect((await sendReportReminders(D)).reminded).toBe(0);
+    expect(await noticesOf(ids.lan, "daily.report_reminder")).toHaveLength(0);
+  });
+});
+
+describe("the team daily board", () => {
+  it("lists exactly the people the policy lets each reader see", async () => {
+    const all = PEOPLE.map((key) => ids[key]);
+    const subjects = await loadSubjects(all);
+    for (const key of PEOPLE) {
+      const reader = await loadReportReader(ids[key]);
+      const listed = new Set((await listOverseen(reader)).flatMap((group) => group.personIds));
+      const allowed = all.filter((personId) => personId !== ids[key] && canViewReport(reader, subjects.get(personId)!));
+      expect([...listed].sort(), key).toEqual(allowed.sort());
+    }
+    // Spot checks: the line manager and the manager's manager, not a colleague or another team's lead.
+    const seenBy = async (key: Key) => new Set((await listOverseen(await loadReportReader(ids[key]))).flatMap((group) => group.personIds));
+    expect((await seenBy("tam")).has(ids.huy)).toBe(true);
+    expect((await seenBy("chi")).has(ids.huy)).toBe(true);
+    expect((await seenBy("bao")).has(ids.huy)).toBe(false);
+    expect((await seenBy("khoi")).has(ids.huy)).toBe(false);
+    expect((await seenBy("mai")).has(ids.huy)).toBe(true);
+  });
+
+  it("shows submitted / missing / not required, blockers first", async () => {
+    const [video] = await getTeamBoard(await loadReportReader(ids.long), D);
+    expect(video).toMatchObject({ kind: "team", name: "Video", counts: { submitted: 2, missing: 0, not_required: 0 } });
+    expect(video.rows.map((row) => [row.name, row.status, row.late, row.openBlockers])).toEqual([
+      ["Huy Ho", "submitted", false, 1],
+      ["Bao Tran", "submitted", true, 0],
+    ]);
+    const [social] = await getTeamBoard(await loadReportReader(ids.khoi), D);
+    expect(social.rows.map((row) => [row.name, row.status, row.reason])).toEqual([
+      ["Sang Le", "missing", null],
+      ["Lan Do", "not_required", "leave"],
+    ]);
+    const holiday = await getTeamBoard(await loadReportReader(ids.khoi), "2026-09-02");
+    expect(holiday[0].rows.every((row) => row.status === "not_required" && row.reason === "holiday")).toBe(true);
+    // Line managers see their reports as a group of their own.
+    const chain = await getTeamBoard(await loadReportReader(ids.chi), D);
+    expect(chain).toHaveLength(1);
+    expect(chain[0].kind).toBe("reports");
+    expect(chain[0].rows.map((row) => row.name).sort()).toEqual(["Huy Ho", "Tam Bui"]);
+  });
+
+  it("reminds the missing once per day, and only people the reader oversees", async () => {
+    const khoi = await loadReportReader(ids.khoi);
+    expect(await remindMissing(khoi, [ids.sang, ids.lan], D, names.khoi)).toEqual([ids.sang]);
+    expect(await remindMissing(khoi, [ids.sang], D, names.khoi)).toEqual([]);
+    expect(await remindMissing(await loadReportReader(ids.long), [ids.sang], D, names.long)).toEqual([]);
+    const notices = await noticesOf(ids.sang, "daily.report_nudge");
+    expect(notices).toHaveLength(1);
+    expect(notices[0].params).toEqual({ actor: names.khoi });
+    const [social] = await getTeamBoard(khoi, D);
+    expect(social.rows.find((row) => row.personId === ids.sang)!.reminded).toBe(true);
+  });
+
+  it("a comment tells the person; a colleague may neither read nor comment", async () => {
+    const report = (await db().select().from(schema.dailyReport).where(and(eq(schema.dailyReport.personId, ids.huy), eq(schema.dailyReport.date, D))))[0];
+    await commentOnReport(await loadReportReader(ids.long), report.id, { body: "Đã nhắn khách, mai có kịch bản", reaction: null }, names.long);
+    const [notice] = await noticesOf(ids.huy, "daily.report_commented");
+    expect(notice.params).toEqual({ actor: names.long, date: "21/09/2026" });
+    expect(notice.link).toBe(`/daily/reports/${report.id}`);
+    // Huy answers: Long hears it.
+    await commentOnReport(await loadReportReader(ids.huy), report.id, { body: "Cảm ơn anh", reaction: null }, names.huy);
+    expect(await noticesOf(ids.long, "daily.report_commented")).toHaveLength(1);
+    expect(await fails(commentOnReport(await loadReportReader(ids.bao), report.id, { body: "?", reaction: null }, names.bao))).toBe("report_not_found");
+    expect(await getReportView(await loadReportReader(ids.bao), report.id)).toBeNull();
+    const view = await getReportView(await loadReportReader(ids.tam), report.id);
+    expect(view!.comments.map((comment) => comment.body)).toEqual(["Đã nhắn khách, mai có kịch bản", "Cảm ơn anh"]);
+    expect(view!.openBlockers).toHaveLength(1);
+  });
+});
+
+describe("Today", () => {
+  it("brings the day together: plan, due, blockers either way", async () => {
+    const huy = await getToday(ids.huy, D);
+    expect(huy.planned.map((task) => task.taskId)).toEqual([ids.t1, ids.t2]);
+    expect(huy.planned[0].status).toBe("done");
+    // Overdue and not planned.
+    expect(huy.due.map((task) => task.taskId)).toEqual([ids.t4]);
+    expect(huy.blockersRaised).toHaveLength(1);
+    expect(huy.report?.status).toBe("submitted");
+    expect(huy.time.map((entry) => entry.minutes)).toEqual([90]);
+    const long = await getToday(ids.long, D);
+    expect(long.blockersWaiting.map((blocker) => blocker.taskId)).toEqual([ids.t2]);
+  });
+});
+
+describe("weekly reports", () => {
+  it("generates each person's and team's week, tells the lead and the department head once", async () => {
+    const first = await generateWeek(D, { notify: true });
+    expect(first.teams).toBe(3);
+    expect(first.notified).toBe(3);
+    expect(await noticesOf(ids.long, "daily.weekly_report")).toHaveLength(1);
+    // Chi heads Marketing, where Video sits.
+    expect((await noticesOf(ids.chi, "daily.weekly_report")).map((row) => row.params)).toEqual([{ subject: "Video", week: "21/09/2026" }]);
+    const again = await generateWeek(D, { notify: true });
+    expect(again.notified).toBe(0);
+    expect(await noticesOf(ids.long, "daily.weekly_report")).toHaveLength(1);
+
+    const long = await loadReportReader(ids.long);
+    const { teams, people } = await listWeekly(long, D, (team) => team.id === ids.video);
+    expect(teams.map((row) => row.team.name)).toEqual(["Video"]);
+    expect(teams[0].content).toMatchObject({ done: 1, slipped: 1, totalMinutes: 90 });
+    expect(teams[0].content.people[0]).toMatchObject({ name: "Huy Ho", blockers: 1 });
+    // Long sees his own week and his team's people — not Social's.
+    expect(people.map((row) => row.name).sort()).toEqual(["Bao Tran", "Huy Ho", "Long Dang"]);
+    const huy = people.find((row) => row.personId === ids.huy)!;
+    expect(huy.content.hoursByProject).toEqual([{ projectId: ids.client, name: "TVC Tết", category: null, minutes: 90 }]);
+    expect(huy.canSummarise).toBe(true);
+  });
+});
+
+describe("quick time log", () => {
+  it("defaults billable from the project kind and refuses a locked week", async () => {
+    const client = await logTime({ personId: ids.huy, date: D, taskId: ids.t2, category: null, minutes: 30, note: null, billable: null });
+    expect(client).toMatchObject({ projectId: ids.client, billable: true, weekStart: D });
+    const internal = await logTime({ personId: ids.huy, date: D, taskId: ids.t5, category: null, minutes: 30, note: null, billable: null });
+    expect(internal.billable).toBe(false);
+    const admin = await logTime({ personId: ids.huy, date: D, taskId: null, category: "admin", minutes: 15, note: "Họp giao ban", billable: null });
+    expect(admin).toMatchObject({ category: "admin", projectId: null, billable: false });
+    const forced = await logTime({ personId: ids.huy, date: D, taskId: ids.t5, category: null, minutes: 10, note: null, billable: true });
+    expect(forced.billable).toBe(true);
+    expect(await fails(logTime({ personId: ids.huy, date: D, taskId: ids.t2, category: "admin", minutes: 10, note: null, billable: null }))).toBe("time_task_or_category");
+    expect(await fails(deleteTimeEntry(ids.bao, admin.id))).toBe("time_entry_not_found");
+    await deleteTimeEntry(ids.huy, admin.id);
+    await db().insert(schema.timesheetWeek).values({ personId: ids.huy, weekStart: D, status: "approved" });
+    expect(await fails(logTime({ personId: ids.huy, date: D, taskId: ids.t2, category: null, minutes: 10, note: null, billable: null }))).toBe("time_week_locked");
+    expect(await fails(deleteTimeEntry(ids.huy, client.id))).toBe("time_week_locked");
+    expect(instantOf(D, "18:00").toISOString()).toBe("2026-09-21T11:00:00.000Z");
+  });
+});

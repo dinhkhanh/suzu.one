@@ -1,0 +1,2 @@
+ALTER TABLE "project_client_report" ADD COLUMN "show_hours" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "project_billing_item_retainer_unique" ON "project_billing_item" USING btree ("retainer_period_id") WHERE "project_billing_item"."retainer_period_id" IS NOT NULL AND "project_billing_item"."source" = 'retainer';

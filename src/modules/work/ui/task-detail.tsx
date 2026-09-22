@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { addDependencyAction, createTaskAction, deleteTaskAction, removeDependencyAction, updateTaskAction } from "../actions";
 import { CHANNELS, CONTENT_FORMATS, PRIORITIES } from "../enums";
+import { useHandoffGate } from "./handoff";
 import { LabelChip } from "./team-forms";
 
 type Named = { id: string; name: string };
@@ -37,6 +38,8 @@ export type DetailTask = {
   collaboratorIds: string[];
   checklist: { id: string; text: string; done: boolean }[];
   links: { id: string; url: string; title: string | null }[];
+  /** FR-PJM-10. */
+  cycleId?: string | null;
 };
 export type DetailOptions = {
   states: { id: string; name: string; isActive: boolean }[];
@@ -46,6 +49,8 @@ export type DetailOptions = {
   projects: Named[];
   /** Tasks that can be linked: the same project's (or backlog's) other tasks. */
   linkable: { id: string; key: string; title: string }[];
+  /** The team's cycles a task may be planned in (FR-PJM-10); the task's own closed one is listed too. */
+  cycles?: { id: string; label: string }[];
 };
 export type DetailSubtask = { id: string; key: string; title: string; status: string; stateId: string; assigneeName: string | null; dueDate: string | null };
 export type DetailLink = { dependencyId: string; id: string; key: string; title: string; status: string; relation: "blocks" | "blocked_by" | "relates" };
@@ -54,13 +59,18 @@ export type DetailActivity = { id: string; type: string; field: string | null; f
 const textareaClass = "min-h-28 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 md:text-sm dark:bg-input/30";
 const newId = () => Math.random().toString(36).slice(2, 10);
 
-function useRun() {
+/** `intercept`: a refusal the screen answers itself (the hand-off gate opens its sheet, FR-PJM-40). */
+function useRun(intercept?: (result: { ok: boolean; error?: string; message?: string; details?: unknown }) => boolean) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [errorKey, setErrorKey] = useState<string | null>(null);
-  const run = (action: (input: unknown) => Promise<{ ok: boolean; error?: string; message?: string }>, input: unknown, after?: () => void) =>
+  const run = (action: (input: unknown) => Promise<{ ok: boolean; error?: string; message?: string; details?: unknown }>, input: unknown, after?: () => void) =>
     startTransition(async () => {
       const result = await action(input);
+      if (intercept?.(result)) {
+        setErrorKey(null);
+        return;
+      }
       setErrorKey(result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
       if (result.ok) {
         after?.();
@@ -75,7 +85,8 @@ export function TaskDetailView({ task, options, subtasks, linked, canEdit, canDe
   const tWork = useTranslations("work");
   const format = useFormatter();
   const router = useRouter();
-  const { run, pending, errorKey } = useRun();
+  const gate = useHandoffGate();
+  const { run, pending, errorKey } = useRun(gate.intercept);
   const [saved, setSaved] = useState(false);
   const subtaskInput = useRef<HTMLInputElement>(null);
   const update = (patch: Record<string, unknown>, after?: () => void) => run(updateTaskAction, { taskId: task.id, ...patch }, after);
@@ -118,6 +129,7 @@ export function TaskDetailView({ task, options, subtasks, linked, canEdit, canDe
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="flex min-w-0 flex-col gap-8">
+        {gate.sheet}
         {errorKey ? (
           <p role="alert" className="text-sm text-destructive">
             {tWork.has(`errors.${errorKey}`) ? tWork(`errors.${errorKey}`) : tWork("errors.generic")}
@@ -302,6 +314,19 @@ export function TaskDetailView({ task, options, subtasks, linked, canEdit, canDe
               ))}
           </Select>
         </div>
+        {options.cycles?.length || task.cycleId ? (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="cycleId">{tWork("cycles.field")}</Label>
+            <Select id="cycleId" value={task.cycleId ?? ""} disabled={!canEdit || pending} onChange={(event) => update({ cycleId: event.target.value })}>
+              <option value="">{tWork("cycles.noCycle")}</option>
+              {(options.cycles ?? []).map((cycle) => (
+                <option key={cycle.id} value={cycle.id}>
+                  {cycle.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+        ) : null}
         {/* The fields below belong to the form on the left (form="task-fields"), so one Save covers the title, the brief and these. */}
           {select(
             "assigneePersonId",

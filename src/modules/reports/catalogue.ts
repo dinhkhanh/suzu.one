@@ -28,6 +28,10 @@ import { getWorkAnalytics, loadViewer } from "@/modules/work/service";
 import en from "../../../messages/en.json";
 import vi from "../../../messages/vi.json";
 import type { Period } from "./engine/cadence";
+import { getDeliveryDashboard } from "./delivery";
+import type { DeliverySummary } from "./engine/delivery";
+import { canOpenDelivery, canReadProfitability } from "./pjm-policy";
+import { buildProfitability } from "./profitability";
 
 export type Locale = "vi" | "en";
 const translator = (locale: Locale) => createTranslator({ locale, messages: locale === "vi" ? vi : en });
@@ -222,10 +226,82 @@ const recruitFunnel: ReportDefinition<{ entityId?: string }> = {
   },
 };
 
+// ── delivery (FR-PJM-60) ────────────────────────────────────────────────────────────────────
+
+const delivery: ReportDefinition<{ teamId?: string }> = {
+  key: "delivery",
+  parameters: z.object({ teamId: optionalUuid }),
+  // Like the work analytics: no permission, the projects are the ones the reader may open, and
+  // compliance covers the teams they lead or oversee through `pjm:portfolio`. Hours, never money.
+  canSee: (user) => canOpenDelivery(user.principal),
+  href: (parameters) => (parameters.teamId ? `/reports/delivery?team=${parameters.teamId}` : "/reports/delivery"),
+  build: async (user, parameters, period, locale) => {
+    const t = translator(locale);
+    const view = await getDeliveryDashboard(user, { from: period.from, to: period.to, teamId: parameters.teamId ?? null });
+    const line = (name: string, summary: DeliverySummary): (string | number)[] => [
+      name,
+      summary.projects,
+      summary.health.on_track,
+      summary.health.at_risk,
+      summary.health.off_track,
+      summary.health.stale,
+      summary.milestones.slipped,
+      summary.milestones.overdue,
+      percent(summary.onTime.rate),
+      percent(summary.register.rate),
+      percent(summary.burn.rate),
+      summary.revisions.internalRounds,
+      summary.revisions.clientRounds,
+      summary.handoffs.returned,
+      number(summary.handoffs.averageWaitMinutes === null ? null : Math.round((summary.handoffs.averageWaitMinutes / 60) * 10) / 10),
+      summary.blocked.blockedHours,
+    ];
+    const compliance = view.compliance?.total;
+    return {
+      title: t("reports.catalogue.delivery.name"),
+      columns: (["team", "projects", "onTrack", "atRisk", "offTrack", "stale", "slipped", "overdueMilestones", "onTimeRate", "acceptedRate", "burnRate", "internalRounds", "clientRounds", "returnedHandoffs", "handoffWaitHours", "blockedHours"] as const).map((key) => t(`reports.delivery.columns.${key}`)),
+      rows: [line(t("reports.delivery.total"), view.total), ...view.byTeam.map((team) => line(team.name, team.summary))],
+      summary: t("reports.catalogue.delivery.summary", { projects: view.total.projects, onTime: percent(view.total.onTime.rate), stale: view.total.health.stale, eod: percent(compliance?.reports.rate ?? null) }),
+    };
+  },
+};
+
+// ── profitability (FR-PJM-63) ───────────────────────────────────────────────────────────────
+
+const profitabilityReport: ReportDefinition<{ clientId?: string }> = {
+  key: "profitability",
+  parameters: z.object({ clientId: optionalUuid }),
+  // Salary-derived: `pjm:cost` only, per project also `pjm:commercial` (see pjm-policy.ts). The
+  // rows are projects and their team totals — never a person, never a rate.
+  canSee: (user) => canReadProfitability(user.principal),
+  // Compensation tier: never emailed (a mailbox proves nothing), and exported only after step-up.
+  schedulable: false,
+  stepUp: true,
+  href: (parameters) => (parameters.clientId ? `/reports/profitability?client=${parameters.clientId}` : "/reports/profitability"),
+  build: async (user, parameters, period, locale) => {
+    const t = translator(locale);
+    const view = await buildProfitability(user, { from: period.from, to: period.to, clientId: parameters.clientId ?? null });
+    const rows: (string | number)[][] = [];
+    const cell = (value: number | null) => (value === null ? "—" : value);
+    if (view) {
+      for (const project of view.projects) rows.push([t("reports.profitability.project"), [project.jobNumber, project.name].filter(Boolean).join(" · "), project.clientName ?? "—", t(`reports.profitability.basis.${project.basis}`), project.hours, cell(project.feeVnd), project.costVnd, cell(project.marginVnd), percent(project.marginRate), project.estimated ? t("reports.profitability.estimated") : ""]);
+      if (view.privateProjects) rows.push([t("reports.profitability.project"), t("reports.profitability.privateProjects", { count: view.privateProjects.projects }), "—", "—", view.privateProjects.hours, cell(view.privateProjects.feeVnd), view.privateProjects.costVnd, cell(view.privateProjects.marginVnd), percent(view.privateProjects.marginRate), view.privateProjects.estimated ? t("reports.profitability.estimated") : ""]);
+      for (const client of view.clients) rows.push([t("reports.profitability.client"), client.clientName ?? t("reports.profitability.noClient"), "—", "—", client.hours, cell(client.feeVnd), client.costVnd, cell(client.marginVnd), percent(client.marginRate), client.estimated ? t("reports.profitability.estimated") : ""]);
+      rows.push([t("reports.profitability.total"), "—", "—", "—", view.total.hours, cell(view.total.feeVnd), view.total.costVnd, cell(view.total.marginVnd), percent(view.total.marginRate), view.total.estimated ? t("reports.profitability.estimated") : ""]);
+    }
+    return {
+      title: t("reports.catalogue.profitability.name"),
+      columns: (["kind", "name", "client", "basis", "hours", "fee", "cost", "margin", "marginRate", "note"] as const).map((key) => t(`reports.profitability.columns.${key}`)),
+      rows,
+      summary: view ? t("reports.catalogue.profitability.summary", { projects: view.projects.length, margin: percent(view.total.marginRate) }) : t("reports.catalogue.empty"),
+    };
+  },
+};
+
 // ── the catalogue ───────────────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- each entry has its own parameter type; the map is keyed by report, not by shape.
-const DEFINITIONS: ReportDefinition<any>[] = [headcount, payrollCost, workAnalytics, opsOverdue, recruitFunnel];
+const DEFINITIONS: ReportDefinition<any>[] = [headcount, payrollCost, workAnalytics, opsOverdue, recruitFunnel, delivery, profitabilityReport];
 
 export const REPORT_KEYS = DEFINITIONS.map((definition) => definition.key);
 export type ReportKey = (typeof REPORT_KEYS)[number];

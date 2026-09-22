@@ -144,3 +144,30 @@ describe("pages", () => {
     expect(atLeast(null, "view")).toBe(false);
   });
 });
+
+describe("a project's space (FR-PJM-31)", () => {
+  const PROJECT = "55555555-5555-4555-8555-555555555555";
+  // The loader resolves a `project:<id>` row to the project's people as they are now.
+  const projectSpace = (people: readonly string[] | null) => space({ entityId: SZM, access: [{ subjectKey: `project:${PROJECT}`, level: "edit", people }] });
+
+  it("opens to the people the project row names, a collaborator among them, at the row's level", () => {
+    const facts = projectSpace(["huy", "ngo"]);
+    expect(spaceLevel(huy, facts)).toBe("edit");
+    expect(spaceLevel(ngo, facts)).toBe("edit");
+    expect(pageLevel(huy, facts, draft)).toBe("edit");
+  });
+
+  it("stays shut to a colleague in the same unit and entity, and to anyone when the row was read without its people", () => {
+    expect(spaceLevel(head, projectSpace(["huy"]))).toBeNull();
+    expect(spaceLevel(khoi, projectSpace(["huy"]))).toBeNull();
+    expect(spaceLevel(huy, projectSpace(null))).toBeNull();
+    // A viewer's own keys never include project keys: the row matches only through its people.
+    expect(huy.keys.some((key) => key.startsWith("project:"))).toBe(false);
+  });
+
+  it("is still managed by the knowledge base's managers of the project's entity, like every space of it", () => {
+    expect(spaceLevel(hrGroup, projectSpace(["huy"]))).toBe("manage");
+    expect(spaceLevel(hrSzm, projectSpace(["huy"]))).toBe("manage");
+    expect(spaceLevel(hrSzm, space({ entityId: SZC, access: [{ subjectKey: `project:${PROJECT}`, level: "edit", people: ["huy"] }] }))).toBeNull();
+  });
+});

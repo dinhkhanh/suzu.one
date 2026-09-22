@@ -2,7 +2,7 @@
 // private storage through a signed URL, and every download link is made for one minute on click,
 // after the work policy has said the viewer may see the task.
 import "server-only";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema } from "@/lib/db";
 import { beginUpload, completeUpload, createDownloadLink, findFile, listFilesOf, softDeleteFile, type StoredFileRow } from "../platform/files/service";
@@ -47,6 +47,12 @@ export async function completeTaskUpload(fileId: string, actor: Actor & { fullNa
 export const taskFileLink = (file: StoredFileRow, actor: Actor, request?: { ipAddress?: string | null; userAgent?: string | null }) => createDownloadLink(file, actor, request);
 
 export async function removeTaskFile(fileId: string, actorPersonId: string): Promise<StoredFileRow> {
+  // A version the client approved is frozen with its file (FR-PJM-51), and the evidence of a client
+  // decision is the record of it: neither may go.
+  const [frozen] = await db().select({ id: schema.workDeliverable.id }).from(schema.workDeliverable).where(and(eq(schema.workDeliverable.fileId, fileId), isNotNull(schema.workDeliverable.frozenAt))).limit(1);
+  if (frozen) throw new ActionError("deliverable_frozen");
+  const [evidence] = await db().select({ id: schema.workDeliverableDecision.id }).from(schema.workDeliverableDecision).where(sql`${schema.workDeliverableDecision.client} ->> 'evidenceFileId' = ${fileId}`).limit(1);
+  if (evidence) throw new ActionError("client_evidence_locked");
   const file = await softDeleteFile(fileId);
   if (!file) throw new ActionError("file_not_found");
   await logActivity(db(), file.ownerId, actorPersonId, [{ type: "attachment_removed", from: { id: file.id, name: file.fileName } }]);

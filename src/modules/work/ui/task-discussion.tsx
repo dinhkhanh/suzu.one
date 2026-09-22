@@ -2,6 +2,7 @@
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { addCommentAction, beginTaskUploadAction, completeTaskUploadAction, deleteCommentAction, editCommentAction, followTaskAction, openTaskFileAction, reactToCommentAction, removeTaskFileAction } from "../actions";
@@ -10,7 +11,7 @@ import { REACTIONS } from "../enums";
 import type { DetailActivity } from "./task-detail";
 
 type Person = { id: string; fullName: string };
-export type DiscussionComment = { id: string; parentId: string | null; authorPersonId: string; authorName: string; body: string; reactions: Record<string, string[]>; editedAt: string | null; deleted: boolean; createdAt: string };
+export type DiscussionComment = { id: string; parentId: string | null; /** null = posted by an automation. */ authorPersonId: string | null; authorName: string; byAutomation?: boolean; body: string; reactions: Record<string, string[]>; editedAt: string | null; deleted: boolean; createdAt: string };
 export type DiscussionFile = { id: string; fileName: string; sizeBytes: number; uploadedByName: string | null; createdAt: string; canRemove: boolean };
 
 type Failure = { ok: boolean; error?: string; message?: string };
@@ -226,6 +227,14 @@ export function TaskDiscussion({ taskId, comments, activity, people, selfId, can
       if (entry.field === "priority") return tTask("activity.changed", { field, from: entry.fromValue ? tWork(`priority.${entry.fromValue}`) : "—", to: entry.toValue ? tWork(`priority.${entry.toValue}`) : "—" });
       return tTask("activity.changed", { field, from: name(entry.fromValue), to: name(entry.toValue) });
     }
+    if (entry.type === "custom_field_changed") {
+      const [from, to] = [entry.fromValue, entry.toValue] as ({ name?: string; value?: string | null } | null)[];
+      return tTask("activity.custom_field_changed", { field: to?.name ?? from?.name ?? "", from: from?.value ?? "—", to: to?.value ?? "—" });
+    }
+    if (entry.type === "moved") {
+      const [from, to] = [entry.fromValue, entry.toValue] as ({ name?: string; team?: string } | null)[];
+      return tTask("activity.moved", { from: from?.name ?? "", fromTeam: from?.team ?? "", to: to?.name ?? "", toTeam: to?.team ?? "" });
+    }
     if (entry.type.startsWith("review_")) {
       const value = (entry.toValue ?? {}) as { version?: number; name?: string };
       return tTask(`activity.${entry.type}`, { version: value.version ?? 0, name: value.name ?? "" });
@@ -247,6 +256,7 @@ export function TaskDiscussion({ taskId, comments, activity, people, selfId, can
     <div key={comment.id} id={`comment-${comment.id}`} className={`flex flex-col gap-1.5 rounded-xl border p-3 ${isReply ? "ml-6" : ""}`}>
       <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
         <span className="font-medium">{comment.authorName}</span>
+        {comment.byAutomation ? <Badge variant="outline">{t("byAutomation")}</Badge> : null}
         <time className="text-xs text-muted-foreground">{when(comment.createdAt)}</time>
         {comment.editedAt && !comment.deleted ? <span className="text-xs text-muted-foreground">{t("edited")}</span> : null}
       </div>

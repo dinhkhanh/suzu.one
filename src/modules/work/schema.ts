@@ -8,7 +8,14 @@ import { entity, orgUnit } from "../platform/org/schema";
 import { storedFile } from "../platform/files/schema";
 import { person } from "../platform/people/schema";
 import { task } from "../platform/tasks-engine/schema";
+import { registerCompletionGuard } from "../platform/tasks-engine/completion-guards";
 import type { IntakeField } from "./engine/intake";
+
+// The work handover step of an offboarding checklist cannot be completed while the leaver still
+// owns work (FR-PJM-45). Registered here, beside the tables, because this file is loaded with every
+// database access (src/lib/db/schema.ts): the guard is in place before any task can be completed,
+// whichever screen, action or job completes it. The check itself loads only when it first runs.
+registerCompletionGuard("work.exit_handover", () => import("./exit-guard").then((module) => module.exitHandoverGuard));
 
 export type CustomFieldValue = string | number | boolean | string[] | null;
 
@@ -183,7 +190,7 @@ export const workTask = pgTable(
     // Custom fields (FR-PJM-35): { [fieldId]: value }, checked against work_custom_field by the service.
     customValues: jsonb("custom_values").$type<Record<string, CustomFieldValue>>().notNull().default({}),
     // Triage (FR-PJM-32): work from outside the team waits here until a lead accepts it.
-    // null = not in triage (made by the team itself) | pending | accepted | declined | snoozed.
+    // null = not in triage (made by the team itself) | pending | accepted | declined | merged | snoozed.
     triageStatus: text("triage_status"),
     // intake | handoff | request
     triageSource: text("triage_source"),
@@ -284,9 +291,9 @@ export const workComment = pgTable(
     taskId: uuid("task_id")
       .notNull()
       .references(() => task.id, { onDelete: "cascade" }),
-    authorPersonId: uuid("author_person_id")
-      .notNull()
-      .references(() => person.id),
+    // Null when an automation posted it (FR-PJM-33): `automation_id` names the rule instead.
+    authorPersonId: uuid("author_person_id").references(() => person.id),
+    automationId: uuid("automation_id").references((): AnyPgColumn => workAutomation.id, { onDelete: "set null" }),
     parentId: uuid("parent_id").references((): AnyPgColumn => workComment.id),
     body: text("body").notNull(),
     mentions: jsonb("mentions").$type<string[]>().notNull().default([]),
@@ -365,10 +372,14 @@ export const workDeliverable = pgTable(
     // Review chains (FR-PJM-50): which chain the version runs through and the stage it waits at.
     chainId: uuid("chain_id"),
     stageIndex: integer("stage_index").notNull().default(0),
+    // Who the version waits for at its current stage, and until when. Kept on the version, not on
+    // work_task.reviewer_person_id: that one is the task's own reviewer, which a chain stage may name.
+    stageReviewerPersonId: uuid("stage_reviewer_person_id").references(() => person.id),
+    stageDueAt: timestamp("stage_due_at", { withTimezone: true }),
     // Set when the client approved this version (FR-PJM-51): it can no longer change.
     frozenAt: timestamp("frozen_at", { withTimezone: true }),
   },
-  (t) => [unique("work_deliverable_version_unique").on(t.taskId, t.version)],
+  (t) => [unique("work_deliverable_version_unique").on(t.taskId, t.version), index("work_deliverable_stage_reviewer_idx").on(t.stageReviewerPersonId).where(sql`${t.decision} = 'pending'`)],
 ).enableRLS();
 
 /** engine/recurrence.ts reads this. */
@@ -568,9 +579,10 @@ export const workHandoff = pgTable(
   "work_handoff",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    taskId: uuid("task_id")
-      .notNull()
-      .references(() => task.id, { onDelete: "cascade" }),
+    // null for a hand-off of something that is not a task: a client relationship (account), a
+    // project, a recurrence or a team role in an exit handover — `client_id` / `source_ref` say what.
+    taskId: uuid("task_id").references(() => task.id, { onDelete: "cascade" }),
+    clientId: uuid("client_id").references(() => workClient.id),
     // stage | cross_team | cover | cover_return | exit | account
     kind: text("kind").notNull(),
     packageId: uuid("package_id").references(() => workHandoffPackage.id, { onDelete: "set null" }),
@@ -595,7 +607,7 @@ export const workHandoff = pgTable(
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("work_handoff_task_idx").on(t.taskId, t.createdAt), index("work_handoff_to_idx").on(t.toPersonId).where(sql`${t.status} = 'pending'`), index("work_handoff_team_idx").on(t.toTeamId).where(sql`${t.status} = 'pending'`)],
+  (t) => [index("work_handoff_task_idx").on(t.taskId, t.createdAt), index("work_handoff_client_idx").on(t.clientId).where(sql`${t.clientId} IS NOT NULL`), index("work_handoff_to_idx").on(t.toPersonId).where(sql`${t.status} = 'pending'`), index("work_handoff_team_idx").on(t.toTeamId).where(sql`${t.status} = 'pending'`)],
 ).enableRLS();
 
 // Leave cover (FR-PJM-44): one plan per leave request, one row per thing covered.
@@ -614,6 +626,8 @@ export const workCoverPlan = pgTable(
     defaultCoverPersonId: uuid("default_cover_person_id").references(() => person.id),
     note: jsonb("note").$type<HandoffNote>().notNull().default({}),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    // When the covers took the work over: the leave's first day, or the submission if it had started.
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [index("work_cover_plan_person_idx").on(t.personId, t.fromDate)],
@@ -791,8 +805,10 @@ export const workPublishResult = pgTable(
 ).enableRLS();
 
 // Automations (FR-PJM-33): when <trigger> [and <conditions>] then <actions>.
-export type AutomationTrigger = { type: string; stateId?: string; field?: string; decision?: string; percent?: number };
+// `days` on "due date reached": that many days after the due date (1 = overdue by a day).
+export type AutomationTrigger = { type: string; stateId?: string; field?: string; decision?: string; percent?: number; days?: number };
 export type AutomationCondition = { field: string; op: "eq" | "neq" | "set" | "unset"; value?: string | number | null };
+// A person is named by `personId`, or by `to` — a role on the task ("role:requester", …) resolved when the rule runs.
 export type AutomationAction = { type: string; stateId?: string; personId?: string; labelId?: string; days?: number; templateId?: string; text?: string; to?: string };
 export const workAutomation = pgTable(
   "work_automation",

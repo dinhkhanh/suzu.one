@@ -80,3 +80,9 @@ export { loadReviewEvidence, type ReviewEvidence } from "./evidence";
 export { canDecideOutcome, canHoldOneOnOneWith, canRaiseOutcome, canReadOneOnOne, canReadOneOnOnePrivate, canSeeOutcome, canWriteOneOnOne } from "./policy";
 export { addOneOnOneAction, completeOneOnOneAction, createOneOnOne, findOneOnOne, findOneOnOneAction, listOneOnOnes, loadOneOnOne, myReports, ONE_ON_ONE_CONTEXT, type OneOnOneActionRow, type OneOnOneRow, type OneOnOneView, shareOneOnOne, updateOneOnOne } from "./one-on-ones";
 export { decideOutcome, findOutcome, listOutcomes, OUTCOME_CONTEXT, type OutcomeInput, raiseOutcome, type ReviewOutcomeRow } from "./outcomes";
+
+// ── KPI actuals proposed from work (Phase 10, FR-PJM-62) ────────────────────────────────────
+// The reports module's job computes the figures from PJM data and hands them here; a proposal is
+// never scored until the KPI's scorer confirms or corrects it through the actuals grid.
+export { listWorkKpiDue, proposeWorkActuals, proposalsFor, type WorkKpiLine, type WorkProposal } from "./work-actuals";
+export { availableMinutesOf, EMPTY_WORK_FACTS, isProposalDay, periodRange, previousMonth, type WorkFacts, workMetricValue } from "./engine/work-metrics";

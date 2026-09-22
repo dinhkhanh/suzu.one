@@ -11,6 +11,7 @@ import { AttachmentButton, CancelLeaveButton } from "@/modules/leave/ui/request-
 import { DecisionForm } from "@/modules/platform/approvals/ui/decision-form";
 import { RequestHistory, RequestStatusBadge, RequestTools } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
+import { CoverPlanPanel } from "@/modules/work/ui/cover-panel";
 
 export const metadata: Metadata = { title: "Leave request" };
 
@@ -102,6 +103,7 @@ export default async function LeaveRequestPage(props: PageProps<"/approvals/leav
         </section>
       ) : null}
 
+      <CoverPlanPanel leaveRequestId={leaveRequest.id} viewerPersonId={user.person.id} />
       {view.canDecide && leaveRequest.status === "pending" ? <DecisionForm requestId={request.id} action={decideLeaveAction} /> : null}
       {canCancel ? (
         <div className="flex flex-wrap items-center gap-2">

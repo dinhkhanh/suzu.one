@@ -8,8 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { createTaskAction, deleteViewAction, saveViewAction, updateTaskAction } from "../actions";
-import { FILTER_KEYS, filterTasks, type Grouping, GROUPINGS, groupTasks, nestTasks, type TaskFilters } from "../engine/filter";
+import { customKey, fieldIdOf } from "../engine/custom-fields";
+import { filterEntries, filterTasks, GROUPINGS, groupTasks, type ListGrouping, type ListSort, nestTasks, readFilters, readGrouping, readSort, SORTS, sortTasks, type TaskFilters } from "../engine/filter";
 import { PRIORITIES } from "../enums";
+import { CustomFieldFilters, CustomValueText, type FieldView } from "./custom-fields";
+import { writeFiltersToUrl } from "./filter-bar";
+import { useHandoffGate } from "./handoff";
 import { LabelChip } from "./team-forms";
 
 export type ListTask = {
@@ -28,6 +32,19 @@ export type ListTask = {
   blockedBy: number;
   subtasks: { done: number; total: number };
   checklist: { done: number; total: number };
+  startDate?: string | null;
+  estimateMinutes?: number | null;
+  projectId?: string | null;
+  /** FR-PJM-35. */
+  customValues?: Record<string, unknown>;
+  /** FR-PJM-32: pending / snoozed work is hidden unless the filter asks. */
+  triageStatus?: string | null;
+  /** FR-PJM-28. */
+  blocker?: { reason: string; neededName: string | null } | null;
+  /** FR-PJM-10. */
+  cycleId?: string | null;
+  /** FR-PJM-44: the assignee is on leave — "away, covered by X". */
+  away?: { until: string; coverName: string | null } | null;
 };
 
 export type ListOptions = {
@@ -35,7 +52,16 @@ export type ListOptions = {
   people: { id: string; fullName: string }[];
   labels: { id: string; name: string; color: string }[];
   clients: { id: string; name: string }[];
+  /** The custom fields of the list's tasks (FR-PJM-35). */
+  fields?: FieldView[];
+  /** The team's open cycles (FR-PJM-10), for the filter and bulk edit. */
+  cycles?: { id: string; label: string }[];
 };
+
+/** Sort choices: the fixed ones both ways, then each field's. */
+export function sortChoices(fields: FieldView[]): { value: string; field?: FieldView }[] {
+  return [...SORTS.flatMap((key) => (key === "rank" ? [{ value: key }] : [{ value: key }, { value: `-${key}` }])), ...fields.flatMap((field) => [{ value: customKey(field.id), field }, { value: `-${customKey(field.id)}`, field }])];
+}
 
 const PRIORITY_CLASS: Record<number, string> = { 1: "text-red-600 dark:text-red-400", 2: "text-orange-600 dark:text-orange-400", 3: "text-blue-600 dark:text-blue-400", 4: "text-muted-foreground" };
 
@@ -45,6 +71,7 @@ export function TaskListView({
   scope,
   initialFilters,
   initialGrouping,
+  initialSort = "rank",
   selfId,
   today,
   canContribute,
@@ -55,7 +82,8 @@ export function TaskListView({
   /** Where quick-create files a new task. */
   scope: { teamId: string; projectId: string | null };
   initialFilters: TaskFilters;
-  initialGrouping: Grouping;
+  initialGrouping: ListGrouping;
+  initialSort?: ListSort;
   selfId: string;
   today: string;
   canContribute: boolean;
@@ -67,7 +95,10 @@ export function TaskListView({
   const format = useFormatter();
   const router = useRouter();
   const [filters, setFilters] = useState<TaskFilters>(initialFilters);
-  const [grouping, setGrouping] = useState<Grouping>(initialGrouping);
+  const [grouping, setGrouping] = useState<ListGrouping>(initialGrouping);
+  const [sort, setSort] = useState<ListSort>(initialSort);
+  const fields = useMemo(() => (options.fields ?? []).filter((field) => field.isActive), [options.fields]);
+  const cardFields = fields.filter((field) => field.showOnCard);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const titleInput = useRef<HTMLInputElement>(null);
@@ -77,16 +108,8 @@ export function TaskListView({
   );
 
   // Filters live in the URL (shareable, survive a reload) without a server round trip.
-  function sync(nextFilters: TaskFilters, nextGrouping: Grouping) {
-    const params = new URLSearchParams(window.location.search);
-    for (const key of FILTER_KEYS) {
-      if (nextFilters[key]) params.set(key, nextFilters[key]);
-      else params.delete(key);
-    }
-    if (nextGrouping === "none") params.delete("group");
-    else params.set("group", nextGrouping);
-    const query = params.toString();
-    window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
+  function sync(nextFilters: TaskFilters, nextGrouping: ListGrouping, nextSort: ListSort = sort) {
+    writeFiltersToUrl(nextFilters, { group: nextGrouping === "none" ? null : nextGrouping, sort: nextSort === "rank" ? null : nextSort });
   }
   const setFilter = (key: keyof TaskFilters, value: string) => {
     const next = { ...filters, [key]: value || undefined };
@@ -94,22 +117,33 @@ export function TaskListView({
     sync(next, grouping);
   };
 
-  const visible = useMemo(() => filterTasks(shown, filters, { selfId, today }), [shown, filters, selfId, today]);
+  const names = useMemo(() => new Map(options.people.map((person) => [person.id, person.fullName])), [options.people]);
+  const visible = useMemo(() => sortTasks(filterTasks(shown, filters, { selfId, today, fields }), sort, fields, names), [shown, filters, selfId, today, fields, sort, names]);
+  const groupField = fields.find((field) => field.id === fieldIdOf(grouping));
   const groups = useMemo(() => {
-    const order = grouping === "status" ? options.states.map((state) => state.id) : grouping === "assignee" ? options.people.map((person) => person.id) : options.clients.map((client) => client.id);
-    return groupTasks(visible, grouping, order);
-  }, [visible, grouping, options]);
+    const order = groupField ? (groupField.type === "checkbox" ? ["1", "0"] : groupField.type === "person" ? options.people.map((person) => person.id) : groupField.options.map((option) => option.id)) : grouping === "status" ? options.states.map((state) => state.id) : grouping === "assignee" ? options.people.map((person) => person.id) : options.clients.map((client) => client.id);
+    return groupTasks(visible, grouping, order, fields);
+  }, [visible, grouping, options, fields, groupField]);
   const groupName = (key: string) => {
+    if (groupField) {
+      if (key === "none") return tWork("customFields.filterEmpty", { name: groupField.name });
+      if (groupField.type === "checkbox") return `${groupField.name}: ${key === "1" ? tWork("customFields.yes") : tWork("customFields.no")}`;
+      if (groupField.type === "person") return names.get(key) ?? key;
+      if (groupField.type === "select" || groupField.type === "multi_select") return groupField.options.find((option) => option.id === key)?.label ?? key;
+      return key;
+    }
     if (grouping === "status") return options.states.find((state) => state.id === key)?.name ?? key;
     if (grouping === "assignee") return key === "none" ? t("unassigned") : (options.people.find((person) => person.id === key)?.fullName ?? shown.find((task) => task.assigneePersonId === key)?.assigneeName ?? key);
     return key === "none" ? t("noClient") : (options.clients.find((client) => client.id === key)?.name ?? key);
   };
   const failed = (result: { ok: boolean; error?: string; message?: string }) => setErrorKey(result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
+  const gate = useHandoffGate();
 
   function moveState(task: ListTask, stateId: string) {
     startTransition(async () => {
       applyOptimistic({ type: "state", id: task.id, stateId });
       const result = await updateTaskAction({ taskId: task.id, stateId });
+      gate.intercept(result);
       failed(result);
       router.refresh();
     });
@@ -131,20 +165,23 @@ export function TaskListView({
     });
   }
 
-  const filtered = FILTER_KEYS.some((key) => filters[key]);
+  const filtered = filterEntries(filters).length > 0;
 
   function applyView(view: { filters: Record<string, string> }) {
-    const next: TaskFilters = Object.fromEntries(FILTER_KEYS.flatMap((key) => (view.filters[key] ? [[key, view.filters[key]]] : [])));
-    const nextGrouping = GROUPINGS.includes(view.filters.group as Grouping) ? (view.filters.group as Grouping) : "none";
+    // Saved before custom fields existed or after: whatever keys the view has, the list reads.
+    const next = readFilters(view.filters);
+    const nextGrouping = readGrouping(view.filters.group);
+    const nextSort = readSort(view.filters.sort);
     setFilters(next);
     setGrouping(nextGrouping);
-    sync(next, nextGrouping);
+    setSort(nextSort);
+    sync(next, nextGrouping, nextSort);
   }
   function saveView(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
-    const current = { ...Object.fromEntries(FILTER_KEYS.flatMap((key) => (filters[key] ? [[key, filters[key]]] : []))), ...(grouping === "none" ? {} : { group: grouping }) };
+    const current = { ...Object.fromEntries(filterEntries(filters)), ...(grouping === "none" ? {} : { group: grouping }), ...(sort === "rank" ? {} : { sort }) };
     startTransition(async () => {
       failed(await saveViewAction({ projectId: scope.projectId, name: data.get("name"), isShared: data.get("isShared") === "on", filters: current }));
       form.reset();
@@ -209,11 +246,23 @@ export function TaskListView({
           <option value="week">{t("dueWeek")}</option>
           <option value="none">{t("dueNone")}</option>
         </Select>
+        <CustomFieldFilters fields={fields} filters={filters} setFilter={setFilter} people={options.people} />
+        {options.cycles?.length ? (
+          <Select aria-label={tWork("cycles.filter")} value={filters.cycle ?? ""} onChange={(event) => setFilter("cycle", event.target.value)} className="w-40">
+            <option value="">{tWork("cycles.anyCycle")}</option>
+            <option value="none">{tWork("cycles.noCycle")}</option>
+            {options.cycles.map((cycle) => (
+              <option key={cycle.id} value={cycle.id}>
+                {cycle.label}
+              </option>
+            ))}
+          </Select>
+        ) : null}
         <Select
           aria-label={t("group")}
           value={grouping}
           onChange={(event) => {
-            const next = event.target.value as Grouping;
+            const next = readGrouping(event.target.value);
             setGrouping(next);
             sync(filters, next);
           }}
@@ -224,9 +273,38 @@ export function TaskListView({
               {t(`grouping.${value}`)}
             </option>
           ))}
+          {fields
+            .filter((field) => field.type !== "text" && field.type !== "url")
+            .map((field) => (
+              <option key={field.id} value={customKey(field.id)}>
+                {t("groupByField", { name: field.name })}
+              </option>
+            ))}
+        </Select>
+        <Select
+          aria-label={t("sort")}
+          value={sort}
+          onChange={(event) => {
+            const next = readSort(event.target.value);
+            setSort(next);
+            sync(filters, grouping, next);
+          }}
+          className="w-44"
+        >
+          {sortChoices(fields).map((choice) => (
+            <option key={choice.value} value={choice.value}>
+              {choice.field ? t(choice.value.startsWith("-") ? "sorts.-field" : "sorts.field", { name: choice.field.name }) : t(`sorts.${choice.value as "rank"}`)}
+            </option>
+          ))}
         </Select>
         <label className="flex items-center gap-1.5 text-sm">
           <input type="checkbox" checked={filters.closed === "1"} onChange={(event) => setFilter("closed", event.target.checked ? "1" : "")} /> {t("showClosed")}
+        </label>
+        <label className="flex items-center gap-1.5 text-sm">
+          <input type="checkbox" checked={filters.blocked === "1"} onChange={(event) => setFilter("blocked", event.target.checked ? "1" : "")} /> {t("onlyBlocked")}
+        </label>
+        <label className="flex items-center gap-1.5 text-sm">
+          <input type="checkbox" checked={filters.triage === "1"} onChange={(event) => setFilter("triage", event.target.checked ? "1" : "")} /> {t("showTriage")}
         </label>
         {filtered ? (
           <Button
@@ -285,6 +363,7 @@ export function TaskListView({
         </div>
       ) : null}
 
+      {gate.sheet}
       {errorKey ? (
         <p role="alert" className="text-sm text-destructive">
           {tWork.has(`errors.${errorKey}`) ? tWork(`errors.${errorKey}`) : tWork("errors.generic")}
@@ -323,7 +402,21 @@ export function TaskListView({
                     <Link href={`/work/tasks/${task.id}`} className={`min-w-0 flex-1 truncate hover:underline ${open ? "font-medium" : "text-muted-foreground line-through"}`}>
                       {task.title}
                     </Link>
+                    {task.blocker ? (
+                      <Badge variant="destructive" title={task.blocker.neededName ? `${task.blocker.reason} — ${tWork("blockers.waitingOn", { name: task.blocker.neededName })}` : task.blocker.reason}>
+                        {tWork("blockers.badge")}
+                      </Badge>
+                    ) : null}
                     {task.blockedBy > 0 ? <Badge variant="destructive">{t("blocked")}</Badge> : null}
+                    {task.triageStatus === "pending" || task.triageStatus === "snoozed" ? <Badge variant="warning">{t("inTriage")}</Badge> : null}
+                    {task.away ? <Badge variant="outline">{task.away.coverName ? tWork("cover.awayCovered", { name: task.away.coverName }) : tWork("cover.away")}</Badge> : null}
+                    {cardFields.map((field) =>
+                      task.customValues?.[field.id] === undefined ? null : (
+                        <span key={field.id} className="text-xs text-muted-foreground" title={field.name}>
+                          <CustomValueText field={field} value={task.customValues[field.id]} people={options.people} />
+                        </span>
+                      ),
+                    )}
                     {task.subtasks.total > 0 ? <span className="text-xs text-muted-foreground">{t("subtasks", task.subtasks)}</span> : null}
                     {task.checklist.total > 0 ? <span className="text-xs text-muted-foreground">☑ {task.checklist.done}/{task.checklist.total}</span> : null}
                     {task.labelIds.map((id) => {

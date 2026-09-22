@@ -13,6 +13,16 @@ import { FilterBar, useUrlFilters } from "./filter-bar";
 import type { ListOptions, ListTask } from "./task-list-view";
 
 export type CalendarTask = ListTask & { teamId: string; channel: string | null; contentFormat: string | null; projectName: string | null; editable: boolean };
+/** A post of the publish log on the day it is planned for (or went out), flagged (FR-PJM-54). */
+export type CalendarPost = { id: string; taskId: string; key: string; title: string; teamId: string; platform: string; date: string; flag: "published" | "late" | "planned" | "unscheduled" | "cancelled"; time: string | null };
+
+const POST_CLASS: Record<CalendarPost["flag"], string> = {
+  published: "border-emerald-600/40 text-emerald-800 dark:text-emerald-300",
+  late: "border-destructive/60 text-destructive",
+  planned: "border-dashed border-border text-muted-foreground",
+  unscheduled: "border-dashed border-border text-muted-foreground",
+  cancelled: "border-border text-muted-foreground line-through",
+};
 
 const MAX_PER_DAY = 4;
 const CHANNEL_CLASS: Record<string, string> = {
@@ -37,6 +47,8 @@ export function CalendarView({
   initialExtra,
   selfId,
   today,
+  posts,
+  missingTaskIds,
 }: {
   tasks: CalendarTask[];
   options: ListOptions;
@@ -48,6 +60,10 @@ export function CalendarView({
   initialExtra: { team?: string; channel?: string };
   selfId: string;
   today: string;
+  /** The content calendar's posts: planned against published (FR-PJM-54). */
+  posts?: CalendarPost[];
+  /** Content tasks due with no post planned at all. */
+  missingTaskIds?: string[];
 }) {
   const t = useTranslations("work.calendar");
   const tWork = useTranslations("work");
@@ -66,9 +82,12 @@ export function CalendarView({
   const grid = useMemo(() => monthGrid(month), [month]);
   const offByDate = useMemo(() => new Map(daysOff.map((day) => [day.date, day.name])), [daysOff]);
   const byDate = useMemo(() => {
-    const visible = filterTasks(shown, { ...filters, closed: "1" }, { selfId, today }).filter((task) => (!extra.team || task.teamId === extra.team) && (!extra.channel || task.channel === extra.channel));
+    const visible = filterTasks(shown, { ...filters, closed: "1" }, { selfId, today, fields: options.fields }).filter((task) => (!extra.team || task.teamId === extra.team) && (!extra.channel || task.channel === extra.channel));
     return placeByDueDate(visible);
-  }, [shown, filters, extra, selfId, today]);
+  }, [shown, filters, extra, selfId, today, options.fields]);
+
+  const postsByDate = useMemo(() => Map.groupBy((posts ?? []).filter((post) => (!extra.team || post.teamId === extra.team) && (!extra.channel || post.platform === extra.channel)), (post) => post.date), [posts, extra]);
+  const missing = useMemo(() => new Set(missingTaskIds ?? []), [missingTaskIds]);
 
   const setExtraKey = (key: "team" | "channel", value: string) => {
     setExtra((current) => ({ ...current, [key]: value || undefined }));
@@ -187,10 +206,22 @@ export function CalendarView({
                       title={[task.key, task.title, task.projectName, task.assigneeName, task.channel ? tWork(`channels.${task.channel}`) : null].filter(Boolean).join(" · ")}
                       className={`truncate rounded px-1.5 py-0.5 text-xs hover:underline ${task.channel && CHANNEL_CLASS[task.channel] ? CHANNEL_CLASS[task.channel] : "bg-muted"} ${open ? "" : "line-through opacity-60"} ${late ? "ring-1 ring-destructive" : ""}`}
                     >
+                      {missing.has(task.id) ? (
+                        <span className="mr-1 font-semibold text-destructive" title={t("postMissing")} aria-label={t("postMissing")}>
+                          !
+                        </span>
+                      ) : null}
                       {task.title}
                     </Link>
                   );
                 })}
+                {(postsByDate.get(day.date) ?? []).map((post) => (
+                  <Link key={post.id} href={`/work/tasks/${post.taskId}`} title={[post.key, post.title, tWork(`channels.${post.platform}`), t(`posts.${post.flag}`)].join(" · ")} className={`truncate rounded border px-1.5 py-0.5 text-[11px] hover:underline ${POST_CLASS[post.flag]}`}>
+                    {post.flag === "published" ? "✓ " : post.flag === "late" ? "⚠ " : "◷ "}
+                    {post.time ? `${post.time} ` : ""}
+                    {post.title}
+                  </Link>
+                ))}
                 {own.length > MAX_PER_DAY ? (
                   <button type="button" className="px-1 text-left text-[11px] text-muted-foreground hover:underline" onClick={() => setExpanded(expanded === day.date ? null : day.date)}>
                     {expanded === day.date ? t("less") : t("more", { count: own.length - MAX_PER_DAY })}
@@ -202,6 +233,7 @@ export function CalendarView({
         </div>
       </div>
       <p className="text-xs text-muted-foreground">{t("hint")}</p>
+      {posts ? <p className="text-xs text-muted-foreground">{t("postLegend")}</p> : null}
     </div>
   );
 }

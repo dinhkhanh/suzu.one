@@ -12,7 +12,7 @@ export function GoogleSignInButton({ label }: { label: string }) {
     setPending(true);
     const { error } = await authClient.signIn.social({
       provider: "google",
-      callbackURL: "/home",
+      callbackURL: "/today",
       errorCallbackURL: "/sign-in",
     });
     if (error) {

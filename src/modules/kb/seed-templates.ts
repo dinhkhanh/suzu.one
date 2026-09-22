@@ -220,6 +220,113 @@ _Vài dòng về nhóm, cách làm việc, ai là người đồng hành (buddy)
 - …
 `,
   },
+  // The starters of a project's document space (FR-PJM-31), beside "Biên bản họp" above.
+  {
+    key: "project_brief",
+    name: "Brief dự án",
+    description: "Mục tiêu, khách hàng, thông điệp, sản phẩm bàn giao và mốc thời gian của một dự án.",
+    markdown: `**Khách hàng / thương hiệu:** … · **Mã dự án:** … · **Người phụ trách:** …
+
+> [!NOTE]
+> Brief chính thức để duyệt khởi động nằm ở tab **Kế hoạch** của dự án. Trang này là nơi nhóm viết chi tiết và cập nhật khi làm.
+
+## Bối cảnh
+
+_Vì sao có dự án này, khách hàng đang gặp vấn đề gì._
+
+## Mục tiêu
+
+- …
+
+## Đối tượng mục tiêu
+
+- …
+
+## Thông điệp chính
+
+1. …
+
+## Sản phẩm bàn giao
+
+| Hạng mục | Số lượng | Định dạng / kênh | Hạn |
+|---|---:|---|---|
+| | | | |
+
+## Tư liệu từ khách hàng
+
+- Logo, guideline, hình ảnh sản phẩm: …
+- Link thư mục Drive: …
+
+## Lưu ý và điều cần tránh
+
+- …
+`,
+  },
+  {
+    key: "video_script",
+    name: "Kịch bản video",
+    description: "Kịch bản theo cảnh: hình ảnh, lời thoại / voice-over, chữ trên màn hình, thời lượng.",
+    markdown: `**Tên video:** … · **Thời lượng:** … giây · **Tỷ lệ khung hình:** 9:16 / 16:9 · **Kênh:** …
+
+## Ý tưởng chính
+
+_Một câu: người xem nhớ gì sau khi xem._
+
+## Kịch bản theo cảnh
+
+| Cảnh | Hình ảnh | Lời thoại / VO | Chữ trên màn hình | Thời lượng |
+|---:|---|---|---|---:|
+| 1 | | | | |
+| 2 | | | | |
+| 3 | | | | |
+
+## Âm nhạc và âm thanh
+
+- …
+
+## Kêu gọi hành động (CTA)
+
+- …
+
+## Góp ý và lần sửa
+
+_Ghi lại góp ý của khách hàng theo từng vòng; phiên bản trang được lưu tự động._
+`,
+  },
+  {
+    key: "shot_list",
+    name: "Danh sách cảnh quay (shot list)",
+    description: "Từng cảnh quay: góc máy, bối cảnh, đạo cụ, diễn viên, thứ tự quay trong ngày.",
+    markdown: `**Ngày quay:** … · **Địa điểm:** … · **Đạo diễn / quay phim:** …
+
+## Danh sách cảnh quay
+
+| # | Cảnh (theo kịch bản) | Cỡ cảnh / góc máy | Chuyển động máy | Bối cảnh | Đạo cụ | Diễn viên | Ghi chú |
+|---:|---|---|---|---|---|---|---|
+| 1 | | | | | | | |
+| 2 | | | | | | | |
+
+## Lịch quay trong ngày
+
+| Giờ | Nội dung |
+|---|---|
+| | |
+
+## Thiết bị
+
+- [ ] Máy quay, ống kính
+- [ ] Đèn
+- [ ] Âm thanh
+- [ ] Pin, thẻ nhớ
+
+## Liên hệ tại hiện trường
+
+- …
+`,
+  },
 ];
+
+/** The templates a project's document space starts with, in the order they are made (FR-PJM-31). */
+export const PROJECT_STARTER_TEMPLATES = ["project_brief", "video_script", "shot_list", "meeting_notes"] as const;
 
 export const kbTemplateSeedRows = () => TEMPLATES.map((template, index) => ({ key: template.key, name: template.name, description: template.description, content: markdownToDoc(template.markdown, { liftTitle: false }).doc, isSystem: true, sortOrder: (index + 1) * 10 }));
