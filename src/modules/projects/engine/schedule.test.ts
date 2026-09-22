@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addWorkingDays, criticalPath, isWorkingDay, planMove, shiftTask, workCalendar, workingDaysBetween, workingDuration } from "./schedule";
+import { addWorkingDays, criticalPath, isWorkingDay, labelWidth, planMove, shiftTask, workCalendar, workingDaysBetween, workingDuration } from "./schedule";
 
 // October 2026: Thursday 1st. Weekends 3–4, 10–11, 17–18, 24–25, 31. A holiday on Friday 16th
 // and a company day off on Monday 19th make a four-day weekend.
@@ -114,5 +114,21 @@ describe("the critical path (C)", () => {
   });
   it("is empty without dated open work", () => {
     expect(criticalPath(office, [{ id: "a", startDate: null, dueDate: null, open: true }], [])).toEqual(new Set());
+  });
+});
+
+describe("labelWidth", () => {
+  it("grows with the text and leaves room for padding", () => {
+    expect(labelWidth("")).toBe(12);
+    expect(labelWidth("Kế hoạch quay ngày 1")).toBeGreaterThan(120);
+    expect(labelWidth("Kế hoạch quay ngày 1")).toBeGreaterThan(labelWidth("Kế hoạch"));
+  });
+  it("counts wide characters double", () => {
+    expect(labelWidth("日本語のタスク")).toBeGreaterThan(labelWidth("abcdefg"));
+  });
+  it("tells a one-day bar (28 px) from a two-week bar", () => {
+    const title = "Shot list cảnh sum họp";
+    expect(labelWidth(title)).toBeGreaterThan(28);
+    expect(labelWidth(title)).toBeLessThan(14 * 28);
   });
 });

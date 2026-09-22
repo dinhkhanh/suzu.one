@@ -91,15 +91,19 @@ async function eligibleCovers(tx: Executor, items: readonly Pick<CoverItemRow, "
   const taskIds = items.filter((item) => item.itemType === "task" || item.itemType === "review").map((item) => item.itemId);
   const recurrenceIds = items.filter((item) => item.itemType === "recurrence").map((item) => item.itemId);
   const [tasks, recurrences] = await Promise.all([
-    taskIds.length ? tx.select({ id: schema.workTask.taskId, teamId: schema.workTask.teamId, projectId: schema.workTask.projectId }).from(schema.workTask).where(inArray(schema.workTask.taskId, taskIds)) : [],
-    recurrenceIds.length ? tx.select({ id: schema.workRecurrence.id, teamId: schema.workRecurrence.teamId, projectId: schema.workRecurrence.projectId }).from(schema.workRecurrence).where(inArray(schema.workRecurrence.id, recurrenceIds)) : [],
+    taskIds.length
+      ? tx.select({ id: schema.workTask.taskId, teamId: schema.workTask.teamId, projectId: schema.workTask.projectId, visibility: schema.workProject.visibility }).from(schema.workTask).leftJoin(schema.workProject, eq(schema.workProject.id, schema.workTask.projectId)).where(inArray(schema.workTask.taskId, taskIds))
+      : [],
+    recurrenceIds.length
+      ? tx.select({ id: schema.workRecurrence.id, teamId: schema.workRecurrence.teamId, projectId: schema.workRecurrence.projectId, visibility: schema.workProject.visibility }).from(schema.workRecurrence).leftJoin(schema.workProject, eq(schema.workProject.id, schema.workRecurrence.projectId)).where(inArray(schema.workRecurrence.id, recurrenceIds))
+      : [],
   ]);
   const scopes = new Map([...tasks, ...recurrences].map((row) => [row.id, row]));
   const teamIds = [...new Set([...scopes.values()].map((scope) => scope.teamId))];
   const projectIds = [...new Set([...scopes.values()].flatMap((scope) => (scope.projectId ? [scope.projectId] : [])))];
   const active = sql`${schema.person.status} <> 'offboarded'`;
   const [teamPeople, projectPeople] = await Promise.all([
-    teamIds.length ? tx.select({ scopeId: schema.workTeamMember.teamId, personId: schema.workTeamMember.personId }).from(schema.workTeamMember).innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId)).where(and(inArray(schema.workTeamMember.teamId, teamIds), active)) : [],
+    teamIds.length ? tx.select({ scopeId: schema.workTeamMember.teamId, personId: schema.workTeamMember.personId, role: schema.workTeamMember.role }).from(schema.workTeamMember).innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId)).where(and(inArray(schema.workTeamMember.teamId, teamIds), active)) : [],
     projectIds.length ? tx.select({ scopeId: schema.workProjectMember.projectId, personId: schema.workProjectMember.personId }).from(schema.workProjectMember).innerJoin(schema.person, eq(schema.person.id, schema.workProjectMember.personId)).where(and(inArray(schema.workProjectMember.projectId, projectIds), active)) : [],
   ]);
   const byTeam = Map.groupBy(teamPeople, (row) => row.scopeId);
@@ -108,7 +112,10 @@ async function eligibleCovers(tx: Executor, items: readonly Pick<CoverItemRow, "
   for (const item of items) {
     const scope = scopes.get(item.itemId);
     if (!scope) continue;
-    const people = [...(byTeam.get(scope.teamId) ?? []), ...(scope.projectId ? (byProject.get(scope.projectId) ?? []) : [])];
+    const inProject = scope.projectId ? (byProject.get(scope.projectId) ?? []) : [];
+    const inTeam = byTeam.get(scope.teamId) ?? [];
+    // A private project is its own people and the team's leads — who may open it and no one else.
+    const people = [...(scope.visibility === "private" ? inTeam.filter((row) => row.role === "lead") : inTeam), ...inProject];
     result.set(item.id, new Set(people.map((row) => row.personId)));
   }
   return result;

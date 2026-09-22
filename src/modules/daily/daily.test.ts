@@ -340,6 +340,8 @@ describe("private work in someone else's report", () => {
     await db().update(schema.timesheetWeek).set({ status: "open" }).where(eq(schema.timesheetWeek.personId, ids.huy));
     ids.hr = (await db().insert(schema.workProject).values({ teamId: ids.design, entityId: ids.szm, name: "Tuyển Art Director", visibility: "private", leadPersonId: ids.mai }).returning())[0].id;
     await db().insert(schema.projectPlan).values({ projectId: ids.hr, kind: "internal" });
+    // Its people: a private project's work goes to nobody outside it.
+    await db().insert(schema.workProjectMember).values([{ projectId: ids.hr, personId: ids.mai, role: "lead" as const }, { projectId: ids.hr, personId: ids.huy, role: "member" as const }]);
     const doing = (await listStates([ids.design])).find((state) => state.category === "in_progress")!;
     ids.t6 = (await createWorkTask({ teamId: ids.design, projectId: ids.hr, title: "Sơ tuyển ứng viên", assigneePersonId: ids.huy, stateId: doing.id }, ids.mai)).task.id;
     await db().insert(schema.workBlocker).values({ taskId: ids.t6, reason: "Chờ mức lương duyệt", raisedByPersonId: ids.huy, raisedAt: at("16:00") });

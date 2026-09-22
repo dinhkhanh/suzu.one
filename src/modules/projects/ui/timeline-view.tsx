@@ -15,12 +15,13 @@ import { useRouter } from "next/navigation";
 import { type KeyboardEvent, type PointerEvent, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { moveTimelineTaskAction } from "../actions";
-import { criticalPath, type MovePlan, planMove, workCalendar } from "../engine/schedule";
+import { criticalPath, labelWidth, type MovePlan, planMove, workCalendar } from "../engine/schedule";
 import type { TimelineMilestone, TimelinePhase, TimelineTask, TimelineView as View } from "../timeline";
 
 const ROW_H = 34;
 const HEADER_H = 46;
 const OVERSCAN = 8;
+const OUTSIDE_LABEL_MAX = 180;
 const DAY = 86_400_000;
 const parse = (date: string) => Date.parse(`${date}T00:00:00Z`);
 const iso = (time: number) => new Date(time).toISOString().slice(0, 10);
@@ -327,9 +328,13 @@ export function TimelineView({ view }: { view: View }) {
     const canDrag = editable(task);
     const title = `${task.key} ${task.title} · ${dates.startDate ?? dates.dueDate} → ${dates.dueDate}${task.slipDays ? ` · ${slipText(task.slipDays)}` : ""}`;
     const ghost = showBaseline && task.baselineDue ? { left: x(task.baselineStart ?? task.baselineDue), width: Math.max(dayW, x(task.baselineDue) + dayW - x(task.baselineStart ?? task.baselineDue)) } : null;
+    // A task of a day or two is a bar too narrow for its name ("K…"), so the name goes beside the
+    // bar instead: to its right, or to its left when the bar sits near the right edge of the chart.
+    const outside = labelWidth(task.title) > width - 6 ? (left + width + 4 + labelWidth(task.title) <= chartW ? "right" : "left") : null;
+    const outsideW = Math.min(labelWidth(task.title), OUTSIDE_LABEL_MAX);
     const body = (
       <>
-        <span className="truncate px-1.5">{task.title}</span>
+        {outside ? null : <span className="truncate px-1.5">{task.title}</span>}
         {canDrag ? (
           <>
             <span aria-hidden onPointerDown={(event) => onPointerDown(event, task, "start")} className="absolute inset-y-0 left-0 w-1.5 cursor-ew-resize rounded-l-md hover:bg-black/15" />
@@ -351,8 +356,19 @@ export function TimelineView({ view }: { view: View }) {
             {body}
           </span>
         )}
+        {outside ? (
+          <span
+            aria-hidden
+            // A halo in the page's own background colour, so the grid lines, the today line and the
+            // "blocks" arrows behind the name do not run through it.
+            className="pointer-events-none absolute top-1/2 block -translate-y-1/2 truncate text-[11px] leading-none whitespace-nowrap text-foreground [text-shadow:0_0_3px_var(--background),0_0_3px_var(--background),0_0_2px_var(--background)]"
+            style={outside === "right" ? { left: left + width + 4, maxWidth: OUTSIDE_LABEL_MAX } : { left: Math.max(0, left - 4 - outsideW), width: outsideW, textAlign: "right" }}
+          >
+            {task.title}
+          </span>
+        ) : null}
         {task.slipDays ? (
-          <span className={`absolute top-1/2 -translate-y-1/2 pl-1 text-[10px] whitespace-nowrap ${task.slipDays > 0 ? "text-destructive" : "text-emerald-700 dark:text-emerald-400"}`} style={{ left: left + width + 2 }}>
+          <span className={`absolute top-1/2 -translate-y-1/2 pl-1 text-[10px] whitespace-nowrap ${task.slipDays > 0 ? "text-destructive" : "text-emerald-700 dark:text-emerald-400"}`} style={{ left: left + width + 2 + (outside === "right" ? outsideW + 4 : 0) }}>
             {slipShort(task.slipDays)}
           </span>
         ) : null}

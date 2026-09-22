@@ -171,3 +171,14 @@ export function criticalPath(calendar: WorkCalendar, tasks: readonly (ScheduledT
   for (const [id, task] of dated) if (task.dueDate! >= finishOf(id)) critical.add(id);
   return critical;
 }
+
+/**
+ * Roughly how wide a task name is on the Gantt, in pixels at the chart's 11 px type. Measuring the
+ * text would cost a layout pass per bar on every scroll; an estimate is enough to decide whether a
+ * name fits inside its bar or has to be drawn beside it. Wide characters (CJK, emoji) count double.
+ */
+export function labelWidth(text: string): number {
+  let width = 0;
+  for (const character of text) width += /[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠\u{1F300}-\u{1FAFF}]/u.test(character) ? 11 : 6.2;
+  return Math.ceil(width) + 12;
+}

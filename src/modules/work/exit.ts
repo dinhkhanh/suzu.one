@@ -167,13 +167,21 @@ export async function gateOwnership(executor: Executor, viewer: WorkViewer, item
   const teamIds = [...new Set([...[...tasks.values()].map((task) => task.team.id), ...projects.map((row) => row.team.id), ...recurrences.map((row) => row.team.id), ...forms.map((row) => row.team.id), ...automations.map((row) => row.team.id), ...ledTeams.map((team) => team.id)])];
   const allProjectIds = [...new Set([...[...tasks.values()].flatMap((task) => (task.work.projectId ? [task.work.projectId] : [])), ...projects.map((row) => row.project.id), ...recurrences.flatMap((row) => (row.project ? [row.project.id] : []))])];
   const notGone = sql`${schema.person.status} <> 'offboarded'`;
-  const [teamPeople, projectPeople] = await Promise.all([
-    teamIds.length ? executor.select({ scopeId: schema.workTeamMember.teamId, personId: schema.workTeamMember.personId }).from(schema.workTeamMember).innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId)).where(and(inArray(schema.workTeamMember.teamId, teamIds), notGone)) : [],
+  const [teamPeople, projectPeople, projectVisibility] = await Promise.all([
+    teamIds.length ? executor.select({ scopeId: schema.workTeamMember.teamId, personId: schema.workTeamMember.personId, role: schema.workTeamMember.role }).from(schema.workTeamMember).innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId)).where(and(inArray(schema.workTeamMember.teamId, teamIds), notGone)) : [],
     allProjectIds.length ? executor.select({ scopeId: schema.workProjectMember.projectId, personId: schema.workProjectMember.personId }).from(schema.workProjectMember).innerJoin(schema.person, eq(schema.person.id, schema.workProjectMember.personId)).where(and(inArray(schema.workProjectMember.projectId, allProjectIds), notGone)) : [],
+    allProjectIds.length ? executor.select({ id: schema.workProject.id, visibility: schema.workProject.visibility }).from(schema.workProject).where(inArray(schema.workProject.id, allProjectIds)) : [],
   ]);
   const byTeam = Map.groupBy(teamPeople, (row) => row.scopeId);
   const byProject = Map.groupBy(projectPeople, (row) => row.scopeId);
-  const peopleOf = (teamId: string | null, projectId: string | null) => new Set([...(teamId ? (byTeam.get(teamId) ?? []) : []), ...(projectId ? (byProject.get(projectId) ?? []) : [])].map((row) => row.personId).filter((id) => id !== options.leaverId));
+  // A private project's work stays inside it: only its own people and the team's leads may take it.
+  const closed = new Set(projectVisibility.filter((row) => row.visibility === "private").map((row) => row.id));
+  const peopleOf = (teamId: string | null, projectId: string | null) => {
+    const inTeam = teamId ? (byTeam.get(teamId) ?? []) : [];
+    const fromTeam = projectId && closed.has(projectId) ? inTeam.filter((row) => row.role === "lead") : inTeam;
+    const rows = [...fromTeam, ...(projectId ? (byProject.get(projectId) ?? []) : [])];
+    return new Set(rows.map((row) => row.personId).filter((id) => id !== options.leaverId));
+  };
 
   // The lead to ask about work the runner may not open.
   const leadIds = [...new Set([...[...tasks.values()].map((task) => task.project?.leadPersonId), ...projects.map((row) => row.project.leadPersonId), ...recurrences.map((row) => row.project?.leadPersonId)].filter((id): id is string => !!id))];

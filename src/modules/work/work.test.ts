@@ -198,6 +198,8 @@ describe("privacy in lists (FR-WRK-18)", () => {
 
   it("keeps the SQL reach of task lists in step with canViewTask for every kind of viewer", async () => {
     const secret = await createWorkTask({ teamId: ids.video, projectId: ids.privateProject, title: "Pitch deck numbers", assigneePersonId: ids.tam }, ids.tam);
+    // A guest reviewer is brought into the project first: a private project's work goes to nobody else.
+    await setProjectMember(ids.privateProject, ids.khoi, "member");
     await createWorkTask({ teamId: ids.video, projectId: ids.privateProject, title: "Pitch: guest review", collaboratorIds: [ids.khoi] }, ids.tam);
     await createWorkTask({ teamId: ids.video, projectId: ids.privateProject, title: "Pitch: asked by Bao", requesterPersonId: ids.bao }, ids.tam);
     await createWorkTask({ teamId: ids.design, title: "Design backlog item" }, ids.khoi);

@@ -7,6 +7,7 @@ import "server-only";
 import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { db, schema, type Tx } from "@/lib/db";
 import { defaultReceiver, packageFor, type PackageCheck, type PackageField } from "./engine/handoff";
+import { visibilityOf } from "./projects";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type HandoffPackageRow = typeof schema.workHandoffPackage.$inferSelect;
@@ -49,12 +50,16 @@ async function stageAssignee(executor: Executor, teamId: string, toStateId: stri
   return null;
 }
 
-/** Who may receive the task: the team's and the project's people who have not left (as `listAssignable`). */
+/**
+ * Who may receive the task: the team's and the project's people who have not left (as
+ * `listAssignable`) — and, for a private project, only its own people and the team's leads.
+ */
 async function receiversOf(executor: Executor, teamId: string, projectId: string | null): Promise<{ id: string; fullName: string }[]> {
-  const inTeam = executor.select({ id: schema.workTeamMember.personId }).from(schema.workTeamMember).where(eq(schema.workTeamMember.teamId, teamId));
+  const inTeam = executor.select({ id: schema.workTeamMember.personId, role: schema.workTeamMember.role }).from(schema.workTeamMember).where(eq(schema.workTeamMember.teamId, teamId));
   const inProject = projectId ? executor.select({ id: schema.workProjectMember.personId }).from(schema.workProjectMember).where(eq(schema.workProjectMember.projectId, projectId)) : null;
-  const [team, project] = await Promise.all([inTeam, inProject ?? Promise.resolve([] as { id: string }[])]);
-  const ids = [...new Set([...team, ...project].map((row) => row.id))];
+  const [visibility, team, project] = await Promise.all([projectId ? visibilityOf(projectId, executor) : Promise.resolve(null), inTeam, inProject ?? Promise.resolve([] as { id: string }[])]);
+  const fromTeam = visibility === "private" ? team.filter((row) => row.role === "lead") : team;
+  const ids = [...new Set([...fromTeam, ...project].map((row) => row.id))];
   if (ids.length === 0) return [];
   const people = await executor
     .select({ id: schema.person.id, fullName: schema.person.fullName, searchName: schema.person.searchName })

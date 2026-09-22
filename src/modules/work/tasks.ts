@@ -107,6 +107,26 @@ async function personNamed(tx: Executor, personId: string | null, options: { mus
   return { id: row.id, name: row.name };
 }
 
+/**
+ * A private project's work never lands on someone outside it (FR-PJM-14). Being given a task — as
+ * its assignee, its reviewer or a collaborator — makes you a party to it, which is how a task is
+ * read, so the check belongs on the one path every change of a task goes through rather than only
+ * on the pickers. Its people are the project's members and the team's leads: exactly who may open
+ * it. A project that is not private takes anyone (`listAssignable` narrows the picker to the team).
+ */
+async function assertInsidePrivateProject(tx: Executor, projectId: string | null, personIds: readonly (string | null | undefined)[]): Promise<void> {
+  const wanted = [...new Set(personIds.filter((id): id is string => !!id))];
+  if (!projectId || wanted.length === 0) return;
+  const [project] = await tx.select({ id: schema.workProject.id, teamId: schema.workProject.teamId, visibility: schema.workProject.visibility }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
+  if (!project || project.visibility !== "private") return;
+  const [members, leads] = await Promise.all([
+    tx.select({ personId: schema.workProjectMember.personId }).from(schema.workProjectMember).where(and(eq(schema.workProjectMember.projectId, project.id), inArray(schema.workProjectMember.personId, wanted))),
+    tx.select({ personId: schema.workTeamMember.personId }).from(schema.workTeamMember).where(and(eq(schema.workTeamMember.teamId, project.teamId), eq(schema.workTeamMember.role, "lead"), inArray(schema.workTeamMember.personId, wanted))),
+  ]);
+  const inside = new Set([...members, ...leads].map((row) => row.personId));
+  if (wanted.some((id) => !inside.has(id))) throw new ActionError("person_not_assignable");
+}
+
 async function clientNamed(tx: Executor, clientId: string | null): Promise<Named> {
   if (!clientId) return null;
   const [row] = await tx.select({ id: schema.workClient.id, name: schema.workClient.name }).from(schema.workClient).where(eq(schema.workClient.id, clientId)).limit(1);
@@ -200,6 +220,7 @@ export async function createWorkTaskIn(tx: Executor, input: NewWorkTask, actorPe
   await personNamed(tx, input.assigneePersonId ?? null, { mustBeActive: true });
   await personNamed(tx, input.requesterPersonId ?? null);
   await clientNamed(tx, clientId ?? project?.clientId ?? null);
+  await assertInsidePrivateProject(tx, project?.id ?? null, [input.assigneePersonId, ...(input.collaboratorIds ?? [])]);
   const labels = await labelsOfTeam(tx, input.labelIds ?? [], input.teamId);
 
   const [team] = await tx.update(schema.workTeam).set({ taskSeq: sql`${schema.workTeam.taskSeq} + 1` }).where(and(eq(schema.workTeam.id, input.teamId), eq(schema.workTeam.isActive, true))).returning();
@@ -427,6 +448,13 @@ export async function updateWorkTaskIn(
       if (removed.length) await tx.delete(schema.workTaskPerson).where(and(eq(schema.workTaskPerson.taskId, taskId), inArray(schema.workTaskPerson.personId, removed.map((row) => row.id))));
       changes.push(...removed.map((row) => ({ type: "person_removed", from: { id: row.id, name: row.name } })));
     }
+
+    // Checked against the project the task ends up in, and against everyone it ends up on.
+    await assertInsidePrivateProject(tx, workSet.projectId === undefined ? work.projectId : workSet.projectId, [
+      taskSet.assigneePersonId === undefined ? task.assigneePersonId : taskSet.assigneePersonId,
+      workSet.reviewerPersonId === undefined ? work.reviewerPersonId : workSet.reviewerPersonId,
+      ...(patch.collaboratorIds ?? before.peopleIds),
+    ]);
 
     if (patch.customValues && Object.keys(patch.customValues).length > 0) {
       // Checked against the fields of the project the task ends up in.

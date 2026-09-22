@@ -26,7 +26,7 @@ import { automationPanel, saveAutomation } from "./automations";
 import { getCoverPlan, handBackCover, submitCoverPlan } from "./cover";
 import { getExitHandover, reassignOwnership } from "./exit";
 import { changeAccountManager } from "./handoffs";
-import { createProject, setProjectMember } from "./projects";
+import { createProject, listAssignable, setProjectMember } from "./projects";
 import { createWorkTask, loadTask, updateWorkTask } from "./tasks";
 import { createTeam, listStates, saveClient, setTeamMember } from "./teams";
 import { listMergeTargets, listTriage, sendToTriage } from "./triage";
@@ -141,8 +141,10 @@ describe("leave cover (FR-PJM-44)", () => {
     // Khôi is in another team: he cannot be given this work, by name or as the cover for all.
     expect(await fails(submitCoverPlan(plan.id, { defaultCoverPersonId: null, items: [{ id: (await db().select().from(schema.workCoverItem).where(eq(schema.workCoverItem.planId, plan.id)))[0].id, coverPersonId: ids.khoi }], note: { context: "x" } }, actor("huy"), TODAY))).toBe("cover_not_assignable");
     expect(await fails(submitCoverPlan(plan.id, { defaultCoverPersonId: ids.khoi, items: [], note: { context: "x" } }, actor("huy"), TODAY))).toBe("cover_item_uncovered");
-    const submitted = await submitCoverPlan(plan.id, { defaultCoverPersonId: ids.bao, items: [], note: { context: "Nghỉ phép" } }, actor("huy"), TODAY);
-    expect(submitted.covers).toEqual([ids.bao]);
+    // Bảo is in the team but not in this private project: the work does not go to him either.
+    expect(await fails(submitCoverPlan(plan.id, { defaultCoverPersonId: ids.bao, items: [], note: { context: "x" } }, actor("huy"), TODAY))).toBe("cover_item_uncovered");
+    const submitted = await submitCoverPlan(plan.id, { defaultCoverPersonId: ids.long, items: [], note: { context: "Nghỉ phép" } }, actor("huy"), TODAY);
+    expect(submitted.covers).toEqual([ids.long]);
   });
 
   it("is handed back per cover, and never before the last day of the leave", async () => {
@@ -183,9 +185,50 @@ describe("exit handover (FR-PJM-45)", () => {
     expect(await fails(reassignOwnership(handover.id, { items: [{ kind: "task", id: openTask.id }], toPersonId: ids.khoi, note }, actor("boss"), await viewer("boss")))).toBe("person_not_assignable");
     await reassignOwnership(handover.id, { items: [{ kind: "task", id: openTask.id }], toPersonId: ids.bao, note }, actor("boss"), await viewer("boss"));
     expect((await loadTask(openTask.id))!.task.assigneePersonId).toBe(ids.bao);
-    // The team's lead runs the private project too, so they can hand its work on.
-    await reassignOwnership(handover.id, { items: [{ kind: "task", id: secretTask.id }], toPersonId: ids.bao, note }, actor("long"), await viewer("long"));
-    expect((await loadTask(secretTask.id))!.task.assigneePersonId).toBe(ids.bao);
+    // The team's lead runs the private project too, so they can hand its work on — but only to
+    // someone the project is open to, which the rest of the team is not.
+    expect(await fails(reassignOwnership(handover.id, { items: [{ kind: "task", id: secretTask.id }], toPersonId: ids.bao, note }, actor("long"), await viewer("long")))).toBe("person_not_assignable");
+    await reassignOwnership(handover.id, { items: [{ kind: "task", id: secretTask.id }], toPersonId: ids.long, note }, actor("long"), await viewer("long"));
+    expect((await loadTask(secretTask.id))!.task.assigneePersonId).toBe(ids.long);
+  });
+});
+
+describe("who a private project's work can be given to (FR-PJM-14)", () => {
+  it("offers its own people and the team's leads, never the rest of the team", async () => {
+    const open = (await listAssignable(ids.video, ids.open)).map((person) => person.id);
+    expect(open).toEqual(expect.arrayContaining([ids.long, ids.huy, ids.bao]));
+    // `secret` is Huy's, and Long leads the team: Bảo is in the team but not in the project.
+    const secret = (await listAssignable(ids.video, ids.secret)).map((person) => person.id);
+    expect(secret.sort()).toEqual([ids.huy, ids.long].sort());
+    expect(secret).not.toContain(ids.bao);
+    expect(secret).not.toContain(ids.khoi);
+  });
+
+  it("refuses to give a private project's task to a team member who is not in it", async () => {
+    const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.secret, title: "Bản chào giá" }, ids.huy);
+    expect(await fails(updateWorkTask(task.id, { assigneePersonId: ids.bao }, ids.huy))).toBe("person_not_assignable");
+    await updateWorkTask(task.id, { assigneePersonId: ids.long }, ids.huy);
+    expect((await loadTask(task.id))!.task.assigneePersonId).toBe(ids.long);
+  });
+
+  it("keeps the cover of a private task inside it", async () => {
+    const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.secret, title: "Kịch bản pitch", assigneePersonId: ids.huy }, ids.huy);
+    const [plan] = await db().insert(schema.workCoverPlan).values({ personId: ids.huy, leaveRequestId: crypto.randomUUID(), fromDate: addDays(TODAY, 1), toDate: addDays(TODAY, 3), status: "draft" }).returning();
+    await db().insert(schema.workCoverItem).values({ planId: plan.id, itemType: "task", itemId: task.id });
+    // Bảo is in the team but not in the project: neither by name nor as the cover for all.
+    const [item] = await db().select().from(schema.workCoverItem).where(eq(schema.workCoverItem.planId, plan.id));
+    expect(await fails(submitCoverPlan(plan.id, { defaultCoverPersonId: null, items: [{ id: item.id, coverPersonId: ids.bao }], note: { context: "x" } }, actor("huy"), TODAY))).toBe("cover_not_assignable");
+    expect(await fails(submitCoverPlan(plan.id, { defaultCoverPersonId: ids.bao, items: [], note: { context: "x" } }, actor("huy"), TODAY))).toBe("cover_item_uncovered");
+    expect((await submitCoverPlan(plan.id, { defaultCoverPersonId: ids.long, items: [], note: { context: "x" } }, actor("huy"), TODAY)).covers).toEqual([ids.long]);
+  });
+
+  it("hands a leaver's private work to the team's lead, not to the rest of the team", async () => {
+    const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.secret, title: "Hồ sơ thầu", assigneePersonId: ids.huy }, ids.huy);
+    const [handover] = await db().insert(schema.workExitHandover).values({ personId: ids.huy, lifecycleEventId: crypto.randomUUID(), reason: "termination", lastDay: addDays(TODAY, 10) }).returning();
+    const note = { context: "Huy nghỉ việc" };
+    expect(await fails(reassignOwnership(handover.id, { items: [{ kind: "task", id: task.id }], toPersonId: ids.bao, note }, actor("long"), await viewer("long")))).toBe("person_not_assignable");
+    await reassignOwnership(handover.id, { items: [{ kind: "task", id: task.id }], toPersonId: ids.long, note }, actor("long"), await viewer("long"));
+    expect((await loadTask(task.id))!.task.assigneePersonId).toBe(ids.long);
   });
 });
 

@@ -181,14 +181,28 @@ export async function listCreateTargets(viewer: WorkViewer): Promise<CreateTarge
   return { teams: listed, projects: open };
 }
 
-/** Who a task here can be given to: the team and the project's members — not the whole directory. */
+/**
+ * Who a task here can be given to: the team and the project's members — not the whole directory.
+ * **A private project is only its own people and the team's leads** — exactly who may open it
+ * (`canViewProject`). Being given a task makes you a party to it, which is how a task is read, so
+ * offering the rest of the team would hand a private project's work to someone it is closed to.
+ */
 export async function listAssignable(teamId: string, projectId: string | null): Promise<{ id: string; fullName: string }[]> {
-  const [team, project] = await Promise.all([
-    db().select({ id: schema.person.id, fullName: schema.person.fullName, searchName: schema.person.searchName, status: schema.person.status }).from(schema.workTeamMember).innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId)).where(eq(schema.workTeamMember.teamId, teamId)),
-    projectId ? db().select({ id: schema.person.id, fullName: schema.person.fullName, searchName: schema.person.searchName, status: schema.person.status }).from(schema.workProjectMember).innerJoin(schema.person, eq(schema.person.id, schema.workProjectMember.personId)).where(eq(schema.workProjectMember.projectId, projectId)) : [],
+  const columns = { id: schema.person.id, fullName: schema.person.fullName, searchName: schema.person.searchName, status: schema.person.status };
+  const [visibility, team, project] = await Promise.all([
+    projectId ? visibilityOf(projectId) : Promise.resolve(null),
+    db().select({ ...columns, teamRole: schema.workTeamMember.role }).from(schema.workTeamMember).innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId)).where(eq(schema.workTeamMember.teamId, teamId)),
+    projectId ? db().select(columns).from(schema.workProjectMember).innerJoin(schema.person, eq(schema.person.id, schema.workProjectMember.personId)).where(eq(schema.workProjectMember.projectId, projectId)) : [],
   ]);
-  const byId = new Map([...team, ...project].filter((person) => person.status !== "offboarded").map((person) => [person.id, person]));
+  const fromTeam = visibility === "private" ? team.filter((person) => person.teamRole === "lead") : team;
+  const byId = new Map([...fromTeam, ...project].filter((person) => person.status !== "offboarded").map((person) => [person.id, person]));
   return [...byId.values()].sort((a, b) => a.searchName.localeCompare(b.searchName)).map(({ id, fullName }) => ({ id, fullName }));
+}
+
+/** A project's visibility, for the rules that treat a private project as its own closed circle. */
+export async function visibilityOf(projectId: string, executor: Executor = db()): Promise<Visibility | null> {
+  const [row] = await executor.select({ visibility: schema.workProject.visibility }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
+  return (row?.visibility as Visibility | undefined) ?? null;
 }
 
 /** `listAssignable(teamId, null)` for several teams in one query, keyed by team. */
