@@ -10,7 +10,7 @@ import { toSearchKey } from "@/lib/text";
 // the boundary the module rule allows.
 import { cancelReturnTasks, openReturnTasks } from "@/modules/assets/service";
 import { canReadTier, type Principal } from "@/modules/platform/rbac/policy";
-import { endRoleGrantsOf, restoreRoleGrants } from "@/modules/platform/rbac/service";
+import { endRoleGrantsOf, invalidateGrants, restoreRoleGrants } from "@/modules/platform/rbac/service";
 import { cancelOpenTasksOfContext } from "@/modules/platform/tasks-engine/service";
 import { findLifecycleEvent, LIFECYCLE_CONTEXT, type LifecycleEventRow, type LifecycleEventView, loadTimeline, recordLifecycleEvent, startChecklist } from "./lifecycle-events";
 import { getPersonTarget, type HireInput, inTransaction, offboardLeavers, openEmployment, resolvePlacement } from "./service";
@@ -60,7 +60,7 @@ type Closed = { assignments: { id: string; validTo: IsoDate | null }[]; grants: 
  * for a past date, otherwise through the daily roll-over; until then the person keeps working.
  */
 export async function terminateEmployment(personId: string, input: TerminationInput, actorPersonId: string) {
-  return inTransaction(async (tx) => {
+  const result = await inTransaction(async (tx) => {
     const employment = await latestEmployment(tx, personId);
     if (employment.endDate) throw new ActionError("already_terminated");
     if (input.lastDay < employment.startDate) throw new ActionError("termination_before_start");
@@ -99,11 +99,13 @@ export async function terminateEmployment(personId: string, input: TerminationIn
     const offboardedNow = (await offboardLeavers(today, personId, tx)) > 0;
     return { employment: ended, before: employment, event, tasks, closed, offboardedNow, returns };
   });
+  await invalidateGrants(personId);
+  return result;
 }
 
 /** Calls off a termination whose last day has not passed: everything it closed is reopened. Assignments it dropped are not brought back. */
 export async function cancelTermination(eventId: string) {
-  return inTransaction(async (tx) => {
+  const result = await inTransaction(async (tx) => {
     const event = await findLifecycleEvent(eventId, tx);
     if (!event || event.type !== "termination" || event.status !== "pending") throw new ActionError("event_not_found");
     const employment = await latestEmployment(tx, event.personId);
@@ -120,6 +122,8 @@ export async function cancelTermination(eventId: string) {
     const [after] = await tx.update(schema.lifecycleEvent).set({ status: "cancelled", updatedAt: new Date() }).where(eq(schema.lifecycleEvent.id, event.id)).returning();
     return { before: event, after, employment, cancelledTasks, cancelledReturns };
   });
+  await invalidateGrants(result.before.personId);
+  return result;
 }
 
 // ── Rehire and duplicates ───────────────────────────────────────────────────────────────────

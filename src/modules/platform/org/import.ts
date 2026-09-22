@@ -5,6 +5,7 @@ import { db, schema } from "@/lib/db";
 import { code, type Column, type ParsedRow, type Problem, templateCsv, text } from "../import/engine/table";
 import { defineImport } from "../import/service";
 import { can } from "../rbac/policy";
+import { invalidateOrgCache } from "./service";
 
 // Departments in bulk: new codes are created, known codes get their name and parent updated.
 // A department with no entity code is shared across the group.
@@ -78,5 +79,8 @@ export const departmentImport = defineImport({
     }
     return { created, updated };
   },
-  onCommitted: () => revalidatePath("/admin/org"),
+  onCommitted: async () => {
+    await invalidateOrgCache();
+    revalidatePath("/admin/org");
+  },
 });

@@ -1,4 +1,5 @@
 import { boolean, index, jsonb, pgEnum, pgTable, primaryKey, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { person } from "../people/schema";
 
 // One row per person per event. The wording is not stored: `kind` + `params` are turned into text
@@ -19,7 +20,7 @@ export const notification = pgTable(
     // Set once the daily digest has carried it, or when no digest is wanted.
     digestedAt: timestamp("digested_at", { withTimezone: true }),
   },
-  (t) => [index("notification_recipient_idx").on(t.recipientPersonId, t.createdAt)],
+  (t) => [index("notification_recipient_idx").on(t.recipientPersonId, t.createdAt), index("notification_unread_idx").on(t.recipientPersonId).where(sql`${t.readAt} IS NULL`)],
 ).enableRLS();
 
 export const emailChannel = pgEnum("email_channel", ["instant", "digest", "off"]);

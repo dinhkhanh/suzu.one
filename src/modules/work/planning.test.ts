@@ -24,6 +24,7 @@ import { canDecideReview, canManageTemplate, canNudgeTask, canSubmitDeliverable 
 import { createProject } from "./projects";
 import { changeRecurrence, createRecurrence, generateOccurrences, listRecurrences } from "./recurrences";
 import { decideReview, listDeliverables, listReviewsWaitingFor, submitDeliverable } from "./reviews";
+import { loadShellCounts } from "@/modules/platform/shell/service";
 import { addDependency, createWorkTask, listActivity, listProjectTasks, loadTask } from "./tasks";
 import { createTeam, listStates, setTeamMember, teamFacts } from "./teams";
 import { addWorkTemplateItem, applyTemplate, createProjectFromTemplate, listWorkTemplates, saveWorkTemplate } from "./templates";
@@ -74,6 +75,7 @@ describe("review step", () => {
     expect(await noticesOf(ids.tam, "tasks.review_requested")).toHaveLength(1);
     expect(await noticesOf(ids.huy, "tasks.review_requested")).toHaveLength(0);
     expect((await listReviewsWaitingFor(ids.tam)).map((row) => [row.taskId, row.version])).toEqual([[ids.task, 1]]);
+    expect((await loadShellCounts(ids.tam)).reviews).toBe(1);
 
     expect(await fails(decideReview(ids.task, "approved", null, named("huy")))).toBe("review_own_work");
     expect(await fails(decideReview(ids.task, "changes_requested", null, named("tam")))).toBe("review_comment_required");
@@ -84,6 +86,7 @@ describe("review step", () => {
     expect(states.find((state) => state.id === afterChanges.work.stateId)!.category).toBe("in_progress");
     expect((await noticesOf(ids.huy, "tasks.review_decided"))[0].params).toMatchObject({ decision: "changes_requested", version: 1 });
     expect(await listReviewsWaitingFor(ids.tam)).toHaveLength(0);
+    expect((await loadShellCounts(ids.tam)).reviews).toBe(0);
     expect(await fails(decideReview(ids.task, "approved", null, named("tam")))).toBe("review_not_pending");
 
     // A second hand-in replaced before anyone looked is no round.

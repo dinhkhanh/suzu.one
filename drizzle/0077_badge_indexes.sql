@@ -1,0 +1,2 @@
+CREATE INDEX "notification_unread_idx" ON "notification" USING btree ("recipient_person_id") WHERE "notification"."read_at" IS NULL;--> statement-breakpoint
+CREATE INDEX "work_task_reviewer_idx" ON "work_task" USING btree ("reviewer_person_id") WHERE "work_task"."review_status" = 'submitted';

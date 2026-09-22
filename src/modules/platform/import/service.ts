@@ -35,7 +35,7 @@ export type ImportDefinition<C extends Columns, P = void> = {
   validate?: (rows: ParsedRow<C>[], user: CurrentUser, params: P) => Promise<Problem[]>;
   /** Writes every row inside one transaction: an import lands completely or not at all. */
   commit: (rows: ParsedRow<C>[], tx: Tx, user: CurrentUser, params: P, batchId?: string) => Promise<Record<string, number>>;
-  onCommitted?: () => void;
+  onCommitted?: () => void | Promise<void>;
 };
 
 export type StagedImport = {
@@ -173,7 +173,7 @@ export function defineImport<C extends Columns, P = void>(definition: ImportDefi
         await tx.update(batches).set({ status: "committed", committedAt: new Date(), result: counts }).where(eq(batches.id, batch.id));
         return { fileName: batch.fileName, counts };
       });
-      definition.onCommitted?.();
+      await definition.onCommitted?.();
       return { data: result.counts, audit: { resource: { type: `import:${definition.kind}`, id: input.batchId }, summary: `${result.fileName}: ${JSON.stringify(result.counts)}`, after: result.counts } };
     },
   });

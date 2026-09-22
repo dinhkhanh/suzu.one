@@ -2,26 +2,23 @@ import { getTranslations } from "next-intl/server";
 import { AppFrame, type NavRow } from "@/components/shell/app-frame";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
 import { navFor } from "@/components/shell/nav";
-import { interviewsModuleOpen } from "@/modules/recruit/interviews";
-import { recruitModuleOpen } from "@/modules/recruit/service";
+import { canRunRecruitment } from "@/modules/recruit/policy";
 import { SignOutButton } from "@/components/shell/sign-out-button";
 import { peopleModuleOpen } from "@/modules/core-hr/service";
-import { countInbox } from "@/modules/platform/approvals/service";
 import { requireUser } from "@/modules/platform/auth/session";
-import { countUnread } from "@/modules/platform/notifications/service";
-import { countMyOpenTasks } from "@/modules/platform/tasks-engine/service";
-import { countReviewsWaitingFor } from "@/modules/work/service";
+import { loadShellCounts } from "@/modules/platform/shell/service";
 import { CommandPalette } from "@/modules/work/ui/command-palette";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
-  const t = await getTranslations();
+  // One round trip for every badge and membership (app.shell_counts), beside the flags and messages.
+  const [t, people, counts] = await Promise.all([getTranslations(), peopleModuleOpen(user), loadShellCounts(user.person.id)]);
   const nav = navFor(user.principal, {
-    people: await peopleModuleOpen(user),
-    recruit: await recruitModuleOpen(user.principal, user.person.id),
-    interviews: await interviewsModuleOpen(user.person.id),
+    people,
+    recruit: canRunRecruitment(user.principal) || counts.onHiringTeam,
+    interviews: counts.interviewer,
   });
-  const [unread, waiting, openTasks, reviews] = await Promise.all([countUnread(user.person.id), countInbox(user.person.id), countMyOpenTasks(user.person.id), countReviewsWaitingFor(user.person.id)]);
+  const { unread, inbox: waiting, openTasks, reviews } = counts;
   // "My work" is one inbox (FR-WRK-06): tasks of every kind, deliverables to review, requests to approve.
   const tasks = openTasks + reviews + waiting;
 

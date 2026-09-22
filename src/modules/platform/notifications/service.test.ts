@@ -12,6 +12,7 @@ import { db, schema } from "@/lib/db";
 import en from "../../../../messages/en.json";
 import vi_ from "../../../../messages/vi.json";
 import { migrateTestDb } from "../../../../tests/helpers/db";
+import { loadShellCounts } from "../shell/service";
 import { KINDS, messageKey } from "./kinds";
 import { countUnread, deliverPendingEmails, deliverPendingPushes, getPreferences, listNotifications, listPushSubscriptions, markRead, notify, queueTestPush, removePushSubscription, savePushSubscription, sendDigests, setPreferences } from "./service";
 
@@ -58,6 +59,7 @@ describe("notify", () => {
     expect(await countUnread(people.an)).toBe(1);
     expect(await countUnread(people.ctv)).toBe(1);
     expect(await countUnread(people.gone)).toBe(0);
+    expect((await loadShellCounts(people.an)).unread).toBe(1);
 
     const outbox = await db().select().from(schema.emailOutbox);
     expect(outbox.map((email) => email.toEmail)).toEqual(["an@suzu.vn"]);

@@ -3,11 +3,13 @@ import { and, arrayOverlaps, asc, eq, gte, isNull, lte, or, sql } from "drizzle-
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
+import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 
 // Reads that also run inside someone else's transaction (approver resolution) take the executor.
 type Executor = Tx | ReturnType<typeof db>;
 import { notify } from "../notifications/service";
+import { listOrgUnits } from "../org/service";
 import { can, type Grant, type Scope, scopeCovers, type Target } from "./policy";
 import { type Permission, ROLE_DEFINITIONS, ROLES, type Role } from "./roles";
 
@@ -34,20 +36,39 @@ function toScope(scopeType: ScopeType, scopeId: string | null, covers: ReadonlyM
   return scopeType === "unit" ? { type: "unit", id: scopeId, covers: covers.get(scopeId) } : { type: scopeType, id: scopeId };
 }
 
+// Every request loads the signed-in person's grants, so today's rows sit in the shared cache.
+// Every write to `role_assignment` below drops the holder's entry (`invalidateGrants`), and the
+// short TTL bounds anything written behind the app's back (a seed, a manual fix).
+const GRANTS_TTL = 10 * 60;
+const grantsKey = (personId: string) => `rbac:grants:${personId}`;
+
+/** Drops cached grants; call after the change to `role_assignment` is committed. */
+export const invalidateGrants = (...personIds: string[]) => invalidate(...personIds.map(grantsKey));
+
+type RoleAssignmentRowCached = typeof schema.roleAssignment.$inferSelect;
+
+async function grantRowsOf(personId: string, today: IsoDate, executor: Executor | undefined): Promise<RoleAssignmentRowCached[]> {
+  const inForce = (row: RoleAssignmentRowCached) => row.validFrom <= today && (row.validTo === null || row.validTo >= today);
+  if (executor || today !== todayInVietnam()) {
+    return (executor ?? db()).select().from(schema.roleAssignment).where(and(eq(schema.roleAssignment.personId, personId), lte(schema.roleAssignment.validFrom, today), notEnded(today)));
+  }
+  // Cached: every grant not yet ended, so one that starts later today is still in the entry.
+  const rows = await cached(grantsKey(personId), GRANTS_TTL, () => db().select().from(schema.roleAssignment).where(and(eq(schema.roleAssignment.personId, personId), notEnded(today))));
+  return rows.filter(inForce);
+}
+
 /**
  * The grants in force today. Unknown roles and broken scopes grant nothing.
  * A unit grant is widened here, once, to the unit and everything below it (FR-PLT-16), so every
- * later check can ask about one unit without walking the tree again.
+ * later check can ask about one unit without walking the tree again. Pass an executor to read
+ * inside a transaction; without one the rows and the tree come from the shared cache.
  */
-export async function loadGrants(personId: string, today: IsoDate = todayInVietnam(), executor: Executor = db()): Promise<Grant[]> {
-  const rows = await executor
-    .select()
-    .from(schema.roleAssignment)
-    .where(and(eq(schema.roleAssignment.personId, personId), lte(schema.roleAssignment.validFrom, today), notEnded(today)));
+export async function loadGrants(personId: string, today: IsoDate = todayInVietnam(), executor?: Executor): Promise<Grant[]> {
+  const rows = await grantRowsOf(personId, today, executor);
   const unitIds = rows.flatMap((row) => (row.scopeType === "unit" && row.scopeId ? [row.scopeId] : []));
   const covers = new Map<string, string[]>();
   if (unitIds.length) {
-    const units = await executor.select({ id: schema.orgUnit.id, path: schema.orgUnit.path }).from(schema.orgUnit).where(arrayOverlaps(schema.orgUnit.path, unitIds));
+    const units = executor ? await executor.select({ id: schema.orgUnit.id, path: schema.orgUnit.path }).from(schema.orgUnit).where(arrayOverlaps(schema.orgUnit.path, unitIds)) : await listOrgUnits();
     for (const granted of unitIds) covers.set(granted, units.flatMap((unit) => (unit.path.includes(granted) ? [unit.id] : [])));
   }
   return rows.flatMap((row) => {
@@ -133,6 +154,7 @@ export async function grantRole(input: GrantInput, actorPersonId: string): Promi
     .insert(schema.roleAssignment)
     .values({ personId: input.personId, role: input.role, scopeType: input.scopeType, scopeId, validFrom: input.validFrom, validTo: input.validTo, grantedByPersonId: actorPersonId })
     .returning();
+  await invalidateGrants(created.personId);
   await notify({ recipients: [created.personId], kind: "security.role_granted", params: { ...(await describeGrant(created, actorPersonId)), validFrom: created.validFrom } });
   return created;
 }
@@ -161,6 +183,7 @@ export async function revokeRole(id: string, actorPersonId: string): Promise<{ b
       .returning();
     return { before, after };
   });
+  await invalidateGrants(change.after.personId);
   await notify({ recipients: [change.after.personId], kind: "security.role_revoked", params: await describeGrant(change.after, actorPersonId) });
   return change;
 }
@@ -223,6 +246,7 @@ export async function listPeopleWithRole(role: Role, target: Target, executor: E
 }
 
 /**
+ * Runs inside the caller's transaction, so the caller calls `invalidateGrants` once it commits.
  * Ends every grant a person holds as of `lastDay` (someone leaving the company): grants in force
  * stop after that day, grants that would only start later never start. Returns what was changed
  * so a cancelled termination can put it back. Refuses to remove the last group owner.

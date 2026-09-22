@@ -533,6 +533,20 @@
       "when": 1790009904806,
       "tag": "0075_salary_decrease_reason",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1790044210136,
+      "tag": "0076_app_shell_counts",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1790044443922,
+      "tag": "0077_badge_indexes",
+      "breakpoints": true
     }
   ]
 }

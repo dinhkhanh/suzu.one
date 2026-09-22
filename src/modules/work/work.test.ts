@@ -21,6 +21,7 @@ import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { Grant } from "@/modules/platform/rbac/policy";
 import { countMyOpenTasks, listMyTasks } from "@/modules/platform/tasks-engine/service";
+import { loadShellCounts } from "@/modules/platform/shell/service";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { canViewTask } from "./policy";
 import { createProject, setProjectMember, visibleProjects } from "./projects";
@@ -98,6 +99,7 @@ describe("tasks", () => {
     // ADR-10: one table, one inbox.
     expect((await listMyTasks(ids.huy)).open.map((task) => task.id)).toContain(first.task.id);
     expect(await countMyOpenTasks(ids.huy)).toBe(1);
+    expect((await loadShellCounts(ids.huy)).openTasks).toBe(1);
     const [notice] = await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, ids.huy), eq(schema.notification.kind, "tasks.work_assigned")));
     expect(notice).toMatchObject({ link: `/work/tasks/${first.task.id}`, params: { key: first.key, title: "Write the script" } });
   });

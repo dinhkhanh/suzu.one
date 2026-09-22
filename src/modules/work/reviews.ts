@@ -2,7 +2,7 @@
 // already on the task, or a link — and a reviewer approves it or asks for changes. Every hand-in is
 // a new version that stays on the record with its decision; each "changes requested" is a round.
 import "server-only";
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql, count } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
@@ -149,4 +149,12 @@ export async function listReviewsWaitingFor(personId: string): Promise<ReviewWai
   return rows.map(({ number, teamKey, ...row }) => ({ ...row, key: taskKey(teamKey, number) }));
 }
 
-export const countReviewsWaitingFor = async (personId: string): Promise<number> => (await listReviewsWaitingFor(personId)).length;
+export async function countReviewsWaitingFor(personId: string): Promise<number> {
+  const [row] = await db()
+    .select({ value: count() })
+    .from(schema.workTask)
+    .innerJoin(schema.task, eq(schema.task.id, schema.workTask.taskId))
+    .innerJoin(schema.workDeliverable, and(eq(schema.workDeliverable.taskId, schema.task.id), eq(schema.workDeliverable.decision, "pending")))
+    .where(and(eq(schema.workTask.reviewerPersonId, personId), eq(schema.workTask.reviewStatus, "submitted"), eq(schema.task.kind, WORK_KIND), isNull(schema.task.deletedAt)));
+  return row?.value ?? 0;
+}

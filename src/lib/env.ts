@@ -62,6 +62,11 @@ const schema = z.object({
   GOOGLE_CALENDAR_SERVICE_ACCOUNT_EMAIL: z.string().min(1).optional(),
   GOOGLE_CALENDAR_SERVICE_ACCOUNT_KEY: z.string().min(1).optional(),
   GOOGLE_CALENDAR_IMPERSONATE: z.string().min(1).optional(),
+  // Shared read cache (Upstash Redis over REST; the Vercel integration provides both). Unset = no
+  // cache: every read goes to Postgres. Only reference data and non-sensitive counters are cached
+  // (src/lib/cache): never personal, restricted or compensation data.
+  KV_REST_API_URL: z.url().optional(),
+  KV_REST_API_TOKEN: z.string().min(1).optional(),
 });
 
 /** The local step-up driver skips Google, so it must never exist where real salaries do. */

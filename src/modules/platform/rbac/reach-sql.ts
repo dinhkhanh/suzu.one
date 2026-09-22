@@ -4,7 +4,14 @@ import "server-only";
 import { arrayOverlaps, eq, inArray, or, type SQL } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { Tx } from "@/lib/db";
+import { listOrgUnits } from "../org/service";
 import type { TierReach } from "./policy";
+
+/** The units whose path passes through any of `unitIds` (self included), from rows already loaded. */
+export function unitsBelow(units: readonly { id: string; path: readonly string[] }[], unitIds: readonly string[]): string[] {
+  const wanted = new Set(unitIds);
+  return units.filter((unit) => unit.path.some((id) => wanted.has(id))).map((unit) => unit.id);
+}
 
 type Executor = Tx | ReturnType<typeof db>;
 type UuidColumn = typeof schema.person.departmentId;
@@ -13,8 +20,10 @@ type UuidColumn = typeof schema.person.departmentId;
  * The units a grant on `unitIds` reaches: those units and every unit below them (FR-PLT-16).
  * For rows that store one unit id and no path of their own — an assignment, a job opening.
  */
-export async function unitsWithin(unitIds: readonly string[], executor: Executor = db()): Promise<string[]> {
+export async function unitsWithin(unitIds: readonly string[], executor?: Executor): Promise<string[]> {
   if (unitIds.length === 0) return [];
+  // Outside a transaction the tree comes from the shared cache: no round trip before the real query.
+  if (!executor) return unitsBelow(await listOrgUnits(), unitIds);
   const rows = await executor
     .select({ id: schema.orgUnit.id })
     .from(schema.orgUnit)

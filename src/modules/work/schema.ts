@@ -183,6 +183,8 @@ export const workTask = pgTable(
     index("work_task_project_idx").on(t.projectId),
     index("work_task_state_idx").on(t.stateId),
     index("work_task_client_idx").on(t.clientId),
+    // Deliverables waiting for this reviewer: a badge in the app frame on every page.
+    index("work_task_reviewer_idx").on(t.reviewerPersonId).where(sql`${t.reviewStatus} = 'submitted'`),
   ],
 ).enableRLS();
 

@@ -18,6 +18,7 @@ vi.mock("@/lib/action", () => ({ ActionError: class ActionError extends Error {}
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { countInbox, listInbox, listMyRequests, withdrawRequest } from "@/modules/platform/approvals/service";
+import { loadShellCounts } from "@/modules/platform/shell/service";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { decideProfileChange, getProfileChange, listProfileChanges, type ProfileChangeInput, resubmitProfileChange, revealProfileChange, submitProfileChange } from "./change-requests";
@@ -108,6 +109,8 @@ describe("submitting", () => {
     expect(asked.map((row) => row.approverPersonId).sort()).toEqual([ids.hrStaff, ids.hrAdmin].sort());
     expect(await countInbox(ids.hrStaff)).toBe(1);
     expect(await countInbox(ids.manager)).toBe(0);
+    expect((await loadShellCounts(ids.hrStaff)).inbox).toBe(1);
+    expect((await loadShellCounts(ids.manager)).inbox).toBe(0);
     expect((await listInbox(ids.hrAdmin))[0]).toMatchObject({ id: request.id, requesterName: "Ho Gia Huy", type: "profile_change" });
     expect((await listMyRequests(ids.huy))[0].id).toBe(request.id);
 
