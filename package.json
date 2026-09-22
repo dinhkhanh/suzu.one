@@ -19,6 +19,7 @@
     "db:recompute": "tsx scripts/recompute-timesheets.ts",
     "db:seed:demo:ops": "tsx scripts/seed-demo-ops.ts && tsx scripts/cache-flush.ts",
     "db:seed:demo:payroll": "tsx scripts/seed-demo-payroll-runs.ts && tsx scripts/cache-flush.ts",
+    "db:seed:demo:pjm": "tsx --require ./scripts/server-only-shim.cjs scripts/seed-demo-pjm.ts && tsx scripts/cache-flush.ts",
     "db:seed:demo:bonus": "tsx scripts/seed-demo-bonus-run.ts && tsx scripts/cache-flush.ts",
     "ai:eval": "tsx scripts/ai-eval.ts",
     "push:keys": "tsx scripts/push-keys.ts",

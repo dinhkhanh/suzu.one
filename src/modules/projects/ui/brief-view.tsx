@@ -9,11 +9,11 @@ export async function BriefView({ brief }: { brief: ProjectBrief }) {
   const filled = TEXT_FIELDS.filter((field) => brief[field]?.trim());
   if (filled.length === 0 && !brief.clientContacts?.length && !brief.links?.length) return <p className="text-sm text-muted-foreground">{t("empty")}</p>;
   return (
-    <dl className="grid gap-4 text-sm sm:grid-cols-2">
+    <dl className="grid gap-4 text-sm sm:grid-cols-2 [&>div]:min-w-0">
       {filled.map((field) => (
         <div key={field} className={field === "objective" || field === "successCriteria" ? "sm:col-span-2" : undefined}>
           <dt className="text-xs text-muted-foreground">{t(`fields.${field}`)}</dt>
-          <dd className="whitespace-pre-line">{brief[field]}</dd>
+          <dd className="whitespace-pre-line break-words">{brief[field]}</dd>
         </div>
       ))}
       {brief.clientContacts?.length ? (

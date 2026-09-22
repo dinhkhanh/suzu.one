@@ -43,7 +43,9 @@ export default async function ReportPage({ searchParams }: PageProps<"/daily/rep
         initial={{ blockers: form.report?.blockers ?? null, notes: form.report?.notes ?? null }}
         submitted={submitted}
         timeRequired={day?.rules.timeMode === "required" && !day.dayOff}
-        notesDraft={<EodNotesDraftButton date={date} targetId="notes" />}
+        // Keyed: the form renders it beside its label, and an element made on the server without a
+        // key trips React's list-key warning there.
+        notesDraft={<EodNotesDraftButton key="notes-draft" date={date} targetId="notes" />}
       />
     </div>
   );

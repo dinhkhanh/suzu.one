@@ -157,6 +157,23 @@ describe("profitability (FR-PJM-63)", () => {
     expect(view.privateProjects).toMatchObject({ projects: 1, hours: 5, costVnd: 500_000 });
   });
 
+  it("does not name a private project's client — in the client lines, the filter or a crafted filter", async () => {
+    const [bank] = await db().insert(schema.workClient).values({ code: "BANK", name: "Ngân hàng Bí mật", entityId: ids.szm }).returning();
+    await db().update(schema.workProject).set({ clientId: bank.id }).where(eq(schema.workProject.id, ids.secret));
+    try {
+      const view = (await buildProfitability(people.finance, PERIOD))!;
+      expect(view.clients.map((client) => client.clientId)).not.toContain(bank.id);
+      expect(view.clientsOffered.map((client) => client.id)).not.toContain(bank.id);
+      expect(JSON.stringify(view)).not.toContain("Ngân hàng Bí mật");
+      expect(view.privateProjects).toMatchObject({ projects: 1, hours: 5 });
+      const crafted = (await buildProfitability(people.finance, { ...PERIOD, clientId: bank.id }))!;
+      expect(crafted.privateProjects).toBeNull();
+      expect(crafted.clients).toEqual([]);
+    } finally {
+      await db().update(schema.workProject).set({ clientId: null }).where(eq(schema.workProject.id, ids.secret));
+    }
+  });
+
   it("never returns a person's id, name, rate or single cost", async () => {
     const text = JSON.stringify(await buildProfitability(people.finance, PERIOD));
     for (const who of ["huy", "lan"] as const) {

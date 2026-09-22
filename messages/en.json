@@ -9635,7 +9635,7 @@
       "accepted": "Deliverables accepted",
       "acceptedValue": "{accepted}/{promised} ({percent}%)",
       "hours": "Hours",
-      "hoursValue": "{used}/{budget} h ({percent}%)",
+      "hoursValue": "{used}/{budget} h · forecast {percent}%",
       "hoursNoBudget": "{used} h · no budget"
     },
     "plan": {

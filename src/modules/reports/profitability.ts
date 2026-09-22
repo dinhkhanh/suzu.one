@@ -59,12 +59,17 @@ const monthMinus = (month: string, count: number) => {
  * The figures, for a `pjm:cost` holder; null for anybody else. No audit here — `getProfitability`
  * (screens) and the catalogue entry (exports, audited by `report.export`) wrap it.
  */
+/** The client key private projects are summed under, so that no client line carries them. */
+const PRIVATE_GROUP = "private";
+
 export async function buildProfitability(reader: Pick<ProfitabilityReader, "principal">, filter: ProfitabilityFilter): Promise<ProfitabilityView | null> {
   if (!canReadProfitability(reader.principal)) return null;
   const reach = entityReach(reader.principal, "pjm:cost");
   const all = (await projectsOfEntities(reach)).filter((project) => canSeeProfitabilityOf(reader.principal, project));
-  const clientsOffered = [...new Map(all.flatMap((project) => (project.clientId && project.clientName ? [[project.clientId, { id: project.clientId, name: project.clientName }] as const] : []))).values()].sort((a, b) => a.name.localeCompare(b.name, "vi"));
-  const projects = filter.clientId ? all.filter((project) => project.clientId === filter.clientId) : all;
+  // A private project is summed without its name — nor its client: a client whose only project is
+  // private would name the project in the filter and the per-client rollup.
+  const clientsOffered = [...new Map(all.flatMap((project) => (project.visibility !== "private" && project.clientId && project.clientName ? [[project.clientId, { id: project.clientId, name: project.clientName }] as const] : []))).values()].sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  const projects = filter.clientId ? all.filter((project) => project.clientId === filter.clientId && project.visibility !== "private") : all;
   const period = { from: filter.from, to: filter.to };
   const empty: ProfitabilityView = { period, projects: [], privateProjects: null, clients: [], total: { feeVnd: null, costVnd: 0, marginVnd: null, marginRate: null, hours: 0, estimated: false }, clientsOffered };
   if (projects.length === 0) return empty;
@@ -79,7 +84,9 @@ export async function buildProfitability(reader: Pick<ProfitabilityReader, "prin
   const positionName = new Map(positions.map((position) => [position.id, position.name]));
   const teamName = new Map(teams.map((team) => [team.id, team.name]));
   const lines: TimeLine[] = time.map((line) => ({ projectId: line.projectId, personId: line.personId, month: line.month, minutes: line.minutes, teamKey: line.teamId ?? "", roleKey: positionOf.get(line.personId) ?? "" }));
-  const result = profitability({ projects: projects.map((project) => ({ projectId: project.id, clientId: project.clientId, fee: fees.get(project.id)! })), time: lines, rates, periodMonths });
+  // Private projects roll up under a group of their own, which the per-client lines leave out (they
+  // are the "private projects" line); the total still counts them.
+  const result = profitability({ projects: projects.map((project) => ({ projectId: project.id, clientId: project.visibility === "private" ? PRIVATE_GROUP : project.clientId, fee: fees.get(project.id)! })), time: lines, rates, periodMonths });
 
   // The team whose task the time was logged on (time on the project itself has none: "other").
   const groupName = (kind: "team" | "role", key: string): string | null => (key === OTHER_GROUP || key === "" ? null : kind === "team" ? (teamName.get(key) ?? null) : (positionName.get(key) ?? null));
@@ -121,7 +128,7 @@ export async function buildProfitability(reader: Pick<ProfitabilityReader, "prin
       .filter((row) => row.hours > 0 || row.feeVnd !== null)
       .sort((a, b) => (a.marginVnd ?? Infinity) - (b.marginVnd ?? Infinity) || a.name.localeCompare(b.name, "vi")),
     privateProjects: hidden.length ? { projects: hidden.length, hours: hours(hidden.reduce((total, row) => total + row.minutes, 0)), estimated: hidden.some((row) => row.estimated), ...sumMargin(hidden) } : null,
-    clients: result.clients.map((client) => ({ clientId: client.clientId, clientName: client.clientId ? (clientName.get(client.clientId) ?? null) : null, projects: client.projects, hours: hours(client.minutes), estimated: client.estimated, feeVnd: client.feeVnd, costVnd: client.costVnd, marginVnd: client.marginVnd, marginRate: client.marginRate })),
+    clients: result.clients.filter((client) => client.clientId !== PRIVATE_GROUP).map((client) => ({ clientId: client.clientId, clientName: client.clientId ? (clientName.get(client.clientId) ?? null) : null, projects: client.projects, hours: hours(client.minutes), estimated: client.estimated, feeVnd: client.feeVnd, costVnd: client.costVnd, marginVnd: client.marginVnd, marginRate: client.marginRate })),
     total: { feeVnd: result.total.feeVnd, costVnd: result.total.costVnd, marginVnd: result.total.marginVnd, marginRate: result.total.marginRate, hours: hours(result.total.minutes), estimated: result.total.estimated },
     clientsOffered,
   };

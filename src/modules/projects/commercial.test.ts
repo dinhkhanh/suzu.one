@@ -26,7 +26,7 @@ import { createProject } from "../work/projects";
 import { createTeam, listStates, setTeamMember } from "../work/teams";
 import { updateWorkTask } from "../work/tasks";
 import { acceptanceDocument, createAcceptance, findAcceptance, sendAcceptance, signAcceptance, voidAcceptance } from "./acceptance";
-import { decideBillingItem, listBillingQueue, listProjectBilling } from "./billing";
+import { billingItemForAcceptance, decideBillingItem, listBillingQueue, listProjectBilling } from "./billing";
 import { decideChange, getChangeLedger, listChanges, openChangesForApprover, saveChange, submitChange } from "./change-requests";
 import { clientReportFigures, saveClientReport } from "./client-reports";
 import { closeProject, getCloseChecklist, saveRetro } from "./close";
@@ -305,6 +305,15 @@ describe("acceptance and billing (FR-PJM-55, 56)", () => {
     expect(paper.text).toContain("ngày 20/09/2026");
     expect(paper.missing).toEqual([]);
     expect(paper.text).not.toMatch(/50[.,]?000[.,]?000|120[.,]?000[.,]?000/);
+  });
+
+  it("opens the attached acceptance to finance of the item's entity through the item, and to nobody else that way", async () => {
+    const [item] = await db().select().from(schema.projectBillingItem).where(and(eq(schema.projectBillingItem.projectId, ids.tvc), eq(schema.projectBillingItem.source, "milestone")));
+    expect(item.acceptanceId).not.toBeNull();
+    const finance = principalOf(ids.ke, [{ role: "finance", scope: { type: "entity", id: ids.szm } }]);
+    expect((await billingItemForAcceptance(finance, item.acceptanceId!))?.id).toBe(item.id);
+    expect(await billingItemForAcceptance(principalOf(ids.keC, [{ role: "finance", scope: { type: "entity", id: ids.szc } }]), item.acceptanceId!)).toBeNull();
+    expect(await billingItemForAcceptance(principalOf(ids.tam, []), item.acceptanceId!)).toBeNull();
   });
 
   it("bills a billing milestone once, however often it is marked done", async () => {

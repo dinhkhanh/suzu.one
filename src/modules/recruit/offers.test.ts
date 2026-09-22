@@ -13,6 +13,7 @@ vi.mock("@/lib/env", () => ({
 }));
 
 import { eq } from "drizzle-orm";
+import { addDays, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { DOCUMENT_TEMPLATE_SEED } from "../documents/seed-templates";
@@ -30,7 +31,8 @@ const principal = (personId: string | null, grants: Principal["grants"] = []): P
 const viewerOf = (p: Principal) => ({ principal: p, personId: p.personId });
 
 /** Far enough ahead that the offer's start date is always in the future whenever this runs. */
-const isoDay = (offsetDays: number) => new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10);
+// Days from today in Vietnam, as the service counts them — a UTC date is yesterday before 07:00.
+const isoDay = (offsetDays: number) => addDays(todayInVietnam(), offsetDays);
 
 const ids = {} as Record<"szm" | "vid" | "pipeline" | "openingId" | "applicationId" | "candidateId" | "hrAdmin" | "hrStaff" | "recruiterPerson" | "headPerson" | "strangerPerson" | "templateId" | "personalTemplateId", string>;
 let owner: Principal;

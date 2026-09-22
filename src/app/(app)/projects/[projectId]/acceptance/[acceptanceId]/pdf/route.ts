@@ -8,7 +8,7 @@ import { todayInVietnam } from "@/lib/dates";
 import { renderDocumentPdf } from "@/modules/documents/document-pdf";
 import { recordAudit } from "@/modules/platform/audit/service";
 import { getCurrentUser } from "@/modules/platform/auth/session";
-import { acceptanceDocument, findAcceptance, openProject } from "@/modules/projects/service";
+import { acceptanceDocument, billingItemForAcceptance, findAcceptance, openProject } from "@/modules/projects/service";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -19,9 +19,11 @@ export async function GET(_request: Request, context: RouteContext<"/projects/[p
 
   const { projectId, acceptanceId } = await context.params;
   const project = await openProject(user, projectId);
-  const acceptance = project ? await findAcceptance(acceptanceId).catch(() => undefined) : undefined;
+  // Finance opens it through the billing item it raised, without being on the project.
+  const billed = project || !/^[0-9a-f-]{36}$/.test(acceptanceId) ? null : await billingItemForAcceptance(user.principal, acceptanceId);
+  const acceptance = project || billed ? await findAcceptance(acceptanceId).catch(() => undefined) : undefined;
   // Not there, void, of another project, or not this reader's to see: one answer.
-  if (!project || !acceptance || acceptance.projectId !== projectId || acceptance.status === "void") {
+  if ((!project && billed?.projectId !== projectId) || !acceptance || acceptance.projectId !== projectId || acceptance.status === "void") {
     await recordAudit({ action: "projects.acceptance.pdf.denied", actor: { userId: user.userId, personId: user.person.id, email: user.email }, request: user.request, resource: { type: "project_acceptance", id: acceptanceId } });
     return new NextResponse("Not found", { status: 404 });
   }
@@ -36,7 +38,7 @@ export async function GET(_request: Request, context: RouteContext<"/projects/[p
   });
   const pdf = renderDocumentPdf({ title: document.title, number: document.number, text: document.text, letterhead: document.letterhead, footer: tDocuments("pdfFooter", { number: document.number }), today: todayInVietnam() });
 
-  await recordAudit({ action: "projects.acceptance.pdf", actor: { userId: user.userId, personId: user.person.id, email: user.email }, request: user.request, resource: { type: "project_acceptance", id: acceptance.id, entityId: project.project.entityId }, summary: document.number });
+  await recordAudit({ action: "projects.acceptance.pdf", actor: { userId: user.userId, personId: user.person.id, email: user.email }, request: user.request, resource: { type: "project_acceptance", id: acceptance.id, entityId: project?.project.entityId ?? billed?.entityId ?? null }, summary: document.number });
 
   return new NextResponse(pdf as BodyInit, {
     headers: {

@@ -139,11 +139,16 @@ export function TimelineView({ view }: { view: View }) {
   const first = Math.max(0, Math.floor(scroll.top / ROW_H) - OVERSCAN);
   const last = Math.min(rows.length - 1, Math.ceil((scroll.top + scroll.height) / ROW_H) + OVERSCAN);
 
+  /** Today a little in from the left: three weeks of context, or a third of the chart on a narrow screen. */
+  const scrollToToday = (element: HTMLDivElement) => {
+    element.scrollLeft = Math.max(0, x(view.today) - Math.min(3 * dayW * 7, Math.max(0, (element.clientWidth - labelW) / 3)));
+  };
+
   // Scroll today into view once, and keep track of the window for virtualisation.
   useEffect(() => {
     const element = scroller.current;
     if (!element) return;
-    element.scrollLeft = Math.max(0, x(view.today) - 3 * dayW * 7);
+    scrollToToday(element);
     const update = () => setScroll({ top: Math.max(0, element.scrollTop - HEADER_H), height: element.clientHeight });
     update();
     element.addEventListener("scroll", update, { passive: true });
@@ -154,7 +159,7 @@ export function TimelineView({ view }: { view: View }) {
     };
     // Only when the scale changes the horizontal position has to be found again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scale]);
+  }, [scale, phone]);
 
   /** The dates a task is drawn with right now: while dragged or nudged, where it would land. */
   const shown = (task: TimelineTask): Dates => {
@@ -426,7 +431,7 @@ export function TimelineView({ view }: { view: View }) {
           type="button"
           className="text-xs text-muted-foreground underline"
           onClick={() => {
-            if (scroller.current) scroller.current.scrollLeft = Math.max(0, todayX - 3 * dayW * 7);
+            if (scroller.current) scrollToToday(scroller.current);
           }}
         >
           {t("today")}

@@ -20,7 +20,7 @@ import type { Principal } from "../platform/rbac/policy";
 import { listPeopleHolding } from "../platform/rbac/service";
 import { type BillingSource, type BillingStatus, billingDecidable } from "./engine/acceptance";
 import { ensurePlan } from "./plans";
-import { billingReach } from "./policy";
+import { billingReach, canDecideBilling } from "./policy";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type BillingItemRow = typeof schema.projectBillingItem.$inferSelect;
@@ -153,6 +153,16 @@ export async function billingEntities(principal: Principal): Promise<{ id: strin
 }
 
 export const findBillingItem = async (itemId: string): Promise<BillingItemRow | undefined> => (await db().select().from(schema.projectBillingItem).where(eq(schema.projectBillingItem.id, itemId)).limit(1))[0];
+
+/**
+ * The billing item an acceptance is attached to, when this reader works the queue over the item's
+ * entity. Finance is usually on no project, yet the item is raised "with the acceptance attached"
+ * (FR-PJM-56): the paper and its signed scan open through the item, not through the project.
+ */
+export async function billingItemForAcceptance(principal: Principal, acceptanceId: string): Promise<BillingItemRow | null> {
+  const [item] = await db().select().from(schema.projectBillingItem).where(eq(schema.projectBillingItem.acceptanceId, acceptanceId)).limit(1);
+  return item && canDecideBilling(principal, item) ? item : null;
+}
 
 // ── Finance's answers ───────────────────────────────────────────────────────────────────────
 

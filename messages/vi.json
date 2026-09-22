@@ -9635,7 +9635,7 @@
       "accepted": "Sản phẩm đã nghiệm thu",
       "acceptedValue": "{accepted}/{promised} ({percent}%)",
       "hours": "Giờ",
-      "hoursValue": "{used}/{budget} giờ ({percent}%)",
+      "hoursValue": "{used}/{budget} giờ · dự kiến {percent}%",
       "hoursNoBudget": "{used} giờ · chưa có ngân sách"
     },
     "plan": {

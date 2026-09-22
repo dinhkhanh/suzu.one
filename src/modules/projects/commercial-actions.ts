@@ -18,7 +18,7 @@ import { CHANNELS, CONTENT_FORMATS } from "../work/enums";
 import type { WorkViewer } from "../work/policy";
 import { invalidateWorkDirectory } from "../work/service";
 import { createAcceptance, findAcceptance, refreshAcceptance, sendAcceptance, signAcceptance, voidAcceptance } from "./acceptance";
-import { createManualBillingItem, decideBillingItem, findBillingItem, projectByJobNumber } from "./billing";
+import { billingItemForAcceptance, createManualBillingItem, decideBillingItem, findBillingItem, projectByJobNumber } from "./billing";
 import { changeRequestType, changeWithEvidence, decideChange, findChange, saveChange, submitChange, withdrawChange } from "./change-requests";
 import { findClientReport, saveClientReport } from "./client-reports";
 import { closeProject, publishLessons, saveRetro } from "./close";
@@ -318,7 +318,8 @@ export async function completeSignedScanAction(input: unknown) {
 const openScanPipeline = createAction({
   name: "projects.acceptance.scan.open",
   input: z.object({ acceptanceId: z.uuid() }),
-  authorize: async (user, input) => may(user, await acceptanceProject(input.acceptanceId), canViewPlan),
+  // The project's people, or finance through the billing item the signed acceptance raised.
+  authorize: async (user, input) => (await may(user, await acceptanceProject(input.acceptanceId), canViewPlan)) || !!(await billingItemForAcceptance(user.principal, input.acceptanceId)),
   run: async ({ user, input }) => {
     const acceptance = await findAcceptance(input.acceptanceId);
     const file = acceptance?.signedFileId ? await findFile(acceptance.signedFileId) : undefined;
