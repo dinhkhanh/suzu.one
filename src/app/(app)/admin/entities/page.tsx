@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,8 +7,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { CreateEntityForm } from "@/modules/platform/org/ui/entity-forms";
 import { can } from "@/modules/platform/rbac/policy";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Entities" };
+export const generateMetadata = pageTitle("entities");
 
 export default async function EntitiesPage() {
   const user = await requireUser();

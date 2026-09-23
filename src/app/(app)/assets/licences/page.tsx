@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { assetsToday, canManageLicences, canReadLicences, CYCLE_MONTHS, listLicences } from "@/modules/assets/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Bản quyền & thuê bao" };
+export const generateMetadata = pageTitle("licencesSubscriptions");
 
 // Licences and subscriptions (FR-AST-05). Their renewal dates become obligations in the OPS
 // tracker — the scheduler pulls them; nothing is written from here.

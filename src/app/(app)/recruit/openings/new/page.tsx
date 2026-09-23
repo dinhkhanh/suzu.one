@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
 import { canRunRecruitment, canSetRecruitMoney, findHiringRequest, listPipelines } from "@/modules/recruit/service";
 import { OpeningForm } from "@/modules/recruit/ui/opening-form";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "New job opening" };
+export const generateMetadata = pageTitle("newJobOpening");
 
 // Writing the advertisement. With `?from=<hiring request>` the form opens filled in from the
 // approved ask — the "no retyping" half of FR-REC-01.

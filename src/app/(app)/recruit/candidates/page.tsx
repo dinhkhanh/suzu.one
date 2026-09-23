@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,8 +6,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canBrowseCandidates, listCandidates } from "@/modules/recruit/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Candidates" };
+export const generateMetadata = pageTitle("candidates");
 
 // The candidate database (FR-REC-04). `recruit:manage` and nobody else — a hiring manager reaches
 // the people applying for their job through the opening, not through here.
@@ -45,7 +45,7 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/recru
         <ul className="flex flex-col divide-y rounded-xl border">
           {rows.map((row) => (
             <li key={row.id} className="flex flex-wrap items-center gap-3 p-3">
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 basis-56">
                 <Link href={`/recruit/candidates/${row.id}`} className="text-sm font-medium hover:underline">
                   {row.fullName}
                 </Link>

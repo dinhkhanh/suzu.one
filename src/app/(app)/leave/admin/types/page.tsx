@@ -1,18 +1,21 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
+import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { todayInVietnam } from "@/lib/dates";
-import { canManageLeaveConfig } from "@/modules/leave/policy";
+import { canManageLeaveConfig, canOpenLeaveAdmin } from "@/modules/leave/policy";
 import { listLeaveTypes, listPolicies } from "@/modules/leave/types";
 import { LeavePolicyForm, LeaveTypeForm } from "@/modules/leave/ui/admin-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { leaveConfigOptions } from "../options";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Leave types" };
+export const generateMetadata = pageTitle("leaveTypes");
 
 // Leave types and, for the ones that keep a balance, the policy versions behind them.
 export default async function LeaveTypesPage() {
   const user = await requireUser();
+  // The layout checks too, but a layout is not re-rendered on client navigation.
+  if (!canOpenLeaveAdmin(user.principal)) notFound();
   const t = await getTranslations("leave.admin");
   const format = await getFormatter();
   const today = todayInVietnam();

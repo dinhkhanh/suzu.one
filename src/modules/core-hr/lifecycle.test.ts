@@ -258,4 +258,17 @@ describe("timeline tiers", () => {
     expect((await listLifecycleEvents(principal(ids.manager), person.id))!.length).toBe(2);
     expect(await listLifecycleEvents(principal(ids.owner), person.id)).toBeNull();
   });
+
+  it("shows why a salary changed at the compensation tier only", async () => {
+    const { person } = await hire("Raised Once");
+    await recordEvent(person.id, { type: "salary_change", effectiveDate: today, reason: "Lên 30 triệu", note: "Theo đánh giá năm" }, ids.actor);
+    const words = async (viewer: Principal) => {
+      const event = (await listLifecycleEvents(viewer, person.id))?.find((row) => row.type === "salary_change");
+      return event && [event.reason, event.note];
+    };
+    expect(await words(principal(ids.hr, [{ role: "hr_admin", scope: { type: "entity", id: ids.media } }]))).toEqual(["Lên 30 triệu", "Theo đánh giá năm"]);
+    // HR staff (restricted) and the line manager (personal) see that it happened, not why.
+    expect(await words(principal(ids.hr, [{ role: "hr_staff", scope: { type: "entity", id: ids.media } }]))).toEqual([null, null]);
+    expect(await words(principal(ids.manager))).toEqual([null, null]);
+  });
 });

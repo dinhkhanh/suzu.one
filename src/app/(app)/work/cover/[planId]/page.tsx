@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,8 +6,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { canAcknowledgeCover, canHandBackCover, canSubmitCoverPlan, canViewCoverPlan, coverPlanFacts, getCoverPlan, loadViewer } from "@/modules/work/service";
 import { CoverPlanForm } from "@/modules/work/ui/cover";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Leave cover" };
+export const generateMetadata = pageTitle("leaveCover");
 
 // FR-PJM-44: the person's cover plan for a leave — what falls in the absence and who covers it. The
 // person (or work:manage over their entity) fills and submits it; the covers read and acknowledge

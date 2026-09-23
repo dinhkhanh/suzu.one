@@ -1,17 +1,20 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { listLocations } from "@/modules/attendance/locations";
-import { canManageLocation } from "@/modules/attendance/policy";
+import { canManageLocation, canOpenAttendanceSettings } from "@/modules/attendance/policy";
 import { LocationForm } from "@/modules/attendance/ui/location-form";
 import { requireUser } from "@/modules/platform/auth/session";
 import { configOptions } from "../options";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Work locations" };
+export const generateMetadata = pageTitle("workLocations");
 
 // Where people may check in (FR-ATT-04). HR sees and edits the locations of the entities they keep attendance for.
 export default async function LocationsSettingsPage() {
   const user = await requireUser();
+  // The layout checks too, but a layout is not re-rendered on client navigation.
+  if (!canOpenAttendanceSettings(user.principal)) notFound();
   const t = await getTranslations("attendance.settings");
   const [locations, options] = await Promise.all([listLocations(), configOptions(user.principal)]);
   const mine = locations.filter((location) => canManageLocation(user.principal, location.entityId));

@@ -1,23 +1,24 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { canReadUnansweredLog, listUnanswered } from "@/modules/ai/service";
 import { ResolveUnansweredForm } from "@/modules/ai/ui/resolve-form";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Unanswered questions" };
+export const generateMetadata = pageTitle("unansweredQuestions");
 
 /**
  * What the knowledge base could not answer — the backlog of pages still to write, most-asked
- * first. For the people who keep it (`kb:manage`), because that is what it is for.
+ * first. For the people who keep it (`kb:manage`), because that is what it is for — each keeper
+ * the questions of the people inside their grant.
  */
 export default async function UnansweredPage(props: PageProps<"/assistant/unanswered">) {
   const user = await requireUser();
   if (!canReadUnansweredLog(user.principal)) notFound();
   const params = await props.searchParams;
   const resolved = params.show === "resolved";
-  const [t, format, rows] = await Promise.all([getTranslations("assistant.unanswered"), getFormatter(), listUnanswered({ resolved })]);
+  const [t, format, rows] = await Promise.all([getTranslations("assistant.unanswered"), getFormatter(), listUnanswered(user.principal, { resolved })]);
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">

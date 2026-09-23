@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -12,8 +11,9 @@ import { canManageCompensation, canPayPayroll, canReadPayroll } from "@/modules/
 import { getRun } from "@/modules/payroll/runs";
 import { formatVnd } from "@/modules/payroll/ui/money";
 import { BankFileForm, DisbursementForm, OpenCashSheetButton } from "@/modules/payroll/ui/payment-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Payroll payment" };
+export const generateMetadata = pageTitle("payrollPayment");
 
 /**
  * Paying an approved run (FR-PAY-33, FR-PAY-39). The chief accountant works here; C&B and the

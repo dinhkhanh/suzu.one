@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
@@ -9,8 +8,9 @@ import { GoalLine, progressLabel } from "@/modules/performance/ui/goal-tree";
 import { PerformanceNav, readYear, yearChoices } from "@/modules/performance/ui/nav";
 import { ConfidenceBadge, metricText, ProgressBar } from "@/modules/performance/ui/progress";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Goals" };
+export const generateMetadata = pageTitle("goals");
 
 // My goals (FR-PRF-01): what I own or am accountable for, where each key result stands, and the
 // weekly check-in right there. Below: the company's goals at a glance.
@@ -63,7 +63,7 @@ export default async function MyGoalsPage({ searchParams }: PageProps<"/performa
                 {goal.keyResults.map((keyResult) => (
                   <li key={keyResult.id} className="flex flex-col gap-2 py-2 text-sm">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <span className="min-w-0 flex-1">{keyResult.title}</span>
+                      <span className="min-w-0 flex-1 basis-56">{keyResult.title}</span>
                       <span className="text-xs text-muted-foreground tabular-nums">
                         {metricText(format, keyResult.metricType, keyResult.currentValue, keyResult.milestones)}
                         {keyResult.metricType === "milestone" ? "" : ` → ${metricText(format, keyResult.metricType, keyResult.targetValue)}`}

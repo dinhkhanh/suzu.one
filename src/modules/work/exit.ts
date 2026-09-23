@@ -18,7 +18,7 @@ import { invalidateWorkDirectory } from "./directory";
 import { invalidateIntakeForms } from "./intake";
 import { HANDOVER_EVENT_TYPES, isReassignable, type OwnedItem, type OwnershipKind, ownershipSummary, reassignProblem } from "./engine/exit";
 import { normalizeNote, type Note, noteIsEmpty } from "./engine/handoff";
-import { canAdminTeam, canChangeAccountManager, canManageProject, canModerateTask, canViewProject, canViewTask, canViewTeamBacklog, type ExitHandoverFacts, type ProjectFacts, type WorkViewer } from "./policy";
+import { canAdminTeam, canChangeAccountManager, canGiveProjectRole, canManageProject, canModerateTask, canViewProject, canViewTask, canViewTeamBacklog, type ExitHandoverFacts, type ProjectFacts, type WorkViewer } from "./policy";
 import { notePrivateProjectReads } from "./private-reads";
 import { projectFacts } from "./projects";
 import { loadTasks, taskKey, updateWorkTaskIn, WORK_KIND } from "./tasks";
@@ -213,7 +213,9 @@ export async function gateOwnership(
       const facts = projectFacts(row.project, row.team);
       const visible = canViewProject(viewer, facts);
       if (visible) read.push(facts);
-      gates.set(key, { visible, manage: canManageProject(viewer, facts), ownerName: leadNames.get(row.project.leadPersonId ?? "") ?? null, eligible: peopleOf(row.team.id, row.project.id) });
+      // The lead's and the account manager's seats read the project's fee (Q21): handing one on is
+      // `canGiveProjectRole`'s call — running the project and `pjm:commercial` over it.
+      gates.set(key, { visible, manage: canGiveProjectRole(viewer, facts, null, item.kind === "project_lead" ? "lead" : "account_manager"), ownerName: leadNames.get(row.project.leadPersonId ?? "") ?? null, eligible: peopleOf(row.team.id, row.project.id) });
     } else if (item.kind === "recurrence") {
       const row = recurrences.find((entry) => entry.id === item.id);
       if (!row) continue;

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { Fragment } from "react";
 import { todayInVietnam } from "@/lib/dates";
@@ -8,8 +7,9 @@ import { exportUtilisationAction } from "@/modules/daily/time-actions";
 import { hoursOf, percentOf } from "@/modules/daily/ui/format";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Utilisation" };
+export const generateMetadata = pageTitle("utilisation");
 
 // FR-PJM-61: logged ÷ available hours for the last eight weeks — each lead's teams, each line
 // manager's reports, person by person with team totals; teams seen through `work:manage` only as

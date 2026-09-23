@@ -1,16 +1,20 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { todayInVietnam } from "@/lib/dates";
 import { listBalancesForAdmin } from "@/modules/leave/admin";
+import { canOpenLeaveAdmin } from "@/modules/leave/policy";
 import { RunAccrualsButton } from "@/modules/leave/ui/admin-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { can } from "@/modules/platform/rbac/policy";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Leave balances" };
+export const generateMetadata = pageTitle("leaveBalances");
 
 export default async function LeaveBalancesPage(props: PageProps<"/leave/admin/balances">) {
   const user = await requireUser();
+  // The layout checks too, but a layout is not re-rendered on client navigation.
+  if (!canOpenLeaveAdmin(user.principal)) notFound();
   const t = await getTranslations("leave.admin");
   const format = await getFormatter();
   const current = Number(todayInVietnam().slice(0, 4));

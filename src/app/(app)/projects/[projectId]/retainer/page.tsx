@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -7,8 +6,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { awaitingAcceptance, canEditRetainer, getRetainer, listPeriods, openProject, type PeriodView, RETAINER_ROLLOVERS, shapeRetainer, type Usage, type UsageLevel } from "@/modules/projects/service";
 import { RetainerForm } from "@/modules/projects/ui/commercial-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Retainer" };
+export const generateMetadata = pageTitle("retainer");
 
 const levelVariant = (level: UsageLevel) => (level === "over" ? "destructive" : level === "full" ? "warning" : level === "warning" ? "warning" : "secondary");
 

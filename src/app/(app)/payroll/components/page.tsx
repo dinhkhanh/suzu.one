@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -12,8 +11,9 @@ import { listEntityOptions } from "@/modules/payroll/options";
 import { canDecidePayRules, canProposePayRules, canReadPayRules } from "@/modules/payroll/policy";
 import { formatVnd } from "@/modules/payroll/ui/money";
 import { ProposeComponentForm, RuleDecisionButtons } from "@/modules/payroll/ui/rule-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Pay components" };
+export const generateMetadata = pageTitle("payComponents");
 
 // The pay component catalogue (FR-PAY-02). Rules, not pay — but still behind step-up: a changed
 // formula changes everybody's payslip. C&B proposes; only the owner's approval puts a version in force.

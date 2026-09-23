@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -14,8 +13,9 @@ import { findLeaveRequest, type LeaveInput, type LeavePreview, previewLeave } fr
 import { leaveTypesFor } from "@/modules/leave/types";
 import { SubmitLeaveForm } from "@/modules/leave/ui/request-forms";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Request leave" };
+export const generateMetadata = pageTitle("requestLeave");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;

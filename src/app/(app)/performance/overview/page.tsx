@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +8,9 @@ import { bpText, MonthPicker, monthLabel, readMonth, ScoreFigure, ScoreState } f
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { ConfidenceBadge, ProgressBar } from "@/modules/performance/ui/progress";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Performance overview" };
+export const generateMetadata = pageTitle("performanceOverview");
 
 // The owner's dashboard: per entity and department — who is scored, how the scores spread, which
 // months are closed — and where the top goals stand. Whole entities in the viewer's reach only.
@@ -91,7 +91,7 @@ export default async function PerformanceOverviewPage({ searchParams }: PageProp
         <ul className="flex flex-col divide-y rounded-xl border">
           {overview.goals.map((goal) => (
             <li key={goal.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm">
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 basis-56">
                 <Link href={`/performance/goals/${goal.id}`} className="font-medium hover:underline">
                   {goal.title}
                 </Link>

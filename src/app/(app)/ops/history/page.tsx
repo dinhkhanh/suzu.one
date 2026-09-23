@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -12,8 +11,9 @@ import { isUuid, OpsNav } from "@/modules/ops/ui/overview";
 import { StatusBadge } from "@/modules/ops/ui/status-badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Compliance archive" };
+export const generateMetadata = pageTitle("complianceArchive");
 
 // The archive (FR-OPS-09): every past period of an obligation with who closed it, when, the
 // reference number, the amount and the filed papers — what a tax or insurance inspector asks for.

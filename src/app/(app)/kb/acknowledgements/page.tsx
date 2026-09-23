@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { kbViewerOf, listMyAcknowledgements, listMyPendingAcks } from "@/modules/kb/service";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "My acknowledgements" };
+export const generateMetadata = pageTitle("myAcknowledgements");
 
 export default async function MyAcknowledgementsPage() {
   const user = await requireUser();

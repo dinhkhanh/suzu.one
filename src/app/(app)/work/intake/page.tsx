@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listMyIntakeRequests, listOpenIntakeForms, loadViewer } from "@/modules/work/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Request work" };
+export const generateMetadata = pageTitle("requestWork");
 
 // FR-WRK-16: the request forms this person may fill in, by team, and what became of their earlier requests.
 export default async function IntakeIndexPage() {
@@ -51,7 +51,7 @@ export default async function IntakeIndexPage() {
           <ul className="flex flex-col divide-y rounded-xl border text-sm">
             {mine.map((request) => (
               <li key={request.taskId} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-56">
                   <Link href={`/work/tasks/${request.taskId}`} className="font-medium hover:underline">
                     <span className="font-mono text-xs text-muted-foreground">{request.key}</span> {request.title}
                   </Link>

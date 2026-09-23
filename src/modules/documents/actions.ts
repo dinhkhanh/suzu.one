@@ -5,8 +5,9 @@
 // more widely than the letter.
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createAction } from "@/lib/action";
+import { ActionError, createAction } from "@/lib/action";
 import { getPersonTarget } from "@/modules/core-hr/service";
+import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 import { TIERS } from "@/modules/platform/rbac/roles";
 import { DOCUMENT_KINDS } from "./enums";
 import { findTemplate, generateDocument, saveTemplate } from "./service";
@@ -69,6 +70,10 @@ const generateDocumentPipeline = createAction({
     return !!template && template.isActive && !!subject && canGenerate(user.principal, subject, template.tier);
   },
   run: async ({ user, input }) => {
+    // A compensation letter is read as it is made: the same proof of presence as a payslip
+    // (FR-PLT-06), with the refusal `createAction`'s `stepUp` gives.
+    const template = await findTemplate(input.templateId);
+    if (template?.tier === "compensation" && !isStepUpFresh(user.reauthAt)) throw new ActionError("step_up_required");
     const { document } = await generateDocument({ principal: user.principal, personId: user.person.id }, input.templateId, input.subjectPersonId);
     revalidatePath(`/people/${input.subjectPersonId}`);
     revalidatePath("/documents");

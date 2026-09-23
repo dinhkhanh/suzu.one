@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +8,9 @@ import { GoalLine, periodLabel, progressLabel } from "@/modules/performance/ui/g
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { ConfidenceBadge, GoalStatusBadge, metricText, ProgressBar } from "@/modules/performance/ui/progress";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Goal" };
+export const generateMetadata = pageTitle("goal");
 
 // One goal: its key results and check-ins, how its figure is made (the trace), and what the viewer may do with it.
 export default async function GoalPage({ params }: PageProps<"/performance/goals/[goalId]">) {
@@ -69,7 +69,7 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
           {goal.keyResults.map((keyResult) => (
             <li key={keyResult.id} className="flex flex-col gap-2 py-3 text-sm">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <span className="min-w-0 flex-1 font-medium">{keyResult.title}</span>
+                <span className="min-w-0 flex-1 basis-56 font-medium">{keyResult.title}</span>
                 <ConfidenceBadge confidence={keyResult.confidence} label={keyResult.confidence ? t(`enums.confidence.${keyResult.confidence}`) : ""} />
                 <ProgressBar bp={keyResult.progressBp} label={progressLabel(labels, keyResult.progressBp)} />
               </div>
@@ -184,7 +184,7 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
               return (
                 <li key={checkIn.id} className="flex flex-col gap-1 py-2 text-sm">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="min-w-0 flex-1">{checkIn.keyResultTitle}</span>
+                    <span className="min-w-0 flex-1 basis-56">{checkIn.keyResultTitle}</span>
                     <span className="tabular-nums">{keyResult ? metricText(format, keyResult.metricType, checkIn.value ?? 0, checkIn.milestones) : "—"}</span>
                     <ConfidenceBadge confidence={checkIn.confidence as "on_track" | "at_risk" | "off_track"} label={t(`enums.confidence.${checkIn.confidence as "on_track" | "at_risk" | "off_track"}`)} />
                   </div>

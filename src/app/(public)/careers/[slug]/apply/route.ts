@@ -1,5 +1,6 @@
 import { visitorOf } from "@/lib/public-action";
 import { MAX_CV_BYTES, applyToOpening } from "@/modules/recruit/public";
+import { readFormWithin } from "@/modules/recruit/request-body";
 
 /**
  * Where the public application form posts (FR-REC-03). The **only** unauthenticated write
@@ -10,7 +11,8 @@ import { MAX_CV_BYTES, applyToOpening } from "@/modules/recruit/public";
  * validation, the work, the audit row. Nothing is decided here, and nothing is trusted here:
  *
  *   · the body is refused **before it is read** if `content-length` says it is too big, so a
- *     100 MB upload costs one header and not 100 MB of memory;
+ *     100 MB upload costs one header and not 100 MB of memory — and counted as it is read, because
+ *     a chunked request declares no length at all;
  *   · exactly one file is taken, by name, and only if it is a `File`;
  *   · every other value is taken as a string, and the schema in `public.ts` caps them all —
  *     `z.object` drops anything that was not asked for, so extra fields are not a hazard;
@@ -32,16 +34,12 @@ export async function POST(request: Request, context: RouteContext<"/careers/[sl
   // printed into a page and never reaches SQL except as a bound parameter.
   const back = (error?: string) => seeOther(`/careers/${encodeURIComponent(slug)}${error ? `?error=${encodeURIComponent(error)}` : ""}`);
 
-  const declared = Number(request.headers.get("content-length") ?? "0");
-  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) return back("file_too_large");
-
-  let form: FormData;
-  try {
-    form = await request.formData();
-  } catch {
-    // A body that is not a form at all. No detail: a probe learns nothing from the parser.
-    return back("failed");
-  }
+  // Refused unread when the declared length is too big, and counted as it is read otherwise: a
+  // chunked body declares no length at all, and a declared one is only what the sender claims.
+  const form = await readFormWithin(request, MAX_BODY_BYTES);
+  if (form === "too_large") return back("file_too_large");
+  // A body that is not a form at all. No detail: a probe learns nothing from the parser.
+  if (form === "failed") return back("failed");
 
   const text = (name: string) => {
     const value = form.get(name);

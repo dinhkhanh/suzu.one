@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +8,9 @@ import { bpText, MonthPicker, readMonth, ScoreFigure, ScoreState } from "@/modul
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { ConfidenceBadge, ProgressBar } from "@/modules/performance/ui/progress";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Team performance" };
+export const generateMetadata = pageTitle("teamPerformance");
 
 // The manager's dashboard (FR-PRF-02): everyone below me — or in my role's scope — with the month's
 // KPI score, what is still missing, and where their goals stand. Nobody to look after: 404.

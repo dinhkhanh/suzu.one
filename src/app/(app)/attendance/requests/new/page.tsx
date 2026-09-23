@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,8 +10,9 @@ import { getPersonTarget } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { db, schema } from "@/lib/db";
 import { eq } from "drizzle-orm";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Attendance request" };
+export const generateMetadata = pageTitle("attendanceRequest");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;

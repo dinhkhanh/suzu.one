@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,8 +9,9 @@ import { canAdjustBonusLine, getBonusLine, getBonusRun, isBonusRunOpen } from "@
 import { canViewBonusOf } from "@/modules/payroll/policy";
 import { OverrideLineForm } from "@/modules/payroll/ui/bonus-forms";
 import { BonusTraceView } from "@/modules/payroll/ui/bonus-trace";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Bonus explanation" };
+export const generateMetadata = pageTitle("bonusExplanation");
 
 /**
  * **The phase's exit criterion on screen**: one person's year-end bonus explained from their KPI

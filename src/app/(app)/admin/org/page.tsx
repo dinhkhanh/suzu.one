@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -10,8 +9,9 @@ import { departmentTemplate } from "@/modules/platform/org/import";
 import { listEntities, orgUnitTree } from "@/modules/platform/org/service";
 import { OrgUnitForm } from "@/modules/platform/org/ui/org-forms";
 import { can } from "@/modules/platform/rbac/policy";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Org units" };
+export const generateMetadata = pageTitle("orgUnits");
 
 export default async function OrgPage() {
   const user = await requireUser();

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,8 +7,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { listQueriesForManager } from "@/modules/payroll/payslips";
 import { compensationReach } from "@/modules/payroll/policy";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Payslip queries" };
+export const generateMetadata = pageTitle("payslipQueries");
 
 /** C&B's queue of payslip questions (FR-PAY-32), scoped in SQL to the entities they manage. */
 export default async function PayslipQueriesPage() {

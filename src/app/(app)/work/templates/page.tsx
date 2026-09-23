@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { todayInVietnam } from "@/lib/dates";
@@ -7,8 +6,9 @@ import { listTemplatePlans, PROJECT_KINDS, type TemplatePlanRow } from "@/module
 import { TemplatePlanEditor, TemplateProjectForm } from "@/modules/projects/ui/template-forms";
 import { canAdminTeam, canManageTemplate, listAssignableByTeam, listCreateTargets, listTeams, listWorkTemplates, loadViewer, teamFacts } from "@/modules/work/service";
 import { TemplateCard, TemplateCreateForm } from "@/modules/work/ui/planning-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Templates" };
+export const generateMetadata = pageTitle("templates");
 
 // Task and project templates (FR-WRK-10): shared ones and those of the viewer's teams. A project
 // template also carries its plan half (FR-PJM-15): phases, milestones, register lines, hours by

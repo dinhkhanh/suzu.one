@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -11,8 +10,9 @@ import { TaskList } from "@/modules/platform/tasks-engine/ui/task-list";
 import { listBlockersWaitingOn, listCoverPlansFor, listExitHandoversFor, listMyWorkItems, listPendingHandoffsFor, listReviewsWaitingFor, listTriageForLead } from "@/modules/work/service";
 import { CoverCheck } from "@/modules/work/ui/cover";
 import { HandoffNoteView, HandoffResponder } from "@/modules/work/ui/handoff";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "My work" };
+export const generateMetadata = pageTitle("myWork");
 
 // FR-WRK-06: one inbox for everything that waits for me — deliverables to review, requests to
 // approve, work tasks, compliance obligations and checklist steps (ADR-10: all of the last three
@@ -105,7 +105,7 @@ export default async function MyWorkPage() {
           <ul className="flex flex-col divide-y rounded-xl border text-sm">
             {reviews.map((review) => (
               <li key={review.taskId} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-56">
                   <Link href={`/work/tasks/${review.taskId}`} className="font-medium hover:underline">
                     <span className="font-mono text-xs text-muted-foreground">{review.key}</span> {review.title}
                   </Link>
@@ -124,7 +124,7 @@ export default async function MyWorkPage() {
           <ul className="flex flex-col divide-y rounded-xl border text-sm">
             {blockers.map((blocker) => (
               <li key={blocker.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-56">
                   <Link href={`/work/tasks/${blocker.taskId}`} className="font-medium hover:underline">
                     <span className="font-mono text-xs text-muted-foreground">{blocker.key}</span> {blocker.title}
                   </Link>
@@ -145,7 +145,7 @@ export default async function MyWorkPage() {
           <ul className="flex flex-col divide-y rounded-xl border text-sm">
             {group.items.map((item) => (
               <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-56">
                   <Link href={`/work/tasks/${item.id}`} className="font-medium hover:underline">
                     <span className="font-mono text-xs text-muted-foreground">{item.key}</span> {item.title}
                   </Link>
@@ -167,7 +167,7 @@ export default async function MyWorkPage() {
           <ul className="flex flex-col divide-y rounded-xl border text-sm">
             {approvals.map((request) => (
               <li key={request.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-56">
                   <Link href={request.link ?? "/approvals"} className="font-medium hover:underline">
                     {request.summary}
                   </Link>
@@ -189,7 +189,7 @@ export default async function MyWorkPage() {
           <ul className="flex flex-col divide-y rounded-xl border text-sm">
             {work.map((item) => (
               <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-56">
                   <Link href={`/work/tasks/${item.id}`} className="font-medium hover:underline">
                     <span className="font-mono text-xs text-muted-foreground">{item.key}</span> {item.title}
                   </Link>

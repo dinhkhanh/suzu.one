@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,8 +7,9 @@ import { env } from "@/lib/env";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageSchedules, listSchedules } from "@/modules/reports/service";
 import { ScheduleRowActions } from "@/modules/reports/ui/schedule-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Scheduled reports" };
+export const generateMetadata = pageTitle("scheduledReports");
 
 /**
  * The schedules this person may see: their own, and every one for `org:manage` holders

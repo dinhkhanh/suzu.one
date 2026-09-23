@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { listPeople } from "@/modules/core-hr/service";
@@ -6,8 +5,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
 import { canFileHiringRequest, canSetRecruitMoney } from "@/modules/recruit/service";
 import { HiringRequestForm } from "@/modules/recruit/ui/hiring-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Request a hire" };
+export const generateMetadata = pageTitle("requestAHire");
 
 export default async function NewHiringRequestPage() {
   const user = await requireUser();

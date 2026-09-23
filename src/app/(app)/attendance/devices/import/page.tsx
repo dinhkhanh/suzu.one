@@ -1,17 +1,21 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { listDevices, listImportHistory } from "@/modules/attendance/devices";
+import { canOpenAttendanceSettings } from "@/modules/attendance/policy";
 import { DeviceLogImport } from "@/modules/attendance/ui/device-forms";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Import device logs" };
+export const generateMetadata = pageTitle("importDeviceLogs");
 
 const ACCEPT = { csv: ".csv", xlsx: ".xlsx", dat: ".dat,.txt,.log" } as const;
 
 export default async function DeviceImportPage() {
   const user = await requireUser();
+  // The layout checks too, but a layout is not re-rendered on client navigation.
+  if (!canOpenAttendanceSettings(user.principal)) notFound();
   const t = await getTranslations("attendance.devices");
   const format = await getFormatter();
   const [devices, history] = await Promise.all([listDevices(user.principal), listImportHistory(user.principal)]);

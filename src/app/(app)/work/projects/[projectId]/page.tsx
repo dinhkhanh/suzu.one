@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -25,8 +24,9 @@ import { TaskListView } from "@/modules/work/ui/task-list-view";
 import { auditPrivateRead } from "@/modules/projects/service";
 import { ProjectTabs } from "@/modules/projects/ui/project-tabs";
 import { MemberManager } from "@/modules/work/ui/team-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Project" };
+export const generateMetadata = pageTitle("project");
 
 export default async function ProjectPage({ params, searchParams }: PageProps<"/work/projects/[projectId]">) {
   const user = await requireUser();

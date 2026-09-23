@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +8,9 @@ import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { availableBonusSteps, canAdjustBonusLine, canManageBonusRun, canReadBonusRun, bonusCostOf, getBonusRun, getBonusScheme, listBonusLines, listBonusRunEvents, schemeDateOf } from "@/modules/payroll/service";
 import { BonusStepForm, PayBonusRunButton, SimulateButton, WhatIfForm } from "@/modules/payroll/ui/bonus-forms";
 import { formatVnd } from "@/modules/payroll/ui/money";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Bonus run" };
+export const generateMetadata = pageTitle("bonusRun");
 
 const factor = (bp: number | null): string => (bp === null ? "—" : `× ${(bp / 10_000).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`);
 

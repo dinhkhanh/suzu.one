@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { canManageKpiLibrary, isWorkMetric, listKpis } from "@/modules/performance/service";
 import { bpText } from "@/modules/performance/ui/kpi";
 import { KpiForm } from "@/modules/performance/ui/kpi-forms";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "KPI library" };
+export const generateMetadata = pageTitle("kPILibrary");
 
 // The KPI library (FR-PRF-02) is the group's: everyone in HR reads it, group-wide HR changes it.
 export default async function KpiLibraryPage() {

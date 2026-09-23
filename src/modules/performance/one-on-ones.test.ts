@@ -24,7 +24,7 @@ import { hirePerson } from "@/modules/core-hr/service";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { DEFAULT_PERFORMANCE_WEIGHTING } from "./enums";
 import { finalResult } from "./engine/result";
-import { addOneOnOneAction, completeOneOnOneAction, createOneOnOne, listOneOnOnes, loadOneOnOne, shareOneOnOne } from "./one-on-ones";
+import { addOneOnOneAction, completeOneOnOneAction, createOneOnOne, listOneOnOnes, loadOneOnOne, shareOneOnOne, updateOneOnOne } from "./one-on-ones";
 import { decideOutcome, listOutcomes, raiseOutcome } from "./outcomes";
 
 const ids = {} as Record<"entity" | "actor" | "manager" | "report", string>;
@@ -94,21 +94,34 @@ describe("1:1 meeting notes", () => {
     expect(done.status).toBe("done");
   });
 
-  it("lists the meeting for both parties, with its action count", async () => {
+  it("lists a draft for the manager only, with its action count", async () => {
     const forManager = await listOneOnOnes(ids.manager);
-    const forReport = await listOneOnOnes(ids.report);
     expect(forManager).toHaveLength(1);
-    expect(forReport).toHaveLength(1);
     expect(forManager[0].actionCount).toBe(1);
-    expect(forReport[0].personName).toBe("Ho Gia Huy");
+    // The subject does not see the meeting until the manager shares it.
+    expect(await listOneOnOnes(ids.report)).toHaveLength(0);
   });
 
-  it("shares once and refuses to share twice", async () => {
+  it("keeps the private notes when a writer who may not read them saves the meeting", async () => {
+    const [meeting] = await db().select().from(schema.oneOnOne);
+    // HR's save: the private column is left out, not posted as empty.
+    const { after } = await updateOneOnOne(meeting.id, { meetingOn: meeting.meetingOn as "2026-09-15", agenda: "Quý IV (HR)", sharedNotes: meeting.sharedNotes });
+    expect(after.agenda).toBe("Quý IV (HR)");
+    expect(after.privateNotes).toBe("Cân nhắc đề bạt, chưa nói");
+    // The manager's own save still writes it.
+    const { after: again } = await updateOneOnOne(meeting.id, { meetingOn: meeting.meetingOn as "2026-09-15", agenda: "Quý IV", sharedNotes: meeting.sharedNotes, privateNotes: null });
+    expect(again.privateNotes).toBeNull();
+  });
+
+  it("shares once and refuses to share twice, and the subject then sees it", async () => {
     const [meeting] = await db().select().from(schema.oneOnOne);
     const { after } = await shareOneOnOne(meeting.id);
     expect(after.status).toBe("shared");
     expect(after.sharedAt).not.toBeNull();
     await expect(shareOneOnOne(meeting.id)).rejects.toThrow("one_on_one_shared");
+    const forReport = await listOneOnOnes(ids.report);
+    expect(forReport).toHaveLength(1);
+    expect(forReport[0].personName).toBe("Ho Gia Huy");
   });
 });
 

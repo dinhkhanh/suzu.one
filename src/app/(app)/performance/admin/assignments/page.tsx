@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,8 +6,9 @@ import { canManageAssignmentsOf, coversMonth, listAssignments, listKpis, loadDir
 import { kpiValueText, monthLabel } from "@/modules/performance/ui/kpi";
 import { ApplyTemplatesForm, AssignmentRowForm, NewAssignmentForm } from "@/modules/performance/ui/kpi-forms";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "KPI assignments" };
+export const generateMetadata = pageTitle("kPIAssignments");
 
 // Who is measured on what (FR-PRF-02). HR over the person only — weights and targets decide a bonus.
 export default async function KpiAssignmentsPage({ searchParams }: PageProps<"/performance/admin/assignments">) {

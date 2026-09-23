@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Form from "next/form";
 import Link from "next/link";
@@ -10,8 +9,9 @@ import { AUDIT_PAGE_SIZE, type AuditFilters, listAuditEntries, listAuditResource
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { entityReach } from "@/modules/platform/rbac/policy";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Audit log" };
+export const generateMetadata = pageTitle("auditLog");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;

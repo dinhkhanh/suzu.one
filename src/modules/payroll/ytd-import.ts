@@ -12,6 +12,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import { listPayrollFacts } from "@/modules/core-hr/service";
 import { code, type Column, type ParsedRow, type Problem, templateCsv, text } from "../platform/import/engine/table";
 import { defineImport } from "../platform/import/service";
+import { can } from "@/modules/platform/rbac/policy";
 import { canManageCompensation } from "./policy";
 import { saveYtd, type YtdFigures } from "./ytd";
 
@@ -97,7 +98,9 @@ export const ytdImport = defineImport({
   stepUp: true,
   columns: ytdColumns,
   params: ytdParams,
-  authorize: (user, params) => !!params && canManageCompensation(user.principal, { entityId: params.entityId }),
+  // Staging names the entity; committing is first asked without it (the framework re-asks with the
+  // batch's own entity inside the transaction), so there the question is "C&B anywhere at all".
+  authorize: (user, params) => (params ? canManageCompensation(user.principal, { entityId: params.entityId }) : can(user.principal, "payroll:propose")),
   validate: async (rows, user, params) => (await resolveYtdRows(rows, user, params)).problems,
   commit: async (rows, tx, user, params, batchId) => {
     const { resolved } = await resolveYtdRows(rows, user, params, tx);

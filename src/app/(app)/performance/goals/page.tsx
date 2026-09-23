@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
@@ -7,8 +6,9 @@ import { isPeriodKey, listGoals, periodsOfYear, yearOfPeriod } from "@/modules/p
 import { GoalTree, periodLabel } from "@/modules/performance/ui/goal-tree";
 import { PerformanceNav, readYear, yearChoices } from "@/modules/performance/ui/nav";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Goals" };
+export const generateMetadata = pageTitle("goals");
 
 // The alignment view (FR-PRF-01): group → entity → department → team → individual. Unit goals are
 // open to the whole staff; individual goals appear only for the people the viewer reads.

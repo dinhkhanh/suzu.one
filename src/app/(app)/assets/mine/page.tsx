@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canReadRegister, listAssetsOfPerson } from "@/modules/assets/service";
 import { ConfirmHandoverForm } from "@/modules/assets/ui/asset-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Thiết bị của tôi" };
+export const generateMetadata = pageTitle("myEquipment");
 
 // Everyone has this page, whatever their role: what the company has handed to them, and the
 // confirmation that they received it (FR-AST-02).

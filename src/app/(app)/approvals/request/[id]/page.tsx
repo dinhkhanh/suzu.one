@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -17,8 +16,9 @@ import { Answers } from "@/modules/requests/ui/answers";
 import { ClaimLines } from "@/modules/requests/ui/claim-lines";
 import { ExpenseClaimForm } from "@/modules/requests/ui/expense-claim-form";
 import { RequestForm } from "@/modules/requests/ui/request-form";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Request" };
+export const generateMetadata = pageTitle("request");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

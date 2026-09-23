@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,8 +6,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { canRunExitHandover, canViewExitHandover, getExitHandover, loadViewer } from "@/modules/work/service";
 import { ExitHandoverForm } from "@/modules/work/ui/exit-handover";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Work handover" };
+export const generateMetadata = pageTitle("workHandover");
 
 // FR-PJM-45: everything a leaver (or someone moving on) still owns in work management, live; the
 // line manager, the person's team leads and work or HR leaders reassign it in bulk with a note. The

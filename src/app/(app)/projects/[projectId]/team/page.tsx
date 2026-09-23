@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +8,9 @@ import { listPersonNames } from "@/modules/platform/people/service";
 import { type BookingView, capacityOfBooked, isMonday, listProjectBookings, loadCapacityReader, mondayOf, openProject, weeksFrom } from "@/modules/projects/service";
 import { BookForm, BookingEditor, FillPlaceholderForm } from "@/modules/projects/ui/booking-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Project team" };
+export const generateMetadata = pageTitle("projectTeam");
 
 const WEEKS = 8;
 const hours = (minutes: number) => Math.round((minutes / 60) * 10) / 10;

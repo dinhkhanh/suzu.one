@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +8,9 @@ import { canBrowsePeople } from "@/modules/core-hr/policy";
 import { listOrgChartPeople, type OrgChartPerson, peopleModuleOpen } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Org chart" };
+export const generateMetadata = pageTitle("orgChart");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

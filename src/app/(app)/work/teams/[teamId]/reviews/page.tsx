@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageReviewChains, canViewTeam, findTeam, listReviewChains, listTeamMembers, loadViewer, teamFacts } from "@/modules/work/service";
 import { ReviewChainManager } from "@/modules/work/ui/review-chains";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Review chains" };
+export const generateMetadata = pageTitle("reviewChains");
 
 // FR-PJM-50: the team's review chains — the stages a deliverable passes before it is approved. The
 // team's leads keep them; anyone who may see the team reads them (they are how the team works).

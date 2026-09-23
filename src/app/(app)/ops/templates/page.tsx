@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,8 +9,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { ROLE_DEFINITIONS, ROLES } from "@/modules/platform/rbac/roles";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Obligation library" };
+export const generateMetadata = pageTitle("obligationLibrary");
 
 const BLANK: TemplateFormValue = { id: null, code: "", name: "", category: "internal", authority: "internal", recurrence: "monthly", dueRule: { type: "after_period", monthsAfter: 1, day: 20 }, shift: "next_working_day", eventType: null, entityIds: null, ownerRule: "permission:ops:manage", ownerPersonId: null, reviewerRule: "none", reviewerPersonId: null, checklist: [], guidance: null, links: [], reminderLeadDays: DEFAULT_REMINDER_LEAD_DAYS, escalation: DEFAULT_ESCALATION, evidence: NO_EVIDENCE, penaltyNote: null, isActive: true };
 

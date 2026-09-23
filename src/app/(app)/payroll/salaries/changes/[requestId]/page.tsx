@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +8,9 @@ import { resolveCatalogue } from "@/modules/payroll/components";
 import { BASE_SALARY_CODE, getSalaryChange } from "@/modules/payroll/salaries";
 import { formatVnd } from "@/modules/payroll/ui/money";
 import { DecideSalaryChangeForm, SalaryChangeForm, WithdrawSalaryChangeButton } from "@/modules/payroll/ui/salary-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Salary change" };
+export const generateMetadata = pageTitle("salaryChange");
 
 // A salary change request. Opens for its requester, its approvers and C&B over the entity; the
 // figures appear only for someone payroll trusts with them, whatever the flow says.

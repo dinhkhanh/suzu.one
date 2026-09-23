@@ -202,7 +202,11 @@ describe("privacy in lists (FR-WRK-18)", () => {
     // A guest reviewer is brought into the project first: a private project's work goes to nobody else.
     await setProjectMember(ids.privateProject, ids.khoi, "member");
     await createWorkTask({ teamId: ids.video, projectId: ids.privateProject, title: "Pitch: guest review", collaboratorIds: [ids.khoi] }, ids.tam);
-    await createWorkTask({ teamId: ids.video, projectId: ids.privateProject, title: "Pitch: asked by Bao", requesterPersonId: ids.bao }, ids.tam);
+    // Nobody may name Bao the requester of private work any more — but an intake form's asker files
+    // their own request there, and requests filed before the rule stand: the requester still reads it.
+    await expect(createWorkTask({ teamId: ids.video, projectId: ids.privateProject, title: "Pitch: asked by Bao", requesterPersonId: ids.bao }, ids.tam)).rejects.toThrow("person_not_assignable");
+    const asked = await createWorkTask({ teamId: ids.video, projectId: ids.privateProject, title: "Pitch: asked by Bao" }, ids.tam);
+    await db().update(schema.task).set({ requesterPersonId: ids.bao }).where(eq(schema.task.id, asked.task.id));
     await createWorkTask({ teamId: ids.design, title: "Design backlog item" }, ids.khoi);
     await createWorkTask({ teamId: ids.design, projectId: ids.designProject, title: "Logo options" }, ids.khoi);
     await setProjectMember(ids.teamProject, ids.khoi, "member");

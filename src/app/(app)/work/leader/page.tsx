@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -6,8 +5,9 @@ import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getLeaderView, loadViewer } from "@/modules/work/service";
 import { NudgeButton } from "@/modules/work/ui/planning-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Leader view" };
+export const generateMetadata = pageTitle("leaderView");
 
 // FR-WRK-07: what other people are doing for me — by person, trouble first, with a one-click nudge.
 export default async function LeaderPage() {
@@ -51,7 +51,7 @@ export default async function LeaderPage() {
           <ul className="flex flex-col divide-y rounded-xl border text-sm">
             {person.tasks.map((task) => (
               <li key={task.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-56">
                   <Link href={`/work/tasks/${task.id}`} className="font-medium hover:underline">
                     <span className="font-mono text-xs text-muted-foreground">{task.key}</span> {task.title}
                   </Link>

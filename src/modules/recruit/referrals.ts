@@ -12,7 +12,13 @@ import "server-only";
 //     the company is already talking to answers *identically* to referring a stranger: the
 //     referral is quietly attached to the record that exists, or quietly not written at all when
 //     somebody else already referred them. An employee may put a name forward; they may not use
-//     the form as a lookup for "is my friend already interviewing here?".
+//     the form as a lookup for "is my friend already interviewing here?". That covers the list
+//     of their own referrals too: it shows the name *they typed* and a neutral "received", never
+//     the name on file, the stage or the status — see `listMyReferrals`.
+//   · **A referral attached to an application that already existed earns nothing.** The candidate
+//     had applied (or been added by a recruiter) before the colleague spoke up, so the colleague
+//     did not bring them in. The fact is read, not stored: the application is older than the
+//     referral (see `preexisting` in `baseQuery`).
 //   · **No amount lives here.** `engine/referral.ts` says when a bonus has been *earned*; what it
 //     is worth, and paying it, is payroll's. All this module stores is that somebody settled it.
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
@@ -99,11 +105,13 @@ export async function submitReferral(input: ReferralInput, referrerPersonId: str
 
       // They have already applied, or somebody has already referred them. Either way the referrer
       // is told the same thing as everybody else and nothing is written twice.
+      // The row that is written is excluded from any bonus (the application is older than it), and
+      // the referrer's list shows it exactly as it shows a stranger's: their words, "received".
       if (existing) {
         const [alreadyReferred] = await tx.select({ id: schema.referral.id }).from(schema.referral).where(eq(schema.referral.applicationId, existing.id)).limit(1);
         if (alreadyReferred) return null;
         await tx.insert(schema.referral).values({ referredByPersonId: referrerPersonId, candidateId, openingId: opening.id, applicationId: existing.id, note: input.note });
-        await recordApplicationEvent(tx, { applicationId: existing.id, type: "note", actorPersonId: referrerPersonId, note: input.note, detail: { referral: true } });
+        await recordReferralEvent(tx, existing.id, referrerPersonId, input);
         return null;
       }
 
@@ -125,6 +133,7 @@ export async function submitReferral(input: ReferralInput, referrerPersonId: str
         tx,
       );
       await tx.insert(schema.referral).values({ referredByPersonId: referrerPersonId, candidateId, openingId: opening.id, applicationId: application.id, note: input.note });
+      await recordReferralEvent(tx, application.id, referrerPersonId, input);
       return application.id;
     });
 
@@ -135,6 +144,15 @@ export async function submitReferral(input: ReferralInput, referrerPersonId: str
     if (stored) await softDeleteFile(stored.id).catch(() => undefined);
     throw error;
   }
+}
+
+/**
+ * The referral in the application's history, carrying **the name the referrer typed**. That name is
+ * what the referrer's own list shows back to them: the name on file may differ from it, and showing
+ * that one would say the person was on file already.
+ */
+async function recordReferralEvent(tx: Tx, applicationId: string, referrerPersonId: string, input: ReferralInput): Promise<void> {
+  await recordApplicationEvent(tx, { applicationId, type: "note", actorPersonId: referrerPersonId, note: input.note, detail: { referral: true, referredName: input.fullName } });
 }
 
 /**
@@ -223,6 +241,25 @@ const baseQuery = () => {
        */
       offerStartDate: acceptedOffer.startDate,
       offerProbationMonths: acceptedOffer.probationMonths,
+      /**
+       * The application existed before the referral. A referral made with its application shares
+       * the transaction, and so its `created_at` (`now()` is the transaction's start); a referral
+       * attached to an older application is strictly younger than it.
+       */
+      preexisting: sql<boolean>`${schema.jobApplication.createdAt} < ${schema.referral.createdAt}`,
+      /**
+       * The name the referrer typed, from the referral's own history entry. Written out in full
+       * rather than with drizzle columns — see the note above on correlated subqueries. Null for a
+       * referral made before the name was kept there.
+       */
+      referredName: sql<string | null>`(
+        select e.detail->>'referredName' from application_event e
+        where e.application_id = "referral"."application_id"
+          and e.actor_person_id = "referral"."referred_by_person_id"
+          and e.detail->>'referral' = 'true'
+        order by e.id limit 1
+      )`,
+      candidateReferredByPersonId: schema.candidate.referredByPersonId,
     })
     .from(schema.referral)
     .innerJoin(schema.candidate, eq(schema.candidate.id, schema.referral.candidateId))
@@ -252,6 +289,9 @@ type RawRow = {
   stageName: string;
   offerStartDate: string | null;
   offerProbationMonths: number | null;
+  preexisting: boolean;
+  referredName: string | null;
+  candidateReferredByPersonId: string | null;
 };
 
 function toListRow(row: RawRow, today: IsoDate): ReferralListRow {
@@ -275,6 +315,7 @@ function toListRow(row: RawRow, today: IsoDate): ReferralListRow {
         startDate: (row.offerStartDate as IsoDate | null) ?? null,
         probationMonths: row.offerProbationMonths === null ? null : Number(row.offerProbationMonths),
         settled: !!row.bonusSettledAt,
+        preexisting: !!row.preexisting,
       },
       today,
     ),
@@ -282,10 +323,42 @@ function toListRow(row: RawRow, today: IsoDate): ReferralListRow {
   };
 }
 
+/**
+ * One of my referrals, as its referrer may see it: **what I typed and nothing the company holds.**
+ * No stage, no status, no name from the candidate record — any of those would tell a referrer that
+ * the person was already on file (a stage past the first, a different spelling of the name). The
+ * state is `received` until a bonus is actually earned: a rejection reads the same as an
+ * application still in progress, and a referral attached to an older application never leaves
+ * `received`, so it looks exactly like a stranger's that did not end in a hire.
+ */
+export type MyReferralRow = {
+  id: string;
+  /** The name the referrer typed. Null only for a referral whose typed name was not kept. */
+  name: string | null;
+  openingCode: string;
+  openingTitle: string;
+  createdAt: Date;
+  referredByPersonId: string;
+  state: "received" | "earned" | "settled";
+};
+
 /** What I have put forward. Mine and nobody else's — no permission required, and none granted. */
-export async function listMyReferrals(personId: string, today: IsoDate = todayInVietnam()): Promise<ReferralListRow[]> {
+export async function listMyReferrals(personId: string, today: IsoDate = todayInVietnam()): Promise<MyReferralRow[]> {
   const rows = await baseQuery().where(eq(schema.referral.referredByPersonId, personId)).orderBy(desc(schema.referral.createdAt)).limit(200);
-  return rows.map((row) => toListRow(row, today));
+  return rows.map((row) => {
+    const { bonus } = toListRow(row, today);
+    return {
+      id: row.id,
+      // An older referral kept no typed name. Its record's name is shown only when this referral
+      // made that record — the referrer typed it — and never for one that was already on file.
+      name: row.referredName ?? (!row.preexisting && row.candidateReferredByPersonId === personId && !row.candidateAnonymisedAt ? row.candidateName : null),
+      openingCode: row.openingCode,
+      openingTitle: row.openingTitle,
+      createdAt: row.createdAt,
+      referredByPersonId: row.referredByPersonId,
+      state: bonus === "earned" || bonus === "settled" ? bonus : "received",
+    };
+  });
 }
 
 /** Every referral in the reader's recruitment scope — the list HR settles bonuses from. */

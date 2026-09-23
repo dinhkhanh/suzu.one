@@ -1,5 +1,4 @@
 import { CalendarCheck, ClipboardList, Coffee } from "lucide-react";
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -17,8 +16,9 @@ import { type DayTask, listCreateTargets, listStates, loadViewer } from "@/modul
 import { ClientDecisionQuick } from "@/modules/work/ui/client-decision";
 import { HandoffResponder } from "@/modules/work/ui/handoff";
 import { TaskStateSelect } from "@/modules/work/ui/task-state-select";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Today" };
+export const generateMetadata = pageTitle("today");
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (

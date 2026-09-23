@@ -5,12 +5,14 @@
 // answered it. Everything a reader sees can be traced back to a `kb_page_chunk` row their viewer
 // could reach.
 import "server-only";
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, type SQL, sql } from "drizzle-orm";
 import { createTranslator } from "next-intl";
 import { navFor } from "@/components/shell/nav";
 import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { type KbViewer, kbViewerOf, type ViewerSource } from "@/modules/kb/service";
+import { permissionReach, type Principal, reachesNothing } from "@/modules/platform/rbac/policy";
+import { personInReachSql } from "@/modules/platform/rbac/reach-sql";
 import en from "../../../messages/en.json";
 import vi from "../../../messages/vi.json";
 import type { Citation } from "./engine/answer";
@@ -178,11 +180,26 @@ export async function deleteConversation(personId: string, conversationId: strin
 export type UnansweredRow = { id: string; question: string; locale: string; bestScore: number | null; createdAt: Date; askedBy: string | null; resolvedAt: Date | null; resolutionNote: string | null; asked: number };
 
 /**
+ * The askers whose questions this reader of the log may see: people inside their `kb:manage` —
+ * by the asker's entity or unit, in SQL, before anything is grouped or counted. A keeper of one
+ * entity's knowledge base does not read what the next entity's people asked. Null = nobody.
+ */
+function askersInReach(reader: Principal): SQL | undefined | null {
+  const reach = permissionReach(reader, "kb:manage");
+  if (reach.all) return undefined;
+  if (reachesNothing(reach)) return null;
+  return personInReachSql(reach);
+}
+
+/**
  * The unanswered log, most-asked first. Questions are grouped by their accent-stripped text, so
  * "Nghỉ phép năm bao nhiêu ngày?" asked by six people is one row that says six — that is what
- * tells the knowledge base's keepers which page to write first.
+ * tells the knowledge base's keepers which page to write first. Only the askers in the reader's
+ * reach are listed, and counted (`askersInReach`).
  */
-export async function listUnanswered(options: { resolved?: boolean; limit?: number } = {}): Promise<UnansweredRow[]> {
+export async function listUnanswered(reader: Principal, options: { resolved?: boolean; limit?: number } = {}): Promise<UnansweredRow[]> {
+  const askers = askersInReach(reader);
+  if (askers === null) return [];
   const grouped = sql<string>`lower(regexp_replace(${aiUnansweredQuestion.question}, '\\s+', ' ', 'g'))`;
   const rows = await db()
     .select({
@@ -197,19 +214,26 @@ export async function listUnanswered(options: { resolved?: boolean; limit?: numb
       asked: sql<number>`count(*)::int`,
     })
     .from(aiUnansweredQuestion)
-    .leftJoin(schema.person, eq(schema.person.id, aiUnansweredQuestion.personId))
-    .where(options.resolved ? sql`true` : isNull(aiUnansweredQuestion.resolvedAt))
+    .innerJoin(schema.person, eq(schema.person.id, aiUnansweredQuestion.personId))
+    .where(and(options.resolved ? undefined : isNull(aiUnansweredQuestion.resolvedAt), askers))
     .groupBy(grouped)
     .orderBy(desc(sql`count(*)`), desc(sql`max(${aiUnansweredQuestion.createdAt})`))
     .limit(Math.max(1, Math.min(options.limit ?? 50, 200)));
   return rows.map((row) => ({ ...row, createdAt: new Date(row.createdAt), resolvedAt: row.resolvedAt ? new Date(row.resolvedAt) : null }));
 }
 
-/** Marks every copy of the same question done — the page that answers it answers all of them. */
-export async function resolveUnanswered(id: string, byPersonId: string, note: string | null): Promise<number> {
-  const [row] = await db().select({ question: aiUnansweredQuestion.question }).from(aiUnansweredQuestion).where(eq(aiUnansweredQuestion.id, id)).limit(1);
+/**
+ * Marks every copy of the same question done — the page that answers it answers all of them —
+ * among the askers in the reader's reach: the question itself must be one of theirs, and copies
+ * asked outside it stay open for their own keepers.
+ */
+export async function resolveUnanswered(reader: Principal, id: string, byPersonId: string, note: string | null): Promise<number> {
+  const askers = askersInReach(reader);
+  if (askers === null) return 0;
+  const inReach = askers ? inArray(aiUnansweredQuestion.personId, db().select({ id: schema.person.id }).from(schema.person).where(askers)) : undefined;
+  const [row] = await db().select({ question: aiUnansweredQuestion.question }).from(aiUnansweredQuestion).where(and(eq(aiUnansweredQuestion.id, id), inReach)).limit(1);
   if (!row) return 0;
   const same = sql`lower(regexp_replace(${aiUnansweredQuestion.question}, '\\s+', ' ', 'g')) = lower(regexp_replace(${row.question}, '\\s+', ' ', 'g'))`;
-  const updated = await db().update(aiUnansweredQuestion).set({ resolvedAt: new Date(), resolvedByPersonId: byPersonId, resolutionNote: note }).where(and(same, isNull(aiUnansweredQuestion.resolvedAt))).returning({ id: aiUnansweredQuestion.id });
+  const updated = await db().update(aiUnansweredQuestion).set({ resolvedAt: new Date(), resolvedByPersonId: byPersonId, resolutionNote: note }).where(and(same, isNull(aiUnansweredQuestion.resolvedAt), inReach)).returning({ id: aiUnansweredQuestion.id });
   return updated.length;
 }

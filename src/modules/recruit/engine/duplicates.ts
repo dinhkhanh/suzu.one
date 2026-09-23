@@ -28,6 +28,9 @@ export type CandidateLike = { id: string; fullName: string; searchName: string; 
  */
 export type DuplicateMatch = { id: string; fullName: string; signals: DuplicateSignal[]; certain: boolean; /** 0..1, for ordering within a kind of match. */ score: number };
 
+/** A duplicate as a refusal shows it to a recruiter: the id and name are gone when they may not reach the match. */
+export type RedactedDuplicateMatch = Omit<DuplicateMatch, "id" | "fullName"> & { id: string | null; fullName: string | null };
+
 const GOOGLE_MAIL_DOMAINS = new Set(["gmail.com", "googlemail.com"]);
 
 /**

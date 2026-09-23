@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -6,8 +5,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageRequestTypes } from "@/modules/requests/policy";
 import { listMySubmissions, requestTypeStats } from "@/modules/requests/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Requests" };
+export const generateMetadata = pageTitle("requests");
 
 // What I have asked for, and — for whoever administers the types — how each type is doing
 // (FR-REQ-04). A row opens the request itself, where its history and its answers are.
@@ -40,7 +40,7 @@ export default async function RequestsPage() {
           <ul className="flex flex-col divide-y rounded-xl border">
             {mine.map((row) => (
               <li key={row.requestId} className="flex flex-wrap items-center gap-3 p-3">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-56">
                   <Link href={`/approvals/request/${row.requestId}`} className="text-sm font-medium hover:underline">
                     {locale === "en" ? row.nameEn : row.nameVi}
                   </Link>
@@ -66,7 +66,7 @@ export default async function RequestsPage() {
           <ul className="flex flex-col divide-y rounded-xl border text-sm">
             {stats.map((row) => (
               <li key={row.code} className="flex flex-wrap items-center gap-3 p-3">
-                <span className="min-w-0 flex-1 font-medium">{locale === "en" ? row.nameEn : row.nameVi}</span>
+                <span className="min-w-0 flex-1 basis-56 font-medium">{locale === "en" ? row.nameEn : row.nameVi}</span>
                 <span className="text-muted-foreground">{t("tracking.open", { count: row.open })}</span>
                 <span className="text-muted-foreground">{t("tracking.decided", { count: row.decided })}</span>
                 <span className="text-muted-foreground">{row.medianHours === null ? t("tracking.noMedian") : t("tracking.median", { hours: row.medianHours })}</span>

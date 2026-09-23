@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,8 +7,9 @@ import { kpiValueText, MonthPicker, readMonth } from "@/modules/performance/ui/k
 import { ActualsGrid, type GridPerson } from "@/modules/performance/ui/kpi-forms";
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "KPI actuals" };
+export const generateMetadata = pageTitle("kPIActuals");
 
 // Entering the month's actuals (FR-PRF-02): for the people below me, or — for HR — in my scope.
 // Never my own row. The action checks every line again.

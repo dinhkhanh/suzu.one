@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { exportUnmappedAction } from "@/modules/attendance/device-actions";
@@ -9,8 +8,9 @@ import { listEmploymentFacts } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { can } from "@/modules/platform/rbac/policy";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Device users" };
+export const generateMetadata = pageTitle("deviceUsers");
 
 // Whose ID is whose on one clock, and the log lines still waiting for an owner.
 export default async function DeviceUsersPage({ params }: PageProps<"/attendance/devices/[id]">) {

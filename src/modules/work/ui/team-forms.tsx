@@ -135,7 +135,7 @@ export function MemberManager({ members, people, canManage, target }: { members:
       <ul className="flex flex-col divide-y rounded-xl border">
         {members.map((member) => (
           <li key={member.personId} className="flex flex-wrap items-center gap-3 p-3 text-sm">
-            <span className="min-w-0 flex-1 font-medium">{member.fullName}</span>
+            <span className="min-w-0 flex-1 basis-56 font-medium">{member.fullName}</span>
             {canManage ? (
               <>
                 <Select aria-label={t("role")} className="w-36" value={member.role} disabled={pending} onChange={(event) => run(action, { ...target, personId: member.personId, role: event.target.value })}>

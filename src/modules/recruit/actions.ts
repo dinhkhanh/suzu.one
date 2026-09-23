@@ -27,6 +27,7 @@ import {
   canSetRecruitMoney,
 } from "./policy";
 import {
+  canReachCandidate,
   createApplication,
   createCandidate,
   createOpening,
@@ -283,7 +284,7 @@ const createCandidatePipeline = createAction({
   authorize: (user) => canManageCandidates(user.principal),
   run: async ({ user, input }) => {
     const { confirmedNotDuplicate, ...rest } = input;
-    const candidate = await createCandidate(rest, user.person.id, { confirmedNotDuplicate });
+    const candidate = await createCandidate(rest, user.person.id, { confirmedNotDuplicate, viewer: user.principal });
     revalidatePath("/recruit/candidates");
     return {
       data: { id: candidate.id },
@@ -295,7 +296,9 @@ const createCandidatePipeline = createAction({
 const updateCandidatePipeline = createAction({
   name: "recruit.candidate.update",
   input: z.object({ candidateId: z.uuid(), ...candidateFields }),
-  authorize: (user) => canManageCandidates(user.principal),
+  // The candidate itself must be in reach — the rule the database is listed by. A recruiter for one
+  // entity does not edit a candidate who has only ever applied to another's openings.
+  authorize: async (user, input) => canManageCandidates(user.principal) && (await canReachCandidate(user.principal, input.candidateId)),
   run: async ({ input }) => {
     const { candidateId, ...rest } = input;
     const { before, after } = await updateCandidate(candidateId, rest);
@@ -321,9 +324,11 @@ const createApplicationPipeline = createAction({
     salaryExpectationVnd: optional(money),
     salaryExpectationNote: optional(z.string().trim().max(500)),
   }),
+  // Both ends: the opening is one this recruiter runs, and the candidate is one they reach. Without
+  // the second, an id from another entity's pipeline could be pulled into this one.
   authorize: async (user, input) => {
     const opening = await findOpening(input.openingId);
-    return !!opening && canRunRecruitment(user.principal, openingTargetOf(opening));
+    return !!opening && canRunRecruitment(user.principal, openingTargetOf(opening)) && (await canReachCandidate(user.principal, input.candidateId));
   },
   run: async ({ user, input }) => {
     const opening = await findOpening(input.openingId);

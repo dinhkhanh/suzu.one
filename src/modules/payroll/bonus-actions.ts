@@ -8,7 +8,7 @@ import { ActionError, createAction } from "@/lib/action";
 import { createBonusRun, getBonusRun, overrideBonusLine, payBonusRun, simulateBonusRun, simulateWhatIf, stepBonusRun } from "./bonus";
 import { checkBonusSchemeValue, decideBonusScheme, proposeBonusScheme } from "./bonus-schemes";
 import { BONUS_MULTIPLIER_SOURCES, BONUS_OKR_LEVELS } from "./enums";
-import { canAdjustBonusLine, canApproveBonusRun, canDecideBonusScheme, canManageBonusRun, canPayBonusRun, canProposeBonusRun, canProposeBonusScheme, canReadBonusRun } from "./policy";
+import { canAdjustBonusLine, canApproveBonusRun, canDecideBonusScheme, canManageBonusRun, canPayBonusRun, canProposeBonusRun, canProposeBonusScheme } from "./policy";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
 const optional = <Schema extends z.ZodType>(inner: Schema) => z.preprocess(blankToNull, inner.nullable().default(null));
@@ -190,6 +190,3 @@ const payPipeline = createAction({
 export async function payBonusRunAction(input: unknown) {
   return payPipeline(input);
 }
-
-/** Exported for the register page's "may I open this" check, which the pages re-run anyway. */
-export { canReadBonusRun };

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,8 +9,9 @@ import { listEntityOptions } from "@/modules/payroll/options";
 import { compensationReach, payrollReadReach } from "@/modules/payroll/policy";
 import { listRunsForViewer } from "@/modules/payroll/run-views";
 import { formatVnd } from "@/modules/payroll/ui/money";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Payroll runs" };
+export const generateMetadata = pageTitle("payrollRuns");
 
 /** The run register (FR-PAY-30): every entity the viewer may read payroll for. */
 export default async function PayrollRunsPage({ searchParams }: PageProps<"/payroll/runs">) {

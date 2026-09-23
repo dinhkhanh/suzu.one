@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,8 +7,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { canRecordMeeting, listMeetings, type MeetingKind, meetingPeople, openProject } from "@/modules/projects/service";
 import { MeetingForm } from "@/modules/projects/ui/collab-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Project meetings" };
+export const generateMetadata = pageTitle("projectMeetings");
 
 /**
  * Meeting notes (FR-PJM-30): kick-offs, weekly and client meetings, and the retrospective held on

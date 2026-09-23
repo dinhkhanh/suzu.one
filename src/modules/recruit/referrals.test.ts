@@ -136,6 +136,45 @@ describe("submitReferral", () => {
     expect(referrals.filter((row) => row.referredByPersonId === ids.otherReferrerPerson)).toHaveLength(0);
   });
 
+  it("earns nothing on an application that was already there, and shows the referrer only what they typed", async () => {
+    const own = await createCandidate(
+      {
+        fullName: "Trần Văn Đã Nộp",
+        email: "da.nop@example.com",
+        phone: null,
+        currentTitle: null,
+        currentEmployer: null,
+        location: null,
+        links: [],
+        source: "direct",
+        sourceDetail: null,
+        referredByPersonId: null,
+        tags: [],
+        notes: null,
+      },
+      ids.hrPerson,
+      { confirmedNotDuplicate: true },
+    );
+    const applied = await createApplication(
+      { candidateId: own.id, openingId: ids.opening, source: "direct", sourceDetail: null, coverLetter: null, answers: {}, cvFileId: null, portfolioLinks: [], salaryExpectationVnd: null, salaryExpectationNote: null },
+      ids.hrPerson,
+    );
+
+    expect(await submitReferral(referral({ fullName: "Anh Nộp Rồi", email: "da.nop@example.com", phone: null }), ids.otherReferrerPerson)).toEqual({ received: true });
+
+    // The desk sees the claim and that it earns nothing: the candidate was in before the referral.
+    const booked = (await listReferrals(hrAdmin)).find((row) => row.applicationId === applied.id)!;
+    expect(booked.referredByPersonId).toBe(ids.otherReferrerPerson);
+    expect(booked.bonus).toBe("not_earned");
+
+    // The referrer sees their own words and "received" — not the name on file, not the stage.
+    const mine = (await listMyReferrals(ids.otherReferrerPerson)).find((row) => row.id === booked.id)!;
+    expect(mine).toMatchObject({ name: "Anh Nộp Rồi", state: "received" });
+    expect(mine).not.toHaveProperty("stageName");
+    expect(mine).not.toHaveProperty("applicationStatus");
+    expect(JSON.stringify(mine)).not.toContain("Trần Văn Đã Nộp");
+  });
+
   it("refuses an opening that is not published, without saying whether it exists", async () => {
     expect(await fails(submitReferral(referral({ openingId: ids.draftOpening, email: "a@example.com", phone: "0902000222" }), ids.referrerPerson))).toBe("recruit_opening_not_open");
     expect(await fails(submitReferral(referral({ openingId: crypto.randomUUID(), email: "b@example.com", phone: "0903000333" }), ids.referrerPerson))).toBe("recruit_opening_not_open");
@@ -171,11 +210,15 @@ describe("reading referrals", () => {
   });
 
   it("is pending while the candidate is in the pipeline and not earned once they are turned down", async () => {
-    const mine = await listMyReferrals(ids.referrerPerson);
-    expect(mine[0].bonus).toBe("pending");
+    const booked = async () => (await listReferrals(hrAdmin)).filter((row) => row.referredByPersonId === ids.referrerPerson);
+    const [row] = await booked();
+    expect(row.bonus).toBe("pending");
+    expect((await listMyReferrals(ids.referrerPerson))[0]).toMatchObject({ name: "Lê Thị Giới Thiệu", state: "received" });
 
-    await rejectApplication(mine[0].applicationId, { reason: "experience", note: null }, ids.hrPerson);
-    expect((await listMyReferrals(ids.referrerPerson))[0].bonus).toBe("not_earned");
+    await rejectApplication(row.applicationId, { reason: "experience", note: null }, ids.hrPerson);
+    expect((await booked())[0].bonus).toBe("not_earned");
+    // The referrer is not told the candidate was turned down: a rejection reads like work in progress.
+    expect((await listMyReferrals(ids.referrerPerson))[0].state).toBe("received");
   });
 
   it("refuses to settle a bonus nobody has earned", async () => {

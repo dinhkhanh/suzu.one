@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
@@ -13,8 +12,9 @@ import { listRequestsAbout } from "@/modules/platform/approvals/service";
 import { todayInVietnam } from "@/lib/dates";
 import { RequestTable } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "My profile" };
+export const generateMetadata = pageTitle("myProfile");
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (

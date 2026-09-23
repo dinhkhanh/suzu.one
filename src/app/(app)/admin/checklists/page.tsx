@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -10,8 +9,9 @@ import { can } from "@/modules/platform/rbac/policy";
 import { canManageTemplates } from "@/modules/platform/tasks-engine/policy";
 import { listTemplates } from "@/modules/platform/tasks-engine/service";
 import { RemoveItemButton, TemplateForm, TemplateItemForm } from "@/modules/platform/tasks-engine/ui/template-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Checklists" };
+export const generateMetadata = pageTitle("checklists");
 
 export default async function ChecklistsPage() {
   const user = await requireUser();
@@ -54,7 +54,7 @@ export default async function ChecklistsPage() {
                   <ol className="flex flex-col divide-y rounded-lg border text-sm">
                     {template.items.map((item) => (
                       <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-2">
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 basis-56">
                           <p>{item.title}</p>
                           {item.description ? <p className="text-xs text-muted-foreground">{item.description}</p> : null}
                           {item.linkUrl ? (

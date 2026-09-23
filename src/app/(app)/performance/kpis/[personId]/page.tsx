@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,8 +7,9 @@ import { readMonth } from "@/modules/performance/ui/kpi";
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { ScorecardView } from "@/modules/performance/ui/scorecard";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "KPIs" };
+export const generateMetadata = pageTitle("kPIs");
 
 // Someone else's scorecard: personal tier — the line above them, HR and leaders in scope. Anyone else: 404.
 export default async function PersonKpisPage({ params, searchParams }: PageProps<"/performance/kpis/[personId]">) {

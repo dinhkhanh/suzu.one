@@ -25,9 +25,13 @@ import { migrateTestDb } from "../../../tests/helpers/db";
 import { automationPanel, saveAutomation } from "./automations";
 import { getCoverPlan, handBackCover, submitCoverPlan } from "./cover";
 import { getExitHandover, reassignOwnership } from "./exit";
-import { changeAccountManager } from "./handoffs";
+import { isProjectPerson } from "../projects/membership";
+import { removeReviewChain, saveReviewChain } from "./chains";
+import { changeAccountManager, handOffStage } from "./handoffs";
+import { moveTaskToTeam } from "./move";
 import { createProject, listAssignable, setProjectMember } from "./projects";
-import { createWorkTask, loadTask, updateWorkTask } from "./tasks";
+import { submitDeliverable } from "./reviews";
+import { createWorkTask, getTaskDetail, loadTask, updateWorkTask } from "./tasks";
 import { createTeam, listStates, saveClient, setTeamMember } from "./teams";
 import { listMergeTargets, listTriage, sendToTriage } from "./triage";
 import { viewerOfPerson } from "./viewer";
@@ -252,5 +256,70 @@ describe("triage (FR-PJM-32)", () => {
     const merge = (await createWorkTask({ teamId: ids.video, projectId: ids.secret, title: "Việc đang chạy" }, ids.huy)).task;
     expect((await listMergeTargets(ids.video, await viewer("huy"))).map((row) => row.id)).toContain(merge.id);
     expect((await listMergeTargets(ids.video, await viewer("bao"))).map((row) => row.id)).not.toContain(merge.id);
+  });
+});
+
+describe("the ways into a private project that are not the assignee (security review, 2026-09-23)", () => {
+  it("names nobody outside it as a task's requester — on creation, on a change, or by moving the task in", async () => {
+    expect(await fails(createWorkTask({ teamId: ids.video, projectId: ids.secret, title: "Hỏi bởi Bảo", requesterPersonId: ids.bao }, ids.huy))).toBe("person_not_assignable");
+    const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.secret, title: "Hỏi bởi Huy" }, ids.huy);
+    expect((await loadTask(task.id))!.task.requesterPersonId).toBe(ids.huy);
+    expect(await fails(updateWorkTask(task.id, { requesterPersonId: ids.bao }, ids.huy))).toBe("person_not_assignable");
+    await updateWorkTask(task.id, { requesterPersonId: ids.long }, ids.huy);
+    // Bảo's request in the team's open project does not travel into the private one with him on it.
+    const asked = (await createWorkTask({ teamId: ids.video, projectId: ids.open, title: "Bảo hỏi" }, ids.bao)).task;
+    expect(await fails(updateWorkTask(asked.id, { projectId: ids.secret }, ids.huy))).toBe("person_not_assignable");
+    // A request already standing (an intake asker's, or one from before the rule) stays editable.
+    await db().update(schema.task).set({ requesterPersonId: ids.bao }).where(eq(schema.task.id, task.id));
+    await updateWorkTask(task.id, { title: "Hỏi bởi Bảo (cũ)" }, ids.huy);
+  });
+
+  it("lists a task's sub-tasks only where the reader may open them", async () => {
+    const parent = (await createWorkTask({ teamId: ids.video, projectId: ids.open, title: "Chiến dịch Tết" }, ids.long)).task;
+    const hidden = (await createWorkTask({ teamId: ids.video, projectId: ids.secret, parentTaskId: parent.id, title: "Giá chào riêng" }, ids.huy)).task;
+    const shown = (await createWorkTask({ teamId: ids.video, projectId: ids.open, parentTaskId: parent.id, title: "Kịch bản" }, ids.long)).task;
+    const seenBy = async (key: Key) => (await getTaskDetail(parent.id, await viewer(key)))!.subtasks.map((subtask) => subtask.id);
+    expect(await seenBy("bao")).toEqual([shown.id]);
+    expect((await seenBy("huy")).sort()).toEqual([hidden.id, shown.id].sort());
+  });
+
+  it("does not carry a sub-task out of its own private project, nor anyone into one who is not in it", async () => {
+    const root = (await createWorkTask({ teamId: ids.video, projectId: ids.open, title: "Gói nội dung" }, ids.long)).task;
+    await createWorkTask({ teamId: ids.video, projectId: ids.secret, parentTaskId: root.id, title: "Chi phí riêng" }, ids.huy);
+    expect(await fails(moveTaskToTeam(root.id, { teamId: ids.social, projectId: null }, ids.long))).toBe("move_subtask_private");
+    // Into Social's private project: Bảo is on the task and not in that project.
+    const closed = (await createProject({ teamId: ids.social, name: "Social bí mật", description: null, clientId: null, status: "active", visibility: "private", leadPersonId: ids.khoi, startDate: null, dueDate: null }, ids.khoi)).id;
+    const task = (await createWorkTask({ teamId: ids.video, title: "Việc của Bảo", assigneePersonId: ids.bao }, ids.long)).task;
+    expect(await fails(moveTaskToTeam(task.id, { teamId: ids.social, projectId: closed }, ids.long))).toBe("person_not_assignable");
+    expect((await moveTaskToTeam(task.id, { teamId: ids.social, projectId: null }, ids.long)).targetTeamId).toBe(ids.social);
+  });
+
+  it("hands a stage on only to someone the task could be given to", async () => {
+    const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.secret, title: "Kịch bản pitch 2", stateId: ids.script, assigneePersonId: ids.huy }, ids.huy);
+    const handoff = { toStateId: ids.design, values: {}, checked: [], links: [], fileId: null, note: {} };
+    expect(await fails(handOffStage(task.id, { ...handoff, toPersonId: ids.bao }, actor("huy")))).toBe("person_not_assignable");
+    await handOffStage(task.id, { ...handoff, toPersonId: ids.long }, actor("huy"));
+    expect((await loadTask(task.id))!.task.assigneePersonId).toBe(ids.long);
+  });
+
+  it("names on a review stage only the project's people, and never sends a private task's stage to someone outside it", async () => {
+    const stage = (personId: string) => ({ name: "Duyệt", reviewer: `person:${personId}`, dueHours: null });
+    const input = { name: "Duyệt riêng", contentFormat: "tvc", isActive: true };
+    expect(await fails(saveReviewChain({ teamId: ids.video, projectId: ids.secret }, null, { ...input, stages: [stage(ids.bao)] }, ids.huy))).toBe("person_not_assignable");
+    expect(await fails(saveReviewChain({ teamId: ids.video, projectId: null }, null, { ...input, stages: [stage(ids.khoi)] }, ids.long))).toBe("person_not_assignable");
+    // A team's chain may name Bảo — and on a private task of the team, his stage passes him over.
+    const { after: chain } = await saveReviewChain({ teamId: ids.video, projectId: null }, null, { ...input, stages: [stage(ids.bao)] }, ids.long);
+    const { task } = await createWorkTask({ teamId: ids.video, projectId: ids.secret, title: "TVC pitch", assigneePersonId: ids.huy, contentFormat: "tvc" }, ids.huy);
+    const { reviewerPersonId } = await submitDeliverable(task.id, { kind: "link", url: "https://drive.example/tvc", note: null }, actor("huy"));
+    expect(reviewerPersonId).not.toBe(ids.bao);
+    expect(reviewerPersonId).toBe(ids.long);
+    await removeReviewChain(chain.id);
+  });
+
+  it("counts only a private project's own people and the team's leads as its people (milestone owners)", async () => {
+    expect(await isProjectPerson(db(), ids.secret, ids.bao)).toBe(false);
+    expect(await isProjectPerson(db(), ids.secret, ids.long)).toBe(true);
+    expect(await isProjectPerson(db(), ids.secret, ids.huy)).toBe(true);
+    expect(await isProjectPerson(db(), ids.open, ids.bao)).toBe(true);
   });
 });

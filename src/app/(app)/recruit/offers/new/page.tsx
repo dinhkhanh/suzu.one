@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -7,8 +6,9 @@ import { canMakeOffer } from "@/modules/recruit/policy";
 import { getApplicationView } from "@/modules/recruit/service";
 import { interviewerOptions } from "@/modules/recruit/interviews";
 import { OfferForm } from "@/modules/recruit/ui/offer-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "New offer" };
+export const generateMetadata = pageTitle("newOffer");
 
 // Drafting the offer for one application. Everything the opening already knows is prefilled, so
 // the only things anybody types are the ones that were actually negotiated.

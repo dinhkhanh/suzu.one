@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +8,9 @@ import { PARAMETER_KEYS, type ParameterKey } from "@/modules/platform/statutory/
 import { versionOn } from "@/modules/platform/statutory/engine/versions";
 import { listParameterVersions, type ParameterRow } from "@/modules/platform/statutory/service";
 import { DecisionButtons, ProposeParameterForm } from "@/modules/platform/statutory/ui/rule-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Statutory parameters" };
+export const generateMetadata = pageTitle("statutoryParameters");
 
 // Rates are stored as basis points and shown as percents; amounts get thousands separators.
 function ValueTable({ value, format }: { value: unknown; format: (amount: number, unit: "rate" | "plain") => string }) {
@@ -22,7 +22,7 @@ function ValueTable({ value, format }: { value: unknown; format: (amount: number
     return String(item);
   };
   return (
-    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 text-sm">
+    <dl className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-x-4 sm:grid-cols-[auto_1fr] gap-y-0.5 text-sm">
       {rows.map(([key, item]) => (
         <div key={key} className="contents">
           <dt className="font-mono text-xs text-muted-foreground">{key}</dt>

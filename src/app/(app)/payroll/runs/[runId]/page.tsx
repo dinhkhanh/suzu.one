@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -14,8 +13,9 @@ import { formatVnd } from "@/modules/payroll/ui/money";
 import { listPayslipsOfRun } from "@/modules/payroll/payslips";
 import { PublishPayslipsButton } from "@/modules/payroll/ui/payslip-forms";
 import { CalculateRunButton, CancelRunButton, RemoveRunInputButton, RunInputForm, RunStepForm } from "@/modules/payroll/ui/run-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Payroll run" };
+export const generateMetadata = pageTitle("payrollRun");
 
 export default async function PayrollRunPage({ params }: PageProps<"/payroll/runs/[runId]">) {
   const user = await requireUser();

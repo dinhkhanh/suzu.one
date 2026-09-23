@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -8,8 +7,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { canCloseProject, canHoldRetro, type CloseReport, getCloseChecklist, getRetro, openProject, previewCloseReport, type StoredCloseReport } from "@/modules/projects/service";
 import { CloseProjectForm, PublishLessonsForm, RetroForm } from "@/modules/projects/ui/commercial-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Close project" };
+export const generateMetadata = pageTitle("closeProject");
 
 /**
  * Close-out (FR-PJM-59): the checklist computed live, the retrospective and its lessons, and the

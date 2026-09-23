@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { listPositions } from "@/modules/core-hr/service";
 import { todayInVietnam } from "@/lib/dates";
@@ -7,8 +6,9 @@ import { bpText, kpiValueText } from "@/modules/performance/ui/kpi";
 import { ApplyTemplatesForm, PositionKpiForm, RemovePositionKpiButton } from "@/modules/performance/ui/kpi-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "KPI templates" };
+export const generateMetadata = pageTitle("kPITemplates");
 
 // What each position is measured on (FR-PRF-02): weights with their share, targets, and "apply to
 // the holders" — which never touches a KPI someone already carries.

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +8,9 @@ import { peopleModuleOpen } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
 import { can } from "@/modules/platform/rbac/policy";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Import employees" };
+export const generateMetadata = pageTitle("importEmployees");
 
 export default async function ImportPeoplePage() {
   const user = await requireUser();

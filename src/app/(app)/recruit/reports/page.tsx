@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,8 +9,9 @@ import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canReadRecruitReports } from "@/modules/recruit/policy";
 import { defaultReportFrom, getRecruitReport } from "@/modules/recruit/reports";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Recruitment reports" };
+export const generateMetadata = pageTitle("recruitmentReports");
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -8,8 +7,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { canEditMeeting, DEFAULT_MEETING_MINUTES, getMeeting, type MeetingKind, meetingPeople, openProject } from "@/modules/projects/service";
 import { MeetingCalendar, MeetingForm } from "@/modules/projects/ui/collab-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Meeting" };
+export const generateMetadata = pageTitle("meeting");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

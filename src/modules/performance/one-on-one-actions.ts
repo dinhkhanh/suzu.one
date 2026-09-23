@@ -8,7 +8,7 @@ import { OUTCOME_TYPES } from "./enums";
 import { addOneOnOneAction, completeOneOnOneAction, createOneOnOne, findOneOnOne, findOneOnOneAction, shareOneOnOne, updateOneOnOne } from "./one-on-ones";
 import { decideOutcome, findOutcome, raiseOutcome } from "./outcomes";
 import { loadDirectory } from "./people";
-import { canDecideOutcome, canHoldOneOnOneWith, canRaiseOutcome, canWriteOneOnOne } from "./policy";
+import { canDecideOutcome, canHoldOneOnOneWith, canProposeSalaryOutcome, canRaiseOutcome, canReadOneOnOnePrivate, canWriteOneOnOne } from "./policy";
 import { findResultById } from "./final-results";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -54,8 +54,11 @@ const updatePipeline = createAction({
   name: "one_on_one.update",
   input: z.object({ meetingId: z.uuid(), meetingOn: z.iso.date(), agenda: notes(4000), sharedNotes: notes(8000), privateNotes: notes(8000) }),
   authorize: async (user, input) => canWriteOneOnOne(user.principal, (await partiesOf(input.meetingId)).parties),
-  run: async ({ input }) => {
-    const { after } = await updateOneOnOne(input.meetingId, { meetingOn: input.meetingOn, agenda: input.agenda, sharedNotes: input.sharedNotes, privateNotes: input.privateNotes });
+  run: async ({ user, input }) => {
+    // The private column is written only by whoever may read it. HR writes the meeting without
+    // ever being shown it, so what their form posts there is dropped, not stored over the notes.
+    const seesPrivate = canReadOneOnOnePrivate(user.principal, (await partiesOf(input.meetingId)).parties);
+    const { after } = await updateOneOnOne(input.meetingId, { meetingOn: input.meetingOn, agenda: input.agenda, sharedNotes: input.sharedNotes, ...(seesPrivate ? { privateNotes: input.privateNotes } : {}) });
     refresh(input.meetingId);
     // Lengths, not text: a 1:1 note is not something the audit log should hold.
     return { data: { id: after.id }, audit: { resource: { type: "one_on_one", id: after.id, entityId: null }, summary: `cập nhật 1:1 ${after.meetingOn}`, after: { agendaLength: after.agenda?.length ?? 0, sharedLength: after.sharedNotes?.length ?? 0, privateLength: after.privateNotes?.length ?? 0 } } };
@@ -134,7 +137,10 @@ const raisePipeline = createAction({
     if (!result) return false;
     const directory = await loadDirectory();
     const person = directory.get(result.personId);
-    return !!person && canRaiseOutcome(user.principal, person);
+    if (!person || !canRaiseOutcome(user.principal, person)) return false;
+    // A salary adjustment carries figures: only somebody who may read the person's compensation
+    // types one. A line manager raises the other kinds.
+    return input.type !== "salary_adjustment" || canProposeSalaryOutcome(user.principal, person);
   },
   run: async ({ user, input }) => {
     const salary = input.type === "salary_adjustment" ? { baseSalary: input.baseSalary ?? 0, insuranceSalary: input.insuranceSalary ?? input.baseSalary ?? 0, validFrom: input.validFrom ?? "" } : null;

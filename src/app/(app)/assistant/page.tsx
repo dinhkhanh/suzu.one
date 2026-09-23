@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { canAskAssistant, canReadUnansweredLog, getConversation, listConversations } from "@/modules/ai/service";
 import { AssistantChat } from "@/modules/ai/ui/chat";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Ask SuZu" };
+export const generateMetadata = pageTitle("askSuZu");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -7,8 +6,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { canBrowseCandidates, canManagePipelines, canRunRecruitment, listOpenings, recruitModuleOpen } from "@/modules/recruit/service";
 import { canReadRecruitReports } from "@/modules/recruit/policy";
 import { notFound } from "next/navigation";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Recruitment" };
+export const generateMetadata = pageTitle("recruitment");
 
 // The openings the reader may see: everything in their recruitment scope, plus the ones they are
 // on the hiring team of. A department head hiring one editor sees exactly one row here.
@@ -75,7 +75,7 @@ export default async function RecruitPage() {
           <ul className="flex flex-col divide-y rounded-xl border">
             {openings.map((opening) => (
               <li key={opening.id} className="flex flex-wrap items-center gap-3 p-3">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-56">
                   <Link href={`/recruit/${opening.id}`} className="text-sm font-medium hover:underline">
                     {opening.title}
                   </Link>

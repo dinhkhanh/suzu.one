@@ -19,7 +19,7 @@ import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import type { CurrentUser } from "@/modules/platform/auth/session";
 import { getReportForm, REPORT_BACKFILL_DAYS } from "@/modules/daily/service";
 import { loadStatusFacts, openProject } from "@/modules/projects/service";
-import { canViewTask, findState, listComments, loadTask, loadViewer } from "@/modules/work/service";
+import { canViewTask, findState, listComments, loadTask, loadViewer, notePrivateProjectRead } from "@/modules/work/service";
 import en from "../../../messages/en.json";
 import vi from "../../../messages/vi.json";
 import { type DraftLine, eodDraftLines, handoffDraft, type HandoffNoteDraft, redactCompensation, statusDraftLines, suggestedHealth, threadText } from "./engine/drafts";
@@ -106,6 +106,8 @@ function asNote(json: string | null): HandoffNoteDraft | null {
 export async function draftHandoffNote(user: DraftUser, taskId: string, locale: Locale): Promise<DraftResult<HandoffNoteDraft> | null> {
   const [loaded, viewer] = await Promise.all([loadTask(taskId), loadViewer(user)]);
   if (!loaded || !canViewTask(viewer, loaded.facts)) return null;
+  // The draft reads the task's thread as the task page does, so a private project's read leaves the same trail (Q25).
+  if (loaded.facts.project) await notePrivateProjectRead(viewer, loaded.facts.project);
   const [comments, state] = await Promise.all([listComments(taskId), findState(loaded.work.stateId)]);
   const facts = { title: loaded.task.title, description: loaded.task.description, stateName: state?.name ?? null, comments: comments.filter((comment) => !comment.deleted).map((comment) => ({ author: comment.authorName, body: comment.body })) };
   const extractive = handoffDraft(facts);

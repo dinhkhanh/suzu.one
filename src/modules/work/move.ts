@@ -10,7 +10,7 @@ import { db, schema } from "@/lib/db";
 import { rankBetween } from "./engine/graph";
 import { mapStatesByCategory } from "./engine/move";
 import { CATEGORY_STATUS, type StateCategory } from "./enums";
-import { type LoadedTask, loadTask, logActivity, PROJECT_CONTEXT, taskKey } from "./tasks";
+import { assertInsidePrivateProject, type LoadedTask, loadTask, logActivity, PROJECT_CONTEXT, taskKey } from "./tasks";
 import { projectsWithTeams, workDirectory } from "./directory";
 import { canMoveTask, type TaskFacts, type WorkViewer } from "./policy";
 import { projectFacts } from "./projects";
@@ -48,6 +48,17 @@ export async function moveTaskToTeam(taskId: string, target: { teamId: string; p
     }
     const rows = await tx.select({ task: schema.task, work: schema.workTask }).from(schema.task).innerJoin(schema.workTask, eq(schema.workTask.taskId, schema.task.id)).where(inArray(schema.task.id, ids));
     const byId = new Map(rows.map((row) => [row.task.id, row]));
+
+    // A sub-task filed in another private project is that project's work: it does not leave with a
+    // task from elsewhere (the move is weighed against the root's project only), so the move is refused.
+    const elsewhere = [...new Set(rows.flatMap((row) => (row.work.projectId && row.work.projectId !== loaded.work.projectId ? [row.work.projectId] : [])))];
+    if (elsewhere.length) {
+      const [closed] = await tx.select({ id: schema.workProject.id }).from(schema.workProject).where(and(inArray(schema.workProject.id, elsewhere), eq(schema.workProject.visibility, "private"))).limit(1);
+      if (closed) throw new ActionError("move_subtask_private");
+    }
+    // Everyone on the family ends up in the target project: a private one takes only its own people.
+    const collaborators = await tx.select({ personId: schema.workTaskPerson.personId }).from(schema.workTaskPerson).where(and(inArray(schema.workTaskPerson.taskId, ids), eq(schema.workTaskPerson.role, "collaborator")));
+    await assertInsidePrivateProject(tx, project?.id ?? null, [...rows.flatMap((row) => [row.task.assigneePersonId, row.task.requesterPersonId, row.work.reviewerPersonId]), ...collaborators.map((row) => row.personId)]);
 
     const [fromStates, toStates] = await Promise.all([listStates([fromTeam.id], tx), listStates([toTeam.id], tx)]);
     const mapping = mapStatesByCategory(fromStates, toStates);

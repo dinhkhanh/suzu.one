@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
@@ -9,8 +8,9 @@ import { hoursOf } from "@/modules/daily/ui/format";
 import { GenerateWeekButton, WeeklySummaryForm } from "@/modules/daily/ui/weekly-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canAdminTeam, listTeams, loadViewer, teamFacts } from "@/modules/work/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Weekly reports" };
+export const generateMetadata = pageTitle("weeklyReports");
 
 // FR-PJM-23: the week of each team the viewer runs and of each person whose reports they read —
 // generated on Monday morning for the week before; the lead adds a summary. A team's people and

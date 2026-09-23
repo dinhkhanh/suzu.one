@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { todayInVietnam } from "@/lib/dates";
 import { getTeamCalendar } from "@/modules/leave/calendar";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Team leave calendar" };
+export const generateMetadata = pageTitle("teamLeaveCalendar");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const pad = (value: number) => String(value).padStart(2, "0");

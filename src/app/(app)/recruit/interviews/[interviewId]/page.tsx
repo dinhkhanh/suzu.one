@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,8 +10,9 @@ import { RescheduleInterview } from "@/modules/recruit/ui/interview-form";
 import { InterviewStatusActions } from "@/modules/recruit/ui/interview-status";
 import { ScorecardForm, ScorecardPanel } from "@/modules/recruit/ui/scorecard-form";
 import { TIME_ZONE } from "@/i18n/config";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Interview" };
+export const generateMetadata = pageTitle("interview");
 
 /** The wall-clock date and time in the office's zone, for the reschedule form's inputs. */
 function officeParts(at: Date): { date: string; time: string } {

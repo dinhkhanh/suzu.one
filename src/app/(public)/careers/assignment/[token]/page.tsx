@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
-import { MAX_SUBMISSION_BYTES, findPublicAssignment } from "@/modules/recruit/assignments";
+import { visitorOf } from "@/lib/public-action";
+import { MAX_SUBMISSION_BYTES, countAssignmentView, findPublicAssignment } from "@/modules/recruit/assignments";
 import { ASSIGNMENT_LIMITS } from "@/modules/recruit/enums";
 
 /**
@@ -22,6 +24,10 @@ export const metadata: Metadata = { title: "—", robots: { index: false, follow
 
 export default async function AssignmentPage({ params, searchParams }: PageProps<"/careers/assignment/[token]">) {
   const { token } = await params;
+  // Counted before the token is looked up, so a script walking the token space pays for every
+  // guess. Over the limit is the same 404 as a token that does not exist: nothing to tell apart.
+  const allowed = await countAssignmentView(visitorOf({ headers: new Headers(await headers()) }));
+  if (!allowed.ok) notFound();
   const assignment = await findPublicAssignment(token);
   if (!assignment) notFound();
 

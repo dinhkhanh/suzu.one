@@ -9,7 +9,8 @@ import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import { RUN_STEPS, type RunStep, stepRun } from "./lifecycle";
-import { canApprovePayroll, canManageCompensation, canPayPayroll } from "./policy";
+import type { Principal } from "@/modules/platform/rbac/policy";
+import { canApprovePayroll, canManageCompensation, canPayPayroll, canSetRunInputFor } from "./policy";
 import { calculateNow } from "./run-calculation";
 import { cancelRun, createOffCycleRun, createRegularRun, getRun, removeRunInput, setRunInput } from "./runs";
 
@@ -58,7 +59,8 @@ const offCyclePipeline = createAction({
     note: text(500),
     lines: z.array(z.object({ personId: z.uuid(), code: z.string().regex(/^[A-Z][A-Z0-9_]{1,39}$/), amount: signedVnd, note: text(300) })).min(1).max(1000),
   }),
-  authorize: (user, input) => canManageCompensation(user.principal, { entityId: input.entityId }),
+  // Nobody puts a line for themselves into an off-cycle run, as nobody types into their own line.
+  authorize: (user, input) => canManageCompensation(user.principal, { entityId: input.entityId }) && input.lines.every((line) => line.personId !== user.person.id),
   run: async ({ user, input }) => {
     const run = await createOffCycleRun(input, user.person.id);
     refresh(run.id);
@@ -93,17 +95,18 @@ export async function calculatePayrollRunAction(input: unknown) {
 
 // ── Figures typed into a run ────────────────────────────────────────────────────────────────
 
+async function mayTouchInput(principal: Principal, input: { runId: string; personId: string }): Promise<boolean> {
+  const [run, target] = await Promise.all([runFor(input.runId), getPersonTarget(input.personId)]);
+  return !!run && !!target && canSetRunInputFor(principal, run, target);
+}
+
 const setInputPipeline = createAction({
   name: "payroll_run.set_input",
   stepUp: true,
   input: z.object({ runId: z.uuid(), personId: z.uuid(), code: z.string().regex(/^[A-Z][A-Z0-9_]{1,39}$/), amount: signedVnd, note: text(300) }),
-  authorize: async (user, input) => {
-    const run = await runFor(input.runId);
-    if (!run || !canManageCompensation(user.principal, run)) return false;
-    // The person must belong to an entity this C&B covers as well — a run id is not a way in.
-    const target = await getPersonTarget(input.personId);
-    return !!target && canManageCompensation(user.principal, target);
-  },
+  // The person must belong to an entity this C&B covers as well — a run id is not a way in — and
+  // nobody types figures into their own pay.
+  authorize: async (user, input) => mayTouchInput(user.principal, input),
   run: async ({ user, input }) => {
     await setRunInput(input, user.person.id);
     const run = await runFor(input.runId);
@@ -119,10 +122,7 @@ const removeInputPipeline = createAction({
   name: "payroll_run.remove_input",
   stepUp: true,
   input: z.object({ runId: z.uuid(), personId: z.uuid(), code: z.string().regex(/^[A-Z][A-Z0-9_]{1,39}$/) }),
-  authorize: async (user, input) => {
-    const run = await runFor(input.runId);
-    return !!run && canManageCompensation(user.principal, run);
-  },
+  authorize: async (user, input) => mayTouchInput(user.principal, input),
   run: async ({ input }) => {
     await removeRunInput(input.runId, input.personId, input.code);
     const run = await runFor(input.runId);

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -6,8 +5,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listOffers } from "@/modules/recruit/offers";
 import { canRunRecruitment } from "@/modules/recruit/policy";
 import { notFound } from "next/navigation";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Offers" };
+export const generateMetadata = pageTitle("offers");
 
 // Every offer the reader may see. Deliberately without a figure: a list is glanced at across a
 // desk, and `listOffers` does not carry one for anybody. The amount is on the offer's own page,
@@ -34,7 +34,7 @@ export default async function OffersPage() {
         <ul className="flex flex-col divide-y rounded-xl border">
           {rows.map((row) => (
             <li key={row.id} className="flex flex-wrap items-center gap-3 p-3">
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 basis-56">
                 <Link href={`/recruit/offers/${row.id}`} className="text-sm font-medium hover:underline">
                   {row.candidateName}
                 </Link>

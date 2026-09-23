@@ -12,7 +12,7 @@ export function RunNotice({ notice, dismiss }: { notice: string | null; dismiss:
   const known = (NOTICES as readonly string[]).includes(notice) ? (notice as (typeof NOTICES)[number]) : null;
   return (
     <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 p-2 text-sm">
-      <span className="min-w-0 flex-1">{known ? t(known) : notice}</span>
+      <span className="min-w-0 flex-1 basis-56">{known ? t(known) : notice}</span>
       <Button type="button" size="xs" variant="outline" onClick={dismiss}>
         {t("ok")}
       </Button>

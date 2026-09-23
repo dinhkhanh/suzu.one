@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -8,8 +7,9 @@ import { listApprovals, listProjectTime, loadTimeReader, weekStartOf } from "@/m
 import { hoursOf } from "@/modules/daily/ui/format";
 import { WaitingList } from "@/modules/daily/ui/timesheet-decide";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Timesheets" };
+export const generateMetadata = pageTitle("timesheets");
 
 const STATUS_BADGE = { open: "outline", submitted: "info", approved: "success", returned: "warning" } as const;
 

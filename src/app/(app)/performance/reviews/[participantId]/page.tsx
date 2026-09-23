@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -27,8 +26,9 @@ import { BandBadge, ResultTraceTable } from "@/modules/performance/ui/result";
 import { FilledForm, ratingText, StageBadge, Timeline } from "@/modules/performance/ui/review";
 import { AcknowledgeForm, CalibrateForm, NominatePeerForm, NominationDecisionForm, ReleaseForm, ReviewFormEditor } from "@/modules/performance/ui/review-forms";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Review" };
+export const generateMetadata = pageTitle("review");
 
 /**
  * One person's review (FR-PRF-03, FR-PRF-08). Every block on this page is behind
@@ -64,6 +64,14 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
   const mayNominate = canNominatePeer(user.principal, parties);
   const mayDecide = canDecideNomination(user.principal, parties);
   const approvedPeers = nominations.filter((row) => row.status === "approved").length;
+  const isSubject = participant.personId === user.person.id;
+  const mayRelease = canReleaseReview(user.principal, parties);
+  // The calibrated score: whoever calibrates and releases it, and the subject once it is released
+  // to them. Not a nominated peer, not the subject before release.
+  const seesScore = mayRelease || (isSubject && parties.released);
+  // On an anonymous cycle the subject is told how many peers have written, never which ones: a
+  // per-name "written" beside a per-name list is the author of every form, one by one.
+  const peersByCountOnly = isSubject && cycle.peerAnonymous && !mayDecide;
   const [t, tr, format, locale, evidence, published, candidates] = await Promise.all([
     getTranslations("performance.reviews"),
     getTranslations("performance.results"),
@@ -76,6 +84,7 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
   ]);
   const formatDate = (value: string) => format.dateTime(new Date(`${value}T00:00:00Z`), { dateStyle: "medium" });
   const peerWrote = new Set(forms.filter((form) => form.kind === "peer").map((form) => form.authorPersonId));
+  const writtenCount = nominations.filter((row) => peerWrote.has(row.peerPersonId)).length;
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -143,6 +152,7 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
           ) : (
             <>
               {cycle.peerAnonymous ? <p className="text-xs text-muted-foreground">{t("peers.anonymous")}</p> : null}
+              {peersByCountOnly && nominations.length > 0 ? <p className="text-xs text-muted-foreground">{t("peers.writtenCount", { written: writtenCount, total: nominations.length })}</p> : null}
               {nominations.length === 0 ? <p className="text-sm text-muted-foreground">{t("peers.empty")}</p> : null}
               <ul className="flex flex-col divide-y">
                 {nominations.map((row) => (
@@ -150,10 +160,18 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
                     <span>
                       {nameOf(row.peerPersonId)}
                       <span className="pl-2 text-xs text-muted-foreground">
-                        {t(`peers.status.${row.status as PeerNominationStatus}`)} · {peerWrote.has(row.peerPersonId) ? t("peers.written") : t("peers.notWritten")}
+                        {t(`peers.status.${row.status as PeerNominationStatus}`)}
+                        {peersByCountOnly ? null : <> · {peerWrote.has(row.peerPersonId) ? t("peers.written") : t("peers.notWritten")}</>}
                       </span>
                     </span>
-                    <NominationDecisionForm nominationId={row.id} canDecide={mayDecide && row.status === "pending"} canWithdraw={!peerWrote.has(row.peerPersonId) && (mayDecide || row.nominatedByPersonId === user.person.id)} />
+                    {/* Withdrawing is possible only while nothing is written, so on an anonymous
+                        cycle the subject is offered it only before approval — when nobody can have
+                        written yet — or the button itself would say who has. */}
+                    <NominationDecisionForm
+                      nominationId={row.id}
+                      canDecide={mayDecide && row.status === "pending"}
+                      canWithdraw={peersByCountOnly ? row.status === "pending" && row.nominatedByPersonId === user.person.id : !peerWrote.has(row.peerPersonId) && (mayDecide || row.nominatedByPersonId === user.person.id)}
+                    />
                   </li>
                 ))}
               </ul>
@@ -194,15 +212,15 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
           : null}
       </section>
 
-      {participant.reviewScoreBp !== null || participant.calibrationNote ? (
+      {seesScore && (participant.reviewScoreBp !== null || (mayRelease && participant.calibrationNote)) ? (
         <section className="flex flex-col gap-1 rounded-xl border p-3">
           <h2 className="text-sm font-medium">{t("calibrate.title")}</h2>
           <p className="text-sm tabular-nums">{t("calibrate.current", { value: ratingText(format, participant.reviewScoreBp) })}</p>
-          {participant.calibrationNote && canReleaseReview(user.principal, parties) ? <p className="text-xs text-muted-foreground">{participant.calibrationNote}</p> : null}
+          {participant.calibrationNote && mayRelease ? <p className="text-xs text-muted-foreground">{participant.calibrationNote}</p> : null}
         </section>
       ) : null}
 
-      {canReleaseReview(user.principal, parties) && !parties.released ? (
+      {mayRelease && !parties.released ? (
         <section className="flex flex-col gap-3 rounded-xl border p-3">
           <h2 className="text-sm font-medium">{t("release.title")}</h2>
           <CalibrateForm participantId={participantId} currentPercent={participant.reviewScoreBp === null ? "" : String(participant.reviewScoreBp / 100)} />
@@ -216,7 +234,8 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
           {participant.acknowledgedAt ? (
             <p className="text-sm text-muted-foreground">
               {t("acknowledge.done", { date: format.dateTime(participant.acknowledgedAt, { dateStyle: "medium" }) })}
-              {participant.acknowledgementNote ? ` — ${participant.acknowledgementNote}` : ""}
+              {/* The subject's own words about their review: theirs, their line and HR's — not a peer's. */}
+              {participant.acknowledgementNote && seesNominations ? ` — ${participant.acknowledgementNote}` : ""}
             </p>
           ) : canAcknowledgeReview(user.principal, parties) ? (
             <AcknowledgeForm participantId={participantId} />

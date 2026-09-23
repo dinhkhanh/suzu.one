@@ -1,9 +1,9 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
+import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { todayInVietnam } from "@/lib/dates";
 import type { DayRule, Weekday } from "@/modules/attendance/engine/calendar";
-import { canAssignSchedule, canManageAttendanceConfig } from "@/modules/attendance/policy";
+import { canAssignSchedule, canManageAttendanceConfig, canOpenAttendanceSettings } from "@/modules/attendance/policy";
 import { listAssignments, listSchedules } from "@/modules/attendance/schedules";
 import { AssignmentForm, RowAction, ScheduleForm } from "@/modules/attendance/ui/settings-forms";
 import { getPersonTargets } from "@/modules/core-hr/service";
@@ -11,11 +11,14 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { unitChoices, unitPathsOf } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { configOptions } from "../options";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Work schedules" };
+export const generateMetadata = pageTitle("workSchedules");
 
 export default async function SchedulesSettingsPage() {
   const user = await requireUser();
+  // The layout checks too, but a layout is not re-rendered on client navigation.
+  if (!canOpenAttendanceSettings(user.principal)) notFound();
   const t = await getTranslations("attendance.settings");
   const format = await getFormatter();
   const today = todayInVietnam();

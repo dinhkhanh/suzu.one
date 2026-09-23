@@ -367,7 +367,11 @@ const withdrawNominationPipeline = createAction({
     const parties = await partiesOf(found.participantId);
     if (!parties) return false;
     // Whoever may decide a nomination may take one back; so may the person who made it.
-    return canDecideNomination(user.principal, parties) || found.nominatedByPersonId === user.person.id;
+    if (canDecideNomination(user.principal, parties)) return true;
+    if (found.nominatedByPersonId !== user.person.id) return false;
+    // The subject of an anonymous cycle takes one back only before approval: after it, "refused,
+    // somebody has written" would tell them which peer wrote.
+    return !(parties.peerAnonymous && user.person.id === parties.subject.personId && found.status !== "pending");
   },
   run: async ({ input }) => {
     const row = await withdrawNomination(input.nominationId);

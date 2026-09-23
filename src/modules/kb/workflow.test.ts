@@ -473,4 +473,24 @@ describe("files of a page", () => {
     expect([await mayOpenPageFile(viewers.editor, loaded, drafted), await mayOpenPageFile(viewers.hrGroup, loaded, drafted)]).toEqual([true, true]);
     expect(await mayOpenPageFile(viewers.ngo, loaded, shown)).toBe(false);
   });
+
+  it("lists a space's files for a reader as the published version shows them, and everything for an editor", async () => {
+    const { listSpaceFiles } = await import("./files");
+    const shown = "33333333-3333-4333-8333-333333333333";
+    const drafted = "44444444-4444-4444-8444-444444444444";
+    const attachment = (fileId: string) => ({ type: "attachment", attrs: { fileId, fileName: "quy-trinh.pdf", sizeBytes: 10 } });
+    const page = await createPage({ spaceId: spaces.handbook, parentId: null, title: "Quy trình", content: doc(paragraph("Tải:"), attachment(shown)) }, { personId: ids.hrGroup });
+    await publishPage(page.id, { personId: ids.hrGroup });
+    // A revision not yet through review: a new title and a second upload.
+    await saveDraft(page.id, { title: "Quy trình (sửa, chưa duyệt)", content: doc(paragraph("Tải:"), attachment(shown), attachment(drafted)) }, { personId: ids.editor });
+    const file = (id: string, fileName: string) => ({ id, bucket: "test", objectPath: `kb_page/${page.id}/${fileName}`, fileName, contentType: "application/pdf", sizeBytes: 2048, ownerType: "kb_page", ownerId: page.id, entityId: null, tier: "public_internal" as const, status: "ready" as const, uploadedByPersonId: ids.editor });
+    await db().insert(schema.storedFile).values([file(shown, "published.pdf"), file(drafted, "draft.pdf")]);
+
+    const ofPage = async (who: Who) => (await listSpaceFiles(viewers[who], spaces.handbook)).filter((row) => row.pageId === page.id).map((row) => [row.fileName, row.pageTitle]);
+    expect(await ofPage("huy")).toEqual([["published.pdf", "Quy trình"]]);
+    expect((await ofPage("editor")).sort()).toEqual([
+      ["draft.pdf", "Quy trình (sửa, chưa duyệt)"],
+      ["published.pdf", "Quy trình (sửa, chưa duyệt)"],
+    ]);
+  });
 });

@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ActionError, createAction } from "@/lib/action";
+import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 import { canReadTier } from "@/modules/platform/rbac/policy";
 import { DOCUMENT_TIERS } from "./document-tiers";
 import { CONTRACT_TYPES, DEPENDENT_RELATIONSHIPS, DOCUMENT_CATEGORIES, JOB_CATEGORIES, SENSITIVE_TEXT_FIELDS } from "./enums";
@@ -84,6 +85,8 @@ const updateSensitivePipeline = createAction({
     bankAccounts: z.record(z.string(), bankAccount).default({}),
   }),
   authorize: async (user, input) => canManageRecords(user.principal, await getPersonTarget(input.personId), "restricted"),
+  // The bank account is where salary is paid: changing it on a stale session is redirecting pay.
+  stepUp: true,
   run: async ({ input }) => {
     const { personId, bankAccounts, ...fields } = input;
     const accounts = Object.values(bankAccounts).flatMap((row) => (row.accountNumber && row.bankName ? [{ bankName: row.bankName, accountNumber: row.accountNumber, accountHolder: row.accountHolder, branch: row.branch }] : []));
@@ -168,6 +171,8 @@ const revealTermsPipeline = createAction({
   name: "contract.salary_terms.read",
   input: z.object({ contractId: z.uuid() }),
   authorize: async (user, input) => canReadRecords(user.principal, await contractTarget(input.contractId), "compensation"),
+  // Compensation tier: the same proof of presence as a payslip (FR-PLT-06).
+  stepUp: true,
   run: async ({ user, input }) => {
     const contract = await findContract(input.contractId);
     if (!contract) throw new ActionError("contract_not_found");
@@ -401,8 +406,12 @@ const downloadPipeline = createAction({
     return !!owned && canReadRecords(user.principal, await getPersonTarget(owned.personId), owned.tier);
   },
   run: async ({ user, input }) => {
-    const url = await getFileDownloadLink(user.principal, input.fileId, actorOf(user), user.request);
+    // A signed contract or a decision shows the salary: compensation tier, which is opened only on
+    // a session that proved who it is in the last few minutes (FR-PLT-06) — the shape of refusal
+    // `createAction`'s `stepUp` gives.
     const owned = await resolveFileOwner(input.fileId);
+    if (owned?.tier === "compensation" && !isStepUpFresh(user.reauthAt)) throw new ActionError("step_up_required");
+    const url = await getFileDownloadLink(user.principal, input.fileId, actorOf(user), user.request);
     if (!url || !owned) throw new ActionError("file_not_found");
     return { data: { url }, audit: { resource: { type: owned.file.ownerType, id: owned.file.ownerId, entityId: owned.file.entityId }, summary: owned.file.fileName } };
   },

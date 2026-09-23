@@ -1,12 +1,17 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { notFound } from "next/navigation";
 import { commitKpiActualsAction, stageKpiActualsAction } from "@/modules/performance/kpi-actions";
 import { kpiActualTemplate } from "@/modules/performance/kpi-import";
+import { canOpenKpiAdmin } from "@/modules/performance/service";
+import { requireUser } from "@/modules/platform/auth/session";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Import KPI actuals" };
+export const generateMetadata = pageTitle("importKPIActuals");
 
 export default async function KpiImportPage() {
+  // The layout checks too, but a layout is not re-rendered on client navigation.
+  if (!canOpenKpiAdmin((await requireUser()).principal)) notFound();
   const t = await getTranslations("performance.import");
   return (
     <div className="flex flex-col gap-4">

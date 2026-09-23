@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -15,8 +14,9 @@ import { conditionFieldsOf } from "@/modules/requests/engine/form";
 import { canManageRequestTypes } from "@/modules/requests/policy";
 import { approvalTypeOf, findRequestType } from "@/modules/requests/service";
 import { TypeDesigner } from "@/modules/requests/ui/type-designer";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Request type" };
+export const generateMetadata = pageTitle("requestType");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

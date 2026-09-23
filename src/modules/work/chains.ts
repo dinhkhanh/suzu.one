@@ -7,7 +7,8 @@ import { and, asc, eq, isNull, or } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
-import { chainFor, chainProblems, type ChainStage } from "./engine/delivery";
+import { chainFor, chainProblems, type ChainStage, parseReviewerRule } from "./engine/delivery";
+import { listAssignable } from "./projects";
 import type { ReviewStage } from "./schema";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -63,6 +64,19 @@ export async function saveReviewChain(scope: { teamId: string; projectId: string
   const [problem] = chainProblems(stages as ChainStage[]);
   if (problem) throw new ActionError(problem);
   if (!input.name.trim()) throw new ActionError("chain_name_required");
+  // A stage naming one person names someone a task here could be given to — the team's people, or
+  // a private project's own (`listAssignable`). A team's chain also runs on the team's private
+  // projects: there the stage passes over whoever may not open the task (`reviewerFacts`). Only
+  // people newly named are weighed, so a chain whose reviewer has since left the team stays editable.
+  const kept = new Set(chainId ? ((await findReviewChain(chainId))?.stages.map((stage) => stage.reviewer) ?? []) : []);
+  const named = stages.flatMap((stage) => {
+    const rule = kept.has(stage.reviewer) ? null : parseReviewerRule(stage.reviewer);
+    return rule?.kind === "person" ? [rule.personId] : [];
+  });
+  if (named.length) {
+    const assignable = new Set((await listAssignable(scope.teamId, scope.projectId)).map((person) => person.id));
+    if (named.some((personId) => !assignable.has(personId))) throw new ActionError("person_not_assignable");
+  }
   const values = { name: input.name.trim(), contentFormat: input.contentFormat, stages, isActive: input.isActive, updatedAt: new Date() };
   const saved = await db().transaction(async (tx) => {
     if (!chainId) {

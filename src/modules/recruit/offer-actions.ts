@@ -182,6 +182,8 @@ const decideOfferPipeline = createAction({
   // user-facing refusal when they are not, which is a different answer from "you may not be here".
   input: z.object({ requestId: z.uuid(), decision: z.enum(["approve", "reject", "return"]), comment: optional(z.string().trim().max(2000)) }),
   authorize: (user) => !!user.person.id,
+  // An offer is a salary: whoever answers — a delegate included — has just proved it is them.
+  stepUp: true,
   run: async ({ user, input }) => {
     const { request, outcome, offerId, offer } = await decideOfferRequest(user.person.id, input.requestId, { action: input.decision, comment: input.comment });
     refresh(offerId, offer?.applicationId ?? null);

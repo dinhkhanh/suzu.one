@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +8,9 @@ import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { getPayslipView, recordPayslipView } from "@/modules/payroll/payslips";
 import { PayslipDetail } from "@/modules/payroll/ui/payslip-detail";
 import { ClosePayslipQueryButton, PayslipQueryForm, PayslipReplyForm } from "@/modules/payroll/ui/payslip-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Payslip" };
+export const generateMetadata = pageTitle("payslip");
 
 /**
  * One payslip. Self, C&B over the entity, or the owner — anyone else gets the same 404 as an id

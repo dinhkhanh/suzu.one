@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +8,9 @@ import { AnnouncementForm } from "@/modules/comms/ui/announcement-form";
 import { AnnouncementStateButtons } from "@/modules/comms/ui/buttons";
 import { audienceLabel, toLocalInput } from "@/modules/comms/ui/labels";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Announcement" };
+export const generateMetadata = pageTitle("announcement");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

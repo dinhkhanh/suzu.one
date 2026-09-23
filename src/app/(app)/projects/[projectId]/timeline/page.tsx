@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { todayInVietnam } from "@/lib/dates";
@@ -6,8 +5,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { getTimeline, openProject } from "@/modules/projects/service";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
 import { TimelineView } from "@/modules/projects/ui/timeline-view";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Timeline" };
+export const generateMetadata = pageTitle("timeline");
 
 /**
  * The project's timeline (FR-PJM-07): phases, milestones and tasks over the working calendar, with

@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { atLeast, canCreatePage, kbViewerOf, listTree, loadPage, loadSpace, spaceLevel } from "@/modules/kb/service";
 import { ImportPageForm } from "@/modules/kb/ui/import-form";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Import a page" };
+export const generateMetadata = pageTitle("importAPage");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

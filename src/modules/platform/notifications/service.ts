@@ -1,7 +1,8 @@
 import "server-only";
-import { and, asc, count, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { createTranslator } from "next-intl";
 import { after } from "next/server";
+import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
 import vi from "../../../../messages/vi.json";
@@ -172,13 +173,24 @@ export async function deliverPendingEmails(limit = 50): Promise<{ sent: number; 
 
 export type PushSubscriptionInput = { endpoint: string; p256dh: string; auth: string; userAgent: string | null };
 
-/** This device wants pushes for this person. An endpoint belongs to one person: whoever subscribed last on the device. */
+/**
+ * This device wants pushes for this person. An endpoint belongs to one person: whoever subscribed
+ * last on the device. Moving it from somebody else takes the browser's own keys for it, which only
+ * that browser's subscription carries — knowing an endpoint is not enough to take it over (and to
+ * silence its owner's pushes).
+ */
 export async function savePushSubscription(personId: string, input: PushSubscriptionInput): Promise<{ id: string }> {
+  const table = schema.pushSubscription;
   const [row] = await db()
-    .insert(schema.pushSubscription)
+    .insert(table)
     .values({ personId, ...input })
-    .onConflictDoUpdate({ target: schema.pushSubscription.endpoint, set: { personId, p256dh: input.p256dh, auth: input.auth, userAgent: input.userAgent, createdAt: new Date(), lastSuccessAt: null } })
-    .returning({ id: schema.pushSubscription.id });
+    .onConflictDoUpdate({
+      target: table.endpoint,
+      set: { personId, p256dh: input.p256dh, auth: input.auth, userAgent: input.userAgent, createdAt: new Date(), lastSuccessAt: null },
+      setWhere: or(eq(table.personId, personId), and(eq(table.p256dh, input.p256dh), eq(table.auth, input.auth))),
+    })
+    .returning({ id: table.id });
+  if (!row) throw new ActionError("push_endpoint_taken");
   return row;
 }
 

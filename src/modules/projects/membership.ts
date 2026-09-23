@@ -1,10 +1,10 @@
-// Who a project's work may be given to: its own members and its team's, nobody who has left — the
-// same people the work module's assignee picker offers (`listAssignable`). Asked here with the
-// caller's executor, so a milestone owner, a line's assignee or an issue's task can be checked
-// inside the very transaction that writes it, and ids that come from the browser are never taken
-// on trust.
+// Who a project's work may be given to: its own members and its team's — a private project's own
+// members and the team's leads only — nobody who has left: the same people the work module's
+// assignee picker offers (`listAssignable`). Asked here with the caller's executor, so a milestone
+// owner, a line's assignee or an issue's task can be checked inside the very transaction that
+// writes it, and ids that come from the browser are never taken on trust.
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne, or } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 
@@ -20,7 +20,8 @@ export async function isProjectPerson(executor: Executor, projectId: string, per
     .select({ id: schema.workTeamMember.id })
     .from(schema.workTeamMember)
     .innerJoin(schema.workProject, eq(schema.workProject.teamId, schema.workTeamMember.teamId))
-    .where(and(eq(schema.workProject.id, projectId), eq(schema.workTeamMember.personId, personId)))
+    // A private project's people are its members and the team's leads only (`listAssignable`).
+    .where(and(eq(schema.workProject.id, projectId), eq(schema.workTeamMember.personId, personId), or(ne(schema.workProject.visibility, "private"), eq(schema.workTeamMember.role, "lead"))))
     .limit(1);
   return !!team;
 }

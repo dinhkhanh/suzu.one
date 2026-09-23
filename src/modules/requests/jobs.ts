@@ -8,7 +8,6 @@
 import "server-only";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { issueActionToken } from "@/modules/platform/approvals/action-tokens";
 import { resolveApprovers } from "@/modules/platform/approvals/service";
 import type { JobDefinition } from "@/modules/platform/jobs/service";
 import { notify } from "@/modules/platform/notifications/service";
@@ -71,8 +70,9 @@ export async function runRequestSla(now: Date = new Date()): Promise<SlaResult> 
         .where(and(eq(schema.approvalAssignee.id, turn.assigneeId), isNull(schema.approvalAssignee.remindedAt)))
         .returning({ id: schema.approvalAssignee.id });
       if (!claimed) continue;
-      const { path } = await issueActionToken(db(), turn.requestId, turn.approverPersonId, now);
-      await notify({ recipients: [turn.approverPersonId], kind: "approvals.sla_reminder", params, link: turn.link, chat: { actionPath: path, actionLabel: "Duyệt" } });
+      // No one-click "approve" button: a builder type is never approvable unread (`bulkApprovable`
+      // is false for all of them), and the link would be refused when pressed.
+      await notify({ recipients: [turn.approverPersonId], kind: "approvals.sla_reminder", params, link: turn.link, chat: {} });
       result.reminded++;
       continue;
     }

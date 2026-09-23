@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,8 +9,9 @@ import { ChangeRequestForm, ChangeRequestReveal } from "@/modules/core-hr/ui/cha
 import { DecisionForm, WithdrawForm } from "@/modules/platform/approvals/ui/decision-form";
 import { RequestHistory, RequestStatusBadge, RequestTools } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Change request" };
+export const generateMetadata = pageTitle("changeRequest");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

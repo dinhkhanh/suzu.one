@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,8 +9,9 @@ import { type AccountHandoffView, canChangeAccountManager, canManageWorkspace, l
 import { AccountHandoverForm } from "@/modules/work/ui/exit-handover";
 import { HandoffNoteView } from "@/modules/work/ui/handoff";
 import { ClientForm } from "@/modules/work/ui/project-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Clients" };
+export const generateMetadata = pageTitle("clients");
 
 export default async function ClientsPage() {
   const user = await requireUser();

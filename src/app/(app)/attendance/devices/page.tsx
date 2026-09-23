@@ -1,17 +1,21 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { listDevices, listProfiles } from "@/modules/attendance/devices";
 import { listLocations } from "@/modules/attendance/locations";
+import { canOpenAttendanceSettings } from "@/modules/attendance/policy";
 import { DeviceForm } from "@/modules/attendance/ui/device-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { configOptions } from "../settings/options";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Time clocks" };
+export const generateMetadata = pageTitle("timeClocks");
 
 export default async function DevicesPage() {
   const user = await requireUser();
+  // The layout checks too, but a layout is not re-rendered on client navigation.
+  if (!canOpenAttendanceSettings(user.principal)) notFound();
   const t = await getTranslations("attendance.devices");
   const format = await getFormatter();
   const [devices, profiles, locations, options] = await Promise.all([listDevices(user.principal), listProfiles(), listLocations(), configOptions(user.principal)]);

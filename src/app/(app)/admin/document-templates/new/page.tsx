@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageTemplates } from "@/modules/documents/service";
 import { listEntities } from "@/modules/platform/org/service";
 import { DocumentTemplateForm } from "@/modules/documents/ui/template-form";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Mẫu văn bản mới" };
+export const generateMetadata = pageTitle("newDocumentTemplate");
 
 export default async function NewDocumentTemplatePage() {
   const user = await requireUser();

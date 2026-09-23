@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,8 +7,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { canAddRaid, canBecomeTask, canCloseRaidItem, canEditRaidItem, listRaid, meetingPeople, openProject, RAID_KINDS, type RaidKind, raidCounts } from "@/modules/projects/service";
 import { IssueToTaskForm, RaidEdit, RaidEvidenceLink, RaidForm, RaidStatusButton } from "@/modules/projects/ui/collab-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Risks & decisions" };
+export const generateMetadata = pageTitle("risksDecisions");
 
 const severityVariant = (severity: string | null) => (severity === "high" ? "destructive" : severity === "medium" ? "warning" : "secondary");
 

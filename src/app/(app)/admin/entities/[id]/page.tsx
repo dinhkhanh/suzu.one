@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,8 +6,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { findEntity, listBranches } from "@/modules/platform/org/service";
 import { BranchForm, EditEntityForm } from "@/modules/platform/org/ui/entity-forms";
 import { can } from "@/modules/platform/rbac/policy";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Entity" };
+export const generateMetadata = pageTitle("entity");
 
 export default async function EntityPage({ params }: PageProps<"/admin/entities/[id]">) {
   const user = await requireUser();

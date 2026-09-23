@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageCategories, listCategories } from "@/modules/assets/service";
 import { CategoryForm } from "@/modules/assets/ui/asset-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Nhóm tài sản" };
+export const generateMetadata = pageTitle("assetCategories");
 
 // The category library belongs to the group, so it takes a group-wide grant to change.
 export default async function AssetCategoriesPage() {

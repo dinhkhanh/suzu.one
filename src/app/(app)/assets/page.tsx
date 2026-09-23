@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -6,8 +5,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { type AssetStatus, ASSET_STATUSES, canManageAssets, canReadAssetMoney, canReadRegister, listAssets, listCategories, summaryByStatus } from "@/modules/assets/service";
 import { RegisterFilterBar, RegisterTable } from "@/modules/assets/ui/register-views";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Tài sản" };
+export const generateMetadata = pageTitle("assets");
 
 // The register (FR-AST-01). Someone without `asset:manage` anywhere has no register at all — only
 // the equipment they are holding themselves, at /assets/mine.

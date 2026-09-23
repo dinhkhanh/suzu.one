@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { listFlaggedPunches } from "@/modules/attendance/punches";
 import { ReviewPunchForm } from "@/modules/attendance/ui/check-in";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Flagged check-ins" };
+export const generateMetadata = pageTitle("flaggedCheckIns");
 
 // Check-ins that were out of policy (FR-ATT-04): the line manager's reports and HR's scope. The
 // service returns only what the viewer may review, so everyone may open the page; most see it empty.

@@ -19,7 +19,7 @@ import { getPersonTarget, type HireInput, inTransaction, offboardLeavers, openEm
 export async function listLifecycleEvents(principal: Principal, personId: string): Promise<LifecycleEventView[] | null> {
   const target = await getPersonTarget(personId);
   if (!target || !canReadTier(principal, target, "personal")) return null;
-  return loadTimeline(personId, { seesRestricted: canReadTier(principal, target, "restricted") });
+  return loadTimeline(personId, { seesRestricted: canReadTier(principal, target, "restricted"), seesCompensation: canReadTier(principal, target, "compensation") });
 }
 
 async function latestEmployment(tx: Tx, personId: string) {

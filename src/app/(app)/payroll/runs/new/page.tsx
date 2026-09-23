@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,8 +7,9 @@ import { listEntityOptions } from "@/modules/payroll/options";
 import { compensationReach } from "@/modules/payroll/policy";
 import { listRunnableMonthsOf } from "@/modules/payroll/run-views";
 import { NewRunForm } from "@/modules/payroll/ui/run-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "New payroll run" };
+export const generateMetadata = pageTitle("newPayrollRun");
 
 /** Starting a month's run — only C&B, and only for a month whose timesheet is locked (FR-PAY-10). */
 export default async function NewPayrollRunPage() {

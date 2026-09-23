@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { addDays, todayInVietnam } from "@/lib/dates";
@@ -10,8 +9,9 @@ import { AdjustmentForm, ApproveMonthsForm, LockPeriodForm, RemindButton, Reopen
 import { MonthNav } from "@/modules/attendance/ui/timesheet-views";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Monthly timesheets" };
+export const generateMetadata = pageTitle("monthlyTimesheets");
 
 // Monthly timesheets on their way to payroll (FR-ATT-14). A manager sees the months of their
 // reports (approve, send back, confirm hours); HR sees each entity in their scope: progress,

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,8 +10,9 @@ import { listPersonNames } from "@/modules/platform/people/service";
 import { can } from "@/modules/platform/rbac/policy";
 import { listRoleAssignments } from "@/modules/platform/rbac/service";
 import { GrantRoleForm, RevokeRoleButton } from "@/modules/platform/rbac/ui/role-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Access" };
+export const generateMetadata = pageTitle("access");
 
 export default async function RolesPage() {
   const user = await requireUser();

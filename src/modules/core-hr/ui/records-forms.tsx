@@ -289,7 +289,8 @@ export function ContractTerms({ contractId }: { contractId: string }) {
       onClick={() =>
         startTransition(async () => {
           const result = await revealContractTermsAction({ contractId });
-          setTerms(result.ok ? (result.data.salaryTerms ?? "—") : "—");
+          // A stale session is told to prove who it is, rather than shown a dash.
+          setTerms(result.ok ? (result.data.salaryTerms ?? "—") : result.error === "failed" && result.message === "step_up_required" ? t("errors.step_up_required") : "—");
         })
       }
     >

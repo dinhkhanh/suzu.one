@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +8,9 @@ import { listCashAwaitingReceipt } from "@/modules/payroll/payments";
 import { listMyPayslips } from "@/modules/payroll/payslips";
 import { formatVnd } from "@/modules/payroll/ui/money";
 import { ConfirmReceiptButton } from "@/modules/payroll/ui/payment-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Payslips" };
+export const generateMetadata = pageTitle("payslips");
 
 /** My payslips (FR-PAY-32). Every signed-in person has this page; it shows their own months only. */
 export default async function MyPayslipsPage() {

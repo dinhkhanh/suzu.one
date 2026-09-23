@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { listPeople } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageCandidates, getCandidateView } from "@/modules/recruit/service";
 import { CandidateForm } from "@/modules/recruit/ui/candidate-form";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Edit candidate" };
+export const generateMetadata = pageTitle("editCandidate");
 
 export default async function EditCandidatePage({ params }: PageProps<"/recruit/candidates/[candidateId]/edit">) {
   const { candidateId } = await params;

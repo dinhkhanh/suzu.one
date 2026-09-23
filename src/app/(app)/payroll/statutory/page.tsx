@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,8 +9,9 @@ import { compensationReach } from "@/modules/payroll/policy";
 import { dependantRows, finalizationRows, insuranceChanges, pitPeriodRows } from "@/modules/payroll/statutory-exports";
 import { formatVnd } from "@/modules/payroll/ui/money";
 import { StatutoryExportButton, StatutoryFilters } from "@/modules/payroll/ui/statutory-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Statutory data" };
+export const generateMetadata = pageTitle("statutoryData");
 
 /**
  * The data behind the statutory filings (FR-PAY-35). C&B and the owner only: every file here

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { atLeast, compareVersions, kbViewerOf, levelOf, listVersions, loadPage } from "@/modules/kb/service";
 import { RestoreVersionButton } from "@/modules/kb/ui/page-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Page history" };
+export const generateMetadata = pageTitle("pageHistory");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const versionNumber = (value: unknown) => (typeof value === "string" && /^[1-9]\d{0,5}$/.test(value) ? Number(value) : null);

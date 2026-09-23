@@ -9,7 +9,18 @@ export function canOpenRequest(request: RequestParties, viewer: { personId: stri
   return request.requesterPersonId === viewer.personId || viewer.isApprover || viewer.typeAllows;
 }
 
-/** Taking a request back is the requester's call alone, until it is decided. */
-export function canWithdraw(request: RequestParties, personId: string): boolean {
-  return request.requesterPersonId === personId && (request.status === "pending" || request.status === "returned");
+/**
+ * The types whose whole state is the request itself, so the generic "withdraw" is all there is to
+ * taking one back: a resignation, a profile change, and the request builder's types ("request:…").
+ * Every other type (leave, attendance, a raise, an offer, a page review, a project change…) keeps a
+ * row of its own in step with the request, and is taken back only through its module's cancel
+ * action — withdrawing it here would leave that row pending for ever. Deny by default: a new type
+ * is not withdrawable here until it is named.
+ */
+const WITHDRAWN_HERE: ReadonlySet<string> = new Set(["resignation", "profile_change"]);
+export const withdrawnHere = (type: string): boolean => WITHDRAWN_HERE.has(type) || type.startsWith("request:");
+
+/** Taking a request back is the requester's call alone, until it is decided — and, here, only for a type with no row of its own. */
+export function canWithdraw(request: RequestParties & { type: string }, personId: string): boolean {
+  return withdrawnHere(request.type) && request.requesterPersonId === personId && (request.status === "pending" || request.status === "returned");
 }

@@ -4,7 +4,7 @@ import type { ProjectRole, TeamRole } from "./enums";
 import { canManageAutomations, canViewAutomations } from "./policy";
 import { canChangeDeliverable, canDecideStage, canManagePublish, canManageReviewChains, canPinFeedback, canRecordClientDecision, canRecordDelivery, canResolvePin } from "./policy";
 import { canAcknowledgeCover, canChangeAccountManager, canHandBackCover, canHandOff, canManageHandoffPackages, canRespondToHandoff, canRunExitHandover, canSendToTeam, canSubmitCoverPlan, canViewCoverPlan, canViewExitHandover } from "./policy";
-import { canAddTeamMember, canActForClient, canAdminTeam, canDecideReview, canDecideTriage, canJoinTaskConversation, canManageCustomFields, canMoveTask, canRaiseBlocker, canResolveBlocker, canSeeLoggedTime, canViewTeamBacklog, canViewTriage, canContributeToProject, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canViewProject, canViewTask, canViewTeam, type ProjectFacts, readsPrivateByPortfolio, type TaskFacts, type TeamFacts, type WorkViewer } from "./policy";
+import { canAddTeamMember, canActForClient, canAdminTeam, canDecideReview, canDecideTriage, canJoinTaskConversation, canManageCustomFields, canMoveTask, canRaiseBlocker, canResolveBlocker, canSeeLoggedTime, canViewTeamBacklog, canViewTriage, canContributeToProject, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canManageProject, canManageWorkspace, canTakeOutOfProject, canViewProject, canViewTask, canViewTeam, type ProjectFacts, readsPrivateByPortfolio, type TaskFacts, type TeamFacts, type WorkViewer } from "./policy";
 
 const SZM = "entity-szm";
 const SZC = "entity-szc";
@@ -137,6 +137,37 @@ describe("project privacy (FR-WRK-18)", () => {
     for (const who of [lead, owner, head]) expect(canManageProject(who, project("team"))).toBe(true);
     for (const who of [member, colleague, otherHead]) expect(canManageProject(who, project("team"))).toBe(false);
   });
+  it("hands out the fee-reading roles — lead, account manager — only with pjm:commercial over the project (Q21)", () => {
+    const finance = viewer("fin", { grants: [{ role: "finance", scope: { type: "entity", id: SZM } }] });
+    const financeLead = viewer("fl", { teams: { "team-video": "lead" }, grants: [{ role: "finance", scope: { type: "entity", id: SZM } }] });
+    const director = viewer("dir", { grants: [{ role: "entity_director", scope: { type: "entity", id: SZM } }] });
+    const projectLead = viewer("tam", { projects: { "project-team": "lead" } });
+    // Running the project names members and viewers, lowers roles and takes people out…
+    for (const who of [lead, head, owner, projectLead]) {
+      expect(canGiveProjectRole(who, project("team"), null, "member")).toBe(true);
+      expect(canGiveProjectRole(who, project("team"), "lead", "member")).toBe(true);
+      expect(canGiveProjectRole(who, project("team"), "account_manager", null)).toBe(true);
+      // …and moves someone between the two seats that already read the fee.
+      expect(canGiveProjectRole(who, project("team"), "lead", "account_manager")).toBe(true);
+    }
+    // A team lead, a work:manage leader and the project's own lead do not make anyone — themselves
+    // included — lead or account manager: that would hand them the price.
+    for (const who of [lead, head, projectLead]) {
+      expect(canGiveProjectRole(who, project("team"), null, "lead")).toBe(false);
+      expect(canGiveProjectRole(who, project("team"), "member", "lead")).toBe(false);
+      expect(canGiveProjectRole(who, project("team"), "viewer", "account_manager")).toBe(false);
+    }
+    // pjm:commercial over the project's entity does, where they also run the project.
+    expect(canGiveProjectRole(owner, project("team"), "member", "lead")).toBe(true);
+    expect(canGiveProjectRole(director, project("team"), null, "account_manager")).toBe(true);
+    expect(canGiveProjectRole(financeLead, project("team"), null, "lead")).toBe(true);
+    expect(canGiveProjectRole(director, project("team", SZC), null, "lead")).toBe(false);
+    // Commercial alone runs nothing: finance reads fees, it does not staff projects.
+    expect(canGiveProjectRole(finance, project("team"), null, "member")).toBe(false);
+    expect(canGiveProjectRole(finance, project("team"), null, "lead")).toBe(false);
+    // A private project: a director's work:manage does not reach in, commercial or not.
+    expect(canGiveProjectRole(director, project("private"), null, "lead")).toBe(false);
+  });
 });
 
 describe("tasks", () => {
@@ -245,6 +276,20 @@ describe("PJM task foundation", () => {
     expect(canMoveTask(colleague, taskIn(), { team: design, project: null })).toBe(false);
   });
 
+  it("out of a private project: only whoever runs it takes a task away, not anyone who may edit it", () => {
+    const secretTask = taskIn({ project: project("private"), assigneePersonId: "huy" });
+    const inside = viewer("huy", { teams: { "team-design": "member" }, projects: { "project-private": "member" } });
+    const runner = viewer("pl", { teams: { "team-design": "member" }, projects: { "project-private": "lead" } });
+    expect(canTakeOutOfProject(inside, secretTask)).toBe(false);
+    expect(canTakeOutOfProject(runner, secretTask)).toBe(true);
+    expect(canTakeOutOfProject(lead, secretTask)).toBe(true);
+    expect(canMoveTask(inside, secretTask, { team: design, project: null })).toBe(false);
+    expect(canMoveTask(runner, secretTask, { team: design, project: null })).toBe(true);
+    // Any other project: editing the task is enough, as before.
+    expect(canTakeOutOfProject(member, taskIn())).toBe(true);
+    expect(canTakeOutOfProject(member, taskIn({ project: null }))).toBe(true);
+  });
+
   it("logged time per task: the project's lead and the team's leads, not every member", () => {
     expect(canSeeLoggedTime(projectLead, { team: video, project: project("team") })).toBe(true);
     expect(canSeeLoggedTime(lead, { team: video, project: project("team") })).toBe(true);
@@ -351,12 +396,23 @@ describe("delivery (FR-PJM-50..57)", () => {
 
   it("an internal stage is decided by its reviewer or whoever runs the project, never by the submitter", () => {
     const stage = { isClient: false, reviewerPersonId: "bao", submittedByPersonId: "huy" };
-    expect(canDecideStage(viewer("bao"), task, stage, noClientAm)).toBe(true);
+    const bao = viewer("bao", { teams: { "team-video": "member" } });
+    expect(canDecideStage(bao, task, stage, noClientAm)).toBe(true);
     expect(canDecideStage(lead, task, stage, noClientAm)).toBe(true);
     expect(canDecideStage(pl, task, stage, noClientAm)).toBe(true);
     expect(canDecideStage(doer, task, stage, noClientAm)).toBe(false);
     expect(canDecideStage(am, task, stage, noClientAm)).toBe(false);
-    expect(canDecideStage(viewer("bao"), task, { ...stage, submittedByPersonId: "bao" }, noClientAm)).toBe(false);
+    expect(canDecideStage(bao, task, { ...stage, submittedByPersonId: "bao" }, noClientAm)).toBe(false);
+  });
+
+  it("a stage's reviewer who may not open the task decides nothing — being named opens no project", () => {
+    const secret = taskIn({ project: project("private"), assigneePersonId: "huy" });
+    const stage = { isClient: false, reviewerPersonId: "bao", submittedByPersonId: "huy" };
+    expect(canDecideStage(viewer("bao"), secret, stage, noClientAm)).toBe(false);
+    expect(canDecideStage(viewer("bao", { teams: { "team-video": "member" } }), secret, stage, noClientAm)).toBe(false);
+    expect(canDecideStage(viewer("bao", { projects: { "project-private": "member" } }), secret, stage, noClientAm)).toBe(true);
+    // A client stage the same: the client's account manager records nothing on work they cannot open.
+    expect(canDecideStage(viewer("an"), taskIn({ project: null, team: { ...video, defaultVisibility: "private" } }), { ...stage, isClient: true }, { accountManagerPersonId: "an" })).toBe(false);
   });
 
   it("a client stage, and any client decision, is recorded by the account side only", () => {

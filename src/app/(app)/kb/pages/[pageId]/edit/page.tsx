@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { atLeast, canPublishDirectly, kbViewerOf, levelOf, loadPage, syncReviewState } from "@/modules/kb/service";
 import { PageEditor } from "@/modules/kb/ui/editor";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Edit page" };
+export const generateMetadata = pageTitle("editPage");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

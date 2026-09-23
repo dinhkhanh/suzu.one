@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,8 +5,9 @@ import { addDays, todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageHandoffPackages, canViewTeam, findTeam, handoffStatsByStage, listPackages, listStates, loadViewer, teamFacts } from "@/modules/work/service";
 import { HandoffPackageManager } from "@/modules/work/ui/handoff-packages";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Hand-offs" };
+export const generateMetadata = pageTitle("handOffs");
 
 /** How far back the stage statistics look. */
 const STATS_DAYS = 90;

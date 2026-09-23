@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -7,8 +6,9 @@ import { addDays, todayInVietnam } from "@/lib/dates";
 import { type BoardRow, getTeamBoard, loadReportReader } from "@/modules/daily/service";
 import { RemindButton } from "@/modules/daily/ui/remind-button";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Team daily board" };
+export const generateMetadata = pageTitle("teamDailyBoard");
 
 // FR-PJM-22: the lead's board — per team they lead, and for line managers their reports:
 // submitted, missing, not required today; blockers first; one tap to remind.

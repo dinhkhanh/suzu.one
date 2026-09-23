@@ -169,7 +169,8 @@ async function nextNumber(executor: Executor, entityCode: string, kind: Document
 
 // ── Making a document ───────────────────────────────────────────────────────────────────────
 
-export type RenderedDocument = { template: DocumentTemplateRow; number: string; title: string; text: string; missing: string[]; letterhead: LetterheadFields; subjectName: string };
+/** `tier` is the document's own: the template's when it is made, the one recorded with it afterwards. */
+export type RenderedDocument = { template: DocumentTemplateRow; tier: GeneratedDocumentRow["tier"]; number: string; title: string; text: string; missing: string[]; letterhead: LetterheadFields; subjectName: string };
 
 /**
  * Renders a document without recording it — the preview. Refuses exactly as generation does, so
@@ -183,7 +184,7 @@ export async function previewDocument(viewer: { principal: Principal; personId: 
 
   const context = await buildContext(viewer, subjectPersonId, template, "(chưa cấp số)");
   const { text, missing } = renderTemplate(template.body, context);
-  return { template, number: "(chưa cấp số)", title: template.name, text, missing, letterhead: template.letterhead ?? {}, subjectName: context["person.fullName"] ?? "" };
+  return { template, tier: template.tier, number: "(chưa cấp số)", title: template.name, text, missing, letterhead: template.letterhead ?? {}, subjectName: context["person.fullName"] ?? "" };
 }
 
 /** Makes the document, gives it a number and records that it was made. */
@@ -206,7 +207,7 @@ export async function generateDocument(viewer: { principal: Principal; personId:
     .values({ templateId: template.id, templateCode: template.code, templateVersion: template.version, kind: template.kind, tier: template.tier, subjectPersonId, entityId, number, generatedByPersonId: viewer.personId })
     .returning();
 
-  return { document, rendered: { template, number, title: template.name, text, missing, letterhead: template.letterhead ?? {}, subjectName: context["person.fullName"] ?? "" } };
+  return { document, rendered: { template, tier: template.tier, number, title: template.name, text, missing, letterhead: template.letterhead ?? {}, subjectName: context["person.fullName"] ?? "" } };
 }
 
 /**
@@ -224,7 +225,7 @@ export async function openDocument(viewer: { principal: Principal; personId: str
 
   const context = await buildContext(viewer, row.subjectPersonId, template, row.number);
   const { text, missing } = renderTemplate(template.body, context);
-  return { template, number: row.number, title: template.name, text, missing, letterhead: template.letterhead ?? {}, subjectName: context["person.fullName"] ?? "" };
+  return { template, tier: row.tier, number: row.number, title: template.name, text, missing, letterhead: template.letterhead ?? {}, subjectName: context["person.fullName"] ?? "" };
 }
 
 export type DocumentListRow = GeneratedDocumentRow & { subjectName: string; generatedByName: string | null; templateName: string };

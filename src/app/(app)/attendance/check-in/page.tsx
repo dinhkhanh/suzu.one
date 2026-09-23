@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -6,8 +5,9 @@ import { getCheckInState } from "@/modules/attendance/punches";
 import { CheckInPanel, InstallHint } from "@/modules/attendance/ui/check-in";
 import { hoursText, planHours } from "@/modules/attendance/ui/day-plan";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Check in" };
+export const generateMetadata = pageTitle("checkIn");
 
 // The one screen most people open every day, on a phone: today's plan, one big button, today's punches.
 export default async function CheckInPage() {

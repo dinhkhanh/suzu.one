@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -14,8 +13,9 @@ import { BriefView } from "@/modules/projects/ui/brief-view";
 import { AccountManagerForm, BriefForm, PlanSettingsForm, SubmitBriefButton } from "@/modules/projects/ui/plan-forms";
 import { healthVariant, ProjectHeader } from "@/modules/projects/ui/project-header";
 import { listProjectMembers } from "@/modules/work/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Project" };
+export const generateMetadata = pageTitle("project");
 
 /**
  * A project's overview: the brief and its kick-off gate (FR-PJM-03), the project's roles and

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +8,9 @@ import { canReadOps, listForCalendar, readableEntities } from "@/modules/ops/ser
 import { isUuid, OpsNav, OverviewFilters, overviewParams, overviewQuery } from "@/modules/ops/ui/overview";
 import { StatusBadge } from "@/modules/ops/ui/status-badge";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Compliance calendar" };
+export const generateMetadata = pageTitle("complianceCalendar");
 
 const MAX_PER_DAY = 6;
 

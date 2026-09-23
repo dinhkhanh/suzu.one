@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -12,8 +11,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { exportReportAction } from "@/modules/reports/actions";
 import { COMPLIANCE_MAX_DAYS, type Compliance, defaultDeliveryPeriod, getDeliveryDashboard } from "@/modules/reports/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Delivery" };
+export const generateMetadata = pageTitle("delivery");
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

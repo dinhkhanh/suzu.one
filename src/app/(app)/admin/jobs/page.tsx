@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -6,8 +5,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { requireUser } from "@/modules/platform/auth/session";
 import { listRecentJobRuns } from "@/modules/platform/jobs/service";
 import { can } from "@/modules/platform/rbac/policy";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Scheduled jobs" };
+export const generateMetadata = pageTitle("scheduledJobs");
 
 export default async function JobsPage() {
   const user = await requireUser();

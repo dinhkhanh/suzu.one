@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -6,8 +5,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { canWriteClientReport, clientReportFigures, defaultReportPeriod, listClientReports, openProject, type ReportFigures } from "@/modules/projects/service";
 import { ClientReportForm } from "@/modules/projects/ui/commercial-forms";
 import { healthVariant, ProjectHeader } from "@/modules/projects/ui/project-header";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Client reports" };
+export const generateMetadata = pageTitle("clientReports");
 
 /**
  * Client reports (FR-PJM-58): a period's figures — register, publishing and its results,

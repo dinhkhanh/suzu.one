@@ -11,7 +11,7 @@ import { ROLE_KEY } from "../platform/tasks-engine/engine/checklist";
 import { updateTaskAction } from "../work/actions";
 import { CHANNELS, CONTENT_FORMATS, VISIBILITIES } from "../work/enums";
 import type { WorkViewer } from "../work/policy";
-import { canCreateProject, canEditTask, canManageTemplate, createProjectFromTemplate, findProject, findTeam, findWorkTemplate, invalidateWorkDirectory, loadTask, loadViewer, projectFacts, teamFacts } from "../work/service";
+import { canCreateProject, canEditTask, canGiveProjectRole, canManageTemplate, createProjectFromTemplate, findProject, findTeam, findWorkTemplate, invalidateWorkDirectory, loadTask, loadViewer, projectFacts, projectRoleOf, teamFacts } from "../work/service";
 import { PROJECT_KINDS } from "./engine/brief";
 import { HEALTHS } from "./engine/status";
 import { decideBrief, projectBriefRequest, submitBrief } from "./kickoff";
@@ -110,8 +110,15 @@ export async function setFeeAction(input: unknown) {
 const accountManagerPipeline = createAction({
   name: "projects.plan.account_manager",
   input: z.object({ projectId: z.uuid(), personId: optional(z.uuid()) }),
-  // Naming who owns the client relationship is running the project.
-  authorize: (user, input) => may(user, input.projectId, canEditPlan),
+  // Naming who owns the client relationship is running the project. The account manager reads the
+  // fee (Q21), so naming someone new takes `pjm:commercial` too (`canGiveProjectRole`); clearing
+  // the role, or keeping the one already named, does not.
+  authorize: async (user, input) => {
+    const found = await projectFor(user, input.projectId);
+    if (!found || !canEditPlan(found.viewer, found.facts)) return false;
+    if (!input.personId) return true;
+    return canGiveProjectRole(found.viewer, found.facts, await projectRoleOf(input.projectId, input.personId), "account_manager");
+  },
   run: async ({ input }) => {
     const change = await setAccountManager(input.projectId, input.personId);
     refresh(input.projectId);

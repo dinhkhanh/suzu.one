@@ -16,7 +16,7 @@ export function GoalLine({ goal, labels }: { goal: GoalView; labels: Labels }) {
   const stale = goal.keyResults.some((keyResult) => keyResult.stale);
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 basis-56">
         <Link href={`/performance/goals/${goal.id}`} className={`font-medium hover:underline ${goal.status === "cancelled" ? "text-muted-foreground line-through" : ""}`}>
           {goal.title}
         </Link>

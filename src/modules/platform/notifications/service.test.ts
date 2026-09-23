@@ -195,4 +195,13 @@ describe("web push", () => {
     // The queued push finds its device gone.
     expect((await deliverPendingPushes()).gone).toBe(1);
   });
+
+  it("does not hand an endpoint to someone who knows only its address", async () => {
+    await savePushSubscription(people.an, device("an-phone"));
+    await expect(savePushSubscription(people.binh, { ...device("an-phone"), p256dh: "x".repeat(87), auth: "y".repeat(22) })).rejects.toThrow("push_endpoint_taken");
+    expect((await listPushSubscriptions(people.an)).map((row) => row.endpoint)).toEqual(["https://push.example/an-phone"]);
+    // Its owner renewing it on the same device is fine, keys or no keys.
+    await savePushSubscription(people.an, { ...device("an-phone"), auth: "z".repeat(22) });
+    expect(await removePushSubscription(people.an, null)).toBe(1);
+  });
 });

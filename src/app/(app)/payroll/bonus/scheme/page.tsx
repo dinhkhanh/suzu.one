@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,8 +10,9 @@ import { listEntityOptions } from "@/modules/payroll/options";
 import { canDecidePayRules, canProposePayRules, canReadPayRules } from "@/modules/payroll/policy";
 import { DEFAULT_BONUS_SCHEME, listBonusSchemeVersions } from "@/modules/payroll/service";
 import { ProposeSchemeForm, SchemeDecisionButtons } from "@/modules/payroll/ui/bonus-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Bonus scheme" };
+export const generateMetadata = pageTitle("bonusScheme");
 
 const percent = (bp: number): string => `${(bp / 100).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} %`;
 const factor = (bp: number): string => `× ${(bp / 10_000).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
@@ -49,7 +49,7 @@ export default async function BonusSchemePage() {
                 {version.validTo ? ` → ${version.validTo}` : ""}
                 <Badge variant={version.status === "approved" ? "secondary" : "outline"}>{t(`scheme.status.${version.status}`)}</Badge>
               </span>
-              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 text-muted-foreground">
+              <dl className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-x-4 sm:grid-cols-[auto_1fr] gap-y-0.5 text-muted-foreground">
                 <dt>{t("scheme.payComponent")}</dt>
                 <dd className="text-foreground">{version.value.payComponentCode}</dd>
                 <dt>{t("scheme.base")}</dt>

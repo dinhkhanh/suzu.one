@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { getTranslations } from "next-intl/server";
 import { recordAudit } from "@/modules/platform/audit/service";
 import { getCurrentUser } from "@/modules/platform/auth/session";
+import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 import { documentsToday, openDocument } from "@/modules/documents/service";
 import { renderDocumentPdf } from "@/modules/documents/document-pdf";
 
@@ -23,6 +24,9 @@ export async function GET(_request: Request, context: RouteContext<"/documents/[
     await recordAudit({ action: "document.open.denied", actor: { userId: user.userId, personId: user.person.id, email: user.email }, request: user.request, resource: { type: "generated_document", id: documentId } });
     return new NextResponse("Not found", { status: 404 });
   }
+  // A compensation letter opens like a payslip: only on a session that proved who it is in the last
+  // few minutes (FR-PLT-06). No redirect from a download — the browser would save the sign-in page.
+  if (rendered.tier === "compensation" && !isStepUpFresh(user.reauthAt)) return new NextResponse("step_up_required", { status: 403 });
 
   const t = await getTranslations("documents");
   const pdf = renderDocumentPdf({

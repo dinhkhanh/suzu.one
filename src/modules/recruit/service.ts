@@ -29,7 +29,7 @@ import {
   type RejectionReason,
   type WorkMode,
 } from "./enums";
-import { type CandidateLike, type DuplicateMatch, isCertainDuplicate, normaliseEmail, normalisePhone, probeFor, rankDuplicates } from "./engine/duplicates";
+import { type CandidateLike, type DuplicateMatch, isCertainDuplicate, type RedactedDuplicateMatch, normaliseEmail, normalisePhone, probeFor, rankDuplicates } from "./engine/duplicates";
 import { canBrowseCandidates, canReadRecruitMoney, canRunRecruitment, canViewOpening, type OpeningTarget } from "./policy";
 
 export * from "./enums";
@@ -520,12 +520,35 @@ export async function findLikelyCandidateDuplicates(input: { fullName: string; e
  * application form in week 2, which of course has nobody to confirm anything — so there it
  * attaches the new application to the candidate already on file instead.
  */
-export async function createCandidate(input: CandidateInput, actorPersonId: string | null, options: { confirmedNotDuplicate?: boolean; consent?: { at: Date; version: string; talentPool: boolean } } = {}, executor: Executor = db()): Promise<CandidateRow> {
+export async function createCandidate(
+  input: CandidateInput,
+  actorPersonId: string | null,
+  options: {
+    confirmedNotDuplicate?: boolean;
+    consent?: { at: Date; version: string; talentPool: boolean };
+    /**
+     * Who is asking, when it is a recruiter at a form. The duplicates the refusal carries back are
+     * then cut to what they reach: a match they may not open keeps its signals but loses its id and
+     * its name, so an entity-scoped recruiter learns "somebody like this is on file" and not who.
+     */
+    viewer?: Principal;
+  } = {},
+  executor: Executor = db(),
+): Promise<CandidateRow> {
   const name = input.fullName.trim().replace(/\s+/g, " ");
   if (name === "") throw new ActionError("recruit_candidate_name_required");
   const duplicates = await findLikelyCandidateDuplicates({ ...input, fullName: name }, undefined, executor);
-  if (isCertainDuplicate(duplicates)) throw new ActionError("recruit_candidate_duplicate", { duplicates });
-  if (duplicates.length > 0 && !options.confirmedNotDuplicate) throw new ActionError("recruit_candidate_possible_duplicate", { duplicates });
+  const shown = async (): Promise<RedactedDuplicateMatch[]> => {
+    if (!options.viewer || entityReach(options.viewer, "recruit:manage").all) return duplicates;
+    const reachable = await reachableCandidateIds(
+      options.viewer,
+      duplicates.map((match) => match.id),
+      executor,
+    );
+    return duplicates.map((match) => (reachable.has(match.id) ? match : { ...match, id: null, fullName: null }));
+  };
+  if (isCertainDuplicate(duplicates)) throw new ActionError("recruit_candidate_duplicate", { duplicates: await shown() });
+  if (duplicates.length > 0 && !options.confirmedNotDuplicate) throw new ActionError("recruit_candidate_possible_duplicate", { duplicates: await shown() });
 
   const keys = candidateKeys({ fullName: name, email: input.email, phone: input.phone });
   const [row] = await executor
@@ -573,27 +596,6 @@ export type CandidateListRow = { id: string; fullName: string; currentTitle: str
  */
 export async function listCandidates(principal: Principal, filters: { query?: string; tag?: string; source?: CandidateSource; /** Leave out whoever already applied here. */ notAppliedTo?: string; /** Leave out anonymised rows. */ identifiedOnly?: boolean } = {}): Promise<CandidateListRow[]> {
   if (!canBrowseCandidates(principal)) return [];
-  const reach = entityReach(principal, "recruit:manage");
-
-  const reachable = exists(
-    db()
-      .select({ one: sql`1` })
-      .from(schema.jobApplication)
-      .innerJoin(schema.jobOpening, eq(schema.jobOpening.id, schema.jobApplication.openingId))
-      .where(and(eq(schema.jobApplication.candidateId, schema.candidate.id), openingScope(principal))),
-  );
-  // `notExists` on the query builder, not a hand-written `sql` fragment: a drizzle column embedded
-  // in `sql` renders *unqualified*, so `candidate_id = id` inside the subquery compares the
-  // application's own two columns and is never true — the clause would silently mean "always".
-  const unapplied = and(
-    notExists(
-      db()
-        .select({ one: sql`1` })
-        .from(schema.jobApplication)
-        .where(eq(schema.jobApplication.candidateId, schema.candidate.id)),
-    ),
-    reach.all ? sql`true` : sql`false`,
-  );
 
   // Counted for the rows returned only (at most 200), off the candidate index.
   const applications = sql<number>`(${db().select({ value: sql<number>`count(*)::int` }).from(schema.jobApplication).where(eq(schema.jobApplication.candidateId, schema.candidate.id))})`;
@@ -613,7 +615,7 @@ export async function listCandidates(principal: Principal, filters: { query?: st
     .from(schema.candidate)
     .where(
       and(
-        or(reachable, unapplied),
+        candidateReach(principal),
         filters.tag ? sql`${filters.tag} = any(${schema.candidate.tags})` : undefined,
         filters.source ? eq(schema.candidate.source, filters.source) : undefined,
         filters.notAppliedTo
@@ -632,6 +634,54 @@ export async function listCandidates(principal: Principal, filters: { query?: st
     .limit(200);
 
   return rows.map((row) => ({ ...row, applications: Number(row.applications ?? 0), anonymised: !!row.anonymisedAt }));
+}
+
+/**
+ * Which candidate rows a principal's recruitment authority reaches — the rule `listCandidates`
+ * lists by, and the rule every candidate write is checked against, so that what a recruiter may
+ * edit or pull into an opening is exactly what they may find:
+ *   · anybody who has applied to an opening the principal may see;
+ *   · a lead who has applied nowhere — for a group-wide `recruit:manage` only.
+ * A condition on `candidate`; the caller supplies the `from`.
+ */
+function candidateReach(principal: Principal) {
+  const reach = entityReach(principal, "recruit:manage");
+  const reachable = exists(
+    db()
+      .select({ one: sql`1` })
+      .from(schema.jobApplication)
+      .innerJoin(schema.jobOpening, eq(schema.jobOpening.id, schema.jobApplication.openingId))
+      .where(and(eq(schema.jobApplication.candidateId, schema.candidate.id), openingScope(principal))),
+  );
+  // `notExists` on the query builder, not a hand-written `sql` fragment: a drizzle column embedded
+  // in `sql` renders *unqualified*, so `candidate_id = id` inside the subquery compares the
+  // application's own two columns and is never true — the clause would silently mean "always".
+  const unapplied = and(
+    notExists(
+      db()
+        .select({ one: sql`1` })
+        .from(schema.jobApplication)
+        .where(eq(schema.jobApplication.candidateId, schema.candidate.id)),
+    ),
+    reach.all ? sql`true` : sql`false`,
+  );
+  return or(reachable, unapplied)!;
+}
+
+/** Of these candidates, the ones `principal` reaches (see `candidateReach`). One query for the lot. */
+export async function reachableCandidateIds(principal: Principal, candidateIds: string[], executor: Executor = db()): Promise<Set<string>> {
+  const unique = [...new Set(candidateIds)];
+  if (unique.length === 0 || !canBrowseCandidates(principal)) return new Set();
+  const rows = await executor
+    .select({ id: schema.candidate.id })
+    .from(schema.candidate)
+    .where(and(inArray(schema.candidate.id, unique), candidateReach(principal)));
+  return new Set(rows.map((row) => row.id));
+}
+
+/** Whether a recruiter may touch this one candidate — edit it, or put it into an opening. */
+export async function canReachCandidate(principal: Principal, candidateId: string): Promise<boolean> {
+  return (await reachableCandidateIds(principal, [candidateId])).has(candidateId);
 }
 
 export type CandidateApplicationRow = { applicationId: string; openingId: string; openingCode: string; openingTitle: string; stageName: string; status: ApplicationStatus; appliedAt: Date };
@@ -666,12 +716,10 @@ export async function getCandidateView(viewer: { principal: Principal; personId:
 
   // A candidate is reached either by browsing the database or through an opening you may see.
   // Somebody with neither gets the same answer as a candidate that does not exist.
-  if (!canBrowseCandidates(viewer.principal) && applications.length === 0) return null;
-  const [[anyApplication], [referrer]] = await Promise.all([
-    canBrowseCandidates(viewer.principal) && applications.length === 0 ? db().select({ id: schema.jobApplication.id }).from(schema.jobApplication).where(eq(schema.jobApplication.candidateId, candidateId)).limit(1) : [undefined],
-    candidate.referredByPersonId ? db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, candidate.referredByPersonId)).limit(1) : [undefined],
-  ]);
-  if (anyApplication && !entityReach(viewer.principal, "recruit:manage").all) return null;
+  // With no application in reach, only a group-wide grant may see the row — a lead who has applied
+  // nowhere carries no entity to scope a narrower grant against. The rule `listCandidates` lists by.
+  if (applications.length === 0 && !(canBrowseCandidates(viewer.principal) && entityReach(viewer.principal, "recruit:manage").all)) return null;
+  const [referrer] = candidate.referredByPersonId ? await db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, candidate.referredByPersonId)).limit(1) : [undefined];
 
   return { candidate, applications, referredByName: referrer?.fullName ?? null, canManage: canBrowseCandidates(viewer.principal) };
 }

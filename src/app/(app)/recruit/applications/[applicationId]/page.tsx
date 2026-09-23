@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -18,8 +17,9 @@ import { CvLink } from "@/modules/recruit/ui/cv-link";
 import { listEmailTemplates } from "@/modules/recruit/emails";
 import { ScheduleInterview } from "@/modules/recruit/ui/interview-form";
 import { SendCandidateEmail } from "@/modules/recruit/ui/send-email";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Application" };
+export const generateMetadata = pageTitle("application");
 
 // One application: who it is, where they are in the pipeline, and everything that has happened.
 // The salary expectation is cut by tier in the service, so a recruiter's page simply lacks the row.
@@ -141,7 +141,7 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
           <ul className="flex flex-col divide-y rounded-xl border">
             {interviews.map((row) => (
               <li key={row.id} className="flex flex-wrap items-center gap-3 p-3">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-56">
                   <Link href={`/recruit/interviews/${row.id}`} className="text-sm font-medium hover:underline">
                     {row.title}
                   </Link>
@@ -238,7 +238,7 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
         <ul className="flex flex-col divide-y rounded-xl border text-sm">
           {view.events.map((event) => (
             <li key={event.id} className="flex flex-wrap items-center gap-3 p-3">
-              <span className="min-w-0 flex-1">
+              <span className="min-w-0 flex-1 basis-56">
                 {t(`event.${event.type}`)}
                 {event.toStageName ? ` → ${event.toStageName}` : ""}
                 {event.note ? <span className="block text-xs text-muted-foreground">{event.note}</span> : null}

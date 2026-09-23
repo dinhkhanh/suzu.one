@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -12,8 +11,9 @@ import { AssignForm, ConfirmHandoverForm, ReturnForm, StatusForm } from "@/modul
 import { BookingList } from "@/modules/assets/ui/booking-calendar";
 import { BookAssetForm } from "@/modules/assets/ui/booking-forms";
 import { AssetHistory, AssetQr, StatusBadge } from "@/modules/assets/ui/register-views";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Tài sản" };
+export const generateMetadata = pageTitle("assets");
 
 export default async function AssetPage({ params }: PageProps<"/assets/[assetId]">) {
   const user = await requireUser();

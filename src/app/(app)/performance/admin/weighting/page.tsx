@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { canDecidePerformanceRules, canProposeWeighting, DEFAULT_PERFORMANCE_WEIGHTING, listWeightingVersions, performanceWeightingSchema } from "@/modules/performance/service";
@@ -6,8 +5,9 @@ import { percentText } from "@/modules/performance/ui/result";
 import { DecideWeightingForm, WeightingForm } from "@/modules/performance/ui/result-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Result weighting" };
+export const generateMetadata = pageTitle("resultWeighting");
 
 /**
  * FR-PRF-09's weighting as configuration (SRS Q14): HR proposes a version from a date, the owner

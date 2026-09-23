@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { listInboxWithRows, listMyRequests } from "@/modules/platform/approvals/service";
@@ -7,8 +6,9 @@ import { RequestTable } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
 import { bulkApproveAction } from "./actions";
 import { allRequestTypes } from "./registry";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Approvals" };
+export const generateMetadata = pageTitle("approvals");
 
 // One inbox for every kind of request. Each row opens the page of the module that owns its type.
 export default async function ApprovalsPage() {

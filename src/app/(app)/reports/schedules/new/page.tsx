@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,8 +5,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { canManageSchedules, listReportsFor } from "@/modules/reports/service";
 import { ScheduleForm } from "@/modules/reports/ui/schedule-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "New schedule" };
+export const generateMetadata = pageTitle("newSchedule");
 
 /** The report list is `listReportsFor(user, { forScheduling: true })` — what this person may read, minus what may never be emailed. */
 export default async function NewSchedulePage() {

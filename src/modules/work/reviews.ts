@@ -23,7 +23,9 @@ import type { StateCategory } from "./enums";
 import { autoFollow, notifyFollowers } from "./followers";
 import { publishBlocks } from "./publish-gate";
 import type { ClientDecisionFacts, ReviewStage } from "./schema";
+import { canViewTask, type WorkViewer } from "./policy";
 import { type LoadedTask, loadTask, logActivity, taskKey, updateWorkTaskIn, WORK_KIND } from "./tasks";
+import { viewersOfPeople } from "./viewer";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type DeliverableRow = typeof schema.workDeliverable.$inferSelect;
@@ -68,8 +70,14 @@ async function reviewerFacts(tx: Executor, loaded: LoadedTask, rule: string): Pr
   const projectLeadIds = [...new Set([loaded.project?.leadPersonId, ...projectRoles.filter((row) => row.role === "lead").map((row) => row.personId)].filter((id): id is string => !!id))];
   const accountManagerIds = [...new Set([...projectRoles.filter((row) => row.role === "account_manager").map((row) => row.personId), client.accountManagerPersonId].filter((id): id is string => !!id))];
   const everyone = [...new Set([named, loaded.work.reviewerPersonId, ...projectLeadIds, ...leads.map((lead) => lead.personId), ...accountManagerIds].filter((id): id is string => !!id))];
-  const active = everyone.length ? await tx.select({ id: schema.person.id }).from(schema.person).where(and(inArray(schema.person.id, everyone), inArray(schema.person.status, ["active", "preboarding"]))) : [];
-  return { taskReviewerId: loaded.work.reviewerPersonId, projectLeadIds, teamLeadIds: leads.map((lead) => lead.personId), accountManagerIds, active: new Set(active.map((row) => row.id)) };
+  const [active, viewers] = everyone.length ? await Promise.all([tx.select({ id: schema.person.id }).from(schema.person).where(and(inArray(schema.person.id, everyone), inArray(schema.person.status, ["active", "preboarding"]))), viewersOfPeople(everyone, tx)]) : [[], new Map<string, WorkViewer>()];
+  // A stage goes only to someone who may open the task: a person named on a team's chain, or a
+  // client's account manager, may be outside the private project this task sits in.
+  const opens = (id: string) => {
+    const viewer = viewers.get(id);
+    return !!viewer && canViewTask(viewer, loaded.facts);
+  };
+  return { taskReviewerId: loaded.work.reviewerPersonId, projectLeadIds, teamLeadIds: leads.map((lead) => lead.personId), accountManagerIds, active: new Set(active.map((row) => row.id).filter(opens)) };
 }
 
 export async function pendingDeliverable(taskId: string, executor: Executor = db()): Promise<DeliverableRow | undefined> {

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,8 +9,9 @@ import { listEntityOptions } from "@/modules/payroll/options";
 import { compensationReach } from "@/modules/payroll/policy";
 import { listSalaryOverview } from "@/modules/payroll/salaries";
 import { formatVnd } from "@/modules/payroll/ui/money";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Salaries" };
+export const generateMetadata = pageTitle("salaries");
 
 export default async function SalariesPage({ searchParams }: PageProps<"/payroll/salaries">) {
   const user = await requireUser();

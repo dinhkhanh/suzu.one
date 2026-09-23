@@ -26,6 +26,17 @@ describe("startFlow", () => {
     expect(() => startFlow("bao", [step("hr", ["bao"])])).toThrow("step_hr_has_no_approver");
   });
 
+  it("never lets the person the request is about approve it, when someone else filed it", () => {
+    // HR files leave for the department head "ha", who is also the head step's approver.
+    const state = startFlow("bao", [step("manager", ["long"]), step("head", ["ha", "khanh"])], "ha");
+    expect(state.subjectId).toBe("ha");
+    expect(state.steps[1].assignees.map((a) => a.personId)).toEqual(["khanh"]);
+    // The CEO's own raise, proposed by C&B: the CEO is the only approver, so nobody is left.
+    expect(() => startFlow("cnb", [step("ceo", ["ceo"])], "ceo")).toThrow("step_ceo_has_no_approver");
+    // Filing about oneself changes nothing.
+    expect(startFlow("huy", [step("hr", ["mai"])], "huy").subjectId).toBeUndefined();
+  });
+
   it("skips steps whose condition does not hold, and approves a flow with nothing left to ask", () => {
     const state = startFlow("huy", [step("head", [], "any", false), step("hr", ["mai"])]);
     expect(state.currentStep).toBe(1);
@@ -102,6 +113,16 @@ describe("applyDecision", () => {
     expect(again.state.steps.flatMap((s) => s.assignees.map((a) => a.status))).toEqual(["pending", "pending"]);
   });
 
+  it("refuses the subject even when a stored state still names them as an approver", () => {
+    // A request filed before the subject was excluded: the decision itself refuses them.
+    const legacy: RequestState = { ...startFlow("bao", [step("head", ["ha", "khanh"])]), subjectId: "ha" };
+    expect(refusal(legacy, "ha", "approve")).toBe("own_request");
+    expect(refusal(legacy, "ha", "reject")).toBe("own_request");
+    expect(decide(legacy, "khanh", "approve").outcome).toBe("approved");
+    // Only the requester withdraws, not the subject.
+    expect(refusal(legacy, "ha", "withdraw")).toBe("not_requester");
+  });
+
   it("does not change the state it was given", () => {
     const start = startFlow("huy", [step("hr", ["mai"])]);
     const snapshot = JSON.stringify(start);
@@ -121,6 +142,13 @@ describe("delegate", () => {
     expect(delegate(start, "mai", "huy")).toEqual({ ok: false, reason: "own_request" });
     expect(delegate(start, "mai", "bao")).toEqual({ ok: false, reason: "not_assignee" });
     expect(delegate(start, "long", "ha")).toEqual({ ok: false, reason: "not_assignee" });
+  });
+
+  it("never hands a turn to the person the request is about", () => {
+    const start = startFlow("bao", [step("hr", ["mai"])], "huy");
+    expect(delegate(start, "mai", "huy")).toEqual({ ok: false, reason: "own_request" });
+    expect(delegate(start, "mai", "bao")).toEqual({ ok: false, reason: "own_request" });
+    expect(delegate(start, "mai", "ha").ok).toBe(true);
   });
 });
 

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import Form from "next/form";
 import Link from "next/link";
@@ -17,8 +16,9 @@ import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { can } from "@/modules/platform/rbac/policy";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "People" };
+export const generateMetadata = pageTitle("people");
 
 const STATUSES = [...PERSON_STATUSES, "all"] as const;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,8 +10,9 @@ import { listEntityOptions } from "@/modules/payroll/options";
 import { listPolicyVersions } from "@/modules/payroll/policies";
 import { canDecidePayRules, canProposePayRules, canReadPayRules } from "@/modules/payroll/policy";
 import { ProposePolicyForm, RuleDecisionButtons } from "@/modules/payroll/ui/rule-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Pay policy" };
+export const generateMetadata = pageTitle("payPolicy");
 
 // Company pay rules per entity: pro-rating, union, the Simple profile's PIT, variance threshold,
 // pay day. Not law (that is Admin → Statutory parameters) — the owner's choices (SRS D17).
@@ -43,7 +43,7 @@ export default async function PayPolicyPage() {
                 {version.validTo ? ` → ${day(version.validTo)}` : ""}
                 <Badge variant={version.status === "approved" ? "secondary" : "outline"}>{t(`rules.status.${version.status}`)}</Badge>
               </span>
-              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 text-muted-foreground">
+              <dl className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-x-4 sm:grid-cols-[auto_1fr] gap-y-0.5 text-muted-foreground">
                 {Object.entries(version.value).map(([key, value]) => (
                   <div key={key} className="contents">
                     <dt>{t(`policy.fields.${key}` as "policy.fields.payDay")}</dt>

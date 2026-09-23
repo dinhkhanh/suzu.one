@@ -18,7 +18,7 @@ import "server-only";
 //   · **The CV is never trusted.** The bytes are checked against the allow-list and the file's own
 //     magic bytes in memory before anything is stored, the stored row is `not_scanned` (there is
 //     no scanner in this system), and `policy.ts` keeps it to the people hiring for that opening.
-import { and, asc, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { ActionError } from "@/lib/action";
 import { createPublicAction, type RateLimitOutcome, type Visitor } from "@/lib/public-action";
@@ -28,7 +28,8 @@ import { reownFile, softDeleteFile, storeIncomingFile } from "@/modules/platform
 import { CONSENT_VERSION, OPENING_PUBLIC_STATUSES, type OpeningQuestion, PUBLIC_LIMITS } from "./enums";
 import { signFormToken, verifyFormToken } from "./engine/form-token";
 import { CAREERS_LIMITS, type CareersBucket, retryAfterSeconds, windowStartFor, withinLimit } from "./engine/rate-limit";
-import { createApplication, createCandidate, findLikelyCandidateDuplicates, findOpeningBySlug } from "./service";
+import type { DuplicateMatch } from "./engine/duplicates";
+import { createApplication, createCandidate, findLikelyCandidateDuplicates, findOpeningBySlug, recordApplicationEvent } from "./service";
 
 type Executor = Tx | ReturnType<typeof db>;
 
@@ -206,17 +207,21 @@ export function answersFor(questions: readonly OpeningQuestion[], given: Record<
  * duplicates and decides; out here there is nobody to decide, and merging two strangers who happen
  * to share a common Vietnamese name would be far worse than keeping two records.
  */
-async function candidateFor(input: PublicApplication, tx: Executor): Promise<string> {
+async function candidateFor(input: PublicApplication, tx: Executor): Promise<{ candidateId: string; matched: DuplicateMatch | null }> {
   const duplicates = await findLikelyCandidateDuplicates({ fullName: input.fullName, email: input.email, phone: input.phone }, undefined, tx);
   const certain = duplicates.find((match) => match.certain);
   if (certain) {
-    // Consent is re-recorded: they have just agreed to the current notice, and a talent-pool tick
-    // this time is a new permission — never a withdrawn one, which only they may do.
+    // **Consent on file is not the stranger's to change.** Anybody can type somebody else's
+    // address into this form, so what it posts may neither widen a permission (a talent-pool tick
+    // keeps the record years longer) nor withdraw one (which would start the purge clock on
+    // somebody who never asked). The one thing it may do is fill a gap: a record with no consent
+    // at all — a referral, a lead a recruiter typed in — takes the notice agreed to here. The
+    // talent pool is asked for again by the recruiter, in person.
     await tx
       .update(schema.candidate)
-      .set({ consentAt: now(), consentVersion: CONSENT_VERSION, ...(input.talentPool ? { talentPoolConsent: true } : {}), updatedAt: now() })
-      .where(eq(schema.candidate.id, certain.id));
-    return certain.id;
+      .set({ consentAt: now(), consentVersion: CONSENT_VERSION, updatedAt: now() })
+      .where(and(eq(schema.candidate.id, certain.id), isNull(schema.candidate.consentAt)));
+    return { candidateId: certain.id, matched: certain };
   }
   const created = await createCandidate(
     {
@@ -238,7 +243,7 @@ async function candidateFor(input: PublicApplication, tx: Executor): Promise<str
     { confirmedNotDuplicate: true, consent: { at: now(), version: CONSENT_VERSION, talentPool: input.talentPool } },
     tx,
   );
-  return created.id;
+  return { candidateId: created.id, matched: null };
 }
 
 /**
@@ -279,7 +284,7 @@ const applyPipeline = createPublicAction({
 
     try {
       const application = await db().transaction(async (tx) => {
-        const candidateId = await candidateFor(input, tx);
+        const { candidateId, matched } = await candidateFor(input, tx);
         const [existing] = await tx
           .select({ id: schema.jobApplication.id })
           .from(schema.jobApplication)
@@ -288,7 +293,7 @@ const applyPipeline = createPublicAction({
         // Already in this pipeline. Nothing is written, and the answer is the same thank-you: see
         // the note at the top of this file about membership oracles.
         if (existing) return null;
-        return createApplication(
+        const application = await createApplication(
           {
             candidateId,
             openingId: opening.id,
@@ -304,6 +309,13 @@ const applyPipeline = createPublicAction({
           null,
           tx,
         );
+        // Joined to a record already on file by address or number, from a form anybody can fill in
+        // with anybody's address. The recruiter is told so in the history — with the name that was
+        // typed and what matched — before trusting the CV and the answers as that person's.
+        if (matched) {
+          await recordApplicationEvent(tx, { applicationId: application.id, type: "note", actorPersonId: null, detail: { possibleDuplicate: true, typedName: input.fullName, signals: matched.signals } });
+        }
+        return application;
       });
 
       if (!application) {

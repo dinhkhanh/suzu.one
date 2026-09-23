@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,8 +5,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getOpeningView, listApplications } from "@/modules/recruit/service";
 import { PipelineBoard } from "@/modules/recruit/ui/pipeline-board";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Pipeline" };
+export const generateMetadata = pageTitle("pipeline");
 
 // The kanban board (FR-REC-05). It shows exactly what `listApplications` returns, which is already
 // scoped — a refused opening answers like one that does not exist, here as everywhere.

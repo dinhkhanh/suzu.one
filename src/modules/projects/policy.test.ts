@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Grant } from "../platform/rbac/policy";
 import type { ProjectRole, TeamRole } from "../work/enums";
-import type { ProjectFacts, TeamFacts, WorkViewer } from "../work/policy";
+import { canGiveProjectRole, type ProjectFacts, type TeamFacts, type WorkViewer } from "../work/policy";
 import { billingReach, canAddRaid, canCloseRaidItem, canCreateProjectSpace, canEditMeeting, canEditRaidItem, canRecordMeeting, canViewMeetings, canViewRaid, type CapacityReader, type CapacitySubject, canCloseProject, canDecideBilling, canEditClientSide, canEditFees, canEditPlan, canEditRetainer, canHoldRetro, canManageAcceptance, canManageBookings, canManageChanges, canOpenBillingQueue, canOpenCapacity, canPostStatus, canRebaseline, canSeeCapacityOf, canSeeFees, canViewBookings, canViewPlan, canWriteClientReport } from "./policy";
 
 const SZM = "entity-szm";
@@ -88,6 +88,19 @@ describe("fees (pjm:commercial)", () => {
     // Reading it is not moving it.
     expect(canEditFees(lead, tvc)).toBe(false);
     expect(canEditFees(accountManager, tvc)).toBe(false);
+  });
+  // …which is why the seats themselves are handed out with `pjm:commercial`: otherwise whoever
+  // runs the project — a team lead, `work:manage` — would name themselves lead or account manager
+  // and read the price (security review of 2026-09-23).
+  it("are not reached by naming oneself lead or account manager", () => {
+    for (const who of [teamLead, portfolio, lead]) {
+      expect(canGiveProjectRole(who, tvc, null, "lead")).toBe(false);
+      expect(canGiveProjectRole(who, tvc, "member", "account_manager")).toBe(false);
+    }
+    // The director runs the project and holds `pjm:commercial` over its entity: they may.
+    expect(canGiveProjectRole(director, tvc, "member", "account_manager")).toBe(true);
+    // Finance reads fees but runs no project, so it staffs none either.
+    expect(canGiveProjectRole(finance, tvc, null, "lead")).toBe(false);
   });
   it("of a group project need a group-wide grant", () => {
     expect(canSeeFees(groupFinance, groupProject)).toBe(true);

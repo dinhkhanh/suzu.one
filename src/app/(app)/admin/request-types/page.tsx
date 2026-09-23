@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,8 +7,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { canManageRequestTypes } from "@/modules/requests/policy";
 import { listRequestTypes } from "@/modules/requests/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Request types" };
+export const generateMetadata = pageTitle("requestTypes");
 
 // The catalogue an administrator designs (FR-REQ-01). A type's flow lives on its own page, edited
 // by the approval engine's editor.
@@ -34,7 +34,7 @@ export default async function RequestTypesPage() {
       <ul className="flex flex-col divide-y rounded-xl border">
         {types.map((type) => (
           <li key={type.id} className="flex flex-wrap items-center gap-3 p-3">
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 basis-56">
               <Link href={`/admin/request-types/${type.id}`} className="text-sm font-medium hover:underline">
                 {locale === "en" ? type.nameEn : type.nameVi}
               </Link>

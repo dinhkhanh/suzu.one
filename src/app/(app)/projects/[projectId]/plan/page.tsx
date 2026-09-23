@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +8,9 @@ import { baselineSlip, canRebaseline, linkedProgress, listStructure, listTaskLin
 import { LinkTaskForm, MilestoneForm, MilestoneTools, PhaseForm, RebaselineForm, RemovePhaseButton, UnlinkButton } from "@/modules/projects/ui/plan-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
 import { listAssignable } from "@/modules/work/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Project plan" };
+export const generateMetadata = pageTitle("projectPlan");
 
 /**
  * Phases and milestones (FR-PJM-04) with each milestone's progress from its linked tasks and its

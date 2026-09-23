@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +8,9 @@ import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { BILLING_STATUSES, billingEntities, type BillingStatus, canDecideBilling, canOpenBillingQueue, listBillingQueue, openProject } from "@/modules/projects/service";
 import { BillingDecisionForm, ManualBillingForm, SignedScanLink } from "@/modules/projects/ui/commercial-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Billing" };
+export const generateMetadata = pageTitle("billing");
 
 const statusVariant = (status: string) => (status === "invoiced" ? "success" : status === "waived" ? "outline" : "warning");
 

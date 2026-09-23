@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { getWhoIsIn, type PresenceStatus } from "@/modules/attendance/punches";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Who's in today" };
+export const generateMetadata = pageTitle("whoSInToday");
 
 const ORDER: PresenceStatus[] = ["in", "off_site", "not_yet", "out", "on_leave", "untracked", "rest", "holiday", "unscheduled"];
 const TONE: Partial<Record<PresenceStatus, "default" | "secondary" | "outline" | "destructive">> = { in: "default", off_site: "default", not_yet: "destructive", out: "secondary", on_leave: "secondary" };

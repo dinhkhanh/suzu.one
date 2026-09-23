@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,8 +7,9 @@ import { listStructure, listTaskLinks, loadRegisters, openProject, REGISTER_STAT
 import { CancelLineButton, DeliverableForm, LineTasksForm, UnlinkButton } from "@/modules/projects/ui/plan-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
 import { listAssignable } from "@/modules/work/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Deliverables" };
+export const generateMetadata = pageTitle("deliverables");
 
 const statusVariant = (status: string) => (status === "accepted" || status === "delivered" || status === "published" ? "success" : status === "client_review" ? "info" : status === "in_production" ? "warning" : status === "cancelled" ? "outline" : "secondary");
 

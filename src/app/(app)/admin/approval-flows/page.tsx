@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -11,8 +10,9 @@ import { listPersonNames } from "@/modules/platform/people/service";
 import { can } from "@/modules/platform/rbac/policy";
 import { ROLES } from "@/modules/platform/rbac/roles";
 import { allRequestTypes } from "../../approvals/registry";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Approval flows" };
+export const generateMetadata = pageTitle("approvalFlows");
 
 // Who approves what (FR-PLT-20, 21). Every request type ships a default flow; a flow saved here
 // replaces it for one entity or for the group. Requests already sent keep the flow they started with.
@@ -20,7 +20,10 @@ export default async function ApprovalFlowsPage() {
   const user = await requireUser();
   if (!can(user.principal, "org:manage")) notFound();
   const t = await getTranslations("approvals");
-  const [flows, entities, people, registered] = await Promise.all([listFlows(), listEntities(), listPersonNames(), allRequestTypes()]);
+  const [allFlows, entities, people, registered] = await Promise.all([listFlows(), listEntities(), listPersonNames(), allRequestTypes()]);
+  // Only the flows this administrator could save: an entity's own admin sees that entity's flows,
+  // and the group's need a group grant — the same check as `saveFlowAction`.
+  const flows = allFlows.filter((flow) => can(user.principal, "org:manage", flow.entityId ? { entityId: flow.entityId } : {}));
   // The builder's types carry their own name; the ones in code are named in the message bundle.
   const label = (type: string) => registered.get(type)?.names?.vi ?? (t.has(`types.${type}`) ? t(`types.${type}` as "types.profile_change") : type);
   const options = {

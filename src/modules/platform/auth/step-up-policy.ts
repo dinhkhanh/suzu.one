@@ -1,7 +1,7 @@
 // Step-up re-authentication (FR-PLT-06, NFR-SEC-08): the pure rules. No I/O.
 //
-// A session carries `reauth_at` — when its holder last proved who they are (sign-in, or the
-// step-up round trip). Compensation screens and payroll actions ask for a recent one.
+// A session carries `reauth_at` — when its holder last completed the step-up round trip. Signing
+// in does not set it. Compensation screens and payroll actions ask for a recent one.
 
 /** How long a proof of identity opens the compensation screens. Company practice, not law. */
 export const STEP_UP_WINDOW_MINUTES = 15;

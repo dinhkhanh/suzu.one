@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +8,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { canSetRecruitMoney, getOpeningView, listApplications, listCandidates } from "@/modules/recruit/service";
 import { AddApplicationForm } from "@/modules/recruit/ui/add-application";
 import { HiringTeamForm, OpeningStatusControls } from "@/modules/recruit/ui/opening-controls";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Job opening" };
+export const generateMetadata = pageTitle("jobOpening");
 
 // One opening: what the job is, who is hiring for it, and everybody currently walking its
 // pipeline, grouped by stage — the list the kanban board of week 2 will draw as columns.

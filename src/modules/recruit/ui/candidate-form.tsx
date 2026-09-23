@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { createCandidateAction, updateCandidateAction } from "../actions";
 import { CANDIDATE_SOURCES, type CandidateSource } from "../enums";
-import type { DuplicateMatch, DuplicateSignal } from "../engine/duplicates";
+import type { DuplicateSignal, RedactedDuplicateMatch } from "../engine/duplicates";
 
 const textarea = "w-full rounded-md border bg-transparent px-3 py-2 text-sm";
 
@@ -43,7 +43,7 @@ export function CandidateForm({ value, people }: { value: CandidateFormValue | n
     onSuccess: (data) => router.push(`/recruit/candidates/${(data as { id: string }).id}`),
   });
 
-  const matches = (details as { duplicates?: DuplicateMatch[] } | null)?.duplicates ?? [];
+  const matches = (details as { duplicates?: RedactedDuplicateMatch[] } | null)?.duplicates ?? [];
   // Only a bare name match is something a person can overrule.
   const overrulable = matches.length > 0 && matches.every((match) => !match.certain);
 
@@ -108,11 +108,16 @@ export function CandidateForm({ value, people }: { value: CandidateFormValue | n
         <div className="flex flex-col gap-2 rounded-xl border border-amber-500/40 bg-amber-50/40 p-3 text-sm dark:bg-amber-950/20">
           <p className="font-medium">{duplicates("title")}</p>
           <ul className="flex flex-col gap-1">
-            {matches.map((match) => (
-              <li key={match.id} className="flex flex-wrap items-center gap-2">
-                <a href={`/recruit/candidates/${match.id}`} className="underline underline-offset-4">
-                  {match.fullName}
-                </a>
+            {matches.map((match, index) => (
+              <li key={match.id ?? `elsewhere-${index}`} className="flex flex-wrap items-center gap-2">
+                {/* A match outside the recruiter's reach arrives without an id or a name. */}
+                {match.id ? (
+                  <a href={`/recruit/candidates/${match.id}`} className="underline underline-offset-4">
+                    {match.fullName}
+                  </a>
+                ) : (
+                  <span className="text-muted-foreground">{duplicates("elsewhere")}</span>
+                )}
                 <span className="text-xs text-muted-foreground">{match.signals.map((signal: DuplicateSignal) => duplicates(`signal.${signal}`)).join(", ")}</span>
               </li>
             ))}

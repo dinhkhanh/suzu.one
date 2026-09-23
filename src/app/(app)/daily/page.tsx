@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -6,8 +5,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { listMyReports } from "@/modules/daily/service";
 import { hoursOf } from "@/modules/daily/ui/format";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "My days" };
+export const generateMetadata = pageTitle("myDays");
 
 // The person's own daily reports, newest first, with the ways into the day's screens.
 export default async function DailyIndexPage() {

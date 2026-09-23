@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,8 +5,9 @@ import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canDecideTriage, canViewTriage, findTeam, listAssignable, listLabels, listMergeTargets, listTeamIntakeForms, listTriage, listTriageRules, loadViewer, teamFacts, visibleProjects } from "@/modules/work/service";
 import { TriageQueue, TriageRuleManager } from "@/modules/work/ui/triage";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Triage" };
+export const generateMetadata = pageTitle("triage");
 
 // FR-PJM-32: work from outside the team waits here for a lead's answer. The team's members see
 // the queue; only the leads act on it and keep the rules.

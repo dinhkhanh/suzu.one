@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +8,9 @@ import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { costReport, costTrend, insuranceSummary, payrollRegister, pitSummary, reportOptions, seesNamedReports, unionReport } from "@/modules/payroll/reports";
 import { formatVnd } from "@/modules/payroll/ui/money";
 import { ExportReportButton, ReportFilters } from "@/modules/payroll/ui/report-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Payroll reports" };
+export const generateMetadata = pageTitle("payrollReports");
 
 /**
  * The payroll reports (FR-PAY-34). Two levels of sight, as everywhere else in this module:

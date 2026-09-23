@@ -104,7 +104,7 @@ export function InstancePanel({ taskId, open, canWork, canManage, checklist, che
           <ul className="flex flex-col divide-y rounded-xl border text-sm">
             {files.map((file) => (
               <li key={file.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
-                <span className="min-w-0 flex-1 truncate">
+                <span className="min-w-0 flex-1 basis-56 truncate">
                   <FileLink fileId={file.id} fileName={file.fileName} download={openEvidenceFileAction} onError={setErrorKey} />
                 </span>
                 <span className="text-xs text-muted-foreground">{[size(file.sizeBytes), file.uploadedByName, format.dateTime(new Date(file.createdAt), { dateStyle: "short" })].filter(Boolean).join(" · ")}</span>

@@ -153,11 +153,16 @@ export async function setSpaceAccess(spaceId: string, rows: readonly AccessRow[]
 
 export type SubjectOptions = { entities: { id: string; name: string }[]; units: { id: string; name: string }[]; people: { id: string; name: string }[]; roles: readonly string[] };
 
+/**
+ * The choices the access and audience forms offer. The people are the active staff only: somebody
+ * still preboarding is not yet a colleague to name, and their name is not every editor's to read —
+ * which is why the pages call this for a space's organisers and managers, never for a collaborator.
+ */
 export async function subjectOptions(): Promise<SubjectOptions> {
   const [entities, units, people] = await Promise.all([
     db().select({ id: schema.entity.id, name: schema.entity.shortName }).from(schema.entity).orderBy(asc(schema.entity.shortName)),
     unitChoices(),
-    db().select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(inArray(schema.person.status, ["active", "preboarding"])).orderBy(asc(schema.person.searchName)),
+    db().select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(eq(schema.person.status, "active")).orderBy(asc(schema.person.searchName)),
   ]);
   return { entities, units, people, roles: ROLES };
 }

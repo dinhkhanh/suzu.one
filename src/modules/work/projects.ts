@@ -147,6 +147,12 @@ export async function listProjectMembers(projectId: string): Promise<ProjectMemb
   return rows.map((row) => ({ ...row, role: row.role as ProjectRole }));
 }
 
+/** The person's role in the project, or null when they are not one of its members. */
+export async function projectRoleOf(projectId: string, personId: string, executor: Executor = db()): Promise<ProjectRole | null> {
+  const [row] = await executor.select({ role: schema.workProjectMember.role }).from(schema.workProjectMember).where(and(eq(schema.workProjectMember.projectId, projectId), eq(schema.workProjectMember.personId, personId))).limit(1);
+  return (row?.role as ProjectRole | undefined) ?? null;
+}
+
 /** `role` null removes the person. A private project keeps at least one lead among its members or its team. */
 export async function setProjectMember(projectId: string, personId: string, role: ProjectRole | null): Promise<{ before: ProjectRole | null; after: ProjectRole | null }> {
   return db().transaction(async (tx) => {
@@ -187,12 +193,12 @@ export async function listCreateTargets(viewer: WorkViewer): Promise<CreateTarge
  * (`canViewProject`). Being given a task makes you a party to it, which is how a task is read, so
  * offering the rest of the team would hand a private project's work to someone it is closed to.
  */
-export async function listAssignable(teamId: string, projectId: string | null): Promise<{ id: string; fullName: string }[]> {
+export async function listAssignable(teamId: string, projectId: string | null, executor: Executor = db()): Promise<{ id: string; fullName: string }[]> {
   const columns = { id: schema.person.id, fullName: schema.person.fullName, searchName: schema.person.searchName, status: schema.person.status };
   const [visibility, team, project] = await Promise.all([
-    projectId ? visibilityOf(projectId) : Promise.resolve(null),
-    db().select({ ...columns, teamRole: schema.workTeamMember.role }).from(schema.workTeamMember).innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId)).where(eq(schema.workTeamMember.teamId, teamId)),
-    projectId ? db().select(columns).from(schema.workProjectMember).innerJoin(schema.person, eq(schema.person.id, schema.workProjectMember.personId)).where(eq(schema.workProjectMember.projectId, projectId)) : [],
+    projectId ? visibilityOf(projectId, executor) : Promise.resolve(null),
+    executor.select({ ...columns, teamRole: schema.workTeamMember.role }).from(schema.workTeamMember).innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId)).where(eq(schema.workTeamMember.teamId, teamId)),
+    projectId ? executor.select(columns).from(schema.workProjectMember).innerJoin(schema.person, eq(schema.person.id, schema.workProjectMember.personId)).where(eq(schema.workProjectMember.projectId, projectId)) : [],
   ]);
   const fromTeam = visibility === "private" ? team.filter((person) => person.teamRole === "lead") : team;
   const byId = new Map([...fromTeam, ...project].filter((person) => person.status !== "offboarded").map((person) => [person.id, person]));

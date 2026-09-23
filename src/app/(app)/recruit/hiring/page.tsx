@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canRunRecruitment, headcountPlan, listHiringRequests } from "@/modules/recruit/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Hiring requests" };
+export const generateMetadata = pageTitle("hiringRequests");
 
 // The asks: mine, the ones I will manage, and — for a recruiter — everything in scope. The
 // headcount block below is FR-CHR-17 in the small: approved heads against the ones advertised.
@@ -34,7 +34,7 @@ export default async function HiringRequestsPage() {
         <ul className="flex flex-col divide-y rounded-xl border">
           {rows.map((row) => (
             <li key={row.id} className="flex flex-wrap items-center gap-3 p-3">
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 basis-56">
                 <Link href={`/recruit/hiring/${row.id}`} className="text-sm font-medium hover:underline">
                   {row.positionTitle} × {row.headcount}
                 </Link>
@@ -53,7 +53,7 @@ export default async function HiringRequestsPage() {
           <ul className="flex flex-col divide-y rounded-xl border text-sm">
             {plan.map((row) => (
               <li key={`${row.entityName}-${row.departmentId}`} className="flex flex-wrap items-center gap-3 p-3">
-                <span className="min-w-0 flex-1">{[row.entityName, row.departmentName].filter(Boolean).join(" · ")}</span>
+                <span className="min-w-0 flex-1 basis-56">{[row.entityName, row.departmentName].filter(Boolean).join(" · ")}</span>
                 <span className="text-xs text-muted-foreground">
                   {t("columns.approved")}: {row.approvedHeads}
                 </span>

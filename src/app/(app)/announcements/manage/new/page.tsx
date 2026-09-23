@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { audienceOptionsFor, canPostAnywhere } from "@/modules/comms/service";
 import { AnnouncementForm } from "@/modules/comms/ui/announcement-form";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "New announcement" };
+export const generateMetadata = pageTitle("newAnnouncement");
 
 export default async function NewAnnouncementPage() {
   const user = await requireUser();

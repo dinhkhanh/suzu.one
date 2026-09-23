@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,8 +10,9 @@ import { atLeast, kbViewerOf, listSpaceFiles, listTree, loadSpace, spaceLevel, s
 import { AccessForm } from "@/modules/kb/ui/access-form";
 import { PageTree } from "@/modules/kb/ui/page-tree";
 import { ArchiveSpaceButton, SpaceSettingsForm } from "@/modules/kb/ui/space-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Knowledge base" };
+export const generateMetadata = pageTitle("knowledgeBase");
 
 export default async function SpacePage(props: PageProps<"/kb/spaces/[spaceKey]">) {
   const user = await requireUser();
@@ -30,7 +30,8 @@ export default async function SpacePage(props: PageProps<"/kb/spaces/[spaceKey]"
     listTree(viewer, loaded),
     listSpaceFiles(viewer, loaded.space.id),
     manages ? subjectNames(loaded.access.map((row) => row.subjectKey)) : new Map<string, string>(),
-    manages ? subjectOptions() : null,
+    // The directory is for setting access; a collaborator gets no directory anywhere.
+    manages && user.principal.workforceType !== "collaborator" ? subjectOptions() : null,
   ]);
   const rows = loaded.access.map((row) => {
     const subject = parseSubjectKey(row.subjectKey);

@@ -41,6 +41,7 @@ const ids = {} as Record<"szm" | "vid" | "pipeline" | "recruiterPerson" | "headP
 let slug: string;
 let openingId: string;
 let draftSlug: string;
+let openingBase: Omit<Parameters<typeof createOpening>[0], "title" | "questions">;
 
 /** A fresh visitor per test, so one test's submissions never spend another's allowance. */
 let counter = 0;
@@ -102,6 +103,7 @@ beforeAll(async () => {
     pipelineId: ids.pipeline,
     targetStartDate: null,
   };
+  openingBase = base;
   const opening = await createOpening(
     {
       ...base,
@@ -212,7 +214,7 @@ describe("applying", () => {
     expect(rows[0].id).toBe(before.id);
   });
 
-  it("records a talent-pool tick as a new permission and never withdraws one", async () => {
+  it("records a talent-pool tick on a new record and never withdraws one", async () => {
     const email = "pool@example.com";
     await applyToOpening(filled(slug, { email, phone: "0900000002", talentPool: true, answers: { portfolio_reel: "https://a" } }), nextVisitor());
     const [after] = await db().select().from(schema.candidate).where(eq(schema.candidate.email, email));
@@ -221,6 +223,33 @@ describe("applying", () => {
     await applyToOpening(filled(slug, { email, phone: "0900000002", talentPool: false, answers: { portfolio_reel: "https://a" } }), nextVisitor());
     const [again] = await db().select().from(schema.candidate).where(eq(schema.candidate.email, email));
     expect(again.talentPoolConsent).toBe(true);
+    expect(again.consentAt).toEqual(after.consentAt);
+  });
+
+  it("never lets a stranger's form change the consent on a record already on file", async () => {
+    const email = "no-pool@example.com";
+    await applyToOpening(filled(slug, { email, phone: "0900000009", talentPool: false, answers: { portfolio_reel: "https://a" } }), nextVisitor());
+    const [first] = await db().select().from(schema.candidate).where(eq(schema.candidate.email, email));
+    expect(first.talentPoolConsent).toBe(false);
+
+    // Somebody types the same address into another opening's form and ticks the talent pool. (The
+    // other opening is closed again at the end, so the public list other tests read is unchanged.)
+    const other = await createOpening({ ...openingBase, title: "Colorist", questions: [] }, null, ids.recruiterPerson);
+    await setOpeningStatus(other.id, "open", null);
+    const result = await applyToOpening(filled(other.publicSlug, { email, fullName: "Kẻ Lạ", phone: null, talentPool: true, answers: {} }), nextVisitor());
+    expect(result).toEqual({ ok: true, data: { received: true } });
+    const [after] = await db().select().from(schema.candidate).where(eq(schema.candidate.email, email));
+    expect(after.talentPoolConsent).toBe(false);
+    expect(after.consentAt).toEqual(first.consentAt);
+    expect(after.consentVersion).toBe(first.consentVersion);
+
+    // The application that joined the record says, in its history, that it matched by address.
+    const applications = await db().select().from(schema.jobApplication).where(eq(schema.jobApplication.candidateId, first.id));
+    expect(applications).toHaveLength(2);
+    const joined = applications.find((row) => row.openingId !== openingId)!;
+    const events = await db().select().from(schema.applicationEvent).where(eq(schema.applicationEvent.applicationId, joined.id));
+    expect(events.some((event) => (event.detail as { possibleDuplicate?: boolean } | null)?.possibleDuplicate === true)).toBe(true);
+    await setOpeningStatus(other.id, "closed", null);
   });
 
   it("refuses an application to a draft or a closed opening without saying which", async () => {

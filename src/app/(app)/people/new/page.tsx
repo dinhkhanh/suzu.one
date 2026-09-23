@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { todayInVietnam } from "@/lib/dates";
@@ -7,8 +6,9 @@ import { loadPlacementOptions, peopleModuleOpen } from "@/modules/core-hr/servic
 import { HireForm } from "@/modules/core-hr/ui/hire-form";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "New person" };
+export const generateMetadata = pageTitle("newPerson");
 
 export default async function NewPersonPage() {
   const user = await requireUser();

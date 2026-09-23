@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -7,8 +6,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listOneOnOnes, myReports } from "@/modules/performance/service";
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { NewOneOnOneForm } from "@/modules/performance/ui/one-on-one-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "1:1 meetings" };
+export const generateMetadata = pageTitle("oneOnOneMeetings");
 
 /** Every 1:1 the viewer is a party to — as the manager or as the person it is about (FR-PRF-04). */
 export default async function OneOnOnesPage() {

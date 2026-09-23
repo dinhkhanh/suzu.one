@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -11,8 +10,9 @@ import { exportPortfolioAction } from "@/modules/projects/actions";
 import { filterPortfolio, HEALTHS, listPortfolio, PORTFOLIO_GROUPS, type PortfolioFilters, type PortfolioGroup, type PortfolioRow, PROJECT_KINDS, showsFees, slipWords } from "@/modules/projects/service";
 import { healthVariant } from "@/modules/projects/ui/project-header";
 import { loadViewer } from "@/modules/work/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Projects" };
+export const generateMetadata = pageTitle("projects");
 
 const FILTERS = ["teamId", "clientId", "leadPersonId", "entityId", "kind", "health"] as const;
 

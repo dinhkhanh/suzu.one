@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canReadOneOnOne, canReadOneOnOnePrivate, canWriteOneOnOne, findOneOnOne, loadDirectory, loadOneOnOne } from "@/modules/performance/service";
 import { AddActionForm, CompleteActionButton, EditOneOnOneForm, ShareOneOnOneButton } from "@/modules/performance/ui/one-on-one-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "1:1 meeting" };
+export const generateMetadata = pageTitle("oneOnOneMeeting");
 
 /**
  * One 1:1. The manager's private notes are stripped by the service before they reach here, so a
@@ -21,7 +21,8 @@ export default async function OneOnOnePage({ params }: PageProps<"/performance/o
   const subject = directory.get(found.personId);
   if (!subject) notFound();
   const parties = { managerPersonId: found.managerPersonId, person: subject };
-  if (!canReadOneOnOne(user.principal, parties)) notFound();
+  // The subject reads it once it is shared, not while the manager is still writing it.
+  if (!canReadOneOnOne(user.principal, { ...parties, status: found.status })) notFound();
 
   const seesPrivate = canReadOneOnOnePrivate(user.principal, parties);
   const mayWrite = canWriteOneOnOne(user.principal, parties);

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -8,8 +7,9 @@ import { SyncButton } from "@/modules/ops/ui/library";
 import { OpsNav, OverviewFilters, overviewParams, overviewQuery } from "@/modules/ops/ui/overview";
 import { StatusBadge } from "@/modules/ops/ui/status-badge";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Compliance" };
+export const generateMetadata = pageTitle("compliance");
 
 const CELL_TONE: Record<string, string> = {
   overdue: "border-destructive/50 bg-destructive/5",

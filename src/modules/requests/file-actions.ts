@@ -53,10 +53,12 @@ export async function completeRequestAttachmentAction(input: unknown) {
 const openPipeline = createAction({
   name: "request.attachment.open",
   input: z.object({ requestId: z.uuid(), fileId: z.uuid() }),
-  // The file opens for whoever may open the request it is attached to — never on the file id alone.
+  // The file opens for whoever may open the request it is attached to — never on the file id alone —
+  // and only when it is the requester's own upload: an id recorded on a request is not a key to a
+  // file its requester never had.
   authorize: async (user, input) => {
-    const view = await getGenericRequest({ personId: user.person.id, principal: user.principal }, input.requestId);
-    return !!view && (view.submission.attachmentFileIds ?? []).includes(input.fileId);
+    const [view, file] = await Promise.all([getGenericRequest({ personId: user.person.id, principal: user.principal }, input.requestId), findFile(input.fileId)]);
+    return !!view && !!file && file.ownerId === view.request.requesterPersonId && (view.submission.attachmentFileIds ?? []).includes(input.fileId);
   },
   run: async ({ user, input }) => {
     const file = await findFile(input.fileId);

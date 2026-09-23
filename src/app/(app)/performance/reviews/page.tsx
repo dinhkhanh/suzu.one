@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { listMyParticipations, listPeerInvitations, listReviewsIOwe } from "@/modules/performance/service";
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { FormStatusBadge, ratingText, StageBadge } from "@/modules/performance/ui/review";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Reviews" };
+export const generateMetadata = pageTitle("reviews");
 
 // My reviews (FR-PRF-03) and the ones I owe as somebody's manager. Everything else — reading
 // another person's review, writing it — is decided on the review's own page.

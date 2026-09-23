@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { canPostAnywhere, commsViewerOf, listAnnouncementsFor } from "@/modules/comms/service";
 import { AnnouncementList } from "@/modules/comms/ui/cards";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Announcements" };
+export const generateMetadata = pageTitle("announcements");
 
 export default async function AnnouncementsPage() {
   const user = await requireUser();

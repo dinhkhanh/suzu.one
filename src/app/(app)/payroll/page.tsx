@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canDecidePayRules, canReadPayRules, canSeeSimpleProfileReport, compensationReach, payrollReadReach } from "@/modules/payroll/policy";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Payroll" };
+export const generateMetadata = pageTitle("payroll");
 
 // The payroll desk. Everyone finds their own pay file here; what else is listed depends on the
 // person's payroll permissions — and every linked page checks again.

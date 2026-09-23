@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { asc, eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
@@ -8,8 +7,9 @@ import { listEntities } from "@/modules/platform/org/service";
 import { canBookAssets, canDecideBookings, listBookableAssets, listBookingRequests, listBookings, listBookingsOfPerson, listCategories, shiftWeeks, weekStart } from "@/modules/assets/service";
 import { BookingCalendarFilters, BookingList, BookingWeek } from "@/modules/assets/ui/booking-calendar";
 import { BookAssetForm } from "@/modules/assets/ui/booking-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Lịch đặt thiết bị" };
+export const generateMetadata = pageTitle("equipmentBookings");
 
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 

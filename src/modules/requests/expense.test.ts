@@ -119,6 +119,14 @@ describe("filing a claim", () => {
     const [submission] = await db().select().from(schema.requestSubmission).where(eq(schema.requestSubmission.id, filed.submissionId));
     expect(submission.attachmentFileIds).toContain(file.id);
   });
+
+  it("refuses a receipt that is somebody else's upload, or not a finished one", async () => {
+    const stored = (ownerId: string, status: "ready" | "pending", objectPath: string) => ({ bucket: "suzu-private", ownerType: "request_attachment", ownerId, entityId: ids.entity, tier: "personal" as const, fileName: "hoadon.pdf", objectPath, contentType: "application/pdf", sizeBytes: 10, status });
+    const [lans, pending] = await db().insert(schema.storedFile).values([stored(ids.lan, "ready", "x/lan"), stored(ids.huy, "pending", "x/pending")]).returning();
+    for (const receiptFileId of [lans.id, pending.id]) {
+      await expect(fileExpenseClaim({ values: { title: "Hoá đơn của người khác", project_tag: null, note: null }, lines: [line({ amount: 100_000, receiptFileId })] }, await requester(ids.huy), money)).rejects.toThrow("form_value_not_a_file");
+    }
+  });
 });
 
 describe("approving one", () => {

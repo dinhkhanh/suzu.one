@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +8,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { canCreateProjectSpace, getProjectDocuments, openProject } from "@/modules/projects/service";
 import { CreateSpaceButton } from "@/modules/projects/ui/collab-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Project documents" };
+export const generateMetadata = pageTitle("projectDocuments");
 
 /**
  * The project's documents (FR-PJM-31): its space on the knowledge base — briefs, scripts, shot

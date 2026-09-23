@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +8,9 @@ import { vapidPublicKey } from "@/modules/platform/notifications/push";
 import { getPreferences, listNotifications, listPushSubscriptions, NOTIFICATIONS_PAGE_SIZE } from "@/modules/platform/notifications/service";
 import { MarkAllReadButton, OpenNotificationButton, PreferencesForm } from "@/modules/platform/notifications/ui/notification-centre";
 import { PushToggle } from "@/modules/platform/notifications/ui/push-toggle";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Notifications" };
+export const generateMetadata = pageTitle("notifications");
 
 export default async function NotificationsPage(props: PageProps<"/notifications">) {
   const user = await requireUser();

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { findActionToken } from "@/modules/platform/approvals/action-tokens";
@@ -6,8 +5,10 @@ import { getRequestRows } from "@/modules/platform/approvals/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ActOnRequest } from "@/modules/platform/approvals/ui/act-form";
 import { approveFromLinkAction } from "../../actions";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Approve", robots: { index: false, follow: false } };
+// Not indexed: the root layout already says so for every page.
+export const generateMetadata = pageTitle("approve");
 
 // Approve straight from a notification (FR-PLT-24). The link is a shortcut, never a credential:
 // `requireUser` demands a real session, the token must name *that* person, and the button below

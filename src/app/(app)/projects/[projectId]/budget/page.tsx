@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -6,8 +5,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { BUDGET_THRESHOLDS, listStructure, loadBurns, openProject, PROJECT_KINDS } from "@/modules/projects/service";
 import { FeeForm, PlanSettingsForm } from "@/modules/projects/ui/plan-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Project budget" };
+export const generateMetadata = pageTitle("projectBudget");
 
 /**
  * The hours budget and its burn (FR-PJM-09): logged hours plus the estimates still open, against

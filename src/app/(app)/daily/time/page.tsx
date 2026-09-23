@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,8 +9,9 @@ import { SubmitWeekButton } from "@/modules/daily/ui/week-entries";
 import { TimeWeek, WeekStatus } from "@/modules/daily/ui/week-view";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listOpenWorkOf } from "@/modules/work/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "My time" };
+export const generateMetadata = pageTitle("myTime");
 
 // FR-PJM-24, 25, 26: the person's week of time — the grid (typed into, or copied from last week),
 // attendance beside each day, and the weekly submission where a team approves timesheets.

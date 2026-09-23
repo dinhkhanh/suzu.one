@@ -37,6 +37,12 @@ export type ReferralFacts = {
   probationMonths: number | null;
   /** Already settled: the stored column, and the only input that is not a derived fact. */
   settled: boolean;
+  /**
+   * The application existed before the referral: the candidate had applied, or a recruiter had
+   * added them, before the colleague spoke up. They were not brought in by the referral, so it
+   * earns nothing, however the application ends.
+   */
+  preexisting?: boolean;
 };
 
 /**
@@ -57,6 +63,7 @@ export function bonusEarnedOn(startDate: IsoDate, probationMonths: number | null
 /** Where one referral stands today. */
 export function referralBonusState(facts: ReferralFacts, today: IsoDate): ReferralBonusState {
   if (facts.settled) return "settled";
+  if (facts.preexisting) return "not_earned";
   // Rejected, withdrawn — the pipeline ended without a colleague. Nothing is owed.
   if (facts.applicationStatus === "rejected" || facts.applicationStatus === "withdrawn") return "not_earned";
   // Hired is a status; being on the books is a person record. Both are required: an application

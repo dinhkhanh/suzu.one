@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -8,8 +7,9 @@ import { entityReach } from "@/modules/platform/rbac/policy";
 import { listExpenseClaims } from "@/modules/requests/expense";
 import { canSettleExpenseClaims } from "@/modules/requests/policy";
 import { SweepClaimsButton } from "@/modules/requests/ui/sweep-claims";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Expense claims" };
+export const generateMetadata = pageTitle("expenseClaims");
 
 // What the company owes its people, and where each claim has got to (FR-REQ-03). Finance's screen:
 // whoever pays the payroll settles the claims, so the same permission opens both.

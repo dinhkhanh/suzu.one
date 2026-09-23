@@ -51,7 +51,7 @@ export function TaskList({ tasks, today, showSubject = false, people }: { tasks:
           const overdue = open && task.dueDate !== null && task.dueDate < today;
           return (
             <li key={task.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm">
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 basis-56">
                 <p className={open ? "font-medium" : "text-muted-foreground line-through"}>
                   {task.href ? (
                     <Link href={task.href} className="hover:underline">

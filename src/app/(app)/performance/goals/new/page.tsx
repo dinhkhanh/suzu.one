@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,8 +6,9 @@ import { GOAL_LEVELS, type GoalLevel, goalFormOptions, listGoals } from "@/modul
 import { NewGoalForm } from "@/modules/performance/ui/goal-forms";
 import { PerformanceNav, readYear, yearChoices } from "@/modules/performance/ui/nav";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "New goal" };
+export const generateMetadata = pageTitle("newGoal");
 
 const isUuid = (value: unknown): value is string => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value);
 

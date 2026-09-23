@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,8 +9,9 @@ import { resolveCatalogue } from "@/modules/payroll/components";
 import { BASE_SALARY_CODE, getSalaryFile } from "@/modules/payroll/salaries";
 import { formatVnd } from "@/modules/payroll/ui/money";
 import { ProfileForm, SalaryChangeForm } from "@/modules/payroll/ui/salary-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Pay file" };
+export const generateMetadata = pageTitle("payFile");
 
 // One person's pay file: their own, or C&B over their entity. Anyone else — the line manager, the
 // department head, an id that does not exist — gets the same 404.

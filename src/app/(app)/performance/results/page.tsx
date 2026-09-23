@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import { todayInVietnam } from "@/lib/dates";
 import {
   canComputeResults,
   canOverrideResult,
   canDecideOutcome,
+  canProposeSalaryOutcome,
   canRaiseOutcome,
   canReadResultOf,
   canSettleResultOf,
@@ -20,8 +20,9 @@ import { ComputeResultsForm, OverrideResultForm, RecomputeResultForm, ResultStep
 import { OutcomeDecisionButtons, RaiseOutcomeForm } from "@/modules/performance/ui/one-on-one-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import Link from "next/link";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Performance results" };
+export const generateMetadata = pageTitle("performanceResults");
 
 /**
  * The final yearly result (FR-PRF-09): my own once it is published, and — for HR and the owner —
@@ -121,7 +122,7 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
               return (
                 <li key={line.id} className="flex flex-col gap-3 rounded-xl border p-3">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="min-w-0 flex-1 text-sm font-medium">{line.personName}</span>
+                    <span className="min-w-0 flex-1 basis-56 text-sm font-medium">{line.personName}</span>
                     <span className="text-xs text-muted-foreground tabular-nums">
                       {t("list.review")} {percentText(format, line.reviewScoreBp)} · {t("list.kpi")} {percentText(format, line.kpiScoreBp)} · {t("list.okr")} {percentText(format, line.okrScoreBp)}
                     </span>
@@ -168,7 +169,7 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
                           <details>
                             <summary className="cursor-pointer text-xs text-muted-foreground">{tOutcome("raise")}</summary>
                             <div className="pt-2">
-                              <RaiseOutcomeForm resultId={line.id} />
+                              <RaiseOutcomeForm resultId={line.id} mayProposeSalary={canProposeSalaryOutcome(user.principal, person)} />
                             </div>
                           </details>
                         ) : null}

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,8 +7,9 @@ import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { canDecidePayRules, canSeeSimpleProfileReport, compensationReach } from "@/modules/payroll/policy";
 import { listProfileProposals } from "@/modules/payroll/profiles";
 import { RuleDecisionButtons } from "@/modules/payroll/ui/rule-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Pay profiles" };
+export const generateMetadata = pageTitle("payProfiles");
 
 // Moves between the Statutory and Simple profiles that wait for the owner (FR-PAY-07).
 export default async function ProfilesPage() {

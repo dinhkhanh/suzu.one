@@ -5,7 +5,7 @@
 // An individual's goals and scores are **personal tier**: the person, every manager above them in
 // the reporting line (direct or skip-level, FR-PRF-08), holders of `performance:read` or
 // `performance:manage` whose grant covers the person — and never colleagues.
-import { can, entityReach, matchesReach, permissionReach, type Principal, type Target } from "../platform/rbac/policy";
+import { can, canReadTier, entityReach, matchesReach, permissionReach, type Principal, type Target } from "../platform/rbac/policy";
 import type { GoalLevel } from "./enums";
 
 /** A person as the policy needs them: where they sit and who is above them, nearest manager first. */
@@ -73,15 +73,17 @@ export const canCheckIn = (principal: Principal, goal: GoalParties): boolean => 
 
 /**
  * Closing freezes the figure the bonus is later computed from, so nobody closes their own
- * individual goal: a manager above them or HR does. Unit goals: whoever may edit them.
+ * individual goal: a manager above them or HR does — and HR's own goal is closed by somebody else,
+ * like the actuals (`canEnterActualsFor`). Unit goals: whoever may edit them.
  */
 export function canCloseGoal(principal: Principal, goal: GoalParties): boolean {
-  if (goal.level === "individual") return !!goal.person && (isAbove(principal, goal.person) || canManagePerformanceOf(principal, goal.person));
+  if (goal.level === "individual") return !!goal.person && !isSelf(principal, goal.person) && (isAbove(principal, goal.person) || canManagePerformanceOf(principal, goal.person));
   return canEditGoal(principal, goal);
 }
 
-/** Taking a frozen figure back is HR's alone, and audited. */
-export const canReopenGoal = (principal: Principal, goal: GoalParties): boolean => can(principal, "performance:manage", goal.level === "individual" ? (goal.person ?? {}) : unitTarget(goal));
+/** Taking a frozen figure back is HR's alone, and audited — never on one's own goal. */
+export const canReopenGoal = (principal: Principal, goal: GoalParties): boolean =>
+  goal.level === "individual" ? !!goal.person && !isSelf(principal, goal.person) && can(principal, "performance:manage", goal.person) : can(principal, "performance:manage", unitTarget(goal));
 
 /** The list form of `canReadPerformanceOf`: whose individual goals and scores the principal reads. */
 export function readablePeople(principal: Principal, people: Iterable<PersonContext>): Set<string> {
@@ -153,8 +155,8 @@ export const canReadResultOf = (principal: Principal, person: PersonContext): bo
 /** Computing and recomputing a year for the people in scope: HR over them. */
 export const canComputeResults = (principal: Principal, entityId: string | null): boolean => can(principal, "performance:manage", entityId ? { entityId } : {});
 
-/** Locking and publishing a settled result: HR over the person. */
-export const canSettleResultOf = (principal: Principal, person: PersonContext): boolean => canManagePerformanceOf(principal, person);
+/** Locking and publishing a settled result: HR over the person — never their own. */
+export const canSettleResultOf = (principal: Principal, person: PersonContext): boolean => !isSelf(principal, person) && canManagePerformanceOf(principal, person);
 
 /**
  * Overriding a result, and deciding the weighting version it is combined by: the owner's alone
@@ -187,10 +189,13 @@ export const canHoldOneOnOneWith = (principal: Principal, person: PersonContext)
 export const canWriteOneOnOne = (principal: Principal, meeting: MeetingParties): boolean => (!!principal.personId && principal.personId === meeting.managerPersonId && !isSelf(principal, meeting.person)) || canManagePerformanceOf(principal, meeting.person);
 
 /**
- * Reading the shared half: the two people in the meeting, anyone above the subject in the
- * reporting line, and HR. A colleague never.
+ * Reading the shared half: the manager whose meeting it is, anyone above the subject in the
+ * reporting line, and HR over them — and **the subject once it has been shared**, not while the
+ * manager is still writing it. Not every holder of `performance:read`: a reader of scores is not
+ * thereby a reader of conversations. A colleague never.
  */
-export const canReadOneOnOne = (principal: Principal, meeting: MeetingParties): boolean => canWriteOneOnOne(principal, meeting) || canReadPerformanceOf(principal, meeting.person);
+export const canReadOneOnOne = (principal: Principal, meeting: MeetingParties & { status: string }): boolean =>
+  canWriteOneOnOne(principal, meeting) || isAbove(principal, meeting.person) || canManagePerformanceOf(principal, meeting.person) || (isSelf(principal, meeting.person) && meeting.status === "shared");
 
 /**
  * The manager's private notes. **Not the subject, ever** — that is the whole point of the column —
@@ -198,11 +203,18 @@ export const canReadOneOnOne = (principal: Principal, meeting: MeetingParties): 
  */
 export const canReadOneOnOnePrivate = (principal: Principal, meeting: MeetingParties): boolean => !!principal.personId && principal.personId === meeting.managerPersonId;
 
-/** Raising a promotion, a development plan or a PIP off a settled result: the chain above, or HR. */
-export const canRaiseOutcome = (principal: Principal, person: PersonContext): boolean => isAbove(principal, person) || canManagePerformanceOf(principal, person);
+/** Raising a promotion, a development plan or a PIP off a settled result: the chain above, or HR — never about oneself. */
+export const canRaiseOutcome = (principal: Principal, person: PersonContext): boolean => !isSelf(principal, person) && (isAbove(principal, person) || canManagePerformanceOf(principal, person));
 
-/** Accepting or rejecting one is HR's — they are the desk that acts on it. */
-export const canDecideOutcome = (principal: Principal, person: PersonContext): boolean => canManagePerformanceOf(principal, person);
+/**
+ * A salary adjustment carries figures: a proposed base and insurance salary. Typing one takes
+ * sight of the person's compensation — you cannot propose what you may not read — so a line
+ * manager, who never sees compensation (SRS §2.2), raises the other kinds and asks HR for this one.
+ */
+export const canProposeSalaryOutcome = (principal: Principal, person: PersonContext): boolean => canRaiseOutcome(principal, person) && canReadTier(principal, person, "compensation");
+
+/** Accepting or rejecting one is HR's — they are the desk that acts on it, and never on their own. */
+export const canDecideOutcome = (principal: Principal, person: PersonContext): boolean => !isSelf(principal, person) && canManagePerformanceOf(principal, person);
 
 /** The person sees what was decided about them, once it has been decided. */
 export const canSeeOutcome = (principal: Principal, person: PersonContext): boolean => canReadPerformanceOf(principal, person);

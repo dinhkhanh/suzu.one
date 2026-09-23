@@ -1,12 +1,17 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { notFound } from "next/navigation";
 import { commitOpeningBalancesAction, stageOpeningBalancesAction } from "@/modules/leave/actions";
 import { openingBalanceTemplate } from "@/modules/leave/import";
+import { canOpenLeaveAdmin } from "@/modules/leave/policy";
+import { requireUser } from "@/modules/platform/auth/session";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Import leave balances" };
+export const generateMetadata = pageTitle("importLeaveBalances");
 
 export default async function LeaveImportPage() {
+  // The layout checks too, but a layout is not re-rendered on client navigation.
+  if (!canOpenLeaveAdmin((await requireUser()).principal)) notFound();
   const t = await getTranslations("leave.admin");
   return (
     <div className="flex flex-col gap-4">

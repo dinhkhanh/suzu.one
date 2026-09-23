@@ -8,8 +8,8 @@ import { beginTaskUpload, completeTaskUpload, findTaskFile, removeTaskFile, task
 import { FILTER_KEYS, isFilterKey } from "./engine/filter";
 import { setFollowing } from "./followers";
 import { CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_ROLES, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "./enums";
-import { canAddTeamMember, canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canViewTask } from "./policy";
-import { createProject, findProject, projectFacts, setProjectMember, updateProject } from "./projects";
+import { canAddTeamMember, canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canTakeOutOfProject, canViewTask } from "./policy";
+import { createProject, findProject, projectFacts, projectRoleOf, setProjectMember, updateProject } from "./projects";
 import { addDependency, createWorkTask, deleteWorkTask, findDependency, loadTask, removeDependency, updateWorkTask } from "./tasks";
 import { createTeam, deleteLabel, findLabel, findTeam, isTeamMember, personPlacement, saveClient, saveLabel, saveState, setTeamMember, teamFacts, updateTeam } from "./teams";
 import { loadViewer } from "./viewer";
@@ -212,15 +212,19 @@ export async function createProjectAction(input: unknown) {
   return createProjectPipeline(input);
 }
 
-const managesProject = async (user: Parameters<typeof loadViewer>[0], projectId: string) => {
-  const found = await findProject(projectId);
-  return !!found && canManageProject(await loadViewer(user), projectFacts(found.project, found.team));
-};
-
 const updateProjectPipeline = createAction({
   name: "work.project.update",
   input: z.object({ projectId: z.uuid(), ...projectFields }),
-  authorize: (user, input) => managesProject(user, input.projectId),
+  // A new lead reads the fee (Q21): naming one who is not already lead or account manager is
+  // `canGiveProjectRole`'s call, not only the right to run the project.
+  authorize: async (user, input) => {
+    const found = await findProject(input.projectId);
+    if (!found) return false;
+    const viewer = await loadViewer(user);
+    const facts = projectFacts(found.project, found.team);
+    if (!input.leadPersonId || input.leadPersonId === found.project.leadPersonId) return canManageProject(viewer, facts);
+    return canGiveProjectRole(viewer, facts, await projectRoleOf(input.projectId, input.leadPersonId), "lead");
+  },
   run: async ({ input }) => {
     const { projectId, ...values } = input;
     const { before, after } = await updateProject(projectId, values);
@@ -236,7 +240,13 @@ export async function updateProjectAction(input: unknown) {
 const projectMemberPipeline = createAction({
   name: "work.project.member",
   input: z.object({ projectId: z.uuid(), personId: z.uuid(), role: z.preprocess(blankToNull, z.enum(PROJECT_ROLES).nullable()) }),
-  authorize: (user, input) => managesProject(user, input.projectId),
+  // Lead and account manager read the fee (Q21): giving either to someone who holds neither takes `pjm:commercial` too.
+  authorize: async (user, input) => {
+    const found = await findProject(input.projectId);
+    if (!found) return false;
+    const [viewer, from] = await Promise.all([loadViewer(user), projectRoleOf(input.projectId, input.personId)]);
+    return canGiveProjectRole(viewer, projectFacts(found.project, found.team), from, input.role);
+  },
   run: async ({ input }) => {
     const change = await setProjectMember(input.projectId, input.personId, input.role);
     revalidatePath(`/work/projects/${input.projectId}`);
@@ -340,6 +350,8 @@ const updateTaskPipeline = createAction({
     if (!task) return false;
     const viewer = await loadViewer(user);
     if (!canEditTask(viewer, task.facts)) return false;
+    // Out of a private project: the call of whoever runs it.
+    if (input.projectId !== undefined && input.projectId !== task.work.projectId && !canTakeOutOfProject(viewer, task.facts)) return false;
     // Moving a task into a project takes the right to work there, too.
     if (input.projectId && input.projectId !== task.work.projectId) {
       const target = await findProject(input.projectId);

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -16,8 +15,9 @@ import { ConfirmMonthButton } from "@/modules/attendance/ui/request-forms";
 import { MonthDays, MonthNav, SummaryTiles } from "@/modules/attendance/ui/timesheet-views";
 import { hoursText, planHours } from "@/modules/attendance/ui/day-plan";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Attendance" };
+export const generateMetadata = pageTitle("attendance");
 
 // The signed-in person's working days for the next two weeks, as their schedule, the roster and
 // the calendar see them. Check-in and the timesheet join this page in the following slices.

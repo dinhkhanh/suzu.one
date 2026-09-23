@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -16,8 +15,9 @@ import { MovePageForm, PageLifecycleButtons, PageMetaForm, PublishDraftButton, S
 import { PageTree } from "@/modules/kb/ui/page-tree";
 import { RenderDoc } from "@/modules/kb/ui/render-doc";
 import { KbSearchBox } from "@/modules/kb/ui/search-box";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Knowledge base" };
+export const generateMetadata = pageTitle("knowledgeBase");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -37,6 +37,10 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
   const organises = canOrganisePages(viewer, loaded.facts);
   const publishes = canPublishDirectly(viewer, loaded.facts, loaded.pageFacts);
   const manages = canManageSpace(user.principal, spaceOwner(space));
+  // The company's people, units and entities to choose from: for whoever sets access or an
+  // audience — the space's organisers and managers — and never a collaborator, who gets no
+  // directory anywhere else either. A page-level editor chooses an owner from nobody new.
+  const offersPeople = (organises || manages) && user.principal.workforceType !== "collaborator";
   const [t, tRoles, format, view, tree, ownRows, choices, ack, ackAudience] = await Promise.all([
     getTranslations("kb"),
     getTranslations("roles"),
@@ -44,7 +48,7 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
     getReadingView(loaded, level, query.draft === "1"),
     listTree(viewer, loaded),
     organises ? listPageAccess(page.id) : [],
-    editor ? subjectOptions() : null,
+    offersPeople ? subjectOptions() : null,
     getAckStatus(page, user.person.id),
     manages ? getAckSettings(page.id) : [],
   ]);
@@ -53,7 +57,11 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
 
   const trail = breadcrumbOf(tree, page.id);
   const outline = outlineOf(view.content);
-  const names = organises || manages ? await subjectNames([...(organises ? ownRows.map((row) => row.subjectKey) : []), ...(manages ? ackAudience : [])]) : new Map<string, string>();
+  const ownerKey = editor && !choices && page.ownerPersonId ? [`person:${page.ownerPersonId}`] : [];
+  const names =
+    organises || manages || ownerKey.length ? await subjectNames([...(organises ? ownRows.map((row) => row.subjectKey) : []), ...(manages ? ackAudience : []), ...ownerKey]) : new Map<string, string>();
+  // Without the directory, the owner field offers the owner the page already has, so a save keeps it.
+  const ownerChoices = choices?.people ?? (page.ownerPersonId ? [{ id: page.ownerPersonId, name: names.get(`person:${page.ownerPersonId}`) ?? "—" }] : []);
   const accessRows = ownRows.map((row) => {
     const subject = parseSubjectKey(row.subjectKey);
     const name = subject?.type === "role" ? tRoles(subject.id as "owner") : (names.get(row.subjectKey) ?? "");
@@ -193,7 +201,7 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
           <details className="rounded-md border p-4">
             <summary className="cursor-pointer text-sm font-medium">{t("page.manage")}</summary>
             <div className="flex flex-col gap-6 pt-4">
-              <PageMetaForm pageId={page.id} ownerPersonId={page.ownerPersonId} reviewBy={page.reviewBy} people={choices?.people ?? []} />
+              <PageMetaForm pageId={page.id} ownerPersonId={page.ownerPersonId} reviewBy={page.reviewBy} people={ownerChoices} />
               {manages ? <SaveAsTemplateForm pageId={page.id} defaultName={page.title} /> : null}
               {manages && choices ? <AckSettingsForm pageId={page.id} required={page.ackRequired} dueDays={page.ackDueDays} audience={audienceRows} choices={choices} /> : null}
               {organises && choices ? (

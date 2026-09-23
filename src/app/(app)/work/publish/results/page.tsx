@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,8 +6,9 @@ import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
 import { commitResultsImportAction, stageResultsImportAction } from "@/modules/work/delivery-actions";
 // Not through the service barrel: the import definition builds its actions when loaded.
 import { resultTemplate } from "@/modules/work/results-import";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Import post results" };
+export const generateMetadata = pageTitle("importPostResults");
 
 // FR-PJM-57: the figures of published posts, as exported from the platforms' dashboards — one line
 // per post and date. Each line is matched to a post of a task the importer may change; nothing else

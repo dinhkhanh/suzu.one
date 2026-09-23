@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -10,8 +9,9 @@ import { decideChangeAction } from "@/modules/projects/commercial-actions";
 import { canManageChanges, CHANGE_REQUESTERS, changeEditable, type ChangeLedger, type ChangeStatus, type ChangeView, getChangeLedger, getChangeRequest, listChanges, listStructure, openChangesForApprover, openProject } from "@/modules/projects/service";
 import { ChangeButtons, ChangeForm, EvidenceLink } from "@/modules/projects/ui/commercial-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Change requests" };
+export const generateMetadata = pageTitle("changeRequests");
 
 const statusVariant = (status: string) => (status === "approved" ? "success" : status === "submitted" ? "info" : status === "rejected" ? "destructive" : "secondary");
 

@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { getSalaryDecision } from "@/modules/payroll/salaries";
 import { formatVnd } from "@/modules/payroll/ui/money";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Salary decision" };
+export const generateMetadata = pageTitle("salaryDecision");
 
 // The decision document of a salary change (FR-PAY-04), generated from the structure every time
 // it is opened — printed from the browser, nothing stored. For the person and C&B.

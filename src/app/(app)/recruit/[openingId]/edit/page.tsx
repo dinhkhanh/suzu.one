@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
 import { canSetRecruitMoney, getOpeningView, listPipelines } from "@/modules/recruit/service";
 import { OpeningForm } from "@/modules/recruit/ui/opening-form";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Edit job opening" };
+export const generateMetadata = pageTitle("editJobOpening");
 
 export default async function EditOpeningPage({ params }: PageProps<"/recruit/[openingId]/edit">) {
   const { openingId } = await params;

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -8,8 +7,9 @@ import { DelegationForm, RevokeDelegationButton } from "@/modules/platform/appro
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { allRequestTypes } from "../registry";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Delegation" };
+export const generateMetadata = pageTitle("delegation");
 
 // "While I am away, my approvals go to …" — everyone manages their own (FR-PLT-22).
 export default async function DelegationPage() {
@@ -38,7 +38,7 @@ export default async function DelegationPage() {
             const state = row.revokedAt ? "revoked" : row.validTo < today ? "ended" : row.validFrom > today ? "upcoming" : "active";
             return (
               <li key={row.id} className="flex flex-wrap items-center gap-3 p-3 text-sm">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-56">
                   <p className="font-medium">{row.toName}</p>
                   <p className="text-xs text-muted-foreground">
                     {day(row.validFrom)} → {day(row.validTo)} · {types(row)}

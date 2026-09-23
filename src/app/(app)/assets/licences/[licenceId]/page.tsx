@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { asc, eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -7,8 +6,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { canManageLicences, canReadAssetMoney, findLicence } from "@/modules/assets/service";
 import { LicenceForm } from "@/modules/assets/ui/licence-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Bản quyền" };
+export const generateMetadata = pageTitle("licence");
 
 export default async function LicencePage({ params }: PageProps<"/assets/licences/[licenceId]">) {
   const user = await requireUser();

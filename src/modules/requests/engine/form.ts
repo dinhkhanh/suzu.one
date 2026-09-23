@@ -252,7 +252,8 @@ function check(field: FormField, value: FieldValue, refuse: (field: string, prob
       return;
     }
     case "file": {
-      if (!Array.isArray(value)) return refuse(field.key, "not_a_file");
+      // Stored-file ids; whose files they are is the service's question (it needs the database).
+      if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entry))) return refuse(field.key, "not_a_file");
       if (value.length > MAX_FILES) refuse(field.key, "too_many_files");
       return;
     }

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,8 +6,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 import { getOfferView } from "@/modules/recruit/offers";
 import { ConvertToEmployee, OfferDecision, OfferMoves, OfferResponse } from "@/modules/recruit/ui/offer-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Offer" };
+export const generateMetadata = pageTitle("offer");
 
 /**
  * One offer.

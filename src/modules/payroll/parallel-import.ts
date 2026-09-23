@@ -14,6 +14,7 @@ import { code, type Column, type ParsedRow, type Problem, templateCsv, text } fr
 import { defineImport } from "../platform/import/service";
 import type { ReferenceFigures } from "./parallel";
 import { saveReference } from "./parallel";
+import { can } from "@/modules/platform/rbac/policy";
 import { canManageCompensation } from "./policy";
 
 const vnd = (cell: string) => {
@@ -87,7 +88,9 @@ export const parallelImport = defineImport({
   stepUp: true,
   columns: parallelColumns,
   params: parallelParams,
-  authorize: (user, params) => !!params && canManageCompensation(user.principal, { entityId: params.entityId }),
+  // Staging names the entity; committing is first asked without it (the framework re-asks with the
+  // batch's own entity inside the transaction), so there the question is "C&B anywhere at all".
+  authorize: (user, params) => (params ? canManageCompensation(user.principal, { entityId: params.entityId }) : can(user.principal, "payroll:propose")),
   validate: async (rows, user, params) => (await resolveParallelRows(rows, user, params)).problems,
   commit: async (rows, tx, user, params, batchId) => {
     const { resolved } = await resolveParallelRows(rows, user, params, tx);

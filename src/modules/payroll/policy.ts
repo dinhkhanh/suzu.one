@@ -27,6 +27,13 @@ export const canManageCompensation = (principal: Principal, where: InEntity): bo
 /** One person's salary or payslip: their own, or `canManageCompensation`. Nobody else — not their manager, not the CEO. */
 export const canViewCompensationOf = (principal: Principal, person: PersonInEntity): boolean => (!!principal.personId && principal.personId === person.personId) || canManageCompensation(principal, person);
 
+/**
+ * A figure typed into one person's line of a run (an allowance, a deduction, an adjustment): C&B
+ * over both the run's entity and the person's — and never on their own line, whoever they are.
+ */
+export const canSetRunInputFor = (principal: Principal, run: InEntity, person: PersonInEntity): boolean =>
+  canManageCompensation(principal, run) && canManageCompensation(principal, person) && principal.personId !== person.personId;
+
 /** The run register, totals and reports of an entity. */
 export const canReadPayroll = (principal: Principal, where: InEntity): boolean => holds(principal, "payroll:read", where);
 export const canApprovePayroll = (principal: Principal, where: InEntity): boolean => holds(principal, "payroll:approve", where);

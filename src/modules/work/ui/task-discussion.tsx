@@ -157,7 +157,7 @@ export function TaskFiles({ taskId, files, canAdd, accept }: { taskId: string; f
         <ul className="flex flex-col divide-y rounded-xl border text-sm">
           {files.map((file) => (
             <li key={file.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
-              <span className="min-w-0 flex-1 truncate">
+              <span className="min-w-0 flex-1 basis-56 truncate">
                 <FileLink fileId={file.id} fileName={file.fileName} download={openTaskFileAction} onError={setErrorKey} />
               </span>
               <span className="text-xs text-muted-foreground">{[size(file.sizeBytes), file.uploadedByName, format.dateTime(new Date(file.createdAt), { dateStyle: "short" })].filter(Boolean).join(" · ")}</span>

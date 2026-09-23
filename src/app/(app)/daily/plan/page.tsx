@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -6,8 +5,9 @@ import { addDays, todayInVietnam } from "@/lib/dates";
 import { getPlanPage } from "@/modules/daily/service";
 import { PlanForm } from "@/modules/daily/ui/plan-form";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Plan" };
+export const generateMetadata = pageTitle("plan");
 
 // FR-PJM-21: today's plan (or tomorrow's, made the evening before).
 export default async function PlanPage({ searchParams }: PageProps<"/daily/plan">) {

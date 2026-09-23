@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getWorkload, loadViewer } from "@/modules/work/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Workload" };
+export const generateMetadata = pageTitle("workload");
 
 const hours = (minutes: number) => Math.round((minutes / 60) * 10) / 10;
 

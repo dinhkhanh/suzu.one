@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,8 +9,9 @@ import { ActivityList, TaskLines } from "@/modules/daily/ui/activity-list";
 import { hoursOf } from "@/modules/daily/ui/format";
 import { ReportThread } from "@/modules/daily/ui/report-thread";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Daily report" };
+export const generateMetadata = pageTitle("dailyReport");
 
 // One report, for the person, their team leads and their line-management chain — nobody else
 // (the policy answers inside `getReportView`; anyone else gets "not found"). What the report says

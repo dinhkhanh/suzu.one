@@ -21,11 +21,12 @@ import { eq, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { Principal } from "../platform/rbac/policy";
-import type { DuplicateMatch } from "./engine/duplicates";
+import type { DuplicateMatch, RedactedDuplicateMatch } from "./engine/duplicates";
 import { type FunnelApplication, funnelReport } from "./engine/funnel";
 import { getRecruitReport } from "./reports";
 import { PIPELINE_SEED, pipelineSeedProblems } from "./seed-pipelines";
 import {
+  canReachCandidate,
   createApplication,
   createCandidate,
   createOpening,
@@ -42,6 +43,7 @@ import {
   moveApplicationStage,
   newPublicSlug,
   nextOpeningCode,
+  reachableCandidateIds,
   rejectApplication,
   savePipeline,
   setOpeningStatus,
@@ -388,6 +390,37 @@ describe("the candidate database", () => {
     const rows = await listCandidates(szcRecruiter);
     // Every candidate so far applied (or was sourced) against SZM openings.
     expect(rows.map((row) => row.fullName)).not.toContain("Lê Hoàng Yến");
+  });
+
+  it("lets a recruiter touch only the candidates they can find — the rule the actions check", async () => {
+    const all = await listCandidates(hrAdmin);
+    const applied = all.find((row) => row.applications > 0 && !row.anonymised)!;
+    expect(await canReachCandidate(recruiter, applied.id)).toBe(true);
+    expect(await canReachCandidate(hrAdmin, applied.id)).toBe(true);
+    // Another entity's recruiter may neither edit this person nor pull them into their opening.
+    expect(await canReachCandidate(szcRecruiter, applied.id)).toBe(false);
+    expect(await canReachCandidate(head, applied.id)).toBe(false);
+    expect([...(await reachableCandidateIds(szcRecruiter, all.map((row) => row.id)))]).toEqual((await listCandidates(szcRecruiter)).map((row) => row.id).filter((id) => all.some((row) => row.id === id)));
+  });
+
+  it("opens a lead who has applied nowhere to a group-wide grant only", async () => {
+    const lead = await createCandidate({ fullName: "Ứng Viên Tiềm Năng", email: "lead.only@example.com", phone: null, currentTitle: null, currentEmployer: null, location: null, links: [], source: "direct", sourceDetail: null, referredByPersonId: null, tags: [], notes: null }, ids.hrPerson);
+    expect(await getCandidateView({ principal: hrAdmin, personId: ids.hrPerson }, lead.id)).not.toBeNull();
+    expect(await getCandidateView({ principal: recruiter, personId: ids.recruiterPerson }, lead.id)).toBeNull();
+    expect(await getCandidateView({ principal: szcRecruiter, personId: ids.szcRecruiterPerson }, lead.id)).toBeNull();
+    expect(await canReachCandidate(recruiter, lead.id)).toBe(false);
+  });
+
+  it("tells a recruiter a clash exists, but not who it is when they cannot reach them", async () => {
+    const all = await listCandidates(hrAdmin);
+    const applied = (await Promise.all(all.filter((row) => row.applications > 0 && !row.anonymised).map((row) => db().select().from(schema.candidate).where(eq(schema.candidate.id, row.id))))).flat().find((row) => row.email)!;
+    const clash = { fullName: "Khác Hẳn", email: applied.email, phone: null, currentTitle: null, currentEmployer: null, location: null, links: [], source: "direct" as const, sourceDetail: null, referredByPersonId: null, tags: [], notes: null };
+    const detailsFor = async (viewer: Principal) =>
+      ((await createCandidate(clash, viewer.personId, { viewer }).catch((thrown: Error & { details?: { duplicates: RedactedDuplicateMatch[] } }) => thrown)) as Error & { details?: { duplicates: RedactedDuplicateMatch[] } }).details!.duplicates;
+    const hidden = await detailsFor(szcRecruiter);
+    expect(hidden[0]).toMatchObject({ id: null, fullName: null, certain: true });
+    expect(hidden[0].signals).toContain("email");
+    expect((await detailsFor(recruiter))[0]).toMatchObject({ id: applied.id, fullName: applied.fullName });
   });
 
   it("refuses a candidate page to somebody who may not browse and has no opening in common", async () => {

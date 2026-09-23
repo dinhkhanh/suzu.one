@@ -73,7 +73,7 @@ export function chainFor<Chain extends ChainDef>(chains: readonly Chain[], task:
   return best?.chain ?? null;
 }
 
-/** Who could review, from the task's surroundings. `active` = people who have not left. */
+/** Who could review, from the task's surroundings. `active` = people who have not left and may open the task. */
 export type ReviewerFacts = {
   taskReviewerId: string | null;
   projectLeadIds: readonly string[];

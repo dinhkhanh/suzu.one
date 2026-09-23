@@ -62,6 +62,12 @@ describe("referralBonusState", () => {
     expect(referralBonusState(facts({ applicationStatus: "hired", hired: false, startDate: null }), today)).toBe("pending");
   });
 
+  it("is never earned when the candidate had applied before the referral", () => {
+    const hired = facts({ applicationStatus: "hired", hired: true, startDate: "2026-01-05" as IsoDate, preexisting: true });
+    expect(referralBonusState(hired, today)).toBe("not_earned");
+    expect(referralBonusState(facts({ preexisting: true }), today)).toBe("not_earned");
+  });
+
   it("reports what was settled, whatever the facts now say", () => {
     expect(referralBonusState(facts({ settled: true }), today)).toBe("settled");
     expect(referralBonusState(facts({ applicationStatus: "rejected", settled: true }), today)).toBe("settled");

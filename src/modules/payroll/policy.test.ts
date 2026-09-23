@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
-import { canAdjustBonusLine, canApproveBonusRun, canApprovePayroll, canDecideBonusScheme, canDecidePayRules, canDecideSalaryChange, canManageBonusRun, canManageCompensation, canPayPayroll, canProposeBonusRun, canProposeBonusScheme, canProposePayRules, canReadBonusRun, canReadPayroll, canSeeSimpleProfileReport, canViewBonusOf, canViewCompensationOf, compensationReach, hasPayrollDesk } from "./policy";
+import { canAdjustBonusLine, canApproveBonusRun, canApprovePayroll, canDecideBonusScheme, canDecidePayRules, canDecideSalaryChange, canManageBonusRun, canManageCompensation, canPayPayroll, canProposeBonusRun, canProposeBonusScheme, canProposePayRules, canReadBonusRun, canReadPayroll, canSeeSimpleProfileReport, canSetRunInputFor, canViewBonusOf, canViewCompensationOf, compensationReach, hasPayrollDesk } from "./policy";
 
 const SZM = "entity-szm";
 const SZC = "entity-szc";
@@ -24,6 +24,20 @@ const entityDirector = principal("p-director", [{ role: "entity_director", scope
 const hrStaff = principal("p-bao", [{ role: "hr_staff", scope: inSzm }]);
 const colleague = principal("p-colleague");
 const self = principal("p-huy");
+
+describe("payroll policy: figures typed into a run", () => {
+  it("lets C&B over both entities type into someone else's line", () => {
+    expect(canSetRunInputFor(cnbSzm, { entityId: SZM }, employee)).toBe(true);
+    expect(canSetRunInputFor(owner, { entityId: SZM }, employee)).toBe(true);
+  });
+
+  it("never lets anyone type into their own line, nor reach another entity's person through a run", () => {
+    expect(canSetRunInputFor(cnbSzm, { entityId: SZM }, { personId: "p-cnb", entityId: SZM })).toBe(false);
+    expect(canSetRunInputFor(owner, { entityId: SZM }, { personId: "p-owner", entityId: SZM })).toBe(false);
+    expect(canSetRunInputFor(cnbSzm, { entityId: SZM }, { personId: "p-x", entityId: SZC })).toBe(false);
+    expect(canSetRunInputFor(hrStaff, { entityId: SZM }, employee)).toBe(false);
+  });
+});
 
 describe("payroll policy: one person's salary and payslips", () => {
   it("opens for the person, C&B over their entity, the HR lead and the owner", () => {

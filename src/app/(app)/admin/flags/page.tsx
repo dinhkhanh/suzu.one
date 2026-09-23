@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -7,8 +6,9 @@ import { RolloutForm } from "@/modules/platform/flags/ui/rollout-form";
 import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { can } from "@/modules/platform/rbac/policy";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Rollout" };
+export const generateMetadata = pageTitle("rollout");
 
 export default async function FlagsPage() {
   const user = await requireUser();

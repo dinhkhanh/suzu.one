@@ -45,9 +45,11 @@ function create() {
       updateAge: 60 * 60 * 24,
       // No cookie cache: every request re-reads the session row, so revocation is immediate (FR-PLT-05).
       cookieCache: { enabled: false },
-      // A sign-in is a proof of identity, so a new session starts "recently re-authenticated"
-      // (FR-PLT-06). Never accepted from a request: only the step-up adapter moves it later.
-      additionalFields: { reauthAt: { type: "date", required: false, input: false, defaultValue: () => new Date() } },
+      // A new session starts with no proof of identity (FR-PLT-06, owner's decision 2026-09-23):
+      // signing in does not open the compensation screens — with a live Google session it takes
+      // only an account pick — so they always ask for the step-up round trip, however recent the
+      // sign-in. Never accepted from a request: only the step-up adapter sets it.
+      additionalFields: { reauthAt: { type: "date", required: false, input: false } },
     },
 
     onAPIError: { errorURL: "/sign-in" },

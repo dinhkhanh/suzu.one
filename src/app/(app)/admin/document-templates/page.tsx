@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageTemplates, canReadTemplates, listTemplates, tierNeededFor } from "@/modules/documents/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Mẫu văn bản" };
+export const generateMetadata = pageTitle("documentTemplates");
 
 // The template library (FR-CHR-06). Writing templates is HR's; the tier on each is enforced by
 // the engine, so this screen only has to show it.
@@ -30,7 +30,7 @@ export default async function DocumentTemplatesPage() {
       </header>
 
       <div className="overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[40rem] text-sm">
           <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
             <tr>
               <th className="p-2 font-medium">{t("code")}</th>
@@ -44,7 +44,7 @@ export default async function DocumentTemplatesPage() {
           <tbody>
             {rows.map((row) => (
               <tr key={row.id} className={`border-t ${row.isActive ? "" : "text-muted-foreground"}`}>
-                <td className="p-2 font-mono text-xs">
+                <td className="whitespace-nowrap p-2 font-mono text-xs">
                   <Link href={`/admin/document-templates/${row.id}`} className="hover:underline">
                     {row.code}
                   </Link>

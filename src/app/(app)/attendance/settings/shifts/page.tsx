@@ -1,19 +1,22 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
+import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { addDays, todayInVietnam } from "@/lib/dates";
-import { canManageAttendanceConfig } from "@/modules/attendance/policy";
+import { canManageAttendanceConfig, canOpenAttendanceSettings } from "@/modules/attendance/policy";
 import { listRoster, listShifts } from "@/modules/attendance/schedules";
 import { RosterForm, ShiftForm } from "@/modules/attendance/ui/settings-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { matchesReach, permissionReach } from "@/modules/platform/rbac/policy";
 import { configOptions } from "../options";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Shifts" };
+export const generateMetadata = pageTitle("shifts");
 
 export default async function ShiftsSettingsPage() {
   const user = await requireUser();
+  // The layout checks too, but a layout is not re-rendered on client navigation.
+  if (!canOpenAttendanceSettings(user.principal)) notFound();
   const t = await getTranslations("attendance.settings");
   const format = await getFormatter();
   const today = todayInVietnam();

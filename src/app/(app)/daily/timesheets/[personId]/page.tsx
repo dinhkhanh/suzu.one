@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -9,8 +8,9 @@ import { getTimesheetView, loadTimeReader, weekStartOf } from "@/modules/daily/s
 import { DecideWeek } from "@/modules/daily/ui/timesheet-decide";
 import { TimeWeek, WeekStatus } from "@/modules/daily/ui/week-view";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Timesheet" };
+export const generateMetadata = pageTitle("timesheet");
 
 // FR-PJM-25, 26: somebody's week, read-only — for their approvers with the attendance hint and the
 // decision; for the people above them without deciding; for a project's lead, only the rows on

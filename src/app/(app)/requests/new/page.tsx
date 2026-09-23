@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listAvailableTypes } from "@/modules/requests/service";
 import { REQUEST_CATEGORIES } from "@/modules/requests/enums";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "New request" };
+export const generateMetadata = pageTitle("newRequest");
 
 // The picker. Only types that are switched on and belong to the person's entity (or the group).
 export default async function NewRequestPage() {

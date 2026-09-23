@@ -8,14 +8,14 @@
 // simply approved, and finance reads it. Types whose approval must *do* something belong to the
 // module that owns the doing.
 import "server-only";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 import { decideRequest, defineRequestType, getRequest, type RequestTypeDefinition, type RequestView, resubmitRequest, type SubmitInput, submitRequest } from "@/modules/platform/approvals/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
 import { conditionFieldsOf, flowConditionData, type FormDefinition, type FormValues, formProblems, validateSubmission } from "./engine/form";
-import type { RequestCategory } from "./enums";
+import { ATTACHMENT_OWNER_TYPE, type RequestCategory } from "./enums";
 import { EXPENSE_CLAIM_CODE, postApprovedClaim } from "./expense-posting";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -181,6 +181,21 @@ function summarize(type: RequestTypeRow, values: FormValues, formatMoney: (amoun
 
 export type FiledRequest = { requestId: string; submissionId: string; outcome: string };
 
+/**
+ * Every attachment id is a finished, not-deleted upload of a request attachment by the requester —
+ * a request is not a way to reach somebody else's file by its id (the same rule as attendance
+ * evidence). One query for all of them.
+ */
+async function checkAttachments(tx: Tx, fileIds: readonly string[], requesterPersonId: string): Promise<void> {
+  const unique = [...new Set(fileIds)];
+  if (unique.length === 0) return;
+  const [row] = await tx
+    .select({ owned: count() })
+    .from(schema.storedFile)
+    .where(and(inArray(schema.storedFile.id, unique), eq(schema.storedFile.ownerType, ATTACHMENT_OWNER_TYPE), eq(schema.storedFile.ownerId, requesterPersonId), eq(schema.storedFile.status, "ready"), isNull(schema.storedFile.deletedAt)));
+  if ((row?.owned ?? 0) !== unique.length) throw new ActionError("form_value_not_a_file");
+}
+
 export async function fileRequest(
   input: FileRequestInput,
   requester: { personId: string; entityId: string | null; unitPath: readonly string[]; managerId: string | null },
@@ -202,6 +217,7 @@ export async function fileRequest(
       ...type.form.fields.filter((field) => field.type === "file").flatMap((field) => (Array.isArray(values[field.key]) ? (values[field.key] as string[]) : [])),
       ...(extras.extraFileIds ?? []),
     ];
+    await checkAttachments(tx, fileIds, requester.personId);
 
     const definition = genericRequestType(type);
     const { request, outcome } = await submitRequest(tx, definition, {
@@ -241,6 +257,8 @@ export async function refileRequest(requestId: string, actorPersonId: string, va
       ...type.form.fields.filter((field) => field.type === "file").flatMap((field) => (Array.isArray(clean[field.key]) ? (clean[field.key] as string[]) : [])),
       ...(extras.extraFileIds ?? []),
     ];
+    // Only the requester sends a returned request round again (the engine refuses anyone else).
+    await checkAttachments(tx, fileIds, actorPersonId);
 
     await tx
       .update(schema.requestSubmission)

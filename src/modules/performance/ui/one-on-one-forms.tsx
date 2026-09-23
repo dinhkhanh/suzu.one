@@ -166,8 +166,12 @@ export function CompleteActionButton({ actionId }: { actionId: string }) {
 
 // ── Review outcomes (FR-PRF-06) ─────────────────────────────────────────────────────────────
 
-/** A settled result leads to something. A salary adjustment carries the terms payroll will decide. */
-export function RaiseOutcomeForm({ resultId }: { resultId: string }) {
+/**
+ * A settled result leads to something. A salary adjustment carries the terms payroll will decide,
+ * so it — and its figures — is offered only to somebody who may read the person's compensation
+ * (`mayProposeSalary`); the action checks the same rule again.
+ */
+export function RaiseOutcomeForm({ resultId, mayProposeSalary }: { resultId: string; mayProposeSalary: boolean }) {
   const t = useTranslations("performance.oneOnOnes.outcomes");
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
@@ -182,27 +186,31 @@ export function RaiseOutcomeForm({ resultId }: { resultId: string }) {
   return (
     <form ref={form} onSubmit={onSubmit} className="flex flex-col gap-3 rounded-xl border p-4">
       <h2 className="text-sm font-medium">{t("title")}</h2>
-      <p className="text-sm text-muted-foreground">{t("salaryHint")}</p>
+      {mayProposeSalary ? <p className="text-sm text-muted-foreground">{t("salaryHint")}</p> : null}
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field name="type" label={t("typeLabel")}>
             <Select id="type" name="type" required>
-              {OUTCOME_TYPES.map((type) => (
+              {OUTCOME_TYPES.filter((type) => mayProposeSalary || type !== "salary_adjustment").map((type) => (
                 <option key={type} value={type}>
                   {t(`type.${type}`)}
                 </option>
               ))}
             </Select>
           </Field>
-          <Field name="validFrom" label={t("validFrom")}>
-            <Input id="validFrom" name="validFrom" type="date" />
-          </Field>
-          <Field name="baseSalary" label={t("baseSalary")}>
-            <Input id="baseSalary" name="baseSalary" inputMode="numeric" className="text-right tabular-nums" />
-          </Field>
-          <Field name="insuranceSalary" label={t("insuranceSalary")}>
-            <Input id="insuranceSalary" name="insuranceSalary" inputMode="numeric" className="text-right tabular-nums" />
-          </Field>
+          {mayProposeSalary ? (
+            <>
+              <Field name="validFrom" label={t("validFrom")}>
+                <Input id="validFrom" name="validFrom" type="date" />
+              </Field>
+              <Field name="baseSalary" label={t("baseSalary")}>
+                <Input id="baseSalary" name="baseSalary" inputMode="numeric" className="text-right tabular-nums" />
+              </Field>
+              <Field name="insuranceSalary" label={t("insuranceSalary")}>
+                <Input id="insuranceSalary" name="insuranceSalary" inputMode="numeric" className="text-right tabular-nums" />
+              </Field>
+            </>
+          ) : null}
         </div>
         <Field name="note" label={t("note")}>
           <textarea id="note" name="note" rows={2} maxLength={2000} className={textarea} />

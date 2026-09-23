@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { canRemoveKudos, listCompanyValues, listKudos, listKudosRecipients } from "@/modules/comms/service";
@@ -6,8 +5,9 @@ import { RemoveKudosButton } from "@/modules/comms/ui/buttons";
 import { KudosList } from "@/modules/comms/ui/cards";
 import { KudosForm } from "@/modules/comms/ui/kudos-form";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Kudos" };
+export const generateMetadata = pageTitle("kudos");
 
 export default async function KudosPage() {
   const user = await requireUser();

@@ -1,19 +1,22 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { todayInVietnam } from "@/lib/dates";
 import { listPolicies } from "@/modules/attendance/attendance-policies";
-import { canManageAttendanceConfig } from "@/modules/attendance/policy";
+import { canManageAttendanceConfig, canOpenAttendanceSettings } from "@/modules/attendance/policy";
 import { PolicyForm } from "@/modules/attendance/ui/device-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { configOptions } from "../options";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Attendance policy" };
+export const generateMetadata = pageTitle("attendancePolicy");
 
 // Company practice the timesheet follows (FR-ATT-08): merge rule, grace, rounding, overtime
 // thresholds, correction cap. Versions are effective-dated; legal values are statutory parameters.
 export default async function PolicySettingsPage() {
   const user = await requireUser();
+  // The layout checks too, but a layout is not re-rendered on client navigation.
+  if (!canOpenAttendanceSettings(user.principal)) notFound();
   const t = await getTranslations("attendance.policy");
   const today = todayInVietnam();
   const [policies, options] = await Promise.all([listPolicies(), configOptions(user.principal)]);

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -18,8 +17,9 @@ import { DeliveryPanel } from "@/modules/work/ui/delivery";
 import { auditPrivateTaskRead } from "@/modules/projects/service";
 import { PreviewLinkPanel } from "@/modules/work/ui/preview-links";
 import { PublishPanel } from "@/modules/work/ui/publish";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Task" };
+export const generateMetadata = pageTitle("task");
 
 export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskId]">) {
   const user = await requireUser();

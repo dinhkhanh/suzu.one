@@ -68,8 +68,15 @@ export type LifecycleEventView = Pick<LifecycleEventRow, "id" | "type" | "effect
   tasks: TaskView[];
 };
 
-/** Newest first. `seesRestricted` decides whether discipline notes come along; the caller has already checked the personal tier. */
-export async function loadTimeline(personId: string, options: { seesRestricted: boolean }): Promise<LifecycleEventView[]> {
+/** The events whose reason and note are about pay: that there was one is personal, why is compensation. */
+const PAY_EVENT_TYPES: readonly LifecycleEventType[] = ["salary_change", "pay_profile_change"];
+
+/**
+ * Newest first. `seesRestricted` decides whether discipline notes come along, `seesCompensation`
+ * whether a pay change's reason and note do (a line manager sees that a raise happened, not why);
+ * the caller has already checked the personal tier.
+ */
+export async function loadTimeline(personId: string, options: { seesRestricted: boolean; seesCompensation: boolean }): Promise<LifecycleEventView[]> {
   const [rows, tasks] = await Promise.all([
     db()
       .select({ event: schema.lifecycleEvent, createdByName: schema.person.fullName })
@@ -79,20 +86,23 @@ export async function loadTimeline(personId: string, options: { seesRestricted: 
       .orderBy(desc(schema.lifecycleEvent.effectiveDate), desc(schema.lifecycleEvent.createdAt)),
     listTasksAbout(personId, "checklist"),
   ]);
-  return rows.map(({ event, createdByName }) => ({
-    id: event.id,
-    type: event.type,
-    effectiveDate: event.effectiveDate,
-    status: event.status,
-    reason: event.reason,
-    note: event.type === "discipline" && !options.seesRestricted ? null : event.note,
-    approvalRequestId: event.approvalRequestId,
-    createdAt: event.createdAt,
-    from: (event.details.from as PlacementWords | undefined) ?? null,
-    to: (event.details.to as PlacementWords | undefined) ?? null,
-    createdByName,
-    tasks: tasks.filter((task) => task.contextType === LIFECYCLE_CONTEXT && task.contextId === event.id),
-  }));
+  return rows.map(({ event, createdByName }) => {
+    const hidesPay = PAY_EVENT_TYPES.includes(event.type) && !options.seesCompensation;
+    return {
+      id: event.id,
+      type: event.type,
+      effectiveDate: event.effectiveDate,
+      status: event.status,
+      reason: hidesPay ? null : event.reason,
+      note: hidesPay || (event.type === "discipline" && !options.seesRestricted) ? null : event.note,
+      approvalRequestId: event.approvalRequestId,
+      createdAt: event.createdAt,
+      from: (event.details.from as PlacementWords | undefined) ?? null,
+      to: (event.details.to as PlacementWords | undefined) ?? null,
+      createdByName,
+      tasks: tasks.filter((task) => task.contextType === LIFECYCLE_CONTEXT && task.contextId === event.id),
+    };
+  });
 }
 
 export async function findLifecycleEvent(eventId: string, executor: Executor = db()): Promise<LifecycleEventRow | undefined> {

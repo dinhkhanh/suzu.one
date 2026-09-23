@@ -1,18 +1,21 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { todayInVietnam } from "@/lib/dates";
-import { canManageAttendanceConfig } from "@/modules/attendance/policy";
+import { canManageAttendanceConfig, canOpenAttendanceSettings } from "@/modules/attendance/policy";
 import { listCalendarDays } from "@/modules/attendance/schedules";
 import { CalendarDayForm, RowAction } from "@/modules/attendance/ui/settings-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { configOptions } from "../options";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Working calendar" };
+export const generateMetadata = pageTitle("workingCalendar");
 
 export default async function CalendarSettingsPage(props: PageProps<"/attendance/settings/calendar">) {
   const user = await requireUser();
+  // The layout checks too, but a layout is not re-rendered on client navigation.
+  if (!canOpenAttendanceSettings(user.principal)) notFound();
   const t = await getTranslations("attendance.settings");
   const format = await getFormatter();
   const current = Number(todayInVietnam().slice(0, 4));

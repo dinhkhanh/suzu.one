@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -7,8 +6,9 @@ import { getReportForm, REPORT_BACKFILL_DAYS } from "@/modules/daily/service";
 import { EodNotesDraftButton } from "@/modules/ai/ui/draft-button";
 import { ReportForm } from "@/modules/daily/ui/report-form";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Daily report" };
+export const generateMetadata = pageTitle("dailyReport");
 
 // FR-PJM-22: the day's report, already written from the record — the person adds judgement and sends.
 export default async function ReportPage({ searchParams }: PageProps<"/daily/report">) {

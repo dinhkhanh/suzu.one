@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -8,8 +7,9 @@ import { awaitingAcceptance, canDecideBilling, canManageAcceptance, listAcceptan
 import { AcceptanceWaitingList } from "@/modules/projects/ui/acceptance-waiting";
 import { AcceptanceButtons, ManualBillingForm, NewAcceptanceForm, SignAcceptanceForm, SignedScanLink } from "@/modules/projects/ui/commercial-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Acceptance" };
+export const generateMetadata = pageTitle("acceptance");
 
 const statusVariant = (status: string) => (status === "signed" ? "success" : status === "sent" ? "info" : status === "void" ? "outline" : "secondary");
 const billingVariant = (status: string) => (status === "invoiced" ? "success" : status === "waived" ? "outline" : "warning");

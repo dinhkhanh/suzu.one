@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,8 +7,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { getHiringRequestView } from "@/modules/recruit/hiring";
 import { canOpenFromHiringRequest } from "@/modules/recruit/service";
 import { HiringDecisionForm } from "@/modules/recruit/ui/hiring-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Hiring request" };
+export const generateMetadata = pageTitle("hiringRequest");
 
 // The ask and its approval trail. The budget row is only drawn for a compensation-tier grant, and
 // the "create an opening" button only once the ask has actually cleared its flow.
@@ -89,7 +89,7 @@ export default async function HiringRequestPage({ params }: PageProps<"/recruit/
           <ul className="flex flex-col divide-y rounded-xl border text-sm">
             {view.approval.events.map((event) => (
               <li key={event.id} className="flex flex-wrap items-center gap-3 p-3">
-                <span className="min-w-0 flex-1">
+                <span className="min-w-0 flex-1 basis-56">
                   {tApprovals(`event.${event.type}` as "event.submitted")}
                   {event.comment ? <span className="block text-xs text-muted-foreground">{event.comment}</span> : null}
                 </span>

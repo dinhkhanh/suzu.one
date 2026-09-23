@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,8 +10,9 @@ import { listEntityOptions } from "@/modules/payroll/options";
 import { compensationReach, payrollReadReach } from "@/modules/payroll/policy";
 import { NewBonusRunForm } from "@/modules/payroll/ui/bonus-forms";
 import { formatVnd } from "@/modules/payroll/ui/money";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Year-end bonus" };
+export const generateMetadata = pageTitle("yearEndBonus");
 
 /**
  * The year-end bonus register (FR-PAY-21). One run per year across the whole group; the totals

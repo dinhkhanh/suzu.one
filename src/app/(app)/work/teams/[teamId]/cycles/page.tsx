@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canViewTask, canViewTeam, findTeam, getCyclePage, loadTasks, loadViewer, teamFacts } from "@/modules/work/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Cycles" };
+export const generateMetadata = pageTitle("cycles");
 
 // FR-PJM-10: the team's running cycle — planned against done, what rolled in from the last one —
 // the next cycle's size, and the reviews of past cycles. Cycles are switched on and sized in the

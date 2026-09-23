@@ -292,7 +292,8 @@ describe("the project's document space (FR-PJM-31)", () => {
     try {
       expect((await listSpaces(director)).find((space) => space.id === spaceId)?.level).toBe("view");
       expect(levelOf(director, (await loadPage(pageId))!)).toBe("view");
-      expect((await listSpaceFiles(director, spaceId)).map((file) => file.fileName)).toEqual(["kv-option-b.pdf"]);
+      // A reader sees only the files the published pages link to; this upload is linked from none.
+      expect((await listSpaceFiles(director, spaceId)).map((file) => file.fileName)).toEqual([]);
       expect((await getProjectDocuments(director, spaceId))?.level).toBe("view");
       // A grant over another entity opens nothing.
       const elsewhere = { ...viewers.other, principal: { ...principal, grants: [{ role: "entity_director" as const, scope: { type: "entity" as const, id: "00000000-0000-4000-8000-0000000000ff" } }] } };

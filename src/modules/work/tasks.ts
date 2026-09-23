@@ -115,7 +115,7 @@ async function personNamed(tx: Executor, personId: string | null, options: { mus
  * on the pickers. Its people are the project's members and the team's leads: exactly who may open
  * it. A project that is not private takes anyone (`listAssignable` narrows the picker to the team).
  */
-async function assertInsidePrivateProject(tx: Executor, projectId: string | null, personIds: readonly (string | null | undefined)[]): Promise<void> {
+export async function assertInsidePrivateProject(tx: Executor, projectId: string | null, personIds: readonly (string | null | undefined)[]): Promise<void> {
   const wanted = [...new Set(personIds.filter((id): id is string => !!id))];
   if (!projectId || wanted.length === 0) return;
   const [project] = await tx.select({ id: schema.workProject.id, teamId: schema.workProject.teamId, visibility: schema.workProject.visibility }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
@@ -221,7 +221,11 @@ export async function createWorkTaskIn(tx: Executor, input: NewWorkTask, actorPe
   await personNamed(tx, input.assigneePersonId ?? null, { mustBeActive: true });
   await personNamed(tx, input.requesterPersonId ?? null);
   await clientNamed(tx, clientId ?? project?.clientId ?? null);
-  await assertInsidePrivateProject(tx, project?.id ?? null, [input.assigneePersonId, ...(input.collaboratorIds ?? [])]);
+  // A requester is a party to the task and reads it: naming someone else as one is giving them the
+  // task like any other role. The actor as their own requester (an intake form, a recurrence) is
+  // already inside whatever let them file it.
+  const namedRequester = input.requesterPersonId && input.requesterPersonId !== actorPersonId ? input.requesterPersonId : null;
+  await assertInsidePrivateProject(tx, project?.id ?? null, [input.assigneePersonId, namedRequester, ...(input.collaboratorIds ?? [])]);
   const labels = await labelsOfTeam(tx, input.labelIds ?? [], input.teamId);
 
   const [team] = await tx.update(schema.workTeam).set({ taskSeq: sql`${schema.workTeam.taskSeq} + 1` }).where(and(eq(schema.workTeam.id, input.teamId), eq(schema.workTeam.isActive, true))).returning();
@@ -450,9 +454,13 @@ export async function updateWorkTaskIn(
       changes.push(...removed.map((row) => ({ type: "person_removed", from: { id: row.id, name: row.name } })));
     }
 
-    // Checked against the project the task ends up in, and against everyone it ends up on.
+    // Checked against the project the task ends up in, and against everyone it ends up on. The
+    // requester reads the task too: checked when they are renamed or the task changes project — not
+    // on every edit, so a request filed from outside before the check existed stays editable.
+    const requesterChecked = taskSet.requesterPersonId !== undefined || workSet.projectId !== undefined;
     await assertInsidePrivateProject(tx, workSet.projectId === undefined ? work.projectId : workSet.projectId, [
       taskSet.assigneePersonId === undefined ? task.assigneePersonId : taskSet.assigneePersonId,
+      requesterChecked ? (taskSet.requesterPersonId === undefined ? task.requesterPersonId : taskSet.requesterPersonId) : null,
       workSet.reviewerPersonId === undefined ? work.reviewerPersonId : workSet.reviewerPersonId,
       ...(patch.collaboratorIds ?? before.peopleIds),
     ]);
@@ -887,9 +895,16 @@ export async function getTaskDetail(taskId: string, viewer: WorkViewer): Promise
   const names = new Map(people.map((person) => [person.id, person.name]));
   const nameOf = (id: string | null) => (id ? (names.get(id) ?? null) : null);
 
-  // A linked task in a project the viewer cannot open stays out of sight, title and all.
+  // A linked task — or a sub-task, which may sit in another (private) project — that the viewer
+  // cannot open stays out of sight, title and all. Weighed with the policy on the loaded rows, one
+  // query for both, rather than with `visibleTaskCondition`: that clause records a read of every
+  // private project it admits, and a task page reads only the ones it shows.
   const otherOf = (dependency: (typeof dependencies)[number]) => (dependency.blockerTaskId === taskId ? dependency.blockedTaskId : dependency.blockerTaskId);
-  const others = await loadTasks(dependencies.map(otherOf));
+  const others = await loadTasks([...dependencies.map(otherOf), ...subtasks.map((subtask) => subtask.id)]);
+  const shownSubtasks = subtasks.filter((subtask) => {
+    const other = others.get(subtask.id);
+    return !!other && canViewTask(viewer, other.facts);
+  });
   const linked: LinkedTask[] = [];
   for (const dependency of dependencies) {
     const other = others.get(otherOf(dependency));
@@ -897,6 +912,9 @@ export async function getTaskDetail(taskId: string, viewer: WorkViewer): Promise
     const relation = dependency.type === "relates" ? "relates" : dependency.blockerTaskId === taskId ? "blocks" : "blocked_by";
     linked.push({ dependencyId: dependency.id, id: other.task.id, key: taskKey(other.team.key, other.work.number), title: other.task.title, status: other.task.status, relation });
   }
+  // What the page names from other private projects is read there too (Q25); its own was noted above.
+  const shownOthers = [...shownSubtasks.map((subtask) => subtask.id), ...linked.map((link) => link.id)].map((id) => others.get(id)?.facts.project);
+  await notePrivateProjectReads(viewer, shownOthers.filter((project) => project && project.id !== loaded.facts.project?.id));
   return {
     ...loaded,
     key: taskKey(team.key, work.number),
@@ -908,7 +926,7 @@ export async function getTaskDetail(taskId: string, viewer: WorkViewer): Promise
     parent: parent && canViewTask(viewer, parent.facts) ? { id: parent.task.id, key: taskKey(parent.team.key, parent.work.number), title: parent.task.title } : null,
     labelIds: labels.map((label) => label.labelId),
     collaborators: loaded.peopleIds.map((personId) => ({ id: personId, name: nameOf(personId) ?? "" })),
-    subtasks,
+    subtasks: shownSubtasks,
     linked,
   };
 }

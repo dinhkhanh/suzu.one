@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -7,8 +6,9 @@ import { canManageReferrals } from "@/modules/recruit/policy";
 import { listMyReferrals, listOpeningsForReferral, listReferrals } from "@/modules/recruit/referrals";
 import { ReferralForm } from "@/modules/recruit/ui/referral-form";
 import { SettleBonusButton } from "@/modules/recruit/ui/settle-bonus";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Referrals" };
+export const generateMetadata = pageTitle("referrals");
 
 /**
  * The referral programme (FR-REC-10). **Everybody's page** — unlike the rest of `/recruit`, it is
@@ -48,16 +48,15 @@ export default async function ReferralsPage() {
           <ul className="flex flex-col divide-y rounded-xl border">
             {mine.map((row) => (
               <li key={row.id} className="flex flex-wrap items-center gap-3 p-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{row.candidateName}</p>
+                <div className="min-w-0 flex-1 basis-56">
+                  <p className="text-sm font-medium">{row.name ?? row.openingTitle}</p>
                   <p className="text-xs text-muted-foreground">
                     {row.openingTitle} · {row.openingCode} · {format.dateTime(row.createdAt, { dateStyle: "medium" })}
                   </p>
                 </div>
-                {/* A referrer sees how far their name got, never anybody's scorecard or figure. */}
-                <span className="text-xs text-muted-foreground">{row.stageName}</span>
-                <Badge variant="outline">{tStatus(row.applicationStatus)}</Badge>
-                <Badge variant={bonusBadge(row.bonus)}>{t(`bonus.${row.bonus}` as "bonus.pending")}</Badge>
+                {/* A referrer sees what they typed and whether a bonus is due — never the stage, the
+                    status or the name on file, any of which would say the person was already known. */}
+                {row.state === "received" ? <Badge variant="outline">{t("received")}</Badge> : <Badge variant={bonusBadge(row.state)}>{t(`bonus.${row.state}`)}</Badge>}
               </li>
             ))}
           </ul>
@@ -79,7 +78,7 @@ export default async function ReferralsPage() {
             <ul className="flex flex-col divide-y rounded-xl border">
               {book.map((row) => (
                 <li key={row.id} className="flex flex-wrap items-center gap-3 p-3">
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 basis-56">
                     <Link href={`/recruit/applications/${row.applicationId}`} className="text-sm font-medium hover:underline">
                       {row.candidateName}
                     </Link>

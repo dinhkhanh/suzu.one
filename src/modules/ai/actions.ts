@@ -77,7 +77,7 @@ const resolvePipeline = createAction({
   input: z.object({ id: z.uuid(), note: z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? null : value), z.string().trim().max(300).nullable().default(null)) }),
   authorize: (user) => canReadUnansweredLog(user.principal),
   run: async ({ user, input }) => {
-    const closed = await resolveUnanswered(input.id, user.person.id, input.note);
+    const closed = await resolveUnanswered(user.principal, input.id, user.person.id, input.note);
     if (closed === 0) throw new ActionError("ai_unanswered_not_found");
     revalidatePath("/assistant/unanswered");
     return { data: { closed }, audit: { resource: { type: "ai_unanswered_question", id: input.id }, summary: `${closed} closed`, after: { note: input.note } } };

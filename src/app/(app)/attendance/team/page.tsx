@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { todayInVietnam } from "@/lib/dates";
@@ -9,8 +8,9 @@ import { RecomputeButton } from "@/modules/attendance/ui/device-forms";
 import { MonthNav, TeamGrid } from "@/modules/attendance/ui/timesheet-views";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Team timesheet" };
+export const generateMetadata = pageTitle("teamTimesheet");
 
 // The month of everyone whose timesheet the viewer may read: reports, the department (heads), HR's
 // scope. Statuses and minutes only — never positions. Colleagues are not here at all.

@@ -268,7 +268,10 @@ describe("account handover (FR-PJM-46)", () => {
     await setProjectMember(ids.project, ids.lan, "account_manager");
     await db().update(schema.workClient).set({ accountManagerPersonId: ids.lan }).where(eq(schema.workClient.id, ids.client));
     expect(await fails(changeAccountManager(ids.client, { toPersonId: ids.bao, note: {} }, actor("long"), await viewer("long")))).toBe("handoff_note_required");
-    const result = await changeAccountManager(ids.client, { toPersonId: ids.bao, note: { context: "Lan chuyển sang khách khác", contacts: "Chị Mai – brand manager" } }, actor("long"), await viewer("long"));
+    // The role reads the project's fee (Q21): handing it on takes `pjm:commercial` over the project too.
+    const plain = await viewer("long");
+    const director = { ...plain, principal: { ...plain.principal, grants: [{ role: "entity_director" as const, scope: { type: "entity" as const, id: ids.szm } }] } };
+    const result = await changeAccountManager(ids.client, { toPersonId: ids.bao, note: { context: "Lan chuyển sang khách khác", contacts: "Chị Mai – brand manager" } }, actor("long"), director);
     expect(result).toMatchObject({ before: ids.lan, after: ids.bao, skipped: [] });
     expect(result.projects.map((project) => project.id)).toEqual([ids.project]);
     const roles = await db().select({ personId: schema.workProjectMember.personId, role: schema.workProjectMember.role }).from(schema.workProjectMember).where(eq(schema.workProjectMember.projectId, ids.project));
@@ -278,6 +281,11 @@ describe("account handover (FR-PJM-46)", () => {
     // The lead of a project is not also its account manager: that project keeps its lead and is named back.
     const led = await changeAccountManager(ids.client, { toPersonId: ids.tam, note: { context: "Tâm nhận khách" } }, actor("long"), await viewer("long"));
     expect(led.skipped.map((project) => project.id)).toEqual([ids.project]);
+    // A lead of the team without `pjm:commercial` moves the client, not the role: the project keeps its account manager and is only counted.
+    const withheld = await changeAccountManager(ids.client, { toPersonId: ids.huy, note: { context: "Huy nhận khách" } }, actor("long"), plain);
+    expect(withheld).toMatchObject({ projects: [], skipped: [], withheld: 1 });
+    const after = await db().select({ personId: schema.workProjectMember.personId, role: schema.workProjectMember.role }).from(schema.workProjectMember).where(eq(schema.workProjectMember.projectId, ids.project));
+    expect(after.find((row) => row.role === "account_manager")?.personId).toBe(ids.bao);
   });
 });
 

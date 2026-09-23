@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,8 +7,9 @@ import { FormStatusBadge, StageBadge, Timeline } from "@/modules/performance/ui/
 import { AdvanceCycleForm, CycleForm, LaunchCycleForm, ReleaseCycleForm } from "@/modules/performance/ui/review-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Review cycles" };
+export const generateMetadata = pageTitle("reviewCycles");
 
 /**
  * HR's review cycles (FR-PRF-03): build one, launch it — which freezes the form and snapshots
@@ -114,7 +114,7 @@ export default async function ReviewCyclesPage({ searchParams }: PageProps<"/per
         <ul className="flex flex-col divide-y rounded-xl border">
           {templates.map((template) => (
             <li key={template.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm">
-              <span className="min-w-0 flex-1">{template.name}</span>
+              <span className="min-w-0 flex-1 basis-56">{template.name}</span>
               <span className="text-xs text-muted-foreground">{t("admin.templateShape", { sections: template.sections.length, points: template.ratingScale.length })}</span>
               {!template.isActive ? <span className="text-xs text-muted-foreground">{t("admin.inactive")}</span> : null}
             </li>

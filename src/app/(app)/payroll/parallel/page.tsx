@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -14,8 +13,9 @@ import { commitParallelImportAction, stageParallelImportAction } from "@/modules
 import { parallelTemplate } from "@/modules/payroll/parallel-import";
 import { canManageCompensation, compensationReach } from "@/modules/payroll/policy";
 import { ClassifyForm, DifferenceCell, ParallelFilters, ReferenceForm } from "@/modules/payroll/ui/parallel-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Parallel run" };
+export const generateMetadata = pageTitle("parallelRun");
 
 /**
  * The parallel run (FR-PAY-38). C&B and the owner only.

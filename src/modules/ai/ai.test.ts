@@ -34,7 +34,7 @@ import { assemblePrompt } from "./engine/prompt";
 import { canAskAssistant, canReadUnansweredLog } from "./policy";
 import { retrievePassages } from "./retrieval";
 
-type Who = "owner" | "hr" | "head" | "huy" | "khoi" | "ngo";
+type Who = "owner" | "hr" | "hrm" | "head" | "huy" | "khoi" | "ngo";
 const ids = {} as Record<Who | "szm" | "szc" | "vid" | "des", string>;
 const viewers = {} as Record<Who, KbViewer>;
 const users = {} as Record<Who, { person: { id: string; primaryEntityId: string | null; orgUnitId: string | null; orgUnitPath: string[] }; principal: Principal }>;
@@ -56,6 +56,8 @@ beforeAll(async () => {
   const people: [Who, string, string, Grant["role"] | null, "group" | "entity" | "department" | null, "employee" | "collaborator"][] = [
     ["owner", szm.id, vid.id, "owner", "group", "employee"],
     ["hr", szm.id, vid.id, "hr_admin", "group", "employee"],
+    // Keeps SuZu Media's knowledge base only.
+    ["hrm", szm.id, vid.id, "hr_admin", "entity", "employee"],
     ["head", szm.id, vid.id, "department_head", "department", "employee"],
     ["huy", szm.id, vid.id, null, null, "employee"],
     ["khoi", szc.id, des.id, null, null, "employee"],
@@ -205,10 +207,22 @@ describe("the unanswered log", () => {
     expect(first.outcome).toBe("unanswered");
     expect(first.citations).toEqual([]);
     await ask(users.khoi, { question, locale: "vi" });
-    const open = await listUnanswered();
+    const open = await listUnanswered(users.hr.principal);
     const row = open.find((entry) => entry.question === question);
     expect(row).toMatchObject({ asked: 2, resolvedAt: null });
     expect(open[0].asked).toBeGreaterThanOrEqual(2);
+  });
+
+  it("shows each keeper only the questions of the people inside their grant", async () => {
+    const question = "Công ty có tài trợ thẻ tập gym hằng tháng không?";
+    // SuZu Media's keeper: Huy asked it, Khôi (SuZu Creative) did too — counted once, not twice.
+    expect((await listUnanswered(users.hrm.principal)).find((entry) => entry.question === question)).toMatchObject({ asked: 1, askedBy: "huy" });
+    // Nobody without `kb:manage` anywhere reads it, whatever the page lets through.
+    expect(await listUnanswered(users.huy.principal)).toEqual([]);
+    expect(await listUnanswered(users.head.principal)).toEqual([]);
+    // Nor closes it.
+    const [row] = (await listUnanswered(users.hr.principal)).filter((entry) => entry.question === question);
+    expect(await resolveUnanswered(users.huy.principal, row.id, ids.huy, null)).toBe(0);
   });
 
   it("stores only the question — never the passages that failed, never another person's answer", async () => {
@@ -217,13 +231,19 @@ describe("the unanswered log", () => {
     for (const row of rows) expect(Object.keys(row)).not.toContain("citations");
   });
 
-  it("is closed for everybody at once: one page answers the same question however many asked it", async () => {
+  it("is closed for everybody in the keeper's reach at once: one page answers the same question however many asked it", async () => {
     const question = "Công ty có tài trợ thẻ tập gym hằng tháng không?";
-    const [row] = (await listUnanswered()).filter((entry) => entry.question === question);
-    expect(await resolveUnanswered(row.id, ids.hr, "Đã viết trang Phúc lợi")).toBe(2);
-    expect((await listUnanswered()).some((entry) => entry.question === question)).toBe(false);
-    expect((await listUnanswered({ resolved: true })).some((entry) => entry.question === question)).toBe(true);
-    expect(await resolveUnanswered(row.id, ids.hr, null)).toBe(0);
+    // SuZu Media's keeper closes SuZu Media's copy; Khôi's stays open for whoever keeps SuZu Creative's.
+    const [mine] = (await listUnanswered(users.hrm.principal)).filter((entry) => entry.question === question);
+    expect(await resolveUnanswered(users.hrm.principal, mine.id, ids.hrm, "Đã viết trang Phúc lợi của Media")).toBe(1);
+    expect((await listUnanswered(users.hr.principal)).find((entry) => entry.question === question)).toMatchObject({ asked: 1, askedBy: "khoi" });
+    // Nor may they close the other entity's copy by its id.
+    const [other] = (await listUnanswered(users.hr.principal)).filter((entry) => entry.question === question);
+    expect(await resolveUnanswered(users.hrm.principal, other.id, ids.hrm, null)).toBe(0);
+    expect(await resolveUnanswered(users.hr.principal, other.id, ids.hr, "Đã viết trang Phúc lợi")).toBe(1);
+    expect((await listUnanswered(users.hr.principal)).some((entry) => entry.question === question)).toBe(false);
+    expect((await listUnanswered(users.hr.principal, { resolved: true })).some((entry) => entry.question === question)).toBe(true);
+    expect(await resolveUnanswered(users.hr.principal, other.id, ids.hr, null)).toBe(0);
   });
 });
 

@@ -117,6 +117,27 @@ export function canManageProject(viewer: WorkViewer, project: ProjectFacts): boo
   return project.visibility !== "private" && canManageWorkspace(viewer, project.team);
 }
 
+/** The project roles that read the project's fee (the owner's decision of 2026-09-23, Q21; `canSeeFees`). */
+export const FEE_READING_ROLES: readonly ProjectRole[] = ["lead", "account_manager"];
+const readsFees = (role: ProjectRole | null | undefined) => !!role && FEE_READING_ROLES.includes(role);
+
+/**
+ * Handing somebody a project role that reads the fee — lead or account manager — when they do not
+ * already hold one. Running the project (`canManageProject`) is not enough: a team lead or a
+ * `work:manage` holder who could name anyone lead, themselves included, would read the price Q21
+ * keeps from them. So it takes `pjm:commercial` over the project's entity as well — the people who
+ * already read every fee there. Moving between the two roles, lowering a role or taking someone out
+ * changes nobody's reach and needs only the right to run the project.
+ *
+ * Creating a project is the exception, by choice: its creator (or the lead they name) leads it
+ * before any fee exists, and whoever later sets the fee holds `pjm:commercial` and sees who leads.
+ */
+export function canGiveProjectRole(viewer: WorkViewer, project: ProjectFacts, from: ProjectRole | null, to: ProjectRole | null): boolean {
+  if (!canManageProject(viewer, project)) return false;
+  if (!readsFees(to) || readsFees(from)) return true;
+  return can(viewer.principal, "pjm:commercial", { entityId: project.entityId });
+}
+
 export function canCreateProject(viewer: WorkViewer, team: TeamFacts): boolean {
   return viewer.teamRoles.has(team.id) || canAdminTeam(viewer, team);
 }
@@ -246,12 +267,23 @@ export function canResolveBlocker(viewer: WorkViewer, task: TaskFacts, blocker: 
 }
 
 /**
+ * Taking a task out of its project — into another project, a backlog or another team. Out of a
+ * private project, that puts its work where others read it, so it is the call of whoever runs the
+ * project, not of anyone who may edit the task. Any other project: editing the task is enough.
+ */
+export function canTakeOutOfProject(viewer: WorkViewer, task: TaskFacts): boolean {
+  return task.project?.visibility !== "private" || canManageProject(viewer, task.project);
+}
+
+/**
  * Moving a task to another team (FR-PJM-34): the right to change it here and to put work there —
  * into the target project, or the target team's backlog. A project of another team is no target.
  */
 export function canMoveTask(viewer: WorkViewer, task: TaskFacts, target: { team: TeamFacts; project: ProjectFacts | null }): boolean {
   if (target.team.id === task.team.id || (target.project && target.project.team.id !== target.team.id)) return false;
   if (!canEditTask(viewer, task)) return false;
+  // Out of a private project: the call of whoever runs it (`canTakeOutOfProject`).
+  if (!canTakeOutOfProject(viewer, task)) return false;
   return target.project ? canContributeToProject(viewer, target.project) : canContributeToTeam(viewer, target.team);
 }
 
@@ -379,8 +411,10 @@ export type StageFacts = { isClient: boolean; reviewerPersonId: string | null; s
  * Deciding a stage of a review chain (FR-PJM-50). An internal stage: its reviewer or whoever runs
  * the project — never the person who handed the work in. A client stage is the client's decision,
  * recorded by the account side (the recorder may have made the work: the client decides, not them).
+ * Either way only someone who may open the task: being named on a stage opens nothing by itself.
  */
 export function canDecideStage(viewer: WorkViewer, task: TaskFacts, stage: StageFacts, client: { accountManagerPersonId: string | null }): boolean {
+  if (!canViewTask(viewer, task)) return false;
   if (stage.isClient) return canRecordClientDecision(viewer, task, client);
   const self = viewer.principal.personId;
   if (!self || self === stage.submittedByPersonId) return false;

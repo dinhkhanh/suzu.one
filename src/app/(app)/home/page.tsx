@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -7,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getHomeFeed } from "@/modules/comms/service";
 import { AnnouncementList, KudosList } from "@/modules/comms/ui/cards";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Home" };
+export const generateMetadata = pageTitle("home");
 
 function FeedCard({ title, children }: { title: string; children: ReactNode }) {
   return (

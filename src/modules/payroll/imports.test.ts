@@ -44,10 +44,15 @@ describe("payroll imports", () => {
     }
   });
 
-  it("refuses a file that names no entity at all", async () => {
-    // The wizard posts the entity as a hidden field; without it there is nothing to authorize against.
-    expect(await parallelImport.definition.authorize(user([{ role: "owner", scope: { type: "group" } }]), undefined)).toBe(false);
-    expect(await ytdImport.definition.authorize(user([{ role: "owner", scope: { type: "group" } }]), undefined)).toBe(false);
+  it("lets C&B reach the commit step, which is authorized again against the batch's own entity", async () => {
+    // Committing is first asked with no parameters (the framework re-asks with the staged batch's
+    // entity inside its transaction). Refusing that first question would refuse every commit.
+    const pre = async (grants: Principal["grants"]) => [await parallelImport.definition.authorize(user(grants), undefined), await ytdImport.definition.authorize(user(grants), undefined)];
+    expect(await pre([{ role: "owner", scope: { type: "group" } }])).toEqual([true, true]);
+    expect(await pre([{ role: "payroll", scope: { type: "entity", id: SZM } }])).toEqual([true, true]);
+    expect(await pre([{ role: "c_level", scope: { type: "group" } }])).toEqual([false, false]);
+    expect(await pre([{ role: "hr_staff", scope: { type: "entity", id: SZM } }])).toEqual([false, false]);
+    expect(await pre([])).toEqual([false, false]);
   });
 
   it("marks every money column as sensitive, so a staged batch waits encrypted", () => {

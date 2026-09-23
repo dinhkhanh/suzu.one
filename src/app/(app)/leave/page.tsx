@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +8,9 @@ import { canOpenLeaveAdmin } from "@/modules/leave/policy";
 import { listLeaveRequestsOf } from "@/modules/leave/requests";
 import { CancelLeaveButton } from "@/modules/leave/ui/request-forms";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Leave" };
+export const generateMetadata = pageTitle("leave");
 
 const STATUS_VARIANT = { pending: "secondary", approved: "default", rejected: "outline", withdrawn: "outline", cancelled: "outline" } as const;
 
@@ -74,7 +74,7 @@ export default async function LeavePage() {
             const open = request.status === "pending" || (request.status === "approved" && request.startDate > today);
             return (
               <li key={request.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 p-3 text-sm">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-56">
                   <p className="font-medium">
                     {request.approvalRequestId ? (
                       <Link href={`/approvals/leave/${request.approvalRequestId}`} className="hover:underline">

@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { unitPathOf } from "@/modules/platform/org/service";
-import { can } from "@/modules/platform/rbac/policy";
+import { can, canReadTier } from "@/modules/platform/rbac/policy";
 import { RECORD_ONLY_EVENT_TYPES, TERMINATION_REASONS, WORKFORCE_TYPES } from "./enums";
 import { cancelRecordedEvent, cancelTermination, recordEvent, rehirePerson, terminateEmployment } from "./lifecycle";
 import { findLifecycleEvent } from "./lifecycle-events";
@@ -33,13 +33,19 @@ function refresh(personId: string) {
 const recordPipeline = createAction({
   name: "lifecycle.record",
   input: z.object({ personId: z.uuid(), type: z.enum(RECORD_ONLY_EVENT_TYPES), effectiveDate: day, reason: text(300), note: text(2000) }),
-  authorize: (user, input) => managesPerson(user, input.personId),
+  // A salary change's reason and note are compensation tier: only someone who may read that tier of
+  // this person writes one.
+  authorize: async (user, input) => {
+    const target = await getPersonTarget(input.personId);
+    return !!target && can(user.principal, "person:manage", target) && (input.type !== "salary_change" || canReadTier(user.principal, target, "compensation"));
+  },
   run: async ({ user, input }) => {
     const { personId, ...event } = input;
     const row = await recordEvent(personId, event, user.person.id);
     refresh(personId);
-    // Discipline notes are restricted tier: the audit log keeps that a note exists, not its text.
-    const after = { ...row, note: row.type === "discipline" && row.note ? "[restricted]" : row.note };
+    // Discipline notes are restricted tier and a salary change's words compensation tier: the audit
+    // log keeps that they exist, not their text.
+    const after = { ...row, note: row.note && row.type === "discipline" ? "[restricted]" : row.note && row.type === "salary_change" ? "[compensation]" : row.note, reason: row.reason && row.type === "salary_change" ? "[compensation]" : row.reason };
     return { data: { id: row.id }, audit: { resource: { type: "person", id: personId, entityId: row.entityId }, summary: `${row.type} ${row.effectiveDate}`, after } };
   },
 });

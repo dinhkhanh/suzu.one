@@ -9,8 +9,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
-import { canManageReferrals, canRefer } from "./policy";
+import { canManageReferrals, canRefer, canRunRecruitment } from "./policy";
 import { MAX_REFERRAL_CV_BYTES, findReferral, settleReferralBonus, submitReferral } from "./referrals";
+import { findOpening } from "./service";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
 const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blankToNull, schema.nullable().default(null));
@@ -77,8 +78,12 @@ const settleReferralPipeline = createAction({
   name: "recruit.referral.settle",
   input: z.object({ referralId: z.uuid(), note: optional(z.string().trim().max(500)) }),
   authorize: async (user, input) => {
+    // The recruitment desk *over the referral's opening*: an entity-scoped recruiter settles the
+    // bonuses of their entity's openings, not the group's.
     const referral = await findReferral(input.referralId);
-    return !!referral && canManageReferrals(user.principal);
+    if (!referral || !canManageReferrals(user.principal)) return false;
+    const opening = await findOpening(referral.openingId);
+    return !!opening && canRunRecruitment(user.principal, { entityId: opening.entityId, departmentId: opening.departmentId, teamId: opening.teamId });
   },
   run: async ({ user, input }) => {
     const after = await settleReferralBonus(input.referralId, user.person.id, input.note);

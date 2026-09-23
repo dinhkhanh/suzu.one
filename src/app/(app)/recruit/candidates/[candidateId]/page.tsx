@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getCandidateView } from "@/modules/recruit/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Candidate" };
+export const generateMetadata = pageTitle("candidate");
 
 // One candidate and everywhere they have applied — only the applications whose opening the reader
 // may see, so the page cannot be used to learn that somebody applied elsewhere in the group.

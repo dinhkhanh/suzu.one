@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,8 +6,9 @@ import { listEntities } from "@/modules/platform/org/service";
 import { can } from "@/modules/platform/rbac/policy";
 import { canManageRequestTypes } from "@/modules/requests/policy";
 import { TypeDesigner } from "@/modules/requests/ui/type-designer";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "New request type" };
+export const generateMetadata = pageTitle("newRequestType");
 
 export default async function NewRequestTypePage() {
   const user = await requireUser();

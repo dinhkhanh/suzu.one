@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { listProfiles } from "@/modules/attendance/devices";
@@ -6,8 +5,9 @@ import { canManageAttendanceConfig } from "@/modules/attendance/policy";
 import { ProfileForm } from "@/modules/attendance/ui/device-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { configOptions } from "../../settings/options";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Mapping profiles" };
+export const generateMetadata = pageTitle("mappingProfiles");
 
 // How each device model writes its export: which column is the user ID, the timestamp, the direction.
 export default async function ProfilesPage() {

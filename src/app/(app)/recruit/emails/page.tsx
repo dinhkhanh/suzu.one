@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEmailTemplates } from "@/modules/recruit/emails";
 import { canManagePipelines } from "@/modules/recruit/service";
 import { EmailTemplateForm } from "@/modules/recruit/ui/email-template-form";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Candidate emails" };
+export const generateMetadata = pageTitle("candidateEmails");
 
 // The wordings sent to candidates (FR-REC-05). Group-wide, like the pipeline library, so editing
 // them takes a group-wide `recruit:manage` — an entity's recruiter runs their openings, they do

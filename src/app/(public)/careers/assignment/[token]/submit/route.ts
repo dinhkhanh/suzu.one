@@ -1,11 +1,13 @@
 import { visitorOf } from "@/lib/public-action";
 import { MAX_SUBMISSION_BYTES, submitAssignment } from "@/modules/recruit/assignments";
+import { readFormWithin } from "@/modules/recruit/request-body";
 
 /**
  * Where a candidate's take-home comes back (FR-REC-07). The second — and last — unauthenticated
  * write endpoint in the product, written to the same rules as the application form next door:
  *
- *   · the body is refused **before it is read** if `content-length` says it is too big;
+ *   · the body is refused **before it is read** if `content-length` says it is too big, and
+ *     counted as it is read, because a chunked request declares no length at all;
  *   · exactly one file is taken, by name, and only if it is a `File`;
  *   · every other value is a string, and the schema in `assignments.ts` caps them all;
  *   · the answer is always a redirect. No JSON, no ids, no stack traces; a failure carries a
@@ -23,15 +25,12 @@ export async function POST(request: Request, context: RouteContext<"/careers/ass
   const { token } = await context.params;
   const back = (error?: string) => seeOther(`/careers/assignment/${encodeURIComponent(token)}${error ? `?error=${encodeURIComponent(error)}` : ""}`);
 
-  const declared = Number(request.headers.get("content-length") ?? "0");
-  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) return back("file_too_large");
-
-  let form: FormData;
-  try {
-    form = await request.formData();
-  } catch {
-    return back("failed");
-  }
+  // Refused unread when the declared length is too big, and counted as it is read otherwise: a
+  // chunked body declares no length at all, and a declared one is only what the sender claims.
+  const form = await readFormWithin(request, MAX_BODY_BYTES);
+  if (form === "too_large") return back("file_too_large");
+  // A body that is not a form at all. No detail: a probe learns nothing from the parser.
+  if (form === "failed") return back("failed");
 
   const text = (name: string) => {
     const value = form.get(name);

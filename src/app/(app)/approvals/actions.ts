@@ -46,7 +46,9 @@ export async function bulkApproveAction(input: unknown) {
  * same audit entry as pressing "approve" on the request page. A link that reached the wrong inbox
  * therefore does nothing at all.
  *
- * The token is spent before the decision runs, so a double click decides once.
+ * The token is spent before the decision runs, so a double click decides once. A type that must be
+ * read before it is approved (an offer, a hiring request, a kick-off) is refused here exactly as
+ * bulk approve refuses it: a button in a chat message is no more reading than a ticked box.
  */
 const approveFromLinkPipeline = createAction({
   name: "approval.approve_from_link",
@@ -58,11 +60,12 @@ const approveFromLinkPipeline = createAction({
   run: async ({ input }) => {
     const lookup = await findActionToken(input.token);
     if (!lookup.ok) throw new ActionError("approval_link_unusable");
-    if (!(await spendActionToken(lookup.row.id))) throw new ActionError("approval_link_unusable");
 
     const [request] = await getRequestRows([lookup.row.requestId]);
     const registered = request ? await findRegisteredType(request.type) : undefined;
     if (!request || !registered) throw new ActionError("approval_not_found");
+    if (!registered.definition.bulkApprovable?.(request)) throw new ActionError("approval_open_to_decide");
+    if (!(await spendActionToken(lookup.row.id))) throw new ActionError("approval_link_unusable");
 
     const result = await registered.approve(request.id);
     if (!result.ok) throw new ActionError((result.error === "failed" ? result.message : result.error) ?? "generic");

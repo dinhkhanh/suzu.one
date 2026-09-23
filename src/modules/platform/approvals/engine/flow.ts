@@ -53,7 +53,14 @@ export type AssigneeStatus = "pending" | "approved" | "rejected" | "returned";
 
 export type AssigneeState = { personId: string; status: AssigneeStatus; delegatedFrom?: string | null };
 export type StepState = { key: string; mode: StepMode; status: StepStatus; assignees: AssigneeState[]; parallel?: boolean };
-export type RequestState = { requesterId: string; status: RequestStatus; currentStep: number; steps: StepState[] };
+/**
+ * `subjectId` is the person the request is about when that is not the requester (HR files leave for
+ * someone, C&B proposes a raise). They are as much a party as the requester and never approve it.
+ */
+export type RequestState = { requesterId: string; subjectId?: string | null; status: RequestStatus; currentStep: number; steps: StepState[] };
+
+/** The people who may never answer a request: whoever filed it and whoever it is about. */
+const parties = (state: Pick<RequestState, "requesterId" | "subjectId">): string[] => (state.subjectId ? [state.requesterId, state.subjectId] : [state.requesterId]);
 
 /**
  * A step after its rules were turned into people. `applies: false` = its condition did not hold.
@@ -100,18 +107,19 @@ function openSteps(state: RequestState): StepState[] {
 
 /**
  * The state of a request that was just submitted. Nobody approves their own request: the requester
- * is dropped from every step, and a step left without approvers is an error the service must
+ * and the person it is about are dropped from every step, and a step left without approvers is an error the service must
  * prevent (it falls back to the owners). A flow whose every step is skipped is approved at once.
  */
-export function startFlow(requesterId: string, resolved: readonly ResolvedStep[]): RequestState {
+export function startFlow(requesterId: string, resolved: readonly ResolvedStep[], subjectId: string | null = null): RequestState {
+  const excluded = parties({ requesterId, subjectId });
   const steps: StepState[] = resolved.map((step) => {
-    const approverIds = [...new Set(step.approverIds)].filter((personId) => personId !== requesterId);
+    const approverIds = [...new Set(step.approverIds)].filter((personId) => !excluded.includes(personId));
     if (step.applies && approverIds.length === 0) throw new Error(`step_${step.key}_has_no_approver`);
     const assignees = step.applies ? approverIds.map((personId) => ({ personId, status: "pending" as const, ...(step.delegatedFrom?.[personId] ? { delegatedFrom: step.delegatedFrom[personId] } : {}) })) : [];
     return { key: step.key, mode: step.mode, status: step.applies ? "waiting" : "skipped", assignees, ...(step.parallel ? { parallel: true } : {}) };
   });
   const { currentStep, done } = activate(steps, 0);
-  return { requesterId, status: done ? "approved" : "pending", currentStep, steps };
+  return { requesterId, ...(subjectId && subjectId !== requesterId ? { subjectId } : {}), status: done ? "approved" : "pending", currentStep, steps };
 }
 
 export type DecisionAction = "approve" | "reject" | "return" | "withdraw";
@@ -136,7 +144,7 @@ export function applyDecision(current: RequestState, decision: Decision): Decisi
   }
 
   if (state.status !== "pending") return { ok: false, reason: "not_pending" };
-  if (decision.actorId === state.requesterId) return { ok: false, reason: "own_request" };
+  if (parties(state).includes(decision.actorId)) return { ok: false, reason: "own_request" };
   // Someone asked on two steps that are open together answers both at once.
   const open = openSteps(state);
   const turns = open.flatMap((step) => step.assignees.filter((candidate) => candidate.personId === decision.actorId && candidate.status === "pending").map((assignee) => ({ step, assignee })));
@@ -187,10 +195,10 @@ export function resubmit(current: RequestState, actorId: string): DecisionResult
   return { ok: true, state, outcome: state.status, nowWaitingFor: done ? [] : waitingFor(state) };
 }
 
-/** Hands the actor's turn in the current step to someone else (never the requester, never someone already on the step). */
+/** Hands the actor's turn in the current step to someone else (never the requester or the subject, never someone already on the step). */
 export function delegate(current: RequestState, actorId: string, toPersonId: string): DecisionResult {
   if (current.status !== "pending") return { ok: false, reason: "not_pending" };
-  if (toPersonId === current.requesterId) return { ok: false, reason: "own_request" };
+  if (parties(current).includes(toPersonId)) return { ok: false, reason: "own_request" };
   const state = clone(current);
   const turns = openSteps(state).flatMap((step) => step.assignees.filter((candidate) => candidate.personId === actorId && candidate.status === "pending").map((assignee) => ({ step, assignee })));
   if (turns.length === 0 || turns.some(({ step }) => step.assignees.some((candidate) => candidate.personId === toPersonId))) return { ok: false, reason: "not_assignee" };

@@ -8,7 +8,7 @@ import { acknowledgePage, getAckReport, remindPendingNow, setAckRequirement } fr
 import { embedPendingChunks } from "./chunks";
 import { embeddingDriver } from "./embeddings";
 import { ACCESS_LEVELS, parseSubjectKey, SPACE_KEY, SPACE_KINDS } from "./enums";
-import { beginPageUpload, completePageUpload, findPageFile, removePageFile } from "./files";
+import { beginPageUpload, completePageUpload, findPageFile, removePageFile, shownByPublishedVersion } from "./files";
 import { createPage, deletePage, type LoadedPage, loadPage, movePage, type PageRow, publishPage, restoreVersion, saveDraft, setPageAccess, setPageArchived, setPageMeta, unpublishPage } from "./pages";
 import { canCreatePage, canEditPage, canManageSpace, canOrganisePages, canPublishDirectly, canViewPage, kbViewerOf, spaceOwner } from "./policy";
 import { decidePageReview, getPublishReview, submitPageForReview, withdrawPageReview } from "./publishing";
@@ -425,13 +425,22 @@ export async function completePageUploadAction(input: unknown) {
 const removeFilePipeline = createAction({
   name: "kb.page.file_remove",
   input: z.object({ fileId: z.uuid() }),
+  // In a controlled space the published version is what was reviewed. Taking away a file it shows
+  // changes what readers get without a review, so that takes the right to publish directly — the
+  // same as publishing — and waits while a review is open on the page. A draft upload nobody
+  // reads yet is any editor's to remove.
   authorize: async (user, input) => {
     const found = await findPageFile(input.fileId);
-    return !!found && canEditPage(kbViewerOf(user), found.loaded.facts, found.loaded.pageFacts);
+    if (!found) return false;
+    const viewer = kbViewerOf(user);
+    if (!canEditPage(viewer, found.loaded.facts, found.loaded.pageFacts)) return false;
+    if (found.loaded.space.kind !== "controlled" || !(await shownByPublishedVersion(found.loaded, input.fileId))) return true;
+    return canPublishDirectly(viewer, found.loaded.facts, found.loaded.pageFacts);
   },
   run: async ({ input }) => {
     const found = await findPageFile(input.fileId);
     if (!found) throw new ActionError("file_not_found");
+    if (found.loaded.space.kind === "controlled" && found.loaded.page.status === "in_review" && (await shownByPublishedVersion(found.loaded, input.fileId))) throw new ActionError("kb_page_in_review");
     const file = await removePageFile(input.fileId);
     refresh(found.loaded.space.key, found.loaded.page.id);
     return { data: { fileId: file.id }, audit: { resource: auditPage(found.loaded), summary: `${file.fileName}: removed`, before: { fileId: file.id, fileName: file.fileName } } };

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { todayInVietnam } from "@/lib/dates";
@@ -8,8 +7,9 @@ import { isMonthKey, monthGrid } from "@/modules/work/engine/calendar";
 import { FILTER_KEYS, type TaskFilters } from "@/modules/work/engine/filter";
 import { contentCalendar, listCalendarTasks, listClients, listLabels, listTeams, loadViewer, canViewTeam, teamFacts } from "@/modules/work/service";
 import { CalendarView } from "@/modules/work/ui/calendar-view";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Content calendar" };
+export const generateMetadata = pageTitle("contentCalendar");
 
 // Every dated task the viewer may see, across projects: filtered by client or channel it is the
 // content calendar of a brand (FR-WRK-05).

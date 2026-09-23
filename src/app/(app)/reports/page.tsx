@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -9,8 +8,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 import { can } from "@/modules/platform/rbac/policy";
 import { canManageSchedules, canReadProfitability, getDashboard } from "@/modules/reports/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Overview" };
+export const generateMetadata = pageTitle("overview");
 
 function Tile({ title, href, openLabel, children }: { title: string; href: string; openLabel: string; children: ReactNode }) {
   return (

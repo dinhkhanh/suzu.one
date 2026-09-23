@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -14,8 +13,9 @@ import { formatVnd } from "@/modules/payroll/ui/money";
 import { StatutoryFilters } from "@/modules/payroll/ui/statutory-forms";
 import { listYtd } from "@/modules/payroll/ytd";
 import { ytdTemplate } from "@/modules/payroll/ytd-import";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Year-to-date import" };
+export const generateMetadata = pageTitle("yearToDateImport");
 
 /**
  * Year-to-date figures for months the system did not run (FR-PAY-35). C&B and the owner only.

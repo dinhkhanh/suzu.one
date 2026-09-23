@@ -74,7 +74,7 @@ export function TemplateCard({ template }: { template: TemplateView }) {
   const roots = template.items.filter((item) => !item.parentItemId || !template.items.some((other) => other.id === item.parentItemId));
   const row = (item: TemplateItemView, depth: number) => (
     <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5 text-sm" style={{ paddingLeft: depth * 20 }}>
-      <span className="min-w-0 flex-1">{item.title}</span>
+      <span className="min-w-0 flex-1 basis-56">{item.title}</span>
       {item.roleKey ? <Badge variant="outline">{item.roleKey}</Badge> : null}
       <span className="w-16 text-right font-mono text-xs text-muted-foreground">{t("offset", { days: item.dueOffsetDays })}</span>
       {item.estimateMinutes ? <span className="text-xs text-muted-foreground">{t("hours", { hours: Math.round((item.estimateMinutes / 60) * 100) / 100 })}</span> : null}
@@ -271,7 +271,7 @@ export function RecurrenceManager({ projectId, recurrences, people, canManage, t
             const ended = !!item.endDate && item.endDate <= today;
             return (
               <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-56">
                   <p className="font-medium">{item.title}</p>
                   <p className="text-xs text-muted-foreground">{[describe(item.rule), item.assigneeName, t("madeSoFar", { count: item.made }), item.nextDate ? t("next", { date: day(item.nextDate) }) : null].filter(Boolean).join(" · ")}</p>
                 </div>

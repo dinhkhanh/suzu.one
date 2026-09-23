@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { automationPanel, canManageAutomations, canViewAutomations, findTeam, loadViewer, teamFacts } from "@/modules/work/service";
 import { AutomationManager } from "@/modules/work/ui/automations";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Automations" };
+export const generateMetadata = pageTitle("automations");
 
 // FR-PJM-33: the team's "when … then …" rules, and every project's own, with their latest runs.
 // The team's leads keep them; the team's people read them (they are how the team works).

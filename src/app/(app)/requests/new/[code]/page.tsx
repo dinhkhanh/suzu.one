@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -13,8 +12,9 @@ import { fileExpenseClaimAction } from "@/modules/requests/expense-actions";
 import { findRequestTypeByCode } from "@/modules/requests/service";
 import { ExpenseClaimForm } from "@/modules/requests/ui/expense-claim-form";
 import { RequestForm } from "@/modules/requests/ui/request-form";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "New request" };
+export const generateMetadata = pageTitle("newRequest");
 
 // The form the administrator designed, filled in by whoever needs the thing.
 export default async function FileRequestPage(props: PageProps<"/requests/new/[code]">) {

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,8 +7,9 @@ import { commitAssetImportAction, stageAssetImportAction } from "@/modules/asset
 import { canManageAssets } from "@/modules/assets/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Nhập tài sản" };
+export const generateMetadata = pageTitle("importAssets");
 
 export default async function ImportAssetsPage() {
   const user = await requireUser();

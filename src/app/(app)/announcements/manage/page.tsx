@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,8 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { audienceNames, canPostAnywhere, listManagedAnnouncements } from "@/modules/comms/service";
 import { audienceLabel } from "@/modules/comms/ui/labels";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Manage announcements" };
+export const generateMetadata = pageTitle("manageAnnouncements");
 
 export default async function ManageAnnouncementsPage() {
   const user = await requireUser();

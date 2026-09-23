@@ -170,6 +170,34 @@ describe("delegation", () => {
   });
 });
 
+describe("a request about someone other than its requester", () => {
+  const today = todayInVietnam();
+  // HR files for the line manager; the flow names the manager in person and their own line manager.
+  const aboutManager = () => defineRequestType({ type: "test_about", flow: { steps: [{ key: "named", mode: "any", approvers: [{ rule: "person", personId: ids.manager }, { rule: "line_manager" }] }] } });
+  const fileAboutManager = () => db().transaction((tx) => submitRequest(tx, aboutManager(), { entityId: ids.media, requesterPersonId: ids.hr, subjectPersonId: ids.manager, summary: "about the manager" }));
+
+  it("never asks the person it is about, nor hands them the turn or a standing delegation", async () => {
+    const { request, approverIds } = await fileAboutManager();
+    expect(approverIds).toEqual([ids.head]);
+    await expect(db().transaction((tx) => decideRequest(tx, aboutManager(), request.id, ids.manager, { action: "approve" }))).rejects.toThrow("approval_own_request");
+    await expect(db().transaction((tx) => delegateRequest(tx, request.id, ids.head, { toPersonId: ids.manager }))).rejects.toThrow("approval_own_request");
+    expect(await isRequestParty(request.id, ids.manager)).toEqual({ party: false, canDelegate: false });
+
+    await createDelegation(ids.head, { toPersonId: ids.manager, validFrom: today, validTo: today, requestTypes: null, reason: null });
+    expect((await fileAboutManager()).approverIds).toEqual([ids.head]);
+  });
+
+  it("hands no turn to a collaborator, by hand or by a standing delegation", async () => {
+    const [outsider] = await db().insert(schema.person).values({ fullName: "Free Lancer", searchName: "free lancer", workEmail: "free.lancer@suzu.group", primaryEntityId: ids.media, workforceType: "collaborator" }).returning();
+    const { request } = await fileAboutManager();
+    await expect(db().transaction((tx) => delegateRequest(tx, request.id, ids.head, { toPersonId: outsider.id }))).rejects.toThrow("delegation_person_unknown");
+    await expect(createDelegation(ids.head, { toPersonId: outsider.id, validFrom: today, validTo: today, requestTypes: null, reason: null })).rejects.toThrow("delegation_person_unknown");
+    // One written before the rule, straight into the table: skipped.
+    await db().insert(schema.approvalDelegation).values({ fromPersonId: ids.head, toPersonId: outsider.id, validFrom: today, validTo: today });
+    expect((await fileAboutManager()).approverIds).toEqual([ids.head]);
+  });
+});
+
 describe("comments", () => {
   it("lets the parties remark without deciding, and nobody else", async () => {
     const { request } = await submit(ids.huy, ids.media, 1);

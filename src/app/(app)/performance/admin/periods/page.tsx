@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { todayInVietnam } from "@/lib/dates";
 import { canCloseKpiMonth, canReopenKpiMonth, closeBlockersOf, consumedMonths, listPeriods } from "@/modules/performance/service";
@@ -6,8 +5,9 @@ import { MonthPicker, monthLabel, readMonth, ScoreState } from "@/modules/perfor
 import { CloseMonthForm, ReopenMonthForm } from "@/modules/performance/ui/kpi-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "KPI periods" };
+export const generateMetadata = pageTitle("kPIPeriods");
 
 // Closing a month stores every score of an entity (FR-PRF-02, SRS D13): refused while actuals are
 // missing unless HR overrides with a reason; reopening is group HR's, with a reason, and keeps the

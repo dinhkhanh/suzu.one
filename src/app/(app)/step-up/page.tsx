@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { stepUpDriver } from "@/modules/platform/auth/step-up";
 import { isStepUpFresh, safeNextPath, STEP_UP_WINDOW_MINUTES } from "@/modules/platform/auth/step-up-policy";
 import { LocalStepUpForm } from "@/modules/platform/auth/ui/local-step-up-form";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Re-authenticate" };
+export const generateMetadata = pageTitle("reAuthenticate");
 export const dynamic = "force-dynamic";
 
 // Salary and payroll screens ask for a recent proof of identity (FR-PLT-06, NFR-SEC-08).

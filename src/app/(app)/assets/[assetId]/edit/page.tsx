@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { canManageAssets, canReadAssetMoney, findAsset, listCategories } from "@/modules/assets/service";
 import { AssetForm } from "@/modules/assets/ui/asset-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Sửa tài sản" };
+export const generateMetadata = pageTitle("editAsset");
 
 export default async function EditAssetPage({ params }: PageProps<"/assets/[assetId]/edit">) {
   const user = await requireUser();

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { canReadTier, type Grant, type Principal, readableTier } from "../platform/rbac/policy";
 import { canReadBonusRun, canViewBonusOf, canViewCompensationOf } from "../payroll/policy";
-import { canComputeResults, canDecideOutcome, canDecidePerformanceRules, canHoldOneOnOneWith, canOverrideResult, canProposeWeighting, canRaiseOutcome, canReadOneOnOne, canReadOneOnOnePrivate, canReadResultOf, canSettleResultOf, canWriteOneOnOne } from "./policy";
+import { canComputeResults, canDecideOutcome, canDecidePerformanceRules, canHoldOneOnOneWith, canOverrideResult, canProposeSalaryOutcome, canProposeWeighting, canRaiseOutcome, canReadOneOnOne, canReadOneOnOnePrivate, canReadResultOf, canSettleResultOf, canWriteOneOnOne } from "./policy";
 import { canCheckIn, canCloseGoal, canCloseKpiMonth, canEditGoal, canEnterActualsFor, canManageAssignmentsOf, canManageKpiLibrary, canManagePositionKpis, canOpenOverview, canReadPerformanceOf, canReopenGoal, canReopenKpiMonth, canSeeGoal, chainAbove, type GoalParties, overviewReach, type PersonContext, readablePeople, unitTarget } from "./policy";
 
 const SZM = "entity-szm";
@@ -110,6 +110,11 @@ describe("changing", () => {
     expect(canReopenGoal(headVid, unit("department", { unitPath: [VID], departmentId: VID }))).toBe(false);
     expect(canReopenGoal(hrSzm, individual(huy))).toBe(true);
     expect(canReopenGoal(owner, unit("group"))).toBe(true);
+    // HR's own goal is closed and reopened by somebody else, like their actuals.
+    const bao = person("bao", SZM, VID);
+    expect(canCloseGoal(hrSzm, individual(bao))).toBe(false);
+    expect(canReopenGoal(hrSzm, individual(bao))).toBe(false);
+    expect(canCloseGoal(owner, individual(person("owner", SZM, VID)))).toBe(false);
   });
 });
 
@@ -184,6 +189,7 @@ describe("the final yearly result", () => {
     expect(canSettleResultOf(hrSzm, huy)).toBe(true);
     expect(canSettleResultOf(headVid, huy)).toBe(false);
     expect(canSettleResultOf(principal("tam"), huy)).toBe(false);
+    expect(canSettleResultOf(hrSzm, person("bao", SZM, VID))).toBe(false); // never one's own result
   });
 
   /**
@@ -229,7 +235,7 @@ describe("the final yearly result", () => {
 // ── 1:1 notes and review outcomes, and the bonus line (Phase 8 week 3) ──────────────────────
 
 describe("1:1 meeting notes (FR-PRF-04)", () => {
-  const meeting = { managerPersonId: "tam", person: huy };
+  const meeting = { managerPersonId: "tam", person: huy, status: "shared" };
 
   /**
    * Found over HTTP in week 3: the create action asked "am I the manager named on this row?",
@@ -260,6 +266,18 @@ describe("1:1 meeting notes (FR-PRF-04)", () => {
     expect(canReadOneOnOne(principal("linh"), meeting)).toBe(false);
   });
 
+  it("keeps a draft from the subject until the manager shares it", () => {
+    const draft = { ...meeting, status: "draft" };
+    expect(canReadOneOnOne(principal("huy"), draft)).toBe(false);
+    for (const viewer of [principal("tam"), headVid, hrSzm]) expect(canReadOneOnOne(viewer, draft)).toBe(true);
+  });
+
+  it("is not opened by a reader of scores who is neither in the line nor HR", () => {
+    // `performance:read` reads goals and scores; it is not a key to conversations.
+    expect(canReadPerformanceOf(auditor, huy)).toBe(true);
+    expect(canReadOneOnOne(auditor, meeting)).toBe(false);
+  });
+
   it("keeps the private notes to the one manager who wrote them — not the subject, not HR", () => {
     expect(canReadOneOnOnePrivate(principal("tam"), meeting)).toBe(true);
     for (const viewer of [principal("huy"), headVid, hrSzm, owner, auditor]) expect(canReadOneOnOnePrivate(viewer, meeting)).toBe(false);
@@ -273,6 +291,28 @@ describe("review outcomes (FR-PRF-06)", () => {
     expect(canRaiseOutcome(principal("huy"), huy)).toBe(false); // not about yourself
     expect(canDecideOutcome(principal("tam"), huy)).toBe(false);
     expect(canDecideOutcome(hrSzm, huy)).toBe(true);
+  });
+
+  it("never lets HR raise or decide an outcome about themself", () => {
+    const bao = person("bao", SZM, VID);
+    expect(canRaiseOutcome(hrSzm, bao)).toBe(false);
+    expect(canDecideOutcome(hrSzm, bao)).toBe(false);
+    expect(canRaiseOutcome(owner, person("owner", SZM, VID))).toBe(false);
+    expect(canDecideOutcome(owner, person("owner", SZM, VID))).toBe(false);
+  });
+
+  it("keeps the salary adjustment — which carries figures — to those who may read compensation", () => {
+    const hrAdmin = principal("dung", [{ role: "hr_admin", scope: { type: "entity", id: SZM } }]);
+    expect(canProposeSalaryOutcome(hrAdmin, huy)).toBe(true);
+    expect(canProposeSalaryOutcome(owner, huy)).toBe(true);
+    // A line manager raises the other kinds, never one with a salary in it (SRS §2.2).
+    expect(canRaiseOutcome(principal("tam"), huy)).toBe(true);
+    expect(canProposeSalaryOutcome(principal("tam"), huy)).toBe(false);
+    expect(canProposeSalaryOutcome(headVid, huy)).toBe(false);
+    // HR staff reach restricted, not compensation.
+    expect(canProposeSalaryOutcome(hrSzm, huy)).toBe(false);
+    // Nor about oneself, where one does read one's own compensation.
+    expect(canProposeSalaryOutcome(hrAdmin, person("dung", SZM, VID))).toBe(false);
   });
 });
 

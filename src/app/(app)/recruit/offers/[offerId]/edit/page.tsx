@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getOfferView, listOfferTemplates } from "@/modules/recruit/offers";
 import { interviewerOptions } from "@/modules/recruit/interviews";
 import { OfferForm } from "@/modules/recruit/ui/offer-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Edit offer" };
+export const generateMetadata = pageTitle("editOffer");
 
 // Correcting a draft. `canEdit` is false the moment the offer goes for approval, and the service
 // refuses the update as well — a stale tab cannot rewrite a figure an approver is looking at.

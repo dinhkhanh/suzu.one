@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,8 +10,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
 import { listEntities } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Obligation" };
+export const generateMetadata = pageTitle("obligation");
 
 // One obligation instance: what to do, by when, and the proof that it was done (FR-OPS-05). The id is the task's.
 export default async function ObligationPage({ params }: PageProps<"/ops/obligations/[taskId]">) {

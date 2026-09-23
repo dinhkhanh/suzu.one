@@ -14,8 +14,9 @@ import { runTaskAutomations } from "./automations";
 import { invalidateWorkDirectory } from "./directory";
 import { type HandoffStatus, keptValues, missingItems, normalizeNote, type Note, noteIsEmpty, packageProblem, type PackageField, stageOutcome } from "./engine/handoff";
 import { findPackageFor, type HandoffPackageRow, invalidateHandoffPackages } from "./handoff-gate";
-import { canManageProject, canViewTask, type WorkViewer } from "./policy";
-import { projectFacts } from "./projects";
+import type { ProjectRole } from "./enums";
+import { canGiveProjectRole, canManageProject, canViewTask, type WorkViewer } from "./policy";
+import { listAssignable, projectFacts } from "./projects";
 import { type LoadedTask, createWorkTaskIn, loadTask, loadTasks, logActivity, taskKey, updateWorkTaskIn } from "./tasks";
 import { invalidateWorkClients } from "./teams";
 import { sendToTriage } from "./triage";
@@ -123,6 +124,9 @@ export async function handOffStage(taskId: string, input: StageHandoffInput, act
       if (pkg.requireAccept && !input.toPersonId) throw new ActionError("handoff_receiver_required");
     }
     const receiver = input.toPersonId ? await activePerson(tx, input.toPersonId) : null;
+    // The receiver is someone the task could be given to (`listAssignable`): the team and the
+    // project's people — a private project's own only. A pending hand-off names the task to them.
+    if (receiver && receiver.id !== loaded.task.assigneePersonId && !(await listAssignable(loaded.team.id, loaded.work.projectId, tx)).some((person) => person.id === receiver.id)) throw new ActionError("person_not_assignable");
     // No package any more (a lead removed it meanwhile) and nothing to record: a plain move.
     if (!pkg && !receiver && noteIsEmpty(note)) {
       await updateWorkTaskIn(tx, taskId, { stateId: input.toStateId }, actor.personId, { handoff: "filled" });
@@ -315,16 +319,20 @@ export async function changeAccountManager(clientId: string, input: { toPersonId
     const moved: { id: string; name: string }[] = [];
     const skipped: { id: string; name: string }[] = [];
     let withheld = 0;
-    for (const row of rows) {
+    const runs = rows.filter((row) => canManageProject(viewer, projectFacts(row.project, row.team)));
+    withheld += rows.length - runs.length;
+    const membersOf = Map.groupBy(runs.length ? await tx.select().from(schema.workProjectMember).where(inArray(schema.workProjectMember.projectId, runs.map((row) => row.project.id))) : [], (member) => member.projectId);
+    for (const row of runs) {
       const project = { id: row.project.id, name: row.project.name };
-      if (!canManageProject(viewer, projectFacts(row.project, row.team))) {
-        withheld += 1;
-        continue;
-      }
-      const members = await tx.select().from(schema.workProjectMember).where(eq(schema.workProjectMember.projectId, project.id));
+      const members = membersOf.get(project.id) ?? [];
       const current = members.find((member) => member.personId === to.id);
       if (current?.role === "lead") {
         skipped.push(project);
+        continue;
+      }
+      // The role reads the project's fee (Q21): handing it to someone new takes `pjm:commercial` over the project too.
+      if (!canGiveProjectRole(viewer, projectFacts(row.project, row.team), (current?.role as ProjectRole | undefined) ?? null, "account_manager")) {
+        withheld += 1;
         continue;
       }
       // Whoever held the role stays in the project as a member: they may still work in it.

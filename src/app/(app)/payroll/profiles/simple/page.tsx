@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,8 +9,9 @@ import { listEntityOptions } from "@/modules/payroll/options";
 import { canSeeSimpleProfileReport } from "@/modules/payroll/policy";
 import { listSimpleProfileExposure } from "@/modules/payroll/profiles";
 import { SIMPLE_BASES } from "@/modules/payroll/enums";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Simple profile report" };
+export const generateMetadata = pageTitle("simpleProfileReport");
 
 // FR-PAY-08 / risk R11: who is paid "salary only", on what basis and for how long — the owner's
 // view of where statutory obligations may apply. Nobody is hidden from it.

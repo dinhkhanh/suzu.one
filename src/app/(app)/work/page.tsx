@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +8,9 @@ import { listPersonNames } from "@/modules/platform/people/service";
 import { canManageWorkspace, canViewTeam, listClients, listCreateTargets, listTeams, loadViewer, teamFacts, visibleProjects } from "@/modules/work/service";
 import { ProjectForm } from "@/modules/work/ui/project-forms";
 import { TeamForm } from "@/modules/work/ui/team-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Work" };
+export const generateMetadata = pageTitle("work");
 
 export default async function WorkPage() {
   const user = await requireUser();

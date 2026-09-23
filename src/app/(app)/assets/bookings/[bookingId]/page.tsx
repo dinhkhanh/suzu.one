@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,8 +5,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { canActOnBooking, canDecideBookings, findBooking } from "@/modules/assets/service";
 import { BookingStatusBadge, formatWindow } from "@/modules/assets/ui/booking-calendar";
 import { CancelBookingForm, DecideBookingForm, MoveBookingForm } from "@/modules/assets/ui/booking-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Đặt thiết bị" };
+export const generateMetadata = pageTitle("equipmentBooking");
 
 // One booking. Shared gear is common property, so anybody signed in may read a booking of it; what
 // they may *do* — confirm, call off, hand out, take back — is decided per person, here and again

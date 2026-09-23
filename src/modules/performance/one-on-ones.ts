@@ -55,10 +55,13 @@ function namedMeetings(executor: Executor) {
     .$dynamic();
 }
 
-/** Every meeting this person is a party to — as the manager, as the subject, or both. */
+/**
+ * Every meeting this person is a party to — as the manager, or as the subject **once the manager
+ * has shared it**. A draft is the manager's until then (`canReadOneOnOne`).
+ */
 export async function listOneOnOnes(personId: string, executor: Executor = db()): Promise<{ row: OneOnOneRow; managerName: string; personName: string; actionCount: number }[]> {
   const rows = await namedMeetings(executor)
-    .where(or(eq(schema.oneOnOne.managerPersonId, personId), eq(schema.oneOnOne.personId, personId)))
+    .where(or(eq(schema.oneOnOne.managerPersonId, personId), and(eq(schema.oneOnOne.personId, personId), eq(schema.oneOnOne.status, "shared"))))
     .orderBy(desc(schema.oneOnOne.meetingOn));
   return rows.map(({ row, managerName, personName, actionCount }) => ({ row, managerName: managerName ?? "—", personName: personName ?? "—", actionCount }));
 }
@@ -71,10 +74,19 @@ export async function createOneOnOne(input: OneOnOneInput, managerPersonId: stri
   return created;
 }
 
-export async function updateOneOnOne(meetingId: string, input: Omit<OneOnOneInput, "personId">, executor: Executor = db()): Promise<{ before: OneOnOneRow; after: OneOnOneRow }> {
+/**
+ * `privateNotes` left out (`undefined`) keeps the stored column exactly as it was: a writer who may
+ * not read the manager's private notes — HR — was never shown them, so their save must not wipe them.
+ */
+export async function updateOneOnOne(meetingId: string, input: Omit<OneOnOneInput, "personId" | "privateNotes"> & { privateNotes?: string | null }, executor: Executor = db()): Promise<{ before: OneOnOneRow; after: OneOnOneRow }> {
   const before = await findOneOnOne(meetingId, executor);
   if (!before) throw new ActionError("one_on_one_not_found");
-  const [after] = await executor.update(schema.oneOnOne).set({ ...input, updatedAt: new Date() }).where(eq(schema.oneOnOne.id, meetingId)).returning();
+  const { privateNotes, ...shared } = input;
+  const [after] = await executor
+    .update(schema.oneOnOne)
+    .set({ ...shared, ...(privateNotes === undefined ? {} : { privateNotes }), updatedAt: new Date() })
+    .where(eq(schema.oneOnOne.id, meetingId))
+    .returning();
   return { before, after };
 }
 

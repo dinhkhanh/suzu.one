@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -8,8 +7,9 @@ import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { canManageAnySpace, canManageSpace, countMyPendingAcks, type KbPageCard, kbViewerOf, listPopularPages, listRecentlyPublished, listRecentlyViewed, listSpaces } from "@/modules/kb/service";
 import { KbSearchBox } from "@/modules/kb/ui/search-box";
 import { NewSpaceForm } from "@/modules/kb/ui/space-forms";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Knowledge base" };
+export const generateMetadata = pageTitle("knowledgeBase");
 
 export default async function KnowledgeBasePage() {
   const user = await requireUser();

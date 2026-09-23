@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,8 +10,9 @@ import { canManageLeaveOf } from "@/modules/leave/policy";
 import { listLeaveRequestsOf } from "@/modules/leave/requests";
 import { AdjustBalanceForm } from "@/modules/leave/ui/admin-forms";
 import { requireUser } from "@/modules/platform/auth/session";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Leave ledger" };
+export const generateMetadata = pageTitle("leaveLedger");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -87,7 +87,7 @@ export default async function PersonLedgerPage(props: PageProps<"/leave/admin/ba
         <ul className="flex flex-col divide-y rounded-xl border empty:hidden">
           {requests.map((request) => (
             <li key={request.id} className="flex flex-wrap items-center gap-3 p-3 text-sm">
-              <span className="min-w-0 flex-1">
+              <span className="min-w-0 flex-1 basis-56">
                 {request.approvalRequestId ? (
                   <Link href={`/approvals/leave/${request.approvalRequestId}`} className="font-medium hover:underline">
                     {request.typeName}

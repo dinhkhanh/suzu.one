@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,8 +10,9 @@ import { OpsNav, OverviewFilters, overviewParams, overviewQuery } from "@/module
 import { StatusBadge } from "@/modules/ops/ui/status-badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
+import { pageTitle } from "@/i18n/page-title";
 
-export const metadata: Metadata = { title: "Compliance" };
+export const generateMetadata = pageTitle("compliance");
 
 // Obligations by due date (FR-OPS-02): open or closed, or — coming from a dashboard cell — one entity, month and status colour.
 export default async function OpsListPage({ searchParams }: PageProps<"/ops/list">) {
@@ -95,7 +95,7 @@ export default async function OpsListPage({ searchParams }: PageProps<"/ops/list
         <ul className="flex flex-col divide-y rounded-xl border">
           {items.map((item) => (
             <li key={item.taskId} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm">
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 basis-56">
                 <Link href={`/ops/obligations/${item.taskId}`} className="font-medium hover:underline">
                   {item.title}
                 </Link>
