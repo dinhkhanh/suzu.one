@@ -17,6 +17,7 @@ import { type CoverCandidates, type CoverItemType, type CoverSelection, coverOf,
 import { normalizeNote, type Note } from "./engine/handoff";
 import type { RecurrenceRule } from "./engine/recurrence";
 import { canViewProject, canViewTask, canViewTeamBacklog, type CoverPlanFacts, type WorkViewer } from "./policy";
+import { notePrivateProjectReads } from "./private-reads";
 import { projectFacts } from "./projects";
 import { loadTasks, logActivity, taskKey, updateWorkTaskIn, WORK_KIND } from "./tasks";
 import { teamFacts } from "./teams";
@@ -296,6 +297,12 @@ async function viewOf(plan: CoverPlanRow, viewer: WorkViewer): Promise<CoverPlan
   ]);
   const nameOf = (id: string | null) => (id ? (people.find((person) => person.id === id)?.name ?? null) : null);
   const defaultCoverName = nameOf(plan.defaultCoverPersonId);
+  // A plan names the tasks and recurrences of the projects this reader may open; where that is a
+  // private project they are none of the people of, the read is recorded (Q25).
+  await notePrivateProjectReads(viewer, [
+    ...[...loaded.values()].filter((task) => canViewTask(viewer, task.facts)).map((task) => task.facts.project),
+    ...recurrences.filter((row) => row.project && canViewProject(viewer, projectFacts(row.project, row.team))).map((row) => projectFacts(row.project!, row.team)),
+  ]);
   const order: CoverItemType[] = ["task", "review", "recurrence", "booking"];
   return {
     ...plan,
@@ -325,7 +332,9 @@ async function viewOf(plan: CoverPlanRow, viewer: WorkViewer): Promise<CoverPlan
 async function bookingLabels(plan: CoverPlanRow, bookingIds: string[], viewer: WorkViewer): Promise<{ id: string; label: string; detail: string }[]> {
   const { listProjectBookings, mondayOf } = await projectsService();
   const projects = await db().select({ project: schema.workProject, team: schema.workTeam }).from(schema.workProjectMember).innerJoin(schema.workProject, eq(schema.workProject.id, schema.workProjectMember.projectId)).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId)).where(eq(schema.workProjectMember.personId, plan.personId));
-  const readable = projects.filter(({ project, team }) => canViewProject(viewer, projectFacts(project, team))).map(({ project }) => project);
+  const open = projects.map(({ project, team }) => projectFacts(project, team)).filter((facts) => canViewProject(viewer, facts));
+  await notePrivateProjectReads(viewer, open);
+  const readable = projects.filter(({ project }) => open.some((facts) => facts.id === project.id)).map(({ project }) => project);
   const rows = (await Promise.all(readable.map(async (project) => (await listProjectBookings(project.id, mondayOf(plan.fromDate), plan.toDate)).map((booking) => ({ booking, project }))))).flat();
   return rows.filter(({ booking }) => bookingIds.includes(booking.id)).map(({ booking, project }) => ({ id: booking.id, label: project.name, detail: `${formatDay(booking.weekStart)} · ${Math.round(booking.minutes / 60)}h` }));
 }

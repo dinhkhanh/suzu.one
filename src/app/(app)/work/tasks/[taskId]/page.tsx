@@ -37,7 +37,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
   const { task, work, team, project } = detail;
   // A leader reading the work of a private project they are none of the people of leaves the same
   // trail here as on its board (Q25): a task opens from a link, a key or a notice, without the board.
-  await auditPrivateTaskRead(user, viewer, detail);
+  await auditPrivateTaskRead(viewer, detail);
   const t = await getTranslations("work");
   const canEdit = canEditTask(viewer, detail.facts);
 

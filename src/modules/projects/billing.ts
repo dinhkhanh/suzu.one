@@ -7,6 +7,10 @@
 // the database's unique indexes (one per milestone, per retainer month, per acceptance), so a job
 // that runs twice or two people pressing "done" at once still hand finance one item.
 //
+// On a **client's** project nothing automatic is made before the client has signed for it (D27):
+// the milestone and the month wait for their biên bản nghiệm thu, so a signature is the only door
+// to an invoice. Internal work, which has nobody to sign, bills on "done" and on the month's end.
+//
 // Amounts are `pjm:commercial`: finance's queue is theirs by definition; anywhere else the amount
 // is taken out for a reader without it (`shapeBillingItem`).
 import "server-only";
@@ -25,17 +29,18 @@ import { billingReach, canDecideBilling } from "./policy";
 type Executor = Tx | ReturnType<typeof db>;
 
 /**
- * Is a retainer month covered by a signed biên bản nghiệm thu — its own, or the project's as a
- * whole? What `closePeriod` asks before it bills a client's month (the owner's decision of
- * 2026-09-23, Q22). Lives here, with the other billing gates, so that the retainer and the
- * acceptance modules need not import one another.
+ * Is this piece of work covered by a signed biên bản nghiệm thu — its own, or the project's as a
+ * whole? What every path that bills a client asks first (the owner's decision of 2026-09-23, Q22 —
+ * D27): a retainer month before `closePeriod` bills it, a milestone before `billMilestone` hands
+ * finance an item. Lives here, with the other billing gates, so that the retainer, the structure
+ * and the acceptance modules need not import one another.
  */
-export async function acceptedForBilling(executor: Executor, projectId: string, retainerPeriodId: string): Promise<boolean> {
+export async function acceptedForBilling(executor: Executor, projectId: string, target: { retainerPeriodId?: string | null; milestoneId?: string | null }): Promise<boolean> {
   const rows = await executor
-    .select({ scope: schema.projectAcceptance.scope, retainerPeriodId: schema.projectAcceptance.retainerPeriodId })
+    .select({ scope: schema.projectAcceptance.scope, milestoneId: schema.projectAcceptance.milestoneId, retainerPeriodId: schema.projectAcceptance.retainerPeriodId })
     .from(schema.projectAcceptance)
     .where(and(eq(schema.projectAcceptance.projectId, projectId), eq(schema.projectAcceptance.status, "signed")));
-  return rows.some((row) => row.scope === "project" || row.retainerPeriodId === retainerPeriodId);
+  return rows.some((row) => row.scope === "project" || (!!target.retainerPeriodId && row.retainerPeriodId === target.retainerPeriodId) || (!!target.milestoneId && row.milestoneId === target.milestoneId));
 }
 export type BillingItemRow = typeof schema.projectBillingItem.$inferSelect;
 
@@ -125,15 +130,23 @@ async function wholeProjectBilled(tx: Tx, projectId: string): Promise<boolean> {
 }
 
 /**
- * A billing milestone marked done (or its acceptance signed) earns its item — once, whatever
- * happens to the milestone afterwards. Not when a whole-project acceptance has billed the fee
- * already: that item took what was left of the fee, this milestone's share included. null = no item.
+ * A billing milestone earns its item — once, whatever happens to the milestone afterwards. Not
+ * when a whole-project acceptance has billed the fee already: that item took what was left of the
+ * fee, this milestone's share included. null = no item.
+ *
+ * **On a client's project the signature is the door** (Q22 — D27): marking the milestone done
+ * hands finance nothing until a signed biên bản nghiệm thu covers that milestone or the whole
+ * project, which is why `awaitingAcceptance` lists it and `signAcceptance` calls this again the
+ * moment the paper comes back. Internal work — a project with no client — has nobody to sign and
+ * bills on "done" as it always did.
  */
 export async function billMilestone(tx: Tx, milestone: typeof schema.projectMilestone.$inferSelect, actorPersonId: string | null): Promise<{ item: BillingItemRow; created: boolean } | null> {
   if (!milestone.isBilling) return null;
   await lockFee(tx, milestone.projectId);
   const [existing] = await tx.select().from(schema.projectBillingItem).where(and(eq(schema.projectBillingItem.milestoneId, milestone.id), eq(schema.projectBillingItem.source, "milestone"))).limit(1);
   if (existing) return { item: existing, created: false };
+  const [project] = await tx.select({ clientId: schema.workProject.clientId }).from(schema.workProject).where(eq(schema.workProject.id, milestone.projectId)).limit(1);
+  if (project?.clientId && !(await acceptedForBilling(tx, milestone.projectId, { milestoneId: milestone.id }))) return null;
   if (await wholeProjectBilled(tx, milestone.projectId)) return null;
   return ensureBillingItem(tx, { projectId: milestone.projectId, source: "milestone", milestoneId: milestone.id, description: milestone.name, amountVnd: milestone.billingAmountVnd, createdByPersonId: actorPersonId });
 }

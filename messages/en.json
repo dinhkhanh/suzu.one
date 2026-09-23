@@ -3767,7 +3767,8 @@
       "preview_no_version": "There is no version to send to the client yet.",
       "preview_link_not_found": "That link no longer exists.",
       "preview_link_closed": "That link is no longer active.",
-      "preview_comment_required": "Say what needs changing."
+      "preview_comment_required": "Say what needs changing.",
+      "preview_version_not_ready": "This version has not cleared internal review, so it cannot go to the client yet."
     },
     "views": {
       "list": "List",
@@ -4928,7 +4929,7 @@
       "create": "Create the link",
       "cancel": "Cancel",
       "version": "Version to send",
-      "currentVersion": "Whichever is current",
+      "currentVersion": "Whichever is current when the link is made",
       "frozen": "client approved",
       "label": "Recipient",
       "labelPlaceholder": "e.g. Mai – Vinamilk",
@@ -10505,7 +10506,7 @@
     "messageFrom": "A note from {name}",
     "viewOnly": "This link is for viewing. Please send your comments to whoever shared it with you.",
     "expiresOn": "This link works until {date}.",
-    "privacy": "When you send an answer we keep the name you type, your choice, your comment and the time you sent it, as the record of what was agreed. We do not keep your IP address.",
+    "privacy": "Opening this page is recorded as a count and a time. When you send an answer we keep the name you type, your choice, your comment and the time you sent it, as the record of what was agreed. We do not keep your IP address: to stop automated abuse we keep a one-way fingerprint of your connection, which changes every day and is used for nothing else.",
     "decide": {
       "title": "Your answer",
       "choice": "Your choice",
@@ -10542,7 +10543,8 @@
       "preview_link_closed": "This link no longer takes an answer.",
       "preview_comment_required": "Please say what needs changing.",
       "deliverable_frozen": "This version has already been approved and takes no further answer.",
-      "client_decision_not_latest": "There is a newer version. Please ask for a new link."
+      "client_decision_not_latest": "There is a newer version. Please ask for a new link.",
+      "preview_version_changed": "The work has moved on to another version. Please reload this page and send your answer again."
     }
   }
 }

@@ -18,6 +18,7 @@ import { CATEGORY_STATUS, type DependencyType, type StateCategory } from "./enum
 import { notifyFollowers } from "./followers";
 import { projectsWithTeams, workDirectory } from "./directory";
 import { canViewProject, canViewTask, canViewTeamBacklog, type TaskFacts, type WorkViewer } from "./policy";
+import { notePrivateProjectRead, notePrivateProjectReads } from "./private-reads";
 import { projectFacts, type ProjectRow } from "./projects";
 import type { CustomFieldValue, TaskChecklistItem, TaskLink } from "./schema";
 import { entryState, listStates, teamFacts, type StateRow, type TeamRow } from "./teams";
@@ -747,7 +748,13 @@ export async function visibleTaskCondition(viewer: WorkViewer, executor?: Execut
   const directory = await workDirectory(executor);
   const projects = projectsWithTeams(directory);
   const teams = directory.teams;
-  const projectIds = projects.filter((row) => canViewProject(viewer, projectFacts(row.project, row.team))).map((row) => row.project.id);
+  const admitted = projects.map((row) => projectFacts(row.project, row.team)).filter((facts) => canViewProject(viewer, facts));
+  const projectIds = admitted.map((facts) => facts.id);
+  // Any private project this clause lets into a list is read by a leader who is none of its people:
+  // recorded here, once per request, so that search, the calendar, analytics and the exports are
+  // covered by the one place that decides what they may list (Q25). Not inside a transaction: a
+  // caller reading its own uncommitted rows is a write path, and a write leaves its own trail.
+  if (!executor) await notePrivateProjectReads(viewer, admitted);
   const teamIds = teams.filter((team) => canViewTeamBacklog(viewer, teamFacts(team))).map((team) => team.id);
   const self = viewer.principal.personId;
   const clauses: (SQL | undefined)[] = [
@@ -837,6 +844,10 @@ export type TaskDetail = LoadedTask & {
 export async function getTaskDetail(taskId: string, viewer: WorkViewer): Promise<TaskDetail | undefined> {
   const loaded = await loadTask(taskId);
   if (!loaded || !canViewTask(viewer, loaded.facts)) return undefined;
+  // Opening a task is where a private project's work itself is read — its title, its discussion,
+  // its versions — and a task opens from a link, a key or a notice without ever passing the
+  // project's board, so the trail is taken here rather than on the board alone (Q25).
+  if (loaded.facts.project) await notePrivateProjectRead(viewer, loaded.facts.project);
   const { task, work, team } = loaded;
   const personIds = [task.assigneePersonId, task.requesterPersonId, task.createdByPersonId, ...loaded.peopleIds].filter((id): id is string => !!id);
   const [people, [state], [client], labels, subtasks, dependencies, parent] = await Promise.all([

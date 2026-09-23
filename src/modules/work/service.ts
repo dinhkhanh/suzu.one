@@ -4,6 +4,7 @@ import "server-only";
 export * from "./enums";
 export { loadViewer, loadViewerWith, type ViewerSource } from "./viewer";
 export { canAdminTeam, canContributeToProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canViewProject, canViewTask, canViewTeam, canViewTeamBacklog, canDecideReview, canSubmitIntake, canManageTemplate, canNudgeTask, canSubmitDeliverable, readsPrivateByPortfolio, type WorkViewer } from "./policy";
+export { notePrivateProjectRead, notePrivateProjectReads } from "./private-reads";
 export { addableMembers, type ClientRow, entryState, findClient, findLabel, findState, findTeam, type LabelRow, listClients, listLabels, listStates, listTeamMembers, listTeams, type MemberChoice, type MemberView, type StateRow, teamFacts, type TeamRow, type TeamSummary } from "./teams";
 export { type CreateTargets, findProject, listAssignable, listAssignableByTeam, listCreateTargets, listProjectMembers, listProjectOptions, projectFacts, type ProjectMemberView, type ProjectRow, type ProjectSummary, visibleProjects } from "./projects";
 export { type ActivityView, createWorkTask, createWorkTaskIn, getTaskDetail, type LinkedTask, listActivity, listLinkableTasks, listProjectTasks, listTeamBacklog, listVisibleTaskIds, loadTask, type NewWorkTask, searchTasks, type TaskDetail, taskKey, type TaskListItem, type TaskSearchHit, visibleTaskCondition, WORK_KIND } from "./tasks";

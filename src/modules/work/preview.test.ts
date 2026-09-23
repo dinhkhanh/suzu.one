@@ -26,14 +26,15 @@ vi.mock("@/lib/action", () => ({
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
-import { PREVIEW_LIMITS } from "./engine/preview";
-import { createPreviewLink, decideOnPreviewLink, listPreviewLinks, openPreviewLink, purgePreviewHits, revokePreviewLink } from "./preview";
+import { PREVIEW_LIMITS, previewVisitorKey } from "./engine/preview";
+import { saveReviewChain } from "./chains";
+import { claimLink, createPreviewLink, decideOnPreviewLink, listPreviewLinks, openPreviewLink, purgePreviewHits, releaseClaim, revokePreviewLink } from "./preview";
 import { canManagePreviewLinks, canRevokePreviewLink } from "./preview-policy";
 import { createProject, setProjectMember } from "./projects";
-import { listDeliverables, submitDeliverable } from "./reviews";
+import { decideReview, decideStage, listDeliverables, submitDeliverable } from "./reviews";
 import { createWorkTask, loadTask } from "./tasks";
 import { createTeam, listStates, saveClient, setTeamMember } from "./teams";
 import { viewerOfPerson } from "./viewer";
@@ -56,8 +57,9 @@ async function taskWithVersion(title: string, projectId = ids.project) {
 const linkOn = async (taskId: string, over: Partial<Parameters<typeof createPreviewLink>[0]> = {}) =>
   createPreviewLink({ taskId, deliverableId: null, label: "Chị Mai – Vinamilk", message: "Chị xem giúp em bản dựng.", allowDecision: true, days: 14, ...over }, ids.an);
 
+/** Version 1 unless a test says otherwise: the page puts the version it showed in the form. */
 const decide = (token: string, over: Partial<Parameters<typeof decideOnPreviewLink>[0]> = {}, from = "client") =>
-  decideOnPreviewLink({ token, website: "", decision: "approved", decidedByName: "Chị Mai", comment: "", ...over }, visitor(from));
+  decideOnPreviewLink({ token, website: "", version: "1", decision: "approved", decidedByName: "Chị Mai", comment: "", ...over }, visitor(from));
 
 beforeAll(async () => {
   await migrateTestDb();
@@ -238,9 +240,111 @@ describe("the client's decision", () => {
     const { taskId } = await taskWithVersion("Bẫy máy");
     const { token } = await linkOn(taskId);
     // The honeypot answer is the success answer: a bot told it was caught tries again differently.
-    expect(await decideOnPreviewLink({ token, website: "https://buy-now.example", decision: "approved", decidedByName: "bot", comment: "" }, visitor("bot"))).toEqual({ ok: true, data: { recorded: true } });
+    expect(await decideOnPreviewLink({ token, website: "https://buy-now.example", version: "1", decision: "approved", decidedByName: "bot", comment: "" }, visitor("bot"))).toEqual({ ok: true, data: { recorded: true } });
     expect((await listDeliverables(taskId))[0].decisions).toHaveLength(0);
     expect((await listPreviewLinks(taskId))[0].state).toBe("active");
+  });
+});
+
+describe("the version a link is for (FR-PJM-51a)", () => {
+  it("is fixed when the link is made, so a later version never becomes what the client sees", async () => {
+    const { taskId } = await taskWithVersion("Chốt phiên bản lúc tạo link");
+    // The internal reviewer passes v1; the account manager then makes a link for "whichever is current".
+    await decideReview(taskId, "approved", null, actor("tam"));
+    const { link, token } = await linkOn(taskId);
+    expect(link.deliverableId).not.toBeNull();
+
+    // Work carries on and v2 is handed in days later. The client is still looking at what was sent.
+    await submitDeliverable(taskId, { kind: "link", url: "https://drive.google.com/v2", note: null }, actor("huy"));
+    const outcome = await openPreviewLink(token, visitor("pinned"));
+    expect(outcome.ok && outcome.page).toMatchObject({ version: 1, url: "https://drive.google.com/v1" });
+    expect((await listPreviewLinks(taskId))[0].version).toBe(1);
+  });
+
+  it("has to have cleared internal review: a version waiting at a chain's own stage cannot be sent", async () => {
+    const projectId = (await createProject({ teamId: ids.video, name: "KV mùa hè", description: null, clientId: ids.client, status: "active", visibility: "team", leadPersonId: ids.tam, startDate: null, dueDate: null }, ids.long)).id;
+    await setProjectMember(projectId, ids.an, "account_manager");
+    await saveReviewChain(
+      { teamId: ids.video, projectId },
+      null,
+      { name: "Nội bộ rồi tới khách", contentFormat: null, stages: [{ name: "Trưởng nhóm duyệt", reviewer: `person:${ids.tam}`, dueHours: null }, { name: "Khách duyệt", reviewer: "client", dueHours: null }], isActive: true },
+      ids.long,
+    );
+    const { taskId } = await taskWithVersion("Chưa qua duyệt nội bộ", projectId);
+
+    // The chain says a lead looks at it first, so there is nothing to hand the client yet.
+    await expect(linkOn(taskId)).rejects.toThrow("preview_version_not_ready");
+    await decideStage(taskId, { decision: "approved", comment: null, client: null }, actor("tam"));
+    const { token } = await linkOn(taskId);
+    expect((await openPreviewLink(token, visitor("chain"))).ok).toBe(true);
+  });
+
+  it("closes the link when the company takes the version back", async () => {
+    const { taskId, deliverableId } = await taskWithVersion("Rút lại bản dựng");
+    const { token } = await linkOn(taskId);
+    await db().update(schema.workDeliverable).set({ decision: "changes_requested" }).where(eq(schema.workDeliverable.id, deliverableId));
+    expect(await openPreviewLink(token, visitor("withdrawn"))).toEqual({ ok: false, reason: "closed" });
+    expect(await decide(token, {}, "withdrawn")).toMatchObject({ ok: false, message: "preview_link_closed" });
+  });
+
+  it("takes an answer only about the version the client was looking at", async () => {
+    const { taskId } = await taskWithVersion("Trả lời nhầm phiên bản");
+    const { token } = await linkOn(taskId);
+    // A tab open since before the work moved on posts the version it showed, and is told plainly.
+    expect(await decide(token, { version: "2" }, "stale")).toMatchObject({ ok: false, message: "preview_version_changed" });
+    // Refusing it does not spend the link: the client reloads and answers about what they now see.
+    expect((await listPreviewLinks(taskId))[0].state).toBe("active");
+    expect(await decide(token, { version: "1" }, "stale")).toEqual({ ok: true, data: { recorded: true } });
+  });
+});
+
+describe("the claim a decision takes on a link", () => {
+  it("is refused on a link that ran out while the request was reading", async () => {
+    const { taskId } = await taskWithVersion("Hết hạn giữa chừng");
+    const { link } = await linkOn(taskId);
+    await db().update(schema.workPreviewLink).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(schema.workPreviewLink.id, link.id));
+    expect(await claimLink(link.id, new Date())).toBe(false);
+  });
+
+  it("is given back only by the request that made it", async () => {
+    const { taskId } = await taskWithVersion("Chỉ nhả claim của mình");
+    const { link } = await linkOn(taskId);
+    const mine = new Date();
+    expect(await claimLink(link.id, mine)).toBe(true);
+    // The first request's release is still in flight when a second one's claim lands.
+    const theirs = new Date(mine.getTime() + 1000);
+    await db().update(schema.workPreviewLink).set({ decidedAt: theirs }).where(eq(schema.workPreviewLink.id, link.id));
+    await releaseClaim(link.id, mine);
+    const [row] = await db().select().from(schema.workPreviewLink).where(eq(schema.workPreviewLink.id, link.id));
+    expect(row.decidedAt).toEqual(theirs);
+  });
+});
+
+describe("what this page keeps about the client (PDPL, NFR-PRV-02)", () => {
+  it("writes nothing at all for a token that is not even the right shape", async () => {
+    const before = (await db().select().from(schema.workPreviewHit)).length;
+    expect(await openPreviewLink("not a token at all", visitor("junk"))).toEqual({ ok: false, reason: "closed" });
+    expect(await db().select().from(schema.workPreviewHit)).toHaveLength(before);
+  });
+
+  it("keys the counter and the audit row on a fingerprint that changes daily, and keeps no user agent", async () => {
+    const { taskId } = await taskWithVersion("Dấu vết một chiều");
+    const { token } = await linkOn(taskId);
+    const who = visitor("pdpl");
+    await openPreviewLink(token, who);
+    expect(await decideOnPreviewLink({ token, website: "", version: "1", decision: "approved", decidedByName: "Chị Mai", comment: "" }, who)).toEqual({ ok: true, data: { recorded: true } });
+
+    const today = previewVisitorKey(who.ipHash, new Date());
+    expect(today).not.toBe(who.ipHash);
+    // Tomorrow's key for the same connection is a different key: nothing kept here joins across days.
+    expect(previewVisitorKey(who.ipHash, new Date(Date.now() + 2 * 24 * 60 * 60 * 1000))).not.toBe(today);
+
+    const audit = await db().select().from(schema.auditLog).where(eq(schema.auditLog.action, "work.preview.decide")).orderBy(desc(schema.auditLog.id));
+    expect({ ipAddress: audit[0].ipAddress, userAgent: audit[0].userAgent }).toEqual({ ipAddress: today, userAgent: null });
+    // No decision ever recorded here carries the key the rest of the product keys a visitor on.
+    expect(audit.every((row) => row.ipAddress !== who.ipHash)).toBe(true);
+    // Neither the long-lived row nor the counter holds the key the rest of the product uses.
+    expect(await db().select().from(schema.workPreviewHit).where(eq(schema.workPreviewHit.keyHash, who.ipHash))).toHaveLength(0);
   });
 });
 
@@ -253,8 +357,9 @@ describe("abuse resistance", () => {
     }
     expect(answers[PREVIEW_LIMITS.view.max - 1]).toEqual({ ok: false, reason: "closed" });
     expect(answers[PREVIEW_LIMITS.view.max]).toEqual({ ok: false, reason: "rate_limited" });
-    // Unknown tokens cost one row per visitor, not one per token: the table cannot be filled by invention.
-    const rows = await db().select().from(schema.workPreviewHit).where(eq(schema.workPreviewHit.keyHash, walker.ipHash));
+    // Unknown tokens cost one row per visitor, not one per token: the table cannot be filled by
+    // invention. The row is keyed by the day's key, never by anything that outlives the day.
+    const rows = await db().select().from(schema.workPreviewHit).where(eq(schema.workPreviewHit.keyHash, previewVisitorKey(walker.ipHash, new Date())));
     expect(rows).toHaveLength(1);
     expect(await purgePreviewHits(new Date(Date.now() + 60_000))).toBeGreaterThan(0);
   });
@@ -292,5 +397,58 @@ describe("the public page", () => {
         expect(importPath, path).toBe("@/modules/work/service");
       }
     }
+  });
+
+  const pageSource = () => withoutComments(sources.find(({ path }) => path.endsWith(join("[token]", "page.tsx")))!.source);
+
+  it("says thank you to a returning submission before it looks at the link at all", () => {
+    const source = pageSource();
+    // A submission that was silently dropped and one that was recorded come back to the same page,
+    // so the honeypot cannot be told apart by the one visitor it is aimed at: the thank-you is not
+    // conditional on the link's state, and the link is not consulted to render it.
+    const sent = source.indexOf('query.sent === "1"');
+    expect(sent).toBeGreaterThan(-1);
+    expect(sent).toBeLessThan(source.indexOf("await openPreviewLink("));
+    expect(source).not.toContain("justSent");
+  });
+
+  it("puts the version the client is reading in the form", () => {
+    expect(pageSource()).toContain('name="version"');
+  });
+});
+
+describe("the endpoint the answer is posted to", () => {
+  const post = async (body: BodyInit | ReadableStream, headers: Record<string, string>, token = "abc") => {
+    const { POST } = await import("../../app/(preview)/preview/[token]/decide/route");
+    const request = new Request(`https://suzu.one/preview/${token}/decide`, { method: "POST", body, headers, duplex: "half" } as RequestInit);
+    return POST(request, { params: Promise.resolve({ token }) });
+  };
+  /** Shaped like a real one, issued by nobody. */
+  const STRANGER = "Zm9yZ2VkLXRva2VuLXRoYXQtaXMtbG9uZy1lbm91Z2g";
+  /** More than the cap, handed over in pieces — what a `content-length` never sees. */
+  const chunks = (count: number) =>
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (let index = 0; index < count; index++) controller.enqueue(new TextEncoder().encode("x".repeat(8 * 1024)));
+        controller.close();
+      },
+    });
+
+  it("refuses a body that is too big however it arrives", async () => {
+    // Declared honestly.
+    const big = "x".repeat(70 * 1024);
+    expect((await post(big, { "content-type": "application/x-www-form-urlencoded" })).headers.get("location")).toBe("/preview/abc?error=failed");
+    // Declared as nothing at all, and sent in chunks: the guard that reads the header alone is blind
+    // to this, so the bytes are counted as they arrive.
+    expect((await post(chunks(16), { "content-type": "application/x-www-form-urlencoded" })).headers.get("location")).toBe("/preview/abc?error=failed");
+    // Declared as small and sent large.
+    expect((await post(chunks(16), { "content-type": "application/x-www-form-urlencoded", "content-length": "10" })).headers.get("location")).toBe("/preview/abc?error=failed");
+  });
+
+  it("takes an ordinary form and hands it on", async () => {
+    const body = new URLSearchParams({ decision: "approved", decidedByName: "Chị Mai", version: "1", comment: "", website: "" }).toString();
+    const response = await post(body, { "content-type": "application/x-www-form-urlencoded", "content-length": String(body.length) }, STRANGER);
+    // The token is nobody's, so the answer is the closed page — but the body was read, not refused.
+    expect(response.headers.get("location")).toBe(`/preview/${STRANGER}?error=preview_link_closed`);
   });
 });

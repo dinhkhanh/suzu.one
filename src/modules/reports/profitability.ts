@@ -15,7 +15,8 @@
 //    Except to a reader who may open the project anyway — one of its people, or a `pjm:portfolio`
 //    holder over its team since the owner's decision of 2026-09-23 (Q25): a line they could read in
 //    full on the project's own pages is no secret in a report, so for them it is named like any
-//    other. The test of "may open" is the work policy's own `canViewProject`, nothing wider.
+//    other. Those two are named here one by one, and the portfolio reader's is recorded as a
+//    private read like every other reader path.
 //  - Every read is written to the audit log as a compensation-tier read (who, which period, how
 //    many projects) — the same trail an export of the payroll reports leaves. Screens ask for a
 //    fresh step-up first (`requireStepUp`), exports through `exportReportAction` (stepUp: true).
@@ -24,7 +25,7 @@ import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { listPositionHolders, listPositions } from "@/modules/core-hr/service";
 import { loadedCostRates } from "@/modules/payroll/service";
 import { recordAudit } from "@/modules/platform/audit/service";
-import { canViewProject, listTeams, loadViewer } from "@/modules/work/service";
+import { canViewProject, listTeams, loadViewer, notePrivateProjectReads, readsPrivateByPortfolio } from "@/modules/work/service";
 import { entityReach, type Principal } from "@/modules/platform/rbac/policy";
 import { type FeeBasis, type Margin, monthsBetween, OTHER_GROUP, profitability, type TimeLine } from "./engine/profitability";
 import { feesByProject, loggedMinutesByProjectPersonMonth, projectsOfEntities } from "./pjm-queries";
@@ -74,15 +75,24 @@ const monthMinus = (month: string, count: number) => {
 /** The client key private projects are summed under, so that no client line carries them. */
 const PRIVATE_GROUP = "private";
 
-export async function buildProfitability(reader: Pick<ProfitabilityReader, "person" | "principal">, filter: ProfitabilityFilter): Promise<ProfitabilityView | null> {
+export async function buildProfitability(reader: Pick<ProfitabilityReader, "person" | "principal"> & Partial<Pick<ProfitabilityReader, "userId" | "email" | "request">>, filter: ProfitabilityFilter): Promise<ProfitabilityView | null> {
   if (!canReadProfitability(reader.principal)) return null;
   const reach = entityReach(reader.principal, "pjm:cost");
-  const [rows, viewer] = await Promise.all([projectsOfEntities(reach), loadViewer({ person: { id: reader.person.id, primaryEntityId: reader.person.primaryEntityId }, principal: reader.principal })]);
+  const [rows, viewer] = await Promise.all([projectsOfEntities(reach), loadViewer({ person: { id: reader.person.id, primaryEntityId: reader.person.primaryEntityId }, principal: reader.principal, userId: reader.userId, email: reader.email, request: reader.request })]);
   const all = rows.filter((project) => canSeeProfitabilityOf(reader.principal, project));
   // A private project this reader could not open is summed without its name — nor its client: a
   // client whose only project is private would name the project in the filter and the per-client
-  // rollup. One they may open (its people; `pjm:portfolio` over its team) is named like any other.
-  const unnamed = (project: (typeof all)[number]) => project.visibility === "private" && !canViewProject(viewer, workFactsOf(project));
+  // rollup. Two readers see it named, and the report asks for each of them by name rather than for
+  // whatever `canViewProject` happens to allow: **its own people** (a project role, or a lead of
+  // the owning team) and the **one** reader D30 added, a `pjm:portfolio` holder over its team. That
+  // second reader is reading a private project they are none of the people of, so the report leaves
+  // the same trail the project's own pages leave (Q25).
+  const factsOf = new Map(all.map((project) => [project.id, workFactsOf(project)]));
+  const isOneOfItsPeople = (project: (typeof all)[number]) => viewer.projectRoles.has(project.id) || viewer.teamRoles.get(project.teamId) === "lead";
+  const byPortfolio = all.filter((project) => readsPrivateByPortfolio(viewer, factsOf.get(project.id)!));
+  const namedIds = new Set([...all.filter((project) => project.visibility !== "private" || isOneOfItsPeople(project)).map((project) => project.id), ...byPortfolio.map((project) => project.id)]);
+  await notePrivateProjectReads(viewer, byPortfolio.map((project) => factsOf.get(project.id)!));
+  const unnamed = (project: (typeof all)[number]) => !namedIds.has(project.id);
   const clientsOffered = [...new Map(all.flatMap((project) => (!unnamed(project) && project.clientId && project.clientName ? [[project.clientId, { id: project.clientId, name: project.clientName }] as const] : []))).values()].sort((a, b) => a.name.localeCompare(b.name, "vi"));
   const projects = filter.clientId ? all.filter((project) => project.clientId === filter.clientId && !unnamed(project)) : all;
   const period = { from: filter.from, to: filter.to };

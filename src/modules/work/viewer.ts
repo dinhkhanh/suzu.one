@@ -9,7 +9,9 @@ import type { ProjectRole, TeamRole } from "./enums";
 import type { WorkViewer } from "./policy";
 
 type Executor = Tx | ReturnType<typeof db>;
-export type ViewerSource = { person: { id: string; primaryEntityId: string | null }; principal: Principal };
+// The signed-in user (`CurrentUser`) satisfies this, so a page hands the whole user over and the
+// viewer carries who they are to the audit log (`WorkViewer.reader`) as well as what they may do.
+export type ViewerSource = { person: { id: string; primaryEntityId: string | null }; principal: Principal; userId?: string | null; email?: string | null; request?: { ipAddress?: string | null; userAgent?: string | null } };
 
 export async function loadViewerWith(executor: Executor, user: ViewerSource): Promise<WorkViewer> {
   const [teams, projects] = await Promise.all([
@@ -21,6 +23,7 @@ export async function loadViewerWith(executor: Executor, user: ViewerSource): Pr
     entityId: user.person.primaryEntityId,
     teamRoles: new Map(teams.map((row) => [row.id, row.role as TeamRole])),
     projectRoles: new Map(projects.map((row) => [row.id, row.role as ProjectRole])),
+    reader: { userId: user.userId ?? null, email: user.email ?? null, request: user.request },
   };
 }
 

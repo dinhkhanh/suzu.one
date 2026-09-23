@@ -5,7 +5,7 @@
 // Project roles grant rights on that project only. Fees are never part of "reading the plan": a
 // project lead who plans hours does not see what the client pays unless their role says so.
 import { can, entityReach, type Principal } from "../platform/rbac/policy";
-import { canActForClient, canContributeToProject, canManageProject, canViewProject, type ProjectFacts, type WorkViewer } from "../work/policy";
+import { canActForClient, canContributeToProject, canManageProject, canViewProject, type ProjectFacts, readsPrivateByPortfolio, type WorkViewer } from "../work/policy";
 
 /**
  * A project as the plan rules see it: the work module's facts, and whether it has been closed
@@ -171,9 +171,14 @@ export function canEditRaidItem(viewer: WorkViewer, project: PlanFacts, item: Ra
   return runsProject(viewer, project) || (!!me && (item.ownerPersonId === me || item.createdByPersonId === me));
 }
 
-/** Closing or reopening an item: the project's lead or a team lead, or the item's owner. */
+/**
+ * Closing or reopening an item: the project's lead or a team lead, or the item's owner. Not the
+ * reader D30 let into a private project: `pjm:portfolio` reads such a project and writes nothing
+ * in it, and naming them the owner of a risk does not change that — every other write in the
+ * project asks membership, and closing an item is a write like the rest.
+ */
 export function canCloseRaidItem(viewer: WorkViewer, project: PlanFacts, item: RaidItemFacts): boolean {
-  if (project.closed || !canViewProject(viewer, project)) return false;
+  if (project.closed || !canViewProject(viewer, project) || readsPrivateByPortfolio(viewer, project)) return false;
   const me = viewer.principal.personId;
   return runsProject(viewer, project) || (!!me && item.ownerPersonId === me);
 }

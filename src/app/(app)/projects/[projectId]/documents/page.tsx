@@ -16,7 +16,9 @@ export const metadata: Metadata = { title: "Project documents" };
  * The project's documents (FR-PJM-31): its space on the knowledge base — briefs, scripts, shot
  * lists, meeting notes — with every file uploaded to its pages in one list, and the project's
  * Drive folder. The space is open to the project's people; a reader of the project who is not one
- * of them (an entity-wide viewer, a portfolio reader) sees that it exists, not what is in it.
+ * of them — an entity-wide viewer, a team colleague — sees that it exists, not what is in it. The
+ * one exception is the reader D30 let into a **private** project, a `pjm:portfolio` holder over
+ * the owning team: on a private project they read its documents as they read its plan.
  */
 export default async function ProjectDocumentsPage({ params }: PageProps<"/projects/[projectId]/documents">) {
   const user = await requireUser();

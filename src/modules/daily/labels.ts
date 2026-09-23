@@ -5,7 +5,7 @@
 import "server-only";
 import { eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { canViewProject, canViewTask, loadTasks, projectFacts, taskKey, viewersOfPeople } from "@/modules/work/service";
+import { canViewProject, canViewTask, loadTasks, notePrivateProjectReads, projectFacts, taskKey, viewersOfPeople } from "@/modules/work/service";
 import type { Seen } from "./engine/redact";
 
 export type Named = { taskIds?: Iterable<string | null>; projectIds?: Iterable<string | null> };
@@ -38,6 +38,12 @@ export async function loadSeen(readerPersonId: string | null, named: Named, also
   if (!viewer) return { tasks, projects };
   for (const [taskId, task] of loaded) if (canViewTask(viewer, task.facts) || (task.work.projectId && alsoProjectIds.has(task.work.projectId))) tasks.set(taskId, { title: task.task.title, key: taskKey(task.team.key, task.work.number) });
   for (const row of projectRows) if (alsoProjectIds.has(row.project.id) || canViewProject(viewer, projectFacts(row.project, row.team))) projects.add(row.project.id);
+  // Naming a private project this reader is none of the people of leaves the same trail here as on
+  // the work screens (the owner's decision of 2026-09-23, Q25).
+  await notePrivateProjectReads(viewer, [
+    ...[...loaded.values()].filter((task) => tasks.has(task.task.id)).map((task) => task.facts.project),
+    ...projectRows.filter((row) => projects.has(row.project.id)).map((row) => projectFacts(row.project, row.team)),
+  ]);
   return { tasks, projects };
 }
 

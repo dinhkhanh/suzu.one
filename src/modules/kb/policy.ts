@@ -52,8 +52,8 @@ export type AccessRow = {
   subjectKey: string;
   level: AccessLevel;
   people?: readonly string[] | null;
-  /** A `project:<id>` row also carries the owning team's place, filled in by the loader (`projectPlaceSql`). */
-  project?: { entityId: string | null; departmentId: string | null } | null;
+  /** A `project:<id>` row also carries the project's visibility and the owning team's place, filled in by the loader (`projectPlaceSql`). */
+  project?: { entityId: string | null; departmentId: string | null; visibility?: string | null } | null;
 };
 export type SpaceFacts = {
   entityId: string | null;
@@ -78,14 +78,15 @@ const RANK: Record<KbLevel, number> = { view: 1, edit: 2, manage: 3 };
 export const atLeast = (level: KbLevel | null, wanted: KbLevel): boolean => !!level && RANK[level] >= RANK[wanted];
 
 /**
- * A `project:<id>` row also opens the space to a leader who may open the project itself without
- * being one of its people — `pjm:portfolio` over the owning team (FR-PJM-8, and the owner's
- * decision of 2026-09-23, Q25, which let them open a private project). Reading only: they never
- * reach `edit`, and `kb:manage` is untouched — a role still does not reach a project's space.
- * `access-sql.ts` (`portfolioProjectRow`) says the same thing in SQL.
+ * A **private** project's `project:<id>` row also opens the space to the one reader the owner's
+ * decision of 2026-09-23 (Q25 — D30) let into a private project without being one of its people:
+ * a `pjm:portfolio` holder over the owning team (FR-PJM-8). No further: the decision was about
+ * private projects, and a project space has always been its people's alone whatever the project's
+ * visibility. Reading only — they never reach `edit`, and `kb:manage` is untouched, a role still
+ * does not reach a project's space. `access-sql.ts` (`portfolioProjectRow`) says this in SQL.
  */
 const opensByPortfolio = (viewer: KbViewer, rows: readonly AccessRow[]): boolean =>
-  rows.some((row) => !!row.project && can(viewer.principal, "pjm:portfolio", { entityId: row.project.entityId, unitPath: row.project.departmentId ? [row.project.departmentId] : [] }));
+  rows.some((row) => !!row.project && row.project.visibility === "private" && can(viewer.principal, "pjm:portfolio", { entityId: row.project.entityId, unitPath: row.project.departmentId ? [row.project.departmentId] : [] }));
 
 function matched(viewer: KbViewer, rows: readonly AccessRow[]): AccessLevel | null {
   const own = rows.filter((row) => viewer.keys.includes(row.subjectKey) || (!!row.people && row.people.includes(viewer.personId)));

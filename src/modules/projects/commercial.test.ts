@@ -25,7 +25,7 @@ import type { Principal } from "../platform/rbac/policy";
 import { createProject } from "../work/projects";
 import { createTeam, listStates, setTeamMember } from "../work/teams";
 import { updateWorkTask } from "../work/tasks";
-import { acceptanceDocument, createAcceptance, findAcceptance, sendAcceptance, signAcceptance, voidAcceptance } from "./acceptance";
+import { acceptanceDocument, awaitingAcceptance, createAcceptance, findAcceptance, sendAcceptance, signAcceptance, voidAcceptance } from "./acceptance";
 import { billingItemForAcceptance, decideBillingItem, listBillingQueue, listProjectBilling } from "./billing";
 import { decideChange, getChangeLedger, listChanges, openChangesForApprover, saveChange, submitChange } from "./change-requests";
 import { clientReportFigures, saveClientReport } from "./client-reports";
@@ -316,13 +316,22 @@ describe("acceptance and billing (FR-PJM-55, 56)", () => {
     expect(await billingItemForAcceptance(principalOf(ids.tam, []), item.acceptanceId!)).toBeNull();
   });
 
-  it("bills a billing milestone once, however often it is marked done", async () => {
+  it("bills a billing milestone once the client has signed for it, and once only, however often it is marked done", async () => {
     const milestone = (await saveMilestone(ids.tvc, null, { name: "Tạm ứng 30%", dueDate: null, phaseId: null, ownerPersonId: null, isClientFacing: false, isBilling: true, billingAmountVnd: 30_000_000, sortOrder: 2 })).after;
+    const line = (await saveDeliverable(ids.tvc, null, { title: "Teaser 15s", quantity: 1, format: null, channel: null, dueDate: null, milestoneId: milestone.id, sortOrder: 2 })).after;
     const before = (await noticesOf(ids.ke, "projects.billing_ready")).length;
-    const first = await setMilestoneDone(milestone.id, true, ids.tam);
+    // D27: this is a client's project, so "done" alone hands finance nothing — even though nobody
+    // marked the milestone client-facing, it is the client who is billed for it.
+    expect((await setMilestoneDone(milestone.id, true, ids.tam)).billingItemId).toBeNull();
+    expect(await db().select().from(schema.projectBillingItem).where(eq(schema.projectBillingItem.milestoneId, milestone.id))).toHaveLength(0);
+    expect((await awaitingAcceptance(ids.tvc))!.map((row) => row.milestoneId)).toContain(milestone.id);
+
+    const acceptance = await createAcceptance(ids.tvc, { scope: "milestone", milestoneId: milestone.id, retainerPeriodId: null }, ids.lan);
+    expect(acceptance.items.map((item) => item.deliverableId)).toEqual([line.id]);
+    const signed = await signAcceptance(acceptance.id, { signedFileId: await scanFor(acceptance.id), signedOn: "2026-09-20", signedByClient: "Khách" }, ids.lan);
+    expect(signed.billingItemId).not.toBeNull();
     await setMilestoneDone(milestone.id, false, ids.tam);
     const again = await setMilestoneDone(milestone.id, true, ids.tam);
-    expect(first.billingItemId).not.toBeNull();
     expect(again.billingItemId).toBeNull();
     expect(await db().select().from(schema.projectBillingItem).where(eq(schema.projectBillingItem.milestoneId, milestone.id))).toHaveLength(1);
     expect((await noticesOf(ids.ke, "projects.billing_ready")).length).toBe(before + 1);

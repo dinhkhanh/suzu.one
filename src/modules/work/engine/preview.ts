@@ -16,6 +16,7 @@
 //     everything but "active" into one sentence. A page that said *why* would be a machine for
 //     probing tokens.
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { isClientStage } from "./delivery";
 
 /** 256 bits. It is the only thing standing between the internet and one client's work. */
 export const newPreviewToken = (): string => randomBytes(32).toString("base64url");
@@ -125,6 +126,44 @@ export const PREVIEW_HIT_RETENTION_DAYS = 7;
 
 /** The verdict, given the count the database returned **after** counting this one. */
 export const withinLimit = (hitsIncludingThisOne: number, limit: PreviewLimit): boolean => hitsIncludingThisOne <= limit.max;
+
+/**
+ * How long the key a visitor is counted under stays the same. The public pipeline's `ipHash` is
+ * HMAC of the address under the application secret and never changes, so a row keeping it could be
+ * joined to any other row keeping it, years apart — which is what makes a keyed hash of an address
+ * pseudonymous rather than anonymous (PDPL, NFR-PRV-02). This surface re-keys it once a day, so
+ * yesterday's counted request and today's cannot be told to be the same connection, and the
+ * fingerprint on a decision the audit log keeps for years stops meaning anything the next morning.
+ */
+export const PREVIEW_VISITOR_KEY_SECONDS = 24 * 60 * 60;
+
+/** The daily, one-way key this surface counts and audits a visitor under. Never an address. */
+export function previewVisitorKey(ipHash: string, at: Date): string {
+  const period = windowStartFor(at, PREVIEW_VISITOR_KEY_SECONDS).getTime();
+  return createHash("sha256").update(`preview:${period}:${ipHash}`).digest("hex").slice(0, 16);
+}
+
+// ── What a client may be shown ──────────────────────────────────────────────────────────────
+
+/**
+ * Whether the company has finished with a version internally, so a client may look at it and say
+ * something about it (FR-PJM-51a: a link is *to one deliverable version*).
+ *
+ * `stage` is the chain stage the version waits at, or null when no chain applies:
+ *
+ *   · **Approved** — the internal review passed, or the client already approved it. Always shown.
+ *   · **Changes required, or superseded** — the company itself sent it back. Never shown: the
+ *     client would be reviewing work we have already rejected.
+ *   · **Pending with no chain** — the single-step review, where the account manager handing the
+ *     link out *is* the company's decision to show it. Shown.
+ *   · **Pending inside a chain** — the chain is an explicit statement that named internal stages
+ *     come first (FR-PJM-50), so only the client's own stage may be shown.
+ */
+export function clientMayReview(deliverable: { decision: string }, stage: { reviewer: string } | null): boolean {
+  if (deliverable.decision === "approved") return true;
+  if (deliverable.decision !== "pending") return false;
+  return stage === null || isClientStage(stage);
+}
 
 // ── What the client may say ─────────────────────────────────────────────────────────────────
 

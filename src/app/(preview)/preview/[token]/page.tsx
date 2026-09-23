@@ -39,17 +39,28 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
   const query = await searchParams;
   const t = await getTranslations("preview");
   const format = await getFormatter();
+
+  // A submission coming back. The thank-you is shown for `sent=1` **whatever the link's state**,
+  // and without opening it: a client whose answer was recorded and a machine whose submission was
+  // silently dropped must see the same page, or the honeypot announces itself to the one visitor
+  // it is meant for. It can be typed by anybody, and says nothing about any link.
+  if (query.sent === "1") {
+    return (
+      <div className="flex flex-col gap-3">
+        <h1 className="text-xl font-semibold">{t("thanks.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("thanks.body")}</p>
+      </div>
+    );
+  }
+
   const outcome = await openPreviewLink(token, visitorOf({ headers: new Headers(await headers()) }));
 
   if (!outcome.ok) {
-    // One page, one sentence, never why. `sent` is the client's own submission coming back: they
-    // are told their answer arrived, and nothing else — it can be typed by anybody and says
-    // nothing about the link, which is exactly the point.
-    const justSent = outcome.reason === "closed" && query.sent === "1";
+    // One page, one sentence, never why.
     return (
       <div className="flex flex-col gap-3">
-        <h1 className="text-xl font-semibold">{justSent ? t("thanks.title") : t("closed.title")}</h1>
-        <p className="text-sm text-muted-foreground">{justSent ? t("thanks.body") : outcome.reason === "rate_limited" ? t("closed.busy") : t("closed.body")}</p>
+        <h1 className="text-xl font-semibold">{t("closed.title")}</h1>
+        <p className="text-sm text-muted-foreground">{outcome.reason === "rate_limited" ? t("closed.busy") : t("closed.body")}</p>
       </div>
     );
   }
@@ -104,6 +115,9 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
               <label htmlFor="website">Website</label>
               <input id="website" type="text" name="website" tabIndex={-1} autoComplete="off" />
             </div>
+            {/* The version being answered, so the answer is recorded against the work the client
+                actually read — a tab left open while the work moved on is refused, not honoured. */}
+            <input type="hidden" name="version" value={page.version} />
 
             <fieldset className="flex flex-col gap-2">
               <legend className="mb-2 text-sm font-medium">{t("decide.choice")}</legend>

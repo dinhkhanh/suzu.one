@@ -3767,7 +3767,8 @@
       "preview_no_version": "Chưa có phiên bản nào để gửi khách.",
       "preview_link_not_found": "Không tìm thấy đường dẫn này.",
       "preview_link_closed": "Đường dẫn này không còn hiệu lực.",
-      "preview_comment_required": "Cần ghi rõ điểm cần chỉnh sửa."
+      "preview_comment_required": "Cần ghi rõ điểm cần chỉnh sửa.",
+      "preview_version_not_ready": "Phiên bản này chưa xong khâu duyệt nội bộ nên chưa gửi cho khách được."
     },
     "views": {
       "list": "Danh sách",
@@ -4928,7 +4929,7 @@
       "create": "Tạo đường dẫn",
       "cancel": "Hủy",
       "version": "Phiên bản gửi khách",
-      "currentVersion": "Phiên bản mới nhất",
+      "currentVersion": "Phiên bản mới nhất lúc tạo",
       "frozen": "khách đã duyệt",
       "label": "Người nhận",
       "labelPlaceholder": "Ví dụ: Chị Mai – Vinamilk",
@@ -10505,7 +10506,7 @@
     "messageFrom": "Lời nhắn từ {name}",
     "viewOnly": "Đường dẫn này chỉ để xem. Anh/chị phản hồi trực tiếp với người gửi giúp em.",
     "expiresOn": "Đường dẫn có hiệu lực đến hết ngày {date}.",
-    "privacy": "Khi anh/chị gửi phản hồi, chúng tôi lưu tên anh/chị tự điền, lựa chọn và ý kiến kèm thời điểm gửi để làm căn cứ nghiệm thu. Chúng tôi không lưu địa chỉ IP.",
+    "privacy": "Khi anh/chị mở trang này, chúng tôi ghi nhận số lượt mở và thời điểm mở. Khi anh/chị gửi phản hồi, chúng tôi lưu tên anh/chị tự điền, lựa chọn và ý kiến kèm thời điểm gửi để làm căn cứ nghiệm thu. Chúng tôi không lưu địa chỉ IP: để chặn truy cập tự động, hệ thống chỉ giữ một mã một chiều của kết nối, mã này đổi mỗi ngày và không dùng vào việc gì khác.",
     "decide": {
       "title": "Phản hồi của anh/chị",
       "choice": "Anh/chị chọn",
@@ -10542,7 +10543,8 @@
       "preview_link_closed": "Đường dẫn này không còn nhận phản hồi.",
       "preview_comment_required": "Vui lòng ghi rõ điểm cần chỉnh sửa.",
       "deliverable_frozen": "Phiên bản này đã được duyệt nên không nhận thêm phản hồi.",
-      "client_decision_not_latest": "Đã có phiên bản mới hơn. Vui lòng liên hệ người gửi để nhận đường dẫn mới."
+      "client_decision_not_latest": "Đã có phiên bản mới hơn. Vui lòng liên hệ người gửi để nhận đường dẫn mới.",
+      "preview_version_changed": "Nội dung đã sang phiên bản khác. Vui lòng tải lại trang rồi gửi phản hồi lại."
     }
   }
 }

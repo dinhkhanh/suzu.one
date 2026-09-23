@@ -16,7 +16,8 @@ import { createTask, setTaskStatus } from "../platform/tasks-engine/service";
 import { invalidateWorkDirectory } from "./directory";
 import { HANDOVER_EVENT_TYPES, isReassignable, type OwnedItem, type OwnershipKind, ownershipSummary, reassignProblem } from "./engine/exit";
 import { normalizeNote, type Note, noteIsEmpty } from "./engine/handoff";
-import { canAdminTeam, canChangeAccountManager, canManageProject, canModerateTask, canViewProject, canViewTask, canViewTeamBacklog, type ExitHandoverFacts, type WorkViewer } from "./policy";
+import { canAdminTeam, canChangeAccountManager, canManageProject, canModerateTask, canViewProject, canViewTask, canViewTeamBacklog, type ExitHandoverFacts, type ProjectFacts, type WorkViewer } from "./policy";
+import { notePrivateProjectReads } from "./private-reads";
 import { projectFacts } from "./projects";
 import { loadTasks, taskKey, updateWorkTaskIn, WORK_KIND } from "./tasks";
 import { invalidateWorkClients, teamFacts } from "./teams";
@@ -145,7 +146,12 @@ const CLOSED_GATE: ItemGate = { visible: false, manage: false, ownerName: null, 
 /** The item as the runner may see it: `label` null where they may not read its name. */
 export type OwnedItemView = Omit<OwnedItem, "label"> & { label: string | null; canReassign: boolean; ownerName: string | null };
 
-export async function gateOwnership(executor: Executor, viewer: WorkViewer, items: readonly OwnedItem[], options: { leaverId: string }): Promise<Map<string, ItemGate>> {
+export async function gateOwnership(
+  executor: Executor,
+  viewer: WorkViewer,
+  items: readonly OwnedItem[],
+  options: { leaverId: string; /** A read path (the handover page): private projects it names are recorded (Q25). A reassignment does not record — it leaves its own trail. */ record?: boolean },
+): Promise<Map<string, ItemGate>> {
   const idsOf = (...kinds: OwnershipKind[]) => items.filter((item) => kinds.includes(item.kind)).map((item) => item.id);
   const taskIds = idsOf("task", "review");
   const projectIds = idsOf("project_lead", "account_manager");
@@ -188,22 +194,31 @@ export async function gateOwnership(executor: Executor, viewer: WorkViewer, item
   const leadNames = new Map((leadIds.length ? await executor.select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, leadIds)) : []).map((row) => [row.id, row.name]));
 
   const gates = new Map<string, ItemGate>();
+  // Private projects this runner reads here without being one of their people (Q25), recorded once
+  // the gates are built — a handover names a private project's tasks, its lead and its bookings.
+  const read: (ProjectFacts | null)[] = [];
   for (const item of items) {
     const key = gateKey(item);
     if (item.kind === "task" || item.kind === "review") {
       const task = tasks.get(item.id);
       if (!task) continue;
-      gates.set(key, { visible: canViewTask(viewer, task.facts), manage: canModerateTask(viewer, task.facts), ownerName: leadNames.get(task.project?.leadPersonId ?? "") ?? null, eligible: peopleOf(task.team.id, task.work.projectId) });
+      const visible = canViewTask(viewer, task.facts);
+      if (visible) read.push(task.facts.project);
+      gates.set(key, { visible, manage: canModerateTask(viewer, task.facts), ownerName: leadNames.get(task.project?.leadPersonId ?? "") ?? null, eligible: peopleOf(task.team.id, task.work.projectId) });
     } else if (item.kind === "project_lead" || item.kind === "account_manager") {
       const row = projects.find((entry) => entry.project.id === item.id);
       if (!row) continue;
       const facts = projectFacts(row.project, row.team);
-      gates.set(key, { visible: canViewProject(viewer, facts), manage: canManageProject(viewer, facts), ownerName: leadNames.get(row.project.leadPersonId ?? "") ?? null, eligible: peopleOf(row.team.id, row.project.id) });
+      const visible = canViewProject(viewer, facts);
+      if (visible) read.push(facts);
+      gates.set(key, { visible, manage: canManageProject(viewer, facts), ownerName: leadNames.get(row.project.leadPersonId ?? "") ?? null, eligible: peopleOf(row.team.id, row.project.id) });
     } else if (item.kind === "recurrence") {
       const row = recurrences.find((entry) => entry.id === item.id);
       if (!row) continue;
       const facts = row.project ? projectFacts(row.project, row.team) : null;
-      gates.set(key, { visible: facts ? canViewProject(viewer, facts) : canViewTeamBacklog(viewer, teamFacts(row.team)), manage: facts ? canManageProject(viewer, facts) : canAdminTeam(viewer, teamFacts(row.team)), ownerName: leadNames.get(row.project?.leadPersonId ?? "") ?? null, eligible: peopleOf(row.team.id, row.project?.id ?? null) });
+      const visible = facts ? canViewProject(viewer, facts) : canViewTeamBacklog(viewer, teamFacts(row.team));
+      if (visible) read.push(facts);
+      gates.set(key, { visible, manage: facts ? canManageProject(viewer, facts) : canAdminTeam(viewer, teamFacts(row.team)), ownerName: leadNames.get(row.project?.leadPersonId ?? "") ?? null, eligible: peopleOf(row.team.id, row.project?.id ?? null) });
     } else if (item.kind === "intake_form" || item.kind === "automation" || item.kind === "team_lead") {
       const team = item.kind === "intake_form" ? forms.find((entry) => entry.id === item.id)?.team : item.kind === "automation" ? automations.find((entry) => entry.id === item.id)?.team : ledTeams.find((entry) => entry.id === item.id);
       const projectId = item.kind === "automation" ? (automations.find((entry) => entry.id === item.id)?.projectId ?? null) : null;
@@ -216,6 +231,7 @@ export async function gateOwnership(executor: Executor, viewer: WorkViewer, item
       gates.set(key, { visible: true, manage: canChangeAccountManager(viewer, client), ownerName: null, eligible: null });
     }
   }
+  if (options.record) await notePrivateProjectReads(viewer, read);
   return gates;
 }
 
@@ -313,7 +329,7 @@ export async function getExitHandover(handoverId: string, viewer: WorkViewer): P
     db().select({ name: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, handover.personId)).limit(1),
     handover.taskId ? db().select({ id: schema.task.id, status: schema.task.status, assigneeName: assignee.fullName }).from(schema.task).leftJoin(assignee, eq(assignee.id, schema.task.assigneePersonId)).where(eq(schema.task.id, handover.taskId)).limit(1) : [],
   ]);
-  const gates = await gateOwnership(db(), viewer, owned, { leaverId: handover.personId });
+  const gates = await gateOwnership(db(), viewer, owned, { leaverId: handover.personId, record: true });
   const shown = owned.map((item): OwnedItemView => {
     // A time week is the person's own and is never reassigned: it has no gate and no name to hide.
     const gate = item.kind === "time_week" ? { visible: true, manage: false, ownerName: null } : (gates.get(gateKey(item)) ?? CLOSED_GATE);

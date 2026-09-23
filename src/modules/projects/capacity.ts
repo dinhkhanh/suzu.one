@@ -16,7 +16,7 @@ import { loadReportReader } from "@/modules/daily/service";
 import { getLeaveOnDays } from "@/modules/leave/service";
 import { loadDirectory } from "@/modules/performance/service";
 import type { CurrentUser } from "../platform/auth/session";
-import { canViewProject, loadViewer, projectFacts, type WorkViewer } from "../work/service";
+import { canViewProject, loadViewer, notePrivateProjectReads, projectFacts, type WorkViewer } from "../work/service";
 import { type BookingStatus, capacity, type CapacityRow, type PlannedDay, type Week, weeksFrom } from "./engine/capacity";
 import { type CapacityReader, type CapacitySubject, canOpenCapacity, canSeeCapacityOf } from "./policy";
 
@@ -126,11 +126,17 @@ export async function getCapacity(user: Pick<CurrentUser, "person" | "principal"
   const { rows, bookingRows, calendars } = await computeCapacity(people, weeks);
 
   const bookings = new Map<string, CellBooking[]>();
+  // A private project named in a cell is read by a leader who is none of its people: recorded once
+  // for the grid, however many cells it fills (Q25).
+  const read = new Map<string, ReturnType<typeof projectFacts>>();
   for (const { booking, project, team } of bookingRows) {
-    const readable = canViewProject(viewer, projectFacts(project, team));
+    const facts = projectFacts(project, team);
+    const readable = canViewProject(viewer, facts);
+    if (readable) read.set(project.id, facts);
     const key = `${booking.personId}:${booking.weekStart}`;
     bookings.set(key, [...(bookings.get(key) ?? []), { projectId: readable ? project.id : null, projectName: readable ? project.name : null, weekStart: booking.weekStart, minutes: booking.minutes, status: booking.status as BookingStatus }]);
   }
+  await notePrivateProjectReads(viewer, read.values());
   const free = filters.freeMinutes ?? null;
   const shown = free === null ? rows : rows.filter((row) => row.cells.some((cell) => cell.freeMinutes >= free));
   const named = new Map(calendars.flatMap(([, days]) => days.map((day) => [day.date, day.name] as const)));
@@ -147,13 +153,17 @@ async function listOpenPlaceholders(viewer: WorkViewer, range: { from: IsoDate; 
     .where(and(isNull(schema.projectBooking.personId), between(schema.projectBooking.weekStart, range.from, range.to)))
     .orderBy(asc(schema.workProject.name), asc(schema.projectBooking.placeholderRole), asc(schema.projectBooking.weekStart));
   const result = new Map<string, OpenPlaceholder>();
+  const read = new Map<string, ReturnType<typeof projectFacts>>();
   for (const { booking, project, team } of rows) {
-    if (!booking.placeholderRole || !canViewProject(viewer, projectFacts(project, team))) continue;
+    const facts = projectFacts(project, team);
+    if (!booking.placeholderRole || !canViewProject(viewer, facts)) continue;
+    read.set(project.id, facts);
     const key = `${project.id}:${booking.placeholderRole}`;
     const entry = result.get(key) ?? { projectId: project.id, projectName: project.name, placeholderRole: booking.placeholderRole, weeks: [] };
     entry.weeks.push({ weekStart: booking.weekStart, minutes: booking.minutes, status: booking.status as BookingStatus });
     result.set(key, entry);
   }
+  await notePrivateProjectReads(viewer, read.values());
   return [...result.values()];
 }
 

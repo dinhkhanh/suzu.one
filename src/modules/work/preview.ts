@@ -23,11 +23,17 @@ import "server-only";
 //     for probing tokens.
 //   · **No internal identifier crosses the boundary.** `PreviewPage` below has no uuid in it at
 //     all, so a page cannot print one by accident, and a private project keeps its name.
-//   · **No address is kept, in any form.** A view is a count and a timestamp; the rate limiter keys
-//     on the hashed visitor the public pipeline already computes (PDPL, NFR-PRV-02).
+//   · **No address is kept, and what stands in for one stops meaning anything by the next day.** A
+//     view is a count and a timestamp; the rate limiter and the audit row key on the hashed
+//     visitor the public pipeline computes, re-keyed daily by `previewVisitorKey` so nothing kept
+//     here can be joined across days to anything else (PDPL, NFR-PRV-02). The page says so.
+//   · **The client only ever sees a version the company has finished with.** The link is made for
+//     one version (FR-PJM-51a) and pinned to it there and then, and `clientMayReview` is asked
+//     again on every open: work sent back internally, or still waiting at an internal stage of a
+//     review chain, is not something a client may look at or approve.
 //   · **The mutation is a `createPublicAction`**, so parse → rate limit → spam check → run → audit
 //     cannot be skipped, and no refusal reaches the caller as anything but a message key.
-import { and, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, isNull, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
@@ -36,7 +42,9 @@ import { todayInVietnam } from "@/lib/dates";
 import { createPublicAction, type RateLimitOutcome, type Visitor } from "@/lib/public-action";
 import { createDownloadLink, findFile } from "@/modules/platform/files/service";
 import {
+  clientMayReview,
   hashPreviewToken,
+  isPreviewTokenShaped,
   linkIsOpen,
   linkState,
   newPreviewToken,
@@ -48,13 +56,14 @@ import {
   previewCommentRequired,
   previewExpiresAt,
   previewTokenMatches,
+  previewVisitorKey,
   type PreviewState,
   retryAfterSeconds,
   windowStartFor,
   withinLimit,
 } from "./engine/preview";
 import { notify } from "../platform/notifications/service";
-import { clientOfTask, findDeliverable, recordClientDecision } from "./reviews";
+import { clientOfTask, currentStage, findDeliverable, recordClientDecision } from "./reviews";
 import { type LoadedTask, loadTask, taskKey } from "./tasks";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -91,9 +100,29 @@ export async function countPreviewHit(bucket: PreviewBucket, keyHash: string, at
 
 /** Counted windows nobody can still be inside. Swept nightly; see `workPreviewSweepJob`. */
 export async function purgePreviewHits(before: Date): Promise<number> {
-  const rows = await db().delete(schema.workPreviewHit).where(lt(schema.workPreviewHit.windowStart, before)).returning({ id: schema.workPreviewHit.id });
-  return rows.length;
+  // How many went is a number the job logs, and the database already counts them: reading the rows
+  // back to count them in JS would be carrying a week of somebody's counted requests into memory.
+  const result = await db().delete(schema.workPreviewHit).where(lt(schema.workPreviewHit.windowStart, before));
+  return rowsAffected(result);
 }
+
+/**
+ * How many rows a write touched, whichever driver ran it: postgres-js answers with `count`, the
+ * PGlite the service tests run on with `rowCount`. Nothing else in the module needs this, so it
+ * stays here rather than growing into `@/lib/db`.
+ */
+const rowsAffected = (result: unknown): number => {
+  const value = result as { count?: number; rowCount?: number } | undefined;
+  return value?.count ?? value?.rowCount ?? 0;
+};
+
+/**
+ * The key this surface counts and audits a visitor under: the public pipeline's hashed address,
+ * re-keyed for the day (PDPL, NFR-PRV-02). The user agent is dropped with it — an audit row kept
+ * for years has no business holding a description of a client's phone. What remains is enough to
+ * stop one connection hammering the page for an hour, and nothing else.
+ */
+const previewVisitor = (visitor: Visitor, at: Date): Visitor => ({ ipHash: previewVisitorKey(visitor.ipHash, at), userAgent: null });
 
 // ── Finding a link ──────────────────────────────────────────────────────────────────────────
 
@@ -120,7 +149,7 @@ export async function findPreviewLink(linkId: string): Promise<{ link: PreviewLi
 
 export type NewPreviewLink = {
   taskId: string;
-  /** null = whichever version is current when the client opens it. */
+  /** null = the newest version at the moment the link is made, which is then what it is made for. */
   deliverableId: string | null;
   label: string | null;
   message: string | null;
@@ -131,25 +160,29 @@ export type NewPreviewLink = {
 /**
  * Mints a link and returns the **one and only** copy of its token. The caller shows it to the
  * account manager once; nothing stores it, and asking for it again means making a new link.
+ *
+ * The version is **resolved here and written onto the link**, whether it was named or left to "the
+ * newest one": a link is to one deliverable version (FR-PJM-51a), so what the client opens is what
+ * the person who sent it was looking at, and a draft handed in three days later never becomes what
+ * the client sees — let alone what they approve.
  */
 export async function createPreviewLink(input: NewPreviewLink, actorPersonId: string): Promise<{ link: PreviewLinkRow; token: string; path: string }> {
   const token = newPreviewToken();
   const link = await db().transaction(async (tx) => {
     const loaded = await loadTask(input.taskId, tx);
     if (!loaded) throw new ActionError("task_not_found");
-    if (input.deliverableId) {
-      const deliverable = await findDeliverable(input.deliverableId, tx);
-      // A version of another task is not a version of this one, whoever asks.
-      if (!deliverable || deliverable.taskId !== input.taskId) throw new ActionError("deliverable_not_found");
-    } else if (!(await currentVersion(tx, input.taskId))) {
-      // Nothing has been handed in yet: there would be nothing on the page.
-      throw new ActionError("preview_no_version");
-    }
+    const deliverable = input.deliverableId ? await findDeliverable(input.deliverableId, tx) : await currentVersion(tx, input.taskId);
+    // A version of another task is not a version of this one, whoever asks; and a task with nothing
+    // handed in has nothing to put on the page.
+    if (!deliverable || (input.deliverableId && deliverable.taskId !== input.taskId)) throw new ActionError(input.deliverableId ? "deliverable_not_found" : "preview_no_version");
+    // Work the company has sent back, or is still reviewing at an internal stage of a chain, is not
+    // something to put in front of a client — however the version was chosen.
+    if (!clientMayReview(deliverable, (await currentStage(deliverable, tx))?.stage ?? null)) throw new ActionError("preview_version_not_ready");
     const [row] = await tx
       .insert(schema.workPreviewLink)
       .values({
         taskId: input.taskId,
-        deliverableId: input.deliverableId,
+        deliverableId: deliverable.id,
         tokenHash: hashPreviewToken(token),
         label: input.label,
         message: input.message,
@@ -239,7 +272,7 @@ export type PreviewPage = {
   title: string;
   version: number;
   kind: "file" | "link";
-  /** The external link, or a signed URL that lives a minute. Never a storage path. */
+  /** The external link, or a signed storage URL that lives a minute — see `signedFileUrl`. */
   url: string | null;
   fileName: string | null;
   message: string | null;
@@ -249,7 +282,7 @@ export type PreviewPage = {
   expiresAt: Date;
 };
 
-/** The link's own version, or the newest one that is still worth showing. */
+/** The newest version still worth showing, as `createPreviewLink` picks one to pin the link to. */
 async function currentVersion(executor: Executor, taskId: string) {
   const [row] = await executor
     .select()
@@ -260,12 +293,33 @@ async function currentVersion(executor: Executor, taskId: string) {
   return row;
 }
 
-const deliverableOf = async (executor: Executor, link: PreviewLinkRow) => (link.deliverableId ? await findDeliverable(link.deliverableId, executor) : await currentVersion(executor, link.taskId));
+/**
+ * The one version a link is for, if the client may still see it. Asked again on every open and
+ * again before the decision is claimed, because what was finished with internally on the day the
+ * link was made can have been sent back since — and a version the company has taken back is not a
+ * version a client may approve.
+ *
+ * `deliverableId` is written by `createPreviewLink`, so the fallback is only for links minted
+ * before it was: they keep resolving to the newest version, under the same gate.
+ */
+async function deliverableOf(executor: Executor, link: PreviewLinkRow) {
+  const deliverable = link.deliverableId ? await findDeliverable(link.deliverableId, executor) : await currentVersion(executor, link.taskId);
+  if (!deliverable) return undefined;
+  return clientMayReview(deliverable, (await currentStage(deliverable, executor))?.stage ?? null) ? deliverable : undefined;
+}
 
 /**
- * A file the client may open, as a URL that lives one minute. A storage outage must not turn the
- * page into a 500 — the client still sees the work's name, the message and the buttons — so the
- * failure is logged and the link is simply absent.
+ * A file the client may open, as a signed URL that lives one minute.
+ *
+ * Two things it is honest to say about that URL, since it leaves the company: it is storage's own,
+ * so it **names the object** — the bucket and the file's uuid are in it, though nothing about the
+ * task, the project or the client is — and, like every signed URL, it is good for its minute
+ * wherever it is taken. Revoking the link a minute after the client opened the page does not reach
+ * a URL storage has already signed; it stops the next one being made, which is the whole of what
+ * revocation can mean without proxying every byte of a video through the application.
+ *
+ * A storage outage must not turn the page into a 500 — the client still sees the work's name, the
+ * message and the buttons — so the failure is logged and the link is simply absent.
  */
 async function signedFileUrl(fileId: string, asPersonId: string): Promise<{ url: string | null; fileName: string | null }> {
   const file = await findFile(fileId);
@@ -286,11 +340,17 @@ export type PreviewOutcome = { ok: true; page: PreviewPage } | { ok: false; reas
  * visitor's count comes first and costs one row whatever the token is; the link's is counted only
  * once a token has resolved, so a scanner cannot fill the table with rows of its own invention.
  *
+ * Nothing at all is written for a request whose token is not even the right **shape**: that is
+ * decided in the process, and a stranger typing rubbish into the address bar is not a reason to
+ * write a row about them.
+ *
  * A view is recorded on the link — a count and a time, never who — and that is what tells the
  * account manager the client has seen it.
  */
 export async function openPreviewLink(token: string, visitor: Visitor): Promise<PreviewOutcome> {
-  const visitorLimit = await countPreviewHit("view", visitor.ipHash);
+  if (!isPreviewTokenShaped(token)) return { ok: false, reason: "closed" };
+  const key = previewVisitor(visitor, now()).ipHash;
+  const visitorLimit = await countPreviewHit("view", key);
   if (!visitorLimit.ok) return { ok: false, reason: "rate_limited" };
 
   const link = await linkForToken(token);
@@ -303,8 +363,9 @@ export async function openPreviewLink(token: string, visitor: Visitor): Promise<
 
   const loaded = await loadTask(link.taskId);
   const deliverable = await deliverableOf(db(), link);
-  // The task was deleted, or every version was withdrawn: there is nothing to show, and the client
-  // is told the same thing as for any other closed link.
+  // The task was deleted, every version was withdrawn, or the version this link is for has gone
+  // back inside the company: there is nothing to show, and the client is told the same thing as
+  // for any other closed link.
   if (!loaded || !deliverable) return { ok: false, reason: "closed" };
 
   const [client, sender] = await Promise.all([
@@ -343,13 +404,19 @@ const decisionSchema = z.object({
   token: z.string().trim().min(16).max(200),
   /** The honeypot, exactly as on the careers form: no person can see it, so anything in it is a machine. */
   website: z.string().max(200).default(""),
+  /**
+   * Which version the client was looking at when they pressed the button — the page puts it in the
+   * form. A decision is about a particular piece of work, so it is claimed against the version the
+   * client read and refused if that is no longer the one the link is for.
+   */
+  version: z.coerce.number().int().min(1).max(100_000),
   decision: z.enum(PREVIEW_DECISIONS),
   decidedByName: z.string().trim().min(1).max(PREVIEW_NAME_MAX),
   comment: z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? null : value), z.string().trim().max(PREVIEW_COMMENT_MAX).nullable().default(null)),
 });
 
 /** What the route handler has: form values, all of them strings, none of them trusted. */
-export type PreviewDecisionInput = { token: string; website: string; decision: string; decidedByName: string; comment: string };
+export type PreviewDecisionInput = { token: string; website: string; version: string; decision: string; decidedByName: string; comment: string };
 /** What the client is told. The same word whatever happened, for the same reason the careers form gives one. */
 export type PreviewDecisionOutcome = { recorded: true };
 
@@ -358,17 +425,29 @@ export type PreviewDecisionOutcome = { recorded: true };
  * winner: the `decided_at is null` guard is what makes it a claim and not a check. If recording
  * then fails the claim is released, so an honest refusal — a frozen version, a comment the client
  * forgot — does not burn the link.
+ *
+ * The whole of what makes a link usable is re-asked **in the claim**, expiry included: a request
+ * that spent a minute reading rows must not be able to write a decision onto a link that ran out
+ * while it was reading.
+ *
+ * Exported, with its release below, because the orderings they are written for cannot be produced
+ * through the public entry point: the test puts them in the order a race would.
  */
-async function claimLink(linkId: string, at: Date): Promise<boolean> {
+export async function claimLink(linkId: string, at: Date): Promise<boolean> {
   const rows = await db()
     .update(schema.workPreviewLink)
     .set({ decidedAt: at })
-    .where(and(eq(schema.workPreviewLink.id, linkId), isNull(schema.workPreviewLink.decidedAt), isNull(schema.workPreviewLink.revokedAt)))
+    .where(and(eq(schema.workPreviewLink.id, linkId), isNull(schema.workPreviewLink.decidedAt), isNull(schema.workPreviewLink.revokedAt), gt(schema.workPreviewLink.expiresAt, at)))
     .returning({ id: schema.workPreviewLink.id });
   return rows.length === 1;
 }
 
-const releaseClaim = (linkId: string) => db().update(schema.workPreviewLink).set({ decidedAt: null }).where(eq(schema.workPreviewLink.id, linkId));
+/**
+ * Giving the claim back after a refusal — **only the claim this request made**. A late release
+ * that cleared `decided_at` whatever it held could wipe another request's live claim and let a
+ * second decision be recorded on the same link, which is the one thing the claim exists to stop.
+ */
+export const releaseClaim = (linkId: string, at: Date) => db().update(schema.workPreviewLink).set({ decidedAt: null }).where(and(eq(schema.workPreviewLink.id, linkId), eq(schema.workPreviewLink.decidedAt, at)));
 
 const decidePipeline = createPublicAction({
   name: "work.preview.decide",
@@ -389,6 +468,9 @@ const decidePipeline = createPublicAction({
     const loaded = await loadTask(link.taskId);
     const deliverable = loaded ? await deliverableOf(db(), link) : undefined;
     if (!loaded || !deliverable) throw new ActionError("preview_link_closed");
+    // The answer is about the version the client read, and only that one. A tab left open while the
+    // work moved on is told plainly rather than having its answer recorded against something else.
+    if (deliverable.version !== input.version) throw new ActionError("preview_version_changed");
     const [sender] = await db().select({ fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, link.createdByPersonId)).limit(1);
 
     if (!(await claimLink(link.id, at))) throw new ActionError("preview_link_closed");
@@ -416,7 +498,7 @@ const decidePipeline = createPublicAction({
         { personId: link.createdByPersonId, fullName: sender?.fullName ?? "" },
       );
     } catch (error) {
-      await releaseClaim(link.id);
+      await releaseClaim(link.id, at);
       throw error;
     }
 
@@ -454,7 +536,11 @@ const decidePipeline = createPublicAction({
   },
 });
 
-/** The third public mutation in the product, and the first that is not about hiring. */
+/**
+ * The third public mutation in the product, and the first that is not about hiring. The visitor is
+ * re-keyed for the day on the way in, so the rate limiter and the audit row this writes hold a
+ * fingerprint that stops meaning anything tomorrow (PDPL, NFR-PRV-02).
+ */
 export async function decideOnPreviewLink(input: PreviewDecisionInput, visitor: Visitor) {
-  return decidePipeline(input, visitor);
+  return decidePipeline(input, previewVisitor(visitor, now()));
 }

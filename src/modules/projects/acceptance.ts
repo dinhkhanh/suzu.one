@@ -8,7 +8,7 @@
 // or a retainer month's own item — made now if it was not yet — with the acceptance attached, or,
 // for the whole project, the fee not yet billed by milestones and months.
 import "server-only";
-import { and, asc, desc, eq, max, ne } from "drizzle-orm";
+import { and, asc, desc, eq, max, ne, or } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
@@ -49,7 +49,9 @@ async function checkTarget(tx: Tx | ReturnType<typeof db>, projectId: string, ta
   if (target.scope === "milestone") {
     const [milestone] = target.milestoneId ? await tx.select().from(schema.projectMilestone).where(eq(schema.projectMilestone.id, target.milestoneId)).limit(1) : [];
     if (milestone?.projectId !== projectId) throw new ActionError("milestone_not_found");
-    if (!milestone.isClientFacing) throw new ActionError("acceptance_milestone_internal");
+    // A milestone that bills the client is accepted before it bills (D27), so it may be the target
+    // of a record even when it was not marked client-facing; a purely internal one may not.
+    if (!milestone.isClientFacing && !milestone.isBilling) throw new ActionError("acceptance_milestone_internal");
     return { scope: "milestone", milestoneId: milestone.id, retainerPeriodId: null };
   }
   if (target.scope === "retainer_period") {
@@ -208,17 +210,19 @@ export type AcceptanceWaiting = { scope: AcceptanceScope; milestoneId: string | 
  * is a project with a client on it, whatever its kind; internal work needs no acceptance and gets
  * `null` here.
  *
- * Waiting, on client work: every client-facing milestone and every retainer month that is over,
- * without a signed record; and, where the project has neither, the project as a whole. A signed
- * whole-project record accepts everything under it — it bills the fee that the milestones and the
- * months left unbilled — so nothing waits behind it.
+ * Waiting, on client work: every milestone the client is shown or billed for — `isClientFacing` or
+ * `isBilling`, the same two doors `billMilestone` and the paper use, so that a billing milestone
+ * nobody marked client-facing still shows here instead of billing in silence — every retainer month
+ * that is over, without a signed record; and, where the project has neither, the project as a whole.
+ * A signed whole-project record accepts everything under it — it bills the fee that the milestones
+ * and the months left unbilled — so nothing waits behind it.
  */
 export async function awaitingAcceptance(projectId: string, today: IsoDate = todayInVietnam()): Promise<AcceptanceWaiting[] | null> {
   const [project] = await db().select({ clientId: schema.workProject.clientId }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
   if (!project?.clientId) return null;
   const [signed, milestones, periods] = await Promise.all([
     db().select({ scope: schema.projectAcceptance.scope, milestoneId: schema.projectAcceptance.milestoneId, retainerPeriodId: schema.projectAcceptance.retainerPeriodId }).from(schema.projectAcceptance).where(and(eq(schema.projectAcceptance.projectId, projectId), eq(schema.projectAcceptance.status, "signed"))),
-    db().select({ id: schema.projectMilestone.id, name: schema.projectMilestone.name }).from(schema.projectMilestone).where(and(eq(schema.projectMilestone.projectId, projectId), eq(schema.projectMilestone.isClientFacing, true))).orderBy(asc(schema.projectMilestone.dueDate)),
+    db().select({ id: schema.projectMilestone.id, name: schema.projectMilestone.name }).from(schema.projectMilestone).where(and(eq(schema.projectMilestone.projectId, projectId), or(eq(schema.projectMilestone.isClientFacing, true), eq(schema.projectMilestone.isBilling, true)))).orderBy(asc(schema.projectMilestone.dueDate)),
     db().select({ id: schema.projectRetainerPeriod.id, month: schema.projectRetainerPeriod.month, status: schema.projectRetainerPeriod.status }).from(schema.projectRetainerPeriod).innerJoin(schema.projectRetainer, eq(schema.projectRetainer.id, schema.projectRetainerPeriod.retainerId)).where(eq(schema.projectRetainer.projectId, projectId)).orderBy(asc(schema.projectRetainerPeriod.month)),
   ]);
   if (signed.some((row) => row.scope === "project")) return [];

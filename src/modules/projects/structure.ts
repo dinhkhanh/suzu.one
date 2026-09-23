@@ -99,7 +99,9 @@ export async function saveMilestone(projectId: string, milestoneId: string | nul
 
 /**
  * A billing milestone marked done hands finance a "ready to invoice" item (FR-PJM-56), in the same
- * transaction — once: reopening and finishing it again finds the item already made.
+ * transaction — once: reopening and finishing it again finds the item already made. On a client's
+ * project the item waits for the signed biên bản nghiệm thu (D27): `billMilestone` makes nothing
+ * until it is signed, and `signAcceptance` makes it then. `billingItemId` is null either way.
  */
 export async function setMilestoneDone(milestoneId: string, done: boolean, actorPersonId: string): Promise<{ before: MilestoneRow; after: MilestoneRow; billingItemId: string | null }> {
   return db().transaction(async (tx) => {

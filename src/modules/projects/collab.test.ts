@@ -275,21 +275,32 @@ describe("the project's document space (FR-PJM-31)", () => {
   });
 
   /**
-   * The owner's decision of 2026-09-23 (Q25): whoever may open the project reads its documents the
-   * same way its readers do — through the project's own access row, at `view`, never `edit`. It is
-   * `pjm:portfolio` that opens it, not `kb:manage`: HR above keeps getting nothing.
+   * The owner's decision of 2026-09-23 (Q25 — D30) let `pjm:portfolio` open a **private** project,
+   * and its documents come with it: through the project's own access row, at `view`, never `edit`.
+   * It is `pjm:portfolio` that opens it, not `kb:manage`: HR above keeps getting nothing. A project
+   * that is not private is not what the decision was about — its space was its people's alone
+   * whatever its visibility, and it stays so.
    */
-  it("opens to a pjm:portfolio holder over the project's team — to read, not to write", async () => {
+  it("opens a private project's documents to a pjm:portfolio holder over its team — to read, not to write", async () => {
     const principal: Principal = { personId: ids.other, workforceType: "employee", grants: [{ role: "entity_director", scope: { type: "entity", id: ids.szm } }] };
     const director = { ...viewers.other, principal };
-    expect((await listSpaces(director)).find((space) => space.id === spaceId)?.level).toBe("view");
-    expect(levelOf(director, (await loadPage(pageId))!)).toBe("view");
-    expect((await listSpaceFiles(director, spaceId)).map((file) => file.fileName)).toEqual(["kv-option-b.pdf"]);
-    expect((await getProjectDocuments(director, spaceId))?.level).toBe("view");
-    // A grant over another entity opens nothing.
-    const elsewhere = { ...viewers.other, principal: { ...principal, grants: [{ role: "entity_director" as const, scope: { type: "entity" as const, id: "00000000-0000-4000-8000-0000000000ff" } }] } };
-    expect((await listSpaces(elsewhere)).some((space) => space.id === spaceId)).toBe(false);
-    expect(levelOf(elsewhere, (await loadPage(pageId))!)).toBeNull();
+    // The project is open to the entity: the decision says nothing about it, and the space stays shut.
+    expect((await listSpaces(director)).some((space) => space.id === spaceId)).toBe(false);
+    expect(levelOf(director, (await loadPage(pageId))!)).toBeNull();
+
+    await db().update(schema.workProject).set({ visibility: "private" }).where(eq(schema.workProject.id, ids.project));
+    try {
+      expect((await listSpaces(director)).find((space) => space.id === spaceId)?.level).toBe("view");
+      expect(levelOf(director, (await loadPage(pageId))!)).toBe("view");
+      expect((await listSpaceFiles(director, spaceId)).map((file) => file.fileName)).toEqual(["kv-option-b.pdf"]);
+      expect((await getProjectDocuments(director, spaceId))?.level).toBe("view");
+      // A grant over another entity opens nothing.
+      const elsewhere = { ...viewers.other, principal: { ...principal, grants: [{ role: "entity_director" as const, scope: { type: "entity" as const, id: "00000000-0000-4000-8000-0000000000ff" } }] } };
+      expect((await listSpaces(elsewhere)).some((space) => space.id === spaceId)).toBe(false);
+      expect(levelOf(elsewhere, (await loadPage(pageId))!)).toBeNull();
+    } finally {
+      await db().update(schema.workProject).set({ visibility: "entity" }).where(eq(schema.workProject.id, ids.project));
+    }
   });
 
   it("follows the project's membership as it changes, and the SQL filter agrees with the policy", async () => {

@@ -185,7 +185,7 @@ export async function closePeriod(periodId: string, actorPersonId: string | null
     if (closed) await tx.update(schema.projectRetainerPeriod).set({ status: "closed", closedAt: new Date() }).where(eq(schema.projectRetainerPeriod.id, periodId));
     const fee = periodFee(retainer, project ?? { startDate: null, dueDate: null }, period.month);
     if (!fee) return { closed, billed: false };
-    if (project?.clientId && !(await acceptedForBilling(tx, retainer.projectId, period.id))) return { closed, billed: false, awaitingAcceptance: true };
+    if (project?.clientId && !(await acceptedForBilling(tx, retainer.projectId, { retainerPeriodId: period.id }))) return { closed, billed: false, awaitingAcceptance: true };
     const { created } = await ensureBillingItem(tx, { projectId: retainer.projectId, source: "retainer", retainerPeriodId: period.id, description: retainerMonthLabel(period.month), amountVnd: fee, createdByPersonId: actorPersonId });
     return { closed, billed: created };
   });

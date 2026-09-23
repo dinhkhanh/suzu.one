@@ -174,6 +174,20 @@ describe("profitability (FR-PJM-63)", () => {
     }
   });
 
+  it("names a private project only to its people and the reader D30 let in, and records that read", async () => {
+    const view = (await buildProfitability({ ...people.owner, userId: "u-owner", email: "owner@suzu.group" }, PERIOD))!;
+    // The owner holds `pjm:portfolio` everywhere: the private project is named, not summed away.
+    expect(view.projects.map((project) => project.id)).toContain(ids.secret);
+    expect(view.privateProjects).toBeNull();
+    // And naming it is a read of a private project they are none of the people of (Q25 — D30).
+    const rows = await db().select().from(schema.auditLog).where(and(eq(schema.auditLog.action, "projects.private.read"), eq(schema.auditLog.actorPersonId, ids.owner)));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ resourceType: "work_project", resourceId: ids.secret, actorEmail: "owner@suzu.group" });
+    expect(rows[0].summary).toBeNull();
+    // Finance, who may not open it, leaves no such row: they never saw which project it was.
+    expect(await db().select().from(schema.auditLog).where(and(eq(schema.auditLog.action, "projects.private.read"), eq(schema.auditLog.actorPersonId, ids.finance)))).toEqual([]);
+  });
+
   it("never returns a person's id, name, rate or single cost", async () => {
     const text = JSON.stringify(await buildProfitability(people.finance, PERIOD));
     for (const who of ["huy", "lan"] as const) {

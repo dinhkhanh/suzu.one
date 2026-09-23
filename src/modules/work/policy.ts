@@ -18,6 +18,13 @@ export type WorkViewer = {
   entityId: string | null;
   teamRoles: ReadonlyMap<string, TeamRole>;
   projectRoles: ReadonlyMap<string, ProjectRole>;
+  /**
+   * Who this viewer is to the audit log, when a request loaded them from the signed-in user
+   * (`loadViewer`). Nothing here decides anything — no rule below reads it — it only lets a reader
+   * path record a private-project read (`private-reads.ts`) without being handed the user again.
+   * Absent on a viewer built for somebody else (`viewersOfPeople`).
+   */
+  reader?: { userId: string | null; email: string | null; request?: { ipAddress?: string | null; userAgent?: string | null } };
 };
 
 export type TeamFacts = { id: string; entityId: string | null; departmentId: string | null; defaultVisibility: Visibility };
@@ -84,7 +91,7 @@ function seesByVisibility(viewer: WorkViewer, visibility: Visibility, entityId: 
  * its tasks, its documents — and nothing else. They are not members: they do not contribute, are
  * not assignable, decide no review and appear in no assignable list, because every one of those
  * rules asks membership (`canContributeToProject`, `canManageProject`, `listAssignable`), which
- * this does not give. Reading one is audited (`auditPrivateRead` in the projects module).
+ * this does not give. Reading one is audited (`notePrivateProjectRead`, private-reads.ts).
  *
  * Deliberately narrow: only a *project*, never a private team's backlog (`canViewTeamBacklog`),
  * which the decision did not widen.

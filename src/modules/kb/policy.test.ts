@@ -174,6 +174,19 @@ describe("a project's space (FR-PJM-31)", () => {
     expect(huy.keys.some((key) => key.startsWith("project:"))).toBe(false);
   });
 
+  it("opens a private project's space to the reader D30 let in, and no other project's", () => {
+    const boss = viewer("boss", [{ role: "entity_director", scope: { type: "entity", id: SZM } }]);
+    const row = (visibility: string) => space({ entityId: SZM, access: [{ subjectKey: `project:${PROJECT}`, level: "edit", people: ["huy"], project: { entityId: SZM, departmentId: VID, visibility } }] });
+    // Q25 (D30) let `pjm:portfolio` read a private project; its documents come with it, at view.
+    expect(spaceLevel(boss, row("private"))).toBe("view");
+    expect(pageLevel(boss, row("private"), published)).toBe("view");
+    // A team or entity project's space was its people's alone before the decision and stays so.
+    expect(spaceLevel(boss, row("team"))).toBeNull();
+    expect(spaceLevel(boss, row("entity"))).toBeNull();
+    // And a row read without its project (an older loader) opens nothing.
+    expect(spaceLevel(boss, projectSpace(["huy"]))).toBeNull();
+  });
+
   it("is still managed by the knowledge base's managers of the project's entity, like every space of it", () => {
     expect(spaceLevel(hrGroup, projectSpace(["huy"]))).toBe("manage");
     expect(spaceLevel(hrSzm, projectSpace(["huy"]))).toBe("manage");

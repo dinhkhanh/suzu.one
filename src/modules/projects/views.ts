@@ -3,11 +3,10 @@
 // withdrawn kick-off as they are now) without writing anything, and the money is taken out unless
 // the viewer holds `pjm:commercial` over the project's entity.
 import "server-only";
-import { recordAudit } from "../platform/audit/service";
 import type { CurrentUser } from "../platform/auth/session";
 import type { RequestView } from "../platform/approvals/service";
 import type { ProjectFacts, WorkViewer } from "../work/policy";
-import { findProject, loadViewer, projectFacts, type ProjectRow, readsPrivateByPortfolio, type TeamRow } from "../work/service";
+import { findProject, loadViewer, notePrivateProjectRead, projectFacts, type ProjectRow, type TeamRow } from "../work/service";
 import { getBriefRequest } from "./kickoff";
 import { defaultPlan, isProjectClosed, planAsItStands, type PlanRow, type PlanView, readPlan, shapePlan } from "./plans";
 import { canEditClientSide, canEditFees, canEditPlan, canPostStatus, canSeeFees, canViewPlan, type PlanFacts } from "./policy";
@@ -30,31 +29,22 @@ export type ProjectReader = Pick<CurrentUser, "person" | "principal"> & Partial<
 /**
  * A private project opened by a leader who is none of its people (the owner's decision of
  * 2026-09-23, Q25) leaves a trail, as a compensation-tier read does: who looked, at which project,
- * and on what authority — never the project's content. Nothing else about the read changes; the
- * project's own people are not logged for reading their own work.
+ * and on what authority — never the project's content, and not its name either, since the audit
+ * log is read company-wide. The recording itself lives in the work module (`notePrivateProjectRead`),
+ * which every reader path shares and which writes one row per project per request; this is the
+ * plan pages' way in. The project's own people are not logged for reading their own work.
  */
-export async function auditPrivateRead(user: ProjectReader, viewer: WorkViewer, facts: ProjectFacts, projectName: string): Promise<void> {
-  if (!readsPrivateByPortfolio(viewer, facts)) return;
-  await recordAudit({
-    action: "projects.private.read",
-    actor: { userId: user.userId ?? null, personId: user.person.id, email: user.email ?? null },
-    request: user.request,
-    resource: { type: "work_project", id: facts.id, entityId: facts.entityId },
-    summary: projectName.slice(0, 300),
-    after: { visibility: "private", via: "pjm:portfolio", teamId: facts.team.id },
-  });
-}
+export const auditPrivateRead = (viewer: WorkViewer, facts: ProjectFacts): Promise<void> => notePrivateProjectRead(viewer, facts);
 
 /**
- * The same trail for one **task** of a private project (Q25). Opening a task is where the private
- * work itself is read — its title, its discussion, its versions — and a task is reachable by its
- * link, its key and a notification without ever passing the project's board, so recording only the
- * board would leave the deeper read unrecorded. A task outside a project records nothing, and so
- * does a task of a project whose people the reader is one of.
+ * The same trail for one **task** of a private project (Q25). `getTaskDetail` already records the
+ * read wherever a task is opened; this is for a page that has a loaded task in hand and no viewer
+ * question left to ask. A task outside a project records nothing, and so does a task of a project
+ * whose people the reader is one of.
  */
-export async function auditPrivateTaskRead(user: ProjectReader, viewer: WorkViewer, task: { project: ProjectRow | null; team: TeamRow }): Promise<void> {
+export async function auditPrivateTaskRead(viewer: WorkViewer, task: { project: ProjectRow | null; team: TeamRow }): Promise<void> {
   if (!task.project) return;
-  await auditPrivateRead(user, viewer, projectFacts(task.project, task.team), task.project.name);
+  await notePrivateProjectRead(viewer, projectFacts(task.project, task.team));
 }
 
 /** null = no such project, or one the viewer may not open — the page answers notFound() either way. */
@@ -64,7 +54,7 @@ export async function openProject(user: ProjectReader, projectId: string): Promi
   if (!found) return null;
   const workFacts = projectFacts(found.project, found.team);
   if (!canViewPlan(viewer, workFacts)) return null;
-  await auditPrivateRead(user, viewer, workFacts, found.project.name);
+  await auditPrivateRead(viewer, workFacts);
   const plan = await planAsItStands((await readPlan(projectId)) ?? defaultPlan(found.project));
   const facts: PlanFacts = { ...workFacts, closed: !!plan.closedAt };
   const seeFees = canSeeFees(viewer, facts);

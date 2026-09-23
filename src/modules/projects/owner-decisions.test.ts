@@ -41,14 +41,14 @@ import type { Grant, Principal } from "../platform/rbac/policy";
 import { listAssignable } from "../work/projects";
 import { createProject } from "../work/projects";
 import { createTeam, setTeamMember } from "../work/teams";
-import { createAcceptance, signAcceptance } from "./acceptance";
+import { awaitingAcceptance, createAcceptance, signAcceptance } from "./acceptance";
 import { listProjectBilling } from "./billing";
 import { closeProject, getCloseChecklist } from "./close";
 import { addMonths, monthOf } from "./engine/retainer";
 import { setAccountManager, setFee, updatePlanSettings } from "./plans";
 import { listPortfolio } from "./portfolio";
 import { getRetainer, listPeriods, runRetainers, saveRetainer } from "./retainers";
-import { saveMilestone } from "./structure";
+import { saveDeliverable, saveMilestone, setMilestoneDone } from "./structure";
 import { auditPrivateTaskRead, openProject } from "./views";
 
 type Who = "lead" | "am" | "member" | "colleague" | "hr" | "payroll" | "auditor" | "director" | "teamLead";
@@ -66,7 +66,6 @@ const GRANTS: Partial<Record<Who, () => Grant[]>> = {
   auditor: () => [{ role: "auditor", scope: { type: "group" } }],
 };
 const asUser = (who: Who) => userOf(who, GRANTS[who]?.() ?? []);
-const viewerOf = (who: Who) => ({ person: { id: ids[who], primaryEntityId: ids.szm }, principal: principalOf(ids[who], GRANTS[who]?.() ?? []) });
 
 const privateReadsOf = async (who: Who) =>
   db().select().from(schema.auditLog).where(and(eq(schema.auditLog.action, "projects.private.read"), eq(schema.auditLog.actorPersonId, ids[who])));
@@ -192,6 +191,34 @@ describe("acceptance before billing, for every client (Q22)", () => {
     expect(await runRetainers(today)).toMatchObject({ billed: 0, awaiting: 0 });
   });
 
+  it("holds a client's billing milestone back until the biên bản is signed — client-facing or not", async () => {
+    const tet = (await createProject({ teamId: ids.team, name: "Ra mắt sản phẩm", description: null, clientId: ids.client, status: "active", visibility: "team", leadPersonId: ids.lead, startDate: null, dueDate: null }, ids.teamLead)).id;
+    await setAccountManager(tet, ids.am);
+    // A milestone that bills the client but was never marked client-facing: it bills, so it waits.
+    const milestone = (await saveMilestone(tet, null, { name: "Tạm ứng 50%", dueDate: null, phaseId: null, ownerPersonId: null, isClientFacing: false, isBilling: true, sortOrder: 0 })).after;
+    await saveDeliverable(tet, null, { title: "Phim giới thiệu", quantity: 1, format: null, channel: null, dueDate: null, milestoneId: milestone.id, sortOrder: 0 });
+    expect((await awaitingAcceptance(tet))!.map((row) => row.milestoneId)).toEqual([milestone.id]);
+    // Marking it done hands finance nothing: no signature, no invoice.
+    const done = await setMilestoneDone(milestone.id, true, ids.lead);
+    expect(done.billingItemId).toBeNull();
+    expect(await billingOf(tet)).toEqual([]);
+
+    // The signature is the only door, here as on a retainer month.
+    const acceptance = await createAcceptance(tet, { scope: "milestone", milestoneId: milestone.id, retainerPeriodId: null }, ids.am);
+    await signFor(acceptance.id);
+    const items = await billingOf(tet);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ source: "milestone", milestoneId: milestone.id });
+    expect(await awaitingAcceptance(tet)).toEqual([]);
+  });
+
+  it("bills internal work the moment its milestone is done: there is nobody to sign", async () => {
+    const internal = await createProject({ teamId: ids.team, name: "Website nội bộ", description: null, clientId: null, status: "active", visibility: "team", leadPersonId: ids.lead, startDate: null, dueDate: null }, ids.teamLead);
+    const milestone = (await saveMilestone(internal.id, null, { name: "Bàn giao", dueDate: null, phaseId: null, ownerPersonId: null, isClientFacing: false, isBilling: true, sortOrder: 0 })).after;
+    expect((await setMilestoneDone(milestone.id, true, ids.lead)).billingItemId).toBeTruthy();
+    expect(await awaitingAcceptance(internal.id)).toBeNull();
+  });
+
   it("asks internal work for nothing: its close-out has no acceptance to wait for", async () => {
     const internal = await createProject({ teamId: ids.team, name: "Nội bộ", description: null, clientId: null, status: "active", visibility: "team", leadPersonId: ids.lead, startDate: null, dueDate: null }, ids.teamLead);
     const item = (await getCloseChecklist(internal.id)).find((check) => check.key === "acceptance")!;
@@ -208,8 +235,10 @@ describe("a private project opened by a leader (Q25)", () => {
     expect(context?.project.name).toBe("Dự án kín");
     const rows = await privateReadsOf("director");
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ resourceType: "work_project", resourceId: ids.secret, entityId: ids.szm, summary: "Dự án kín", actorEmail: "director@suzu.group" });
+    expect(rows[0]).toMatchObject({ resourceType: "work_project", resourceId: ids.secret, entityId: ids.szm, actorEmail: "director@suzu.group" });
     expect(rows[0].after).toMatchObject({ visibility: "private", via: "pjm:portfolio" });
+    // The resource id names the project; its name is not written into a log the whole company reads.
+    expect(rows[0].summary).toBeNull();
   });
 
   it("stays shut to everyone else, and audits nothing when its own people read it", async () => {
@@ -244,25 +273,62 @@ describe("a private project opened by a leader (Q25)", () => {
     }
   });
 
-  it("records the read of one of its tasks too, which opens without its board", async () => {
+  it("records the read of one of its tasks too, which opens without its board, once for the request", async () => {
     const { createWorkTask, getTaskDetail } = await import("../work/tasks");
     const { task } = await createWorkTask({ teamId: ids.team, projectId: ids.secret, title: "Bảng giá khung (bảo mật)" }, ids.lead);
     const before = (await privateReadsOf("director")).length;
-    const detail = (await getTaskDetail(task.id, await loadedViewer("director")))!;
+    // One viewer is one request: the page loads it once and every reader path shares it.
+    const viewer = await loadedViewer("director");
+    const detail = (await getTaskDetail(task.id, viewer))!;
     expect(detail.task.title).toBe("Bảng giá khung (bảo mật)");
-    await auditPrivateTaskRead(asUser("director"), await loadedViewer("director"), detail);
+    // The reader itself records it, so that no page has to remember to.
+    expect(await privateReadsOf("director")).toHaveLength(before + 1);
+    // Reading the same project again in the request — another task, the board, the page's own
+    // call — adds no second row.
+    await getTaskDetail(task.id, viewer);
+    await auditPrivateTaskRead(viewer, detail);
     const rows = await privateReadsOf("director");
     expect(rows).toHaveLength(before + 1);
-    expect(rows.at(-1)).toMatchObject({ resourceType: "work_project", resourceId: ids.secret, summary: "Dự án kín" });
+    expect(rows.at(-1)).toMatchObject({ resourceType: "work_project", resourceId: ids.secret, actorEmail: "director@suzu.group" });
+    expect(rows.at(-1)!.summary).toBeNull();
     // Its own people read their own work without a trail, and so does a task outside any project.
     for (const who of ["lead", "teamLead"] as const) {
-      await auditPrivateTaskRead(asUser(who), await loadedViewer(who), detail);
+      const theirs = await loadedViewer(who);
+      await getTaskDetail(task.id, theirs);
+      await auditPrivateTaskRead(theirs, detail);
       expect(await privateReadsOf(who), who).toHaveLength(0);
     }
     const loose = await createWorkTask({ teamId: ids.team, projectId: null, title: "Việc rời" }, ids.lead);
-    const looseDetail = (await getTaskDetail(loose.task.id, await loadedViewer("director")))!;
-    await auditPrivateTaskRead(asUser("director"), await loadedViewer("director"), looseDetail);
+    const looseDetail = (await getTaskDetail(loose.task.id, viewer))!;
+    await auditPrivateTaskRead(viewer, looseDetail);
     expect(await privateReadsOf("director")).toHaveLength(before + 1);
+  });
+
+  it("records the private work a leader's search and lists reach, from the clause that admits it", async () => {
+    const { searchTasks } = await import("../work/tasks");
+    const viewer = await loadedViewer("director");
+    const before = (await privateReadsOf("director")).length;
+    const hits = await searchTasks(viewer, "Bảng giá");
+    expect(hits.map((hit) => hit.title)).toContain("Bảng giá khung (bảo mật)");
+    await searchTasks(viewer, "khung");
+    const rows = await privateReadsOf("director");
+    expect(rows).toHaveLength(before + 1);
+    expect(rows.at(-1)).toMatchObject({ resourceType: "work_project", resourceId: ids.secret });
+    // The project's own people search it without leaving a trail.
+    const lead = await loadedViewer("lead");
+    await searchTasks(lead, "Bảng giá");
+    expect(await privateReadsOf("lead")).toHaveLength(0);
+  });
+
+  it("refuses to let the reader close a RAID item even when the item names them as its owner", async () => {
+    const [item] = await db()
+      .insert(schema.projectRaidItem)
+      .values({ projectId: ids.secret, kind: "risk", title: "Rủi ro ngân sách", ownerPersonId: ids.director, createdByPersonId: ids.lead, severity: "high" })
+      .returning();
+    const pipeline = pipelines.get("projects.raid.status")!;
+    expect(await pipeline.authorize(asUser("director"), { itemId: item.id, status: "closed" })).toBe(false);
+    // Its lead, who runs the project, still closes it.
+    expect(await pipeline.authorize(asUser("lead"), { itemId: item.id, status: "closed" })).toBe(true);
   });
 
   it("leaves the circle its work may be given to exactly as it was: its members and the team's leads", async () => {
@@ -276,5 +342,17 @@ describe("a private project opened by a leader (Q25)", () => {
 /** The work viewer of one of these people, loaded from the database as a page would load it. */
 async function loadedViewer(who: Who) {
   const { loadViewer } = await import("../work/viewer");
-  return loadViewer(viewerOf(who));
+  return loadViewer(asUser(who));
+}
+
+/** A project's billing items, oldest first. */
+const billingOf = (projectId: string) => db().select().from(schema.projectBillingItem).where(eq(schema.projectBillingItem.projectId, projectId));
+
+/** The client signs a record: the scan, the date and the signer, as the acceptance page records them. */
+async function signFor(acceptanceId: string) {
+  const [file] = await db()
+    .insert(schema.storedFile)
+    .values({ bucket: "test", objectPath: `project_acceptance/${acceptanceId}.pdf`, fileName: "bien-ban.pdf", contentType: "application/pdf", sizeBytes: 10, ownerType: "project_acceptance", ownerId: acceptanceId, entityId: ids.szm, tier: "personal", status: "ready", uploadedByPersonId: ids.am })
+    .returning();
+  return signAcceptance(acceptanceId, { signedFileId: file.id, signedOn: todayInVietnam(), signedByClient: "Khách" }, ids.am);
 }

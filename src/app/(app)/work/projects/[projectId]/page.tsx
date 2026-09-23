@@ -38,7 +38,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const { project, team } = found;
   const facts = projectFacts(project, team);
   // A leader looking into a private project they are none of the people of leaves a trail (Q25).
-  await auditPrivateRead(user, viewer, facts, project.name);
+  await auditPrivateRead(viewer, facts);
   const t = await getTranslations("work");
   const manage = canManageProject(viewer, facts);
   const today = todayInVietnam();
