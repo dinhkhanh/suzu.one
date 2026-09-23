@@ -59,7 +59,6 @@ A modular monolith: Next.js 16, Drizzle + Postgres (Supabase), Better Auth with 
 | **KB embeddings** (Voyage AI) | `EMBEDDINGS_API_KEY`, `EMBEDDINGS_MODEL` | A deterministic local fake, so retrieval is effectively lexical and English questions about Vietnamese pages are weak. **Driver written, never run.** Re-embed after the key, then re-run `pnpm ai:eval`. |
 | **Google Chat** approval cards | `GOOGLE_CHAT_WEBHOOK_URL` | Cards recorded "simulated". |
 | **Google Calendar / Meet** for interviews and project meetings | `GOOGLE_CALENDAR_ID`, `..._SERVICE_ACCOUNT_EMAIL`, `..._SERVICE_ACCOUNT_KEY`, `..._IMPERSONATE` | The adapter is `src/modules/platform/calendar/`. Internal event and `.ics` only, no Meet link, and both screens say `simulated` out loud. **Driver written, never run** — needs a service account with domain-wide delegation. |
-| **Error tracking** (optional) | a Sentry project | — |
 | **Virus scanning** | — | **There is none.** Every CV and take-home is stored `not_scanned` and reachable only by the hiring team. That is a mitigation, not a solution. |
 
 ### C. Confirmations by a qualified person — these block go-live, not just polish
