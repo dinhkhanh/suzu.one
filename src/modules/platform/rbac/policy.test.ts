@@ -138,8 +138,10 @@ describe("work and ops permissions (Phase 3)", () => {
     // Cost rates come from salaries: C-level and finance only — not an entity director (restricted tier).
     for (const role of ["c_level", "finance"] as const) expect(can(principal([{ role, scope: group }]), "pjm:cost")).toBe(true);
     for (const role of ["entity_director", "hr_admin", "hr_staff", "payroll", "department_head", "recruiter", "asset_admin", "auditor"] as const) expect(can(principal([{ role, scope: group }]), "pjm:cost")).toBe(false);
-    for (const role of ["c_level", "entity_director", "department_head"] as const) expect(can(principal([{ role, scope: group }]), "pjm:portfolio")).toBe(true);
-    for (const role of ["hr_admin", "hr_staff", "payroll", "finance", "recruiter", "asset_admin", "auditor"] as const) expect(can(principal([{ role, scope: group }]), "pjm:portfolio")).toBe(false);
+    // Finance reads the projects it invoices (owner's call, 2026-09-23): without this the billing
+    // queue named projects its readers could not open. Payroll and HR have no business in them.
+    for (const role of ["c_level", "entity_director", "department_head", "finance"] as const) expect(can(principal([{ role, scope: group }]), "pjm:portfolio")).toBe(true);
+    for (const role of ["hr_admin", "hr_staff", "payroll", "recruiter", "asset_admin", "auditor"] as const) expect(can(principal([{ role, scope: group }]), "pjm:portfolio")).toBe(false);
     // A department head's portfolio is the department's, not the entity's.
     const head = principal([{ role: "department_head", scope: { type: "unit", id: DESIGN } }]);
     expect(can(head, "pjm:portfolio", { unitPath: [DESIGN] })).toBe(true);

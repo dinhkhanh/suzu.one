@@ -1,6 +1,6 @@
 // Compliance on the delivery dashboard is team totals, never a list of people (FR-PJM-60) — and a
 // total over one person is that person (security review, finding 22). Against a real Postgres
-// (PGlite): a `pjm:portfolio` reader sees the teams of their scope, but a team of one is folded into
+// (PGlite): a `work:manage` reader sees the teams of their scope, but a team of one is folded into
 // "other teams" or left out of the dashboard, totals included; a lead still sees their own team
 // whatever its size.
 import { beforeAll, describe, expect, it, vi } from "vitest";

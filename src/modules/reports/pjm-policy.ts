@@ -4,7 +4,7 @@
 //   projects the reader may already open (`visibleProjects`, the work policy), so a person on
 //   nothing sees an empty dashboard, and `pjm:portfolio` widens the set exactly as it widens the
 //   portfolio. Compliance (EOD reports, timesheets) is about people, not projects: it covers the
-//   teams the reader leads, and — as team totals only — the teams under their `pjm:portfolio` grant.
+//   teams the reader leads, and — as team totals only — the teams under their `work:manage` grant.
 // - **Profitability** is salary-derived: `pjm:cost` (owner, C-level, finance), and per project only
 //   where the reader holds both `pjm:cost` and `pjm:commercial` over the project's entity — a cost
 //   without its fee, or a fee without its cost, is not a margin. Never a line manager, a department
@@ -19,7 +19,10 @@ const scopeOf = (team: TeamPlace) => ({ entityId: team.entityId, unitPath: team.
 
 /** The teams whose EOD-report and timesheet compliance the reader sees (as totals, never a list of people). */
 export function complianceTeamIds(principal: Principal, ledTeamIds: ReadonlySet<string>, teams: readonly TeamPlace[]): string[] {
-  return teams.filter((team) => ledTeamIds.has(team.id) || can(principal, "pjm:portfolio", scopeOf(team))).map((team) => team.id);
+  // `work:manage`, not `pjm:portfolio`: compliance is about people (who filed their report, whose
+  // week is unapproved), and since 2026-09-23 `pjm:portfolio` is also finance's way into project
+  // pages. Whoever runs the team reads its compliance; finance reads its invoices.
+  return teams.filter((team) => ledTeamIds.has(team.id) || can(principal, "work:manage", scopeOf(team))).map((team) => team.id);
 }
 
 /** The profitability screen and its entry in navigation: `pjm:cost` somewhere. The page re-checks per project. */

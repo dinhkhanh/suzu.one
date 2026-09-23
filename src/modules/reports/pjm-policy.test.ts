@@ -1,6 +1,6 @@
 // Who reads the PJM reports (FR-PJM-60, 63), role by role: profitability is for owner, C-level and
 // finance — never a line manager, department head, entity director or HR — and only over the
-// entities their grant covers; compliance covers the teams a reader leads or holds `pjm:portfolio` over.
+// entities their grant covers; compliance covers the teams a reader leads or holds `work:manage` over.
 import { describe, expect, it } from "vitest";
 import type { Principal } from "../platform/rbac/policy";
 import type { Role } from "../platform/rbac/roles";
@@ -52,13 +52,13 @@ describe("delivery and compliance", () => {
     expect(canOpenDelivery({ ...nobody, personId: null })).toBe(false);
   });
 
-  it("covers the teams a person leads, and under pjm:portfolio the teams of the scope", () => {
+  it("covers the teams a person leads, and under work:manage the teams of the scope", () => {
     expect(complianceTeamIds(nobody, new Set(), teams)).toEqual([]);
     expect(complianceTeamIds(nobody, new Set(["social"]), teams)).toEqual(["social"]);
     expect(complianceTeamIds(grantee("department_head", "dept"), new Set(), teams)).toEqual(["video"]);
     expect(complianceTeamIds(grantee("entity_director"), new Set(), teams)).toEqual(["video", "social"]);
     expect(complianceTeamIds(grantee("c_level", "group"), new Set(), teams)).toEqual(["video", "social", "brand"]);
-    // Finance holds pjm:cost, not pjm:portfolio: no one's reports.
+    // Finance reads projects and their money, never who filed a report: compliance is not its business.
     expect(complianceTeamIds(grantee("finance"), new Set(), teams)).toEqual([]);
   });
 });

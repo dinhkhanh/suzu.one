@@ -152,23 +152,26 @@ describe("profitability (FR-PJM-63)", () => {
     // Huy 30 h × 125 000 + Lan 10 h × 100 000 (August's rate: September has no signed run for her).
     expect(tvc).toMatchObject({ basis: "project_fee", feeVnd: 50_000_000, costVnd: 3_750_000 + 1_000_000, marginVnd: 45_250_000, hours: 40, estimated: true });
     expect(tvc.byTeam).toEqual([{ name: "Video", other: false, hours: 40, costVnd: 4_750_000 }]);
-    // The private project is summed and unnamed.
-    expect(view.projects.map((project) => project.id)).not.toContain(ids.secret);
-    expect(view.privateProjects).toMatchObject({ projects: 1, hours: 5, costVnd: 500_000 });
+    // Finance holds `pjm:portfolio` since the owner's decision of 2026-09-23, so it may open a
+    // private project and the report names it rather than summing it away — and says so in the log.
+    expect(view.projects.map((project) => project.id)).toContain(ids.secret);
+    expect(view.privateProjects).toBeNull();
   });
 
-  it("does not name a private project's client — in the client lines, the filter or a crafted filter", async () => {
+  it("gives another entity's reader nothing of this one, however the filter is crafted", async () => {
     const [bank] = await db().insert(schema.workClient).values({ code: "BANK", name: "Ngân hàng Bí mật", entityId: ids.szm }).returning();
     await db().update(schema.workProject).set({ clientId: bank.id }).where(eq(schema.workProject.id, ids.secret));
+    // Finance of the sister company: `pjm:cost` and `pjm:commercial` over SZC, nothing over SZM.
+    const creative = { ...people.finance, principal: { ...people.finance.principal, grants: [{ role: "finance" as const, scope: { type: "entity" as const, id: ids.szc } }] } };
     try {
-      const view = (await buildProfitability(people.finance, PERIOD))!;
-      expect(view.clients.map((client) => client.clientId)).not.toContain(bank.id);
-      expect(view.clientsOffered.map((client) => client.id)).not.toContain(bank.id);
-      expect(JSON.stringify(view)).not.toContain("Ngân hàng Bí mật");
-      expect(view.privateProjects).toMatchObject({ projects: 1, hours: 5 });
-      const crafted = (await buildProfitability(people.finance, { ...PERIOD, clientId: bank.id }))!;
-      expect(crafted.privateProjects).toBeNull();
-      expect(crafted.clients).toEqual([]);
+      const view = await buildProfitability(creative, PERIOD);
+      const text = JSON.stringify(view ?? {});
+      expect(text).not.toContain("Ngân hàng Bí mật");
+      expect(text).not.toContain(ids.secret);
+      // Naming the client in the filter buys nothing: the scope is read from the grant, not the query.
+      const crafted = await buildProfitability(creative, { ...PERIOD, clientId: bank.id });
+      expect(JSON.stringify(crafted ?? {})).not.toContain("Ngân hàng Bí mật");
+      expect(crafted?.clients ?? []).toEqual([]);
     } finally {
       await db().update(schema.workProject).set({ clientId: null }).where(eq(schema.workProject.id, ids.secret));
     }
@@ -184,8 +187,11 @@ describe("profitability (FR-PJM-63)", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ resourceType: "work_project", resourceId: ids.secret, actorEmail: "owner@suzu.group" });
     expect(rows[0].summary).toBeNull();
-    // Finance, who may not open it, leaves no such row: they never saw which project it was.
-    expect(await db().select().from(schema.auditLog).where(and(eq(schema.auditLog.action, "projects.private.read"), eq(schema.auditLog.actorPersonId, ids.finance)))).toEqual([]);
+    // Finance may open it too (owner, 2026-09-23), so its reads are recorded the same way — and a
+    // reader who holds neither the cost nor the portfolio right gets no report at all (below).
+    const financeRows = await db().select().from(schema.auditLog).where(and(eq(schema.auditLog.action, "projects.private.read"), eq(schema.auditLog.actorPersonId, ids.finance)));
+    expect(financeRows.length).toBeGreaterThan(0);
+    expect(financeRows.every((row) => row.resourceId === ids.secret && row.summary === null)).toBe(true);
   });
 
   it("never returns a person's id, name, rate or single cost", async () => {

@@ -183,10 +183,12 @@ export async function seedProjectTemplatePlans(db: PostgresJsDatabase): Promise<
 
 // ── The biên bản nghiệm thu (FR-PJM-55) ─────────────────────────────────────────────────────
 //
-// A DRAFT, like the other starter document templates: plausible Vietnamese business wording, not
-// legal advice — counsel reviews it (and the account managers' real signed examples, plan item 6)
-// before a client signs one. It lives in the document template library, so HR edits its wording
-// and letterhead on Admin → Document templates; the project layer fills it with its own context
+// The owner accepted this wording on 2026-09-23 ("ok with current template, may edit later"), so
+// it goes to clients as it stands — which is why it no longer carries a "draft" line: a paper a
+// client signs may not describe itself as unreviewed. It is still ordinary Vietnamese business
+// wording rather than legal advice, and D27 now makes it the door every client invoice passes
+// through, so counsel is worth one reading. It lives in the document template library, so HR edits
+// its wording and letterhead on Admin → Document templates; the project layer fills it with its own context
 // (`acceptance.ts`), the way recruitment fills an offer letter. It prints no money: the amount is
 // finance's business, on the billing item, not on the paper the lead hands the client.
 
@@ -216,12 +218,8 @@ Kết luận: Bên A xác nhận Bên B đã thực hiện và bàn giao các h�
 
 Biên bản được lập thành 02 bản có giá trị pháp lý như nhau, mỗi bên giữ 01 bản.
 
-ĐẠI DIỆN BÊN A
-(Ký, ghi rõ họ tên và đóng dấu nếu có)
-
-
-
-(Mẫu nháp — cần bộ phận pháp chế rà soát câu chữ và căn cứ pháp lý trước khi dùng chính thức.)`;
+ĐẠI DIỆN BÊN A                                        ĐẠI DIỆN BÊN B
+(Ký, ghi rõ họ tên và đóng dấu nếu có)                (Ký, ghi rõ họ tên và đóng dấu)`;
 
 const ACCEPTANCE_LETTERHEAD = {
   companyName: "CÔNG TY TNHH SUZU MEDIA",

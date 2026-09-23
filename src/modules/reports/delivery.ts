@@ -6,7 +6,7 @@
 // (`listPortfolio` → `visibleProjects`, the work policy), so a team lead sees their teams'
 // projects, a `pjm:portfolio` holder the non-private projects of their scope, and nobody a project
 // they could not open. Every other figure is counted in SQL for those project ids only. Compliance
-// is about people, not projects: it covers the teams the reader leads and, under `pjm:portfolio`,
+// is about people, not projects: it covers the teams the reader leads and, under `work:manage`,
 // the teams of their scope — as team totals, never a list of names to rank.
 //
 // Fees and money budgets are not here at all (hours only), so the dashboard needs no
@@ -40,7 +40,7 @@ export type DeliveryDashboard = {
   attention: { id: string; name: string; teamName: string; health: Health | null; stale: boolean; overdueMilestones: number; slippedMilestones: number }[];
   /** null when the projects module does not expose retainer consumption yet (see retainer-source.ts). */
   retainers: RetainerSummary | null;
-  /** null when the reader leads no team and holds no `pjm:portfolio`. */
+  /** null when the reader leads no team and holds no `work:manage`. */
   compliance: { teams: TeamCompliance[]; total: { reports: Compliance; timesheets: Compliance } } | null;
 };
 
@@ -118,7 +118,7 @@ export async function getDeliveryDashboard(reader: DeliveryReader, filter: Deliv
  * to yesterday (today's report is not late yet), capped at `COMPLIANCE_MAX_DAYS` back from its end.
  *
  * Team totals only, and only where a total is a group: a team of one person, seen through
- * `pjm:portfolio` rather than led by the reader, is that person's compliance record under a team's
+ * `work:manage` rather than led by the reader, is that person's compliance record under a team's
  * name. Such teams are added together into "other teams", and people who cannot be hidden even
  * there are left out of the totals as well (security review, finding 22).
  */

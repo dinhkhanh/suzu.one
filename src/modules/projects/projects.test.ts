@@ -225,8 +225,10 @@ describe("fees (pjm:commercial)", () => {
   });
 
   it("are on them for a reader with it over the project's entity", async () => {
-    // Finance reads money but is in no project: an entity director both sees the projects and reads their money.
-    expect(await listPortfolio(finance(), { today: todayInVietnam() })).toEqual([]);
+    // Finance reads the projects it invoices, with their money (owner, 2026-09-23), and so does an
+    // entity director over its entity.
+    const financeRows = await listPortfolio(finance(), { today: todayInVietnam() });
+    expect(financeRows.find((row) => row.id === ids.tvc)?.feeVnd).toBe(120_000_000);
     const rows = await listPortfolio(director(), { today: todayInVietnam() });
     expect(rows.find((row) => row.id === ids.tvc)?.feeVnd).toBe(120_000_000);
     expect(shapePlan(await ensurePlan(ids.tvc), true).feeVnd).toBe(120_000_000);

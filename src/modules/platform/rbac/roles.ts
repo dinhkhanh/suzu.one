@@ -94,7 +94,7 @@ export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
     maxTier: "restricted",
   },
   payroll: { permissions: ["org:read", "person:read", "payroll:read", "payroll:propose", "rules:propose", "report:read", "ops:manage"], maxTier: "compensation" },
-  finance: { permissions: ["org:read", "person:read", "payroll:read", "payroll:pay", "report:read", "ops:manage", "pjm:commercial", "pjm:cost"], maxTier: "compensation" },
+  finance: { permissions: ["org:read", "person:read", "payroll:read", "payroll:pay", "report:read", "ops:manage", "pjm:commercial", "pjm:cost", "pjm:portfolio"], maxTier: "compensation" },
   department_head: { permissions: ["org:read", "person:read", "report:read", "work:manage", "performance:goals", "performance:read", "comms:manage", "kb:manage_unit", "pjm:portfolio"], maxTier: "personal" },
   recruiter: { permissions: ["org:read", "recruit:manage"], maxTier: "public_internal" },
   asset_admin: { permissions: ["org:read", "person:read", "asset:manage"], maxTier: "public_internal" },

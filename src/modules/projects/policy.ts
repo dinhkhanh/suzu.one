@@ -77,9 +77,10 @@ export const canManageBookings = canEditPlan;
 //
 // A person's capacity says when they are away (never why) and how much of their time is promised.
 // It is for the people who plan that time: the leads of any work team the person belongs to, every
-// manager above them in the reporting line, and leaders holding `pjm:portfolio` or `work:manage`
-// over where the person sits. Not colleagues, not a project lead as such, not the person's own
-// directory readers.
+// manager above them in the reporting line, and leaders holding `work:manage` over where the
+// person sits. Not colleagues, not a project lead as such, not the person's own directory readers —
+// and deliberately **not** `pjm:portfolio`, which reads projects (finance holds it since the owner's
+// decision of 2026-09-23) and has no business in who is busy when.
 
 export type CapacityReader = { personId: string | null; principal: Principal; /** Active work teams the reader leads. */ ledTeamIds: ReadonlySet<string> };
 export type CapacitySubject = { personId: string; /** Active work teams the person belongs to. */ teamIds: readonly string[]; /** Everyone above the person in the reporting line. */ chainAbove: readonly string[]; entityId: string | null; unitPath: readonly string[] | null };
@@ -91,15 +92,12 @@ export function canSeeCapacityOf(reader: CapacityReader, subject: CapacitySubjec
   return holdsCapacityGrant(reader, subject);
 }
 
-const holdsCapacityGrant = (reader: CapacityReader, subject: CapacitySubject): boolean => {
-  const target = { entityId: subject.entityId, unitPath: subject.unitPath };
-  return can(reader.principal, "pjm:portfolio", target) || can(reader.principal, "work:manage", target);
-};
+const holdsCapacityGrant = (reader: CapacityReader, subject: CapacitySubject): boolean => can(reader.principal, "work:manage", { entityId: subject.entityId, unitPath: subject.unitPath });
 
 /** Opening the capacity page (and its navigation entry): someone who plans other people's time somewhere. */
 export function canOpenCapacity(reader: CapacityReader, managesSomeone: boolean): boolean {
   if (!reader.personId) return false;
-  return reader.ledTeamIds.size > 0 || managesSomeone || can(reader.principal, "pjm:portfolio") || can(reader.principal, "work:manage");
+  return reader.ledTeamIds.size > 0 || managesSomeone || can(reader.principal, "work:manage");
 }
 
 // ── The commercial side (FR-PJM-06, 11, 55, 56, 58, 59) ─────────────────────────────────────
