@@ -1,5 +1,5 @@
 import "server-only";
-import { and, arrayOverlaps, asc, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
+import { and, arrayOverlaps, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
@@ -76,6 +76,34 @@ export async function loadGrants(personId: string, today: IsoDate = todayInVietn
     const known = (ROLES as readonly string[]).includes(row.role);
     return scope && known ? [{ role: row.role as Role, scope }] : [];
   });
+}
+
+/**
+ * `loadGrants` for many people at once, in a fixed number of queries however many they are: one
+ * pass over `role_assignment` and one over the unit tree, instead of a round trip per person.
+ * People with no grant are in the map with an empty list. Inside a transaction pass the executor,
+ * and everything is read there.
+ */
+export async function loadGrantsOfPeople(personIds: readonly string[], today: IsoDate = todayInVietnam(), executor?: Executor): Promise<Map<string, Grant[]>> {
+  const ids = [...new Set(personIds)];
+  const result = new Map<string, Grant[]>(ids.map((id) => [id, []]));
+  if (ids.length === 0) return result;
+  const rows = await (executor ?? db())
+    .select()
+    .from(schema.roleAssignment)
+    .where(and(inArray(schema.roleAssignment.personId, ids), lte(schema.roleAssignment.validFrom, today), notEnded(today)));
+  const unitIds = [...new Set(rows.flatMap((row) => (row.scopeType === "unit" && row.scopeId ? [row.scopeId] : [])))];
+  const covers = new Map<string, string[]>();
+  if (unitIds.length) {
+    const units = executor ? await executor.select({ id: schema.orgUnit.id, path: schema.orgUnit.path }).from(schema.orgUnit).where(arrayOverlaps(schema.orgUnit.path, unitIds)) : await listOrgUnits();
+    for (const granted of unitIds) covers.set(granted, units.flatMap((unit) => (unit.path.includes(granted) ? [unit.id] : [])));
+  }
+  for (const row of rows) {
+    const scope = toScope(row.scopeType, row.scopeId, covers);
+    const known = (ROLES as readonly string[]).includes(row.role);
+    if (scope && known) result.get(row.personId)?.push({ role: row.role as Role, scope });
+  }
+  return result;
 }
 
 export type RoleAssignmentView = {

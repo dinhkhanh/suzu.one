@@ -239,3 +239,20 @@ export async function listOpenBlockersRaisedBy(personIds: readonly string[]): Pr
     .orderBy(asc(schema.workBlocker.raisedAt));
   return rows.map(({ number, teamKey, ...row }) => ({ ...row, key: taskKey(teamKey, number) }));
 }
+
+/**
+ * How many open blockers each of these people has raised, counted in Postgres. The team board
+ * (FR-PJM-22) shows the figure and nothing else, so it asks for the figure: a lead's board never
+ * carries the reasons and task titles of everyone they oversee just to count them.
+ */
+export async function countOpenBlockersRaisedBy(personIds: readonly string[]): Promise<Map<string, number>> {
+  const raisedBy = [...new Set(personIds)];
+  if (raisedBy.length === 0) return new Map();
+  const rows = await db()
+    .select({ personId: schema.workBlocker.raisedByPersonId, value: sql<number>`count(*)::int` })
+    .from(schema.workBlocker)
+    .innerJoin(schema.task, eq(schema.task.id, schema.workBlocker.taskId))
+    .where(and(isNull(schema.workBlocker.resolvedAt), live, inArray(schema.workBlocker.raisedByPersonId, raisedBy)))
+    .groupBy(schema.workBlocker.raisedByPersonId);
+  return new Map(rows.map((row) => [row.personId, Number(row.value)]));
+}

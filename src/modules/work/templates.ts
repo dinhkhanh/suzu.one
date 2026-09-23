@@ -2,8 +2,9 @@
 // with days from an anchor date and a role per step. Using one asks who plays each role, then
 // makes the whole tree as work tasks — in a new project, or inside an existing one.
 import "server-only";
-import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate } from "@/lib/cache";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { getDaysOff } from "@/modules/attendance/service";
@@ -27,16 +28,34 @@ export type WorkTemplateView = WorkTemplateRow & { items: WorkTemplateItemRow[];
 
 const treeItem = (item: WorkTemplateItemRow): TreeItem => ({ id: item.id, parentItemId: item.parentItemId, title: item.title, description: item.description, assigneeRule: item.assigneeRule, assigneePersonId: item.assigneePersonId, dueOffsetDays: item.dueOffsetDays, sortOrder: item.sortOrder, estimateMinutes: item.estimateMinutes });
 
+// The work templates and their steps are small reference data read by every picker that offers
+// one, so the whole set sits under a single cache key and the callers filter it here; every writer
+// below drops the entry once committed, and the TTL bounds anything written behind the app's back
+// (a seed). The checklist purposes stay out: their own screens never read this.
+const TEMPLATES_KEY = "work:templates";
+const TEMPLATES_TTL = 30 * 60;
+/** After a write to `task_template` or its items outside this file (a seed) has committed. */
+export const invalidateWorkTemplates = () => invalidate(TEMPLATES_KEY);
+
+async function allWorkTemplates(executor?: Executor): Promise<WorkTemplateView[]> {
+  const load = async (from: Executor): Promise<WorkTemplateView[]> => {
+    const templates = await from.select().from(schema.taskTemplate).where(isWorkPurpose).orderBy(asc(schema.taskTemplate.purpose), asc(schema.taskTemplate.name), asc(schema.taskTemplate.id));
+    if (templates.length === 0) return [];
+    const items = await from.select().from(schema.taskTemplateItem).where(inArray(schema.taskTemplateItem.templateId, templates.map((template) => template.id))).orderBy(asc(schema.taskTemplateItem.sortOrder), asc(schema.taskTemplateItem.dueOffsetDays), asc(schema.taskTemplateItem.id));
+    return templates.map((template) => {
+      const own = items.filter((item) => item.templateId === template.id);
+      return { ...template, items: own, roleKeys: roleKeysOf(own.map(treeItem)) };
+    });
+  };
+  // Inside a transaction the rows come from there, not the cache.
+  return executor ? load(executor) : cached(TEMPLATES_KEY, TEMPLATES_TTL, () => load(db()));
+}
+
 /** Shared templates (no owner) and those of the given teams. `teamIds` undefined = every team's. */
-export async function listWorkTemplates(teamIds?: readonly string[], options: { activeOnly?: boolean } = {}): Promise<WorkTemplateView[]> {
-  const owned = teamIds === undefined ? undefined : teamIds.length ? or(isNull(schema.taskTemplate.ownerId), inArray(schema.taskTemplate.ownerId, [...teamIds])) : isNull(schema.taskTemplate.ownerId);
-  const templates = await db().select().from(schema.taskTemplate).where(and(isWorkPurpose, owned, options.activeOnly ? eq(schema.taskTemplate.isActive, true) : undefined)).orderBy(asc(schema.taskTemplate.purpose), asc(schema.taskTemplate.name));
-  if (templates.length === 0) return [];
-  const items = await db().select().from(schema.taskTemplateItem).where(inArray(schema.taskTemplateItem.templateId, templates.map((template) => template.id))).orderBy(asc(schema.taskTemplateItem.sortOrder), asc(schema.taskTemplateItem.dueOffsetDays));
-  return templates.map((template) => {
-    const own = items.filter((item) => item.templateId === template.id);
-    return { ...template, items: own, roleKeys: roleKeysOf(own.map(treeItem)) };
-  });
+export async function listWorkTemplates(teamIds?: readonly string[], options: { activeOnly?: boolean; executor?: Executor } = {}): Promise<WorkTemplateView[]> {
+  const all = await allWorkTemplates(options.executor);
+  const wanted = teamIds === undefined ? null : new Set(teamIds);
+  return all.filter((template) => (!options.activeOnly || template.isActive) && (wanted === null || template.ownerId === null || wanted.has(template.ownerId)));
 }
 
 export async function findWorkTemplate(templateId: string, executor: Executor = db()): Promise<WorkTemplateRow | undefined> {
@@ -54,11 +73,13 @@ export type WorkTemplateInput = { purpose: WorkTemplatePurpose; name: string; de
 export async function saveWorkTemplate(templateId: string | null, input: WorkTemplateInput): Promise<{ before: WorkTemplateRow | null; after: WorkTemplateRow }> {
   if (!templateId) {
     const [after] = await db().insert(schema.taskTemplate).values(input).returning();
+    await invalidateWorkTemplates();
     return { before: null, after };
   }
   const before = await findWorkTemplate(templateId);
   if (!before) throw new ActionError("template_not_found");
   const [after] = await db().update(schema.taskTemplate).set({ ...input, updatedAt: new Date() }).where(eq(schema.taskTemplate.id, templateId)).returning();
+  await invalidateWorkTemplates();
   return { before, after };
 }
 
@@ -76,6 +97,7 @@ export async function addWorkTemplateItem(templateId: string, input: WorkTemplat
     .insert(schema.taskTemplateItem)
     .values({ templateId, title: input.title, description: input.description, parentItemId: input.parentItemId, roleKey: input.roleKey, assigneeRule: input.roleKey ? `role:${input.roleKey}` : "none", dueOffsetDays: input.dueOffsetDays, estimateMinutes: input.estimateMinutes, sortOrder: input.sortOrder })
     .returning();
+  await invalidateWorkTemplates();
   return row;
 }
 
@@ -83,6 +105,7 @@ export async function addWorkTemplateItem(templateId: string, input: WorkTemplat
 export async function removeWorkTemplateItem(itemId: string): Promise<WorkTemplateItemRow> {
   const [row] = await db().delete(schema.taskTemplateItem).where(eq(schema.taskTemplateItem.id, itemId)).returning();
   if (!row) throw new ActionError("template_not_found");
+  await invalidateWorkTemplates();
   return row;
 }
 

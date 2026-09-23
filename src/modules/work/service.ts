@@ -33,7 +33,7 @@ export { getPersonTaskStats, type PersonTaskStats } from "./stats";
  */
 export { type AnalyticsCell, type AnalyticsFilter, defaultAnalyticsPeriod, getWorkAnalytics, type NamedGroup, type WorkAnalytics } from "./analytics";
 /** Phase 10 (FR-PJM-20..23): the person's own work and activity for Today, the plan and the EOD report — no authorization inside; the daily module decides who reads the result. */
-export { type DayTask, type FeedEvent, type FeedKind, type HandoffWaiting, listDayTasks, listHandoffsWaitingFor, listOpenBlockersRaisedBy, listOpenWorkOf, listWorkActivityBetween, type OpenBlocker } from "./day-feed";
+export { countOpenBlockersRaisedBy, type DayTask, type FeedEvent, type FeedKind, type HandoffWaiting, listDayTasks, listHandoffsWaitingFor, listOpenBlockersRaisedBy, listOpenWorkOf, listWorkActivityBetween, type OpenBlocker } from "./day-feed";
 /**
  * Phase 10 (FR-PJM-01..27): the project layer builds on projects and tasks. Work never imports
  * projects — the plan half of a template is applied through `createProjectFromTemplate`'s callback.

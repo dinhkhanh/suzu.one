@@ -3,13 +3,14 @@
 // progress, hours burn and open risks and issues. The fee column is filled per project only where the viewer holds
 // `pjm:commercial` over that project's entity; everywhere else the field is absent, not zero.
 import "server-only";
-import { and, asc, inArray, isNull } from "drizzle-orm";
+import { and, asc, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import { createTranslator } from "next-intl";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { type CsvFile, EXPORT_ROW_LIMIT, type ExportColumn, toCsv } from "@/modules/platform/export/csv";
 import en from "../../../messages/en.json";
 import vi from "../../../messages/vi.json";
+import { listEntities } from "../platform/org/service";
 import { visibleProjects, type WorkViewer } from "../work/service";
 import { slipDays } from "./engine/baseline";
 import type { Burn } from "./engine/budget";
@@ -73,16 +74,26 @@ export async function listPortfolio(viewer: WorkViewer, options: { today: IsoDat
   const [registers, burns, milestones, phases, managers, entities, raid] = await Promise.all([
     loadRegisters(ids),
     loadBurns(ids, new Map([...plans].map(([id, plan]) => [id, plan.budgetMinutes]))),
-    db().select().from(schema.projectMilestone).where(and(inArray(schema.projectMilestone.projectId, ids), isNull(schema.projectMilestone.doneAt))).orderBy(asc(schema.projectMilestone.dueDate)),
-    db().select().from(schema.projectPhase).where(inArray(schema.projectPhase.projectId, ids)).orderBy(asc(schema.projectPhase.sortOrder)),
+    // One row per project, chosen in Postgres: the next open milestone (earliest date first, and
+    // Postgres sorts undated ones last) and the phase today falls in. The portfolio spans every
+    // project the viewer may open, so neither list is loaded whole to keep one row of it.
+    db()
+      .selectDistinctOn([schema.projectMilestone.projectId], { projectId: schema.projectMilestone.projectId, name: schema.projectMilestone.name, dueDate: schema.projectMilestone.dueDate })
+      .from(schema.projectMilestone)
+      .where(and(inArray(schema.projectMilestone.projectId, ids), isNull(schema.projectMilestone.doneAt)))
+      .orderBy(asc(schema.projectMilestone.projectId), asc(schema.projectMilestone.dueDate)),
+    db()
+      .selectDistinctOn([schema.projectPhase.projectId], { projectId: schema.projectPhase.projectId, name: schema.projectPhase.name })
+      .from(schema.projectPhase)
+      .where(and(inArray(schema.projectPhase.projectId, ids), or(isNull(schema.projectPhase.startDate), lte(schema.projectPhase.startDate, options.today)), or(isNull(schema.projectPhase.endDate), gte(schema.projectPhase.endDate, options.today))))
+      .orderBy(asc(schema.projectPhase.projectId), asc(schema.projectPhase.sortOrder)),
     managerIds.length ? db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, managerIds)) : [],
-    entityIds.length ? db().select({ id: schema.entity.id, shortName: schema.entity.shortName }).from(schema.entity).where(inArray(schema.entity.id, entityIds)) : [],
+    // Entities are reference data: the org module's cached list, not a query of this page's own.
+    entityIds.length ? listEntities() : [],
     loadRaidCounts(ids),
   ]);
-  const nextOf = new Map<string, { name: string; dueDate: string | null }>();
-  // Earliest date first; Postgres sorts undated milestones last.
-  for (const milestone of milestones) if (!nextOf.has(milestone.projectId)) nextOf.set(milestone.projectId, { name: milestone.name, dueDate: milestone.dueDate });
-  const phasesOf = Map.groupBy(phases, (phase) => phase.projectId);
+  const nextOf = new Map(milestones.map((milestone) => [milestone.projectId, { name: milestone.name, dueDate: milestone.dueDate }]));
+  const phaseOf = new Map(phases.map((phase) => [phase.projectId, phase.name]));
   const nameOf = new Map(managers.map((person) => [person.id, person.fullName]));
   const entityOf = new Map(entities.map((entity) => [entity.id, entity.shortName]));
 
@@ -90,7 +101,6 @@ export async function listPortfolio(viewer: WorkViewer, options: { today: IsoDat
     const plan = plans.get(project.id)!;
     const register = registers.get(project.id)!;
     const burn = burns.get(project.id)!;
-    const current = (phasesOf.get(project.id) ?? []).find((phase) => (!phase.startDate || phase.startDate <= options.today) && (!phase.endDate || phase.endDate >= options.today));
     const since = todayInVietnam(plan.briefApprovedAt ?? plan.createdAt);
     const row: PortfolioRow = {
       id: project.id,
@@ -110,7 +120,7 @@ export async function listPortfolio(viewer: WorkViewer, options: { today: IsoDat
       briefStatus: plan.briefStatus,
       health: plan.health as Health | null,
       stale: isStale({ projectStatus: project.status, lastUpdateOn: plan.healthUpdatedAt ? todayInVietnam(plan.healthUpdatedAt) : null, since, cadenceDays: plan.updateCadenceDays }, options.today),
-      phaseName: current?.name ?? null,
+      phaseName: phaseOf.get(project.id) ?? null,
       nextMilestone: nextOf.get(project.id) ?? null,
       startDate: project.startDate,
       dueDate: project.dueDate,

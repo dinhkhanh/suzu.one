@@ -13,7 +13,9 @@ import vi from "../../../messages/vi.json";
 import { listLifecycleEventFacts } from "../core-hr/service";
 import { notify } from "../platform/notifications/service";
 import { createTask, setTaskStatus } from "../platform/tasks-engine/service";
+import { invalidateAutomations } from "./automations";
 import { invalidateWorkDirectory } from "./directory";
+import { invalidateIntakeForms } from "./intake";
 import { HANDOVER_EVENT_TYPES, isReassignable, type OwnedItem, type OwnershipKind, ownershipSummary, reassignProblem } from "./engine/exit";
 import { normalizeNote, type Note, noteIsEmpty } from "./engine/handoff";
 import { canAdminTeam, canChangeAccountManager, canManageProject, canModerateTask, canViewProject, canViewTask, canViewTeamBacklog, type ExitHandoverFacts, type ProjectFacts, type WorkViewer } from "./policy";
@@ -389,6 +391,8 @@ export async function reassignOwnership(handoverId: string, input: { items: { ki
       tx.insert(schema.workHandoff).values({ taskId: values.taskId ?? null, clientId: values.clientId ?? null, kind: "exit", fromPersonId: leaver, toPersonId: to.id, note, status: "recorded", sourceRef: { ...sourceRef, ...values.ref }, createdByPersonId: actor.personId });
     let directory = false;
     let clients = false;
+    let forms = false;
+    let rules = false;
     for (const item of chosen) {
       switch (item.kind) {
         case "task":
@@ -427,10 +431,12 @@ export async function reassignOwnership(handoverId: string, input: { items: { ki
         case "intake_form":
           await tx.update(schema.workIntakeForm).set({ createdByPersonId: to.id, updatedAt: new Date() }).where(eq(schema.workIntakeForm.id, item.id));
           await record({ ref: { intakeFormId: item.id } });
+          forms = true;
           break;
         case "automation":
           await tx.update(schema.workAutomation).set({ createdByPersonId: to.id, updatedAt: new Date() }).where(eq(schema.workAutomation.id, item.id));
           await record({ ref: { automationId: item.id } });
+          rules = true;
           break;
         case "team_lead":
           await tx.insert(schema.workTeamMember).values({ teamId: item.id, personId: to.id, role: "lead" }).onConflictDoUpdate({ target: [schema.workTeamMember.teamId, schema.workTeamMember.personId], set: { role: "lead" } });
@@ -442,9 +448,9 @@ export async function reassignOwnership(handoverId: string, input: { items: { ki
       }
     }
     await tx.update(schema.workExitHandover).set({ updatedAt: new Date() }).where(eq(schema.workExitHandover.id, handoverId));
-    return { moved: chosen.map(({ kind, id, label }) => ({ kind, id, label })), leaver, directory, clients };
+    return { moved: chosen.map(({ kind, id, label }) => ({ kind, id, label })), leaver, directory, clients, forms, rules };
   });
-  await Promise.all([result.directory ? invalidateWorkDirectory() : null, result.clients ? invalidateWorkClients() : null]);
+  await Promise.all([result.directory ? invalidateWorkDirectory() : null, result.clients ? invalidateWorkClients() : null, result.forms ? invalidateIntakeForms() : null, result.rules ? invalidateAutomations() : null]);
   return { moved: result.moved, remaining: (await listOwnership(result.leaver)).length };
 }
 

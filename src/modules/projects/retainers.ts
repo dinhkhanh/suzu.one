@@ -229,9 +229,15 @@ export async function runRetainers(today: IsoDate, onlyRetainerId?: string): Pro
 
 // ── Quota alerts ────────────────────────────────────────────────────────────────────────────
 
-async function recipientsOf(projectId: string): Promise<string[]> {
-  const rows = await db().select({ personId: schema.workProjectMember.personId }).from(schema.workProjectMember).where(and(eq(schema.workProjectMember.projectId, projectId), inArray(schema.workProjectMember.role, ["lead", "account_manager"])));
-  return [...new Set(rows.map((row) => row.personId))];
+/** Who hears about a quota, for every project at once: the job alerts many months in one run. */
+async function recipientsOf(projectIds: readonly string[]): Promise<Map<string, string[]>> {
+  const ids = [...new Set(projectIds)];
+  if (ids.length === 0) return new Map();
+  const rows = await db()
+    .select({ projectId: schema.workProjectMember.projectId, personId: schema.workProjectMember.personId })
+    .from(schema.workProjectMember)
+    .where(and(inArray(schema.workProjectMember.projectId, ids), inArray(schema.workProjectMember.role, ["lead", "account_manager"])));
+  return new Map([...Map.groupBy(rows, (row) => row.projectId)].map(([projectId, members]) => [projectId, [...new Set(members.map((member) => member.personId))]]));
 }
 
 /** Lines of open months at 80% or 100% of their quota: the account manager and the lead, once per line and threshold. */
@@ -242,7 +248,7 @@ export async function sendQuotaAlerts(): Promise<{ alerts: number }> {
     .innerJoin(schema.projectRetainer, eq(schema.projectRetainer.id, schema.projectRetainerPeriod.retainerId))
     .innerJoin(schema.workProject, eq(schema.workProject.id, schema.projectRetainer.projectId))
     .where(and(eq(schema.projectRetainerPeriod.status, "open"), eq(schema.projectRetainer.isActive, true)));
-  const lines = await periodLines(periods.map((row) => row.period.id));
+  const [lines, recipientsByProject] = await Promise.all([periodLines(periods.map((row) => row.period.id)), recipientsOf(periods.map((row) => row.projectId))]);
   let alerts = 0;
   for (const { period, projectId, projectName } of periods) {
     const due = (lines.get(period.id) ?? []).filter((line) => !line.cancelledAt).flatMap((line) => {
@@ -250,7 +256,7 @@ export async function sendQuotaAlerts(): Promise<{ alerts: number }> {
       return keys.length ? [{ line, keys }] : [];
     });
     if (due.length === 0) continue;
-    const recipients = await recipientsOf(projectId);
+    const recipients = recipientsByProject.get(projectId) ?? [];
     await db().transaction(async (tx) => {
       // Marked under the period's lock: a second run finds the marks and sends nothing.
       const [fresh] = await tx.select({ alerted: schema.projectRetainerPeriod.alerted }).from(schema.projectRetainerPeriod).where(eq(schema.projectRetainerPeriod.id, period.id)).limit(1).for("update");

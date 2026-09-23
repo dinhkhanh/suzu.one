@@ -3,7 +3,7 @@
 // is what lets the task enter a "Published" state (publish-gate.ts). The calendar shows planned
 // against published and flags what is late or missing; the morning job reminds.
 import "server-only";
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, or } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
@@ -204,10 +204,12 @@ export async function listCalendarPublishes(viewer: WorkViewer, range: { from: I
 export async function publishCountsByTask(taskIds: readonly string[]): Promise<Map<string, number>> {
   const ids = [...new Set(taskIds)];
   if (ids.length === 0) return new Map();
-  const rows = await db().select({ taskId: schema.workPublish.taskId }).from(schema.workPublish).where(and(inArray(schema.workPublish.taskId, ids), inArray(schema.workPublish.status, ["planned", "published"])));
-  const counts = new Map<string, number>();
-  for (const row of rows) counts.set(row.taskId, (counts.get(row.taskId) ?? 0) + 1);
-  return counts;
+  const rows = await db()
+    .select({ taskId: schema.workPublish.taskId, value: sql<number>`count(*)::int` })
+    .from(schema.workPublish)
+    .where(and(inArray(schema.workPublish.taskId, ids), inArray(schema.workPublish.status, ["planned", "published"])))
+    .groupBy(schema.workPublish.taskId);
+  return new Map(rows.map((row) => [row.taskId, Number(row.value)]));
 }
 
 // ── Reminders (FR-PJM-54) ───────────────────────────────────────────────────────────────────

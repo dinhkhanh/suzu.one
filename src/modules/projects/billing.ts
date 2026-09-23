@@ -21,6 +21,7 @@ import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
 import type { Principal } from "../platform/rbac/policy";
+import { listEntities } from "../platform/org/service";
 import { listPeopleHolding } from "../platform/rbac/service";
 import { type BillingSource, type BillingStatus, billingDecidable } from "./engine/acceptance";
 import { ensurePlan } from "./plans";
@@ -197,15 +198,15 @@ export async function listBillingQueue(principal: Principal, filters: BillingFil
   return listItems(and(scope, status, entity), 500);
 }
 
-/** The entities a reader's queue can be filtered to. */
+/** The entities a reader's queue can be filtered to — from the org module's cached list, not a query of its own. */
 export async function billingEntities(principal: Principal): Promise<{ id: string; name: string }[]> {
   const reach = billingReach(principal);
   if (!reach.all && reach.entityIds.length === 0) return [];
-  return db()
-    .select({ id: schema.entity.id, name: schema.entity.shortName })
-    .from(schema.entity)
-    .where(reach.all ? undefined : inArray(schema.entity.id, reach.entityIds))
-    .orderBy(schema.entity.shortName);
+  const within = new Set(reach.all ? [] : reach.entityIds);
+  return (await listEntities())
+    .filter((entity) => reach.all || within.has(entity.id))
+    .map((entity) => ({ id: entity.id, name: entity.shortName }))
+    .sort((a, b) => a.name.localeCompare(b.name, "vi"));
 }
 
 export const findBillingItem = async (itemId: string): Promise<BillingItemRow | undefined> => (await db().select().from(schema.projectBillingItem).where(eq(schema.projectBillingItem.id, itemId)).limit(1))[0];

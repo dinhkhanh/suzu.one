@@ -8,7 +8,7 @@ import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { notify } from "@/modules/platform/notifications/service";
-import { type DayTask, listDayTasks, listOpenBlockersRaisedBy, listOpenWorkOf, listWorkActivityBetween, type OpenBlocker } from "@/modules/work/service";
+import { countOpenBlockersRaisedBy, type DayTask, listDayTasks, listOpenBlockersRaisedBy, listOpenWorkOf, listWorkActivityBetween, type OpenBlocker } from "@/modules/work/service";
 import { dayOf, type PersonDay } from "./days";
 import { prefillReport, type ReportDraft } from "./engine/prefill";
 import { type ShownActivity, type ShownLine, showActivity, showLine } from "./engine/redact";
@@ -226,7 +226,8 @@ export async function getTeamBoard(reader: ReportReader, date: IsoDate): Promise
     loadSubjects(personIds),
     dayOf(personIds, date),
     db().select().from(schema.dailyReport).where(and(inArray(schema.dailyReport.personId, personIds), eq(schema.dailyReport.date, date))),
-    listOpenBlockersRaisedBy(personIds),
+    // The board shows how many, never which: the count comes from Postgres.
+    countOpenBlockersRaisedBy(personIds),
     db()
       .select({ personId: schema.dailyReminderSent.personId })
       .from(schema.dailyReminderSent)
@@ -237,8 +238,13 @@ export async function getTeamBoard(reader: ReportReader, date: IsoDate): Promise
     ? await db().select({ reportId: schema.dailyReportComment.reportId, value: count() }).from(schema.dailyReportComment).where(inArray(schema.dailyReportComment.reportId, reportIds)).groupBy(schema.dailyReportComment.reportId)
     : [];
 
+  // Indexed once, not scanned again for every person the reader oversees.
+  const submittedOf = new Map(reports.filter((row) => row.status === "submitted").map((row) => [row.personId, row]));
+  const commentsOf = new Map(commentCounts.map((row) => [row.reportId, row.value]));
+  const remindedOf = new Set(reminded.map((row) => row.personId));
+
   const rowOf = (personId: string): BoardRow => {
-    const report = reports.find((row) => row.personId === personId && row.status === "submitted");
+    const report = submittedOf.get(personId);
     const day = days.get(personId);
     const status: BoardStatus = report ? "submitted" : day?.report.required ? "missing" : "not_required";
     return {
@@ -250,9 +256,9 @@ export async function getTeamBoard(reader: ReportReader, date: IsoDate): Promise
       late: report?.late ?? false,
       submittedAt: report?.submittedAt ?? null,
       blockers: report?.blockers ?? null,
-      openBlockers: blockers.filter((blocker) => blocker.raisedByPersonId === personId).length,
-      comments: commentCounts.find((row) => row.reportId === report?.id)?.value ?? 0,
-      reminded: reminded.some((row) => row.personId === personId),
+      openBlockers: blockers.get(personId) ?? 0,
+      comments: (report && commentsOf.get(report.id)) ?? 0,
+      reminded: remindedOf.has(personId),
     };
   };
   return groups.map((group) => {

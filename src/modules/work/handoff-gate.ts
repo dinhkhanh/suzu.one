@@ -5,6 +5,7 @@
 // Kept apart from handoffs.ts so tasks.ts can import it without importing itself back.
 import "server-only";
 import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
+import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 import { defaultReceiver, packageFor, type PackageCheck, type PackageField } from "./engine/handoff";
 import { visibilityOf } from "./projects";
@@ -27,9 +28,24 @@ export type HandoffRequirement = {
   files: { id: string; fileName: string }[];
 };
 
-/** A team's packages, oldest first (the order `packageFor` breaks ties in). */
-export async function listPackages(teamId: string, executor: Executor = db()): Promise<HandoffPackageRow[]> {
-  return executor.select().from(schema.workHandoffPackage).where(eq(schema.workHandoffPackage.teamId, teamId)).orderBy(asc(schema.workHandoffPackage.createdAt), asc(schema.workHandoffPackage.id));
+// The packages are a small reference table read on every state change, so the whole table sits in
+// the shared cache and a team's own are filtered out here; the TTL bounds anything written behind
+// the app's back (a seed).
+const PACKAGES_KEY = "work:handoff-packages";
+const PACKAGES_TTL = 30 * 60;
+
+/** After a write to `work_handoff_package` outside this file (handoffs.ts, a seed) has committed. */
+export const invalidateHandoffPackages = () => invalidate(PACKAGES_KEY);
+
+/**
+ * A team's packages, oldest first (the order `packageFor` breaks ties in). Inside a transaction
+ * pass the executor, and the rows come from there, not the cache.
+ */
+export async function listPackages(teamId: string, executor?: Executor): Promise<HandoffPackageRow[]> {
+  const order = [asc(schema.workHandoffPackage.createdAt), asc(schema.workHandoffPackage.id)];
+  if (executor) return executor.select().from(schema.workHandoffPackage).where(eq(schema.workHandoffPackage.teamId, teamId)).orderBy(...order);
+  const all = await cached(PACKAGES_KEY, PACKAGES_TTL, () => db().select().from(schema.workHandoffPackage).orderBy(...order));
+  return all.filter((row) => row.teamId === teamId);
 }
 
 export async function findPackageFor(executor: Executor, teamId: string, fromStateId: string, toStateId: string): Promise<HandoffPackageRow | null> {

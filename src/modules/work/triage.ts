@@ -7,6 +7,7 @@ import "server-only";
 import { and, asc, desc, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate } from "@/lib/cache";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
@@ -45,7 +46,7 @@ async function tellLeads(tx: Executor, loaded: LoadedTask, exceptPersonId: strin
 export async function sendToTriage(tx: Executor, taskId: string, source: TriageSource, options: { notify?: boolean; actorPersonId?: string | null } = {}): Promise<{ applied: TriageSetDef; ruleIds: string[] }> {
   const loaded = await loadTask(taskId, tx);
   if (!loaded) throw new ActionError("task_not_found");
-  const rules = await tx.select().from(schema.workTriageRule).where(eq(schema.workTriageRule.teamId, loaded.team.id));
+  const rules = await listTriageRules(loaded.team.id, tx);
   const { set, ruleIds } = matchTriageRules(rules, { source, intakeFormId: loaded.work.intakeFormId, title: loaded.task.title, description: loaded.task.description });
 
   const applied: TriageSetDef = {};
@@ -252,8 +253,20 @@ export async function countTriage(teamIds: readonly string[]): Promise<Map<strin
 
 // ── Rules ───────────────────────────────────────────────────────────────────────────────────
 
-export async function listTriageRules(teamId: string): Promise<TriageRuleRow[]> {
-  return db().select().from(schema.workTriageRule).where(eq(schema.workTriageRule.teamId, teamId)).orderBy(asc(schema.workTriageRule.sortOrder), desc(schema.workTriageRule.createdAt));
+// The rules are small reference data read on every arrival and by the triage screen: the whole
+// table sits under one cache key and is filtered by team here; the writers below drop the entry
+// once committed, and the TTL bounds anything written behind the app's back (a seed).
+const RULES_KEY = "work:triage-rules";
+const RULES_TTL = 30 * 60;
+/** After a write to `work_triage_rule` outside this file (a seed) has committed. */
+export const invalidateTriageRules = () => invalidate(RULES_KEY);
+
+/** Inside a transaction pass the executor, and the rules come from there, not the cache. */
+export async function listTriageRules(teamId: string, executor?: Executor): Promise<TriageRuleRow[]> {
+  const order = [asc(schema.workTriageRule.sortOrder), desc(schema.workTriageRule.createdAt)];
+  if (executor) return executor.select().from(schema.workTriageRule).where(eq(schema.workTriageRule.teamId, teamId)).orderBy(...order);
+  const all = await cached(RULES_KEY, RULES_TTL, () => db().select().from(schema.workTriageRule).orderBy(...order, asc(schema.workTriageRule.id)));
+  return all.filter((rule) => rule.teamId === teamId);
 }
 
 export async function findTriageRule(ruleId: string): Promise<TriageRuleRow | undefined> {
@@ -281,17 +294,20 @@ export async function saveTriageRule(teamId: string, ruleId: string | null, inpu
   const values = { name: input.name, match: input.match, set: input.set, sortOrder: input.sortOrder, isActive: input.isActive };
   if (!ruleId) {
     const [after] = await db().insert(schema.workTriageRule).values({ teamId, ...values, createdByPersonId: actorPersonId }).returning();
+    await invalidateTriageRules();
     return { before: null, after };
   }
   const before = await findTriageRule(ruleId);
   if (!before || before.teamId !== teamId) throw new ActionError("triage_rule_not_found");
   const [after] = await db().update(schema.workTriageRule).set({ ...values, updatedAt: new Date() }).where(eq(schema.workTriageRule.id, ruleId)).returning();
+  await invalidateTriageRules();
   return { before, after };
 }
 
 export async function deleteTriageRule(ruleId: string): Promise<TriageRuleRow> {
   const [row] = await db().delete(schema.workTriageRule).where(eq(schema.workTriageRule.id, ruleId)).returning();
   if (!row) throw new ActionError("triage_rule_not_found");
+  await invalidateTriageRules();
   return row;
 }
 

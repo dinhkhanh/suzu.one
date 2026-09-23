@@ -11,7 +11,7 @@ import { defineImport } from "../platform/import/service";
 import type { ResultMetric } from "./engine/delivery";
 import { canManagePublish } from "./policy";
 import { saveResult } from "./publish";
-import { loadTasks, resolveTaskKey } from "./tasks";
+import { loadTasks, resolveTaskKeys } from "./tasks";
 import { loadViewerWith, type ViewerSource } from "./viewer";
 
 const url = (cell: string) => (/^https:\/\/\S+$/i.test(cell) && cell.length <= 1000 ? { ok: true as const, value: cell } : { ok: false as const, code: "bad_url" });
@@ -48,12 +48,8 @@ export async function resolveResultRows(rows: Row[], user: Importer, executor: T
   const headers = { url: resultColumns.url.headers[0], task: resultColumns.taskNumber.headers[0], date: resultColumns.recordedOn.headers[0] };
   const viewer = await loadViewerWith(executor, user);
 
-  const keys = [...new Set(rows.flatMap((row) => (row.values.taskNumber ? [row.values.taskNumber] : [])))];
-  const taskByKey = new Map<string, string>();
-  for (const key of keys) {
-    const id = await resolveTaskKey(key, executor);
-    if (id) taskByKey.set(key, id);
-  }
+  // Every line's task number in one lookup: a file of hundreds of posts is not hundreds of queries.
+  const taskByKey = await resolveTaskKeys(rows.flatMap((row) => (row.values.taskNumber ? [row.values.taskNumber] : [])), executor);
   const urls = rows.flatMap((row) => (row.values.url ? [normalize(row.values.url)] : []));
   const taskIds = [...taskByKey.values()];
   const byUrl = urls.length ? sql`lower(rtrim(trim(${schema.workPublish.url}), '/')) IN (${sql.join(

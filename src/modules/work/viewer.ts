@@ -4,7 +4,7 @@ import { eq, inArray } from "drizzle-orm";
 import { cache } from "react";
 import { db, schema, type Tx } from "@/lib/db";
 import type { Principal } from "../platform/rbac/policy";
-import { loadGrants } from "../platform/rbac/service";
+import { loadGrantsOfPeople } from "../platform/rbac/service";
 import type { ProjectRole, TeamRole } from "./enums";
 import type { WorkViewer } from "./policy";
 
@@ -40,9 +40,9 @@ export async function viewerOfPerson(executor: Executor, personId: string): Prom
 }
 
 /**
- * `viewerOfPerson` for many people at once, in a fixed number of queries. People unknown or gone
- * are left out of the map. Without an executor the grants come from the shared cache; inside a
- * transaction pass it, and everything is read there.
+ * `viewerOfPerson` for many people at once, in a fixed number of queries however many they are.
+ * People unknown or gone are left out of the map. Inside a transaction pass the executor, and
+ * everything is read there.
  */
 export async function viewersOfPeople(personIds: readonly string[], executor?: Executor): Promise<Map<string, WorkViewer>> {
   const ids = [...new Set(personIds)];
@@ -55,12 +55,14 @@ export async function viewersOfPeople(personIds: readonly string[], executor?: E
     from.select({ personId: schema.workProjectMember.personId, id: schema.workProjectMember.projectId, role: schema.workProjectMember.role }).from(schema.workProjectMember).where(inArray(schema.workProjectMember.personId, ids)),
   ]);
   const present = people.filter((person) => person.status !== "offboarded");
-  const grants = await Promise.all(present.map((person) => loadGrants(person.id, undefined, executor)));
+  // One pass over the grants for all of them: an automation naming a dozen people must not cost a
+  // round trip each, and inside a transaction that would be a dozen queries.
+  const grants = await loadGrantsOfPeople(present.map((person) => person.id), undefined, executor);
   const teamsOf = Map.groupBy(teams, (row) => row.personId);
   const projectsOf = Map.groupBy(projects, (row) => row.personId);
-  present.forEach((person, index) => {
+  present.forEach((person) => {
     result.set(person.id, {
-      principal: { personId: person.id, workforceType: person.workforceType, grants: grants[index] },
+      principal: { personId: person.id, workforceType: person.workforceType, grants: grants.get(person.id) ?? [] },
       entityId: person.primaryEntityId,
       teamRoles: new Map((teamsOf.get(person.id) ?? []).map((row) => [row.id, row.role as TeamRole])),
       projectRoles: new Map((projectsOf.get(person.id) ?? []).map((row) => [row.id, row.role as ProjectRole])),

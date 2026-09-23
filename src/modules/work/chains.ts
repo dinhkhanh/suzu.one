@@ -5,6 +5,7 @@
 import "server-only";
 import { and, asc, eq, isNull, or } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 import { chainFor, chainProblems, type ChainStage } from "./engine/delivery";
 import type { ReviewStage } from "./schema";
@@ -12,11 +13,26 @@ import type { ReviewStage } from "./schema";
 type Executor = Tx | ReturnType<typeof db>;
 export type ReviewChainRow = typeof schema.workReviewChain.$inferSelect;
 
-/** A team's chains and, when a project is named, that project's own — active first, oldest first. */
-export async function listReviewChains(scope: { teamId: string; projectId?: string | null }, executor: Executor = db()): Promise<ReviewChainRow[]> {
+// The chains are small reference data read whenever a version is handed in and by the team and
+// project screens: the whole table sits under one cache key and is filtered here; the writers
+// below drop the entry once committed, and the TTL bounds anything written behind the app's back.
+const CHAINS_KEY = "work:review-chains";
+const CHAINS_TTL = 30 * 60;
+/** After a write to `work_review_chain` outside this file (a seed) has committed. */
+export const invalidateReviewChains = () => invalidate(CHAINS_KEY);
+
+/**
+ * A team's chains and, when a project is named, that project's own — active first, oldest first.
+ * Inside a transaction pass the executor, and the rows come from there, not the cache.
+ */
+export async function listReviewChains(scope: { teamId: string; projectId?: string | null }, executor?: Executor): Promise<ReviewChainRow[]> {
   const chains = schema.workReviewChain;
-  const where = scope.projectId ? or(and(eq(chains.teamId, scope.teamId), isNull(chains.projectId)), eq(chains.projectId, scope.projectId)) : and(eq(chains.teamId, scope.teamId), isNull(chains.projectId));
-  return executor.select().from(chains).where(where).orderBy(asc(chains.createdAt), asc(chains.id));
+  if (executor) {
+    const where = scope.projectId ? or(and(eq(chains.teamId, scope.teamId), isNull(chains.projectId)), eq(chains.projectId, scope.projectId)) : and(eq(chains.teamId, scope.teamId), isNull(chains.projectId));
+    return executor.select().from(chains).where(where).orderBy(asc(chains.createdAt), asc(chains.id));
+  }
+  const all = await cached(CHAINS_KEY, CHAINS_TTL, () => db().select().from(chains).orderBy(asc(chains.createdAt), asc(chains.id)));
+  return all.filter((chain) => (chain.teamId === scope.teamId && chain.projectId === null) || (!!scope.projectId && chain.projectId === scope.projectId));
 }
 
 export async function findReviewChain(chainId: string, executor: Executor = db()): Promise<ReviewChainRow | undefined> {
@@ -48,7 +64,7 @@ export async function saveReviewChain(scope: { teamId: string; projectId: string
   if (problem) throw new ActionError(problem);
   if (!input.name.trim()) throw new ActionError("chain_name_required");
   const values = { name: input.name.trim(), contentFormat: input.contentFormat, stages, isActive: input.isActive, updatedAt: new Date() };
-  return db().transaction(async (tx) => {
+  const saved = await db().transaction(async (tx) => {
     if (!chainId) {
       const [after] = await tx.insert(schema.workReviewChain).values({ teamId: scope.teamId, projectId: scope.projectId, createdByPersonId: actorPersonId, ...values }).returning();
       return { before: null, after };
@@ -59,6 +75,8 @@ export async function saveReviewChain(scope: { teamId: string; projectId: string
     const [after] = await tx.update(schema.workReviewChain).set(values).where(eq(schema.workReviewChain.id, chainId)).returning();
     return { before, after };
   });
+  await invalidateReviewChains();
+  return saved;
 }
 
 /**
@@ -66,7 +84,7 @@ export async function saveReviewChain(scope: { teamId: string; projectId: string
  * chain that was ever used is only switched off; one never used goes.
  */
 export async function removeReviewChain(chainId: string): Promise<{ before: ReviewChainRow; deleted: boolean }> {
-  return db().transaction(async (tx) => {
+  const removed = await db().transaction(async (tx) => {
     const before = await findReviewChain(chainId, tx);
     if (!before) throw new ActionError("chain_not_found");
     const [used] = await tx.select({ id: schema.workDeliverable.id }).from(schema.workDeliverable).where(eq(schema.workDeliverable.chainId, chainId)).limit(1);
@@ -74,4 +92,6 @@ export async function removeReviewChain(chainId: string): Promise<{ before: Revi
     else await tx.delete(schema.workReviewChain).where(eq(schema.workReviewChain.id, chainId));
     return { before, deleted: !used };
   });
+  await invalidateReviewChains();
+  return removed;
 }

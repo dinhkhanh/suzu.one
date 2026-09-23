@@ -3,7 +3,7 @@
 // with a reason — and the approver's list of weeks waiting. Who reads what is policy.ts; every
 // read here takes the reader and asks it, and the lists are the policy's list form.
 import "server-only";
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
@@ -182,11 +182,13 @@ export async function submitWeek(personId: string, weekStart: IsoDate, today: Is
       .where(and(eq(schema.timeEntry.personId, personId), isNotNull(schema.timeEntry.timerStartedAt), isNull(schema.timeEntry.deletedAt), gte(schema.timeEntry.date, weekStart), lte(schema.timeEntry.date, weekEnd)))
       .limit(1);
     if (timer) throw new ActionError("timesheet_timer_running");
-    const entries = await tx
-      .select({ minutes: schema.timeEntry.minutes })
+    // The week's total is summed in Postgres: the rows themselves are not wanted here, and this
+    // runs under the week's lock, which no wire traffic should hold open longer than it must.
+    const [total] = await tx
+      .select({ minutes: sql<number>`coalesce(sum(${schema.timeEntry.minutes}), 0)::int` })
       .from(schema.timeEntry)
       .where(and(eq(schema.timeEntry.personId, personId), eq(schema.timeEntry.weekStart, weekStart), isNull(schema.timeEntry.deletedAt)));
-    const minutes = entries.reduce((sum, entry) => sum + entry.minutes, 0);
+    const minutes = Number(total?.minutes ?? 0);
     const values = { status: next.status, minutes, submittedAt: now, decidedByPersonId: null, decidedAt: null, updatedAt: now };
     const [after] = await tx
       .insert(schema.timesheetWeek)
@@ -287,19 +289,23 @@ export type ProjectTimeRow = { personId: string; name: string; projectId: string
  */
 export async function listProjectTime(reader: TimeReader, weekStart: IsoDate): Promise<ProjectTimeRow[]> {
   if (!reader.personId || reader.ledProjectIds.size === 0) return [];
+  // One row per person and project, summed in Postgres — nobody's individual entries cross the
+  // wire for a list that only shows totals.
   const rows = await db()
-    .select({ personId: schema.timeEntry.personId, name: schema.person.fullName, projectId: schema.timeEntry.projectId, projectName: schema.workProject.name, minutes: schema.timeEntry.minutes, billable: schema.timeEntry.billable })
+    .select({
+      personId: schema.timeEntry.personId,
+      name: schema.person.fullName,
+      projectId: schema.timeEntry.projectId,
+      projectName: schema.workProject.name,
+      minutes: sql<number>`coalesce(sum(${schema.timeEntry.minutes}), 0)::int`,
+      billable: sql<number>`coalesce(sum(${schema.timeEntry.minutes}) filter (where ${schema.timeEntry.billable}), 0)::int`,
+    })
     .from(schema.timeEntry)
     .innerJoin(schema.person, eq(schema.person.id, schema.timeEntry.personId))
     .innerJoin(schema.workProject, eq(schema.workProject.id, schema.timeEntry.projectId))
-    .where(and(inArray(schema.timeEntry.projectId, [...reader.ledProjectIds]), eq(schema.timeEntry.weekStart, weekStart), isNull(schema.timeEntry.deletedAt), isNull(schema.timeEntry.timerStartedAt)));
-  const result = new Map<string, ProjectTimeRow>();
-  for (const row of rows) {
-    const key = `${row.personId}:${row.projectId}`;
-    const seen = result.get(key) ?? { personId: row.personId, name: row.name, projectId: row.projectId!, projectName: row.projectName, minutes: 0, billable: 0 };
-    seen.minutes += row.minutes;
-    if (row.billable) seen.billable += row.minutes;
-    result.set(key, seen);
-  }
-  return [...result.values()].sort((a, b) => a.projectName.localeCompare(b.projectName, "vi") || a.name.localeCompare(b.name, "vi"));
+    .where(and(inArray(schema.timeEntry.projectId, [...reader.ledProjectIds]), eq(schema.timeEntry.weekStart, weekStart), isNull(schema.timeEntry.deletedAt), isNull(schema.timeEntry.timerStartedAt)))
+    .groupBy(schema.timeEntry.personId, schema.person.fullName, schema.timeEntry.projectId, schema.workProject.name);
+  return rows
+    .map((row) => ({ personId: row.personId, name: row.name, projectId: row.projectId!, projectName: row.projectName, minutes: Number(row.minutes), billable: Number(row.billable) }))
+    .sort((a, b) => a.projectName.localeCompare(b.projectName, "vi") || a.name.localeCompare(b.name, "vi"));
 }

@@ -10,6 +10,7 @@
 import "server-only";
 import { and, asc, eq, inArray, isNull, lte, gte, or, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate } from "@/lib/cache";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { getDaysOff } from "@/modules/attendance/service";
@@ -24,6 +25,7 @@ import { canManageProject, canViewProject, canViewTask, type ProjectFacts, type 
 import { createWorkTaskIn, type LoadedTask, loadTask, loadTasks, logActivity, taskKey, updateWorkTaskIn } from "./tasks";
 import { listAssignable, projectFacts } from "./projects";
 import { listLabels, listStates } from "./teams";
+import { listWorkTemplates } from "./templates";
 import { viewersOfPeople } from "./viewer";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -37,15 +39,30 @@ const OPEN = ["todo", "in_progress"] as const;
 
 // ── Keeping rules ───────────────────────────────────────────────────────────────────────────
 
+// The rules are small reference data read by the automation screens and the morning job, so the
+// whole table sits in the shared cache and each scope is filtered out here; a rule that runs inside
+// a change reads from that change's transaction instead (`activeRules`). The TTL bounds anything
+// written behind the app's back (a seed).
+const RULES_KEY = "work:automations";
+const RULES_TTL = 30 * 60;
+
+/** After a write to `work_automation` outside this file (an exit handover, a seed) has committed. */
+export const invalidateAutomations = () => invalidate(RULES_KEY);
+
+async function allAutomations(executor?: Executor): Promise<AutomationRow[]> {
+  const load = (from: Executor) => from.select().from(schema.workAutomation).orderBy(asc(schema.workAutomation.createdAt), asc(schema.workAutomation.id));
+  // Inside a transaction the rows come from there, not the cache.
+  return executor ? load(executor) : cached(RULES_KEY, RULES_TTL, () => load(db()));
+}
+
 /**
  * A team's rules with, when a project is named, that project's own; `projectId` undefined = every
  * rule of the team, its projects' included (the team's automation page). Oldest first — the order
- * they run in.
+ * they run in. Inside a transaction pass the executor, and the rows come from there, not the cache.
  */
-export async function listAutomations(scope: { teamId: string; projectId?: string | null }, executor: Executor = db()): Promise<AutomationRow[]> {
-  const rules = schema.workAutomation;
-  const where = scope.projectId === undefined ? eq(rules.teamId, scope.teamId) : scope.projectId ? and(eq(rules.teamId, scope.teamId), or(isNull(rules.projectId), eq(rules.projectId, scope.projectId))) : and(eq(rules.teamId, scope.teamId), isNull(rules.projectId));
-  return executor.select().from(rules).where(where).orderBy(asc(rules.createdAt), asc(rules.id));
+export async function listAutomations(scope: { teamId: string; projectId?: string | null }, executor?: Executor): Promise<AutomationRow[]> {
+  const rows = await allAutomations(executor);
+  return rows.filter((rule) => rule.teamId === scope.teamId && (scope.projectId === undefined || (scope.projectId ? rule.projectId === null || rule.projectId === scope.projectId : rule.projectId === null)));
 }
 
 export async function findAutomation(automationId: string, executor: Executor = db()): Promise<AutomationRow | undefined> {
@@ -53,13 +70,17 @@ export async function findAutomation(automationId: string, executor: Executor = 
   return row;
 }
 
-/** The task templates a rule may make tasks from: the shared ones and the team's own. */
-export async function listTaskTemplates(teamId: string, executor: Executor = db()): Promise<{ id: string; name: string }[]> {
-  return executor
-    .select({ id: schema.taskTemplate.id, name: schema.taskTemplate.name })
-    .from(schema.taskTemplate)
-    .where(and(eq(schema.taskTemplate.purpose, TASK_TEMPLATE_PURPOSE), eq(schema.taskTemplate.isActive, true), or(isNull(schema.taskTemplate.ownerId), eq(schema.taskTemplate.ownerId, teamId))))
-    .orderBy(asc(schema.taskTemplate.name));
+/**
+ * The task templates a rule may make tasks from: the shared ones and the team's own. Off the
+ * templates module's cached set (`listWorkTemplates`); inside a transaction pass the executor and
+ * the rows come from there.
+ */
+export async function listTaskTemplates(teamId: string, executor?: Executor): Promise<{ id: string; name: string }[]> {
+  const templates = await listWorkTemplates([teamId], { activeOnly: true, executor });
+  return templates
+    .filter((template) => template.purpose === TASK_TEMPLATE_PURPOSE)
+    .map((template) => ({ id: template.id, name: template.name }))
+    .sort((a, b) => a.name.localeCompare(b.name, "vi"));
 }
 
 /** What a rule of this scope may name, read in the saving transaction. */
@@ -83,7 +104,7 @@ const clean = (input: RuleInput): RuleInput => ({
 
 /** A new rule or a change to one. A rule stays where it was made: a team's rule does not turn into a project's. */
 export async function saveAutomation(scope: AutomationScope, automationId: string | null, input: RuleInput & { isActive: boolean }, actorPersonId: string): Promise<{ before: AutomationRow | null; after: AutomationRow }> {
-  return db().transaction(async (tx) => {
+  const saved = await db().transaction(async (tx) => {
     const rule = clean(input);
     const problem = ruleProblem(rule, await ruleContext(tx, scope));
     if (problem) throw new ActionError(problem);
@@ -97,12 +118,15 @@ export async function saveAutomation(scope: AutomationScope, automationId: strin
     const [after] = await tx.update(schema.workAutomation).set(values).where(eq(schema.workAutomation.id, automationId)).returning();
     return { before, after };
   });
+  await invalidateAutomations();
+  return saved;
 }
 
 export async function setAutomationActive(automationId: string, isActive: boolean): Promise<{ before: AutomationRow; after: AutomationRow }> {
   const before = await findAutomation(automationId);
   if (!before) throw new ActionError("automation_not_found");
   const [after] = await db().update(schema.workAutomation).set({ isActive, updatedAt: new Date() }).where(eq(schema.workAutomation.id, automationId)).returning();
+  await invalidateAutomations();
   return { before, after };
 }
 
@@ -110,6 +134,7 @@ export async function setAutomationActive(automationId: string, isActive: boolea
 export async function removeAutomation(automationId: string): Promise<AutomationRow> {
   const [row] = await db().delete(schema.workAutomation).where(eq(schema.workAutomation.id, automationId)).returning();
   if (!row) throw new ActionError("automation_not_found");
+  await invalidateAutomations();
   return row;
 }
 
@@ -434,11 +459,9 @@ export async function fireProjectAutomations(tx: Tx, projectId: string, trigger:
  * task moved to a new due date is due again.
  */
 export async function runDueDateAutomations(today: IsoDate): Promise<{ dueRuns: number }> {
-  const rules = await db()
-    .select()
-    .from(schema.workAutomation)
-    .where(and(eq(schema.workAutomation.isActive, true), sql`${schema.workAutomation.trigger} ->> 'type' = 'due_date_reached'`))
-    .orderBy(asc(schema.workAutomation.createdAt), asc(schema.workAutomation.id));
+  // The job may read the rules from the cache: each run re-reads its own rule's `isActive` under
+  // the lock below before it acts.
+  const rules = (await allAutomations()).filter((rule) => rule.isActive && rule.trigger.type === "due_date_reached");
   let dueRuns = 0;
   for (const rule of rules) {
     const latest = addDays(today, -(rule.trigger.days ?? 0));
@@ -477,6 +500,8 @@ export async function runDueDateAutomations(today: IsoDate): Promise<{ dueRuns: 
       if (ran) dueRuns += 1;
     }
   }
+  // Each run bumped its rule's counter: drop the entry once the last one is committed.
+  if (dueRuns > 0) await invalidateAutomations();
   return { dueRuns };
 }
 
@@ -507,7 +532,14 @@ export async function automationPanel(scope: { teamId: string; projectId: string
   ]);
   const opens = new Set(projects.filter(({ project, team }) => canViewProject(viewer, projectFacts(project, team))).map(({ project }) => project.id));
   const rules = allRules.filter((rule) => !rule.projectId || opens.has(rule.projectId));
-  const runs = (await listAutomationRuns(rules.map((rule) => rule.id), scope.projectId ? 100 : 30)).filter((run) => !scope.projectId || run.detail.projectId === scope.projectId).slice(0, 30);
+  // A rule's definition is reference data and comes from the cache; how often it has run is not —
+  // `recordRun` bumps it inside the transaction of whatever set the rule off, which this file
+  // cannot invalidate after. So the two tallies the panel shows are read as they stand.
+  const [runs, tallies] = await Promise.all([
+    listAutomationRuns(rules.map((rule) => rule.id), scope.projectId ? 100 : 30).then((rows) => rows.filter((run) => !scope.projectId || run.detail.projectId === scope.projectId).slice(0, 30)),
+    rules.length ? db().select({ id: schema.workAutomation.id, runCount: schema.workAutomation.runCount, lastRunAt: schema.workAutomation.lastRunAt }).from(schema.workAutomation).where(inArray(schema.workAutomation.id, rules.map((rule) => rule.id))) : [],
+  ]);
+  const tallyOf = new Map(tallies.map((row) => [row.id, row]));
   const tasks = await loadTasks(runs.flatMap((run) => (run.taskId ? [run.taskId] : [])));
   const visible = (taskId: string | null) => !!taskId && !!tasks.get(taskId) && canViewTask(viewer, tasks.get(taskId)!.facts);
   const ruleName = new Map(rules.map((rule) => [rule.id, rule.name]));
@@ -516,7 +548,7 @@ export async function automationPanel(scope: { teamId: string; projectId: string
     return results.find((result) => result.status === "failed")?.error ?? null;
   };
   return {
-    rules: rules.map((rule) => ({ id: rule.id, name: rule.name, projectId: rule.projectId, trigger: rule.trigger, conditions: rule.conditions, actions: rule.actions, isActive: rule.isActive, runCount: rule.runCount, projectName: rule.projectId && !scope.projectId ? (projects.find(({ project }) => project.id === rule.projectId)?.project.name ?? null) : null, lastRunAt: rule.lastRunAt?.toISOString() ?? null })),
+    rules: rules.map((rule) => ({ id: rule.id, name: rule.name, projectId: rule.projectId, trigger: rule.trigger, conditions: rule.conditions, actions: rule.actions, isActive: rule.isActive, runCount: tallyOf.get(rule.id)?.runCount ?? rule.runCount, projectName: rule.projectId && !scope.projectId ? (projects.find(({ project }) => project.id === rule.projectId)?.project.name ?? null) : null, lastRunAt: (tallyOf.get(rule.id)?.lastRunAt ?? rule.lastRunAt)?.toISOString() ?? null })),
     options: {
       states: states.filter((state) => state.isActive).map((state) => ({ id: state.id, name: state.name })),
       labels: labels.map((label) => ({ id: label.id, name: label.name })),

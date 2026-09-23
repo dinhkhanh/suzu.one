@@ -2,7 +2,7 @@
 // change is written to `work_activity`, field by field (FR-WRK-09).
 import "server-only";
 import { and, asc, desc, eq, exists, ilike, inArray, isNull, or, type SQL, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
@@ -801,6 +801,31 @@ export async function resolveTaskKey(key: string, executor: Executor = db()): Pr
   if (current) return current.id;
   const [moved] = await executor.select({ id: schema.workTaskNumberAlias.taskId }).from(schema.workTaskNumberAlias).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTaskNumberAlias.teamId)).where(and(eq(schema.workTeam.key, teamKey), eq(schema.workTaskNumberAlias.number, number))).limit(1);
   return moved?.id ?? null;
+}
+
+/**
+ * `resolveTaskKey` for many keys at once — two queries however many there are, for a bulk import
+ * whose every line names its task by number. Keys that match nothing are absent from the map.
+ */
+export async function resolveTaskKeys(keys: readonly string[], executor: Executor = db()): Promise<Map<string, string>> {
+  const pairs = [...new Set(keys)].flatMap((key) => {
+    const match = /^([a-z][a-z0-9]{1,7})-(\d{1,7})$/i.exec(key.trim());
+    return match ? [{ key, teamKey: match[1].toUpperCase(), number: Number(match[2]) }] : [];
+  });
+  const result = new Map<string, string>();
+  if (pairs.length === 0) return result;
+  const wanted = (number: AnyPgColumn) => sql`(${schema.workTeam.key}, ${number}) in (${sql.join(pairs.map((pair) => sql`(${pair.teamKey}, ${pair.number})`), sql`, `)})`;
+  const [current, moved] = await Promise.all([
+    executor.select({ id: schema.workTask.taskId, teamKey: schema.workTeam.key, number: schema.workTask.number }).from(schema.workTask).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTask.teamId)).where(wanted(schema.workTask.number)),
+    executor.select({ id: schema.workTaskNumberAlias.taskId, teamKey: schema.workTeam.key, number: schema.workTaskNumberAlias.number }).from(schema.workTaskNumberAlias).innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTaskNumberAlias.teamId)).where(wanted(schema.workTaskNumberAlias.number)),
+  ]);
+  // A number a task carries now wins over one it used to carry.
+  const idOf = new Map([...moved, ...current].map((row) => [`${row.teamKey}-${row.number}`, row.id]));
+  for (const pair of pairs) {
+    const id = idOf.get(`${pair.teamKey}-${pair.number}`);
+    if (id) result.set(pair.key, id);
+  }
+  return result;
 }
 
 export type TaskSearchHit = { id: string; key: string; title: string; status: TaskRow["status"]; projectName: string | null };

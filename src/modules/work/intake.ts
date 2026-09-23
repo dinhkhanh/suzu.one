@@ -1,8 +1,9 @@
 // Intake forms (FR-WRK-16): a team's request form; a submission becomes a task in the team's
 // backlog with the requester set and the answers as its description.
 import "server-only";
-import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
 import { checkAnswers, describeAnswers, dueDateFrom, fieldKey, formProblem, type IntakeField } from "./engine/intake";
@@ -10,41 +11,71 @@ import type { IntakeAudience } from "./enums";
 import { canSubmitIntake, type WorkViewer } from "./policy";
 import { createWorkTaskIn, taskKey } from "./tasks";
 import { sendToTriage, triageLink } from "./triage";
-import { entryState, findTeam, listStates, teamFacts, type TeamRow } from "./teams";
+import { entryState, findTeam, listStates, listTeams, teamFacts, type TeamRow } from "./teams";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type IntakeFormRow = typeof schema.workIntakeForm.$inferSelect;
 export type IntakeFormView = IntakeFormRow & { teamName: string; teamKey: string; projectName: string | null; submissions: number };
 
-const withNames = (executor: Executor) =>
-  executor
-    .select({ form: schema.workIntakeForm, team: schema.workTeam, projectName: schema.workProject.name })
-    .from(schema.workIntakeForm)
-    .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workIntakeForm.teamId))
-    .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workIntakeForm.projectId))
-    .$dynamic();
+// The form definitions are small reference data read by the team page, the triage page and the
+// request page alike, so the whole table sits in the shared cache and each list filters it here;
+// the names and the submission counts beside them are joined per call. The TTL bounds anything
+// written behind the app's back (a seed).
+const FORMS_KEY = "work:intake-forms";
+const FORMS_TTL = 30 * 60;
+
+/** After a write to `work_intake_form` outside `saveIntakeForm` (an exit handover, a seed) has committed. */
+export const invalidateIntakeForms = () => invalidate(FORMS_KEY);
+
+async function allIntakeForms(executor?: Executor): Promise<IntakeFormRow[]> {
+  const load = (from: Executor) => from.select().from(schema.workIntakeForm).orderBy(asc(schema.workIntakeForm.name), asc(schema.workIntakeForm.id));
+  // Inside a transaction the rows come from there, not the cache.
+  return executor ? load(executor) : cached(FORMS_KEY, FORMS_TTL, () => load(db()));
+}
+
+/** The names of the projects the forms file into — only a few forms name one. */
+async function projectNames(forms: readonly IntakeFormRow[]): Promise<Map<string, string>> {
+  const ids = [...new Set(forms.map((form) => form.projectId).filter((id): id is string => !!id))];
+  if (ids.length === 0) return new Map();
+  const rows = await db().select({ id: schema.workProject.id, name: schema.workProject.name }).from(schema.workProject).where(inArray(schema.workProject.id, ids));
+  return new Map(rows.map((row) => [row.id, row.name]));
+}
+
+/** How much each form has been asked for: live counts, never cached. */
+async function submissionCounts(formIds: readonly string[]): Promise<Map<string, number>> {
+  if (formIds.length === 0) return new Map();
+  const rows = await db()
+    .select({ formId: schema.workTask.intakeFormId, submissions: sql<number>`count(*)::int` })
+    .from(schema.workTask)
+    .innerJoin(schema.task, eq(schema.task.id, schema.workTask.taskId))
+    .where(and(inArray(schema.workTask.intakeFormId, [...formIds]), isNull(schema.task.deletedAt)))
+    .groupBy(schema.workTask.intakeFormId);
+  return new Map(rows.flatMap((row) => (row.formId ? [[row.formId, row.submissions] as const] : [])));
+}
 
 /** Every form of a team, retired ones too — for the people who manage them. */
 export async function listTeamIntakeForms(teamId: string): Promise<IntakeFormView[]> {
-  const rows = await db()
-    .select({
-      form: schema.workIntakeForm,
-      team: schema.workTeam,
-      projectName: schema.workProject.name,
-      submissions: sql<number>`(select count(*)::int from ${schema.workTask} inner join ${schema.task} on ${schema.task.id} = ${schema.workTask.taskId} where ${schema.workTask.intakeFormId} = ${schema.workIntakeForm.id} and ${schema.task.deletedAt} is null)`,
-    })
-    .from(schema.workIntakeForm)
-    .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workIntakeForm.teamId))
-    .leftJoin(schema.workProject, eq(schema.workProject.id, schema.workIntakeForm.projectId))
-    .where(eq(schema.workIntakeForm.teamId, teamId))
-    .orderBy(desc(schema.workIntakeForm.isActive), asc(schema.workIntakeForm.name));
-  return rows.map(({ form, team, projectName, submissions }) => ({ ...form, teamName: team.name, teamKey: team.key, projectName, submissions }));
+  const forms = (await allIntakeForms()).filter((form) => form.teamId === teamId);
+  if (forms.length === 0) return [];
+  const [team, projects, counts] = await Promise.all([findTeam(teamId), projectNames(forms), submissionCounts(forms.map((form) => form.id))]);
+  if (!team) return [];
+  return forms
+    .sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.name.localeCompare(b.name))
+    .map((form) => ({ ...form, teamName: team.name, teamKey: team.key, projectName: form.projectId ? (projects.get(form.projectId) ?? null) : null, submissions: counts.get(form.id) ?? 0 }));
 }
 
 /** The active forms this viewer may fill in. */
 export async function listOpenIntakeForms(viewer: WorkViewer): Promise<IntakeFormView[]> {
-  const rows = await withNames(db()).where(and(eq(schema.workIntakeForm.isActive, true), eq(schema.workTeam.isActive, true))).orderBy(asc(schema.workTeam.name), asc(schema.workIntakeForm.name));
-  return rows.filter(({ form, team }) => canSubmitIntake(viewer, teamFacts(team), form.audience as IntakeAudience)).map(({ form, team, projectName }) => ({ ...form, teamName: team.name, teamKey: team.key, projectName, submissions: 0 }));
+  const open = (await allIntakeForms()).filter((form) => form.isActive);
+  const [teams, projects] = await Promise.all([listTeams(), projectNames(open)]);
+  const byId = new Map(teams.map((team) => [team.id, team]));
+  return open
+    .flatMap((form) => {
+      const team = byId.get(form.teamId);
+      if (!team?.isActive || !canSubmitIntake(viewer, teamFacts(team), form.audience as IntakeAudience)) return [];
+      return [{ ...form, teamName: team.name, teamKey: team.key, projectName: form.projectId ? (projects.get(form.projectId) ?? null) : null, submissions: 0 }];
+    })
+    .sort((a, b) => a.teamName.localeCompare(b.teamName) || a.name.localeCompare(b.name));
 }
 
 export async function findIntakeForm(formId: string, executor: Executor = db()): Promise<{ form: IntakeFormRow; team: TeamRow } | undefined> {
@@ -68,11 +99,13 @@ export async function saveIntakeForm(teamId: string, formId: string | null, inpu
   const values = { name: input.name, description: input.description, projectId: input.projectId, audience: input.audience, fields, isActive: input.isActive };
   if (!formId) {
     const [after] = await db().insert(schema.workIntakeForm).values({ teamId, ...values, createdByPersonId: actorPersonId }).returning();
+    await invalidateIntakeForms();
     return { before: null, after };
   }
   const found = await findIntakeForm(formId);
   if (!found || found.form.teamId !== teamId) throw new ActionError("intake_form_not_found");
   const [after] = await db().update(schema.workIntakeForm).set({ ...values, updatedAt: new Date() }).where(eq(schema.workIntakeForm.id, formId)).returning();
+  await invalidateIntakeForms();
   return { before: found.form, after };
 }
 

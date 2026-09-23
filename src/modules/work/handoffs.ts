@@ -13,7 +13,7 @@ import { notify } from "../platform/notifications/service";
 import { runTaskAutomations } from "./automations";
 import { invalidateWorkDirectory } from "./directory";
 import { type HandoffStatus, keptValues, missingItems, normalizeNote, type Note, noteIsEmpty, packageProblem, type PackageField, stageOutcome } from "./engine/handoff";
-import { findPackageFor, type HandoffPackageRow } from "./handoff-gate";
+import { findPackageFor, type HandoffPackageRow, invalidateHandoffPackages } from "./handoff-gate";
 import { canManageProject, canViewTask, type WorkViewer } from "./policy";
 import { projectFacts } from "./projects";
 import { type LoadedTask, createWorkTaskIn, loadTask, loadTasks, logActivity, taskKey, updateWorkTaskIn } from "./tasks";
@@ -59,7 +59,7 @@ export async function findPackage(packageId: string): Promise<HandoffPackageRow 
  * their answers by it), a new one gets a fresh key. Both states must be the team's own.
  */
 export async function savePackage(teamId: string, packageId: string | null, input: PackageInput, actorPersonId: string): Promise<{ before: HandoffPackageRow | null; after: HandoffPackageRow }> {
-  return db().transaction(async (tx) => {
+  const saved = await db().transaction(async (tx) => {
     const stateIds = [input.toStateId, input.fromStateId].filter((id): id is string => !!id);
     const states = await tx.select({ id: schema.workState.id }).from(schema.workState).where(and(inArray(schema.workState.id, stateIds), eq(schema.workState.teamId, teamId)));
     if (states.length !== new Set(stateIds).size) throw new ActionError("state_not_found");
@@ -85,12 +85,15 @@ export async function savePackage(teamId: string, packageId: string | null, inpu
     const [after] = await tx.update(schema.workHandoffPackage).set({ ...values, updatedAt: new Date() }).where(eq(schema.workHandoffPackage.id, packageId)).returning();
     return { before, after };
   });
+  await invalidateHandoffPackages();
+  return saved;
 }
 
 /** Hand-offs made with it stay: their `package_id` is cleared, their answers kept. */
 export async function deletePackage(packageId: string): Promise<HandoffPackageRow> {
   const [row] = await db().delete(schema.workHandoffPackage).where(eq(schema.workHandoffPackage.id, packageId)).returning();
   if (!row) throw new ActionError("handoff_package_not_found");
+  await invalidateHandoffPackages();
   return row;
 }
 

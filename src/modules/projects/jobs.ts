@@ -2,7 +2,7 @@
 // milestone reminders are marked on the milestone, budget alerts on the plan, quota alerts on the
 // retainer month, and a status reminder is not sent twice for the same overdue update.
 import "server-only";
-import { and, eq, gte, inArray, isNull } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import type { JobDefinition } from "../platform/jobs/service";
@@ -92,17 +92,26 @@ export async function sendStatusReminders(today: IsoDate): Promise<{ reminded: n
     const dueOn = updateDueOn({ projectStatus: row.status, lastUpdateOn: row.plan.healthUpdatedAt ? todayInVietnam(row.plan.healthUpdatedAt) : null, since: todayInVietnam(row.plan.briefApprovedAt ?? row.plan.createdAt), cadenceDays: row.plan.updateCadenceDays });
     return dueOn && dueOn <= today ? [{ ...row, dueOn }] : [];
   });
-  const leads = await leadsOf(due.map((row) => row.plan.projectId));
+  if (due.length === 0) return { reminded: 0 };
+  const linkOf = (projectId: string) => `/projects/${projectId}/updates`;
+  // When each project was last reminded, for every overdue project in one query — read from the
+  // earliest threshold of the run, then each project is weighed against its own below.
+  const since = new Date(`${addDays(due.reduce((earliest, row) => (row.dueOn < earliest ? row.dueOn : earliest), due[0].dueOn), -1)}T00:00:00Z`);
+  const [leads, sent] = await Promise.all([
+    leadsOf(due.map((row) => row.plan.projectId)),
+    db()
+      .select({ link: schema.notification.link, at: sql<Date>`max(${schema.notification.createdAt})` })
+      .from(schema.notification)
+      .where(and(eq(schema.notification.kind, "projects.status_due"), inArray(schema.notification.link, due.map((row) => linkOf(row.plan.projectId))), gte(schema.notification.createdAt, since)))
+      .groupBy(schema.notification.link),
+  ]);
+  const lastRemindedOf = new Map(sent.flatMap((row) => (row.link ? [[row.link, new Date(row.at)] as const] : [])));
   let reminded = 0;
   for (const { plan, projectName, dueOn } of due) {
-    const link = `/projects/${plan.projectId}/updates`;
+    const link = linkOf(plan.projectId);
     // Anything sent since the update fell due (a day's margin for the time zone) counts as sent.
-    const [already] = await db()
-      .select({ id: schema.notification.id })
-      .from(schema.notification)
-      .where(and(eq(schema.notification.kind, "projects.status_due"), eq(schema.notification.link, link), gte(schema.notification.createdAt, new Date(`${addDays(dueOn, -1)}T00:00:00Z`))))
-      .limit(1);
-    if (already) continue;
+    const already = lastRemindedOf.get(link);
+    if (already && already >= new Date(`${addDays(dueOn, -1)}T00:00:00Z`)) continue;
     const recipients = leads.get(plan.projectId) ?? [];
     if (recipients.length === 0) continue;
     await notify({ recipients, kind: "projects.status_due", params: { project: projectName }, link });

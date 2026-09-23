@@ -2,7 +2,7 @@
 // week's daily reports, completed work and logged time; the team's lead adds a summary. The Monday
 // job makes last week's and tells the leads — and, for a team, the department head above it — once.
 import "server-only";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
@@ -35,23 +35,38 @@ async function personWeeks(personIds: readonly string[], weekStart: IsoDate): Pr
     listTimeOf(ids, weekStart, weekEnd),
     daysOf(ids, weekStart, weekEnd),
   ]);
+  // Each list is indexed by person once, not scanned again for every person: the Monday job runs
+  // this over the whole company.
+  const reportsOf = Map.groupBy(reports, (row) => row.personId);
+  const completedOf = Map.groupBy(
+    events.filter((event) => event.kind === "completed"),
+    (event) => event.personId,
+  );
+  const timeOf = Map.groupBy(time, (entry) => entry.personId);
   for (const personId of ids) {
-    const own: WeekDayReport[] = reports.filter((row) => row.personId === personId).map((row) => ({ date: row.date, status: row.status as WeekDayReport["status"], late: row.late, done: row.done, notDone: row.notDone, blockers: row.blockers }));
-    const completed = events.filter((event) => event.personId === personId && event.kind === "completed").map((event) => ({ taskId: event.taskId, title: event.title, ref: event.key }));
+    const own: WeekDayReport[] = (reportsOf.get(personId) ?? []).map((row) => ({ date: row.date, status: row.status as WeekDayReport["status"], late: row.late, done: row.done, notDone: row.notDone, blockers: row.blockers }));
+    const completed = (completedOf.get(personId) ?? []).map((event) => ({ taskId: event.taskId, title: event.title, ref: event.key }));
     const requiredDays = [...(days.get(personId)?.values() ?? [])].filter((day) => day.report.required).length;
-    result.set(personId, summarisePersonWeek({ reports: own, completed, time: time.filter((entry) => entry.personId === personId), requiredDays }));
+    result.set(personId, summarisePersonWeek({ reports: own, completed, time: timeOf.get(personId) ?? [], requiredDays }));
   }
   return result;
 }
 
-async function upsertWeekly(subjectType: "person" | "team", subjectId: string, weekStart: IsoDate, content: PersonWeek | TeamWeek): Promise<WeeklyRow> {
-  const [row] = await db()
+type WeeklySubject = { subjectType: "person" | "team"; subjectId: string; content: PersonWeek | TeamWeek };
+
+/**
+ * A week's rows in one statement, whatever their number: the Monday job writes a row per person in
+ * an active team and one per team, and a company-wide run must not be a statement per person.
+ * Generating again refreshes the facts and keeps the lead's summary.
+ */
+async function upsertWeekly(weekStart: IsoDate, subjects: readonly WeeklySubject[]): Promise<Map<string, WeeklyRow>> {
+  if (subjects.length === 0) return new Map();
+  const rows = await db()
     .insert(schema.dailyWeeklyReport)
-    .values({ subjectType, subjectId, weekStart, content: content as unknown as Record<string, unknown> })
-    // Generating again refreshes the facts and keeps the lead's summary.
-    .onConflictDoUpdate({ target: [schema.dailyWeeklyReport.subjectType, schema.dailyWeeklyReport.subjectId, schema.dailyWeeklyReport.weekStart], set: { content: content as unknown as Record<string, unknown>, updatedAt: new Date() } })
+    .values(subjects.map(({ subjectType, subjectId, content }) => ({ subjectType, subjectId, weekStart, content: content as unknown as Record<string, unknown> })))
+    .onConflictDoUpdate({ target: [schema.dailyWeeklyReport.subjectType, schema.dailyWeeklyReport.subjectId, schema.dailyWeeklyReport.weekStart], set: { content: sql`excluded.content`, updatedAt: new Date() } })
     .returning();
-  return row;
+  return new Map(rows.map((row) => [`${row.subjectType}:${row.subjectId}`, row]));
 }
 
 type TeamWithMembers = { id: string; name: string; entityId: string | null; departmentId: string | null; members: { personId: string; name: string; role: string }[] };
@@ -81,11 +96,13 @@ export async function generateWeek(weekStart: IsoDate, options: { teamIds?: read
   const teams = await activeTeams(options.teamIds);
   const personIds = [...new Set(teams.flatMap((team) => team.members.map((member) => member.personId)))];
   const weeks = await personWeeks(personIds, weekStart);
-  for (const [personId, week] of weeks) await upsertWeekly("person", personId, weekStart, week);
+  const rows = await upsertWeekly(weekStart, [
+    ...[...weeks].map(([personId, week]) => ({ subjectType: "person" as const, subjectId: personId, content: week })),
+    ...teams.map((team) => ({ subjectType: "team" as const, subjectId: team.id, content: summariseTeamWeek(team.members.map((member) => ({ personId: member.personId, name: member.name, week: weeks.get(member.personId)! }))) })),
+  ]);
   let notified = 0;
   for (const team of teams) {
-    const content = summariseTeamWeek(team.members.map((member) => ({ personId: member.personId, name: member.name, week: weeks.get(member.personId)! })));
-    const row = await upsertWeekly("team", team.id, weekStart, content);
+    const row = rows.get(`team:${team.id}`)!;
     if (options.notify === false || row.sentAt) continue;
     const leads = team.members.filter((member) => member.role === "lead").map((member) => member.personId);
     const heads = team.departmentId ? await listPeopleWithRole("department_head", { unitPath: [team.departmentId], entityId: team.entityId }) : [];
