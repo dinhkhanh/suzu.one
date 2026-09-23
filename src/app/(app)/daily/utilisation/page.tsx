@@ -12,7 +12,7 @@ import { ExportButton } from "@/modules/platform/export/ui/export-button";
 export const metadata: Metadata = { title: "Utilisation" };
 
 // FR-PJM-61: logged ÷ available hours for the last eight weeks — each lead's teams, each line
-// manager's reports, person by person with team totals; teams seen through `pjm:portfolio` only as
+// manager's reports, person by person with team totals; teams seen through `work:manage` only as
 // totals. No ranking: people are listed by name.
 export default async function UtilisationPage() {
   const user = await requireUser();

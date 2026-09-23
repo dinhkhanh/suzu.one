@@ -367,6 +367,14 @@ describe("utilisation", () => {
     const bao = await getUtilisation({ personId: ids.bao, principal: { personId: ids.bao, workforceType: "employee", grants: [] } }, TODAY);
     expect(bao.groups).toEqual([]);
   });
+
+  it("stays shut to a reader whose only grant is pjm:portfolio — finance since 2026-09-23", async () => {
+    // Finance reads the projects it invoices, not how busy anybody's week was: the team totals
+    // follow `work:manage`, like the compliance figures beside them. Bao leads no team and has
+    // nobody reporting to them, so a group-wide finance grant must still show nothing.
+    const finance = await getUtilisation({ personId: ids.bao, principal: { personId: ids.bao, workforceType: "employee", grants: [{ role: "finance", scope: { type: "group" } }] } }, TODAY);
+    expect(finance.groups).toEqual([]);
+  });
 });
 
 describe("totals for other modules", () => {

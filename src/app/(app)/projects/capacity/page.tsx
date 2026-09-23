@@ -16,8 +16,7 @@ const hours = (minutes: number) => Math.round((minutes / 60) * 10) / 10;
 
 /**
  * Capacity against bookings (FR-PJM-13): the people whose time the viewer plans — the teams they
- * lead, the people below them, or where they hold `pjm:portfolio` / `work:manage` — over the next
- * eight weeks. Available = work schedule − approved leave − holidays; confirmed bookings are the
+ * lead, the people below them, or where they hold `work:manage` — over the next eight weeks. Available = work schedule − approved leave − holidays; confirmed bookings are the
  * load, tentative ones are shown apart and never counted. Leave shows as "away", never its type.
  * Filters live in the URL. Skills are not recorded yet (FR-CHR-14): people are filtered by position.
  */

@@ -1,8 +1,12 @@
 // Utilisation (FR-PJM-61): hours logged ÷ hours available per person and week, and the billable
 // share, for the people above them — each lead for their teams' people, each line manager for their
-// reports (`listOverseen`, the list form of `canViewUtilisation`). A viewer with `pjm:portfolio`
+// reports (`listOverseen`, the list form of `canViewUtilisation`). A viewer with `work:manage`
 // also sees the teams in their scope that they do not lead, as team totals only: there is no
 // company-wide list of individuals to rank.
+//
+// `work:manage`, not `pjm:portfolio` — how busy a team was is a figure about people, like the
+// report and timesheet compliance beside it (reports/pjm-policy.ts), and since 2026-09-23
+// `pjm:portfolio` is also finance's way into project pages. Whoever runs the team reads its hours.
 //
 // Available hours come from the same records the workload view reads — the work schedule and the
 // calendar (attendance's day plans), and approved leave — and never from the time entries.
@@ -26,7 +30,7 @@ export type UtilisationPerson = { personId: string; name: string; weeks: Utilisa
 export type UtilisationGroup =
   | { kind: "team"; teamId: string; name: string; people: UtilisationPerson[]; total: Utilisation[] }
   | { kind: "reports"; people: UtilisationPerson[]; total: Utilisation[] }
-  /** A team in the viewer's `pjm:portfolio` scope that they do not lead: its totals, no people. */
+  /** A team in the viewer's `work:manage` scope that they do not lead: its totals, no people. */
   | { kind: "portfolio"; teamId: string; name: string; headcount: number; total: Utilisation[] }
   /** Teams too small to stand on their own (engine/privacy.ts), added together: the page names them "other teams". */
   | { kind: "portfolio_other"; teams: number; headcount: number; total: Utilisation[] };
@@ -49,9 +53,9 @@ export async function utilisationOfPeople(personIds: readonly string[], weeks: r
   return result;
 }
 
-/** The teams a `pjm:portfolio` holder sees as totals: active, in their scope, not led by them. */
+/** The teams a `work:manage` holder sees as totals: active, in their scope, not led by them. */
 async function portfolioTeams(principal: Principal, ledTeamIds: ReadonlySet<string>): Promise<{ id: string; name: string; personIds: string[] }[]> {
-  const teams = (await listTeams()).filter((team) => team.isActive && !ledTeamIds.has(team.id) && can(principal, "pjm:portfolio", { entityId: team.entityId, unitPath: team.departmentId ? [team.departmentId] : [] }));
+  const teams = (await listTeams()).filter((team) => team.isActive && !ledTeamIds.has(team.id) && can(principal, "work:manage", { entityId: team.entityId, unitPath: team.departmentId ? [team.departmentId] : [] }));
   if (teams.length === 0) return [];
   const members = await db()
     .select({ teamId: schema.workTeamMember.teamId, personId: schema.workTeamMember.personId })

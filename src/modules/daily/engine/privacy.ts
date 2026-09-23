@@ -1,6 +1,6 @@
 // A team total of one person is that person (security review, finding 22): utilisation by team, EOD
 // and timesheet compliance by team — figures meant to be read as a group — say what one person did
-// when the group is one person. So for a reader who does not run the team (a `pjm:portfolio` holder
+// when the group is one person. So for a reader who does not run the team (a `work:manage` holder
 // looking across a scope), groups of fewer than `MIN_GROUP_PEOPLE` are folded into one "other" row,
 // and if even that row would be one person they are left out altogether — of the rows and of any
 // total shown beside them, which would otherwise give the same number by subtraction. The same

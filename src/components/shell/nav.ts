@@ -32,7 +32,10 @@ export function navFor(principal: Principal, open: { people: boolean; recruit: b
     // Finance's ready-to-invoice queue (FR-PJM-56): whoever holds `pjm:commercial` anywhere.
     ...(can(principal, "pjm:commercial") ? [{ key: "billing", href: "/projects/billing" }] : []),
     // Capacity (FR-PJM-13) for leaders over a scope; team leads also reach it from their projects.
-    ...(can(principal, "work:manage") || can(principal, "pjm:portfolio") ? [{ key: "capacity", href: "/projects/capacity" }] : []),
+    // The grant clause of `canOpenCapacity` and nothing else: `pjm:portfolio` is finance's way into
+    // project pages since 2026-09-23 and opens no capacity page, so offering the entry to it only
+    // links to a 404.
+    ...(can(principal, "work:manage") ? [{ key: "capacity", href: "/projects/capacity" }] : []),
     // Equipment: everyone has their own, so the entry always shows; the register behind it is for
     // whoever keeps one, and /assets sends anybody else to their own list.
     { key: "assets", href: can(principal, "asset:manage") ? "/assets" : "/assets/mine" },
