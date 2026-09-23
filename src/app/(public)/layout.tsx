@@ -15,10 +15,16 @@ import { LocaleSwitch } from "@/components/shell/locale-switch";
  * advertisement. Nothing under `(public)` is indexable *by accident*, though: each page says so
  * for itself, and the application form and the thank-you page below stay out of the index.
  */
-export const metadata: Metadata = {
-  title: { default: "Tuyển dụng · SuZu Group", template: "%s · SuZu Group" },
-  robots: { index: true, follow: true },
-};
+// The advertisement is in the reader's language, and so is the tab it opens in.
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("recruit.careers");
+  return {
+    // `absolute`, so the careers page's tab carries the recruitment brand and not the
+    // internal product's name, for the same reason the rest of this shell shares nothing with it.
+    title: { absolute: t("brand"), template: "%s · SuZu Group" },
+    robots: { index: true, follow: true },
+  };
+}
 
 export default async function PublicLayout({ children }: LayoutProps<"/">) {
   const t = await getTranslations("recruit.careers");

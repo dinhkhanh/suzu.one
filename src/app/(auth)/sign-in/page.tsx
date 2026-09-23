@@ -7,7 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getCurrentUser } from "@/modules/platform/auth/session";
 import { GoogleSignInButton } from "./google-sign-in-button";
 
-export const metadata: Metadata = { title: "Sign in" };
+// The page is in the reader's language, so its tab is too (the root layout adds "· SuZu One").
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("signIn"))("title") };
+}
 
 const KNOWN_ERRORS = ["not_a_workspace_account", "domain_not_allowed", "not_provisioned", "access_revoked", "email_not_verified"] as const;
 

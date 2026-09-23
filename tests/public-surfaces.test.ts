@@ -25,6 +25,10 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ get: () => undefined }),
 }));
 
+/** Whether there is really somebody behind the request, swapped per test. */
+const signedIn = { current: true };
+vi.mock("@/modules/platform/auth/session", () => ({ getCurrentUser: async () => (signedIn.current ? { userId: "u1" } : null) }));
+
 import { config } from "@/proxy";
 import requestConfig from "@/i18n/request";
 import { namespacesForSurface, pickMessages, SURFACE_HEADER, surfaceForPath } from "@/i18n/surfaces";
@@ -34,8 +38,9 @@ import catalogue from "../messages/vi.json";
 const INTERNAL = ["payroll", "people", "rbac", "roles", "audit", "work", "projects", "daily", "leave", "attendance", "assets", "performance", "recruit"] as const;
 
 /** The messages the real request config returns for a request the proxy marked `surface`. */
-async function messagesFor(surface: string | null): Promise<Record<string, unknown>> {
+async function messagesFor(surface: string | null, session = true): Promise<Record<string, unknown>> {
   surfaceHeader.current = surface;
+  signedIn.current = session;
   const result = await requestConfig({ locale: undefined, requestLocale: Promise.resolve(undefined) });
   return (result.messages ?? {}) as Record<string, unknown>;
 }
@@ -94,6 +99,20 @@ describe("which words a request is handed", () => {
     // And what that means in kilobytes, which is the reason any of this exists.
     const publicSize = JSON.stringify(await messagesFor("preview")).length;
     expect(publicSize * 20).toBeLessThan(JSON.stringify(app).length);
+  });
+
+  it("keeps the catalogue from an internal path that nobody is actually signed in on", async () => {
+    // The proxy only looks for a session *cookie*, so a stranger who invents one reaches an
+    // internal path; the page redirects them to sign in, but Next sends the rendered layout with
+    // that redirect — half a megabyte of payroll, salary and permission vocabulary — unless the
+    // words wait for a session that exists.
+    const messages = await messagesFor("app", false);
+    for (const namespace of INTERNAL.filter((name) => name !== "recruit")) expect(messages[namespace], namespace).toBeUndefined();
+    expect(Object.keys(messages).sort()).toEqual(["app", "preview", "recruit", "signIn"]);
+    // Recruitment only as far as the careers pages: no pipelines, no candidates, no scorecards.
+    expect(Object.keys(messages.recruit as object).sort()).toEqual(["assignment", "careers"]);
+    // And the page they were on is a redirect to sign-in, whose words are among the ones left.
+    expect(messages.signIn).toEqual(catalogue.signIn);
   });
 
   it("treats a request the proxy never marked as public, not as the app", async () => {

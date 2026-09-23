@@ -5,7 +5,9 @@ import { buttonVariants } from "@/components/ui/button";
 
 // The one answer every submission gets. It says the application was received and nothing else —
 // not who it was from, not whether they had applied before, not what was done with it.
-export const metadata: Metadata = { title: "Cảm ơn", robots: { index: false, follow: false } };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("recruit.careers"))("thanks.title"), robots: { index: false, follow: false } };
+}
 
 export default async function CareersThanksPage() {
   const t = await getTranslations("recruit.careers");

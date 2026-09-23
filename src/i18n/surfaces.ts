@@ -13,10 +13,12 @@
 // Two rules make it hold:
 //
 //   · **The whole catalogue is opt-in.** `request.ts` hands over everything only for a request the
-//     proxy marked `app`. A path the proxy never saw — an unmatched route, a matcher edited
-//     carelessly, a dynamic segment that happens to end in `.png` — gets the public vocabulary and
-//     nothing else. The failure is then a page missing its words inside the company, which is
-//     noticed in a minute, and never a catalogue leaving it, which is noticed by nobody.
+//     proxy marked `app` **and** that has a real session behind it. A path the proxy never saw — an
+//     unmatched route, a matcher edited carelessly, a dynamic segment that happens to end in `.png`
+//     — gets the public vocabulary and nothing else, and so does a stranger who simply invented a
+//     session cookie, since the proxy's check of one is deliberately optimistic. The failure is
+//     then a page missing its words inside the company, which is noticed in a minute, and never a
+//     catalogue leaving it, which is noticed by nobody.
 //   · **Public surfaces are named by prefix, not by what they look like.** `/careers`,
 //     `/preview/<token>` and the sign-in page are the three pages a signed-out visitor may open,
 //     and each names the namespaces it needs.
@@ -53,8 +55,11 @@ export function surfaceForPath(pathname: string): string {
 /** Whether a path is open to a visitor with no session (so the proxy must not send them to sign in). */
 export const isPublicPath = (pathname: string): boolean => surfaceForPath(pathname) !== APP_SURFACE;
 
-/** Everything any public page needs, which is what an unmarked request falls back to. */
-const PUBLIC_FALLBACK = [...new Set(PUBLIC_SURFACES.flatMap((surface) => surface.namespaces))];
+/**
+ * Everything any public page needs. What an unmarked request falls back to — and what an app path
+ * with nobody behind it gets, since the proxy's cookie check is optimistic (see `request.ts`).
+ */
+export const PUBLIC_FALLBACK: readonly string[] = [...new Set(PUBLIC_SURFACES.flatMap((surface) => surface.namespaces))];
 
 /**
  * The namespaces a request may receive; `null` means the whole catalogue, and only the app gets
