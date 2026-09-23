@@ -13,11 +13,11 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
-  // Configuration is read and validated in one place (CLAUDE.md). instrumentation.ts is the one
-  // exception: error reporting must work even when the configuration is what is broken.
+  // Configuration is read and validated in one place (CLAUDE.md). instrumentation.ts and the
+  // error reporters are the exception: error reporting must work even when the configuration is what is broken.
   {
     files: ["src/**"],
-    ignores: ["src/lib/env.ts", "src/instrumentation.ts", "src/**/*.test.ts"],
+    ignores: ["src/lib/env.ts", "src/instrumentation.ts", "src/lib/observability/report.ts", "src/lib/observability/browser.ts", "src/**/*.test.ts"],
     rules: {
       "no-restricted-syntax": ["error", { selector: "MemberExpression[object.name='process'][property.name='env']", message: "Read configuration through env() from @/lib/env." }],
     },

@@ -1,8 +1,11 @@
 "use client";
+import { useEffect } from "react";
+import { reportBrowserError } from "@/lib/observability/browser";
 
 // Replaces the root layout when even that fails, so it cannot rely on translations or styles
 // being available. Both languages, plain markup.
 export default function GlobalError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
+  useEffect(() => reportBrowserError(error, "boundary"), [error]);
   return (
     <html lang="vi">
       <body style={{ fontFamily: "system-ui, sans-serif", padding: "4rem 1.5rem", maxWidth: "32rem", margin: "0 auto" }}>

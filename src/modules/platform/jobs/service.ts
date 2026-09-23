@@ -2,6 +2,7 @@ import "server-only";
 import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
+import { reportError } from "@/lib/observability/report";
 import { recordAudit } from "../audit/service";
 import { notify } from "../notifications/service";
 import { listOwnerPersonIds } from "../rbac/service";
@@ -38,7 +39,7 @@ export async function runJob(definition: JobDefinition, now: Date = new Date()):
     const message = error instanceof Error ? error.message : String(error);
     const [failed] = await db().update(schema.jobRun).set({ status: "failed", finishedAt: new Date(), error: message.slice(0, 2000) }).where(eq(schema.jobRun.id, run.id)).returning();
     await recordAudit({ action: `job.${definition.name}.failed`, resource: { type: "job_run", id: run.id }, summary: message.slice(0, 300) });
-    console.error(JSON.stringify({ level: "error", event: "job.failed", job: definition.name, runId: run.id, message }));
+    await reportError(error, { event: "job.failed", source: "job", route: `/api/cron/${definition.name}`, tags: { job: definition.name, runId: run.id } });
     // NFR-OPS-03: a failed job must reach a human, not just a log.
     await notify({ recipients: await listOwnerPersonIds(), kind: "system.job_failed", params: { job: definition.name, error: message.slice(0, 300) }, link: "/admin/jobs" }).catch(() => undefined);
     return failed;

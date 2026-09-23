@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 import type { z } from "zod";
 import { ActionError } from "@/lib/action";
 import { env } from "@/lib/env";
+import { reportError } from "@/lib/observability/report";
 import { type AuditEntry, recordAudit } from "@/modules/platform/audit/service";
 
 /**
@@ -119,7 +120,7 @@ export function createPublicAction<Schema extends z.ZodType, Output>(definition:
       }
       // Anything else is a bug or an outage. A stack trace never reaches a stranger, and neither
       // does the message: the server log gets it, the caller gets a word.
-      console.error(JSON.stringify({ level: "error", event: `${definition.name}.failed`, message: error instanceof Error ? error.message : String(error) }));
+      await reportError(error, { event: `${definition.name}.failed`, source: "public_action", tags: { action: definition.name } });
       await recordAudit({ action: `${definition.name}.failed`, actor: anonymous, request });
       return { ok: false, error: "failed", message: "failed" };
     }
