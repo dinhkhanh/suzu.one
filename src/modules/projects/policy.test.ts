@@ -40,10 +40,19 @@ describe("reading the plan", () => {
     expect(canViewPlan(outsider, tvc)).toBe(false);
     expect(canViewPlan(otherDirector, tvc)).toBe(false);
   });
-  it("keeps a private project with its people, even from pjm:portfolio", () => {
-    expect(canViewPlan(portfolio, secret)).toBe(false);
+  it("keeps a private project with its people, and opens it to pjm:portfolio to read (Q25)", () => {
     expect(canViewPlan(teamLead, secret)).toBe(true);
     expect(canViewPlan(viewer("huy", { projects: { "project-secret": "member" } }), secret)).toBe(true);
+    // The owner's decision of 2026-09-23: a leader over the owning team may open it — and nothing more.
+    expect(canViewPlan(portfolio, secret)).toBe(true);
+    expect(canEditPlan(portfolio, secret)).toBe(false);
+    expect(canEditClientSide(portfolio, secret)).toBe(false);
+    expect(canPostStatus(portfolio, secret)).toBe(false);
+    expect(canRebaseline(portfolio, secret)).toBe(false);
+    expect(canCloseProject(portfolio, secret)).toBe(false);
+    // Still nothing for a colleague or another entity's director.
+    expect(canViewPlan(member, secret)).toBe(false);
+    expect(canViewPlan(otherDirector, secret)).toBe(false);
   });
 });
 
@@ -59,10 +68,26 @@ describe("changing the plan", () => {
 });
 
 describe("fees (pjm:commercial)", () => {
-  it("are read only with pjm:commercial over the project's entity", () => {
+  it("are read with pjm:commercial over the project's entity", () => {
     for (const who of [director, finance, groupFinance]) expect(canSeeFees(who, tvc)).toBe(true);
-    // Running the project, or reading every project, is not reading its money.
-    for (const who of [lead, teamLead, accountManager, portfolio, member, otherDirector]) expect(canSeeFees(who, tvc)).toBe(false);
+    // Reading every project, or working in one, is not reading its money.
+    for (const who of [teamLead, member, teamMember, onlyViewer, portfolio, otherDirector, outsider]) expect(canSeeFees(who, tvc)).toBe(false);
+  });
+
+  // The owner's decision of 2026-09-23 (Q21): "project lead & account managers can see (and upper
+  // levels as well)" — the upper levels being `pjm:commercial`, which is not widened.
+  it("are read by the project's own lead and its own account manager — their own project only", () => {
+    expect(canSeeFees(lead, tvc)).toBe(true);
+    expect(canSeeFees(accountManager, tvc)).toBe(true);
+    // Another project of the same team, which they neither lead nor keep the client of.
+    const other: ProjectFacts = { ...tvc, id: "project-other" };
+    expect(canSeeFees(lead, other)).toBe(false);
+    expect(canSeeFees(accountManager, other)).toBe(false);
+    // The team's lead, a member and a viewer of the very same project still see no money.
+    for (const who of [teamLead, member, onlyViewer, teamMember]) expect(canSeeFees(who, tvc)).toBe(false);
+    // Reading it is not moving it.
+    expect(canEditFees(lead, tvc)).toBe(false);
+    expect(canEditFees(accountManager, tvc)).toBe(false);
   });
   it("of a group project need a group-wide grant", () => {
     expect(canSeeFees(groupFinance, groupProject)).toBe(true);
@@ -99,8 +124,9 @@ describe("bookings (FR-PJM-13)", () => {
     for (const who of [lead, teamLead, portfolio, director]) expect(canManageBookings(who, tvc)).toBe(true);
     for (const who of [onlyViewer, member, teamMember, accountManager, outsider]) expect(canManageBookings(who, tvc)).toBe(false);
   });
-  it("of a private project stay with its people", () => {
-    expect(canViewBookings(portfolio, secret)).toBe(false);
+  it("of a private project stay with its people — a portfolio reader looks and books nothing (Q25)", () => {
+    expect(canViewBookings(portfolio, secret)).toBe(true);
+    expect(canManageBookings(portfolio, secret)).toBe(false);
     expect(canManageBookings(director, secret)).toBe(false);
     expect(canManageBookings(teamLead, secret)).toBe(true);
   });
@@ -255,8 +281,10 @@ describe("the RAID log (FR-PJM-29)", () => {
     expect(canViewRaid(member, closed)).toBe(true);
   });
 
-  it("keeps a private project's log with its people", () => {
-    expect(canViewRaid(portfolio, secret)).toBe(false);
+  it("keeps a private project's log with its people — a portfolio reader reads it and adds nothing (Q25)", () => {
+    expect(canViewRaid(portfolio, secret)).toBe(true);
+    expect(canAddRaid(portfolio, secret)).toBe(false);
+    expect(canCloseRaidItem(portfolio, secret, byMember)).toBe(false);
     expect(canAddRaid(teamMember, secret)).toBe(false);
     expect(canAddRaid(viewer("huy", { projects: { "project-secret": "member" } }), secret)).toBe(true);
   });

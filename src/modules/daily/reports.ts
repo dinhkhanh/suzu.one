@@ -12,13 +12,13 @@ import { type DayTask, listDayTasks, listOpenBlockersRaisedBy, listOpenWorkOf, l
 import { dayOf, type PersonDay } from "./days";
 import { prefillReport, type ReportDraft } from "./engine/prefill";
 import { type ShownActivity, type ShownLine, showActivity, showLine } from "./engine/redact";
-import { isLate, type NotRequiredReason } from "./engine/rules";
+import { DEFAULT_TEAM_RULES, isLate, type NotRequiredReason } from "./engine/rules";
 import { loadSeen, readsOwn } from "./labels";
 import { listOverseen, loadReportReader, loadSubjects, readerMaySee, type Subject } from "./people";
 import { findPlan } from "./plans";
 import { canOverseeReport, canViewReport, type ReportReader } from "./policy";
 import type { PlannedItem } from "./schema";
-import { listTimeOf } from "./time";
+import { billableProjects, listTimeOf } from "./time";
 
 export type ReportRow = typeof schema.dailyReport.$inferSelect;
 export type ReportCommentRow = typeof schema.dailyReportComment.$inferSelect;
@@ -55,6 +55,8 @@ export type ReportForm = {
   /** Open work to pick tomorrow's plan from; what is not done today comes first and is ticked. */
   candidates: DayTask[];
   tomorrow: string[];
+  /** Of the candidates' projects, the ones whose time is billed to the client by default: the quick log shows it and lets the person change it. */
+  billableProjects: string[];
 };
 
 export async function getReportForm(personId: string, date: IsoDate): Promise<ReportForm> {
@@ -62,7 +64,8 @@ export async function getReportForm(personId: string, date: IsoDate): Promise<Re
   const notDone = new Set(draft.notDone.map((line) => line.taskId));
   const candidates = [...open.filter((task) => notDone.has(task.taskId)), ...open.filter((task) => !notDone.has(task.taskId))];
   const tomorrow = report?.status === "submitted" ? report.tomorrow.map((item) => item.taskId) : draft.notDone.map((line) => line.taskId).filter((id) => open.some((task) => task.taskId === id));
-  return { report, draft, day: day.get(personId) ?? null, candidates, tomorrow };
+  const billable = await billableProjects(candidates.map((task) => task.projectId));
+  return { report, draft, day: day.get(personId) ?? null, candidates, tomorrow, billableProjects: [...billable] };
 }
 
 export type ReportInput = { blockers: string | null; notes: string | null; tomorrow: readonly string[]; secondsToSubmit: number | null };
@@ -82,7 +85,7 @@ export async function submitReport(personId: string, date: IsoDate, input: Repor
     if (!task) throw new ActionError("plan_task_not_yours");
     return { taskId, minutes: task.estimateMinutes };
   });
-  const deadline = day.get(personId)?.rules.reportDeadline ?? "18:30";
+  const deadline = day.get(personId)?.rules.reportDeadline ?? DEFAULT_TEAM_RULES.reportDeadline;
   const first = !before || before.status !== "submitted";
   const values = {
     activity: draft.activity,

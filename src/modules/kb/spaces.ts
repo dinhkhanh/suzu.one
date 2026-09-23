@@ -5,7 +5,7 @@ import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { listEntities, listOrgUnits, unitChoices } from "../platform/org/service";
 import { ROLES } from "../platform/rbac/roles";
-import { projectPeopleSql, spaceVisibleSql } from "./access-sql";
+import { projectPeopleSql, projectPlaceSql, spaceVisibleSql } from "./access-sql";
 import { type AccessLevel, parseSubjectKey, SPACE_KEY, type SpaceKind, subjectKey } from "./enums";
 import { type AccessRow, type KbLevel, type KbViewer, type SpaceFacts, spaceLevel } from "./policy";
 
@@ -27,13 +27,13 @@ export const spaceFacts = (space: Pick<SpaceRow, "entityId" | "kind" | "archived
 async function spaceAccessRows(executor: Executor, spaceIds: readonly string[]): Promise<Map<string, AccessRow[]>> {
   const rows = spaceIds.length
     ? await executor
-        .select({ spaceId: schema.kbAccess.spaceId, subjectKey: schema.kbAccess.subjectKey, level: schema.kbAccess.level, people: projectPeopleSql() })
+        .select({ spaceId: schema.kbAccess.spaceId, subjectKey: schema.kbAccess.subjectKey, level: schema.kbAccess.level, people: projectPeopleSql(), project: projectPlaceSql() })
         .from(schema.kbAccess)
         .where(and(inArray(schema.kbAccess.spaceId, [...spaceIds]), isNull(schema.kbAccess.pageId)))
         .orderBy(asc(schema.kbAccess.createdAt))
     : [];
   const bySpace = new Map<string, AccessRow[]>(spaceIds.map((id) => [id, []]));
-  for (const row of rows) bySpace.get(row.spaceId)!.push({ subjectKey: row.subjectKey, level: row.level, ...(row.people ? { people: row.people } : {}) });
+  for (const row of rows) bySpace.get(row.spaceId)!.push({ subjectKey: row.subjectKey, level: row.level, ...(row.people ? { people: row.people } : {}), ...(row.project ? { project: row.project } : {}) });
   return bySpace;
 }
 

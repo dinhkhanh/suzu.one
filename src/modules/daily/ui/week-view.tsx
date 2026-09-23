@@ -27,7 +27,7 @@ export async function TimeWeek({ view, openTasks = [] }: { view: TimeWeekView; o
   };
   const dayLabel = (date: string) => format.dateTime(new Date(`${date}T12:00:00Z`), { weekday: "short", day: "numeric", month: "numeric" });
 
-  const rows: GridRowView[] = view.grid.rows.map((row) => ({ key: row.key, ...labelOf(row.key), cells: row.cells }));
+  const rows: GridRowView[] = view.grid.rows.map((row) => ({ key: row.key, ...labelOf(row.key), cells: row.cells, billable: row.billable, total: row.total }));
   const days: GridDayView[] = view.days.map((day) => ({
     date: day.date,
     label: dayLabel(day.date),
@@ -52,7 +52,7 @@ export async function TimeWeek({ view, openTasks = [] }: { view: TimeWeekView; o
 
   return (
     <div className="flex flex-col gap-6">
-      <WeekGrid rows={rows} days={days} editable={view.editable} options={options} copyRows={copyRows} />
+      <WeekGrid rows={rows} days={days} weekStart={view.weekStart} editable={view.editable} options={options} copyRows={copyRows} />
       {view.days.some((day) => day.hint) ? <p className="text-xs text-muted-foreground">{t("attendanceHint")}</p> : null}
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-medium text-muted-foreground">

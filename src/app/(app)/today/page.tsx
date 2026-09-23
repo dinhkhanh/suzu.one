@@ -41,6 +41,8 @@ export default async function TodayPage() {
   const statesOf = (teamId: string) => states.filter((state) => state.teamId === teamId && state.isActive).map(({ id, name, category }) => ({ id, name, category }));
   const day = view.day;
   const off = !!day?.dayOff;
+  // Which of the day's projects are billed to a client: the quick log starts from it (FR-PJM-24).
+  const billable = new Set(view.billableProjects);
   const plannedMinutes = view.planned.reduce((total, task) => total + (task.plannedMinutes ?? 0), 0);
   const loggedMinutes = view.time.reduce((total, entry) => total + entry.minutes, 0);
   const shortDate = (iso: string) => format.dateTime(new Date(`${iso}T12:00:00Z`), { day: "numeric", month: "short" });
@@ -61,7 +63,7 @@ export default async function TodayPage() {
         {task.status === "done" || task.status === "cancelled" ? null : (
           <>
             <TimerButton taskId={task.taskId} running={view.timer?.taskId === task.taskId} />
-            <QuickLog date={date} taskId={task.taskId} />
+            <QuickLog date={date} taskId={task.taskId} billable={!!task.projectId && billable.has(task.projectId)} />
           </>
         )}
       </div>
@@ -196,7 +198,7 @@ export default async function TodayPage() {
       <Section title={t("today.time", { value: hoursOf(loggedMinutes) })}>
         <TimeList entries={view.time.map(({ id, key, title, category, minutes, billable }) => ({ id, key, title, category, minutes, billable }))} />
         <div className="flex flex-wrap items-center gap-2">
-          <QuickLog date={date} tasks={[...view.planned, ...view.open.filter((task) => !view.planned.some((row) => row.taskId === task.taskId))].filter((task) => task.status !== "cancelled").map((task) => ({ id: task.taskId, label: `${task.key} ${task.title}` }))} />
+          <QuickLog date={date} tasks={[...view.planned, ...view.open.filter((task) => !view.planned.some((row) => row.taskId === task.taskId))].filter((task) => task.status !== "cancelled").map((task) => ({ id: task.taskId, label: `${task.key} ${task.title}`, billable: !!task.projectId && billable.has(task.projectId) }))} />
           <Link href="/daily/time" className={buttonVariants({ size: "xs", variant: "ghost" })}>
             {t("time.openWeek")}
           </Link>

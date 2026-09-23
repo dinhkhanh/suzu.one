@@ -8,7 +8,10 @@ type IsoDate = string;
 export type TeamRules = {
   planMode: RuleMode;
   reportMode: RuleMode;
-  /** ISO weekdays the report is required on. */
+  /**
+   * The ISO weekdays a lead narrowed the report down to. Empty — the default — means no narrowing:
+   * every day the person's own working calendar says they work (Q18, 2026-09-23).
+   */
   reportDays: readonly number[];
   /** "HH:MM", Vietnam time. */
   planCutoff: string;
@@ -20,17 +23,21 @@ export type TeamRules = {
   cycleStart: IsoDate | null;
 };
 
-/** SRS A10, A11: plan optional, report required Monday–Friday by 18:30, time logging optional. */
-export const DEFAULT_TEAM_RULES: TeamRules = { planMode: "optional", reportMode: "required", reportDays: [1, 2, 3, 4, 5], planCutoff: "09:30", reportDeadline: "18:30", timeMode: "optional", timesheetApproval: false, coverMinDays: 2, cycleWeeks: null, cycleStart: null };
+/**
+ * The owner's answers to Q17 and Q18 (2026-09-23): the morning plan and the end-of-day report are
+ * required of everyone, every working day, the report by 23:00; time is logged in every team and
+ * the week is approved by a lead. A team that never set its own rules follows these.
+ */
+export const DEFAULT_TEAM_RULES: TeamRules = { planMode: "required", reportMode: "required", reportDays: [], planCutoff: "09:30", reportDeadline: "23:00", timeMode: "required", timesheetApproval: true, coverMinDays: 2, cycleWeeks: null, cycleStart: null };
 
 /** What one person follows: a team's rules without the team's own calendar (cycles). */
 export type PersonRules = Omit<TeamRules, "cycleWeeks" | "cycleStart">;
 
 /**
- * Someone in no work team has nobody to report to on a board: they may plan and report, nothing
- * asks them to (A11 turns the report on for every *team*).
+ * Someone in no work team follows the same company rules as everyone else (Q18): the day is asked
+ * of the person, not of the team, and their line manager reads it and approves their week.
  */
-export const NO_TEAM_RULES: PersonRules = { planMode: "optional", reportMode: "optional", reportDays: [1, 2, 3, 4, 5], planCutoff: "09:30", reportDeadline: "18:30", timeMode: "optional", timesheetApproval: false, coverMinDays: 2 };
+export const NO_TEAM_RULES: PersonRules = { planMode: DEFAULT_TEAM_RULES.planMode, reportMode: DEFAULT_TEAM_RULES.reportMode, reportDays: DEFAULT_TEAM_RULES.reportDays, planCutoff: DEFAULT_TEAM_RULES.planCutoff, reportDeadline: DEFAULT_TEAM_RULES.reportDeadline, timeMode: DEFAULT_TEAM_RULES.timeMode, timesheetApproval: DEFAULT_TEAM_RULES.timesheetApproval, coverMinDays: DEFAULT_TEAM_RULES.coverMinDays };
 
 const RANK: Record<RuleMode, number> = { off: 0, optional: 1, required: 2 };
 const strictest = (modes: readonly RuleMode[]): RuleMode => modes.reduce<RuleMode>((best, mode) => (RANK[mode] > RANK[best] ? mode : best), "off");
@@ -42,6 +49,10 @@ const earliest = (times: readonly string[]): string => [...times].sort()[0];
  * does not make its days mandatory), the earliest deadline winning; the same for the plan's
  * cut-off. Timesheet approval is on if any team approves; a cover plan is asked for from the
  * shortest leave any team asks it for.
+ *
+ * The days merge the other way round from a list of allowed values: a team that narrowed the week
+ * asks for fewer days than one that did not, so one team reporting every working day (the empty
+ * list) leaves the person reporting every working day.
  */
 export function mergeRules(teams: readonly TeamRules[]): PersonRules {
   if (teams.length === 0) return NO_TEAM_RULES;
@@ -52,7 +63,7 @@ export function mergeRules(teams: readonly TeamRules[]): PersonRules {
   return {
     planMode,
     reportMode,
-    reportDays: [...new Set(reporting.flatMap((team) => team.reportDays))].sort((a, b) => a - b),
+    reportDays: reporting.some((team) => team.reportDays.length === 0) ? [] : [...new Set(reporting.flatMap((team) => team.reportDays))].sort((a, b) => a - b),
     planCutoff: earliest(planning.map((team) => team.planCutoff)),
     reportDeadline: earliest(reporting.map((team) => team.reportDeadline)),
     timeMode: strictest(teams.map((team) => team.timeMode)),
@@ -110,16 +121,32 @@ export function dayOffReason(day: DayFacts): Extract<NotRequiredReason, "holiday
 }
 
 /**
- * Is the end-of-day report required on this day (FR-PJM-22, A11)? Never on a holiday, a day of
- * full leave or a rest day. Otherwise on the weekdays the rules list: untracked Saturdays (D15)
- * are off because the default list stops at Friday — a team that lists Saturday asks for it.
- * Half a day of leave still leaves half a day to report on.
+ * Does the person work on this day, as their own working calendar has it? A scheduled working day
+ * does, and so does an untracked Saturday — D15 makes it a day of work from home, not a day off,
+ * and Q18 asks for the day's report on it. A rest day, a holiday and a day off do not. When nobody
+ * scheduled the person at all there is no calendar to follow, and the plain five-day week decides.
+ */
+export function worksOn(day: DayFacts): boolean {
+  if (dayOffReason(day)) return false;
+  if (day.kind === "unscheduled") return isoWeekday(day.date) <= 5;
+  return true;
+}
+
+/** A lead narrowed the week down and this day is not in it (`reportDays` empty = no narrowing). */
+const narrowedAway = (rules: PersonRules, day: DayFacts) => rules.reportDays.length > 0 && !rules.reportDays.includes(isoWeekday(day.date));
+
+/**
+ * Is the end-of-day report required on this day (FR-PJM-22, Q18)? Never on a holiday, a day of
+ * full leave or a rest day. Otherwise on every day the person's own working calendar has them
+ * working, an untracked Saturday (D15) included — unless a lead narrowed the team's week down to
+ * certain weekdays. Half a day of leave still leaves half a day to report on.
  */
 export function reportRequirement(rules: PersonRules, day: DayFacts): Requirement {
   const off = dayOffReason(day);
   if (off) return { required: false, reason: off };
   if (rules.reportMode !== "required") return { required: false, reason: rules.reportMode };
-  if (!rules.reportDays.includes(isoWeekday(day.date))) return { required: false, reason: day.kind === "untracked" ? "untracked" : "not_a_report_day" };
+  if (!worksOn(day)) return { required: false, reason: "not_a_report_day" };
+  if (narrowedAway(rules, day)) return { required: false, reason: day.kind === "untracked" ? "untracked" : "not_a_report_day" };
   return { required: true, reason: null };
 }
 
@@ -128,12 +155,13 @@ export function planRequirement(rules: PersonRules, day: DayFacts): Requirement 
   const off = dayOffReason(day);
   if (off) return { required: false, reason: off };
   if (rules.planMode !== "required") return { required: false, reason: rules.planMode };
-  if (!rules.reportDays.includes(isoWeekday(day.date))) return { required: false, reason: day.kind === "untracked" ? "untracked" : "not_a_report_day" };
+  if (!worksOn(day)) return { required: false, reason: "not_a_report_day" };
+  if (narrowedAway(rules, day)) return { required: false, reason: day.kind === "untracked" ? "untracked" : "not_a_report_day" };
   return { required: true, reason: null };
 }
 
-/** The Today page says "enjoy your day off" instead of asking for a plan: holidays, leave, rest days and untracked days that nobody reports on. */
+/** The Today page says "enjoy your day off" instead of asking for a plan: holidays, leave, rest days, and days the person's calendar or their team's narrowed week leaves alone. */
 export function isDayOff(rules: PersonRules, day: DayFacts): boolean {
-  if (dayOffReason(day)) return true;
-  return day.kind === "untracked" && !rules.reportDays.includes(isoWeekday(day.date));
+  if (!worksOn(day)) return true;
+  return day.kind === "untracked" && narrowedAway(rules, day);
 }

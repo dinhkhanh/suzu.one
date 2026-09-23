@@ -6,7 +6,9 @@
 //   entity  → everyone in the project's entity (a group project: everyone); never collaborators
 //   team    → the owning team's members and the project's members
 //   private → the project's members and the team's leads. `work:manage` does not open a private
-//             project: an HR or finance project stays with the people in it.
+//             project: an HR or finance project stays with the people in it. A `pjm:portfolio`
+//             holder over the owning team may *read* it (the owner's decision of 2026-09-23, Q25)
+//             and nothing more — see `readsPrivateByPortfolio`.
 import { can, type Principal } from "../platform/rbac/policy";
 import type { ProjectRole, TeamRole, Visibility } from "./enums";
 
@@ -76,8 +78,25 @@ function seesByVisibility(viewer: WorkViewer, visibility: Visibility, entityId: 
   return visibility === "entity" && !isCollaborator(viewer) && (entityId === null || entityId === viewer.entityId);
 }
 
+/**
+ * A private project opened by a leader who is none of its people (FR-PJM-8; the owner's decision of
+ * 2026-09-23, Q25): `pjm:portfolio` over the owning team lets them *read* the project — its plan,
+ * its tasks, its documents — and nothing else. They are not members: they do not contribute, are
+ * not assignable, decide no review and appear in no assignable list, because every one of those
+ * rules asks membership (`canContributeToProject`, `canManageProject`, `listAssignable`), which
+ * this does not give. Reading one is audited (`auditPrivateRead` in the projects module).
+ *
+ * Deliberately narrow: only a *project*, never a private team's backlog (`canViewTeamBacklog`),
+ * which the decision did not widen.
+ */
+export function readsPrivateByPortfolio(viewer: WorkViewer, project: ProjectFacts): boolean {
+  if (project.visibility !== "private") return false;
+  if (viewer.projectRoles.has(project.id) || viewer.teamRoles.get(project.team.id) === "lead") return false;
+  return can(viewer.principal, "pjm:portfolio", scopeOf(project.team));
+}
+
 export function canViewProject(viewer: WorkViewer, project: ProjectFacts): boolean {
-  return viewer.projectRoles.has(project.id) || seesByVisibility(viewer, project.visibility, project.entityId, project.team);
+  return viewer.projectRoles.has(project.id) || seesByVisibility(viewer, project.visibility, project.entityId, project.team) || readsPrivateByPortfolio(viewer, project);
 }
 
 /** The client side of a project (FR-PJM-14): client decisions, acceptance, change requests, billing hand-off. */
@@ -120,6 +139,17 @@ export function canViewTeamBacklog(viewer: WorkViewer, team: TeamFacts): boolean
 export function canViewTask(viewer: WorkViewer, task: TaskFacts): boolean {
   if (isParty(viewer, task)) return true;
   return task.project ? canViewProject(viewer, task.project) : canViewTeamBacklog(viewer, task.team);
+}
+
+/**
+ * Whoever may open a task may join its conversation — comment, react, follow, pin feedback — which
+ * is wider than working on it: a colleague asks a question, a collaborator is asked for feedback.
+ * The one reader who may not is a leader looking into a private project (Q25): they read it, they
+ * leave nothing in it. A party to the task is never that reader.
+ */
+export function canJoinTaskConversation(viewer: WorkViewer, task: TaskFacts): boolean {
+  if (!canViewTask(viewer, task)) return false;
+  return !task.project || isParty(viewer, task) || !readsPrivateByPortfolio(viewer, task.project);
 }
 
 export function canEditTask(viewer: WorkViewer, task: TaskFacts): boolean {
@@ -357,7 +387,7 @@ export function canChangeDeliverable(deliverable: { frozenAt: Date | string | nu
 
 /** Pinning feedback on a version (FR-PJM-52): whoever may open the task, as with comments. Collaborators too — they are asked for feedback. */
 export function canPinFeedback(viewer: WorkViewer, task: TaskFacts): boolean {
-  return canViewTask(viewer, task);
+  return canJoinTaskConversation(viewer, task);
 }
 
 /** Resolving a pin: whoever pinned it, and the people doing the work — they are the ones who act on it. */

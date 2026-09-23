@@ -8,7 +8,7 @@ import { beginTaskUpload, completeTaskUpload, findTaskFile, removeTaskFile, task
 import { FILTER_KEYS, isFilterKey } from "./engine/filter";
 import { setFollowing } from "./followers";
 import { CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_ROLES, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "./enums";
-import { canAddTeamMember, canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canModerateTask, canViewTask } from "./policy";
+import { canAddTeamMember, canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canViewTask } from "./policy";
 import { createProject, findProject, projectFacts, setProjectMember, updateProject } from "./projects";
 import { addDependency, createWorkTask, deleteWorkTask, findDependency, loadTask, removeDependency, updateWorkTask } from "./tasks";
 import { createTeam, deleteLabel, findLabel, findTeam, isTeamMember, personPlacement, saveClient, saveLabel, saveState, setTeamMember, teamFacts, updateTeam } from "./teams";
@@ -478,7 +478,7 @@ const addCommentPipeline = createAction({
   // Whoever may see the task may join the conversation — the requester too, who cannot edit it.
   authorize: async (user, input) => {
     const task = await loadTask(input.taskId);
-    return !!task && canViewTask(await loadViewer(user), task.facts);
+    return !!task && canJoinTaskConversation(await loadViewer(user), task.facts);
   },
   run: async ({ user, input }) => {
     const { comment, mentioned, told } = await addComment(input.taskId, input, user.person);
@@ -498,7 +498,7 @@ const editCommentPipeline = createAction({
   authorize: async (user, input) => {
     const comment = await findComment(input.commentId);
     const task = comment && comment.authorPersonId === user.person.id ? await loadTask(comment.taskId) : undefined;
-    return !!task && canViewTask(await loadViewer(user), task.facts);
+    return !!task && canJoinTaskConversation(await loadViewer(user), task.facts);
   },
   run: async ({ user, input }) => {
     const { after, mentioned } = await editComment(input.commentId, input.body, user.person);
@@ -536,7 +536,7 @@ const reactPipeline = createAction({
   authorize: async (user, input) => {
     const comment = await findComment(input.commentId);
     const task = comment ? await loadTask(comment.taskId) : undefined;
-    return !!task && canViewTask(await loadViewer(user), task.facts);
+    return !!task && canJoinTaskConversation(await loadViewer(user), task.facts);
   },
   run: async ({ user, input }) => {
     const { comment, added } = await toggleReaction(input.commentId, input.emoji, user.person.id);
@@ -554,7 +554,7 @@ const followPipeline = createAction({
   // For yourself only; stopping is always allowed, starting takes the right to see the task.
   authorize: async (user, input) => {
     const task = await loadTask(input.taskId);
-    return !!task && (!input.follow || canViewTask(await loadViewer(user), task.facts));
+    return !!task && (!input.follow || canJoinTaskConversation(await loadViewer(user), task.facts));
   },
   run: async ({ user, input }) => {
     const { before, after } = await setFollowing(input.taskId, user.person.id, input.follow);

@@ -23,6 +23,20 @@ import { ensurePlan } from "./plans";
 import { billingReach, canDecideBilling } from "./policy";
 
 type Executor = Tx | ReturnType<typeof db>;
+
+/**
+ * Is a retainer month covered by a signed biên bản nghiệm thu — its own, or the project's as a
+ * whole? What `closePeriod` asks before it bills a client's month (the owner's decision of
+ * 2026-09-23, Q22). Lives here, with the other billing gates, so that the retainer and the
+ * acceptance modules need not import one another.
+ */
+export async function acceptedForBilling(executor: Executor, projectId: string, retainerPeriodId: string): Promise<boolean> {
+  const rows = await executor
+    .select({ scope: schema.projectAcceptance.scope, retainerPeriodId: schema.projectAcceptance.retainerPeriodId })
+    .from(schema.projectAcceptance)
+    .where(and(eq(schema.projectAcceptance.projectId, projectId), eq(schema.projectAcceptance.status, "signed")));
+  return rows.some((row) => row.scope === "project" || row.retainerPeriodId === retainerPeriodId);
+}
 export type BillingItemRow = typeof schema.projectBillingItem.$inferSelect;
 
 /** Finance-capable people of an entity: named holders of `pjm:commercial` over it, never the owners' "*". */

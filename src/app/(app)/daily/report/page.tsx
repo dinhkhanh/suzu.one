@@ -38,7 +38,7 @@ export default async function ReportPage({ searchParams }: PageProps<"/daily/rep
       <ReportForm
         date={date}
         draft={form.draft}
-        candidates={form.candidates.map(({ taskId, key, title, dueDate, projectName }) => ({ taskId, key, title, dueDate, projectName }))}
+        candidates={form.candidates.map(({ taskId, key, title, dueDate, projectName, projectId }) => ({ taskId, key, title, dueDate, projectName, billable: !!projectId && form.billableProjects.includes(projectId) }))}
         tomorrow={form.tomorrow}
         initial={{ blockers: form.report?.blockers ?? null, notes: form.report?.notes ?? null }}
         submitted={submitted}

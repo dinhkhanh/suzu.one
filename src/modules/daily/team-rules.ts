@@ -68,13 +68,13 @@ export async function rulesOfPeople(personIds: readonly string[], executor?: Exe
   return result;
 }
 
-/** Everyone in an active work team — the people the reminders may concern. */
-export async function listTeamPeople(executor: Executor = db()): Promise<string[]> {
-  const rows = await executor
-    .selectDistinct({ personId: schema.workTeamMember.personId })
-    .from(schema.workTeamMember)
-    .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTeamMember.teamId))
-    .innerJoin(schema.person, eq(schema.person.id, schema.workTeamMember.personId))
-    .where(and(eq(schema.workTeam.isActive, true), eq(schema.person.status, "active")));
+/**
+ * Everyone the daily loop may ask something of: every active person. Since Q18 (2026-09-23) the
+ * plan and the report are asked of the person, not of their team, so someone in no work team is
+ * reminded like everyone else; their rules are `NO_TEAM_RULES` and their approver is their line
+ * manager. Who is actually due on a day is still `dayOf`'s answer, person by person.
+ */
+export async function listDailyPeople(executor: Executor = db()): Promise<string[]> {
+  const rows = await executor.select({ personId: schema.person.id }).from(schema.person).where(eq(schema.person.status, "active"));
   return rows.map((row) => row.personId);
 }

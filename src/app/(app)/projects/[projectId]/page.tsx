@@ -8,7 +8,8 @@ import { RequestHistory, RequestStatusBadge, RequestTools } from "@/modules/plat
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { decideBriefAction } from "@/modules/projects/actions";
-import { briefEditable, briefProblems, briefSubmittable, type BriefStatus, getBriefRequest, listStatusUpdates, openBriefForApprover, openProject, PROJECT_KINDS, type ProjectKind } from "@/modules/projects/service";
+import { awaitingAcceptance, briefEditable, briefProblems, briefSubmittable, type BriefStatus, getBriefRequest, listStatusUpdates, openBriefForApprover, openProject, PROJECT_KINDS, type ProjectKind } from "@/modules/projects/service";
+import { AcceptanceWaitingList } from "@/modules/projects/ui/acceptance-waiting";
 import { BriefView } from "@/modules/projects/ui/brief-view";
 import { AccountManagerForm, BriefForm, PlanSettingsForm, SubmitBriefButton } from "@/modules/projects/ui/plan-forms";
 import { healthVariant, ProjectHeader } from "@/modules/projects/ui/project-header";
@@ -50,7 +51,7 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
   }
 
   const { project, plan, can } = context;
-  const [request, updates, members, people] = await Promise.all([getBriefRequest({ personId: user.person.id, principal: user.principal }, plan), listStatusUpdates(project.id, 10), listProjectMembers(project.id), can.editPlan ? listPersonNames() : Promise.resolve([])]);
+  const [request, updates, members, people, waiting] = await Promise.all([getBriefRequest({ personId: user.person.id, principal: user.principal }, plan), listStatusUpdates(project.id, 10), listProjectMembers(project.id), can.editPlan ? listPersonNames() : Promise.resolve([]), awaitingAcceptance(project.id)]);
   const status = plan.briefStatus as BriefStatus;
   const editable = can.editClientSide && briefEditable(status);
   const problems = briefProblems(plan.brief, plan.kind as ProjectKind);
@@ -98,6 +99,8 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
           </details>
         ) : null}
       </section>
+
+      <AcceptanceWaitingList projectId={project.id} waiting={waiting} />
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">

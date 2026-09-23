@@ -22,6 +22,7 @@ import { ViewTabs } from "@/modules/work/ui/filter-bar";
 import { RecurrenceManager, TemplateUseForm } from "@/modules/work/ui/planning-forms";
 import { ProjectForm } from "@/modules/work/ui/project-forms";
 import { TaskListView } from "@/modules/work/ui/task-list-view";
+import { auditPrivateRead } from "@/modules/projects/service";
 import { ProjectTabs } from "@/modules/projects/ui/project-tabs";
 import { MemberManager } from "@/modules/work/ui/team-forms";
 
@@ -36,6 +37,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   if (!found || !canViewProject(viewer, projectFacts(found.project, found.team))) notFound();
   const { project, team } = found;
   const facts = projectFacts(project, team);
+  // A leader looking into a private project they are none of the people of leaves a trail (Q25).
+  await auditPrivateRead(user, viewer, facts, project.name);
   const t = await getTranslations("work");
   const manage = canManageProject(viewer, facts);
   const today = todayInVietnam();

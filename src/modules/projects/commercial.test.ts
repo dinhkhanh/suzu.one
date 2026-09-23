@@ -107,8 +107,8 @@ describe("retainer months (FR-PJM-06)", () => {
       isActive: true,
       feePerMonthVnd: 30_000_000,
     });
-    expect(await runRetainers("2026-10-15")).toEqual({ periods: 1, closed: 0, billed: 0 });
-    expect(await runRetainers("2026-10-15")).toEqual({ periods: 0, closed: 0, billed: 0 });
+    expect(await runRetainers("2026-10-15")).toEqual({ periods: 1, closed: 0, billed: 0, awaiting: 0 });
+    expect(await runRetainers("2026-10-15")).toEqual({ periods: 0, closed: 0, billed: 0, awaiting: 0 });
 
     const [retainer] = await db().select().from(schema.projectRetainer).where(eq(schema.projectRetainer.projectId, ids.retainer));
     let periods = await listPeriods(retainer, true);
@@ -121,8 +121,8 @@ describe("retainer months (FR-PJM-06)", () => {
     await finishTasks((await createTasksForLine(videos.id, { count: 3, assigneePersonId: null, dueDate: null }, ids.tam)).taskIds);
 
     // The first run in November makes November and closes October with its fee.
-    expect(await runRetainers("2026-11-01")).toEqual({ periods: 1, closed: 1, billed: 1 });
-    expect(await runRetainers("2026-11-02")).toEqual({ periods: 0, closed: 0, billed: 0 });
+    expect(await runRetainers("2026-11-01")).toEqual({ periods: 1, closed: 1, billed: 1, awaiting: 0 });
+    expect(await runRetainers("2026-11-02")).toEqual({ periods: 0, closed: 0, billed: 0, awaiting: 0 });
     periods = await listPeriods(retainer, true);
     const november = periods.find((view) => view.period.month === "2026-11")!;
     expect(november.period.carried).toEqual({ "Bài đăng Facebook": 3, "Video TikTok": -1 });
@@ -140,7 +140,7 @@ describe("retainer months (FR-PJM-06)", () => {
     expect(items).toMatchObject([{ source: "retainer", amountVnd: 30_000_000, entityId: ids.szm, status: "ready" }]);
     expect(await noticesOf(ids.ke, "projects.billing_ready")).toHaveLength(1);
     // A catch-up after the end month makes December and nothing after it.
-    expect(await runRetainers("2027-02-10")).toEqual({ periods: 1, closed: 2, billed: 2 });
+    expect(await runRetainers("2027-02-10")).toEqual({ periods: 1, closed: 2, billed: 2, awaiting: 0 });
     expect((await listPeriods(retainer, true)).map((view) => view.period.month)).toEqual(["2026-12", "2026-11", "2026-10"]);
   });
 

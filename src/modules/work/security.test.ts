@@ -134,9 +134,16 @@ describe("leave cover (FR-PJM-44)", () => {
     const plan = await planWith([{ itemId: secretTask.id }]);
 
     expect((await getCoverPlan(plan.id, await viewer("huy")))!.items[0].label).toContain("Dựng bản pitch");
+    // The owner may read a private project since 2026-09-23 (Q25), so the label is theirs to see —
+    // but the circle the work may be given to is unchanged: nobody they could hand it to.
     const asBoss = (await getCoverPlan(plan.id, await viewer("boss")))!.items[0];
-    expect([asBoss.label, asBoss.href]).toEqual([null, null]);
-    expect(asBoss.assignableIds).toEqual([]);
+    expect(asBoss.label).toContain("Dựng bản pitch");
+    // The circle the work may be given to is the project's own people — never the reader themselves.
+    expect(asBoss.assignableIds.sort()).toEqual([ids.huy, ids.long].sort());
+    expect(asBoss.assignableIds).not.toContain(ids.boss);
+    // A reader of the plan who may not open the project still gets minutes without a name.
+    const asBao = (await getCoverPlan(plan.id, await viewer("bao")))?.items[0];
+    if (asBao) expect([asBao.label, asBao.href]).toEqual([null, null]);
 
     // Khôi is in another team: he cannot be given this work, by name or as the cover for all.
     expect(await fails(submitCoverPlan(plan.id, { defaultCoverPersonId: null, items: [{ id: (await db().select().from(schema.workCoverItem).where(eq(schema.workCoverItem.planId, plan.id)))[0].id, coverPersonId: ids.khoi }], note: { context: "x" } }, actor("huy"), TODAY))).toBe("cover_not_assignable");
@@ -175,7 +182,8 @@ describe("exit handover (FR-PJM-45)", () => {
 
     const asBoss = (await getExitHandover(handover.id, await viewer("boss")))!;
     const secretItem = asBoss.owned.find((item) => item.id === secretTask.id)!;
-    expect([secretItem.label, secretItem.canReassign]).toEqual([null, false]);
+    // The owner reads the private project (Q25) but does not run it: the item is named and shut.
+    expect([secretItem.label?.includes("Hợp đồng pitch"), secretItem.canReassign]).toEqual([true, false]);
     const openItem = asBoss.owned.find((item) => item.id === openTask.id)!;
     expect([openItem.label?.includes("Bản dựng cuối"), openItem.canReassign]).toEqual([true, true]);
 
@@ -238,7 +246,8 @@ describe("triage (FR-PJM-32)", () => {
     await db().transaction((tx) => sendToTriage(tx, task.id, "request", { notify: false }));
     expect((await listTriage(ids.video, await viewer("huy"))).map((item) => item.id)).toContain(task.id);
     expect((await listTriage(ids.video, await viewer("bao"))).map((item) => item.id)).not.toContain(task.id);
-    expect((await listTriage(ids.video, await viewer("boss"))).map((item) => item.id)).not.toContain(task.id);
+    // The owner may read it (Q25); deciding the triage is still the team's business, not the queue's reader's.
+    expect((await listTriage(ids.video, await viewer("boss"))).map((item) => item.id)).toContain(task.id);
 
     const merge = (await createWorkTask({ teamId: ids.video, projectId: ids.secret, title: "Việc đang chạy" }, ids.huy)).task;
     expect((await listMergeTargets(ids.video, await viewer("huy"))).map((row) => row.id)).toContain(merge.id);

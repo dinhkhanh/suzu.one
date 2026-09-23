@@ -161,7 +161,7 @@ describe("a retainer's months are bounded, and a closed project bills no more (f
     await closeProject(ids.retainer, { overrideReason: "Khách dừng hợp đồng, đã báo C-level" }, ids.lead);
     const [retainer] = await db().select().from(schema.projectRetainer).where(eq(schema.projectRetainer.projectId, ids.retainer));
     expect(retainer).toMatchObject({ isActive: false, endMonth: month });
-    expect(await runRetainers(`${addMonths(month, 24)}-15`, retainer.id)).toEqual({ periods: 0, closed: 0, billed: 0 });
+    expect(await runRetainers(`${addMonths(month, 24)}-15`, retainer.id)).toEqual({ periods: 0, closed: 0, billed: 0, awaiting: 0 });
     expect((await db().select().from(schema.projectRetainerPeriod)).length).toBe(before);
   });
 });

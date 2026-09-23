@@ -14,7 +14,7 @@ import { ActivityList, TaskLines } from "./activity-list";
 import { hoursOf, TEXTAREA } from "./format";
 import { QuickLog } from "./quick-actions";
 
-type Candidate = { taskId: string; key: string; title: string; dueDate: string | null; projectName: string | null };
+type Candidate = { taskId: string; key: string; title: string; dueDate: string | null; projectName: string | null; /** Its project's time is billed to the client by default (FR-PJM-24). */ billable: boolean };
 
 export function ReportForm({
   date,
@@ -85,7 +85,7 @@ export function ReportForm({
         </summary>
         <div className="mt-3 flex flex-col gap-3">
           <ActivityList items={draft.activity} />
-          <QuickLog date={date} tasks={candidates.map((task) => ({ id: task.taskId, label: `${task.key} ${task.title}` }))} />
+          <QuickLog date={date} tasks={candidates.map((task) => ({ id: task.taskId, label: `${task.key} ${task.title}`, billable: task.billable }))} />
         </div>
       </details>
 

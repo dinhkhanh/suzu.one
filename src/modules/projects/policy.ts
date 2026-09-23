@@ -26,11 +26,28 @@ export const canEditPlan = (viewer: WorkViewer, project: PlanFacts): boolean => 
  */
 export const canEditClientSide = (viewer: WorkViewer, project: PlanFacts): boolean => !project.closed && canActForClient(viewer, project);
 
-/** Fees and money budgets in VND: `pjm:commercial` over the project's entity (a group project: a group-wide grant). */
-export const canSeeFees = (viewer: WorkViewer, project: Pick<ProjectFacts, "entityId">): boolean => can(viewer.principal, "pjm:commercial", { entityId: project.entityId });
+/** `pjm:commercial` over the project's entity (a group project: a group-wide grant) — the permission every money rule rests on. */
+export const holdsCommercial = (viewer: WorkViewer, project: Pick<ProjectFacts, "entityId">): boolean => can(viewer.principal, "pjm:commercial", { entityId: project.entityId });
 
-/** Changing a fee: reading it is not enough — the person also changes the plan or owns the client side. */
-export const canEditFees = (viewer: WorkViewer, project: PlanFacts): boolean => canSeeFees(viewer, project) && canEditClientSide(viewer, project);
+/**
+ * Reading money on a project — the fee, the money budget, the retainer's monthly fee, the amounts
+ * of its billing items: `pjm:commercial` over the entity (finance, the entity's director, C-level,
+ * the owner), and — the owner's decision of 2026-09-23, Q21 — **the project's own lead and its own
+ * account manager**, who negotiate and deliver against that number. Their own project only: a lead
+ * of one project reads nothing of the next. No other project role, no team lead as such, and no
+ * `work:manage` or `pjm:portfolio` holder, who see the plan without seeing the price.
+ */
+export const canSeeFees = (viewer: WorkViewer, project: Pick<ProjectFacts, "id" | "entityId">): boolean => {
+  const role = viewer.projectRoles.get(project.id);
+  return role === "lead" || role === "account_manager" || holdsCommercial(viewer, project);
+};
+
+/**
+ * Changing money — the fee, a milestone's billing amount, a retainer's fee and the months it bills:
+ * `pjm:commercial` and the client side. Reading it is not enough, so the lead and the account
+ * manager of Q21 read their project's numbers without being able to move them.
+ */
+export const canEditFees = (viewer: WorkViewer, project: PlanFacts): boolean => holdsCommercial(viewer, project) && canEditClientSide(viewer, project);
 
 /**
  * Posting a status update (FR-PJM-27): the project's lead, its account manager, or a lead of the

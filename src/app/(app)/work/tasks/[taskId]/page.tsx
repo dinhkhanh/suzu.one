@@ -13,8 +13,9 @@ import { TaskReview } from "@/modules/work/ui/task-review";
 import { canRespondToHandoff, canSendToTeam, listOpenCycles, listTaskHandoffs, listTeamCycles, listTeams, TASK_FILE_OWNER, teamFacts } from "@/modules/work/service";
 import { HandoffPanel } from "@/modules/work/ui/handoff";
 import { todayInVietnam } from "@/lib/dates";
-import { canDecideStage, canManagePublish, canPinFeedback, canRecordClientDecision, canRecordDelivery, canResolvePin, clientOfTask, listDeliveriesByTask, listPublishesByTask, listTaskPins } from "@/modules/work/service";
+import { canDecideStage, canManagePublish, canManagePreviewLinks, canPinFeedback, canRecordClientDecision, canRecordDelivery, canResolvePin, canRevokePreviewLink, clientOfTask, listDeliveriesByTask, listPreviewLinks, listPublishesByTask, listTaskPins } from "@/modules/work/service";
 import { DeliveryPanel } from "@/modules/work/ui/delivery";
+import { PreviewLinkPanel } from "@/modules/work/ui/preview-links";
 import { PublishPanel } from "@/modules/work/ui/publish";
 
 export const metadata: Metadata = { title: "Task" };
@@ -55,6 +56,10 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
     canEdit ? listMoveTargets(viewer, detail.facts) : [],
   ]);
   const [pins, deliveries, publishes, client] = await Promise.all([listTaskPins(task.id), listDeliveriesByTask([task.id]), listPublishesByTask([task.id]), clientOfTask(detail)]);
+  // The client's review links (FR-PJM-51a) are a capability handed outside the company, so the list
+  // is read only for the people who may act for the client — never as directory information.
+  const managesPreview = canManagePreviewLinks(viewer, detail.facts, client);
+  const previewLinks = managesPreview || canRevokePreviewLink(viewer, detail.facts, client) ? await listPreviewLinks(task.id) : [];
   const today = todayInVietnam();
   // Review chains (FR-PJM-50): the waiting version's stage decides who may decide it.
   const waiting = deliverables.find((item) => item.decision === "pending");
@@ -176,6 +181,19 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
           canPin={canPinFeedback(viewer, detail.facts)}
           clientName={client.name}
           today={today}
+        />
+        <PreviewLinkPanel
+          taskId={task.id}
+          links={previewLinks.map((link) => ({
+            ...link,
+            expiresAt: link.expiresAt.toISOString(),
+            lastViewedAt: link.lastViewedAt?.toISOString() ?? null,
+            createdAt: link.createdAt.toISOString(),
+            decision: link.decision ? { ...link.decision, at: link.decision.at.toISOString() } : null,
+            canRevoke: canRevokePreviewLink(viewer, detail.facts, client),
+          }))}
+          versions={deliverables.filter((item) => item.decision !== "superseded").map((item) => ({ id: item.id, version: item.version, frozen: !!item.frozenAt }))}
+          canManage={managesPreview && task.status !== "cancelled"}
         />
         <DeliveryPanel
           taskId={task.id}

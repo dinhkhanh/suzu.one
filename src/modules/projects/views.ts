@@ -3,10 +3,11 @@
 // withdrawn kick-off as they are now) without writing anything, and the money is taken out unless
 // the viewer holds `pjm:commercial` over the project's entity.
 import "server-only";
+import { recordAudit } from "../platform/audit/service";
 import type { CurrentUser } from "../platform/auth/session";
 import type { RequestView } from "../platform/approvals/service";
-import type { WorkViewer } from "../work/policy";
-import { findProject, loadViewer, projectFacts } from "../work/service";
+import type { ProjectFacts, WorkViewer } from "../work/policy";
+import { findProject, loadViewer, projectFacts, readsPrivateByPortfolio } from "../work/service";
 import { getBriefRequest } from "./kickoff";
 import { defaultPlan, isProjectClosed, planAsItStands, type PlanRow, type PlanView, readPlan, shapePlan } from "./plans";
 import { canEditClientSide, canEditFees, canEditPlan, canPostStatus, canSeeFees, canViewPlan, type PlanFacts } from "./policy";
@@ -24,13 +25,34 @@ export type ProjectContext = {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+export type ProjectReader = Pick<CurrentUser, "person" | "principal"> & Partial<Pick<CurrentUser, "userId" | "email" | "request">>;
+
+/**
+ * A private project opened by a leader who is none of its people (the owner's decision of
+ * 2026-09-23, Q25) leaves a trail, as a compensation-tier read does: who looked, at which project,
+ * and on what authority — never the project's content. Nothing else about the read changes; the
+ * project's own people are not logged for reading their own work.
+ */
+export async function auditPrivateRead(user: ProjectReader, viewer: WorkViewer, facts: ProjectFacts, projectName: string): Promise<void> {
+  if (!readsPrivateByPortfolio(viewer, facts)) return;
+  await recordAudit({
+    action: "projects.private.read",
+    actor: { userId: user.userId ?? null, personId: user.person.id, email: user.email ?? null },
+    request: user.request,
+    resource: { type: "work_project", id: facts.id, entityId: facts.entityId },
+    summary: projectName.slice(0, 300),
+    after: { visibility: "private", via: "pjm:portfolio", teamId: facts.team.id },
+  });
+}
+
 /** null = no such project, or one the viewer may not open — the page answers notFound() either way. */
-export async function openProject(user: Pick<CurrentUser, "person" | "principal">, projectId: string): Promise<ProjectContext | null> {
+export async function openProject(user: ProjectReader, projectId: string): Promise<ProjectContext | null> {
   if (!UUID.test(projectId)) return null;
   const [found, viewer] = await Promise.all([findProject(projectId), loadViewer(user)]);
   if (!found) return null;
   const workFacts = projectFacts(found.project, found.team);
   if (!canViewPlan(viewer, workFacts)) return null;
+  await auditPrivateRead(user, viewer, workFacts, found.project.name);
   const plan = await planAsItStands((await readPlan(projectId)) ?? defaultPlan(found.project));
   const facts: PlanFacts = { ...workFacts, closed: !!plan.closedAt };
   const seeFees = canSeeFees(viewer, facts);

@@ -1006,6 +1006,10 @@
       "tasks_team_added": {
         "title": "You were added to {team}",
         "body": "{actor} added you to the team {team}. Open it to see its work, its workflow and who else is in it."
+      },
+      "tasks_preview_decided": {
+        "title": "The client answered on a review link",
+        "body": "{name} has answered on the review link you sent for “{task}”."
       }
     },
     "errors": {
@@ -3759,7 +3763,11 @@
       "cover_plan_not_started": "The leave has not started: only the person on leave withdraws this plan.",
       "cover_hand_back_early": "Nothing can be handed back before the last day of the leave ({date}).",
       "cover_nothing_to_hand_back": "You are not covering anything that is still to be handed back.",
-      "exit_item_not_yours": "This belongs to a project or team you do not run: whoever runs it hands it over."
+      "exit_item_not_yours": "This belongs to a project or team you do not run: whoever runs it hands it over.",
+      "preview_no_version": "There is no version to send to the client yet.",
+      "preview_link_not_found": "That link no longer exists.",
+      "preview_link_closed": "That link is no longer active.",
+      "preview_comment_required": "Say what needs changing."
     },
     "views": {
       "list": "List",
@@ -4618,7 +4626,8 @@
         "zalo": "Zalo",
         "meeting": "Meeting",
         "call": "Phone call",
-        "other": "Other"
+        "other": "Other",
+        "preview_link": "Review link"
       },
       "decidedBy": "Decided by (client side)",
       "decidedByPlaceholder": "e.g. Ms Mai – Brand Manager",
@@ -4908,6 +4917,49 @@
           "notify": "tell {person}: “{text}”",
           "comment": "comment: “{text}”"
         }
+      }
+    },
+    "preview": {
+      "title": "Client review links",
+      "live": "live",
+      "explainer": "An expiring link, no sign-in. The client sees this version and your note, and nothing else.",
+      "new": "Create a link",
+      "noVersionYet": "No version to send yet",
+      "create": "Create the link",
+      "cancel": "Cancel",
+      "version": "Version to send",
+      "currentVersion": "Whichever is current",
+      "frozen": "client approved",
+      "label": "Recipient",
+      "labelPlaceholder": "e.g. Mai – Vinamilk",
+      "days": "Valid for (days)",
+      "message": "Note for the client",
+      "messagePlaceholder": "e.g. Here is the second cut — the music is changed as you asked.",
+      "allowDecision": "Let the client decide on the page",
+      "privacyNote": "The client's page shows nothing else of the company: no other task, no internal comment, no fees.",
+      "copyOnce": "Copy it now — the link is shown once and never again.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "expiresOn": "Expires {date}",
+      "noLabel": "No recipient noted",
+      "viewOnly": "view only",
+      "revoke": "Revoke",
+      "revokeConfirm": "Revoke this link? The client will not be able to open it.",
+      "meta": "{name} created it {created} · expires {expires}",
+      "views": "{count} views, last {last}",
+      "noViews": "not opened yet",
+      "decided": "{decision} — {name}, {at}",
+      "decisions": {
+        "approved": "Client approved",
+        "approved_with_changes": "Approved with changes",
+        "changes_required": "Client asked for changes"
+      },
+      "states": {
+        "active": "Live",
+        "viewed": "Opened",
+        "decided": "Answered",
+        "expired": "Expired",
+        "revoked": "Revoked"
       }
     }
   },
@@ -9181,7 +9233,7 @@
       "lockedApproved": "This week is approved and locked. Ask your approver to reopen it to make changes.",
       "lockedSubmitted": "You submitted this week — it is waiting for approval and cannot be changed for now.",
       "tooOld": "This week is too far back to change your time yourself.",
-      "submitHint": "Your team approves timesheets weekly. Check your hours, then submit.",
+      "submitHint": "Weekly timesheets are approved. Check your hours, then submit.",
       "submit": "Submit week",
       "resubmit": "Submit again",
       "start": "Start timer",
@@ -9218,12 +9270,18 @@
         "approved": "Approved",
         "returned": "Returned"
       },
-      "requiredBadge": "Team requires time logging",
+      "requiredBadge": "Time logging required",
       "submittedAt": "Submitted {time}",
       "returnedBy": "Returned by {name}: {comment}",
       "approvedBy": "Approved by {name}, {time}",
       "reopenedBy": "Reopened by {name}: {comment}",
-      "privateWork": "Private work"
+      "privateWork": "Private work",
+      "billableToggle": "Bill this row's week to the client, or stop billing it",
+      "billableState": {
+        "yes": "Billable",
+        "no": "Not billable",
+        "mixed": "Partly billable"
+      }
     },
     "plan": {
       "title": "Today's plan",
@@ -9297,7 +9355,7 @@
       "prefilledHint": "What you did is filled in from today's activity — just add blockers and tomorrow's plan.",
       "tomorrowPlanned": "Tomorrow's plan ({count})",
       "noTomorrow": "No plan for tomorrow.",
-      "noTimeLogged": "Your team requires time logging, and nothing is logged today yet. Log it quickly under today's activity below."
+      "noTimeLogged": "Time logging is required every day, and nothing is logged today yet. Log it quickly under today's activity below."
     },
     "thread": {
       "react": "React {reaction}",
@@ -9358,9 +9416,10 @@
         "6": "Sat",
         "7": "Sun"
       },
-      "reportDaysHint": "Work-from-home Saturdays need no report by default; holidays and leave days are always exempt.",
+      "reportDaysHint": "Leave every box unticked — the default — and the report follows each person's own working calendar, work-from-home Saturdays included. Tick days only to narrow it down for this team. Holidays, days off and leave are always exempt.",
       "noCycles": "No cycles",
-      "weeks": "{count} weeks"
+      "weeks": "{count} weeks",
+      "companyRules": "Company-wide: everyone makes a morning plan, sends the end-of-day report by 23:00, logs their time and submits a weekly timesheet for approval. A lead can only make this stricter, or narrow the report days for their own team."
     },
     "weekly": {
       "title": "Weekly reports",
@@ -10130,7 +10189,15 @@
       "signedOn": "Signed on",
       "signedBy": "Signed by (client)",
       "signedInfo": "Signed by {name} on {date}",
-      "documentTitle": "Acceptance record"
+      "documentTitle": "Acceptance record",
+      "waitingTitle": "Waiting to be accepted",
+      "waitingNote": "Client work is invoiced only after the client signs its acceptance record. The items below are still waiting for a signature.",
+      "waitingNone": "Nothing is waiting to be accepted.",
+      "waitingWhole": "The whole project",
+      "waitingMilestone": "Milestone: {name}",
+      "waitingMonth": "Retainer month: {name}",
+      "waitingLink": "Open the acceptance page",
+      "monthNotBilled": "Not handed to finance yet: waiting for a signed acceptance record."
     },
     "billing": {
       "title": "Ready to invoice",
@@ -10219,13 +10286,15 @@
         "timesheets": "Timesheet weeks approved (where required)",
         "billing": "All billing items invoiced or waived",
         "drive": "Files archived to Drive (link set)",
-        "retro": "Retrospective held"
+        "retro": "Retrospective held",
+        "acceptance": "A client-signed acceptance record covers the client work"
       },
       "counts": {
         "tasks": "{count} tasks open",
         "register": "{count} lines not fully accepted",
         "timesheets": "{count} weeks not approved",
-        "billing": "{count} items with finance"
+        "billing": "{count} items with finance",
+        "acceptance": "{count} items without a signed acceptance"
       },
       "previewReport": "Final report (if closed today)",
       "closeTitle": "Close the project",
@@ -10421,6 +10490,59 @@
       "audience": "The project's members and its team leads can read and edit; anyone added to the project sees it straight away.",
       "files": "All files",
       "noFiles": "No files uploaded to the project's pages yet."
+    }
+  },
+  "preview": {
+    "brand": "SuZu Group",
+    "footer": "This page is for the person it was sent to. Please do not pass the link on.",
+    "metaTitle": "Review",
+    "version": "Version {version}",
+    "forWhom": "for {name}",
+    "work": "For your review",
+    "openFile": "Open the file",
+    "fileHint": "The file link works for a few minutes. Reload this page if it stops.",
+    "unavailable": "The file cannot be opened right now. Please reload this page in a moment.",
+    "messageFrom": "A note from {name}",
+    "viewOnly": "This link is for viewing. Please send your comments to whoever shared it with you.",
+    "expiresOn": "This link works until {date}.",
+    "privacy": "When you send an answer we keep the name you type, your choice, your comment and the time you sent it, as the record of what was agreed. We do not keep your IP address.",
+    "decide": {
+      "title": "Your answer",
+      "choice": "Your choice",
+      "decisions": {
+        "approved": "Approve",
+        "approved_with_changes": "Approve with small changes",
+        "changes_required": "Request changes"
+      },
+      "hints": {
+        "approved": "This is good to go and the team can carry on.",
+        "approved_with_changes": "Right overall, with a few small things to fix.",
+        "changes_required": "Needs another round before it can be approved."
+      },
+      "name": "Your name",
+      "namePlaceholder": "e.g. Mai – Brand Manager",
+      "comment": "Comments",
+      "commentHint": "Required if you choose “Approve with small changes” or “Request changes”.",
+      "submit": "Send my answer"
+    },
+    "closed": {
+      "title": "This link is no longer active",
+      "body": "Please contact whoever sent it to you for a new one.",
+      "busy": "This page is getting a lot of requests. Please try again in a few minutes."
+    },
+    "thanks": {
+      "title": "Thank you",
+      "body": "Your answer has been recorded and passed to the team."
+    },
+    "errors": {
+      "failed": "Your answer could not be sent. Please try again.",
+      "invalid": "Please check your name and comment, then send again.",
+      "rejected": "Your answer could not be sent. Please try again.",
+      "rate_limited": "That is a lot of attempts. Please try again in a few minutes.",
+      "preview_link_closed": "This link no longer takes an answer.",
+      "preview_comment_required": "Please say what needs changing.",
+      "deliverable_frozen": "This version has already been approved and takes no further answer.",
+      "client_decision_not_latest": "There is a newer version. Please ask for a new link."
     }
   }
 }

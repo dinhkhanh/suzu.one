@@ -16,7 +16,7 @@ import { PROJECT_KINDS } from "./engine/brief";
 import { HEALTHS } from "./engine/status";
 import { decideBrief, projectBriefRequest, submitBrief } from "./kickoff";
 import { isProjectClosed, setAccountManager, setFee, updateBrief, updatePlanSettings } from "./plans";
-import { canEditClientSide, canEditFees, canEditPlan, canManageBookings, canPostStatus, canRebaseline, canSeeFees, type PlanFacts } from "./policy";
+import { canEditClientSide, canEditFees, canEditPlan, canManageBookings, canPostStatus, canRebaseline, type PlanFacts } from "./policy";
 import { buildPortfolioExport } from "./portfolio";
 import { postStatusUpdate } from "./status-updates";
 import { cancelDeliverable, createTasksForLine, deleteMilestone, deletePhase, findDeliverable, findMilestone, findPhase, linkTask, projectOfTask, saveDeliverable, saveMilestone, savePhase, setMilestoneDone, unlinkTask } from "./structure";
@@ -243,8 +243,9 @@ const milestonePipeline = createAction({
   run: async ({ user, input }) => {
     const { projectId, milestoneId, billingAmountVnd, ...values } = input;
     const found = await projectFor(user, projectId);
-    // The amount is written only by someone who may read it; for anyone else it is left as it was.
-    const amount = found && canSeeFees(found.viewer, found.facts) && billingAmountVnd !== undefined ? { billingAmountVnd } : {};
+    // A billing amount is money: written only with `pjm:commercial` over the entity (Q21 widened
+    // who *reads* a fee, not who moves one); for anyone else it is left as it was.
+    const amount = found && canEditFees(found.viewer, found.facts) && billingAmountVnd !== undefined ? { billingAmountVnd } : {};
     const { before, after } = await saveMilestone(projectId, milestoneId, { ...values, ...amount });
     refresh(projectId);
     const shape = (row: typeof after | null) => (row ? { name: row.name, dueDate: row.dueDate, phaseId: row.phaseId, ownerPersonId: row.ownerPersonId, isClientFacing: row.isClientFacing, isBilling: row.isBilling } : null);

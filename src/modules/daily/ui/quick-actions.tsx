@@ -37,18 +37,27 @@ export function PlanTodayButton({ taskId }: { taskId: string }) {
 /**
  * Log time in two taps: open, tap a length. A task row passes its task; the free form (no task)
  * offers the day's tasks and the non-task categories, and a typed length ("1h30").
+ *
+ * Whether the time is billed to the client (FR-PJM-24, Q17) is part of every log: the box starts
+ * from the project's own kind — which is what the server would use anyway — and following the
+ * target when it changes, and the person may tick it either way before saving.
  */
-export function QuickLog({ date, taskId, tasks }: { date: string; taskId?: string; tasks?: { id: string; label: string }[] }) {
+export function QuickLog({ date, taskId, billable = false, tasks }: { date: string; taskId?: string; /** The task's project is billed by default (the single-task form). */ billable?: boolean; tasks?: { id: string; label: string; billable: boolean }[] }) {
   const t = useTranslations("daily");
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState(taskId ? `task:${taskId}` : tasks?.[0] ? `task:${tasks[0].id}` : `category:${TIME_CATEGORIES[0]}`);
   const [typed, setTyped] = useState("");
   const [done, setDone] = useState<number | null>(null);
+  // null = whatever the target itself says; a tick or an untick is the person's own word.
+  const [chosen, setChosen] = useState<boolean | null>(null);
   const { run, pending, errorKey } = useRun();
+  // Time on a category is nobody's client work; a task's follows its project.
+  const byDefault = taskId ? billable : (tasks?.find((task) => `task:${task.id}` === target)?.billable ?? false);
+  const billed = chosen ?? byDefault;
   const log = (minutes: number | null) => {
     if (!minutes) return;
     const [kind, id] = target.split(":");
-    run(logTimeAction, { date, minutes, ...(kind === "task" ? { taskId: id } : { category: id }) }, () => {
+    run(logTimeAction, { date, minutes, billable: billed ? "yes" : "no", ...(kind === "task" ? { taskId: id } : { category: id }) }, () => {
       setDone(minutes);
       setTyped("");
       setOpen(false);
@@ -63,7 +72,14 @@ export function QuickLog({ date, taskId, tasks }: { date: string; taskId?: strin
   return (
     <div className="flex w-full flex-col gap-2 rounded-lg border bg-muted/40 p-2">
       {taskId ? null : (
-        <Select aria-label={t("time.what")} value={target} onChange={(event) => setTarget(event.target.value)}>
+        <Select
+          aria-label={t("time.what")}
+          value={target}
+          onChange={(event) => {
+            setTarget(event.target.value);
+            setChosen(null);
+          }}
+        >
           {(tasks ?? []).map((task) => (
             <option key={task.id} value={`task:${task.id}`}>
               {task.label}
@@ -78,6 +94,9 @@ export function QuickLog({ date, taskId, tasks }: { date: string; taskId?: strin
           </optgroup>
         </Select>
       )}
+      <label className="flex items-center gap-1.5 text-xs">
+        <input type="checkbox" checked={billed} onChange={(event) => setChosen(event.target.checked)} /> {t("time.billableLabel")}
+      </label>
       <div className="flex flex-wrap items-center gap-1.5">
         {QUICK_MINUTES.map((minutes) => (
           <Button key={minutes} type="button" size="sm" variant="outline" disabled={pending} onClick={() => log(minutes)}>

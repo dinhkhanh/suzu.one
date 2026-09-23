@@ -18,6 +18,7 @@ import { attachAcceptance, billMilestone, ensureBillingItem, financeOf, lockFee 
 import { adapterLineLinks } from "./delivery-adapter";
 import { acceptanceItems, acceptanceItemsText, type AcceptanceAction, acceptanceNext, acceptanceNumber, type AcceptanceScope, type AcceptanceStatus, acceptanceTotals, linesInScope, projectFeeLeft, type ScopedLine } from "./engine/acceptance";
 import type { BillingStatus } from "./engine/acceptance";
+import { monthOf } from "./engine/retainer";
 import { withLineStatus } from "./metrics";
 import { ensurePlan, readPlan } from "./plans";
 import { feeOfPeriod, retainerMonthLabel } from "./retainers";
@@ -197,6 +198,40 @@ export async function listAcceptances(projectId: string): Promise<AcceptanceView
     .where(eq(schema.projectAcceptance.projectId, projectId))
     .orderBy(desc(schema.projectAcceptance.number));
   return rows.map(({ acceptance, milestoneName, month, authorName }) => ({ ...acceptance, code: acceptanceNumber(plan.jobNumber, acceptance.number), targetName: milestoneName ?? month ?? null, totals: acceptanceTotals(acceptance.items), authorName }));
+}
+
+export type AcceptanceWaiting = { scope: AcceptanceScope; milestoneId: string | null; retainerPeriodId: string | null; /** The milestone's name or the retainer month; null for the project as a whole. */ name: string | null };
+
+/**
+ * What still waits for a signed biên bản nghiệm thu — the owner's decision of 2026-09-23 (Q22):
+ * **every client project and every retainer month** is accepted before it is billed. "Client work"
+ * is a project with a client on it, whatever its kind; internal work needs no acceptance and gets
+ * `null` here.
+ *
+ * Waiting, on client work: every client-facing milestone and every retainer month that is over,
+ * without a signed record; and, where the project has neither, the project as a whole. A signed
+ * whole-project record accepts everything under it — it bills the fee that the milestones and the
+ * months left unbilled — so nothing waits behind it.
+ */
+export async function awaitingAcceptance(projectId: string, today: IsoDate = todayInVietnam()): Promise<AcceptanceWaiting[] | null> {
+  const [project] = await db().select({ clientId: schema.workProject.clientId }).from(schema.workProject).where(eq(schema.workProject.id, projectId)).limit(1);
+  if (!project?.clientId) return null;
+  const [signed, milestones, periods] = await Promise.all([
+    db().select({ scope: schema.projectAcceptance.scope, milestoneId: schema.projectAcceptance.milestoneId, retainerPeriodId: schema.projectAcceptance.retainerPeriodId }).from(schema.projectAcceptance).where(and(eq(schema.projectAcceptance.projectId, projectId), eq(schema.projectAcceptance.status, "signed"))),
+    db().select({ id: schema.projectMilestone.id, name: schema.projectMilestone.name }).from(schema.projectMilestone).where(and(eq(schema.projectMilestone.projectId, projectId), eq(schema.projectMilestone.isClientFacing, true))).orderBy(asc(schema.projectMilestone.dueDate)),
+    db().select({ id: schema.projectRetainerPeriod.id, month: schema.projectRetainerPeriod.month, status: schema.projectRetainerPeriod.status }).from(schema.projectRetainerPeriod).innerJoin(schema.projectRetainer, eq(schema.projectRetainer.id, schema.projectRetainerPeriod.retainerId)).where(eq(schema.projectRetainer.projectId, projectId)).orderBy(asc(schema.projectRetainerPeriod.month)),
+  ]);
+  if (signed.some((row) => row.scope === "project")) return [];
+  const milestoneIds = new Set(signed.flatMap((row) => (row.milestoneId ? [row.milestoneId] : [])));
+  const periodIds = new Set(signed.flatMap((row) => (row.retainerPeriodId ? [row.retainerPeriodId] : [])));
+  const month = monthOf(today);
+  const waiting: AcceptanceWaiting[] = [
+    ...milestones.filter((milestone) => !milestoneIds.has(milestone.id)).map((milestone) => ({ scope: "milestone" as const, milestoneId: milestone.id, retainerPeriodId: null, name: milestone.name })),
+    // A month still running is not late: it is accepted once it is over and its work is delivered.
+    ...periods.filter((period) => !periodIds.has(period.id) && (period.status === "closed" || period.month < month)).map((period) => ({ scope: "retainer_period" as const, milestoneId: null, retainerPeriodId: period.id, name: period.month })),
+  ];
+  if (waiting.length === 0 && milestones.length === 0 && periods.length === 0) return [{ scope: "project", milestoneId: null, retainerPeriodId: null, name: null }];
+  return waiting;
 }
 
 /** Signed milestones and months, for the page to say what is left to accept. */

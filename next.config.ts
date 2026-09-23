@@ -35,6 +35,17 @@ const nextConfig: NextConfig = {
         ],
       },
       { source: "/offline.html", headers: [{ key: "Cache-Control", value: "no-cache" }] },
+      // The client's review link (D24, FR-PJM-51a): the URL **is** the credential, so no crawler
+      // may keep it and no browser, proxy or CDN may keep the page it opens. The tags on the page
+      // say the same thing; this says it to everything between us and the client.
+      {
+        source: "/preview/:path*",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet" },
+          { key: "Cache-Control", value: "private, no-store, max-age=0" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+        ],
+      },
       // Compensation screens (NFR-SEC-08): never stored by a browser, a proxy or a CDN.
       ...["/payroll/:path*", "/payroll", "/payslips/:path*", "/payslips", "/step-up"].map((source) => ({ source, headers: [{ key: "Cache-Control", value: "private, no-store, max-age=0" }] })),
     ];

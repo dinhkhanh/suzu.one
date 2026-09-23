@@ -15,7 +15,7 @@ export { loadBurns, loadMilestoneTasks, loadRegisters, loadStatusFacts, type Reg
 export { listStatusUpdates, projectFollowers, type StatusUpdateView } from "./status-updates";
 export { filterPortfolio, listPortfolio, PORTFOLIO_GROUPS, type PortfolioFilters, type PortfolioGroup, type PortfolioRow, showsFees } from "./portfolio";
 export { applyTemplatePlanIn, listTemplatePlans, type TemplatePlanRow } from "./template-plans";
-export { openBriefForApprover, openProject, type ProjectContext } from "./views";
+export { auditPrivateRead, openBriefForApprover, openProject, type ProjectContext, type ProjectReader } from "./views";
 export { listTaskLinks, type TaskLinkView } from "./links";
 export type { ProjectBrief, StatusFacts } from "./schema";
 /** Timeline, baselines, bookings and capacity (FR-PJM-07, 12, 13). */
@@ -36,7 +36,7 @@ export { getRetainer, listPeriodOptions, listPeriods, type PeriodLine, type Peri
 export { hoursUsage, QUOTA_THRESHOLDS, RETAINER_ROLLOVERS, type RetainerRollover, type Usage, type UsageLevel } from "./engine/retainer";
 export { changeRequestType, type ChangeView, getChangeLedger, getChangeRequest, listChanges, openChangesForApprover } from "./change-requests";
 export { CHANGE_REQUESTERS, CHANGE_STATUSES, type ChangeLedger, type ChangeStatus, changeEditable } from "./engine/change-request";
-export { acceptanceDocument, type AcceptanceView, type AcceptanceWords, findAcceptance, listAcceptances, signedTargets } from "./acceptance";
+export { acceptanceDocument, type AcceptanceView, type AcceptanceWaiting, type AcceptanceWords, awaitingAcceptance, findAcceptance, listAcceptances, signedTargets } from "./acceptance";
 export { ACCEPTANCE_SCOPES, type AcceptanceScope, acceptanceNext, type AcceptanceStatus, BILLING_STATUSES, type BillingStatus } from "./engine/acceptance";
 export { billingEntities, billingItemForAcceptance, type BillingFilters, type BillingItemView, listBillingQueue, listProjectBilling } from "./billing";
 export { clientReportFigures, defaultReportPeriod, entityLetterhead, findClientReport, listClientReports } from "./client-reports";

@@ -4,8 +4,10 @@ import { canApproveTimesheet, canCommentOnReport, canViewAttendanceHint, canOver
 const reader = (personId: string, led: string[] = []): ReportReader => ({ personId, ledTeamIds: new Set(led) });
 
 // Huy works in Video (led by Long) and collaborates on Design's work as a member (led by Mai).
-// His line manager is Tam, whose manager is Chi.
-const huy: ReportSubject = { personId: "huy", teamIds: ["team-video", "team-design"], chainAbove: ["tam", "chi"] };
+// His line manager is Tam, whose manager is Chi, whose manager is Vu.
+const huy: ReportSubject = { personId: "huy", teamIds: ["team-video", "team-design"], chainAbove: ["tam", "chi", "vu"] };
+// Tam himself is in no work team at all (Q18): his day is read by the chain above him and by nobody else.
+const tam: ReportSubject = { personId: "tam", teamIds: [], chainAbove: ["chi", "vu"] };
 
 describe("daily report visibility", () => {
   it("the person sees their own", () => {
@@ -19,10 +21,23 @@ describe("daily report visibility", () => {
     expect(canOverseeReport(reader("long", ["team-video"]), huy)).toBe(true);
   });
 
-  it("the line manager and the manager's manager see it", () => {
+  it("every manager above the person sees it, however far up", () => {
     expect(canViewReport(reader("tam"), huy)).toBe(true);
+    // The skip-level manager, and the one above them.
     expect(canViewReport(reader("chi"), huy)).toBe(true);
+    expect(canViewReport(reader("vu"), huy)).toBe(true);
     expect(canOverseeReport(reader("chi"), huy)).toBe(true);
+    expect(canOverseeReport(reader("vu"), huy)).toBe(true);
+  });
+
+  it("a person in no work team is read by their chain and by nobody else", () => {
+    expect(canViewReport(reader("tam"), tam)).toBe(true);
+    expect(canViewReport(reader("chi"), tam)).toBe(true);
+    expect(canViewReport(reader("vu"), tam)).toBe(true);
+    // Huy reports to Tam; a lead of Huy's teams is not thereby above Tam.
+    expect(canViewReport(reader("huy"), tam)).toBe(false);
+    expect(canViewReport(reader("long", ["team-video"]), tam)).toBe(false);
+    expect(canViewTimesheet(reader("long", ["team-video"]), tam)).toBe(false);
   });
 
   it("a colleague in the same team does not", () => {
@@ -81,8 +96,16 @@ describe("who approves a week", () => {
     expect(canApproveTimesheet(reader("tam"), huy)).toBe(true);
   });
 
+  it("the line manager alone where the person is in no work team", () => {
+    expect(canApproveTimesheet(reader("chi"), tam)).toBe(true);
+    expect(canApproveTimesheet(reader("vu"), tam)).toBe(false);
+    expect(canApproveTimesheet(reader("tam"), tam)).toBe(false);
+    expect(canApproveTimesheet(reader("long", ["team-video"]), tam)).toBe(false);
+  });
+
   it("not the manager's manager, a colleague or another team's lead", () => {
     expect(canApproveTimesheet(reader("chi"), huy)).toBe(false);
+    expect(canApproveTimesheet(reader("vu"), huy)).toBe(false);
     expect(canApproveTimesheet(reader("bao"), huy)).toBe(false);
     expect(canApproveTimesheet(reader("khoi", ["team-social"]), huy)).toBe(false);
   });

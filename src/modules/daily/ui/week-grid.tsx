@@ -10,10 +10,10 @@ import { FormError } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { setTimeCellAction } from "../time-actions";
+import { setRowBillableAction, setTimeCellAction } from "../time-actions";
 import { durationText, hoursOf, parseCellDuration } from "./format";
 
-export type GridRowView = { key: string; label: string; sub: string | null; cells: number[] };
+export type GridRowView = { key: string; label: string; sub: string | null; cells: number[]; /** Minutes of the row billed to the client, of its total: none, all, or some of them. */ billable: number; total: number };
 export type GridDayView = {
   date: string;
   label: string;
@@ -69,12 +69,49 @@ function Cell({ date, rowKey, minutes, label, editable, onError }: { date: strin
   );
 }
 
-export function WeekGrid({ rows, days, editable, options, copyRows }: { rows: GridRowView[]; days: GridDayView[]; editable: boolean; options: RowOption[]; copyRows: RowOption[] }) {
+/**
+ * Whether the row's week is billed to the client (FR-PJM-24, Q17). It starts from the project's own
+ * kind; one tap here bills the whole row's week, or stops billing it. "Some" means the entries
+ * under it disagree — tapping then bills them all.
+ */
+function BillableToggle({ weekStart, rowKey, billable, total, editable, onError }: { weekStart: string; rowKey: string; billable: number; total: number; editable: boolean; onError: (errorKey: string | null) => void }) {
+  const t = useTranslations("daily.time");
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  if (total === 0) return null;
+  const state = billable === total ? "yes" : billable === 0 ? "no" : "mixed";
+  const label = t(`billableState.${state}`);
+  const tone = state === "yes" ? "border-transparent bg-sky-100 text-sky-900 dark:bg-sky-900/40 dark:text-sky-100" : state === "mixed" ? "border-transparent bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100" : "text-muted-foreground";
+  const className = cn("inline-flex h-5 items-center rounded-full border px-1.5 text-[10px] font-medium", tone);
+  // Read-only — an approver's view, or the phone list, where the entries below are the place to change it.
+  if (!editable) return state === "no" ? null : <span className={className}>{label}</span>;
+  return (
+    <button
+      type="button"
+      aria-pressed={state === "yes"}
+      title={t("billableToggle")}
+      disabled={pending}
+      className={cn(className, "hover:border-ring/60 disabled:opacity-60")}
+      onClick={() =>
+        startTransition(async () => {
+          const result = await setRowBillableAction({ weekStart, row: rowKey, billable: state !== "yes" });
+          if (!result.ok) return onError((result.error === "failed" ? result.message : result.error) ?? "generic");
+          onError(null);
+          router.refresh();
+        })
+      }
+    >
+      {label}
+    </button>
+  );
+}
+
+export function WeekGrid({ rows, days, weekStart, editable, options, copyRows }: { rows: GridRowView[]; days: GridDayView[]; weekStart: string; editable: boolean; options: RowOption[]; copyRows: RowOption[] }) {
   const t = useTranslations("daily.time");
   const [extra, setExtra] = useState<RowOption[]>([]);
   const [adding, setAdding] = useState("");
   const [errorKey, setErrorKey] = useState<string | null>(null);
-  const shown: GridRowView[] = [...rows, ...extra.filter((row) => !rows.some((existing) => existing.key === row.key)).map((row) => ({ ...row, cells: days.map(() => 0) }))];
+  const shown: GridRowView[] = [...rows, ...extra.filter((row) => !rows.some((existing) => existing.key === row.key)).map((row) => ({ ...row, cells: days.map(() => 0), billable: 0, total: 0 }))];
   const dayTotals = days.map((_, index) => shown.reduce((sum, row) => sum + row.cells[index], 0));
   const total = dayTotals.reduce((sum, value) => sum + value, 0);
   const available = options.filter((option) => !shown.some((row) => row.key === option.key));
@@ -141,7 +178,10 @@ export function WeekGrid({ rows, days, editable, options, copyRows }: { rows: Gr
             {shown.map((row) => (
               <tr key={row.key} className="border-b last:border-b-0">
                 <td className="px-3 py-1.5">
-                  <span className="block truncate">{row.label}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="min-w-0 flex-1 truncate">{row.label}</span>
+                    <BillableToggle weekStart={weekStart} rowKey={row.key} billable={row.billable} total={row.total} editable={editable} onError={setErrorKey} />
+                  </span>
                   {row.sub ? <span className="block truncate text-xs text-muted-foreground">{row.sub}</span> : null}
                 </td>
                 {days.map((day, index) => (
@@ -194,9 +234,12 @@ export function WeekGrid({ rows, days, editable, options, copyRows }: { rows: Gr
                 .filter((row) => editable || row.cells[index] > 0)
                 .map((row) => (
                   <li key={row.key} className="flex items-center gap-2 py-0.5">
-                    <span className="min-w-0 flex-1 truncate text-sm">
-                      {row.label}
-                      {row.sub ? <span className="text-xs text-muted-foreground"> · {row.sub}</span> : null}
+                    <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-sm">
+                      <span className="min-w-0 truncate">
+                        {row.label}
+                        {row.sub ? <span className="text-xs text-muted-foreground"> · {row.sub}</span> : null}
+                      </span>
+                      <BillableToggle weekStart={weekStart} rowKey={row.key} billable={row.billable} total={row.total} editable={false} onError={setErrorKey} />
                     </span>
                     <span className="w-20">
                       <Cell key={`${row.key}:${row.cells[index]}`} date={day.date} rowKey={row.key} minutes={row.cells[index]} label={cellLabel(row, day)} editable={editable} onError={setErrorKey} />

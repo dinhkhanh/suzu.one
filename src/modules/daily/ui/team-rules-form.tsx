@@ -54,6 +54,7 @@ export function TeamRulesForm({ teamId, rules, canManage }: { teamId: string; ru
                 </label>
               ))}
             </div>
+            {/* Nothing ticked is the default and the normal case: everyone follows their own working calendar. */}
             <p className="text-xs text-muted-foreground">{t("reportDaysHint")}</p>
           </fieldset>
           <label className="flex items-center gap-2 text-sm">

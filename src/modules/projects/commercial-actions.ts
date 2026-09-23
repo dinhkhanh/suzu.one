@@ -87,7 +87,7 @@ const retainerPipeline = createAction({
     if (!editsFees && (input.startMonth !== months.startMonth || input.endMonth !== months.endMonth || input.isActive !== months.isActive)) throw new ActionError("retainer_terms_need_commercial");
     const { before, after } = await saveRetainer(input.projectId, { ...months, lines: input.lines.map((row) => ({ title: row.title, quantity: row.quantity, format: row.format, channel: row.channel })), minutesPerMonth: input.hoursPerMonth, rollover: input.rollover, ...fee });
     // This month is made now rather than at midnight: the account manager sees it at once.
-    const made = after.isActive ? await ensureCurrentPeriods(after.id) : { periods: 0, closed: 0, billed: 0 };
+    const made = after.isActive ? await ensureCurrentPeriods(after.id) : { periods: 0, closed: 0, billed: 0, awaiting: 0 };
     refresh(input.projectId);
     const shape = (row: typeof after | null) => (row ? { startMonth: row.startMonth, endMonth: row.endMonth, lines: row.lines, minutesPerMonth: row.minutesPerMonth, rollover: row.rollover, isActive: row.isActive } : null);
     return { data: { id: after.id, periods: made.periods }, audit: { resource: auditProject(input.projectId, found.project.entityId), summary: `retainer ${after.startMonth}–${after.endMonth ?? "…"}`, before: shape(before), after: { ...shape(after), feeChanged: "feePerMonthVnd" in fee } } };

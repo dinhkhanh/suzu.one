@@ -3,7 +3,7 @@ import "server-only";
 
 export * from "./enums";
 export { loadViewer, loadViewerWith, type ViewerSource } from "./viewer";
-export { canAdminTeam, canContributeToProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canModerateTask, canViewProject, canViewTask, canViewTeam, canViewTeamBacklog, canDecideReview, canSubmitIntake, canManageTemplate, canNudgeTask, canSubmitDeliverable, type WorkViewer } from "./policy";
+export { canAdminTeam, canContributeToProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canViewProject, canViewTask, canViewTeam, canViewTeamBacklog, canDecideReview, canSubmitIntake, canManageTemplate, canNudgeTask, canSubmitDeliverable, readsPrivateByPortfolio, type WorkViewer } from "./policy";
 export { addableMembers, type ClientRow, entryState, findClient, findLabel, findState, findTeam, type LabelRow, listClients, listLabels, listStates, listTeamMembers, listTeams, type MemberChoice, type MemberView, type StateRow, teamFacts, type TeamRow, type TeamSummary } from "./teams";
 export { type CreateTargets, findProject, listAssignable, listAssignableByTeam, listCreateTargets, listProjectMembers, listProjectOptions, projectFacts, type ProjectMemberView, type ProjectRow, type ProjectSummary, visibleProjects } from "./projects";
 export { type ActivityView, createWorkTask, createWorkTaskIn, getTaskDetail, type LinkedTask, listActivity, listLinkableTasks, listProjectTasks, listTeamBacklog, listVisibleTaskIds, loadTask, type NewWorkTask, searchTasks, type TaskDetail, taskKey, type TaskListItem, type TaskSearchHit, visibleTaskCondition, WORK_KIND } from "./tasks";
@@ -83,6 +83,16 @@ export { type DeliveryView, listDeliveriesByTask } from "./deliveries";
 export { type CalendarPublish, type ContentCalendar, contentCalendar, listCalendarPublishes, listPublishesByTask, listResultsByTask, publishCountsByTask, type PublishView, type ResultView } from "./publish";
 export { type DeliveryFacts, deliveryFactsByTask, type LastClientDecision, type RevisionRounds, revisionRoundsByTask } from "./delivery-facts";
 export { CLIENT_CHANNELS, REVIEWER_RULES, STAGE_DECISIONS } from "./engine/delivery";
+/**
+ * Phase 10, the client's expiring review link (D24, FR-PJM-51a). `openPreviewLink` and
+ * `decideOnPreviewLink` are the **public** surface: they take a token and a visitor, never a user,
+ * and they check everything themselves — the routes under `(preview)` hand them the request and
+ * print what comes back. `listPreviewLinks` carries no authorization; `canManagePreviewLinks`
+ * decides who may see it, and the task page asks before it calls.
+ */
+export { canManagePreviewLinks, canRevokePreviewLink } from "./preview-policy";
+export { decideOnPreviewLink, findPreviewLink, listPreviewLinks, openPreviewLink, type PreviewDecisionInput, type PreviewLinkView, type PreviewOutcome, type PreviewPage, purgePreviewHits } from "./preview";
+export { PREVIEW_DECISIONS, PREVIEW_DEFAULT_DAYS, PREVIEW_MAX_DAYS, PREVIEW_MIN_DAYS, type PreviewState } from "./engine/preview";
 /**
  * Phase 10 automations (FR-PJM-33): a team's (or a project's own) "when … then …" rules. They run
  * inside the work module's own changes; `fireProjectAutomations` is for the projects module's quota

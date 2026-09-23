@@ -12,21 +12,24 @@ const timestamps = {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 };
 
-// A work team's rules for the day (FR-PJM-21, 22, 24, 25, 44). No row = the defaults (SRS A10, A11).
+// A work team's rules for the day (FR-PJM-21, 22, 24, 25, 44). No row = the defaults, which are the
+// company's own rules as the owner decided them on 2026-09-23 (Q17, Q18): everyone plans, everyone
+// reports by 23:00, everyone logs time and a lead approves the week.
 export const dailyTeamPolicy = pgTable("daily_team_policy", {
   teamId: uuid("team_id")
     .primaryKey()
     .references(() => workTeam.id, { onDelete: "cascade" }),
   // off | optional | required
-  planMode: text("plan_mode").notNull().default("optional"),
+  planMode: text("plan_mode").notNull().default("required"),
   reportMode: text("report_mode").notNull().default("required"),
-  // ISO weekdays the report is required on (1 = Monday).
-  reportDays: jsonb("report_days").$type<number[]>().notNull().default([1, 2, 3, 4, 5]),
+  // The ISO weekdays a lead narrowed the report down to (1 = Monday); empty = every working day of
+  // the person's own calendar, the untracked Saturday of D15 included.
+  reportDays: jsonb("report_days").$type<number[]>().notNull().default([]),
   planCutoff: text("plan_cutoff").notNull().default("09:30"),
-  reportDeadline: text("report_deadline").notNull().default("18:30"),
+  reportDeadline: text("report_deadline").notNull().default("23:00"),
   // off | optional | required
-  timeMode: text("time_mode").notNull().default("optional"),
-  timesheetApproval: boolean("timesheet_approval").notNull().default(false),
+  timeMode: text("time_mode").notNull().default("required"),
+  timesheetApproval: boolean("timesheet_approval").notNull().default(true),
   // Leave of at least this many working days asks for a cover plan (FR-PJM-44).
   coverMinDays: integer("cover_min_days").notNull().default(2),
   // Cycles (FR-PJM-10): off when null; otherwise the length in weeks and the first Monday.

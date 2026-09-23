@@ -11,6 +11,8 @@ import { runCycles } from "./cycles";
 import { type ReminderKind, reminderFor } from "./engine/reminders";
 import { syncExitHandovers } from "./exit";
 import { sendPublishReminders } from "./publish";
+import { PREVIEW_HIT_RETENTION_DAYS } from "./engine/preview";
+import { purgePreviewHits } from "./preview";
 import { generateOccurrences } from "./recurrences";
 import { sendReviewOverdueReminders } from "./reviews";
 import { taskKey, WORK_KIND } from "./tasks";
@@ -81,3 +83,13 @@ export const workCoverJob: JobDefinition = { name: "work-cover", run: ({ today }
 
 /** Exit and transfer handovers (FR-PJM-45) at midnight, from the lifecycle events recorded since. */
 export const workExitHandoverJob: JobDefinition = { name: "work-exit-handover", run: ({ today }) => syncExitHandovers(new Date(), today) };
+
+/**
+ * The client review links' rate limiter (D24, FR-PJM-51a) at midnight. Its rows are hashes of a
+ * visitor with an hour's resolution; a week on they are noise, and keeping noise about somebody
+ * outside the company is keeping something for no reason (PDPL storage limitation).
+ */
+export const workPreviewSweepJob: JobDefinition = {
+  name: "work-preview-sweep",
+  run: async () => ({ previewHits: await purgePreviewHits(new Date(Date.now() - PREVIEW_HIT_RETENTION_DAYS * 24 * 60 * 60 * 1000)) }),
+};

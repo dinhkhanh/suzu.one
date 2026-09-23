@@ -1,6 +1,7 @@
 // The daily loop's scheduled jobs: the morning plan reminder, the evening report reminder, the
-// Monday weekly reports and the Monday timesheet reminder. Each tells a person once per kind and day (`daily_reminder_sent`), and
-// days off — holidays, leave, untracked Saturdays — ask nothing of anyone.
+// Monday weekly reports and the Monday timesheet reminder. They concern every active person (Q18),
+// each told once per kind and day (`daily_reminder_sent`); days off — holidays, leave, rest days —
+// ask nothing of anyone, while the untracked Saturday of D15 is a working day like any other.
 import "server-only";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { addDays, type IsoDate } from "@/lib/dates";
@@ -9,7 +10,7 @@ import type { JobDefinition } from "@/modules/platform/jobs/service";
 import { notify } from "@/modules/platform/notifications/service";
 import { dayOf, daysOf } from "./days";
 import { isoWeekday, weekStartOf } from "./engine/rules";
-import { listTeamPeople, rulesOfPeople } from "./team-rules";
+import { listDailyPeople, rulesOfPeople } from "./team-rules";
 import { generateWeek } from "./weekly";
 
 /** Marks the people as told for the day and returns the ones not told before. */
@@ -24,7 +25,7 @@ async function claim(personIds: readonly string[], kind: string, today: IsoDate,
 
 /** Morning (FR-PJM-21): people whose team requires a plan and who have not made today's. */
 export async function sendPlanReminders(today: IsoDate): Promise<{ reminded: number }> {
-  const people = await listTeamPeople();
+  const people = await listDailyPeople();
   const days = await dayOf(people, today);
   const due = people.filter((personId) => days.get(personId)?.plan.required);
   if (due.length === 0) return { reminded: 0 };
@@ -34,9 +35,13 @@ export async function sendPlanReminders(today: IsoDate): Promise<{ reminded: num
   return { reminded };
 }
 
-/** Evening (FR-PJM-22): people whose report is required today and not yet in, with their deadline. */
+/**
+ * Evening (FR-PJM-22): people whose report is required today and not yet in, with their deadline.
+ * It runs in the 18:00 slot, five hours before the 23:00 deadline of Q18: early enough to be acted
+ * on during the working day, and the notice names the deadline rather than implying it is now.
+ */
 export async function sendReportReminders(today: IsoDate): Promise<{ reminded: number }> {
-  const people = await listTeamPeople();
+  const people = await listDailyPeople();
   const days = await dayOf(people, today);
   const due = people.filter((personId) => days.get(personId)?.report.required);
   if (due.length === 0) return { reminded: 0 };
@@ -58,14 +63,15 @@ export async function runWeeklyReports(today: IsoDate): Promise<Record<string, u
 }
 
 /**
- * Mondays (FR-PJM-25): people who submit timesheets — a team of theirs approves them and logs
- * time — and whose last week is neither submitted nor approved (a returned week counts as not
- * submitted). A week spent entirely on leave or holidays asks for nothing.
+ * Mondays (FR-PJM-25): people who submit timesheets — since Q17 that is everyone whose rules keep
+ * weekly approval, a person in no work team included — and whose last week is neither submitted nor
+ * approved (a returned week counts as not submitted). A week spent entirely on leave or holidays
+ * asks for nothing.
  */
 export async function sendTimesheetReminders(today: IsoDate): Promise<Record<string, unknown>> {
   if (isoWeekday(today) !== 1) return { skipped: "not_monday" };
   const weekStart = addDays(weekStartOf(today), -7);
-  const people = await listTeamPeople();
+  const people = await listDailyPeople();
   const rules = await rulesOfPeople(people);
   const submitting = people.filter((personId) => {
     const own = rules.get(personId)?.rules;
@@ -87,7 +93,7 @@ export async function sendTimesheetReminders(today: IsoDate): Promise<Record<str
 
 /** 07:00 Vietnam, the morning slot. */
 export const dailyPlanRemindersJob: JobDefinition = { name: "daily-plan-reminders", run: ({ today }) => sendPlanReminders(today) };
-/** 18:00 Vietnam, a new evening slot — before the default 18:30 deadline. */
+/** 18:00 Vietnam, the evening slot — well before the 23:00 deadline the report has by default. */
 export const dailyReportRemindersJob: JobDefinition = { name: "daily-report-reminders", run: ({ today }) => sendReportReminders(today) };
 /** The morning slot; does its work on Mondays only. */
 export const dailyWeeklyReportsJob: JobDefinition = { name: "daily-weekly-reports", run: ({ today }) => runWeeklyReports(today) };

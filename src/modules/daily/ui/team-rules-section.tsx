@@ -9,6 +9,8 @@ export async function DailyRulesSection({ teamId, canManage }: { teamId: string;
     <section className="flex flex-col gap-3">
       <h2 className="text-sm font-medium text-muted-foreground">{t("title")}</h2>
       <p className="text-xs text-muted-foreground">{t("description")}</p>
+      {/* What the company asks of everyone (Q17, Q18): a lead's rules here may only tighten it. */}
+      <p className="text-xs text-muted-foreground">{t("companyRules")}</p>
       <TeamRulesForm teamId={teamId} rules={rules} canManage={canManage} />
     </section>
   );

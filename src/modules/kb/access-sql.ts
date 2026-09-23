@@ -61,18 +61,41 @@ export const projectPeopleSql = (): SQL<string[] | null> => sql<string[] | null>
   ) people
 ) end)`;
 
+/** The owning project's team place for a `project:<id>` row, and null for any other row. */
+export const projectPlaceSql = (): SQL<{ entityId: string | null; departmentId: string | null } | null> => sql<{ entityId: string | null; departmentId: string | null } | null>`(case when kb_access.subject_key like 'project:%' then (
+  select json_build_object('entityId', t.entity_id, 'departmentId', t.department_id)
+  from work_project p inner join work_team t on t.id = p.team_id where p.id::text = substr(kb_access.subject_key, 9)
+) end)`;
+
+const values = (list: readonly string[]): SQL => sql.join(list.map((value) => sql`${value}`), sql`, `);
+
+/**
+ * A `project:<id>` row also opens the space to whoever may open the project itself without being
+ * one of its people: a `pjm:portfolio` holder over the owning team (FR-PJM-8, and the owner's
+ * decision of 2026-09-23, Q25, which let them open a private project). At `view` only — they read
+ * the project, they write nothing in it — so this never joins the `editOnly` filters, and
+ * `kb:manage` is left exactly as it was: a role still does not reach a project's space.
+ * `policy.ts` (`matched`) says the same thing about a loaded row's `project`.
+ */
+const portfolioProjectRow = (viewer: KbViewer): SQL => {
+  const reach = permissionReach(viewer.principal, "pjm:portfolio");
+  if (!reach.all && reach.entityIds.length === 0 && reach.unitIds.length === 0) return NEVER;
+  const place = reach.all ? sql`true` : either(...[...(reach.entityIds.length ? [sql`t.entity_id in (${values(reach.entityIds)})`] : []), ...(reach.unitIds.length ? [sql`t.department_id in (${values(reach.unitIds)})`] : [])]);
+  return sql`(kb_access.subject_key like 'project:%' and exists (select 1 from work_project p inner join work_team t on t.id = p.team_id where p.id::text = substr(kb_access.subject_key, 9) and ${place}))`;
+};
+
 /** A row naming the viewer: one of their keys, or a project they are one of the people of. */
 const namesViewer = (viewer: KbViewer): SQL => sql`(${inArray(kbAccess.subjectKey, [...viewer.keys])} or ${kbAccess.subjectKey} in ${projectKeysOf(viewer.personId)})`;
 
 const spaceRow = (viewer: KbViewer, editOnly: boolean): SQL =>
   viewer.keys.length === 0
     ? NEVER
-    : sql`exists (select 1 from ${kbAccess} where ${kbAccess.spaceId} = ${kbSpace.id} and ${kbAccess.pageId} is null and ${namesViewer(viewer)}${editOnly ? sql` and ${kbAccess.level} = 'edit'` : sql``})`;
+    : sql`exists (select 1 from ${kbAccess} where ${kbAccess.spaceId} = ${kbSpace.id} and ${kbAccess.pageId} is null and ${editOnly ? sql`${namesViewer(viewer)} and ${kbAccess.level} = 'edit'` : either(namesViewer(viewer), portfolioProjectRow(viewer))})`;
 
 const rootRow = (viewer: KbViewer, editOnly: boolean): SQL =>
   viewer.keys.length === 0
     ? NEVER
-    : sql`exists (select 1 from ${kbAccess} where ${kbAccess.pageId} = ${kbPage.accessRootId} and ${namesViewer(viewer)}${editOnly ? sql` and ${kbAccess.level} = 'edit'` : sql``})`;
+    : sql`exists (select 1 from ${kbAccess} where ${kbAccess.pageId} = ${kbPage.accessRootId} and ${editOnly ? sql`${namesViewer(viewer)} and ${kbAccess.level} = 'edit'` : either(namesViewer(viewer), portfolioProjectRow(viewer))})`;
 
 /** Spaces the viewer may open (`spaceLevel` is not null). */
 export const spaceVisibleSql = (viewer: KbViewer): SQL => either(spaceManagedSql(viewer), both(isNull(kbSpace.archivedAt), spaceRow(viewer, false)));

@@ -185,19 +185,43 @@ describe("hours budget (FR-PJM-09)", () => {
 
 describe("fees (pjm:commercial)", () => {
   const lead = () => viewer(ids.tam, { projects: { [ids.tvc]: "lead", [ids.social]: "lead" } });
+  // Works in both projects, runs neither: the plain member of the PJM access rules.
+  const worker = () => viewer(ids.huy, { teams: { [ids.video]: "member" }, projects: { [ids.tvc]: "member", [ids.social]: "member" } });
+  const teamLead = () => viewer(ids.long, { teams: { [ids.video]: "lead" } });
   const finance = () => viewer(ids.ke, { grants: [{ role: "finance", scope: { type: "entity", id: ids.szm } }] });
   const director = () => viewer(ids.ke, { grants: [{ role: "entity_director", scope: { type: "entity", id: ids.szm } }] });
 
   it("are never on a portfolio row, a plan or a CSV for a reader without it", async () => {
     await setFee(ids.tvc, 120_000_000);
-    const rows = await listPortfolio(lead(), { today: todayInVietnam() });
+    const rows = await listPortfolio(worker(), { today: todayInVietnam() });
     expect(rows.map((row) => row.name).sort()).toEqual(["Social tháng 10", "TVC Tết"]);
     for (const row of rows) expect("feeVnd" in row).toBe(false);
     expect("feeVnd" in shapePlan(await ensurePlan(ids.tvc), false)).toBe(false);
-    const { file, withFees } = await buildPortfolioExport(lead(), {}, "vi");
+    const { file, withFees } = await buildPortfolioExport(worker(), {}, "vi");
     expect(withFees).toBe(false);
     expect(file.csv).not.toContain("120000000");
     expect(file.csv).not.toContain("VND");
+    // Running the team is not running its money either.
+    for (const row of await listPortfolio(teamLead(), { today: todayInVietnam() })) expect("feeVnd" in row).toBe(false);
+  });
+
+  // The owner's decision of 2026-09-23 (Q21): the lead and the account manager read their own
+  // project's fee. Their own only — a portfolio row of a project they neither lead nor keep.
+  it("are on the rows of the project's own lead and its own account manager, and nowhere else", async () => {
+    await setFee(ids.social, 45_000_000);
+    const own = viewer(ids.tam, { teams: { [ids.video]: "member" }, projects: { [ids.tvc]: "lead" } });
+    const rows = await listPortfolio(own, { today: todayInVietnam() });
+    expect(rows.find((row) => row.id === ids.tvc)?.feeVnd).toBe(120_000_000);
+    expect("feeVnd" in rows.find((row) => row.id === ids.social)!).toBe(false);
+    const { file, withFees } = await buildPortfolioExport(own, {}, "vi");
+    expect(withFees).toBe(true);
+    expect(file.csv).toContain("120000000");
+    expect(file.csv).not.toContain("45000000");
+
+    const manager = viewer(ids.lan, { teams: { [ids.video]: "member" }, projects: { [ids.social]: "account_manager" } });
+    const managerRows = await listPortfolio(manager, { today: todayInVietnam() });
+    expect(managerRows.find((row) => row.id === ids.social)?.feeVnd).toBe(45_000_000);
+    expect("feeVnd" in managerRows.find((row) => row.id === ids.tvc)!).toBe(false);
   });
 
   it("are on them for a reader with it over the project's entity", async () => {

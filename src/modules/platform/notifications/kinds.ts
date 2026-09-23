@@ -135,6 +135,9 @@ export const KINDS = {
   "tasks.cover_handed_back": "tasks",
   "tasks.exit_handover": "tasks",
   "tasks.client_decision": "tasks",
+  // The client answered on the review link the account manager sent (FR-PJM-51a), rather than
+  // the account manager recording what they said elsewhere.
+  "tasks.preview_decided": "tasks",
   "tasks.publish_due": "tasks",
   "tasks.publish_missed": "tasks",
   "tasks.automation": "tasks",

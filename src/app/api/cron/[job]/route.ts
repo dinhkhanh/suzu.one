@@ -13,7 +13,7 @@ import { notificationsDailyJob } from "@/modules/platform/notifications/jobs";
 import { candidateRetentionJob } from "@/modules/recruit/jobs";
 import { kpiFromWorkJob, reportSchedulesJob } from "@/modules/reports/service";
 import { requestSlaJob } from "@/modules/requests/jobs";
-import { workCoverJob, workCyclesJob, workExitHandoverJob, workRecurringJob, workRemindersJob, workTriageWakeJob } from "@/modules/work/jobs";
+import { workCoverJob, workCyclesJob, workExitHandoverJob, workPreviewSweepJob, workRecurringJob, workRemindersJob, workTriageWakeJob } from "@/modules/work/jobs";
 import { dailyPlanRemindersJob, dailyReportRemindersJob, dailyTimesheetRemindersJob, dailyWeeklyReportsJob } from "@/modules/daily/jobs";
 import { projectPlansJob, projectRemindersJob, projectRetainersJob } from "@/modules/projects/jobs";
 import { aiEvalJob } from "../ai-eval";
@@ -27,7 +27,7 @@ const SCHEDULES: Record<string, JobDefinition[]> = {
   // last: it closes yesterday with the leave and the employment facts of today.
   // Candidate retention runs with the other nightly housekeeping (FR-REC-13): it empties out the
   // records of people whose window has passed, and it must run whether or not anybody logs in.
-  midnight: [peopleRollOverJob, leaveAccrualJob, timesheetRecomputeJob, workRecurringJob, workTriageWakeJob, workCyclesJob, workCoverJob, workExitHandoverJob, projectPlansJob, projectRetainersJob, opsSchedulerJob, kbEmbeddingsJob, commsAnnouncementsJob, payrollCalculateJob, candidateRetentionJob],
+  midnight: [peopleRollOverJob, leaveAccrualJob, timesheetRecomputeJob, workRecurringJob, workTriageWakeJob, workCyclesJob, workCoverJob, workExitHandoverJob, workPreviewSweepJob, projectPlansJob, projectRetainersJob, opsSchedulerJob, kbEmbeddingsJob, commsAnnouncementsJob, payrollCalculateJob, candidateRetentionJob],
   // Alerts (and, on the 1st, "your month is ready to confirm") first, so the digest that follows carries them.
   morning: [hrAlertsJob, timesheetMonthReadyJob, payrollCalculateJob, opsSchedulerJob, opsRemindersJob, requestSlaJob, workRemindersJob, projectRemindersJob, dailyPlanRemindersJob, dailyWeeklyReportsJob, dailyTimesheetRemindersJob, kbAckRemindersJob, kbEmbeddingsJob, commsAnnouncementsJob, kpiFromWorkJob, reportSchedulesJob, notificationsDailyJob, filesCleanupJob],
   // 18:00 in Vietnam: the end-of-day report reminder (FR-PJM-22), before most people leave.

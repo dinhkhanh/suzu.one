@@ -283,11 +283,15 @@ export async function feesByProject(projectIds: readonly string[], range: Range)
   );
 }
 
-/** Every project of these entities (a null entity = a group project), with its team, client and privacy. */
-export async function projectsOfEntities(reach: { all: true } | { all: false; entityIds: string[] }): Promise<{ id: string; name: string; teamId: string; teamName: string; entityId: string | null; clientId: string | null; clientName: string | null; visibility: string; status: string; jobNumber: string | null }[]> {
+/**
+ * Every project of these entities (a null entity = a group project), with its team, client and
+ * privacy. The owning team's own place comes with it, so that a caller can ask the work policy
+ * whether this reader may open the project (`canViewProject`) without a second query.
+ */
+export async function projectsOfEntities(reach: { all: true } | { all: false; entityIds: string[] }): Promise<{ id: string; name: string; teamId: string; teamName: string; teamEntityId: string | null; teamDepartmentId: string | null; teamDefaultVisibility: string; entityId: string | null; clientId: string | null; clientName: string | null; visibility: string; status: string; jobNumber: string | null }[]> {
   if (!reach.all && reach.entityIds.length === 0) return [];
   return db()
-    .select({ id: schema.workProject.id, name: schema.workProject.name, teamId: schema.workProject.teamId, teamName: schema.workTeam.name, entityId: schema.workProject.entityId, clientId: schema.workProject.clientId, clientName: schema.workClient.name, visibility: schema.workProject.visibility, status: schema.workProject.status, jobNumber: schema.projectPlan.jobNumber })
+    .select({ id: schema.workProject.id, name: schema.workProject.name, teamId: schema.workProject.teamId, teamName: schema.workTeam.name, teamEntityId: schema.workTeam.entityId, teamDepartmentId: schema.workTeam.departmentId, teamDefaultVisibility: schema.workTeam.defaultVisibility, entityId: schema.workProject.entityId, clientId: schema.workProject.clientId, clientName: schema.workClient.name, visibility: schema.workProject.visibility, status: schema.workProject.status, jobNumber: schema.projectPlan.jobNumber })
     .from(schema.workProject)
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workProject.teamId))
     .leftJoin(schema.workClient, eq(schema.workClient.id, schema.workProject.clientId))

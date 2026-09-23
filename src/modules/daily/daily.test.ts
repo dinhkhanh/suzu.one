@@ -37,10 +37,10 @@ import { generateWeek, listWeekly } from "./weekly";
 
 // 2026-09-21 is a Monday.
 const D = "2026-09-21";
-const PEOPLE = ["long", "huy", "bao", "tam", "chi", "khoi", "mai", "sang", "lan"] as const;
+const PEOPLE = ["long", "huy", "bao", "tam", "chi", "khoi", "mai", "sang", "lan", "vu"] as const;
 type Key = (typeof PEOPLE)[number];
 const ids = {} as Record<Key | "szm" | "video" | "design" | "social" | "dept" | "client" | "internal" | "t1" | "t2" | "t3" | "t4" | "t5" | "hr" | "t6", string>;
-const names: Record<Key, string> = { long: "Long Dang", huy: "Huy Ho", bao: "Bao Tran", tam: "Tam Bui", chi: "Chi Vo", khoi: "Khoi Ly", mai: "Mai Pham", sang: "Sang Le", lan: "Lan Do" };
+const names: Record<Key, string> = { long: "Long Dang", huy: "Huy Ho", bao: "Bao Tran", tam: "Tam Bui", chi: "Chi Vo", khoi: "Khoi Ly", mai: "Mai Pham", sang: "Sang Le", lan: "Lan Do", vu: "Vu Le" };
 const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
 const noticesOf = async (personId: string, kind: string) => db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, personId), eq(schema.notification.kind, kind)));
 const at = (time: string) => new Date(`${D}T${time}:00+07:00`);
@@ -55,9 +55,10 @@ beforeAll(async () => {
     const [row] = await db().insert(schema.person).values({ fullName: names[key], searchName: names[key].toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
     ids[key] = row.id;
   }
-  // Huy reports to Tam, Tam to Chi. Chi heads Marketing, where Video sits.
+  // Huy reports to Tam, Tam to Chi, Chi to Vu: three levels above Huy. Chi heads Marketing, where Video sits.
   await db().update(schema.person).set({ managerId: ids.tam }).where(eq(schema.person.id, ids.huy));
   await db().update(schema.person).set({ managerId: ids.chi }).where(eq(schema.person.id, ids.tam));
+  await db().update(schema.person).set({ managerId: ids.vu }).where(eq(schema.person.id, ids.chi));
   await db().insert(schema.roleAssignment).values({ personId: ids.chi, role: "department_head", scopeType: "unit", scopeId: dept.id, validFrom: "2026-01-01" });
 
   // Teams, their workflow and members as rows: the work module's own tests cover how they are made.
@@ -73,8 +74,8 @@ beforeAll(async () => {
   ids.video = await team("VID", "Video", "long", ["huy", "bao"], dept.id);
   ids.design = await team("DES", "Design", "mai", ["huy"]);
   ids.social = await team("SOC", "Social", "khoi", ["sang", "lan"]);
-  // Video plans every morning and reports by 18:00; Design keeps the defaults (18:30).
-  await saveTeamRules(ids.video, { ...DEFAULT_TEAM_RULES, planMode: "required", reportDeadline: "18:00" });
+  // Video wants its reports by 18:00; Design and Social keep the company's rules (23:00).
+  await saveTeamRules(ids.video, { ...DEFAULT_TEAM_RULES, reportDeadline: "18:00" });
 
   const project = async (name: string) => (await db().insert(schema.workProject).values({ teamId: ids.video, entityId: szm.id, name, leadPersonId: ids.long }).returning())[0].id;
   ids.client = await project("TVC Tết");
@@ -109,8 +110,10 @@ describe("the day's rules", () => {
     expect(days.get(ids.huy)!.minutes).toBe(480);
     expect(days.get(ids.lan)!.report).toEqual({ required: false, reason: "leave" });
     expect(days.get(ids.lan)!.dayOff).toBe(true);
-    // Tam is in no work team: nothing asked.
-    expect(days.get(ids.tam)!.report).toEqual({ required: false, reason: "optional" });
+    // Tam is in no work team and follows the company's rules all the same (Q18).
+    expect(days.get(ids.tam)!.rules).toMatchObject({ planMode: "required", reportMode: "required", reportDeadline: "23:00", timeMode: "required", timesheetApproval: true });
+    expect(days.get(ids.tam)!.report).toEqual({ required: true, reason: null });
+    expect(days.get(ids.tam)!.plan).toEqual({ required: true, reason: null });
   });
 });
 
@@ -127,10 +130,13 @@ describe("plan → activity → prefilled report → submit", () => {
   });
 
   it("the plan reminder skips who planned and tells the rest once", async () => {
-    // Bao and Long (Video — a lead plans too) have not planned; Huy has. Design and Social do not require a plan.
-    expect((await sendPlanReminders(D)).reminded).toBe(2);
+    // Everyone plans (Q18): the nine people at work today, less Huy, who has planned. Lan is on leave.
+    expect((await sendPlanReminders(D)).reminded).toBe(8);
     expect(await noticesOf(ids.bao, "daily.plan_reminder")).toHaveLength(1);
-    expect(await noticesOf(ids.mai, "daily.plan_reminder")).toHaveLength(0);
+    expect(await noticesOf(ids.mai, "daily.plan_reminder")).toHaveLength(1);
+    // Tam is in no work team and is reminded like everyone else.
+    expect(await noticesOf(ids.tam, "daily.plan_reminder")).toHaveLength(1);
+    expect(await noticesOf(ids.lan, "daily.plan_reminder")).toHaveLength(0);
     expect(await noticesOf(ids.huy, "daily.plan_reminder")).toHaveLength(0);
     expect((await sendPlanReminders(D)).reminded).toBe(0);
     // A holiday asks nothing of anyone.
@@ -180,6 +186,16 @@ describe("plan → activity → prefilled report → submit", () => {
     expect(await fails(submitReport(ids.bao, "2026-09-22", { blockers: null, notes: null, tomorrow: [], secondsToSubmit: null }, at("19:00")))).toBe("report_date_invalid");
   });
 
+  it("the 23:00 deadline (Q18): 22:59 is on time, 23:30 is late and still that day's report", async () => {
+    const at2 = (date: string, time: string) => new Date(`${date}T${time}:00+07:00`);
+    // Social keeps the company's deadline of 23:00.
+    const early = await submitReport(ids.khoi, "2026-09-17", { blockers: null, notes: null, tomorrow: [], secondsToSubmit: 20 }, at2("2026-09-17", "22:59"));
+    expect(early.after).toMatchObject({ date: "2026-09-17", late: false });
+    const late = await submitReport(ids.sang, "2026-09-18", { blockers: null, notes: null, tomorrow: [], secondsToSubmit: 20 }, at2("2026-09-18", "23:30"));
+    // Half an hour past the deadline, and it is still the 18th's report — not the 19th's.
+    expect(late.after).toMatchObject({ date: "2026-09-18", late: true });
+  });
+
   it("tomorrow's plan starts from the report's 'tomorrow'", async () => {
     const next = await getPlanPage(ids.huy, "2026-09-22");
     expect(next.selected).toEqual([{ taskId: ids.t2, minutes: 60 }]);
@@ -189,10 +205,12 @@ describe("plan → activity → prefilled report → submit", () => {
   });
 
   it("the report reminder tells who is missing, with their deadline, once", async () => {
-    // Required and missing on D: Sang and the three leads. Lan is on leave; Huy and Bao reported.
-    expect((await sendReportReminders(D)).reminded).toBe(4);
+    // Everyone reports (Q18): nine at work, less Huy and Bao, who have reported. Lan is on leave.
+    expect((await sendReportReminders(D)).reminded).toBe(7);
     const [notice] = await noticesOf(ids.sang, "daily.report_reminder");
-    expect(notice.params).toEqual({ deadline: "18:30" });
+    // The company's deadline since Q18; Video asks for its own reports earlier.
+    expect(notice.params).toEqual({ deadline: "23:00" });
+    expect((await noticesOf(ids.tam, "daily.report_reminder"))[0].params).toEqual({ deadline: "23:00" });
     expect((await noticesOf(ids.long, "daily.report_reminder"))[0].params).toEqual({ deadline: "18:00" });
     expect(await noticesOf(ids.huy, "daily.report_reminder")).toHaveLength(0);
     expect((await sendReportReminders(D)).reminded).toBe(0);
@@ -217,6 +235,8 @@ describe("the team daily board", () => {
     expect((await seenBy("bao")).has(ids.huy)).toBe(false);
     expect((await seenBy("khoi")).has(ids.huy)).toBe(false);
     expect((await seenBy("mai")).has(ids.huy)).toBe(true);
+    // Three levels up is still above him.
+    expect((await seenBy("vu")).has(ids.huy)).toBe(true);
   });
 
   it("shows submitted / missing / not required, blockers first", async () => {
@@ -266,6 +286,31 @@ describe("the team daily board", () => {
     const view = await getReportView(await loadReportReader(ids.tam), report.id);
     expect(view!.comments.map((comment) => comment.body)).toEqual(["Đã nhắn khách, mai có kịch bản", "Cảm ơn anh"]);
     expect(view!.openBlockers).toHaveLength(1);
+  });
+});
+
+describe("the whole management chain reads the day", () => {
+  const reportOf = async (personId: string) => (await db().select().from(schema.dailyReport).where(and(eq(schema.dailyReport.personId, personId), eq(schema.dailyReport.date, D))))[0];
+
+  it("the line manager, the skip-level manager and the one above them read the report, the week and the time; colleagues do not", async () => {
+    const report = await reportOf(ids.huy);
+    // Tam is Huy's manager, Chi is above Tam, Vu is above Chi.
+    for (const key of ["tam", "chi", "vu"] as const) {
+      const view = await getReportView(await loadReportReader(ids[key]), report.id);
+      expect(view?.report.id, key).toBe(report.id);
+      expect((await getTimesheetView(await loadTimeReader(ids[key]), ids.huy, D, D))?.personId, key).toBe(ids.huy);
+    }
+    // A colleague in his own team, another team's lead, and someone below him in no relation: nothing.
+    for (const key of ["bao", "khoi", "sang"] as const) {
+      expect(await getReportView(await loadReportReader(ids[key]), report.id), key).toBeNull();
+      expect(await getTimesheetView(await loadTimeReader(ids[key]), ids.huy, D, D), key).toBeNull();
+    }
+    // And the chain reads Tam's day too, though Tam is in no work team at all.
+    const tam = await reportOf(ids.tam);
+    expect(tam).toBeUndefined();
+    const subjects = await loadSubjects([ids.tam]);
+    for (const key of ["chi", "vu"] as const) expect(canViewReport(await loadReportReader(ids[key]), subjects.get(ids.tam)!), key).toBe(true);
+    for (const key of ["huy", "mai", "khoi"] as const) expect(canViewReport(await loadReportReader(ids[key]), subjects.get(ids.tam)!), key).toBe(false);
   });
 });
 

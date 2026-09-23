@@ -7,7 +7,7 @@
 import type { IsoDate } from "@/lib/dates";
 import type { ProjectBaseline } from "../schema";
 
-export const CLOSE_CHECKS = ["tasks", "register", "timesheets", "billing", "drive", "retro"] as const;
+export const CLOSE_CHECKS = ["tasks", "register", "acceptance", "timesheets", "billing", "drive", "retro"] as const;
 export type CloseCheck = (typeof CLOSE_CHECKS)[number];
 
 export type CloseFacts = {
@@ -15,6 +15,12 @@ export type CloseFacts = {
   openTasks: number;
   /** Register lines (not cancelled) whose every unit is not yet accepted. */
   openLines: number;
+  /**
+   * Things on client work still waiting for a signed biên bản nghiệm thu — the owner's decision of
+   * 2026-09-23 (Q22): every client project is accepted before it is billed. `null` on internal
+   * work, which needs no acceptance and meets the check by having nothing to sign.
+   */
+  acceptanceWaiting: number | null;
   /** Weeks with time on the project, of people whose team requires approval, not yet approved. */
   unapprovedWeeks: number;
   /** Billing items still waiting for finance. */
@@ -29,6 +35,7 @@ export function closeChecklist(facts: CloseFacts): ChecklistItem[] {
   return [
     { key: "tasks", met: facts.openTasks === 0, count: facts.openTasks },
     { key: "register", met: facts.openLines === 0, count: facts.openLines },
+    { key: "acceptance", met: (facts.acceptanceWaiting ?? 0) === 0, count: facts.acceptanceWaiting },
     { key: "timesheets", met: facts.unapprovedWeeks === 0, count: facts.unapprovedWeeks },
     { key: "billing", met: facts.openBillingItems === 0, count: facts.openBillingItems },
     { key: "drive", met: !!facts.driveUrl?.trim(), count: null },

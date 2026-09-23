@@ -13,6 +13,7 @@ import { db, schema } from "@/lib/db";
 import vi from "../../../messages/vi.json";
 import { rulesOfPeople, sumLoggedMinutesByProject } from "../daily/service";
 import { canCreatePage, createPage, type Doc, type DocNode, type KbViewer, loadSpace } from "../kb/service";
+import { awaitingAcceptance } from "./acceptance";
 import { countOpenBilling } from "./billing";
 import { adapterReturnedHandoffs, adapterRevisionRounds } from "./delivery-adapter";
 import { type ChecklistItem, type CloseFacts, closeChecklist, closeRefusal, type CloseReport, closeReport, unmetChecks } from "./engine/close";
@@ -49,13 +50,14 @@ async function unapprovedWeeks(projectId: string): Promise<number> {
 }
 
 export async function loadCloseFacts(projectId: string, plan: Pick<PlanRow, "driveUrl">): Promise<CloseFacts> {
-  const [tasks, lines, weeks, billing, retro] = await Promise.all([
+  const [tasks, lines, waiting, weeks, billing, retro] = await Promise.all([
     db()
       .select({ value: count() })
       .from(schema.workTask)
       .innerJoin(schema.task, eq(schema.task.id, schema.workTask.taskId))
       .where(and(eq(schema.workTask.projectId, projectId), isNull(schema.task.deletedAt), inArray(schema.task.status, ["todo", "in_progress"]))),
     db().select().from(schema.projectDeliverable).where(eq(schema.projectDeliverable.projectId, projectId)).then(withLineStatus),
+    awaitingAcceptance(projectId),
     unapprovedWeeks(projectId),
     countOpenBilling(db(), projectId),
     db().select({ id: schema.projectMeeting.id }).from(schema.projectMeeting).where(and(eq(schema.projectMeeting.projectId, projectId), eq(schema.projectMeeting.kind, "retro"))).limit(1),
@@ -63,6 +65,8 @@ export async function loadCloseFacts(projectId: string, plan: Pick<PlanRow, "dri
   return {
     openTasks: tasks[0]?.value ?? 0,
     openLines: lines.filter((line) => line.status !== "cancelled" && line.accepted < line.promised).length,
+    // Client work is closed against its signed biên bản (Q22); internal work has none to sign.
+    acceptanceWaiting: waiting === null ? null : waiting.length,
     unapprovedWeeks: weeks,
     openBillingItems: billing,
     driveUrl: plan.driveUrl,

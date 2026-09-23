@@ -847,3 +847,71 @@ export const workAutomationRun = pgTable(
   },
   (t) => [index("work_automation_run_idx").on(t.automationId, t.createdAt)],
 ).enableRLS();
+
+// ── The client's review link (D24, FR-PJM-51a) ──────────────────────────────────────────────
+
+/**
+ * An expiring, no-login link that shows one deliverable version to the client and — when it is
+ * allowed to — takes their decision. The **second public surface** of the product (A8), so the row
+ * is written to hold as little as it can:
+ *
+ *   · **the token is never stored.** `token_hash` is SHA-256 of what the account manager copied
+ *     once; the link exists in the client's inbox and nowhere else, exactly as a take-home brief's
+ *     link does (FR-REC-07). Nobody can read a live link back out of the database.
+ *   · **no address, in any form.** Views are a count and a timestamp; the rate limiter keeps its
+ *     own hashed rows next door and sweeps them (PDPL data minimisation, NFR-PRV-02).
+ *   · **who decided is on the decision, not here.** The client's typed name and the day live in
+ *     `work_deliverable_decision.client`, the same record the account manager's own recording
+ *     writes (FR-PJM-51); `decision_id` is the one that this link produced.
+ */
+export const workPreviewLink = pgTable(
+  "work_preview_link",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    // null = whichever version is current when the client opens it, so a link sent before the last
+    // round still shows the work that answers it.
+    deliverableId: uuid("deliverable_id").references(() => workDeliverable.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    // Who it was sent to, as the account manager typed it ("Chị Mai – Vinamilk"), and the note the
+    // client reads above the work.
+    label: text("label"),
+    message: text("message"),
+    // false = the client may look and nothing else; the account side records what they say.
+    allowDecision: boolean("allow_decision").notNull().default(true),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedByPersonId: uuid("revoked_by_person_id").references(() => person.id),
+    viewCount: integer("view_count").notNull().default(0),
+    lastViewedAt: timestamp("last_viewed_at", { withTimezone: true }),
+    // Set the moment a decision is claimed: one link takes one decision and then closes.
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decisionId: uuid("decision_id").references(() => workDeliverableDecision.id, { onDelete: "set null" }),
+    createdByPersonId: uuid("created_by_person_id")
+      .notNull()
+      .references(() => person.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("work_preview_link_token_key").on(t.tokenHash), index("work_preview_link_task_idx").on(t.taskId, t.createdAt)],
+).enableRLS();
+
+/**
+ * Counted requests to the public preview surface (NFR-SEC-03) — the same fixed window the careers
+ * page uses, kept in the work module because the table belongs to whoever owns the surface.
+ * `key_hash` is a hashed visitor (never an address) or a token's hash, never anything readable.
+ */
+export const workPreviewHit = pgTable(
+  "work_preview_hit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // What was counted: "view", "decide", "token_view", "token_decide". See `PREVIEW_LIMITS`.
+    bucket: text("bucket").notNull(),
+    keyHash: text("key_hash").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    hits: integer("hits").notNull().default(1),
+    lastAt: timestamp("last_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("work_preview_hit_key").on(t.bucket, t.keyHash, t.windowStart), index("work_preview_hit_window_idx").on(t.windowStart)],
+).enableRLS();

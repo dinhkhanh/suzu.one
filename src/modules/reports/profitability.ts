@@ -12,6 +12,10 @@
 //    entity (`canSeeProfitabilityOf`).
 //  - Private projects are not named: their figures go into one unnamed line (FR-WRK-18 keeps their
 //    content with their members), while still counting in their client's and the total's margin.
+//    Except to a reader who may open the project anyway — one of its people, or a `pjm:portfolio`
+//    holder over its team since the owner's decision of 2026-09-23 (Q25): a line they could read in
+//    full on the project's own pages is no secret in a report, so for them it is named like any
+//    other. The test of "may open" is the work policy's own `canViewProject`, nothing wider.
 //  - Every read is written to the audit log as a compensation-tier read (who, which period, how
 //    many projects) — the same trail an export of the payroll reports leaves. Screens ask for a
 //    fresh step-up first (`requireStepUp`), exports through `exportReportAction` (stepUp: true).
@@ -20,13 +24,13 @@ import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { listPositionHolders, listPositions } from "@/modules/core-hr/service";
 import { loadedCostRates } from "@/modules/payroll/service";
 import { recordAudit } from "@/modules/platform/audit/service";
-import { listTeams } from "@/modules/work/service";
+import { canViewProject, listTeams, loadViewer } from "@/modules/work/service";
 import { entityReach, type Principal } from "@/modules/platform/rbac/policy";
 import { type FeeBasis, type Margin, monthsBetween, OTHER_GROUP, profitability, type TimeLine } from "./engine/profitability";
 import { feesByProject, loggedMinutesByProjectPersonMonth, projectsOfEntities } from "./pjm-queries";
 import { canReadProfitability, canSeeProfitabilityOf } from "./pjm-policy";
 
-export type ProfitabilityReader = { userId?: string | null; email?: string | null; person: { id: string }; principal: Principal; request?: { ipAddress?: string | null; userAgent?: string | null } };
+export type ProfitabilityReader = { userId?: string | null; email?: string | null; person: { id: string; primaryEntityId: string | null }; principal: Principal; request?: { ipAddress?: string | null; userAgent?: string | null } };
 export type ProfitabilityFilter = { from: IsoDate; to: IsoDate; clientId?: string | null };
 
 /**
@@ -39,7 +43,7 @@ export type ClientLine = Margin & { clientId: string | null; clientName: string 
 export type ProfitabilityView = {
   period: { from: IsoDate; to: IsoDate };
   projects: ProjectLine[];
-  /** Private projects in the reader's reach, summed and unnamed; null when there are none. */
+  /** Private projects in the reader's reach they may not open, summed and unnamed; null when there are none. */
   privateProjects: (Margin & { projects: number; hours: number; estimated: boolean }) | null;
   clients: ClientLine[];
   total: Margin & { hours: number; estimated: boolean };
@@ -47,6 +51,14 @@ export type ProfitabilityView = {
 };
 
 const hours = (minutes: number) => Math.round((minutes / 60) * 10) / 10;
+
+/** A row of `projectsOfEntities` as the work policy reads it, so "may this reader open it?" can be asked. */
+const workFactsOf = (project: { id: string; entityId: string | null; visibility: string; teamId: string; teamEntityId: string | null; teamDepartmentId: string | null; teamDefaultVisibility: string }) => ({
+  id: project.id,
+  entityId: project.entityId,
+  visibility: project.visibility as Parameters<typeof canViewProject>[1]["visibility"],
+  team: { id: project.teamId, entityId: project.teamEntityId, departmentId: project.teamDepartmentId, defaultVisibility: project.teamDefaultVisibility as Parameters<typeof canViewProject>[1]["visibility"] },
+});
 /** How far back a month without a signed run may look for the person's last known rate. */
 const RATE_LOOKBACK_MONTHS = 12;
 const monthMinus = (month: string, count: number) => {
@@ -62,14 +74,17 @@ const monthMinus = (month: string, count: number) => {
 /** The client key private projects are summed under, so that no client line carries them. */
 const PRIVATE_GROUP = "private";
 
-export async function buildProfitability(reader: Pick<ProfitabilityReader, "principal">, filter: ProfitabilityFilter): Promise<ProfitabilityView | null> {
+export async function buildProfitability(reader: Pick<ProfitabilityReader, "person" | "principal">, filter: ProfitabilityFilter): Promise<ProfitabilityView | null> {
   if (!canReadProfitability(reader.principal)) return null;
   const reach = entityReach(reader.principal, "pjm:cost");
-  const all = (await projectsOfEntities(reach)).filter((project) => canSeeProfitabilityOf(reader.principal, project));
-  // A private project is summed without its name — nor its client: a client whose only project is
-  // private would name the project in the filter and the per-client rollup.
-  const clientsOffered = [...new Map(all.flatMap((project) => (project.visibility !== "private" && project.clientId && project.clientName ? [[project.clientId, { id: project.clientId, name: project.clientName }] as const] : []))).values()].sort((a, b) => a.name.localeCompare(b.name, "vi"));
-  const projects = filter.clientId ? all.filter((project) => project.clientId === filter.clientId && project.visibility !== "private") : all;
+  const [rows, viewer] = await Promise.all([projectsOfEntities(reach), loadViewer({ person: { id: reader.person.id, primaryEntityId: reader.person.primaryEntityId }, principal: reader.principal })]);
+  const all = rows.filter((project) => canSeeProfitabilityOf(reader.principal, project));
+  // A private project this reader could not open is summed without its name — nor its client: a
+  // client whose only project is private would name the project in the filter and the per-client
+  // rollup. One they may open (its people; `pjm:portfolio` over its team) is named like any other.
+  const unnamed = (project: (typeof all)[number]) => project.visibility === "private" && !canViewProject(viewer, workFactsOf(project));
+  const clientsOffered = [...new Map(all.flatMap((project) => (!unnamed(project) && project.clientId && project.clientName ? [[project.clientId, { id: project.clientId, name: project.clientName }] as const] : []))).values()].sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  const projects = filter.clientId ? all.filter((project) => project.clientId === filter.clientId && !unnamed(project)) : all;
   const period = { from: filter.from, to: filter.to };
   const empty: ProfitabilityView = { period, projects: [], privateProjects: null, clients: [], total: { feeVnd: null, costVnd: 0, marginVnd: null, marginRate: null, hours: 0, estimated: false }, clientsOffered };
   if (projects.length === 0) return empty;
@@ -86,13 +101,13 @@ export async function buildProfitability(reader: Pick<ProfitabilityReader, "prin
   const lines: TimeLine[] = time.map((line) => ({ projectId: line.projectId, personId: line.personId, month: line.month, minutes: line.minutes, teamKey: line.teamId ?? "", roleKey: positionOf.get(line.personId) ?? "" }));
   // Private projects roll up under a group of their own, which the per-client lines leave out (they
   // are the "private projects" line); the total still counts them.
-  const result = profitability({ projects: projects.map((project) => ({ projectId: project.id, clientId: project.visibility === "private" ? PRIVATE_GROUP : project.clientId, fee: fees.get(project.id)! })), time: lines, rates, periodMonths });
+  const result = profitability({ projects: projects.map((project) => ({ projectId: project.id, clientId: unnamed(project) ? PRIVATE_GROUP : project.clientId, fee: fees.get(project.id)! })), time: lines, rates, periodMonths });
 
   // The team whose task the time was logged on (time on the project itself has none: "other").
   const groupName = (kind: "team" | "role", key: string): string | null => (key === OTHER_GROUP || key === "" ? null : kind === "team" ? (teamName.get(key) ?? null) : (positionName.get(key) ?? null));
   const byId = new Map(projects.map((project) => [project.id, project]));
-  const named = result.projects.filter((row) => byId.get(row.projectId)!.visibility !== "private");
-  const hidden = result.projects.filter((row) => byId.get(row.projectId)!.visibility === "private");
+  const named = result.projects.filter((row) => !unnamed(byId.get(row.projectId)!));
+  const hidden = result.projects.filter((row) => unnamed(byId.get(row.projectId)!));
   const sumMargin = (rows: typeof result.projects) => {
     const withFee = rows.filter((row) => row.feeVnd !== null);
     const feeVnd = withFee.length ? withFee.reduce((total, row) => total + (row.feeVnd ?? 0), 0) : null;

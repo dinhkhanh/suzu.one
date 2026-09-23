@@ -73,6 +73,19 @@ export async function billableByDefault(projectId: string | null, executor: Exec
   return (BILLABLE_PROJECT_KINDS as readonly string[]).includes(plan?.kind ?? "client");
 }
 
+/**
+ * The same question for a screenful of tasks at once, in one query: which of these projects' time
+ * is billed by default. The quick log shows the answer on the button before anything is logged
+ * (Q17: the billable flag is part of everyday logging), so the person can change it there.
+ */
+export async function billableProjects(projectIds: readonly (string | null)[], executor: Executor = db()): Promise<Set<string>> {
+  const ids = [...new Set(projectIds.filter((id): id is string => !!id))];
+  if (ids.length === 0) return new Set();
+  const rows = await executor.select({ projectId: schema.projectPlan.projectId, kind: schema.projectPlan.kind }).from(schema.projectPlan).where(inArray(schema.projectPlan.projectId, ids));
+  const kindOf = new Map(rows.map((row) => [row.projectId, row.kind]));
+  return new Set(ids.filter((id) => (BILLABLE_PROJECT_KINDS as readonly string[]).includes(kindOf.get(id) ?? "client")));
+}
+
 /** The task's project, or an error when the task is gone. */
 async function projectOfTask(taskId: string, executor: Executor): Promise<string | null> {
   const [work] = await executor
@@ -195,6 +208,34 @@ export async function setCellMinutes(personId: string, date: IsoDate, target: Ta
     }
     if (plan.insert) changed.push((await insertEntry(tx, { personId, date, ...target, minutes: plan.insert, note: null, billable: null })).id);
     return { before, after: Math.max(0, Math.round(minutes)), changed };
+  });
+}
+
+/**
+ * The week grid's billable switch: one row (a task or a category) for a whole week is billed to the
+ * client, or is not. Every entry under it in that week follows — the flag belongs to the work, not
+ * to the single log — and a week that is submitted, approved or too old to edit refuses, as every
+ * other write of time does.
+ */
+export async function setRowBillable(personId: string, weekStart: IsoDate, target: Target, billable: boolean, today: IsoDate = todayInVietnam()): Promise<{ changed: number }> {
+  if (!target.taskId === !target.category) throw new ActionError("time_task_or_category");
+  if (weekStartOf(weekStart) !== weekStart || weekStart > today) throw new ActionError("timesheet_week_invalid");
+  return db().transaction(async (tx) => {
+    const status = await assertWeekOpen(tx, personId, weekStart);
+    if (addDays(weekStart, 6) < addDays(today, -TIME_BACKFILL_DAYS) && status !== "returned") throw new ActionError("time_window_closed");
+    const changed = await tx
+      .update(schema.timeEntry)
+      .set({ billable, updatedAt: new Date() })
+      .where(
+        and(
+          eq(schema.timeEntry.personId, personId),
+          eq(schema.timeEntry.weekStart, weekStart),
+          target.taskId ? eq(schema.timeEntry.taskId, target.taskId) : and(isNull(schema.timeEntry.taskId), eq(schema.timeEntry.category, target.category!)),
+          isNull(schema.timeEntry.deletedAt),
+        ),
+      )
+      .returning({ id: schema.timeEntry.id });
+    return { changed: changed.length };
   });
 }
 

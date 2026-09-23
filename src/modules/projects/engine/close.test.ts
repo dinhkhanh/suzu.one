@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { closeChecklist, closeRefusal, closeReport, unmetChecks } from "./close";
 
-const clean = { openTasks: 0, openLines: 0, unapprovedWeeks: 0, openBillingItems: 0, driveUrl: "https://drive.google.com/x", retroHeld: true };
+const clean = { openTasks: 0, openLines: 0, acceptanceWaiting: null, unapprovedWeeks: 0, openBillingItems: 0, driveUrl: "https://drive.google.com/x", retroHeld: true };
 
 describe("close checklist (FR-PJM-59)", () => {
   it("is met when everything is finished, filed and talked through", () => {
@@ -10,9 +10,22 @@ describe("close checklist (FR-PJM-59)", () => {
   });
 
   it("names what is unmet, with counts", () => {
-    const checklist = closeChecklist({ openTasks: 2, openLines: 1, unapprovedWeeks: 3, openBillingItems: 1, driveUrl: " ", retroHeld: false });
-    expect(unmetChecks(checklist)).toEqual(["tasks", "register", "timesheets", "billing", "drive", "retro"]);
+    const checklist = closeChecklist({ openTasks: 2, openLines: 1, acceptanceWaiting: 2, unapprovedWeeks: 3, openBillingItems: 1, driveUrl: " ", retroHeld: false });
+    expect(unmetChecks(checklist)).toEqual(["tasks", "register", "acceptance", "timesheets", "billing", "drive", "retro"]);
     expect(checklist.find((item) => item.key === "timesheets")).toEqual({ key: "timesheets", met: false, count: 3 });
+  });
+
+  // Q22 (the owner, 2026-09-23): client work is closed against a signed biên bản; internal work,
+  // which has none to sign, meets the check without one.
+  it("asks client work for its signed acceptance and leaves internal work alone", () => {
+    expect(unmetChecks(closeChecklist({ ...clean, acceptanceWaiting: 0 }))).toEqual([]);
+    expect(unmetChecks(closeChecklist({ ...clean, acceptanceWaiting: null }))).toEqual([]);
+    const waiting = closeChecklist({ ...clean, acceptanceWaiting: 1 });
+    expect(unmetChecks(waiting)).toEqual(["acceptance"]);
+    expect(waiting.find((item) => item.key === "acceptance")).toEqual({ key: "acceptance", met: false, count: 1 });
+    // The override with a recorded reason stays the way out (a client who never signs).
+    expect(closeRefusal(waiting, null)).toBe("close_unmet");
+    expect(closeRefusal(waiting, "Khách không ký biên bản cuối, đã báo C-level")).toBeNull();
   });
 
   it("refuses a close with unmet items unless a reason is given", () => {

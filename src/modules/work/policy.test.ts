@@ -4,7 +4,7 @@ import type { ProjectRole, TeamRole } from "./enums";
 import { canManageAutomations, canViewAutomations } from "./policy";
 import { canChangeDeliverable, canDecideStage, canManagePublish, canManageReviewChains, canPinFeedback, canRecordClientDecision, canRecordDelivery, canResolvePin } from "./policy";
 import { canAcknowledgeCover, canChangeAccountManager, canHandBackCover, canHandOff, canManageHandoffPackages, canRespondToHandoff, canRunExitHandover, canSendToTeam, canSubmitCoverPlan, canViewCoverPlan, canViewExitHandover } from "./policy";
-import { canAddTeamMember, canActForClient, canAdminTeam, canDecideTriage, canManageCustomFields, canMoveTask, canRaiseBlocker, canResolveBlocker, canSeeLoggedTime, canViewTriage, canContributeToProject, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canViewProject, canViewTask, canViewTeam, type ProjectFacts, type TaskFacts, type TeamFacts, type WorkViewer } from "./policy";
+import { canAddTeamMember, canActForClient, canAdminTeam, canDecideReview, canDecideTriage, canJoinTaskConversation, canManageCustomFields, canMoveTask, canRaiseBlocker, canResolveBlocker, canSeeLoggedTime, canViewTeamBacklog, canViewTriage, canContributeToProject, canCreateProject, canDeleteTask, canEditTask, canManageProject, canManageWorkspace, canViewProject, canViewTask, canViewTeam, type ProjectFacts, readsPrivateByPortfolio, type TaskFacts, type TeamFacts, type WorkViewer } from "./policy";
 
 const SZM = "entity-szm";
 const SZC = "entity-szc";
@@ -95,11 +95,42 @@ describe("project privacy (FR-WRK-18)", () => {
     const insider = viewer("tam", { teams: { "team-video": "member" }, projects: { "project-private": "member" } });
     expect(canViewProject(insider, project("private"))).toBe(true);
     expect(canViewProject(lead, project("private"))).toBe(true);
-    for (const who of [member, owner, head, colleague]) {
+    // A team member and a colleague are not its people and hold no `pjm:portfolio`: nothing at all.
+    for (const who of [member, colleague, otherHead, freelancer]) {
       expect(canViewProject(who, project("private"))).toBe(false);
       expect(canContributeToProject(who, project("private"))).toBe(false);
       expect(canManageProject(who, project("private"))).toBe(false);
     }
+  });
+
+  // The owner's decision of 2026-09-23 (Q25), reversing the Phase 3 default.
+  it("lets the owner and a pjm:portfolio holder read a private project — and do nothing in it", () => {
+    const secret = project("private");
+    for (const who of [owner, head]) {
+      expect(canViewProject(who, secret)).toBe(true);
+      expect(readsPrivateByPortfolio(who, secret)).toBe(true);
+      // Reading, not working: they contribute nothing, run nothing, join no conversation.
+      expect(canContributeToProject(who, secret)).toBe(false);
+      expect(canManageProject(who, secret)).toBe(false);
+      expect(canActForClient(who, secret)).toBe(false);
+      expect(canEditTask(who, taskIn({ project: secret }))).toBe(false);
+      expect(canDeleteTask(who, taskIn({ project: secret }))).toBe(false);
+      expect(canDecideReview(who, taskIn({ project: secret }), { reviewerPersonId: null, submittedByPersonId: "huy" })).toBe(false);
+      expect(canJoinTaskConversation(who, taskIn({ project: secret }))).toBe(false);
+      expect(canPinFeedback(who, taskIn({ project: secret }))).toBe(false);
+      // They do read it, and its tasks with it.
+      expect(canViewTask(who, taskIn({ project: secret }))).toBe(true);
+    }
+    // Its own people are not "reading from outside": nothing of theirs is audited, and they work.
+    expect(readsPrivateByPortfolio(lead, secret)).toBe(false);
+    expect(readsPrivateByPortfolio(viewer("tam", { projects: { "project-private": "member" } }), secret)).toBe(false);
+    // A grant that does not reach the owning team opens nothing.
+    expect(canViewProject(otherHead, secret)).toBe(false);
+    // Narrow on purpose: a private *team backlog* was not part of the decision.
+    expect(canViewTeamBacklog(head, { ...video, defaultVisibility: "private" })).toBe(false);
+    // Being asked to do the work still makes them a party, with everything that follows.
+    const assigned = taskIn({ project: secret, assigneePersonId: "head" });
+    expect(canJoinTaskConversation(head, assigned)).toBe(true);
   });
   it("lets the project lead, the team lead and leaders in scope manage a project", () => {
     expect(canManageProject(viewer("tam", { projects: { "project-team": "lead" } }), project("team"))).toBe(true);
@@ -161,10 +192,13 @@ describe("project roles (FR-PJM-14)", () => {
     expect(canActForClient(lead, privateProject)).toBe(true);
   });
 
-  it("opens non-private projects in scope to pjm:portfolio, never private ones", () => {
+  it("opens projects in scope to pjm:portfolio — a private one to read only (Q25)", () => {
     const portfolio = viewer("port", { entityId: SZC, grants: [{ role: "entity_director", scope: { type: "entity", id: SZM } }] });
     expect(canViewProject(portfolio, project("team"))).toBe(true);
-    expect(canViewProject(portfolio, privateProject)).toBe(false);
+    expect(canViewProject(portfolio, privateProject)).toBe(true);
+    expect(canContributeToProject(portfolio, privateProject)).toBe(false);
+    // Out of scope (another entity's project): still nothing.
+    expect(canViewProject(portfolio, { ...privateProject, entityId: SZC, team: { ...video, entityId: SZC, departmentId: null } })).toBe(false);
   });
 });
 

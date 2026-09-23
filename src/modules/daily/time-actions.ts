@@ -15,7 +15,7 @@ import type { Utilisation } from "./engine/utilisation";
 import { TIME_CATEGORIES, type TimeCategory } from "./enums";
 import { loadReportReader, loadSubjects } from "./people";
 import { canApproveTimesheet } from "./policy";
-import { deleteTimeEntry, logTime, setCellMinutes, startTimer, stopRunningTimer, updateTimeEntry, withinTimeWindow } from "./time";
+import { deleteTimeEntry, logTime, setCellMinutes, setRowBillable, startTimer, stopRunningTimer, updateTimeEntry, withinTimeWindow } from "./time";
 import { approveWeeks, decideWeek, findTimesheetWeekById, submitWeek } from "./timesheets";
 import { getUtilisation } from "./utilisation";
 
@@ -118,6 +118,21 @@ const setCellPipeline = createAction({
 });
 export async function setTimeCellAction(input: unknown) {
   return setCellPipeline(input);
+}
+
+const setRowBillablePipeline = createAction({
+  name: "daily.time.billable",
+  input: z.object({ weekStart: monday, row: rowKey, billable: z.preprocess((value) => value === "on" || value === true || value === "true", z.boolean()) }),
+  // One's own week, on a task one may open; the service refuses a locked or long-closed week.
+  authorize: async (user, input) => (await withinTimeWindow(user.person.id, input.weekStart, todayInVietnam())) && (await mayLogOn(user, input.row.taskId)),
+  run: async ({ user, input }) => {
+    const { changed } = await setRowBillable(user.person.id, input.weekStart, input.row, input.billable);
+    refresh();
+    return { data: { changed }, audit: { resource: { type: "time_entry", id: null }, summary: `${input.weekStart} ${input.row.taskId ?? input.row.category}: billable ${input.billable ? "on" : "off"} (${changed} entries)`, after: { weekStart: input.weekStart, row: input.row, billable: input.billable, changed } } };
+  },
+});
+export async function setRowBillableAction(input: unknown) {
+  return setRowBillablePipeline(input);
 }
 
 // ── The timer ───────────────────────────────────────────────────────────────────────────────

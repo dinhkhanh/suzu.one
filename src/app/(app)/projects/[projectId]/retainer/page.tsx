@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
-import { canEditRetainer, getRetainer, listPeriods, openProject, type PeriodView, RETAINER_ROLLOVERS, shapeRetainer, type Usage, type UsageLevel } from "@/modules/projects/service";
+import { awaitingAcceptance, canEditRetainer, getRetainer, listPeriods, openProject, type PeriodView, RETAINER_ROLLOVERS, shapeRetainer, type Usage, type UsageLevel } from "@/modules/projects/service";
 import { RetainerForm } from "@/modules/projects/ui/commercial-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
 
@@ -23,7 +23,9 @@ export default async function ProjectRetainerPage({ params }: PageProps<"/projec
   const context = await openProject(user, projectId);
   if (!context) notFound();
   const { project, plan, can, viewer, facts } = context;
-  const [t, tWork, format, row] = await Promise.all([getTranslations("projects.retainer"), getTranslations("work"), getFormatter(), getRetainer(project.id)]);
+  const [t, tWork, tAcceptance, format, row, waiting] = await Promise.all([getTranslations("projects.retainer"), getTranslations("work"), getTranslations("projects.acceptance"), getFormatter(), getRetainer(project.id), awaitingAcceptance(project.id)]);
+  // Months closed but not yet billed because the client has not signed their biên bản (Q22).
+  const waitingPeriods = new Set((waiting ?? []).flatMap((item) => (item.retainerPeriodId ? [item.retainerPeriodId] : [])));
   const retainer = row ? shapeRetainer(row, can.seeFees) : null;
   const periods = row ? await listPeriods(row, can.seeFees) : [];
   const today = todayInVietnam();
@@ -85,6 +87,7 @@ export default async function ProjectRetainerPage({ params }: PageProps<"/projec
         <div>
           <dt className="text-xs text-muted-foreground">{t("billing")}</dt>
           <dd className="font-medium">{view.billing ? `${t(`billingStatus.${view.billing.status as "ready"}`)}${view.billing.invoiceNumber ? ` · ${view.billing.invoiceNumber}` : ""}` : view.period.status === "open" ? t("billingAtMonthEnd") : "—"}</dd>
+          {!view.billing && view.period.status === "closed" && waitingPeriods.has(view.period.id) ? <dd className="text-xs text-muted-foreground">{tAcceptance("monthNotBilled")}</dd> : null}
         </div>
       </dl>
     </div>

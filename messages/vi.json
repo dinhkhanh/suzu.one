@@ -1006,6 +1006,10 @@
       "tasks_team_added": {
         "title": "Bạn được thêm vào nhóm {team}",
         "body": "{actor} vừa thêm bạn vào nhóm {team}. Mở nhóm để xem công việc, quy trình và những người cùng nhóm."
+      },
+      "tasks_preview_decided": {
+        "title": "Khách hàng đã phản hồi qua link duyệt",
+        "body": "{name} vừa phản hồi cho “{task}” trên link duyệt bạn gửi."
       }
     },
     "errors": {
@@ -3759,7 +3763,11 @@
       "cover_plan_not_started": "Kỳ nghỉ chưa bắt đầu: chỉ người nghỉ mới rút lại kế hoạch này.",
       "cover_hand_back_early": "Chưa thể nhận lại trước ngày cuối của kỳ nghỉ ({date}).",
       "cover_nothing_to_hand_back": "Không còn việc nào bạn đang làm thay để trả lại.",
-      "exit_item_not_yours": "Mục này thuộc dự án hoặc nhóm bạn không phụ trách: người phụ trách nơi đó bàn giao."
+      "exit_item_not_yours": "Mục này thuộc dự án hoặc nhóm bạn không phụ trách: người phụ trách nơi đó bàn giao.",
+      "preview_no_version": "Chưa có phiên bản nào để gửi khách.",
+      "preview_link_not_found": "Không tìm thấy đường dẫn này.",
+      "preview_link_closed": "Đường dẫn này không còn hiệu lực.",
+      "preview_comment_required": "Cần ghi rõ điểm cần chỉnh sửa."
     },
     "views": {
       "list": "Danh sách",
@@ -4618,7 +4626,8 @@
         "zalo": "Zalo",
         "meeting": "Họp",
         "call": "Điện thoại",
-        "other": "Khác"
+        "other": "Khác",
+        "preview_link": "Đường dẫn duyệt"
       },
       "decidedBy": "Người quyết định phía khách",
       "decidedByPlaceholder": "Ví dụ: Chị Mai – Brand Manager",
@@ -4908,6 +4917,49 @@
           "notify": "báo {person}: “{text}”",
           "comment": "bình luận: “{text}”"
         }
+      }
+    },
+    "preview": {
+      "title": "Đường dẫn duyệt cho khách",
+      "live": "đang mở",
+      "explainer": "Đường dẫn hết hạn, không cần đăng nhập. Khách chỉ thấy phiên bản này và lời nhắn của bạn.",
+      "new": "Tạo đường dẫn",
+      "noVersionYet": "Chưa có phiên bản nào để gửi",
+      "create": "Tạo đường dẫn",
+      "cancel": "Hủy",
+      "version": "Phiên bản gửi khách",
+      "currentVersion": "Phiên bản mới nhất",
+      "frozen": "khách đã duyệt",
+      "label": "Người nhận",
+      "labelPlaceholder": "Ví dụ: Chị Mai – Vinamilk",
+      "days": "Hiệu lực (ngày)",
+      "message": "Lời nhắn cho khách",
+      "messagePlaceholder": "Ví dụ: Chị xem giúp em bản dựng lần 2, phần nhạc đã chỉnh theo góp ý của chị.",
+      "allowDecision": "Cho phép khách duyệt ngay trên trang",
+      "privacyNote": "Trang gửi khách không hiển thị gì khác của công ty: không có công việc khác, không có trao đổi nội bộ, không có chi phí.",
+      "copyOnce": "Sao chép ngay — đường dẫn chỉ hiện một lần duy nhất.",
+      "copy": "Sao chép",
+      "copied": "Đã sao chép",
+      "expiresOn": "Hết hạn ngày {date}",
+      "noLabel": "Không ghi người nhận",
+      "viewOnly": "chỉ xem",
+      "revoke": "Thu hồi",
+      "revokeConfirm": "Thu hồi đường dẫn này? Khách sẽ không mở được nữa.",
+      "meta": "{name} tạo ngày {created} · hết hạn {expires}",
+      "views": "{count} lượt xem, gần nhất {last}",
+      "noViews": "khách chưa mở",
+      "decided": "{decision} — {name}, {at}",
+      "decisions": {
+        "approved": "Khách duyệt",
+        "approved_with_changes": "Duyệt, có chỉnh nhỏ",
+        "changes_required": "Khách yêu cầu sửa"
+      },
+      "states": {
+        "active": "Đang mở",
+        "viewed": "Khách đã xem",
+        "decided": "Đã phản hồi",
+        "expired": "Hết hạn",
+        "revoked": "Đã thu hồi"
       }
     }
   },
@@ -9181,7 +9233,7 @@
       "lockedApproved": "Tuần này đã được duyệt và khoá. Cần sửa thì nhờ người duyệt mở lại.",
       "lockedSubmitted": "Bạn đã nộp tuần này — đang chờ duyệt, tạm thời không sửa được.",
       "tooOld": "Tuần này đã quá hạn để tự sửa giờ.",
-      "submitHint": "Nhóm của bạn duyệt bảng giờ hằng tuần. Kiểm tra đủ giờ rồi hãy nộp.",
+      "submitHint": "Bảng giờ hằng tuần cần được duyệt. Kiểm tra đủ giờ rồi hãy nộp.",
       "submit": "Nộp bảng giờ tuần",
       "resubmit": "Nộp lại bảng giờ",
       "start": "Bấm giờ",
@@ -9218,12 +9270,18 @@
         "approved": "Đã duyệt",
         "returned": "Bị trả lại"
       },
-      "requiredBadge": "Nhóm yêu cầu ghi giờ",
+      "requiredBadge": "Bắt buộc ghi giờ",
       "submittedAt": "Nộp lúc {time}",
       "returnedBy": "{name} trả lại: {comment}",
       "approvedBy": "{name} đã duyệt lúc {time}",
       "reopenedBy": "{name} đã mở lại: {comment}",
-      "privateWork": "Việc riêng tư"
+      "privateWork": "Việc riêng tư",
+      "billableToggle": "Bật/tắt tính phí cho cả dòng trong tuần này",
+      "billableState": {
+        "yes": "Tính phí",
+        "no": "Không tính phí",
+        "mixed": "Tính phí một phần"
+      }
     },
     "plan": {
       "title": "Kế hoạch hôm nay",
@@ -9297,7 +9355,7 @@
       "prefilledHint": "Phần việc đã làm được điền sẵn từ hoạt động của bạn trong ngày — bạn chỉ cần thêm vướng mắc và kế hoạch ngày mai.",
       "tomorrowPlanned": "Kế hoạch ngày mai ({count})",
       "noTomorrow": "Chưa lên kế hoạch cho ngày mai.",
-      "noTimeLogged": "Nhóm của bạn yêu cầu ghi giờ, nhưng hôm nay bạn chưa ghi giờ nào. Ghi nhanh ở phần hoạt động bên dưới."
+      "noTimeLogged": "Công ty yêu cầu ghi giờ mỗi ngày, nhưng hôm nay bạn chưa ghi giờ nào. Ghi nhanh ở phần hoạt động bên dưới."
     },
     "thread": {
       "react": "Thả {reaction}",
@@ -9358,9 +9416,10 @@
         "6": "T7",
         "7": "CN"
       },
-      "reportDaysHint": "Thứ Bảy làm tại nhà mặc định không cần báo cáo; ngày lễ và ngày nghỉ phép luôn được miễn.",
+      "reportDaysHint": "Để trống là mặc định: báo cáo vào mọi ngày làm việc theo lịch của từng người, kể cả thứ Bảy làm tại nhà. Chỉ tích ngày cụ thể nếu nhóm bạn muốn thu hẹp lại. Ngày lễ, ngày nghỉ và ngày nghỉ phép luôn được miễn.",
       "noCycles": "Không dùng chu kỳ",
-      "weeks": "{count} tuần"
+      "weeks": "{count} tuần",
+      "companyRules": "Quy định chung của công ty: ai cũng lên kế hoạch buổi sáng, nộp báo cáo cuối ngày trước 23:00, ghi giờ mỗi ngày và nộp bảng giờ hằng tuần để được duyệt. Trưởng nhóm chỉ có thể đặt chặt hơn hoặc thu hẹp ngày phải báo cáo cho nhóm mình."
     },
     "weekly": {
       "title": "Báo cáo tuần",
@@ -10130,7 +10189,15 @@
       "signedOn": "Ngày ký",
       "signedBy": "Người ký phía khách hàng",
       "signedInfo": "{name} ký ngày {date}",
-      "documentTitle": "Biên bản nghiệm thu"
+      "documentTitle": "Biên bản nghiệm thu",
+      "waitingTitle": "Chờ nghiệm thu",
+      "waitingNote": "Việc của khách chỉ được xuất hoá đơn sau khi khách ký biên bản nghiệm thu. Những hạng mục dưới đây đang chờ ký.",
+      "waitingNone": "Không có hạng mục nào đang chờ nghiệm thu.",
+      "waitingWhole": "Toàn dự án",
+      "waitingMilestone": "Mốc: {name}",
+      "waitingMonth": "Tháng retainer: {name}",
+      "waitingLink": "Mở trang nghiệm thu",
+      "monthNotBilled": "Chưa chuyển kế toán: đang chờ biên bản nghiệm thu đã ký."
     },
     "billing": {
       "title": "Chờ xuất hoá đơn",
@@ -10219,13 +10286,15 @@
         "timesheets": "Bảng công các tuần đã được duyệt (nơi cần duyệt)",
         "billing": "Mọi khoản đã xuất hoá đơn hoặc không thu",
         "drive": "Đã lưu hồ sơ lên Drive (có đường dẫn)",
-        "retro": "Đã họp rút kinh nghiệm"
+        "retro": "Đã họp rút kinh nghiệm",
+        "acceptance": "Đã có biên bản nghiệm thu khách ký cho phần việc của khách"
       },
       "counts": {
         "tasks": "{count} việc còn mở",
         "register": "{count} dòng chưa duyệt đủ",
         "timesheets": "{count} tuần chưa duyệt",
-        "billing": "{count} khoản chờ kế toán"
+        "billing": "{count} khoản chờ kế toán",
+        "acceptance": "{count} hạng mục chưa có biên bản đã ký"
       },
       "previewReport": "Báo cáo tổng kết (nếu đóng hôm nay)",
       "closeTitle": "Đóng dự án",
@@ -10421,6 +10490,59 @@
       "audience": "Thành viên dự án và trưởng nhóm phụ trách xem và sửa được; ai được thêm vào dự án sẽ thấy ngay.",
       "files": "Tất cả tệp",
       "noFiles": "Chưa có tệp nào được tải lên các trang của dự án."
+    }
+  },
+  "preview": {
+    "brand": "SuZu Group",
+    "footer": "Trang này chỉ dành cho người nhận đường dẫn. Vui lòng không chia sẻ lại.",
+    "metaTitle": "Duyệt nội dung",
+    "version": "Phiên bản {version}",
+    "forWhom": "gửi {name}",
+    "work": "Nội dung cần duyệt",
+    "openFile": "Mở tệp",
+    "fileHint": "Đường dẫn tệp chỉ có hiệu lực trong ít phút. Hết hạn thì tải lại trang này.",
+    "unavailable": "Chưa mở được tệp. Vui lòng tải lại trang sau giây lát.",
+    "messageFrom": "Lời nhắn từ {name}",
+    "viewOnly": "Đường dẫn này chỉ để xem. Anh/chị phản hồi trực tiếp với người gửi giúp em.",
+    "expiresOn": "Đường dẫn có hiệu lực đến hết ngày {date}.",
+    "privacy": "Khi anh/chị gửi phản hồi, chúng tôi lưu tên anh/chị tự điền, lựa chọn và ý kiến kèm thời điểm gửi để làm căn cứ nghiệm thu. Chúng tôi không lưu địa chỉ IP.",
+    "decide": {
+      "title": "Phản hồi của anh/chị",
+      "choice": "Anh/chị chọn",
+      "decisions": {
+        "approved": "Duyệt",
+        "approved_with_changes": "Duyệt, có chỉnh nhỏ",
+        "changes_required": "Yêu cầu chỉnh sửa"
+      },
+      "hints": {
+        "approved": "Nội dung đã đạt, đội ngũ tiến hành các bước tiếp theo.",
+        "approved_with_changes": "Đồng ý về tổng thể, còn vài điểm nhỏ cần chỉnh.",
+        "changes_required": "Cần làm lại theo góp ý trước khi duyệt."
+      },
+      "name": "Tên anh/chị",
+      "namePlaceholder": "Ví dụ: Chị Mai – Brand Manager",
+      "comment": "Ý kiến",
+      "commentHint": "Bắt buộc nếu chọn “Duyệt, có chỉnh nhỏ” hoặc “Yêu cầu chỉnh sửa”.",
+      "submit": "Gửi phản hồi"
+    },
+    "closed": {
+      "title": "Đường dẫn không còn hiệu lực",
+      "body": "Vui lòng liên hệ người đã gửi đường dẫn này để nhận đường dẫn mới.",
+      "busy": "Trang đang nhận quá nhiều lượt truy cập. Vui lòng thử lại sau ít phút."
+    },
+    "thanks": {
+      "title": "Cảm ơn anh/chị",
+      "body": "Phản hồi đã được ghi nhận và chuyển tới đội ngũ phụ trách."
+    },
+    "errors": {
+      "failed": "Chưa gửi được phản hồi. Vui lòng thử lại.",
+      "invalid": "Vui lòng kiểm tra lại tên và ý kiến rồi gửi lại.",
+      "rejected": "Chưa gửi được phản hồi. Vui lòng thử lại.",
+      "rate_limited": "Anh/chị vừa gửi nhiều lần. Vui lòng thử lại sau ít phút.",
+      "preview_link_closed": "Đường dẫn này không còn nhận phản hồi.",
+      "preview_comment_required": "Vui lòng ghi rõ điểm cần chỉnh sửa.",
+      "deliverable_frozen": "Phiên bản này đã được duyệt nên không nhận thêm phản hồi.",
+      "client_decision_not_latest": "Đã có phiên bản mới hơn. Vui lòng liên hệ người gửi để nhận đường dẫn mới."
     }
   }
 }

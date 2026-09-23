@@ -119,8 +119,9 @@ export async function listPortfolio(viewer: WorkViewer, options: { today: IsoDat
       burn: { loggedMinutes: burn.loggedMinutes, burnMinutes: burn.burnMinutes, budgetMinutes: burn.budgetMinutes, percent: burn.percent, level: burn.level },
       raid: raid.get(project.id) ?? { highRisks: 0, openIssues: 0 },
     };
-    // Per project: a director of one entity sees the fees of that entity's projects only.
-    if (canSeeFees(viewer, { entityId: project.entityId })) row.feeVnd = plan.feeVnd;
+    // Per project: a director of one entity sees the fees of that entity's projects only, and the
+    // lead or account manager of one project the fee of that project only (Q21).
+    if (canSeeFees(viewer, { id: project.id, entityId: project.entityId })) row.feeVnd = plan.feeVnd;
     return row;
   });
   return filterPortfolio(rows, options.filters ?? {});

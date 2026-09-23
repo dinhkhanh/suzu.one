@@ -28,7 +28,7 @@ import { sendTimesheetReminders } from "./jobs";
 import { loadReportReader, loadSubjects, loadTimeReader } from "./people";
 import { canApproveTimesheet } from "./policy";
 import { saveTeamRules } from "./team-rules";
-import { deleteTimeEntry, getRunningTimer, logTime, setCellMinutes, startTimer, stopRunningTimer, updateTimeEntry } from "./time";
+import { deleteTimeEntry, getRunningTimer, logTime, setCellMinutes, setRowBillable, startTimer, stopRunningTimer, updateTimeEntry } from "./time";
 import { approveWeeks, decideWeek, findTimesheetWeek, getMyTimeWeek, getTimesheetView, listApprovals, listProjectTime, submitWeek } from "./timesheets";
 import { loggedMinutesByPersonWeek, sumLoggedMinutesByProject, sumLoggedMinutesByTask } from "./totals";
 import { getUtilisation } from "./utilisation";
@@ -70,8 +70,10 @@ beforeAll(async () => {
   ids.video = await team("VID", "Video", "long", ["huy", "bao"], dept.id);
   ids.design = await team("DES", "Design", "mai", ["huy"]);
   ids.social = await team("SOC", "Social", "khoi", ["sang", "lan"]);
-  // Video requires time and approves timesheets; Design and Social keep the defaults.
+  // Video and Design keep the company's rules (time required, the week approved); Social is the one
+  // team whose lead switched weekly approval off — its people log time and send nothing in.
   await saveTeamRules(ids.video, { ...DEFAULT_TEAM_RULES, timeMode: "required", timesheetApproval: true });
+  await saveTeamRules(ids.social, { ...DEFAULT_TEAM_RULES, timesheetApproval: false });
 
   // TVC Tết is led by Vy (named lead), who is in none of Huy's teams and not above him.
   ids.client = (await db().insert(schema.workProject).values({ teamId: ids.video, entityId: szm.id, name: "TVC Tết", leadPersonId: ids.vy }).returning())[0].id;
@@ -209,8 +211,9 @@ describe("the attendance hint", () => {
 });
 
 describe("the weekly timesheet", () => {
-  it("is submitted only where a team approves, and not while a timer runs in it", async () => {
+  it("is submitted only where the rules ask for it, and not while a timer runs in it", async () => {
     await logTime({ personId: ids.sang, date: W, taskId: null, category: "admin", minutes: 60, note: null, billable: null });
+    // Social switched approval off: Sang logs his time and has no week to send.
     expect(await fails(submitWeek(ids.sang, W, TODAY))).toBe("timesheet_not_required");
     expect(await fails(submitWeek(ids.huy, "2026-09-22", TODAY))).toBe("timesheet_week_invalid");
     expect(await fails(submitWeek(ids.huy, "2026-09-28", TODAY))).toBe("timesheet_week_invalid");
@@ -295,14 +298,37 @@ describe("the weekly timesheet", () => {
 });
 
 describe("the Monday reminder", () => {
-  it("tells who submits timesheets and has not submitted last week, once", async () => {
+  it("tells everyone who owes last week's timesheet, once", async () => {
     expect(await sendTimesheetReminders("2026-09-29")).toEqual({ skipped: "not_monday" });
-    // Video: Huy and Bao submitted; Long did not. Design and Social do not approve timesheets.
-    expect(await sendTimesheetReminders("2026-09-28")).toEqual({ weekStart: W, reminded: 1 });
+    // Everyone but Social submits a week (Q17). Huy and Bao have; Long, Mai, Tam, Chi and Vy have not.
+    expect(await sendTimesheetReminders("2026-09-28")).toEqual({ weekStart: W, reminded: 5 });
     expect((await noticesOf(ids.long, "daily.timesheet_reminder")).map((row) => [row.params, row.link])).toEqual([[{ week: "21/09/2026" }, `/daily/time?week=${W}`]]);
+    expect(await noticesOf(ids.mai, "daily.timesheet_reminder")).toHaveLength(1);
+    // Tam is in no work team; his line manager approves his week, and the reminder reaches him.
+    expect(await noticesOf(ids.tam, "daily.timesheet_reminder")).toHaveLength(1);
     expect(await noticesOf(ids.huy, "daily.timesheet_reminder")).toHaveLength(0);
-    expect(await noticesOf(ids.mai, "daily.timesheet_reminder")).toHaveLength(0);
+    // Social's lead switched approval off: nobody there is asked for a week.
+    expect(await noticesOf(ids.sang, "daily.timesheet_reminder")).toHaveLength(0);
     expect(await sendTimesheetReminders("2026-09-28")).toEqual({ weekStart: W, reminded: 0 });
+  });
+});
+
+// Q17, Q18: every person submits a week, so every person needs an approver. Tam is in no work team,
+// and the only one who may decide his week is the manager directly above him.
+describe("a week whose only approver is the line manager", () => {
+  it("is submitted, heard by the manager, and approved by them — by nobody else", async () => {
+    await logTime({ personId: ids.tam, date: W, taskId: null, category: "admin", minutes: 120, note: null, billable: null });
+    const { after } = await submitWeek(ids.tam, W, TODAY, vn(TODAY, "21:00"));
+    expect(after).toMatchObject({ status: "submitted", minutes: 120 });
+    expect((await noticesOf(ids.chi, "daily.timesheet_submitted")).map((row) => row.params)).toEqual([{ person: names.tam, week: "21/09/2026" }]);
+    // Chi's own list, and only Chi's: not the person, not a lead of some other team.
+    expect((await listApprovals(await loadReportReader(ids.chi), TODAY)).waiting.map((week) => week.name)).toEqual([names.tam]);
+    for (const key of ["tam", "long", "mai", "huy"] as const) expect(await fails(decideWeek(await loadReportReader(ids[key]), after.id, { type: "approve" })), key).toBe("timesheet_not_found");
+    // Approved in a batch, as the approver's list does it.
+    const result = await approveWeeks(await loadReportReader(ids.chi), [after.id]);
+    expect(result.failed).toEqual([]);
+    expect(result.approved.map((week) => [week.personId, week.status])).toEqual([[ids.tam, "approved"]]);
+    expect((await noticesOf(ids.tam, "daily.timesheet_decided")).map((row) => row.params)).toEqual([{ week: "21/09/2026" }]);
   });
 });
 
@@ -429,5 +455,26 @@ describe("utilisation of teams that are one person (finding 22)", () => {
     expect(JSON.stringify(two)).not.toContain(ids.mai);
     // Video, big enough to stand on its own, is still its own row.
     expect(two.groups.filter((group) => group.kind === "portfolio").map((group) => group.kind === "portfolio" && group.name)).toEqual(["Video"]);
+  });
+});
+
+// Q17: whether the hours are billed to the client is part of everyday logging, so the week grid
+// switches a whole row at once — the flag belongs to the work, not to the single log.
+describe("billing a row of the week grid", () => {
+  const adminRow = async (personId: string) => (await getMyTimeWeek(personId, W, TODAY))!.grid.rows.find((row) => row.key === "category:admin")!;
+
+  it("bills every entry under the row and stops again; a locked or long-closed week refuses", async () => {
+    const before = await adminRow(ids.sang);
+    expect(before.billable).toBe(0);
+    const { changed } = await setRowBillable(ids.sang, W, { taskId: null, category: "admin" }, true, TODAY);
+    expect(changed).toBeGreaterThan(0);
+    expect(await adminRow(ids.sang)).toMatchObject({ total: before.total, billable: before.total });
+    await setRowBillable(ids.sang, W, { taskId: null, category: "admin" }, false, TODAY);
+    expect(await adminRow(ids.sang)).toMatchObject({ total: before.total, billable: 0 });
+
+    // Not a Monday, not the future, not a week long closed, and never an approved week.
+    expect(await fails(setRowBillable(ids.sang, "2026-09-22", { taskId: null, category: "admin" }, true, TODAY))).toBe("timesheet_week_invalid");
+    expect(await fails(setRowBillable(ids.sang, "2026-07-06", { taskId: null, category: "admin" }, true, TODAY))).toBe("time_window_closed");
+    expect(await fails(setRowBillable(ids.huy, W, { taskId: ids.t1, category: null }, false, TODAY))).toBe("time_week_locked");
   });
 });

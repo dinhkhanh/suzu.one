@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
-import { canDecideBilling, canManageAcceptance, listAcceptances, listPeriodOptions, listProjectBilling, listStructure, openProject } from "@/modules/projects/service";
+import { awaitingAcceptance, canDecideBilling, canManageAcceptance, listAcceptances, listPeriodOptions, listProjectBilling, listStructure, openProject } from "@/modules/projects/service";
+import { AcceptanceWaitingList } from "@/modules/projects/ui/acceptance-waiting";
 import { AcceptanceButtons, ManualBillingForm, NewAcceptanceForm, SignAcceptanceForm, SignedScanLink } from "@/modules/projects/ui/commercial-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
 
@@ -25,7 +26,7 @@ export default async function ProjectAcceptancePage({ params }: PageProps<"/proj
   const context = await openProject(user, projectId);
   if (!context) notFound();
   const { project, can, viewer, facts } = context;
-  const [t, tBilling, format, acceptances, structure, periods, billing] = await Promise.all([
+  const [t, tBilling, format, acceptances, structure, periods, billing, waiting] = await Promise.all([
     getTranslations("projects.acceptance"),
     getTranslations("projects.billing"),
     getFormatter(),
@@ -33,6 +34,7 @@ export default async function ProjectAcceptancePage({ params }: PageProps<"/proj
     listStructure(project.id),
     listPeriodOptions(project.id),
     listProjectBilling(project.id, can.seeFees),
+    awaitingAcceptance(project.id),
   ]);
   const manage = canManageAcceptance(viewer, facts);
   const addsBilling = canDecideBilling(user.principal, { entityId: project.entityId });
@@ -44,6 +46,8 @@ export default async function ProjectAcceptancePage({ params }: PageProps<"/proj
   return (
     <div className="flex max-w-5xl flex-col gap-8">
       <ProjectHeader context={context} current="acceptance" />
+
+      <AcceptanceWaitingList projectId={project.id} waiting={waiting} showLink={false} />
 
       {manage ? (
         <section className="flex flex-col gap-2 rounded-xl border border-dashed p-4">

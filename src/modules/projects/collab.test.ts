@@ -264,16 +264,32 @@ describe("the project's document space (FR-PJM-31)", () => {
     }
   });
 
-  it("stays closed to HR's knowledge-base managers and the owner, who are not the project's people", async () => {
-    for (const role of ["hr_admin", "owner"] as const) {
-      const principal: Principal = { personId: ids.other, workforceType: "employee", grants: [{ role, scope: { type: "group" } }] };
-      const manager = { ...viewers.other, principal };
-      expect((await listSpaces(manager)).some((space) => space.id === spaceId), role).toBe(false);
-      expect(levelOf(manager, (await loadPage(pageId))!), role).toBeNull();
-      expect(await listSpaceFiles(manager, spaceId), role).toEqual([]);
-      expect((await searchKb(manager, { query: "Ngũ Hành Sơn" })).hits, role).toEqual([]);
-      expect(await retrieveKbChunks(manager, { query: "Ngũ Hành Sơn" }), role).toEqual([]);
-    }
+  it("stays closed to HR's knowledge-base managers, who reach it through no role", async () => {
+    const principal: Principal = { personId: ids.other, workforceType: "employee", grants: [{ role: "hr_admin", scope: { type: "group" } }] };
+    const manager = { ...viewers.other, principal };
+    expect((await listSpaces(manager)).some((space) => space.id === spaceId)).toBe(false);
+    expect(levelOf(manager, (await loadPage(pageId))!)).toBeNull();
+    expect(await listSpaceFiles(manager, spaceId)).toEqual([]);
+    expect((await searchKb(manager, { query: "Ngũ Hành Sơn" })).hits).toEqual([]);
+    expect(await retrieveKbChunks(manager, { query: "Ngũ Hành Sơn" })).toEqual([]);
+  });
+
+  /**
+   * The owner's decision of 2026-09-23 (Q25): whoever may open the project reads its documents the
+   * same way its readers do — through the project's own access row, at `view`, never `edit`. It is
+   * `pjm:portfolio` that opens it, not `kb:manage`: HR above keeps getting nothing.
+   */
+  it("opens to a pjm:portfolio holder over the project's team — to read, not to write", async () => {
+    const principal: Principal = { personId: ids.other, workforceType: "employee", grants: [{ role: "entity_director", scope: { type: "entity", id: ids.szm } }] };
+    const director = { ...viewers.other, principal };
+    expect((await listSpaces(director)).find((space) => space.id === spaceId)?.level).toBe("view");
+    expect(levelOf(director, (await loadPage(pageId))!)).toBe("view");
+    expect((await listSpaceFiles(director, spaceId)).map((file) => file.fileName)).toEqual(["kv-option-b.pdf"]);
+    expect((await getProjectDocuments(director, spaceId))?.level).toBe("view");
+    // A grant over another entity opens nothing.
+    const elsewhere = { ...viewers.other, principal: { ...principal, grants: [{ role: "entity_director" as const, scope: { type: "entity" as const, id: "00000000-0000-4000-8000-0000000000ff" } }] } };
+    expect((await listSpaces(elsewhere)).some((space) => space.id === spaceId)).toBe(false);
+    expect(levelOf(elsewhere, (await loadPage(pageId))!)).toBeNull();
   });
 
   it("follows the project's membership as it changes, and the SQL filter agrees with the policy", async () => {

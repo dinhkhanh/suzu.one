@@ -189,9 +189,10 @@ describe("privacy in lists (FR-WRK-18)", () => {
     expect(await names(ids.huy, ids.szm)).toEqual(["Company profile video", "TVC Tet"]);
     expect(await names(ids.bao, ids.szm)).toEqual(["Company profile video"]);
     expect(await names(ids.khoi, ids.szc)).toEqual(["Brand refresh"]);
-    // The owner's "*" opens everything but the private project.
-    expect(await names(ids.owner, ids.szm, [{ role: "owner", scope: { type: "group" } }])).toEqual(["Brand refresh", "Company profile video", "TVC Tet"]);
-    expect(await names(ids.head, ids.szm, [{ role: "department_head", scope: { type: "unit", id: ids.vidDept } }])).toEqual(["Company profile video", "TVC Tet"]);
+    // The owner's "*" opens everything, the private project included — to read (the owner's
+    // decision of 2026-09-23, Q25); so does a `pjm:portfolio` grant over the owning team's unit.
+    expect(await names(ids.owner, ids.szm, [{ role: "owner", scope: { type: "group" } }])).toEqual(["Brand refresh", "Company profile video", "Pitch — confidential", "TVC Tet"]);
+    expect(await names(ids.head, ids.szm, [{ role: "department_head", scope: { type: "unit", id: ids.vidDept } }])).toEqual(["Company profile video", "Pitch — confidential", "TVC Tet"]);
     // A collaborator in the team sees its team projects, never the entity-wide ones of others.
     expect(await names(ids.freelancer, ids.szm, [], "collaborator")).toEqual(["Company profile video", "TVC Tet"]);
   });
@@ -226,9 +227,10 @@ describe("privacy in lists (FR-WRK-18)", () => {
       }
       expect((await listVisibleTaskIds(viewer)).sort()).toEqual(expected.sort());
     }
-    // And concretely: the private task is invisible to a team member and to the owner, visible to its people.
+    // And concretely: the private task is invisible to a team member, and visible to its people —
+    // and to the owner, who may read a private project since the decision of 2026-09-23 (Q25).
     expect(await listVisibleTaskIds(await viewerOf(ids.huy, ids.szm))).not.toContain(secret.task.id);
-    expect(await listVisibleTaskIds(await viewerOf(ids.owner, ids.szm, [{ role: "owner", scope: { type: "group" } }]))).not.toContain(secret.task.id);
+    expect(await listVisibleTaskIds(await viewerOf(ids.owner, ids.szm, [{ role: "owner", scope: { type: "group" } }]))).toContain(secret.task.id);
     expect(await getTaskDetail(secret.task.id, await viewerOf(ids.huy, ids.szm))).toBeUndefined();
     expect((await getTaskDetail(secret.task.id, await viewerOf(ids.tam, ids.szm)))?.key).toBe(secret.key);
   });

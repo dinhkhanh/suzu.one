@@ -15,7 +15,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import vi from "../../../messages/vi.json";
 import { notify } from "../platform/notifications/service";
 import { fireProjectAutomations } from "../work/service";
-import { ensureBillingItem } from "./billing";
+import { acceptedForBilling, ensureBillingItem } from "./billing";
 import { unitsConsumed } from "./engine/register";
 import { addMonths, hoursUsage, isMonth, lastDayOf, type Month, monthBounds, monthOf, monthsDue, monthsToMake, planPeriod, type PreviousPeriod, quotaAlertsDue, type RetainerRollover, type RetainerTerms, totalUsage, type Usage, usage } from "./engine/retainer";
 import { loadLineUnits, withLineStatus } from "./metrics";
@@ -166,17 +166,26 @@ export async function feeOfPeriod(executor: Executor, periodId: string): Promise
 /**
  * Closes a month that is over and hands its fee to finance — both once. A retainer without a fee
  * closes its months all the same; there is simply nothing to bill.
+ *
+ * On **client** work the month closes on time but is not billed until the client has signed its
+ * biên bản nghiệm thu (the owner's decision of 2026-09-23, Q22). Enforced here, at the one place a
+ * month's fee becomes a billing item, rather than as a flag on the period: signing already makes
+ * that same item, idempotently and under the acceptance's own transaction (`billSigned`), so the
+ * signature simply becomes the only door. Closing the month stays a calendar fact — the quota, the
+ * carry and the report are settled whether or not the paper has come back — and `awaitingAcceptance`
+ * is what says the month is still owed.
  */
-export async function closePeriod(periodId: string, actorPersonId: string | null = null): Promise<{ closed: boolean; billed: boolean }> {
+export async function closePeriod(periodId: string, actorPersonId: string | null = null): Promise<{ closed: boolean; billed: boolean; awaitingAcceptance?: boolean }> {
   return db().transaction(async (tx) => {
     const [period] = await tx.select().from(schema.projectRetainerPeriod).where(eq(schema.projectRetainerPeriod.id, periodId)).limit(1).for("update");
     if (!period) throw new ActionError("retainer_period_not_found");
     const [retainer] = await tx.select().from(schema.projectRetainer).where(eq(schema.projectRetainer.id, period.retainerId)).limit(1);
-    const [project] = await tx.select({ startDate: schema.workProject.startDate, dueDate: schema.workProject.dueDate }).from(schema.workProject).where(eq(schema.workProject.id, retainer.projectId)).limit(1);
+    const [project] = await tx.select({ clientId: schema.workProject.clientId, startDate: schema.workProject.startDate, dueDate: schema.workProject.dueDate }).from(schema.workProject).where(eq(schema.workProject.id, retainer.projectId)).limit(1);
     const closed = period.status === "open";
     if (closed) await tx.update(schema.projectRetainerPeriod).set({ status: "closed", closedAt: new Date() }).where(eq(schema.projectRetainerPeriod.id, periodId));
     const fee = periodFee(retainer, project ?? { startDate: null, dueDate: null }, period.month);
     if (!fee) return { closed, billed: false };
+    if (project?.clientId && !(await acceptedForBilling(tx, retainer.projectId, period.id))) return { closed, billed: false, awaitingAcceptance: true };
     const { created } = await ensureBillingItem(tx, { projectId: retainer.projectId, source: "retainer", retainerPeriodId: period.id, description: retainerMonthLabel(period.month), amountVnd: fee, createdByPersonId: actorPersonId });
     return { closed, billed: created };
   });
@@ -186,13 +195,14 @@ export async function closePeriod(periodId: string, actorPersonId: string | null
  * The midnight job's work for every active retainer (or one): make the months due, oldest first,
  * then close the months that are over.
  */
-export async function runRetainers(today: IsoDate, onlyRetainerId?: string): Promise<{ periods: number; closed: number; billed: number }> {
+export async function runRetainers(today: IsoDate, onlyRetainerId?: string): Promise<{ periods: number; closed: number; billed: number; awaiting: number }> {
   const retainers = await db()
     .select({ retainer: schema.projectRetainer, closedAt: schema.projectPlan.closedAt })
     .from(schema.projectRetainer)
     .leftJoin(schema.projectPlan, eq(schema.projectPlan.projectId, schema.projectRetainer.projectId))
     .where(onlyRetainerId ? eq(schema.projectRetainer.id, onlyRetainerId) : eq(schema.projectRetainer.isActive, true));
-  const result = { periods: 0, closed: 0, billed: 0 };
+  // `awaiting`: months closed but not billed because the client has not signed their biên bản (Q22).
+  const result = { periods: 0, closed: 0, billed: 0, awaiting: 0 };
   for (const { retainer, closedAt } of retainers) {
     // A closed project bills nothing more (FR-PJM-59): closing deactivates its retainer, and a row
     // that escaped that — closed before this rule, or closed while a run was under way — stops here.
@@ -208,9 +218,10 @@ export async function runRetainers(today: IsoDate, onlyRetainerId?: string): Pro
       .where(and(eq(schema.projectRetainerPeriod.retainerId, retainer.id), eq(schema.projectRetainerPeriod.status, "open")))
       .orderBy(asc(schema.projectRetainerPeriod.month));
     for (const period of open.filter((row) => row.month < monthOf(today))) {
-      const { closed, billed } = await closePeriod(period.id);
+      const { closed, billed, awaitingAcceptance } = await closePeriod(period.id);
       if (closed) result.closed += 1;
       if (billed) result.billed += 1;
+      if (awaitingAcceptance) result.awaiting += 1;
     }
   }
   return result;
@@ -373,4 +384,4 @@ export async function listPeriodOptions(projectId: string): Promise<{ id: string
 }
 
 /** This month as the job would make it, for the page right after the terms are saved. */
-export const ensureCurrentPeriods = (retainerId: string): Promise<{ periods: number; closed: number; billed: number }> => runRetainers(todayInVietnam(), retainerId);
+export const ensureCurrentPeriods = (retainerId: string): Promise<{ periods: number; closed: number; billed: number; awaiting: number }> => runRetainers(todayInVietnam(), retainerId);

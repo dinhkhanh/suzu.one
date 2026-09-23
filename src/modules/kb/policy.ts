@@ -48,7 +48,13 @@ export const kbViewerOf = (user: ViewerSource): KbViewer => ({
  * in the same query (`access-sql.ts`). The viewer's keys stay synchronous — `kbViewerOf` needs no
  * database — and the pure policy still decides alone. A row read without `people` names nobody.
  */
-export type AccessRow = { subjectKey: string; level: AccessLevel; people?: readonly string[] | null };
+export type AccessRow = {
+  subjectKey: string;
+  level: AccessLevel;
+  people?: readonly string[] | null;
+  /** A `project:<id>` row also carries the owning team's place, filled in by the loader (`projectPlaceSql`). */
+  project?: { entityId: string | null; departmentId: string | null } | null;
+};
 export type SpaceFacts = {
   entityId: string | null;
   kind: SpaceKind;
@@ -71,9 +77,21 @@ export type KbLevel = "view" | "edit" | "manage";
 const RANK: Record<KbLevel, number> = { view: 1, edit: 2, manage: 3 };
 export const atLeast = (level: KbLevel | null, wanted: KbLevel): boolean => !!level && RANK[level] >= RANK[wanted];
 
+/**
+ * A `project:<id>` row also opens the space to a leader who may open the project itself without
+ * being one of its people — `pjm:portfolio` over the owning team (FR-PJM-8, and the owner's
+ * decision of 2026-09-23, Q25, which let them open a private project). Reading only: they never
+ * reach `edit`, and `kb:manage` is untouched — a role still does not reach a project's space.
+ * `access-sql.ts` (`portfolioProjectRow`) says the same thing in SQL.
+ */
+const opensByPortfolio = (viewer: KbViewer, rows: readonly AccessRow[]): boolean =>
+  rows.some((row) => !!row.project && can(viewer.principal, "pjm:portfolio", { entityId: row.project.entityId, unitPath: row.project.departmentId ? [row.project.departmentId] : [] }));
+
 function matched(viewer: KbViewer, rows: readonly AccessRow[]): AccessLevel | null {
   const own = rows.filter((row) => viewer.keys.includes(row.subjectKey) || (!!row.people && row.people.includes(viewer.personId)));
-  return own.some((row) => row.level === "edit") ? "edit" : own.length ? "view" : null;
+  if (own.some((row) => row.level === "edit")) return "edit";
+  if (own.length) return "view";
+  return opensByPortfolio(viewer, rows) ? "view" : null;
 }
 
 /**

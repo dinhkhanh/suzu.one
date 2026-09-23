@@ -10,7 +10,7 @@ import { dayOf, type PersonDay } from "./days";
 import { weekStartOf } from "./engine/rules";
 import { findPlan, type PlanRow } from "./plans";
 import { findReport, type ReportRow } from "./reports";
-import { getRunningTimer, listTimeOf, type RunningTimer, type TimeEntryView } from "./time";
+import { billableProjects, getRunningTimer, listTimeOf, type RunningTimer, type TimeEntryView } from "./time";
 
 export type BookingView = { id: string; projectId: string; projectName: string; minutes: number; status: string };
 
@@ -43,6 +43,8 @@ export type TodayView = {
   time: TimeEntryView[];
   /** The person's running timer, whatever day it started. */
   timer: RunningTimer | null;
+  /** Of the projects on this page, the ones whose time is billed to the client by default (FR-PJM-24): what the quick log offers before anything is logged. */
+  billableProjects: string[];
 };
 
 export async function getToday(personId: string, date: IsoDate): Promise<TodayView> {
@@ -61,6 +63,7 @@ export async function getToday(personId: string, date: IsoDate): Promise<TodayVi
   ]);
   const items = plan?.items ?? [];
   const closed = await listDayTasks(items.map((item) => item.taskId).filter((taskId) => !open.some((task) => task.taskId === taskId)));
+  const billable = await billableProjects([...open, ...closed].map((task) => task.projectId));
   const known = new Map([...open, ...closed].map((task) => [task.taskId, task]));
   const planned = items.flatMap((item) => {
     const task = known.get(item.taskId);
@@ -85,5 +88,6 @@ export async function getToday(personId: string, date: IsoDate): Promise<TodayVi
     report,
     time,
     timer,
+    billableProjects: [...billable],
   };
 }
