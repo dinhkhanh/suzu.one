@@ -15,7 +15,7 @@ export { loadBurns, loadMilestoneTasks, loadRegisters, loadStatusFacts, type Reg
 export { listStatusUpdates, projectFollowers, type StatusUpdateView } from "./status-updates";
 export { filterPortfolio, listPortfolio, PORTFOLIO_GROUPS, type PortfolioFilters, type PortfolioGroup, type PortfolioRow, showsFees } from "./portfolio";
 export { applyTemplatePlanIn, listTemplatePlans, type TemplatePlanRow } from "./template-plans";
-export { auditPrivateRead, openBriefForApprover, openProject, type ProjectContext, type ProjectReader } from "./views";
+export { auditPrivateRead, auditPrivateTaskRead, openBriefForApprover, openProject, type ProjectContext, type ProjectReader } from "./views";
 export { listTaskLinks, type TaskLinkView } from "./links";
 export type { ProjectBrief, StatusFacts } from "./schema";
 /** Timeline, baselines, bookings and capacity (FR-PJM-07, 12, 13). */

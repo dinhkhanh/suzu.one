@@ -49,7 +49,7 @@ import { setAccountManager, setFee, updatePlanSettings } from "./plans";
 import { listPortfolio } from "./portfolio";
 import { getRetainer, listPeriods, runRetainers, saveRetainer } from "./retainers";
 import { saveMilestone } from "./structure";
-import { openProject } from "./views";
+import { auditPrivateTaskRead, openProject } from "./views";
 
 type Who = "lead" | "am" | "member" | "colleague" | "hr" | "payroll" | "auditor" | "director" | "teamLead";
 const ids = {} as Record<Who | "szm" | "team" | "client" | "tvc" | "retainer" | "secret", string>;
@@ -242,6 +242,27 @@ describe("a private project opened by a leader (Q25)", () => {
       expect(pipeline, name).toBeTruthy();
       expect(await pipeline!.authorize(director, input), name).toBe(false);
     }
+  });
+
+  it("records the read of one of its tasks too, which opens without its board", async () => {
+    const { createWorkTask, getTaskDetail } = await import("../work/tasks");
+    const { task } = await createWorkTask({ teamId: ids.team, projectId: ids.secret, title: "Bảng giá khung (bảo mật)" }, ids.lead);
+    const before = (await privateReadsOf("director")).length;
+    const detail = (await getTaskDetail(task.id, await loadedViewer("director")))!;
+    expect(detail.task.title).toBe("Bảng giá khung (bảo mật)");
+    await auditPrivateTaskRead(asUser("director"), await loadedViewer("director"), detail);
+    const rows = await privateReadsOf("director");
+    expect(rows).toHaveLength(before + 1);
+    expect(rows.at(-1)).toMatchObject({ resourceType: "work_project", resourceId: ids.secret, summary: "Dự án kín" });
+    // Its own people read their own work without a trail, and so does a task outside any project.
+    for (const who of ["lead", "teamLead"] as const) {
+      await auditPrivateTaskRead(asUser(who), await loadedViewer(who), detail);
+      expect(await privateReadsOf(who), who).toHaveLength(0);
+    }
+    const loose = await createWorkTask({ teamId: ids.team, projectId: null, title: "Việc rời" }, ids.lead);
+    const looseDetail = (await getTaskDetail(loose.task.id, await loadedViewer("director")))!;
+    await auditPrivateTaskRead(asUser("director"), await loadedViewer("director"), looseDetail);
+    expect(await privateReadsOf("director")).toHaveLength(before + 1);
   });
 
   it("leaves the circle its work may be given to exactly as it was: its members and the team's leads", async () => {

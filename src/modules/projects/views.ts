@@ -7,7 +7,7 @@ import { recordAudit } from "../platform/audit/service";
 import type { CurrentUser } from "../platform/auth/session";
 import type { RequestView } from "../platform/approvals/service";
 import type { ProjectFacts, WorkViewer } from "../work/policy";
-import { findProject, loadViewer, projectFacts, readsPrivateByPortfolio } from "../work/service";
+import { findProject, loadViewer, projectFacts, type ProjectRow, readsPrivateByPortfolio, type TeamRow } from "../work/service";
 import { getBriefRequest } from "./kickoff";
 import { defaultPlan, isProjectClosed, planAsItStands, type PlanRow, type PlanView, readPlan, shapePlan } from "./plans";
 import { canEditClientSide, canEditFees, canEditPlan, canPostStatus, canSeeFees, canViewPlan, type PlanFacts } from "./policy";
@@ -43,6 +43,18 @@ export async function auditPrivateRead(user: ProjectReader, viewer: WorkViewer, 
     summary: projectName.slice(0, 300),
     after: { visibility: "private", via: "pjm:portfolio", teamId: facts.team.id },
   });
+}
+
+/**
+ * The same trail for one **task** of a private project (Q25). Opening a task is where the private
+ * work itself is read — its title, its discussion, its versions — and a task is reachable by its
+ * link, its key and a notification without ever passing the project's board, so recording only the
+ * board would leave the deeper read unrecorded. A task outside a project records nothing, and so
+ * does a task of a project whose people the reader is one of.
+ */
+export async function auditPrivateTaskRead(user: ProjectReader, viewer: WorkViewer, task: { project: ProjectRow | null; team: TeamRow }): Promise<void> {
+  if (!task.project) return;
+  await auditPrivateRead(user, viewer, projectFacts(task.project, task.team), task.project.name);
 }
 
 /** null = no such project, or one the viewer may not open — the page answers notFound() either way. */

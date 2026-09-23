@@ -15,6 +15,7 @@ import { HandoffPanel } from "@/modules/work/ui/handoff";
 import { todayInVietnam } from "@/lib/dates";
 import { canDecideStage, canManagePublish, canManagePreviewLinks, canPinFeedback, canRecordClientDecision, canRecordDelivery, canResolvePin, canRevokePreviewLink, clientOfTask, listDeliveriesByTask, listPreviewLinks, listPublishesByTask, listTaskPins } from "@/modules/work/service";
 import { DeliveryPanel } from "@/modules/work/ui/delivery";
+import { auditPrivateTaskRead } from "@/modules/projects/service";
 import { PreviewLinkPanel } from "@/modules/work/ui/preview-links";
 import { PublishPanel } from "@/modules/work/ui/publish";
 
@@ -34,6 +35,9 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
   const detail = /^[0-9a-f-]{36}$/.test(taskId) ? await getTaskDetail(taskId, viewer) : undefined;
   if (!detail) notFound();
   const { task, work, team, project } = detail;
+  // A leader reading the work of a private project they are none of the people of leaves the same
+  // trail here as on its board (Q25): a task opens from a link, a key or a notice, without the board.
+  await auditPrivateTaskRead(user, viewer, detail);
   const t = await getTranslations("work");
   const canEdit = canEditTask(viewer, detail.facts);
 

@@ -17,7 +17,10 @@ import { LocaleSwitch } from "@/components/shell/locale-switch";
  * an advertisement; a link to one client's unfinished work is the opposite of that, and the URL
  * **is** the credential.
  */
-export const metadata: Metadata = { robots: { index: false, follow: false } };
+// `manifest: null` drops the app's web manifest from this page: it names and describes the
+// internal product ("chấm công, nghỉ phép…") and offers to install it, neither of which is a fact
+// about the client's own work. The same reasoning as the rest of this shell.
+export const metadata: Metadata = { robots: { index: false, follow: false }, manifest: null };
 
 export default async function PreviewLayout({ children }: LayoutProps<"/">) {
   const t = await getTranslations("preview");

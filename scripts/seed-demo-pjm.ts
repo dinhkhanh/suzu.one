@@ -112,7 +112,7 @@ async function main() {
 
   // ── Team rules: VID logs time and has its weeks approved, in two-week cycles ───────────────
   await saveTeamRules(vid.id, { ...DEFAULT_TEAM_RULES, planMode: "required", timeMode: "required", timesheetApproval: true, cycleWeeks: 2, cycleStart: "2026-09-07" });
-  await saveTeamRules(crs.id, { ...DEFAULT_TEAM_RULES, reportDeadline: "18:00" });
+  await saveTeamRules(crs.id, { ...DEFAULT_TEAM_RULES });
 
   // ── The client project: TVC Tết 2027 — Sữa Mộc An, through kick-off ──────────────────────
   const tvc = projectNamed("TVC Tết 2027");
