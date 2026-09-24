@@ -36,6 +36,11 @@ describe("core HR policy", () => {
   it("needs authority over both ends of a reassignment", () => {
     expect(canReassign(hrOfA, { entityId: ENTITY_A }, { entityId: ENTITY_A, unitPath: ["dept-video"] })).toBe(true);
     expect(canReassign(hrOfA, { entityId: ENTITY_B }, { entityId: ENTITY_A })).toBe(false);
+    // A move to another entity needs HR of both.
+    expect(canReassign(hrOfA, { entityId: ENTITY_A }, { entityId: ENTITY_B })).toBe(false);
+    const hrOfBoth = principal([...hrOfA.grants, { role: "hr_staff", scope: { type: "entity", id: ENTITY_B } }]);
+    expect(canReassign(hrOfBoth, { entityId: ENTITY_A }, { entityId: ENTITY_B })).toBe(true);
+    expect(canReassign(owner, { entityId: ENTITY_A }, { entityId: ENTITY_B })).toBe(true);
   });
 
   it("does not let HR take over a role holder's account by re-pointing their work email", () => {

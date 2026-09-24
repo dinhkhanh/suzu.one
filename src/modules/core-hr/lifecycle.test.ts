@@ -23,9 +23,9 @@ import type { Grant, Principal } from "@/modules/platform/rbac/policy";
 import { loadGrants } from "@/modules/platform/rbac/service";
 import { listMyTasks } from "@/modules/platform/tasks-engine/service";
 import { migrateTestDb } from "../../../tests/helpers/db";
-import { cancelTermination, findLikelyDuplicates, listLifecycleEvents, recordEvent, rehirePerson, terminateEmployment } from "./lifecycle";
+import { cancelTermination, findLikelyDuplicates, listLifecycleEvents, recordEvent, rehirePerson, terminateEmployment, transferToEntity } from "./lifecycle";
 import { decideResignation, getResignation, submitResignation } from "./resignation";
-import { changeAssignment, hirePerson, type HireInput, rollOverPlacements } from "./service";
+import { changeAssignment, getPersonView, hirePerson, type HireInput, listEmploymentFacts, rollOverPlacements } from "./service";
 
 const today = todayInVietnam();
 const ids = {} as Record<"media" | "video" | "actor" | "manager" | "hr" | "owner", string>;
@@ -128,6 +128,45 @@ describe("transfer and promotion", () => {
     expect(none).toBeNull();
     const timeline = await listLifecycleEvents(principal(ids.hr, [{ role: "hr_staff", scope: { type: "entity", id: ids.media } }]), person.id);
     expect(timeline!.map((row) => row.type)).toEqual(["promotion", "hire"]);
+  });
+});
+
+describe("move to another entity", () => {
+  it("ends the employment the day before and opens one with the new entity, keeping seniority and one history", async () => {
+    const [studio] = await db().insert(schema.entity).values({ code: "SZS", legalName: "SuZu Studio", shortName: "Studio" }).returning();
+    const [mediaOnly] = await db().insert(schema.orgUnit).values({ code: "MED-ADS", name: "Media Ads", entityId: ids.media }).returning();
+    const [studioUnit] = await db().insert(schema.orgUnit).values({ code: "STU-POST", name: "Post-production", entityId: studio.id }).returning();
+    const { person, employment: first } = await hire("Crossing Over", { seniorityDate: "2023-06-01" });
+    const placement = { workforceType: "employee" as const, branchId: null, orgUnitId: studioUnit.id, positionName: "Colourist", jobLevel: null, managerId: ids.manager, dottedManagerId: null, workLocation: null };
+    const startDate = addDays(today, -5);
+
+    await expect(transferToEntity(person.id, { entityId: ids.media, employeeCode: null, startDate, reason: null, placement: { ...placement, orgUnitId: ids.video } }, ids.actor)).rejects.toThrow("transfer_same_entity");
+    await expect(transferToEntity(person.id, { entityId: studio.id, employeeCode: null, startDate: addDays(today, 1), reason: null, placement }, ids.actor)).rejects.toThrow("transfer_in_future");
+    await expect(transferToEntity(person.id, { entityId: studio.id, employeeCode: null, startDate: "2024-01-01", reason: null, placement }, ids.actor)).rejects.toThrow("transfer_before_start");
+    await expect(transferToEntity(person.id, { entityId: studio.id, employeeCode: null, startDate, reason: null, placement: { ...placement, orgUnitId: mediaOnly.id } }, ids.actor)).rejects.toThrow("unit_not_in_entity");
+
+    const moved = await transferToEntity(person.id, { entityId: studio.id, employeeCode: null, startDate, reason: "Studio needs a colourist", placement }, ids.actor);
+    expect(moved.ended).toMatchObject({ id: first.id, endDate: addDays(startDate, -1) });
+    expect(moved.employment).toMatchObject({ entityId: studio.id, startDate, seniorityDate: "2023-06-01", endDate: null });
+    expect(moved.employment.employeeCode).toMatch(/^SZS-/);
+    expect(moved.event).toMatchObject({ type: "transfer", entityId: studio.id, effectiveDate: startDate, reason: "Studio needs a colourist" });
+    expect(moved.event.details).toMatchObject({ from: { entity: "Media", position: "Editor" }, to: { entity: "Studio", position: "Colourist", department: "Post-production" } });
+    // Still the same employee: no onboarding, no offboarding, still active, now in the new entity.
+    expect(await tasksAbout(person.id)).toHaveLength(3);
+    expect(await personRow(person.id)).toMatchObject({ status: "active", primaryEntityId: studio.id, orgUnitId: studioUnit.id });
+
+    const view = await getPersonView(principal(ids.owner, [{ role: "owner", scope: { type: "group" } }]), person.id);
+    expect(view).toMatchObject({ entityId: studio.id, entityName: "Studio", employeeCode: moved.employment.employeeCode });
+    expect(view!.personal!.current).toMatchObject({ entityName: "Studio", positionName: "Colourist" });
+    expect(view!.personal!.history.map((row) => [row.entityName, row.validFrom, row.validTo])).toEqual([
+      ["Studio", startDate, null],
+      ["Media", "2024-01-01", addDays(startDate, -1)],
+    ]);
+    // Leave keeps accruing from the first day with the group.
+    const [facts] = await listEmploymentFacts({ personIds: [person.id] });
+    expect(facts).toMatchObject({ startDate, serviceStartDate: "2024-01-01", endDate: null });
+
+    await expect(transferToEntity(person.id, { entityId: ids.media, employeeCode: null, startDate, reason: null, placement: { ...placement, orgUnitId: ids.video } }, ids.actor)).rejects.toThrow("transfer_before_start");
   });
 });
 

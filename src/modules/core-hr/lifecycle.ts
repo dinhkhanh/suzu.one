@@ -1,9 +1,10 @@
-// Lifecycle use-cases (FR-CHR-09/11/16): events HR records by hand, termination (which ends
-// access), calling a termination off, rehire, and the likely-duplicate check before a hire.
+// Lifecycle use-cases (FR-CHR-09/11/16, FR-PLT-15): events HR records by hand, termination (which
+// ends access), calling a termination off, rehire, a move to another entity, and the
+// likely-duplicate check before a hire.
 import "server-only";
 import { and, desc, eq, gt, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
-import { type IsoDate, todayInVietnam } from "@/lib/dates";
+import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { toSearchKey } from "@/lib/text";
 // The register decides what happens to a leaver's equipment; reached through its barrel, which is
@@ -12,7 +13,7 @@ import { cancelReturnTasks, openReturnTasks } from "@/modules/assets/service";
 import { canReadTier, type Principal } from "@/modules/platform/rbac/policy";
 import { endRoleGrantsOf, invalidateGrants, restoreRoleGrants } from "@/modules/platform/rbac/service";
 import { cancelOpenTasksOfContext } from "@/modules/platform/tasks-engine/service";
-import { findLifecycleEvent, LIFECYCLE_CONTEXT, type LifecycleEventRow, type LifecycleEventView, loadTimeline, recordLifecycleEvent, startChecklist } from "./lifecycle-events";
+import { describePlacement, findLifecycleEvent, LIFECYCLE_CONTEXT, type LifecycleEventRow, type LifecycleEventView, loadTimeline, recordLifecycleEvent, startChecklist } from "./lifecycle-events";
 import { getPersonTarget, type HireInput, inTransaction, offboardLeavers, openEmployment, resolvePlacement } from "./service";
 
 /** A person's timeline. null = the viewer does not read the personal tier of this person. */
@@ -150,6 +151,58 @@ export async function rehirePerson(personId: string, input: RehireInput, actorPe
     await tx.update(schema.person).set({ status, updatedAt: new Date() }).where(eq(schema.person.id, personId));
     const opened = await openEmployment(tx, personId, entity, input, values, actorPersonId, { type: "rehire", onboarding: true });
     return { person: { ...person, status }, previous, ...opened };
+  });
+}
+
+// ── Transfer between entities ───────────────────────────────────────────────────────────────
+
+export type EntityTransferInput = Pick<HireInput, "entityId" | "employeeCode" | "placement"> & { startDate: IsoDate; reason: string | null };
+
+/**
+ * Moves an employee to another entity of the group (FR-PLT-15). Employment is with an entity, so
+ * the one with the old entity ends the day before `startDate` — its assignments and contracts with
+ * it, as a termination would close them — and a new one opens with the new entity: a new employee
+ * code from its scheme (or the one given), the same seniority date, no onboarding checklist. Role
+ * grants and the leave ledger are the person's and stay. Dated today or earlier only: until the
+ * day comes, the latest employment would already read as the new entity everywhere.
+ */
+export async function transferToEntity(personId: string, input: EntityTransferInput, actorPersonId: string) {
+  return inTransaction(async (tx) => {
+    const previous = await latestEmployment(tx, personId);
+    if (previous.endDate !== null) throw new ActionError("transfer_not_employed");
+    if (previous.entityId === input.entityId) throw new ActionError("transfer_same_entity");
+    if (input.startDate <= previous.startDate) throw new ActionError("transfer_before_start");
+    if (input.startDate > todayInVietnam()) throw new ActionError("transfer_in_future");
+    const entities = await tx.select().from(schema.entity).where(inArray(schema.entity.id, [previous.entityId, input.entityId]));
+    const entity = entities.find((row) => row.id === input.entityId);
+    if (!entity?.isActive) throw new ActionError("entity_not_found");
+    const fromEntity = entities.find((row) => row.id === previous.entityId)!;
+    const values = await resolvePlacement(tx, input.placement, { entityId: entity.id, personId });
+
+    const lastDay = addDays(input.startDate, -1);
+    const [ended] = await tx.update(schema.employment).set({ endDate: lastDay, updatedAt: new Date() }).where(eq(schema.employment.id, previous.id)).returning();
+    const assignments = await tx.select().from(schema.assignment).where(eq(schema.assignment.employmentId, previous.id));
+    const never = assignments.filter((row) => row.validFrom > lastDay);
+    const open = assignments.filter((row) => row.validFrom <= lastDay && (row.validTo === null || row.validTo > lastDay));
+    if (never.length) await tx.delete(schema.assignment).where(inArray(schema.assignment.id, never.map((row) => row.id)));
+    if (open.length) await tx.update(schema.assignment).set({ validTo: lastDay, updatedAt: new Date() }).where(inArray(schema.assignment.id, open.map((row) => row.id)));
+    const before = open.find((row) => row.kind === "primary") ?? null;
+    // A labour contract is signed with an entity: the new one needs its own.
+    const contracts = await tx
+      .update(schema.contract)
+      .set({ terminatedOn: lastDay, updatedAt: new Date() })
+      .where(and(eq(schema.contract.employmentId, previous.id), isNull(schema.contract.deletedAt), isNull(schema.contract.terminatedOn), or(isNull(schema.contract.endDate), gt(schema.contract.endDate, lastDay))))
+      .returning({ id: schema.contract.id });
+
+    const from = before ? { ...(await describePlacement(tx, before)), entity: fromEntity.shortName } : { entity: fromEntity.shortName };
+    const opened = await openEmployment(tx, personId, entity, { employeeCode: input.employeeCode, startDate: input.startDate, seniorityDate: previous.seniorityDate }, values, actorPersonId, {
+      type: "transfer",
+      onboarding: false,
+      reason: input.reason,
+      from,
+      entityName: entity.shortName,
+    });
+    return { previous, ended, droppedAssignments: never.length, contractsEnded: contracts.length, ...opened };
   });
 }
 

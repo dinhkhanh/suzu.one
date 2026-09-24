@@ -51,6 +51,8 @@ export default async function MyProfilePage() {
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">{t("sections.employment")}</h2>
         <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Fact label={t("fields.entity")}>{person.entityName}</Fact>
+          <Fact label={t("fields.employeeCode")}>{person.employeeCode}</Fact>
           <Fact label={t("fields.workEmail")}>{person.workEmail}</Fact>
           <Fact label={t("fields.workforceType")}>{personal.current ? t(`workforceType.${personal.current.workforceType}`) : null}</Fact>
           <Fact label={t("fields.managerId")}>{person.current?.managerName}</Fact>

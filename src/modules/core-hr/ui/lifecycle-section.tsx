@@ -23,7 +23,7 @@ export async function LifecycleSection({ principal, personId, canManage, employe
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" });
   const today = todayInVietnam();
   const people = canManage ? await listPersonNames() : undefined;
-  const words = (placement: NonNullable<(typeof events)[number]["to"]>) => [placement.position, placement.jobLevel, placement.department, placement.team, placement.manager ? t("reportsTo", { name: placement.manager }) : null].filter(Boolean).join(" · ");
+  const words = (placement: NonNullable<(typeof events)[number]["to"]>) => [placement.entity, placement.position, placement.jobLevel, placement.department, placement.team, placement.manager ? t("reportsTo", { name: placement.manager }) : null].filter(Boolean).join(" · ");
   const resignation = events.find((event) => event.type === "resignation" && event.status === "pending");
 
   return (

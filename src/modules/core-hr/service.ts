@@ -271,6 +271,9 @@ async function readPersonTarget(personId: string, executor: Tx | ReturnType<type
 
 export type AssignmentView = {
   id: string;
+  employmentId: string;
+  entityName: string;
+  employeeCode: string;
   validFrom: IsoDate;
   validTo: IsoDate | null;
   workforceType: WorkforceType;
@@ -325,7 +328,7 @@ export async function getPersonView(principal: Principal, personId: string): Pro
       .where(eq(schema.employment.personId, personId))
       .orderBy(desc(schema.employment.startDate))
       .limit(1),
-    loadAssignments(latestEmploymentOf(personId)),
+    loadAssignments(personId),
     db().select(PROFILE_FIELDS).from(schema.personProfile).where(eq(schema.personProfile.personId, personId)).limit(1),
   ]);
   if (!target || !person) return null;
@@ -335,7 +338,7 @@ export async function getPersonView(principal: Principal, personId: string): Pro
   // Same rule as placementOn(): history is newest first, so this is the latest row already in force.
   const today = todayInVietnam();
   const asOf = employment && employment.row.startDate > today ? employment.row.startDate : today;
-  const current = history.find((row) => row.validFrom <= asOf) ?? null;
+  const current = history.find((row) => row.employmentId === employment?.row.id && row.validFrom <= asOf) ?? null;
 
   const seesPersonal = tierRank(tier) >= tierRank("personal");
   // Former and future colleagues are not part of the directory.
@@ -385,12 +388,9 @@ const PROFILE_FIELDS = {
   currentAddress: schema.personProfile.currentAddress,
 };
 
-// The id of the person's latest employment, as a subquery (what getPersonView reads alongside).
-const latestEmploymentOf = (personId: string): SQL =>
-  sql`(${db().select({ id: schema.employment.id }).from(schema.employment).where(eq(schema.employment.personId, personId)).orderBy(desc(schema.employment.startDate)).limit(1)})`;
-
-// Newest first.
-async function loadAssignments(employmentId: string | SQL): Promise<AssignmentView[]> {
+// Every primary assignment of every employment the person has had, newest first: a move to
+// another entity is one history, not two.
+async function loadAssignments(personId: string): Promise<AssignmentView[]> {
   const manager = alias(schema.person, "manager");
   const dottedManager = alias(schema.person, "dotted_manager");
   const departmentUnit = alias(schema.orgUnit, "department_unit");
@@ -398,6 +398,9 @@ async function loadAssignments(employmentId: string | SQL): Promise<AssignmentVi
   return db()
     .select({
       id: schema.assignment.id,
+      employmentId: schema.assignment.employmentId,
+      entityName: schema.entity.shortName,
+      employeeCode: schema.employment.employeeCode,
       validFrom: schema.assignment.validFrom,
       validTo: schema.assignment.validTo,
       workforceType: schema.assignment.workforceType,
@@ -417,13 +420,15 @@ async function loadAssignments(employmentId: string | SQL): Promise<AssignmentVi
       changeReason: schema.assignment.changeReason,
     })
     .from(schema.assignment)
+    .innerJoin(schema.employment, eq(schema.employment.id, schema.assignment.employmentId))
+    .innerJoin(schema.entity, eq(schema.entity.id, schema.employment.entityId))
     .leftJoin(schema.branch, eq(schema.branch.id, schema.assignment.branchId))
     .leftJoin(departmentUnit, eq(departmentUnit.id, schema.assignment.departmentId))
     .leftJoin(teamUnit, eq(teamUnit.id, schema.assignment.teamId))
     .leftJoin(schema.position, eq(schema.position.id, schema.assignment.positionId))
     .leftJoin(manager, eq(manager.id, schema.assignment.managerId))
     .leftJoin(dottedManager, eq(dottedManager.id, schema.assignment.dottedManagerId))
-    .where(and(eq(schema.assignment.employmentId, employmentId), eq(schema.assignment.kind, "primary")))
+    .where(and(eq(schema.employment.personId, personId), eq(schema.assignment.kind, "primary")))
     .orderBy(desc(schema.assignment.validFrom));
 }
 
@@ -453,7 +458,7 @@ export async function loadPlacementOptions(entityId?: string) {
   const [units, branches, positions, people] = await Promise.all([orgUnitOptions({ activeOnly: true }), listBranches(), listPositionNames(), listPersonNames()]);
   return {
     // A unit of another entity is not a place this person can be put; shared units always are.
-    units: units.filter((unit) => unit.entityId === null || !entityId || unit.entityId === entityId).map(({ id, name, depth }) => ({ id, name: `${"— ".repeat(depth)}${name}` })),
+    units: units.filter((unit) => unit.entityId === null || !entityId || unit.entityId === entityId).map(({ id, name, depth, entityId }) => ({ id, name: `${"— ".repeat(depth)}${name}`, entityId })),
     branches: branches.filter((row) => row.isActive && (!entityId || row.entityId === entityId)).map(({ id, name, entityId }) => ({ id, name, entityId })),
     positions,
     people,
@@ -553,7 +558,8 @@ export async function openEmployment(
   input: Pick<HireInput, "employeeCode" | "startDate" | "seniorityDate">,
   values: Awaited<ReturnType<typeof resolvePlacement>>,
   actorPersonId: string,
-  options: { type: "hire" | "rehire"; onboarding: boolean },
+  /** A transfer carries where the person came from, and the entity on both ends: that is what moved. */
+  options: { type: "hire" | "rehire"; onboarding: boolean } | { type: "transfer"; onboarding: false; reason: string | null; from: Record<string, unknown> | null; entityName: string },
 ) {
   const employeeCode = input.employeeCode ? normalizeEmployeeCode(input.employeeCode) : await allocateEmployeeCode(tx, entity);
   if (await employeeCodeExists(tx, entity.id, employeeCode)) throw new ActionError("employee_code_taken");
@@ -573,9 +579,12 @@ export async function openEmployment(
     managerId: values.managerId,
   });
 
+  const to = await describePlacement(tx, assignment);
   const event = await recordLifecycleEvent(
     tx,
-    { personId, employmentId: employment.id, entityId: entity.id, type: options.type, effectiveDate: input.startDate, assignmentId: assignment.id, details: { to: await describePlacement(tx, assignment) } },
+    options.type === "transfer"
+      ? { personId, employmentId: employment.id, entityId: entity.id, type: "transfer", effectiveDate: input.startDate, reason: options.reason, assignmentId: assignment.id, details: { from: options.from, to: { ...to, entity: options.entityName } } }
+      : { personId, employmentId: employment.id, entityId: entity.id, type: options.type, effectiveDate: input.startDate, assignmentId: assignment.id, details: { to } },
     actorPersonId,
   );
   const checklist = options.onboarding ? await startChecklist(tx, event, "onboarding", values, actorPersonId) : { template: null, tasks: [] };

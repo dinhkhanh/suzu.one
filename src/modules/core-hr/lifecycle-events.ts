@@ -58,7 +58,8 @@ export async function describePlacement(tx: Executor, row: { departmentId: strin
   return { department: department?.name ?? null, team: team?.name ?? null, position: position?.name ?? null, manager: manager?.name ?? null, jobLevel: row.jobLevel, workforceType: row.workforceType };
 }
 
-export type PlacementWords = Awaited<ReturnType<typeof describePlacement>>;
+/** `entity` is only written by a move between entities, the one change where it differs. */
+export type PlacementWords = Awaited<ReturnType<typeof describePlacement>> & { entity?: string | null };
 
 export type LifecycleEventView = Pick<LifecycleEventRow, "id" | "type" | "effectiveDate" | "status" | "reason" | "note" | "approvalRequestId" | "createdAt"> & {
   from: PlacementWords | null;

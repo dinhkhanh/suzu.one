@@ -294,6 +294,7 @@
       "team_not_in_department": "That team does not belong to the chosen department.",
       "department_not_in_entity": "That department belongs to another entity.",
       "branch_not_in_entity": "That branch belongs to another entity.",
+      "unit_not_in_entity": "That unit belongs to another entity.",
       "manager_is_self": "A person cannot be their own manager.",
       "manager_not_found": "That manager does not exist.",
       "manager_loop": "That would make the reporting line loop back on itself.",
@@ -302,6 +303,10 @@
       "assignment_before_current_assignment": "The effective date is before the current assignment started. Past assignments cannot be rewritten.",
       "possible_duplicate": "There are similar records. Check the list above, then confirm if you still want a new record.",
       "still_employed": "This person is still employed.",
+      "transfer_not_employed": "A move to another entity needs an employment that has not ended and has no end date set.",
+      "transfer_same_entity": "This person is already employed by that entity.",
+      "transfer_before_start": "The first day in the new entity must be after the current employment started.",
+      "transfer_in_future": "Record the move on or after its first day; it cannot be dated ahead.",
       "last_owner": "The last Owner's access cannot be ended."
     },
     "orgChart": {
@@ -1706,6 +1711,14 @@
       "hint": "At the end of the last working day the employment, assignments, contracts and every role end, and the offboarding checklist is created. After that day the account is locked and all sessions are deleted.",
       "confirm": "Terminate this employment?",
       "submit": "Terminate"
+    },
+    "transfer": {
+      "title": "Move to another entity",
+      "hint": "The employment with the current entity ends the day before the first day below, together with its assignments and labour contracts; a new employment starts with the chosen entity. The seniority date, leave balance and roles carry over. A new employee code is issued if left blank. Sign a new labour contract with the new entity afterwards.",
+      "entity": "New entity",
+      "startDate": "First day in the new entity",
+      "confirm": "Move this person to the chosen entity? The current employment ends the day before.",
+      "submit": "Move"
     },
     "rehire": {
       "title": "Rehire",

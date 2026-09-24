@@ -4,12 +4,12 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { todayInVietnam } from "@/lib/dates";
+import { addDays, todayInVietnam } from "@/lib/dates";
 import { listProfileChanges } from "@/modules/core-hr/change-requests";
 import { getPersonView, loadPlacementOptions, peopleModuleOpen } from "@/modules/core-hr/service";
 import { AssignmentForm } from "@/modules/core-hr/ui/assignment-form";
 import { EditPersonForm } from "@/modules/core-hr/ui/edit-person-form";
-import { RehireForm } from "@/modules/core-hr/ui/lifecycle-forms";
+import { RehireForm, TransferEntityForm } from "@/modules/core-hr/ui/lifecycle-forms";
 import { PersonEquipment } from "@/modules/assets/ui/person-equipment";
 import { PersonDocuments } from "@/modules/documents/ui/person-documents";
 import { PersonSalaryHistory } from "@/modules/payroll/ui/person-salary-history";
@@ -50,12 +50,17 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
   const { personal } = person;
   // HR sees what the employee has asked to change; listProfileChanges answers null to everyone else.
   const rehiring = person.canManage && personal?.status === "offboarded";
-  const [changeRequests, options, rehireOptions, entities] = await Promise.all([
+  // A move to another entity is for someone employed now, by HR of both entities (the action re-checks).
+  const today = todayInVietnam();
+  const transferring = person.canManage && !!personal?.startDate && personal.startDate < today && personal.endDate === null && !!person.entityId;
+  const [changeRequests, options, otherEntityOptions, entities] = await Promise.all([
     person.id === user.person.id ? null : listProfileChanges({ personId: user.person.id, principal: user.principal }, person.id, "pending"),
     person.canManage && person.entityId ? loadPlacementOptions(person.entityId) : null,
-    rehiring ? loadPlacementOptions() : null,
-    rehiring ? listEntities() : [],
+    rehiring || transferring ? loadPlacementOptions() : null,
+    rehiring || transferring ? listEntities() : [],
   ]);
+  const manageableEntities = entities.filter((entity) => entity.isActive && can(user.principal, "person:manage", { entityId: entity.id })).map((entity) => ({ id: entity.id, name: entity.shortName }));
+  const transferTargets = transferring ? manageableEntities.filter((entity) => entity.id !== person.entityId) : [];
 
   return (
     <div className="flex max-w-5xl flex-col gap-8">
@@ -70,6 +75,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
       </header>
 
       <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Fact label={t("fields.entity")}>{person.entityName}</Fact>
         <Fact label={t("fields.workEmail")}>{person.workEmail}</Fact>
         <Fact label={t("fields.team")}>{person.current?.teamName}</Fact>
         <Fact label={t("fields.managerId")}>{personLink(person.current?.managerId ?? null, person.current?.managerName ?? null)}</Fact>
@@ -122,6 +128,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("assignment.period")}</TableHead>
+                  <TableHead>{t("fields.entity")}</TableHead>
                   <TableHead>{t("fields.position")}</TableHead>
                   <TableHead>{t("fields.department")}</TableHead>
                   <TableHead>{t("fields.managerId")}</TableHead>
@@ -132,7 +139,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
               <TableBody>
                 {personal.history.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-muted-foreground">
+                    <TableCell colSpan={7} className="text-muted-foreground">
                       {t("assignment.empty")}
                     </TableCell>
                   </TableRow>
@@ -147,6 +154,10 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
                           </Badge>
                         ) : null}
                       </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {row.entityName}
+                        <span className="ml-1 text-muted-foreground">{row.employeeCode}</span>
+                      </TableCell>
                       <TableCell>{row.positionName ?? "—"}</TableCell>
                       <TableCell>{[row.departmentName, row.teamName].filter(Boolean).join(" · ") || "—"}</TableCell>
                       <TableCell>{row.managerName ?? "—"}</TableCell>
@@ -157,7 +168,21 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
                 )}
               </TableBody>
             </Table>
-            {options ? <AssignmentForm person={person} options={options} today={todayInVietnam()} /> : null}
+            {options ? <AssignmentForm person={person} options={options} today={today} /> : null}
+            {transferring && otherEntityOptions && transferTargets.length > 0 && personal.startDate ? (
+              <TransferEntityForm
+                personId={person.id}
+                entities={transferTargets}
+                options={otherEntityOptions}
+                today={today}
+                minDate={addDays(personal.startDate, 1)}
+                defaults={
+                  personal.current
+                    ? { workforceType: personal.current.workforceType, positionName: personal.current.positionName, jobLevel: personal.current.jobLevel, managerId: personal.current.managerId, dottedManagerId: personal.current.dottedManagerId, workLocation: personal.current.workLocation }
+                    : undefined
+                }
+              />
+            ) : null}
           </section>
 
           {/* Compensation tier: renders only for the person and C&B; a line manager sees nothing. */}
@@ -167,14 +192,8 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
           <PersonEquipment principal={user.principal} personId={person.id} />
           <PersonDocuments principal={user.principal} personId={person.id} />
           {/* A former employee comes back on the same record (FR-CHR-16). */}
-          {rehiring && rehireOptions ? (
-            <RehireForm
-              personId={person.id}
-              today={todayInVietnam()}
-              defaultEntityId={person.entityId}
-              options={rehireOptions}
-              entities={entities.filter((entity) => entity.isActive && can(user.principal, "person:manage", { entityId: entity.id })).map((entity) => ({ id: entity.id, name: entity.shortName }))}
-            />
+          {rehiring && otherEntityOptions ? (
+            <RehireForm personId={person.id} today={today} defaultEntityId={person.entityId} options={otherEntityOptions} entities={manageableEntities} />
           ) : null}
         </>
       ) : null}

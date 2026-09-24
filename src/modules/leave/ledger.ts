@@ -181,10 +181,12 @@ const sum = (rows: readonly LedgerEntryRow[], keep: (row: LedgerEntryRow) => boo
 const GIVEN: LedgerKind[] = ["accrual", "grant"];
 
 // Someone whose workforce type says "probation" but who has no probation contract on file is on
-// probation from their first day until HR changes the type.
+// probation from their first day until HR changes the type. Leave is earned from the start of
+// continuous service: a move to another entity neither restarts the year's accrual nor pays out.
 export function engineFacts(facts: EmploymentFacts) {
   const probation = facts.probation.length === 0 && facts.workforceType === "probation" && facts.startDate ? [{ start: facts.startDate, end: null }] : facts.probation;
-  return { startDate: facts.startDate!, seniorityDate: facts.seniorityDate ?? facts.startDate!, endDate: facts.endDate, probation };
+  const startDate = facts.serviceStartDate ?? facts.startDate!;
+  return { startDate, seniorityDate: facts.seniorityDate ?? startDate, endDate: facts.endDate, probation };
 }
 
 /**

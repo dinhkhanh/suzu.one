@@ -5,9 +5,9 @@ import { createAction } from "@/lib/action";
 import { unitPathOf } from "@/modules/platform/org/service";
 import { can, canReadTier } from "@/modules/platform/rbac/policy";
 import { RECORD_ONLY_EVENT_TYPES, TERMINATION_REASONS, WORKFORCE_TYPES } from "./enums";
-import { cancelRecordedEvent, cancelTermination, recordEvent, rehirePerson, terminateEmployment } from "./lifecycle";
+import { cancelRecordedEvent, cancelTermination, recordEvent, rehirePerson, terminateEmployment, transferToEntity } from "./lifecycle";
 import { findLifecycleEvent } from "./lifecycle-events";
-import { canHireInto } from "./policy";
+import { canHireInto, canReassign } from "./policy";
 import { decideResignation, getResignation, submitResignation } from "./resignation";
 import { getPersonTarget } from "./service";
 
@@ -16,6 +16,7 @@ const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blan
 const text = (max: number) => optional(z.string().trim().max(max));
 const id = optional(z.uuid());
 const day = z.iso.date();
+const placementInput = z.object({ workforceType: z.enum(WORKFORCE_TYPES), branchId: id, orgUnitId: id, positionName: text(120), jobLevel: text(60), managerId: id, dottedManagerId: id, workLocation: text(200) });
 
 // Every lifecycle change is HR's: authority over the person where they sit today.
 const managesPerson = async (user: { principal: Parameters<typeof can>[0] }, personId: string) => {
@@ -106,7 +107,7 @@ const rehirePipeline = createAction({
     employeeCode: text(30),
     startDate: day,
     seniorityDate: optional(day),
-    placement: z.object({ workforceType: z.enum(WORKFORCE_TYPES), branchId: id, orgUnitId: id, positionName: text(120), jobLevel: text(60), managerId: id, dottedManagerId: id, workLocation: text(200) }),
+    placement: placementInput,
   }),
   // Authority over where the person is going, and over the record being reopened.
   authorize: async (user, input) => canHireInto(user.principal, { entityId: input.entityId, unitPath: await unitPathOf(input.placement.orgUnitId) }) && (await managesPerson(user, input.personId)),
@@ -120,6 +121,34 @@ const rehirePipeline = createAction({
 
 export async function rehirePersonAction(input: unknown) {
   return rehirePipeline(input);
+}
+
+const transferPipeline = createAction({
+  name: "person.transfer_entity",
+  input: z.object({ personId: z.uuid(), entityId: z.uuid(), employeeCode: text(30), startDate: day, reason: text(300), placement: placementInput }),
+  // Authority over where the person is today and over where they are going, as for any reassignment.
+  authorize: async (user, input) => {
+    const from = await getPersonTarget(input.personId);
+    return !!from && canReassign(user.principal, from, { entityId: input.entityId, unitPath: await unitPathOf(input.placement.orgUnitId) });
+  },
+  run: async ({ user, input }) => {
+    const { personId, ...transfer } = input;
+    const { previous, ended, employment, assignment, event, droppedAssignments, contractsEnded } = await transferToEntity(personId, transfer, user.person.id);
+    refresh(personId);
+    return {
+      data: { id: personId },
+      audit: {
+        resource: { type: "person", id: personId, entityId: employment.entityId },
+        summary: `${previous.employeeCode} → ${employment.employeeCode} from ${employment.startDate}`,
+        before: { employment: previous },
+        after: { endedEmployment: ended, employment, assignment, eventId: event.id, droppedAssignments, contractsEnded },
+      },
+    };
+  },
+});
+
+export async function transferToEntityAction(input: unknown) {
+  return transferPipeline(input);
 }
 
 // ── Resignation requests ────────────────────────────────────────────────────────────────────

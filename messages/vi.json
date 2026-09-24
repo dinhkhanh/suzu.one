@@ -294,6 +294,7 @@
       "team_not_in_department": "Nhóm không thuộc phòng ban đã chọn.",
       "department_not_in_entity": "Phòng ban thuộc pháp nhân khác.",
       "branch_not_in_entity": "Chi nhánh thuộc pháp nhân khác.",
+      "unit_not_in_entity": "Đơn vị đó thuộc pháp nhân khác.",
       "manager_is_self": "Một người không thể là quản lý của chính mình.",
       "manager_not_found": "Không tìm thấy người quản lý.",
       "manager_loop": "Thay đổi này khiến tuyến báo cáo bị vòng lặp.",
@@ -302,6 +303,10 @@
       "assignment_before_current_assignment": "Ngày hiệu lực sớm hơn ngày bắt đầu của vị trí hiện tại. Không thể sửa lịch sử đã qua.",
       "possible_duplicate": "Có hồ sơ giống người này. Xem danh sách bên trên rồi xác nhận nếu vẫn muốn tạo mới.",
       "still_employed": "Người này vẫn đang có quan hệ lao động.",
+      "transfer_not_employed": "Chỉ chuyển pháp nhân được khi quan hệ lao động hiện tại chưa kết thúc và chưa có ngày kết thúc.",
+      "transfer_same_entity": "Người này đã làm việc tại pháp nhân đó.",
+      "transfer_before_start": "Ngày đầu tiên ở pháp nhân mới phải sau ngày bắt đầu của quan hệ lao động hiện tại.",
+      "transfer_in_future": "Hãy ghi nhận việc chuyển vào hoặc sau ngày đầu tiên; không thể đặt ngày trước.",
       "last_owner": "Không thể kết thúc quyền của Owner cuối cùng."
     },
     "orgChart": {
@@ -1706,6 +1711,14 @@
       "hint": "Đến hết ngày làm việc cuối cùng: quan hệ lao động, phân công, hợp đồng và mọi vai trò kết thúc; checklist thôi việc được tạo. Sau ngày đó tài khoản bị khóa và các phiên đăng nhập bị xóa.",
       "confirm": "Xác nhận cho thôi việc?",
       "submit": "Cho thôi việc"
+    },
+    "transfer": {
+      "title": "Chuyển sang pháp nhân khác",
+      "hint": "Quan hệ lao động với pháp nhân hiện tại kết thúc vào ngày trước ngày đầu tiên dưới đây, cùng các phân công và hợp đồng lao động của nó; một quan hệ lao động mới bắt đầu với pháp nhân được chọn. Ngày tính thâm niên, số ngày phép và các vai trò được giữ nguyên. Mã nhân viên mới được cấp nếu để trống. Sau đó hãy ký hợp đồng lao động mới với pháp nhân mới.",
+      "entity": "Pháp nhân mới",
+      "startDate": "Ngày đầu tiên ở pháp nhân mới",
+      "confirm": "Chuyển người này sang pháp nhân đã chọn? Quan hệ lao động hiện tại sẽ kết thúc vào ngày hôm trước.",
+      "submit": "Chuyển"
     },
     "rehire": {
       "title": "Tuyển lại",

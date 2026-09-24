@@ -7,7 +7,7 @@ import { GENDERS, MARITAL_STATUSES, WORKFORCE_TYPES } from "../enums";
 
 export type PlacementOptions = {
   /** Every unit the person may be put in, in tree order, names already indented by depth. */
-  units: { id: string; name: string }[];
+  units: { id: string; name: string; /** null = shared by every entity. */ entityId?: string | null }[];
   branches: { id: string; name: string; entityId: string }[];
   positions: string[];
   people: { id: string; fullName: string }[];

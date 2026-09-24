@@ -4,7 +4,7 @@
 import "server-only";
 import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, or, type SQL } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import type { IsoDate } from "@/lib/dates";
+import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { recordLifecycleEvent } from "./lifecycle-events";
 
@@ -26,6 +26,11 @@ export type EmploymentFacts = {
   employmentId: string | null;
   employeeCode: string | null;
   startDate: IsoDate | null;
+  /**
+   * The first day of the unbroken run of employments that ends in the latest one. The same as
+   * `startDate`, except after a move to another entity: the person never stopped working for the group.
+   */
+  serviceStartDate: IsoDate | null;
   seniorityDate: IsoDate | null;
   endDate: IsoDate | null;
   /** Probation contracts of the latest employment, as date ranges (end null = open). */
@@ -60,22 +65,29 @@ export function peopleScope(filter: PeopleFilter, executor: Executor): (column: 
 export async function listEmploymentFacts(filter: PeopleFilter = {}, executor: Executor = db()): Promise<EmploymentFacts[]> {
   if (filter.personIds?.length === 0 || filter.entityIds?.length === 0 || filter.employeeCodes?.length === 0) return [];
   const scope = peopleScope(filter, executor);
-  // One round trip: the people, each one's latest employment and the probation contracts, side by side.
+  // One round trip: the people, their employments (newest first) and the probation contracts, side by side.
   const [people, employments, contracts] = await Promise.all([
     executor
       .select({ person: schema.person, gender: schema.personProfile.gender, dateOfBirth: schema.personProfile.dateOfBirth })
       .from(schema.person)
       .leftJoin(schema.personProfile, eq(schema.personProfile.personId, schema.person.id))
       .where(scope(schema.person.id)),
-    executor.selectDistinctOn([schema.employment.personId]).from(schema.employment).where(scope(schema.employment.personId)).orderBy(schema.employment.personId, desc(schema.employment.startDate)),
+    executor.select().from(schema.employment).where(scope(schema.employment.personId)).orderBy(schema.employment.personId, desc(schema.employment.startDate)),
     executor.select({ personId: schema.contract.personId, employmentId: schema.contract.employmentId, startDate: schema.contract.startDate, endDate: schema.contract.endDate, terminatedOn: schema.contract.terminatedOn }).from(schema.contract).where(and(scope(schema.contract.personId), eq(schema.contract.type, "probation"), isNull(schema.contract.deletedAt))),
   ]);
   if (people.length === 0) return [];
-  const latestOf = new Map(employments.map((row) => [row.personId, row]));
+  const employmentsOf = new Map<string, typeof employments>();
+  for (const row of employments) employmentsOf.set(row.personId, [...(employmentsOf.get(row.personId) ?? []), row]);
   const probationOf = new Map<string, typeof contracts>();
   for (const row of contracts) probationOf.set(row.personId, [...(probationOf.get(row.personId) ?? []), row]);
   return people.map(({ person, gender, dateOfBirth }) => {
-    const latest = latestOf.get(person.id) ?? null;
+    const periods = employmentsOf.get(person.id) ?? [];
+    const latest = periods[0] ?? null;
+    let serviceStart = latest?.startDate ?? null;
+    for (const earlier of periods.slice(1)) {
+      if (!serviceStart || earlier.endDate !== addDays(serviceStart, -1)) break;
+      serviceStart = earlier.startDate;
+    }
     return {
       personId: person.id,
       fullName: person.fullName,
@@ -91,6 +103,7 @@ export async function listEmploymentFacts(filter: PeopleFilter = {}, executor: E
       employmentId: latest?.id ?? null,
       employeeCode: latest?.employeeCode ?? null,
       startDate: latest?.startDate ?? null,
+      serviceStartDate: serviceStart,
       seniorityDate: latest?.seniorityDate ?? null,
       endDate: latest?.endDate ?? null,
       probation: (probationOf.get(person.id) ?? []).filter((row) => !latest || row.employmentId === latest.id).map((row) => ({ start: row.startDate, end: row.terminatedOn ?? row.endDate })),

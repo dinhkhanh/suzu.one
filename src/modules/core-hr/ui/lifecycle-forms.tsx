@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { RECORD_ONLY_EVENT_TYPES, TERMINATION_REASONS } from "../enums";
-import { cancelLifecycleEventAction, recordLifecycleEventAction, rehirePersonAction, submitResignationAction, terminateEmploymentAction } from "../lifecycle-actions";
+import { cancelLifecycleEventAction, recordLifecycleEventAction, rehirePersonAction, submitResignationAction, terminateEmploymentAction, transferToEntityAction } from "../lifecycle-actions";
 import { PlacementFields, type PlacementOptions } from "./fields";
 
 /** Events HR writes down: probation result, renewal, reward, discipline, long leave, salary change (no amounts). */
@@ -158,6 +158,64 @@ export function RehireForm({ personId, entities, options, today, defaultEntityId
         <div>
           <Button type="submit" disabled={pending}>
             {t("rehire.submit")}
+          </Button>
+        </div>
+      </form>
+    </details>
+  );
+}
+
+/**
+ * Moves an employee to another entity of the group (FR-PLT-15): the employment with today's entity
+ * ends the day before, a new one opens with the chosen entity, seniority carries over.
+ */
+export function TransferEntityForm({ personId, entities, options, today, minDate, defaults }: { personId: string; entities: { id: string; name: string }[]; options: PlacementOptions; today: string; /** The day after the current employment started. */ minDate: string; defaults: Parameters<typeof PlacementFields>[0]["defaults"] }) {
+  const t = useTranslations("lifecycle");
+  const tp = useTranslations("people");
+  const router = useRouter();
+  const [entityId, setEntityId] = useState(entities[0]?.id ?? "");
+  const { onSubmit, pending, errorKey } = useActionForm(transferToEntityAction, { extra: { personId }, onSuccess: () => router.refresh() });
+  // A unit or branch of another entity is not a place in this one; shared units always are.
+  const placement = { ...options, units: options.units.filter((unit) => !unit.entityId || unit.entityId === entityId), branches: options.branches.filter((branch) => branch.entityId === entityId) };
+  return (
+    <details className="rounded-xl border p-4">
+      <summary className="cursor-pointer text-sm font-medium">{t("transfer.title")}</summary>
+      <form
+        onSubmit={(event) => {
+          if (window.confirm(t("transfer.confirm"))) onSubmit(event);
+          else event.preventDefault();
+        }}
+        className="mt-4 flex flex-col gap-4"
+      >
+        <p className="text-sm text-muted-foreground">{t("transfer.hint")}</p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Field name="entityId" label={t("transfer.entity")}>
+            <Select id="entityId" name="entityId" required value={entityId} onChange={(event) => setEntityId(event.target.value)}>
+              {entities.map((entity) => (
+                <option key={entity.id} value={entity.id}>
+                  {entity.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field name="startDate" label={t("transfer.startDate")}>
+            <Input id="startDate" name="startDate" type="date" required defaultValue={today} min={minDate} max={today} />
+          </Field>
+          <Field name="employeeCode" label={tp("fields.employeeCode")}>
+            <Input id="employeeCode" name="employeeCode" maxLength={30} placeholder={tp("fields.employeeCodeHint")} />
+          </Field>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <Field name="reason" label={tp("fields.changeReason")}>
+              <Input id="reason" name="reason" maxLength={300} />
+            </Field>
+          </div>
+        </div>
+        {/* Keyed so the unit and branch pickers start over when the entity changes. */}
+        <PlacementFields key={entityId} options={placement} defaults={defaults} exceptPersonId={personId} />
+        <FormError namespace="people.errors" errorKey={errorKey} />
+        <div>
+          <Button type="submit" disabled={pending || !entityId}>
+            {t("transfer.submit")}
           </Button>
         </div>
       </form>
