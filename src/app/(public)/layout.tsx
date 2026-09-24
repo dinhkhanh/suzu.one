@@ -10,10 +10,8 @@ import { LocaleSwitch } from "@/components/shell/locale-switch";
  * command palette, no person's name in a corner. Everything that layout renders is a fact about
  * the company or the reader, and none of it belongs on a page the internet can fetch.
  *
- * `robots` is overridden here: the root layout tells crawlers to stay out of the whole product,
- * which is right for every page but this one — a job advertisement nobody can find is not an
- * advertisement. Nothing under `(public)` is indexable *by accident*, though: each page says so
- * for itself, and the application form and the thank-you page below stay out of the index.
+ * Like the rest of suzu.one it stays out of search engines: the domain is an internal tool, and a
+ * job advertisement is found through the link the brand site (suzu.vn) and the job boards carry.
  */
 // The advertisement is in the reader's language, and so is the tab it opens in.
 export async function generateMetadata(): Promise<Metadata> {
@@ -22,7 +20,6 @@ export async function generateMetadata(): Promise<Metadata> {
     // `absolute`, so the careers page's tab carries the recruitment brand and not the
     // internal product's name, for the same reason the rest of this shell shares nothing with it.
     title: { absolute: t("brand"), template: "%s · SuZu Group" },
-    robots: { index: true, follow: true },
   };
 }
 

@@ -34,9 +34,9 @@ export function proxy(request: NextRequest) {
  * words like "careers", and does not skip a path for ending in an image extension: `/preview/a.png`
  * and `/careers` are pages, they render with words in them, and skipping them here is what once
  * sent an anonymous visitor the entire internal catalogue. The exclusions below name actual files
- * — Next's own assets, the icons, the service worker, the offline page, the manifest — and the two
- * API routes that authenticate for themselves.
+ * — Next's own assets, the icons, the service worker, the offline page, `robots.txt`, the
+ * manifest — and the two API routes that authenticate for themselves.
  */
 export const config = {
-  matcher: ["/((?!api/auth/|api/cron/|_next/static|_next/image|icons/|favicon\\.ico|sw\\.js|offline\\.html|manifest\\.webmanifest|[^/]+\\.svg$).*)"],
+  matcher: ["/((?!api/auth/|api/cron/|_next/static|_next/image|icons/|favicon\\.ico|sw\\.js|offline\\.html|robots\\.txt|manifest\\.webmanifest|[^/]+\\.svg$).*)"],
 };

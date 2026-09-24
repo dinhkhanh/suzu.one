@@ -1,0 +1,4 @@
+# suzu.one is an internal tool. Every response carries `X-Robots-Tag: noindex, nofollow`;
+# crawling stays allowed so that crawlers actually read it and drop anything they already hold.
+User-Agent: *
+Allow: /

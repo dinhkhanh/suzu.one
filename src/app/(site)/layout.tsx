@@ -6,13 +6,13 @@ import { LocaleSwitch } from "@/components/shell/locale-switch";
 
 /**
  * The public site: the home page that says what SuZu One is, and the Privacy Policy and Terms of
- * Use. Google's OAuth review reads all three, so they are open to anyone and indexable, and the
- * home page links the two policies. Like `(public)/layout.tsx` it shares nothing with the app's
+ * Use. Google's OAuth review reads all three, so they are open to anyone and the home page links
+ * the two policies — but like the rest of the domain they stay out of search engines. Like `(public)/layout.tsx` it shares nothing with the app's
  * shell — nobody is signed in here, and the words it is handed are only its own (`site`, `legal`).
  */
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("site");
-  return { description: t("description"), robots: { index: true, follow: true } };
+  return { description: t("description") };
 }
 
 export default async function SiteLayout({ children }: LayoutProps<"/">) {

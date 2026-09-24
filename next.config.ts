@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(self), geolocation=(self), microphone=()" },
+          // suzu.one is an internal tool, not the brand (that is suzu.vn): no page, PDF or file on
+          // it belongs in a search engine. Said as a header so it covers what has no <meta> tag.
+          // `robots.txt` lets crawlers in on purpose — one that is kept out never reads this.
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
         ],
       },
       // The service worker: never cached (a fix must reach every phone at once), may control the
