@@ -1,6 +1,6 @@
 "use client";
+import { Logo } from "@/components/brand/logo";
 import {
-  Asterisk,
   ChevronDown,
   Menu,
   PanelLeft,
@@ -200,9 +200,7 @@ export function AppFrame({
             )}
           >
             <Link href="/home" className="flex min-w-0 items-center gap-2">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-brand text-white">
-                <Asterisk className="size-4" aria-hidden />
-              </span>
+              <Logo className="size-7 shrink-0 text-brand" />
               {collapsed ? null : (
                 <>
                   <span className="truncate text-[0.9375rem] font-semibold tracking-[-0.015em]">

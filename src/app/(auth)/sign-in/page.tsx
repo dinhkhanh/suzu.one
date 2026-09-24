@@ -1,4 +1,4 @@
-import { Asterisk } from "lucide-react";
+import { Logo } from "@/components/brand/logo";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
@@ -31,9 +31,7 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-canvas px-4">
       <div className="flex flex-col items-center gap-2 text-center">
-        <span className="flex size-10 items-center justify-center rounded-xl bg-foreground text-background">
-          <Asterisk className="size-5" aria-hidden />
-        </span>
+        <Logo className="size-12 text-brand" />
         <p className="text-lg font-semibold tracking-[-0.015em]">{t("app.name")}</p>
         <p className="text-sm text-muted-foreground">{t("app.tagline")}</p>
       </div>

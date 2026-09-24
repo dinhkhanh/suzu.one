@@ -1,4 +1,4 @@
-import { Asterisk } from "lucide-react";
+import { Logo } from "@/components/brand/logo";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
@@ -26,9 +26,7 @@ export default async function SiteLayout({ children }: LayoutProps<"/">) {
         <header className="border-b border-border">
           <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between gap-3 px-4">
             <Link href="/" className="flex items-center gap-2 text-[0.9375rem] font-semibold tracking-[-0.015em]">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-foreground text-background">
-                <Asterisk className="size-4" aria-hidden />
-              </span>
+              <Logo className="size-7 shrink-0 text-brand" />
               {t("app.name")}
             </Link>
             <div className="flex items-center gap-2">
