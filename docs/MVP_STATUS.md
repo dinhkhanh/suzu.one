@@ -69,7 +69,7 @@ A modular monolith: Next.js 16, Drizzle + Postgres (Supabase), Better Auth with 
 4. **The five document templates, their letterheads and the `TM-NHAN-VIEC` offer letter are drafts nobody qualified has read.** They say so in their own text. Phase 6's exit criterion 3 is not met until a lawyer or HR lead has.
 5. **The chief accountant and the HR lead must review every obligation template** in the ops library — due rules, authorities, evidence, and which VAT/PIT variant applies per entity — and the owner marks each reviewed on `/ops/templates`. The entire library is seeded `unreviewed`.
 6. **PDPL and cross-border hosting** (SRS D10, open item Q16). Close it **before payroll data goes live**.
-7. **The careers page is public but not indexable** — the owner decided (2026-09-24) that nothing on suzu.one goes into a search engine (`X-Robots-Tag` in `next.config.ts`); link to it from suzu.vn and the job boards. Confirm: the 12-month candidate retention window, the rate limits (6 applications / 60 form loads per hour), the consent wording, and the referral bonus rule.
+7. **The careers page is public and indexable** — the only thing on suzu.one that is; the owner decided (2026-09-24) that everything else stays out of search engines (`X-Robots-Tag` in `next.config.ts`). Confirm: the 12-month candidate retention window, the rate limits (6 applications / 60 form loads per hour), the consent wording, and the referral bonus rule.
 8. A note the accountant should see: a month of unpaid leave **just under** the 14-day threshold still carries a full insurance contribution, so a person can end the month owing the company. That is the law as seeded; it is flagged, tested and documented.
 
 ### D. Real data the system cannot start without

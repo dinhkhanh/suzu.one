@@ -13,8 +13,9 @@ import { LocaleSwitch } from "@/components/shell/locale-switch";
  * `requireUser`, no navigation, no inbox, no command palette, no person's name in a corner.
  * Everything that layout renders is a fact about the company or the reader.
  *
- * `robots` stays off, as it does across the domain, and here it matters most: the URL **is** the
- * credential.
+ * `robots` stays off. The careers page overrides it because an advertisement nobody can find is not
+ * an advertisement; a link to one client's unfinished work is the opposite of that, and the URL
+ * **is** the credential.
  */
 // `manifest: null` drops the app's web manifest from this page: it names and describes the
 // internal product ("chấm công, nghỉ phép…") and offers to install it, neither of which is a fact

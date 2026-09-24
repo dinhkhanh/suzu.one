@@ -21,12 +21,14 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(self), geolocation=(self), microphone=()" },
-          // suzu.one is an internal tool, not the brand (that is suzu.vn): no page, PDF or file on
-          // it belongs in a search engine. Said as a header so it covers what has no <meta> tag.
-          // `robots.txt` lets crawlers in on purpose — one that is kept out never reads this.
-          { key: "X-Robots-Tag", value: "noindex, nofollow" },
         ],
       },
+      // suzu.one is an internal tool, not the brand (that is suzu.vn): nothing on it belongs in a
+      // search engine but the careers page (FR-REC-03). Said as a header so it covers what has no
+      // <meta> tag. `/careers` is left to its pages' own tags — the listing and the adverts are
+      // indexable, the application forms and thank-you pages are not. `robots.txt` lets crawlers
+      // in on purpose: one that is kept out never reads this.
+      { source: "/:path((?!careers(?:/|$)).*)", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
       // The service worker: never cached (a fix must reach every phone at once), may control the
       // whole origin, and may load nothing but this origin's own files.
       {
