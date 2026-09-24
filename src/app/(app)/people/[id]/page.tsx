@@ -37,8 +37,9 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 
 export default async function PersonPage(props: PageProps<"/people/[id]">) {
   const user = await requireUser();
-  if (!(await peopleModuleOpen(user))) notFound();
   const { id } = await props.params;
+  // Your own record is not behind the People feature flag, same as /me.
+  if (id !== user.person.id && !(await peopleModuleOpen(user))) notFound();
   const person = UUID.test(id) ? await getPersonView(user.principal, id) : null;
   if (!person) notFound();
 
