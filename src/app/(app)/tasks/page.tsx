@@ -2,12 +2,11 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { todayInVietnam } from "@/lib/dates";
-import { listInbox } from "@/modules/platform/approvals/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { sortInbox } from "@/modules/platform/tasks-engine/engine/inbox";
-import { listMyTasks, presentTasks } from "@/modules/platform/tasks-engine/service";
+import { presentTasks } from "@/modules/platform/tasks-engine/service";
 import { TaskList } from "@/modules/platform/tasks-engine/ui/task-list";
-import { listBlockersWaitingOn, listCoverPlansFor, listExitHandoversFor, listMyWorkItems, listPendingHandoffsFor, listReviewsWaitingFor, listTriageForLead } from "@/modules/work/service";
+import { loadMyWork } from "@/modules/work/service";
 import { CoverCheck } from "@/modules/work/ui/cover";
 import { HandoffNoteView, HandoffResponder } from "@/modules/work/ui/handoff";
 import { pageTitle } from "@/i18n/page-title";
@@ -21,9 +20,9 @@ export const generateMetadata = pageTitle("myWork");
 export default async function MyWorkPage() {
   const user = await requireUser();
   const today = todayInVietnam();
-  const [t, format, { open, recentlyDone }, workItems, reviews, approvals, triage, blockers] = await Promise.all([getTranslations("tasks"), getFormatter(), listMyTasks(user.person.id), listMyWorkItems(user.person.id), listReviewsWaitingFor(user.person.id), listInbox(user.person.id), listTriageForLead(user.person.id), listBlockersWaitingOn(user.person.id)]);
-  // Hand-offs waiting for me (FR-PJM-41), leave cover I fill or cover (FR-PJM-44), handovers I run (FR-PJM-45).
-  const [tWork, handoffs, coverPlans, handovers] = await Promise.all([getTranslations("work"), listPendingHandoffsFor(user.person.id), listCoverPlansFor(user.person.id, today), listExitHandoversFor(user.person.id)]);
+  // Every list in one cached entry (work/my-work.ts); the messages beside it.
+  const [t, format, tWork, mine] = await Promise.all([getTranslations("tasks"), getFormatter(), getTranslations("work"), loadMyWork(user.person.id, today)]);
+  const { tasks: { open, recentlyDone }, workItems, reviews, approvals, triage, blockers, handoffs, coverPlans, handovers } = mine;
   const linkFor = (task: { id: string; kind: string }) => (task.kind === "work" ? `/work/tasks/${task.id}` : task.kind === "obligation" ? `/ops/obligations/${task.id}` : null);
   const work = sortInbox(workItems, today);
   const obligations = sortInbox(open.filter((task) => task.kind === "obligation"), today);

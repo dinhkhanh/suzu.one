@@ -12,6 +12,7 @@ import { notify } from "../platform/notifications/service";
 import { ROLE_KEY } from "../platform/tasks-engine/engine/checklist";
 import { type Anchor, planTree, roleKeysOf, type TreeItem } from "./engine/templates";
 import { invalidateWorkDirectory } from "./directory";
+import { invalidateMemberships } from "./viewer";
 import { createProjectIn, type ProjectInput, type ProjectRow } from "./projects";
 import { createWorkTaskIn } from "./tasks";
 import type { TeamRow } from "./teams";
@@ -136,6 +137,7 @@ export async function applyTemplateIn(tx: Executor, use: TemplateUse, target: { 
     if (found.length !== peopleIds.length || found.some((person) => person.status === "offboarded")) throw new ActionError("person_not_found");
     // Whoever plays a role works in the project.
     await tx.insert(schema.workProjectMember).values(peopleIds.map((personId) => ({ projectId: target.project.id, personId, role: "member" }))).onConflictDoNothing();
+    await invalidateMemberships(...peopleIds);
   }
 
   const plan = planTree(items, use.anchor, roles, await dayOffCheck(tx, target.project.entityId, use.anchor, items));

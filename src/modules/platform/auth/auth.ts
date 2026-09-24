@@ -8,6 +8,7 @@ import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { recordAudit } from "../audit/service";
 import { accessStateOf, createBootstrapOwner, findPersonByEmail } from "../people/service";
+import { invalidateSessionsOfUser, invalidateSessionTokens } from "./session-cache";
 import { decideSignIn, emailDomain } from "./sign-in-policy";
 import { USER_ADDITIONAL_FIELDS } from "./user-fields";
 
@@ -43,7 +44,9 @@ function create() {
     session: {
       expiresIn: 60 * 60 * 24 * 7,
       updateAge: 60 * 60 * 24,
-      // No cookie cache: every request re-reads the session row, so revocation is immediate (FR-PLT-05).
+      // No cookie cache: a signed cookie cannot be revoked. The session row is read through the
+      // shared cache instead (session-cache.ts), whose entry every writer below drops, so
+      // revocation is still immediate (FR-PLT-05).
       cookieCache: { enabled: false },
       // A new session starts with no proof of identity (FR-PLT-06, owner's decision 2026-09-23):
       // signing in does not open the compensation screens — with a live Google session it takes
@@ -84,9 +87,24 @@ function create() {
             delete rest.hostedDomain;
             return { data: rest };
           },
+          // The account travels with every cached session of its holder.
+          after: async (account) => {
+            if (account?.id) await invalidateSessionsOfUser(account.id);
+          },
         },
       },
       session: {
+        // Better Auth's own writes: the daily refresh of `expiresAt`, sign-out, revocation.
+        update: {
+          after: async (session) => {
+            if (session?.token) await invalidateSessionTokens([session.token]);
+          },
+        },
+        delete: {
+          before: async (session) => {
+            if (session?.token) await invalidateSessionTokens([session.token]);
+          },
+        },
         create: {
           // Runs on every sign-in: the account must map to a person who currently has access.
           before: async (session) => {

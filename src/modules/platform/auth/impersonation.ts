@@ -6,6 +6,7 @@ import { db, schema } from "@/lib/db";
 import { findPersonById, type PersonRow } from "../people/service";
 import type { ImpersonationTarget } from "../rbac/policy";
 import { loadGrants } from "../rbac/service";
+import { invalidateSession } from "./session-cache";
 
 /**
  * The person behind an id as a policy target, with their own grants — what `canImpersonate` asks
@@ -28,8 +29,10 @@ export const targetOf = (person: PersonRow, grants: ImpersonationTarget["grants"
 
 export async function startImpersonation(sessionId: string, personId: string, at: Date = new Date()): Promise<void> {
   await db().update(schema.session).set({ impersonatePersonId: personId, impersonatedAt: at }).where(eq(schema.session.id, sessionId));
+  await invalidateSession(sessionId);
 }
 
 export async function stopImpersonation(sessionId: string): Promise<void> {
   await db().update(schema.session).set({ impersonatePersonId: null, impersonatedAt: null }).where(eq(schema.session.id, sessionId));
+  await invalidateSession(sessionId);
 }

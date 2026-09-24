@@ -19,7 +19,7 @@ import { PERSONAL_CHANGE_FIELDS, RESTRICTED_CHANGE_FIELDS } from "./enums";
 import { changeRequestContext } from "./field-contexts";
 import { canDecideProfileChange } from "./policy";
 import { type BankAccount, patchSensitiveFields } from "./records";
-import { getPersonTarget, inTransaction } from "./service";
+import { getPersonTarget, inTransaction, invalidatePersonView } from "./service";
 
 export type PersonalChangeField = (typeof PERSONAL_CHANGE_FIELDS)[number];
 export type RestrictedChangeField = (typeof RESTRICTED_CHANGE_FIELDS)[number];
@@ -138,6 +138,7 @@ export async function decideProfileChange(actor: { personId: string; principal: 
           .insert(schema.personProfile)
           .values({ personId, ...personal })
           .onConflictDoUpdate({ target: schema.personProfile.personId, set: { ...personal, updatedAt: new Date() } });
+        await invalidatePersonView(personId);
       }
       if (row.payloadEnc) await patchSensitiveFields(tx, personId, JSON.parse(fieldCipher().decrypt(row.payloadEnc, changeRequestContext(requestId))) as SealedChange);
     }

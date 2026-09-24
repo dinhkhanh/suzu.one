@@ -3,7 +3,7 @@ import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from "dr
 import { alias } from "drizzle-orm/pg-core";
 import { cache } from "react";
 import { ActionError } from "@/lib/action";
-import { cached, invalidate } from "@/lib/cache";
+import { cached, invalidate, TTL } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { toSearchKey } from "@/lib/text";
@@ -11,7 +11,7 @@ import { featureEnabled } from "@/modules/platform/flags/service";
 import { notify, queueEmail } from "@/modules/platform/notifications/service";
 import { listBranches, orgUnitOptions, placementFor } from "@/modules/platform/org/service";
 import { unitsWithin } from "@/modules/platform/rbac/reach-sql";
-import { activatePerson, createPerson, listPersonNames, type PersonRow, setPersonPlacement, updatePersonIdentity, wouldCreateReportingLoop } from "@/modules/platform/people/service";
+import { activatePerson, createPerson, invalidatePeople, listPersonNames, type PersonRow, personViewKey, setPersonPlacement, updatePersonIdentity, wouldCreateReportingLoop } from "@/modules/platform/people/service";
 import { can, matchesReach, type Principal, readableTier, type Target, tierReach, type TierReach } from "@/modules/platform/rbac/policy";
 import { type Tier, tierRank } from "@/modules/platform/rbac/roles";
 import { revokeSessionsOf } from "@/modules/platform/auth/service";
@@ -315,22 +315,44 @@ export type PersonView = {
   } | null;
 };
 
+type PersonViewRows = {
+  person: PersonRow | null;
+  employment: { row: typeof schema.employment.$inferSelect; entityName: string } | null;
+  history: Awaited<ReturnType<typeof loadAssignments>>;
+  profile: { [K in keyof typeof PROFILE_FIELDS]: (typeof schema.personProfile.$inferSelect)[K] } | null;
+};
+
+/**
+ * The rows a person's page is built from, in the shared cache (personal tier) under
+ * `personViewKey`: every writer of `person` drops it (`invalidatePeople`), and the writers of the
+ * employment, assignment and profile rows call `invalidatePersonView`. A renamed unit, branch or
+ * position shows its old name here for at most `TTL.personal`.
+ */
+function personViewRows(personId: string): Promise<PersonViewRows> {
+  return cached(personViewKey(personId), TTL.personal, async () => {
+    const [[person], [employment], history, [profile]] = await Promise.all([
+      db().select().from(schema.person).where(eq(schema.person.id, personId)).limit(1),
+      db()
+        .select({ row: schema.employment, entityName: schema.entity.shortName })
+        .from(schema.employment)
+        .innerJoin(schema.entity, eq(schema.entity.id, schema.employment.entityId))
+        .where(eq(schema.employment.personId, personId))
+        .orderBy(desc(schema.employment.startDate))
+        .limit(1),
+      loadAssignments(personId),
+      db().select(PROFILE_FIELDS).from(schema.personProfile).where(eq(schema.personProfile.personId, personId)).limit(1),
+    ]);
+    return { person: person ?? null, employment: employment ?? null, history, profile: profile ?? null };
+  });
+}
+
+/** After a write to a person's employment, assignment or profile rows (inside the transaction is fine). */
+export const invalidatePersonView = (personId: string) => invalidate(personViewKey(personId));
+
 /** One person, shaped by what the viewer's tier allows. null = the viewer may not see them at all. */
 export async function getPersonView(principal: Principal, personId: string): Promise<PersonView | null> {
   // All in one round: the rows are only returned once the viewer's tier is known, below.
-  const [target, [person], [employment], history, [profile]] = await Promise.all([
-    getPersonTarget(personId),
-    db().select().from(schema.person).where(eq(schema.person.id, personId)).limit(1),
-    db()
-      .select({ row: schema.employment, entityName: schema.entity.shortName })
-      .from(schema.employment)
-      .innerJoin(schema.entity, eq(schema.entity.id, schema.employment.entityId))
-      .where(eq(schema.employment.personId, personId))
-      .orderBy(desc(schema.employment.startDate))
-      .limit(1),
-    loadAssignments(personId),
-    db().select(PROFILE_FIELDS).from(schema.personProfile).where(eq(schema.personProfile.personId, personId)).limit(1),
-  ]);
+  const [target, { person, employment, history, profile }] = await Promise.all([getPersonTarget(personId), personViewRows(personId)]);
   if (!target || !person) return null;
   const tier = readableTier(principal, target);
   if (!tier) return null;
@@ -617,6 +639,13 @@ export async function updatePersonBasics(personId: string, input: { fullName: st
 export type AssignmentChangeKind = "correction" | "transfer" | "promotion";
 
 export async function changeAssignment(personId: string, input: { validFrom: IsoDate; changeReason: string | null; placement: PlacementInput; /** A transfer or promotion is an event on the timeline; a correction only fixes the record. */ kind?: AssignmentChangeKind }, actorPersonId: string) {
+  const result = await changeAssignmentInTransaction(personId, input, actorPersonId);
+  // A future-dated change leaves `person` alone, so the page's history is dropped here regardless.
+  await invalidatePersonView(personId);
+  return result;
+}
+
+function changeAssignmentInTransaction(personId: string, input: Parameters<typeof changeAssignment>[1], actorPersonId: string) {
   return inTransaction(async (tx) => {
     const [employment] = await tx
       .select()
@@ -734,6 +763,7 @@ export async function offboardLeavers(today: IsoDate, onlyPersonId?: string, exe
   for (const leaver of leavers) {
     const work = async (tx: Tx | ReturnType<typeof db>) => {
       await tx.update(schema.person).set({ status: "offboarded", updatedAt: new Date() }).where(eq(schema.person.id, leaver.personId));
+      await invalidatePeople([{ id: leaver.personId, workEmail: leaver.workEmail }]);
       await revokeSessionsOf(leaver.workEmail, tx);
       await markDueTerminationsApplied(tx, leaver.personId, today);
     };
@@ -821,12 +851,17 @@ async function allocateEmployeeCode(tx: Tx, entity: { id: string; code: string }
 
 export type SavedViewRow = typeof schema.savedView.$inferSelect;
 
+// One's own saved views of a list (personal tier): the two writers below drop the entry.
+const savedViewsKey = (ownerPersonId: string, list: string) => `views:${ownerPersonId}:${list}`;
+
 export async function listSavedViews(ownerPersonId: string, list: string): Promise<SavedViewRow[]> {
-  return db()
-    .select()
-    .from(schema.savedView)
-    .where(and(eq(schema.savedView.ownerPersonId, ownerPersonId), eq(schema.savedView.list, list)))
-    .orderBy(asc(schema.savedView.name));
+  return cached(savedViewsKey(ownerPersonId, list), TTL.personal, () =>
+    db()
+      .select()
+      .from(schema.savedView)
+      .where(and(eq(schema.savedView.ownerPersonId, ownerPersonId), eq(schema.savedView.list, list)))
+      .orderBy(asc(schema.savedView.name)),
+  );
 }
 
 export async function saveView(ownerPersonId: string, input: { list: string; name: string; filters: Record<string, string> }): Promise<SavedViewRow> {
@@ -835,6 +870,7 @@ export async function saveView(ownerPersonId: string, input: { list: string; nam
     .values({ ownerPersonId, ...input })
     .onConflictDoUpdate({ target: [schema.savedView.ownerPersonId, schema.savedView.list, schema.savedView.name], set: { filters: input.filters } })
     .returning();
+  await invalidate(savedViewsKey(ownerPersonId, input.list));
   return row;
 }
 
@@ -843,6 +879,7 @@ export async function deleteSavedView(ownerPersonId: string, id: string): Promis
     .delete(schema.savedView)
     .where(and(eq(schema.savedView.id, id), eq(schema.savedView.ownerPersonId, ownerPersonId)))
     .returning();
+  if (row) await invalidate(savedViewsKey(ownerPersonId, row.list));
   return row ?? null;
 }
 

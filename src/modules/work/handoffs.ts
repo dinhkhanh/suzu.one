@@ -12,6 +12,7 @@ import vi from "../../../messages/vi.json";
 import { notify } from "../platform/notifications/service";
 import { runTaskAutomations } from "./automations";
 import { invalidateWorkDirectory } from "./directory";
+import { invalidateMemberships } from "./viewer";
 import { type HandoffStatus, keptValues, missingItems, normalizeNote, type Note, noteIsEmpty, packageProblem, type PackageField, stageOutcome } from "./engine/handoff";
 import { findPackageFor, type HandoffPackageRow, invalidateHandoffPackages } from "./handoff-gate";
 import type { ProjectRole } from "./enums";
@@ -339,6 +340,7 @@ export async function changeAccountManager(clientId: string, input: { toPersonId
       for (const member of members) if (member.role === "account_manager" && member.personId !== to.id) await tx.update(schema.workProjectMember).set({ role: "member" }).where(eq(schema.workProjectMember.id, member.id));
       if (current) await tx.update(schema.workProjectMember).set({ role: "account_manager" }).where(eq(schema.workProjectMember.id, current.id));
       else await tx.insert(schema.workProjectMember).values({ projectId: project.id, personId: to.id, role: "account_manager" });
+      await invalidateMemberships(to.id, ...members.map((member) => member.personId));
       moved.push(project);
     }
     const [handoff] = await tx.insert(schema.workHandoff).values({ kind: "account", clientId, fromPersonId: client.accountManagerPersonId, toPersonId: to.id, note, status: "recorded", sourceRef: { clientId }, createdByPersonId: actor.personId }).returning();

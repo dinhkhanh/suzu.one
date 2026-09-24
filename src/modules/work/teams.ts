@@ -7,6 +7,7 @@ import { cache } from "react";
 import { cached, invalidate } from "@/lib/cache";
 import { notify } from "../platform/notifications/service";
 import { invalidateWorkDirectory } from "./directory";
+import { invalidateMemberships } from "./viewer";
 import { isOpenCategory, type StateCategory, type TeamRole, type Visibility, WORKFLOW_PRESETS, type WorkflowPreset } from "./enums";
 import { canAddTeamMember, type PersonPlacement, type TeamFacts, type WorkViewer } from "./policy";
 
@@ -58,7 +59,7 @@ export async function createTeam(input: TeamInput, preset: WorkflowPreset, state
     await tx.insert(schema.workTeamMember).values({ teamId: team.id, personId: actorPersonId, role: "lead" });
     return team;
   });
-  await Promise.all([invalidateWorkDirectory(), invalidateWorkStates()]);
+  await Promise.all([invalidateWorkDirectory(), invalidateWorkStates(), invalidateMemberships(actorPersonId)]);
   return created;
 }
 
@@ -145,6 +146,7 @@ export async function setTeamMember(teamId: string, personId: string, role: Team
     }
     return { before, after: role };
   });
+  await invalidateMemberships(personId);
   // Once it is committed: being in a team puts your day in front of its leads, so you are told.
   if (change.before === null && change.after !== null && actorPersonId && actorPersonId !== personId) await tellAddedToTeam(teamId, personId, actorPersonId);
   return change;

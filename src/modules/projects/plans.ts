@@ -10,6 +10,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import { invalidateMemberships } from "@/modules/work/service";
 import type { ProjectKind } from "./engine/brief";
 import { briefEditable, type BriefStatus } from "./engine/brief";
 import { totalOfRoles } from "./engine/budget";
@@ -218,6 +219,7 @@ export async function setAccountManager(projectId: string, personId: string | nu
       if (existing) await tx.update(schema.workProjectMember).set({ role: "account_manager" }).where(eq(schema.workProjectMember.id, existing.id));
       else await tx.insert(schema.workProjectMember).values({ projectId, personId, role: "account_manager" });
     }
+    await invalidateMemberships(...current.map((row) => row.personId), ...(personId ? [personId] : []));
     await tx.update(schema.projectPlan).set({ accountManagerPersonId: personId, updatedAt: new Date() }).where(eq(schema.projectPlan.projectId, projectId));
     return { before: plan.accountManagerPersonId, after: personId };
   });

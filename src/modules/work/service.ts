@@ -2,7 +2,7 @@
 import "server-only";
 
 export * from "./enums";
-export { loadViewer, loadViewerWith, type ViewerSource } from "./viewer";
+export { invalidateMemberships, loadViewer, loadViewerWith, type ViewerSource } from "./viewer";
 export { canAdminTeam, canContributeToProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canViewProject, canViewTask, canViewTeam, canViewTeamBacklog, canDecideReview, canSubmitIntake, canManageTemplate, canNudgeTask, canSubmitDeliverable, readsPrivateByPortfolio, type WorkViewer } from "./policy";
 export { notePrivateProjectRead, notePrivateProjectReads } from "./private-reads";
 export { addableMembers, type ClientRow, entryState, findClient, findLabel, findState, findTeam, type LabelRow, listClients, listLabels, listStates, listTeamMembers, listTeams, type MemberChoice, type MemberView, type StateRow, teamFacts, type TeamRow, type TeamSummary } from "./teams";
@@ -17,6 +17,7 @@ export { clientOfTask, countReviewsWaitingFor, type DecisionView, type Deliverab
 export { listWorkTemplates, WORK_TEMPLATE_PURPOSES, type WorkTemplateView } from "./templates";
 export { listRecurrences, type RecurrenceView } from "./recurrences";
 export { getLeaderView, type LeaderTask, type LeaderView, listMyWorkItems, type MyWorkItem } from "./leader";
+export { loadMyWork, type MyWork } from "./my-work";
 export { getWorkload, WORKLOAD_WEEKS, type WorkloadPerson, type WorkloadView } from "./workload";
 export { findIntakeForm, type IntakeFormRow, type IntakeFormView, listMyIntakeRequests, listOpenIntakeForms, listTeamIntakeForms } from "./intake";
 export { INTAKE_FIELD_TYPES, type IntakeField, type IntakeFieldType, MAX_INTAKE_FIELDS } from "./engine/intake";

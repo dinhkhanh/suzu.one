@@ -15,6 +15,7 @@ import { notify } from "../platform/notifications/service";
 import { createTask, setTaskStatus } from "../platform/tasks-engine/service";
 import { invalidateAutomations } from "./automations";
 import { invalidateWorkDirectory } from "./directory";
+import { invalidateMemberships } from "./viewer";
 import { invalidateIntakeForms } from "./intake";
 import { HANDOVER_EVENT_TYPES, isReassignable, type OwnedItem, type OwnershipKind, ownershipSummary, reassignProblem } from "./engine/exit";
 import { normalizeNote, type Note, noteIsEmpty } from "./engine/handoff";
@@ -409,6 +410,7 @@ export async function reassignOwnership(handoverId: string, input: { items: { ki
           await tx.update(schema.workProject).set({ leadPersonId: to.id, updatedAt: new Date() }).where(and(eq(schema.workProject.id, item.id), eq(schema.workProject.leadPersonId, leaver)));
           await tx.update(schema.workProjectMember).set({ role: "member" }).where(and(eq(schema.workProjectMember.projectId, item.id), eq(schema.workProjectMember.personId, leaver), eq(schema.workProjectMember.role, "lead")));
           await tx.insert(schema.workProjectMember).values({ projectId: item.id, personId: to.id, role: "lead" }).onConflictDoUpdate({ target: [schema.workProjectMember.projectId, schema.workProjectMember.personId], set: { role: "lead" } });
+          await invalidateMemberships(leaver, to.id);
           await record({ ref: { projectId: item.id, duty: "project_lead" } });
           directory = true;
           break;
@@ -418,6 +420,7 @@ export async function reassignOwnership(handoverId: string, input: { items: { ki
           if (current?.role === "lead") throw new ActionError("account_manager_is_lead", { project: item.label });
           await tx.update(schema.workProjectMember).set({ role: "member" }).where(and(eq(schema.workProjectMember.projectId, item.id), eq(schema.workProjectMember.personId, leaver), eq(schema.workProjectMember.role, "account_manager")));
           await tx.insert(schema.workProjectMember).values({ projectId: item.id, personId: to.id, role: "account_manager" }).onConflictDoUpdate({ target: [schema.workProjectMember.projectId, schema.workProjectMember.personId], set: { role: "account_manager" } });
+          await invalidateMemberships(leaver, to.id);
           await record({ ref: { projectId: item.id, duty: "account_manager" } });
           break;
         }
@@ -443,6 +446,7 @@ export async function reassignOwnership(handoverId: string, input: { items: { ki
         case "team_lead":
           await tx.insert(schema.workTeamMember).values({ teamId: item.id, personId: to.id, role: "lead" }).onConflictDoUpdate({ target: [schema.workTeamMember.teamId, schema.workTeamMember.personId], set: { role: "lead" } });
           await tx.update(schema.workTeamMember).set({ role: "member" }).where(and(eq(schema.workTeamMember.teamId, item.id), eq(schema.workTeamMember.personId, leaver)));
+          await invalidateMemberships(leaver, to.id);
           await record({ ref: { teamId: item.id, duty: "team_lead" } });
           break;
         case "time_week":

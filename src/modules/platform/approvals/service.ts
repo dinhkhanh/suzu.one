@@ -9,6 +9,7 @@ import { and, asc, count, desc, eq, getTableColumns, inArray, ne } from "drizzle
 import { alias } from "drizzle-orm/pg-core";
 import { cache } from "react";
 import { ActionError } from "@/lib/action";
+import { cachedLive } from "@/lib/cache/live";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../notifications/service";
 import type { Principal, Target } from "../rbac/policy";
@@ -482,6 +483,18 @@ export const countInbox = cache(async (personId: string): Promise<number> => {
 
 export async function listMyRequests(personId: string, limit = 50): Promise<RequestListRow[]> {
   return listQuery().where(eq(schema.approvalRequest.requesterPersonId, personId)).orderBy(desc(schema.approvalRequest.createdAt)).limit(limit);
+}
+
+/**
+ * The approvals page in one entry of the shared cache's live tier (src/lib/cache/live.ts): what
+ * waits for the person and what they asked for. Dropped after their every action and every
+ * notification to them — a request reaching or leaving their turn is always one of the two.
+ */
+export function loadApprovalsPage(personId: string): Promise<{ inbox: (RequestListRow & { request: ApprovalRequestRow })[]; mine: RequestListRow[] }> {
+  return cachedLive(personId, "approvals", async () => {
+    const [inbox, mine] = await Promise.all([listInboxWithRows(personId), listMyRequests(personId)]);
+    return { inbox, mine };
+  });
 }
 
 /** Requests of one type about one person — for the owning module's screens, which check access themselves. */

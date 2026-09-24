@@ -16,6 +16,7 @@ import { redirect } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import type { CurrentUser } from "./session";
+import { invalidateSession } from "./session-cache";
 import { checkStepUpClaims, type IdTokenClaims, isStepUpFresh, safeNextPath } from "./step-up-policy";
 
 export const stepUpDriver = (): "google" | "local" => env().STEP_UP_DRIVER;
@@ -27,6 +28,7 @@ export function requireStepUp(user: CurrentUser, nextPath: string): void {
 
 export async function markReauthenticated(sessionId: string, at: Date = new Date()): Promise<void> {
   await db().update(schema.session).set({ reauthAt: at }).where(eq(schema.session.id, sessionId));
+  await invalidateSession(sessionId);
 }
 
 // ── Google driver ───────────────────────────────────────────────────────────────────────────

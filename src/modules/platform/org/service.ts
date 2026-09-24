@@ -3,6 +3,7 @@ import { and, arrayContains, asc, eq, inArray, ne } from "drizzle-orm";
 import { db, schema, type Tx } from "@/lib/db";
 import { ActionError } from "@/lib/action";
 import { cached, invalidate } from "@/lib/cache";
+import { invalidatePeople } from "../people/service";
 import { buildTree, flattenTree, placementOf, type TreeNode, type UnitNode, wouldLoop } from "./engine/tree";
 import type { OrgUnitKind } from "./enums";
 
@@ -199,7 +200,12 @@ export async function updateOrgUnit(id: string, details: OrgUnitDetails): Promis
   await assertParentAllowed(id, details.parentId);
   if (before.isActive && !details.isActive && (await hasPeopleInSubtree(id))) throw new ActionError("unit_in_use");
   const [after] = await db().update(schema.orgUnit).set({ ...details, updatedAt: new Date() }).where(eq(schema.orgUnit.id, id)).returning();
-  // A move rewrites the path of every unit below, so the whole tree entry goes.
+  // A move rewrites the path of every unit below, so the whole tree entry goes — and with it the
+  // cached rows of everyone in the subtree, whose `org_unit_path` the database trigger rewrote.
   await invalidate(ORG_CACHE.units);
+  if (before.parentId !== after.parentId) {
+    const people = await db().select({ id: schema.person.id, workEmail: schema.person.workEmail }).from(schema.person).where(arrayContains(schema.person.orgUnitPath, [id]));
+    await invalidatePeople(people);
+  }
   return { before, after };
 }

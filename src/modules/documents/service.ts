@@ -8,6 +8,7 @@ import "server-only";
 import { and, asc, desc, eq, like, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate, TTL } from "@/lib/cache";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { getPersonTarget, listEmploymentFacts } from "@/modules/core-hr/service";
@@ -34,13 +35,20 @@ const formatVnd = (amount: number) => amount.toLocaleString("vi-VN");
 
 export type TemplateInput = { code: string; name: string; entityId: string | null; kind: DocumentKind; tier: Tier; body: string; letterhead: LetterheadFields; isActive: boolean };
 
-export async function listTemplates(executor: Executor = db()): Promise<(DocumentTemplateRow & { entityName: string | null })[]> {
-  const rows = await executor
-    .select({ template: schema.documentTemplate, entityName: schema.entity.shortName })
-    .from(schema.documentTemplate)
-    .leftJoin(schema.entity, eq(schema.entity.id, schema.documentTemplate.entityId))
-    .orderBy(asc(schema.documentTemplate.kind), asc(schema.documentTemplate.name));
-  return rows.map((row) => ({ ...row.template, entityName: row.entityName }));
+// The template library is reference data: one entry in the shared cache, dropped by `saveTemplate`.
+const TEMPLATES_KEY = "documents:templates";
+
+/** Inside a transaction the rows are read there; otherwise from the shared cache. */
+export async function listTemplates(executor?: Executor): Promise<(DocumentTemplateRow & { entityName: string | null })[]> {
+  const read = async (from: Executor) => {
+    const rows = await from
+      .select({ template: schema.documentTemplate, entityName: schema.entity.shortName })
+      .from(schema.documentTemplate)
+      .leftJoin(schema.entity, eq(schema.entity.id, schema.documentTemplate.entityId))
+      .orderBy(asc(schema.documentTemplate.kind), asc(schema.documentTemplate.name));
+    return rows.map((row) => ({ ...row.template, entityName: row.entityName }));
+  };
+  return executor ? read(executor) : cached(TEMPLATES_KEY, TTL.reference, () => read(db()));
 }
 
 export async function findTemplate(templateId: string, executor: Executor = db()): Promise<DocumentTemplateRow | undefined> {
@@ -60,6 +68,7 @@ export async function saveTemplate(templateId: string | null, input: TemplateInp
   const values = { ...input, code: input.code.toUpperCase(), updatedByPersonId: actorPersonId, updatedAt: now() };
   if (!templateId) {
     const [after] = await db().insert(schema.documentTemplate).values(values).returning();
+    await invalidate(TEMPLATES_KEY);
     return { before: null, after };
   }
   const before = await findTemplate(templateId);
@@ -69,6 +78,7 @@ export async function saveTemplate(templateId: string | null, input: TemplateInp
     .set({ ...values, version: before.version + 1 })
     .where(eq(schema.documentTemplate.id, templateId))
     .returning();
+  await invalidate(TEMPLATES_KEY);
   return { before, after };
 }
 

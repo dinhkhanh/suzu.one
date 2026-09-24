@@ -1,5 +1,6 @@
 import "server-only";
 import type { z } from "zod";
+import { invalidateLive } from "@/lib/cache/live";
 import { recordAudit, type AuditEntry } from "@/modules/platform/audit/service";
 import { getCurrentUser, type CurrentUser } from "@/modules/platform/auth/session";
 import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
@@ -67,7 +68,8 @@ export function createAction<Schema extends z.ZodType, Output>(definition: {
 
     try {
       const { data, audit } = await definition.run({ user, input: parsed.data });
-      await recordAudit({ ...audit, action: definition.name, actor, request: user.request });
+      // Whatever the action changed is on the actor's own screens at once (src/lib/cache/live.ts).
+      await Promise.all([recordAudit({ ...audit, action: definition.name, actor, request: user.request }), invalidateLive(user.person.id)]);
       return { ok: true, data };
     } catch (error) {
       if (error instanceof ActionError) return { ok: false, error: "failed", message: error.message, ...(error.details === undefined ? {} : { details: error.details }) };

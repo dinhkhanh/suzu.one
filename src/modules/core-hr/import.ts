@@ -10,6 +10,7 @@ import { env } from "@/lib/env";
 import { toSearchKey } from "@/lib/text";
 import type { CurrentUser } from "@/modules/platform/auth/session";
 import { emailDomain } from "@/modules/platform/auth/sign-in-policy";
+import { invalidatePeople } from "@/modules/platform/people/service";
 import { code, type Column, day, email, oneOf, type ParsedRow, type Problem, templateCsv, text } from "@/modules/platform/import/engine/table";
 import { defineImport } from "@/modules/platform/import/service";
 import { can } from "@/modules/platform/rbac/policy";
@@ -243,7 +244,8 @@ export const employeeImport = defineImport({
       const managerId = created.get(link.row)!.personId;
       const { personId, assignmentId } = created.get(row)!;
       await tx.update(schema.assignment).set({ managerId }).where(eq(schema.assignment.id, assignmentId));
-      await tx.update(schema.person).set({ managerId }).where(eq(schema.person.id, personId));
+      const linked = await tx.update(schema.person).set({ managerId }).where(eq(schema.person.id, personId)).returning({ id: schema.person.id, workEmail: schema.person.workEmail });
+      await invalidatePeople(linked);
       managersLinked++;
     }
     return { created: created.size, withRestricted, managersLinked };

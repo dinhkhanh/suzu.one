@@ -3,6 +3,8 @@ import { and, asc, count, desc, eq, inArray, isNull, lt, or, sql } from "drizzle
 import { createTranslator } from "next-intl";
 import { after } from "next/server";
 import { ActionError } from "@/lib/action";
+import { cached, invalidate, TTL } from "@/lib/cache";
+import { cachedLive, invalidateLive } from "@/lib/cache/live";
 import { db, schema, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
 import vi from "../../../../messages/vi.json";
@@ -57,10 +59,7 @@ export async function notify(input: NotifyInput, executor: Tx | ReturnType<typeo
 
   const [people, preferences, devices] = await Promise.all([
     executor.select({ id: schema.person.id, workEmail: schema.person.workEmail, status: schema.person.status }).from(schema.person).where(inArray(schema.person.id, recipientIds)),
-    executor
-      .select()
-      .from(schema.notificationPreference)
-      .where(and(inArray(schema.notificationPreference.personId, recipientIds), eq(schema.notificationPreference.category, category))),
+    preferenceRows(executor === db() ? undefined : executor).then((rows) => rows.filter((row) => row.category === category && recipientIds.includes(row.personId))),
     executor.select({ id: schema.pushSubscription.id, personId: schema.pushSubscription.personId }).from(schema.pushSubscription).where(inArray(schema.pushSubscription.personId, recipientIds)),
   ]);
 
@@ -85,6 +84,9 @@ export async function notify(input: NotifyInput, executor: Tx | ReturnType<typeo
   if (rows.length) await executor.insert(schema.notification).values(rows);
   if (emails.length) await executor.insert(schema.emailOutbox).values(emails);
   if (pushes.length) await executor.insert(schema.pushDelivery).values(pushes);
+  // What this tells them about is on their screens too (src/lib/cache/live.ts). Inside a
+  // transaction the marker holds their entries off the cache until the commit lands.
+  await invalidateLive(...people.filter((person) => person.status !== "offboarded").map((person) => person.id));
   // One card per recipient: the deep link belongs to one person, and a space with several
   // approvers in it must not let the wrong one press the button.
   if (input.chat) {
@@ -318,13 +320,17 @@ export async function countUnread(personId: string): Promise<number> {
   return row?.value ?? 0;
 }
 
+/** The first page, the one the badge leads to, comes from the live tier; older pages are read as they stand. */
 export async function listNotifications(personId: string, page = 1): Promise<{ rows: NotificationRow[]; total: number }> {
-  const where = eq(schema.notification.recipientPersonId, personId);
-  const [rows, total] = await Promise.all([
-    db().select().from(schema.notification).where(where).orderBy(desc(schema.notification.createdAt)).limit(NOTIFICATIONS_PAGE_SIZE).offset((Math.max(1, page) - 1) * NOTIFICATIONS_PAGE_SIZE),
-    db().$count(schema.notification, where),
-  ]);
-  return { rows, total };
+  const load = async () => {
+    const where = eq(schema.notification.recipientPersonId, personId);
+    const [rows, total] = await Promise.all([
+      db().select().from(schema.notification).where(where).orderBy(desc(schema.notification.createdAt)).limit(NOTIFICATIONS_PAGE_SIZE).offset((Math.max(1, page) - 1) * NOTIFICATIONS_PAGE_SIZE),
+      db().$count(schema.notification, where),
+    ]);
+    return { rows, total };
+  };
+  return page <= 1 ? cachedLive(personId, "notifications", load) : load();
 }
 
 /** Marks one notification read, or all of them. Only ever the caller's own. */
@@ -337,8 +343,19 @@ export async function markRead(personId: string, notificationId: string | null):
   return rows.length;
 }
 
+// Everyone's explicit choices in one entry (a few rows per person who ever changed one), read for
+// every recipient of every notification and on the notifications page; `setPreferences` drops it.
+const PREFERENCES_KEY = "notifications:preferences";
+type PreferenceRow = typeof schema.notificationPreference.$inferSelect;
+
+/** Inside a transaction the rows are read there; otherwise from the shared cache. */
+async function preferenceRows(executor?: Tx | ReturnType<typeof db>): Promise<PreferenceRow[]> {
+  const read = (from: Tx | ReturnType<typeof db>) => from.select().from(schema.notificationPreference).orderBy(asc(schema.notificationPreference.personId), asc(schema.notificationPreference.category));
+  return executor ? read(executor) : cached(PREFERENCES_KEY, TTL.reference, () => read(db()));
+}
+
 export async function getPreferences(personId: string): Promise<Record<Category, ChannelChoice>> {
-  const stored = await db().select().from(schema.notificationPreference).where(eq(schema.notificationPreference.personId, personId));
+  const stored = (await preferenceRows()).filter((row) => row.personId === personId);
   return Object.fromEntries(
     CATEGORIES.map((category) => {
       return [category, effectiveChoice(category, stored.find((row) => row.category === category))];
@@ -355,5 +372,6 @@ export async function setPreferences(personId: string, choices: Partial<Record<C
       .values({ personId, category, ...choice })
       .onConflictDoUpdate({ target: [schema.notificationPreference.personId, schema.notificationPreference.category], set: { ...choice, updatedAt: new Date() } });
   }
+  await invalidate(PREFERENCES_KEY);
   return getPreferences(personId);
 }

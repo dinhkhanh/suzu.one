@@ -6,6 +6,7 @@ import { and, asc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { invalidateWorkDirectory, projectsWithTeams, workDirectory } from "./directory";
+import { invalidateMemberships } from "./viewer";
 import type { ProjectRole, ProjectStatus, Visibility } from "./enums";
 import { canContributeToProject, canContributeToTeam, canCreateProject, canViewProject, type ProjectFacts, type WorkViewer } from "./policy";
 import { teamFacts, type TeamRow } from "./teams";
@@ -115,6 +116,7 @@ export async function createProjectIn(tx: Executor, input: ProjectInput, actorPe
     const [project] = await tx.insert(schema.workProject).values({ ...input, leadPersonId, entityId: team.entityId, createdByPersonId: actorPersonId }).returning();
     const members = new Map<string, ProjectRole>([[actorPersonId, "member"], [leadPersonId, "lead"]]);
     await tx.insert(schema.workProjectMember).values([...members].map(([personId, role]) => ({ projectId: project.id, personId, role })));
+    await invalidateMemberships(...members.keys());
     return project;
   }
 }
@@ -128,6 +130,7 @@ export async function updateProject(projectId: string, input: Omit<ProjectInput,
     const [after] = await tx.update(schema.workProject).set({ ...input, updatedAt: new Date() }).where(eq(schema.workProject.id, projectId)).returning();
     if (input.leadPersonId && input.leadPersonId !== found.project.leadPersonId) {
       await tx.insert(schema.workProjectMember).values({ projectId, personId: input.leadPersonId, role: "lead" }).onConflictDoUpdate({ target: [schema.workProjectMember.projectId, schema.workProjectMember.personId], set: { role: "lead" } });
+      await invalidateMemberships(input.leadPersonId);
     }
     return { before: found.project, after };
   });
@@ -169,6 +172,7 @@ export async function setProjectMember(projectId: string, personId: string, role
       if (!person || person.status === "offboarded") throw new ActionError("person_not_found");
       await tx.insert(schema.workProjectMember).values({ projectId, personId, role });
     }
+    await invalidateMemberships(personId);
     return { before, after: role };
   });
 }

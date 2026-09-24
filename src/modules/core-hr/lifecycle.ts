@@ -13,8 +13,9 @@ import { cancelReturnTasks, openReturnTasks } from "@/modules/assets/service";
 import { canReadTier, type Principal } from "@/modules/platform/rbac/policy";
 import { endRoleGrantsOf, invalidateGrants, restoreRoleGrants } from "@/modules/platform/rbac/service";
 import { cancelOpenTasksOfContext } from "@/modules/platform/tasks-engine/service";
+import { invalidatePeople } from "@/modules/platform/people/service";
 import { describePlacement, findLifecycleEvent, LIFECYCLE_CONTEXT, type LifecycleEventRow, type LifecycleEventView, loadTimeline, recordLifecycleEvent, startChecklist } from "./lifecycle-events";
-import { getPersonTarget, type HireInput, inTransaction, offboardLeavers, openEmployment, resolvePlacement } from "./service";
+import { getPersonTarget, type HireInput, inTransaction, invalidatePersonView, offboardLeavers, openEmployment, resolvePlacement } from "./service";
 
 /** A person's timeline. null = the viewer does not read the personal tier of this person. */
 export async function listLifecycleEvents(principal: Principal, personId: string): Promise<LifecycleEventView[] | null> {
@@ -73,6 +74,7 @@ export async function terminateEmployment(personId: string, input: TerminationIn
     const open = assignments.filter((row) => row.validFrom <= input.lastDay && (row.validTo === null || row.validTo > input.lastDay));
     if (never.length) await tx.delete(schema.assignment).where(inArray(schema.assignment.id, never.map((row) => row.id)));
     if (open.length) await tx.update(schema.assignment).set({ validTo: input.lastDay, updatedAt: new Date() }).where(inArray(schema.assignment.id, open.map((row) => row.id)));
+    await invalidatePersonView(personId);
     const current = open.find((row) => row.kind === "primary") ?? null;
 
     const contracts = await tx
@@ -115,6 +117,7 @@ export async function cancelTermination(eventId: string) {
     const closed = (event.details.closed ?? { assignments: [], grants: [], contracts: [] }) as Closed;
     await tx.update(schema.employment).set({ endDate: null, updatedAt: new Date() }).where(eq(schema.employment.id, employment.id));
     for (const row of closed.assignments) await tx.update(schema.assignment).set({ validTo: row.validTo, updatedAt: new Date() }).where(eq(schema.assignment.id, row.id));
+    await invalidatePersonView(event.personId);
     if (closed.contracts.length) await tx.update(schema.contract).set({ terminatedOn: null, updatedAt: new Date() }).where(inArray(schema.contract.id, closed.contracts));
     await restoreRoleGrants(tx, closed.grants);
     const cancelledTasks = await cancelOpenTasksOfContext(tx, { type: LIFECYCLE_CONTEXT, id: event.id });
@@ -149,6 +152,7 @@ export async function rehirePerson(personId: string, input: RehireInput, actorPe
     const values = await resolvePlacement(tx, input.placement, { entityId: entity.id, personId });
     const status = input.startDate > todayInVietnam() ? ("preboarding" as const) : ("active" as const);
     await tx.update(schema.person).set({ status, updatedAt: new Date() }).where(eq(schema.person.id, personId));
+    await invalidatePeople([person]);
     const opened = await openEmployment(tx, personId, entity, input, values, actorPersonId, { type: "rehire", onboarding: true });
     return { person: { ...person, status }, previous, ...opened };
   });

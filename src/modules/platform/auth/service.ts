@@ -2,6 +2,7 @@ import "server-only";
 import { eq, inArray } from "drizzle-orm";
 import { db, schema, type Tx } from "@/lib/db";
 import { type Preferences, preferencesOf } from "./preferences";
+import { invalidateSessionsOfUser, invalidateSessionTokens } from "./session-cache";
 import { normalizeEmail } from "./sign-in-policy";
 
 /**
@@ -13,7 +14,8 @@ export async function revokeSessionsOf(email: string | null, executor: Tx | Retu
   if (!email) return 0;
   const users = await executor.select({ id: schema.user.id }).from(schema.user).where(eq(schema.user.email, normalizeEmail(email)));
   if (users.length === 0) return 0;
-  const removed = await executor.delete(schema.session).where(inArray(schema.session.userId, users.map((user) => user.id))).returning({ id: schema.session.id });
+  const removed = await executor.delete(schema.session).where(inArray(schema.session.userId, users.map((user) => user.id))).returning({ token: schema.session.token });
+  await invalidateSessionTokens(removed.map((row) => row.token));
   return removed.length;
 }
 
@@ -26,5 +28,7 @@ const PREFERENCE_COLUMNS = { locale: schema.user.locale, theme: schema.user.them
 export async function updatePreferences(userId: string, changes: Partial<Preferences>): Promise<{ before: Preferences; after: Preferences }> {
   const [current] = await db().select(PREFERENCE_COLUMNS).from(schema.user).where(eq(schema.user.id, userId)).limit(1);
   const [updated] = await db().update(schema.user).set({ ...changes, updatedAt: new Date() }).where(eq(schema.user.id, userId)).returning(PREFERENCE_COLUMNS);
+  // The preferences ride on the cached session (`preferencesOf(session.user)`).
+  await invalidateSessionsOfUser(userId);
   return { before: preferencesOf(current), after: preferencesOf(updated) };
 }

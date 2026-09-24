@@ -4,13 +4,25 @@ import { env } from "@/lib/env";
 import { decode, encode } from "./codec";
 import { cachePrefix } from "./prefix";
 
-// A shared read-through cache in front of Postgres (Upstash Redis). What may go in it: reference
-// data (org tree, entities, types, policies, rates, calendars) and a person's role grants — never
-// personal, restricted or compensation data, which stay in Postgres and are read per request.
+// A shared read-through cache in front of Postgres (Upstash Redis). A page asks the cache first
+// and Postgres only for what the cache does not hold; every entry has a TTL as a backstop, and
+// every write path that changes cached data calls `invalidate()` with the entry's key. Redis being
+// slow or down is never an error: the read falls through to Postgres.
 //
-// Every entry has a TTL as a backstop, and every write path that changes cached data calls
-// `invalidate()` with the entry's key after its change is committed. Redis being slow or down is
-// never an error: the read falls through to Postgres.
+// Three tiers, by how the data changes (owner's decision 2026-09-25):
+//   reference — types, templates, rules, the org tree: one key for the whole small table, a long
+//               TTL, every writer invalidates.
+//   personal  — a person's own rows (session, profile, memberships, saved views): one key per
+//               person, a short TTL, every writer invalidates; the TTL only bounds a write made
+//               behind the app's back.
+//   live      — what many hands change (badges, inboxes, today's page): one key per person and
+//               screen (`live.ts`), the shortest TTL, invalidated for the actor after every action
+//               and for the recipients of every notification.
+// Restricted and compensation data (identity numbers, bank details, salaries, payslips) are never
+// cached: they stay in Postgres and are read per request.
+
+/** Seconds an entry may live without a writer invalidating it. */
+export const TTL = { reference: 60 * 60, personal: 5 * 60, live: 60 } as const;
 
 type Client = { redis: Redis; prefix: string } | null;
 let client: Client | undefined;

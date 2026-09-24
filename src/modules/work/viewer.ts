@@ -2,6 +2,7 @@
 import "server-only";
 import { eq, inArray } from "drizzle-orm";
 import { cache } from "react";
+import { cached, invalidate, TTL } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 import type { Principal } from "../platform/rbac/policy";
 import { loadGrantsOfPeople } from "../platform/rbac/service";
@@ -13,11 +14,26 @@ type Executor = Tx | ReturnType<typeof db>;
 // viewer carries who they are to the audit log (`WorkViewer.reader`) as well as what they may do.
 export type ViewerSource = { person: { id: string; primaryEntityId: string | null }; principal: Principal; userId?: string | null; email?: string | null; request?: { ipAddress?: string | null; userAgent?: string | null } };
 
-export async function loadViewerWith(executor: Executor, user: ViewerSource): Promise<WorkViewer> {
+// A person's team and project memberships are read by every work, project and daily page, so
+// they sit in the shared cache (personal tier), one entry per person. Every writer of
+// `work_team_member` and `work_project_member` calls `invalidateMemberships` with the people it
+// touched; a transaction reads its own rows.
+const membershipsKey = (personId: string) => `work:memberships:${personId}`;
+type Memberships = { teams: { id: string; role: string }[]; projects: { id: string; role: string }[] };
+
+async function readMemberships(executor: Executor, personId: string): Promise<Memberships> {
   const [teams, projects] = await Promise.all([
-    executor.select({ id: schema.workTeamMember.teamId, role: schema.workTeamMember.role }).from(schema.workTeamMember).where(eq(schema.workTeamMember.personId, user.person.id)),
-    executor.select({ id: schema.workProjectMember.projectId, role: schema.workProjectMember.role }).from(schema.workProjectMember).where(eq(schema.workProjectMember.personId, user.person.id)),
+    executor.select({ id: schema.workTeamMember.teamId, role: schema.workTeamMember.role }).from(schema.workTeamMember).where(eq(schema.workTeamMember.personId, personId)).orderBy(schema.workTeamMember.teamId),
+    executor.select({ id: schema.workProjectMember.projectId, role: schema.workProjectMember.role }).from(schema.workProjectMember).where(eq(schema.workProjectMember.personId, personId)).orderBy(schema.workProjectMember.projectId),
   ]);
+  return { teams, projects };
+}
+
+/** After a write to `work_team_member` or `work_project_member` (inside the transaction is fine). */
+export const invalidateMemberships = (...personIds: readonly string[]) => invalidate(...[...new Set(personIds)].map(membershipsKey));
+
+export async function loadViewerWith(executor: Executor, user: ViewerSource): Promise<WorkViewer> {
+  const { teams, projects } = executor === db() ? await cached(membershipsKey(user.person.id), TTL.personal, () => readMemberships(executor, user.person.id)) : await readMemberships(executor, user.person.id);
   return {
     principal: user.principal,
     entityId: user.person.primaryEntityId,

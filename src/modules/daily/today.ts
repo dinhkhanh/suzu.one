@@ -3,7 +3,8 @@
 // the plan and the report stand. Every list is the person's own; nothing here reads anyone else's.
 import "server-only";
 import { and, asc, eq } from "drizzle-orm";
-import type { IsoDate } from "@/lib/dates";
+import { cachedLive } from "@/lib/cache/live";
+import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { type DayTask, type HandoffWaiting, listBlockersWaitingOn, listDayTasks, listHandoffsWaitingFor, listOpenBlockersRaisedBy, listOpenWorkOf, listReviewsWaitingFor, type OpenBlocker, type ReviewWaiting } from "@/modules/work/service";
 import { dayOf, type PersonDay } from "./days";
@@ -47,7 +48,16 @@ export type TodayView = {
   billableProjects: string[];
 };
 
-export async function getToday(personId: string, date: IsoDate): Promise<TodayView> {
+/**
+ * Today's page comes from the shared cache's live tier (src/lib/cache/live.ts): dropped after the
+ * person's every action and every notification to them, at most `TTL.live` seconds old otherwise.
+ * Another day than today (a test, a report) is read as it stands.
+ */
+export function getToday(personId: string, date: IsoDate): Promise<TodayView> {
+  return date === todayInVietnam() ? cachedLive(personId, "today", () => loadToday(personId, date)) : loadToday(personId, date);
+}
+
+async function loadToday(personId: string, date: IsoDate): Promise<TodayView> {
   const [day, plan, open, reviews, handoffs, raised, waiting, bookings, report, time, timer] = await Promise.all([
     dayOf([personId], date),
     findPlan(personId, date),

@@ -1,7 +1,9 @@
 import "server-only";
+import { getSessionCookie } from "better-auth/cookies";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import { cached, TTL } from "@/lib/cache";
 import { findPersonByEmail, type PersonRow } from "../people/service";
 import { canImpersonate, type Principal } from "../rbac/policy";
 import { loadGrants } from "../rbac/service";
@@ -10,8 +12,27 @@ import { clientIpFrom } from "./client-ip";
 import { impersonationTargetOf } from "./impersonation";
 import { impersonatedReauthAt, isImpersonationLive } from "./impersonation-policy";
 import { type Preferences, preferencesOf } from "./preferences";
+import { sessionKey, tokenOfCookie } from "./session-cache";
 
 const toDate = (value: unknown): Date | null => (value instanceof Date ? value : typeof value === "string" || typeof value === "number" ? new Date(value) : null);
+
+type Session = NonNullable<Awaited<ReturnType<ReturnType<typeof auth>["api"]["getSession"]>>>;
+
+/**
+ * The session behind the request: the shared cache first (session-cache.ts), Better Auth and its
+ * `session` row only on a miss. No cookie is no session, and costs nothing.
+ */
+async function readSession(requestHeaders: Headers): Promise<Session | null> {
+  const token = tokenOfCookie(getSessionCookie(requestHeaders));
+  if (!token) return null;
+  const hit = await cached<Session | undefined>(sessionKey(token), TTL.personal, async () => {
+    const found = await auth().api.getSession({ headers: requestHeaders });
+    // Stored without its token; `undefined` is never stored, so a stale cookie costs a query, not an entry.
+    return found ? { ...found, session: { ...found.session, token: "" } } : undefined;
+  });
+  if (!hit || hit.session.expiresAt <= new Date()) return null;
+  return { ...hit, session: { ...hit.session, token } };
+}
 
 export type CurrentUser = {
   /** The account that signed in — always the real one, whoever the session is looking through. */
@@ -38,7 +59,9 @@ export type CurrentUser = {
 
 /**
  * The signed-in person with their grants, or null. Re-checks the person's status on every
- * request, so suspending or offboarding someone locks them out at once (FR-PLT-05).
+ * request, so suspending or offboarding someone locks them out at once (FR-PLT-05): the session,
+ * the person and the grants come from the shared cache, and every writer of those rows drops its
+ * entry, so the check is as fresh as a Postgres read and costs no query.
  *
  * A session that is seeing the app as somebody else (FR-PLT-40) comes back as that person, with
  * that person's grants — after the right to do so is checked again here, against the real person's
@@ -47,7 +70,7 @@ export type CurrentUser = {
  */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const requestHeaders = await headers();
-  const session = await auth().api.getSession({ headers: requestHeaders });
+  const session = await readSession(requestHeaders);
   if (!session) return null;
 
   const person = await findPersonByEmail(session.user.email);
