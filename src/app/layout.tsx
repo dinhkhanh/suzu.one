@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import { ServiceWorker } from "@/components/shell/service-worker";
+import { VercelInsights } from "@/components/shell/vercel-insights";
 import "./globals.css";
 
 // Inter ships a Vietnamese subset, so diacritics render in the same face as the rest of the UI.
@@ -34,6 +35,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full bg-background text-foreground">
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
         <ServiceWorker />
+        <VercelInsights />
       </body>
     </html>
   );
