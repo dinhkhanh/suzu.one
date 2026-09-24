@@ -64,6 +64,9 @@ export function navFor(principal: Principal, open: { people: boolean; recruit: b
     // Pay: everyone has their own payslips; the desk behind them is decided on the pages.
     { key: "payslips", href: "/payslips" },
     { key: "payroll", href: "/payroll" },
+    // Feedback on SuZu One: everybody's, collaborators included — they use the app too. The header
+    // button sends it from any page; this is where one's own items and the replies are.
+    { key: "feedback", href: "/feedback" },
   ];
   // Navigation visibility only. Every page and action re-checks permissions itself.
   const admin: NavItem[] = [
@@ -75,6 +78,8 @@ export function navFor(principal: Principal, open: { people: boolean; recruit: b
     ...(can(principal, "rules:propose", {}) || can(principal, "payroll:rules", {}) || can(principal, "payroll:read", {}) ? [{ key: "rules", href: "/admin/rules" }] : []),
     ...(can(principal, "audit:read") ? [{ key: "audit", href: "/admin/audit" }] : []),
     ...(can(principal, "audit:read", {}) ? [{ key: "jobs", href: "/admin/jobs" }] : []),
+    // The feedback inbox: whoever triages it or reads it, over any scope.
+    ...(can(principal, "feedback:manage") || can(principal, "feedback:read") ? [{ key: "feedbackInbox", href: "/feedback/inbox" }] : []),
   ];
   return { main, admin };
 }

@@ -74,7 +74,9 @@
     "capacity": "Capacity",
     "delivery": "Delivery",
     "profitability": "Profitability",
-    "billing": "Ready to invoice"
+    "billing": "Ready to invoice",
+    "feedback": "Feedback",
+    "feedbackInbox": "Feedback inbox"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -633,7 +635,8 @@
         "recruit": "Recruitment",
         "performance": "Performance reviews",
         "projects": "Projects",
-        "daily": "Daily plan & report"
+        "daily": "Daily plan & report",
+        "feedback": "Feedback on SuZu One"
       },
       "push": "Push"
     },
@@ -1013,6 +1016,14 @@
       "tasks_preview_decided": {
         "title": "The client answered on a review link",
         "body": "{name} has answered on the review link you sent for “{task}”."
+      },
+      "feedback_received": {
+        "title": "New feedback: {feedbackCategory}",
+        "body": "Someone sent feedback ({feedbackCategory}) about /{area}. Open it to read and reply."
+      },
+      "feedback_answered": {
+        "title": "Your feedback: {feedbackStatus}",
+        "body": "Your feedback on SuZu One was answered — it is now “{feedbackStatus}”. Open it to read the reply."
       }
     },
     "errors": {
@@ -10770,7 +10781,10 @@
     "workload": "Workload",
     "yearEndBonus": "Year-end bonus",
     "yearToDateImport": "Year-to-date import",
-    "approve": "Approve"
+    "approve": "Approve",
+    "feedback": "Feedback",
+    "feedbackInbox": "Feedback inbox",
+    "feedbackItem": "Feedback"
   },
   "site": {
     "description": "SuZu One is the internal operations platform of SuZu Group: HR records, attendance, leave, payroll, work and projects, knowledge and announcements, in one place for the company's own staff.",
@@ -11173,6 +11187,135 @@
         "body": "Those are the essentials. Press “I'm done” to close the guide for good. Not finished yet? Choose “Remind me later” and it opens again next time you sign in.",
         "tip": "Need help? Ask your manager or HR."
       }
+    }
+  },
+  "feedback": {
+    "categories": {
+      "bug": "Something's wrong",
+      "idea": "Idea",
+      "question": "Question",
+      "praise": "Praise",
+      "other": "Other"
+    },
+    "statuses": {
+      "new": "New",
+      "in_progress": "In progress",
+      "resolved": "Resolved",
+      "declined": "Won't do"
+    },
+    "priorities": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "button": {
+      "label": "Feedback",
+      "title": "Tell us what's wrong or what could be better"
+    },
+    "dialog": {
+      "title": "Send feedback",
+      "help": "SuZu One is new, and it will have rough edges. Tell us what went wrong, what confused you or what would help — every message is read.",
+      "close": "Close",
+      "thanks": "Thank you — your feedback was sent.",
+      "follow": "You'll get a notification when it is answered. You can follow it under Feedback in the menu.",
+      "view": "View my feedback",
+      "another": "Send another"
+    },
+    "form": {
+      "category": "What is it about?",
+      "message": "Your feedback",
+      "placeholders": {
+        "bug": "What did you do, what did you expect, and what happened instead?",
+        "idea": "What would make your work easier?",
+        "question": "What would you like to know or can't find?",
+        "praise": "What works well for you?",
+        "other": "Tell us anything about SuZu One."
+      },
+      "privacy": "Your name is sent with it so we can follow up. Please don't write salaries or other people's personal details.",
+      "blocking": "This stops me from doing my work",
+      "screenshot": "Screenshot (optional)",
+      "addScreenshot": "Add a screenshot",
+      "removeScreenshot": "Remove the screenshot",
+      "uploading": "Uploading…",
+      "pasteHint": "Tip: take a screenshot and paste it (Ctrl+V / ⌘V) into the text box.",
+      "send": "Send feedback",
+      "sending": "Sending…",
+      "sent": "Sent — thank you!",
+      "aboutPage": "About the page {path}"
+    },
+    "page": {
+      "title": "Feedback",
+      "help": "Tell us what's wrong with SuZu One or what could be better. You can also send feedback from any page with the Feedback button at the top right.",
+      "send": "Send feedback",
+      "mine": "My feedback",
+      "mineEmpty": "You haven't sent any feedback yet.",
+      "inbox": "Feedback inbox"
+    },
+    "list": {
+      "replied": "Replied",
+      "blocking": "Blocking"
+    },
+    "inbox": {
+      "title": "Feedback inbox",
+      "help": "Feedback from the people your role covers. Open an item to set its status and priority and reply to the sender.",
+      "mine": "My feedback",
+      "blockingOpen": "Open and blocking",
+      "statusFilter": "Status",
+      "tabs": {
+        "open": "Open",
+        "all": "All"
+      },
+      "category": "Category",
+      "area": "Part of the app",
+      "any": "Any",
+      "onlyBlocking": "Blocking only",
+      "apply": "Filter",
+      "empty": "No feedback here.",
+      "pageOf": "Page {page} of {pages} · {total} items",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "detail": {
+      "backInbox": "Feedback inbox",
+      "backMine": "My feedback",
+      "sentBy": "Sent by {name} · {when}",
+      "you": "you",
+      "page": "Page",
+      "screenshot": "Screenshot",
+      "device": "Browser",
+      "handledBy": "Last handled",
+      "handledAt": "{name} · {when}",
+      "reply": "Reply",
+      "noReply": "No reply yet. You'll be notified when there is one."
+    },
+    "triage": {
+      "title": "Handle this feedback",
+      "help": "The sender sees the status and the reply, and is notified when you reply or close it. The internal note is only for the people handling feedback.",
+      "status": "Status",
+      "priority": "Priority",
+      "reply": "Reply to the sender",
+      "replyPlaceholder": "Thank them, explain the fix or a workaround, or say why it won't be done.",
+      "internalNote": "Internal note",
+      "internalNotePlaceholder": "A ticket link, who is on it, what was found…",
+      "save": "Save",
+      "saved": "Saved."
+    },
+    "errors": {
+      "forbidden": "You do not have permission to do this.",
+      "invalid": "Please check the information — the message needs at least 5 characters.",
+      "unauthenticated": "Your session has ended. Sign in again.",
+      "generic": "Something went wrong. Please try again.",
+      "feedback_screenshot_invalid": "The screenshot could not be attached. Add it again.",
+      "feedback_not_found": "This feedback no longer exists.",
+      "file_empty": "The file is empty.",
+      "file_too_large": "The image is larger than 20 MB.",
+      "file_type_not_allowed": "Use a PNG, JPG or WEBP image.",
+      "file_name_invalid": "Use a PNG, JPG or WEBP image.",
+      "file_upload_failed": "The upload failed. Try again.",
+      "file_not_uploaded": "The upload did not arrive. Try again.",
+      "file_content_mismatch": "That file is not the image it claims to be.",
+      "file_not_found": "The file was not found."
     }
   }
 }

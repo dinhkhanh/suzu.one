@@ -11,6 +11,7 @@ import { loadShellCounts } from "@/modules/platform/shell/service";
 import { WelcomeGuide } from "@/modules/platform/shell/ui/welcome-guide";
 import { shouldShowWelcome, WELCOME_LATER_COOKIE, welcomeSteps } from "@/modules/platform/shell/welcome";
 import { CommandPalette } from "@/modules/work/ui/command-palette";
+import { FeedbackButton } from "@/modules/feedback/ui/feedback-button";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
@@ -61,6 +62,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         main={main}
         admin={admin}
         user={{ name: user.person.fullName, email: user.email }}
+        // Feedback on the app, one click from every page while it is new to everybody.
+        headerEnd={<FeedbackButton />}
         footer={
           <div className="flex items-center justify-between gap-2">
             <LocaleSwitch compact />

@@ -73,7 +73,12 @@ export type Permission =
   // non-private project and its status in scope without being a member.
   | "pjm:commercial"
   | "pjm:cost"
-  | "pjm:portfolio";
+  | "pjm:portfolio"
+  // Feedback about SuZu One itself: triage it — status, priority, the reply the submitter reads and
+  // the internal note (`feedback:manage`); read the inbox without changing it (`feedback:read`).
+  // Anyone may send feedback and read their own; neither needs a permission.
+  | "feedback:manage"
+  | "feedback:read";
 
 type RoleDefinition = {
   permissions: readonly Permission[];
@@ -83,10 +88,10 @@ type RoleDefinition = {
 
 export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
   owner: { permissions: ["*"], maxTier: "compensation" },
-  c_level: { permissions: ["org:read", "person:read", "report:read", "payroll:read", "payroll:approve", "work:manage", "ops:read", "performance:goals", "performance:read", "comms:manage", "kb:manage_unit", "pjm:commercial", "pjm:cost", "pjm:portfolio"], maxTier: "compensation" },
-  entity_director: { permissions: ["org:read", "person:read", "report:read", "work:manage", "ops:read", "performance:goals", "performance:read", "comms:manage", "kb:manage_unit", "pjm:commercial", "pjm:portfolio"], maxTier: "restricted" },
+  c_level: { permissions: ["org:read", "person:read", "report:read", "payroll:read", "payroll:approve", "work:manage", "ops:read", "performance:goals", "performance:read", "comms:manage", "kb:manage_unit", "pjm:commercial", "pjm:cost", "pjm:portfolio", "feedback:read"], maxTier: "compensation" },
+  entity_director: { permissions: ["org:read", "person:read", "report:read", "work:manage", "ops:read", "performance:goals", "performance:read", "comms:manage", "kb:manage_unit", "pjm:commercial", "pjm:portfolio", "feedback:read"], maxTier: "restricted" },
   hr_admin: {
-    permissions: ["org:read", "org:manage", "person:read", "person:manage", "attendance:manage", "leave:manage", "payroll:read", "payroll:propose", "rules:propose", "recruit:manage", "report:read", "audit:read", "ops:manage", "performance:manage", "kb:manage", "comms:manage"],
+    permissions: ["org:read", "org:manage", "person:read", "person:manage", "attendance:manage", "leave:manage", "payroll:read", "payroll:propose", "rules:propose", "recruit:manage", "report:read", "audit:read", "ops:manage", "performance:manage", "kb:manage", "comms:manage", "feedback:manage"],
     maxTier: "compensation",
   },
   hr_staff: {

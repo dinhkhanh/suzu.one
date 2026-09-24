@@ -1,7 +1,7 @@
 // The catalogue of notifications. Plain module: shared by the server and the preferences screen.
 // Wording lives in messages/*.json under `notifications.kinds.<kind>` (dots become underscores).
 
-export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks", "attendance", "ops", "kb", "comms", "payroll", "recruit", "performance", "projects", "daily"] as const;
+export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks", "attendance", "ops", "kb", "comms", "payroll", "recruit", "performance", "projects", "daily", "feedback"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const EMAIL_CHANNELS = ["instant", "digest", "off"] as const;
@@ -43,6 +43,8 @@ export const CATEGORY_DEFINITIONS: Record<Category, { defaults: ChannelChoice; /
   // The day (Phase 10): plan and report reminders, a lead's comment on a report, timesheets.
   // On the phone, not in the mailbox: a reminder by email tomorrow is no reminder.
   daily: { defaults: { inApp: true, email: "off", push: true }, mandatory: false },
+  // Feedback about the app: a new item for whoever triages it, a reply for whoever sent it.
+  feedback: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false },
 };
 
 export const KINDS = {
@@ -170,6 +172,10 @@ export const KINDS = {
   "daily.timesheet_reminder": "daily",
   "daily.timesheet_submitted": "daily",
   "daily.timesheet_decided": "daily",
+  // Feedback about SuZu One: a new item to triage (the category and the area, never the text),
+  // and the answer to the person who sent it.
+  "feedback.received": "feedback",
+  "feedback.answered": "feedback",
 } as const satisfies Record<string, Category>;
 export type Kind = keyof typeof KINDS;
 
@@ -202,5 +208,7 @@ export function resolveParams(params: Record<string, string | number>, lookup: (
     const scopeType = lookup(`rbac.scope.${params.scopeType}`);
     resolved.scope = params.scopeName ? `${scopeType}: ${params.scopeName}` : scopeType;
   }
+  if (typeof params.feedbackCategory === "string") resolved.feedbackCategory = lookup(`feedback.categories.${params.feedbackCategory}`);
+  if (typeof params.feedbackStatus === "string") resolved.feedbackStatus = lookup(`feedback.statuses.${params.feedbackStatus}`);
   return resolved;
 }

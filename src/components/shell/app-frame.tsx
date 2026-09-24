@@ -46,6 +46,8 @@ type Props = {
   admin: NavRow[];
   user: { name: string; email: string };
   footer: ReactNode;
+  /** At the right end of the header on every page: the feedback button. */
+  headerEnd?: ReactNode;
   children: ReactNode;
 };
 
@@ -124,6 +126,7 @@ export function AppFrame({
   admin,
   user,
   footer,
+  headerEnd,
   children,
 }: Props) {
   const pathname = usePathname();
@@ -366,6 +369,7 @@ export function AppFrame({
                   : crumbs.at(-1)?.count}
               </Badge>
             ) : null}
+            {headerEnd ? <div className="ml-auto flex shrink-0 items-center gap-2">{headerEnd}</div> : null}
           </header>
 
           <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-5 md:px-6">

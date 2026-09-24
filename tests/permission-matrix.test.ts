@@ -35,6 +35,8 @@ const PERMISSIONS = [
   "pjm:commercial",
   "pjm:cost",
   "pjm:portfolio",
+  "feedback:manage",
+  "feedback:read",
 ] as const satisfies readonly Exclude<Permission, "*">[];
 
 const ENTITY = "entity-a";

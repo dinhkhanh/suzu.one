@@ -29,3 +29,17 @@ describe("navigation entries behind a permission", () => {
     expect(hrefs([])).toContain("/projects");
   });
 });
+
+describe("feedback", () => {
+  const admin = (grants: Grant[]) => navFor(principal(grants), closed).admin.map((item) => item.href);
+
+  it("offers everybody, collaborators included, the way to send feedback", () => {
+    expect(hrefs([])).toContain("/feedback");
+    expect(navFor({ personId: "me", workforceType: "collaborator", grants: [] }, closed).main.map((item) => item.href)).toContain("/feedback");
+  });
+
+  it("offers the inbox to whoever triages or reads feedback, as the inbox page does", () => {
+    for (const role of ["owner", "hr_admin", "c_level", "entity_director"] as const) expect(admin([{ role, scope: group }]), role).toContain("/feedback/inbox");
+    for (const role of ["hr_staff", "department_head", "finance"] as const) expect(admin([{ role, scope: group }]), role).not.toContain("/feedback/inbox");
+  });
+});

@@ -74,7 +74,9 @@
     "capacity": "Năng lực nhân sự",
     "delivery": "Tình hình giao việc",
     "profitability": "Lợi nhuận dự án",
-    "billing": "Chờ xuất hoá đơn"
+    "billing": "Chờ xuất hoá đơn",
+    "feedback": "Góp ý",
+    "feedbackInbox": "Hộp thư góp ý"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -633,7 +635,8 @@
         "recruit": "Tuyển dụng",
         "performance": "Đánh giá hiệu suất",
         "projects": "Dự án",
-        "daily": "Kế hoạch & báo cáo ngày"
+        "daily": "Kế hoạch & báo cáo ngày",
+        "feedback": "Góp ý về SuZu One"
       },
       "push": "Đẩy"
     },
@@ -1013,6 +1016,14 @@
       "tasks_preview_decided": {
         "title": "Khách hàng đã phản hồi qua link duyệt",
         "body": "{name} vừa phản hồi cho “{task}” trên link duyệt bạn gửi."
+      },
+      "feedback_received": {
+        "title": "Góp ý mới: {feedbackCategory}",
+        "body": "Có người vừa gửi góp ý ({feedbackCategory}) về /{area}. Mở để đọc và trả lời."
+      },
+      "feedback_answered": {
+        "title": "Góp ý của bạn: {feedbackStatus}",
+        "body": "Góp ý của bạn về SuZu One đã được phản hồi — trạng thái hiện tại là “{feedbackStatus}”. Mở để đọc câu trả lời."
       }
     },
     "errors": {
@@ -10770,7 +10781,10 @@
     "workload": "Khối lượng công việc",
     "yearEndBonus": "Thưởng cuối năm",
     "yearToDateImport": "Nhập số liệu luỹ kế",
-    "approve": "Phê duyệt nhanh"
+    "approve": "Phê duyệt nhanh",
+    "feedback": "Góp ý",
+    "feedbackInbox": "Hộp thư góp ý",
+    "feedbackItem": "Góp ý"
   },
   "site": {
     "description": "SuZu One là nền tảng vận hành nội bộ của SuZu Group: hồ sơ nhân sự, chấm công, nghỉ phép, tiền lương, công việc và dự án, tri thức và thông báo — ở một nơi, dành cho nhân sự của công ty.",
@@ -11173,6 +11187,135 @@
         "body": "Đó là những việc chính. Nhấn “Tôi đã hoàn tất” để đóng hẳn hướng dẫn. Nếu chưa xem xong, chọn “Để lần sau” — hướng dẫn sẽ mở lại ở lần đăng nhập tới.",
         "tip": "Cần hỗ trợ? Hãy hỏi quản lý trực tiếp hoặc bộ phận Nhân sự."
       }
+    }
+  },
+  "feedback": {
+    "categories": {
+      "bug": "Có lỗi",
+      "idea": "Ý tưởng",
+      "question": "Câu hỏi",
+      "praise": "Khen ngợi",
+      "other": "Khác"
+    },
+    "statuses": {
+      "new": "Mới",
+      "in_progress": "Đang xử lý",
+      "resolved": "Đã xử lý",
+      "declined": "Không thực hiện"
+    },
+    "priorities": {
+      "low": "Thấp",
+      "normal": "Bình thường",
+      "high": "Cao",
+      "urgent": "Khẩn cấp"
+    },
+    "button": {
+      "label": "Góp ý",
+      "title": "Cho chúng tôi biết điều gì chưa ổn hoặc có thể tốt hơn"
+    },
+    "dialog": {
+      "title": "Gửi góp ý",
+      "help": "SuZu One mới ra mắt nên chắc chắn còn chỗ chưa ổn. Hãy cho chúng tôi biết điều gì bị lỗi, khó hiểu hay điều gì sẽ giúp bạn làm việc tốt hơn — mọi góp ý đều được đọc.",
+      "close": "Đóng",
+      "thanks": "Cảm ơn bạn — góp ý đã được gửi.",
+      "follow": "Bạn sẽ nhận thông báo khi có phản hồi. Bạn có thể theo dõi ở mục Góp ý trên menu.",
+      "view": "Xem góp ý của tôi",
+      "another": "Gửi thêm góp ý"
+    },
+    "form": {
+      "category": "Góp ý về điều gì?",
+      "message": "Nội dung góp ý",
+      "placeholders": {
+        "bug": "Bạn đã làm gì, mong đợi điều gì, và thực tế đã xảy ra điều gì?",
+        "idea": "Điều gì sẽ giúp công việc của bạn dễ dàng hơn?",
+        "question": "Bạn muốn biết điều gì hoặc không tìm thấy gì?",
+        "praise": "Điều gì đang hoạt động tốt với bạn?",
+        "other": "Bất cứ điều gì bạn muốn nói về SuZu One."
+      },
+      "privacy": "Tên bạn được gửi kèm để chúng tôi có thể trao đổi thêm. Vui lòng không ghi mức lương hay thông tin cá nhân của người khác.",
+      "blocking": "Vấn đề này khiến tôi không làm việc được",
+      "screenshot": "Ảnh chụp màn hình (không bắt buộc)",
+      "addScreenshot": "Thêm ảnh chụp màn hình",
+      "removeScreenshot": "Bỏ ảnh chụp màn hình",
+      "uploading": "Đang tải lên…",
+      "pasteHint": "Mẹo: chụp màn hình rồi dán (Ctrl+V / ⌘V) thẳng vào ô nội dung.",
+      "send": "Gửi góp ý",
+      "sending": "Đang gửi…",
+      "sent": "Đã gửi — cảm ơn bạn!",
+      "aboutPage": "Về trang {path}"
+    },
+    "page": {
+      "title": "Góp ý",
+      "help": "Cho chúng tôi biết SuZu One còn gì chưa ổn hoặc có thể tốt hơn. Bạn cũng có thể gửi góp ý từ bất kỳ trang nào bằng nút Góp ý ở góc trên bên phải.",
+      "send": "Gửi góp ý",
+      "mine": "Góp ý của tôi",
+      "mineEmpty": "Bạn chưa gửi góp ý nào.",
+      "inbox": "Hộp thư góp ý"
+    },
+    "list": {
+      "replied": "Đã phản hồi",
+      "blocking": "Chặn công việc"
+    },
+    "inbox": {
+      "title": "Hộp thư góp ý",
+      "help": "Góp ý của những người thuộc phạm vi vai trò của bạn. Mở từng góp ý để đặt trạng thái, mức ưu tiên và trả lời người gửi.",
+      "mine": "Góp ý của tôi",
+      "blockingOpen": "Đang mở và chặn công việc",
+      "statusFilter": "Trạng thái",
+      "tabs": {
+        "open": "Đang mở",
+        "all": "Tất cả"
+      },
+      "category": "Loại",
+      "area": "Phần của ứng dụng",
+      "any": "Tất cả",
+      "onlyBlocking": "Chỉ góp ý chặn công việc",
+      "apply": "Lọc",
+      "empty": "Không có góp ý nào.",
+      "pageOf": "Trang {page}/{pages} · {total} góp ý",
+      "previous": "Trang trước",
+      "next": "Trang sau"
+    },
+    "detail": {
+      "backInbox": "Hộp thư góp ý",
+      "backMine": "Góp ý của tôi",
+      "sentBy": "Gửi bởi {name} · {when}",
+      "you": "bạn",
+      "page": "Trang",
+      "screenshot": "Ảnh chụp màn hình",
+      "device": "Trình duyệt",
+      "handledBy": "Xử lý gần nhất",
+      "handledAt": "{name} · {when}",
+      "reply": "Phản hồi",
+      "noReply": "Chưa có phản hồi. Bạn sẽ nhận thông báo khi có."
+    },
+    "triage": {
+      "title": "Xử lý góp ý",
+      "help": "Người gửi thấy trạng thái và câu trả lời, và được thông báo khi bạn trả lời hoặc đóng góp ý. Ghi chú nội bộ chỉ dành cho người xử lý góp ý.",
+      "status": "Trạng thái",
+      "priority": "Mức ưu tiên",
+      "reply": "Trả lời người gửi",
+      "replyPlaceholder": "Cảm ơn họ, giải thích cách đã sửa hoặc cách xử lý tạm thời, hoặc lý do không thực hiện.",
+      "internalNote": "Ghi chú nội bộ",
+      "internalNotePlaceholder": "Link ticket, ai đang xử lý, đã tìm ra gì…",
+      "save": "Lưu",
+      "saved": "Đã lưu."
+    },
+    "errors": {
+      "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+      "invalid": "Vui lòng kiểm tra lại thông tin — nội dung cần ít nhất 5 ký tự.",
+      "unauthenticated": "Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.",
+      "generic": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+      "feedback_screenshot_invalid": "Không đính kèm được ảnh chụp màn hình. Vui lòng thêm lại.",
+      "feedback_not_found": "Góp ý này không còn tồn tại.",
+      "file_empty": "Tệp trống.",
+      "file_too_large": "Ảnh lớn hơn 20 MB.",
+      "file_type_not_allowed": "Vui lòng dùng ảnh PNG, JPG hoặc WEBP.",
+      "file_name_invalid": "Vui lòng dùng ảnh PNG, JPG hoặc WEBP.",
+      "file_upload_failed": "Tải lên không thành công. Vui lòng thử lại.",
+      "file_not_uploaded": "Tệp chưa được tải lên. Vui lòng thử lại.",
+      "file_content_mismatch": "Tệp này không phải là ảnh như tên của nó.",
+      "file_not_found": "Không tìm thấy tệp."
     }
   }
 }

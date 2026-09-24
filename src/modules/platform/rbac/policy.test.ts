@@ -330,3 +330,21 @@ describe("permissionReach", () => {
     expect(permissionReach(principal([{ role: "department_head", scope: { type: "unit", id: DESIGN } }]), "report:read")).toMatchObject({ all: false, unitIds: [DESIGN], entityIds: [] });
   });
 });
+
+describe("feedback about the app", () => {
+  it("lets HR admins triage it, C-level and entity directors read it, and nobody else near it", () => {
+    const target = { ...lan };
+    expect(can(principal([{ role: "hr_admin", scope: { type: "entity", id: ENTITY_A } }]), "feedback:manage", target)).toBe(true);
+    expect(can(principal([{ role: "hr_admin", scope: { type: "entity", id: ENTITY_B } }]), "feedback:manage", target)).toBe(false);
+    for (const role of ["c_level", "entity_director"] as const) {
+      const reader = principal([{ role, scope: { type: "group" } }]);
+      expect(can(reader, "feedback:read", target), role).toBe(true);
+      expect(can(reader, "feedback:manage", target), role).toBe(false);
+    }
+    for (const role of ["hr_staff", "payroll", "finance", "department_head", "recruiter", "asset_admin", "auditor"] as const) {
+      const other = principal([{ role, scope: { type: "group" } }]);
+      expect(can(other, "feedback:manage", target), role).toBe(false);
+      expect(can(other, "feedback:read", target), role).toBe(false);
+    }
+  });
+});
