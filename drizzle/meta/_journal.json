@@ -659,6 +659,13 @@
       "when": 1790229476383,
       "tag": "0093_user_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1790236435666,
+      "tag": "0094_pin_function_search_path",
+      "breakpoints": true
     }
   ]
 }

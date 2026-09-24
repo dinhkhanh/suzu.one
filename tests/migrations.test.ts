@@ -106,6 +106,16 @@ describe("migrations", () => {
     expect(schemaAcl.rows[0].acl ?? "").not.toMatch(/(^|,)=U/);
   });
 
+  it("pins the search_path of every function it defines, extensions aside (Supabase lint 0011)", async () => {
+    const unpinned = await client.query<{ name: string }>(
+      `SELECT n.nspname || '.' || p.proname AS name FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname IN ('public', 'app')
+         AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype = 'e')
+         AND NOT EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig, '{}')) c WHERE c LIKE 'search_path=%')`,
+    );
+    expect(unpinned.rows.map((row) => row.name)).toEqual([]);
+  });
+
   // The org-unit tree (FR-PLT-16): the database, not the application, keeps `path` and the two
   // derived placement columns true — including when a unit is moved to a different parent.
   describe("the org-unit tree", () => {
