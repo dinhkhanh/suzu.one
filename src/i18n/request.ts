@@ -1,7 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { getRequestConfig } from "next-intl/server";
 import { getCurrentUser } from "@/modules/platform/auth/session";
-import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, TIME_ZONE } from "./config";
+import { DEFAULT_LOCALE, isLocale, type Locale, LOCALE_COOKIE, TIME_ZONE } from "./config";
 import { namespacesForSurface, PUBLIC_FALLBACK, pickMessages, SURFACE_HEADER } from "./surfaces";
 
 /**
@@ -19,11 +19,14 @@ import { namespacesForSurface, PUBLIC_FALLBACK, pickMessages, SURFACE_HEADER } f
  * app's own layout calls it on every request anyway, so a signed-in page pays nothing for it.
  */
 // Locale comes from a cookie, not the URL: this is an internal app, so links stay language-neutral.
+// The public site is the exception to the default: its readers include Google's OAuth reviewers,
+// who arrive with no cookie, so there the browser's first language decides until one is chosen.
 export default getRequestConfig(async () => {
+  const requestHeaders = await headers();
   const stored = (await cookies()).get(LOCALE_COOKIE)?.value;
-  const locale = isLocale(stored) ? stored : DEFAULT_LOCALE;
+  const locale = isLocale(stored) ? stored : requestHeaders.get(SURFACE_HEADER) === "site" ? browserLocale(requestHeaders) : DEFAULT_LOCALE;
   const all: Record<string, unknown> = (await import(`../../messages/${locale}.json`)).default;
-  const surface = namespacesForSurface((await headers()).get(SURFACE_HEADER));
+  const surface = namespacesForSurface(requestHeaders.get(SURFACE_HEADER));
   // A signed-out visitor on an internal path is on their way to the sign-in page: the public words
   // are the right ones for what they are about to be shown, and the only ones they may have.
   const namespaces = surface ?? ((await getCurrentUser()) ? null : PUBLIC_FALLBACK);
@@ -33,3 +36,9 @@ export default getRequestConfig(async () => {
     messages: namespaces ? pickMessages(all, namespaces) : all,
   };
 });
+
+/** Vietnamese for a browser that puts Vietnamese first, English for any other it names. */
+function browserLocale(requestHeaders: Headers): Locale {
+  const first = requestHeaders.get("accept-language")?.split(",")[0]?.trim().toLowerCase();
+  return !first || first.startsWith("vi") ? DEFAULT_LOCALE : "en";
+}

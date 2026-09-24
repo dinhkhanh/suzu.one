@@ -1,7 +1,9 @@
 {
   "app": {
     "name": "SuZu One",
-    "tagline": "Nền tảng vận hành nội bộ của SuZu Group"
+    "tagline": "Nền tảng vận hành nội bộ của SuZu Group",
+    "privacy": "Chính sách quyền riêng tư",
+    "terms": "Điều khoản sử dụng"
   },
   "signIn": {
     "title": "Đăng nhập",
@@ -10769,5 +10771,342 @@
     "yearEndBonus": "Thưởng cuối năm",
     "yearToDateImport": "Nhập số liệu luỹ kế",
     "approve": "Phê duyệt nhanh"
+  },
+  "site": {
+    "description": "SuZu One là nền tảng vận hành nội bộ của SuZu Group: hồ sơ nhân sự, chấm công, nghỉ phép, tiền lương, công việc và dự án, tri thức và thông báo — ở một nơi, dành cho nhân sự của công ty.",
+    "eyebrow": "Chỉ dành cho nhân sự SuZu Group",
+    "headline": "Vận hành nội bộ của SuZu Group, ở một nơi",
+    "lead": "SuZu One là ứng dụng web mà nhân viên và cộng tác viên của SuZu Group dùng cho công việc hằng ngày: hồ sơ nhân sự, chấm công và nghỉ phép, tiền lương và phiếu lương, công việc và dự án, đề xuất và phê duyệt, cùng kho tri thức và thông báo của công ty.",
+    "signIn": "Đăng nhập bằng tài khoản công ty",
+    "audience": "Chỉ người có tài khoản Google Workspace của công ty trên suzu.vn hoặc suzu.group, do Phòng Nhân sự cấp, mới truy cập được. Không có đăng ký công khai.",
+    "featuresTitle": "SuZu One làm gì",
+    "features": [
+      {
+        "title": "Nhân sự và hồ sơ",
+        "body": "Hồ sơ nhân viên, hợp đồng, sơ đồ tổ chức, danh mục tiếp nhận và nghỉ việc, tài liệu."
+      },
+      {
+        "title": "Chấm công và nghỉ phép",
+        "body": "Chấm công tại văn phòng, bảng công, số ngày phép, đơn nghỉ phép và phê duyệt."
+      },
+      {
+        "title": "Tiền lương và phiếu lương",
+        "body": "Bảng lương hằng tháng theo luật Việt Nam (bảo hiểm, thuế TNCN); mỗi người chỉ xem được phiếu lương của chính mình."
+      },
+      {
+        "title": "Công việc và dự án",
+        "body": "Công việc, dự án, kế hoạch hằng ngày và bàn giao cho các nhóm marketing và sáng tạo, từ brief đến nghiệm thu."
+      },
+      {
+        "title": "Đề xuất và phê duyệt",
+        "body": "Đề xuất thiết bị, giấy tờ và các yêu cầu nội bộ khác, chuyển đến đúng người duyệt."
+      },
+      {
+        "title": "Tri thức và thông báo",
+        "body": "Chính sách, quy trình, bộ nhận diện thương hiệu, thông báo của công ty, và trợ lý trả lời dựa trên các tài liệu đó."
+      }
+    ],
+    "googleTitle": "SuZu One dùng đăng nhập Google như thế nào",
+    "googleBody": [
+      "Google là cách duy nhất để đăng nhập. SuZu One chỉ xin Google các quyền đăng nhập cơ bản — họ tên, địa chỉ email và ảnh đại diện — để xác nhận bạn là thành viên SuZu Group và hiển thị bạn là ai trong ứng dụng.",
+      "SuZu One không đọc Gmail, Google Drive, Lịch hay danh bạ của bạn, không bán dữ liệu của bạn và không dùng dữ liệu cho quảng cáo. Chính sách quyền riêng tư nêu rõ những gì được thu thập và vì sao."
+    ],
+    "contactTitle": "Liên hệ",
+    "contactBody": "SuZu One do Công ty Cổ phần SuZu Group vận hành, địa chỉ 2 Hải Triều, Bến Nghé, Quận 1, TP. Hồ Chí Minh, Việt Nam. Câu hỏi về quyền riêng tư hoặc dịch vụ: privacy@suzu.one.",
+    "footer": "© 2026 Công ty Cổ phần SuZu Group",
+    "home": "Trang chủ",
+    "backHome": "Về trang chủ"
+  },
+  "legal": {
+    "privacy": {
+      "title": "Chính sách quyền riêng tư",
+      "description": "Cách SuZu Group thu thập, sử dụng, chia sẻ và bảo vệ dữ liệu cá nhân trong SuZu One.",
+      "updated": "Cập nhật lần cuối: 24/09/2026",
+      "intro": [
+        "Chính sách này giải thích cách Công ty Cổ phần SuZu Group (\"SuZu Group\", \"chúng tôi\") thu thập, sử dụng, chia sẻ và bảo vệ dữ liệu cá nhân trong SuZu One — nền tảng vận hành nội bộ tại https://suzu.one (\"Dịch vụ\").",
+        "SuZu One là công cụ nội bộ, chỉ dành cho nhân viên, cộng tác viên và nhân sự khác của SuZu Group và các công ty liên kết đã được cấp tài khoản Google Workspace của công ty trên suzu.vn hoặc suzu.group. Dịch vụ không cung cấp cho công chúng. Trang tuyển dụng công khai tại https://suzu.one/careers áp dụng thông báo quyền riêng tư hiển thị trên mẫu ứng tuyển."
+      ],
+      "sections": [
+        {
+          "heading": "1. Ai chịu trách nhiệm về dữ liệu của bạn",
+          "body": [
+            "Bên kiểm soát dữ liệu cá nhân được xử lý trong Dịch vụ là Công ty Cổ phần SuZu Group, địa chỉ 2 Hải Triều, Bến Nghé, Quận 1, TP. Hồ Chí Minh, Việt Nam.",
+            "Nếu hợp đồng lao động hoặc hợp đồng cộng tác của bạn ký với một công ty khác trong SuZu Group, công ty đó cũng chịu trách nhiệm về dữ liệu lao động của bạn, và SuZu Group vận hành Dịch vụ thay mặt công ty đó.",
+            "Mọi câu hỏi về chính sách này, vui lòng gửi đến privacy@suzu.one."
+          ]
+        },
+        {
+          "heading": "2. Thông tin chúng tôi nhận từ Google",
+          "body": [
+            "Đăng nhập bằng Google là cách duy nhất để sử dụng Dịch vụ. Khi bạn đăng nhập, chúng tôi chỉ xin Google các phạm vi đăng nhập tiêu chuẩn: openid, email và profile. Từ đó chúng tôi nhận được:"
+          ],
+          "list": [
+            "họ tên và ảnh đại diện của bạn;",
+            "địa chỉ email và việc Google đã xác minh email đó hay chưa;",
+            "mã định danh tài khoản Google của bạn;",
+            "tên miền Google Workspace mà tài khoản thuộc về (ví dụ suzu.group)."
+          ],
+          "after": [
+            "Chúng tôi chỉ dùng các thông tin này để xác thực bạn, kiểm tra tài khoản thuộc một tên miền Workspace được phép của SuZu Group và gắn với một người hiện có quyền truy cập, và hiển thị họ tên, ảnh của bạn trong Dịch vụ. Khi bạn mở các màn hình lương và thu nhập, chúng tôi yêu cầu bạn xác nhận danh tính với Google một lần nữa.",
+            "Chúng tôi không xin quyền truy cập Gmail, Google Drive, Google Lịch, danh bạ hay bất kỳ dữ liệu Google nào khác của bạn. Các mã (token) Google cấp khi đăng nhập chỉ được lưu trên máy chủ của chúng tôi để duy trì phiên đăng nhập và không được dùng để gọi bất kỳ dịch vụ Google nào khác thay bạn."
+          ]
+        },
+        {
+          "heading": "3. Cam kết của chúng tôi về dữ liệu người dùng Google",
+          "body": [
+            "Việc SuZu One sử dụng và chuyển giao thông tin nhận được từ Google API tuân thủ Chính sách dữ liệu người dùng của Dịch vụ API Google (https://developers.google.com/terms/api-services-user-data-policy), bao gồm các yêu cầu về Sử dụng giới hạn (Limited Use). Cụ thể:"
+          ],
+          "list": [
+            "chúng tôi chỉ dùng dữ liệu người dùng Google để cung cấp và bảo mật tính năng đăng nhập nêu trên;",
+            "chúng tôi không bán dữ liệu người dùng Google, và không sử dụng hay chuyển giao dữ liệu đó cho quảng cáo, kể cả quảng cáo cá nhân hoá hay nhắm lại;",
+            "chúng tôi không dùng dữ liệu người dùng Google để đánh giá khả năng tín dụng hay cho mục đích cho vay;",
+            "chúng tôi không dùng dữ liệu người dùng Google để phát triển, cải tiến hay huấn luyện các mô hình trí tuệ nhân tạo hoặc học máy tổng quát;",
+            "không ai đọc dữ liệu người dùng Google, trừ khi bạn đồng ý, khi cần cho bảo mật (ví dụ điều tra hành vi lạm dụng), khi pháp luật yêu cầu, hoặc ở dạng tổng hợp cho vận hành nội bộ."
+          ]
+        },
+        {
+          "heading": "4. Các thông tin khác trong Dịch vụ",
+          "body": [
+            "Là nền tảng nhân sự và công việc, Dịch vụ lưu các thông tin do bạn, Phòng Nhân sự, quản lý hoặc đồng nghiệp nhập vào, hoặc do Dịch vụ ghi nhận khi bạn sử dụng:"
+          ],
+          "list": [
+            "Nhận dạng và liên lạc: họ tên, ngày sinh, giới tính, số điện thoại, địa chỉ, thông tin CCCD hoặc hộ chiếu, người liên hệ khẩn cấp.",
+            "Việc làm: công ty tuyển dụng bạn, đơn vị, chức danh, quản lý, loại và thời hạn hợp đồng, hồ sơ tiếp nhận và nghỉ việc, tài liệu như hợp đồng và quyết định.",
+            "Chấm công và nghỉ phép: giờ vào và giờ ra; khi bạn chấm công trên ứng dụng, vị trí thiết bị báo về và địa chỉ mạng tại thời điểm đó, chỉ để xác nhận bạn đang ở địa điểm làm việc của công ty; dữ liệu nhập từ máy chấm công tại văn phòng (thời gian và mã nhân viên, không phải dấu vân tay hay dữ liệu khuôn mặt); số ngày phép và đơn nghỉ.",
+            "Tiền lương và thu nhập: lương, phụ cấp, thưởng, thông tin bảo hiểm xã hội, bảo hiểm y tế, bảo hiểm thất nghiệp, thông tin thuế thu nhập cá nhân và người phụ thuộc, tài khoản ngân hàng, phiếu lương.",
+            "Hiệu suất: mục tiêu, KPI, đánh giá và ghi nhận.",
+            "Công việc: nhiệm vụ, dự án, kế hoạch hằng ngày, bình luận, tệp và phê duyệt.",
+            "Đề xuất và tài sản: các đề xuất nội bộ và thiết bị được giao cho bạn.",
+            "Dữ liệu kỹ thuật và bảo mật: địa chỉ IP, loại trình duyệt và thiết bị, nhật ký đăng nhập và phiên, nhật ký kiểm toán các thao tác trong Dịch vụ, và báo cáo lỗi khi có sự cố."
+          ],
+          "after": [
+            "Số giấy tờ tùy thân, thông tin ngân hàng, lương và các khoản thu nhập khác, cùng thông tin sức khỏe trong hồ sơ nghỉ phép được coi là dữ liệu hạn chế và được bảo vệ thêm như mô tả ở mục 7."
+          ]
+        },
+        {
+          "heading": "5. Chúng tôi sử dụng dữ liệu cá nhân để làm gì",
+          "list": [
+            "vận hành các quy trình nhân sự của công ty: hồ sơ nhân viên, chấm công, nghỉ phép, tiền lương, bảo hiểm xã hội bắt buộc và thuế thu nhập cá nhân, tuyển dụng và đánh giá hiệu suất;",
+            "tổ chức và theo dõi công việc: nhiệm vụ, dự án, đề xuất và phê duyệt;",
+            "chia sẻ tri thức và thông báo nội bộ, và trả lời câu hỏi từ kho tri thức của công ty;",
+            "gửi thông báo về công việc của bạn qua email, thông báo trình duyệt hoặc Google Chat;",
+            "bảo mật Dịch vụ: xác thực, kiểm soát truy cập, ghi nhật ký kiểm toán và ngăn chặn lạm dụng;",
+            "duy trì Dịch vụ hoạt động: theo dõi lỗi và khắc phục sự cố;",
+            "thực hiện nghĩa vụ theo pháp luật Việt Nam, bao gồm pháp luật về lao động, bảo hiểm xã hội, thuế và kế toán."
+          ],
+          "after": [
+            "Chúng tôi xử lý dữ liệu cá nhân trên các cơ sở mà pháp luật Việt Nam về bảo vệ dữ liệu cá nhân cho phép: để thực hiện hợp đồng lao động hoặc hợp đồng cộng tác của bạn, để tuân thủ nghĩa vụ pháp lý, với sự đồng ý của bạn khi pháp luật yêu cầu, và các trường hợp khác pháp luật cho phép. Chúng tôi không dùng dữ liệu cá nhân trong Dịch vụ cho quảng cáo và không bán dữ liệu."
+          ]
+        },
+        {
+          "heading": "6. Ai trong công ty có thể xem dữ liệu của bạn",
+          "body": [
+            "Quyền truy cập trong Dịch vụ dựa trên vai trò và mặc định là từ chối. Mỗi người chỉ thấy những gì vai trò của họ cần: bạn xem hồ sơ và phiếu lương của chính mình; Phòng Nhân sự, Tài chính và quản lý xem những gì trách nhiệm của họ đòi hỏi. Quản lý trực tiếp không bao giờ xem được lương hay thu nhập của thành viên trong nhóm. Mở các màn hình thu nhập phải xác nhận lại danh tính với Google, và việc truy cập dữ liệu hạn chế được ghi vào nhật ký kiểm toán không thể sửa đổi."
+          ]
+        },
+        {
+          "heading": "7. Chúng tôi bảo vệ dữ liệu cá nhân như thế nào",
+          "list": [
+            "mọi kết nối đến Dịch vụ đều được mã hoá khi truyền (HTTPS);",
+            "các trường dữ liệu hạn chế và thu nhập được mã hoá thêm trong cơ sở dữ liệu bằng khoá lưu tách biệt khỏi dữ liệu;",
+            "cơ sở dữ liệu không thể truy cập qua bất kỳ giao diện dữ liệu công khai nào, và kho tệp là riêng tư;",
+            "kiểm soát truy cập theo vai trò, xác thực lại cho màn hình nhạy cảm và nhật ký kiểm toán chỉ ghi thêm;",
+            "phiên đăng nhập hết hạn sau bảy ngày và có thể thu hồi ngay khi quyền truy cập của một người chấm dứt."
+          ],
+          "after": [
+            "Không hệ thống nào an toàn tuyệt đối. Nếu xảy ra vi phạm dữ liệu cá nhân, chúng tôi sẽ hành động để ngăn chặn và thông báo cho người bị ảnh hưởng và cơ quan có thẩm quyền theo quy định của pháp luật Việt Nam."
+          ]
+        },
+        {
+          "heading": "8. Các nhà cung cấp dịch vụ được chia sẻ dữ liệu",
+          "body": [
+            "Chúng tôi không bán dữ liệu cá nhân. Chúng tôi chỉ chia sẻ dữ liệu với các nhà cung cấp vận hành một phần Dịch vụ cho chúng tôi, theo hợp đồng giới hạn việc sử dụng dữ liệu vào việc cung cấp dịch vụ của họ:"
+          ],
+          "list": [
+            "Vercel Inc. — lưu trữ ứng dụng;",
+            "Supabase Inc. — cơ sở dữ liệu và kho tệp riêng tư, đặt tại Singapore;",
+            "Upstash Inc. — bộ nhớ đệm cho cấu hình và dữ liệu tham chiếu (không bao giờ chứa lương hay dữ liệu cá nhân nhạy cảm khác);",
+            "Resend — gửi email do Dịch vụ phát đi;",
+            "Functional Software Inc. (Sentry) — theo dõi lỗi;",
+            "Google LLC — đăng nhập Google Workspace, và thông báo, lịch họp qua Google Chat, Google Lịch khi công ty bật các tính năng này;",
+            "Anthropic PBC và Voyage AI — trợ lý và tìm kiếm kho tri thức, khi công ty bật các tính năng này; họ nhận câu hỏi được đặt ra và nội dung kho tri thức cần để trả lời."
+          ],
+          "after": [
+            "Chúng tôi cũng cung cấp dữ liệu cá nhân khi pháp luật yêu cầu — ví dụ cho cơ quan thuế, cơ quan bảo hiểm xã hội hoặc ngân hàng chi trả lương — và, nếu SuZu Group hoặc một công ty trong nhóm được tổ chức lại, sáp nhập hay chuyển nhượng, cho bên kế thừa với cùng mức bảo vệ."
+          ]
+        },
+        {
+          "heading": "9. Chuyển dữ liệu ra nước ngoài",
+          "body": [
+            "Cơ sở dữ liệu và tệp của Dịch vụ được lưu tại Singapore, và một số nhà cung cấp nêu trên có thể xử lý dữ liệu ở các quốc gia khác, bao gồm Hoa Kỳ. Chúng tôi chỉ chuyển dữ liệu cá nhân ra nước ngoài khi cần để cung cấp Dịch vụ và thực hiện các thủ tục mà pháp luật Việt Nam yêu cầu đối với việc chuyển dữ liệu cá nhân xuyên biên giới."
+          ]
+        },
+        {
+          "heading": "10. Chúng tôi lưu dữ liệu trong bao lâu",
+          "list": [
+            "Tài khoản đăng nhập và mã định danh Google: trong thời gian bạn có quyền truy cập Dịch vụ; được xoá khi quyền truy cập chấm dứt và bạn yêu cầu xoá, hoặc khi hồ sơ của bạn bị xoá.",
+            "Hồ sơ việc làm, chấm công và nghỉ phép: trong thời gian bạn làm việc và sau đó trong thời hạn pháp luật lao động và bảo hiểm xã hội yêu cầu.",
+            "Hồ sơ tiền lương, thuế và kế toán: trong thời hạn pháp luật thuế và kế toán Việt Nam yêu cầu (tối đa mười năm).",
+            "Nhật ký kiểm toán: trong thời gian cần thiết cho bảo mật và để chứng minh việc tuân thủ.",
+            "Phiên đăng nhập: bảy ngày kể từ lần hoạt động cuối. Báo cáo lỗi: một thời hạn giới hạn, sau đó tự động bị xoá."
+          ],
+          "after": [
+            "Khi hết thời hạn lưu trữ, chúng tôi xoá dữ liệu hoặc ẩn danh hoá dữ liệu."
+          ]
+        },
+        {
+          "heading": "11. Quyền của bạn",
+          "body": [
+            "Theo pháp luật Việt Nam về bảo vệ dữ liệu cá nhân, trong phạm vi và điều kiện pháp luật quy định, bạn có quyền:"
+          ],
+          "list": [
+            "được biết dữ liệu cá nhân của mình được xử lý như thế nào, và được truy cập, nhận bản sao dữ liệu đó;",
+            "yêu cầu chỉnh sửa dữ liệu không chính xác — nhiều thông tin có thể sửa trực tiếp trong hồ sơ của bạn trên Dịch vụ;",
+            "yêu cầu xoá dữ liệu, hạn chế hoặc phản đối việc xử lý dữ liệu;",
+            "rút lại sự đồng ý đã đưa ra, không ảnh hưởng đến việc xử lý đã thực hiện trước đó;",
+            "khiếu nại đến cơ quan có thẩm quyền là Bộ Công an Việt Nam."
+          ],
+          "after": [
+            "Để thực hiện các quyền này, vui lòng gửi email đến privacy@suzu.one hoặc liên hệ Phòng Nhân sự. Chúng tôi sẽ phản hồi trong thời hạn pháp luật Việt Nam quy định. Một số dữ liệu phải được lưu giữ theo luật ngay cả khi bạn yêu cầu xoá; khi đó chúng tôi sẽ cho bạn biết dữ liệu nào và vì sao."
+          ]
+        },
+        {
+          "heading": "12. Thu hồi quyền truy cập Google và xoá dữ liệu",
+          "body": [
+            "Bạn có thể gỡ quyền truy cập của SuZu One vào tài khoản Google của mình bất cứ lúc nào tại https://myaccount.google.com/permissions. Sau đó bạn sẽ không đăng nhập được nữa.",
+            "Để xoá tài khoản đăng nhập và thông tin chúng tôi nhận từ Google, vui lòng gửi email đến privacy@suzu.one từ tài khoản công ty của bạn. Chúng tôi sẽ xoá trong vòng 30 ngày, trừ các hồ sơ pháp luật yêu cầu lưu giữ, sẽ được xoá khi hết thời hạn lưu trữ."
+          ]
+        },
+        {
+          "heading": "13. Cookie và bộ nhớ trình duyệt",
+          "body": [
+            "Dịch vụ chỉ dùng các cookie cần thiết để hoạt động: cookie phiên giữ bạn đăng nhập, cookie ngắn hạn bảo vệ quá trình đăng nhập Google, và cookie ghi nhớ ngôn ngữ của bạn. Trình duyệt của bạn cũng lưu các tuỳ chọn giao diện, ví dụ thanh bên có thu gọn hay không. Chúng tôi không dùng cookie quảng cáo hay cookie theo dõi của bên thứ ba."
+          ]
+        },
+        {
+          "heading": "14. Trẻ em",
+          "body": [
+            "Dịch vụ dành cho nhân sự SuZu Group và không hướng đến trẻ em. Thông tin duy nhất về trẻ em trong Dịch vụ là thông tin nhân viên cung cấp về người phụ thuộc cho mục đích thuế thu nhập cá nhân và bảo hiểm."
+          ]
+        },
+        {
+          "heading": "15. Thay đổi chính sách",
+          "body": [
+            "Chúng tôi có thể cập nhật chính sách này. Ngày ở đầu trang cho biết lần thay đổi gần nhất. Nếu có thay đổi quan trọng, chúng tôi sẽ thông báo cho người dùng trong Dịch vụ trước khi thay đổi có hiệu lực."
+          ]
+        },
+        {
+          "heading": "16. Liên hệ",
+          "body": [
+            "Công ty Cổ phần SuZu Group, 2 Hải Triều, Bến Nghé, Quận 1, TP. Hồ Chí Minh, Việt Nam. Email: privacy@suzu.one."
+          ]
+        }
+      ]
+    },
+    "terms": {
+      "title": "Điều khoản sử dụng",
+      "description": "Các điều khoản nhân sự SuZu Group áp dụng khi sử dụng SuZu One.",
+      "updated": "Cập nhật lần cuối: 24/09/2026",
+      "intro": [
+        "Các Điều khoản sử dụng này điều chỉnh việc bạn sử dụng SuZu One — nền tảng vận hành nội bộ tại https://suzu.one (\"Dịch vụ\") do Công ty Cổ phần SuZu Group (\"SuZu Group\", \"chúng tôi\") vận hành. Khi đăng nhập vào Dịch vụ, bạn đồng ý với các điều khoản này. Nếu không đồng ý, vui lòng không sử dụng Dịch vụ.",
+        "Chính sách quyền riêng tư (https://suzu.one/privacy) giải thích cách xử lý dữ liệu cá nhân trong Dịch vụ và là một phần của các điều khoản này."
+      ],
+      "sections": [
+        {
+          "heading": "1. Ai được sử dụng Dịch vụ",
+          "body": [
+            "Dịch vụ là công cụ nội bộ dành cho nhân viên, cộng tác viên và nhân sự khác của SuZu Group và các công ty liên kết. Bạn chỉ được sử dụng Dịch vụ bằng tài khoản Google Workspace của công ty trên suzu.vn hoặc suzu.group do công ty tạo cho bạn, và chỉ trong thời gian công ty cấp quyền truy cập. Không có tài khoản công khai, tài khoản khách hay tài khoản cá nhân."
+          ]
+        },
+        {
+          "heading": "2. Tài khoản của bạn",
+          "list": [
+            "Bạn đăng nhập bằng tài khoản Google của công ty. Hãy bảo mật tài khoản, bật xác minh hai bước, và không chia sẻ hay để người khác sử dụng Dịch vụ dưới danh nghĩa của bạn.",
+            "Bạn chịu trách nhiệm về những gì được thực hiện trong Dịch vụ bằng tài khoản của mình.",
+            "Báo ngay cho Phòng Nhân sự hoặc bộ phận IT nếu bạn cho rằng người khác đã dùng tài khoản của bạn hoặc dữ liệu đã bị lộ."
+          ]
+        },
+        {
+          "heading": "3. Sử dụng đúng mục đích",
+          "body": [
+            "Chỉ sử dụng Dịch vụ cho công việc của bạn tại công ty và theo các chính sách của công ty. Bạn không được:"
+          ],
+          "list": [
+            "truy cập, hoặc tìm cách truy cập, thông tin mà vai trò của bạn không được phép xem;",
+            "tìm cách vượt qua, dò quét hay kiểm thử cơ chế bảo mật của Dịch vụ, hoặc gây cản trở hoạt động của Dịch vụ;",
+            "sao chép, xuất hoặc chia sẻ dữ liệu cá nhân hay thông tin bảo mật vượt quá phạm vi công việc yêu cầu và chính sách công ty cho phép;",
+            "tải lên nội dung vi phạm pháp luật, phần mềm độc hại, hoặc tài liệu bạn không có quyền chia sẻ;",
+            "thu thập dữ liệu tự động, dịch ngược hay xây dựng công cụ truy cập tự động vào Dịch vụ khi chưa được công ty chấp thuận bằng văn bản;",
+            "nhập thông tin mà bạn biết là sai, bao gồm chấm công, bảng công và đề xuất."
+          ]
+        },
+        {
+          "heading": "4. Bảo mật thông tin",
+          "body": [
+            "Mọi thông tin trong Dịch vụ — về đồng nghiệp, khách hàng, dự án, tài chính và công ty — là thông tin bảo mật của công ty. Nghĩa vụ bảo mật theo hợp đồng của bạn và nội quy lao động của công ty áp dụng cho các thông tin này, cả trong thời gian bạn có quyền truy cập và sau đó."
+          ]
+        },
+        {
+          "heading": "5. Nội dung bạn đưa lên",
+          "body": [
+            "Quyền sở hữu đối với sản phẩm công việc, tệp và nội dung khác bạn đưa lên Dịch vụ được xác định theo hợp đồng lao động hoặc hợp đồng cộng tác của bạn và pháp luật sở hữu trí tuệ. Bạn cho phép công ty lưu trữ, xử lý và hiển thị nội dung đó trong phạm vi cần thiết để vận hành Dịch vụ và hoạt động kinh doanh của công ty."
+          ]
+        },
+        {
+          "heading": "6. Hồ sơ, phê duyệt và phiếu lương",
+          "body": [
+            "Chấm công, bảng công, đề xuất, phê duyệt và các thao tác khác được ghi nhận trong Dịch vụ là hồ sơ của công ty và có giá trị theo chính sách công ty quy định. Phiếu lương và thông tin tiền lương khác được cung cấp để bạn kiểm tra; nếu thấy sai sót, hãy báo ngay cho Phòng Nhân sự. Khi một văn bản đã ký hoặc một quy định pháp luật có nội dung khác, văn bản hoặc quy định đó được ưu tiên áp dụng."
+          ]
+        },
+        {
+          "heading": "7. Trợ lý và các tính năng tự động",
+          "body": [
+            "Trợ lý và các tính năng tự động khác trả lời dựa trên kho tri thức của công ty và có thể chưa đầy đủ hoặc chưa chính xác. Hãy đối chiếu các câu trả lời quan trọng với tài liệu gốc, và không chỉ dựa vào chúng để ra quyết định pháp lý, tài chính hay nhân sự."
+          ]
+        },
+        {
+          "heading": "8. Tính sẵn sàng và thay đổi",
+          "body": [
+            "Chúng tôi nỗ lực để Dịch vụ luôn sẵn sàng và chính xác, nhưng Dịch vụ có thể bị gián đoạn do bảo trì, nâng cấp hoặc nguyên nhân ngoài tầm kiểm soát. Chúng tôi có thể thay đổi, bổ sung hoặc gỡ bỏ tính năng bất cứ lúc nào."
+          ]
+        },
+        {
+          "heading": "9. Tạm ngừng và chấm dứt quyền truy cập",
+          "body": [
+            "Quyền truy cập của bạn chấm dứt khi quan hệ lao động hoặc cộng tác kết thúc, hoặc sớm hơn nếu công ty quyết định. Công ty có thể tạm ngừng hoặc thu hồi quyền truy cập bất cứ lúc nào, kể cả ngay lập tức nếu các điều khoản này bị vi phạm hoặc an ninh của Dịch vụ bị đe doạ. Hồ sơ được tạo trong thời gian bạn có quyền truy cập được lưu giữ như mô tả trong Chính sách quyền riêng tư."
+          ]
+        },
+        {
+          "heading": "10. Miễn trừ và giới hạn trách nhiệm",
+          "body": [
+            "Trong phạm vi pháp luật cho phép, Dịch vụ được cung cấp \"nguyên trạng\", và SuZu Group không chịu trách nhiệm về thiệt hại gián tiếp hoặc hệ quả phát sinh từ việc sử dụng hoặc không thể sử dụng Dịch vụ. Không điều khoản nào ở đây hạn chế quyền của bạn theo Bộ luật Lao động hoặc các quy định bắt buộc khác của pháp luật."
+          ]
+        },
+        {
+          "heading": "11. Quan hệ với hợp đồng của bạn",
+          "body": [
+            "Các điều khoản này bổ sung, không thay thế, hợp đồng lao động hoặc hợp đồng cộng tác của bạn, nội quy lao động và các chính sách khác của công ty. Nếu có mâu thuẫn, hợp đồng và các quy định đó được ưu tiên áp dụng."
+          ]
+        },
+        {
+          "heading": "12. Luật áp dụng và giải quyết tranh chấp",
+          "body": [
+            "Các điều khoản này được điều chỉnh bởi pháp luật Việt Nam. Tranh chấp trước hết được giải quyết bằng thương lượng; nếu không thành, sẽ được giải quyết theo thủ tục pháp luật Việt Nam quy định, bao gồm thủ tục giải quyết tranh chấp lao động khi áp dụng, tại cơ quan hoặc Toà án có thẩm quyền tại TP. Hồ Chí Minh."
+          ]
+        },
+        {
+          "heading": "13. Thay đổi điều khoản",
+          "body": [
+            "Chúng tôi có thể cập nhật các điều khoản này. Ngày ở đầu trang cho biết lần thay đổi gần nhất. Nếu có thay đổi quan trọng, chúng tôi sẽ thông báo cho người dùng trong Dịch vụ trước khi thay đổi có hiệu lực; việc tiếp tục sử dụng Dịch vụ sau đó đồng nghĩa với việc bạn chấp nhận các thay đổi."
+          ]
+        },
+        {
+          "heading": "14. Liên hệ",
+          "body": [
+            "Công ty Cổ phần SuZu Group, 2 Hải Triều, Bến Nghé, Quận 1, TP. Hồ Chí Minh, Việt Nam. Email: privacy@suzu.one."
+          ]
+        }
+      ]
+    }
   }
 }

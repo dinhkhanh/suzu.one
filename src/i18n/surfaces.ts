@@ -20,8 +20,9 @@
 //     then a page missing its words inside the company, which is noticed in a minute, and never a
 //     catalogue leaving it, which is noticed by nobody.
 //   · **Public surfaces are named by prefix, not by what they look like.** `/careers`,
-//     `/preview/<token>` and the sign-in page are the three pages a signed-out visitor may open,
-//     and each names the namespaces it needs.
+//     `/preview/<token>`, the sign-in page and the public site (the home page, `/privacy`,
+//     `/terms`) are the pages a signed-out visitor may open, and each names the namespaces it
+//     needs. The home page is the one `exact` entry: a prefix of `/` would be every path.
 
 /** The header the proxy writes the surface it read off the path onto. Set on every request it sees. */
 export const SURFACE_HEADER = "x-surface";
@@ -29,7 +30,10 @@ export const SURFACE_HEADER = "x-surface";
 /** The surface every page inside the company runs on: the whole catalogue, to a signed-in browser. */
 export const APP_SURFACE = "app";
 
-type Surface = { prefix: string; name: string; namespaces: readonly string[] };
+type Surface = { prefix: string; name: string; namespaces: readonly string[]; exact?: boolean };
+
+/** The public site: what the product is, and the policies Google's OAuth review reads. */
+const SITE_NAMESPACES = ["app", "site", "legal"] as const;
 
 /**
  * The pages a stranger may open, with the words each one needs. A namespace can be a path
@@ -43,13 +47,17 @@ export const PUBLIC_SURFACES: readonly Surface[] = [
   { prefix: "/careers", name: "careers", namespaces: ["recruit.careers", "recruit.assignment"] },
   /** Nobody is signed in here either, by definition. */
   { prefix: "/sign-in", name: "signIn", namespaces: ["app", "signIn"] },
+  /** The home page a signed-out visitor sees; a signed-in one is sent on to the app. */
+  { prefix: "/", exact: true, name: "site", namespaces: SITE_NAMESPACES },
+  { prefix: "/privacy", name: "site", namespaces: SITE_NAMESPACES },
+  { prefix: "/terms", name: "site", namespaces: SITE_NAMESPACES },
 ];
 
-const matches = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
+const matches = (pathname: string, { prefix, exact }: Surface) => pathname === prefix || (!exact && pathname.startsWith(`${prefix}/`));
 
 /** The surface a path belongs to. Everything that is not one of the public pages is the app. */
 export function surfaceForPath(pathname: string): string {
-  return PUBLIC_SURFACES.find((surface) => matches(pathname, surface.prefix))?.name ?? APP_SURFACE;
+  return PUBLIC_SURFACES.find((surface) => matches(pathname, surface))?.name ?? APP_SURFACE;
 }
 
 /** Whether a path is open to a visitor with no session (so the proxy must not send them to sign in). */

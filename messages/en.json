@@ -1,7 +1,9 @@
 {
   "app": {
     "name": "SuZu One",
-    "tagline": "SuZu Group's internal operations platform"
+    "tagline": "SuZu Group's internal operations platform",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Use"
   },
   "signIn": {
     "title": "Sign in",
@@ -10769,5 +10771,342 @@
     "yearEndBonus": "Year-end bonus",
     "yearToDateImport": "Year-to-date import",
     "approve": "Approve"
+  },
+  "site": {
+    "description": "SuZu One is the internal operations platform of SuZu Group: HR records, attendance, leave, payroll, work and projects, knowledge and announcements, in one place for the company's own staff.",
+    "eyebrow": "For SuZu Group staff only",
+    "headline": "SuZu Group's internal operations, in one place",
+    "lead": "SuZu One is the web application SuZu Group's employees and collaborators use to run the company's day-to-day work: their HR records, attendance and leave, payroll and payslips, tasks and projects, requests and approvals, and the company's knowledge base and announcements.",
+    "signIn": "Sign in with your company account",
+    "audience": "Access is limited to people who have a company Google Workspace account on suzu.vn or suzu.group, created by HR. There is no public sign-up.",
+    "featuresTitle": "What it does",
+    "features": [
+      {
+        "title": "People and HR records",
+        "body": "Employee profiles, contracts, organisation chart, onboarding and offboarding checklists, documents."
+      },
+      {
+        "title": "Attendance and leave",
+        "body": "Check-in at the office, timesheets, leave balances, leave requests and approvals."
+      },
+      {
+        "title": "Payroll and payslips",
+        "body": "Monthly Vietnamese payroll (insurance, personal income tax), payslips each person can see only for themselves."
+      },
+      {
+        "title": "Work and projects",
+        "body": "Tasks, projects, daily plans and hand-offs for the marketing and creative teams, from brief to delivery."
+      },
+      {
+        "title": "Requests and approvals",
+        "body": "Equipment, documents and other internal requests, routed to the right approver."
+      },
+      {
+        "title": "Knowledge and announcements",
+        "body": "Policies, SOPs and brand guidelines, company announcements, and an assistant that answers from them."
+      }
+    ],
+    "googleTitle": "How SuZu One uses Google sign-in",
+    "googleBody": [
+      "Google is the only way to sign in. SuZu One asks Google only for the basic sign-in permissions — your name, email address and profile picture — and uses them to confirm that you are a member of SuZu Group and to show who you are inside the app.",
+      "SuZu One does not read your Gmail, Google Drive, Calendar or contacts, does not sell your data, and does not use it for advertising. The Privacy Policy explains exactly what is collected and why."
+    ],
+    "contactTitle": "Contact",
+    "contactBody": "SuZu One is operated by Công ty Cổ phần SuZu Group, 2 Hải Triều, Bến Nghé, Quận 1, Ho Chi Minh City, Vietnam. Questions about privacy or this service: privacy@suzu.one.",
+    "footer": "© 2026 Công ty Cổ phần SuZu Group",
+    "home": "Home",
+    "backHome": "Back to the home page"
+  },
+  "legal": {
+    "privacy": {
+      "title": "Privacy Policy",
+      "description": "How SuZu Group collects, uses, shares and protects personal data in SuZu One.",
+      "updated": "Last updated: 24 September 2026",
+      "intro": [
+        "This Privacy Policy explains how Công ty Cổ phần SuZu Group (\"SuZu Group\", \"we\", \"us\") collects, uses, shares and protects personal data in SuZu One, the internal operations platform available at https://suzu.one (the \"Service\").",
+        "SuZu One is an internal tool. It is available only to employees, collaborators and other personnel of SuZu Group and its affiliated companies who have been given a company Google Workspace account on suzu.vn or suzu.group. It is not offered to the public. The public careers pages at https://suzu.one/careers are covered by the privacy notice shown on the application form."
+      ],
+      "sections": [
+        {
+          "heading": "1. Who is responsible for your data",
+          "body": [
+            "The controller of personal data processed in the Service is Công ty Cổ phần SuZu Group, 2 Hải Triều, Bến Nghé, Quận 1, Ho Chi Minh City, Vietnam.",
+            "If your employment or engagement contract is with another company in the SuZu Group, that company is also responsible for your employment data, and SuZu Group operates the Service on its behalf.",
+            "You can reach us about anything in this policy at privacy@suzu.one."
+          ]
+        },
+        {
+          "heading": "2. Information we receive from Google",
+          "body": [
+            "Signing in with Google is the only way to use the Service. When you sign in, we ask Google only for the standard sign-in scopes: openid, email and profile. From these we receive:"
+          ],
+          "list": [
+            "your name and profile picture;",
+            "your email address and whether Google has verified it;",
+            "your Google account identifier;",
+            "the Google Workspace domain your account belongs to (for example suzu.group)."
+          ],
+          "after": [
+            "We use this information only to authenticate you, to check that your account belongs to an allowed SuZu Group Workspace domain and to a person who currently has access, and to show your name and picture inside the Service. When you open salary and other compensation screens, we ask you to confirm your identity with Google again.",
+            "We do not request access to your Gmail, Google Drive, Google Calendar, contacts or any other Google data. The tokens Google issues when you sign in are kept on our servers only to maintain your sign-in and are not used to call any other Google service on your behalf."
+          ]
+        },
+        {
+          "heading": "3. Our commitment on Google user data",
+          "body": [
+            "SuZu One's use and transfer of information received from Google APIs adheres to the Google API Services User Data Policy (https://developers.google.com/terms/api-services-user-data-policy), including the Limited Use requirements. In particular:"
+          ],
+          "list": [
+            "we use Google user data only to provide and secure the sign-in features described above;",
+            "we do not sell Google user data, and we do not use or transfer it for advertising, including personalised or retargeted advertising;",
+            "we do not use Google user data to determine creditworthiness or for lending purposes;",
+            "we do not use Google user data to develop, improve or train generalised artificial intelligence or machine learning models;",
+            "no person reads Google user data except where you have agreed, where it is needed for security (for example investigating abuse), where the law requires it, or in aggregated form for internal operations."
+          ]
+        },
+        {
+          "heading": "4. Other information in the Service",
+          "body": [
+            "As an HR and work platform, the Service holds information that you, HR, your managers or colleagues enter, or that the Service records while you use it:"
+          ],
+          "list": [
+            "Identity and contact details: name, date of birth, gender, phone numbers, addresses, identity card or passport details, emergency contacts.",
+            "Employment: the company that employs you, your unit, position, manager, contract type and dates, onboarding and offboarding records, documents such as contracts and decisions.",
+            "Attendance and leave: check-in and check-out times; when you check in from the app, the location your device reports and your network address at that moment, used only to confirm you are at a company work location; records imported from office time clocks (times and employee codes, not fingerprints or face data); leave balances and requests.",
+            "Payroll and compensation: salary, allowances, bonuses, social, health and unemployment insurance details, personal income tax details and dependants, bank account details, payslips.",
+            "Performance: objectives, KPIs, reviews and recognition.",
+            "Work: tasks, projects, daily plans, comments, files and approvals.",
+            "Requests and assets: internal requests and the equipment assigned to you.",
+            "Technical and security data: IP address, browser and device type, sign-in and session records, an audit log of actions taken in the Service, and error reports when something goes wrong."
+          ],
+          "after": [
+            "Identity numbers, bank details, salary and other compensation, and health information in leave records are treated as restricted data and receive the additional protections described in section 7."
+          ]
+        },
+        {
+          "heading": "5. How we use personal data",
+          "list": [
+            "to run the company's HR processes: employee records, attendance, leave, payroll, statutory social insurance and personal income tax, recruitment and performance;",
+            "to organise and track work: tasks, projects, requests and approvals;",
+            "to share internal knowledge and announcements, and to answer questions from the company knowledge base;",
+            "to send you notifications about your work, by email, browser notification or Google Chat;",
+            "to keep the Service secure: authentication, access control, audit logging and preventing misuse;",
+            "to keep the Service working: monitoring errors and fixing faults;",
+            "to meet our obligations under Vietnamese law, including labour, social insurance, tax and accounting law."
+          ],
+          "after": [
+            "We process personal data on the bases Vietnamese personal data protection law provides: to perform your labour or engagement contract, to comply with legal obligations, with your consent where consent is required, and otherwise as permitted by law. We do not use personal data in the Service for advertising and we do not sell it."
+          ]
+        },
+        {
+          "heading": "6. Who can see your data inside the company",
+          "body": [
+            "Access in the Service is based on roles and denied by default. Each person sees only what their role needs: you see your own records and payslips; HR, finance and managers see what their responsibilities require. Line managers never see their team members' salaries or other compensation. Opening compensation screens requires re-confirming your identity with Google, and access to restricted data is recorded in an audit log that cannot be altered."
+          ]
+        },
+        {
+          "heading": "7. How we protect personal data",
+          "list": [
+            "all traffic to the Service is encrypted in transit (HTTPS);",
+            "restricted and compensation fields are additionally encrypted in the database with keys held separately from the data;",
+            "the database is not reachable through any public data interface, and file storage is private;",
+            "role-based access control, re-authentication for sensitive screens and an append-only audit log;",
+            "sessions expire after seven days and can be revoked immediately when someone's access ends."
+          ],
+          "after": [
+            "No system is perfectly secure. If a personal data breach occurs, we will act to contain it and notify the affected people and the authorities as Vietnamese law requires."
+          ]
+        },
+        {
+          "heading": "8. Service providers we share data with",
+          "body": [
+            "We do not sell personal data. We share it only with the providers that run parts of the Service for us, under contracts that limit their use of it to providing their service:"
+          ],
+          "list": [
+            "Vercel Inc. — application hosting;",
+            "Supabase Inc. — database and private file storage, hosted in Singapore;",
+            "Upstash Inc. — a cache for configuration and reference data (never salary or other sensitive personal data);",
+            "Resend — delivery of emails the Service sends;",
+            "Functional Software Inc. (Sentry) — error monitoring;",
+            "Google LLC — Google Workspace sign-in, and Google Chat and Google Calendar notifications and meetings where the company has enabled them;",
+            "Anthropic PBC and Voyage AI — the assistant and knowledge base search, where the company has enabled them; they receive the question asked and the knowledge base content needed to answer it."
+          ],
+          "after": [
+            "We also disclose personal data where the law requires it — for example to the tax authority, the social insurance agency, or banks paying salaries — and, if SuZu Group or a group company is reorganised, merged or sold, to the successor, under the same protections."
+          ]
+        },
+        {
+          "heading": "9. Transfers outside Vietnam",
+          "body": [
+            "The Service's database and files are hosted in Singapore, and some providers listed above may process data in other countries, including the United States. We transfer personal data abroad only as needed to provide the Service and take the steps Vietnamese law requires for cross-border transfers of personal data."
+          ]
+        },
+        {
+          "heading": "10. How long we keep data",
+          "list": [
+            "Your sign-in account and Google identifiers: while you have access to the Service; they are removed when your access ends and you ask us to delete them, or when your records are deleted.",
+            "Employment, attendance and leave records: for the duration of your employment and afterwards for as long as labour and social insurance law requires.",
+            "Payroll, tax and accounting records: for the periods required by Vietnamese tax and accounting law (up to ten years).",
+            "Audit logs: for as long as needed for security and to demonstrate compliance.",
+            "Sessions: seven days from the last activity. Error reports: a limited period, after which they are deleted automatically."
+          ],
+          "after": [
+            "When a retention period ends, we delete the data or make it anonymous."
+          ]
+        },
+        {
+          "heading": "11. Your rights",
+          "body": [
+            "Under Vietnamese personal data protection law you may, subject to the conditions the law sets:"
+          ],
+          "list": [
+            "know how your personal data is processed, and access and obtain a copy of it;",
+            "ask us to correct inaccurate data — many details can be corrected directly from your profile in the Service;",
+            "ask us to delete your data, or restrict or object to its processing;",
+            "withdraw consent you have given, without affecting processing already carried out;",
+            "complain to the competent authority, the Ministry of Public Security of Vietnam."
+          ],
+          "after": [
+            "To exercise these rights, email privacy@suzu.one or contact HR. We will respond within the time Vietnamese law requires. Some data must be kept by law even when you ask us to delete it; if so, we will tell you what and why."
+          ]
+        },
+        {
+          "heading": "12. Revoking Google access and deleting your data",
+          "body": [
+            "You can remove SuZu One's access to your Google account at any time at https://myaccount.google.com/permissions. You will then no longer be able to sign in.",
+            "To have your sign-in account and the information we received from Google deleted, email privacy@suzu.one from your company account. We will delete it within 30 days, except for records the law requires us to keep, which are deleted when their retention period ends."
+          ]
+        },
+        {
+          "heading": "13. Cookies and local storage",
+          "body": [
+            "The Service uses only the cookies it needs to work: a session cookie that keeps you signed in, short-lived cookies that protect the Google sign-in process, and a cookie that remembers your language. Your browser also stores interface preferences, such as whether the sidebar is collapsed. We do not use advertising or third-party tracking cookies."
+          ]
+        },
+        {
+          "heading": "14. Children",
+          "body": [
+            "The Service is for SuZu Group personnel and is not directed at children. The only information about children it holds is what employees provide about their dependants for personal income tax and insurance purposes."
+          ]
+        },
+        {
+          "heading": "15. Changes to this policy",
+          "body": [
+            "We may update this policy. The date at the top shows when it last changed. If we make material changes, we will tell users in the Service before they take effect."
+          ]
+        },
+        {
+          "heading": "16. Contact",
+          "body": [
+            "Công ty Cổ phần SuZu Group, 2 Hải Triều, Bến Nghé, Quận 1, Ho Chi Minh City, Vietnam. Email: privacy@suzu.one."
+          ]
+        }
+      ]
+    },
+    "terms": {
+      "title": "Terms of Use",
+      "description": "The terms on which SuZu Group personnel use SuZu One.",
+      "updated": "Last updated: 24 September 2026",
+      "intro": [
+        "These Terms of Use govern your use of SuZu One, the internal operations platform at https://suzu.one (the \"Service\"), operated by Công ty Cổ phần SuZu Group (\"SuZu Group\", \"we\", \"us\"). By signing in to the Service you agree to these terms. If you do not agree, do not use the Service.",
+        "The Privacy Policy (https://suzu.one/privacy) explains how personal data in the Service is handled and forms part of these terms."
+      ],
+      "sections": [
+        {
+          "heading": "1. Who may use the Service",
+          "body": [
+            "The Service is an internal tool for employees, collaborators and other personnel of SuZu Group and its affiliated companies. You may use it only with a company Google Workspace account on suzu.vn or suzu.group created for you by the company, and only while the company has given you access. There are no public, guest or personal accounts."
+          ]
+        },
+        {
+          "heading": "2. Your account",
+          "list": [
+            "You sign in with your company Google account. Keep it secure, use two-step verification, and do not share it or let anyone else use the Service as you.",
+            "You are responsible for what is done in the Service under your account.",
+            "Tell HR or IT at once if you believe someone else has used your account or that data has been exposed."
+          ]
+        },
+        {
+          "heading": "3. Acceptable use",
+          "body": [
+            "Use the Service only for your work for the company and in line with company policies. You must not:"
+          ],
+          "list": [
+            "access, or try to access, information your role does not allow you to see;",
+            "try to bypass, probe or test the Service's security, or interfere with its operation;",
+            "copy, export or share personal data or confidential information beyond what your work requires and company policy permits;",
+            "upload unlawful content, malware, or material you do not have the right to share;",
+            "scrape, reverse engineer or build automated access to the Service without the company's written approval;",
+            "enter information you know to be false, including check-ins, timesheets and requests."
+          ]
+        },
+        {
+          "heading": "4. Confidentiality",
+          "body": [
+            "Everything in the Service — about colleagues, clients, projects, finances and the company — is confidential company information. Your confidentiality obligations under your contract and the company's internal regulations apply to it, both while you have access and afterwards."
+          ]
+        },
+        {
+          "heading": "5. Content you add",
+          "body": [
+            "Ownership of the work, files and other content you add to the Service is governed by your labour or engagement contract and applicable intellectual property law. You allow the company to store, process and display that content as needed to operate the Service and run the company's business."
+          ]
+        },
+        {
+          "heading": "6. Records, approvals and payslips",
+          "body": [
+            "Check-ins, timesheets, requests, approvals and other actions recorded in the Service are company records and have the effect company policies give them. Payslips and other payroll information are provided so you can review them; if you believe something is wrong, report it to HR promptly. Where a signed document or a legal requirement says otherwise, that document or requirement prevails."
+          ]
+        },
+        {
+          "heading": "7. Assistant and automated features",
+          "body": [
+            "The assistant and other automated features answer from the company's knowledge base and may be incomplete or wrong. Check important answers against the source documents, and do not rely on them alone for legal, financial or HR decisions."
+          ]
+        },
+        {
+          "heading": "8. Availability and changes",
+          "body": [
+            "We work to keep the Service available and accurate, but it may be interrupted for maintenance, upgrades or reasons beyond our control. We may change, add or remove features at any time."
+          ]
+        },
+        {
+          "heading": "9. Suspension and end of access",
+          "body": [
+            "Your access ends when your employment or engagement ends, or earlier if the company decides so. The company may suspend or revoke access at any time, including immediately if these terms are breached or the Service's security is at risk. Records created while you had access are kept as described in the Privacy Policy."
+          ]
+        },
+        {
+          "heading": "10. Disclaimer and liability",
+          "body": [
+            "To the extent permitted by law, the Service is provided \"as is\", and SuZu Group is not liable for indirect or consequential loss arising from its use or unavailability. Nothing in these terms limits any right you have under the Labour Code or other mandatory law."
+          ]
+        },
+        {
+          "heading": "11. Relationship to your contract",
+          "body": [
+            "These terms supplement, and do not replace, your labour or engagement contract, the company's internal labour regulations and its other policies. If they conflict, the contract and those regulations prevail."
+          ]
+        },
+        {
+          "heading": "12. Governing law and disputes",
+          "body": [
+            "These terms are governed by the law of Vietnam. Disputes are first to be resolved by discussion; failing that, through the procedures Vietnamese law provides, including labour dispute procedures where they apply, before the competent authority or court in Ho Chi Minh City."
+          ]
+        },
+        {
+          "heading": "13. Changes to these terms",
+          "body": [
+            "We may update these terms. The date at the top shows when they last changed. If we make material changes, we will tell users in the Service before they take effect; continuing to use the Service afterwards means you accept them."
+          ]
+        },
+        {
+          "heading": "14. Contact",
+          "body": [
+            "Công ty Cổ phần SuZu Group, 2 Hải Triều, Bến Nghé, Quận 1, Ho Chi Minh City, Vietnam. Email: privacy@suzu.one."
+          ]
+        }
+      ]
+    }
   }
 }

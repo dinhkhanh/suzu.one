@@ -1,7 +1,8 @@
 // What an anonymous visitor's browser is given.
 //
 // The product has two pages the internet can open — the careers page (FR-REC-03) and the client's
-// review link (D24, FR-PJM-51a) — and one more a signed-out person lands on, the sign-in page. The
+// review link (D24, FR-PJM-51a) — plus the public site (the home page and the two policies Google's
+// OAuth review reads) and the sign-in page a signed-out person lands on. The
 // root layout's `NextIntlClientProvider` **serialises whatever `src/i18n/request.ts` returns into
 // the page**, so the whole internal vocabulary (payroll screens, salary fields, everybody's job
 // titles, the permission names) would otherwise arrive in the browser of a stranger holding a
@@ -55,10 +56,15 @@ describe("which surface a path is", () => {
     expect(surfaceForPath("/careers/video-editor/apply")).toBe("careers");
     expect(surfaceForPath("/careers/assignment/AbC")).toBe("careers");
     expect(surfaceForPath("/sign-in")).toBe("signIn");
+    // The public site Google's OAuth review reads: the home page and the two policies.
+    expect(surfaceForPath("/")).toBe("site");
+    expect(surfaceForPath("/privacy")).toBe("site");
+    expect(surfaceForPath("/terms")).toBe("site");
   });
 
   it("calls everything else the app, and nothing else public", () => {
-    for (const path of ["/", "/today", "/work/tasks/abc", "/payroll/runs/1", "/previewing", "/careersy"]) {
+    // The home page is public only as itself: `/` is not a prefix of every path.
+    for (const path of ["/today", "/work/tasks/abc", "/payroll/runs/1", "/previewing", "/careersy", "/privacy-settings", "/termsheet", "//"]) {
       expect(surfaceForPath(path), path).toBe("app");
     }
   });
@@ -66,7 +72,7 @@ describe("which surface a path is", () => {
   it("is looked for on every path a page can be served at", () => {
     // Next's matcher is a plain pattern over the pathname here, with no parameters in it.
     const matcher = new RegExp(`^${config.matcher[0]}$`);
-    for (const path of ["/", "/today", "/preview/abc", "/preview/anything.png", "/careers", "/careers/video-editor", "/sign-in", "/api/cronies"]) {
+    for (const path of ["/", "/today", "/preview/abc", "/preview/anything.png", "/careers", "/careers/video-editor", "/sign-in", "/privacy", "/terms", "/api/cronies"]) {
       expect(matcher.test(path), path).toBe(true);
     }
     // Files that are served as they are, and the two routes that authenticate for themselves.
@@ -93,6 +99,13 @@ describe("which words a request is handed", () => {
     expect(Object.keys(messages.recruit as object).sort()).toEqual(["assignment", "careers"]);
   });
 
+  it("gives a visitor to the public site its own words and the policies, nothing internal", async () => {
+    const messages = await messagesFor("site", false);
+    expect(Object.keys(messages).sort()).toEqual(["app", "legal", "site"]);
+    for (const namespace of INTERNAL) expect(messages[namespace], namespace).toBeUndefined();
+    expect(messages.legal).toEqual(catalogue.legal);
+  });
+
   it("hands the whole catalogue only to the app's own pages", async () => {
     const app = await messagesFor("app");
     expect(Object.keys(app)).toEqual(Object.keys(catalogue));
@@ -108,7 +121,7 @@ describe("which words a request is handed", () => {
     // words wait for a session that exists.
     const messages = await messagesFor("app", false);
     for (const namespace of INTERNAL.filter((name) => name !== "recruit")) expect(messages[namespace], namespace).toBeUndefined();
-    expect(Object.keys(messages).sort()).toEqual(["app", "preview", "recruit", "signIn"]);
+    expect(Object.keys(messages).sort()).toEqual(["app", "legal", "preview", "recruit", "signIn", "site"]);
     // Recruitment only as far as the careers pages: no pipelines, no candidates, no scorecards.
     expect(Object.keys(messages.recruit as object).sort()).toEqual(["assignment", "careers"]);
     // And the page they were on is a redirect to sign-in, whose words are among the ones left.
@@ -119,7 +132,7 @@ describe("which words a request is handed", () => {
     for (const marker of [null, "", "unknown", "APP", "app-ish"]) {
       const messages = await messagesFor(marker);
       expect(JSON.stringify(messages), String(marker)).not.toContain('"payroll":');
-      expect(Object.keys(messages).sort(), String(marker)).toEqual(["app", "preview", "recruit", "signIn"]);
+      expect(Object.keys(messages).sort(), String(marker)).toEqual(["app", "legal", "preview", "recruit", "signIn", "site"]);
     }
   });
 

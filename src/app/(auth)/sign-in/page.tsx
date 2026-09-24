@@ -1,6 +1,7 @@
 import { Asterisk } from "lucide-react";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,6 +48,10 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
         </CardContent>
       </Card>
       <LocaleSwitch />
+      <nav className="flex gap-4 text-xs text-muted-foreground">
+        <Link href="/privacy" className="hover:text-foreground">{t("app.privacy")}</Link>
+        <Link href="/terms" className="hover:text-foreground">{t("app.terms")}</Link>
+      </nav>
     </main>
   );
 }
