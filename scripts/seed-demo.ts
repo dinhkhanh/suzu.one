@@ -71,7 +71,8 @@ async function main() {
   if (!url) throw new Error("POSTGRES_URL is not set (see .env.example)");
   // A pre-release staging database may opt in explicitly; anything else must be local.
   if (!["127.0.0.1", "localhost"].includes(new URL(url).hostname) && process.env.DEMO_SEED_ALLOW_REMOTE !== "1") throw new Error("Demo data is for a local database only (set DEMO_SEED_ALLOW_REMOTE=1 for a staging database).");
-  const client = postgres(url, { prepare: false, max: 1 });
+  // `max_pipeline: 0` for the same reason as src/lib/db/index.ts: a pipelined query hangs behind the transaction pooler.
+  const client = postgres(url, { prepare: false, max: 1, max_pipeline: 0 });
   const db = drizzle(client);
 
   const today = new Date().toISOString().slice(0, 10);

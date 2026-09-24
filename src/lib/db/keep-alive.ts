@@ -11,6 +11,10 @@ import type { Sql, TransactionSql } from "postgres";
 // instance waits in its queue until the 300-second function timeout, on pages that run nothing
 // heavier than `select … from session where token = $1`.
 //
+// (The September 2026 timeouts that this was written for turned out to have a second, larger cause:
+// the pooler dropping the reply of a pipelined query — `max_pipeline: 0` in index.ts. The freeze
+// remains a real way to lose a backend, so this stays.)
+//
 // So: never freeze mid-query. Each query is registered with the runtime's `waitUntil` at the
 // moment postgres.js sends it, which keeps the instance awake until the query has an answer,
 // however the response ended. Off Vercel (development, tests, scripts) `waitUntil` is a no-op.

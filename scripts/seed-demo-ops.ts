@@ -42,7 +42,8 @@ async function main() {
   console.log(`Scheduler: ${response.status} ${await response.text()}`);
   if (!response.ok) return;
 
-  const client = postgres(url, { prepare: false, max: 1 });
+  // `max_pipeline: 0` for the same reason as src/lib/db/index.ts: a pipelined query hangs behind the transaction pooler.
+  const client = postgres(url, { prepare: false, max: 1, max_pipeline: 0 });
   const db = drizzle(client);
   const today = new Date(Date.now() + 7 * 3_600_000).toISOString().slice(0, 10);
 

@@ -54,7 +54,8 @@ const DEPARTMENTS = [
 async function main() {
   const url = process.env.POSTGRES_URL;
   if (!url) throw new Error("POSTGRES_URL is not set (see .env.example)");
-  const client = postgres(url, { prepare: false, max: 1 });
+  // `max_pipeline: 0` for the same reason as src/lib/db/index.ts: a pipelined query hangs behind the transaction pooler.
+  const client = postgres(url, { prepare: false, max: 1, max_pipeline: 0 });
   const db = drizzle(client);
 
   const entities = await db.insert(entity).values(ENTITIES).onConflictDoNothing({ target: entity.code }).returning();
