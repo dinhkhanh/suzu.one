@@ -23,6 +23,8 @@
   /* The desk the app card floats on, and the grey used for counts and other quiet numbers. */
   --color-canvas: var(--canvas);
   --color-faint: var(--faint);
+  /* The identity colour: the app mark and nothing else (see the note on :root). */
+  --color-brand: var(--brand);
   /* The tones. Four say something about state (see src/components/ui/tone.ts); the rest tell one
      kind of thing from another without meaning good or bad. */
   --color-success: var(--success);
@@ -75,11 +77,12 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* A white app card on a light grey desk, hairline borders, and the brand's red (#EA3026) as the one
-   accent: the primary button, the focus ring, the active nav icon. Greys are neutral with a breath
-   of warmth so they sit with the red. State speaks through the tones below, never through the
-   brand colour: red is "act here", not "something is wrong" — that is `destructive`, a deeper
-   crimson only ever shown tinted. Links in prose are blue, because red text reads as an error. */
+/* A white app card on a light grey desk, hairline borders, one blue accent: the primary button,
+   the focus ring, the active nav icon and the selection. Greys are neutral with a breath of warmth.
+   The brand's red (#EA3026) is `brand`, and it is worn by the app mark alone: a red button, badge
+   or ring reads as "danger" before it reads as "SuZu", so the brand colour never says "act here"
+   and never says "something is wrong" — that is `destructive`, a deeper crimson only ever shown
+   tinted. State speaks through the tones below. */
 :root {
   --canvas: oklch(0.962 0.003 60);
   --background: oklch(1 0 0);
@@ -88,7 +91,8 @@
   --card-foreground: oklch(0.21 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.21 0 0);
-  --primary: oklch(0.609 0.222 28.8);
+  --brand: oklch(0.609 0.222 28.8);
+  --primary: oklch(0.576 0.208 258.6);
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.973 0 0);
   --secondary-foreground: oklch(0.21 0 0);
@@ -109,21 +113,21 @@
   --tone-indigo: oklch(0.5 0.19 275);
   --border: oklch(0.925 0 0);
   --input: oklch(0.917 0 0);
-  --ring: oklch(0.609 0.222 28.8);
-  --chart-1: oklch(0.609 0.222 28.8);
+  --ring: oklch(0.576 0.208 258.6);
+  --chart-1: oklch(0.576 0.208 258.6);
   --chart-2: oklch(0.62 0.12 195);
   --chart-3: oklch(0.75 0.16 70);
   --chart-4: oklch(0.6 0.2 295);
-  --chart-5: oklch(0.6 0.19 256);
+  --chart-5: oklch(0.6 0.17 45);
   --radius: 0.625rem;
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.21 0 0);
-  --sidebar-primary: oklch(0.609 0.222 28.8);
+  --sidebar-primary: oklch(0.576 0.208 258.6);
   --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.955 0 0);
   --sidebar-accent-foreground: oklch(0.21 0 0);
   --sidebar-border: oklch(0.925 0 0);
-  --sidebar-ring: oklch(0.609 0.222 28.8);
+  --sidebar-ring: oklch(0.576 0.208 258.6);
   /* The card floats: a hairline, then a shadow shallow enough to read as paper rather than a modal. */
   --shell-shadow: 0 0 0 1px oklch(0 0 0 / 4%), 0 1px 2px oklch(0 0 0 / 4%), 0 12px 32px -16px oklch(0 0 0 / 18%);
   /* Native controls, scrollbars and the default form colours follow the palette. */
@@ -142,7 +146,8 @@
     --card-foreground: oklch(0.97 0 0);
     --popover: oklch(0.205 0 0);
     --popover-foreground: oklch(0.97 0 0);
-    --primary: oklch(0.66 0.2 28.8);
+    --brand: oklch(0.66 0.2 28.8);
+    --primary: oklch(0.62 0.19 258.6);
     --primary-foreground: oklch(1 0 0);
     --secondary: oklch(0.255 0 0);
     --secondary-foreground: oklch(0.97 0 0);
@@ -163,20 +168,20 @@
     --tone-indigo: oklch(0.74 0.14 275);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 14%);
-    --ring: oklch(0.66 0.2 28.8);
-    --chart-1: oklch(0.66 0.2 28.8);
+    --ring: oklch(0.62 0.19 258.6);
+    --chart-1: oklch(0.62 0.19 258.6);
     --chart-2: oklch(0.72 0.12 195);
     --chart-3: oklch(0.78 0.15 70);
     --chart-4: oklch(0.7 0.17 295);
-    --chart-5: oklch(0.7 0.15 250);
+    --chart-5: oklch(0.78 0.15 55);
     --sidebar: oklch(0.185 0 0);
     --sidebar-foreground: oklch(0.97 0 0);
-    --sidebar-primary: oklch(0.66 0.2 28.8);
+    --sidebar-primary: oklch(0.62 0.19 258.6);
     --sidebar-primary-foreground: oklch(1 0 0);
     --sidebar-accent: oklch(0.255 0 0);
     --sidebar-accent-foreground: oklch(0.97 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.66 0.2 28.8);
+    --sidebar-ring: oklch(0.62 0.19 258.6);
     --shell-shadow: 0 0 0 1px oklch(1 0 0 / 8%), 0 12px 32px -16px oklch(0 0 0 / 60%);
   }
 }

@@ -200,7 +200,7 @@ export function AppFrame({
             )}
           >
             <Link href="/home" className="flex min-w-0 items-center gap-2">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-foreground text-background">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-brand text-white">
                 <Asterisk className="size-4" aria-hidden />
               </span>
               {collapsed ? null : (

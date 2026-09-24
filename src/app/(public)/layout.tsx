@@ -37,7 +37,7 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
         <header className="border-b border-border">
           <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between gap-3 px-4">
             <Link href="/careers" className="flex items-center gap-2 text-[0.9375rem] font-semibold tracking-[-0.015em]">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-foreground text-background">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-brand text-white">
                 <Asterisk className="size-4" aria-hidden />
               </span>
               {t("brand")}
