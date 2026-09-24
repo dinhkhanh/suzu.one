@@ -126,7 +126,8 @@
     "department_head": "Department head",
     "recruiter": "Recruiter",
     "asset_admin": "Asset admin",
-    "auditor": "Auditor (read-only)"
+    "auditor": "Auditor (read-only)",
+    "support": "Support"
   },
   "entities": {
     "title": "Legal entities",
@@ -6577,6 +6578,18 @@
       "generic": "Could not confirm. Please try again.",
       "forbidden": "This way of confirming is not enabled.",
       "rejected": "Google could not confirm that sign-in. Try again with the account you are using here."
+    },
+    "impersonating": "You are seeing the app as {name}. Re-authentication is for your own account only — go back to it first."
+  },
+  "impersonation": {
+    "start": "See the app as this person",
+    "banner": "You are seeing the app as {name}.",
+    "note": "Everything you do is recorded under your own account.",
+    "stop": "Back to my own account",
+    "errors": {
+      "forbidden": "You may not see the app as this person.",
+      "unauthenticated": "Your session has expired.",
+      "generic": "That did not work. Please try again."
     }
   },
   "payroll": {

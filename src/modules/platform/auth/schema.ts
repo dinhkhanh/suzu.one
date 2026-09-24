@@ -30,6 +30,12 @@ export const session = pgTable(
     // When the person last proved who they are: set at sign-in and by the step-up round trip
     // (FR-PLT-06). Compensation screens and payroll actions ask for a recent value.
     reauthAt: timestamp("reauth_at", { withTimezone: true }),
+    // Whose eyes this session is looking through (FR-PLT-40), and since when. Set and cleared only
+    // by the impersonation actions; `getCurrentUser` re-checks the right on every request and
+    // ignores a stale value. Text, not a person reference: a person who is deleted must not take a
+    // session row with them.
+    impersonatePersonId: text("impersonate_person_id"),
+    impersonatedAt: timestamp("impersonated_at", { withTimezone: true }),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),

@@ -152,6 +152,25 @@ export function permissionReach(principal: Principal, permission: Exclude<Permis
   return reach;
 }
 
+/** Someone whose identity may be borrowed (FR-PLT-40): where they sit, and what they themselves hold. */
+export type ImpersonationTarget = Target & { personId: string; grants: readonly Grant[] };
+
+const holdsEverything = (grant: Grant) => ROLE_DEFINITIONS[grant.role].permissions.includes("*");
+
+/**
+ * May the principal see the app as `target`? Three rules, all of them checked again on every request
+ * of the borrowed session:
+ * - never as oneself — there is nothing to see;
+ * - `auth:impersonate` must cover the target, like any other permission over a person;
+ * - a target who holds any role is borrowed only by someone with "*" over them (the owner). Anyone
+ *   else would gain the target's roles by borrowing them, which is what a grant is meant to withhold.
+ */
+export function canImpersonate(principal: Principal, target: ImpersonationTarget): boolean {
+  if (!principal.personId || principal.personId === target.personId) return false;
+  if (!can(principal, "auth:impersonate", target)) return false;
+  return target.grants.length === 0 || grantsCovering(principal, target).some(holdsEverything);
+}
+
 export const reachesNothing = (reach: TierReach): boolean => !reach.all && reach.entityIds.length + reach.unitIds.length === 0 && !reach.managerOf;
 
 export function matchesReach(reach: TierReach, person: Target): boolean {

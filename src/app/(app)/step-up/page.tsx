@@ -18,6 +18,19 @@ export default async function StepUpPage({ searchParams }: PageProps<"/step-up">
   const t = await getTranslations("stepUp");
   const driver = stepUpDriver();
 
+  // A borrowed session (FR-PLT-40) carries no proof of its own to refresh: proving who *you* are
+  // would open what only the person seen as may open. Say so instead of sending them round again.
+  if (user.impersonator) {
+    return (
+      <div className="flex max-w-md flex-col gap-4">
+        <header>
+          <h1>{t("title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("impersonating", { name: user.person.fullName })}</p>
+        </header>
+      </div>
+    );
+  }
+
   return (
     <div className="flex max-w-md flex-col gap-4">
       <header>

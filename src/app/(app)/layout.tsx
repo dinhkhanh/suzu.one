@@ -8,6 +8,7 @@ import { SignOutButton } from "@/components/shell/sign-out-button";
 import { ThemeSwitch } from "@/components/shell/theme-switch";
 import { peopleModuleOpen } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
+import { ImpersonationBanner } from "@/modules/platform/auth/ui/impersonation";
 import { loadShellCounts } from "@/modules/platform/shell/service";
 import { WelcomeGuide } from "@/modules/platform/shell/ui/welcome-guide";
 import { shouldShowWelcome, WELCOME_LATER_COOKIE, welcomeSteps } from "@/modules/platform/shell/welcome";
@@ -67,6 +68,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         user={{ name: user.person.fullName, email: user.email }}
         // Feedback on the app, one click from every page while it is new to everybody.
         headerEnd={<FeedbackButton />}
+        // Seeing the app as somebody else (FR-PLT-40) is said on every page, with the way back.
+        notice={user.impersonator ? <ImpersonationBanner name={user.person.fullName} personId={user.person.id} /> : null}
         footer={
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">

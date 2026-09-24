@@ -8,7 +8,8 @@ import { markReauthenticated, stepUpDriver } from "./step-up";
 const confirmPipeline = createAction({
   name: "auth.step_up",
   input: z.object({}),
-  authorize: () => stepUpDriver() === "local",
+  // Not from a borrowed session either (FR-PLT-40): the proof would be the impersonator's, not the target's.
+  authorize: (user) => stepUpDriver() === "local" && !user.impersonator,
   run: async ({ user }) => {
     await markReauthenticated(user.sessionId);
     return { data: { ok: true }, audit: { resource: { type: "session", id: user.userId }, summary: "local driver" } };

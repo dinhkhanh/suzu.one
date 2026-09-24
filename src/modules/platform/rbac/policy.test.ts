@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { can, canReadTier, entityReach, matchesReach, permissionReach, reachesNothing, readableTier, tierReach, type Grant, type Principal } from "./policy";
+import { can, canImpersonate, canReadTier, entityReach, matchesReach, permissionReach, reachesNothing, readableTier, tierReach, type Grant, type Principal } from "./policy";
 import { ROLES, TIERS } from "./roles";
 
 const ENTITY_A = "entity-a";
@@ -346,5 +346,41 @@ describe("feedback about the app", () => {
       expect(can(other, "feedback:manage", target), role).toBe(false);
       expect(can(other, "feedback:read", target), role).toBe(false);
     }
+  });
+});
+
+describe("canImpersonate", () => {
+  const plainLan = { ...lan, grants: [] as Grant[] };
+  const hrLan = { ...lan, grants: [{ role: "hr_staff", scope: { type: "entity", id: ENTITY_A } }] as Grant[] };
+  const owner = principal([{ role: "owner", scope: { type: "group" } }]);
+
+  it("lets the owner see the app as anyone, role holder or not", () => {
+    expect(canImpersonate(owner, plainLan)).toBe(true);
+    expect(canImpersonate(owner, hrLan)).toBe(true);
+    expect(canImpersonate(owner, { ...hrLan, grants: [{ role: "owner", scope: { type: "group" } }] })).toBe(true);
+  });
+
+  it("never as oneself", () => {
+    expect(canImpersonate(owner, { ...plainLan, personId: "me" })).toBe(false);
+    expect(canImpersonate(principal([], { personId: null }), plainLan)).toBe(false);
+  });
+
+  it("gives the support role people without a role, inside its scope only", () => {
+    const support = principal([{ role: "support", scope: { type: "unit", id: DESIGN } }]);
+    expect(canImpersonate(support, plainLan)).toBe(true);
+    expect(canImpersonate(support, { ...plainLan, unitPath: [SOCIAL] })).toBe(false);
+    expect(canImpersonate(principal([{ role: "support", scope: { type: "entity", id: ENTITY_B } }]), plainLan)).toBe(false);
+  });
+
+  it("refuses a role holder to anyone without '*' over them: borrowing would be a promotion", () => {
+    const support = principal([{ role: "support", scope: { type: "group" } }]);
+    expect(canImpersonate(support, hrLan)).toBe(false);
+    // An owner grant on another entity is not "*" over Lan.
+    expect(canImpersonate(principal([{ role: "owner", scope: { type: "entity", id: ENTITY_B } }, { role: "support", scope: { type: "group" } }]), hrLan)).toBe(false);
+  });
+
+  it("is held by no role but support, and by the owner", () => {
+    for (const role of ROLES) expect(can(principal([{ role, scope: { type: "group" } }]), "auth:impersonate", lan), role).toBe(role === "owner" || role === "support");
+    expect(canImpersonate(principal([{ role: "hr_admin", scope: { type: "group" } }]), plainLan)).toBe(false);
   });
 });

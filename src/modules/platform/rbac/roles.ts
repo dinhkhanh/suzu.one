@@ -16,6 +16,7 @@ export const ROLES = [
   "recruiter",
   "asset_admin",
   "auditor",
+  "support",
 ] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -78,7 +79,12 @@ export type Permission =
   // the internal note (`feedback:manage`); read the inbox without changing it (`feedback:read`).
   // Anyone may send feedback and read their own; neither needs a permission.
   | "feedback:manage"
-  | "feedback:read";
+  | "feedback:read"
+  // Seeing the app as somebody else (FR-PLT-40): the holder's session acts as a person the grant
+  // covers — their pages, their grants, their name on what they do — while the audit log keeps the
+  // holder's own account on every entry. `canImpersonate` adds the rule that only a "*" holder may
+  // borrow the identity of someone who holds a role: anyone else could otherwise climb the ladder.
+  | "auth:impersonate";
 
 type RoleDefinition = {
   permissions: readonly Permission[];
@@ -104,6 +110,11 @@ export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
   recruiter: { permissions: ["org:read", "recruit:manage"], maxTier: "public_internal" },
   asset_admin: { permissions: ["org:read", "person:read", "asset:manage"], maxTier: "public_internal" },
   auditor: { permissions: ["org:read", "person:read", "payroll:read", "report:read", "audit:read", "ops:read", "performance:read"], maxTier: "compensation" },
+  // Whoever helps people with the app (FR-PLT-40): sees the directory to find them, then sees what
+  // they see. Given by the owner on Admin → Access, over a unit, an entity or the group; it never
+  // reaches a role holder (`canImpersonate`), and the step-up proof does not travel with it, so a
+  // support person sees no payslip that their own grants would not show them.
+  support: { permissions: ["org:read", "person:read", "auth:impersonate"], maxTier: "public_internal" },
 };
 
 export function tierRank(tier: Tier): number {

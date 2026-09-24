@@ -49,7 +49,12 @@ function create() {
       // signing in does not open the compensation screens — with a live Google session it takes
       // only an account pick — so they always ask for the step-up round trip, however recent the
       // sign-in. Never accepted from a request: only the step-up adapter sets it.
-      additionalFields: { reauthAt: { type: "date", required: false, input: false } },
+      additionalFields: {
+        reauthAt: { type: "date", required: false, input: false },
+        // Who the session is looking through (FR-PLT-40). Written by `impersonation.ts` alone.
+        impersonatePersonId: { type: "string", required: false, input: false },
+        impersonatedAt: { type: "date", required: false, input: false },
+      },
     },
 
     onAPIError: { errorURL: "/sign-in" },

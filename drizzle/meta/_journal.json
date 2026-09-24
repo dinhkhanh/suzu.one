@@ -666,6 +666,13 @@
       "when": 1790236435666,
       "tag": "0094_pin_function_search_path",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1790253286292,
+      "tag": "0095_session_impersonation",
+      "breakpoints": true
     }
   ]
 }

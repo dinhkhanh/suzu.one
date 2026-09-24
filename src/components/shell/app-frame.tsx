@@ -48,6 +48,8 @@ type Props = {
   footer: ReactNode;
   /** At the right end of the header on every page: the feedback button. */
   headerEnd?: ReactNode;
+  /** Across the top of the page, above the header: the "seeing the app as…" banner. */
+  notice?: ReactNode;
   children: ReactNode;
 };
 
@@ -127,6 +129,7 @@ export function AppFrame({
   user,
   footer,
   headerEnd,
+  notice,
   children,
 }: Props) {
   const pathname = usePathname();
@@ -308,6 +311,7 @@ export function AppFrame({
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
+          {notice}
           <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
             <button
               type="button"

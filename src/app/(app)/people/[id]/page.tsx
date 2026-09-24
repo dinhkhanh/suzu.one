@@ -16,10 +16,12 @@ import { PersonSalaryHistory } from "@/modules/payroll/ui/person-salary-history"
 import { LifecycleSection } from "@/modules/core-hr/ui/lifecycle-section";
 import { RecordSections } from "@/modules/core-hr/ui/record-sections";
 import { RequestTable } from "@/modules/platform/approvals/ui/request-views";
+import { impersonationTargetOf } from "@/modules/platform/auth/impersonation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
+import { ImpersonateButton } from "@/modules/platform/auth/ui/impersonation";
 import { listEntities } from "@/modules/platform/org/service";
-import { can } from "@/modules/platform/rbac/policy";
+import { can, canImpersonate } from "@/modules/platform/rbac/policy";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("person");
@@ -53,12 +55,16 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
   // A move to another entity is for someone employed now, by HR of both entities (the action re-checks).
   const today = todayInVietnam();
   const transferring = person.canManage && !!personal?.startDate && personal.startDate < today && personal.endDate === null && !!person.entityId;
-  const [changeRequests, options, otherEntityOptions, entities] = await Promise.all([
+  const [changeRequests, options, otherEntityOptions, entities, borrowable] = await Promise.all([
     person.id === user.person.id ? null : listProfileChanges({ personId: user.person.id, principal: user.principal }, person.id, "pending"),
     person.canManage && person.entityId ? loadPlacementOptions(person.entityId) : null,
     rehiring || transferring ? loadPlacementOptions() : null,
     rehiring || transferring ? listEntities() : [],
+    // Seeing the app as this person (FR-PLT-40): offered to whoever holds the permission at all and
+    // is not already borrowing, then decided against their grants and this person's own.
+    !user.impersonator && person.id !== user.person.id && can(user.principal, "auth:impersonate") ? impersonationTargetOf(person.id) : null,
   ]);
+  const impersonable = !!borrowable && canImpersonate(user.principal, borrowable.target);
   const manageableEntities = entities.filter((entity) => entity.isActive && can(user.principal, "person:manage", { entityId: entity.id })).map((entity) => ({ id: entity.id, name: entity.shortName }));
   const transferTargets = transferring ? manageableEntities.filter((entity) => entity.id !== person.entityId) : [];
 
@@ -68,6 +74,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
         <div className="flex flex-wrap items-center gap-2">
           <h1>{person.fullName}</h1>
           {personal && personal.status !== "active" ? <Badge variant="outline">{t(`status.${personal.status}`)}</Badge> : null}
+          {impersonable ? <ImpersonateButton personId={person.id} /> : null}
         </div>
         <p className="text-sm text-muted-foreground">
           {[person.employeeCode, person.current?.positionName, person.current?.departmentName, person.entityName].filter(Boolean).join(" · ")}

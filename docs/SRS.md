@@ -261,6 +261,7 @@ Two platform engines are deliberately shared:
 | FR-PLT-37 | Data export to Excel/CSV/PDF on all list and report screens, permission-filtered and audit-logged. | M |
 | FR-PLT-38 | **Statutory parameter store**: all legal rates, caps, brackets, deductions, minimum wages, holidays and OT multipliers are effective-dated configuration, never hard-coded. Changes are versioned and audit-logged. See Appendix A. | M |
 | FR-PLT-39 | **Rule governance** (D17): changes to statutory parameters, pay components, formulas, leave and attendance policies are proposed by HR/C&B and take effect only after **owner approval**. | M |
+| FR-PLT-40 | **Seeing the app as somebody else** (owner's decision, 2026-09-24): the owner may open the app as any person; a `support` role, granted like any other on Admin → Access with a scope, gives the same over people in that scope who hold no role — a role holder is borrowed only by someone with `*` over them. The borrowed session shows the target's pages and grants, ends by itself after 8 hours, at sign-out, or when the right lapses; a banner says whose eyes these are on every page. Every entry it writes to the audit log keeps the real account (`actor_user_id`, `actor_email`) and names the person acted as (`actor_person_id`); start and stop are logged. The step-up proof (FR-PLT-06) does not travel with it unless the impersonator's own grants read the target's compensation. | M |
 
 ---
 

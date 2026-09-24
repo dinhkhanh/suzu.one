@@ -126,7 +126,8 @@
     "department_head": "Trưởng bộ phận",
     "recruiter": "Tuyển dụng",
     "asset_admin": "Quản lý tài sản",
-    "auditor": "Kiểm toán (chỉ xem)"
+    "auditor": "Kiểm toán (chỉ xem)",
+    "support": "Hỗ trợ hệ thống"
   },
   "entities": {
     "title": "Pháp nhân",
@@ -6577,6 +6578,18 @@
       "generic": "Không xác thực được. Vui lòng thử lại.",
       "forbidden": "Cách xác thực này không được bật.",
       "rejected": "Google không xác nhận được lần đăng nhập vừa rồi. Hãy thử lại bằng đúng tài khoản đang dùng."
+    },
+    "impersonating": "Bạn đang xem với tư cách {name}. Việc xác thực lại chỉ dành cho tài khoản của chính bạn — hãy trở lại tài khoản của mình trước."
+  },
+  "impersonation": {
+    "start": "Xem với tư cách người này",
+    "banner": "Bạn đang xem với tư cách {name}.",
+    "note": "Mọi thao tác được ghi nhận dưới tài khoản của bạn.",
+    "stop": "Trở lại tài khoản của tôi",
+    "errors": {
+      "forbidden": "Bạn không có quyền xem với tư cách người này.",
+      "unauthenticated": "Phiên đăng nhập đã hết hạn.",
+      "generic": "Không thực hiện được. Vui lòng thử lại."
     }
   },
   "payroll": {

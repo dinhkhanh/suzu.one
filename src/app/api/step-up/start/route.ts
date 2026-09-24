@@ -6,7 +6,8 @@ import { googleStepUpUrl, sealPendingStepUp, STEP_UP_STATE_COOKIE, stepUpDriver 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.redirect(new URL("/sign-in", request.url));
-  if (stepUpDriver() !== "google") return NextResponse.redirect(new URL("/step-up", request.url));
+  // A borrowed session (FR-PLT-40) has nothing of its own to prove: the page explains.
+  if (stepUpDriver() !== "google" || user.impersonator) return NextResponse.redirect(new URL("/step-up", request.url));
 
   const { cookie, pending } = sealPendingStepUp({ next: request.nextUrl.searchParams.get("next") ?? "/home", sessionId: user.sessionId });
   const response = NextResponse.redirect(googleStepUpUrl(pending, user.email));
