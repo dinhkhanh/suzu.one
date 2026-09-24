@@ -39,7 +39,7 @@ export default async function MyAcknowledgementsPage() {
                   {row.title}
                 </Link>
                 <span className="text-xs text-muted-foreground">{row.spaceName}</span>
-                <Badge variant={row.overdue ? "destructive" : "outline"}>{row.overdue ? t("ack.overdueSince", { date: day(row.dueOn) }) : t("ack.dueOn", { date: day(row.dueOn) })}</Badge>
+                <Badge dot variant={row.overdue ? "destructive" : "outline"}>{row.overdue ? t("ack.overdueSince", { date: day(row.dueOn) }) : t("ack.dueOn", { date: day(row.dueOn) })}</Badge>
               </li>
             ))}
           </ul>

@@ -50,7 +50,7 @@ export default async function MyGoalsPage({ searchParams }: PageProps<"/performa
 
       <section className="flex flex-col gap-3">
         <h2>{t("mine.title")}</h2>
-        {due > 0 ? <p className="text-sm text-amber-700 dark:text-amber-300">{t("mine.due", { count: due })}</p> : null}
+        {due > 0 ? <p className="text-sm text-warning">{t("mine.due", { count: due })}</p> : null}
         {mine.length === 0 ? <p className="text-sm text-muted-foreground">{t("mine.empty", { year })}</p> : null}
         {mine.map((goal) => {
           // Everything listed here is mine or mine to answer for: the check-in is open while the goal runs.

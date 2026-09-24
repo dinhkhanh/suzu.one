@@ -384,7 +384,7 @@ export function CloseMonthForm({ entityId, month, blockers }: { entityId: string
     <div className="flex flex-col gap-2">
       {listed.length > 0 ? (
         <>
-          <p className="text-sm text-amber-700 dark:text-amber-300">{t("periods.blocked", { count: listed.length })}</p>
+          <p className="text-sm text-warning">{t("periods.blocked", { count: listed.length })}</p>
           <ul className="list-disc pl-5 text-xs text-muted-foreground">
             {listed.slice(0, 30).map((item) => (
               <li key={`${item.personId}:${item.kpiCode}:${item.periodKey}`}>{`${item.personName} — ${item.kpiName} (${item.periodKey})`}</li>

@@ -100,7 +100,7 @@ export default async function TodayPage() {
           <div className="flex flex-col gap-2 rounded-xl border p-4">
             <div className="flex items-center gap-2 text-sm font-medium">
               <ClipboardList className="size-4" aria-hidden /> {t("today.report")}
-              {view.report?.status === "submitted" ? <Badge variant={view.report.late ? "warning" : "success"}>{view.report.late ? t("late") : t("submitted")}</Badge> : day?.report.required ? <Badge variant="outline">{t("required")}</Badge> : null}
+              {view.report?.status === "submitted" ? <Badge dot variant={view.report.late ? "warning" : "success"}>{view.report.late ? t("late") : t("submitted")}</Badge> : day?.report.required ? <Badge variant="outline">{t("required")}</Badge> : null}
             </div>
             <p className="text-sm text-muted-foreground">{view.report?.status === "submitted" ? t("today.reportSent") : day?.report.required ? t("today.reportBy", { time: day.rules.reportDeadline }) : t("today.reportOptional")}</p>
             <Link href={view.report?.status === "submitted" ? `/daily/reports/${view.report.id}` : "/daily/report"} className={buttonVariants({ size: "lg", variant: view.report?.status === "submitted" ? "outline" : "default" })}>

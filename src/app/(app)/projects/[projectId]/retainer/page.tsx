@@ -103,7 +103,7 @@ export default async function ProjectRetainerPage({ params }: PageProps<"/projec
         <section className="flex flex-col gap-2 rounded-xl border p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-base font-medium">{t("terms")}</h2>
-            <Badge variant={retainer.isActive ? "success" : "secondary"}>{retainer.isActive ? t("active") : t("inactive")}</Badge>
+            <Badge dot variant={retainer.isActive ? "success" : "outline"}>{retainer.isActive ? t("active") : t("inactive")}</Badge>
           </div>
           <p className="text-sm">{t("termsLine", { start: retainer.startMonth, end: retainer.endMonth ?? t("noEnd"), rollover: t(`rollovers.${retainer.rollover as "reset"}`) })}</p>
           <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">

@@ -173,7 +173,7 @@ export function DifferenceCell({ line }: { line: DifferenceLine }) {
       <span className="text-sm">
         {t(`fields.${line.field}`)}: <span className="tabular-nums">{formatVnd(line.system)}</span> / <span className="tabular-nums text-muted-foreground">{formatVnd(line.reference)}</span>
       </span>
-      <span className={`text-xs tabular-nums ${line.classification ? "text-muted-foreground" : "text-amber-600 dark:text-amber-400"}`}>
+      <span className={`text-xs tabular-nums ${line.classification ? "text-muted-foreground" : "text-warning"}`}>
         {line.delta > 0 ? "+" : ""}
         {formatVnd(line.delta)}
         {line.classification ? ` · ${t(`classes.${line.classification}`)}` : ` · ${t("unexplained")}`}

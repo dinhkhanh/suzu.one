@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
 import { isStepUpFresh } from "@/modules/platform/auth/step-up-policy";
 import { getOfferView } from "@/modules/recruit/offers";
@@ -45,7 +46,7 @@ export default async function OfferPage({ params }: PageProps<"/recruit/offers/[
             · {view.offer.number}
           </p>
         </div>
-        <Badge variant={view.status === "accepted" ? "default" : view.status === "sent" || view.status === "pending_approval" ? "secondary" : "outline"}>{t(`statuses.${view.status}`)}</Badge>
+        <Badge dot variant={statusTone(view.status)}>{t(`statuses.${view.status}`)}</Badge>
       </header>
 
       <dl className="grid gap-2 rounded-xl border p-4 text-sm sm:grid-cols-2">

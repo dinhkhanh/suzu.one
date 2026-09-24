@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listStructure, listTaskLinks, loadRegisters, openProject, REGISTER_STATUSES } from "@/modules/projects/service";
 import { CancelLineButton, DeliverableForm, LineTasksForm, UnlinkButton } from "@/modules/projects/ui/plan-forms";
@@ -11,7 +12,6 @@ import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("deliverables");
 
-const statusVariant = (status: string) => (status === "accepted" || status === "delivered" || status === "published" ? "success" : status === "client_review" ? "info" : status === "in_production" ? "warning" : status === "cancelled" ? "outline" : "secondary");
 
 /**
  * The deliverables register (FR-PJM-05): what the client was promised, line by line, and how far
@@ -56,7 +56,7 @@ export default async function ProjectDeliverablesPage({ params }: PageProps<"/pr
                 <span className={`font-medium ${line.status === "cancelled" ? "line-through" : ""}`}>
                   {line.quantity} × {line.title}
                 </span>
-                <Badge variant={statusVariant(line.status)}>{t(`register.status.${line.status}`)}</Badge>
+                <Badge dot variant={statusTone(line.status)}>{t(`register.status.${line.status}`)}</Badge>
                 {line.format ? <Badge variant="outline">{tWork(`formats.${line.format as "post"}`)}</Badge> : null}
                 {line.channel ? <Badge variant="outline">{tWork(`channels.${line.channel as "facebook"}`)}</Badge> : null}
               </div>

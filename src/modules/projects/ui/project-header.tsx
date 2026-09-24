@@ -3,6 +3,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import type { ProjectContext } from "../views";
 import { type ProjectTab, ProjectTabs } from "./project-tabs";
 
@@ -30,8 +31,8 @@ export async function ProjectHeader({ context, current }: { context: ProjectCont
         </h1>
         <div className="flex flex-wrap gap-1.5">
           <Badge variant="outline">{t(`kinds.${plan.kind as "client"}`)}</Badge>
-          <Badge variant={project.status === "active" ? "info" : "secondary"}>{tWork(`projects.status.${project.status as "active"}`)}</Badge>
-          <Badge variant={plan.briefStatus === "approved" ? "success" : plan.briefStatus === "returned" ? "warning" : "secondary"}>{t(`brief.status.${plan.briefStatus as "draft"}`)}</Badge>
+          <Badge dot variant={statusTone(project.status)}>{tWork(`projects.status.${project.status as "active"}`)}</Badge>
+          <Badge dot variant={statusTone(plan.briefStatus)}>{t(`brief.status.${plan.briefStatus as "draft"}`)}</Badge>
           {plan.health ? <Badge variant={healthVariant(plan.health)}>{t(`health.${plan.health as "on_track"}`)}</Badge> : null}
           {plan.closedAt ? <Badge variant="outline">{t("close.closedBadge")}</Badge> : null}
         </div>

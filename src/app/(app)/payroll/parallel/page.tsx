@@ -87,7 +87,7 @@ export default async function ParallelRunPage({ searchParams }: PageProps<"/payr
                   <TableCell className="align-top">
                     {row.fullName}
                     <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
-                    {row.presence !== "both" ? <p className="text-xs text-amber-600 dark:text-amber-400">{t(`presence.${row.presence}`)}</p> : null}
+                    {row.presence !== "both" ? <p className="text-xs text-warning">{t(`presence.${row.presence}`)}</p> : null}
                   </TableCell>
                   <TableCell className="align-top">
                     {row.matches ? (

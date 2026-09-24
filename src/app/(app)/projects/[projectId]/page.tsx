@@ -1,7 +1,9 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { DecisionForm } from "@/modules/platform/approvals/ui/decision-form";
 import { RequestHistory, RequestStatusBadge, RequestTools } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -67,14 +69,12 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
           <h2 className="text-base font-medium">{t("kickoff.title")}</h2>
           <div className="flex items-center gap-2">
             {request ? <RequestStatusBadge status={request.request.status} /> : null}
-            <Badge variant={status === "approved" ? "success" : status === "returned" ? "warning" : "secondary"}>{t(`brief.status.${status}`)}</Badge>
+            <Badge dot variant={statusTone(status)}>{t(`brief.status.${status}`)}</Badge>
           </div>
         </div>
         <p className="text-sm text-muted-foreground">{status === "approved" ? t("kickoff.approvedNote", { date: plan.briefApprovedAt ? format.dateTime(plan.briefApprovedAt, { dateStyle: "medium" }) : "—" }) : project.status === "planned" ? t("kickoff.gateNote") : t("kickoff.notApprovedNote")}</p>
         {status === "returned" && lastComment ? (
-          <p role="status" className="rounded-md border border-amber-600/30 bg-amber-500/10 p-3 text-sm">
-            {t("kickoff.returnedWith", { comment: lastComment })}
-          </p>
+          <Alert variant="warning">{t("kickoff.returnedWith", { comment: lastComment })}</Alert>
         ) : null}
 
         {editable ? <BriefForm projectId={project.id} brief={plan.brief} kind={plan.kind} /> : <BriefView brief={plan.brief} />}

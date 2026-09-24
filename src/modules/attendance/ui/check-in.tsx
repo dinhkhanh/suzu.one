@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { punchAction, reviewPunchAction } from "../checkin-actions";
@@ -101,14 +102,14 @@ export function CheckInPanel({ nextDirection, punchExpected }: { nextDirection: 
           </div>
         ) : null}
         {failure ? (
-          <div role="alert" className="rounded-xl border border-destructive/50 bg-destructive/10 p-3 text-destructive">
-            <p className="font-medium">{t.has(`errors.${failure.key}`) ? t(`errors.${failure.key}`) : t("errors.generic")}</p>
-            <ul>
+          <Alert variant="destructive">
+            <AlertTitle>{t.has(`errors.${failure.key}`) ? t(`errors.${failure.key}`) : t("errors.generic")}</AlertTitle>
+            <ul className="w-full">
               {failure.flags.map((flag) => (
                 <li key={flag}>{t(`flags.${flag}`, { distance: 0 })}</li>
               ))}
             </ul>
-          </div>
+          </Alert>
         ) : null}
       </div>
     </div>

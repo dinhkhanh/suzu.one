@@ -1,7 +1,9 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -59,16 +61,14 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
             {run.name ? ` — ${run.name}` : ""}
           </h1>
           <p className="text-sm text-muted-foreground">
-            <Badge variant={run.status === "locked" ? "secondary" : "default"}>{t(`runs.statuses.${run.status}`)}</Badge>
+            <Badge dot variant={statusTone(run.status)}>{t(`runs.statuses.${run.status}`)}</Badge>
             <span className="ml-2">{t(`runs.kinds.${run.kind}`)}</span>
           </p>
         </div>
       </header>
 
       {view.unverifiedParameters.length > 0 ? (
-        <p className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
-          {t("runs.unverified", { keys: view.unverifiedParameters.join(", ") })}
-        </p>
+        <Alert variant="warning">{t("runs.unverified", { keys: view.unverifiedParameters.join(", ") })}</Alert>
       ) : null}
 
       {/* ── The month in figures ── */}

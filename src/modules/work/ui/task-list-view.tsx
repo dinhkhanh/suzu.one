@@ -63,7 +63,7 @@ export function sortChoices(fields: FieldView[]): { value: string; field?: Field
   return [...SORTS.flatMap((key) => (key === "rank" ? [{ value: key }] : [{ value: key }, { value: `-${key}` }])), ...fields.flatMap((field) => [{ value: customKey(field.id), field }, { value: `-${customKey(field.id)}`, field }])];
 }
 
-const PRIORITY_CLASS: Record<number, string> = { 1: "text-red-600 dark:text-red-400", 2: "text-orange-600 dark:text-orange-400", 3: "text-blue-600 dark:text-blue-400", 4: "text-muted-foreground" };
+const PRIORITY_CLASS: Record<number, string> = { 1: "text-destructive", 2: "text-orange-600 dark:text-orange-400", 3: "text-blue-600 dark:text-blue-400", 4: "text-muted-foreground" };
 
 export function TaskListView({
   tasks,

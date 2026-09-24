@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { listDevices, listImportHistory } from "@/modules/attendance/devices";
 import { canOpenAttendanceSettings } from "@/modules/attendance/policy";
 import { DeviceLogImport } from "@/modules/attendance/ui/device-forms";
@@ -52,7 +53,7 @@ export default async function DeviceImportPage() {
               <span className="w-32 text-muted-foreground">{format.dateTime(row.createdAt, { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" })}</span>
               <span className="font-medium">{row.fileName}</span>
               <span className="text-muted-foreground">{row.deviceId ? nameOf.get(row.deviceId) : ""}</span>
-              <Badge variant={row.status === "committed" ? "secondary" : "outline"}>{t(`import.statuses.${row.status}`)}</Badge>
+              <Badge dot variant={statusTone(row.status)}>{t(`import.statuses.${row.status}`)}</Badge>
               <span className="text-muted-foreground">
                 {row.result ? t("import.result", { punches: row.result.punches ?? 0, skipped: row.result.skipped ?? 0, unmapped: row.result.unmapped ?? 0 }) : t("import.rows", { count: row.rowCount })}
               </span>

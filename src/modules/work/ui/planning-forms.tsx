@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { FormError } from "@/components/forms/field";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -275,7 +276,7 @@ export function RecurrenceManager({ projectId, recurrences, people, canManage, t
                   <p className="font-medium">{item.title}</p>
                   <p className="text-xs text-muted-foreground">{[describe(item.rule), item.assigneeName, t("madeSoFar", { count: item.made }), item.nextDate ? t("next", { date: day(item.nextDate) }) : null].filter(Boolean).join(" · ")}</p>
                 </div>
-                <Badge variant={ended ? "outline" : item.isActive ? "default" : "secondary"}>{t(ended ? "ended" : item.isActive ? "active" : "paused")}</Badge>
+                <Badge dot variant={statusTone(ended ? "ended" : item.isActive ? "active" : "paused")}>{t(ended ? "ended" : item.isActive ? "active" : "paused")}</Badge>
                 {canManage && !ended ? (
                   <>
                     <Button size="sm" variant="outline" disabled={pending} onClick={() => run(changeRecurrenceAction, { recurrenceId: item.id, change: item.isActive ? "pause" : "resume" })}>

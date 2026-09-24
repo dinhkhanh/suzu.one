@@ -72,7 +72,7 @@ export default async function TeamPerformancePage({ searchParams }: PageProps<"/
                     <span className="text-xs text-muted-foreground">{t("team.noKpis")}</span>
                   )}
                 </td>
-                <td className={`p-2 text-right tabular-nums ${row.kpi && row.kpi.missing > 0 ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>{row.kpi ? `${row.kpi.missing}/${row.kpi.lines}` : "—"}</td>
+                <td className={`p-2 text-right tabular-nums ${row.kpi && row.kpi.missing > 0 ? "text-warning" : "text-muted-foreground"}`}>{row.kpi ? `${row.kpi.missing}/${row.kpi.lines}` : "—"}</td>
                 <td className="p-2">
                   {row.okr ? (
                     <span className="flex flex-wrap items-center gap-2">
@@ -84,7 +84,7 @@ export default async function TeamPerformancePage({ searchParams }: PageProps<"/
                     <span className="text-xs text-muted-foreground">{t("team.noGoals")}</span>
                   )}
                 </td>
-                <td className={`p-2 text-right tabular-nums ${row.okr && row.okr.stale > 0 ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>{row.okr ? row.okr.stale : "—"}</td>
+                <td className={`p-2 text-right tabular-nums ${row.okr && row.okr.stale > 0 ? "text-warning" : "text-muted-foreground"}`}>{row.okr ? row.okr.stale : "—"}</td>
               </tr>
             ))}
           </tbody>

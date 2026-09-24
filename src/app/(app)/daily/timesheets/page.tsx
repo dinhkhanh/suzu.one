@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { listApprovals, listProjectTime, loadTimeReader, weekStartOf } from "@/modules/daily/service";
@@ -11,7 +12,6 @@ import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("timesheets");
 
-const STATUS_BADGE = { open: "outline", submitted: "info", approved: "success", returned: "warning" } as const;
 
 // FR-PJM-25: the weeks waiting for me — for the people whose team I lead or who report to me
 // directly — with bulk approval; the weeks I decided lately (to reopen one); and, for a project's
@@ -63,7 +63,7 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/daily
                   <span className="font-medium">{week.name}</span>
                   <span className="block text-xs text-muted-foreground">{weekOf(week.weekStart)}</span>
                 </Link>
-                <Badge variant={STATUS_BADGE[week.status]}>{t(`time.status.${week.status}`)}</Badge>
+                <Badge dot variant={statusTone(week.status)}>{t(`time.status.${week.status}`)}</Badge>
                 <span className="tabular-nums">{hours(week.minutes)}</span>
               </li>
             ))}

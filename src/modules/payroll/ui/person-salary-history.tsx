@@ -50,7 +50,7 @@ export async function PersonSalaryHistory({ viewer, personId, stepUpFresh }: { v
     const sign = value.direction === "up" ? "+" : "−";
     const percent = value.bp === null ? "" : ` (${sign}${format.number(Math.abs(value.bp) / 100, { maximumFractionDigits: 1 })}%)`;
     return (
-      <span className={cn("whitespace-nowrap tabular-nums", value.direction === "up" ? "text-emerald-700 dark:text-emerald-400" : "text-destructive")}>
+      <span className={cn("whitespace-nowrap tabular-nums", value.direction === "up" ? "text-success" : "text-destructive")}>
         <span aria-hidden>{value.direction === "up" ? "▲" : "▼"}</span> <span className="sr-only">{t(`change.${value.direction}`)}</span>
         {sign}
         {formatVnd(Math.abs(value.amount))}

@@ -113,7 +113,7 @@ export function DeliveryPanel({ taskId, deliveries, versions, canRecord, today }
               </div>
             </div>
             {unapproved ? (
-              <label className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 text-sm">
+              <label className="flex items-start gap-2 rounded-lg border border-warning/35 bg-warning/10 p-2 text-sm">
                 <input type="checkbox" checked={confirm} onChange={(event) => setConfirm(event.target.checked)} className="mt-0.5 size-4" />
                 {t("unapprovedWarning", { version: chosenVersion!.version })}
               </label>

@@ -2,6 +2,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listPersonNames } from "../../people/service";
 import type { RequestListRow, RequestView } from "../service";
@@ -9,7 +10,7 @@ import { CommentForm, DelegateForm } from "./request-tools";
 
 export async function RequestStatusBadge({ status }: { status: string }) {
   const t = await getTranslations("approvals");
-  return <Badge variant={status === "pending" ? "secondary" : "outline"}>{t(`status.${status}` as "status.pending")}</Badge>;
+  return <Badge dot variant={statusTone(status)}>{t(`status.${status}` as "status.pending")}</Badge>;
 }
 
 export async function RequestTable({ rows, empty, showRequester, labels }: { rows: RequestListRow[]; empty: string; showRequester: boolean; /** Names of the request builder's types, which the message bundle does not know. */ labels?: ReadonlyMap<string, string> }) {

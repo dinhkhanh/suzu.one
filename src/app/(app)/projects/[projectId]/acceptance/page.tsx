@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { awaitingAcceptance, canDecideBilling, canManageAcceptance, listAcceptances, listPeriodOptions, listProjectBilling, listStructure, openProject } from "@/modules/projects/service";
@@ -11,8 +12,6 @@ import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("acceptance");
 
-const statusVariant = (status: string) => (status === "signed" ? "success" : status === "sent" ? "info" : status === "void" ? "outline" : "secondary");
-const billingVariant = (status: string) => (status === "invoiced" ? "success" : status === "waived" ? "outline" : "warning");
 
 /**
  * Acceptance — biên bản nghiệm thu (FR-PJM-55) — and what it hands finance (FR-PJM-56): per
@@ -63,7 +62,7 @@ export default async function ProjectAcceptancePage({ params }: PageProps<"/proj
           <article key={acceptance.id} className="flex flex-col gap-3 rounded-xl border p-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-mono text-sm">{acceptance.code}</span>
-              <Badge variant={statusVariant(acceptance.status)}>{t(`status.${acceptance.status as "draft"}`)}</Badge>
+              <Badge dot variant={statusTone(acceptance.status)}>{t(`status.${acceptance.status as "draft"}`)}</Badge>
               <span className="text-sm text-muted-foreground">{[t(`scopes.${acceptance.scope as "project"}`), acceptance.targetName].filter(Boolean).join(" — ")}</span>
             </div>
             <p className="text-sm">{t("totals", { promised: acceptance.totals.promised, delivered: acceptance.totals.delivered, accepted: acceptance.totals.accepted })}</p>
@@ -132,7 +131,7 @@ export default async function ProjectAcceptancePage({ params }: PageProps<"/proj
         <ul className="flex flex-col divide-y rounded-xl border text-sm">
           {billing.map((item) => (
             <li key={item.id} className="flex flex-wrap items-center gap-2 px-3 py-2">
-              <Badge variant={billingVariant(item.status)}>{tBilling(`status.${item.status as "ready"}`)}</Badge>
+              <Badge dot variant={statusTone(item.status)}>{tBilling(`status.${item.status as "ready"}`)}</Badge>
               <span className="font-medium">{item.description}</span>
               <span className="text-muted-foreground">{tBilling(`sources.${item.source as "manual"}`)}</span>
               {"amountVnd" in item ? <span className="ml-auto font-medium">{money(item.amountVnd)}</span> : null}

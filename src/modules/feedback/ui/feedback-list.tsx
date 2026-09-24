@@ -2,19 +2,18 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import type { FeedbackPriority, FeedbackStatus } from "../enums";
 import type { FeedbackListItem } from "../service";
 import { CATEGORY_ICONS } from "./icons";
 
-const STATUS_VARIANT: Record<FeedbackStatus, "info" | "warning" | "success" | "secondary"> = { new: "info", in_progress: "warning", resolved: "success", declined: "secondary" };
-
 export function StatusBadge({ status, label }: { status: FeedbackStatus; label: string }) {
-  return <Badge variant={STATUS_VARIANT[status]}>{label}</Badge>;
+  return <Badge dot variant={statusTone(status)}>{label}</Badge>;
 }
 
 export function PriorityBadge({ priority, label }: { priority: FeedbackPriority; label: string }) {
   if (priority === "normal") return null;
-  return <Badge variant={priority === "urgent" ? "destructive" : priority === "high" ? "warning" : "outline"}>{label}</Badge>;
+  return <Badge dot variant={priority === "urgent" ? "destructive" : priority === "high" ? "warning" : "outline"}>{label}</Badge>;
 }
 
 export async function FeedbackList({ items, showPerson, empty }: { items: FeedbackListItem[]; showPerson: boolean; empty: string }) {

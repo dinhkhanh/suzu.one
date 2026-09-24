@@ -57,7 +57,7 @@ export function ResultTraceTable({ trace, labels, locale, provenance }: { trace:
             <tr key={line.key} className="border-b last:border-b-0">
               <td className="py-1">
                 {t(`trace.components.${line.key}`)}
-                {line.flags.includes("missing") ? <span className="block text-xs text-amber-700 dark:text-amber-300">{t("trace.missing")}</span> : null}
+                {line.flags.includes("missing") ? <span className="block text-xs text-warning">{t("trace.missing")}</span> : null}
               </td>
               <td className="py-1 text-right tabular-nums">{percentText(format, line.scoreBp)}</td>
               <td className="py-1 text-right tabular-nums text-muted-foreground">{percentText(format, line.weightBp)}</td>
@@ -87,14 +87,14 @@ export function ResultTraceTable({ trace, labels, locale, provenance }: { trace:
       ) : null}
 
       <div className="flex flex-col gap-0.5 text-sm">
-        {trace.renormalised ? <p className="text-xs text-amber-700 dark:text-amber-300">{t("trace.renormalised")}</p> : null}
+        {trace.renormalised ? <p className="text-xs text-warning">{t("trace.renormalised")}</p> : null}
         {trace.computedScoreBp === null ? (
           <p className="text-muted-foreground">{t("trace.nothing")}</p>
         ) : (
           <p className="tabular-nums">{t("trace.computed", { value: percentText(format, trace.computedScoreBp) })}</p>
         )}
         {trace.override ? (
-          <p className="rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+          <p className="rounded-md bg-warning/10 px-2 py-1 text-xs text-warning">
             {t("override.was", { value: percentText(format, trace.computedScoreBp) })} — {trace.override.reason}
           </p>
         ) : null}

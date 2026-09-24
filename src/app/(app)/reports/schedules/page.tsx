@@ -77,7 +77,7 @@ export default async function SchedulesPage() {
                 <TableCell className="tabular-nums">{day(schedule.nextRunOn)}</TableCell>
                 <TableCell className="tabular-nums">{day(schedule.lastRunOn)}</TableCell>
                 <TableCell className="flex flex-col gap-1">
-                  <Badge variant={schedule.isActive ? "default" : "secondary"}>{schedule.isActive ? t("active") : t("paused")}</Badge>
+                  <Badge dot variant={schedule.isActive ? "success" : "warning"}>{schedule.isActive ? t("active") : t("paused")}</Badge>
                   {schedule.lastRun ? (
                     <span className="text-xs text-muted-foreground">
                       {t("delivered", { count: schedule.lastRun.delivered })}

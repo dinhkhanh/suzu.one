@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -41,7 +42,7 @@ export default async function PayPolicyPage() {
               <span className="flex flex-wrap items-center gap-2 font-medium">
                 {version.entityId ? entityCode.get(version.entityId) : t("policy.groupWide")} · {day(version.validFrom)}
                 {version.validTo ? ` → ${day(version.validTo)}` : ""}
-                <Badge variant={version.status === "approved" ? "secondary" : "outline"}>{t(`rules.status.${version.status}`)}</Badge>
+                <Badge dot variant={statusTone(version.status)}>{t(`rules.status.${version.status}`)}</Badge>
               </span>
               <dl className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-x-4 sm:grid-cols-[auto_1fr] gap-y-0.5 text-muted-foreground">
                 {Object.entries(version.value).map(([key, value]) => (

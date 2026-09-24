@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { listFlaggedPunches } from "@/modules/attendance/punches";
 import { ReviewPunchForm } from "@/modules/attendance/ui/check-in";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -68,7 +69,7 @@ export default async function ReviewPunchesPage() {
               <li key={row.id} className="flex flex-col gap-1 p-3">
                 {describe(row)}
                 <p className="text-sm">
-                  <Badge variant={row.reviewStatus === "rejected" ? "destructive" : "outline"}>{tFlags(`review.${row.reviewStatus}`)}</Badge> <span className="text-muted-foreground">{[row.reviewerName, row.reviewNote].filter(Boolean).join(" — ")}</span>
+                  <Badge dot variant={statusTone(row.reviewStatus)}>{tFlags(`review.${row.reviewStatus}`)}</Badge> <span className="text-muted-foreground">{[row.reviewerName, row.reviewNote].filter(Boolean).join(" — ")}</span>
                 </p>
               </li>
             ))}

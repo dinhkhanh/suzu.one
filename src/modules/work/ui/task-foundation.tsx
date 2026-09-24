@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -202,12 +203,10 @@ export function MovePanel({ taskId, taskKey, teams }: { taskId: string; taskKey:
 export function TriageBanner({ teamId, status, until }: { teamId: string; status: string; until: string | null }) {
   const t = useTranslations("work.triage");
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+    <Alert variant="warning">
       <Badge variant="warning">{status === "snoozed" && until ? t("until", { date: until.split("-").reverse().join("/") }) : t("title")}</Badge>
       <span>{t("banner")}</span>
-      <Link href={`/work/teams/${teamId}/triage`} className="underline">
-        {t("bannerLink")}
-      </Link>
-    </div>
+      <Link href={`/work/teams/${teamId}/triage`}>{t("bannerLink")}</Link>
+    </Alert>
   );
 }

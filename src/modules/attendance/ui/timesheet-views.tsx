@@ -8,7 +8,7 @@ import type { TeamMonthRow, TimesheetDayRow } from "../timesheets";
 import { hoursText } from "./day-plan";
 
 const STATUS_TONE: Record<TimesheetDayRow["status"], string> = {
-  present: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300",
+  present: "bg-emerald-500/15 text-success",
   partial: "bg-amber-500/20 text-amber-800 dark:text-amber-300",
   absent: "bg-red-500/20 text-red-800 dark:text-red-300",
   leave: "bg-sky-500/15 text-sky-800 dark:text-sky-300",
@@ -18,7 +18,7 @@ const STATUS_TONE: Record<TimesheetDayRow["status"], string> = {
   untracked: "bg-muted text-muted-foreground",
   rest: "text-muted-foreground",
   unscheduled: "text-muted-foreground",
-  in_progress: "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300",
+  in_progress: "bg-emerald-500/10 text-success",
 };
 
 export const shiftMonth = (month: string, by: number): string => {

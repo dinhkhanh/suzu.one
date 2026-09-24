@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { canEditSchedule, getScheduleView, listReportsFor } from "@/modules/reports/service";
@@ -64,7 +65,7 @@ export default async function SchedulePage({ params }: PageProps<"/reports/sched
         <section className="flex flex-col gap-2">
           <h2 className="text-sm font-medium">{t("lastRun")}</h2>
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <Badge variant={schedule.lastRun.status === "succeeded" ? "default" : schedule.lastRun.status === "failed" ? "destructive" : "secondary"}>{t(`runStatus.${schedule.lastRun.status}`)}</Badge>
+            <Badge dot variant={statusTone(schedule.lastRun.status)}>{t(`runStatus.${schedule.lastRun.status}`)}</Badge>
             <span className="text-muted-foreground">
               {day(schedule.lastRun.runOn)} · {t("delivered", { count: schedule.lastRun.delivered })}
               {schedule.lastRun.withheld > 0 ? ` · ${t("withheld", { count: schedule.lastRun.withheld })}` : ""}

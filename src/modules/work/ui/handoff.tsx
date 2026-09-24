@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createContext, type ReactNode, use, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -361,7 +362,6 @@ export type HandoffItem = {
   canRespond: boolean;
 };
 
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = { pending: "secondary", accepted: "default", recorded: "outline", returned: "destructive", cancelled: "outline" };
 
 /** Every hand-off of the task, newest first, with its note (FR-PJM-43) — and "send to another team" (FR-PJM-42). */
 export function HandoffPanel({ taskId, taskTitle, handoffs, teams, canSend }: { taskId: string; taskTitle: string; handoffs: HandoffItem[]; teams: { id: string; name: string }[]; canSend: boolean }) {
@@ -382,7 +382,7 @@ export function HandoffPanel({ taskId, taskTitle, handoffs, teams, canSend }: { 
           <li key={item.id} className={`flex flex-col gap-2 rounded-xl border p-3 text-sm ${item.status === "pending" ? "border-primary/40" : ""}`}>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">{t(`kinds.${item.kind}`)}</Badge>
-              <Badge variant={STATUS_VARIANT[item.status] ?? "outline"}>{t(`statuses.${item.status}`)}</Badge>
+              <Badge dot variant={statusTone(item.status)}>{t(`statuses.${item.status}`)}</Badge>
               <span className="text-muted-foreground">
                 {item.kind === "cross_team" ? t("toTeam", { from: item.fromName ?? "—", team: item.toTeamName ?? "—" }) : t("fromTo", { from: item.fromName ?? "—", to: item.toName ?? "—" })}
                 {item.fromStateName && item.toStateName ? ` · ${item.fromStateName} → ${item.toStateName}` : ""}

@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageReferrals } from "@/modules/recruit/policy";
 import { listMyReferrals, listOpeningsForReferral, listReferrals } from "@/modules/recruit/referrals";
@@ -26,7 +27,6 @@ export default async function ReferralsPage() {
   const manages = canManageReferrals(user.principal);
   const [openings, mine, book] = await Promise.all([listOpeningsForReferral(), listMyReferrals(user.person.id), manages ? listReferrals(user.principal) : Promise.resolve([])]);
 
-  const bonusBadge = (state: string) => (state === "earned" ? "default" : state === "settled" ? "secondary" : "outline");
 
   return (
     <div className="flex max-w-5xl flex-col gap-8">
@@ -56,7 +56,7 @@ export default async function ReferralsPage() {
                 </div>
                 {/* A referrer sees what they typed and whether a bonus is due — never the stage, the
                     status or the name on file, any of which would say the person was already known. */}
-                {row.state === "received" ? <Badge variant="outline">{t("received")}</Badge> : <Badge variant={bonusBadge(row.state)}>{t(`bonus.${row.state}`)}</Badge>}
+                {row.state === "received" ? <Badge variant="outline">{t("received")}</Badge> : <Badge dot variant={statusTone(row.state)}>{t(`bonus.${row.state}`)}</Badge>}
               </li>
             ))}
           </ul>
@@ -89,7 +89,7 @@ export default async function ReferralsPage() {
                   </div>
                   <span className="text-xs text-muted-foreground">{row.stageName}</span>
                   <Badge variant="outline">{tStatus(row.applicationStatus)}</Badge>
-                  <Badge variant={bonusBadge(row.bonus)}>{t(`bonus.${row.bonus}` as "bonus.pending")}</Badge>
+                  <Badge dot variant={statusTone(row.bonus)}>{t(`bonus.${row.bonus}` as "bonus.pending")}</Badge>
                   {row.bonus === "earned" ? <SettleBonusButton referralId={row.id} /> : null}
                 </li>
               ))}

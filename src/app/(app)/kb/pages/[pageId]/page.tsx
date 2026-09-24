@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { todayInVietnam } from "@/lib/dates";
@@ -133,36 +134,34 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
         </header>
 
         {editor && page.publishedVersionId && page.hasUnpublishedChanges ? (
-          <div className="flex flex-wrap items-center gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/40">
+          <Alert variant="warning">
             <span>{view.showing === "draft" ? t("page.showingDraft") : t("page.hasDraft")}</span>
             <Link href={view.showing === "draft" ? `/kb/pages/${page.id}` : `/kb/pages/${page.id}?draft=1`} className="underline underline-offset-2">
               {view.showing === "draft" ? t("page.viewPublished") : t("page.viewDraft")}
             </Link>
             {page.status === "in_review" ? null : publishes ? <PublishDraftButton pageId={page.id} /> : space.kind === "controlled" ? <SubmitReviewButton pageId={page.id} /> : null}
-          </div>
+          </Alert>
         ) : null}
         {editor && !page.publishedVersionId && page.status !== "in_review" && (publishes || space.kind === "controlled") ? (
-          <div className="flex flex-wrap items-center gap-3 rounded-md border p-3 text-sm">
+          <Alert>
             <span>{t("page.neverPublished")}</span>
             {publishes ? <PublishDraftButton pageId={page.id} /> : <SubmitReviewButton pageId={page.id} />}
-          </div>
+          </Alert>
         ) : null}
         {editor && page.status === "in_review" && page.reviewRequestId ? (
-          <div className="flex flex-wrap items-center gap-3 rounded-md border p-3 text-sm">
+          <Alert variant="info">
             <span>{t("review.waiting")}</span>
-            <Link href={`/approvals/kb-publish/${page.reviewRequestId}`} className="underline underline-offset-2">
-              {t("review.open")}
-            </Link>
-          </div>
+            <Link href={`/approvals/kb-publish/${page.reviewRequestId}`}>{t("review.open")}</Link>
+          </Alert>
         ) : null}
 
         {ack.inAudience && view.showing === "published" ? (
           ack.acknowledgedAt ? (
-            <p className="rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm dark:border-emerald-800 dark:bg-emerald-950/40">{t("ack.done", { n: ack.versionNo ?? 0, date: format.dateTime(ack.acknowledgedAt, { dateStyle: "medium" }) })}</p>
+            <Alert variant="success">{t("ack.done", { n: ack.versionNo ?? 0, date: format.dateTime(ack.acknowledgedAt, { dateStyle: "medium" }) })}</Alert>
           ) : (
-            <div className={`flex flex-wrap items-center gap-3 rounded-md border p-3 text-sm ${ack.overdue ? "border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/40" : "border-sky-300 bg-sky-50 dark:border-sky-800 dark:bg-sky-950/40"}`}>
+            <Alert variant={ack.overdue ? "destructive" : "info"}>
               <span>{ack.overdue ? t("ack.bannerOverdue", { date: format.dateTime(new Date(`${ack.dueOn}T00:00:00`), { dateStyle: "medium" }) }) : t("ack.banner", { date: format.dateTime(new Date(`${ack.dueOn}T00:00:00`), { dateStyle: "medium" }) })}</span>
-            </div>
+            </Alert>
           )
         ) : null}
         {manages && page.ackRequired ? (

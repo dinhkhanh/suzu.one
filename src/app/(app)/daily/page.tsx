@@ -53,7 +53,7 @@ export default async function DailyIndexPage() {
               </Link>
               {report.blockers?.trim() ? <Badge variant="destructive">{t("index.hasBlockers")}</Badge> : null}
               <span className="text-xs text-muted-foreground">{t("hours", { value: hoursOf(report.minutesLogged) })}</span>
-              {report.status === "submitted" ? <Badge variant={report.late ? "warning" : "success"}>{report.late ? t("late") : t("submitted")}</Badge> : <Badge variant="outline">{t("draft")}</Badge>}
+              {report.status === "submitted" ? <Badge dot variant={report.late ? "warning" : "success"}>{report.late ? t("late") : t("submitted")}</Badge> : <Badge variant="outline">{t("draft")}</Badge>}
             </li>
           ))}
         </ul>

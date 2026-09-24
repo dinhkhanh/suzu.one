@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { getWhoIsIn, type PresenceStatus } from "@/modules/attendance/punches";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
@@ -8,7 +9,6 @@ import { pageTitle } from "@/i18n/page-title";
 export const generateMetadata = pageTitle("whoSInToday");
 
 const ORDER: PresenceStatus[] = ["in", "off_site", "not_yet", "out", "on_leave", "untracked", "rest", "holiday", "unscheduled"];
-const TONE: Partial<Record<PresenceStatus, "default" | "secondary" | "outline" | "destructive">> = { in: "default", off_site: "default", not_yet: "destructive", out: "secondary", on_leave: "secondary" };
 
 // Who's in, out, not here yet or away (FR-ATT-15). A status for everyone the viewer may see; times
 // only where the viewer may see the person's punches. Never a position.
@@ -30,7 +30,7 @@ export default async function WhoIsInPage(props: PageProps<"/attendance/today">)
       <ul className="flex flex-wrap gap-2 text-sm">
         {ORDER.filter((status) => presence.counts[status] > 0).map((status) => (
           <li key={status}>
-            <Badge variant={TONE[status] ?? "outline"}>
+            <Badge dot variant={statusTone(status)}>
               {t(`status.${status}`)} · {presence.counts[status]}
             </Badge>
           </li>
@@ -57,7 +57,7 @@ export default async function WhoIsInPage(props: PageProps<"/attendance/today">)
               {row.fullName}
               {row.isSelf ? <span className="text-muted-foreground"> · {t("you")}</span> : null}
             </span>
-            <Badge variant={TONE[row.status] ?? "outline"}>{t(`status.${row.status}`)}</Badge>
+            <Badge dot variant={statusTone(row.status)}>{t(`status.${row.status}`)}</Badge>
             {row.partLeave ? <Badge variant="outline">{t("partLeave")}</Badge> : null}
             {row.flagged ? <Badge variant="outline">{t("flagged")}</Badge> : null}
             <span className="text-muted-foreground">{[time(row.firstInAt), time(row.lastOutAt)].filter(Boolean).join(" → ")}</span>

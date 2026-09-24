@@ -5,6 +5,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
 import { ThemeSwitch } from "@/components/shell/theme-switch";
+import { Alert } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/modules/platform/auth/session";
 import { getTheme } from "@/theme/server";
@@ -43,9 +44,7 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {message ? (
-            <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {message}
-            </p>
+            <Alert variant="destructive">{message}</Alert>
           ) : null}
           <GoogleSignInButton label={t("signIn.google")} />
         </CardContent>

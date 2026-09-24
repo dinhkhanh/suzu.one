@@ -5,6 +5,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { getCoverPlanForLeaveAs } from "../service";
 
 export async function CoverPlanPanel({ leaveRequestId, viewerPersonId }: { leaveRequestId: string; viewerPersonId: string }) {
@@ -18,7 +19,7 @@ export async function CoverPlanPanel({ leaveRequestId, viewerPersonId }: { leave
     <section className="flex flex-col gap-2 rounded-xl border p-4 text-sm">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="font-medium">{t("panelTitle")}</h2>
-        <Badge variant={plan.status === "submitted" ? "default" : plan.status === "draft" ? "secondary" : "outline"}>{t(`statuses.${plan.status}`)}</Badge>
+        <Badge dot variant={statusTone(plan.status)}>{t(`statuses.${plan.status}`)}</Badge>
         <span className="text-muted-foreground">{t("coveredCount", { covered, total: moving.length })}</span>
         {plan.personId === viewerPersonId ? (
           <Link href={`/work/cover/${plan.id}`} className="ml-auto underline">

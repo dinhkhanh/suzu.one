@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listOneOnOnes, myReports } from "@/modules/performance/service";
@@ -31,7 +32,7 @@ export default async function OneOnOnesPage() {
             </Link>
             <span className="flex items-center gap-2 text-muted-foreground">
               {actionCount > 0 ? <span className="text-xs">{t("actions.title")}: {actionCount}</span> : null}
-              <Badge variant={row.status === "shared" ? "secondary" : "outline"}>{t(`status.${row.status}`)}</Badge>
+              <Badge dot variant={statusTone(row.status)}>{t(`status.${row.status}`)}</Badge>
             </span>
           </li>
         ))}

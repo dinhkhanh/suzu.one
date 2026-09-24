@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -85,7 +86,7 @@ export default async function PayrollRunsPage({ searchParams }: PageProps<"/payr
                 <Badge variant={row.kind === "off_cycle" ? "outline" : "secondary"}>{t(`runs.kinds.${row.kind}`)}</Badge>
               </TableCell>
               <TableCell>
-                <Badge variant={row.status === "locked" || row.status === "paid" ? "secondary" : row.status === "cancelled" ? "outline" : "default"}>{t(`runs.statuses.${row.status}`)}</Badge>
+                <Badge dot variant={statusTone(row.status)}>{t(`runs.statuses.${row.status}`)}</Badge>
                 {row.calcState === "running" || row.calcState === "queued" ? <span className="ml-2 text-xs text-muted-foreground">{t("runs.calculating")}</span> : null}
                 {row.calcState === "failed" ? <span className="ml-2 text-xs text-destructive">{t("runs.calcFailed")}</span> : null}
               </TableCell>

@@ -23,6 +23,17 @@
   /* The desk the app card floats on, and the grey used for counts and other quiet numbers. */
   --color-canvas: var(--canvas);
   --color-faint: var(--faint);
+  /* The tones. Four say something about state (see src/components/ui/tone.ts); the rest tell one
+     kind of thing from another without meaning good or bad. */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-link: var(--link);
+  --color-tone-violet: var(--tone-violet);
+  --color-tone-teal: var(--tone-teal);
+  --color-tone-orange: var(--tone-orange);
+  --color-tone-pink: var(--tone-pink);
+  --color-tone-indigo: var(--tone-indigo);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --font-heading: var(--font-sans);
@@ -64,18 +75,20 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* A white app card on a light grey desk, hairline borders, one blue accent: the workspace look
-   the design reference sets out. Greys are neutral; only links, the primary button and the
-   selected state carry colour. */
+/* A white app card on a light grey desk, hairline borders, and the brand's red (#EA3026) as the one
+   accent: the primary button, the focus ring, the active nav icon. Greys are neutral with a breath
+   of warmth so they sit with the red. State speaks through the tones below, never through the
+   brand colour: red is "act here", not "something is wrong" — that is `destructive`, a deeper
+   crimson only ever shown tinted. Links in prose are blue, because red text reads as an error. */
 :root {
-  --canvas: oklch(0.957 0.0015 106);
+  --canvas: oklch(0.962 0.003 60);
   --background: oklch(1 0 0);
   --foreground: oklch(0.21 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.21 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.21 0 0);
-  --primary: oklch(0.576 0.208 258.6);
+  --primary: oklch(0.609 0.222 28.8);
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.973 0 0);
   --secondary-foreground: oklch(0.21 0 0);
@@ -84,24 +97,33 @@
   --faint: oklch(0.708 0 0);
   --accent: oklch(0.962 0 0);
   --accent-foreground: oklch(0.21 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
+  --destructive: oklch(0.53 0.2 24);
+  --success: oklch(0.52 0.14 158);
+  --warning: oklch(0.58 0.15 60);
+  --info: oklch(0.54 0.19 256);
+  --link: oklch(0.5 0.19 256);
+  --tone-violet: oklch(0.52 0.2 295);
+  --tone-teal: oklch(0.52 0.11 195);
+  --tone-orange: oklch(0.6 0.17 45);
+  --tone-pink: oklch(0.58 0.2 350);
+  --tone-indigo: oklch(0.5 0.19 275);
   --border: oklch(0.925 0 0);
   --input: oklch(0.917 0 0);
-  --ring: oklch(0.576 0.208 258.6);
-  --chart-1: oklch(0.576 0.208 258.6);
-  --chart-2: oklch(0.7 0.16 162);
+  --ring: oklch(0.609 0.222 28.8);
+  --chart-1: oklch(0.609 0.222 28.8);
+  --chart-2: oklch(0.62 0.12 195);
   --chart-3: oklch(0.75 0.16 70);
-  --chart-4: oklch(0.6 0.2 300);
-  --chart-5: oklch(0.65 0.21 15);
+  --chart-4: oklch(0.6 0.2 295);
+  --chart-5: oklch(0.6 0.19 256);
   --radius: 0.625rem;
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.21 0 0);
-  --sidebar-primary: oklch(0.576 0.208 258.6);
+  --sidebar-primary: oklch(0.609 0.222 28.8);
   --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.955 0 0);
   --sidebar-accent-foreground: oklch(0.21 0 0);
   --sidebar-border: oklch(0.925 0 0);
-  --sidebar-ring: oklch(0.576 0.208 258.6);
+  --sidebar-ring: oklch(0.609 0.222 28.8);
   /* The card floats: a hairline, then a shadow shallow enough to read as paper rather than a modal. */
   --shell-shadow: 0 0 0 1px oklch(0 0 0 / 4%), 0 1px 2px oklch(0 0 0 / 4%), 0 12px 32px -16px oklch(0 0 0 / 18%);
   /* Native controls, scrollbars and the default form colours follow the palette. */
@@ -120,7 +142,7 @@
     --card-foreground: oklch(0.97 0 0);
     --popover: oklch(0.205 0 0);
     --popover-foreground: oklch(0.97 0 0);
-    --primary: oklch(0.62 0.19 258.6);
+    --primary: oklch(0.66 0.2 28.8);
     --primary-foreground: oklch(1 0 0);
     --secondary: oklch(0.255 0 0);
     --secondary-foreground: oklch(0.97 0 0);
@@ -129,23 +151,32 @@
     --faint: oklch(0.6 0 0);
     --accent: oklch(0.265 0 0);
     --accent-foreground: oklch(0.97 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
+    --destructive: oklch(0.72 0.17 22);
+    --success: oklch(0.78 0.15 160);
+    --warning: oklch(0.82 0.15 80);
+    --info: oklch(0.75 0.14 250);
+    --link: oklch(0.75 0.14 250);
+    --tone-violet: oklch(0.76 0.15 295);
+    --tone-teal: oklch(0.78 0.11 195);
+    --tone-orange: oklch(0.78 0.15 55);
+    --tone-pink: oklch(0.78 0.15 350);
+    --tone-indigo: oklch(0.74 0.14 275);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 14%);
-    --ring: oklch(0.62 0.19 258.6);
-    --chart-1: oklch(0.62 0.19 258.6);
-    --chart-2: oklch(0.72 0.15 162);
+    --ring: oklch(0.66 0.2 28.8);
+    --chart-1: oklch(0.66 0.2 28.8);
+    --chart-2: oklch(0.72 0.12 195);
     --chart-3: oklch(0.78 0.15 70);
-    --chart-4: oklch(0.65 0.19 300);
-    --chart-5: oklch(0.68 0.2 15);
+    --chart-4: oklch(0.7 0.17 295);
+    --chart-5: oklch(0.7 0.15 250);
     --sidebar: oklch(0.185 0 0);
     --sidebar-foreground: oklch(0.97 0 0);
-    --sidebar-primary: oklch(0.62 0.19 258.6);
+    --sidebar-primary: oklch(0.66 0.2 28.8);
     --sidebar-primary-foreground: oklch(1 0 0);
     --sidebar-accent: oklch(0.255 0 0);
     --sidebar-accent-foreground: oklch(0.97 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.62 0.19 258.6);
+    --sidebar-ring: oklch(0.66 0.2 28.8);
     --shell-shadow: 0 0 0 1px oklch(1 0 0 / 8%), 0 12px 32px -16px oklch(0 0 0 / 60%);
   }
 }
@@ -188,7 +219,7 @@
     @apply flex h-8 items-center gap-2.5 rounded-lg px-2 text-sm font-medium text-foreground/85 transition-colors hover:bg-sidebar-accent hover:text-foreground [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground;
   }
   .nav-row[aria-current="page"] {
-    @apply bg-sidebar-accent text-foreground [&>svg]:text-foreground;
+    @apply bg-sidebar-accent text-foreground [&>svg]:text-primary;
   }
   .nav-section {
     @apply px-2 pt-4 pb-1 text-xs font-medium text-faint;
@@ -234,16 +265,16 @@
   .kb-editor .ProseMirror pre { @apply overflow-x-auto rounded-md bg-muted p-3 font-mono text-sm; }
   .kb-editor .ProseMirror code { @apply rounded bg-muted px-1 font-mono text-[0.85em]; }
   .kb-editor .ProseMirror pre code { @apply bg-transparent p-0; }
-  .kb-editor .ProseMirror a { @apply text-primary underline underline-offset-2; }
+  .kb-editor .ProseMirror a { @apply text-link underline underline-offset-2; }
   .kb-editor .ProseMirror table { @apply w-full table-fixed border-collapse text-sm; }
   .kb-editor .ProseMirror th, .kb-editor .ProseMirror td { @apply relative border px-3 py-2 align-top; }
   .kb-editor .ProseMirror th { @apply bg-muted/60 text-left font-medium; }
-  .kb-editor .ProseMirror .selectedCell { @apply bg-primary/10; }
+  .kb-editor .ProseMirror .selectedCell { @apply bg-info/10; }
   .kb-editor .ProseMirror img { @apply max-w-full rounded-md border; }
-  .kb-editor .ProseMirror [data-callout] { @apply rounded-md border border-sky-300 bg-sky-50 p-3 dark:border-sky-800 dark:bg-sky-950/40; }
-  .kb-editor .ProseMirror [data-callout="warning"] { @apply border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40; }
-  .kb-editor .ProseMirror [data-callout="success"] { @apply border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40; }
-  .kb-editor .ProseMirror [data-callout="danger"] { @apply border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/40; }
+  .kb-editor .ProseMirror [data-callout] { @apply rounded-md border border-info/30 bg-info/8 p-3 dark:bg-info/12; }
+  .kb-editor .ProseMirror [data-callout="warning"] { @apply border-warning/35 bg-warning/10 dark:bg-warning/12; }
+  .kb-editor .ProseMirror [data-callout="success"] { @apply border-success/30 bg-success/8 dark:bg-success/12; }
+  .kb-editor .ProseMirror [data-callout="danger"] { @apply border-destructive/30 bg-destructive/8 dark:bg-destructive/12; }
   .kb-editor .ProseMirror [data-kb-block] { @apply rounded-md border border-dashed bg-muted/50 px-3 py-2 text-sm text-muted-foreground; }
   .kb-editor .ProseMirror .ProseMirror-selectednode { @apply ring-2 ring-ring; }
   .kb-editor .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); @apply pointer-events-none float-left h-0 text-muted-foreground; }

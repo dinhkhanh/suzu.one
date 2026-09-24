@@ -52,7 +52,7 @@ export default async function PerformanceOverviewPage({ searchParams }: PageProp
                   {item.overridden ? " *" : ""}
                 </Link>
               ))}
-              {entity.state === "open" && entity.missing > 0 ? <span className="text-amber-700 dark:text-amber-300">{t("overview.missing", { count: entity.missing })}</span> : null}
+              {entity.state === "open" && entity.missing > 0 ? <span className="text-warning">{t("overview.missing", { count: entity.missing })}</span> : null}
             </div>
             {entity.departments.length === 0 ? (
               <p className="px-3 py-2 text-sm text-muted-foreground">{t("overview.nobody")}</p>

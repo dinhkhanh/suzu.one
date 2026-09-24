@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getCandidateView } from "@/modules/recruit/service";
 import { pageTitle } from "@/i18n/page-title";
@@ -85,7 +86,7 @@ export default async function CandidatePage({ params }: PageProps<"/recruit/cand
                 </Link>
                 <span className="text-xs text-muted-foreground">{row.stageName}</span>
                 <span className="text-xs text-muted-foreground">{format.dateTime(row.appliedAt, { dateStyle: "medium" })}</span>
-                <Badge variant={row.status === "active" ? "default" : "outline"}>{t(`applicationStatus.${row.status}`)}</Badge>
+                <Badge dot variant={statusTone(row.status)}>{t(`applicationStatus.${row.status}`)}</Badge>
               </li>
             ))}
           </ul>

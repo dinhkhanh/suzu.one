@@ -104,7 +104,7 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
       {computable.length > 0 ? (
         <section className="flex flex-col gap-2">
           <h2>{t("compute.title")}</h2>
-          {weightingReady ? <ComputeResultsForm year={year} personIds={computable} /> : <p className="text-sm text-amber-700 dark:text-amber-300">{t("compute.noWeighting")}</p>}
+          {weightingReady ? <ComputeResultsForm year={year} personIds={computable} /> : <p className="text-sm text-warning">{t("compute.noWeighting")}</p>}
         </section>
       ) : null}
 
@@ -128,7 +128,7 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
                     </span>
                     <span className="text-sm font-medium tabular-nums">{percentText(format, line.finalScoreBp)}</span>
                     <BandBadge band={line.finalBand} label={row?.trace.finalBand ? (locale.startsWith("en") && row.trace.finalBand.labelEn ? row.trace.finalBand.labelEn : row.trace.finalBand.label) : "—"} />
-                    {line.overridden ? <span className="text-xs text-amber-700 dark:text-amber-300">{t("list.overridden")}</span> : null}
+                    {line.overridden ? <span className="text-xs text-warning">{t("list.overridden")}</span> : null}
                     <StatusBadge status={line.status} label={t(`status.${line.status}`)} />
                   </div>
                   {row ? (

@@ -81,7 +81,7 @@ export default async function KpiAssignmentsPage({ searchParams }: PageProps<"/p
               <Link href={`/performance/admin/assignments?person=${person.personId}`} className="min-w-0 flex-1 font-medium hover:underline">
                 {person.fullName}
               </Link>
-              <span className={`text-xs ${current.length === 0 ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>{current.length === 0 ? t("assignments.noneNow") : t("assignments.count", { count: current.length, weight: current.reduce((sum, assignment) => sum + assignment.weight, 0) })}</span>
+              <span className={`text-xs ${current.length === 0 ? "text-warning" : "text-muted-foreground"}`}>{current.length === 0 ? t("assignments.noneNow") : t("assignments.count", { count: current.length, weight: current.reduce((sum, assignment) => sum + assignment.weight, 0) })}</span>
             </li>
           );
         })}

@@ -149,7 +149,7 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/projec
                 </div>
                 <div className="flex flex-col gap-0.5 text-xs">
                   <span className="text-muted-foreground">{t("portfolio.hours")}</span>
-                  <span className={row.burn.level === "over" ? "text-destructive" : row.burn.level === "warning" ? "text-amber-700 dark:text-amber-300" : undefined}>{row.burn.budgetMinutes ? t("portfolio.hoursValue", { used: hours(row.burn.loggedMinutes), budget: hours(row.burn.budgetMinutes), percent: row.burn.percent ?? 0 }) : t("portfolio.hoursNoBudget", { used: hours(row.burn.loggedMinutes) })}</span>
+                  <span className={row.burn.level === "over" ? "text-destructive" : row.burn.level === "warning" ? "text-warning" : undefined}>{row.burn.budgetMinutes ? t("portfolio.hoursValue", { used: hours(row.burn.loggedMinutes), budget: hours(row.burn.budgetMinutes), percent: row.burn.percent ?? 0 }) : t("portfolio.hoursNoBudget", { used: hours(row.burn.loggedMinutes) })}</span>
                   {withFees ? <span className="text-muted-foreground">{"feeVnd" in row && row.feeVnd !== null && row.feeVnd !== undefined ? format.number(row.feeVnd, { style: "currency", currency: "VND", maximumFractionDigits: 0 }) : "—"}</span> : null}
                 </div>
               </li>

@@ -9,7 +9,9 @@
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,14 +37,6 @@ export type PreviewLinkItem = {
 };
 
 export type PreviewVersion = { id: string; version: number; frozen: boolean };
-
-const STATE_VARIANT: Record<PreviewState, "default" | "secondary" | "success" | "destructive" | "outline"> = {
-  active: "default",
-  viewed: "secondary",
-  decided: "success",
-  expired: "outline",
-  revoked: "destructive",
-};
 
 const textareaClass = "min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30";
 
@@ -88,9 +82,9 @@ export function PreviewLinkPanel({ taskId, links, versions, canManage }: { taskI
       <p className="text-xs text-muted-foreground">{t("explainer")}</p>
 
       {fresh ? (
-        <div className="flex flex-col gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3">
-          <p className="text-sm font-medium">{t("copyOnce")}</p>
-          <div className="flex flex-col gap-2 sm:flex-row">
+        <Alert variant="success">
+          <AlertTitle>{t("copyOnce")}</AlertTitle>
+          <div className="flex w-full flex-col gap-2 sm:flex-row">
             <Input readOnly value={fresh.url} onFocus={(event) => event.currentTarget.select()} className="font-mono text-xs" />
             <Button
               type="button"
@@ -103,7 +97,7 @@ export function PreviewLinkPanel({ taskId, links, versions, canManage }: { taskI
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">{t("expiresOn", { date: day(fresh.expiresAt) })}</p>
-        </div>
+        </Alert>
       ) : null}
 
       {links.length ? (
@@ -111,7 +105,7 @@ export function PreviewLinkPanel({ taskId, links, versions, canManage }: { taskI
           {links.map((link) => (
             <li key={link.id} className="flex flex-col gap-1 p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={STATE_VARIANT[link.state]}>{t(`states.${link.state}`)}</Badge>
+                <Badge dot variant={statusTone(link.state)}>{t(`states.${link.state}`)}</Badge>
                 <span className="font-medium">{link.label ?? t("noLabel")}</span>
                 <span className="font-mono text-xs">{link.version ? `v${link.version}` : t("currentVersion")}</span>
                 {!link.allowDecision ? <span className="text-xs text-muted-foreground">{t("viewOnly")}</span> : null}

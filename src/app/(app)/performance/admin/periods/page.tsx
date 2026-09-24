@@ -40,9 +40,9 @@ export default async function KpiPeriodsPage({ searchParams }: PageProps<"/perfo
               <ScoreState state={closed ? "closed" : "open"} label={t(`kpi.state.${closed ? "closed" : "open"}`)} />
               {closed && period?.closedAt ? <span className="text-xs text-muted-foreground">{t("periods.closedOn", { date: format.dateTime(period.closedAt, { dateStyle: "medium" }) })}</span> : null}
             </header>
-            {closed && period?.overrideReason ? <p className="text-xs text-amber-700 dark:text-amber-300">{t("periods.overridden", { count: period.exceptions?.length ?? 0, reason: period.overrideReason })}</p> : null}
+            {closed && period?.overrideReason ? <p className="text-xs text-warning">{t("periods.overridden", { count: period.exceptions?.length ?? 0, reason: period.overrideReason })}</p> : null}
             {!closed && period?.reopenReason ? <p className="text-xs text-muted-foreground">{t("periods.reopened", { reason: period.reopenReason })}</p> : null}
-            {closed && frozen ? <p className="text-xs text-amber-700 dark:text-amber-300">{`${t("periods.consumed")} — ${t("errors.kpi_month_consumed")}`}</p> : null}
+            {closed && frozen ? <p className="text-xs text-warning">{`${t("periods.consumed")} — ${t("errors.kpi_month_consumed")}`}</p> : null}
             {closed ? frozen ? null : canReopenKpiMonth(user.principal) ? <ReopenMonthForm entityId={entity.id} month={month} /> : <p className="text-xs text-muted-foreground">{t("periods.reopenGroupOnly")}</p> : over ? <CloseMonthForm entityId={entity.id} month={month} blockers={blockers} /> : blockers.length > 0 ? <p className="text-xs text-muted-foreground">{t("periods.blocked", { count: blockers.length })}</p> : null}
           </article>
         );

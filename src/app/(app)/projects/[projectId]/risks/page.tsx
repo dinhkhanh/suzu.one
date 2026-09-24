@@ -67,7 +67,7 @@ export default async function ProjectRisksPage({ params, searchParams }: PagePro
                 <div className="flex flex-wrap items-center gap-1.5">
                   <Badge variant="outline">{t(`kinds.${item.kind as RaidKind}`)}</Badge>
                   {item.severity ? <Badge variant={severityVariant(item.severity)}>{t(`severities.${item.severity as "high"}`)}</Badge> : null}
-                  <Badge variant={open ? "info" : "secondary"}>{t(`statuses.${item.status as "open"}`)}</Badge>
+                  <Badge dot variant={open ? "info" : "secondary"}>{t(`statuses.${item.status as "open"}`)}</Badge>
                 </div>
                 <p className="font-medium">{item.title}</p>
                 {item.description ? <p className="text-sm whitespace-pre-line text-muted-foreground">{item.description}</p> : null}

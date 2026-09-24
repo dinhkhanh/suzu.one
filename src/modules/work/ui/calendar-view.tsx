@@ -17,7 +17,7 @@ export type CalendarTask = ListTask & { teamId: string; channel: string | null; 
 export type CalendarPost = { id: string; taskId: string; key: string; title: string; teamId: string; platform: string; date: string; flag: "published" | "late" | "planned" | "unscheduled" | "cancelled"; time: string | null };
 
 const POST_CLASS: Record<CalendarPost["flag"], string> = {
-  published: "border-emerald-600/40 text-emerald-800 dark:text-emerald-300",
+  published: "border-emerald-600/40 text-success",
   late: "border-destructive/60 text-destructive",
   planned: "border-dashed border-border text-muted-foreground",
   unscheduled: "border-dashed border-border text-muted-foreground",

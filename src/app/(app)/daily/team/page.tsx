@@ -31,7 +31,7 @@ export default async function TeamBoardPage({ searchParams }: PageProps<"/daily/
         ) : (
           <span className="min-w-0 flex-1 text-sm font-medium">{person.name}</span>
         )}
-        {person.status === "submitted" ? <Badge variant={person.late ? "warning" : "success"}>{person.late ? t("late") : t("submitted")}</Badge> : person.status === "missing" ? <Badge variant="destructive">{t("board.missing")}</Badge> : <Badge variant="secondary">{t(`board.reasons.${person.reason ?? "optional"}`)}</Badge>}
+        {person.status === "submitted" ? <Badge dot variant={person.late ? "warning" : "success"}>{person.late ? t("late") : t("submitted")}</Badge> : person.status === "missing" ? <Badge dot variant="destructive">{t("board.missing")}</Badge> : <Badge variant="secondary">{t(`board.reasons.${person.reason ?? "optional"}`)}</Badge>}
         {person.comments > 0 ? <span className="text-xs text-muted-foreground">{t("board.comments", { count: person.comments })}</span> : null}
         {person.status === "missing" && isToday ? <RemindButton date={date} personIds={[person.personId]} label={t("board.remind")} done={person.reminded} /> : null}
       </div>

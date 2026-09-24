@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { canRunExitHandover, canViewExitHandover, getExitHandover, loadViewer } from "@/modules/work/service";
@@ -33,7 +34,7 @@ export default async function ExitHandoverPage({ params }: PageProps<"/work/hand
         </p>
         <h1 className="flex flex-wrap items-center gap-2">
           {t("exit.title", { name: handover.personName })}
-          <Badge variant={handover.status === "open" ? "secondary" : "outline"}>{t(`exit.statuses.${handover.status}`)}</Badge>
+          <Badge dot variant={statusTone(handover.status)}>{t(`exit.statuses.${handover.status}`)}</Badge>
         </h1>
         <p className="text-sm text-muted-foreground">
           {[t(`exit.reasons.${handover.reason}`), handover.lastDay ? t("exit.lastDay", { date: format.dateTime(new Date(`${handover.lastDay}T00:00:00`), { dateStyle: "medium" }) }) : null, handover.step ? t("exit.step", { name: handover.step.assigneeName ?? "—" }) : null].filter(Boolean).join(" · ")}

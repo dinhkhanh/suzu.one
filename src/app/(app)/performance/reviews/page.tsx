@@ -35,7 +35,7 @@ export default async function ReviewsPage() {
               <span className="text-xs text-muted-foreground">{t("mine.self")}</span>
               <FormStatusBadge status={line.selfStatus} label={t(`formStatus.${line.selfStatus ?? "none"}`)} />
               {line.released ? <span className="text-xs tabular-nums">{ratingText(format, line.reviewScoreBp)}</span> : null}
-              {line.selfDueOn && line.selfStatus !== "submitted" ? <span className="text-xs text-amber-700 dark:text-amber-300">{t("mine.selfDue", { date: format.dateTime(new Date(`${line.selfDueOn}T00:00:00Z`), { dateStyle: "medium" }) })}</span> : null}
+              {line.selfDueOn && line.selfStatus !== "submitted" ? <span className="text-xs text-warning">{t("mine.selfDue", { date: format.dateTime(new Date(`${line.selfDueOn}T00:00:00Z`), { dateStyle: "medium" }) })}</span> : null}
             </li>
           ))}
         </ul>
@@ -55,7 +55,7 @@ export default async function ReviewsPage() {
                 <span className="text-xs text-muted-foreground">{invitation.cycleName}</span>
                 <FormStatusBadge status={invitation.submitted ? "submitted" : invitation.written ? "draft" : null} label={t(`formStatus.${invitation.submitted ? "submitted" : invitation.written ? "draft" : "none"}`)} />
                 {invitation.peerDueOn && !invitation.submitted ? (
-                  <span className="text-xs text-amber-700 dark:text-amber-300">{t("peers.invitationDue", { date: format.dateTime(new Date(`${invitation.peerDueOn}T00:00:00Z`), { dateStyle: "medium" }) })}</span>
+                  <span className="text-xs text-warning">{t("peers.invitationDue", { date: format.dateTime(new Date(`${invitation.peerDueOn}T00:00:00Z`), { dateStyle: "medium" }) })}</span>
                 ) : null}
               </li>
             ))}

@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canRunRecruitment, headcountPlan, listHiringRequests } from "@/modules/recruit/service";
@@ -41,7 +42,7 @@ export default async function HiringRequestsPage() {
                 <p className="text-xs text-muted-foreground">{[row.entityName, row.departmentName, row.requesterName].filter(Boolean).join(" · ")}</p>
               </div>
               <span className="text-xs text-muted-foreground">{format.dateTime(row.createdAt, { dateStyle: "medium" })}</span>
-              <Badge variant={row.status === "pending" ? "secondary" : "outline"}>{t(`hiringStatus.${row.status}`)}</Badge>
+              <Badge dot variant={statusTone(row.status)}>{t(`hiringStatus.${row.status}`)}</Badge>
             </li>
           ))}
         </ul>

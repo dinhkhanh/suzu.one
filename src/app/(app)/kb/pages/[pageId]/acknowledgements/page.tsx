@@ -82,7 +82,7 @@ export default async function AckReportPage(props: PageProps<"/kb/pages/[pageId]
                     {row.acknowledgedAt ? (
                       <Badge variant="secondary">{t("ack.confirmedOn", { date: format.dateTime(row.acknowledgedAt, { dateStyle: "medium" }) })}</Badge>
                     ) : (
-                      <Badge variant={row.overdue ? "destructive" : "outline"}>{row.overdue ? t("ack.overdueSince", { date: day(row.dueOn) }) : t("ack.dueOn", { date: day(row.dueOn) })}</Badge>
+                      <Badge dot variant={row.overdue ? "destructive" : "outline"}>{row.overdue ? t("ack.overdueSince", { date: day(row.dueOn) }) : t("ack.dueOn", { date: day(row.dueOn) })}</Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{row.lastNoticeOn ? `${day(row.lastNoticeOn)} (${row.notices})` : "—"}</TableCell>

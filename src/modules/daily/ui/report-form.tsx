@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState, useTransition } from "react";
 import { FormError } from "@/components/forms/field";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ActivityItem, DailyTaskLine } from "../schema";
@@ -75,9 +76,7 @@ export function ReportForm({
         <TaskLines lines={draft.notDone} empty={t("report.allPlannedDone")} />
       </section>
       {timeRequired && draft.minutesLogged === 0 ? (
-        <p role="status" className="rounded-xl border border-amber-600/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
-          {t("report.noTimeLogged")}
-        </p>
+        <Alert variant="warning">{t("report.noTimeLogged")}</Alert>
       ) : null}
       <details className="rounded-xl border p-3" open={timeRequired && draft.minutesLogged === 0}>
         <summary className="cursor-pointer text-sm font-medium text-muted-foreground">

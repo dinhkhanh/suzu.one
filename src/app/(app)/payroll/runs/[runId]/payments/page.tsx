@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -67,11 +68,13 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
       </section>
 
       {settlement.blockers.length > 0 ? (
-        <ul className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
-          {settlement.blockers.map((blocker) => (
-            <li key={blocker}>{t(`blockers.${blocker}` as "blockers.bank_file_missing")}</li>
-          ))}
-        </ul>
+        <Alert variant="warning">
+          <ul className="flex w-full flex-col gap-0.5">
+            {settlement.blockers.map((blocker) => (
+              <li key={blocker}>{t(`blockers.${blocker}` as "blockers.bank_file_missing")}</li>
+            ))}
+          </ul>
+        </Alert>
       ) : null}
 
       {/* ── Anybody the bank channel cannot reach: named, never dropped ── */}

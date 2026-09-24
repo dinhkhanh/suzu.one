@@ -87,7 +87,7 @@ export default async function WorkloadPage({ searchParams }: PageProps<"/work/wo
                         {t("tasks", { count: cell.tasks })}
                         {cell.unestimated > 0 ? ` · ${t("unestimated", { count: cell.unestimated })}` : ""}
                       </p>
-                      {cell.awayDays > 0 ? <p className="text-xs text-amber-700 dark:text-amber-300">{t("away", { days: cell.awayDays })}</p> : null}
+                      {cell.awayDays > 0 ? <p className="text-xs text-warning">{t("away", { days: cell.awayDays })}</p> : null}
                       {cell.holidayDays > 0 ? <p className="text-xs text-muted-foreground">{t("holiday", { days: cell.holidayDays })}</p> : null}
                       {cell.over ? <p className="text-xs font-medium text-destructive">{t("over")}</p> : null}
                     </td>

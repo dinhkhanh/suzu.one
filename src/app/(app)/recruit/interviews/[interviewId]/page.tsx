@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/modules/platform/auth/session";
 import { clashesFor, getInterviewView, interviewerOptions, scorecardsFor } from "@/modules/recruit/interviews";
@@ -61,7 +62,7 @@ export default async function InterviewPage({ params }: PageProps<"/recruit/inte
             )}
           </p>
         </div>
-        <Badge variant={interview.status === "scheduled" ? "default" : "outline"}>{t(`statuses.${interview.status}`)}</Badge>
+        <Badge dot variant={statusTone(interview.status)}>{t(`statuses.${interview.status}`)}</Badge>
       </header>
 
       <dl className="grid gap-2 rounded-xl border p-4 text-sm sm:grid-cols-2">

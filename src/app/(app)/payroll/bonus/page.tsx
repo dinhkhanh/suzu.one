@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -54,7 +55,7 @@ export default async function BonusRunsPage() {
               <div className="flex flex-col gap-1">
                 <span className="flex flex-wrap items-center gap-2 font-medium">
                   {readable ? <Link href={`/payroll/bonus/${run.id}`} className="underline">{run.name}</Link> : run.name}
-                  <Badge variant={run.status === "paid" ? "secondary" : "outline"}>{t(`status.${run.status}`)}</Badge>
+                  <Badge dot variant={statusTone(run.status)}>{t(`status.${run.status}`)}</Badge>
                 </span>
                 <span className="text-muted-foreground">
                   {t("runYear", { year: run.year })} · {t("payrollMonth", { month: run.payrollMonth })} · {t("headcount", { count: run.headcount, eligible: run.eligibleCount })}

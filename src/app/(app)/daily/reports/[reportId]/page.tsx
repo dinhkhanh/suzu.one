@@ -39,7 +39,7 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
         <h1>{mine ? t("report.title") : subject.fullName}</h1>
         <p className="text-sm text-muted-foreground">{format.dateTime(new Date(`${report.date}T12:00:00Z`), { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
         <div className="flex flex-wrap items-center gap-2">
-          {report.status === "submitted" ? <Badge variant={report.late ? "warning" : "success"}>{report.late ? t("late") : t("submitted")}</Badge> : <Badge variant="outline">{t("draft")}</Badge>}
+          {report.status === "submitted" ? <Badge dot variant={report.late ? "warning" : "success"}>{report.late ? t("late") : t("submitted")}</Badge> : <Badge variant="outline">{t("draft")}</Badge>}
           {report.submittedAt ? <span className="text-xs text-muted-foreground">{t("view.sentAt", { time: format.dateTime(report.submittedAt, { dateStyle: "short", timeStyle: "short" }) })}</span> : null}
           <span className="text-xs text-muted-foreground">{t("hours", { value: hoursOf(report.minutesLogged) })}</span>
           {editable ? (

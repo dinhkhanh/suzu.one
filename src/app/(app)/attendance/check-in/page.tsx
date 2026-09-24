@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { getCheckInState } from "@/modules/attendance/punches";
 import { CheckInPanel, InstallHint } from "@/modules/attendance/ui/check-in";
 import { hoursText, planHours } from "@/modules/attendance/ui/day-plan";
@@ -30,8 +32,8 @@ export default async function CheckInPage() {
         ) : null}
       </header>
 
-      {state.leaveToday.length > 0 ? <p className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-3 text-center text-sm">{t(state.leaveToday.some((day) => day.portion === "full") ? "onLeaveFull" : "onLeavePart")}</p> : null}
-      {plan?.kind === "untracked" ? <p className="rounded-xl border p-3 text-center text-sm text-muted-foreground">{t("untracked")}</p> : null}
+      {state.leaveToday.length > 0 ? <Alert variant="warning">{t(state.leaveToday.some((day) => day.portion === "full") ? "onLeaveFull" : "onLeavePart")}</Alert> : null}
+      {plan?.kind === "untracked" ? <Alert className="text-muted-foreground">{t("untracked")}</Alert> : null}
 
       {employed ? <CheckInPanel nextDirection={state.nextDirection} punchExpected={plan?.kind === "working" || plan?.kind === "unscheduled" || !plan} /> : <p className="text-center text-sm text-muted-foreground">{t("errors.punch_not_employed")}</p>}
       {employed && !state.hasLocations ? <p className="text-center text-xs text-muted-foreground">{t("noLocations")}</p> : null}
@@ -45,7 +47,7 @@ export default async function CheckInPage() {
               <span className="font-mono">{format.dateTime(punch.at, { hour: "2-digit", minute: "2-digit" })}</span>
               <span className="font-medium">{t(punch.direction === "in" ? "in" : "out")}</span>
               {punch.locationName ? <span className="text-muted-foreground">{punch.locationName}</span> : null}
-              {punch.reviewStatus !== "none" ? <Badge variant={punch.reviewStatus === "rejected" ? "destructive" : "outline"}>{t(`review.${punch.reviewStatus}`)}</Badge> : null}
+              {punch.reviewStatus !== "none" ? <Badge dot variant={statusTone(punch.reviewStatus)}>{t(`review.${punch.reviewStatus}`)}</Badge> : null}
             </li>
           ))}
         </ul>

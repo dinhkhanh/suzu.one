@@ -310,7 +310,7 @@ export function TimelineView({ view }: { view: View }) {
       <span key={milestone.id} className="contents">
         {showBaseline && milestone.baselineDue && milestone.baselineDue !== milestone.dueDate ? <span aria-hidden className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-dashed border-muted-foreground/70" style={{ left: x(milestone.baselineDue) + dayW / 2 }} /> : null}
         <span role="img" aria-label={title} title={title} className={`absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 ${milestone.done ? "bg-emerald-600" : late ? "bg-destructive" : "bg-amber-500"}`} style={{ left: center }} />
-        {milestone.slipDays ? <span className={`absolute top-1/2 -translate-y-1/2 pl-2 text-[10px] whitespace-nowrap ${milestone.slipDays > 0 ? "text-destructive" : "text-emerald-700 dark:text-emerald-400"}`} style={{ left: center + 6 }}>{slipShort(milestone.slipDays)}</span> : null}
+        {milestone.slipDays ? <span className={`absolute top-1/2 -translate-y-1/2 pl-2 text-[10px] whitespace-nowrap ${milestone.slipDays > 0 ? "text-destructive" : "text-success"}`} style={{ left: center + 6 }}>{slipShort(milestone.slipDays)}</span> : null}
       </span>
     );
   };
@@ -368,7 +368,7 @@ export function TimelineView({ view }: { view: View }) {
           </span>
         ) : null}
         {task.slipDays ? (
-          <span className={`absolute top-1/2 -translate-y-1/2 pl-1 text-[10px] whitespace-nowrap ${task.slipDays > 0 ? "text-destructive" : "text-emerald-700 dark:text-emerald-400"}`} style={{ left: left + width + 2 + (outside === "right" ? outsideW + 4 : 0) }}>
+          <span className={`absolute top-1/2 -translate-y-1/2 pl-1 text-[10px] whitespace-nowrap ${task.slipDays > 0 ? "text-destructive" : "text-success"}`} style={{ left: left + width + 2 + (outside === "right" ? outsideW + 4 : 0) }}>
             {slipShort(task.slipDays)}
           </span>
         ) : null}
@@ -457,7 +457,7 @@ export function TimelineView({ view }: { view: View }) {
       <p className="text-xs text-muted-foreground">{readOnly ? t("readOnlyHint") : t("hint")}</p>
 
       {pending ? (
-        <div role="alertdialog" aria-labelledby="timeline-confirm" className="flex flex-col gap-2 rounded-xl border border-amber-600/40 bg-amber-500/10 p-3 text-sm">
+        <div role="alertdialog" aria-labelledby="timeline-confirm" className="flex flex-col gap-2 rounded-xl border border-warning/35 bg-warning/10 p-3 text-sm">
           <p id="timeline-confirm" className="font-medium">
             {t("confirmTitle", { title: pending.task.title, date: pending.to.dueDate ?? "—", count: pending.plan.shifts.length })}
           </p>

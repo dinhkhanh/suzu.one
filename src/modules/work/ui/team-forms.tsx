@@ -257,7 +257,7 @@ export function StateManager({ teamId, states, canManage }: { teamId: string; st
 
 export const LABEL_CLASSES: Record<string, string> = {
   gray: "bg-zinc-500/15 text-zinc-700 dark:text-zinc-300",
-  red: "bg-red-500/15 text-red-700 dark:text-red-300",
+  red: "bg-red-500/15 text-destructive",
   orange: "bg-orange-500/15 text-orange-700 dark:text-orange-300",
   yellow: "bg-yellow-500/20 text-yellow-800 dark:text-yellow-300",
   green: "bg-green-500/15 text-green-700 dark:text-green-300",

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -43,7 +44,7 @@ export function BankFileForm({ runId, banks, defaultValueDate }: { runId: string
         <h2 className="text-sm font-medium">{t("bank.title")}</h2>
         <p className="text-sm text-muted-foreground">{t("bank.hint")}</p>
         {/* The formats are reconstructions until the accountant checks them against the bank. */}
-        <p className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-xs">{t("bank.unverified")}</p>
+        <Alert variant="warning" className="mt-2 text-xs">{t("bank.unverified")}</Alert>
       </div>
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

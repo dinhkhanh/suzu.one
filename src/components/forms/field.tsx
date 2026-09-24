@@ -1,6 +1,7 @@
 "use client";
 import { useTranslations } from "next-intl";
 import { createContext, type ReactNode, useContext } from "react";
+import { Alert } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 
 const FieldErrorsContext = createContext<Record<string, string[]>>({});
@@ -31,8 +32,6 @@ export function FormError({ namespace, errorKey }: { namespace: string; errorKey
   const t = useTranslations(namespace);
   if (!errorKey) return null;
   return (
-    <p role="alert" className="text-sm text-destructive">
-      {t.has(errorKey) ? t(errorKey) : t("generic")}
-    </p>
+    <Alert variant="destructive">{t.has(errorKey) ? t(errorKey) : t("generic")}</Alert>
   );
 }

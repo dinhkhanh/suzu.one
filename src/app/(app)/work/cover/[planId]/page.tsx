@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { canAcknowledgeCover, canHandBackCover, canSubmitCoverPlan, canViewCoverPlan, coverPlanFacts, getCoverPlan, loadViewer } from "@/modules/work/service";
@@ -37,7 +38,7 @@ export default async function CoverPlanPage({ params }: PageProps<"/work/cover/[
         </p>
         <h1 className="flex flex-wrap items-center gap-2">
           {t("cover.title")}
-          <Badge variant={plan.status === "submitted" ? "default" : "secondary"}>{t(`cover.statuses.${plan.status}`)}</Badge>
+          <Badge dot variant={statusTone(plan.status)}>{t(`cover.statuses.${plan.status}`)}</Badge>
         </h1>
         <p className="text-sm text-muted-foreground">{t("cover.description")}</p>
       </header>

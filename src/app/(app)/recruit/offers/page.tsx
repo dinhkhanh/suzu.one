@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listOffers } from "@/modules/recruit/offers";
 import { canRunRecruitment } from "@/modules/recruit/policy";
@@ -46,7 +47,7 @@ export default async function OffersPage() {
                 {t("startDate")}: {format.dateTime(new Date(`${row.startDate}T00:00:00Z`), { dateStyle: "medium", timeZone: "UTC" })}
               </span>
               {row.hiredPersonId ? <Badge variant="outline">{t("statuses.converted")}</Badge> : null}
-              <Badge variant={row.status === "sent" || row.status === "pending_approval" ? "secondary" : row.status === "accepted" ? "default" : "outline"}>{t(`statuses.${row.status}`)}</Badge>
+              <Badge dot variant={statusTone(row.status)}>{t(`statuses.${row.status}`)}</Badge>
             </li>
           ))}
         </ul>

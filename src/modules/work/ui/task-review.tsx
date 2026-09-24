@@ -4,6 +4,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -120,7 +121,7 @@ export function TaskReview({
     <section className="flex flex-col gap-3">
       <h2 className="flex flex-wrap items-center gap-2 text-sm font-medium text-muted-foreground">
         {t("title")}
-        {status !== "none" ? <Badge variant={status === "changes_requested" ? "destructive" : status === "approved" ? "default" : "secondary"}>{t(`status.${status}`)}</Badge> : null}
+        {status !== "none" ? <Badge dot variant={statusTone(status)}>{t(`status.${status}`)}</Badge> : null}
         {rounds > 0 ? <Badge variant="outline">{t("rounds", { count: rounds })}</Badge> : null}
       </h2>
 
@@ -259,7 +260,7 @@ export function TaskReview({
                       <Lock aria-hidden /> {tClient("frozen")}
                     </Badge>
                   ) : null}
-                  <Badge variant={item.decision === "changes_requested" ? "destructive" : item.decision === "approved" ? "default" : "outline"}>{t(`decision.${item.decision}`)}</Badge>
+                  <Badge dot variant={statusTone(item.decision)}>{t(`decision.${item.decision}`)}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">{t("submittedBy", { name: item.submittedByName ?? "—", when: when(item.submittedAt) })}</p>
                 {item.note ? <p className="text-sm whitespace-pre-wrap">{item.note}</p> : null}

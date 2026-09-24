@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getHiringRequestView } from "@/modules/recruit/hiring";
@@ -35,7 +36,7 @@ export default async function HiringRequestPage({ params }: PageProps<"/recruit/
           </h1>
           <p className="text-sm text-muted-foreground">{[view.entityName, view.departmentName, view.requesterName].filter(Boolean).join(" · ")}</p>
         </div>
-        <Badge variant={hiringRequest.status === "pending" ? "secondary" : "outline"}>{t(`hiringStatus.${hiringRequest.status}`)}</Badge>
+        <Badge dot variant={statusTone(hiringRequest.status)}>{t(`hiringStatus.${hiringRequest.status}`)}</Badge>
       </header>
 
       <dl className="grid gap-2 rounded-xl border p-4 text-sm sm:grid-cols-2">

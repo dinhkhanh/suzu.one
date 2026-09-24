@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { listDelegations } from "@/modules/platform/approvals/delegations";
 import { DelegationForm, RevokeDelegationButton } from "@/modules/platform/approvals/ui/delegation-forms";
@@ -45,7 +46,7 @@ export default async function DelegationPage() {
                     {row.reason ? ` · ${row.reason}` : ""}
                   </p>
                 </div>
-                <Badge variant={state === "active" ? "secondary" : "outline"}>{t(`delegation.state.${state}` as "delegation.state.active")}</Badge>
+                <Badge dot variant={statusTone(state)}>{t(`delegation.state.${state}` as "delegation.state.active")}</Badge>
                 {state === "active" || state === "upcoming" ? <RevokeDelegationButton id={row.id} /> : null}
               </li>
             );

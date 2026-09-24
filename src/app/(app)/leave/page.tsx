@@ -1,6 +1,7 @@
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
 import { todayInVietnam } from "@/lib/dates";
 import { getBalances } from "@/modules/leave/ledger";
@@ -12,7 +13,6 @@ import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("leave");
 
-const STATUS_VARIANT = { pending: "secondary", approved: "default", rejected: "outline", withdrawn: "outline", cancelled: "outline" } as const;
 
 // The signed-in person's leave: what is left, what was asked for, and the way to ask for more.
 export default async function LeavePage() {
@@ -88,7 +88,7 @@ export default async function LeavePage() {
                     {request.startDate === request.endDate ? date(request.startDate) : `${date(request.startDate)} – ${date(request.endDate)}`} · {t("daysCount", { days: days(request.totalCenti) })}
                   </p>
                 </div>
-                <Badge variant={STATUS_VARIANT[request.status]}>{t(`status.${request.status === "pending" && request.approvalStatus === "returned" ? "returned" : request.status}`)}</Badge>
+                <Badge dot variant={statusTone(request.status === "pending" && request.approvalStatus === "returned" ? "returned" : request.status)}>{t(`status.${request.status === "pending" && request.approvalStatus === "returned" ? "returned" : request.status}`)}</Badge>
                 {open ? (
                   <div className="flex items-center gap-2">
                     <Link href={`/leave/new?amends=${request.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>

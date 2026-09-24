@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
 import { listPeople } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -46,7 +47,7 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
             </p>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <Badge variant={view.opening.status === "open" ? "default" : "outline"}>{t(`status.${view.opening.status}`)}</Badge>
+            <Badge dot variant={statusTone(view.opening.status)}>{t(`status.${view.opening.status}`)}</Badge>
             <div className="flex gap-2">
               <Link href={`/recruit/${openingId}/board`} className={buttonVariants({ size: "sm", variant: "outline" })}>
                 {t("board.title")}

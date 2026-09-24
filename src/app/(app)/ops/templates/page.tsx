@@ -46,7 +46,7 @@ export default async function ObligationLibraryPage() {
         </p>
         <h1>{t("library.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("library.description")}</p>
-        {unreviewed > 0 ? <p className="text-sm text-amber-700 dark:text-amber-300">{t("library.unreviewedCount", { count: unreviewed, total: templates.length })}</p> : null}
+        {unreviewed > 0 ? <p className="text-sm text-warning">{t("library.unreviewedCount", { count: unreviewed, total: templates.length })}</p> : null}
       </header>
       <OpsNav active="library" reads />
 

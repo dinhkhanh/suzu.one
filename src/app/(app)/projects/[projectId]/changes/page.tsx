@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { listFileNames } from "@/modules/platform/files/service";
 import { DecisionForm } from "@/modules/platform/approvals/ui/decision-form";
 import { RequestHistory, RequestTools } from "@/modules/platform/approvals/ui/request-views";
@@ -13,7 +14,6 @@ import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("changeRequests");
 
-const statusVariant = (status: string) => (status === "approved" ? "success" : status === "submitted" ? "info" : status === "rejected" ? "destructive" : "secondary");
 
 /**
  * Change requests (FR-PJM-11): original + changes = current for hours, fee and due date; each
@@ -135,7 +135,7 @@ export default async function ProjectChangesPage({ params }: PageProps<"/project
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-xs text-muted-foreground">CR-{change.number}</span>
                 <h3 className="font-medium">{change.title}</h3>
-                <Badge variant={statusVariant(status)}>{t(`status.${status}`)}</Badge>
+                <Badge dot variant={statusTone(status)}>{t(`status.${status}`)}</Badge>
                 <Badge variant="outline">{t(`requesters.${change.requestedBy as "client"}`)}</Badge>
               </div>
               <p className="text-xs text-muted-foreground">{[change.authorName, format.dateTime(change.createdAt, { dateStyle: "medium" }), change.appliedAt ? t("appliedOn", { date: format.dateTime(change.appliedAt, { dateStyle: "medium" }) }) : null].filter(Boolean).join(" · ")}</p>

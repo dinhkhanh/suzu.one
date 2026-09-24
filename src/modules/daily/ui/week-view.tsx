@@ -3,6 +3,7 @@
 // render it, editable only for the person and only while the week is open.
 import { getFormatter, getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import type { TimeWeekView } from "../timesheets";
 import { TIME_CATEGORIES } from "../enums";
 import { hoursOf } from "./format";
@@ -64,7 +65,6 @@ export async function TimeWeek({ view, openTasks = [] }: { view: TimeWeekView; o
   );
 }
 
-const STATUS_BADGE = { open: "outline", submitted: "info", approved: "success", returned: "warning" } as const;
 
 /** Where the week stands (FR-PJM-25): its status, and who returned, approved or reopened it and why. */
 export async function WeekStatus({ view }: { view: TimeWeekView }) {
@@ -74,11 +74,11 @@ export async function WeekStatus({ view }: { view: TimeWeekView }) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-2">
-        {view.approvalRequired || week ? <Badge variant={STATUS_BADGE[view.status]}>{t(`status.${view.status}`)}</Badge> : null}
+        {view.approvalRequired || week ? <Badge dot variant={statusTone(view.status)}>{t(`status.${view.status}`)}</Badge> : null}
         {view.timeMode === "required" ? <Badge variant="outline">{t("requiredBadge")}</Badge> : null}
         {week?.submittedAt && view.status === "submitted" ? <span className="text-xs text-muted-foreground">{t("submittedAt", { time: when(week.submittedAt) })}</span> : null}
       </div>
-      {week && view.status === "returned" && week.comment ? <p className="text-sm text-amber-700 dark:text-amber-300">{t("returnedBy", { name: week.decidedByName ?? "—", comment: week.comment })}</p> : null}
+      {week && view.status === "returned" && week.comment ? <p className="text-sm text-warning">{t("returnedBy", { name: week.decidedByName ?? "—", comment: week.comment })}</p> : null}
       {week && view.status === "approved" ? <p className="text-sm text-muted-foreground">{t("approvedBy", { name: week.decidedByName ?? "—", time: when(week.decidedAt) })}</p> : null}
       {week && view.status === "open" && week.decidedByPersonId && week.comment ? <p className="text-sm text-muted-foreground">{t("reopenedBy", { name: week.decidedByName ?? "—", comment: week.comment })}</p> : null}
     </div>

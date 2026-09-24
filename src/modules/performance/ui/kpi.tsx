@@ -41,7 +41,7 @@ export function ScoreState({ state, label }: { state: "closed" | "open"; label: 
 
 /** A score as a figure with its colour: under 70 % red, under 90 % amber, else green. */
 export function ScoreFigure({ bp, text }: { bp: number | null; text: string }) {
-  const colour = bp === null ? "text-muted-foreground" : bp < 7000 ? "text-destructive" : bp < 9000 ? "text-amber-700 dark:text-amber-300" : "text-emerald-700 dark:text-emerald-300";
+  const colour = bp === null ? "text-muted-foreground" : bp < 7000 ? "text-destructive" : bp < 9000 ? "text-warning" : "text-success";
   return <span className={`font-medium tabular-nums ${colour}`}>{text}</span>;
 }
 

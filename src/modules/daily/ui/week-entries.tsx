@@ -45,7 +45,7 @@ function EntryRow({ entry, editable }: { entry: EntryView; editable: boolean }) 
         ) : null}
       </div>
       {entry.note && !editing ? <p className="pl-18 text-xs whitespace-pre-wrap text-muted-foreground">{entry.note}</p> : null}
-      {entry.capped ? <p className="text-xs text-amber-700 dark:text-amber-300">{t("capped")}</p> : null}
+      {entry.capped ? <p className="text-xs text-warning">{t("capped")}</p> : null}
       {editing ? (
         <form
           className="flex flex-wrap items-center gap-2"

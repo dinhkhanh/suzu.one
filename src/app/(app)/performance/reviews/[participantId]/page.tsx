@@ -127,7 +127,7 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
       {shape && canWriteManagerReview(user.principal, parties) && myManager?.status !== "submitted" ? (
         <section className="flex flex-col gap-3">
           <h2>{t("form.kind.manager")}</h2>
-          {managerBlocked ? <p className="text-sm text-amber-700 dark:text-amber-300">{t("form.waitingForSelf", { date: cycle.selfDueOn ? formatDate(cycle.selfDueOn) : "—" })}</p> : null}
+          {managerBlocked ? <p className="text-sm text-warning">{t("form.waitingForSelf", { date: cycle.selfDueOn ? formatDate(cycle.selfDueOn) : "—" })}</p> : null}
           <ReviewFormEditor value={{ participantId, kind: "manager", shape, answers: myManager?.answers ?? {}, comment: myManager?.comment ?? null, submitted: false }} />
         </section>
       ) : null}
@@ -179,7 +179,7 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
                 <>
                   <NominatePeerForm participantId={participantId} candidates={candidates} />
                   <p className="text-xs text-muted-foreground">{mayDecide ? t("peers.managerHint") : t("peers.selfHint")}</p>
-                  {approvedPeers < cycle.peerMin ? <p className="text-xs text-amber-700 dark:text-amber-300">{t("peers.needMore", { count: cycle.peerMin - approvedPeers })}</p> : null}
+                  {approvedPeers < cycle.peerMin ? <p className="text-xs text-warning">{t("peers.needMore", { count: cycle.peerMin - approvedPeers })}</p> : null}
                 </>
               ) : null}
             </>

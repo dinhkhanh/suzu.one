@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -53,7 +54,7 @@ export default async function PayslipQueriesPage() {
                 </TableCell>
                 <TableCell className="max-w-md truncate text-sm text-muted-foreground">{row.lastMessage}</TableCell>
                 <TableCell>
-                  <Badge variant={row.query.status === "open" ? "default" : "secondary"}>{t(`statuses.${row.query.status}` as "statuses.open")}</Badge>
+                  <Badge dot variant={statusTone(row.query.status)}>{t(`statuses.${row.query.status}` as "statuses.open")}</Badge>
                   <span className="ml-2 text-xs text-muted-foreground">{format.dateTime(row.lastAt, { dateStyle: "short", timeStyle: "short" })}</span>
                 </TableCell>
                 <TableCell className="text-right">

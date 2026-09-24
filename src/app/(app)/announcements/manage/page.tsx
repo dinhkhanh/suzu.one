@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { audienceNames, canPostAnywhere, listManagedAnnouncements } from "@/modules/comms/service";
 import { audienceLabel } from "@/modules/comms/ui/labels";
@@ -55,7 +56,7 @@ export default async function ManageAnnouncementsPage() {
                   {row.pinned ? <Badge variant="secondary" className="ml-2">{t("list.pinned")}</Badge> : null}
                 </TableCell>
                 <TableCell>
-                  <Badge variant={row.phase === "live" ? "default" : "outline"}>{t(`phase.${row.phase}`)}</Badge>
+                  <Badge dot variant={statusTone(row.phase)}>{t(`phase.${row.phase}`)}</Badge>
                 </TableCell>
                 <TableCell className="max-w-64 truncate">{row.audience.map((key) => audienceLabel(key, names, t)).join(", ")}</TableCell>
                 <TableCell>{row.publishAt ? format.dateTime(row.publishAt, { dateStyle: "medium", timeStyle: "short" }) : "—"}</TableCell>

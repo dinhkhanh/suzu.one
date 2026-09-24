@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -105,9 +106,9 @@ export function CandidateForm({ value, people }: { value: CandidateFormValue | n
       </FieldErrors>
 
       {matches.length > 0 ? (
-        <div className="flex flex-col gap-2 rounded-xl border border-amber-500/40 bg-amber-50/40 p-3 text-sm dark:bg-amber-950/20">
-          <p className="font-medium">{duplicates("title")}</p>
-          <ul className="flex flex-col gap-1">
+        <Alert variant="warning">
+          <AlertTitle>{duplicates("title")}</AlertTitle>
+          <ul className="flex w-full flex-col gap-1">
             {matches.map((match, index) => (
               <li key={match.id ?? `elsewhere-${index}`} className="flex flex-wrap items-center gap-2">
                 {/* A match outside the recruiter's reach arrives without an id or a name. */}
@@ -128,7 +129,7 @@ export function CandidateForm({ value, people }: { value: CandidateFormValue | n
               {t("confirmedNotDuplicate")}
             </label>
           ) : null}
-        </div>
+        </Alert>
       ) : null}
 
       <FormError namespace="recruit.errors" errorKey={errorKey} />

@@ -1,0 +1,143 @@
+import type { BadgeVariant } from "./badge";
+
+/**
+ * One colour per word, everywhere. A status badge is `<Badge dot variant={statusTone(status)}>`,
+ * so "approved" is green on the payroll run, the change request and the offer alike, and a reader
+ * learns the language once:
+ *
+ *   success      – in effect, settled well: active, approved, paid, submitted, done
+ *   info         – in motion: open, running, in progress, scheduled
+ *   warning      – waiting on someone: pending, sent, returned, late, due soon
+ *   destructive  – wrong: rejected, failed, overdue, missing, expired
+ *   secondary    – over and closed: locked, closed, archived, paid out
+ *   outline      – not started or without outcome: draft, cancelled, withdrawn, inactive
+ *
+ * A module whose word means something else passes the variant it wants instead.
+ */
+const TONES: Record<string, BadgeVariant> = {
+  // In effect, settled well.
+  active: "success",
+  live: "success",
+  approved: "success",
+  accepted: "success",
+  paid: "success",
+  done: "success",
+  completed: "success",
+  complete: "success",
+  submitted: "success",
+  shared: "success",
+  committed: "success",
+  resolved: "success",
+  published: "success",
+  succeeded: "success",
+  success: "success",
+  verified: "success",
+  confirmed: "success",
+  delivered: "success",
+  signed: "success",
+  hired: "success",
+  present: "success",
+  granted: "success",
+  ok: "success",
+  in: "success",
+  released: "success",
+  filled: "success",
+  fulfilled: "success",
+  merged: "success",
+  invoiced: "success",
+  earned: "success",
+  decided: "success",
+  rated: "success",
+  reviewed: "success",
+  in_stock: "success",
+  // In motion.
+  open: "info",
+  running: "info",
+  in_progress: "info",
+  scheduled: "info",
+  planned: "info",
+  new: "info",
+  started: "info",
+  in_review: "info",
+  review: "info",
+  off_site: "info",
+  in_production: "info",
+  client_review: "info",
+  proposed: "info",
+  simulated: "info",
+  calibration: "info",
+  preboarding: "info",
+  tentative: "info",
+  payment_prepared: "info",
+  viewed: "info",
+  received: "info",
+  assigned: "info",
+  checked_out: "info",
+  // Waiting on someone.
+  pending: "warning",
+  pending_approval: "warning",
+  awaiting: "warning",
+  sent: "warning",
+  returned: "warning",
+  due_soon: "warning",
+  late: "warning",
+  partial: "warning",
+  on_hold: "warning",
+  paused: "warning",
+  changes_requested: "warning",
+  expiring: "warning",
+  unverified: "warning",
+  unreviewed: "warning",
+  not_yet: "warning",
+  snoozed: "warning",
+  requested: "warning",
+  handed_back: "warning",
+  in_repair: "warning",
+  suspended: "warning",
+  ready: "warning",
+  // Wrong.
+  rejected: "destructive",
+  failed: "destructive",
+  error: "destructive",
+  overdue: "destructive",
+  missing: "destructive",
+  blocked: "destructive",
+  expired: "destructive",
+  declined: "destructive",
+  absent: "destructive",
+  revoked: "destructive",
+  no_show: "destructive",
+  lost: "destructive",
+  // Over and closed.
+  closed: "secondary",
+  locked: "secondary",
+  archived: "secondary",
+  ended: "secondary",
+  finished: "secondary",
+  retired: "secondary",
+  settled: "secondary",
+  recorded: "secondary",
+  out: "secondary",
+  on_leave: "secondary",
+  offboarded: "secondary",
+  disposed: "secondary",
+  // Not started, or without outcome.
+  draft: "outline",
+  cancelled: "outline",
+  withdrawn: "outline",
+  inactive: "outline",
+  skipped: "outline",
+  none: "outline",
+  todo: "outline",
+  backlog: "outline",
+  promised: "outline",
+  upcoming: "outline",
+  void: "outline",
+  waived: "outline",
+  not_earned: "outline",
+  dismissed: "outline",
+};
+
+export function statusTone(status: string | null | undefined, fallback: BadgeVariant = "outline"): BadgeVariant {
+  return (status && TONES[status]) || fallback;
+}

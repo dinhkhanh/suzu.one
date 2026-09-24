@@ -126,9 +126,9 @@ export default async function CapacityPage({ searchParams }: PageProps<"/project
                           {t("hours", { hours: hours(cell.confirmedMinutes) })} <span className="text-xs font-normal text-muted-foreground">/ {t("hours", { hours: hours(cell.availableMinutes) })}</span>
                         </p>
                         {cell.tentativeMinutes > 0 ? <p className="text-xs text-muted-foreground">{t("tentativeHours", { hours: hours(cell.tentativeMinutes) })}</p> : null}
-                        {cell.awayDays > 0 ? <p className="text-xs text-amber-700 dark:text-amber-300">{t("away", { days: cell.awayDays })}</p> : null}
+                        {cell.awayDays > 0 ? <p className="text-xs text-warning">{t("away", { days: cell.awayDays })}</p> : null}
                         {cell.holidayDays > 0 ? <p className="text-xs text-muted-foreground">{t("holiday", { days: cell.holidayDays })}</p> : null}
-                        {cell.over ? <p className="text-xs font-medium text-destructive">{t("over", { hours: hours(-cell.freeMinutes) })}</p> : cell.atRisk ? <p className="text-xs text-amber-700 dark:text-amber-300">{t("atRisk")}</p> : null}
+                        {cell.over ? <p className="text-xs font-medium text-destructive">{t("over", { hours: hours(-cell.freeMinutes) })}</p> : cell.atRisk ? <p className="text-xs text-warning">{t("atRisk")}</p> : null}
                         {own.length ? (
                           <ul className="mt-1 flex flex-col gap-0.5 text-[11px] text-muted-foreground">
                             {own.map((booking, index) => (

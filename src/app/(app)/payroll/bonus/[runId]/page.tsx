@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -48,7 +49,7 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
           </Link>
           <h1 className="flex flex-wrap items-center gap-2">
             {run.name}
-            <Badge variant={run.status === "paid" ? "secondary" : "outline"}>{t(`status.${run.status}`)}</Badge>
+            <Badge dot variant={statusTone(run.status)}>{t(`status.${run.status}`)}</Badge>
           </h1>
           <p className="text-sm text-muted-foreground">
             {t("runYear", { year: run.year })} · {t("payrollMonth", { month: run.payrollMonth })} · {t("headcount", { count: run.headcount, eligible: run.eligibleCount })}

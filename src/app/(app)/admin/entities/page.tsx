@@ -56,7 +56,7 @@ export default async function EntitiesPage() {
                 <TableCell>{entity.taxCode ?? "—"}</TableCell>
                 <TableCell>{entity.wageRegion ?? "—"}</TableCell>
                 <TableCell>
-                  <Badge variant={entity.isActive ? "secondary" : "outline"}>{entity.isActive ? t("active") : t("inactive")}</Badge>
+                  <Badge dot variant={entity.isActive ? "success" : "outline"}>{entity.isActive ? t("active") : t("inactive")}</Badge>
                 </TableCell>
               </TableRow>
             ))

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { getPayslipView, recordPayslipView } from "@/modules/payroll/payslips";
@@ -47,7 +48,7 @@ export default async function PayslipPage({ params }: PageProps<"/payslips/[pays
         {view.queries.map(({ query, messages }) => (
           <article key={query.id} className="flex flex-col gap-3 rounded-xl border p-4">
             <div className="flex items-center justify-between gap-2">
-              <Badge variant={query.status === "closed" ? "secondary" : "default"}>{t(`queries.statuses.${query.status}`)}</Badge>
+              <Badge dot variant={statusTone(query.status)}>{t(`queries.statuses.${query.status}`)}</Badge>
               <span className="text-xs text-muted-foreground">{format.dateTime(query.createdAt, { dateStyle: "medium", timeStyle: "short" })}</span>
             </div>
             <ol className="flex flex-col gap-3">

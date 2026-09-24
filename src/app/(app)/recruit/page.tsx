@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canBrowseCandidates, canManagePipelines, canRunRecruitment, listOpenings, recruitModuleOpen } from "@/modules/recruit/service";
@@ -93,7 +94,7 @@ export default async function RecruitPage() {
                 <span className="text-xs text-muted-foreground">
                   {t("columns.hired")}: {opening.hiredCount}
                 </span>
-                <Badge variant={opening.status === "open" ? "default" : "outline"}>{t(`status.${opening.status}`)}</Badge>
+                <Badge dot variant={statusTone(opening.status)}>{t(`status.${opening.status}`)}</Badge>
               </li>
             ))}
           </ul>

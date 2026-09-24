@@ -31,7 +31,7 @@ export default async function ReportPage({ searchParams }: PageProps<"/daily/rep
         <h1>{t("report.title")}</h1>
         <p className="text-sm text-muted-foreground">{format.dateTime(new Date(`${date}T12:00:00Z`), { weekday: "long", day: "numeric", month: "long" })}</p>
         <div className="flex flex-wrap gap-2">
-          {submitted ? <Badge variant={form.report!.late ? "warning" : "success"}>{form.report!.late ? t("late") : t("submitted")}</Badge> : day?.report.required ? <Badge variant="outline">{t("report.dueBy", { time: day.rules.reportDeadline })}</Badge> : <Badge variant="secondary">{t("report.optional")}</Badge>}
+          {submitted ? <Badge dot variant={form.report!.late ? "warning" : "success"}>{form.report!.late ? t("late") : t("submitted")}</Badge> : day?.report.required ? <Badge variant="outline">{t("report.dueBy", { time: day.rules.reportDeadline })}</Badge> : <Badge variant="secondary">{t("report.optional")}</Badge>}
         </div>
         <p className="text-xs text-muted-foreground">{t("report.prefilledHint")}</p>
       </header>

@@ -25,7 +25,7 @@ export default async function UtilisationPage() {
     const billable = percentOf(value.billableRatio);
     return (
       <td className={cn("px-2 py-1.5 text-right align-top", strong && "font-medium")} title={t("cellTitle", { logged: hoursOf(value.logged), available: hoursOf(value.available) })}>
-        <span className={cn("block tabular-nums", value.ratio !== null && value.ratio > 1.1 && "text-amber-700 dark:text-amber-300", value.ratio === null && "text-faint")}>{ratio === null ? "—" : t("ratio", { value: ratio })}</span>
+        <span className={cn("block tabular-nums", value.ratio !== null && value.ratio > 1.1 && "text-warning", value.ratio === null && "text-faint")}>{ratio === null ? "—" : t("ratio", { value: ratio })}</span>
         <span className="block text-xs text-muted-foreground tabular-nums">{t("hoursOf", { logged: hoursOf(value.logged), available: hoursOf(value.available) })}</span>
         {billable !== null ? <span className="block text-xs text-muted-foreground tabular-nums">{t("billableRatio", { value: billable })}</span> : null}
       </td>

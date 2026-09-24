@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listRecentJobRuns } from "@/modules/platform/jobs/service";
@@ -45,7 +46,7 @@ export default async function JobsPage() {
               <TableCell className="whitespace-nowrap">{format.dateTime(run.startedAt, { dateStyle: "short", timeStyle: "medium" })}</TableCell>
               <TableCell className="font-mono text-xs">{run.job}</TableCell>
               <TableCell>
-                <Badge variant={run.status === "failed" ? "destructive" : run.status === "running" ? "outline" : "secondary"}>{t(`statuses.${run.status}`)}</Badge>
+                <Badge dot variant={statusTone(run.status)}>{t(`statuses.${run.status}`)}</Badge>
               </TableCell>
               <TableCell className="whitespace-nowrap text-muted-foreground">
                 {run.finishedAt ? t("seconds", { seconds: Math.max(0, Math.round((run.finishedAt.getTime() - run.startedAt.getTime()) / 100) / 10) }) : "—"}

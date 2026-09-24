@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
 import { headers } from "next/headers";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -64,7 +65,7 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <Badge variant={view.application.status === "active" ? "default" : "outline"}>{t(`applicationStatus.${view.application.status}`)}</Badge>
+          <Badge dot variant={statusTone(view.application.status)}>{t(`applicationStatus.${view.application.status}`)}</Badge>
           <span className="text-xs text-muted-foreground">{view.stage.name}</span>
         </div>
       </header>
@@ -148,7 +149,7 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
                   <p className="text-xs text-muted-foreground">{row.interviewers.map((person) => person.fullName).join(", ")}</p>
                 </div>
                 <span className="text-xs text-muted-foreground">{format.dateTime(row.startAt, { dateStyle: "medium", timeStyle: "short" })}</span>
-                <Badge variant={row.status === "scheduled" ? "default" : "outline"}>{tInterview(`statuses.${row.status}`)}</Badge>
+                <Badge dot variant={statusTone(row.status)}>{tInterview(`statuses.${row.status}`)}</Badge>
               </li>
             ))}
           </ul>
@@ -165,7 +166,7 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
           <article key={assignment.id} className="flex flex-col gap-2 rounded-xl border p-4 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-medium">{assignment.title}</span>
-              <Badge variant={assignment.status === "sent" ? "secondary" : "outline"}>{tAssignment(`statuses.${assignment.status}`)}</Badge>
+              <Badge dot variant={statusTone(assignment.status)}>{tAssignment(`statuses.${assignment.status}`)}</Badge>
             </div>
             <p className="text-xs text-muted-foreground">
               {tAssignment("due")}: {format.dateTime(assignment.dueAt, { dateStyle: "medium", timeStyle: "short" })}
@@ -209,7 +210,7 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
                   {row.number}
                 </Link>
                 <span className="text-xs text-muted-foreground">{format.dateTime(new Date(`${row.startDate}T00:00:00Z`), { dateStyle: "medium", timeZone: "UTC" })}</span>
-                <Badge variant={row.status === "accepted" ? "default" : "outline"}>{tOffer(`statuses.${row.status}`)}</Badge>
+                <Badge dot variant={statusTone(row.status)}>{tOffer(`statuses.${row.status}`)}</Badge>
               </li>
             ))}
           </ul>

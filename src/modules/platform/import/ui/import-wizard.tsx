@@ -90,7 +90,7 @@ export function ImportWizard({ title, template, accept = ".xlsx,.csv", children,
           {staged.problems.length > 0 ? (
             <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-md border p-3 text-sm">
               {staged.problems.map((problem, index) => (
-                <li key={index} className={problem.code === "column_unknown" ? "text-muted-foreground" : problem.severity === "warning" ? "text-amber-700 dark:text-amber-400" : "text-destructive"}>
+                <li key={index} className={problem.code === "column_unknown" ? "text-muted-foreground" : problem.severity === "warning" ? "text-warning" : "text-destructive"}>
                   {t("problemAt", { row: problem.row })}
                   {problem.column ? ` · ${problem.column}` : ""}: {t.has(`problems.${problem.code}`) ? t(`problems.${problem.code}`) : problem.code}
                   {problem.detail ? ` — ${problem.detail}` : ""}

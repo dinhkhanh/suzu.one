@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { ownAnomaliesIn } from "@/modules/attendance/anomalies";
@@ -91,7 +92,7 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
           <MonthNav month={month} hrefFor={monthHref} thisMonth={today.slice(0, 7)} />
         </div>
         <div className="flex flex-wrap items-center gap-3 rounded-xl border p-3 text-sm">
-          <Badge variant={monthStatus === "open" ? "outline" : "secondary"}>{t(`months.status.${monthStatus}`)}</Badge>
+          <Badge dot variant={statusTone(monthStatus)}>{t(`months.status.${monthStatus}`)}</Badge>
           <span className="text-muted-foreground">{t(`months.statusHint.${monthStatus}`)}</span>
           {own && monthStatus === "open" && monthOver && personMonth.days.length > 0 ? <ConfirmMonthButton month={month} label={t("months.confirm")} confirm={t("months.confirmAsk")} /> : null}
           {monthStatus === "open" && monthRow?.reopenedComment ? <p className="w-full text-xs text-destructive">{t("months.reopened", { comment: monthRow.reopenedComment })}</p> : null}

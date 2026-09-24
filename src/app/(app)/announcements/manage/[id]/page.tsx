@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { audienceNames, audienceOptionsFor, commsViewerOf, getAnnouncementView, getReadReport } from "@/modules/comms/service";
 import { AnnouncementForm } from "@/modules/comms/ui/announcement-form";
@@ -35,7 +36,7 @@ export default async function ManageAnnouncementPage(props: PageProps<"/announce
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <h1>{row.title}</h1>
-          <Badge variant={view.phase === "live" ? "default" : "outline"}>{t(`phase.${view.phase}`)}</Badge>
+          <Badge dot variant={statusTone(view.phase)}>{t(`phase.${view.phase}`)}</Badge>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Link href={`/announcements/${row.id}`} className="text-sm underline underline-offset-2">

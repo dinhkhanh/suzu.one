@@ -1,6 +1,7 @@
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageRequestTypes } from "@/modules/requests/policy";
@@ -47,7 +48,7 @@ export default async function RequestsPage() {
                   <p className="text-xs text-muted-foreground">{row.summary}</p>
                   <p className="text-xs text-muted-foreground">{format.dateTime(row.createdAt, { dateStyle: "medium", timeStyle: "short" })}</p>
                 </div>
-                <Badge variant={row.status === "pending" ? "secondary" : "outline"}>{tApprovals(`status.${row.status}` as "status.pending")}</Badge>
+                <Badge dot variant={statusTone(row.status)}>{tApprovals(`status.${row.status}` as "status.pending")}</Badge>
               </li>
             ))}
           </ul>

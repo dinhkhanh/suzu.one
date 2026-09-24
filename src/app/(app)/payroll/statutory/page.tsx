@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Alert } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -50,7 +51,7 @@ export default async function StatutoryExportsPage({ searchParams }: PageProps<"
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
 
-      <p className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/40">{t("unverifiedBanner")}</p>
+      <Alert variant="warning">{t("unverifiedBanner")}</Alert>
 
       <StatutoryFilters entities={entities} entityId={entityId} year={year} month={month} />
 

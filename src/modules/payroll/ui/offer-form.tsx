@@ -3,6 +3,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -96,10 +97,12 @@ function QuoteCard({ quote }: { quote: OfferQuote }) {
       </header>
 
       {!quote.exact && (
-        <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-          {t("notExact")}
-          {quote.nearest?.below && <span className="block">{t("nearestBelow", { gross: formatVnd(quote.nearest.below.gross), net: formatVnd(quote.nearest.below.net) })}</span>}
-        </p>
+        <Alert variant="warning">
+          <p>
+            {t("notExact")}
+            {quote.nearest?.below && <span className="block">{t("nearestBelow", { gross: formatVnd(quote.nearest.below.gross), net: formatVnd(quote.nearest.below.net) })}</span>}
+          </p>
+        </Alert>
       )}
 
       <dl className="flex flex-col gap-1 text-sm">

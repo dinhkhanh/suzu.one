@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { todayInVietnam } from "@/lib/dates";
@@ -12,7 +13,6 @@ import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("billing");
 
-const statusVariant = (status: string) => (status === "invoiced" ? "success" : status === "waived" ? "outline" : "warning");
 
 /**
  * Finance's "ready to invoice" queue (FR-PJM-56): the items of the entities the reader holds
@@ -80,7 +80,7 @@ export default async function BillingQueuePage({ searchParams }: PageProps<"/pro
         {items.map((item) => (
           <li key={item.id} className="flex flex-col gap-2 rounded-xl border p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={statusVariant(item.status)}>{t(`status.${item.status as "ready"}`)}</Badge>
+              <Badge dot variant={statusTone(item.status)}>{t(`status.${item.status as "ready"}`)}</Badge>
               {item.jobNumber ? <span className="font-mono text-sm">{item.jobNumber}</span> : null}
               {openable.has(item.projectId) ? (
                 <Link href={`/projects/${item.projectId}/acceptance`} className="font-medium hover:underline">
