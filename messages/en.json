@@ -11108,5 +11108,71 @@
         }
       ]
     }
+  },
+  "welcome": {
+    "label": "Getting started",
+    "stepOf": "Step {current} of {total}",
+    "start": "Start",
+    "next": "Next",
+    "back": "Back",
+    "visit": "Open this page",
+    "fold": "Minimise the guide",
+    "resume": "Continue the guide · {current}/{total}",
+    "later": "Remind me later",
+    "finish": "I'm done",
+    "finishing": "Saving…",
+    "failed": "That didn't save. Please try again.",
+    "steps": {
+      "welcome": {
+        "title": "Hi {name}, welcome to SuZu One!",
+        "body": "SuZu One is where you check in, request leave, follow your work, read your payslips and look up company policies — all in one place. The next few steps show what you'll do day to day. It takes about two minutes.",
+        "tip": "You can open each page while you read. The guide shrinks into the corner and waits for you."
+      },
+      "today": {
+        "title": "Today — where every day starts",
+        "body": "After you sign in you land on Today: what you planned, what's due and what's waiting for you. Plan your day and log your time right there.",
+        "tip": "Press Ctrl + K (⌘ + K on a Mac) to find a task or jump to any page."
+      },
+      "checkIn": {
+        "title": "Check in / check out",
+        "body": "Check in from your phone or computer: tap Check in when you start work and Check out when you finish. The time comes from the system's clock, and your browser may ask for your location to confirm you're at work.",
+        "tip": "Forgot to check in? Send an adjustment request from Attendance for your manager to approve."
+      },
+      "me": {
+        "title": "My profile",
+        "body": "See what the company holds about you: your position, your manager, your personal details and the equipment you've been given. Check it carefully in your first week.",
+        "tip": "Something wrong? Send a change request from the page and HR will review it."
+      },
+      "leave": {
+        "title": "Leave",
+        "body": "See how many days you have left and send a leave request. It goes straight to your approver, and you're notified when it's decided.",
+        "tip": "Look at the leave calendar before picking dates, so you don't overlap with teammates."
+      },
+      "tasks": {
+        "title": "My work",
+        "body": "Everything that needs you is in one inbox: tasks assigned to you, deliverables to review, requests to approve and hand-offs to accept. The number in the sidebar tells you how many are left.",
+        "tip": "My notifications tells you when new work arrives or one of your requests is decided."
+      },
+      "daily": {
+        "title": "Daily plan & report",
+        "body": "At the start of the day, pick what you'll work on; at the end, note what you did and how long it took. Your past reports are on this page.",
+        "tip": "Start the timer on Today when you begin a task, so you don't have to remember at the end of the day."
+      },
+      "payslips": {
+        "title": "Payslips",
+        "body": "Your monthly payslip appears here once it's issued. Only you can see your payslips.",
+        "tip": "To protect pay information, you'll be asked to confirm your Google account again before a payslip opens."
+      },
+      "kb": {
+        "title": "Knowledge base & Ask SuZu",
+        "body": "Company policies, procedures and how-tos live in the Knowledge base. Got a question like “How many days of leave do I get a year?” — ask SuZu, which answers from the documents you're allowed to read.",
+        "tip": "Required reading is sent to you with a request to confirm you've read it."
+      },
+      "finish": {
+        "title": "You're all set!",
+        "body": "Those are the essentials. Press “I'm done” to close the guide for good. Not finished yet? Choose “Remind me later” and it opens again next time you sign in.",
+        "tip": "Need help? Ask your manager or HR."
+      }
+    }
   }
 }

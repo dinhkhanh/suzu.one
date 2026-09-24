@@ -11108,5 +11108,71 @@
         }
       ]
     }
+  },
+  "welcome": {
+    "label": "Hướng dẫn bắt đầu",
+    "stepOf": "Bước {current}/{total}",
+    "start": "Bắt đầu",
+    "next": "Tiếp",
+    "back": "Quay lại",
+    "visit": "Mở trang này",
+    "fold": "Thu nhỏ hướng dẫn",
+    "resume": "Tiếp tục hướng dẫn · {current}/{total}",
+    "later": "Để lần sau",
+    "finish": "Tôi đã hoàn tất",
+    "finishing": "Đang lưu…",
+    "failed": "Chưa lưu được. Vui lòng thử lại.",
+    "steps": {
+      "welcome": {
+        "title": "Chào {name}, chào mừng bạn đến SuZu One!",
+        "body": "SuZu One là nơi bạn chấm công, xin nghỉ, theo dõi công việc, xem phiếu lương và tra cứu quy định của công ty — tất cả ở một chỗ. Vài bước sau giới thiệu những việc bạn sẽ làm hằng ngày, chỉ mất khoảng 2 phút.",
+        "tip": "Bạn có thể mở từng trang ngay trong lúc xem. Hướng dẫn sẽ thu nhỏ ở góc màn hình và chờ bạn quay lại."
+      },
+      "today": {
+        "title": "Hôm nay — nơi bắt đầu mỗi ngày",
+        "body": "Sau khi đăng nhập, bạn vào trang Hôm nay: những việc đã lên kế hoạch, việc sắp đến hạn và những gì đang chờ bạn. Lập kế hoạch và ghi giờ làm ngay tại đây.",
+        "tip": "Nhấn Ctrl + K (⌘ + K trên Mac) để tìm việc hoặc mở nhanh bất kỳ trang nào."
+      },
+      "checkIn": {
+        "title": "Vào ca / ra ca",
+        "body": "Chấm công ngay trên điện thoại hoặc máy tính: nhấn Vào ca khi bắt đầu làm việc và Ra ca khi kết thúc. Giờ được ghi theo đồng hồ của hệ thống, và trình duyệt có thể hỏi vị trí để xác nhận bạn đang ở nơi làm việc.",
+        "tip": "Quên chấm công? Vào mục Chấm công để gửi yêu cầu điều chỉnh cho quản lý duyệt."
+      },
+      "me": {
+        "title": "Hồ sơ của tôi",
+        "body": "Xem những thông tin công ty đang lưu về bạn: vị trí, quản lý trực tiếp, thông tin cá nhân và thiết bị được giao. Hãy kiểm tra kỹ trong tuần đầu tiên.",
+        "tip": "Thông tin chưa đúng? Gửi yêu cầu cập nhật ngay trên trang, bộ phận Nhân sự sẽ duyệt."
+      },
+      "leave": {
+        "title": "Nghỉ phép",
+        "body": "Xem số ngày phép còn lại và gửi đơn xin nghỉ. Đơn được chuyển thẳng tới người duyệt, và bạn nhận thông báo khi có kết quả.",
+        "tip": "Xem lịch nghỉ trước khi chọn ngày để tránh trùng lịch với đồng đội."
+      },
+      "tasks": {
+        "title": "Việc của tôi",
+        "body": "Mọi thứ cần bạn xử lý nằm trong một hộp: việc được giao, sản phẩm chờ bạn duyệt, đề nghị chờ phê duyệt và việc được bàn giao. Con số trên thanh bên cho biết còn bao nhiêu việc.",
+        "tip": "Mục Thông báo của tôi báo cho bạn khi có việc mới hoặc khi đơn của bạn được xử lý."
+      },
+      "daily": {
+        "title": "Kế hoạch & báo cáo ngày",
+        "body": "Đầu ngày, chọn những việc bạn sẽ làm; cuối ngày, ghi lại bạn đã làm gì và mất bao lâu. Bạn xem lại các báo cáo cũ của mình ở trang này.",
+        "tip": "Bấm giờ ngay khi bắt đầu một việc trên trang Hôm nay, để cuối ngày không phải nhớ lại."
+      },
+      "payslips": {
+        "title": "Phiếu lương",
+        "body": "Phiếu lương hằng tháng xuất hiện ở đây khi được phát hành. Chỉ bạn xem được phiếu lương của mình.",
+        "tip": "Để bảo vệ thông tin lương, hệ thống sẽ yêu cầu bạn xác minh lại bằng tài khoản Google trước khi mở phiếu."
+      },
+      "kb": {
+        "title": "Tri thức & Hỏi SuZu",
+        "body": "Quy định, quy trình và hướng dẫn của công ty nằm trong mục Tri thức. Có thắc mắc như “Tôi được bao nhiêu ngày phép một năm?” — hãy hỏi SuZu, trợ lý trả lời từ những tài liệu bạn được phép xem.",
+        "tip": "Tài liệu bắt buộc đọc sẽ được gửi tới bạn kèm yêu cầu xác nhận đã đọc."
+      },
+      "finish": {
+        "title": "Bạn đã sẵn sàng!",
+        "body": "Đó là những việc chính. Nhấn “Tôi đã hoàn tất” để đóng hẳn hướng dẫn. Nếu chưa xem xong, chọn “Để lần sau” — hướng dẫn sẽ mở lại ở lần đăng nhập tới.",
+        "tip": "Cần hỗ trợ? Hãy hỏi quản lý trực tiếp hoặc bộ phận Nhân sự."
+      }
+    }
   }
 }

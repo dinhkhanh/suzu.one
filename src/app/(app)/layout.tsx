@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+import { cookies } from "next/headers";
 import { AppFrame, type NavRow } from "@/components/shell/app-frame";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
 import { navFor } from "@/components/shell/nav";
@@ -7,12 +8,14 @@ import { SignOutButton } from "@/components/shell/sign-out-button";
 import { peopleModuleOpen } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { loadShellCounts } from "@/modules/platform/shell/service";
+import { WelcomeGuide } from "@/modules/platform/shell/ui/welcome-guide";
+import { shouldShowWelcome, WELCOME_LATER_COOKIE, welcomeSteps } from "@/modules/platform/shell/welcome";
 import { CommandPalette } from "@/modules/work/ui/command-palette";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
   // One round trip for every badge and membership (app.shell_counts), beside the flags and messages.
-  const [t, people, counts] = await Promise.all([getTranslations(), peopleModuleOpen(user), loadShellCounts(user.person.id)]);
+  const [t, people, counts, jar] = await Promise.all([getTranslations(), peopleModuleOpen(user), loadShellCounts(user.person.id), cookies()]);
   const nav = navFor(user.principal, {
     people,
     recruit: canRunRecruitment(user.principal) || counts.onHiringTeam,
@@ -35,6 +38,11 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const row = (item: { key: string; href?: string }): NavRow => ({ key: item.key, href: item.href, label: label(item.key) });
   const main = nav.main.map(row);
   const admin = nav.admin.map(row);
+  // The first-sign-in guide, until confirmed: it points only at pages this person's sidebar offers.
+  // Vietnamese names end with the given name, which is what the greeting uses.
+  const welcome = shouldShowWelcome({ completedAt: user.person.welcomeCompletedAt, sessionId: user.sessionId, laterCookie: jar.get(WELCOME_LATER_COOKIE)?.value })
+    ? welcomeSteps(new Map([...pinned, ...nav.main].flatMap((item) => (item.href ? [[item.key, item.href] as const] : []))))
+    : null;
 
   return (
     <>
@@ -66,6 +74,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         selfId={user.person.id}
         pages={[{ key: "today", href: "/today" }, ...nav.main, { key: "tasks", href: "/tasks" }, { key: "approvals", href: "/approvals" }, { key: "notifications", href: "/notifications" }, ...nav.admin].flatMap((item) => (item.href ? [{ label: label(item.key), href: item.href }] : []))}
       />
+      {welcome ? <WelcomeGuide steps={welcome} name={user.person.fullName.split(" ").at(-1) ?? user.person.fullName} /> : null}
     </>
   );
 }

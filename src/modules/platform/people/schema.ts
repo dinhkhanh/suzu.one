@@ -41,6 +41,11 @@ export const person = pgTable(
     departmentId: uuid("department_id").references(() => orgUnit.id),
     teamId: uuid("team_id").references(() => orgUnit.id),
     managerId: uuid("manager_id").references((): AnyPgColumn => person.id),
+    /**
+     * When the person confirmed they had been through the first-sign-in guide. Until then the
+     * guide opens at every sign-in; putting it off only lasts for the session.
+     */
+    welcomeCompletedAt: timestamp("welcome_completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

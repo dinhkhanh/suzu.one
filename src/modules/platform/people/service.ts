@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, eq, isNull, ne } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -106,4 +106,14 @@ export async function wouldCreateReportingLoop(tx: Tx, personId: string, manager
     cursor = row?.managerId ?? null;
   }
   return false;
+}
+
+/** The person confirmed the first-sign-in guide. The first confirmation stands; returns whether this one was it. */
+export async function completeWelcome(personId: string): Promise<boolean> {
+  const rows = await db()
+    .update(schema.person)
+    .set({ welcomeCompletedAt: new Date() })
+    .where(and(eq(schema.person.id, personId), isNull(schema.person.welcomeCompletedAt)))
+    .returning({ id: schema.person.id });
+  return rows.length > 0;
 }
