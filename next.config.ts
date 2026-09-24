@@ -52,6 +52,10 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "no-referrer" },
         ],
       },
+      // The other links whose URL is a credential: a one-tap approval, a candidate's assignment, an
+      // asset's QR code. No page opened from one — nor Vercel Analytics, which reports the
+      // referrer — may learn the token.
+      ...["/approvals/act/:path*", "/careers/assignment/:path*", "/assets/qr/:path*"].map((source) => ({ source, headers: [{ key: "Referrer-Policy", value: "no-referrer" }] })),
       // Compensation screens (NFR-SEC-08): never stored by a browser, a proxy or a CDN.
       ...["/payroll/:path*", "/payroll", "/payslips/:path*", "/payslips", "/step-up"].map((source) => ({ source, headers: [{ key: "Cache-Control", value: "private, no-store, max-age=0" }] })),
     ];
