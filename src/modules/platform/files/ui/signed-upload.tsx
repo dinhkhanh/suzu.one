@@ -20,6 +20,8 @@ export async function uploadThroughSignedUrl<Done>(
   const started = await begin({ fileName: file.name, sizeBytes: file.size });
   if (!started.ok) return { ok: false, errorKey: keyOf(started) };
   const stored = await fetch(started.data.uploadUrl, { method: "PUT", body: file, headers: { "content-type": started.data.contentType } }).catch(() => null);
+  // Our size rule let the file through; the storage project's own cap did not.
+  if (stored?.status === 413) return { ok: false, errorKey: "file_storage_limit" };
   if (!stored?.ok) return { ok: false, errorKey: "file_upload_failed" };
   const finished = await complete(started.data.fileId);
   return finished.ok ? { ok: true, data: finished.data } : { ok: false, errorKey: keyOf(finished) };

@@ -1,6 +1,5 @@
 import "server-only";
 import { env } from "@/lib/env";
-import { MAX_UPLOAD_BYTES } from "./rules";
 
 // A thin client for Supabase Storage's REST API: only what the files service needs, no SDK (the
 // SDK cannot read a byte range, which inspectObject needs). The secret key never leaves the
@@ -34,20 +33,30 @@ async function fail(response: Response, what: string): Promise<never> {
 let bucketReady: Promise<void> | undefined;
 
 /**
- * Creates the private bucket on first use, or brings an existing one's size limit up to the largest
- * file any owner may take (a bucket made when the cap was 20 MB would refuse a video before our own
- * checks ever saw it). Each file's own cap is the files service's check. Safe to race.
+ * Creates the private bucket on first use, or lifts a size limit an existing one carries. The
+ * bucket gets no limit of its own: the project's cap applies, and each file's cap is the files
+ * service's check (rules.ts). A bucket-level limit can only ever be lower than the project's, and
+ * asking for one above it is refused with 413 — which, done before the "already exists" check,
+ * once failed every upload on the first request of every instance. Safe to race.
  */
 function ensureBucket(): Promise<void> {
   return (bucketReady ??= (async () => {
     const { bucket } = config();
-    const settings = { public: false, file_size_limit: MAX_UPLOAD_BYTES };
-    const response = await call("/bucket", { method: "POST", json: { id: bucket, name: bucket, ...settings } });
-    if (response.ok) return;
-    const body = await response.text();
-    if (response.status !== 409 && !/exist/i.test(body)) throw new StorageError(`create bucket: ${response.status} ${body.slice(0, 200)}`);
-    const updated = await call(`/bucket/${encodeURIComponent(bucket)}`, { method: "PUT", json: settings });
-    if (!updated.ok) await fail(updated, "update bucket");
+    const settings = { public: false, file_size_limit: null };
+    const existing = await call(`/bucket/${encodeURIComponent(bucket)}`);
+    if (existing.ok) {
+      const current = (await existing.json()) as { public: boolean; file_size_limit: number | null };
+      if (!current.public && current.file_size_limit === null) return;
+      const updated = await call(`/bucket/${encodeURIComponent(bucket)}`, { method: "PUT", json: settings });
+      if (!updated.ok) await fail(updated, "update bucket");
+      return;
+    }
+    if (existing.status !== 404 && existing.status !== 400) await fail(existing, "inspect bucket");
+    const created = await call("/bucket", { method: "POST", json: { id: bucket, name: bucket, ...settings } });
+    if (created.ok) return;
+    const body = await created.text();
+    // Another instance made it first.
+    if (!/exist/i.test(body)) throw new StorageError(`create bucket: ${created.status} ${body.slice(0, 200)}`);
   })().catch((error) => {
     bucketReady = undefined;
     throw error;
@@ -79,6 +88,8 @@ export async function putObject(objectPath: string, bytes: Uint8Array, contentTy
     headers: { "content-type": contentType, "x-upsert": "false" },
     body: new Uint8Array(bytes),
   });
+  // Larger than the project's cap: our own size rule passed, the storage's did not.
+  if (response.status === 413) throw new StorageError("file_storage_limit");
   if (!response.ok) await fail(response, "put object");
 }
 
