@@ -67,8 +67,8 @@ const PEOPLE: Demo[] = [
 ];
 
 async function main() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL is not set (see .env.example)");
+  const url = process.env.POSTGRES_URL;
+  if (!url) throw new Error("POSTGRES_URL is not set (see .env.example)");
   // A pre-release staging database may opt in explicitly; anything else must be local.
   if (!["127.0.0.1", "localhost"].includes(new URL(url).hostname) && process.env.DEMO_SEED_ALLOW_REMOTE !== "1") throw new Error("Demo data is for a local database only (set DEMO_SEED_ALLOW_REMOTE=1 for a staging database).");
   const client = postgres(url, { prepare: false, max: 1 });

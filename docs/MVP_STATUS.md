@@ -42,7 +42,7 @@ A modular monolith: Next.js 16, Drizzle + Postgres (Supabase), Better Auth with 
 
 ### A. Before anything can run in production
 
-1. **DNS** for `suzu.one` pointed at Vercel. Confirm the Supabase integration exposes `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+1. **DNS** for `suzu.one` pointed at Vercel. Confirm the Supabase integration exposes `SUPABASE_URL` and `SUPABASE_SECRET_KEY`.
 2. **Secrets in Vercel:** `CRON_SECRET` (without it every scheduled job refuses to run), `DATA_ENCRYPTION_KEYS` **and an offline copy of them** — losing these keys loses the encrypted personal data permanently — and `DATA_BLIND_INDEX_KEY`. Both must exist before anybody saves a restricted field or runs an import with restricted columns.
 3. **Google Cloud project and an *External* OAuth client.** Authorised redirect URIs for `http://localhost:3000`, `https://suzu.one` **and `<BETTER_AUTH_URL>/api/step-up/callback`** — without the third, step-up re-authentication fails and nobody can open a payroll screen. Both Workspace admins mark the app as trusted.
 4. **Branch protection on `main`** requiring the CI check.

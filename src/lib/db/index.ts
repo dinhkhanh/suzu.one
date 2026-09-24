@@ -6,7 +6,7 @@ import { keptAlive } from "./keep-alive";
 import * as schema from "./schema";
 
 function create() {
-  const client = postgres(env().DATABASE_URL, {
+  const client = postgres(env().POSTGRES_URL, {
     // `prepare: false` keeps the client compatible with Supabase's transaction pooler.
     prepare: false,
     max: env().DATABASE_POOL_MAX,

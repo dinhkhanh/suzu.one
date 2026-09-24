@@ -32,7 +32,7 @@ jobs:
       - run: pnpm build
         env:
           # Placeholders: the build never connects to anything, it only needs the variables to exist.
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+          POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
           BETTER_AUTH_SECRET: ci-placeholder-secret-ci-placeholder-secret
           BETTER_AUTH_URL: http://localhost:3000
           GOOGLE_CLIENT_ID: ci

@@ -2,13 +2,14 @@ import "server-only";
 import { env } from "@/lib/env";
 import { MAX_UPLOAD_BYTES } from "./rules";
 
-// A thin client for Supabase Storage's REST API: only what the files service needs, no SDK.
-// The service-role key never leaves the server; browsers only ever get short-lived signed URLs.
+// A thin client for Supabase Storage's REST API: only what the files service needs, no SDK (the
+// SDK cannot read a byte range, which inspectObject needs). The secret key never leaves the
+// server; browsers only ever get short-lived signed URLs.
 
 export class StorageError extends Error {}
 
 function config() {
-  const { SUPABASE_URL: url, SUPABASE_SERVICE_ROLE_KEY: key, STORAGE_BUCKET: bucket } = env();
+  const { SUPABASE_URL: url, supabaseSecretKey: key, STORAGE_BUCKET: bucket } = env();
   if (!url || !key) throw new StorageError("storage_not_configured");
   return { base: `${url.replace(/\/$/, "")}/storage/v1`, key, bucket };
 }

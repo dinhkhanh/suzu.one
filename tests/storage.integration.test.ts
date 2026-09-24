@@ -1,11 +1,11 @@
 // Talks to a real Supabase Storage (the local stack). Skipped unless pointed at one:
-//   SUPABASE_URL=http://127.0.0.1:55321 SUPABASE_SERVICE_ROLE_KEY=... pnpm vitest run tests/storage.integration.test.ts
+//   SUPABASE_URL=http://127.0.0.1:55321 SUPABASE_SECRET_KEY=... pnpm vitest run tests/storage.integration.test.ts
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("./helpers/db"));
 vi.mock("@/lib/action", () => ({ ActionError: class ActionError extends Error {} }));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ SUPABASE_URL: process.env.SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY, STORAGE_BUCKET: "suzu-test" }),
+  env: () => ({ SUPABASE_URL: process.env.SUPABASE_URL, supabaseSecretKey: process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY, STORAGE_BUCKET: "suzu-test" }),
 }));
 
 import { eq } from "drizzle-orm";
@@ -14,7 +14,7 @@ import { beginUpload, completeUpload, createDownloadLink, findFile, listFilesOf,
 import { inspectObject } from "@/modules/platform/files/storage";
 import { migrateTestDb } from "./helpers/db";
 
-const configured = !!process.env.SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+const configured = !!process.env.SUPABASE_URL && !!(process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY);
 const pdf = new TextEncoder().encode("%PDF-1.7\nHợp đồng lao động\n%%EOF");
 const owner = { ownerType: "test_document", ownerId: "doc-1", entityId: null, tier: "restricted" as const };
 let actor: { personId: string; email: string };

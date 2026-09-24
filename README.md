@@ -28,14 +28,14 @@ Local ports are moved to the 5532x range in `supabase/config.toml` so this proje
 
 | Variable | Notes |
 |---|---|
-| `DATABASE_URL` | Postgres connection string. Leave unset on Vercel: the Supabase integration provides `POSTGRES_URL` (app) and `POSTGRES_URL_NON_POOLING` (migrations) |
+| `POSTGRES_URL` / `POSTGRES_URL_NON_POOLING` | Pooled connection for the app, direct one for migrations. Named as the Vercel–Supabase integration names them, so `vercel env pull .env.local` configures a laptop like production |
 | `BETTER_AUTH_SECRET` | `openssl rand -base64 32` |
 | `BETTER_AUTH_URL` | `http://localhost:3000` locally, `https://suzu.one` in production |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google Cloud OAuth client, user type **External** (the two Workspaces are separate organisations). Redirect URI: `{BETTER_AUTH_URL}/api/auth/callback/google` |
 | `ALLOWED_WORKSPACE_DOMAINS` | `suzu.vn,suzu.group` |
 | `BOOTSTRAP_OWNER_EMAILS` | Workspace emails that may sign in before any person record exists; they become Owner on first sign-in |
 | `CRON_SECRET` | Shared with Vercel Cron (`vercel.json`); without it the scheduled jobs under `/api/cron/*` refuse to run |
-| `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | Private file storage. Set by the Supabase integration on Vercel. Locally: `http://127.0.0.1:55321` and `docker exec supabase_storage_suzu-one printenv SERVICE_KEY` |
+| `SUPABASE_URL` / `SUPABASE_SECRET_KEY` | Private file storage. Set by the Supabase integration on Vercel. Locally: `http://127.0.0.1:55321` and the stack's secret key — or `SUPABASE_SERVICE_ROLE_KEY` from `docker exec supabase_storage_suzu-one printenv SERVICE_KEY`, which is the fallback |
 | `DATA_ENCRYPTION_KEYS` / `DATA_BLIND_INDEX_KEY` | Field encryption for restricted and compensation data — **unrecoverable if lost**; see [docs/KEY_ROTATION.md](docs/KEY_ROTATION.md) |
 | `RESEND_API_KEY` / `EMAIL_FROM` | Outgoing email. Without a key, emails are only written to the `email_outbox` table |
 | `SENTRY_DSN` | Optional error tracking; without it server errors are only logged |
@@ -62,7 +62,7 @@ Google Workspace accounts only. The server requires Google's verified hosted-dom
 |---|---|
 | `pnpm check` | typecheck + lint + tests |
 | `pnpm test` | unit tests, plus migration and service tests against an in-process Postgres (PGlite). Changing a role? Regenerate [docs/permission-matrix.md](docs/permission-matrix.md): `pnpm vitest run tests/permission-matrix.test.ts -u` |
-| `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… pnpm vitest run tests/storage.integration.test.ts` | file-storage tests against the local Supabase stack (skipped otherwise) |
+| `SUPABASE_URL=… SUPABASE_SECRET_KEY=… pnpm vitest run tests/storage.integration.test.ts` | file-storage tests against the local Supabase stack (skipped otherwise) |
 | `pnpm db:generate` | create a migration from schema changes (`--name <what_changed>`) |
 | `pnpm db:migrate` | apply migrations |
 | `pnpm db:studio` | browse the database |

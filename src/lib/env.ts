@@ -7,8 +7,12 @@ const csv = (value: string | undefined) =>
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
 
+// Variable names follow the Vercel–Supabase integration, so production, previews and a laptop
+// running `vercel env pull` are configured by the same names (README, "Environment").
 const schema = z.object({
-  DATABASE_URL: z.string().min(1),
+  // The pooled connection (Supavisor, transaction mode). Migrations use POSTGRES_URL_NON_POOLING
+  // (drizzle.config.ts), never this one.
+  POSTGRES_URL: z.string().min(1),
   DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
   BETTER_AUTH_SECRET: z.string().min(32, "generate with: openssl rand -base64 32"),
   BETTER_AUTH_URL: z.url(),
@@ -20,8 +24,11 @@ const schema = z.object({
   // first (docs/KEY_ROTATION.md). Losing these keys loses the data; they live only in the secret store.
   DATA_ENCRYPTION_KEYS: z.string().min(1).optional(),
   DATA_BLIND_INDEX_KEY: z.string().min(1).optional(),
-  // Private file storage (Supabase Storage). On Vercel the Supabase integration provides both.
+  // Private file storage (Supabase Storage). The integration provides the URL and both keys: the
+  // secret key (`sb_secret_…`) is the current kind and the one used; the service-role JWT is the
+  // fallback for a local stack that only prints that one. Either is server-only.
   SUPABASE_URL: z.url().optional(),
+  SUPABASE_SECRET_KEY: z.string().min(1).optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
   STORAGE_BUCKET: z.string().regex(/^[a-z0-9-]+$/).default("suzu-private"),
   // Outgoing email (Resend). Unset = emails are written to the outbox and marked "skipped".
@@ -86,11 +93,7 @@ export function isDevelopmentEnvironment(): boolean {
 }
 
 function load() {
-  const parsed = schema.safeParse({
-    ...process.env,
-    // On Vercel the Supabase integration provides POSTGRES_URL (the pooled connection) instead.
-    DATABASE_URL: process.env.DATABASE_URL ?? process.env.POSTGRES_URL,
-  });
+  const parsed = schema.safeParse(process.env);
   if (!parsed.success) {
     const problems = parsed.error.issues.map((issue) => `  ${issue.path.join(".")}: ${issue.message}`).join("\n");
     throw new Error(`Invalid environment configuration (see .env.example):\n${problems}`);
@@ -101,6 +104,7 @@ function load() {
     ...parsed.data,
     allowedWorkspaceDomains: csv(parsed.data.ALLOWED_WORKSPACE_DOMAINS),
     bootstrapOwnerEmails: csv(parsed.data.BOOTSTRAP_OWNER_EMAILS),
+    supabaseSecretKey: parsed.data.SUPABASE_SECRET_KEY ?? parsed.data.SUPABASE_SERVICE_ROLE_KEY,
   };
 }
 

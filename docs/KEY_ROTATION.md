@@ -29,6 +29,6 @@ Used for look-ups on encrypted values (for example "is this national ID already 
 | `GOOGLE_CLIENT_SECRET` | New secret in Google Cloud → update → redeploy → delete the old one | None |
 | `CRON_SECRET` | Replace and redeploy | None (Vercel Cron reads the same variable) |
 | `RESEND_API_KEY` | New key in Resend → update → redeploy → revoke the old one | None |
-| `SUPABASE_SERVICE_ROLE_KEY`, database password | Rotate in Supabase; the Vercel integration updates the variables; redeploy | Brief reconnect |
+| `SUPABASE_SECRET_KEY`, database password | Rotate in Supabase; the Vercel integration updates the variables; redeploy | Brief reconnect |
 
 After any rotation: check `/admin/jobs` the next morning and the sign-in page.

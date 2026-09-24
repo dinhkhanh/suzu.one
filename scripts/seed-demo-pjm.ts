@@ -66,8 +66,8 @@ const at = (date: string, time: string) => new Date(`${date}T${time}:00+07:00`);
 const isWeekend = (date: string) => [0, 6].includes(new Date(`${date}T00:00:00Z`).getUTCDay());
 
 async function main() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL is not set (see .env.example)");
+  const url = process.env.POSTGRES_URL;
+  if (!url) throw new Error("POSTGRES_URL is not set (see .env.example)");
   if (!["127.0.0.1", "localhost"].includes(new URL(url).hostname) && process.env.DEMO_SEED_ALLOW_REMOTE !== "1") throw new Error("Demo data is for a local database only (set DEMO_SEED_ALLOW_REMOTE=1 for a staging database).");
 
   const [seeded] = await db().select({ id: schema.projectStatusUpdate.id }).from(schema.projectStatusUpdate).limit(1);

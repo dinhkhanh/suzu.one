@@ -24,8 +24,8 @@ const CLOSED_LATE = "EXT-VAT-MONTHLY|SZM|2026-07";
 const addDays = (date: string, days: number) => new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
 async function main() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL is not set (see .env.example)");
+  const url = process.env.POSTGRES_URL;
+  if (!url) throw new Error("POSTGRES_URL is not set (see .env.example)");
   if (!["127.0.0.1", "localhost"].includes(new URL(url).hostname) && process.env.DEMO_SEED_ALLOW_REMOTE !== "1") throw new Error("Demo data is for a local database only (set DEMO_SEED_ALLOW_REMOTE=1 for a staging database).");
   const base = process.env.RECOMPUTE_URL ?? "http://localhost:3000";
   if (!["localhost", "127.0.0.1"].includes(new URL(base).hostname)) throw new Error("seed-demo-ops.ts only talks to a local server.");
@@ -61,7 +61,7 @@ async function main() {
     .innerJoin(entity, eq(entity.id, obligationInstance.entityId))
     .where(and(inArray(task.status, ["todo", "in_progress"]), lt(task.dueDate, addDays(today, 16))));
 
-  const storage = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY ? { base: `${process.env.SUPABASE_URL.replace(/\/$/, "")}/storage/v1`, key: process.env.SUPABASE_SERVICE_ROLE_KEY, bucket: process.env.STORAGE_BUCKET ?? "suzu-private" } : null;
+  const storage = process.env.SUPABASE_URL && (process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY) ? { base: `${process.env.SUPABASE_URL.replace(/\/$/, "")}/storage/v1`, key: (process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY)!, bucket: process.env.STORAGE_BUCKET ?? "suzu-private" } : null;
   if (storage) await fetch(`${storage.base}/bucket`, { method: "POST", headers: { authorization: `Bearer ${storage.key}`, "content-type": "application/json" }, body: JSON.stringify({ id: storage.bucket, name: storage.bucket, public: false }) }).catch(() => undefined);
 
   let closed = 0;

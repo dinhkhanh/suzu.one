@@ -8,10 +8,10 @@ import { cachePrefix } from "../src/lib/cache/prefix";
 config({ path: ".env.local" });
 
 async function main() {
-  const databaseUrl = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
+  const databaseUrl = process.env.POSTGRES_URL;
   const url = process.env.KV_REST_API_URL;
   const token = process.env.KV_REST_API_TOKEN;
-  if (!databaseUrl) throw new Error("DATABASE_URL is not set (see .env.example)");
+  if (!databaseUrl) throw new Error("POSTGRES_URL is not set (see .env.example)");
   if (!url || !token) return console.log("No KV_REST_API_URL/KV_REST_API_TOKEN: there is no cache to flush.");
   const redis = new Redis({ url, token });
   // Every version of this database's entries, not just the current one.

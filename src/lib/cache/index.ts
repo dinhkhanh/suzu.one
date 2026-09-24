@@ -20,7 +20,7 @@ function connect(): Client {
   if (!config.KV_REST_API_URL || !config.KV_REST_API_TOKEN) return null;
   return {
     redis: new Redis({ url: config.KV_REST_API_URL, token: config.KV_REST_API_TOKEN, automaticDeserialization: false, enableTelemetry: false }),
-    prefix: cachePrefix(config.DATABASE_URL),
+    prefix: cachePrefix(config.POSTGRES_URL),
   };
 }
 
