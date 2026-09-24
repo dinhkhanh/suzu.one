@@ -33,7 +33,7 @@ export const APP_SURFACE = "app";
 type Surface = { prefix: string; name: string; namespaces: readonly string[]; exact?: boolean };
 
 /** The public site: what the product is, and the policies Google's OAuth review reads. */
-const SITE_NAMESPACES = ["app", "site", "legal"] as const;
+const SITE_NAMESPACES = ["app", "site", "legal", "theme"] as const;
 
 /**
  * The pages a stranger may open, with the words each one needs. A namespace can be a path
@@ -42,11 +42,11 @@ const SITE_NAMESPACES = ["app", "site", "legal"] as const;
  */
 export const PUBLIC_SURFACES: readonly Surface[] = [
   /** The client's review link (D24, FR-PJM-51a), unauthenticated by design. */
-  { prefix: "/preview", name: "preview", namespaces: ["preview"] },
+  { prefix: "/preview", name: "preview", namespaces: ["preview", "theme"] },
   /** The careers page and the take-home brief (FR-REC-03). */
-  { prefix: "/careers", name: "careers", namespaces: ["recruit.careers", "recruit.assignment"] },
+  { prefix: "/careers", name: "careers", namespaces: ["recruit.careers", "recruit.assignment", "theme"] },
   /** Nobody is signed in here either, by definition. */
-  { prefix: "/sign-in", name: "signIn", namespaces: ["app", "signIn"] },
+  { prefix: "/sign-in", name: "signIn", namespaces: ["app", "signIn", "theme"] },
   /** The home page a signed-out visitor sees; a signed-in one is sent on to the app. */
   { prefix: "/", exact: true, name: "site", namespaces: SITE_NAMESPACES },
   { prefix: "/privacy", name: "site", namespaces: SITE_NAMESPACES },

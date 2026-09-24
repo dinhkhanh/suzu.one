@@ -9,6 +9,10 @@ export const user = pgTable("user", {
   image: text("image"),
   // Google's verified hosted-domain (`hd`) claim captured at first sign-in.
   hostedDomain: text("hosted_domain"),
+  // The account's own preferences (owner's decision 2026-09-24): the language and the colour theme
+  // follow the person to every device. Null is "never chosen", so the browser's cookie decides.
+  locale: text("locale"),
+  theme: text("theme"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }).enableRLS();

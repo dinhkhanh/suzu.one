@@ -5,16 +5,19 @@ import { LocaleSwitch } from "@/components/shell/locale-switch";
 import { navFor } from "@/components/shell/nav";
 import { canRunRecruitment } from "@/modules/recruit/policy";
 import { SignOutButton } from "@/components/shell/sign-out-button";
+import { ThemeSwitch } from "@/components/shell/theme-switch";
 import { peopleModuleOpen } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { loadShellCounts } from "@/modules/platform/shell/service";
 import { WelcomeGuide } from "@/modules/platform/shell/ui/welcome-guide";
 import { shouldShowWelcome, WELCOME_LATER_COOKIE, welcomeSteps } from "@/modules/platform/shell/welcome";
+import { getTheme } from "@/theme/server";
 import { CommandPalette } from "@/modules/work/ui/command-palette";
 import { FeedbackButton } from "@/modules/feedback/ui/feedback-button";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
+  const theme = await getTheme();
   // One round trip for every badge and membership (app.shell_counts), beside the flags and messages.
   const [t, people, counts, jar] = await Promise.all([getTranslations(), peopleModuleOpen(user), loadShellCounts(user.person.id), cookies()]);
   const nav = navFor(user.principal, {
@@ -66,7 +69,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         headerEnd={<FeedbackButton />}
         footer={
           <div className="flex items-center justify-between gap-2">
-            <LocaleSwitch compact />
+            <div className="flex items-center gap-1.5">
+              <LocaleSwitch compact />
+              <ThemeSwitch theme={theme} compact />
+            </div>
             <SignOutButton label={t("nav.signOut")} />
           </div>
         }

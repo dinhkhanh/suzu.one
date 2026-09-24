@@ -386,9 +386,9 @@ describe("the public page", () => {
     for (const { path, source: whole } of sources) {
       const source = withoutComments(whole);
       // The app shell — navigation, the inbox, the command palette, the person in the corner — is
-      // everything this page must not have. The language switch is the one piece it shares.
+      // everything this page must not have. The language and theme switches are the two pieces it shares.
       const shellImports = [...source.matchAll(/from "@\/components\/shell\/([a-z-]+)"/g)].map((match) => match[1]);
-      expect(shellImports, path).toEqual(shellImports.filter((name) => name === "locale-switch"));
+      expect(shellImports, path).toEqual(shellImports.filter((name) => name === "locale-switch" || name === "theme-switch"));
       for (const forbidden of ["requireUser", "getCurrentUser", "loadViewer", "listPeople", "listTeams", "listAssignable", "listComments", "listActivity", "Sidebar", "NavLinks", "@/modules/core-hr", "@/modules/payroll", "@/modules/daily"]) {
         expect(source, `${path} must not reach for ${forbidden}`).not.toContain(forbidden);
       }

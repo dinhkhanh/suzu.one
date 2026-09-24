@@ -5,6 +5,12 @@
     "privacy": "Chính sách quyền riêng tư",
     "terms": "Điều khoản sử dụng"
   },
+  "theme": {
+    "label": "Giao diện",
+    "system": "Theo thiết bị",
+    "light": "Sáng",
+    "dark": "Tối"
+  },
   "signIn": {
     "title": "Đăng nhập",
     "subtitle": "Dùng tài khoản Google Workspace của công ty (suzu.vn hoặc suzu.group).",

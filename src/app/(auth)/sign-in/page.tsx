@@ -4,8 +4,10 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
+import { ThemeSwitch } from "@/components/shell/theme-switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/modules/platform/auth/session";
+import { getTheme } from "@/theme/server";
 import { GoogleSignInButton } from "./google-sign-in-button";
 
 // The page is in the reader's language, so its tab is too (the root layout adds "· SuZu One").
@@ -19,6 +21,7 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
   if (await getCurrentUser()) redirect("/today");
 
   const t = await getTranslations();
+  const theme = await getTheme();
   const { error } = await searchParams;
   const code = Array.isArray(error) ? error[0] : error;
   const known = KNOWN_ERRORS.find((item) => item === code?.toLowerCase());
@@ -47,7 +50,10 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
           <GoogleSignInButton label={t("signIn.google")} />
         </CardContent>
       </Card>
-      <LocaleSwitch />
+      <div className="flex items-center gap-2">
+        <ThemeSwitch theme={theme} />
+        <LocaleSwitch />
+      </div>
       <nav className="flex gap-4 text-xs text-muted-foreground">
         <Link href="/privacy" className="hover:text-foreground">{t("app.privacy")}</Link>
         <Link href="/terms" className="hover:text-foreground">{t("app.terms")}</Link>

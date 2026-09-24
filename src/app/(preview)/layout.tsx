@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
+import { ThemeSwitch } from "@/components/shell/theme-switch";
+import { getTheme } from "@/theme/server";
 
 /**
  * The shell for the client's review link (D24, FR-PJM-51a) — the second part of the product a
@@ -24,13 +26,17 @@ export const metadata: Metadata = { robots: { index: false, follow: false }, man
 
 export default async function PreviewLayout({ children }: LayoutProps<"/">) {
   const t = await getTranslations("preview");
+  const theme = await getTheme();
   return (
     <div className="flex min-h-dvh flex-col bg-canvas p-0 md:p-2.5">
       <div className="flex min-h-0 flex-1 flex-col bg-background md:rounded-2xl md:shadow-[var(--shell-shadow)]">
         <header className="border-b border-border">
           <div className="mx-auto flex h-14 w-full max-w-2xl items-center justify-between gap-3 px-4">
             <span className="text-[0.9375rem] font-semibold tracking-[-0.015em]">{t("brand")}</span>
-            <LocaleSwitch />
+            <div className="flex items-center gap-2">
+              <ThemeSwitch theme={theme} />
+              <LocaleSwitch />
+            </div>
           </div>
         </header>
         <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">{children}</main>

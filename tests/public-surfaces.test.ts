@@ -26,9 +26,11 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ get: () => undefined }),
 }));
 
-/** Whether there is really somebody behind the request, swapped per test. */
-const signedIn = { current: true };
-vi.mock("@/modules/platform/auth/session", () => ({ getCurrentUser: async () => (signedIn.current ? { userId: "u1" } : null) }));
+/** Whether there is really somebody behind the request, swapped per test — and the language on their account, if any. */
+const signedIn = { current: true, locale: null as string | null };
+vi.mock("@/modules/platform/auth/session", () => ({
+  getCurrentUser: async () => (signedIn.current ? { userId: "u1", preferences: { locale: signedIn.locale, theme: null } } : null),
+}));
 
 import { config } from "@/proxy";
 import requestConfig from "@/i18n/request";
@@ -38,6 +40,9 @@ import catalogue from "../messages/vi.json";
 /** The namespaces nothing outside the company may ever be handed. */
 const INTERNAL = ["payroll", "people", "rbac", "roles", "audit", "work", "projects", "daily", "leave", "attendance", "assets", "performance", "recruit"] as const;
 
+/** The one namespace every public page carries besides its own: the three words of the theme switch. */
+const THEME = "theme";
+
 /** The messages the real request config returns for a request the proxy marked `surface`. */
 async function messagesFor(surface: string | null, session = true): Promise<Record<string, unknown>> {
   surfaceHeader.current = surface;
@@ -45,6 +50,33 @@ async function messagesFor(surface: string | null, session = true): Promise<Reco
   const result = await requestConfig({ locale: undefined, requestLocale: Promise.resolve(undefined) });
   return (result.messages ?? {}) as Record<string, unknown>;
 }
+
+describe("which language a request is in", () => {
+  /** The locale the request config settles on, for a request the proxy marked `surface`. */
+  async function localeFor(surface: string | null, accountLocale: string | null): Promise<string> {
+    surfaceHeader.current = surface;
+    signedIn.current = true;
+    signedIn.locale = accountLocale;
+    try {
+      return (await requestConfig({ locale: undefined, requestLocale: Promise.resolve(undefined) })).locale;
+    } finally {
+      signedIn.locale = null;
+    }
+  }
+
+  it("follows the account of a signed-in person, so the choice reaches every device", async () => {
+    expect(await localeFor("app", "en")).toBe("en");
+    expect(await localeFor("app", "vi")).toBe("vi");
+  });
+
+  it("falls back to the default where the account never chose (the cookie is empty here)", async () => {
+    expect(await localeFor("app", null)).toBe("vi");
+  });
+
+  it("never looks the person up for a public page, so the account cannot decide there", async () => {
+    expect(await localeFor("preview", "en")).toBe("vi");
+  });
+});
 
 describe("which surface a path is", () => {
   it("reads the public pages off the path, however the path ends", () => {
@@ -85,7 +117,7 @@ describe("which surface a path is", () => {
 describe("which words a request is handed", () => {
   it("gives a client on a review link the review page's namespace and nothing else", async () => {
     const messages = await messagesFor("preview");
-    expect(Object.keys(messages)).toEqual(["preview"]);
+    expect(Object.keys(messages)).toEqual(["preview", THEME]);
     for (const namespace of INTERNAL) expect(messages[namespace], namespace).toBeUndefined();
     // Not a word of the compensation screens travels with it, at any depth.
     expect(JSON.stringify(messages)).not.toContain(JSON.stringify(catalogue.payroll).slice(0, 120));
@@ -95,13 +127,13 @@ describe("which words a request is handed", () => {
 
   it("gives a candidate the careers pages' words, without the rest of recruitment", async () => {
     const messages = await messagesFor("careers");
-    expect(Object.keys(messages)).toEqual(["recruit"]);
+    expect(Object.keys(messages)).toEqual(["recruit", THEME]);
     expect(Object.keys(messages.recruit as object).sort()).toEqual(["assignment", "careers"]);
   });
 
   it("gives a visitor to the public site its own words and the policies, nothing internal", async () => {
     const messages = await messagesFor("site", false);
-    expect(Object.keys(messages).sort()).toEqual(["app", "legal", "site"]);
+    expect(Object.keys(messages).sort()).toEqual(["app", "legal", "site", THEME]);
     for (const namespace of INTERNAL) expect(messages[namespace], namespace).toBeUndefined();
     expect(messages.legal).toEqual(catalogue.legal);
   });
@@ -121,7 +153,7 @@ describe("which words a request is handed", () => {
     // words wait for a session that exists.
     const messages = await messagesFor("app", false);
     for (const namespace of INTERNAL.filter((name) => name !== "recruit")) expect(messages[namespace], namespace).toBeUndefined();
-    expect(Object.keys(messages).sort()).toEqual(["app", "legal", "preview", "recruit", "signIn", "site"]);
+    expect(Object.keys(messages).sort()).toEqual(["app", "legal", "preview", "recruit", "signIn", "site", THEME]);
     // Recruitment only as far as the careers pages: no pipelines, no candidates, no scorecards.
     expect(Object.keys(messages.recruit as object).sort()).toEqual(["assignment", "careers"]);
     // And the page they were on is a redirect to sign-in, whose words are among the ones left.
@@ -132,7 +164,7 @@ describe("which words a request is handed", () => {
     for (const marker of [null, "", "unknown", "APP", "app-ish"]) {
       const messages = await messagesFor(marker);
       expect(JSON.stringify(messages), String(marker)).not.toContain('"payroll":');
-      expect(Object.keys(messages).sort(), String(marker)).toEqual(["app", "legal", "preview", "recruit", "signIn", "site"]);
+      expect(Object.keys(messages).sort(), String(marker)).toEqual(["app", "legal", "preview", "recruit", "signIn", "site", THEME]);
     }
   });
 
@@ -141,7 +173,7 @@ describe("which words a request is handed", () => {
     // only value that unlocks everything is the one the proxy writes for its own pages.
     expect(SURFACE_HEADER).toBe("x-surface");
     expect(namespacesForSurface("app")).toBeNull();
-    expect(namespacesForSurface(surfaceForPath("/preview/x.png"))).toEqual(["preview"]);
+    expect(namespacesForSurface(surfaceForPath("/preview/x.png"))).toEqual(["preview", THEME]);
   });
 });
 

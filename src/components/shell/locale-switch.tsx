@@ -2,7 +2,7 @@
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { setLocaleAction } from "@/i18n/actions";
+import { setLocaleAction } from "@/modules/platform/auth/preference-actions";
 import { LOCALES } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 

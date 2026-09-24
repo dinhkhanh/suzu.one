@@ -7,6 +7,7 @@ import type { Principal } from "../rbac/policy";
 import { loadGrants } from "../rbac/service";
 import { auth } from "./auth";
 import { clientIpFrom } from "./client-ip";
+import { type Preferences, preferencesOf } from "./preferences";
 
 const toDate = (value: unknown): Date | null => (value instanceof Date ? value : typeof value === "string" || typeof value === "number" ? new Date(value) : null);
 
@@ -19,6 +20,8 @@ export type CurrentUser = {
   name: string;
   image: string | null;
   person: PersonRow;
+  /** The language and theme kept on the account; `null` where this person never chose. */
+  preferences: Preferences;
   principal: Principal;
   request: { ipAddress: string | null; userAgent: string | null };
 };
@@ -46,6 +49,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     name: session.user.name,
     image: session.user.image ?? null,
     person,
+    preferences: preferencesOf(session.user),
     principal: {
       personId: person.id,
       workforceType: person.workforceType,

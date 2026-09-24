@@ -47,7 +47,7 @@ beforeAll(async () => {
   for (const [key, name] of [["long", "Long Dang"], ["tam", "Tam Bui"], ["huy", "Huy Ho"], ["an", "An Le"], ["khoa", "Khoa Vu"], ["dir", "Dung Director"]] as const) {
     const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
     ids[key] = row.id;
-    users[key] = { userId: `user-${key}`, sessionId: `session-${key}`, reauthAt: null, email: `${key}@suzu.group`, name, image: null, person: row, principal: { personId: row.id, workforceType: "employee", grants: grants[key] ?? [] }, request: { ipAddress: null, userAgent: null } };
+    users[key] = { userId: `user-${key}`, sessionId: `session-${key}`, reauthAt: null, preferences: { locale: null, theme: null }, email: `${key}@suzu.group`, name, image: null, person: row, principal: { personId: row.id, workforceType: "employee", grants: grants[key] ?? [] }, request: { ipAddress: null, userAgent: null } };
   }
   // Huy reports to Tam.
   await db().update(schema.person).set({ managerId: ids.tam }).where(eq(schema.person.id, ids.huy));

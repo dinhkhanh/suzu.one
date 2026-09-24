@@ -1,4 +1,4 @@
-import { parseAdditionalUserInputFromProviderProfile } from "better-auth/db";
+import { parseAdditionalUserInputFromProviderProfile, parseUserInput } from "better-auth/db";
 import { describe, expect, it } from "vitest";
 import { USER_ADDITIONAL_FIELDS } from "./user-fields";
 
@@ -15,5 +15,20 @@ describe("hostedDomain user field", () => {
   it("would be dropped if the field were marked input: false (the original bug)", () => {
     const options = { user: { additionalFields: { hostedDomain: { type: "string", required: false, input: false } } } } as const;
     expect(parseAdditionalUserInputFromProviderProfile(options, profile, "create")).toEqual({});
+  });
+});
+
+// The account's preferences are the app's to write (`preference-actions.ts`), through its own
+// audited action: a browser talking to Better Auth's update-user endpoint may not set them.
+describe("locale and theme user fields", () => {
+  const options = { user: { additionalFields: USER_ADDITIONAL_FIELDS } };
+
+  it("are refused when a client sends them to Better Auth", () => {
+    expect(() => parseUserInput(options, { name: "Ngọc", locale: "en" }, "update")).toThrow("locale is not allowed to be set");
+    expect(() => parseUserInput(options, { name: "Ngọc", theme: "dark" }, "update")).toThrow("theme is not allowed to be set");
+  });
+
+  it("leave the hosted-domain claim untouched at sign-in", () => {
+    expect(parseAdditionalUserInputFromProviderProfile(options, { hostedDomain: "suzu.vn" }, "create")).toEqual({ hostedDomain: "suzu.vn" });
   });
 });

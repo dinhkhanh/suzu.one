@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
+import { ThemeSwitch } from "@/components/shell/theme-switch";
+import { getTheme } from "@/theme/server";
 
 /**
  * The shell for the **only** part of SuZu One a stranger can open (FR-REC-03). It deliberately
@@ -28,6 +30,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function PublicLayout({ children }: LayoutProps<"/">) {
   const t = await getTranslations("recruit.careers");
+  const theme = await getTheme();
   return (
     <div className="flex min-h-dvh flex-col bg-canvas p-0 md:p-2.5">
       <div className="flex min-h-0 flex-1 flex-col bg-background md:rounded-2xl md:shadow-[var(--shell-shadow)]">
@@ -39,7 +42,10 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
               </span>
               {t("brand")}
             </Link>
-            <LocaleSwitch />
+            <div className="flex items-center gap-2">
+              <ThemeSwitch theme={theme} />
+              <LocaleSwitch />
+            </div>
           </div>
         </header>
         <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">{children}</main>
