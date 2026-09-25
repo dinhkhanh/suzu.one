@@ -10,6 +10,9 @@ import { canSetRecruitMoney, getOpeningView, listApplications, listCandidates } 
 import { AddApplicationForm } from "@/modules/recruit/ui/add-application";
 import { HiringTeamForm, OpeningStatusControls } from "@/modules/recruit/ui/opening-controls";
 import { pageTitle } from "@/i18n/page-title";
+import { publicOrigin } from "@/lib/site";
+import { OPENING_PUBLIC_STATUSES } from "@/modules/recruit/enums";
+import { CopyCareersLink } from "@/modules/recruit/ui/careers-link";
 
 export const generateMetadata = pageTitle("jobOpening");
 
@@ -49,6 +52,8 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
           <div className="flex flex-col items-end gap-2">
             <Badge dot variant={statusTone(view.opening.status)}>{t(`status.${view.opening.status}`)}</Badge>
             <div className="flex gap-2">
+              {/* Only an open opening has a public page; any other status answers 404 there. */}
+              {OPENING_PUBLIC_STATUSES.includes(view.opening.status) ? <CopyCareersLink url={`${publicOrigin()}/careers/${view.opening.publicSlug}`} /> : null}
               <Link href={`/recruit/${openingId}/board`} className={buttonVariants({ size: "sm", variant: "outline" })}>
                 {t("board.title")}
               </Link>

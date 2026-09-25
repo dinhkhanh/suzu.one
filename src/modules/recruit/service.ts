@@ -16,6 +16,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import { listFileNames } from "@/modules/platform/files/service";
 import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
 import { entityReach, type Principal } from "@/modules/platform/rbac/policy";
+import { slugify } from "@/lib/slug";
 import { toSearchKey } from "@/lib/text";
 import {
   APPLICATION_CLOSED,
@@ -67,11 +68,18 @@ export const inTransaction = <T>(work: (tx: Tx) => Promise<T>): Promise<T> => db
 // ── Identifiers ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * What the public careers URL carries. 128 bits of randomness, so an opening cannot be found by
- * walking the URL space, and no internal id is ever exposed. It identifies; it does not admit —
- * `findOpeningBySlug` still checks the opening is published.
+ * What the public careers URL carries: the title made readable, then a random tail —
+ * `ky-su-phan-mem-x7k2p9q4`. The tail keeps it unique and keeps an opening from being found by
+ * guessing its title, and no internal id is ever exposed. It identifies; it does not admit —
+ * `findOpeningBySlug` still checks the opening is published. A title with nothing to spell
+ * (`slugify` returns "") gets a longer tail alone. Never longer than the 64 the apply form takes.
  */
-export const newPublicSlug = (): string => randomBytes(16).toString("base64url");
+export function newPublicSlug(title: string): string {
+  const words = slugify(title, { maxLength: 48 });
+  const tail = (length: number) => Array.from(randomBytes(length), (byte) => SLUG_ALPHABET[byte % SLUG_ALPHABET.length]).join("");
+  return words ? `${words}-${tail(8)}` : tail(16);
+}
+const SLUG_ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
 
 /**
  * The next code for an entity in a year: SZM-2026-003. Counted from the codes on the books rather
@@ -406,7 +414,7 @@ export async function createOpening(input: OpeningInput, money: OpeningMoneyInpu
         ...input,
         ...(money ?? { salaryMinVnd: null, salaryMaxVnd: null, salaryPublic: false }),
         code,
-        publicSlug: newPublicSlug(),
+        publicSlug: newPublicSlug(input.title),
         status: "draft",
         hiringRequestId: options.hiringRequestId ?? null,
         createdByPersonId: actorPersonId,
@@ -424,15 +432,18 @@ export async function updateOpening(openingId: string, input: OpeningInput, mone
   if (money) checkBand(money.salaryMinVnd, money.salaryMaxVnd);
   const before = await findOpening(openingId);
   if (!before) throw new ActionError("recruit_opening_not_found");
+  // Until its first publication nobody outside holds the link, so the slug follows the title;
+  // after that it stays put, or every shared link would break.
+  const publicSlug = !before.publishedAt && input.title !== before.title ? newPublicSlug(input.title) : before.publicSlug;
   const [after] = await db()
     .update(schema.jobOpening)
-    .set({ ...input, ...(money ?? {}), updatedAt: now() })
+    .set({ ...input, ...(money ?? {}), publicSlug, updatedAt: now() })
     .where(eq(schema.jobOpening.id, openingId))
     .returning();
   return { before, after };
 }
 
-/** Publishing is a status change like any other; the slug was minted when the opening was created. */
+/** Publishing is a status change like any other; the slug was minted from the title (see `updateOpening`). */
 export async function setOpeningStatus(openingId: string, status: OpeningStatus, reason: string | null): Promise<{ before: OpeningRow; after: OpeningRow }> {
   const before = await findOpening(openingId);
   if (!before) throw new ActionError("recruit_opening_not_found");

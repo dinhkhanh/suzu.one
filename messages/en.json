@@ -8693,7 +8693,9 @@
       "createOpening": "Create an opening from this request",
       "addApplication": "Add a candidate to this opening",
       "openCandidate": "Open candidate",
-      "openOpening": "Open the job opening"
+      "openOpening": "Open the job opening",
+      "copyCareersLink": "Copy careers link",
+      "careersLinkCopied": "Link copied"
     },
     "history": "History",
     "event": {

@@ -49,6 +49,7 @@ import {
   setOpeningStatus,
   setOpeningTeam,
   stagesOf,
+  updateOpening,
 } from "./service";
 
 const fails = (promise: Promise<unknown>) =>
@@ -152,11 +153,25 @@ describe("openings", () => {
     expect(await nextOpeningCode(db(), "SZM", Number(opening.code.slice(4, 8)))).toMatch(/-003$/);
   });
 
-  it("mints an opaque public slug that is not the id", async () => {
+  it("mints a readable public slug from the title, with a random tail, that is not the id", async () => {
     const opening = await createOpening({ ...baseOpening(), title: "Copywriter" }, null, ids.recruiterPerson);
     expect(opening.publicSlug).not.toContain(opening.id);
-    expect(opening.publicSlug.length).toBeGreaterThanOrEqual(20);
-    expect(newPublicSlug()).not.toBe(newPublicSlug());
+    expect(opening.publicSlug).toMatch(/^copywriter-[a-z2-9]{8}$/);
+    expect(newPublicSlug("Kỹ sư phần mềm (Đà Nẵng)")).toMatch(/^ky-su-phan-mem-da-nang-[a-z2-9]{8}$/);
+    expect(newPublicSlug("Copywriter")).not.toBe(newPublicSlug("Copywriter"));
+    expect(newPublicSlug("—")).toMatch(/^[a-z2-9]{16}$/);
+    expect(newPublicSlug("x".repeat(200)).length).toBeLessThanOrEqual(64);
+  });
+
+  // Nobody holds the link before the first publication; afterwards it must never move.
+  it("renames the slug with the title only until the opening is first published", async () => {
+    const opening = await createOpening({ ...baseOpening(), title: "Copywriter" }, null, ids.recruiterPerson);
+    const renamed = (await updateOpening(opening.id, { ...baseOpening(), title: "Senior Copywriter" }, null)).after;
+    expect(renamed.publicSlug).toMatch(/^senior-copywriter-/);
+    await setOpeningStatus(opening.id, "open", null);
+    await setOpeningStatus(opening.id, "on_hold", null);
+    const kept = (await updateOpening(opening.id, { ...baseOpening(), title: "Lead Copywriter" }, null)).after;
+    expect(kept.publicSlug).toBe(renamed.publicSlug);
   });
 
   // The rule the careers page (week 2) rests on: a draft is indistinguishable from nothing.

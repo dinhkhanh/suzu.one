@@ -1,12 +1,13 @@
 "use client";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { slugify } from "@/lib/slug";
 import { archiveSpaceAction, createSpaceAction, updateSpaceAction } from "../actions";
 import { SPACE_KINDS, type SpaceKind } from "../enums";
 
@@ -31,15 +32,29 @@ export function NewSpaceForm({ entities, units, groupWide }: { entities: Option[
   const router = useRouter();
   // A new space starts readable by all staff; its manager narrows or widens that on the space page.
   const form = useActionForm(createSpaceAction, { extra: { access: [{ subjectKey: "all", level: "view" }] }, onSuccess: (data) => router.push(`/kb/spaces/${data.key}`) });
+  // The key follows the name ("Sổ tay nhân viên" → "so-tay-nhan-vien") until somebody types their own.
+  const [key, setKey] = useState("");
+  const [keyEdited, setKeyEdited] = useState(false);
   return (
     <form onSubmit={form.onSubmit} className="flex max-w-2xl flex-col gap-3">
       <FieldErrors value={form.fieldErrors}>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field name="name" label={t("fields.spaceName")}>
-            <Input id="name" name="name" required maxLength={120} />
+            <Input id="name" name="name" required maxLength={120} onChange={(event) => (keyEdited ? null : setKey(slugify(event.target.value, { maxLength: 40 })))} />
           </Field>
           <Field name="key" label={t("fields.spaceKey")}>
-            <Input id="key" name="key" required pattern="[a-z0-9][a-z0-9-]{1,39}" placeholder="so-tay" />
+            <Input
+              id="key"
+              name="key"
+              required
+              pattern="[a-z0-9][a-z0-9-]{1,39}"
+              placeholder="so-tay"
+              value={key}
+              onChange={(event) => {
+                setKeyEdited(event.target.value !== "");
+                setKey(event.target.value);
+              }}
+            />
           </Field>
           {units.length > 0 ? (
             <Field name="ownerUnitId" label={t("fields.ownerUnit")}>

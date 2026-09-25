@@ -8693,7 +8693,9 @@
       "createOpening": "Tạo tin tuyển dụng từ đề nghị này",
       "addApplication": "Thêm ứng viên vào tin này",
       "openCandidate": "Xem hồ sơ ứng viên",
-      "openOpening": "Xem tin tuyển dụng"
+      "openOpening": "Xem tin tuyển dụng",
+      "copyCareersLink": "Sao chép liên kết tuyển dụng",
+      "careersLinkCopied": "Đã sao chép liên kết"
     },
     "history": "Lịch sử",
     "event": {

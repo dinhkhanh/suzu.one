@@ -4,6 +4,7 @@ import { asc, eq, inArray } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { cached, invalidate } from "@/lib/cache";
 import { db, schema } from "@/lib/db";
+import { slugify } from "@/lib/slug";
 import { type Doc, validateDoc } from "./engine/doc";
 import { mammothHtmlToMarkdown } from "./engine/docx-html";
 import { markdownToDoc } from "./engine/markdown";
@@ -54,15 +55,7 @@ export async function projectStarters(): Promise<{ key: string; name: string; co
   });
 }
 
-const slug = (name: string) =>
-  name
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[đĐ]/g, "d")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_|_$/g, "")
-    .slice(0, 40);
+const slug = (name: string) => slugify(name, { separator: "_", maxLength: 40 });
 
 /** A page's published (or working) content kept as a template for others to start from. */
 export async function saveAsTemplate(input: { name: string; description: string | null; content: unknown }, actor: Actor): Promise<TemplateRow> {
