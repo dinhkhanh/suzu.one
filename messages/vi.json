@@ -4967,7 +4967,7 @@
     "preview": {
       "title": "Đường dẫn duyệt cho khách",
       "live": "đang mở",
-      "explainer": "Đường dẫn hết hạn, không cần đăng nhập. Khách chỉ thấy phiên bản này và lời nhắn của bạn.",
+      "explainer": "Đường dẫn có thời hạn, không cần đăng nhập. Khách chỉ thấy phiên bản này và lời nhắn của bạn.",
       "new": "Tạo đường dẫn",
       "noVersionYet": "Chưa có phiên bản nào để gửi",
       "create": "Tạo đường dẫn",
