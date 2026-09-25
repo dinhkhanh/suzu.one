@@ -16,6 +16,9 @@ function create() {
     // `active`/`ClientRead` in an open transaction, and the request waits for the 300-second
     // function timeout on a `select … where id = $1` (supabase/supavisor#1061, porsager/postgres#970).
     // Reproduced against this project's pooler: 48 of 90 concurrent queries hung; with 0, none.
+    // Stock postgres.js 3.4.9 skips its `onexecute` hook once pipelining is off, so `sql.begin`
+    // never claims its connection and every BEGIN fails with UNSAFE_TRANSACTION —
+    // patches/postgres@3.4.9.patch runs the hook first; index.test.ts checks the patch is in.
     max_pipeline: 0,
     max: env().DATABASE_POOL_MAX,
     // A serverless instance is frozen between requests and its sockets go stale unnoticed. Close
