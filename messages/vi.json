@@ -1034,7 +1034,7 @@
       },
       "feedback_received": {
         "title": "Góp ý mới: {feedbackCategory}",
-        "body": "Có người vừa gửi góp ý ({feedbackCategory}) về /{area}. Mở để đọc và trả lời."
+        "body": "Có người vừa gửi góp ý ({feedbackCategory}) về {area}. Mở để đọc và trả lời."
       },
       "feedback_answered": {
         "title": "Góp ý của bạn: {feedbackStatus}",

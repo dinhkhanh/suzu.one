@@ -4,7 +4,7 @@
 //    per person and permission-checked on the server, and a stale copy would be a leak or a lie;
 //  - when a page cannot be reached it shows /offline.html;
 //  - shows web-push notifications and opens their link.
-const VERSION = "v1";
+const VERSION = "v2";
 const STATIC_CACHE = `suzu-static-${VERSION}`;
 const SHELL = ["/offline.html", "/icons/icon-192.png"];
 // The dev server's files are not content-hashed; caching them would serve stale code.
@@ -61,6 +61,8 @@ self.addEventListener("push", (event) => {
       icon: "/icons/icon-192.png",
       badge: "/icons/badge-96.png",
       tag: payload.tag,
+      // Replacing a notice with the same tag is silent unless this is set; each push is news.
+      renotify: Boolean(payload.tag),
       data: { link: payload.link || "/notifications" },
     }),
   );

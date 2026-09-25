@@ -43,7 +43,7 @@ export async function submitFeedback(from: Submitter, input: FeedbackInput, user
       .insert(appFeedback)
       .values({ personId: from.personId, entityId: from.entityId, category: input.category, message: input.message, blocking: input.blocking, pagePath, area: areaOfPath(pagePath), userAgent: userAgent?.slice(0, 400) ?? null, screenshotFileId: input.screenshotFileId })
       .returning();
-    await notify({ recipients: triagers, kind: "feedback.received", params: { feedbackCategory: row.category, area: row.area ?? "—" }, link: `/feedback/${row.id}` }, tx);
+    await notify({ recipients: triagers, kind: "feedback.received", params: { feedbackCategory: row.category, area: row.area ? `/${row.area}` : "—" }, link: `/feedback/${row.id}` }, tx);
     return row;
   });
 }

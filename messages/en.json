@@ -1034,7 +1034,7 @@
       },
       "feedback_received": {
         "title": "New feedback: {feedbackCategory}",
-        "body": "Someone sent feedback ({feedbackCategory}) about /{area}. Open it to read and reply."
+        "body": "Someone sent feedback ({feedbackCategory}) about {area}. Open it to read and reply."
       },
       "feedback_answered": {
         "title": "Your feedback: {feedbackStatus}",

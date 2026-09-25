@@ -60,7 +60,7 @@ describe("sending feedback", () => {
     const row = await submitFeedback(submitter("lan"), { ...base, category: "bug", message: "Nút lưu không phản hồi", blocking: true, pagePath: "/attendance/check-in" }, "Mozilla/5.0");
     expect(row).toMatchObject({ status: "new", priority: "normal", area: "attendance", blocking: true, entityId: ids.a });
     const [notice] = await noticesOf("hrA", "feedback.received");
-    expect(notice).toMatchObject({ link: `/feedback/${row.id}`, params: { feedbackCategory: "bug", area: "attendance" } });
+    expect(notice).toMatchObject({ link: `/feedback/${row.id}`, params: { feedbackCategory: "bug", area: "/attendance" } });
     // The text never travels in a notification.
     expect(JSON.stringify(notice.params)).not.toContain("Nút lưu");
     expect(await noticesOf("ceo", "feedback.received")).toHaveLength(0);

@@ -155,7 +155,7 @@ describe("web push", () => {
     expect(queued[0].title).toContain("Huy");
 
     expect(await deliverPendingPushes()).toEqual({ sent: 2, simulated: 0, failed: 0, gone: 0 });
-    expect(pushSend).toHaveBeenCalledWith({ endpoint: "https://push.example/phone", p256dh: "p".repeat(87), auth: "a".repeat(22) }, expect.objectContaining({ link: "/approvals", tag: "approvals.requested" }));
+    expect(pushSend).toHaveBeenCalledWith({ endpoint: "https://push.example/phone", p256dh: "p".repeat(87), auth: "a".repeat(22) }, expect.objectContaining({ link: "/approvals", tag: "/approvals" }));
     expect((await listPushSubscriptions(people.an)).every((row) => row.lastSuccessAt)).toBe(true);
     expect(await deliverPendingPushes()).toEqual({ sent: 0, simulated: 0, failed: 0, gone: 0 });
   });

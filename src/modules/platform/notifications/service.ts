@@ -239,8 +239,10 @@ export async function deliverPendingPushes(limit = 100): Promise<{ sent: number;
       .where(and(eq(outbox.id, delivery.id), eq(outbox.status, "pending"), eq(outbox.attempts, delivery.attempts)))
       .returning({ id: outbox.id });
     if (!claimed) continue;
-    // The device unsubscribed between the event and now.
-    const result = device ? await driver.send({ endpoint: device.endpoint, p256dh: device.p256dh, auth: device.auth }, { title: delivery.title, body: delivery.body, link: delivery.link, tag: delivery.kind }) : ({ status: "gone" } as const);
+    // The device unsubscribed between the event and now. The tag is the thing the push is about:
+    // news of the same item replaces its earlier notice, but two items of one kind (two pieces of
+    // feedback) are two notices — a tag per kind let the second silently overwrite the first.
+    const result = device ? await driver.send({ endpoint: device.endpoint, p256dh: device.p256dh, auth: device.auth }, { title: delivery.title, body: delivery.body, link: delivery.link, tag: delivery.link ?? undefined }) : ({ status: "gone" } as const);
 
     if (result.status === "failed") {
       const givenUp = delivery.attempts + 1 >= MAX_ATTEMPTS;
