@@ -80,7 +80,7 @@ They go through if the person writes to the Page before then.
 1. **A Facebook Page** for the company, and a **Meta app** (type *Business*) with the Messenger
    product. Link the Page and generate a **Page access token** (use a System User token from
    Business Manager, so it does not expire).
-2. **Permissions**: `pages_messaging` and `page_utility_messaging`. Employees are not app
+2. **Permissions**: `pages_messaging` and `pages_utility_messaging`. Employees are not app
    testers, so both need **Advanced Access**: App Review plus business verification. Until then
    only people with a role on the app receive messages.
 3. **Environment** (Vercel, `.env.local`): `MESSENGER_PAGE_ID`, `MESSENGER_PAGE_ACCESS_TOKEN`,
