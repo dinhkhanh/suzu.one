@@ -12,12 +12,14 @@ import { getFeedback, submitFeedback, triageFeedback } from "./service";
 
 // A checkbox posts "on" when ticked and nothing when not; JSON callers may send a boolean.
 const checkbox = z.union([z.boolean(), z.literal("on"), z.literal("")]).optional().transform((value) => value === true || value === "on");
+// The form sends the page it was opened on as null when there is none (the /feedback page itself),
+// so "absent" is undefined, null or blank alike.
 const optionalText = (max: number) =>
   z
     .string()
     .trim()
     .max(max)
-    .optional()
+    .nullish()
     .transform((value) => (value ? value : null));
 
 const submitPipeline = createAction({
