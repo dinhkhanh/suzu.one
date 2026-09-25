@@ -28,7 +28,7 @@ export default async function NotificationsPage(props: PageProps<"/notifications
         {rows.some((row) => !row.readAt) ? <MarkAllReadButton /> : null}
       </header>
 
-      <ul className="flex flex-col divide-y rounded-xl border">
+      <ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
         {rows.length === 0 ? <li className="p-4 text-sm text-muted-foreground">{t("empty")}</li> : null}
         {rows.map((row) => {
           const key = messageKey(row.kind);
@@ -36,18 +36,26 @@ export default async function NotificationsPage(props: PageProps<"/notifications
           const known = t.has(`kinds.${key}.title`);
           const params = resolveParams(row.params, (messageId) => (anyText.has(messageId) ? anyText(messageId) : messageId));
           return (
-            <li key={row.id} className={`flex items-start justify-between gap-4 p-4 ${row.readAt ? "" : "bg-muted/40"}`}>
-              <div className="min-w-0">
-                <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+            <li key={row.id} className={`relative flex items-start justify-between gap-4 p-4 ${row.readAt ? "" : "bg-primary/5"}`}>
+              {/* Unread rows carry an accent bar, a filled dot, a bold title and a solid button; read rows are dimmed. */}
+              {row.readAt ? null : <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-primary" />}
+              <span aria-hidden className={`mt-1.5 size-2 shrink-0 rounded-full ${row.readAt ? "border border-muted-foreground/40" : "bg-primary"}`} />
+              <div className="min-w-0 flex-1">
+                <p className={`flex flex-wrap items-center gap-2 text-sm ${row.readAt ? "font-normal text-muted-foreground" : "font-semibold text-foreground"}`}>
                   {known ? t(`kinds.${key}.title`, params) : row.kind}
-                  {row.readAt ? null : <Badge variant="secondary">{t("unread")}</Badge>}
+                  <span className="sr-only">({row.readAt ? t("read") : t("unread")})</span>
+                  {row.readAt ? null : (
+                    <Badge variant="info" dot aria-hidden>
+                      {t("unread")}
+                    </Badge>
+                  )}
                 </p>
-                {known ? <p className="text-sm text-muted-foreground">{t(`kinds.${key}.body`, params)}</p> : null}
+                {known ? <p className={`text-sm ${row.readAt ? "text-muted-foreground/80" : "text-foreground/80"}`}>{t(`kinds.${key}.body`, params)}</p> : null}
                 <time className="text-xs text-muted-foreground" dateTime={row.createdAt.toISOString()}>
                   {format.relativeTime(row.createdAt, now)}
                 </time>
               </div>
-              {row.link || !row.readAt ? <OpenNotificationButton id={row.id} link={row.link} label={row.link ? t("open") : "✓"} /> : null}
+              {row.link || !row.readAt ? <OpenNotificationButton id={row.id} link={row.link} unread={!row.readAt} label={row.link ? t("open") : t("markRead")} /> : null}
             </li>
           );
         })}

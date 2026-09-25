@@ -617,6 +617,8 @@
     "markAllRead": "Đánh dấu tất cả đã đọc",
     "open": "Mở",
     "unread": "Chưa đọc",
+    "read": "Đã đọc",
+    "markRead": "Đánh dấu đã đọc",
     "previous": "Trước",
     "next": "Sau",
     "page": "Trang {page}/{pageCount}",

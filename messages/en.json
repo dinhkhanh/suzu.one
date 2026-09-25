@@ -617,6 +617,8 @@
     "markAllRead": "Mark all as read",
     "open": "Open",
     "unread": "Unread",
+    "read": "Read",
+    "markRead": "Mark as read",
     "previous": "Previous",
     "next": "Next",
     "page": "Page {page} of {pageCount}",

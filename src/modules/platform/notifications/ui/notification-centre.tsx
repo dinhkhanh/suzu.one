@@ -10,13 +10,13 @@ import { markNotificationsReadAction, saveNotificationPreferencesAction } from "
 import { CATEGORIES, CATEGORY_DEFINITIONS, type Category, type ChannelChoice, EMAIL_CHANNELS } from "../kinds";
 
 /** Marks the notification read, then goes where it points. */
-export function OpenNotificationButton({ id, link, label }: { id: string; link: string | null; label: string }) {
+export function OpenNotificationButton({ id, link, label, unread }: { id: string; link: string | null; label: string; unread: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   return (
     <Button
       type="button"
-      variant="outline"
+      variant={unread ? "default" : "ghost"}
       size="sm"
       disabled={pending}
       onClick={() =>
