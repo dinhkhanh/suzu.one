@@ -10,6 +10,7 @@ import { env } from "@/lib/env";
 import vi from "../../../../messages/vi.json";
 import { chatDriver } from "./chat";
 import { sendEmail } from "./email";
+import { deliverPendingMessengers, mayReceive } from "./messenger-outbox";
 import { pushDriver } from "./push";
 import { CATEGORIES, CATEGORY_DEFINITIONS, type Category, type ChannelChoice, effectiveChoice, type Kind, KINDS, messageKey, resolveParams } from "./kinds";
 
@@ -57,16 +58,21 @@ export async function notify(input: NotifyInput, executor: Tx | ReturnType<typeo
   const category: Category = KINDS[input.kind];
   const params = input.params ?? {};
 
-  const [people, preferences, devices] = await Promise.all([
+  const [people, preferences, devices, messengerLinks] = await Promise.all([
     executor.select({ id: schema.person.id, workEmail: schema.person.workEmail, status: schema.person.status }).from(schema.person).where(inArray(schema.person.id, recipientIds)),
     preferenceRows(executor === db() ? undefined : executor).then((rows) => rows.filter((row) => row.category === category && recipientIds.includes(row.personId))),
     executor.select({ id: schema.pushSubscription.id, personId: schema.pushSubscription.personId }).from(schema.pushSubscription).where(inArray(schema.pushSubscription.personId, recipientIds)),
+    executor
+      .select({ id: schema.messengerLink.id, personId: schema.messengerLink.personId })
+      .from(schema.messengerLink)
+      .where(and(inArray(schema.messengerLink.personId, recipientIds), isNull(schema.messengerLink.revokedAt))),
   ]);
 
   const now = new Date();
   const rows: (typeof schema.notification.$inferInsert)[] = [];
   const emails: (typeof schema.emailOutbox.$inferInsert)[] = [];
   const pushes: (typeof schema.pushDelivery.$inferInsert)[] = [];
+  const messages: (typeof schema.messengerDelivery.$inferInsert)[] = [];
   for (const person of people) {
     if (person.status === "offboarded") continue;
     const choice = effectiveChoice(category, preferences.find((row) => row.personId === person.id));
@@ -79,11 +85,16 @@ export async function notify(input: NotifyInput, executor: Tx | ReturnType<typeo
       // Lock-screen text, in Vietnamese like the emails. One row per subscribed device.
       const { title, body } = wording(input.kind, params);
       for (const device of devices.filter((row) => row.personId === person.id)) pushes.push({ subscriptionId: device.id, personId: person.id, kind: input.kind, title, body, link: input.link ?? null });
+      // Messenger rides on the same choice: "on my phone". Only to a verified link, only while the
+      // person may still receive anything, and only as much of the wording as Meta may read.
+      const link = messengerLinks.find((row) => row.personId === person.id);
+      if (link && mayReceive(person.status)) messages.push({ linkId: link.id, personId: person.id, kind: input.kind, ...messengerWording(category, title, body), link: input.link ?? null });
     }
   }
   if (rows.length) await executor.insert(schema.notification).values(rows);
   if (emails.length) await executor.insert(schema.emailOutbox).values(emails);
   if (pushes.length) await executor.insert(schema.pushDelivery).values(pushes);
+  if (messages.length) await executor.insert(schema.messengerDelivery).values(messages);
   // What this tells them about is on their screens too (src/lib/cache/live.ts). Inside a
   // transaction the marker holds their entries off the cache until the commit lands.
   await invalidateLive(...people.filter((person) => person.status !== "offboarded").map((person) => person.id));
@@ -106,7 +117,16 @@ export async function notify(input: NotifyInput, executor: Tx | ReturnType<typeo
     }
     if (cards.length) await executor.insert(schema.chatDelivery).values(cards);
   }
-  if (emails.length || pushes.length || input.chat) deliverSoon();
+  if (emails.length || pushes.length || messages.length || input.chat) deliverSoon();
+}
+
+/**
+ * A Page's messages are readable by Meta, unlike an encrypted web push: a "generic" category sends
+ * only which area has news, never the notice itself (kinds.ts, `messenger`).
+ */
+export function messengerWording(category: Category, title: string, body: string): { title: string; body: string } {
+  if (CATEGORY_DEFINITIONS[category].messenger === "full") return { title, body };
+  return { title: emailText("messenger.generic.title", { category: emailText(`preferences.category.${category}`) }), body: emailText("messenger.generic.body") };
 }
 
 function composeEmail(to: string, kind: string, params: Params, link: string | null): typeof schema.emailOutbox.$inferInsert {
@@ -138,7 +158,7 @@ export async function queueEmail(to: string, kind: Kind, params: Params, executo
 function deliverSoon(): void {
   try {
     after(() =>
-      Promise.all([deliverPendingEmails(), deliverPendingPushes(), deliverPendingChats()]).catch((error) => console.error(JSON.stringify({ level: "error", event: "notification.delivery_failed", message: String(error) }))),
+      Promise.all([deliverPendingEmails(), deliverPendingPushes(), deliverPendingChats(), deliverPendingMessengers()]).catch((error) => console.error(JSON.stringify({ level: "error", event: "notification.delivery_failed", message: String(error) }))),
     );
   } catch {
     // Not in a request.

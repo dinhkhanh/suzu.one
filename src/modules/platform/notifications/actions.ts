@@ -3,6 +3,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { CATEGORIES, EMAIL_CHANNELS } from "./kinds";
+import { confirmMessengerLink, startMessengerLink, unlinkMessenger } from "./messenger-links";
+import { deliverPendingMessengers, queueTestMessenger } from "./messenger-outbox";
 import { deliverPendingPushes, getPreferences, markRead, queueTestPush, removePushSubscription, savePushSubscription, setPreferences } from "./service";
 
 const checkbox = z.preprocess((value) => value === "on" || value === true, z.boolean());
@@ -85,4 +87,62 @@ const testPushPipeline = createAction({
 });
 export async function sendTestPushAction(input: unknown) {
   return testPushPipeline(input);
+}
+
+// ── Messenger: the caller's own account only (docs/MESSENGER.md) ───────────────────────────
+
+const messengerStartPipeline = createAction({
+  name: "notification.messenger.start",
+  input: z.object({}),
+  authorize: () => true,
+  run: async ({ user }) => {
+    const { url, expiresAt } = await startMessengerLink(user.person.id);
+    // The URL carries the one-time token: it goes to the caller's browser and nowhere else, not the log.
+    return { data: { url, expiresAt: expiresAt.toISOString() }, audit: { resource: { type: "messenger_link", id: user.person.id }, summary: "link started" } };
+  },
+});
+export async function startMessengerLinkAction(input: unknown) {
+  return messengerStartPipeline(input);
+}
+
+const messengerConfirmPipeline = createAction({
+  name: "notification.messenger.confirm",
+  input: z.object({ code: z.string().trim().regex(/^\d{6}$/) }),
+  authorize: () => true,
+  run: async ({ user, input }) => {
+    const { linkId } = await confirmMessengerLink(user.person.id, input.code);
+    revalidatePath("/notifications");
+    return { data: { linked: true }, audit: { resource: { type: "messenger_link", id: linkId }, summary: "linked" } };
+  },
+});
+export async function confirmMessengerLinkAction(input: unknown) {
+  return messengerConfirmPipeline(input);
+}
+
+const messengerUnlinkPipeline = createAction({
+  name: "notification.messenger.unlink",
+  input: z.object({}),
+  authorize: () => true,
+  run: async ({ user }) => {
+    const removed = await unlinkMessenger(user.person.id);
+    revalidatePath("/notifications");
+    return { data: { removed }, audit: { resource: { type: "messenger_link", id: user.person.id }, summary: `${removed} unlinked` } };
+  },
+});
+export async function unlinkMessengerAction(input: unknown) {
+  return messengerUnlinkPipeline(input);
+}
+
+const messengerTestPipeline = createAction({
+  name: "notification.messenger.test",
+  input: z.object({}),
+  authorize: () => true,
+  run: async ({ user }) => {
+    const links = await queueTestMessenger(user.person.id, { title: "SuZu One", body: "Thông báo qua Messenger đang hoạt động.", link: "/notifications" });
+    const tally = await deliverPendingMessengers();
+    return { data: { links, ...tally }, audit: { resource: { type: "messenger_link", id: user.person.id }, summary: `test message to ${links} link(s)` } };
+  },
+});
+export async function sendTestMessengerAction(input: unknown) {
+  return messengerTestPipeline(input);
 }

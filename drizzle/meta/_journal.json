@@ -673,6 +673,13 @@
       "when": 1790253286292,
       "tag": "0095_session_impersonation",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1790315248738,
+      "tag": "0096_messenger_notifications",
+      "breakpoints": true
     }
   ]
 }

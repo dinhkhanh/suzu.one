@@ -4,9 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/modules/platform/auth/session";
 import { messageKey, resolveParams } from "@/modules/platform/notifications/kinds";
+import { messengerConfig } from "@/modules/platform/notifications/messenger";
+import { getMessengerStatus } from "@/modules/platform/notifications/messenger-links";
 import { vapidPublicKey } from "@/modules/platform/notifications/push";
 import { getPreferences, listNotifications, listPushSubscriptions, NOTIFICATIONS_PAGE_SIZE } from "@/modules/platform/notifications/service";
 import { MarkAllReadButton, OpenNotificationButton, PreferencesForm } from "@/modules/platform/notifications/ui/notification-centre";
+import { MessengerLink } from "@/modules/platform/notifications/ui/messenger-link";
 import { PushToggle } from "@/modules/platform/notifications/ui/push-toggle";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -17,7 +20,15 @@ export default async function NotificationsPage(props: PageProps<"/notifications
   const query = await props.searchParams;
   const page = Number.parseInt(typeof query.page === "string" ? query.page : "1", 10) || 1;
 
-  const [t, anyText, format, { rows, total }, preferences, devices] = await Promise.all([getTranslations("notifications"), getTranslations(), getFormatter(), listNotifications(user.person.id, page), getPreferences(user.person.id), listPushSubscriptions(user.person.id)]);
+  const [t, anyText, format, { rows, total }, preferences, devices, messenger] = await Promise.all([
+    getTranslations("notifications"),
+    getTranslations(),
+    getFormatter(),
+    listNotifications(user.person.id, page),
+    getPreferences(user.person.id),
+    listPushSubscriptions(user.person.id),
+    getMessengerStatus(user.person.id),
+  ]);
   const pageCount = Math.max(1, Math.ceil(total / NOTIFICATIONS_PAGE_SIZE));
   const now = new Date();
 
@@ -78,6 +89,13 @@ export default async function NotificationsPage(props: PageProps<"/notifications
       ) : null}
 
       <PushToggle vapidPublicKey={vapidPublicKey()} personId={user.person.id} deviceCount={devices.length} />
+      <MessengerLink
+        configured={messengerConfig() !== null}
+        status={{
+          link: messenger.link ? { linkedAt: messenger.link.linkedAt.toISOString(), lastSuccessAt: messenger.link.lastSuccessAt?.toISOString() ?? null } : null,
+          pending: messenger.pending ? { expiresAt: messenger.pending.expiresAt.toISOString(), codeSent: messenger.pending.codeSent } : null,
+        }}
+      />
       <PreferencesForm preferences={preferences} />
     </div>
   );

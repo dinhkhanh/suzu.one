@@ -23,6 +23,7 @@
     "db:seed:demo:bonus": "tsx scripts/seed-demo-bonus-run.ts && tsx scripts/cache-flush.ts",
     "ai:eval": "tsx scripts/ai-eval.ts",
     "push:keys": "tsx scripts/push-keys.ts",
+    "messenger:setup": "tsx scripts/messenger-setup.ts",
     "brand:icons": "tsx scripts/brand-icons.ts",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "db:down": "supabase stop",

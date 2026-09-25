@@ -64,6 +64,20 @@ const schema = z.object({
   // Google Chat (FR-PLT-31): an incoming-webhook URL for the space that gets approval cards.
   // Unset = the local driver records each card as "simulated" and nothing leaves the machine.
   GOOGLE_CHAT_WEBHOOK_URL: z.url().optional(),
+  // Facebook Messenger (docs/MESSENGER.md): a company Page whose bot delivers each person's own
+  // notifications to the Messenger account they linked. The first four are needed together — with
+  // any missing, the local driver records each message as "simulated" and nothing leaves the
+  // machine. The app secret signs Meta's webhook calls and our Graph calls (appsecret_proof); the
+  // verify token is any random string, typed into the webhook settings once. `PAGE_USERNAME` is the
+  // m.me handle the "connect" link opens. `UTILITY_TEMPLATE` is the approved utility template used
+  // outside Meta's 24-hour window (unset = only people who wrote to the Page that day are reached).
+  MESSENGER_PAGE_ID: z.string().regex(/^\d+$/).optional(),
+  MESSENGER_PAGE_ACCESS_TOKEN: z.string().min(1).optional(),
+  MESSENGER_APP_SECRET: z.string().min(16).optional(),
+  MESSENGER_VERIFY_TOKEN: z.string().min(16).optional(),
+  MESSENGER_PAGE_USERNAME: z.string().regex(/^[A-Za-z0-9.]+$/).optional(),
+  MESSENGER_UTILITY_TEMPLATE: z.string().regex(/^[a-z0-9_]+$/).optional(),
+  MESSENGER_TEMPLATE_LANGUAGE: z.string().default("vi"),
   // Google Calendar for interview scheduling (FR-REC-06). A service account with domain-wide
   // delegation; `IMPERSONATE` is the mailbox the events are created as, which is what Google
   // requires before it will mint a Meet link. All four are needed together — with any of them

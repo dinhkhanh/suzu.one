@@ -1039,12 +1039,19 @@
       "feedback_answered": {
         "title": "Your feedback: {feedbackStatus}",
         "body": "Your feedback on SuZu One was answered — it is now “{feedbackStatus}”. Open it to read the reply."
+      },
+      "security_messenger_linked": {
+        "title": "Messenger was linked to your account",
+        "body": "A Messenger account was just linked to receive your notifications. If this wasn't you, unlink it now on the Notifications page."
       }
     },
     "errors": {
       "forbidden": "You do not have permission to do this.",
       "invalid": "Please check the information.",
-      "generic": "Something went wrong. Please try again."
+      "generic": "Something went wrong. Please try again.",
+      "messenger_no_pending": "There is no connection waiting for a code. Click Connect Messenger and open the link first.",
+      "messenger_wrong_code": "That code is wrong. Check the latest message from SuZu One in Messenger.",
+      "messenger_too_many_attempts": "Too many wrong codes. Please start connecting again."
     },
     "push": {
       "title": "Push notifications on this device",
@@ -1066,6 +1073,41 @@
     },
     "categories": {
       "comms": "Announcements & kudos"
+    },
+    "messenger": {
+      "title": "Get notifications on Messenger",
+      "notConfigured": "Messenger is not configured on this server.",
+      "off": "Get your notifications on Messenger — useful when browser push doesn't arrive. Messages pass through Meta's servers, so notices about pay, HR, reviews, recruitment and security only say \"you have something new\"; the details are shown only after you sign in.",
+      "rule": "Messenger delivers the categories where you turned on the \"Push\" column under Notification preferences.",
+      "connect": "Connect Messenger",
+      "step1": "1. Open the conversation with the SuZu One page on Messenger (tap Get Started if asked).",
+      "openLink": "Open Messenger",
+      "step2": "2. Enter the 6-digit code SuZu One just sent you on Messenger.",
+      "codeLabel": "Verification code",
+      "confirm": "Confirm",
+      "expires": "The link expires at {time}.",
+      "waitingCode": "A code was sent to Messenger. Enter it to finish.",
+      "linked": "Messenger connected since {date}.",
+      "lastSuccess": "Last delivered: {date}.",
+      "unlink": "Unlink",
+      "stopHint": "You can also message \"stop\" to SuZu One on Messenger to stop receiving.",
+      "test": "Send a test",
+      "testSent": "Test sent to Messenger.",
+      "testSimulated": "Recorded — this server only simulates Messenger.",
+      "testNotSent": "Couldn't send yet. If you haven't messaged the page in the last 24 hours, send it any message and try again.",
+      "failed": "That didn't work. Please try again.",
+      "bot": {
+        "code": "Your SuZu One verification code: {code}\nEnter it on the SuZu One Notifications page within {minutes} minutes. If you didn't ask for this, ignore this message — nobody else can use this code.",
+        "linkInvalid": "This connect link is no longer valid. Open SuZu One → Notifications → Connect Messenger for a new one.",
+        "linked": "Connected. SuZu One will now send your notifications here. Message \"stop\" at any time to stop.",
+        "stopped": "Notifications to this Messenger account have stopped. You can connect again in SuZu One.",
+        "notLinked": "This is SuZu One's automated notification bot. This Messenger account isn't connected — connect it in SuZu One → Notifications.",
+        "help": "This is SuZu One's automated notification bot: it only sends notifications and doesn't answer questions. Open SuZu One for details. Message \"stop\" to stop receiving."
+      },
+      "generic": {
+        "title": "You have a new notification: {category}",
+        "body": "Open SuZu One to see the details."
+      }
     }
   },
   "jobs": {

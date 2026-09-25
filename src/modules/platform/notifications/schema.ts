@@ -1,4 +1,4 @@
-import { boolean, index, jsonb, pgEnum, pgTable, primaryKey, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, jsonb, pgEnum, pgTable, primaryKey, smallint, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { person } from "../people/schema";
 
@@ -134,4 +134,93 @@ export const pushDelivery = pgTable(
     sentAt: timestamp("sent_at", { withTimezone: true }),
   },
   (t) => [index("push_delivery_status_idx").on(t.status, t.createdAt), index("push_delivery_person_idx").on(t.personId, t.createdAt)],
+).enableRLS();
+
+// ── Facebook Messenger (docs/MESSENGER.md) ──────────────────────────────────────────────────
+//
+// A Messenger account receives a person's notifications only after **both** sides proved
+// themselves: the signed-in person opened a one-time link to the Page (so Meta tells us which
+// Messenger account — the PSID — answered), and then typed into the app the code the bot sent to
+// that account. Knowing the link alone reaches nobody: whoever opens a leaked link receives the
+// code in *their* Messenger, and cannot type it into somebody else's session.
+
+// One attempt to link. The token (in the m.me link) and the code (sent by the bot) are stored
+// hashed; `psid` is whichever Messenger account last opened the link.
+export const messengerLinkRequest = pgTable(
+  "messenger_link_request",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    tokenHash: text("token_hash").notNull().unique(),
+    psid: text("psid"),
+    codeHash: text("code_hash"),
+    codeSentAt: timestamp("code_sent_at", { withTimezone: true }),
+    /** Wrong codes typed so far; the request is dead at five. */
+    attempts: smallint("attempts").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    /** Linked, replaced by a newer attempt, or given up: either way it can no longer be used. */
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+  },
+  (t) => [index("messenger_link_request_person_idx").on(t.personId, t.createdAt)],
+).enableRLS();
+
+// A verified Messenger account of a person. Never deleted, only revoked, so what was sent where
+// can still be read back. At most one live link per person and per Messenger account.
+export const messengerLink = pgTable(
+  "messenger_link",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    /** The Page-scoped ID Meta gives this Messenger account; meaningless to any other Page. */
+    psid: text("psid").notNull(),
+    linkedAt: timestamp("linked_at", { withTimezone: true }).notNull().defaultNow(),
+    /** The person's last message to the Page: Meta lets a Page write freely for 24 hours after it. */
+    lastInboundAt: timestamp("last_inbound_at", { withTimezone: true }),
+    lastSuccessAt: timestamp("last_success_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    /** "unlinked" (in the app), "stopped" (from Messenger), "replaced", "unreachable". */
+    revokedReason: text("revoked_reason"),
+  },
+  (t) => [
+    uniqueIndex("messenger_link_live_person_idx").on(t.personId).where(sql`${t.revokedAt} IS NULL`),
+    uniqueIndex("messenger_link_live_psid_idx").on(t.psid).where(sql`${t.revokedAt} IS NULL`),
+  ],
+).enableRLS();
+
+// "simulated" = Messenger is not configured: the local driver recorded the message instead.
+// "dropped" = refused at delivery time: the link was revoked or replaced, or the person may no
+// longer receive anything (suspended, offboarded). Nothing was sent.
+export const messengerStatus = pgEnum("messenger_status", ["pending", "sent", "simulated", "failed", "dropped"]);
+
+// Every Messenger message goes through here first, like the other outboxes. A row is addressed to
+// a *link*, not to a Messenger account: the deliverer re-reads the link and the person when it
+// sends, so a message queued before an unlink or an offboarding is never delivered after it.
+export const messengerDelivery = pgTable(
+  "messenger_delivery",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    linkId: uuid("link_id")
+      .notNull()
+      .references(() => messengerLink.id),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    link: text("link"),
+    status: messengerStatus("status").notNull().default("pending"),
+    /** "standard" inside the 24-hour window, "utility" (the approved template) outside it. */
+    via: text("via"),
+    attempts: smallint("attempts").notNull().default(0),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (t) => [index("messenger_delivery_status_idx").on(t.status, t.createdAt), index("messenger_delivery_person_idx").on(t.personId, t.createdAt)],
 ).enableRLS();
