@@ -78,6 +78,15 @@ const schema = z.object({
   MESSENGER_PAGE_USERNAME: z.string().regex(/^[A-Za-z0-9.]+$/).optional(),
   MESSENGER_UTILITY_TEMPLATE: z.string().regex(/^[a-z0-9_]+$/).optional(),
   MESSENGER_TEMPLATE_LANGUAGE: z.string().default("vi"),
+  // Telegram (docs/TELEGRAM.md): a bot that delivers each person's own notifications to the
+  // Telegram account they linked, beside Messenger. All three are needed together — with any
+  // missing, the local driver records each message as "simulated" and nothing leaves the machine.
+  // The token comes from @BotFather; the username is what the "connect" link opens
+  // (t.me/<username>); the webhook secret is any random string, which Telegram sends back on
+  // every webhook call.
+  TELEGRAM_BOT_TOKEN: z.string().regex(/^\d+:\S+$/, "the token @BotFather gave, e.g. 123456:ABC…").optional(),
+  TELEGRAM_BOT_USERNAME: z.string().regex(/^[A-Za-z0-9_]{5,32}$/).optional(),
+  TELEGRAM_WEBHOOK_SECRET: z.string().regex(/^[A-Za-z0-9_-]{32,256}$/, "generate with: openssl rand -hex 32").optional(),
   // Google Calendar for interview scheduling (FR-REC-06). A service account with domain-wide
   // delegation; `IMPERSONATE` is the mailbox the events are created as, which is what Google
   // requires before it will mint a Meet link. All four are needed together — with any of them

@@ -5,6 +5,8 @@ import { createAction } from "@/lib/action";
 import { CATEGORIES, EMAIL_CHANNELS } from "./kinds";
 import { confirmMessengerLink, startMessengerLink, unlinkMessenger } from "./messenger-links";
 import { deliverPendingMessengers, queueTestMessenger } from "./messenger-outbox";
+import { confirmTelegramLink, startTelegramLink, unlinkTelegram } from "./telegram-links";
+import { deliverPendingTelegrams, queueTestTelegram } from "./telegram-outbox";
 import { deliverPendingPushes, getPreferences, markRead, queueTestPush, removePushSubscription, savePushSubscription, setPreferences } from "./service";
 
 const checkbox = z.preprocess((value) => value === "on" || value === true, z.boolean());
@@ -145,4 +147,62 @@ const messengerTestPipeline = createAction({
 });
 export async function sendTestMessengerAction(input: unknown) {
   return messengerTestPipeline(input);
+}
+
+// ── Telegram: the caller's own chat only (docs/TELEGRAM.md) ────────────────────────────────
+
+const telegramStartPipeline = createAction({
+  name: "notification.telegram.start",
+  input: z.object({}),
+  authorize: () => true,
+  run: async ({ user }) => {
+    const { url, expiresAt } = await startTelegramLink(user.person.id);
+    // The URL carries the one-time token: it goes to the caller's browser and nowhere else, not the log.
+    return { data: { url, expiresAt: expiresAt.toISOString() }, audit: { resource: { type: "telegram_link", id: user.person.id }, summary: "link started" } };
+  },
+});
+export async function startTelegramLinkAction(input: unknown) {
+  return telegramStartPipeline(input);
+}
+
+const telegramConfirmPipeline = createAction({
+  name: "notification.telegram.confirm",
+  input: z.object({ code: z.string().trim().regex(/^\d{6}$/) }),
+  authorize: () => true,
+  run: async ({ user, input }) => {
+    const { linkId } = await confirmTelegramLink(user.person.id, input.code);
+    revalidatePath("/notifications");
+    return { data: { linked: true }, audit: { resource: { type: "telegram_link", id: linkId }, summary: "linked" } };
+  },
+});
+export async function confirmTelegramLinkAction(input: unknown) {
+  return telegramConfirmPipeline(input);
+}
+
+const telegramUnlinkPipeline = createAction({
+  name: "notification.telegram.unlink",
+  input: z.object({}),
+  authorize: () => true,
+  run: async ({ user }) => {
+    const removed = await unlinkTelegram(user.person.id);
+    revalidatePath("/notifications");
+    return { data: { removed }, audit: { resource: { type: "telegram_link", id: user.person.id }, summary: `${removed} unlinked` } };
+  },
+});
+export async function unlinkTelegramAction(input: unknown) {
+  return telegramUnlinkPipeline(input);
+}
+
+const telegramTestPipeline = createAction({
+  name: "notification.telegram.test",
+  input: z.object({}),
+  authorize: () => true,
+  run: async ({ user }) => {
+    const links = await queueTestTelegram(user.person.id, { title: "SuZu One", body: "Thông báo qua Telegram đang hoạt động.", link: "/notifications" });
+    const tally = await deliverPendingTelegrams();
+    return { data: { links, ...tally }, audit: { resource: { type: "telegram_link", id: user.person.id }, summary: `test message to ${links} link(s)` } };
+  },
+});
+export async function sendTestTelegramAction(input: unknown) {
+  return telegramTestPipeline(input);
 }

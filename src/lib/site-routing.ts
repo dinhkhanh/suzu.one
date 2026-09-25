@@ -20,10 +20,10 @@ export const PORTFOLIO_PATH = "/portfolio";
 
 /**
  * Files and endpoints the proxy lets through on the app's domain untouched: they authenticate for
- * themselves (`/api/auth/`, `/api/cron/`, Meta's signed `/api/messenger/`) or are the installable app's own files. On the public
- * domain they do not exist.
+ * themselves (`/api/auth/`, `/api/cron/`, Meta's signed `/api/messenger/`, Telegram's
+ * `/api/telegram/`) or are the installable app's own files. On the public domain they do not exist.
  */
-const APP_PASS_THROUGH = ["/api/auth/", "/api/cron/", "/api/messenger/", "/sw.js", "/offline.html", "/manifest.webmanifest"];
+const APP_PASS_THROUGH = ["/api/auth/", "/api/cron/", "/api/messenger/", "/api/telegram/", "/sw.js", "/offline.html", "/manifest.webmanifest"];
 
 /** Vercel's own endpoints (analytics, speed insights), which every domain needs. */
 const PLATFORM_PREFIX = "/_vercel/";

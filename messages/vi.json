@@ -1043,6 +1043,10 @@
       "security_messenger_linked": {
         "title": "Messenger đã được liên kết với tài khoản của bạn",
         "body": "Một tài khoản Messenger vừa được liên kết để nhận thông báo của bạn. Nếu không phải bạn, hãy huỷ liên kết ngay trong trang Thông báo."
+      },
+      "security_telegram_linked": {
+        "title": "Telegram đã được liên kết với tài khoản của bạn",
+        "body": "Một tài khoản Telegram vừa được liên kết để nhận thông báo của bạn. Nếu không phải bạn, hãy huỷ liên kết ngay trong trang Thông báo."
       }
     },
     "errors": {
@@ -1051,7 +1055,10 @@
       "generic": "Có lỗi xảy ra. Vui lòng thử lại.",
       "messenger_no_pending": "Không có yêu cầu kết nối nào đang chờ mã. Hãy bấm Kết nối Messenger và mở liên kết trước.",
       "messenger_wrong_code": "Mã không đúng. Hãy kiểm tra tin nhắn mới nhất từ SuZu One trên Messenger.",
-      "messenger_too_many_attempts": "Nhập sai quá nhiều lần. Hãy bắt đầu kết nối lại."
+      "messenger_too_many_attempts": "Nhập sai quá nhiều lần. Hãy bắt đầu kết nối lại.",
+      "telegram_no_pending": "Không có yêu cầu kết nối nào đang chờ mã. Hãy bấm Kết nối Telegram và bấm Start trong bot trước.",
+      "telegram_wrong_code": "Mã không đúng. Hãy kiểm tra tin nhắn mới nhất từ bot SuZu One trên Telegram.",
+      "telegram_too_many_attempts": "Nhập sai quá nhiều lần. Hãy bắt đầu kết nối lại."
     },
     "push": {
       "title": "Thông báo đẩy trên thiết bị này",
@@ -1107,6 +1114,37 @@
       "generic": {
         "title": "Bạn có thông báo mới: {category}",
         "body": "Mở SuZu One để xem chi tiết."
+      }
+    },
+    "telegram": {
+      "title": "Nhận thông báo qua Telegram",
+      "notConfigured": "Máy chủ chưa được cấu hình Telegram.",
+      "off": "Nhận thông báo trên Telegram — hữu ích khi thông báo đẩy của trình duyệt không đến. Tin nhắn đi qua máy chủ của Telegram, nên thông báo về lương, nhân sự, đánh giá, tuyển dụng và bảo mật chỉ báo \"có thông báo mới\"; nội dung chỉ xem được sau khi đăng nhập. Tin nhắn không thể chuyển tiếp hay lưu lại.",
+      "rule": "Telegram gửi các mục bạn bật cột \"Đẩy\" trong phần Cách nhận thông báo.",
+      "connect": "Kết nối Telegram",
+      "step1": "1. Mở bot SuZu One trên Telegram và bấm Start.",
+      "openLink": "Mở Telegram",
+      "step2": "2. Nhập mã 6 chữ số mà bot vừa gửi cho bạn.",
+      "codeLabel": "Mã xác nhận",
+      "confirm": "Xác nhận",
+      "expires": "Liên kết hết hạn lúc {time}.",
+      "waitingCode": "Đã gửi mã tới Telegram. Nhập mã để hoàn tất.",
+      "linked": "Đã kết nối Telegram từ {date}.",
+      "lastSuccess": "Gửi thành công lần cuối: {date}.",
+      "unlink": "Huỷ liên kết",
+      "stopHint": "Bạn cũng có thể gửi /stop cho bot để ngừng nhận.",
+      "test": "Gửi thử",
+      "testSent": "Đã gửi thử tới Telegram.",
+      "testSimulated": "Đã ghi nhận — máy chủ này chỉ mô phỏng Telegram.",
+      "testNotSent": "Chưa gửi được. Vui lòng thử lại sau.",
+      "failed": "Không thực hiện được. Vui lòng thử lại.",
+      "bot": {
+        "code": "Mã xác nhận SuZu One của bạn: {code}\nNhập mã này trong trang Thông báo của SuZu One trong vòng {minutes} phút. Nếu bạn không yêu cầu, hãy bỏ qua tin nhắn này — không ai khác dùng được mã này.",
+        "linkInvalid": "Liên kết kết nối này không còn hiệu lực. Hãy mở SuZu One → Thông báo → Kết nối Telegram để lấy liên kết mới.",
+        "linked": "Đã kết nối. Từ giờ SuZu One sẽ gửi thông báo của bạn tới đây. Gửi /stop bất cứ lúc nào để ngừng nhận.",
+        "stopped": "Đã ngừng gửi thông báo tới Telegram này. Bạn có thể kết nối lại trong SuZu One.",
+        "notLinked": "Đây là bot thông báo tự động của SuZu One. Tài khoản Telegram này chưa được kết nối — hãy kết nối trong SuZu One → Thông báo.",
+        "help": "Đây là bot thông báo tự động của SuZu One: bot chỉ gửi thông báo, không trả lời câu hỏi. Mở SuZu One để xem chi tiết. Gửi /stop để ngừng nhận."
       }
     }
   },

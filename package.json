@@ -24,6 +24,7 @@
     "ai:eval": "tsx scripts/ai-eval.ts",
     "push:keys": "tsx scripts/push-keys.ts",
     "messenger:setup": "tsx scripts/messenger-setup.ts",
+    "telegram:setup": "tsx scripts/telegram-setup.ts",
     "brand:icons": "tsx scripts/brand-icons.ts",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "db:down": "supabase stop",

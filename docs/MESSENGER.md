@@ -46,7 +46,7 @@ about a PSID says which employee it is. The design rests on never guessing:
 ## What a message contains
 
 Unlike web push, which is encrypted for the device, a Page's messages can be read by Meta, and
-they stay in a chat history. Each category in `kinds.ts` declares `messenger: "full" | "generic"`:
+they stay in a chat history. Each category in `kinds.ts` declares `thirdParty: "full" | "generic"` (shared with Telegram):
 
 | Category | Messenger shows |
 | --- | --- |

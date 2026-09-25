@@ -680,6 +680,13 @@
       "when": 1790315248738,
       "tag": "0096_messenger_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1790317111485,
+      "tag": "0097_telegram_notifications",
+      "breakpoints": true
     }
   ]
 }

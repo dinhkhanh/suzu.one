@@ -224,3 +224,88 @@ export const messengerDelivery = pgTable(
   },
   (t) => [index("messenger_delivery_status_idx").on(t.status, t.createdAt), index("messenger_delivery_person_idx").on(t.personId, t.createdAt)],
 ).enableRLS();
+
+// ── Telegram (docs/TELEGRAM.md) ─────────────────────────────────────────────────────────────
+//
+// The same design as Messenger's, for a Telegram bot. A chat receives a person's notifications
+// only after **both** sides proved themselves: the signed-in person opened a one-time t.me link to
+// the bot (so Telegram tells us, over the authenticated webhook, which private chat pressed
+// Start), and then typed into the app the code the bot sent to that chat. Whoever opens a leaked
+// link receives the code in *their* Telegram, and cannot type it into somebody else's session.
+
+// One attempt to link. The token (the t.me `start` parameter) and the code (sent by the bot) are
+// stored hashed; `chat_id` is whichever private chat first opened the link.
+export const telegramLinkRequest = pgTable(
+  "telegram_link_request",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    tokenHash: text("token_hash").notNull().unique(),
+    chatId: text("chat_id"),
+    codeHash: text("code_hash"),
+    codeSentAt: timestamp("code_sent_at", { withTimezone: true }),
+    /** Wrong codes typed so far; the request is dead at five. */
+    attempts: smallint("attempts").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    /** Linked, replaced by a newer attempt, or given up: either way it can no longer be used. */
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+  },
+  (t) => [index("telegram_link_request_person_idx").on(t.personId, t.createdAt)],
+).enableRLS();
+
+// A verified Telegram chat of a person. Never deleted, only revoked, so what was sent where can
+// still be read back. At most one live link per person and per chat.
+export const telegramLink = pgTable(
+  "telegram_link",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    /** The private chat with the bot — for a private chat, the Telegram user's own id. Text: it can exceed 2^31. */
+    chatId: text("chat_id").notNull(),
+    linkedAt: timestamp("linked_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSuccessAt: timestamp("last_success_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    /** "unlinked" (in the app), "stopped" (from Telegram), "replaced", "unreachable". */
+    revokedReason: text("revoked_reason"),
+  },
+  (t) => [
+    uniqueIndex("telegram_link_live_person_idx").on(t.personId).where(sql`${t.revokedAt} IS NULL`),
+    uniqueIndex("telegram_link_live_chat_idx").on(t.chatId).where(sql`${t.revokedAt} IS NULL`),
+  ],
+).enableRLS();
+
+// "simulated" = Telegram is not configured: the local driver recorded the message instead.
+// "dropped" = refused at delivery time: the link was revoked or replaced, or the person may no
+// longer receive anything (suspended, offboarded). Nothing was sent.
+export const telegramStatus = pgEnum("telegram_status", ["pending", "sent", "simulated", "failed", "dropped"]);
+
+// Every Telegram message goes through here first, like the other outboxes. A row is addressed to a
+// *link*, not to a chat: the deliverer re-reads the link and the person when it sends, so a message
+// queued before an unlink or an offboarding is never delivered after it.
+export const telegramDelivery = pgTable(
+  "telegram_delivery",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    linkId: uuid("link_id")
+      .notNull()
+      .references(() => telegramLink.id),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    link: text("link"),
+    status: telegramStatus("status").notNull().default("pending"),
+    attempts: smallint("attempts").notNull().default(0),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (t) => [index("telegram_delivery_status_idx").on(t.status, t.createdAt), index("telegram_delivery_person_idx").on(t.personId, t.createdAt)],
+).enableRLS();

@@ -7,10 +7,13 @@ import { messageKey, resolveParams } from "@/modules/platform/notifications/kind
 import { messengerConfig } from "@/modules/platform/notifications/messenger";
 import { getMessengerStatus } from "@/modules/platform/notifications/messenger-links";
 import { vapidPublicKey } from "@/modules/platform/notifications/push";
+import { telegramConfig } from "@/modules/platform/notifications/telegram";
+import { getTelegramStatus, type TelegramStatus } from "@/modules/platform/notifications/telegram-links";
 import { getPreferences, listNotifications, listPushSubscriptions, NOTIFICATIONS_PAGE_SIZE } from "@/modules/platform/notifications/service";
 import { MarkAllReadButton, OpenNotificationButton, PreferencesForm } from "@/modules/platform/notifications/ui/notification-centre";
 import { MessengerLink } from "@/modules/platform/notifications/ui/messenger-link";
 import { PushToggle } from "@/modules/platform/notifications/ui/push-toggle";
+import { TelegramLink } from "@/modules/platform/notifications/ui/telegram-link";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("notifications");
@@ -20,7 +23,7 @@ export default async function NotificationsPage(props: PageProps<"/notifications
   const query = await props.searchParams;
   const page = Number.parseInt(typeof query.page === "string" ? query.page : "1", 10) || 1;
 
-  const [t, anyText, format, { rows, total }, preferences, devices, messenger] = await Promise.all([
+  const [t, anyText, format, { rows, total }, preferences, devices, messenger, telegram] = await Promise.all([
     getTranslations("notifications"),
     getTranslations(),
     getFormatter(),
@@ -28,6 +31,7 @@ export default async function NotificationsPage(props: PageProps<"/notifications
     getPreferences(user.person.id),
     listPushSubscriptions(user.person.id),
     getMessengerStatus(user.person.id),
+    getTelegramStatus(user.person.id),
   ]);
   const pageCount = Math.max(1, Math.ceil(total / NOTIFICATIONS_PAGE_SIZE));
   const now = new Date();
@@ -89,14 +93,17 @@ export default async function NotificationsPage(props: PageProps<"/notifications
       ) : null}
 
       <PushToggle vapidPublicKey={vapidPublicKey()} personId={user.person.id} deviceCount={devices.length} />
-      <MessengerLink
-        configured={messengerConfig() !== null}
-        status={{
-          link: messenger.link ? { linkedAt: messenger.link.linkedAt.toISOString(), lastSuccessAt: messenger.link.lastSuccessAt?.toISOString() ?? null } : null,
-          pending: messenger.pending ? { expiresAt: messenger.pending.expiresAt.toISOString(), codeSent: messenger.pending.codeSent } : null,
-        }}
-      />
+      <TelegramLink configured={telegramConfig() !== null} status={serialise(telegram)} />
+      <MessengerLink configured={messengerConfig() !== null} status={serialise(messenger)} />
       <PreferencesForm preferences={preferences} />
     </div>
   );
+}
+
+/** A chat app's link status as the client panel takes it: dates as strings. */
+function serialise(status: TelegramStatus) {
+  return {
+    link: status.link ? { linkedAt: status.link.linkedAt.toISOString(), lastSuccessAt: status.link.lastSuccessAt?.toISOString() ?? null } : null,
+    pending: status.pending ? { expiresAt: status.pending.expiresAt.toISOString(), codeSent: status.pending.codeSent } : null,
+  };
 }

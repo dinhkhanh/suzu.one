@@ -1043,6 +1043,10 @@
       "security_messenger_linked": {
         "title": "Messenger was linked to your account",
         "body": "A Messenger account was just linked to receive your notifications. If this wasn't you, unlink it now on the Notifications page."
+      },
+      "security_telegram_linked": {
+        "title": "Telegram was linked to your account",
+        "body": "A Telegram account was just linked to receive your notifications. If this wasn't you, unlink it now on the Notifications page."
       }
     },
     "errors": {
@@ -1051,7 +1055,10 @@
       "generic": "Something went wrong. Please try again.",
       "messenger_no_pending": "There is no connection waiting for a code. Click Connect Messenger and open the link first.",
       "messenger_wrong_code": "That code is wrong. Check the latest message from SuZu One in Messenger.",
-      "messenger_too_many_attempts": "Too many wrong codes. Please start connecting again."
+      "messenger_too_many_attempts": "Too many wrong codes. Please start connecting again.",
+      "telegram_no_pending": "There is no connection waiting for a code. Click Connect Telegram and press Start in the bot first.",
+      "telegram_wrong_code": "That code is wrong. Check the latest message from the SuZu One bot in Telegram.",
+      "telegram_too_many_attempts": "Too many wrong codes. Please start connecting again."
     },
     "push": {
       "title": "Push notifications on this device",
@@ -1107,6 +1114,37 @@
       "generic": {
         "title": "You have a new notification: {category}",
         "body": "Open SuZu One to see the details."
+      }
+    },
+    "telegram": {
+      "title": "Get notifications on Telegram",
+      "notConfigured": "Telegram is not configured on this server.",
+      "off": "Get your notifications on Telegram — useful when browser push doesn't arrive. Messages pass through Telegram's servers, so notices about pay, HR, reviews, recruitment and security only say \"you have something new\"; the details are shown only after you sign in. Messages can't be forwarded or saved.",
+      "rule": "Telegram delivers the categories where you turned on the \"Push\" column under Notification preferences.",
+      "connect": "Connect Telegram",
+      "step1": "1. Open the SuZu One bot on Telegram and press Start.",
+      "openLink": "Open Telegram",
+      "step2": "2. Enter the 6-digit code the bot just sent you.",
+      "codeLabel": "Verification code",
+      "confirm": "Confirm",
+      "expires": "The link expires at {time}.",
+      "waitingCode": "A code was sent to Telegram. Enter it to finish.",
+      "linked": "Telegram connected since {date}.",
+      "lastSuccess": "Last delivered: {date}.",
+      "unlink": "Unlink",
+      "stopHint": "You can also send /stop to the bot to stop receiving.",
+      "test": "Send a test",
+      "testSent": "Test sent to Telegram.",
+      "testSimulated": "Recorded — this server only simulates Telegram.",
+      "testNotSent": "Couldn't send yet. Please try again later.",
+      "failed": "That didn't work. Please try again.",
+      "bot": {
+        "code": "Your SuZu One verification code: {code}\nEnter it on the SuZu One Notifications page within {minutes} minutes. If you didn't ask for this, ignore this message — nobody else can use this code.",
+        "linkInvalid": "This connect link is no longer valid. Open SuZu One → Notifications → Connect Telegram for a new one.",
+        "linked": "Connected. SuZu One will now send your notifications here. Send /stop at any time to stop.",
+        "stopped": "Notifications to this Telegram account have stopped. You can connect again in SuZu One.",
+        "notLinked": "This is SuZu One's automated notification bot. This Telegram account isn't connected — connect it in SuZu One → Notifications.",
+        "help": "This is SuZu One's automated notification bot: it only sends notifications and doesn't answer questions. Open SuZu One for details. Send /stop to stop receiving."
       }
     }
   },

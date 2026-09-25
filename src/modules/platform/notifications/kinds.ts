@@ -10,50 +10,51 @@ export type EmailChannel = (typeof EMAIL_CHANNELS)[number];
 export type ChannelChoice = { inApp: boolean; email: EmailChannel; /** Web push to the devices the person subscribed. */ push: boolean };
 
 /**
- * How much of a notification may go through Messenger. Unlike web push, whose payload is encrypted
- * for the device, a Page's messages are readable by Meta and sit in a chat history that outlives
- * the job: "full" sends the title and the line; "generic" sends only "something new about <the
- * category>" and the link, and the words stay behind the sign-in. Categories that name other
- * people's HR facts, roles, pay, reviews or candidates are generic.
+ * How much of a notification may go through a chat app (Messenger, Telegram). Unlike web push,
+ * whose payload is encrypted for the device, a bot's messages are readable by Meta or Telegram and
+ * sit in a chat history that outlives the job: "full" sends the title and the line; "generic"
+ * sends only "something new about <the category>" and the link, and the words stay behind the
+ * sign-in. Categories that name other people's HR facts, roles, pay, reviews or candidates are
+ * generic.
  */
-export type MessengerDetail = "full" | "generic";
+export type ThirdPartyDetail = "full" | "generic";
 
-export const CATEGORY_DEFINITIONS: Record<Category, { defaults: ChannelChoice; /** Cannot be turned down by the recipient. */ mandatory: boolean; messenger: MessengerDetail }> = {
-  security: { defaults: { inApp: true, email: "instant", push: true }, mandatory: true, messenger: "generic" },
-  system: { defaults: { inApp: true, email: "instant", push: false }, mandatory: false, messenger: "full" },
+export const CATEGORY_DEFINITIONS: Record<Category, { defaults: ChannelChoice; /** Cannot be turned down by the recipient. */ mandatory: boolean; thirdParty: ThirdPartyDetail }> = {
+  security: { defaults: { inApp: true, email: "instant", push: true }, mandatory: true, thirdParty: "generic" },
+  system: { defaults: { inApp: true, email: "instant", push: false }, mandatory: false, thirdParty: "full" },
   // Deadlines HR and managers act on: contracts running out, probation ending, documents expiring.
-  hr: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false, messenger: "generic" },
+  hr: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false, thirdParty: "generic" },
   // A request waits for you, or yours was answered: worth an email straight away.
-  approvals: { defaults: { inApp: true, email: "instant", push: true }, mandatory: false, messenger: "full" },
+  approvals: { defaults: { inApp: true, email: "instant", push: true }, mandatory: false, thirdParty: "full" },
   // Work handed to you. In the app at once; by email once a day, so a checklist is one email.
-  tasks: { defaults: { inApp: true, email: "digest", push: true }, mandatory: false, messenger: "full" },
+  tasks: { defaults: { inApp: true, email: "digest", push: true }, mandatory: false, thirdParty: "full" },
   // The monthly timesheet: ready to confirm, waiting for the manager, sent back, corrected after the lock.
-  attendance: { defaults: { inApp: true, email: "digest", push: true }, mandatory: false, messenger: "full" },
+  attendance: { defaults: { inApp: true, email: "digest", push: true }, mandatory: false, thirdParty: "full" },
   // Compliance obligations: assigned, coming due, overdue, escalated (FR-OPS-08).
-  ops: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false, messenger: "full" },
+  ops: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false, thirdParty: "full" },
   // Knowledge base: a policy to read and confirm, the reminders, a page whose review date has passed.
-  kb: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false, messenger: "full" },
+  kb: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false, thirdParty: "full" },
   // Announcements and kudos (Phase 4): in the app and on the phone at once, by email once a day.
-  comms: { defaults: { inApp: true, email: "digest", push: true }, mandatory: false, messenger: "full" },
+  comms: { defaults: { inApp: true, email: "digest", push: true }, mandatory: false, thirdParty: "full" },
   // Payroll (Phase 5): something to decide or a payslip to read. Never an amount — a notification
   // is read on lock screens and in mailboxes.
-  payroll: { defaults: { inApp: true, email: "instant", push: true }, mandatory: false, messenger: "generic" },
+  payroll: { defaults: { inApp: true, email: "instant", push: true }, mandatory: false, thirdParty: "generic" },
   // Recruitment (Phase 7): a head was approved, an interview is on, a scorecard is waiting. Time
   // matters in hiring — a candidate who waits three days for an answer takes the other offer — so
   // these go out instantly. Never a figure: a salary expectation is compensation-tier.
-  recruit: { defaults: { inApp: true, email: "instant", push: true }, mandatory: false, messenger: "generic" },
+  recruit: { defaults: { inApp: true, email: "instant", push: true }, mandatory: false, thirdParty: "generic" },
   // Performance (Phase 8): somebody asked you for 360 feedback, your review is out, your yearly
   // result is published. A deadline to meet or a page to read — never a score and never an amount:
   // the figure is personal tier and the bonus it drives is compensation.
-  performance: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false, messenger: "generic" },
+  performance: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false, thirdParty: "generic" },
   // Projects (Phase 10): a status update, a milestone coming due, a budget or quota running out,
   // a change request or acceptance to act on, a billing item for finance. Never a fee or an amount.
-  projects: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false, messenger: "full" },
+  projects: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false, thirdParty: "full" },
   // The day (Phase 10): plan and report reminders, a lead's comment on a report, timesheets.
   // On the phone, not in the mailbox: a reminder by email tomorrow is no reminder.
-  daily: { defaults: { inApp: true, email: "off", push: true }, mandatory: false, messenger: "full" },
+  daily: { defaults: { inApp: true, email: "off", push: true }, mandatory: false, thirdParty: "full" },
   // Feedback about the app: a new item for whoever triages it, a reply for whoever sent it.
-  feedback: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false, messenger: "full" },
+  feedback: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false, thirdParty: "full" },
 };
 
 export const KINDS = {
@@ -62,6 +63,8 @@ export const KINDS = {
   "security.role_revoked": "security",
   // A Messenger account was linked to yours (docs/MESSENGER.md): if it was not you, unlink it.
   "security.messenger_linked": "security",
+  // The same for a Telegram chat (docs/TELEGRAM.md).
+  "security.telegram_linked": "security",
   "system.job_failed": "system",
   "system.rule_proposed": "system",
   "hr.contract_expiring": "hr",
