@@ -69,7 +69,7 @@ export default async function NotificationsPage(props: PageProps<"/notifications
         </nav>
       ) : null}
 
-      <PushToggle vapidPublicKey={vapidPublicKey()} deviceCount={devices.length} />
+      <PushToggle vapidPublicKey={vapidPublicKey()} personId={user.person.id} deviceCount={devices.length} />
       <PreferencesForm preferences={preferences} />
     </div>
   );

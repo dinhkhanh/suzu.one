@@ -219,9 +219,10 @@
     @apply flex min-h-0 flex-1 overflow-hidden bg-background md:rounded-2xl;
     box-shadow: var(--shell-shadow);
   }
-  /* A sidebar row: icon, label, and a quiet count pushed to the end. */
+  /* A sidebar row: icon, label, and what waits there as a filled pill at the end — the one
+     place the sidebar raises its voice, so a number is seen before it is read. */
   .nav-row {
-    @apply flex h-8 items-center gap-2.5 rounded-lg px-2 text-sm font-medium text-foreground/85 transition-colors hover:bg-sidebar-accent hover:text-foreground [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground;
+    @apply relative flex h-8 items-center gap-2.5 rounded-lg px-2 text-sm font-medium text-foreground/85 transition-colors hover:bg-sidebar-accent hover:text-foreground [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground;
   }
   .nav-row[aria-current="page"] {
     @apply bg-sidebar-accent text-foreground [&>svg]:text-primary;
@@ -230,7 +231,16 @@
     @apply px-2 pt-4 pb-1 text-xs font-medium text-faint;
   }
   .nav-count {
-    @apply ml-auto shrink-0 text-xs font-normal text-faint tabular-nums;
+    @apply ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[0.6875rem] leading-none font-semibold text-primary-foreground tabular-nums;
+  }
+  /* The same count when the sidebar is a rail of icons: a small pill on the icon's shoulder,
+     ringed in the sidebar's own colour so it stands off the icon. */
+  .nav-count-rail {
+    @apply absolute top-0.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[0.625rem] leading-none font-semibold text-primary-foreground tabular-nums ring-2 ring-sidebar;
+  }
+  /* The phone's menu button when anything waits behind the drawer. */
+  .nav-menu-dot {
+    @apply absolute top-1 right-1 size-2 rounded-full bg-primary ring-2 ring-background;
   }
   /* The row of filters and actions over a list. Aligned on the bottom edge: some of the controls
      in it carry a label above them, and the plain ones have to line up with those. */

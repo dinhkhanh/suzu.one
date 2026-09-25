@@ -5,19 +5,12 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { sendTestPushAction, subscribePushAction, unsubscribePushAction } from "../actions";
-
-function keyBytes(base64url: string): Uint8Array<ArrayBuffer> {
-  const base64 = base64url.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(base64url.length / 4) * 4, "=");
-  const raw = atob(base64);
-  const bytes = new Uint8Array(new ArrayBuffer(raw.length));
-  for (let index = 0; index < raw.length; index++) bytes[index] = raw.charCodeAt(index);
-  return bytes;
-}
+import { sendTestPushAction, unsubscribePushAction } from "../actions";
+import { forgetRegistration, pushSupported, subscribeDevice } from "./push-client";
 
 type State = "checking" | "unsupported" | "denied" | "off" | "on";
 
-export function PushToggle({ vapidPublicKey, deviceCount }: { vapidPublicKey: string | null; /** Devices of this person the server knows, this one or others. */ deviceCount: number }) {
+export function PushToggle({ vapidPublicKey, personId, deviceCount }: { vapidPublicKey: string | null; personId: string; /** Devices of this person the server knows, this one or others. */ deviceCount: number }) {
   const t = useTranslations("notifications.push");
   const router = useRouter();
   const [state, setState] = useState<State>("checking");
@@ -27,7 +20,7 @@ export function PushToggle({ vapidPublicKey, deviceCount }: { vapidPublicKey: st
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return "unsupported" as const;
+      if (!pushSupported()) return "unsupported" as const;
       if (Notification.permission === "denied") return "denied" as const;
       const registration = await navigator.serviceWorker.ready;
       return (await registration.pushManager.getSubscription()) ? ("on" as const) : ("off" as const);
@@ -44,13 +37,7 @@ export function PushToggle({ vapidPublicKey, deviceCount }: { vapidPublicKey: st
     startTransition(async () => {
       setMessage(null);
       if ((await Notification.requestPermission()) !== "granted") return setState("denied");
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(vapidPublicKey) });
-      const result = await subscribePushAction(subscription.toJSON());
-      if (!result.ok) {
-        await subscription.unsubscribe();
-        return setMessage(t("failed"));
-      }
+      if (!(await subscribeDevice(vapidPublicKey, personId))) return setMessage(t("failed"));
       setState("on");
       router.refresh();
     });
@@ -65,6 +52,7 @@ export function PushToggle({ vapidPublicKey, deviceCount }: { vapidPublicKey: st
         await unsubscribePushAction({ endpoint: subscription.endpoint });
         await subscription.unsubscribe();
       }
+      forgetRegistration();
       setState("off");
       router.refresh();
     });

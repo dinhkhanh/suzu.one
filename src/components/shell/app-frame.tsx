@@ -82,8 +82,10 @@ function Row({
       {collapsed ? null : (
         <span className="min-w-0 flex-1 truncate">{row.label}</span>
       )}
-      {!collapsed && row.count ? (
-        <span className="nav-count">{row.count > 99 ? "99+" : row.count}</span>
+      {row.count ? (
+        <span className={collapsed ? "nav-count-rail" : "nav-count"}>
+          {row.count > 99 ? "99+" : row.count}
+        </span>
       ) : null}
     </>
   );
@@ -317,9 +319,11 @@ export function AppFrame({
               type="button"
               onClick={() => setOpen(true)}
               aria-label={labels.menu}
-              className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted md:hidden"
+              className="relative flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted md:hidden"
             >
               <Menu className="size-4" aria-hidden />
+              {/* The drawer is shut on a phone: the button says something waits in it. */}
+              {pinned.some((row) => row.count) ? <span className="nav-menu-dot" aria-hidden /> : null}
             </button>
             {collapsed ? (
               <button
