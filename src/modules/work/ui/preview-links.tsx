@@ -65,7 +65,7 @@ export function PreviewLinkPanel({ taskId, links, versions, canManage }: { taskI
       const result = await createPreviewLinkAction({ taskId, ...input });
       setErrorKey(errorKeyOf(result));
       if (!result.ok) return;
-      setFresh({ url: `${window.location.origin}${result.data.path}`, expiresAt: result.data.expiresAt });
+      setFresh({ url: result.data.url, expiresAt: result.data.expiresAt });
       setCopied(false);
       setOpen(false);
       router.refresh();

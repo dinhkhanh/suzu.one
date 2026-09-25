@@ -10830,6 +10830,36 @@
     "feedbackInbox": "Feedback inbox",
     "feedbackItem": "Feedback"
   },
+  "portfolio": {
+    "title": "SuZu Group",
+    "description": "SuZu Group — marketing and creative: brand strategy, content, photo and video production.",
+    "eyebrow": "SuZu Group",
+    "headline": "We tell your brand's story",
+    "lead": "SuZu Group is a marketing and creative team that works with brands from strategy to the finished piece: content, imagery, video and campaigns.",
+    "servicesTitle": "What we do",
+    "services": [
+      {
+        "title": "Brand strategy",
+        "body": "Positioning, messaging and communication plans for every stage of a brand."
+      },
+      {
+        "title": "Content and social",
+        "body": "Everyday content, channel management and campaigns across social platforms."
+      },
+      {
+        "title": "Photo and video production",
+        "body": "Shooting, editing, design and post-production — from script to final delivery."
+      },
+      {
+        "title": "Campaigns and performance",
+        "body": "Launching, measuring and tuning campaigns so every part of the budget earns its keep."
+      }
+    ],
+    "careersTitle": "Work with us",
+    "careersBody": "We are always looking for talented people who love the craft.",
+    "careersLink": "See open roles",
+    "footer": "© SuZu Group"
+  },
   "site": {
     "description": "SuZu One is the internal operations platform of SuZu Group: HR records, attendance, leave, payroll, work and projects, knowledge and announcements, in one place for the company's own staff.",
     "eyebrow": "For SuZu Group staff only",

@@ -92,6 +92,8 @@ describe("which surface a path is", () => {
     expect(surfaceForPath("/")).toBe("site");
     expect(surfaceForPath("/privacy")).toBe("site");
     expect(surfaceForPath("/terms")).toBe("site");
+    // The public domain's own home page (src/lib/site-routing.ts).
+    expect(surfaceForPath("/portfolio")).toBe("portfolio");
   });
 
   it("calls everything else the app, and nothing else public", () => {
@@ -104,11 +106,16 @@ describe("which surface a path is", () => {
   it("is looked for on every path a page can be served at", () => {
     // Next's matcher is a plain pattern over the pathname here, with no parameters in it.
     const matcher = new RegExp(`^${config.matcher[0]}$`);
-    for (const path of ["/", "/today", "/preview/abc", "/preview/anything.png", "/careers", "/careers/video-editor", "/sign-in", "/privacy", "/terms", "/api/cronies"]) {
+    for (const path of ["/", "/today", "/preview/abc", "/preview/anything.png", "/careers", "/careers/video-editor", "/sign-in", "/privacy", "/terms", "/portfolio", "/api/cronies"]) {
       expect(matcher.test(path), path).toBe(true);
     }
-    // Files that are served as they are, and the two routes that authenticate for themselves.
-    for (const path of ["/_next/static/chunk.js", "/_next/image", "/icons/icon-192.png", "/favicon.ico", "/sw.js", "/offline.html", "/manifest.webmanifest", "/next.svg", "/api/auth/callback", "/api/cron/work-preview-sweep"]) {
+    // The installable app's files and the two routes that authenticate for themselves come through
+    // too, so the public domain can refuse them; the app's domain lets them past (site-routing.ts).
+    for (const path of ["/sw.js", "/offline.html", "/manifest.webmanifest", "/api/auth/callback", "/api/cron/work-preview-sweep"]) {
+      expect(matcher.test(path), path).toBe(true);
+    }
+    // Files that are served as they are.
+    for (const path of ["/_next/static/chunk.js", "/_next/image", "/icons/icon-192.png", "/favicon.ico", "/robots.txt", "/next.svg"]) {
       expect(matcher.test(path), path).toBe(false);
     }
   });
@@ -138,6 +145,12 @@ describe("which words a request is handed", () => {
     expect(messages.legal).toEqual(catalogue.legal);
   });
 
+  it("gives a visitor to the public domain's home page its words and nothing of the app", async () => {
+    const messages = await messagesFor("portfolio", false);
+    expect(Object.keys(messages).sort()).toEqual(["portfolio", THEME]);
+    expect(messages.portfolio).toEqual(catalogue.portfolio);
+  });
+
   it("hands the whole catalogue only to the app's own pages", async () => {
     const app = await messagesFor("app");
     expect(Object.keys(app)).toEqual(Object.keys(catalogue));
@@ -153,7 +166,7 @@ describe("which words a request is handed", () => {
     // words wait for a session that exists.
     const messages = await messagesFor("app", false);
     for (const namespace of INTERNAL.filter((name) => name !== "recruit")) expect(messages[namespace], namespace).toBeUndefined();
-    expect(Object.keys(messages).sort()).toEqual(["app", "legal", "preview", "recruit", "signIn", "site", THEME]);
+    expect(Object.keys(messages).sort()).toEqual(["app", "legal", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
     // Recruitment only as far as the careers pages: no pipelines, no candidates, no scorecards.
     expect(Object.keys(messages.recruit as object).sort()).toEqual(["assignment", "careers"]);
     // And the page they were on is a redirect to sign-in, whose words are among the ones left.
@@ -164,7 +177,7 @@ describe("which words a request is handed", () => {
     for (const marker of [null, "", "unknown", "APP", "app-ish"]) {
       const messages = await messagesFor(marker);
       expect(JSON.stringify(messages), String(marker)).not.toContain('"payroll":');
-      expect(Object.keys(messages).sort(), String(marker)).toEqual(["app", "legal", "preview", "recruit", "signIn", "site", THEME]);
+      expect(Object.keys(messages).sort(), String(marker)).toEqual(["app", "legal", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
     }
   });
 

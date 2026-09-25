@@ -16,6 +16,11 @@ const schema = z.object({
   DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
   BETTER_AUTH_SECRET: z.string().min(32, "generate with: openssl rand -base64 32"),
   BETTER_AUTH_URL: z.url(),
+  // The outward-facing domain (e.g. https://suzu.vn) that serves only the client review links
+  // (/preview), the careers pages (/careers) and a company home page of its own, so links handed to
+  // clients and candidates never name the internal app's domain. Unset = one domain serves
+  // everything, as before, and the company home page is at /portfolio (src/lib/site.ts).
+  PUBLIC_SITE_URL: z.url().optional(),
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   ALLOWED_WORKSPACE_DOMAINS: z.string().default("suzu.vn,suzu.group"),

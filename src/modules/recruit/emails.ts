@@ -13,7 +13,7 @@ import { asc, eq } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { cached, invalidate } from "@/lib/cache";
 import { db, schema } from "@/lib/db";
-import { env } from "@/lib/env";
+import { publicOrigin } from "@/lib/site";
 import { queueRawEmail } from "@/modules/platform/notifications/service";
 import type { RecruitEmailKind } from "./enums";
 import { emailTemplateProblems, renderEmail, type RenderedEmail } from "./engine/email-template";
@@ -89,7 +89,7 @@ async function contextFor(applicationId: string, senderName: string): Promise<{ 
       company_name: entity?.shortName ?? "",
       stage_name: stage?.name ?? "",
       sender_name: senderName,
-      careers_url: `${env().BETTER_AUTH_URL.replace(/\/$/, "")}/careers`,
+      careers_url: `${publicOrigin()}/careers`,
     },
   };
 }

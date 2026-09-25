@@ -2,8 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
+import { headers } from "next/headers";
 import { ServiceWorker } from "@/components/shell/service-worker";
 import { VercelInsights } from "@/components/shell/vercel-insights";
+import { PUBLIC_SITE_HEADER } from "@/i18n/surfaces";
 import { themeAttribute } from "@/theme/config";
 import { getTheme } from "@/theme/server";
 import "./globals.css";
@@ -12,14 +14,24 @@ import "./globals.css";
 const sans = Inter({ variable: "--font-sans", subsets: ["latin", "vietnamese"] });
 const mono = JetBrains_Mono({ variable: "--font-mono", subsets: ["latin", "vietnamese"] });
 
-export const metadata: Metadata = {
-  title: { default: "SuZu One", template: "%s · SuZu One" },
-  description: "SuZu Group internal operations platform",
-  robots: { index: false, follow: false },
-  // Installed on a phone: the home-screen name and icon on iOS (Android reads the manifest).
-  appleWebApp: { capable: true, title: "SuZu One", statusBarStyle: "default" },
-  icons: { icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }], apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }] },
-};
+const icons: Metadata["icons"] = { icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }], apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }] };
+
+/** Whether the proxy put this request on the public domain (`src/lib/site-routing.ts`). */
+const onPublicSite = async () => (await headers()).get(PUBLIC_SITE_HEADER) === "1";
+
+export async function generateMetadata(): Promise<Metadata> {
+  // The public domain never names the internal app: not in a tab title, a description, the web
+  // manifest or a home-screen name. Its pages set their own titles on top of this.
+  if (await onPublicSite()) return { title: { default: "SuZu Group", template: "%s · SuZu Group" }, robots: { index: false, follow: false }, manifest: null, icons };
+  return {
+    title: { default: "SuZu One", template: "%s · SuZu One" },
+    description: "SuZu Group internal operations platform",
+    robots: { index: false, follow: false },
+    // Installed on a phone: the home-screen name and icon on iOS (Android reads the manifest).
+    appleWebApp: { capable: true, title: "SuZu One", statusBarStyle: "default" },
+    icons,
+  };
+}
 
 // The browser chrome around the page matches the desk (`--canvas`): the device's own setting when
 // the reader follows it, otherwise the one they chose.
@@ -43,11 +55,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const locale = await getLocale();
   // The reader's theme rides on <html> (see globals.css); absent, the device's setting decides.
   const theme = themeAttribute(await getTheme());
+  const publicSite = await onPublicSite();
   return (
     <html lang={locale} data-theme={theme} className={`${sans.variable} ${mono.variable} h-full antialiased`}>
       <body className="min-h-full bg-background text-foreground">
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
-        <ServiceWorker />
+        {/* Nothing on the public domain is the installable app: no worker outlives a visit there. */}
+        {publicSite ? null : <ServiceWorker />}
         <VercelInsights />
       </body>
     </html>

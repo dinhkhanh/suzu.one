@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
+// The public domain (PUBLIC_SITE_URL, src/lib/site-routing.ts): the company's front door, so the
+// blanket noindex below is not said there — its home page and careers pages are meant to be found,
+// and the review links carry their own. Read here because next.config sits outside `env()`.
+const publicSiteHost = process.env.PUBLIC_SITE_URL ? new URL(process.env.PUBLIC_SITE_URL).hostname : null;
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Next logs every server-function call in development **with its arguments**, and payroll
@@ -28,7 +33,11 @@ const nextConfig: NextConfig = {
       // <meta> tag. `/careers` is left to its pages' own tags — the listing and the adverts are
       // indexable, the application forms and thank-you pages are not. `robots.txt` lets crawlers
       // in on purpose: one that is kept out never reads this.
-      { source: "/:path((?!careers(?:/|$)).*)", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      {
+        source: "/:path((?!careers(?:/|$)).*)",
+        ...(publicSiteHost ? { missing: [{ type: "host" as const, value: publicSiteHost }] } : {}),
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
       // The service worker: never cached (a fix must reach every phone at once), may control the
       // whole origin, and may load nothing but this origin's own files.
       {

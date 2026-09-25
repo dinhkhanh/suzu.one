@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
-import { headers } from "next/headers";
+import { publicOrigin } from "@/lib/site";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listAssignments } from "@/modules/recruit/assignments";
 import { listOffersOfApplication } from "@/modules/recruit/offers";
@@ -34,10 +34,7 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
   // The offers on this application, and whether this reader may draft another one.
   const mayOffer = canMakeOffer(user.principal, { entityId: view.opening.entityId, departmentId: view.opening.departmentId, teamId: view.opening.teamId });
   // The caller has already been checked by `getApplicationView`; the panels are the same audience.
-  // The take-home link is absolute so a recruiter can paste it straight into an email. Read from
-  // the request, not from configuration: on a laptop it is localhost, in production it is the
-  // deployment's own host, and neither should be guessed.
-  const [t, tInterview, format, tAssignment, tOffer, offers, interviews, assignments, options, emailTemplates, requestHeaders] = await Promise.all([
+  const [t, tInterview, format, tAssignment, tOffer, offers, interviews, assignments, options, emailTemplates] = await Promise.all([
     getTranslations("recruit"),
     getTranslations("recruit.interview"),
     getFormatter(),
@@ -48,9 +45,10 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
     listAssignments(applicationId),
     view.canAct ? interviewerOptions(view.opening.id) : [],
     view.canAct ? listEmailTemplates() : [],
-    headers(),
   ]);
-  const origin = `${requestHeaders.get("x-forwarded-proto") ?? "http"}://${requestHeaders.get("host") ?? ""}`;
+  // The take-home link is absolute so a recruiter can paste it straight into an email, and names
+  // the public domain when there is one (PUBLIC_SITE_URL), whichever domain the recruiter is on.
+  const origin = publicOrigin();
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">

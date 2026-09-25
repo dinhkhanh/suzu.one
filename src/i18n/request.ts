@@ -29,7 +29,7 @@ export default getRequestConfig(async () => {
   // Only the app's own pages look for the person: the public ones never hand out more than their own words.
   const user = surface ? null : await getCurrentUser();
   const stored = (await cookies()).get(LOCALE_COOKIE)?.value;
-  const locale = user?.preferences.locale ?? (isLocale(stored) ? stored : requestHeaders.get(SURFACE_HEADER) === "site" ? browserLocale(requestHeaders) : DEFAULT_LOCALE);
+  const locale = user?.preferences.locale ?? (isLocale(stored) ? stored : BROWSER_LOCALE_SURFACES.has(requestHeaders.get(SURFACE_HEADER) ?? "") ? browserLocale(requestHeaders) : DEFAULT_LOCALE);
   const all: Record<string, unknown> = (await import(`../../messages/${locale}.json`)).default;
   // A signed-out visitor on an internal path is on their way to the sign-in page: the public words
   // are the right ones for what they are about to be shown, and the only ones they may have.
@@ -40,6 +40,9 @@ export default getRequestConfig(async () => {
     messages: namespaces ? pickMessages(all, namespaces) : all,
   };
 });
+
+/** The surfaces whose first-time readers are strangers, so their browser's language decides. */
+const BROWSER_LOCALE_SURFACES = new Set(["site", "portfolio"]);
 
 /** Vietnamese for a browser that puts Vietnamese first, English for any other it names. */
 function browserLocale(requestHeaders: Headers): Locale {

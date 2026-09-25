@@ -10830,6 +10830,36 @@
     "feedbackInbox": "Hộp thư góp ý",
     "feedbackItem": "Góp ý"
   },
+  "portfolio": {
+    "title": "SuZu Group",
+    "description": "SuZu Group — marketing và sáng tạo: chiến lược thương hiệu, nội dung, sản xuất hình ảnh và video.",
+    "eyebrow": "SuZu Group",
+    "headline": "Chúng tôi kể câu chuyện của thương hiệu bạn",
+    "lead": "SuZu Group là đội ngũ marketing và sáng tạo, đồng hành cùng các thương hiệu từ chiến lược đến sản phẩm cuối cùng: nội dung, hình ảnh, video và chiến dịch.",
+    "servicesTitle": "Chúng tôi làm gì",
+    "services": [
+      {
+        "title": "Chiến lược thương hiệu",
+        "body": "Định vị, thông điệp và kế hoạch truyền thông cho từng giai đoạn của thương hiệu."
+      },
+      {
+        "title": "Nội dung và mạng xã hội",
+        "body": "Nội dung hằng ngày, quản lý kênh và chiến dịch trên các nền tảng mạng xã hội."
+      },
+      {
+        "title": "Sản xuất hình ảnh và video",
+        "body": "Chụp ảnh, quay dựng, thiết kế và hậu kỳ — từ kịch bản đến bản giao cuối."
+      },
+      {
+        "title": "Chiến dịch và hiệu quả",
+        "body": "Triển khai, đo lường và tối ưu chiến dịch để mỗi đồng ngân sách đều có kết quả."
+      }
+    ],
+    "careersTitle": "Làm việc cùng chúng tôi",
+    "careersBody": "Chúng tôi luôn tìm người giỏi và yêu nghề.",
+    "careersLink": "Xem vị trí đang tuyển",
+    "footer": "© SuZu Group"
+  },
   "site": {
     "description": "SuZu One là nền tảng vận hành nội bộ của SuZu Group: hồ sơ nhân sự, chấm công, nghỉ phép, tiền lương, công việc và dự án, tri thức và thông báo — ở một nơi, dành cho nhân sự của công ty.",
     "eyebrow": "Chỉ dành cho nhân sự SuZu Group",

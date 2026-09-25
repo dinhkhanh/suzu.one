@@ -27,6 +27,13 @@
 /** The header the proxy writes the surface it read off the path onto. Set on every request it sees. */
 export const SURFACE_HEADER = "x-surface";
 
+/**
+ * The header the proxy writes "1" onto for a request on the public domain (PUBLIC_SITE_URL, see
+ * `src/lib/site-routing.ts`) and "0" otherwise — always written, never taken from the caller. The
+ * root layout reads it to leave out everything that names the internal app.
+ */
+export const PUBLIC_SITE_HEADER = "x-public-site";
+
 /** The surface every page inside the company runs on: the whole catalogue, to a signed-in browser. */
 export const APP_SURFACE = "app";
 
@@ -45,6 +52,8 @@ export const PUBLIC_SURFACES: readonly Surface[] = [
   { prefix: "/preview", name: "preview", namespaces: ["preview", "theme"] },
   /** The careers page and the take-home brief (FR-REC-03). */
   { prefix: "/careers", name: "careers", namespaces: ["recruit.careers", "recruit.assignment", "theme"] },
+  /** The public domain's own home page: the company, not the app (`src/lib/site-routing.ts`). */
+  { prefix: "/portfolio", name: "portfolio", namespaces: ["portfolio", "theme"] },
   /** Nobody is signed in here either, by definition. */
   { prefix: "/sign-in", name: "signIn", namespaces: ["app", "signIn", "theme"] },
   /** The home page a signed-out visitor sees; a signed-in one is sent on to the app. */

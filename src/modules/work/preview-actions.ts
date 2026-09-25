@@ -10,6 +10,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
+import { publicOrigin } from "@/lib/site";
 import { PREVIEW_DEFAULT_DAYS, PREVIEW_LABEL_MAX, PREVIEW_MAX_DAYS, PREVIEW_MESSAGE_MAX, PREVIEW_MIN_DAYS } from "./engine/preview";
 import { canManagePreviewLinks, canRevokePreviewLink } from "./preview-policy";
 import { createPreviewLink, findPreviewLink, revokePreviewLink } from "./preview";
@@ -42,7 +43,8 @@ const createPipeline = createAction({
     revalidatePath(`/work/tasks/${input.taskId}`);
     return {
       // The one and only copy of the link, on its way to the person who will send it.
-      data: { path, expiresAt: link.expiresAt.toISOString() },
+      // On the public domain when there is one: a client never learns the app's address.
+      data: { url: `${publicOrigin()}${path}`, expiresAt: link.expiresAt.toISOString() },
       audit: {
         resource: { type: "task:work", id: loaded.task.id, entityId: loaded.task.entityId },
         summary: `${loaded.task.title}: review link for ${link.label ?? "the client"}`,
