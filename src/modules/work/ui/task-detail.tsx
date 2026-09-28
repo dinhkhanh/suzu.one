@@ -36,7 +36,7 @@ export type DetailTask = {
   contentFormat: string | null;
   labelIds: string[];
   collaboratorIds: string[];
-  checklist: { id: string; text: string; done: boolean }[];
+  checklist: { id: string; text: string; done: boolean; checklistId?: string; checklistName?: string; linkUrl?: string }[];
   links: { id: string; url: string; title: string | null }[];
   /** FR-PJM-10. */
   cycleId?: string | null;
@@ -51,6 +51,10 @@ export type DetailOptions = {
   linkable: { id: string; key: string; title: string }[];
   /** The team's cycles a task may be planned in (FR-PJM-10); the task's own closed one is listed too. */
   cycles?: { id: string; label: string }[];
+  /** The checklist library's active checklists, to add one by hand. */
+  checklists?: { id: string; name: string }[];
+  /** The checklists hooked to the task's current stage; `required` ones hold the task there until ticked. */
+  stageChecklists?: { id: string; name: string; required: boolean }[];
 };
 export type DetailSubtask = { id: string; key: string; title: string; status: string; stateId: string; assigneeName: string | null; dueDate: string | null };
 export type DetailLink = { dependencyId: string; id: string; key: string; title: string; status: string; relation: "blocks" | "blocked_by" | "relates" };
@@ -140,38 +144,7 @@ export function TaskDetailView({ task, options, subtasks, linked, canEdit, canDe
           <textarea name="description" maxLength={10000} defaultValue={task.description ?? ""} disabled={!canEdit} aria-label={t("fields.description")} placeholder={t("descriptionPlaceholder")} className={textareaClass} />
         </form>
 
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("checklist")}</h2>
-          <ul className="flex flex-col gap-1">
-            {task.checklist.map((item) => (
-              <li key={item.id} className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={item.done} disabled={!canEdit || pending} onChange={() => update({ checklist: task.checklist.map((row) => (row.id === item.id ? { ...row, done: !row.done } : row)) })} />
-                <span className={item.done ? "flex-1 text-muted-foreground line-through" : "flex-1"}>{item.text}</span>
-                {canEdit ? (
-                  <button type="button" className="text-xs text-muted-foreground hover:text-destructive" disabled={pending} aria-label={t("remove")} onClick={() => update({ checklist: task.checklist.filter((row) => row.id !== item.id) })}>
-                    ×
-                  </button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-          {canEdit ? (
-            <form
-              className="flex gap-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const form = event.currentTarget;
-                const text = String(new FormData(form).get("text") ?? "").trim();
-                if (text) update({ checklist: [...task.checklist, { id: newId(), text, done: false }] }, () => form.reset());
-              }}
-            >
-              <Input name="text" maxLength={200} placeholder={t("checklistAdd")} aria-label={t("checklistAdd")} />
-              <Button type="submit" size="sm" variant="outline" disabled={pending}>
-                {t("add")}
-              </Button>
-            </form>
-          ) : null}
-        </section>
+        <TaskChecklist items={task.checklist} library={options.checklists ?? []} stage={options.stageChecklists ?? []} canEdit={canEdit} pending={pending} update={update} />
 
         <section className="flex flex-col gap-2">
           <h2 className="text-sm font-medium text-muted-foreground">{t("subtasks")}</h2>
@@ -469,5 +442,122 @@ export function TaskDetailView({ task, options, subtasks, linked, canEdit, canDe
         ) : null}
       </aside>
     </div>
+  );
+}
+
+type ChecklistItem = DetailTask["checklist"][number];
+
+/**
+ * The task's tick-boxes: its own first, then each library checklist it carries under that
+ * checklist's name. A copied box can be ticked, not reworded or taken out one by one; a whole
+ * checklist can go — unless the stage the task is in requires it.
+ */
+function TaskChecklist({ items, library, stage, canEdit, pending, update }: { items: ChecklistItem[]; library: { id: string; name: string }[]; stage: { id: string; name: string; required: boolean }[]; canEdit: boolean; pending: boolean; update: (patch: Record<string, unknown>, after?: () => void) => void }) {
+  const t = useTranslations("work.task");
+  const [adding, setAdding] = useState("");
+  const own = items.filter((item) => !item.checklistId);
+  const groups = [...new Set(items.flatMap((item) => (item.checklistId ? [item.checklistId] : [])))].map((id) => ({ id, items: items.filter((item) => item.checklistId === id) }));
+  const carried = new Set(groups.map((group) => group.id));
+  const required = new Set(stage.filter((hook) => hook.required).map((hook) => hook.id));
+  // A required checklist hooked to the stage after the task arrived: it still has to be added and ticked.
+  const missing = stage.filter((hook) => hook.required && !carried.has(hook.id));
+  const addable = library.filter((list) => !carried.has(list.id));
+  const send = (next: ChecklistItem[], after?: () => void) => update({ checklist: next.map(({ id, text, done }) => ({ id, text, done })) }, after);
+  const toggle = (id: string) => send(items.map((row) => (row.id === id ? { ...row, done: !row.done } : row)));
+
+  const box = (item: ChecklistItem, removable: boolean) => (
+    <li key={item.id} className="flex items-center gap-2 text-sm">
+      <input type="checkbox" checked={item.done} disabled={!canEdit || pending} onChange={() => toggle(item.id)} aria-label={item.text} />
+      <span className={item.done ? "flex-1 text-muted-foreground line-through" : "flex-1"}>
+        {item.text}
+        {item.linkUrl ? (
+          <a href={item.linkUrl} className="ml-2 text-xs text-muted-foreground underline underline-offset-2">
+            {t("checklistGuide")}
+          </a>
+        ) : null}
+      </span>
+      {canEdit && removable ? (
+        <button type="button" className="text-xs text-muted-foreground hover:text-destructive" disabled={pending} aria-label={t("remove")} onClick={() => send(items.filter((row) => row.id !== item.id))}>
+          ×
+        </button>
+      ) : null}
+    </li>
+  );
+
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-sm font-medium text-muted-foreground">{t("checklist")}</h2>
+      {own.length ? <ul className="flex flex-col gap-1">{own.map((item) => box(item, true))}</ul> : null}
+      {groups.map((group) => {
+        const name = group.items[0].checklistName ?? library.find((list) => list.id === group.id)?.name ?? t("checklistFallback");
+        const done = group.items.filter((item) => item.done).length;
+        return (
+          <div key={group.id} className="flex flex-col gap-1 rounded-lg border p-2.5">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="font-medium">{name}</span>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {done}/{group.items.length}
+              </span>
+              {required.has(group.id) ? <Badge variant={done === group.items.length ? "secondary" : "outline"}>{t("checklistRequired")}</Badge> : null}
+              {canEdit && !required.has(group.id) ? (
+                <button type="button" className="ml-auto text-xs text-muted-foreground hover:text-destructive" disabled={pending} onClick={() => send(items.filter((row) => row.checklistId !== group.id))}>
+                  {t("checklistRemove")}
+                </button>
+              ) : null}
+            </div>
+            <ul className="flex flex-col gap-1">{group.items.map((item) => box(item, false))}</ul>
+          </div>
+        );
+      })}
+      {missing.map((hook) => (
+        <div key={hook.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed p-2.5 text-sm">
+          <span className="flex-1">{t("checklistMissing", { name: hook.name })}</span>
+          {canEdit ? (
+            <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => update({ addChecklistIds: [hook.id] })}>
+              {t("checklistAddThis")}
+            </Button>
+          ) : null}
+        </div>
+      ))}
+      {canEdit ? (
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <form
+            className="flex flex-1 gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = event.currentTarget;
+              const text = String(new FormData(form).get("text") ?? "").trim();
+              if (text) send([...items, { id: newId(), text, done: false }], () => form.reset());
+            }}
+          >
+            <Input name="text" maxLength={200} placeholder={t("checklistAdd")} aria-label={t("checklistAdd")} />
+            <Button type="submit" size="sm" variant="outline" disabled={pending}>
+              {t("add")}
+            </Button>
+          </form>
+          {addable.length ? (
+            <form
+              className="flex gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (adding) update({ addChecklistIds: [adding] }, () => setAdding(""));
+              }}
+            >
+              <Select value={adding} onChange={(event) => setAdding(event.target.value)} aria-label={t("checklistFromLibrary")} className="w-full sm:w-56">
+                <option value="">{t("checklistFromLibrary")}</option>
+                {addable.map((list) => (
+                  <option key={list.id} value={list.id}>
+                    {list.name}
+                  </option>
+                ))}
+              </Select>
+              <Button type="submit" size="sm" variant="outline" disabled={pending || !adding}>
+                {t("add")}
+              </Button>
+            </form>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
   );
 }

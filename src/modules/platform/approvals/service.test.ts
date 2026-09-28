@@ -13,7 +13,8 @@ import { addDays, todayInVietnam } from "@/lib/dates";
 import { migrateTestDb } from "../../../../tests/helpers/db";
 import { createDelegation, followDelegations, listDelegations, revokeDelegation } from "./delegations";
 import { deleteFlow, effectiveFlow, saveFlow } from "./flows";
-import { commentOnRequest, decideRequest, defineRequestType, delegateRequest, getRequest, isRequestParty, listInbox, submitRequest } from "./service";
+import { sendOversightDigest } from "./jobs";
+import { commentOnRequest, decideRequest, defineRequestType, delegateRequest, getRequest, isRequestParty, listAllRequests, listInbox, submitRequest, withdrawRequest } from "./service";
 
 const leave = defineRequestType({
   type: "test_leave",
@@ -210,5 +211,52 @@ describe("comments", () => {
     expect(row.status).toBe("pending");
     const notices = await db().select().from(schema.notification).where(eq(schema.notification.kind, "approvals.commented"));
     expect(notices.map((notice) => notice.recipientPersonId).sort()).toEqual([ids.huy, ids.manager].sort());
+  });
+});
+
+describe("oversight (approval:oversee)", () => {
+  const ownerView = () => ({ personId: ids.owner, principal: { personId: ids.owner, workforceType: null, grants: [{ role: "owner" as const, scope: { type: "group" as const } }] } });
+  const brief = defineRequestType({ type: "project_brief", flow: { steps: [{ key: "lead", mode: "any", approvers: [{ rule: "line_manager" }] }] } });
+
+  it("lists every request with whom it waits for, and lets the owner open one they were never asked about", async () => {
+    const { request } = await submit(ids.huy, ids.media, 2);
+    const rows = await listAllRequests({ all: true }, { state: "open" });
+    expect(rows.map((row) => [row.id, row.waitingOn])).toEqual([[request.id, "Line Manager"]]);
+    expect(await getRequest(ownerView(), leave, request.id)).not.toBeNull();
+    // Nobody else follows along: HR over the entity is no party and holds no oversight.
+    expect(await getRequest({ personId: ids.hr, principal: { personId: ids.hr, workforceType: null, grants: [{ role: "hr_staff", scope: { type: "entity", id: ids.media } }] } }, leave, request.id)).toBeNull();
+
+    const returned = await submit(ids.lan, ids.creative, 1);
+    await decide(returned.request.id, ids.manager, "return");
+    expect((await listAllRequests({ all: true }, { state: "open", since: todayInVietnam() })).find((row) => row.id === returned.request.id)?.waitingOn).toBe("Tran Lan");
+    await db().transaction((tx) => withdrawRequest(tx, returned.request.id, ids.lan));
+
+    await decide(request.id, ids.manager);
+    expect(await listAllRequests({ all: true }, { state: "open" })).toEqual([]);
+    // Newest first: the withdrawn one, then the approved one — both waiting on nobody.
+    expect((await listAllRequests({ all: true }, { state: "decided" })).map((row) => [row.id, row.waitingOn])).toEqual([[returned.request.id, null], [request.id, null]]);
+    // An entity reach sees its own entity's requests only.
+    expect((await listAllRequests({ all: false, entityIds: [ids.creative] })).map((row) => row.id)).toEqual([returned.request.id]);
+    expect(await listAllRequests({ all: false, entityIds: [] })).toEqual([]);
+  });
+
+  it("follows a project's requests too, reading them without a say in them", async () => {
+    const { request } = await db().transaction((tx) => submitRequest(tx, brief, { entityId: ids.media, requesterPersonId: ids.huy, subjectPersonId: ids.huy, summary: "Dự án kín", payload: {}, link: (id) => `/x/${id}` }));
+    expect((await listAllRequests({ all: true })).map((row) => row.id)).toEqual([request.id]);
+    const view = await getRequest(ownerView(), brief, request.id);
+    expect(view?.canDecide).toBe(false);
+  });
+
+  it("tells the owner once a morning what was filed the day before", async () => {
+    await db().delete(schema.notification);
+    await submit(ids.huy, ids.media, 2);
+    await submit(ids.lan, ids.creative, 1);
+    const tomorrow = addDays(todayInVietnam(), 1);
+    expect(await sendOversightDigest(tomorrow)).toEqual({ filed: 2, told: 1 });
+    expect(await sendOversightDigest(tomorrow)).toEqual({ filed: 2, told: 0 });
+    const notices = await db().select().from(schema.notification).where(eq(schema.notification.kind, "approvals.oversight_digest"));
+    expect(notices.map((row) => [row.recipientPersonId, row.params, row.link])).toEqual([[ids.owner, { date: todayInVietnam(), count: 2, open: 2 }, `/approvals/all?since=${todayInVietnam()}`]]);
+    // Nothing filed, nothing sent.
+    expect(await sendOversightDigest(addDays(tomorrow, 1))).toEqual({ filed: 0, told: 0 });
   });
 });

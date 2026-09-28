@@ -687,6 +687,13 @@
       "when": 1790317111485,
       "tag": "0097_telegram_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1790575680136,
+      "tag": "0098_checklist_library",
+      "breakpoints": true
     }
   ]
 }

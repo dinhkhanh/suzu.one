@@ -10,12 +10,13 @@ import { db, schema, type Tx } from "@/lib/db";
 import { getDaysOff } from "@/modules/attendance/service";
 import { notify } from "../platform/notifications/service";
 import { ROLE_KEY } from "../platform/tasks-engine/engine/checklist";
+import { assertUsable, listChecklists, stageChecklists } from "./checklist-library";
 import { type Anchor, planTree, roleKeysOf, type TreeItem } from "./engine/templates";
 import { invalidateWorkDirectory } from "./directory";
 import { invalidateMemberships } from "./viewer";
 import { createProjectIn, type ProjectInput, type ProjectRow } from "./projects";
 import { createWorkTaskIn } from "./tasks";
-import type { TeamRow } from "./teams";
+import { entryState, listStates, type TeamRow } from "./teams";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type WorkTemplateRow = typeof schema.taskTemplate.$inferSelect;
@@ -84,7 +85,7 @@ export async function saveWorkTemplate(templateId: string | null, input: WorkTem
   return { before, after };
 }
 
-export type WorkTemplateItemInput = { title: string; description: string | null; parentItemId: string | null; roleKey: string | null; dueOffsetDays: number; estimateMinutes: number | null; sortOrder: number };
+export type WorkTemplateItemInput = { title: string; description: string | null; parentItemId: string | null; roleKey: string | null; dueOffsetDays: number; estimateMinutes: number | null; sortOrder: number; /** Library checklists the step's task starts with. */ checklistIds?: string[] };
 
 export async function addWorkTemplateItem(templateId: string, input: WorkTemplateItemInput): Promise<WorkTemplateItemRow> {
   if (input.roleKey && !ROLE_KEY.test(input.roleKey)) throw new ActionError("template_role_invalid");
@@ -94,9 +95,10 @@ export async function addWorkTemplateItem(templateId: string, input: WorkTemplat
     // Two levels — task and sub-task — is what the screens show well.
     if (parent.parentItemId) throw new ActionError("template_too_deep");
   }
+  const checklistIds = await assertUsable(input.checklistIds ?? []);
   const [row] = await db()
     .insert(schema.taskTemplateItem)
-    .values({ templateId, title: input.title, description: input.description, parentItemId: input.parentItemId, roleKey: input.roleKey, assigneeRule: input.roleKey ? `role:${input.roleKey}` : "none", dueOffsetDays: input.dueOffsetDays, estimateMinutes: input.estimateMinutes, sortOrder: input.sortOrder })
+    .values({ templateId, title: input.title, description: input.description, parentItemId: input.parentItemId, roleKey: input.roleKey, assigneeRule: input.roleKey ? `role:${input.roleKey}` : "none", dueOffsetDays: input.dueOffsetDays, estimateMinutes: input.estimateMinutes, sortOrder: input.sortOrder, checklistIds })
     .returning();
   await invalidateWorkTemplates();
   return row;
@@ -126,7 +128,9 @@ export async function applyTemplateIn(tx: Executor, use: TemplateUse, target: { 
   const template = await findWorkTemplate(use.templateId, tx);
   if (!template || !template.isActive) throw new ActionError("template_not_found");
   if (template.ownerId && template.ownerId !== target.team.id) throw new ActionError("template_other_team");
-  const items = (await tx.select().from(schema.taskTemplateItem).where(eq(schema.taskTemplateItem.templateId, template.id))).map(treeItem);
+  const rows = await tx.select().from(schema.taskTemplateItem).where(eq(schema.taskTemplateItem.templateId, template.id));
+  const items = rows.map(treeItem);
+  const checklistsOf = new Map(rows.map((row) => [row.id, row.checklistIds]));
   if (items.length === 0) throw new ActionError("template_empty");
 
   const roleKeys = roleKeysOf(items);
@@ -141,14 +145,17 @@ export async function applyTemplateIn(tx: Executor, use: TemplateUse, target: { 
   }
 
   const plan = planTree(items, use.anchor, roles, await dayOffCheck(tx, target.project.entityId, use.anchor, items));
+  // Every step's task starts in the team's entry stage: the library and that stage's hooks, read once.
+  const entry = entryState(await listStates([target.team.id], tx));
+  const checklists = entry ? { library: await listChecklists({ executor: tx }), stateId: entry.id, hooks: await stageChecklists(tx, [entry.id]) } : undefined;
   const taskOf = new Map<string, string>();
   const perAssignee = new Map<string, { count: number; title: string }>();
   for (const node of plan) {
     const { task } = await createWorkTaskIn(
       tx,
-      { teamId: target.team.id, projectId: target.project.id, title: node.title, description: node.description, assigneePersonId: node.assigneePersonId, dueDate: node.dueDate, estimateMinutes: node.estimateMinutes, parentTaskId: node.parentItemId ? (taskOf.get(node.parentItemId) ?? null) : null, templateItemId: node.templateItemId },
+      { teamId: target.team.id, projectId: target.project.id, title: node.title, description: node.description, assigneePersonId: node.assigneePersonId, dueDate: node.dueDate, estimateMinutes: node.estimateMinutes, parentTaskId: node.parentItemId ? (taskOf.get(node.parentItemId) ?? null) : null, templateItemId: node.templateItemId, checklistIds: checklistsOf.get(node.templateItemId) ?? [] },
       actorPersonId,
-      { notify: false },
+      { notify: false, checklists },
     );
     taskOf.set(node.templateItemId, task.id);
     if (node.assigneePersonId && node.assigneePersonId !== actorPersonId) perAssignee.set(node.assigneePersonId, { count: (perAssignee.get(node.assigneePersonId)?.count ?? 0) + 1, title: perAssignee.get(node.assigneePersonId)?.title ?? node.title });

@@ -47,7 +47,7 @@
     "me": "Hồ sơ của tôi",
     "approvals": "Phê duyệt",
     "tasks": "Việc của tôi",
-    "checklists": "Mẫu checklist",
+    "checklists": "Checklist",
     "reports": "Báo cáo",
     "approvalFlows": "Luồng phê duyệt",
     "checkIn": "Vào / ra ca",
@@ -844,6 +844,10 @@
         "title": "Đề nghị quá hạn duyệt",
         "body": "{requestType} — {summary} — đã chờ {approver} duyệt {days} ngày."
       },
+      "approvals_oversight_digest": {
+        "title": "{count, plural, other {# đề nghị mới hôm qua}}",
+        "body": "Ngày {date}: {count, plural, other {# đề nghị}} được gửi, {open, plural, =0 {tất cả đã được xử lý} other {# đề nghị còn đang chờ}}."
+      },
       "recruit_hiring_approved": {
         "title": "Đã duyệt nhu cầu tuyển dụng",
         "body": "Nhu cầu tuyển {title} ({count} người) đã được duyệt. Hãy tạo tin tuyển dụng."
@@ -1360,13 +1364,31 @@
     "inboxEmpty": "Không có yêu cầu nào đang chờ bạn.",
     "mine": "Yêu cầu của tôi",
     "mineEmpty": "Bạn chưa gửi yêu cầu nào.",
+    "oversight": {
+      "link": "Tất cả đề nghị",
+      "title": "Tất cả đề nghị",
+      "description": "Mọi đề nghị trong công ty, dù đang chờ ai duyệt. Chỉ để theo dõi: bạn chỉ duyệt khi đến lượt mình.",
+      "back": "Hộp phê duyệt",
+      "state": {
+        "open": "Đang mở",
+        "decided": "Đã xử lý",
+        "all": "Tất cả"
+      },
+      "type": "Loại đề nghị",
+      "allTypes": "Mọi loại",
+      "since": "Gửi từ ngày",
+      "apply": "Lọc",
+      "empty": "Không có đề nghị nào khớp bộ lọc.",
+      "limited": "Chỉ hiện {count} đề nghị mới nhất — thu hẹp bộ lọc để xem thêm."
+    },
     "withdraw": "Rút yêu cầu",
     "withdrawConfirm": "Rút yêu cầu này?",
     "columns": {
       "request": "Yêu cầu",
       "requester": "Người gửi",
       "submitted": "Gửi lúc",
-      "status": "Trạng thái"
+      "status": "Trạng thái",
+      "waitingOn": "Đang chờ"
     },
     "types": {
       "profile_change": "Thay đổi thông tin cá nhân",
@@ -1683,7 +1705,7 @@
     "toRecordClient": "Ghi ý kiến khách"
   },
   "checklists": {
-    "title": "Mẫu checklist",
+    "title": "Tiếp nhận & thôi việc",
     "description": "Các bước tiếp nhận và thôi việc. Khi có người vào hoặc nghỉ, mẫu phù hợp nhất (vị trí > phòng ban > pháp nhân > toàn tập đoàn) được chuyển thành việc cho từng người phụ trách.",
     "empty": "Chưa có mẫu nào.",
     "everyone": "Áp dụng cho tất cả",
@@ -1727,6 +1749,56 @@
       "template_not_found": "Không tìm thấy mẫu.",
       "template_rule_invalid": "Cách giao việc không hợp lệ.",
       "template_person_required": "Chọn người phụ trách."
+    },
+    "pageTitle": "Checklist",
+    "pageDescription": "Checklist của mọi phòng ban — trước khi bàn giao, khi nhận brief, trước khi đăng — soạn ở một nơi và gắn vào đúng công việc cần đến.",
+    "library": {
+      "title": "Thư viện checklist",
+      "description": "Dùng để làm gì",
+      "companyWide": "Toàn công ty",
+      "teamOwner": "{name} (nhóm)",
+      "filterOwner": "Đơn vị phụ trách",
+      "allOwners": "Tất cả đơn vị",
+      "empty": "Chưa có checklist nào.",
+      "itemCount": "{count} mục",
+      "usage": {
+        "stages": "{count} bước quy trình",
+        "packages": "{count} gói bàn giao",
+        "forms": "{count} mẫu yêu cầu",
+        "steps": "{count} bước mẫu"
+      },
+      "inactive": "Ngừng dùng",
+      "guide": "Hướng dẫn",
+      "create": "Checklist mới",
+      "name": "Tên",
+      "namePlaceholder": "VD: Trước khi bàn giao cho Design",
+      "owner": "Đơn vị phụ trách",
+      "descriptionPlaceholder": "Dùng khi nào, ai là người tick",
+      "items": "Các mục",
+      "itemText": "Cần kiểm tra gì",
+      "itemLink": "Link hướng dẫn (không bắt buộc: /kb/pages/… hoặc https://…)",
+      "moveUp": "Lên",
+      "moveDown": "Xuống",
+      "removeItem": "Xóa mục",
+      "addItem": "Thêm mục",
+      "itemsHint": "Dòng trống sẽ được bỏ qua. Tối đa 40 mục.",
+      "active": "Đang dùng",
+      "save": "Lưu",
+      "delete": "Xóa",
+      "deleteConfirm": "Xóa checklist này? Nó cũng bị gỡ khỏi mọi bước quy trình, gói bàn giao, mẫu yêu cầu và bước mẫu đang dùng. Các ô đã có trên công việc vẫn giữ nguyên.",
+      "pickLegend": "Checklist từ thư viện",
+      "pickHint": "Tối đa {max}. Các mục được lấy theo nội dung checklist tại thời điểm dùng.",
+      "usedBy": "Đang dùng ở {list}"
+    },
+    "stages": {
+      "title": "Checklist theo bước",
+      "description": "Công việc khi vào một bước sẽ nhận các checklist của bước đó. Checklist bắt buộc giữ công việc ở bước cho tới khi tick đủ mọi ô — lùi bước hoặc hủy thì luôn được.",
+      "none": "Chưa bước nào có checklist.",
+      "noneHere": "Không có checklist",
+      "required": "Bắt buộc",
+      "remove": "Gỡ checklist",
+      "add": "Thêm checklist…",
+      "retired": "Checklist ngừng dùng"
     }
   },
   "forms": {
@@ -3367,7 +3439,7 @@
     "visibility": {
       "entity": "Mở cho cả công ty",
       "team": "Chỉ trong nhóm",
-      "private": "Riêng tư cho thành viên"
+      "private": "Riêng tư cho thành viên (chủ sở hữu được xem)"
     },
     "categories": {
       "backlog": "Tồn đọng",
@@ -3709,9 +3781,17 @@
         "publish_cancelled": "đã hủy bài đăng: {name}",
         "result_recorded": "đã ghi kết quả bài đăng ngày {name}",
         "automation_ran": "quy tắc tự động “{name}” đã chạy",
-        "automation_failed": "quy tắc tự động “{name}” gặp lỗi ở một bước"
+        "automation_failed": "quy tắc tự động “{name}” gặp lỗi ở một bước",
+        "checklist_added": "đã thêm checklist {name}"
       },
-      "changeState": "Đổi trạng thái"
+      "changeState": "Đổi trạng thái",
+      "checklistGuide": "Hướng dẫn",
+      "checklistFallback": "Checklist",
+      "checklistRequired": "Bắt buộc ở bước này",
+      "checklistRemove": "Gỡ checklist",
+      "checklistMissing": "Bước này bắt buộc “{name}”, công việc chưa có checklist này.",
+      "checklistAddThis": "Thêm vào",
+      "checklistFromLibrary": "Thêm từ thư viện…"
     },
     "palette": {
       "title": "Bảng lệnh",
@@ -3891,7 +3971,19 @@
       "preview_link_not_found": "Không tìm thấy đường dẫn này.",
       "preview_link_closed": "Đường dẫn này không còn hiệu lực.",
       "preview_comment_required": "Cần ghi rõ điểm cần chỉnh sửa.",
-      "preview_version_not_ready": "Phiên bản này chưa xong khâu duyệt nội bộ nên chưa gửi cho khách được."
+      "preview_version_not_ready": "Phiên bản này chưa xong khâu duyệt nội bộ nên chưa gửi cho khách được.",
+      "checklist_name_required": "Hãy đặt tên cho checklist.",
+      "checklist_empty": "Thêm ít nhất một mục.",
+      "checklist_too_many": "Một checklist có tối đa 40 mục.",
+      "checklist_item_text": "Mỗi mục cần nội dung, tối đa 200 ký tự.",
+      "checklist_item_link": "Link hướng dẫn phải là trang trong ứng dụng (/kb/pages/…) hoặc địa chỉ https://.",
+      "checklist_item_duplicate": "Hai mục trùng mã. Tải lại trang rồi thử lại.",
+      "checklist_owner_invalid": "Chọn đơn vị phụ trách checklist.",
+      "checklist_not_found": "Checklist này không có trong thư viện hoặc đã ngừng dùng.",
+      "checklist_links_too_many": "Chọn tối đa 5 checklist.",
+      "checklist_incomplete": "Bước này bắt buộc checklist: tick đủ mọi ô trước khi chuyển tiếp.",
+      "checklist_item_locked": "Không thể xóa ô của checklist mà bước này bắt buộc.",
+      "task_checklist_full": "Công việc đã có quá nhiều mục checklist để thêm checklist này."
     },
     "views": {
       "list": "Danh sách",
@@ -4087,7 +4179,9 @@
         "project_not_found": "Không tìm thấy dự án.",
         "project_archived": "Dự án này đã lưu trữ.",
         "state_not_found": "Nhóm chưa có trạng thái cho việc mới."
-      }
+      },
+      "checklist": "Checklist",
+      "noChecklist": "Không có checklist"
     },
     "recurrence": {
       "heading": "Việc lặp lại",
@@ -4246,7 +4340,8 @@
       "audiences": {
         "entity": "Nhân sự trong pháp nhân của nhóm",
         "group": "Mọi người trong tập đoàn"
-      }
+      },
+      "checklists": "Checklist mọi yêu cầu đều có"
     },
     "customFields": {
       "title": "Trường tùy chỉnh",
@@ -4550,7 +4645,10 @@
         "checkText": "Nội dung kiểm tra",
         "addCheck": "Thêm mục kiểm tra",
         "deleteConfirm": "Xóa gói bàn giao này? Các bàn giao đã có vẫn được giữ.",
-        "delete": "Xóa gói"
+        "delete": "Xóa gói",
+        "libraryChecklists": "Checklist từ thư viện",
+        "libraryChecklist": "☐ Checklist: {name}",
+        "librarySummary": "+ {count} checklist thư viện"
       },
       "stats": {
         "title": "Bàn giao theo bước ({days} ngày gần đây)",
@@ -5851,7 +5949,7 @@
         "submitYes": "Gửi luôn",
         "cancel": "Huỷ",
         "saved": "Đã lưu.",
-        "draftHint": "Bản nháp chỉ mình bạn đọc được. Sau khi gửi, quản lý và Nhân sự sẽ đọc được.",
+        "draftHint": "Bản nháp chỉ bạn và chủ sở hữu công ty đọc được. Sau khi gửi, quản lý và Nhân sự sẽ đọc được.",
         "waitingForSelf": "Chưa gửi được: đang chờ người này tự đánh giá, hoặc chờ qua hạn {date}."
       },
       "submitted": {
@@ -6172,7 +6270,7 @@
       "agenda": "Chương trình",
       "sharedNotes": "Ghi chú chung",
       "privateNotes": "Ghi chú riêng của quản lý",
-      "privateHint": "Người được đánh giá không bao giờ đọc phần này.",
+      "privateHint": "Người được đánh giá không bao giờ đọc phần này. Chỉ bạn và chủ sở hữu công ty đọc được.",
       "status": {
         "draft": "Nháp",
         "shared": "Đã chia sẻ"
@@ -7859,6 +7957,13 @@
     "mine": "Đề nghị của tôi",
     "mineEmpty": "Bạn chưa gửi đề nghị nào.",
     "backToApprovals": "Phê duyệt",
+    "elsewhere": {
+      "title": "Các loại đề nghị khác",
+      "leave": "Xin nghỉ phép",
+      "attendance": "Đề nghị chấm công",
+      "approvals": "Phê duyệt",
+      "claims": "Đề nghị thanh toán chi phí"
+    },
     "tracking": {
       "title": "Theo dõi theo loại",
       "description": "Số đang chờ, số đã xử lý và thời gian trả lời trung vị của từng loại.",
@@ -8694,6 +8799,7 @@
       "addApplication": "Thêm ứng viên vào tin này",
       "openCandidate": "Xem hồ sơ ứng viên",
       "openOpening": "Xem tin tuyển dụng",
+      "openCareersPage": "Mở trang tuyển dụng",
       "copyCareersLink": "Sao chép liên kết tuyển dụng",
       "careersLinkCopied": "Đã sao chép liên kết"
     },
@@ -8973,7 +9079,7 @@
       "submitWarning": "Gửi rồi thì không sửa được nữa.",
       "finalNote": "Phiếu đã gửi. Đây là bản ghi của buổi phỏng vấn nên không sửa được.",
       "blind": "Phiếu của những người khác sẽ hiện ra sau khi bạn gửi phiếu của mình.",
-      "blindHint": "Bạn chưa thấy phiếu của ai khác — và họ cũng chưa thấy của bạn. Hãy ghi nhận xét của riêng mình trước.",
+      "blindHint": "Bạn chưa thấy phiếu của ai khác — và các người phỏng vấn khác cũng chưa thấy của bạn. Hãy ghi nhận xét của riêng mình trước.",
       "noneYet": "Chưa ai gửi phiếu.",
       "awaiting": "Còn {count} phiếu chưa gửi",
       "scale": {
@@ -9512,6 +9618,7 @@
       "title": "Trao đổi ({count})"
     },
     "board": {
+      "everyoneElse": "Mọi người khác trong công ty",
       "title": "Báo cáo ngày của nhóm",
       "reminded": "Đã nhắc",
       "missing": "Chưa nộp",
@@ -9653,6 +9760,7 @@
       "pick": "Chọn bảng giờ của {name}, {week}"
     },
     "utilisation": {
+      "everyoneElse": "Mọi người khác trong công ty",
       "title": "Tỷ lệ sử dụng",
       "intro": "Giờ đã ghi chia cho giờ làm việc theo lịch (đã trừ nghỉ phép và ngày lễ) trong 8 tuần gần nhất; tuần hiện tại tính đến hôm nay. Đây là số liệu để điều phối công việc, không dùng để xếp hạng hay tính lương.",
       "empty": "Bạn chưa phụ trách nhóm nào và chưa có ai báo cáo cho bạn.",
@@ -10628,7 +10736,7 @@
       "drive": "Thư mục Google Drive",
       "noDrive": "Dự án chưa có link thư mục Drive.",
       "setDrive": "Thêm ở tab Kế hoạch",
-      "noSpace": "Dự án chưa có không gian tài liệu. Khi tạo, không gian có sẵn các trang mẫu: brief, kịch bản, danh sách cảnh quay, biên bản họp — chỉ thành viên dự án và trưởng nhóm xem được.",
+      "noSpace": "Dự án chưa có không gian tài liệu. Khi tạo, không gian có sẵn các trang mẫu: brief, kịch bản, danh sách cảnh quay, biên bản họp — chỉ thành viên dự án và trưởng nhóm được chỉnh sửa; chủ sở hữu công ty được xem.",
       "create": "Tạo không gian tài liệu",
       "creating": "Đang tạo…",
       "membersOnly": "Tài liệu của dự án chỉ dành cho thành viên dự án và trưởng nhóm phụ trách.",
@@ -10704,6 +10812,7 @@
     "application": "Hồ sơ ứng tuyển",
     "approvalFlows": "Luồng phê duyệt",
     "approvals": "Phê duyệt",
+    "approvalsAll": "Tất cả đề nghị",
     "askSuZu": "Hỏi SuZu",
     "assetCategories": "Nhóm tài sản",
     "assets": "Tài sản",
@@ -10724,7 +10833,7 @@
     "changeRequest": "Yêu cầu thay đổi",
     "changeRequests": "Yêu cầu thay đổi",
     "checkIn": "Vào / ra ca",
-    "checklists": "Mẫu checklist",
+    "checklists": "Checklist",
     "clientReports": "Báo cáo khách hàng",
     "clients": "Khách hàng",
     "closeProject": "Đóng dự án",

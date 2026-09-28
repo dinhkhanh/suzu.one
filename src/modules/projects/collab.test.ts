@@ -304,6 +304,24 @@ describe("the project's document space (FR-PJM-31)", () => {
     }
   });
 
+  // The owner's decision of 2026-09-28: `kb:oversee` — the owner's — reads every project's space.
+  it("opens every project's documents to the owner — to read, not to write — and the SQL agrees", async () => {
+    const principal: Principal = { personId: ids.other, workforceType: "employee", grants: [{ role: "owner", scope: { type: "group" } }] };
+    const owner = { ...viewers.other, principal };
+    expect((await listSpaces(owner)).find((space) => space.id === spaceId)?.level).toBe("view");
+    expect(levelOf(owner, (await loadPage(pageId))!)).toBe("view");
+    expect((await searchKb(owner, { query: "Ngũ Hành Sơn" })).hits.map((hit) => hit.pageId)).toEqual([pageId]);
+    expect((await retrieveKbChunks(owner, { query: "Ngũ Hành Sơn" })).map((chunk) => chunk.pageId)).toContain(pageId);
+    // A reader's files: only what the published pages show.
+    expect(await listSpaceFiles(owner, spaceId)).toEqual([]);
+    const pages = await db().select({ id: schema.kbPage.id }).from(schema.kbPage).where(eq(schema.kbPage.spaceId, spaceId));
+    const bySql = new Set((await db().select({ id: schema.kbPage.id }).from(schema.kbPage).innerJoin(schema.kbSpace, eq(schema.kbSpace.id, schema.kbPage.spaceId)).where(pageVisibleSql(owner))).map((row) => row.id));
+    for (const { id } of pages) expect(bySql.has(id), id).toBe(levelOf(owner, (await loadPage(id))!) !== null);
+    // The drafts stay the project's: three starters, one published page.
+    expect(bySql.has(pageId)).toBe(true);
+    expect(pages.filter(({ id }) => bySql.has(id))).toHaveLength(1);
+  });
+
   it("follows the project's membership as it changes, and the SQL filter agrees with the policy", async () => {
     await setProjectMember(ids.project, ids.lan, null);
     await setProjectMember(ids.project, ids.khoi, "viewer");

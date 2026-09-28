@@ -61,6 +61,8 @@ const addItemPipeline = createAction({
     dueOffsetDays: z.coerce.number().int().min(-365).max(365),
     estimateHours: optional(z.coerce.number().min(0.25).max(1000)),
     sortOrder: z.coerce.number().int().min(0).max(1000).default(0),
+    // A checklist from the library the step's task starts with.
+    checklistId: optional(z.uuid()),
   }),
   authorize: async (user, input) => {
     const template = await findWorkTemplate(input.templateId);
@@ -69,8 +71,8 @@ const addItemPipeline = createAction({
     return owner.ok && canManageTemplate(await loadViewer(user), owner.team);
   },
   run: async ({ input }) => {
-    const { templateId, estimateHours, ...rest } = input;
-    const item = await addWorkTemplateItem(templateId, { ...rest, estimateMinutes: estimateHours === null ? null : Math.round(estimateHours * 60) });
+    const { templateId, estimateHours, checklistId, ...rest } = input;
+    const item = await addWorkTemplateItem(templateId, { ...rest, estimateMinutes: estimateHours === null ? null : Math.round(estimateHours * 60), checklistIds: checklistId ? [checklistId] : [] });
     revalidatePath("/work/templates");
     return { data: { id: item.id }, audit: { resource: { type: "work_template", id: templateId }, summary: item.title, after: item } };
   },

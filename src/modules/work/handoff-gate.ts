@@ -7,6 +7,8 @@ import "server-only";
 import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
+import { resolveChecklists } from "./checklist-library";
+import { packageChecks } from "./engine/checklists";
 import { defaultReceiver, packageFor, type PackageCheck, type PackageField } from "./engine/handoff";
 import { visibilityOf } from "./projects";
 
@@ -48,8 +50,14 @@ export async function listPackages(teamId: string, executor?: Executor): Promise
   return all.filter((row) => row.teamId === teamId);
 }
 
+/**
+ * The package a move needs, its checks followed by those of the library checklists it names — as
+ * those stand now, read in the move's transaction. A retired or removed checklist asks for nothing.
+ */
 export async function findPackageFor(executor: Executor, teamId: string, fromStateId: string, toStateId: string): Promise<HandoffPackageRow | null> {
-  return packageFor(await listPackages(teamId, executor), fromStateId, toStateId);
+  const pkg = packageFor(await listPackages(teamId, executor), fromStateId, toStateId);
+  if (!pkg || pkg.checklistIds.length === 0) return pkg;
+  return { ...pkg, checklist: packageChecks(pkg.checklist, await resolveChecklists(pkg.checklistIds, executor)) };
 }
 
 /**

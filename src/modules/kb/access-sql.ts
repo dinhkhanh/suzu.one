@@ -100,8 +100,18 @@ const rootRow = (viewer: KbViewer, editOnly: boolean): SQL =>
     ? NEVER
     : sql`exists (select 1 from ${kbAccess} where ${kbAccess.pageId} = ${kbPage.accessRootId} and ${editOnly ? sql`${namesViewer(viewer)} and ${kbAccess.level} = 'edit'` : either(namesViewer(viewer), portfolioProjectRow(viewer))})`;
 
+/**
+ * Spaces the viewer reads whatever their rows say: `kb:oversee` over the space's entity (the
+ * owner's). Archived, a project's, restricted subtrees and all — at `view`, so never in the
+ * `spaceEditableSql` filters. `policy.ts` (`oversees`) says the same.
+ */
+function spaceOverseenSql(viewer: KbViewer): SQL {
+  const reach = entityReach(viewer.principal, "kb:oversee");
+  return reach.all ? sql`true` : reach.entityIds.length ? inArray(kbSpace.entityId, reach.entityIds) : NEVER;
+}
+
 /** Spaces the viewer may open (`spaceLevel` is not null). */
-export const spaceVisibleSql = (viewer: KbViewer): SQL => either(spaceManagedSql(viewer), both(isNull(kbSpace.archivedAt), spaceRow(viewer, false)));
+export const spaceVisibleSql = (viewer: KbViewer): SQL => either(spaceManagedSql(viewer), spaceOverseenSql(viewer), both(isNull(kbSpace.archivedAt), spaceRow(viewer, false)));
 
 /** Spaces the viewer edits or manages. */
 export const spaceEditableSql = (viewer: KbViewer): SQL => either(spaceManagedSql(viewer), both(isNull(kbSpace.archivedAt), spaceRow(viewer, true)));
@@ -115,6 +125,7 @@ export function pageVisibleSql(viewer: KbViewer): SQL {
     either(
       spaceEditableSql(viewer),
       both(isNull(kbSpace.archivedAt), spaceRow(viewer, false), either(both(isNull(kbPage.accessRootId), readableSql()), both(isNotNull(kbPage.accessRootId), either(rootRow(viewer, true), both(rootRow(viewer, false), readableSql()))))),
+      both(spaceOverseenSql(viewer), readableSql()),
     ),
   );
 }

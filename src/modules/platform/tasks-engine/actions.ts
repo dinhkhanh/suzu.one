@@ -77,7 +77,7 @@ const templatePipeline = createAction({
   run: async ({ input }) => {
     const { templateId, ...values } = input;
     const { before, after } = await saveTemplate(templateId, values);
-    revalidatePath("/admin/checklists");
+    revalidatePath("/checklists");
     return { data: { id: after.id }, audit: { resource: { type: "task_template", id: after.id, entityId: after.entityId }, summary: `${after.purpose}: ${after.name}`, before, after } };
   },
 });
@@ -106,7 +106,7 @@ const addItemPipeline = createAction({
   run: async ({ input }) => {
     const { templateId, rule, permission, ...rest } = input;
     const item = await addTemplateItem(templateId, { ...rest, assigneeRule: rule === "permission" ? `permission:${permission ?? "person:manage"}` : rule });
-    revalidatePath("/admin/checklists");
+    revalidatePath("/checklists");
     return { data: { id: item.id }, audit: { resource: { type: "task_template", id: templateId }, summary: item.title, after: item } };
   },
 });
@@ -124,7 +124,7 @@ const removeItemPipeline = createAction({
   },
   run: async ({ input }) => {
     const item = await removeTemplateItem(input.itemId);
-    revalidatePath("/admin/checklists");
+    revalidatePath("/checklists");
     return { data: { id: item.id }, audit: { resource: { type: "task_template", id: item.templateId }, summary: item.title, before: item } };
   },
 });

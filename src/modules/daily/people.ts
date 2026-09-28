@@ -6,28 +6,33 @@ import "server-only";
 import { and, eq, inArray, or } from "drizzle-orm";
 import { db, schema, type Tx } from "@/lib/db";
 import { loadDirectory, reportsBelow } from "@/modules/performance/service";
-import { canViewReport, type ReportReader, type ReportSubject, type TimeReader } from "./policy";
+import type { Principal } from "@/modules/platform/rbac/policy";
+import { canViewReport, overseesDaily, type ReportReader, type ReportSubject, type TimeReader } from "./policy";
 import { rulesOfPeople } from "./team-rules";
 
 export type Subject = ReportSubject & { fullName: string };
 
-/** The reader: who they are and which active work teams they lead. Inside a transaction, pass it. */
-export async function loadReportReader(personId: string, executor: Tx | ReturnType<typeof db> = db()): Promise<ReportReader> {
+/**
+ * The reader: who they are and which active work teams they lead. Inside a transaction, pass it.
+ * Pass the principal where the reader only *reads* (a page): with it, `daily:oversee` counts.
+ * Actions leave it out — oversight never comments, reminds or approves.
+ */
+export async function loadReportReader(personId: string, executor: Tx | ReturnType<typeof db> = db(), principal?: Principal): Promise<ReportReader> {
   const rows = await executor
     .select({ teamId: schema.workTeamMember.teamId })
     .from(schema.workTeamMember)
     .innerJoin(schema.workTeam, eq(schema.workTeam.id, schema.workTeamMember.teamId))
     .where(and(eq(schema.workTeamMember.personId, personId), eq(schema.workTeamMember.role, "lead"), eq(schema.workTeam.isActive, true)));
-  return { personId, ledTeamIds: new Set(rows.map((row) => row.teamId)) };
+  return { personId, ledTeamIds: new Set(rows.map((row) => row.teamId)), oversees: !!principal && overseesDaily(principal) };
 }
 
 /**
  * The reader of time entries: the report reader, and the projects they lead — named as the
  * project's lead, or holding the project role "lead" — whose rows they may also read.
  */
-export async function loadTimeReader(personId: string): Promise<TimeReader> {
+export async function loadTimeReader(personId: string, principal?: Principal): Promise<TimeReader> {
   const [reader, projects] = await Promise.all([
-    loadReportReader(personId),
+    loadReportReader(personId, db(), principal),
     db()
       .selectDistinct({ projectId: schema.workProject.id })
       .from(schema.workProject)
@@ -55,12 +60,13 @@ export async function readerMaySee(reader: ReportReader, personId: string): Prom
   return subject && canViewReport(reader, subject) ? subject : null;
 }
 
-export type OverseenGroup = { kind: "team"; teamId: string; name: string; personIds: string[] } | { kind: "reports"; personIds: string[] };
+export type OverseenGroup = { kind: "team"; teamId: string; name: string; personIds: string[] } | { kind: "reports"; personIds: string[] } | { kind: "company"; personIds: string[] };
 
 /**
  * Everyone whose reports the reader oversees (not themselves), grouped as the board shows them:
  * one group per team they lead, then the people below them in the reporting line. A person may be
- * in two groups. This is the list form of `canViewReport`; a test keeps the two in step.
+ * in two groups. For an overseer (`daily:oversee`), a last group holds everyone else in the
+ * company. This is the list form of `canViewReport`; a test keeps the two in step.
  */
 export async function listOverseen(reader: ReportReader): Promise<OverseenGroup[]> {
   const self = reader.personId;
@@ -83,5 +89,12 @@ export async function listOverseen(reader: ReportReader): Promise<OverseenGroup[
     .filter((person) => present(person.personId))
     .map((person) => person.personId);
   if (below.length > 0) groups.push({ kind: "reports", personIds: below });
+  if (reader.oversees) {
+    // The directory is already in hand (the reporting-line walk above needs it): everyone present
+    // whom no group above names.
+    const named = new Set(groups.flatMap((group) => group.personIds));
+    const rest = [...directory.keys()].filter((personId) => present(personId) && !named.has(personId));
+    if (rest.length > 0) groups.push({ kind: "company", personIds: rest });
+  }
   return groups;
 }

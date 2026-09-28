@@ -239,6 +239,26 @@ describe("the team daily board", () => {
     expect((await seenBy("vu")).has(ids.huy)).toBe(true);
   });
 
+  it("gives an overseer (daily:oversee) everyone, the rest of the company as one group, and nothing to act on", async () => {
+    // Bao is nobody's lead or manager; as the owner he reads the whole company.
+    const owner = { personId: ids.bao, workforceType: null, grants: [{ role: "owner" as const, scope: { type: "group" as const } }] };
+    const reader = await loadReportReader(ids.bao, undefined, owner);
+    const groups = await listOverseen(reader);
+    expect(groups.map((group) => group.kind)).toEqual(["company"]);
+    const listed = groups.flatMap((group) => group.personIds).sort();
+    expect(listed).toEqual(PEOPLE.filter((key) => key !== "bao").map((key) => ids[key]).sort());
+    // The list and the policy agree, and the policy opens someone far outside his chain.
+    const subjects = await loadSubjects(listed);
+    expect(listed.every((personId) => canViewReport(reader, subjects.get(personId)!))).toBe(true);
+    const [huysReport] = await db().select({ id: schema.dailyReport.id }).from(schema.dailyReport).where(and(eq(schema.dailyReport.personId, ids.huy), eq(schema.dailyReport.date, D)));
+    expect(await getReportView(reader, huysReport.id)).not.toBeNull();
+    const board = await getTeamBoard(reader, D);
+    expect(board.map((group) => group.kind)).toEqual(["company"]);
+    // Reading is all: no reminder goes out on his say-so, and without the principal he is Bao again.
+    expect(await remindMissing(reader, listed, D, names.bao)).toEqual([]);
+    expect((await listOverseen(await loadReportReader(ids.bao))).flatMap((group) => group.personIds)).toEqual([]);
+  });
+
   it("shows submitted / missing / not required, blockers first", async () => {
     const [video] = await getTeamBoard(await loadReportReader(ids.long), D);
     expect(video).toMatchObject({ kind: "team", name: "Video", counts: { submitted: 2, missing: 0, not_required: 0 } });

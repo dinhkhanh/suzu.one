@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canWithdraw, withdrawnHere } from "./policy";
+import { canOverseeRequests, canWithdraw, withdrawnHere } from "./policy";
 
 describe("canWithdraw", () => {
   it("lets the requester take back a type with no row of its own, until it is decided", () => {
@@ -14,5 +14,21 @@ describe("canWithdraw", () => {
       expect(withdrawnHere(type)).toBe(false);
       expect(canWithdraw({ type, requesterPersonId: "huy", status: "pending" }, "huy")).toBe(false);
     }
+  });
+});
+
+describe("canOverseeRequests", () => {
+  const owner = { personId: "khanh", workforceType: null, grants: [{ role: "owner" as const, scope: { type: "group" as const } }] };
+  const cLevel = { personId: "an", workforceType: null, grants: [{ role: "c_level" as const, scope: { type: "group" as const } }] };
+
+  it("lets a group owner follow every request, with or without an entity", () => {
+    expect(canOverseeRequests(owner)).toBe(true);
+    expect(canOverseeRequests(owner, { entityId: "entity-a" })).toBe(true);
+    expect(canOverseeRequests(owner, { entityId: null })).toBe(true);
+  });
+
+  it("does not open other people's requests to anyone else", () => {
+    expect(canOverseeRequests(cLevel)).toBe(false);
+    expect(canOverseeRequests(cLevel, { entityId: "entity-a" })).toBe(false);
   });
 });

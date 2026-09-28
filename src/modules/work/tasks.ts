@@ -9,7 +9,9 @@ import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
 import { createTask, type TaskRow } from "../platform/tasks-engine/service";
 import { runTaskAutomations } from "./automations";
+import { type ChecklistRow, resolveChecklists, type StageChecklist, stageChecklists } from "./checklist-library";
 import { customValueChanges } from "./custom-fields";
+import { appendChecklists, gatedStages, resolveLinked, MAX_TASK_CHECKLIST, mergeChecklistPatch, missingRequired, newChecklistItemId, partlyRemoved, removedFrom } from "./engine/checklists";
 import { changedFields } from "./engine/automation";
 import { requirementFor } from "./handoff-gate";
 import { assertPublishable } from "./publish-gate";
@@ -205,10 +207,15 @@ export type NewWorkTask = {
   collaboratorIds?: string[];
   /** Made from a template item or by a recurrence. */
   templateItemId?: string | null;
+  /** Library checklists the task starts with (an intake form's, a template step's) — beside those of the stage it starts in. */
+  checklistIds?: readonly string[];
   recurrence?: { id: string; occurrenceDate: string } | null;
 };
 
-export async function createWorkTaskIn(tx: Executor, input: NewWorkTask, actorPersonId: string | null, options: { notify?: boolean } = {}): Promise<{ task: TaskRow; work: WorkTaskRow; key: string }> {
+/** What a caller making many tasks at once read for all of them: the library, and the hooks of the stage they start in. */
+export type ChecklistsRead = { library: readonly ChecklistRow[]; stateId: string; hooks: readonly StageChecklist[] };
+
+export async function createWorkTaskIn(tx: Executor, input: NewWorkTask, actorPersonId: string | null, options: { notify?: boolean; checklists?: ChecklistsRead } = {}): Promise<{ task: TaskRow; work: WorkTaskRow; key: string }> {
   const parent = input.parentTaskId ? await parentOfTeam(tx, input.parentTaskId, input.teamId) : null;
   // A sub-task lives where its parent lives unless told otherwise.
   const projectId = input.projectId === undefined ? (parent?.work.projectId ?? null) : input.projectId;
@@ -227,6 +234,11 @@ export async function createWorkTaskIn(tx: Executor, input: NewWorkTask, actorPe
   const namedRequester = input.requesterPersonId && input.requesterPersonId !== actorPersonId ? input.requesterPersonId : null;
   await assertInsidePrivateProject(tx, project?.id ?? null, [input.assigneePersonId, namedRequester, ...(input.collaboratorIds ?? [])]);
   const labels = await labelsOfTeam(tx, input.labelIds ?? [], input.teamId);
+  // The form's or step's checklists first, then those of the stage the task starts in.
+  const read = options.checklists?.stateId === state.id ? options.checklists : null;
+  const [named, staged] = read ? [resolveLinked(input.checklistIds ?? [], read.library), read.hooks] : await Promise.all([resolveChecklists(input.checklistIds ?? [], tx), stageChecklists(tx, [state.id])]);
+  // Nobody chose these one by one, so what does not fit under the cap is left out rather than refusing the task.
+  const checklist = appendChecklists([], [...named, ...staged.map((hook) => hook.checklist)], newChecklistItemId, { max: MAX_TASK_CHECKLIST });
 
   const [team] = await tx.update(schema.workTeam).set({ taskSeq: sql`${schema.workTeam.taskSeq} + 1` }).where(and(eq(schema.workTeam.id, input.teamId), eq(schema.workTeam.isActive, true))).returning();
   if (!team) throw new ActionError("team_not_found");
@@ -256,14 +268,14 @@ export async function createWorkTaskIn(tx: Executor, input: NewWorkTask, actorPe
 
   const [work] = await tx
     .insert(schema.workTask)
-    .values({ taskId: task.id, teamId: team.id, projectId: project?.id ?? null, number: team.taskSeq, stateId: state.id, clientId: clientId ?? project?.clientId ?? null, channel: input.channel ?? null, contentFormat: input.contentFormat ?? null, boardRank: await nextRank(tx, state.id), recurrenceId: input.recurrence?.id ?? null, occurrenceDate: input.recurrence?.occurrenceDate ?? null })
+    .values({ taskId: task.id, teamId: team.id, projectId: project?.id ?? null, number: team.taskSeq, stateId: state.id, clientId: clientId ?? project?.clientId ?? null, channel: input.channel ?? null, contentFormat: input.contentFormat ?? null, boardRank: await nextRank(tx, state.id), checklist: checklist.items, recurrenceId: input.recurrence?.id ?? null, occurrenceDate: input.recurrence?.occurrenceDate ?? null })
     .returning();
   if (labels.length) await tx.insert(schema.workTaskLabel).values(labels.map((label) => ({ taskId: task.id, labelId: label.id })));
   const collaborators = [...new Set(input.collaboratorIds ?? [])].filter((id) => id !== input.assigneePersonId);
   for (const personId of collaborators) await personNamed(tx, personId, { mustBeActive: true });
   if (collaborators.length) await tx.insert(schema.workTaskPerson).values(collaborators.map((personId) => ({ taskId: task.id, personId, role: "collaborator" })));
 
-  await logActivity(tx, task.id, actorPersonId, [{ type: "created", to: { title: task.title, state: state.name } }]);
+  await logActivity(tx, task.id, actorPersonId, [{ type: "created", to: { title: task.title, state: state.name } }, ...checklist.added.map((list) => ({ type: "checklist_added", to: list }))]);
   const key = taskKey(team.key, work.number);
   if (options.notify !== false) {
     const recipients = [input.assigneePersonId, ...collaborators].filter((id): id is string => !!id && id !== actorPersonId);
@@ -294,7 +306,9 @@ export type WorkTaskPatch = Partial<{
   parentTaskId: string | null;
   labelIds: string[];
   collaboratorIds: string[];
-  checklist: TaskChecklistItem[];
+  checklist: { id: string; text: string; done: boolean }[];
+  /** Library checklists to add to the task's boxes (each once). */
+  addChecklistIds: string[];
   links: TaskLink[];
   /** Board drop: the neighbours the card landed between, in the target state. */
   position: { beforeTaskId: string | null; afterTaskId: string | null };
@@ -405,12 +419,47 @@ export async function updateWorkTaskIn(
       plain("parent", task.parentTaskId ? { id: task.parentTaskId } : null, parentTitle);
     }
 
+    // The task's boxes: ticks and plain boxes as sent, library checklists added — and, below, those
+    // of a stage the task enters. A copied box keeps its text; one a stage still requires stays.
+    const moving = changed(patch.stateId, work.stateId);
+    const hooks = moving ? await stageChecklists(tx, [work.stateId, patch.stateId!]) : patch.checklist ? await stageChecklists(tx, [work.stateId]) : [];
+    const requiredHere = hooks.filter((hook) => hook.stateId === work.stateId && hook.required);
+    let items: TaskChecklistItem[] = work.checklist;
+    if (patch.checklist) {
+      items = mergeChecklistPatch(work.checklist, patch.checklist);
+      if (removedFrom(work.checklist, items, new Set(requiredHere.map((hook) => hook.checklist.id))).length || partlyRemoved(work.checklist, items).length) throw new ActionError("checklist_item_locked");
+    }
+    const addedLists: { id: string; name: string }[] = [];
+    // By hand, a checklist that does not fit is refused; one a stage adds on a move nobody chose
+    // (a returned hand-off, a review decision) is left out instead of undoing the move.
+    const addLists = (lists: Parameters<typeof appendChecklists>[1], options: { lenient?: boolean } = {}) => {
+      const next = appendChecklists(items, lists, newChecklistItemId, options.lenient ? { max: MAX_TASK_CHECKLIST } : {});
+      if (next.items.length > MAX_TASK_CHECKLIST) throw new ActionError("task_checklist_full");
+      items = next.items;
+      addedLists.push(...next.added);
+    };
+    if (patch.addChecklistIds?.length) {
+      const lists = await resolveChecklists(patch.addChecklistIds, tx);
+      if (lists.length !== new Set(patch.addChecklistIds).size) throw new ActionError("checklist_not_found");
+      addLists(lists);
+    }
+
     const targetStateId = patch.stateId ?? work.stateId;
     if (changed(patch.stateId, work.stateId)) {
       const [from] = await tx.select().from(schema.workState).where(eq(schema.workState.id, work.stateId)).limit(1);
       const to = await stateOfTeam(tx, patch.stateId, team.id);
       // The publish gate first (FR-PJM-54): a hand-off sheet filled for a post that is not out yet would be lost.
       if (options.handoff !== "system") await assertPublishable(tx, { id: taskId, channel: workSet.channel === undefined ? work.channel : (workSet.channel ?? null) }, to);
+      // Then the required checklists of the stage it leaves and of every stage it passes over —
+      // before the hand-off sheet opens, so nobody fills a package for a move that would be refused
+      // anyway. Going back or cancelling needs none; nor does a move nobody chose (a returned
+      // hand-off, a review decision).
+      const gated = options.handoff !== "system" && from ? gatedStages(from, to, await listStates([team.id], tx)) : [];
+      if (gated.length) {
+        const required = [...new Map((await stageChecklists(tx, gated)).filter((hook) => hook.required).map((hook) => [hook.checklist.id, hook.checklist])).values()];
+        const missing = missingRequired(items, required);
+        if (missing.length) throw new ActionError("checklist_incomplete", { missing });
+      }
       if (!options.handoff) {
         const handoff = await requirementFor(tx, before, to.id, actorPersonId);
         if (handoff) throw new ActionError("handoff_required", { handoff });
@@ -421,6 +470,7 @@ export async function updateWorkTaskIn(
       if (fields.status !== task.status) Object.assign(taskSet, fields);
       if (!patch.position) workSet.boardRank = await nextRank(tx, to.id);
       plain("state", from ? { id: from.id, name: from.name, category: from.category } : null, { id: to.id, name: to.name, category: to.category });
+      addLists(hooks.filter((hook) => hook.stateId === to.id).map((hook) => hook.checklist), { lenient: options.handoff === "system" });
     }
     if (patch.position) {
       const neighbourIds = [patch.position.beforeTaskId, patch.position.afterTaskId].filter((id): id is string => !!id);
@@ -480,10 +530,11 @@ export async function updateWorkTaskIn(
       plain("cycle", from, to);
     }
 
-    if (patch.checklist && JSON.stringify(patch.checklist) !== JSON.stringify(work.checklist)) {
-      workSet.checklist = patch.checklist;
-      const tally = (items: TaskChecklistItem[]) => ({ done: items.filter((item) => item.done).length, total: items.length });
-      plain("checklist", tally(work.checklist), tally(patch.checklist));
+    if (JSON.stringify(items) !== JSON.stringify(work.checklist)) {
+      workSet.checklist = items;
+      const tally = (list: TaskChecklistItem[]) => ({ done: list.filter((item) => item.done).length, total: list.length });
+      plain("checklist", tally(work.checklist), tally(items));
+      changes.push(...addedLists.map((list) => ({ type: "checklist_added", to: list })));
     }
     if (patch.links && JSON.stringify(patch.links) !== JSON.stringify(work.links)) {
       workSet.links = patch.links;

@@ -5,6 +5,7 @@ import { createAction } from "@/lib/action";
 import { findOrgUnit } from "../platform/org/service";
 import { addComment, deleteComment, editComment, findComment, toggleReaction } from "./comments";
 import { beginTaskUpload, completeTaskUpload, findTaskFile, removeTaskFile, taskFileLink } from "./attachments";
+import { MAX_LINKED_CHECKLISTS, MAX_TASK_CHECKLIST } from "./engine/checklists";
 import { FILTER_KEYS, isFilterKey } from "./engine/filter";
 import { setFollowing } from "./followers";
 import { CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_ROLES, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "./enums";
@@ -339,7 +340,8 @@ const updateTaskPipeline = createAction({
     parentTaskId: patchable(z.uuid()),
     labelIds: z.array(z.uuid()).max(20).optional(),
     collaboratorIds: z.array(z.uuid()).max(20).optional(),
-    checklist: z.array(checklistItem).max(50).optional(),
+    checklist: z.array(checklistItem).max(MAX_TASK_CHECKLIST).optional(),
+    addChecklistIds: z.array(z.uuid()).min(1).max(MAX_LINKED_CHECKLISTS).optional(),
     links: z.array(linkItem).max(30).optional(),
     position: z.object({ beforeTaskId: optional(z.uuid()), afterTaskId: optional(z.uuid()) }).optional(),
     customValues: customValuesInput.optional(),

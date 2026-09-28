@@ -144,6 +144,15 @@ export const canScheduleInterview = (principal: Principal, opening: OpeningTarge
 export const canViewInterview = (principal: Principal, opening: OpeningTarget, member: Membership, interviewing: Interviewing): boolean =>
   canViewOpening(principal, opening, member) || (interviewing && !!principal.personId);
 
+
+/**
+ * Reading every card of an interview, drafts included and whether or not anyone has submitted —
+ * oversight (`recruit:oversee`, the owner's — decision of 2026-09-28). **Never for an interviewer
+ * on this interview**, owner or not: the blind rule protects the independence of their own card,
+ * which a peek at the panel would spoil whoever they are. Reading only; scoring stays the
+ * interviewer's (`canScoreInterview`).
+ */
+export const canOverseeScorecards = (principal: Principal, opening: OpeningTarget, interviewing: Interviewing): boolean => !interviewing && can(principal, "recruit:oversee", over(opening));
 /**
  * Writing a scorecard: only somebody who was in the room. A recruiter cannot score an interview
  * they did not sit in, however senior — a scorecard is testimony, not an opinion.

@@ -32,13 +32,16 @@ export const pointOfBp = (scale: readonly RatingPoint[], bp: number | null): Rat
  * One submitted form, read-only: every question asked of that form, what was answered, and the
  * figure it came to. The page decides whether the viewer may see it at all; this only draws it.
  */
-export function FilledForm({ shape, kind, answers, overallRatingBp, comment, author, labels }: { shape: ReviewFormShape; kind: ReviewFormKind; answers: Record<string, string | number>; overallRatingBp: number | null; comment: string | null; author: string | null; labels: { t: Translate; format: NumberFormat } }) {
+export function FilledForm({ shape, kind, answers, overallRatingBp, comment, author, draft = false, labels }: { shape: ReviewFormShape; kind: ReviewFormKind; answers: Record<string, string | number>; overallRatingBp: number | null; comment: string | null; author: string | null; /** Not submitted yet: shown to its author, and to oversight. */ draft?: boolean; labels: { t: Translate; format: NumberFormat } }) {
   const { t, format } = labels;
   const asked = shape.sections.filter((section) => section.askedOf.includes(kind));
   return (
     <article className="flex flex-col gap-3 rounded-xl border p-3">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-medium">{author ? t(`form.by.${kind}`, { name: author }) : t(`form.kind.${kind}`)}</h3>
+        <h3 className="text-sm font-medium">
+          {author ? t(`form.by.${kind}`, { name: author }) : t(`form.kind.${kind}`)}
+          {draft ? <span className="ml-2 text-xs font-normal text-muted-foreground">({t("formStatus.draft")})</span> : null}
+        </h3>
         <span className="text-xs text-muted-foreground tabular-nums">{t("form.overall", { value: ratingText(format, overallRatingBp) })}</span>
       </header>
       <dl className="flex flex-col gap-3">

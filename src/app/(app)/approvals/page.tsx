@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { canOverseeRequests } from "@/modules/platform/approvals/policy";
 import { loadApprovalsPage } from "@/modules/platform/approvals/service";
 import { BulkInbox } from "@/modules/platform/approvals/ui/bulk-inbox";
 import { RequestTable } from "@/modules/platform/approvals/ui/request-views";
@@ -25,9 +26,16 @@ export default async function ApprovalsPage() {
           <h1>{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("description")}</p>
         </div>
-        <Link href="/approvals/delegation" className="text-sm underline-offset-4 hover:underline">
-          {t("delegation.link")}
-        </Link>
+        <div className="flex flex-wrap items-center gap-4">
+          {canOverseeRequests(user.principal) ? (
+            <Link href="/approvals/all" className="text-sm underline-offset-4 hover:underline">
+              {t("oversight.link")}
+            </Link>
+          ) : null}
+          <Link href="/approvals/delegation" className="text-sm underline-offset-4 hover:underline">
+            {t("delegation.link")}
+          </Link>
+        </div>
       </header>
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">{t("inbox", { count: inbox.length })}</h2>

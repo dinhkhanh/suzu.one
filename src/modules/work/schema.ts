@@ -3,7 +3,7 @@
 // their own workflow, projects, clients and brands, labels, dependencies, comments, activity —
 // lives in these tables. Value lists are in enums.ts and checked by the actions.
 import { sql } from "drizzle-orm";
-import { type AnyPgColumn, boolean, date, doublePrecision, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, boolean, check, date, doublePrecision, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { entity, orgUnit } from "../platform/org/schema";
 import { storedFile } from "../platform/files/schema";
 import { person } from "../platform/people/schema";
@@ -151,7 +151,12 @@ export const workProjectMember = pgTable(
   (t) => [unique("work_project_member_unique").on(t.projectId, t.personId), index("work_project_member_person_idx").on(t.personId)],
 ).enableRLS();
 
-export type TaskChecklistItem = { id: string; text: string; done: boolean };
+/**
+ * One tick-box on a task. An item copied from the checklist library (`work_checklist`) keeps where
+ * it came from — the checklist's id and its name then — so the task shows it under that name, the
+ * stage gate knows which boxes a required checklist asked for, and its text stays as it was copied.
+ */
+export type TaskChecklistItem = { id: string; text: string; done: boolean; checklistId?: string; checklistName?: string; linkUrl?: string };
 export type TaskLink = { id: string; url: string; title: string | null };
 
 // The work-specific half of a task. Title, assignee, dates, priority, parent… are on `task`.
@@ -434,6 +439,8 @@ export const workIntakeForm = pgTable(
     fields: jsonb("fields").$type<IntakeField[]>().notNull().default([]),
     // Who may ask: "entity" = people of the team's entity; "group" = anyone in the group (a studio that serves its sister companies).
     audience: text("audience").notNull().default("entity"),
+    // Library checklists a request starts with ("brief received"). No foreign key, as on packages.
+    checklistIds: uuid("checklist_ids").array().notNull().default([]),
     isActive: boolean("is_active").notNull().default(true),
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -544,6 +551,51 @@ export const workCycle = pgTable(
   (t) => [unique("work_cycle_number_unique").on(t.teamId, t.number), index("work_cycle_dates_idx").on(t.teamId, t.startDate)],
 ).enableRLS();
 
+// ── The checklist library ───────────────────────────────────────────────────────────────────
+
+/**
+ * A reusable list of tick-boxes any department keeps — "before hand-off", "brief received", "before
+ * publishing" — and hooks into its work: a workflow stage (on entering, optionally required before
+ * moving on), a hand-off package, an intake form, a template step, or a task by hand. Using one
+ * copies its items onto the task; editing it changes what later uses copy, never a task's own boxes.
+ *
+ * Owned by one org unit (its heads and those above them keep it, and HR), by one work team (its
+ * leads), or by nobody — company-wide, kept at group level. Everyone may use every active one.
+ */
+export type ChecklistItemDef = { id: string; text: string; linkUrl?: string };
+export const workChecklist = pgTable(
+  "work_checklist",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    description: text("description"),
+    ownerUnitId: uuid("owner_unit_id").references(() => orgUnit.id),
+    ownerTeamId: uuid("owner_team_id").references(() => workTeam.id),
+    items: jsonb("items").$type<ChecklistItemDef[]>().notNull().default([]),
+    isActive: boolean("is_active").notNull().default(true),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [check("work_checklist_one_owner", sql`${t.ownerUnitId} IS NULL OR ${t.ownerTeamId} IS NULL`)],
+).enableRLS();
+
+// A checklist hooked to a workflow stage: entering the stage adds it to the task; `required` = the
+// task cannot move on (forward) until every box it added is ticked.
+export const workStateChecklist = pgTable(
+  "work_state_checklist",
+  {
+    stateId: uuid("state_id")
+      .notNull()
+      .references(() => workState.id, { onDelete: "cascade" }),
+    checklistId: uuid("checklist_id")
+      .notNull()
+      .references(() => workChecklist.id, { onDelete: "cascade" }),
+    required: boolean("required").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.stateId, t.checklistId] })],
+).enableRLS();
+
 // Hand-off packages (FR-PJM-40): what a workflow transition requires.
 export type HandoffField = { key: string; label: string; type: "text" | "url" | "date" | "number"; required: boolean };
 export type HandoffCheck = { id: string; text: string };
@@ -562,6 +614,9 @@ export const workHandoffPackage = pgTable(
       .references(() => workState.id, { onDelete: "cascade" }),
     fields: jsonb("fields").$type<HandoffField[]>().notNull().default([]),
     checklist: jsonb("checklist").$type<HandoffCheck[]>().notNull().default([]),
+    // Library checklists (`work_checklist`) the package asks for as well, read as they stand when the
+    // hand-off is made. No foreign key: removing a checklist takes it out of these lists.
+    checklistIds: uuid("checklist_ids").array().notNull().default([]),
     requireLink: boolean("require_link").notNull().default(false),
     requireFile: boolean("require_file").notNull().default(false),
     // The receiver must accept (FR-PJM-41); off = the package is recorded, nobody accepts it.

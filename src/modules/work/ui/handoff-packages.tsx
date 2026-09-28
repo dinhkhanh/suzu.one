@@ -11,12 +11,13 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { HANDOFF_FIELD_TYPES, type HandoffFieldType, MAX_PACKAGE_CHECKS, MAX_PACKAGE_FIELDS } from "../engine/handoff";
 import { deleteHandoffPackageAction, saveHandoffPackageAction } from "../handoff-actions";
+import { type ChecklistChoice, ChecklistPicker } from "./checklists";
 
 type Result = { ok: boolean; error?: string; message?: string };
-export type PackageView = { id: string; name: string; fromStateId: string | null; toStateId: string; fields: { key: string; label: string; type: HandoffFieldType; required: boolean }[]; checklist: { id: string; text: string }[]; requireLink: boolean; requireFile: boolean; requireAccept: boolean; isActive: boolean };
+export type PackageView = { id: string; name: string; fromStateId: string | null; toStateId: string; fields: { key: string; label: string; type: HandoffFieldType; required: boolean }[]; checklist: { id: string; text: string }[]; checklistIds: string[]; requireLink: boolean; requireFile: boolean; requireAccept: boolean; isActive: boolean };
 type State = { id: string; name: string };
 
-export function HandoffPackageManager({ teamId, packages, states, canManage }: { teamId: string; packages: PackageView[]; states: State[]; canManage: boolean }) {
+export function HandoffPackageManager({ teamId, packages, states, checklists, canManage }: { teamId: string; packages: PackageView[]; states: State[]; checklists: ChecklistChoice[]; canManage: boolean }) {
   const t = useTranslations("work.handoff.packages");
   const stateName = (id: string | null) => (id ? (states.find((state) => state.id === id)?.name ?? "—") : t("anyState"));
   return (
@@ -34,8 +35,9 @@ export function HandoffPackageManager({ teamId, packages, states, canManage }: {
                 {pkg.requireAccept ? <Badge variant="secondary">{t("mustAccept")}</Badge> : null}
                 {pkg.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
                 <span className="text-xs text-muted-foreground">{t("summary", { fields: pkg.fields.length, checks: pkg.checklist.length })}</span>
+                {pkg.checklistIds.length ? <span className="text-xs text-muted-foreground">{t("librarySummary", { count: pkg.checklistIds.length })}</span> : null}
               </summary>
-              <div className="pt-3">{canManage ? <PackageForm teamId={teamId} states={states} pkg={pkg} /> : <PackageReadOnly pkg={pkg} />}</div>
+              <div className="pt-3">{canManage ? <PackageForm teamId={teamId} states={states} checklists={checklists} pkg={pkg} /> : <PackageReadOnly pkg={pkg} checklists={checklists} />}</div>
             </details>
           </li>
         ))}
@@ -44,7 +46,7 @@ export function HandoffPackageManager({ teamId, packages, states, canManage }: {
         <details className="rounded-xl border p-3">
           <summary className="cursor-pointer text-sm font-medium">{t("create")}</summary>
           <div className="pt-3">
-            <PackageForm teamId={teamId} states={states} />
+            <PackageForm teamId={teamId} states={states} checklists={checklists} />
           </div>
         </details>
       ) : null}
@@ -52,7 +54,7 @@ export function HandoffPackageManager({ teamId, packages, states, canManage }: {
   );
 }
 
-function PackageReadOnly({ pkg }: { pkg: PackageView }) {
+function PackageReadOnly({ pkg, checklists }: { pkg: PackageView; checklists: ChecklistChoice[] }) {
   const t = useTranslations("work.handoff.packages");
   return (
     <ul className="list-disc pl-5 text-sm">
@@ -65,6 +67,11 @@ function PackageReadOnly({ pkg }: { pkg: PackageView }) {
       {pkg.checklist.map((check) => (
         <li key={check.id}>☐ {check.text}</li>
       ))}
+      {checklists
+        .filter((choice) => pkg.checklistIds.includes(choice.id))
+        .map((choice) => (
+          <li key={choice.id}>{t("libraryChecklist", { name: choice.name })}</li>
+        ))}
       {pkg.requireLink ? <li>{t("requireLink")}</li> : null}
       {pkg.requireFile ? <li>{t("requireFile")}</li> : null}
     </ul>
@@ -73,7 +80,7 @@ function PackageReadOnly({ pkg }: { pkg: PackageView }) {
 
 const newRowId = () => Math.random().toString(36).slice(2, 10);
 
-function PackageForm({ teamId, states, pkg }: { teamId: string; states: State[]; pkg?: PackageView }) {
+function PackageForm({ teamId, states, checklists, pkg }: { teamId: string; states: State[]; checklists: ChecklistChoice[]; pkg?: PackageView }) {
   const t = useTranslations("work.handoff.packages");
   const tWork = useTranslations("work");
   const router = useRouter();
@@ -108,6 +115,7 @@ function PackageForm({ teamId, states, pkg }: { teamId: string; states: State[];
               toStateId: data.get("toStateId"),
               fields: fields.map((field) => ({ key: field.key || "", label: field.label, type: field.type, required: field.required })),
               checklist: checks.map((check) => ({ id: check.id || "", text: check.text })),
+              checklistIds: data.getAll("checklistIds[]").map(String),
               requireLink: data.get("requireLink") === "on",
               requireFile: data.get("requireFile") === "on",
               requireAccept: data.get("requireAccept") === "on",
@@ -197,6 +205,8 @@ function PackageForm({ teamId, states, pkg }: { teamId: string; states: State[];
           </Button>
         ) : null}
       </fieldset>
+
+      <ChecklistPicker choices={checklists} selected={pkg?.checklistIds ?? []} legend={t("libraryChecklists")} />
 
       <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
         <label className="flex items-center gap-1.5">

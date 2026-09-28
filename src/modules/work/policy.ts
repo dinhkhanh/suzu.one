@@ -8,7 +8,9 @@
 //   private → the project's members and the team's leads. `work:manage` does not open a private
 //             project: an HR or finance project stays with the people in it. A `pjm:portfolio`
 //             holder over the owning team may *read* it (the owner's decision of 2026-09-23, Q25)
-//             and nothing more — see `readsPrivateByPortfolio`.
+//             and nothing more — see `readsPrivateByPortfolio`. A `work:oversee` holder (the
+//             owner, decision of 2026-09-28) reads a private team's backlog and the hours logged
+//             on a private project, and acts on nothing more than their other grants allow.
 import { can, type Principal } from "../platform/rbac/policy";
 import type { ProjectRole, TeamRole, Visibility } from "./enums";
 
@@ -159,9 +161,13 @@ const isParty = (viewer: WorkViewer, task: TaskFacts): boolean => {
   return !!self && (task.assigneePersonId === self || task.requesterPersonId === self || task.createdByPersonId === self || task.peopleIds.includes(self));
 };
 
-/** Tasks outside any project are as open as a new project of the team would be. */
+/**
+ * Tasks outside any project are as open as a new project of the team would be — and, for
+ * whoever oversees work over the team (`work:oversee`, the owner), open whatever the team's
+ * default. Reading only: working in the backlog is `canContributeToTeam`'s call.
+ */
 export function canViewTeamBacklog(viewer: WorkViewer, team: TeamFacts): boolean {
-  return seesByVisibility(viewer, team.defaultVisibility, team.entityId, team);
+  return seesByVisibility(viewer, team.defaultVisibility, team.entityId, team) || can(viewer.principal, "work:oversee", scopeOf(team));
 }
 
 export function canViewTask(viewer: WorkViewer, task: TaskFacts): boolean {
@@ -289,9 +295,11 @@ export function canMoveTask(viewer: WorkViewer, task: TaskFacts, target: { team:
 
 /**
  * Hours logged on a project's (or a backlog's) tasks, summed per task in the table view: time
- * entries are for the project's lead and the team's leads (PJM access rules), not for every member.
+ * entries are for the project's lead and the team's leads (PJM access rules), not for every member
+ * — and for whoever oversees work over the team (`work:oversee`), private project or not.
  */
 export function canSeeLoggedTime(viewer: WorkViewer, scope: { team: TeamFacts; project: ProjectFacts | null }): boolean {
+  if (can(viewer.principal, "work:oversee", scopeOf(scope.team))) return true;
   return scope.project ? canManageProject(viewer, scope.project) : canAdminTeam(viewer, scope.team);
 }
 
@@ -462,4 +470,39 @@ export function canManageAutomations(viewer: WorkViewer, team: TeamFacts, projec
 /** Reading the rules and their runs: the team's own people — the rules are how the team works. */
 export function canViewAutomations(viewer: WorkViewer, team: TeamFacts): boolean {
   return canContributeToTeam(viewer, team);
+}
+
+// ── The checklist library ───────────────────────────────────────────────────────────────────
+
+/**
+ * Who owns a library checklist: an org unit (with the unit's entity and its path, root first — a
+ * grant on any unit above it reaches it), a work team, or nobody (company-wide).
+ */
+export type ChecklistOwner = { unit: { id: string; entityId: string | null; path: readonly string[] } | null; team: TeamFacts | null };
+
+/**
+ * Keeping a checklist — writing, retiring, removing it. A unit's: `work:manage` over the unit (its
+ * head, and the heads above it) or `person:manage` over it (HR). A team's: whoever runs the team. A
+ * company-wide one: either permission at group level. Collaborators keep none.
+ */
+export function canManageChecklist(viewer: WorkViewer, owner: ChecklistOwner): boolean {
+  if (isCollaborator(viewer)) return false;
+  if (owner.team) return canAdminTeam(viewer, owner.team);
+  const target = owner.unit ? { entityId: owner.unit.entityId, unitPath: owner.unit.path.length ? owner.unit.path : [owner.unit.id] } : {};
+  return can(viewer.principal, "work:manage", target) || can(viewer.principal, "person:manage", target);
+}
+
+/** Offering "new checklist" at all: someone who keeps one somewhere. Each save re-checks the owner chosen. */
+export function canKeepChecklists(viewer: WorkViewer): boolean {
+  if (isCollaborator(viewer)) return false;
+  return can(viewer.principal, "work:manage") || can(viewer.principal, "person:manage") || [...viewer.teamRoles.values()].includes("lead");
+}
+
+/**
+ * Reading the library and using a checklist: everyone in the company — a checklist says how a
+ * department wants a thing done, which is no secret. Hooking one to a stage, package, form or
+ * template takes running that team; adding one to a task takes editing the task.
+ */
+export function canUseChecklists(viewer: WorkViewer): boolean {
+  return !isCollaborator(viewer);
 }

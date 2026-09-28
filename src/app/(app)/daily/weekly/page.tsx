@@ -22,7 +22,7 @@ export default async function WeeklyPage({ searchParams }: PageProps<"/daily/wee
   const { week: asked, team: focus } = await searchParams;
   const current = weekStartOf(today);
   const weekStart = typeof asked === "string" && /^\d{4}-\d{2}-\d{2}$/.test(asked) && asked <= current ? weekStartOf(asked) : addDays(current, -7);
-  const [t, format, reader, viewer, teams] = await Promise.all([getTranslations("daily"), getFormatter(), loadReportReader(user.person.id), loadViewer(user), listTeams()]);
+  const [t, format, reader, viewer, teams] = await Promise.all([getTranslations("daily"), getFormatter(), loadReportReader(user.person.id, undefined, user.principal), loadViewer(user), listTeams()]);
   const runs = (team: Parameters<typeof teamFacts>[0]) => canAdminTeam(viewer, teamFacts(team));
   const { teams: teamWeeks, people } = await listWeekly(reader, weekStart, runs);
   const notGenerated = teams.filter((team) => team.isActive && runs(team) && !teamWeeks.some((row) => row.team.id === team.id));

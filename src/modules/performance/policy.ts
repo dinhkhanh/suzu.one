@@ -198,10 +198,20 @@ export const canReadOneOnOne = (principal: Principal, meeting: MeetingParties & 
   canWriteOneOnOne(principal, meeting) || isAbove(principal, meeting.person) || canManagePerformanceOf(principal, meeting.person) || (isSelf(principal, meeting.person) && meeting.status === "shared");
 
 /**
- * The manager's private notes. **Not the subject, ever** — that is the whole point of the column —
- * and not HR either: it is one manager's thinking, not a record about the person.
+ * Writing the manager's private notes: the manager who holds the meeting, and nobody else — not
+ * HR, and not whoever may read them (`canReadOneOnOnePrivate`). One manager's thinking is theirs
+ * to put down.
  */
-export const canReadOneOnOnePrivate = (principal: Principal, meeting: MeetingParties): boolean => !!principal.personId && principal.personId === meeting.managerPersonId;
+export const canWriteOneOnOnePrivate = (principal: Principal, meeting: MeetingParties): boolean => !!principal.personId && principal.personId === meeting.managerPersonId;
+
+/**
+ * Reading the manager's private notes. **Not the subject, ever** — that is the whole point of the
+ * column — and not HR either: it is one manager's thinking, not a record about the person. Besides
+ * the manager, only oversight (`performance:oversee`, the owner's — decision of 2026-09-28) reads
+ * them, and never about oneself.
+ */
+export const canReadOneOnOnePrivate = (principal: Principal, meeting: MeetingParties): boolean =>
+  canWriteOneOnOnePrivate(principal, meeting) || (!isSelf(principal, meeting.person) && can(principal, "performance:oversee", meeting.person));
 
 /** Raising a promotion, a development plan or a PIP off a settled result: the chain above, or HR — never about oneself. */
 export const canRaiseOutcome = (principal: Principal, person: PersonContext): boolean => !isSelf(principal, person) && (isAbove(principal, person) || canManagePerformanceOf(principal, person));

@@ -10,14 +10,15 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { IntakeField } from "../engine/intake";
 import { saveIntakeFormAction, submitIntakeAction } from "../intake-actions";
+import { type ChecklistChoice, ChecklistPicker } from "./checklists";
 
 const TEXTAREA = "min-h-20 w-full rounded-md border bg-transparent px-3 py-2 text-sm";
 const FIELD_TYPES = ["text", "long_text", "select", "date", "url"] as const;
 
-export type IntakeFormValue = { id: string | null; name: string; description: string | null; projectId: string | null; audience: string; fields: IntakeField[]; isActive: boolean; submissions: number };
+export type IntakeFormValue = { id: string | null; name: string; description: string | null; projectId: string | null; audience: string; fields: IntakeField[]; checklistIds: string[]; isActive: boolean; submissions: number };
 
 /** One form's editor. The field rows are plain inputs named "fields.<n>.<prop>"; rows left without a label are ignored by the action. */
-function IntakeFormEditor({ teamId, value, projects }: { teamId: string; value: IntakeFormValue; projects: { id: string; name: string }[] }) {
+function IntakeFormEditor({ teamId, value, projects, checklists }: { teamId: string; value: IntakeFormValue; projects: { id: string; name: string }[]; checklists: ChecklistChoice[] }) {
   const t = useTranslations("work.intake");
   const [rows, setRows] = useState(Math.max(value.fields.length + 1, 3));
   const form = useActionForm(saveIntakeFormAction, { extra: { teamId, formId: value.id } });
@@ -76,6 +77,7 @@ function IntakeFormEditor({ teamId, value, projects }: { teamId: string; value: 
             </Button>
           ) : null}
         </fieldset>
+        <ChecklistPicker choices={checklists} selected={value.checklistIds} legend={t("checklists")} />
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="isActive" defaultChecked={value.isActive} />
           {t("active")}
@@ -93,9 +95,9 @@ function IntakeFormEditor({ teamId, value, projects }: { teamId: string; value: 
 }
 
 /** A team's intake forms on the team page: everyone sees them with a link to fill one in; leads edit and add. */
-export function IntakeFormManager({ teamId, forms, projects, canManage }: { teamId: string; forms: IntakeFormValue[]; projects: { id: string; name: string }[]; canManage: boolean }) {
+export function IntakeFormManager({ teamId, forms, projects, checklists, canManage }: { teamId: string; forms: IntakeFormValue[]; projects: { id: string; name: string }[]; checklists: ChecklistChoice[]; canManage: boolean }) {
   const t = useTranslations("work.intake");
-  const blank: IntakeFormValue = { id: null, name: "", description: null, projectId: null, audience: "entity", fields: [], isActive: true, submissions: 0 };
+  const blank: IntakeFormValue = { id: null, name: "", description: null, projectId: null, audience: "entity", fields: [], checklistIds: [], isActive: true, submissions: 0 };
   const shown = canManage ? forms : forms.filter((form) => form.isActive);
   return (
     <div className="flex flex-col gap-3">
@@ -114,7 +116,7 @@ export function IntakeFormManager({ teamId, forms, projects, canManage }: { team
                   </Link>
                 ) : null}
               </summary>
-              <div className="border-t p-3">{canManage ? <IntakeFormEditor teamId={teamId} value={form} projects={projects} /> : <p className="text-muted-foreground">{form.description ?? t("noDescription")}</p>}</div>
+              <div className="border-t p-3">{canManage ? <IntakeFormEditor teamId={teamId} value={form} projects={projects} checklists={checklists} /> : <p className="text-muted-foreground">{form.description ?? t("noDescription")}</p>}</div>
             </details>
           </li>
         ))}
@@ -123,7 +125,7 @@ export function IntakeFormManager({ teamId, forms, projects, canManage }: { team
         <details className="rounded-xl border text-sm">
           <summary className="cursor-pointer p-3 font-medium">{t("new")}</summary>
           <div className="border-t p-3">
-            <IntakeFormEditor teamId={teamId} value={blank} projects={projects} />
+            <IntakeFormEditor teamId={teamId} value={blank} projects={projects} checklists={checklists} />
           </div>
         </details>
       ) : null}

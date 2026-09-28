@@ -8,12 +8,23 @@
 //   · every manager above the person in the reporting line (direct or skip-level),
 // and to nobody else: not colleagues, not the lead of another team, not a role grant. Daily reports
 // are work evidence for the people who run the work (design rule 3), not a directory.
+//
+// The one exception is oversight (`daily:oversee`, decision of 2026-09-28): whoever holds it over
+// the whole group — today the owner alone — reads everybody's plans, reports, time and
+// utilisation. Reading only: commenting, reminding, summarising and approving stay with the
+// people who run the work.
+import { can, type Principal } from "@/modules/platform/rbac/policy";
 
 export type ReportReader = {
   personId: string | null;
   /** Work teams the reader leads. */
   ledTeamIds: ReadonlySet<string>;
+  /** Holds `daily:oversee` over the whole group (`overseesDaily`): reads everybody, acts on nobody's. */
+  oversees?: boolean;
 };
+
+/** Oversight of the daily loop: a group-wide `daily:oversee` grant — a unit's or an entity's reaches nobody, since a report names no entity. */
+export const overseesDaily = (principal: Principal): boolean => can(principal, "daily:oversee", {});
 
 export type ReportSubject = {
   personId: string;
@@ -27,17 +38,23 @@ const isSelf = (reader: ReportReader, subject: ReportSubject) => !!reader.person
 const leadsThem = (reader: ReportReader, subject: ReportSubject) => subject.teamIds.some((teamId) => reader.ledTeamIds.has(teamId));
 const managesThem = (reader: ReportReader, subject: ReportSubject) => !!reader.personId && subject.chainAbove.includes(reader.personId);
 
-export function canViewReport(reader: ReportReader, subject: ReportSubject): boolean {
+/** The person, a lead of one of their teams, or a manager above them — the people the report is for. */
+function readsByRelation(reader: ReportReader, subject: ReportSubject): boolean {
   if (!reader.personId) return false;
   return isSelf(reader, subject) || leadsThem(reader, subject) || managesThem(reader, subject);
 }
 
-/** A comment or a reaction: anyone who may read the report — the person answers their lead there. */
-export const canCommentOnReport = canViewReport;
+export function canViewReport(reader: ReportReader, subject: ReportSubject): boolean {
+  if (!reader.personId) return false;
+  return readsByRelation(reader, subject) || !!reader.oversees;
+}
+
+/** A comment or a reaction: the person and the people the report is for — oversight reads, it does not join in. */
+export const canCommentOnReport = readsByRelation;
 
 /** Reminding someone to report, and writing on their weekly summary, is for the people above them. */
 export function canOverseeReport(reader: ReportReader, subject: ReportSubject): boolean {
-  return canViewReport(reader, subject) && !isSelf(reader, subject);
+  return readsByRelation(reader, subject) && !isSelf(reader, subject);
 }
 
 // ── Time entries and timesheets (FR-PJM-24, 25, 61) ─────────────────────────────────────────
@@ -75,8 +92,10 @@ export function canApproveTimesheet(reader: ReportReader, subject: ReportSubject
  * team, and joining must not open the newcomer's attendance to them.
  */
 export function canViewAttendanceHint(reader: ReportReader, subject: ReportSubject): boolean {
-  return isSelf(reader, subject) || managesThem(reader, subject);
+  return isSelf(reader, subject) || managesThem(reader, subject) || (!!reader.personId && !!reader.oversees);
 }
 
-/** A person's utilisation (FR-PJM-61) is for the people above them, as their reports are. */
-export const canViewUtilisation = canOverseeReport;
+/** A person's utilisation (FR-PJM-61) is for the people above them, as their reports are — and for oversight. */
+export function canViewUtilisation(reader: ReportReader, subject: ReportSubject): boolean {
+  return canOverseeReport(reader, subject) || (!!reader.oversees && !!reader.personId && !isSelf(reader, subject));
+}

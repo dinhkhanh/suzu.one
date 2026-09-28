@@ -10,7 +10,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { decideRequest, defineRequestType, getRequest, type RequestTypeDefinition, type RequestView, resubmitRequest, submitRequest } from "../platform/approvals/service";
-import type { Principal } from "../platform/rbac/policy";
+import { can, type Principal } from "../platform/rbac/policy";
 import { captureProjectBaseline, captureTaskBaselines } from "./baselines";
 import { briefProblems, type BriefStatus, briefSubmittable, type ProjectKind } from "./engine/brief";
 import { ensurePlan, type PlanRow, reconcileBrief } from "./plans";
@@ -25,9 +25,12 @@ export const projectBriefRequest = defineRequestType({
   flow: { steps: [{ key: "team_lead", mode: "any", approvers: [{ rule: "permission", permission: "work:manage" }] }] },
   // A kick-off is read, not ticked: the approver opens the brief.
   bulkApprovable: () => false,
-  // Nobody reads a kick-off for holding a permission: a private project's brief stays with its
-  // people. Its requester and its approvers are the parties, and nobody else opens the request.
-  canView: () => false,
+  // Nobody else reads a kick-off for holding an ordinary permission: a private project's requests stay
+  // with its people, its requester and its approvers. The one exception is `pjm:oversee` — the
+  // owner's view of every project (decision of 2026-09-28) — which reads and decides nothing. The
+  // engine hands over the requester, not the project, so the grant must reach them; the owner's
+  // group grant reaches everybody.
+  canView: (viewer, subject) => can(viewer, "pjm:oversee", subject ?? {}),
 });
 
 /**

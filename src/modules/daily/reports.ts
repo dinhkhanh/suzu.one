@@ -208,7 +208,7 @@ export type BoardRow = {
   comments: number;
   reminded: boolean;
 };
-export type BoardGroup = ({ kind: "team"; teamId: string; name: string } | { kind: "reports" }) & { rows: BoardRow[]; counts: Record<BoardStatus, number> };
+export type BoardGroup = ({ kind: "team"; teamId: string; name: string } | { kind: "reports" } | { kind: "company" }) & { rows: BoardRow[]; counts: Record<BoardStatus, number> };
 
 const hasBlockers = (row: BoardRow) => !!row.blockers?.trim() || row.openBlockers > 0;
 const ORDER: Record<BoardStatus, number> = { missing: 0, submitted: 1, not_required: 2 };
@@ -265,7 +265,7 @@ export async function getTeamBoard(reader: ReportReader, date: IsoDate): Promise
     const rows = group.personIds.map(rowOf).sort((a, b) => Number(hasBlockers(b)) - Number(hasBlockers(a)) || ORDER[a.status] - ORDER[b.status] || a.name.localeCompare(b.name, "vi"));
     const counts = { submitted: 0, missing: 0, not_required: 0 };
     for (const row of rows) counts[row.status] += 1;
-    return { ...(group.kind === "team" ? { kind: "team" as const, teamId: group.teamId, name: group.name } : { kind: "reports" as const }), rows, counts };
+    return { ...(group.kind === "team" ? { kind: "team" as const, teamId: group.teamId, name: group.name } : { kind: group.kind }), rows, counts };
   });
 }
 

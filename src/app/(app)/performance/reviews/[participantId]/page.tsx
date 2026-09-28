@@ -32,7 +32,7 @@ export const generateMetadata = pageTitle("review");
 
 /**
  * One person's review (FR-PRF-03, FR-PRF-08). Every block on this page is behind
- * `canReadReviewForm`: a draft is its author's alone, the manager's assessment reaches the subject
+ * `canReadReviewForm`: a draft is its author's (and oversight's) alone, the manager's assessment reaches the subject
  * only after release, and peers stay anonymous when the cycle says so.
  */
 export default async function ReviewPage({ params }: PageProps<"/performance/reviews/[participantId]">) {
@@ -199,7 +199,9 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
                 answers={form.answers}
                 overallRatingBp={form.overallRatingBp}
                 comment={form.comment}
-                author={form.status === "draft" ? null : nameOf(form.authorPersonId)}
+                // One's own draft is not signed; somebody else's draft is read only by oversight, which is told whose it is.
+                author={form.status === "draft" && form.authorPersonId === user.person.id ? null : nameOf(form.authorPersonId)}
+                draft={form.status === "draft"}
                 labels={{ t, format }}
               />
             ))

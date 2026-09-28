@@ -104,7 +104,7 @@ export function keptValues(pkg: Pick<PackageDef, "fields">, values: Readonly<Rec
 export type PackageProblem = "handoff_package_same_state" | "handoff_package_empty" | "handoff_package_field_label" | "handoff_package_field_duplicate" | "handoff_package_too_many" | "handoff_package_check_text";
 
 /** A package definition a team lead saves. Keys are made by the service; labels are what people read. */
-export function packageProblem(pkg: Pick<PackageDef, "fromStateId" | "toStateId" | "fields" | "checklist" | "requireLink" | "requireFile" | "requireAccept">): PackageProblem | null {
+export function packageProblem(pkg: Pick<PackageDef, "fromStateId" | "toStateId" | "fields" | "checklist" | "requireLink" | "requireFile" | "requireAccept"> & { /** Library checklists it asks for as well. */ checklistIds?: readonly string[] }): PackageProblem | null {
   if (pkg.fromStateId === pkg.toStateId) return "handoff_package_same_state";
   if (pkg.fields.length > MAX_PACKAGE_FIELDS || pkg.checklist.length > MAX_PACKAGE_CHECKS) return "handoff_package_too_many";
   if (pkg.fields.some((field) => !field.label.trim())) return "handoff_package_field_label";
@@ -112,7 +112,7 @@ export function packageProblem(pkg: Pick<PackageDef, "fromStateId" | "toStateId"
   if (new Set(labels).size !== labels.length || new Set(pkg.fields.map((field) => field.key)).size !== pkg.fields.length) return "handoff_package_field_duplicate";
   if (pkg.checklist.some((check) => !check.text.trim())) return "handoff_package_check_text";
   // A package that asks nothing and needs nobody's acceptance would gate the move for nothing.
-  if (pkg.fields.length === 0 && pkg.checklist.length === 0 && !pkg.requireLink && !pkg.requireFile && !pkg.requireAccept) return "handoff_package_empty";
+  if (pkg.fields.length === 0 && pkg.checklist.length === 0 && !pkg.checklistIds?.length && !pkg.requireLink && !pkg.requireFile && !pkg.requireAccept) return "handoff_package_empty";
   return null;
 }
 

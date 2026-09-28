@@ -16,6 +16,8 @@ import { TaskTableView } from "@/modules/work/ui/task-table-view";
 import { IntakeFormManager } from "@/modules/work/ui/intake-forms";
 import { canViewAutomations, listOpenCycles } from "@/modules/work/service";
 import { LabelManager, MemberManager, StateManager, TeamForm } from "@/modules/work/ui/team-forms";
+import { checklistChoices, listStateChecklists } from "@/modules/work/service";
+import { StageChecklists } from "@/modules/work/ui/checklists";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("team");
@@ -24,7 +26,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
   const user = await requireUser();
   const { teamId } = await params;
   const query = await searchParams;
-  const [team, viewer, t] = await Promise.all([/^[0-9a-f-]{36}$/.test(teamId) ? findTeam(teamId) : undefined, loadViewer(user), getTranslations("work")]);
+  const [team, viewer, t, tChecklists] = await Promise.all([/^[0-9a-f-]{36}$/.test(teamId) ? findTeam(teamId) : undefined, loadViewer(user), getTranslations("work"), getTranslations("checklists.stages")]);
   if (!team || !canViewTeam(viewer, teamFacts(team))) notFound();
   const facts = teamFacts(team);
   const admin = canAdminTeam(viewer, facts);
@@ -43,7 +45,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
     // The picker offers only the people this viewer may actually add (`canAddTeamMember`).
     admin ? Promise.all([addableMembers(viewer, facts), listEntities(), unitChoices()]) : ([{ people: [], narrowed: false }, [], []] as [Awaited<ReturnType<typeof addableMembers>>, Awaited<ReturnType<typeof listEntities>>, Awaited<ReturnType<typeof unitChoices>>]),
   ]);
-  const [fieldRows, triageCounts] = await Promise.all([listCustomFields({ teamId: team.id }, { includeInactive: true }), canViewTriage(viewer, facts) ? countTriage([team.id]) : null]);
+  const [fieldRows, triageCounts, checklists, stageHooks] = await Promise.all([listCustomFields({ teamId: team.id }, { includeInactive: true }), canViewTriage(viewer, facts) ? countTriage([team.id]) : null, checklistChoices(), listStateChecklists(states.map((state) => state.id))]);
   const fields = toFieldViews(fieldRows);
   // FR-PJM-10: the team's open cycles, for the filter and bulk edit.
   const cycles = (await listOpenCycles([team.id])).map((cycle) => ({ id: cycle.id, label: t("cycles.label", { number: cycle.number, from: cycle.startDate.split("-").reverse().slice(0, 2).join("/"), to: cycle.endDate.split("-").reverse().slice(0, 2).join("/") }) }));
@@ -153,6 +155,12 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
       </section>
 
       <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-medium text-muted-foreground">{tChecklists("title")}</h2>
+        <p className="text-xs text-muted-foreground">{tChecklists("description")}</p>
+        <StageChecklists states={states.filter((state) => state.isActive).map(({ id, name }) => ({ id, name }))} hooks={stageHooks.map(({ stateId, checklistId, required }) => ({ stateId, checklistId, required }))} choices={checklists} canManage={admin} />
+      </section>
+
+      <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">{t("labels.title")}</h2>
         <LabelManager teamId={team.id} labels={labels.map(({ id, teamId: owner, name, color }) => ({ id, teamId: owner, name, color }))} canManage={admin} />
       </section>
@@ -164,7 +172,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">{t("intake.title")}</h2>
-        <IntakeFormManager teamId={team.id} forms={intakeForms.map(({ id, name, description, projectId, audience, fields, isActive, submissions }) => ({ id, name, description, projectId, audience, fields, isActive, submissions }))} projects={intakeProjects} canManage={admin} />
+        <IntakeFormManager teamId={team.id} forms={intakeForms.map(({ id, name, description, projectId, audience, fields, checklistIds, isActive, submissions }) => ({ id, name, description, projectId, audience, fields, checklistIds, isActive, submissions }))} projects={intakeProjects} checklists={checklists} canManage={admin} />
       </section>
 
       <DailyRulesSection teamId={team.id} canManage={admin} />

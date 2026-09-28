@@ -6,6 +6,7 @@ import { ActionError } from "@/lib/action";
 import { cached, invalidate } from "@/lib/cache";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
+import { assertUsable } from "./checklist-library";
 import { checkAnswers, describeAnswers, dueDateFrom, fieldKey, formProblem, type IntakeField } from "./engine/intake";
 import type { IntakeAudience } from "./enums";
 import { canSubmitIntake, type WorkViewer } from "./policy";
@@ -83,7 +84,7 @@ export async function findIntakeForm(formId: string, executor: Executor = db()):
   return row;
 }
 
-export type IntakeFormInput = { name: string; description: string | null; projectId: string | null; audience: IntakeAudience; fields: Omit<IntakeField, "key">[]; isActive: boolean };
+export type IntakeFormInput = { name: string; description: string | null; projectId: string | null; audience: IntakeAudience; fields: Omit<IntakeField, "key">[]; /** Library checklists every request starts with. */ checklistIds?: string[]; isActive: boolean };
 
 export async function saveIntakeForm(teamId: string, formId: string | null, input: IntakeFormInput, actorPersonId: string): Promise<{ before: IntakeFormRow | null; after: IntakeFormRow }> {
   const team = await findTeam(teamId);
@@ -96,13 +97,13 @@ export async function saveIntakeForm(teamId: string, formId: string | null, inpu
     const [project] = await db().select({ teamId: schema.workProject.teamId, status: schema.workProject.status }).from(schema.workProject).where(eq(schema.workProject.id, input.projectId)).limit(1);
     if (!project || project.teamId !== teamId || project.status === "archived") throw new ActionError("project_not_found");
   }
-  const values = { name: input.name, description: input.description, projectId: input.projectId, audience: input.audience, fields, isActive: input.isActive };
+  const found = formId ? await findIntakeForm(formId) : null;
+  const values = { name: input.name, description: input.description, projectId: input.projectId, audience: input.audience, fields, checklistIds: await assertUsable(input.checklistIds ?? [], found?.form.checklistIds ?? []), isActive: input.isActive };
   if (!formId) {
     const [after] = await db().insert(schema.workIntakeForm).values({ teamId, ...values, createdByPersonId: actorPersonId }).returning();
     await invalidateIntakeForms();
     return { before: null, after };
   }
-  const found = await findIntakeForm(formId);
   if (!found || found.form.teamId !== teamId) throw new ActionError("intake_form_not_found");
   const [after] = await db().update(schema.workIntakeForm).set({ ...values, updatedAt: new Date() }).where(eq(schema.workIntakeForm.id, formId)).returning();
   await invalidateIntakeForms();
@@ -124,7 +125,7 @@ export async function submitIntake(formId: string, input: { title: string; answe
     const { answers, problems } = checkAnswers(form.fields, input.answers);
     if (problems.length > 0) throw new ActionError("intake_answers_invalid", { problems });
     const state = entryState(await listStates([team.id], tx), true);
-    const created = await createWorkTaskIn(tx, { teamId: team.id, projectId: form.projectId, title: input.title, description: describeAnswers(form.name, form.fields, answers), stateId: state?.id ?? null, requesterPersonId: actor.personId, dueDate: dueDateFrom(form.fields, answers) }, actor.personId, { notify: false });
+    const created = await createWorkTaskIn(tx, { teamId: team.id, projectId: form.projectId, title: input.title, description: describeAnswers(form.name, form.fields, answers), stateId: state?.id ?? null, requesterPersonId: actor.personId, dueDate: dueDateFrom(form.fields, answers), checklistIds: form.checklistIds }, actor.personId, { notify: false });
     await tx.update(schema.workTask).set({ intakeFormId: form.id }).where(eq(schema.workTask.taskId, created.task.id));
     // Into the team's triage (FR-PJM-32): its rules pre-fill, a lead decides. The leads hear of it
     // below, in words that say who asked and through which form.

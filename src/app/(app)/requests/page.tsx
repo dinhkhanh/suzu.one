@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/modules/platform/auth/session";
-import { canManageRequestTypes } from "@/modules/requests/policy";
+import { canManageRequestTypes, canSettleExpenseClaims } from "@/modules/requests/policy";
 import { listMySubmissions, requestTypeStats } from "@/modules/requests/service";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -19,6 +19,13 @@ export default async function RequestsPage() {
   const locale = await getLocale();
   const format = await getFormatter();
   const manages = canManageRequestTypes(user.principal);
+  // The other kinds of request live with the modules that own them; this page is the way in.
+  const elsewhere = [
+    { href: "/leave/new", label: t("elsewhere.leave") },
+    { href: "/attendance/requests/new", label: t("elsewhere.attendance") },
+    { href: "/approvals", label: t("elsewhere.approvals") },
+    ...(canSettleExpenseClaims(user.principal) ? [{ href: "/requests/claims", label: t("elsewhere.claims") }] : []),
+  ];
   const [mine, stats] = await Promise.all([listMySubmissions(user.person.id), manages ? requestTypeStats() : Promise.resolve([])]);
 
   return (
@@ -32,6 +39,14 @@ export default async function RequestsPage() {
           {t("new")}
         </Link>
       </header>
+
+      <nav aria-label={t("elsewhere.title")} className="flex flex-wrap gap-2">
+        {elsewhere.map((link) => (
+          <Link key={link.href} href={link.href} className={buttonVariants({ size: "sm", variant: "outline" })}>
+            {link.label}
+          </Link>
+        ))}
+      </nav>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">{t("mine")}</h2>

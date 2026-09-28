@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Grant } from "../platform/rbac/policy";
 import type { ProjectRole, TeamRole } from "./enums";
 import { canManageAutomations, canViewAutomations } from "./policy";
+import { canKeepChecklists, canManageChecklist, canUseChecklists, type ChecklistOwner } from "./policy";
 import { canChangeDeliverable, canDecideStage, canManagePublish, canManageReviewChains, canPinFeedback, canRecordClientDecision, canRecordDelivery, canResolvePin } from "./policy";
 import { canAcknowledgeCover, canChangeAccountManager, canHandBackCover, canHandOff, canManageHandoffPackages, canRespondToHandoff, canRunExitHandover, canSendToTeam, canSubmitCoverPlan, canViewCoverPlan, canViewExitHandover } from "./policy";
 import { canAddTeamMember, canActForClient, canAdminTeam, canDecideReview, canDecideTriage, canJoinTaskConversation, canManageCustomFields, canMoveTask, canRaiseBlocker, canResolveBlocker, canSeeLoggedTime, canViewTeamBacklog, canViewTriage, canContributeToProject, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canManageProject, canManageWorkspace, canTakeOutOfProject, canViewProject, canViewTask, canViewTeam, type ProjectFacts, readsPrivateByPortfolio, type TaskFacts, type TeamFacts, type WorkViewer } from "./policy";
@@ -126,7 +127,7 @@ describe("project privacy (FR-WRK-18)", () => {
     expect(readsPrivateByPortfolio(viewer("tam", { projects: { "project-private": "member" } }), secret)).toBe(false);
     // A grant that does not reach the owning team opens nothing.
     expect(canViewProject(otherHead, secret)).toBe(false);
-    // Narrow on purpose: a private *team backlog* was not part of the decision.
+    // Narrow on purpose: a private *team backlog* was not part of the decision — for `pjm:portfolio`.
     expect(canViewTeamBacklog(head, { ...video, defaultVisibility: "private" })).toBe(false);
     // Being asked to do the work still makes them a party, with everything that follows.
     const assigned = taskIn({ project: secret, assigneePersonId: "head" });
@@ -296,6 +297,24 @@ describe("PJM task foundation", () => {
     expect(canSeeLoggedTime(member, { team: video, project: project("team") })).toBe(false);
     expect(canSeeLoggedTime(lead, { team: video, project: null })).toBe(true);
     expect(canSeeLoggedTime(projectLead, { team: video, project: null })).toBe(false);
+  });
+
+  // The owner's decision of 2026-09-28: `work:oversee` (the owner's, through "*") reads everything.
+  it("lets work:oversee read a private backlog and a private project's hours — and act on nothing new", () => {
+    const closedTeam = { ...video, defaultVisibility: "private" as const };
+    const secret = project("private");
+    expect(canViewTeamBacklog(owner, closedTeam)).toBe(true);
+    expect(canViewTask(owner, taskIn({ team: closedTeam, project: null }))).toBe(true);
+    expect(canSeeLoggedTime(owner, { team: video, project: secret })).toBe(true);
+    // Still reading, not working, in the private project.
+    expect(canManageProject(owner, secret)).toBe(false);
+    expect(canContributeToProject(owner, secret)).toBe(false);
+    expect(canEditTask(owner, taskIn({ project: secret }))).toBe(false);
+    // No other role holds it: a leader over the team with work:manage and pjm:portfolio does not read either.
+    for (const who of [head, member, colleague]) {
+      expect(canViewTeamBacklog(who, closedTeam)).toBe(false);
+      expect(canSeeLoggedTime(who, { team: video, project: secret })).toBe(false);
+    }
   });
 });
 
@@ -467,5 +486,41 @@ describe("automations (FR-PJM-33)", () => {
   it("are read by the team's own people", () => {
     for (const who of [lead, member, owner]) expect(canViewAutomations(who, video)).toBe(true);
     for (const who of [colleague, freelancer, otherEntity]) expect(canViewAutomations(who, video)).toBe(false);
+  });
+});
+
+describe("the checklist library", () => {
+  // Marketing › Video: the head of Video, the head of Marketing above it, entity HR, group HR.
+  const videoUnit: ChecklistOwner = { unit: { id: VID, entityId: null, path: ["dept-mkt", VID] }, team: null };
+  const designUnit: ChecklistOwner = { unit: { id: "dept-des", entityId: SZM, path: ["dept-des"] }, team: null };
+  const company: ChecklistOwner = { unit: null, team: null };
+  const ofTeam: ChecklistOwner = { unit: null, team: video };
+  const marketingHead = viewer("minh", { grants: [{ role: "department_head", scope: { type: "unit", id: "dept-mkt", covers: ["dept-mkt", VID] } }] });
+  const groupHr = viewer("hr", { grants: [{ role: "hr_admin", scope: { type: "group" } }] });
+  const entityHr = viewer("hr-szm", { grants: [{ role: "hr_staff", scope: { type: "entity", id: SZM } }] });
+
+  it("a unit's checklist is kept by its head, the heads above it and HR over it", () => {
+    for (const who of [head, marketingHead, groupHr, owner]) expect(canManageChecklist(who, videoUnit)).toBe(true);
+    for (const who of [otherHead, lead, member, colleague, freelancer]) expect(canManageChecklist(who, videoUnit)).toBe(false);
+    // A unit of an entity: that entity's HR keeps it; a unit shared by the group needs group HR.
+    expect(canManageChecklist(entityHr, designUnit)).toBe(true);
+    expect(canManageChecklist(entityHr, videoUnit)).toBe(false);
+    expect(canManageChecklist(head, designUnit)).toBe(false);
+  });
+  it("a team's checklist is kept by whoever runs the team", () => {
+    for (const who of [lead, head, owner]) expect(canManageChecklist(who, ofTeam)).toBe(true);
+    for (const who of [member, colleague, groupHr, otherHead]) expect(canManageChecklist(who, ofTeam)).toBe(false);
+    // A collaborator who leads a team still keeps no checklist.
+    expect(canManageChecklist(viewer("bao-anh", { collaborator: true, teams: { "team-video": "lead" } }), ofTeam)).toBe(false);
+  });
+  it("a company-wide checklist is kept at group level only", () => {
+    for (const who of [owner, groupHr]) expect(canManageChecklist(who, company)).toBe(true);
+    for (const who of [head, entityHr, lead]) expect(canManageChecklist(who, company)).toBe(false);
+  });
+  it("is offered to write to anyone who keeps one somewhere, and to use to every employee", () => {
+    for (const who of [head, lead, groupHr, entityHr, owner]) expect(canKeepChecklists(who)).toBe(true);
+    for (const who of [member, colleague, freelancer]) expect(canKeepChecklists(who)).toBe(false);
+    for (const who of [member, colleague, otherEntity]) expect(canUseChecklists(who)).toBe(true);
+    expect(canUseChecklists(freelancer)).toBe(false);
   });
 });

@@ -24,7 +24,7 @@ export default async function PersonTimesheetPage({ params, searchParams }: Page
   const { week: asked } = await searchParams;
   const weekStart = typeof asked === "string" && /^\d{4}-\d{2}-\d{2}$/.test(asked) && asked <= today ? weekStartOf(asked) : current;
   if (personId === user.person.id) redirect(`/daily/time?week=${weekStart}`);
-  const [t, format, reader] = await Promise.all([getTranslations("daily"), getFormatter(), loadTimeReader(user.person.id)]);
+  const [t, format, reader] = await Promise.all([getTranslations("daily"), getFormatter(), loadTimeReader(user.person.id, user.principal)]);
   const view = await getTimesheetView(reader, personId, weekStart, today);
   if (!view) notFound();
   const day = (iso: string) => format.dateTime(new Date(`${iso}T12:00:00Z`), { day: "numeric", month: "short" });

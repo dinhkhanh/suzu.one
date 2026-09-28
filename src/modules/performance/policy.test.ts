@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { canReadTier, type Grant, type Principal, readableTier } from "../platform/rbac/policy";
 import { canReadBonusRun, canViewBonusOf, canViewCompensationOf } from "../payroll/policy";
-import { canComputeResults, canDecideOutcome, canDecidePerformanceRules, canHoldOneOnOneWith, canOverrideResult, canProposeSalaryOutcome, canProposeWeighting, canRaiseOutcome, canReadOneOnOne, canReadOneOnOnePrivate, canReadResultOf, canSettleResultOf, canWriteOneOnOne } from "./policy";
+import { canComputeResults, canDecideOutcome, canDecidePerformanceRules, canHoldOneOnOneWith, canOverrideResult, canProposeSalaryOutcome, canProposeWeighting, canRaiseOutcome, canReadOneOnOne, canReadOneOnOnePrivate, canReadResultOf, canSettleResultOf, canWriteOneOnOne, canWriteOneOnOnePrivate } from "./policy";
 import { canCheckIn, canCloseGoal, canCloseKpiMonth, canEditGoal, canEnterActualsFor, canManageAssignmentsOf, canManageKpiLibrary, canManagePositionKpis, canOpenOverview, canReadPerformanceOf, canReopenGoal, canReopenKpiMonth, canSeeGoal, chainAbove, type GoalParties, overviewReach, type PersonContext, readablePeople, unitTarget } from "./policy";
 
 const SZM = "entity-szm";
@@ -278,9 +278,21 @@ describe("1:1 meeting notes (FR-PRF-04)", () => {
     expect(canReadOneOnOne(auditor, meeting)).toBe(false);
   });
 
-  it("keeps the private notes to the one manager who wrote them — not the subject, not HR", () => {
+  it("keeps the private notes to the manager who wrote them and to oversight — not the subject, not HR", () => {
     expect(canReadOneOnOnePrivate(principal("tam"), meeting)).toBe(true);
-    for (const viewer of [principal("huy"), headVid, hrSzm, owner, auditor]) expect(canReadOneOnOnePrivate(viewer, meeting)).toBe(false);
+    // The owner oversees (performance:oversee, 2026-09-28): reads them, never writes them.
+    expect(canReadOneOnOnePrivate(owner, meeting)).toBe(true);
+    for (const viewer of [principal("huy"), headVid, hrSzm, auditor]) expect(canReadOneOnOnePrivate(viewer, meeting)).toBe(false);
+  });
+
+  it("lets only the manager write the private notes — not HR, not oversight", () => {
+    expect(canWriteOneOnOnePrivate(principal("tam"), meeting)).toBe(true);
+    for (const viewer of [principal("huy"), headVid, hrSzm, owner, auditor]) expect(canWriteOneOnOnePrivate(viewer, meeting)).toBe(false);
+  });
+
+  it("never shows oversight the private notes about itself", () => {
+    const aboutOwner = { managerPersonId: "tam", person: { personId: "owner", entityId: null, unitPath: [], managerId: null, chainAbove: [] } };
+    expect(canReadOneOnOnePrivate(owner, aboutOwner)).toBe(false);
   });
 });
 

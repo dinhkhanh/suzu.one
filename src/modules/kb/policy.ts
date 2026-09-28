@@ -6,6 +6,8 @@
 // space. A page can carry rows of its own: it and everything under it is then read only by the
 // people those rows name (and by the space's editors and managers).
 // Readers see published pages and their published version; editors also see drafts.
+// `kb:oversee` over the space's entity (the owner's, decision of 2026-09-28) reads every space —
+// a project's, an archived one, a restricted subtree — as a reader would, and writes nothing.
 // `access-sql.ts` says the same thing as WHERE clauses; a test keeps the two in step.
 import { can, type Principal } from "../platform/rbac/policy";
 import { type AccessLevel, type SpaceKind, subjectKey } from "./enums";
@@ -112,10 +114,14 @@ export const canManageSpace = (principal: Principal, space: { entityId: string |
 /** The "new space" button. Never guards data. */
 export const canManageAnySpace = (principal: Principal): boolean => can(principal, "kb:manage") || can(principal, "kb:manage_unit");
 
+/** Reading every space of the entity whatever its rows say — published pages only, never writing. */
+const oversees = (viewer: KbViewer, space: Pick<SpaceFacts, "entityId">): boolean => can(viewer.principal, "kb:oversee", { entityId: space.entityId });
+
 export function spaceLevel(viewer: KbViewer, space: SpaceFacts): KbLevel | null {
   if (canManageSpace(viewer.principal, space)) return "manage";
-  // An archived space is its managers' alone.
-  return space.archived ? null : matched(viewer, space.access);
+  // An archived space is its managers' alone — and its overseers', who read it.
+  const level = space.archived ? null : matched(viewer, space.access);
+  return level ?? (oversees(viewer, space) ? "view" : null);
 }
 
 export function pageLevel(viewer: KbViewer, space: SpaceFacts, page: PageFacts): KbLevel | null {
@@ -124,7 +130,7 @@ export function pageLevel(viewer: KbViewer, space: SpaceFacts, page: PageFacts):
   if (!inSpace) return null;
   if (inSpace !== "view") return inSpace;
   // A plain reader: a restricted subtree needs a row naming them, and that row may let them edit it.
-  const inSubtree = page.rootAccess ? matched(viewer, page.rootAccess) : "view";
+  const inSubtree = page.rootAccess ? (matched(viewer, page.rootAccess) ?? (oversees(viewer, space) ? "view" : null)) : "view";
   if (!inSubtree) return null;
   if (inSubtree === "edit") return "edit";
   return page.readable ? "view" : null;

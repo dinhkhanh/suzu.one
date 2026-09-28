@@ -47,7 +47,7 @@
     "me": "My profile",
     "approvals": "Approvals",
     "tasks": "My tasks",
-    "checklists": "Checklist templates",
+    "checklists": "Checklists",
     "reports": "Reports",
     "approvalFlows": "Approval flows",
     "checkIn": "Check in / out",
@@ -844,6 +844,10 @@
         "title": "A request is overdue",
         "body": "{requestType} — {summary} — has been waiting {days} days for {approver}."
       },
+      "approvals_oversight_digest": {
+        "title": "{count, plural, =1 {One new request yesterday} other {# new requests yesterday}}",
+        "body": "On {date}: {count, plural, =1 {one request was} other {# requests were}} sent; {open, plural, =0 {all have been answered} =1 {one is still waiting} other {# are still waiting}}."
+      },
       "recruit_hiring_approved": {
         "title": "Hiring request approved",
         "body": "The request for {title} ({count}) was approved. Time to write the posting."
@@ -1360,13 +1364,31 @@
     "inboxEmpty": "Nothing is waiting for you.",
     "mine": "My requests",
     "mineEmpty": "You have not sent any requests.",
+    "oversight": {
+      "link": "All requests",
+      "title": "All requests",
+      "description": "Every request in the company, whoever it is waiting for. For following along: you only decide the ones that reach your turn.",
+      "back": "Approvals inbox",
+      "state": {
+        "open": "Open",
+        "decided": "Decided",
+        "all": "All"
+      },
+      "type": "Request type",
+      "allTypes": "All types",
+      "since": "Sent since",
+      "apply": "Filter",
+      "empty": "No request matches the filter.",
+      "limited": "Showing the {count} newest requests — narrow the filter to see more."
+    },
     "withdraw": "Withdraw request",
     "withdrawConfirm": "Withdraw this request?",
     "columns": {
       "request": "Request",
       "requester": "From",
       "submitted": "Sent",
-      "status": "Status"
+      "status": "Status",
+      "waitingOn": "Waiting for"
     },
     "types": {
       "profile_change": "Personal data change",
@@ -1683,7 +1705,7 @@
     "toRecordClient": "Record client decision"
   },
   "checklists": {
-    "title": "Checklist templates",
+    "title": "Onboarding & offboarding",
     "description": "The steps for onboarding and offboarding. When someone joins or leaves, the best-fitting template (position > department > entity > whole group) becomes tasks for the people responsible.",
     "empty": "No templates yet.",
     "everyone": "Applies to everyone",
@@ -1727,6 +1749,56 @@
       "template_not_found": "Template not found.",
       "template_rule_invalid": "That assignment rule is not valid.",
       "template_person_required": "Choose the person in charge."
+    },
+    "pageTitle": "Checklists",
+    "pageDescription": "Every department's tick-lists — before a hand-off, when a brief comes in, before publishing — kept in one place and hooked into the work that needs them.",
+    "library": {
+      "title": "Checklist library",
+      "description": "What it is for",
+      "companyWide": "Whole company",
+      "teamOwner": "{name} (team)",
+      "filterOwner": "Owner",
+      "allOwners": "All owners",
+      "empty": "No checklists yet.",
+      "itemCount": "{count, plural, one {# item} other {# items}}",
+      "usage": {
+        "stages": "{count, plural, one {# stage} other {# stages}}",
+        "packages": "{count, plural, one {# hand-off package} other {# hand-off packages}}",
+        "forms": "{count, plural, one {# intake form} other {# intake forms}}",
+        "steps": "{count, plural, one {# template step} other {# template steps}}"
+      },
+      "inactive": "Not in use",
+      "guide": "Guide",
+      "create": "New checklist",
+      "name": "Name",
+      "namePlaceholder": "e.g. Before hand-off to design",
+      "owner": "Kept by",
+      "descriptionPlaceholder": "When to use it, who ticks it",
+      "items": "Items",
+      "itemText": "What to check",
+      "itemLink": "Guide link (optional: /kb/pages/… or https://…)",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "removeItem": "Remove item",
+      "addItem": "Add item",
+      "itemsHint": "Empty rows are left out. Up to 40 items.",
+      "active": "In use",
+      "save": "Save",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this checklist? It is also taken off every stage, hand-off package, intake form and template step that uses it. Boxes already on tasks stay.",
+      "pickLegend": "Checklists from the library",
+      "pickHint": "Up to {max}. Their items are asked for as they stand at the time.",
+      "usedBy": "Used by {list}"
+    },
+    "stages": {
+      "title": "Stage checklists",
+      "description": "A task entering a stage gets its checklists. A required one holds the task in the stage until every box is ticked — moving back or cancelling is always allowed.",
+      "none": "No stage has a checklist.",
+      "noneHere": "No checklist",
+      "required": "Required",
+      "remove": "Remove checklist",
+      "add": "Add a checklist…",
+      "retired": "Checklist not in use"
     }
   },
   "forms": {
@@ -3367,7 +3439,7 @@
     "visibility": {
       "entity": "Open to the entity",
       "team": "Team only",
-      "private": "Private to members"
+      "private": "Private to members (the owner can read)"
     },
     "categories": {
       "backlog": "Backlog",
@@ -3709,9 +3781,17 @@
         "publish_cancelled": "cancelled a post: {name}",
         "result_recorded": "recorded post results as of {name}",
         "automation_ran": "automation “{name}” ran",
-        "automation_failed": "automation “{name}” failed at a step"
+        "automation_failed": "automation “{name}” failed at a step",
+        "checklist_added": "added the checklist {name}"
       },
-      "changeState": "Change state"
+      "changeState": "Change state",
+      "checklistGuide": "Guide",
+      "checklistFallback": "Checklist",
+      "checklistRequired": "Required at this stage",
+      "checklistRemove": "Remove checklist",
+      "checklistMissing": "This stage requires “{name}”, which the task does not have yet.",
+      "checklistAddThis": "Add it",
+      "checklistFromLibrary": "Add from the library…"
     },
     "palette": {
       "title": "Command palette",
@@ -3891,7 +3971,19 @@
       "preview_link_not_found": "That link no longer exists.",
       "preview_link_closed": "That link is no longer active.",
       "preview_comment_required": "Say what needs changing.",
-      "preview_version_not_ready": "This version has not cleared internal review, so it cannot go to the client yet."
+      "preview_version_not_ready": "This version has not cleared internal review, so it cannot go to the client yet.",
+      "checklist_name_required": "Give the checklist a name.",
+      "checklist_empty": "Add at least one item.",
+      "checklist_too_many": "A checklist holds at most 40 items.",
+      "checklist_item_text": "Each item needs a text of up to 200 characters.",
+      "checklist_item_link": "A guide link must be a page in the app (/kb/pages/…) or an https:// address.",
+      "checklist_item_duplicate": "Two items have the same id. Reload the page and try again.",
+      "checklist_owner_invalid": "Choose who keeps this checklist.",
+      "checklist_not_found": "That checklist is not in the library or no longer in use.",
+      "checklist_links_too_many": "Choose at most 5 checklists.",
+      "checklist_incomplete": "This stage requires its checklist: tick every box before moving on.",
+      "checklist_item_locked": "Boxes of a checklist this stage requires cannot be removed.",
+      "task_checklist_full": "The task has too many checklist items to add this one."
     },
     "views": {
       "list": "List",
@@ -4087,7 +4179,9 @@
         "project_not_found": "Project not found.",
         "project_archived": "This project is archived.",
         "state_not_found": "The team has no state for new tasks."
-      }
+      },
+      "checklist": "Checklist",
+      "noChecklist": "No checklist"
     },
     "recurrence": {
       "heading": "Recurring tasks",
@@ -4246,7 +4340,8 @@
       "audiences": {
         "entity": "People of this team's company",
         "group": "Anyone in the group"
-      }
+      },
+      "checklists": "Checklists every request starts with"
     },
     "customFields": {
       "title": "Custom fields",
@@ -4550,7 +4645,10 @@
         "checkText": "Check",
         "addCheck": "Add a check",
         "deleteConfirm": "Delete this package? Hand-offs made with it are kept.",
-        "delete": "Delete package"
+        "delete": "Delete package",
+        "libraryChecklists": "Checklists from the library",
+        "libraryChecklist": "☐ Checklist: {name}",
+        "librarySummary": "{count, plural, one {+ # library checklist} other {+ # library checklists}}"
       },
       "stats": {
         "title": "Hand-offs by stage (last {days} days)",
@@ -5851,7 +5949,7 @@
         "submitYes": "Submit",
         "cancel": "Cancel",
         "saved": "Saved.",
-        "draftHint": "A draft is yours alone. Once submitted, your manager and HR can read it.",
+        "draftHint": "A draft is yours and the company owner's to read. Once submitted, your manager and HR can read it.",
         "waitingForSelf": "Cannot submit yet: waiting for the person's self review, or for the {date} due date to pass."
       },
       "submitted": {
@@ -6172,7 +6270,7 @@
       "agenda": "Agenda",
       "sharedNotes": "Shared notes",
       "privateNotes": "Manager's private notes",
-      "privateHint": "The person this is about never reads this.",
+      "privateHint": "The person this is about never reads this. Only you and the company owner can.",
       "status": {
         "draft": "Draft",
         "shared": "Shared"
@@ -7859,6 +7957,13 @@
     "mine": "My requests",
     "mineEmpty": "You have not made a request yet.",
     "backToApprovals": "Approvals",
+    "elsewhere": {
+      "title": "Other kinds of request",
+      "leave": "Request leave",
+      "attendance": "Attendance request",
+      "approvals": "Approvals",
+      "claims": "Expense claims"
+    },
     "tracking": {
       "title": "By type",
       "description": "How many are waiting, how many were answered, and the median time to an answer.",
@@ -8694,6 +8799,7 @@
       "addApplication": "Add a candidate to this opening",
       "openCandidate": "Open candidate",
       "openOpening": "Open the job opening",
+      "openCareersPage": "Open careers page",
       "copyCareersLink": "Copy careers link",
       "careersLinkCopied": "Link copied"
     },
@@ -8973,7 +9079,7 @@
       "submitWarning": "Once submitted it cannot be changed.",
       "finalNote": "Submitted. This is the record of the interview, so it cannot be edited.",
       "blind": "The others' feedback appears once yours is in.",
-      "blindHint": "You cannot see anybody else's scorecard yet — and they cannot see yours. Write down what you thought first.",
+      "blindHint": "You cannot see anybody else's scorecard yet — and the other interviewers cannot see yours. Write down what you thought first.",
       "noneYet": "Nobody has submitted yet.",
       "awaiting": "{count} still to come",
       "scale": {
@@ -9512,6 +9618,7 @@
       "title": "Conversation ({count})"
     },
     "board": {
+      "everyoneElse": "Everyone else in the company",
       "title": "Team daily board",
       "reminded": "Reminded",
       "missing": "Missing",
@@ -9653,6 +9760,7 @@
       "pick": "Select {name}'s timesheet, {week}"
     },
     "utilisation": {
+      "everyoneElse": "Everyone else in the company",
       "title": "Utilisation",
       "intro": "Hours logged divided by scheduled working hours (less leave and public holidays) over the last 8 weeks; the current week counts up to today. For planning work — not for ranking people or for pay.",
       "empty": "You do not lead a team and nobody reports to you.",
@@ -10628,7 +10736,7 @@
       "drive": "Google Drive folder",
       "noDrive": "The project has no Drive folder link yet.",
       "setDrive": "Add it on the Plan tab",
-      "noSpace": "The project has no document space yet. It starts with template pages — brief, script, shot list, meeting notes — and only the project's members and team leads can see it.",
+      "noSpace": "The project has no document space yet. It starts with template pages — brief, script, shot list, meeting notes — and only the project's members and team leads can edit it; the owner can read it.",
       "create": "Create the document space",
       "creating": "Creating…",
       "membersOnly": "The project's documents are for its members and the leads of its team only.",
@@ -10704,6 +10812,7 @@
     "application": "Application",
     "approvalFlows": "Approval flows",
     "approvals": "Approvals",
+    "approvalsAll": "All requests",
     "askSuZu": "Ask SuZu",
     "assetCategories": "Asset categories",
     "assets": "Assets",

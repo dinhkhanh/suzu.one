@@ -13,7 +13,7 @@ export async function RequestStatusBadge({ status }: { status: string }) {
   return <Badge dot variant={statusTone(status)}>{t(`status.${status}` as "status.pending")}</Badge>;
 }
 
-export async function RequestTable({ rows, empty, showRequester, labels }: { rows: RequestListRow[]; empty: string; showRequester: boolean; /** Names of the request builder's types, which the message bundle does not know. */ labels?: ReadonlyMap<string, string> }) {
+export async function RequestTable({ rows, empty, showRequester, labels, showWaitingOn = false }: { rows: (RequestListRow & { waitingOn?: string | null })[]; empty: string; showRequester: boolean; /** Names of the request builder's types, which the message bundle does not know. */ labels?: ReadonlyMap<string, string>; /** Whose answer each open request is waiting for — the oversight list. */ showWaitingOn?: boolean }) {
   const t = await getTranslations("approvals");
   const format = await getFormatter();
   if (rows.length === 0) return <p className="text-sm text-muted-foreground">{empty}</p>;
@@ -25,6 +25,7 @@ export async function RequestTable({ rows, empty, showRequester, labels }: { row
           {showRequester ? <TableHead>{t("columns.requester")}</TableHead> : null}
           <TableHead>{t("columns.submitted")}</TableHead>
           <TableHead>{t("columns.status")}</TableHead>
+          {showWaitingOn ? <TableHead>{t("columns.waitingOn")}</TableHead> : null}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -41,6 +42,7 @@ export async function RequestTable({ rows, empty, showRequester, labels }: { row
             <TableCell>
               <RequestStatusBadge status={row.status} />
             </TableCell>
+            {showWaitingOn ? <TableCell className="text-muted-foreground">{row.waitingOn ?? "—"}</TableCell> : null}
           </TableRow>
         ))}
       </TableBody>

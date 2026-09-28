@@ -259,7 +259,8 @@ export type WaitingWeek = { id: string; personId: string; name: string; weekStar
  * every submitted week; `recent` the weeks decided in the last `days` days (to reopen from).
  */
 export async function listApprovals(reader: ReportReader, today: IsoDate, days = 42): Promise<{ waiting: WaitingWeek[]; recent: WaitingWeek[] }> {
-  const groups = await listOverseen(reader);
+  // Oversight approves nothing: the rest of the company is not worth loading here.
+  const groups = (await listOverseen(reader)).filter((group) => group.kind !== "company");
   const candidates = [...new Set(groups.flatMap((group) => group.personIds))];
   if (candidates.length === 0) return { waiting: [], recent: [] };
   const subjects = await loadSubjects(candidates);

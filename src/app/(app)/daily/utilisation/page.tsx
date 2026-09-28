@@ -46,7 +46,7 @@ export default async function UtilisationPage() {
           </tr>
         </thead>
         <tbody>
-          {group.kind !== "team" && group.kind !== "reports"
+          {group.kind !== "team" && group.kind !== "reports" && group.kind !== "company"
             ? null
             : group.people.map((person: UtilisationPerson) => (
                 <tr key={person.personId} className="border-b">
@@ -79,8 +79,8 @@ export default async function UtilisationPage() {
 
       {view.groups.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : null}
       {view.groups.map((group) => (
-        <section key={group.kind === "reports" || group.kind === "portfolio_other" ? group.kind : `${group.kind}:${group.teamId}`} className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium">{group.kind === "reports" ? t("myReports") : group.kind === "portfolio_other" ? t("otherTeams", { count: group.teams }) : group.name}</h2>
+        <section key={group.kind === "reports" || group.kind === "company" || group.kind === "portfolio_other" ? group.kind : `${group.kind}:${group.teamId}`} className="flex flex-col gap-2">
+          <h2 className="text-sm font-medium">{group.kind === "reports" ? t("myReports") : group.kind === "company" ? t("everyoneElse") : group.kind === "portfolio_other" ? t("otherTeams", { count: group.teams }) : group.name}</h2>
           {group.kind === "portfolio" || group.kind === "portfolio_other" ? <p className="text-xs text-muted-foreground">{t("portfolioHint")}</p> : null}
           {table(group)}
         </section>

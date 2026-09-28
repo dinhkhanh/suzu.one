@@ -79,6 +79,9 @@ export const KINDS = {
   // goes over your head. Neither carries anything but the type, the one-line summary and the wait.
   "approvals.sla_reminder": "approvals",
   "approvals.sla_escalated": "approvals",
+  // The morning digest for whoever follows every request (the owner): how many were filed
+  // yesterday and how many are still open. Counts only; the link opens the list.
+  "approvals.oversight_digest": "approvals",
   // HR called off someone's approved leave: the person is told, the days are back in the balance.
   "approvals.leave_cancelled": "approvals",
   "tasks.assigned": "tasks",

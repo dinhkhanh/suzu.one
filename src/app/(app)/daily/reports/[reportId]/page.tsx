@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { addDays, todayInVietnam } from "@/lib/dates";
-import { getReportView, loadReportReader, REPORT_BACKFILL_DAYS } from "@/modules/daily/service";
+import { canCommentOnReport, getReportView, loadReportReader, REPORT_BACKFILL_DAYS } from "@/modules/daily/service";
 import { ActivityList, TaskLines } from "@/modules/daily/ui/activity-list";
 import { hoursOf } from "@/modules/daily/ui/format";
 import { ReportThread } from "@/modules/daily/ui/report-thread";
@@ -20,7 +20,7 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
   const user = await requireUser();
   const { reportId } = await params;
   if (!/^[0-9a-f-]{36}$/.test(reportId)) notFound();
-  const [t, format, reader] = await Promise.all([getTranslations("daily"), getFormatter(), loadReportReader(user.person.id)]);
+  const [t, format, reader] = await Promise.all([getTranslations("daily"), getFormatter(), loadReportReader(user.person.id, undefined, user.principal)]);
   const view = await getReportView(reader, reportId);
   if (!view) notFound();
   const { report, subject } = view;
@@ -115,7 +115,8 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
             ))}
           </ul>
         ) : null}
-        <ReportThread reportId={report.id} />
+        {/* Oversight reads the thread; only the person and the people the report is for write in it. */}
+        {canCommentOnReport(reader, view.subject) ? <ReportThread reportId={report.id} /> : null}
       </section>
     </div>
   );

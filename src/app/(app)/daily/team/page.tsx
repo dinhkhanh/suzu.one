@@ -17,11 +17,12 @@ export default async function TeamBoardPage({ searchParams }: PageProps<"/daily/
   const today = todayInVietnam();
   const { date: asked } = await searchParams;
   const date = typeof asked === "string" && /^\d{4}-\d{2}-\d{2}$/.test(asked) && asked <= today ? asked : today;
-  const [t, format, reader] = await Promise.all([getTranslations("daily"), getFormatter(), loadReportReader(user.person.id)]);
+  const [t, format, reader] = await Promise.all([getTranslations("daily"), getFormatter(), loadReportReader(user.person.id, undefined, user.principal)]);
   const groups = await getTeamBoard(reader, date);
   const isToday = date === today;
 
-  const row = (person: BoardRow) => (
+  // Oversight reads the rest of the company; reminding stays with the people who run the work.
+  const row = (person: BoardRow, remindable: boolean) => (
     <li key={person.personId} className="flex flex-col gap-1 p-3">
       <div className="flex flex-wrap items-center gap-2">
         {person.reportId ? (
@@ -33,7 +34,7 @@ export default async function TeamBoardPage({ searchParams }: PageProps<"/daily/
         )}
         {person.status === "submitted" ? <Badge dot variant={person.late ? "warning" : "success"}>{person.late ? t("late") : t("submitted")}</Badge> : person.status === "missing" ? <Badge dot variant="destructive">{t("board.missing")}</Badge> : <Badge variant="secondary">{t(`board.reasons.${person.reason ?? "optional"}`)}</Badge>}
         {person.comments > 0 ? <span className="text-xs text-muted-foreground">{t("board.comments", { count: person.comments })}</span> : null}
-        {person.status === "missing" && isToday ? <RemindButton date={date} personIds={[person.personId]} label={t("board.remind")} done={person.reminded} /> : null}
+        {person.status === "missing" && isToday && remindable ? <RemindButton date={date} personIds={[person.personId]} label={t("board.remind")} done={person.reminded} /> : null}
       </div>
       {person.blockers?.trim() ? <p className="text-sm whitespace-pre-wrap text-destructive">{person.blockers}</p> : null}
       {person.openBlockers > 0 ? <p className="text-xs text-destructive">{t("board.openBlockers", { count: person.openBlockers })}</p> : null}
@@ -60,15 +61,16 @@ export default async function TeamBoardPage({ searchParams }: PageProps<"/daily/
 
       {groups.length === 0 ? <p className="text-sm text-muted-foreground">{t("board.nobody")}</p> : null}
       {groups.map((group) => {
+        const remindable = group.kind !== "company";
         const missing = group.rows.filter((person) => person.status === "missing" && !person.reminded).map((person) => person.personId);
         return (
-          <section key={group.kind === "team" ? group.teamId : "reports"} className="flex flex-col gap-2">
+          <section key={group.kind === "team" ? group.teamId : group.kind} className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="min-w-0 flex-1 text-sm font-medium">{group.kind === "team" ? group.name : t("board.myReports")}</h2>
+              <h2 className="min-w-0 flex-1 text-sm font-medium">{group.kind === "team" ? group.name : group.kind === "company" ? t("board.everyoneElse") : t("board.myReports")}</h2>
               <span className="text-xs text-muted-foreground">{t("board.counts", { submitted: group.counts.submitted, missing: group.counts.missing, notRequired: group.counts.not_required })}</span>
-              {isToday ? <RemindButton date={date} personIds={missing} label={t("board.remindAll", { count: missing.length })} /> : null}
+              {isToday && remindable ? <RemindButton date={date} personIds={missing} label={t("board.remindAll", { count: missing.length })} /> : null}
             </div>
-            <ul className="flex flex-col divide-y rounded-xl border">{group.rows.map(row)}</ul>
+            <ul className="flex flex-col divide-y rounded-xl border">{group.rows.map((person) => row(person, remindable))}</ul>
           </section>
         );
       })}

@@ -26,6 +26,8 @@ export type OtherCard = {
   strengths: string | null;
   concerns: string | null;
   notes: string | null;
+  /** Null for a draft — shown only to oversight. */
+  submittedAt?: Date | null;
 };
 
 const SCORES = Array.from({ length: SCORE_MAX - SCORE_MIN + 1 }, (_, index) => SCORE_MIN + index);
@@ -145,6 +147,7 @@ function CardBody({ criteria, card }: { criteria: ScorecardCriterion[]; card: { 
 
 export function ScorecardPanel({ criteria, others, blind, awaiting }: { criteria: ScorecardCriterion[]; others: OtherCard[]; blind: boolean; awaiting: number }) {
   const t = useTranslations("recruit.scorecard");
+  const tStatus = useTranslations("recruit.status");
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -156,7 +159,10 @@ export function ScorecardPanel({ criteria, others, blind, awaiting }: { criteria
       {!blind && others.length === 0 ? <p className="text-sm text-muted-foreground">{t("noneYet")}</p> : null}
       {others.map((card) => (
         <article key={card.interviewerPersonId} className="flex flex-col gap-2 rounded-xl border p-4">
-          <h4 className="text-sm font-medium">{card.interviewerName}</h4>
+          <h4 className="text-sm font-medium">
+            {card.interviewerName}
+            {card.submittedAt === null ? <span className="ml-2 text-xs font-normal text-muted-foreground">({tStatus("draft")})</span> : null}
+          </h4>
           <CardBody criteria={criteria} card={card} />
         </article>
       ))}

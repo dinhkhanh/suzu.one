@@ -13,6 +13,7 @@ import { canRespondToHandoff, canSendToTeam, listOpenCycles, listTaskHandoffs, l
 import { HandoffPanel } from "@/modules/work/ui/handoff";
 import { todayInVietnam } from "@/lib/dates";
 import { canDecideStage, canManagePublish, canManagePreviewLinks, canPinFeedback, canRecordClientDecision, canRecordDelivery, canResolvePin, canRevokePreviewLink, clientOfTask, listDeliveriesByTask, listPreviewLinks, listPublishesByTask, listTaskPins } from "@/modules/work/service";
+import { checklistChoices, listStateChecklists } from "@/modules/work/service";
 import { DeliveryPanel } from "@/modules/work/ui/delivery";
 import { auditPrivateTaskRead } from "@/modules/projects/service";
 import { PreviewLinkPanel } from "@/modules/work/ui/preview-links";
@@ -59,7 +60,11 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
     listTaskBlockers(task.id),
     canEdit ? listMoveTargets(viewer, detail.facts) : [],
   ]);
-  const [pins, deliveries, publishes, client] = await Promise.all([listTaskPins(task.id), listDeliveriesByTask([task.id]), listPublishesByTask([task.id]), clientOfTask(detail)]);
+  const [pins, deliveries, publishes, client, checklists, stageHooks] = await Promise.all([listTaskPins(task.id), listDeliveriesByTask([task.id]), listPublishesByTask([task.id]), clientOfTask(detail), checklistChoices(), listStateChecklists([work.stateId])]);
+  const stageChecklists = stageHooks.flatMap((hook) => {
+    const list = checklists.find((choice) => choice.id === hook.checklistId);
+    return list ? [{ id: list.id, name: list.name, required: hook.required }] : [];
+  });
   // The client's review links (FR-PJM-51a) are a capability handed outside the company, so the list
   // is read only for the people who may act for the client — never as directory information.
   const managesPreview = canManagePreviewLinks(viewer, detail.facts, client);
@@ -141,6 +146,8 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
           projects,
           linkable: siblings.filter((row) => !linkedIds.has(row.id)),
           cycles,
+          checklists,
+          stageChecklists,
         }}
         subtasks={detail.subtasks.map(({ id, key, title, status, stateId, assigneeName, dueDate }) => ({ id, key, title, status, stateId, assigneeName, dueDate }))}
         linked={detail.linked}

@@ -384,3 +384,20 @@ describe("canImpersonate", () => {
     expect(canImpersonate(principal([{ role: "hr_admin", scope: { type: "group" } }]), plainLan)).toBe(false);
   });
 });
+
+describe("oversight (<feature>:oversee)", () => {
+  const OVERSEE = ["approval:oversee", "work:oversee", "pjm:oversee", "kb:oversee", "daily:oversee", "performance:oversee", "recruit:oversee"] as const;
+
+  it("is the owner's alone, in every feature: no other role reads beyond its own rules", () => {
+    for (const permission of OVERSEE) {
+      for (const role of ROLES) expect(can(principal([{ role, scope: { type: "group" } }]), permission, lan), `${role} ${permission}`).toBe(role === "owner");
+    }
+  });
+
+  it("reaches only the entity of an entity-scoped owner grant", () => {
+    const owner = principal([{ role: "owner", scope: { type: "entity", id: ENTITY_A } }]);
+    expect(can(owner, "approval:oversee", { entityId: ENTITY_A })).toBe(true);
+    expect(can(owner, "approval:oversee", { entityId: ENTITY_B })).toBe(false);
+    expect(entityReach(owner, "approval:oversee")).toEqual({ all: false, entityIds: [ENTITY_A] });
+  });
+});

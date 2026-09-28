@@ -362,6 +362,40 @@ describe("blind feedback (FR-REC-06)", () => {
   });
 });
 
+describe("oversight of the panel (recruit:oversee)", () => {
+  const ownerAs = (personId: string) => principal(personId, [{ role: "owner", scope: { type: "group" } }]);
+
+  it("shows the owner every card, drafts included, and lets them score nothing", async () => {
+    const { interview } = await scheduleInterview(
+      { applicationId: ids.applicationId, stageId: null, kind: "technical", title: "Vòng giám sát", ...slot(60, 2), mode: "video", location: null, meetingUrl: null, notesForCandidate: null, interviewerPersonIds: [ids.interviewerA, ids.interviewerB] },
+      ids.recruiterPerson,
+    );
+    await saveScorecard(interview.id, ids.interviewerA, { ratings: { craft: 2 }, recommendation: null, strengths: null, concerns: null, notes: "nháp của Hà" }, { submit: false });
+
+    const forOwner = await scorecardsFor(viewerOf(ownerAs(ids.strangerPerson)), interview.id);
+    expect(forOwner?.blind).toBe(false);
+    expect(forOwner?.others.map((row) => [row.interviewerPersonId, row.notes, row.submittedAt])).toEqual([[ids.interviewerA, "nháp của Hà", null]]);
+    expect(forOwner?.canScore).toBe(false);
+    // A recruiter still sees no draft.
+    expect((await scorecardsFor(viewerOf(recruiter), interview.id))?.others).toEqual([]);
+    // Reading is not writing: somebody who was not in the room still cannot file a card.
+    expect(await fails(saveScorecard(interview.id, ids.strangerPerson, { ratings: {}, recommendation: "yes", strengths: null, concerns: null, notes: null }, { submit: true }))).toBe("recruit_not_an_interviewer");
+  });
+
+  it("keeps the blind rule for an owner who is interviewing: an interviewer first", async () => {
+    const { interview } = await scheduleInterview(
+      { applicationId: ids.applicationId, stageId: null, kind: "culture", title: "Vòng chủ sở hữu", ...slot(61, 2), mode: "video", location: null, meetingUrl: null, notesForCandidate: null, interviewerPersonIds: [ids.interviewerA, ids.interviewerB] },
+      ids.recruiterPerson,
+    );
+    await saveScorecard(interview.id, ids.interviewerA, { ratings: { craft: 4 }, recommendation: "yes", strengths: "Chắc tay", concerns: null, notes: null }, { submit: true });
+
+    const ownerInTheRoom = await scorecardsFor(viewerOf(ownerAs(ids.interviewerB)), interview.id);
+    expect(ownerInTheRoom?.blind).toBe(true);
+    expect(ownerInTheRoom?.others).toEqual([]);
+    expect(JSON.stringify(ownerInTheRoom)).not.toContain("Chắc tay");
+  });
+});
+
 describe("availability and clashes", () => {
   it("reports a person's other interviews in the window", async () => {
     const { startAt, endAt } = slot(4, 2);

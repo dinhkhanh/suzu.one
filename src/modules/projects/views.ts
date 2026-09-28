@@ -70,7 +70,8 @@ export async function openProject(user: ProjectReader, projectId: string): Promi
 
 /**
  * For an approver who may not open the project itself — the owners, asked when a private
- * project's team has no other lead: the brief and its request, nothing else. null = not a party.
+ * project's team has no other lead — and for whoever oversees projects (`pjm:oversee`): the brief
+ * and its request, nothing else. null = neither.
  */
 export async function openBriefForApprover(user: Pick<CurrentUser, "person" | "principal">, projectId: string): Promise<{ projectName: string; plan: Pick<PlanRow, "brief" | "kind" | "jobNumber" | "briefStatus">; request: RequestView } | null> {
   if (!UUID.test(projectId)) return null;

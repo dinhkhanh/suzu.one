@@ -103,3 +103,12 @@ export { PREVIEW_DECISIONS, PREVIEW_DEFAULT_DAYS, PREVIEW_MAX_DAYS, PREVIEW_MIN_
 export { canManageAutomations, canViewAutomations } from "./policy";
 export { type AutomationPanel, automationPanel, type AutomationRow, type AutomationRunView, fireProjectAutomations, listAutomationRuns, listAutomations, listTaskTemplates } from "./automations";
 export { AUTOMATION_ACTIONS, AUTOMATION_PRESETS, AUTOMATION_TRIGGERS, CLIENT_DECISIONS, CONDITION_FIELDS, CONDITION_OPS, QUOTA_PERCENTS, ROLES_FOR, WATCHED_FIELDS } from "./engine/automation";
+/**
+ * The checklist library: any department's reusable tick-lists, hooked to workflow stages, hand-off
+ * packages, intake forms, template steps and tasks. Read by everyone in the company; kept by the
+ * owning unit's heads and HR, or the owning team's leads (`canManageChecklist`).
+ */
+export { canKeepChecklists, canManageChecklist, canUseChecklists, type ChecklistOwner } from "./policy";
+export { checklistChoices, type ChecklistRow, listChecklists, listStateChecklists, type StateChecklistRow } from "./checklist-library";
+export { checklistOwners, checklistUsage } from "./checklists";
+export { MAX_CHECKLIST_ITEMS, MAX_LINKED_CHECKLISTS } from "./engine/checklists";

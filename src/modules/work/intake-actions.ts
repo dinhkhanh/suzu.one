@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createAction } from "@/lib/action";
+import { MAX_LINKED_CHECKLISTS } from "./engine/checklists";
 import { INTAKE_FIELD_TYPES, MAX_INTAKE_FIELDS } from "./engine/intake";
 import { INTAKE_AUDIENCES, type IntakeAudience } from "./enums";
 import { findIntakeForm, saveIntakeForm, submitIntake } from "./intake";
@@ -31,6 +32,8 @@ const savePipeline = createAction({
     description: optional(z.string().trim().max(1000)),
     projectId: optional(z.uuid()),
     audience: z.enum(INTAKE_AUDIENCES).default("entity"),
+    // "checklistIds[]" checkboxes: the library checklists every request starts with.
+    checklistIds: z.array(z.uuid()).max(MAX_LINKED_CHECKLISTS).default([]),
     isActive: checkbox,
     // The form posts fields as "fields.0.label" …: an object keyed by index. Rows without a label are blank rows of the editor.
     fields: z.preprocess((value) => (value && typeof value === "object" && !Array.isArray(value) ? Object.values(value as Record<string, unknown>) : value), z.array(z.unknown()).max(MAX_INTAKE_FIELDS * 2)).transform((rows) => rows.filter((row) => typeof (row as { label?: unknown })?.label === "string" && (row as { label: string }).label.trim() !== "")).pipe(z.array(field).max(MAX_INTAKE_FIELDS)),

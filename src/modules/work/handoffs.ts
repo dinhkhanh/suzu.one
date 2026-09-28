@@ -14,6 +14,7 @@ import { runTaskAutomations } from "./automations";
 import { invalidateWorkDirectory } from "./directory";
 import { invalidateMemberships } from "./viewer";
 import { type HandoffStatus, keptValues, missingItems, normalizeNote, type Note, noteIsEmpty, packageProblem, type PackageField, stageOutcome } from "./engine/handoff";
+import { assertUsable } from "./checklist-library";
 import { findPackageFor, type HandoffPackageRow, invalidateHandoffPackages } from "./handoff-gate";
 import type { ProjectRole } from "./enums";
 import { canGiveProjectRole, canManageProject, canViewTask, type WorkViewer } from "./policy";
@@ -45,6 +46,8 @@ export type PackageInput = {
   toStateId: string;
   fields: { key?: string | null; label: string; type: PackageField["type"]; required: boolean }[];
   checklist: { id?: string | null; text: string }[];
+  /** Library checklists the package asks for as well. */
+  checklistIds?: string[];
   requireLink: boolean;
   requireFile: boolean;
   requireAccept: boolean;
@@ -61,6 +64,7 @@ export async function findPackage(packageId: string): Promise<HandoffPackageRow 
  * their answers by it), a new one gets a fresh key. Both states must be the team's own.
  */
 export async function savePackage(teamId: string, packageId: string | null, input: PackageInput, actorPersonId: string): Promise<{ before: HandoffPackageRow | null; after: HandoffPackageRow }> {
+  const checklistIds = await assertUsable(input.checklistIds ?? [], packageId ? ((await findPackage(packageId))?.checklistIds ?? []) : []);
   const saved = await db().transaction(async (tx) => {
     const stateIds = [input.toStateId, input.fromStateId].filter((id): id is string => !!id);
     const states = await tx.select({ id: schema.workState.id }).from(schema.workState).where(and(inArray(schema.workState.id, stateIds), eq(schema.workState.teamId, teamId)));
@@ -71,6 +75,7 @@ export async function savePackage(teamId: string, packageId: string | null, inpu
       toStateId: input.toStateId,
       fields: input.fields.map((field) => ({ key: field.key || `f_${newId()}`, label: field.label.trim(), type: field.type, required: field.required })),
       checklist: input.checklist.map((check) => ({ id: check.id || `c_${newId()}`, text: check.text.trim() })),
+      checklistIds,
       requireLink: input.requireLink,
       requireFile: input.requireFile,
       requireAccept: input.requireAccept,

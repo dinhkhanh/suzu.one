@@ -22,7 +22,7 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/daily
   const current = weekStartOf(today);
   const { week: asked } = await searchParams;
   const weekStart = typeof asked === "string" && /^\d{4}-\d{2}-\d{2}$/.test(asked) && asked <= today ? weekStartOf(asked) : current;
-  const [t, format, reader] = await Promise.all([getTranslations("daily"), getFormatter(), loadTimeReader(user.person.id)]);
+  const [t, format, reader] = await Promise.all([getTranslations("daily"), getFormatter(), loadTimeReader(user.person.id, user.principal)]);
   const [{ waiting, recent }, projectTime] = await Promise.all([listApprovals(reader, today), listProjectTime(reader, weekStart)]);
   const day = (iso: string) => format.dateTime(new Date(`${iso}T12:00:00Z`), { day: "numeric", month: "short" });
   const weekOf = (iso: string) => t("time.week", { start: day(iso), end: day(addDays(iso, 6)) });

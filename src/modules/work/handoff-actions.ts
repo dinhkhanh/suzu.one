@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { todayInVietnam } from "@/lib/dates";
 import { acknowledgeCover, coverPlanFacts, findCoverPlan, handBackCover, saveCoverPlan, submitCoverPlan, syncCoverPlans } from "./cover";
+import { MAX_CHECKLIST_ITEMS, MAX_LINKED_CHECKLISTS } from "./engine/checklists";
 import { HANDOFF_FIELD_TYPES, MAX_NOTE_LINKS, MAX_PACKAGE_CHECKS, MAX_PACKAGE_FIELDS } from "./engine/handoff";
 import { OWNERSHIP_KINDS } from "./engine/exit";
 import { completeExitHandover, exitHandoverFacts, findExitHandover, reassignOwnership } from "./exit";
@@ -49,6 +50,7 @@ const savePackagePipeline = createAction({
     toStateId: z.uuid(),
     fields: z.array(z.object({ key: optional(z.string().regex(/^[a-z0-9_]{1,40}$/)), label: z.string().trim().min(1).max(80), type: z.enum(HANDOFF_FIELD_TYPES), required: checkbox.default(true) })).max(MAX_PACKAGE_FIELDS).default([]),
     checklist: z.array(z.object({ id: optional(z.string().regex(/^[a-z0-9_]{1,40}$/)), text: z.string().trim().min(1).max(200) })).max(MAX_PACKAGE_CHECKS).default([]),
+    checklistIds: z.array(z.uuid()).max(MAX_LINKED_CHECKLISTS).default([]),
     requireLink: checkbox.default(false),
     requireFile: checkbox.default(false),
     requireAccept: checkbox.default(true),
@@ -96,7 +98,8 @@ const handOffPipeline = createAction({
     taskId: z.uuid(),
     toStateId: z.uuid(),
     values: z.record(z.string().max(40), z.string().max(2000)).default({}),
-    checked: z.array(z.string().max(40)).max(MAX_PACKAGE_CHECKS).default([]),
+    // The package's own checks and those of the library checklists it names.
+    checked: z.array(z.string().max(40)).max(MAX_PACKAGE_CHECKS + MAX_LINKED_CHECKLISTS * MAX_CHECKLIST_ITEMS).default([]),
     links: z.array(z.string().trim().max(1000)).max(MAX_NOTE_LINKS).default([]),
     fileId: optional(z.uuid()),
     toPersonId: optional(z.uuid()),

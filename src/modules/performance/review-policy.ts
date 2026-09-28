@@ -49,13 +49,17 @@ export const isReviewingManager = (principal: Principal, parties: ReviewParties)
 export const canSeeParticipant = (principal: Principal, parties: ReviewParties, nominated = false): boolean => canReadPerformanceOf(principal, parties.subject) || (nominated && !!principal.personId && principal.personId !== parties.subject.personId);
 
 /**
- * Reading one filled form. A draft is its author's alone; after that the rules above apply.
+ * Reading one filled form. A draft is its author's alone — and oversight's; after that the rules
+ * below apply.
  * `authorPersonId` matters for peer forms — a peer reads their own, never another's.
  */
 export function canReadReviewForm(principal: Principal, parties: ReviewParties, form: { kind: ReviewFormKind; authorPersonId: string; status: "draft" | "submitted" }): boolean {
   if (!principal.personId) return false;
   // Your own draft, and your own submitted form, are always yours.
   if (principal.personId === form.authorPersonId) return true;
+  // Oversight (`performance:oversee`, the owner's — decision of 2026-09-28) reads every form,
+  // drafts included, with its author — but a review about oneself follows the subject's rules below.
+  if (!isSelf(principal, parties) && can(principal, "performance:oversee", parties.subject)) return true;
   if (form.status === "draft") return false;
 
   switch (form.kind) {

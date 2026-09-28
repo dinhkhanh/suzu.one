@@ -34,9 +34,12 @@ export const changeRequestType = defineRequestType({
   conditionFields: ["feeChange"],
   // A change moves scope, hours and perhaps the fee: it is read before it is approved.
   bulkApprovable: () => false,
-  // Nobody reads a change for holding a permission: a private project's changes stay with its
-  // people. Its requester and its approvers are the parties, and nobody else opens the request.
-  canView: () => false,
+  // Nobody else reads a change for holding an ordinary permission: a private project's requests stay
+  // with its people, its requester and its approvers. The one exception is `pjm:oversee` — the
+  // owner's view of every project (decision of 2026-09-28) — which reads and decides nothing. The
+  // engine hands over the requester, not the project, so the grant must reach them; the owner's
+  // group grant reaches everybody.
+  canView: (viewer, subject) => can(viewer, "pjm:oversee", subject ?? {}),
 });
 
 /**
@@ -326,8 +329,9 @@ export async function changeWithEvidence(projectId: string, fileId: string): Pro
 
 /**
  * For an approver who may not open the project itself — the commercial step's finance approver,
- * or the owners asked on a private project: the changes they are asked about, nothing else. The
- * fee is there only for a reader with `pjm:commercial` over the project's entity. null = not a party.
+ * or the owners asked on a private project — and for whoever oversees projects (`pjm:oversee`): the
+ * changes, nothing else. The fee is there only for a reader with `pjm:commercial` over the project's
+ * entity. null = neither.
  */
 export async function openChangesForApprover(viewer: { personId: string; principal: Principal }, projectId: string): Promise<{ projectName: string; jobNumber: string | null; seesFees: boolean; changes: (ChangeView & { request: RequestView })[] } | null> {
   const [project] = await db().select({ name: schema.workProject.name, entityId: schema.workProject.entityId, jobNumber: schema.projectPlan.jobNumber }).from(schema.workProject).leftJoin(schema.projectPlan, eq(schema.projectPlan.projectId, schema.workProject.id)).where(eq(schema.workProject.id, projectId)).limit(1);

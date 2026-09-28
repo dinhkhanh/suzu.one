@@ -56,6 +56,9 @@ export const taskTemplateItem = pgTable(
     // Where the how-to is: a knowledge-base page ("/kb/pages/<id>") or an https address. The
     // platform stores the address only — it knows nothing about the module behind it.
     linkUrl: text("link_url"),
+    // Work templates: the checklists of the work module's library the step's task starts with. No
+    // foreign key, as for positions: the platform does not depend on feature modules' tables.
+    checklistIds: uuid("checklist_ids").array().notNull().default([]),
   },
   (t) => [index("task_template_item_template_idx").on(t.templateId)],
 ).enableRLS();

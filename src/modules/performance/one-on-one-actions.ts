@@ -8,7 +8,7 @@ import { OUTCOME_TYPES } from "./enums";
 import { addOneOnOneAction, completeOneOnOneAction, createOneOnOne, findOneOnOne, findOneOnOneAction, shareOneOnOne, updateOneOnOne } from "./one-on-ones";
 import { decideOutcome, findOutcome, raiseOutcome } from "./outcomes";
 import { loadDirectory } from "./people";
-import { canDecideOutcome, canHoldOneOnOneWith, canProposeSalaryOutcome, canRaiseOutcome, canReadOneOnOnePrivate, canWriteOneOnOne } from "./policy";
+import { canDecideOutcome, canHoldOneOnOneWith, canProposeSalaryOutcome, canRaiseOutcome, canWriteOneOnOne, canWriteOneOnOnePrivate } from "./policy";
 import { findResultById } from "./final-results";
 
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -57,8 +57,10 @@ const updatePipeline = createAction({
   run: async ({ user, input }) => {
     // The private column is written only by whoever may read it. HR writes the meeting without
     // ever being shown it, so what their form posts there is dropped, not stored over the notes.
-    const seesPrivate = canReadOneOnOnePrivate(user.principal, (await partiesOf(input.meetingId)).parties);
-    const { after } = await updateOneOnOne(input.meetingId, { meetingOn: input.meetingOn, agenda: input.agenda, sharedNotes: input.sharedNotes, ...(seesPrivate ? { privateNotes: input.privateNotes } : {}) });
+    // Only the manager writes the private column; anyone else — HR, or oversight, which reads it —
+    // leaves it exactly as it was.
+    const writesPrivate = canWriteOneOnOnePrivate(user.principal, (await partiesOf(input.meetingId)).parties);
+    const { after } = await updateOneOnOne(input.meetingId, { meetingOn: input.meetingOn, agenda: input.agenda, sharedNotes: input.sharedNotes, ...(writesPrivate ? { privateNotes: input.privateNotes } : {}) });
     refresh(input.meetingId);
     // Lengths, not text: a 1:1 note is not something the audit log should hold.
     return { data: { id: after.id }, audit: { resource: { type: "one_on_one", id: after.id, entityId: null }, summary: `cập nhật 1:1 ${after.meetingOn}`, after: { agendaLength: after.agenda?.length ?? 0, sharedLength: after.sharedNotes?.length ?? 0, privateLength: after.privateNotes?.length ?? 0 } } };

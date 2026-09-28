@@ -37,7 +37,7 @@ import {
 } from "./enums";
 import { type BusyBlock, clashesWith, daysTouched, schedulingProblems } from "./engine/schedule";
 import { icsFileName, renderIcs } from "./engine/ics";
-import { canScheduleInterview, canScoreInterview, canViewInterview, type OpeningTarget } from "./policy";
+import { canOverseeScorecards, canScheduleInterview, canScoreInterview, canViewInterview, type OpeningTarget } from "./policy";
 import { findApplication, findCandidate, findOpening, isOpeningMember, recordApplicationEvent, stagesOf } from "./service";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -133,6 +133,8 @@ export type InterviewView = {
   cvFileId: string | null;
   canSchedule: boolean;
   amInterviewing: boolean;
+  /** Oversight of the panel's cards, drafts included (`canOverseeScorecards`): never an interviewer. */
+  overseesCards: boolean;
 };
 
 // The page and its scorecard panel both ask, with the same viewer: once per request.
@@ -168,6 +170,7 @@ export const getInterviewView = cache(async (viewer: { principal: Principal; per
     cvFileId: application.cvFileId,
     canSchedule: canScheduleInterview(viewer.principal, target, member),
     amInterviewing: interviewing,
+    overseesCards: canOverseeScorecards(viewer.principal, target, interviewing),
   };
 });
 
@@ -610,14 +613,15 @@ export type OthersScorecard = {
   strengths: string | null;
   concerns: string | null;
   notes: string | null;
-  submittedAt: Date;
+  /** Null only for a draft, which only oversight is shown. */
+  submittedAt: Date | null;
 };
 
 export type ScorecardsView = {
   criteria: ScorecardCriterion[];
   /** My own card, draft or submitted. Null when I am not interviewing this one. */
   mine: ScorecardRow | null;
-  /** Everybody else's — **submitted ones only**, and only once mine is in. See `blind`. */
+  /** Everybody else's — **submitted ones only**, and only once mine is in (see `blind`); oversight gets drafts too. */
   others: OthersScorecard[];
   /**
    * True when there are other people's cards and I am not being shown them, because I have not
@@ -638,6 +642,8 @@ export type ScorecardsView = {
  *   · A **recruiter or hiring-team member who is not interviewing** sees every submitted card.
  *     They have no card of their own to be influenced, and somebody has to be able to read the
  *     panel to decide. An unsubmitted draft is nobody's business but its author's.
+ *   · **Oversight** (`recruit:oversee`, the owner's) who is not interviewing sees every card,
+ *     drafts included. An owner who *is* interviewing is an interviewer first: the rule above.
  *   · Anybody else gets `null`, exactly as if the interview did not exist.
  */
 export async function scorecardsFor(viewer: { principal: Principal; personId: string | null }, interviewId: string): Promise<ScorecardsView | null> {
@@ -655,13 +661,15 @@ export async function scorecardsFor(viewer: { principal: Principal; personId: st
   const submittedByOthers = rows.filter((row) => row.card.interviewerPersonId !== viewer.personId && row.card.submittedAt !== null);
   // The gate. `view.amInterviewing` is a row in `interview_interviewer`, not a claim in a request.
   const blind = view.amInterviewing && !mine?.submittedAt && submittedByOthers.length > 0;
+  // Oversight is never an interviewer here (`overseesCards` says so), so it is never blind.
+  const shown = view.overseesCards ? rows.filter((row) => row.card.interviewerPersonId !== viewer.personId) : submittedByOthers;
 
   return {
     criteria: view.interview.criteria.length > 0 ? view.interview.criteria : [...DEFAULT_INTERVIEW_KIT],
     mine,
     others: blind
       ? []
-      : submittedByOthers.map((row) => ({
+      : shown.map((row) => ({
           interviewerPersonId: row.card.interviewerPersonId,
           interviewerName: row.interviewerName,
           ratings: row.card.ratings,
@@ -669,7 +677,7 @@ export async function scorecardsFor(viewer: { principal: Principal; personId: st
           strengths: row.card.strengths,
           concerns: row.card.concerns,
           notes: row.card.notes,
-          submittedAt: row.card.submittedAt!,
+          submittedAt: row.card.submittedAt,
         })),
     blind,
     awaiting: view.interviewers.length - rows.filter((row) => row.card.submittedAt !== null).length,

@@ -87,13 +87,16 @@ beforeAll(async () => {
 });
 
 describe("a private project's approvals (finding 1)", () => {
-  it("keeps the brief and its request from the owner and from a work:manage holder", async () => {
+  it("keeps the brief and its request from a work:manage holder — the owner reads it, and decides nothing", async () => {
     await updateBrief(ids.private, brief);
     const { requestId } = await submitBrief(ids.private, ids.am);
-    // The team's lead was asked by name, and is the only one who reads it beside the author.
+    // The team's lead was asked by name, and is the only approver.
     expect((await assigneesOf(requestId)).map((row) => row.personId)).toEqual([ids.lead]);
     const { openBriefForApprover } = await import("./views");
-    expect(await openBriefForApprover(userOf(ids.owner, [{ role: "owner", scope: { type: "group" } }]), ids.private)).toBeNull();
+    // The owner oversees every project (`pjm:oversee`, decision of 2026-09-28): reads, never decides.
+    const seen = await openBriefForApprover(userOf(ids.owner, [{ role: "owner", scope: { type: "group" } }]), ids.private);
+    expect(seen?.projectName).toBe("Dự án kín");
+    expect(seen?.request.canDecide).toBe(false);
     expect(await openBriefForApprover(userOf(ids.director, directorGrant()), ids.private)).toBeNull();
     expect((await openBriefForApprover(userOf(ids.lead), ids.private))?.projectName).toBe("Dự án kín");
     expect((await openBriefForApprover(userOf(ids.am), ids.private))?.projectName).toBe("Dự án kín");
@@ -105,12 +108,13 @@ describe("a private project's approvals (finding 1)", () => {
     expect((await assigneesOf(requestId)).map((row) => row.personId)).toEqual([ids.owner]);
   });
 
-  it("keeps a change request from a work:manage holder, and asks the owners when nobody leads the project", async () => {
+  it("keeps a change request from a work:manage holder, lets the owner read it, and asks the owners when nobody leads the project", async () => {
     const { after } = await saveChange(ids.private, null, { title: "Thêm bản 6s", description: null, requestedBy: "internal", impact: { minutesDelta: 120 }, evidenceFileId: null, evidenceUrl: null }, ids.am, { withFee: false });
     const { requestId } = await submitChange(after.id, ids.am);
     expect((await assigneesOf(requestId)).map((row) => row.personId)).toEqual([ids.lead]);
     expect(await openChangesForApprover({ personId: ids.director, principal: principalOf(ids.director, directorGrant()) }, ids.private)).toBeNull();
-    expect(await openChangesForApprover({ personId: ids.owner, principal: principalOf(ids.owner, [{ role: "owner", scope: { type: "group" } }]) }, ids.private)).toBeNull();
+    const overseen = await openChangesForApprover({ personId: ids.owner, principal: principalOf(ids.owner, [{ role: "owner", scope: { type: "group" } }]) }, ids.private);
+    expect(overseen?.changes.map((change) => change.request.canDecide)).toEqual([false]);
     expect((await openChangesForApprover({ personId: ids.lead, principal: principalOf(ids.lead) }, ids.private))?.changes).toHaveLength(1);
 
     const hidden = (await saveChange(ids.hidden, null, { title: "Đổi phạm vi", description: null, requestedBy: "internal", impact: { minutesDelta: 60 }, evidenceFileId: null, evidenceUrl: null }, ids.member, { withFee: false })).after;

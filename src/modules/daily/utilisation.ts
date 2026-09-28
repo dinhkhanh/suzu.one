@@ -2,7 +2,8 @@
 // share, for the people above them — each lead for their teams' people, each line manager for their
 // reports (`listOverseen`, the list form of `canViewUtilisation`). A viewer with `work:manage`
 // also sees the teams in their scope that they do not lead, as team totals only: there is no
-// company-wide list of individuals to rank.
+// company-wide list of individuals to rank — except for oversight (`daily:oversee`, the owner),
+// which reads everybody's figures and gets the rest of the company as one more group.
 //
 // `work:manage`, not `pjm:portfolio` — how busy a team was is a figure about people, like the
 // report and timesheet compliance beside it (reports/pjm-policy.ts), and since 2026-09-23
@@ -30,6 +31,8 @@ export type UtilisationPerson = { personId: string; name: string; weeks: Utilisa
 export type UtilisationGroup =
   | { kind: "team"; teamId: string; name: string; people: UtilisationPerson[]; total: Utilisation[] }
   | { kind: "reports"; people: UtilisationPerson[]; total: Utilisation[] }
+  // Everyone else, one by one, for whoever holds `daily:oversee`.
+  | { kind: "company"; people: UtilisationPerson[]; total: Utilisation[] }
   /** A team in the viewer's `work:manage` scope that they do not lead: its totals, no people. */
   | { kind: "portfolio"; teamId: string; name: string; headcount: number; total: Utilisation[] }
   /** Teams too small to stand on their own (engine/privacy.ts), added together: the page names them "other teams". */
@@ -68,7 +71,7 @@ async function portfolioTeams(principal: Principal, ledTeamIds: ReadonlySet<stri
 
 export async function getUtilisation(viewer: { personId: string; principal: Principal }, today: IsoDate, count = UTILISATION_WEEKS): Promise<UtilisationView> {
   const weeks = lastWeeks(today, count);
-  const reader = await loadReportReader(viewer.personId);
+  const reader = await loadReportReader(viewer.personId, undefined, viewer.principal);
   const [overseen, portfolio] = await Promise.all([listOverseen(reader), portfolioTeams(viewer.principal, reader.ledTeamIds)]);
   const named = [...new Set(overseen.flatMap((group) => group.personIds))];
   const subjects = await loadSubjects(named);
@@ -92,7 +95,7 @@ export async function getUtilisation(viewer: { personId: string; principal: Prin
       .map(person)
       .sort((a, b) => a.name.localeCompare(b.name, "vi"));
     if (people.length === 0) continue;
-    groups.push(group.kind === "team" ? { kind: "team", teamId: group.teamId, name: group.name, people, total: totals(people) } : { kind: "reports", people, total: totals(people) });
+    groups.push(group.kind === "team" ? { kind: "team", teamId: group.teamId, name: group.name, people, total: totals(people) } : { kind: group.kind, people, total: totals(people) });
   }
   // Summed here, on the server: the page receives a team's numbers and never its people's.
   const totalsOf = (personIds: readonly string[]) => weeks.map((_, index) => totalOf(personIds.map((personId) => numbers.get(personId)![index])));

@@ -84,7 +84,27 @@ export type Permission =
   // covers — their pages, their grants, their name on what they do — while the audit log keeps the
   // holder's own account on every entry. `canImpersonate` adds the rule that only a "*" holder may
   // borrow the identity of someone who holds a role: anyone else could otherwise climb the ladder.
-  | "auth:impersonate";
+  | "auth:impersonate"
+  // Oversight: reading everything a feature holds without being one of the people it belongs to —
+  // the owner's view of the whole company (decision of 2026-09-28). One permission per feature, so
+  // that a role can later be given one feature's view without the rest. Each opens what the
+  // feature's ordinary rules keep to its members, authors or reporting line; none of them lets the
+  // holder act, and none lifts a rule about acting on one's own record. No role below lists any
+  // of them, so today only a "*" grant — the owner — holds them.
+  // Every request in the company: the "All requests" list, any request's page, the morning digest.
+  | "approval:oversee"
+  // Private team backlogs, and the hours logged on a private project's tasks.
+  | "work:oversee"
+  // Every project's kick-off brief and change requests, and every project's document space.
+  | "pjm:oversee"
+  // Every knowledge-base space and page, whatever its access rows say.
+  | "kb:oversee"
+  // Everybody's daily plans, reports, timesheets, time entries and utilisation.
+  | "daily:oversee"
+  // Managers' private 1:1 notes and review forms still in draft.
+  | "performance:oversee"
+  // Interview scorecards still in draft, and the others' cards before one's own is in.
+  | "recruit:oversee";
 
 type RoleDefinition = {
   permissions: readonly Permission[];

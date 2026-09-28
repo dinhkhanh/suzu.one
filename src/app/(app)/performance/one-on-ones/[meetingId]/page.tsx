@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
-import { canReadOneOnOne, canReadOneOnOnePrivate, canWriteOneOnOne, findOneOnOne, loadDirectory, loadOneOnOne } from "@/modules/performance/service";
+import { canReadOneOnOne, canReadOneOnOnePrivate, canWriteOneOnOne, canWriteOneOnOnePrivate, findOneOnOne, loadDirectory, loadOneOnOne } from "@/modules/performance/service";
 import { AddActionForm, CompleteActionButton, EditOneOnOneForm, ShareOneOnOneButton } from "@/modules/performance/ui/one-on-one-forms";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -25,7 +25,9 @@ export default async function OneOnOnePage({ params }: PageProps<"/performance/o
   // The subject reads it once it is shared, not while the manager is still writing it.
   if (!canReadOneOnOne(user.principal, { ...parties, status: found.status })) notFound();
 
+  // Oversight reads the manager's private notes; only the manager writes them.
   const seesPrivate = canReadOneOnOnePrivate(user.principal, parties);
+  const writesPrivate = canWriteOneOnOnePrivate(user.principal, parties);
   const mayWrite = canWriteOneOnOne(user.principal, parties);
   const [t, format, meeting] = await Promise.all([getTranslations("performance.oneOnOnes"), getFormatter(), loadOneOnOne(meetingId, { seesPrivate })]);
   if (!meeting) notFound();
@@ -51,7 +53,7 @@ export default async function OneOnOnePage({ params }: PageProps<"/performance/o
       </header>
 
       {mayWrite ? (
-        <EditOneOnOneForm meeting={{ id: meeting.id, meetingOn: meeting.meetingOn, agenda: meeting.agenda, sharedNotes: meeting.sharedNotes, privateNotes: meeting.privateNotes }} seesPrivate={seesPrivate} />
+        <EditOneOnOneForm meeting={{ id: meeting.id, meetingOn: meeting.meetingOn, agenda: meeting.agenda, sharedNotes: meeting.sharedNotes, privateNotes: meeting.privateNotes }} seesPrivate={writesPrivate} />
       ) : (
         <dl className="flex flex-col gap-3 rounded-xl border p-4 text-sm">
           <div>
@@ -64,6 +66,15 @@ export default async function OneOnOnePage({ params }: PageProps<"/performance/o
           </div>
         </dl>
       )}
+
+      {seesPrivate && !writesPrivate ? (
+        <dl className="flex flex-col gap-3 rounded-xl border p-4 text-sm">
+          <div>
+            <dt className="text-muted-foreground">{t("privateNotes")}</dt>
+            <dd className="whitespace-pre-wrap">{meeting.privateNotes ?? "—"}</dd>
+          </div>
+        </dl>
+      ) : null}
 
       {mayWrite && meeting.status === "draft" ? <ShareOneOnOneButton meetingId={meeting.id} /> : null}
 

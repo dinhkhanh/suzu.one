@@ -36,13 +36,24 @@ const managerForm = { kind: "manager" as const, authorPersonId: "tam", ...submit
 const peerForm = { kind: "peer" as const, authorPersonId: "linh", ...submitted };
 
 describe("reading a review (FR-PRF-08)", () => {
-  it("keeps a draft to its author — not HR, not the manager, not the owner", () => {
+  it("keeps a draft to its author and to oversight — not HR, not the manager above, not the subject", () => {
     const draft = { kind: "manager" as const, authorPersonId: "tam", status: "draft" as const };
     expect(canReadReviewForm(lineManager, parties(huy), draft)).toBe(true);
     expect(canReadReviewForm(headVid, parties(huy), draft)).toBe(false);
     expect(canReadReviewForm(hrSzm, parties(huy), draft)).toBe(false);
-    expect(canReadReviewForm(owner, parties(huy), draft)).toBe(false);
+    expect(canReadReviewForm(hrAdmin, parties(huy), draft)).toBe(false);
+    expect(canReadReviewForm(auditor, parties(huy), draft)).toBe(false);
     expect(canReadReviewForm(principal("huy"), parties(huy), draft)).toBe(false);
+    // performance:oversee (the owner's, 2026-09-28) reads it; writing stays with its author.
+    expect(canReadReviewForm(owner, parties(huy), draft)).toBe(true);
+    expect(canReadReviewForm(owner, parties(huy), { kind: "peer", authorPersonId: "linh", status: "draft" })).toBe(true);
+  });
+
+  it("gives oversight no special sight of a review about itself", () => {
+    const ownerSelf = person("owner", SZM, VID);
+    expect(canReadReviewForm(owner, parties(ownerSelf), { kind: "manager", authorPersonId: "ceo", status: "draft" })).toBe(false);
+    expect(canReadReviewForm(owner, parties(ownerSelf, { released: false }), { kind: "manager", authorPersonId: "ceo", status: "submitted" })).toBe(false);
+    expect(canWriteManagerReview(owner, parties(ownerSelf))).toBe(false);
   });
 
   it("shows a submitted self review to the line, the skip-level and HR — never a colleague", () => {

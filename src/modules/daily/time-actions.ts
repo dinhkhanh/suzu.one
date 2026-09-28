@@ -271,8 +271,8 @@ const exportUtilisationPipeline = createAction({
     const [t, view] = await Promise.all([getTranslations("daily.utilisation"), getUtilisation({ personId: user.person.id, principal: user.principal }, todayInVietnam())]);
     const rows: ExportRow[] = [];
     for (const group of view.groups) {
-      const name = group.kind === "reports" ? t("myReports") : group.kind === "portfolio_other" ? t("otherTeams", { count: group.teams }) : group.name;
-      if (group.kind === "team" || group.kind === "reports") for (const person of group.people) view.weeks.forEach((week, index) => rows.push({ group: name, person: person.name, week, cell: person.weeks[index] }));
+      const name = group.kind === "reports" ? t("myReports") : group.kind === "company" ? t("everyoneElse") : group.kind === "portfolio_other" ? t("otherTeams", { count: group.teams }) : group.name;
+      if (group.kind === "team" || group.kind === "reports" || group.kind === "company") for (const person of group.people) view.weeks.forEach((week, index) => rows.push({ group: name, person: person.name, week, cell: person.weeks[index] }));
       view.weeks.forEach((week, index) => rows.push({ group: name, person: t("teamTotal"), week, cell: group.total[index] }));
     }
     const kept = rows.slice(0, EXPORT_ROW_LIMIT);
@@ -290,7 +290,7 @@ const exportUtilisationPipeline = createAction({
       kept,
     );
     const file: CsvFile = { fileName: `utilisation-${view.weeks[0]}_${view.weeks.at(-1)}.csv`, csv, rowCount: kept.length, truncated: rows.length > kept.length };
-    return { data: file, audit: { resource: { type: "export:daily_utilisation" }, summary: `${file.rowCount} rows`, after: { weeks: view.weeks, groups: view.groups.map((group) => (group.kind === "reports" || group.kind === "portfolio_other" ? group.kind : `${group.kind}:${group.teamId}`)), rowCount: file.rowCount } } };
+    return { data: file, audit: { resource: { type: "export:daily_utilisation" }, summary: `${file.rowCount} rows`, after: { weeks: view.weeks, groups: view.groups.map((group) => (group.kind === "reports" || group.kind === "company" || group.kind === "portfolio_other" ? group.kind : `${group.kind}:${group.teamId}`)), rowCount: file.rowCount } } };
   },
 });
 export async function exportUtilisationAction(input: unknown) {

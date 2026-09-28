@@ -31,7 +31,7 @@ function useRun() {
 
 // ── Templates ───────────────────────────────────────────────────────────────────────────────
 
-export type TemplateItemView = { id: string; parentItemId: string | null; title: string; roleKey: string | null; dueOffsetDays: number; estimateMinutes: number | null };
+export type TemplateItemView = { id: string; parentItemId: string | null; title: string; roleKey: string | null; dueOffsetDays: number; estimateMinutes: number | null; /** Library checklists the step's task starts with. */ checklistIds?: string[] };
 export type TemplateView = { id: string; purpose: string; name: string; description: string | null; ownerId: string | null; ownerName: string | null; isActive: boolean; canManage: boolean; roleKeys: string[]; items: TemplateItemView[] };
 
 export function TemplateCreateForm({ owners, canShare }: { owners: { id: string; name: string }[]; canShare: boolean }) {
@@ -69,7 +69,7 @@ export function TemplateCreateForm({ owners, canShare }: { owners: { id: string;
   );
 }
 
-export function TemplateCard({ template }: { template: TemplateView }) {
+export function TemplateCard({ template, checklists = [] }: { template: TemplateView; /** The library's active checklists. */ checklists?: { id: string; name: string }[] }) {
   const t = useTranslations("work.templates");
   const { run, pending, errorKey } = useRun();
   const roots = template.items.filter((item) => !item.parentItemId || !template.items.some((other) => other.id === item.parentItemId));
@@ -77,6 +77,13 @@ export function TemplateCard({ template }: { template: TemplateView }) {
     <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5 text-sm" style={{ paddingLeft: depth * 20 }}>
       <span className="min-w-0 flex-1 basis-56">{item.title}</span>
       {item.roleKey ? <Badge variant="outline">{item.roleKey}</Badge> : null}
+      {checklists
+        .filter((list) => item.checklistIds?.includes(list.id))
+        .map((list) => (
+          <Badge key={list.id} variant="secondary">
+            ☑ {list.name}
+          </Badge>
+        ))}
       <span className="w-16 text-right font-mono text-xs text-muted-foreground">{t("offset", { days: item.dueOffsetDays })}</span>
       {item.estimateMinutes ? <span className="text-xs text-muted-foreground">{t("hours", { hours: Math.round((item.estimateMinutes / 60) * 100) / 100 })}</span> : null}
       {template.canManage ? (
@@ -108,7 +115,7 @@ export function TemplateCard({ template }: { template: TemplateView }) {
             event.preventDefault();
             const form = event.currentTarget;
             const data = new FormData(form);
-            run(addWorkTemplateItemAction, { templateId: template.id, title: data.get("title"), parentItemId: data.get("parentItemId"), roleKey: data.get("roleKey"), dueOffsetDays: data.get("dueOffsetDays"), estimateHours: data.get("estimateHours"), sortOrder: template.items.length }, () => form.reset());
+            run(addWorkTemplateItemAction, { templateId: template.id, title: data.get("title"), parentItemId: data.get("parentItemId"), roleKey: data.get("roleKey"), dueOffsetDays: data.get("dueOffsetDays"), estimateHours: data.get("estimateHours"), checklistId: data.get("checklistId"), sortOrder: template.items.length }, () => form.reset());
           }}
         >
           <Input name="title" required maxLength={200} placeholder={t("itemTitle")} aria-label={t("itemTitle")} className="min-w-48 flex-1" />
@@ -128,6 +135,16 @@ export function TemplateCard({ template }: { template: TemplateView }) {
           </datalist>
           <Input name="dueOffsetDays" type="number" required defaultValue={0} min={-365} max={365} aria-label={t("offsetField")} title={t("offsetField")} className="w-20" />
           <Input name="estimateHours" type="number" step="0.25" min={0.25} placeholder={t("estimate")} aria-label={t("estimate")} className="w-24" />
+          {checklists.length ? (
+            <Select name="checklistId" aria-label={t("checklist")} className="w-44" defaultValue="">
+              <option value="">{t("noChecklist")}</option>
+              {checklists.map((list) => (
+                <option key={list.id} value={list.id}>
+                  {list.name}
+                </option>
+              ))}
+            </Select>
+          ) : null}
           <Button type="submit" size="sm" variant="outline" disabled={pending}>
             {t("addItem")}
           </Button>

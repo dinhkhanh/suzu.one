@@ -4,7 +4,7 @@ import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listTemplatePlans, PROJECT_KINDS, type TemplatePlanRow } from "@/modules/projects/service";
 import { TemplatePlanEditor, TemplateProjectForm } from "@/modules/projects/ui/template-forms";
-import { canAdminTeam, canManageTemplate, listAssignableByTeam, listCreateTargets, listTeams, listWorkTemplates, loadViewer, teamFacts } from "@/modules/work/service";
+import { checklistChoices, canAdminTeam, canManageTemplate, listAssignableByTeam, listCreateTargets, listTeams, listWorkTemplates, loadViewer, teamFacts } from "@/modules/work/service";
 import { TemplateCard, TemplateCreateForm } from "@/modules/work/ui/planning-forms";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -16,7 +16,7 @@ export const generateMetadata = pageTitle("templates");
 export default async function WorkTemplatesPage() {
   const user = await requireUser();
   const viewer = await loadViewer(user);
-  const [t, tWork, tProjects, teams, all, targets] = await Promise.all([getTranslations("work.templates"), getTranslations("work"), getTranslations("projects.templates"), listTeams(), listWorkTemplates(), listCreateTargets(viewer)]);
+  const [t, tWork, tProjects, teams, all, targets, checklists] = await Promise.all([getTranslations("work.templates"), getTranslations("work"), getTranslations("projects.templates"), listTeams(), listWorkTemplates(), listCreateTargets(viewer), checklistChoices()]);
   const teamOf = (id: string | null) => teams.find((team) => team.id === id);
   const canShare = canManageTemplate(viewer, null);
   const owners = teams.filter((team) => team.isActive && canAdminTeam(viewer, teamFacts(team)));
@@ -64,8 +64,9 @@ export default async function WorkTemplatesPage() {
                 isActive: template.isActive,
                 canManage: canManage(template.ownerId),
                 roleKeys: template.roleKeys,
-                items: template.items.map(({ id, parentItemId, title, roleKey, dueOffsetDays, estimateMinutes }) => ({ id, parentItemId, title, roleKey, dueOffsetDays, estimateMinutes })),
+                items: template.items.map(({ id, parentItemId, title, roleKey, dueOffsetDays, estimateMinutes, checklistIds }) => ({ id, parentItemId, title, roleKey, dueOffsetDays, estimateMinutes, checklistIds })),
               }}
+              checklists={checklists}
             />
             {template.purpose === "work_project" && canManage(template.ownerId) ? <PlanParts templateId={template.id} plan={plans.get(template.id)} summary={tProjects("planParts", { phases: plans.get(template.id)?.phases.length ?? 0, milestones: plans.get(template.id)?.milestones.length ?? 0, lines: plans.get(template.id)?.deliverables.length ?? 0 })} /> : null}
           </div>

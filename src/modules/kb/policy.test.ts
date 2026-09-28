@@ -193,3 +193,31 @@ describe("a project's space (FR-PJM-31)", () => {
     expect(spaceLevel(hrSzm, space({ entityId: SZC, access: [{ subjectKey: `project:${PROJECT}`, level: "edit", people: ["huy"] }] }))).toBeNull();
   });
 });
+
+// The owner's decision of 2026-09-28: `kb:oversee` (the owner's, through "*") reads every space —
+// a project's too, whatever the project's visibility — as a reader, and writes nothing.
+describe("kb:oversee", () => {
+  const teamProject = (over: Partial<SpaceFacts> = {}) =>
+    space({ entityId: SZM, ownerProjectId: "project-1", access: [{ subjectKey: "project:project-1", level: "edit", people: ["huy"], project: { entityId: SZM, departmentId: VID, visibility: "team" } }], ...over });
+  const closedSubtree: PageFacts = { readable: true, deleted: false, rootAccess: [{ subjectKey: "person:huy", level: "view" }] };
+
+  it("lets the owner read a project's space, its restricted subtrees and an archived one — at view, never more", () => {
+    expect(canManageSpace(owner.principal, { entityId: SZM, ownerProjectId: "project-1" })).toBe(false);
+    expect(spaceLevel(owner, teamProject())).toBe("view");
+    expect(pageLevel(owner, teamProject(), published)).toBe("view");
+    expect(pageLevel(owner, teamProject(), closedSubtree)).toBe("view");
+    expect(spaceLevel(owner, teamProject({ archived: true }))).toBe("view");
+    // Published pages only: a draft is its editors' business.
+    expect(pageLevel(owner, teamProject(), { ...published, readable: false })).toBeNull();
+    expect(pageLevel(owner, teamProject(), { ...published, deleted: true })).toBeNull();
+    expect(canCreatePage(owner, teamProject(), null)).toBe(false);
+  });
+
+  it("reaches only the owner grant's entity, and no other role holds it", () => {
+    const szcOwner = viewer("szc-owner", [{ role: "owner", scope: { type: "entity", id: "entity-szc" } }]);
+    expect(spaceLevel(szcOwner, teamProject())).toBeNull();
+    const director = viewer("boss", [{ role: "entity_director", scope: { type: "entity", id: SZM } }]);
+    const hr = viewer("hr", [{ role: "hr_admin", scope: { type: "group" } }]);
+    for (const who of [director, hr, huy]) expect(spaceLevel(who, teamProject({ access: [] }))).toBeNull();
+  });
+});

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { canApproveTimesheet, canCommentOnReport, canViewAttendanceHint, canOverseeReport, canViewReport, canViewTimeEntry, canViewTimesheet, canViewUtilisation, type ReportReader, type ReportSubject, type TimeReader } from "./policy";
+import type { Grant } from "@/modules/platform/rbac/policy";
+import { canApproveTimesheet, canCommentOnReport, canViewAttendanceHint, canOverseeReport, canViewReport, canViewTimeEntry, canViewTimesheet, canViewUtilisation, overseesDaily, type ReportReader, type ReportSubject, type TimeReader } from "./policy";
 
 const reader = (personId: string, led: string[] = []): ReportReader => ({ personId, ledTeamIds: new Set(led) });
 
@@ -145,5 +146,39 @@ describe("the attendance hint (security review, finding 4)", () => {
     // Somebody Huy manages: the chain runs upwards only.
     expect(canViewAttendanceHint(reader("intern"), huy)).toBe(false);
     expect(canViewAttendanceHint({ personId: null, ledTeamIds: new Set() }, huy)).toBe(false);
+  });
+});
+
+describe("oversight (daily:oversee, decision of 2026-09-28)", () => {
+  const principal = (grants: Grant[]) => ({ personId: "khanh", workforceType: null, grants });
+  const owner = principal([{ role: "owner", scope: { type: "group" } }]);
+  // The owner, far from Huy: no team of his, not in his reporting line.
+  const khanh: TimeReader = { personId: "khanh", ledTeamIds: new Set(), ledProjectIds: new Set(), oversees: overseesDaily(owner) };
+
+  it("is held through a group-wide '*' and by no role that runs work", () => {
+    expect(overseesDaily(owner)).toBe(true);
+    expect(overseesDaily(principal([{ role: "owner", scope: { type: "entity", id: "entity-a" } }]))).toBe(false);
+    for (const role of ["c_level", "entity_director", "department_head", "hr_admin", "finance"] as const) expect(overseesDaily(principal([{ role, scope: { type: "group" } }])), role).toBe(false);
+  });
+
+  it("reads anybody's report, week, time entries, hint and utilisation", () => {
+    expect(canViewReport(khanh, huy)).toBe(true);
+    expect(canViewReport(khanh, tam)).toBe(true);
+    expect(canViewTimesheet(khanh, huy)).toBe(true);
+    expect(canViewTimeEntry(khanh, huy, { projectId: "project-x" })).toBe(true);
+    expect(canViewAttendanceHint(khanh, huy)).toBe(true);
+    expect(canViewUtilisation(khanh, huy)).toBe(true);
+  });
+
+  it("acts on nobody's: no comment, no reminder or summary, no approval", () => {
+    expect(canCommentOnReport(khanh, huy)).toBe(false);
+    expect(canOverseeReport(khanh, huy)).toBe(false);
+    expect(canApproveTimesheet(khanh, huy)).toBe(false);
+  });
+
+  it("changes nothing for whoever does not hold it (finding 14)", () => {
+    expect(canViewReport(reader("bao"), huy)).toBe(false);
+    expect(canViewReport({ ...reader("bao"), oversees: false }, huy)).toBe(false);
+    expect(canViewReport({ personId: null, ledTeamIds: new Set(), oversees: true }, huy)).toBe(false);
   });
 });

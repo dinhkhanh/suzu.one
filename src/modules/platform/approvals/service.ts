@@ -5,20 +5,21 @@
 // here takes that transaction, so a request is never approved without its effect or the reverse.
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, asc, count, desc, eq, getTableColumns, inArray, ne } from "drizzle-orm";
+import { and, asc, count, desc, eq, getTableColumns, gte, inArray, lt, ne, notInArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { cache } from "react";
 import { ActionError } from "@/lib/action";
+import type { IsoDate } from "@/lib/dates";
 import { cachedLive } from "@/lib/cache/live";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../notifications/service";
-import type { Principal, Target } from "../rbac/policy";
+import type { entityReach, Principal, Target } from "../rbac/policy";
 import { type Permission, type Role, ROLES } from "../rbac/roles";
 import { listOwnerPersonIds, listPeopleHolding, listPeopleWithRole } from "../rbac/service";
 import { issueActionToken, voidActionTokens } from "./action-tokens";
 import { standIns } from "./delegations";
 import { effectiveFlow } from "./flows";
-import { canOpenRequest } from "./policy";
+import { canOpenRequest, canOverseeRequests } from "./policy";
 import { applyDecision, type ApproverRule, conditionHolds, type DecisionAction, type DecisionResult, delegate, type FlowDefinition, type RequestState, type RequestStatus, type ResolvedStep, resubmit, startFlow, waitingFor } from "./engine/flow";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -485,6 +486,57 @@ export async function listMyRequests(personId: string, limit = 50): Promise<Requ
   return listQuery().where(eq(schema.approvalRequest.requesterPersonId, personId)).orderBy(desc(schema.approvalRequest.createdAt)).limit(limit);
 }
 
+export type OversightFilter = { /** "open" = pending or returned to the requester. */ state?: "open" | "decided"; type?: string; /** Filed on or after this day, Vietnam time. */ since?: IsoDate };
+export type OversightRow = RequestListRow & { /** Whose answer an open request is waiting for, names joined — the requester's when it was returned; null once decided. */ waitingOn: string | null };
+
+const OPEN_STATUSES: RequestStatus[] = ["pending", "returned"];
+
+/**
+ * Every request in the viewer's reach of `approval:oversee`, newest first, with whom each pending one is waiting for — the owner's "All requests" list. Not
+ * cached: a summary can name a salary change or an offer, and restricted data never is.
+ */
+export async function listAllRequests(reach: ReturnType<typeof entityReach>, filter: OversightFilter = {}, limit = 200): Promise<OversightRow[]> {
+  if (!reach.all && reach.entityIds.length === 0) return [];
+  const conditions = [
+    reach.all ? undefined : inArray(schema.approvalRequest.entityId, reach.entityIds),
+    filter.state === "open" ? inArray(schema.approvalRequest.status, OPEN_STATUSES) : filter.state === "decided" ? notInArray(schema.approvalRequest.status, OPEN_STATUSES) : undefined,
+    filter.type ? eq(schema.approvalRequest.type, filter.type) : undefined,
+    filter.since ? gte(schema.approvalRequest.createdAt, new Date(`${filter.since}T00:00:00+07:00`)) : undefined,
+  ];
+  return db()
+    .select({
+      ...LIST_COLUMNS,
+      // A request returned for changes waits on its requester.
+      waitingOn: sql<string | null>`case when ${schema.approvalRequest.status} = 'returned' then ${requester.fullName} else (
+        select string_agg(${schema.person.fullName}, ', ' order by ${schema.person.fullName})
+        from ${schema.approvalAssignee}
+        join ${schema.approvalStep} on ${schema.approvalStep.id} = ${schema.approvalAssignee.stepId}
+        join ${schema.person} on ${schema.person.id} = ${schema.approvalAssignee.approverPersonId}
+        where ${schema.approvalAssignee.requestId} = ${schema.approvalRequest.id}
+          and ${schema.approvalAssignee.status} = 'pending' and ${schema.approvalStep.status} = 'pending'
+          and ${schema.approvalRequest.status} = 'pending'
+      ) end`,
+    })
+    .from(schema.approvalRequest)
+    .innerJoin(requester, eq(requester.id, schema.approvalRequest.requesterPersonId))
+    .leftJoin(subject, eq(subject.id, schema.approvalRequest.subjectPersonId))
+    .where(and(...conditions))
+    .orderBy(desc(schema.approvalRequest.createdAt), desc(schema.approvalRequest.id))
+    .limit(limit);
+}
+
+/** What was filed in a window and how much of it is still open — the oversight digest's figures, counted in SQL. */
+export async function requestsFiledBetween(from: Date, to: Date): Promise<{ filed: number; open: number }> {
+  const [row] = await db()
+    .select({
+      filed: count(),
+      open: sql<number>`(count(*) filter (where ${inArray(schema.approvalRequest.status, OPEN_STATUSES)}))::int`,
+    })
+    .from(schema.approvalRequest)
+    .where(and(gte(schema.approvalRequest.createdAt, from), lt(schema.approvalRequest.createdAt, to)));
+  return row ?? { filed: 0, open: 0 };
+}
+
 /**
  * The approvals page in one entry of the shared cache's live tier (src/lib/cache/live.ts): what
  * waits for the person and what they asked for. Dropped after their every action and every
@@ -543,7 +595,7 @@ export async function getRequest(viewer: { personId: string; principal: Principa
 
   const isRequester = request.requesterPersonId === viewer.personId;
   const isApprover = assignees.some(({ row }) => row.approverPersonId === viewer.personId || row.delegatedFromPersonId === viewer.personId);
-  if (!canOpenRequest(request, { personId: viewer.personId, isApprover, typeAllows: !!definition.canView?.(viewer.principal, target) })) return null;
+  if (!canOpenRequest(request, { personId: viewer.personId, isApprover, typeAllows: !!definition.canView?.(viewer.principal, target) || canOverseeRequests(viewer.principal, { entityId: request.entityId }) })) return null;
 
   // Steps that are open together are all "pending"; the viewer's turn may be on any of them.
   const openStepIds = new Set(steps.filter((step) => step.status === "pending").map((step) => step.id));
