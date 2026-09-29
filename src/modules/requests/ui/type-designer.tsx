@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import type { Condition } from "@/modules/platform/approvals/engine/flow";
@@ -255,11 +256,11 @@ export function TypeDesigner({ draft, entities, canGroup, catalogue }: { draft: 
                   <>
                     <label className="flex flex-col gap-1.5">
                       <Label htmlFor={`minDate-${index}`}>{t("minDate")}</Label>
-                      <Input id={`minDate-${index}`} type="date" value={field.minDate ?? ""} onChange={(event) => patch(index, { minDate: event.target.value || null })} />
+                      <DatePicker id={`minDate-${index}`} value={field.minDate ?? ""} onChange={(event) => patch(index, { minDate: event.target.value || null })} />
                     </label>
                     <label className="flex flex-col gap-1.5">
                       <Label htmlFor={`maxDate-${index}`}>{t("maxDate")}</Label>
-                      <Input id={`maxDate-${index}`} type="date" value={field.maxDate ?? ""} onChange={(event) => patch(index, { maxDate: event.target.value || null })} />
+                      <DatePicker id={`maxDate-${index}`} value={field.maxDate ?? ""} onChange={(event) => patch(index, { maxDate: event.target.value || null })} />
                     </label>
                   </>
                 ) : null}

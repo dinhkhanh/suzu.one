@@ -5,6 +5,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
 import { bulkMapAction, commitDeviceLogAction, mapDeviceUserAction, recomputeTimesheetsAction, saveDeviceAction, savePolicyAction, saveProfileAction, stageDeviceLogAction, unmapDeviceUserAction } from "../device-actions";
@@ -280,7 +281,7 @@ export function PolicyForm({ policy, entities, canGroup, today }: { policy?: Pol
         <div className="grid gap-3 sm:grid-cols-3">
           {policy ? null : <EntitySelect entities={entities} canGroup={canGroup} label={t("appliesTo")} groupLabel={t("everyEntity")} />}
           <Field name="validFrom" label={t("fields.validFrom")}>
-            <Input id="validFrom" name="validFrom" type="date" required defaultValue={policy ? today : `${today.slice(0, 7)}-01`} />
+            <DatePicker id="validFrom" name="validFrom" required defaultValue={policy ? today : `${today.slice(0, 7)}-01`} />
           </Field>
           <Field name="mergeRule" label={t("fields.mergeRule")}>
             <Select id="mergeRule" name="mergeRule" defaultValue={policy?.mergeRule ?? "first_in_last_out"}>

@@ -8,6 +8,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { addOneOnOneActionAction, completeOneOnOneActionAction, createOneOnOneAction, shareOneOnOneAction, updateOneOnOneAction } from "../one-on-one-actions";
 import { decideOutcomeAction, raiseOutcomeAction } from "../one-on-one-actions";
@@ -38,7 +39,7 @@ export function NewOneOnOneForm({ reports, today }: { reports: Person[]; today: 
             </Select>
           </Field>
           <Field name="meetingOn" label={t("meetingOn")}>
-            <Input id="meetingOn" name="meetingOn" type="date" defaultValue={today} required />
+            <DatePicker id="meetingOn" name="meetingOn" defaultValue={today} required />
           </Field>
         </div>
         <Field name="agenda" label={t("agenda")}>
@@ -64,7 +65,7 @@ export function EditOneOnOneForm({ meeting, seesPrivate }: { meeting: { id: stri
     <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border p-4">
       <FieldErrors value={fieldErrors}>
         <Field name="meetingOn" label={t("meetingOn")}>
-          <Input id="meetingOn" name="meetingOn" type="date" defaultValue={meeting.meetingOn} required className="max-w-48" />
+          <DatePicker id="meetingOn" name="meetingOn" defaultValue={meeting.meetingOn} required className="max-w-48" />
         </Field>
         <Field name="agenda" label={t("agenda")}>
           <textarea id="agenda" name="agenda" rows={3} maxLength={4000} defaultValue={meeting.agenda ?? ""} className={textarea} />
@@ -137,7 +138,7 @@ export function AddActionForm({ meetingId, people }: { meetingId: string; people
             </Select>
           </Field>
           <Field name="dueOn" label={t("dueOn")}>
-            <Input id="dueOn" name="dueOn" type="date" />
+            <DatePicker id="dueOn" name="dueOn" />
           </Field>
         </div>
       </FieldErrors>
@@ -201,7 +202,7 @@ export function RaiseOutcomeForm({ resultId, mayProposeSalary }: { resultId: str
           {mayProposeSalary ? (
             <>
               <Field name="validFrom" label={t("validFrom")}>
-                <Input id="validFrom" name="validFrom" type="date" />
+                <DatePicker id="validFrom" name="validFrom" />
               </Field>
               <Field name="baseSalary" label={t("baseSalary")}>
                 <Input id="baseSalary" name="baseSalary" inputMode="numeric" className="text-right tabular-nums" />

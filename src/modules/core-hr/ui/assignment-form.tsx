@@ -3,6 +3,7 @@ import { useTranslations } from "next-intl";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { ASSIGNMENT_CHANGE_KINDS } from "../enums";
 import { changeAssignmentAction } from "../actions";
@@ -31,7 +32,7 @@ export function AssignmentForm({ person, options, today }: { person: PersonView;
         <p className="text-sm text-muted-foreground">{t("assignment.hint")}</p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field name="validFrom" label={t("fields.validFrom")}>
-            <Input id="validFrom" name="validFrom" type="date" required defaultValue={today} min={person.personal?.startDate ?? undefined} />
+            <DatePicker id="validFrom" name="validFrom" required defaultValue={today} min={person.personal?.startDate ?? undefined} />
           </Field>
           <Field name="kind" label={t("assignment.kind")}>
             <Select id="kind" name="kind" defaultValue="transfer">

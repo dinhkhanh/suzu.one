@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { addDays, todayInVietnam } from "@/lib/dates";
@@ -86,11 +87,11 @@ export default async function NewLeavePage(props: PageProps<"/leave/new">) {
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="from">{t("request.from")}</Label>
-            <Input id="from" name="from" type="date" required defaultValue={from || addDays(today, 3)} />
+            <DatePicker id="from" name="from" required defaultValue={from || addDays(today, 3)} />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="to">{t("request.to")}</Label>
-            <Input id="to" name="to" type="date" required defaultValue={to || addDays(today, 3)} />
+            <DatePicker id="to" name="to" required defaultValue={to || addDays(today, 3)} />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="startPortion">{t("request.startPortion")}</Label>

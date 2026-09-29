@@ -5,6 +5,7 @@ import { Field, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { resubmitProfileChangeAction, revealChangeRequestAction, submitProfileChangeAction } from "../change-request-actions";
 import { MARITAL_STATUSES, RESTRICTED_CHANGE_FIELDS } from "../enums";
@@ -64,7 +65,7 @@ export function ChangeRequestForm({ current, requestId }: { current: PersonalVal
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {RESTRICTED_CHANGE_FIELDS.map((field) => (
               <Field key={field} name={`restricted.${field}`} label={t(`fields.${field}`)}>
-                <Input id={`restricted.${field}`} name={`restricted.${field}`} type={field === "nationalIdIssuedOn" ? "date" : "text"} maxLength={200} autoComplete="off" />
+                {field === "nationalIdIssuedOn" ? <DatePicker id={`restricted.${field}`} name={`restricted.${field}`} /> : <Input id={`restricted.${field}`} name={`restricted.${field}`} maxLength={200} autoComplete="off" />}
               </Field>
             ))}
           </div>

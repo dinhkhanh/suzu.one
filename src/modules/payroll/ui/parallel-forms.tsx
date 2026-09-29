@@ -6,6 +6,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MonthPicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { classifyParallelDifferenceAction, setParallelReferenceAction } from "../parallel-actions";
 import type { ComparedField, DifferenceLine, FindingClass } from "../parallel";
@@ -39,7 +40,7 @@ export function ParallelFilters({ entities, entityId, month, months }: { entitie
       </label>
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-muted-foreground">{t("month")}</span>
-        <Input type="month" value={month} onChange={(event) => go("month", event.target.value)} aria-label={t("month")} className="w-40" />
+        <MonthPicker value={month} onChange={(event) => go("month", event.target.value)} aria-label={t("month")} className="w-40" />
       </label>
       {offered.length > 1 ? (
         <p className="text-xs text-muted-foreground">

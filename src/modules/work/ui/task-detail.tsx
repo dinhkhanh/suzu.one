@@ -6,6 +6,7 @@ import { useRef, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { MultiSelect, Select } from "@/components/ui/select";
 import { addDependencyAction, createTaskAction, deleteTaskAction, removeDependencyAction, updateTaskAction } from "../actions";
@@ -330,11 +331,11 @@ export function TaskDetailView({ task, options, subtasks, linked, canEdit, canDe
           <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="startDate">{t("fields.startDate")}</Label>
-              <Input id="startDate" name="startDate" type="date" form="task-fields" defaultValue={task.startDate ?? ""} disabled={!canEdit} />
+              <DatePicker id="startDate" name="startDate" form="task-fields" defaultValue={task.startDate ?? ""} disabled={!canEdit} />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="dueDate">{t("fields.dueDate")}</Label>
-              <Input id="dueDate" name="dueDate" type="date" form="task-fields" defaultValue={task.dueDate ?? ""} disabled={!canEdit} />
+              <DatePicker id="dueDate" name="dueDate" form="task-fields" defaultValue={task.dueDate ?? ""} disabled={!canEdit} />
             </div>
           </div>
           <div className="flex flex-col gap-1.5">

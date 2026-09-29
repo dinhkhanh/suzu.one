@@ -25,6 +25,7 @@ Read `docs/SRS.md` (requirements, decisions D1–D18) and `docs/DEVELOPMENT_PLAN
 - The audit log is append-only (database trigger). Do not add update or delete paths.
 - New tables: add to the module's `schema.ts`, export from `src/lib/db/schema.ts` (relative import), then `pnpm db:generate --name <change>`.
 - UI strings go in `messages/vi.json` (source language) and `messages/en.json`. No hard-coded user-facing text.
+- Every UI element is shadcn/ui by default (`components.json`: style `base-nova`, built on Base UI). Before writing a control, use the shadcn component for it: add a missing one with `pnpm dlx shadcn@latest add <name>` into `src/components/ui/`, and answer *no* when it asks to overwrite an existing file — those carry the house look. No native control where shadcn has one: `<select>` is `Select` / `MultiSelect`, `<input type="date" | "datetime-local" | "month">` is `DatePicker` / `DateTimePicker` / `MonthPicker` (`src/components/ui/date-picker.tsx`), and buttons, inputs, popovers, calendars, tables and alerts come from `src/components/ui/`. Only when shadcn has no equivalent build a component — from shadcn primitives, in `src/components/ui/`.
 - `server-only` modules read configuration through `env()`; never read `process.env` elsewhere in `src/`.
 
 ## Before finishing a change

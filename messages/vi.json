@@ -13,7 +13,15 @@
   },
   "controls": {
     "search": "Tìm kiếm",
-    "noResults": "Không có kết quả phù hợp"
+    "noResults": "Không có kết quả phù hợp",
+    "pickDate": "Chọn ngày",
+    "pickMonth": "Chọn tháng",
+    "today": "Hôm nay",
+    "thisMonth": "Tháng này",
+    "clear": "Xóa",
+    "time": "Giờ",
+    "previousYear": "Năm trước",
+    "nextYear": "Năm sau"
   },
   "signIn": {
     "title": "Đăng nhập",

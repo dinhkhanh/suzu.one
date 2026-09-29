@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { addWorkTemplateItemAction, applyTemplateAction, changeRecurrenceAction, createProjectFromTemplateAction, createRecurrenceAction, nudgeTaskAction, removeWorkTemplateItemAction, saveWorkTemplateAction } from "../planning-actions";
 
@@ -229,7 +230,7 @@ export function TemplateUseForm({
           <option value="start">{t("anchor.start")}</option>
           <option value="end">{t("anchor.end")}</option>
         </Select>
-        <Input name="anchorDate" type="date" required defaultValue={today} aria-label={t("anchorDate")} className="w-44" />
+        <DatePicker name="anchorDate" required defaultValue={today} aria-label={t("anchorDate")} className="w-44" />
       </div>
       {template?.roleKeys.length ? (
         <fieldset className="flex flex-col gap-2">
@@ -366,11 +367,11 @@ export function RecurrenceManager({ projectId, recurrences, people, canManage, t
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <label className="flex items-center gap-2">
               {t("from")}
-              <Input name="startDate" type="date" required defaultValue={today} className="w-40" />
+              <DatePicker name="startDate" required defaultValue={today} className="w-40" />
             </label>
             <label className="flex items-center gap-2">
               {t("until")}
-              <Input name="endDate" type="date" className="w-40" />
+              <DatePicker name="endDate" className="w-40" />
             </label>
             <label className="flex items-center gap-2">
               {t("lead")}

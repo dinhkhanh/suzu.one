@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
@@ -135,11 +135,11 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
       <form className="flex flex-wrap items-end gap-3 text-sm">
         <label className="flex flex-col gap-1">
           {t("from")}
-          <Input type="date" name="from" defaultValue={period.from} className="w-auto" />
+          <DatePicker name="from" defaultValue={period.from} className="w-auto" />
         </label>
         <label className="flex flex-col gap-1">
           {t("to")}
-          <Input type="date" name="to" defaultValue={period.to} className="w-auto" />
+          <DatePicker name="to" defaultValue={period.to} className="w-auto" />
         </label>
         {view.clientsOffered.length > 0 ? (
           <label className="flex flex-col gap-1">

@@ -7,6 +7,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { decideHiringRequestAction, submitHiringRequestAction } from "../actions";
 import { EMPLOYMENT_TYPES } from "../enums";
@@ -81,7 +82,7 @@ export function HiringRequestForm({
             <Input id="workLocation" name="workLocation" maxLength={200} />
           </Field>
           <Field name="targetStartDate" label={t("targetStartDate")}>
-            <Input id="targetStartDate" name="targetStartDate" type="date" />
+            <DatePicker id="targetStartDate" name="targetStartDate" />
           </Field>
           <Field name="hiringManagerPersonId" label={t("hiringManager")}>
             <Select id="hiringManagerPersonId" name="hiringManagerPersonId" defaultValue="">

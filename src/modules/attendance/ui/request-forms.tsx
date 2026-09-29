@@ -8,6 +8,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
@@ -51,11 +52,11 @@ export function AttendanceRequestForm({ type, personId, defaults, resubmit }: { 
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field name="startDate" label={type === "remote_work" ? t("fields.from") : t("fields.date")}>
-            <Input id="startDate" name="startDate" type="date" required defaultValue={defaults.startDate} />
+            <DatePicker id="startDate" name="startDate" required defaultValue={defaults.startDate} />
           </Field>
           {type === "remote_work" ? (
             <Field name="endDate" label={t("fields.to")}>
-              <Input id="endDate" name="endDate" type="date" defaultValue={defaults.endDate ?? defaults.startDate} />
+              <DatePicker id="endDate" name="endDate" defaultValue={defaults.endDate ?? defaults.startDate} />
             </Field>
           ) : null}
         </div>
@@ -336,7 +337,7 @@ export function AdjustmentForm({ month, people }: { month: string; people: { id:
             </Select>
           </Field>
           <Field name="date" label={t("adjust.date")}>
-            <Input id="date" name="date" type="date" min={`${month}-01`} max={`${month}-31`} />
+            <DatePicker id="date" name="date" min={`${month}-01`} max={`${month}-31`} />
           </Field>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">

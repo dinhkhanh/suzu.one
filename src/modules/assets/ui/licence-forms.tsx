@@ -8,6 +8,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { saveLicenceAction } from "../actions";
 import { BILLING_CYCLES, type BillingCycle, LICENCE_STATUSES, type LicenceStatus } from "../enums";
@@ -97,7 +98,7 @@ export function LicenceForm({
           </Field>
           {cycle === "perpetual" ? null : (
             <Field name="renewalDate" label={t("form.renewalDate")}>
-              <Input id="renewalDate" name="renewalDate" type="date" required defaultValue={value?.renewalDate ?? ""} />
+              <DatePicker id="renewalDate" name="renewalDate" required defaultValue={value?.renewalDate ?? ""} />
             </Field>
           )}
           {canSeeMoney ? (

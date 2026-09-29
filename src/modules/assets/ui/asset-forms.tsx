@@ -6,6 +6,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { assignAssetAction, confirmHandoverAction, registerAssetAction, returnAssetAction, saveAssetCategoryAction, setAssetStatusAction, updateAssetAction } from "../actions";
 import { ASSET_CONDITIONS, ASSET_KINDS, ASSET_STATUSES, type AssetCondition, type HolderType } from "../enums";
@@ -92,10 +93,10 @@ export function AssetForm({ value, options }: { value: AssetFormValue; options: 
           <Input id="location" name="location" defaultValue={value.location ?? ""} maxLength={200} />
         </Field>
         <Field name="purchaseDate" label={t("purchaseDate")}>
-          <Input id="purchaseDate" name="purchaseDate" type="date" defaultValue={value.purchaseDate ?? ""} />
+          <DatePicker id="purchaseDate" name="purchaseDate" defaultValue={value.purchaseDate ?? ""} />
         </Field>
         <Field name="warrantyUntil" label={t("warrantyUntil")}>
-          <Input id="warrantyUntil" name="warrantyUntil" type="date" defaultValue={value.warrantyUntil ?? ""} />
+          <DatePicker id="warrantyUntil" name="warrantyUntil" defaultValue={value.warrantyUntil ?? ""} />
         </Field>
         {options.canSeeMoney ? (
           <>
@@ -163,7 +164,7 @@ export function AssignForm({ assetId, options }: { assetId: string; options: Pic
           </Select>
         </Field>
         <Field name="dueBack" label={t("dueBack")}>
-          <Input id="dueBack" name="dueBack" type="date" />
+          <DatePicker id="dueBack" name="dueBack" />
         </Field>
       </div>
       <Field name="purpose" label={t("purpose")}>

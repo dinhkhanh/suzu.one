@@ -2,7 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
@@ -64,11 +64,11 @@ export default async function RecruitReportsPage(props: PageProps<"/recruit/repo
       <form className="flex flex-wrap items-end gap-3 rounded-xl border p-4">
         <label className="flex flex-col gap-1.5 text-sm">
           {t("from")}
-          <Input type="date" name="from" defaultValue={filters.from} className="w-40" />
+          <DatePicker name="from" defaultValue={filters.from} className="w-40" />
         </label>
         <label className="flex flex-col gap-1.5 text-sm">
           {t("to")}
-          <Input type="date" name="to" defaultValue={filters.to} className="w-40" />
+          <DatePicker name="to" defaultValue={filters.to} className="w-40" />
         </label>
         <label className="flex flex-col gap-1.5 text-sm">
           {t("opening")}

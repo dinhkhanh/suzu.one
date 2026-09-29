@@ -6,6 +6,7 @@ import { useActionForm } from "@/components/forms/use-action-form";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MonthPicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { quoteOfferAction } from "../offer-actions";
 import type { OfferQuote } from "../offers";
@@ -33,7 +34,7 @@ export function NetToGrossForm({ entities, allowances, defaultMonth }: { entitie
               </Select>
             </Field>
             <Field name="month" label={t("month")}>
-              <Input id="month" name="month" type="month" required defaultValue={defaultMonth} />
+              <MonthPicker id="month" name="month" required defaultValue={defaultMonth} />
             </Field>
             <Field name="netSalary" label={t("netSalary")}>
               <Input id="netSalary" name="netSalary" required inputMode="numeric" autoComplete="off" placeholder="30.000.000" />

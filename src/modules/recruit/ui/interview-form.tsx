@@ -13,6 +13,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { INTERVIEW_KINDS, INTERVIEW_MODES } from "../enums";
@@ -35,7 +36,7 @@ function TimeFields({ date, time, minutes, onChange }: { date: string; time: str
     <div className="grid gap-3 sm:grid-cols-3">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="interview-date">{t("date")}</Label>
-        <Input id="interview-date" type="date" value={date} onChange={(event) => onChange({ date: event.target.value })} required />
+        <DatePicker id="interview-date" value={date} onChange={(event) => onChange({ date: event.target.value })} required />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="interview-time">{t("time")}</Label>

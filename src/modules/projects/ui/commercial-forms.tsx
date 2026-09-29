@@ -9,6 +9,7 @@ import { useState, useTransition } from "react";
 import { Field } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker, MonthPicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
@@ -132,10 +133,10 @@ export function RetainerForm({ projectId, values, rollovers, editFee, defaultMon
       {editFee ? null : <p className="text-xs text-muted-foreground">{t("monthsLocked")}</p>}
       <div className="grid gap-3 sm:grid-cols-3">
         <Field name="startMonth" label={t("startMonth")}>
-          <Input id="startMonth" name="startMonth" type="month" required readOnly={!editFee} defaultValue={values?.startMonth ?? defaultMonth} />
+          <MonthPicker id="startMonth" name="startMonth" required readOnly={!editFee} defaultValue={values?.startMonth ?? defaultMonth} />
         </Field>
         <Field name="endMonth" label={t("endMonth")}>
-          <Input id="endMonth" name="endMonth" type="month" readOnly={!editFee} defaultValue={values?.endMonth ?? ""} />
+          <MonthPicker id="endMonth" name="endMonth" readOnly={!editFee} defaultValue={values?.endMonth ?? ""} />
         </Field>
         <Field name="rollover" label={t("rollover")}>
           <Select id="rollover" name="rollover" defaultValue={values?.rollover ?? "reset"}>
@@ -223,7 +224,7 @@ export function ChangeForm({ projectId, change, register, requesters, editFee }:
           </Field>
         ) : null}
         <Field name="dueDateTo" label={t("fields.dueDateTo")}>
-          <Input id={`cr-due-${id}`} name="dueDateTo" type="date" defaultValue={change?.dueDateTo ?? ""} />
+          <DatePicker id={`cr-due-${id}`} name="dueDateTo" defaultValue={change?.dueDateTo ?? ""} />
         </Field>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -317,7 +318,7 @@ export function SignAcceptanceForm({ acceptanceId, today }: { acceptanceId: stri
       <div className="grid gap-3 sm:grid-cols-3">
         <UploadField label={t("signedScan")} name="signedFileId" required begin={(meta) => beginSignedScanAction({ acceptanceId, ...meta }) as Promise<ActionResult<Upload>>} complete={(fileId) => completeSignedScanAction({ fileId }) as Promise<ActionResult<Stored>>} />
         <Field name="signedOn" label={t("signedOn")}>
-          <Input id={`signedOn-${acceptanceId}`} name="signedOn" type="date" required max={today} defaultValue={today} />
+          <DatePicker id={`signedOn-${acceptanceId}`} name="signedOn" required max={today} defaultValue={today} />
         </Field>
         <Field name="signedByClient" label={t("signedBy")}>
           <Input id={`signedBy-${acceptanceId}`} name="signedByClient" required maxLength={200} />
@@ -352,7 +353,7 @@ export function BillingDecisionForm({ itemId, needsAmount, today }: { itemId: st
               <Input id={`inv-no-${itemId}`} name="invoiceNumber" required maxLength={60} />
             </Field>
             <Field name="invoiceDate" label={t("invoiceDate")}>
-              <Input id={`inv-date-${itemId}`} name="invoiceDate" type="date" required defaultValue={today} />
+              <DatePicker id={`inv-date-${itemId}`} name="invoiceDate" required defaultValue={today} />
             </Field>
             {needsAmount ? (
               <Field name="amountVnd" label={t("amount")}>
@@ -412,10 +413,10 @@ export function ClientReportForm({ projectId, report, defaults }: { projectId: s
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field name="periodFrom" label={t("fields.from")}>
-          <Input id={`rep-from-${id}`} name="periodFrom" type="date" required defaultValue={report?.periodFrom ?? defaults.from} />
+          <DatePicker id={`rep-from-${id}`} name="periodFrom" required defaultValue={report?.periodFrom ?? defaults.from} />
         </Field>
         <Field name="periodTo" label={t("fields.to")}>
-          <Input id={`rep-to-${id}`} name="periodTo" type="date" required defaultValue={report?.periodTo ?? defaults.to} />
+          <DatePicker id={`rep-to-${id}`} name="periodTo" required defaultValue={report?.periodTo ?? defaults.to} />
         </Field>
       </div>
       <Field name="summary" label={t("fields.summary")}>
@@ -446,7 +447,7 @@ export function RetroForm({ projectId, retro, today }: { projectId: string; retr
   return (
     <ActionForm action={saveRetroAction} extra={{ projectId }} submit={t("retro.save")}>
       <Field name="heldOn" label={t("retro.heldOn")}>
-        <Input id="retro-heldOn" name="heldOn" type="date" required max={today} defaultValue={retro?.heldOn ?? today} className="sm:w-48" />
+        <DatePicker id="retro-heldOn" name="heldOn" required max={today} defaultValue={retro?.heldOn ?? today} className="sm:w-48" />
       </Field>
       {area("wentWell")}
       {area("improve")}

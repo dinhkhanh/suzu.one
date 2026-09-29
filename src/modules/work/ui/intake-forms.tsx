@@ -7,6 +7,7 @@ import { useActionForm } from "@/components/forms/use-action-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { IntakeField } from "../engine/intake";
 import { saveIntakeFormAction, submitIntakeAction } from "../intake-actions";
@@ -185,8 +186,10 @@ export function IntakeSubmitForm({ formId, fields }: { formId: string; fields: I
                     </option>
                   ))}
                 </Select>
+              ) : field.type === "date" ? (
+                <DatePicker id={name} name={name} required={field.required} />
               ) : (
-                <Input id={name} name={name} required={field.required} type={field.type === "date" ? "date" : field.type === "url" ? "url" : "text"} maxLength={field.type === "url" ? 500 : 200} placeholder={field.type === "url" ? "https://" : undefined} />
+                <Input id={name} name={name} required={field.required} type={field.type === "url" ? "url" : "text"} maxLength={field.type === "url" ? 500 : 200} placeholder={field.type === "url" ? "https://" : undefined} />
               )}
               {problem ? (
                 <p role="alert" className="text-xs text-destructive">

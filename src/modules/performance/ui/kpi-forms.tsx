@@ -6,6 +6,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MonthPicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { KPI_DIRECTIONS, KPI_FREQUENCIES, KPI_UNITS, type KpiDirection, type KpiFrequency, type KpiUnit, metricValueText, WORK_METRIC_UNITS, WORK_METRICS, type WorkMetric } from "../enums";
 import { applyTemplatesAction, closeKpiMonthAction, endAssignmentAction, removePositionKpiAction, reopenKpiMonthAction, saveActualsAction, saveAssignmentAction, saveKpiAction, savePositionKpiAction } from "../kpi-actions";
@@ -284,7 +285,7 @@ export function ApplyTemplatesForm({ positionId, personId, defaultFrom, label }:
   return (
     <div className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-2">
-        <Input type="month" value={fromPeriod} onChange={(event) => setFromPeriod(event.target.value)} className="w-40" aria-label={t("positions.from")} />
+        <MonthPicker value={fromPeriod} onChange={(event) => setFromPeriod(event.target.value)} className="w-40" aria-label={t("positions.from")} />
         <Button type="button" size="sm" variant="outline" disabled={pending || !fromPeriod} onClick={() => run(() => applyTemplatesAction({ fromPeriod, positionId: positionId ?? "", personId: personId ?? "" }), setDone)}>
           {label}
         </Button>
@@ -324,7 +325,7 @@ export function NewAssignmentForm({ personId, kpis, defaultFrom }: { personId: s
             <Input name="target" inputMode="decimal" required maxLength={30} />
           </Field>
           <Field name="fromPeriod" label={t("assignments.from")}>
-            <Input name="fromPeriod" type="month" defaultValue={defaultFrom} required />
+            <MonthPicker name="fromPeriod" defaultValue={defaultFrom} required />
           </Field>
         </div>
       </FieldErrors>
@@ -360,7 +361,7 @@ export function AssignmentRowForm({ assignment }: { assignment: { id: string; we
       </form>
       <FormError namespace={ERRORS} errorKey={form.errorKey} />
       <div className="flex flex-wrap items-center gap-2">
-        <Input type="month" value={toPeriod} onChange={(event) => setToPeriod(event.target.value)} className="w-40" aria-label={t("assignments.lastMonth")} />
+        <MonthPicker value={toPeriod} onChange={(event) => setToPeriod(event.target.value)} className="w-40" aria-label={t("assignments.lastMonth")} />
         <Button type="button" size="sm" variant="ghost" disabled={pending || !toPeriod} onClick={() => run(() => endAssignmentAction({ assignmentId: assignment.id, toPeriod }))}>
           {t("assignments.end")}
         </Button>

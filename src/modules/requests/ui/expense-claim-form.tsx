@@ -8,6 +8,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
@@ -99,7 +100,7 @@ export function ExpenseClaimForm({
                 <li key={index} className="grid gap-2 rounded-lg border p-2 sm:grid-cols-[9rem_10rem_1fr_9rem]">
                   <label className="flex flex-col gap-1 text-xs text-muted-foreground">
                     {t("lineDate")}
-                    <Input type="date" max={today} value={line.lineDate} onChange={(event) => set(index, { lineDate: event.target.value })} />
+                    <DatePicker max={today} value={line.lineDate} onChange={(event) => set(index, { lineDate: event.target.value })} />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-muted-foreground">
                     {t("category")}

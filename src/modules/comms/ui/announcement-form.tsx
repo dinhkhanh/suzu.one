@@ -6,6 +6,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { saveAnnouncementAction } from "../actions";
 import { type AudienceType, audienceKey } from "../enums";
@@ -98,10 +99,10 @@ export function AnnouncementForm({ draft, choices }: { draft: AnnouncementDraft;
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field name="publishAt" label={t("form.publishAt")}>
-            <Input id="publishAt" name="publishAt" type="datetime-local" defaultValue={draft.publishAt} />
+            <DateTimePicker id="publishAt" name="publishAt" defaultValue={draft.publishAt} />
           </Field>
           <Field name="expiresAt" label={t("form.expiresAt")}>
-            <Input id="expiresAt" name="expiresAt" type="datetime-local" defaultValue={draft.expiresAt} />
+            <DateTimePicker id="expiresAt" name="expiresAt" defaultValue={draft.expiresAt} />
           </Field>
         </div>
         <p className="text-xs text-muted-foreground">{t("form.scheduleHelp")}</p>

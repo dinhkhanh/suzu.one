@@ -2,6 +2,7 @@
 import { useTranslations } from "next-intl";
 import { Field } from "@/components/forms/field";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { GENDERS, MARITAL_STATUSES, WORKFORCE_TYPES } from "../enums";
 
@@ -43,7 +44,7 @@ export function IdentityFields({ defaults = {} }: { defaults?: IdentityDefaults 
         <Input id="profile.phone" name="profile.phone" type="tel" maxLength={30} defaultValue={profile?.phone ?? ""} />
       </Field>
       <Field name="profile.dateOfBirth" label={t("fields.dateOfBirth")}>
-        <Input id="profile.dateOfBirth" name="profile.dateOfBirth" type="date" defaultValue={profile?.dateOfBirth ?? ""} />
+        <DatePicker id="profile.dateOfBirth" name="profile.dateOfBirth" defaultValue={profile?.dateOfBirth ?? ""} />
       </Field>
       <Field name="profile.gender" label={t("fields.gender")}>
         <Select id="profile.gender" name="profile.gender" defaultValue={profile?.gender ?? ""}>

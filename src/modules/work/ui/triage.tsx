@@ -8,6 +8,7 @@ import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { TRIAGE_SOURCES } from "../engine/triage";
@@ -152,7 +153,7 @@ function TriageItemCard({ item, choices, canDecide, today }: { item: TriageCard;
           </div>
           <div className="flex flex-col gap-1">
             <Label htmlFor={`due-${item.id}`}>{tWork("task.fields.dueDate")}</Label>
-            <Input id={`due-${item.id}`} name="dueDate" type="date" defaultValue={item.dueDate ?? ""} />
+            <DatePicker id={`due-${item.id}`} name="dueDate" defaultValue={item.dueDate ?? ""} />
           </div>
           <div className="flex flex-col gap-1">
             <Label htmlFor={`priority-${item.id}`}>{tWork("task.fields.priority")}</Label>
@@ -218,7 +219,7 @@ function TriageItemCard({ item, choices, canDecide, today }: { item: TriageCard;
         >
           <div className="flex flex-col gap-1">
             <Label htmlFor={`until-${item.id}`}>{t("snoozeUntil")}</Label>
-            <Input id={`until-${item.id}`} name="until" type="date" required min={tomorrow} defaultValue={item.snoozedUntil ?? tomorrow} />
+            <DatePicker id={`until-${item.id}`} name="until" required min={tomorrow} defaultValue={item.snoozedUntil ?? tomorrow} />
           </div>
           <Button type="submit" size="sm" disabled={pending}>
             {t("snooze")}

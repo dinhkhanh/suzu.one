@@ -9,6 +9,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { bookAssetAction, cancelBookingAction, checkInBookingAction, checkOutBookingAction, decideBookingAction } from "../actions";
 import { ASSET_CONDITIONS, type AssetCondition } from "../enums";
@@ -63,10 +64,10 @@ export function BookAssetForm({ assets, assetId, people, canBookForOthers }: { a
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field name="startAt" label={t("form.from")}>
-            <Input id="startAt" name="startAt" type="datetime-local" required defaultValue={vietnamLocalInput(24)} />
+            <DateTimePicker id="startAt" name="startAt" required defaultValue={vietnamLocalInput(24)} />
           </Field>
           <Field name="endAt" label={t("form.to")}>
-            <Input id="endAt" name="endAt" type="datetime-local" required defaultValue={vietnamLocalInput(32)} />
+            <DateTimePicker id="endAt" name="endAt" required defaultValue={vietnamLocalInput(32)} />
           </Field>
         </div>
 

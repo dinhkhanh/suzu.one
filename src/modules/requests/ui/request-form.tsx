@@ -8,6 +8,7 @@ import { useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
@@ -152,7 +153,7 @@ function FieldInput({
     case "money":
       return <Input id={field.key} name={field.key} inputMode="numeric" value={text} onChange={(event) => set(event.target.value)} placeholder={field.type === "money" ? "0" : undefined} />;
     case "date":
-      return <Input id={field.key} name={field.key} type="date" value={text} min={field.minDate ?? undefined} max={field.maxDate ?? undefined} onChange={(event) => set(event.target.value)} />;
+      return <DatePicker id={field.key} name={field.key} value={text} min={field.minDate ?? undefined} max={field.maxDate ?? undefined} onChange={(event) => set(event.target.value)} />;
     case "checkbox":
       return <input id={field.key} name={field.key} type="checkbox" className="size-4" checked={value === true} onChange={(event) => set(event.target.checked)} />;
     case "select":

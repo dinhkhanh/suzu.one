@@ -1,7 +1,7 @@
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -68,11 +68,11 @@ export default async function WorkAnalyticsPage({ searchParams }: PageProps<"/wo
         {teamId ? <input type="hidden" name="team" value={teamId} /> : null}
         <label className="flex flex-col gap-1">
           {t("from")}
-          <Input type="date" name="from" defaultValue={period.from} className="w-auto" />
+          <DatePicker name="from" defaultValue={period.from} className="w-auto" />
         </label>
         <label className="flex flex-col gap-1">
           {t("to")}
-          <Input type="date" name="to" defaultValue={period.to} className="w-auto" />
+          <DatePicker name="to" defaultValue={period.to} className="w-auto" />
         </label>
         <Button type="submit" variant="secondary">
           {t("apply")}

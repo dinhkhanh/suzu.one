@@ -9,6 +9,7 @@ import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker, DateTimePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { cancelPublishAction, markPublishedAction, planPublishAction, recordResultAction, removeResultAction, updatePublishPlanAction } from "../delivery-actions";
@@ -131,7 +132,7 @@ function PlanForm({ taskId, publish, defaultPlatform, onDone }: { taskId: string
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor={`planned-${publish?.id ?? "new"}`}>{t("plannedFor")}</Label>
-          <Input id={`planned-${publish?.id ?? "new"}`} name="plannedAt" type="datetime-local" defaultValue={publish?.plannedAt ? toVietnamLocal(new Date(publish.plannedAt)) : ""} />
+          <DateTimePicker id={`planned-${publish?.id ?? "new"}`} name="plannedAt" defaultValue={publish?.plannedAt ? toVietnamLocal(new Date(publish.plannedAt)) : ""} />
         </div>
       </div>
       <DeliveryError errorKey={errorKey} />
@@ -165,7 +166,7 @@ function PublishActions({ publish }: { publish: PublishItem }) {
       >
         <Input name="url" type="url" required pattern="https://.*" placeholder="https://www.facebook.com/…" aria-label={t("url")} autoFocus />
         <div className="flex flex-wrap items-center gap-2">
-          <Input name="publishedAt" type="datetime-local" aria-label={t("publishedWhen")} className="w-auto" defaultValue={toVietnamLocal(new Date())} />
+          <DateTimePicker name="publishedAt" aria-label={t("publishedWhen")} className="w-auto" defaultValue={toVietnamLocal(new Date())} />
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={boosted} onChange={(event) => setBoosted(event.target.checked)} className="size-4" /> {t("boosted")}
           </label>
@@ -247,7 +248,7 @@ function Results({ publish, canManage, today }: { publish: PublishItem; canManag
             }}
           >
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
-              <Input name="recordedOn" type="date" required defaultValue={today} aria-label={t("recordedOn")} className="col-span-2 sm:col-span-1" />
+              <DatePicker name="recordedOn" required defaultValue={today} aria-label={t("recordedOn")} className="col-span-2 sm:col-span-1" />
               {RESULT_METRICS.map((key) => (
                 <Input key={key} name={key} inputMode="numeric" placeholder={t(`metrics.${key}`)} aria-label={t(`metrics.${key}`)} />
               ))}

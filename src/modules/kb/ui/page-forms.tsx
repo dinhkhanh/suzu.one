@@ -6,6 +6,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { archivePageAction, createPageAction, deletePageAction, movePageAction, publishPageAction, restoreVersionAction, savePageAsTemplateAction, setPageMetaAction, submitPageReviewAction, unpublishPageAction } from "../actions";
@@ -172,7 +173,7 @@ export function PageMetaForm({ pageId, ownerPersonId, reviewBy, people }: { page
         </Select>
       </Field>
       <Field name="reviewBy" label={t("fields.reviewBy")}>
-        <Input id="reviewBy" name="reviewBy" type="date" defaultValue={reviewBy ?? ""} />
+        <DatePicker id="reviewBy" name="reviewBy" defaultValue={reviewBy ?? ""} />
       </Field>
       <Button type="submit" variant="outline" disabled={form.pending}>
         {t("save")}

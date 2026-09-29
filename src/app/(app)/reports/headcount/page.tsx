@@ -2,7 +2,7 @@ import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
@@ -53,15 +53,15 @@ export default async function HeadcountPage(props: PageProps<"/reports/headcount
       <form className="flex flex-wrap items-end gap-3 text-sm">
         <label className="flex flex-col gap-1">
           {t("asOf")}
-          <Input type="date" name="asOf" defaultValue={filters.asOf} className="w-auto" />
+          <DatePicker name="asOf" defaultValue={filters.asOf} className="w-auto" />
         </label>
         <label className="flex flex-col gap-1">
           {t("from")}
-          <Input type="date" name="from" defaultValue={filters.from} className="w-auto" />
+          <DatePicker name="from" defaultValue={filters.from} className="w-auto" />
         </label>
         <label className="flex flex-col gap-1">
           {t("to")}
-          <Input type="date" name="to" defaultValue={filters.to} className="w-auto" />
+          <DatePicker name="to" defaultValue={filters.to} className="w-auto" />
         </label>
         <Select name="entityId" defaultValue={filters.entityId ?? ""} aria-label={t("allEntities")} className="w-auto">
           <option value="">{t("allEntities")}</option>

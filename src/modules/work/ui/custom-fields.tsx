@@ -7,6 +7,7 @@ import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { updateTaskAction } from "../actions";
@@ -111,7 +112,7 @@ export function CustomValueInput({ field, value, people, disabled, onCommit, com
     case "checkbox":
       return <input type="checkbox" aria-label={field.name} checked={current === true} disabled={disabled} onChange={(event) => onCommit(event.target.checked)} />;
     case "date":
-      return <Input type="date" aria-label={field.name} defaultValue={(current as string | null) ?? ""} key={String(current)} disabled={disabled} onChange={(event) => onCommit(event.target.value || null)} className={size} />;
+      return <DatePicker aria-label={field.name} defaultValue={(current as string | null) ?? ""} key={String(current)} disabled={disabled} onChange={(event) => onCommit(event.target.value || null)} className={size} />;
     case "duration": {
       // Typed in hours ("1.5"), kept in whole minutes.
       const hours = current === null ? "" : String(Math.round(((current as number) / 60) * 100) / 100);

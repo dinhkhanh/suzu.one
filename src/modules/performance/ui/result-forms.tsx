@@ -6,6 +6,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { PerformanceWeightingValue } from "../enums";
 import { computeResultsAction, decideWeightingAction, lockResultAction, overrideResultAction, proposeWeightingAction, publishResultAction, recomputeResultAction, unlockResultAction } from "../result-actions";
@@ -141,7 +142,7 @@ export function WeightingForm({ entities, start }: { entities: Option[]; start: 
             </Select>
           </Field>
           <Field name="validFrom" label={t("weighting.validFrom")}>
-            <Input name="validFrom" id="validFrom" type="date" required />
+            <DatePicker name="validFrom" id="validFrom" required />
           </Field>
           <Field name="note" label={t("weighting.note")}>
             <Input name="note" id="note" maxLength={2000} />

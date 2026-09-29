@@ -5,6 +5,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { COMPONENT_CATEGORIES, COMPONENT_KINDS, COMPONENT_SOURCES, DEFAULT_PAYROLL_POLICY, type PayrollPolicyValue, PRORATIONS, ROUNDING_RULE_NAMES, TAX_TREATMENTS } from "../enums";
@@ -48,7 +49,7 @@ export function ProposeComponentForm({ entities }: { entities: EntityOption[] })
             <Input id="code" name="code" required maxLength={40} pattern="[A-Za-z][A-Za-z0-9_]{1,39}" className="font-mono uppercase" />
           </Field>
           <Field name="validFrom" label={t("validFrom")}>
-            <Input id="validFrom" name="validFrom" type="date" required />
+            <DatePicker id="validFrom" name="validFrom" required />
           </Field>
           <Field name="name" label={t("name")}>
             <Input id="name" name="name" required maxLength={120} />
@@ -182,7 +183,7 @@ export function ProposePolicyForm({ entities, current }: { entities: EntityOptio
         <div className="grid gap-4 sm:grid-cols-3">
           <EntitySelect entities={entities} label={t("scope")} groupLabel={t("groupWide")} />
           <Field name="validFrom" label={t("validFrom")}>
-            <Input id="validFrom" name="validFrom" type="date" required />
+            <DatePicker id="validFrom" name="validFrom" required />
           </Field>
           <span />
           {choice("prorationBasis", ["working_days", "calendar_days", "fixed_days"], { value: basis, onChange: (value) => setBasis(value as typeof basis) })}

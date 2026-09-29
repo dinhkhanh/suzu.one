@@ -8,6 +8,7 @@ import { useState, useTransition } from "react";
 import { Field } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { FileLink } from "@/modules/platform/files/ui/signed-upload";
@@ -74,7 +75,7 @@ export function RaidForm({ projectId, people, item, today, onDone }: { projectId
           </Select>
         </Field>
         <Field name="dueDate" label={t("fields.dueDate")}>
-          <Input id={`raid-due-${id}`} name="dueDate" type="date" defaultValue={item?.dueDate ?? ""} />
+          <DatePicker id={`raid-due-${id}`} name="dueDate" defaultValue={item?.dueDate ?? ""} />
         </Field>
         {rated ? (
           <Field name="severity" label={t("fields.severity")}>
@@ -89,7 +90,7 @@ export function RaidForm({ projectId, people, item, today, onDone }: { projectId
         ) : null}
         {kind === "decision" ? (
           <Field name="decidedOn" label={t("fields.decidedOn")}>
-            <Input id={`raid-decided-${id}`} name="decidedOn" type="date" required max={today} defaultValue={item?.decidedOn ?? today} />
+            <DatePicker id={`raid-decided-${id}`} name="decidedOn" required max={today} defaultValue={item?.decidedOn ?? today} />
           </Field>
         ) : null}
       </div>
@@ -130,7 +131,7 @@ export function IssueToTaskForm({ itemId, people, ownerPersonId, dueDate }: { it
             </Select>
           </Field>
           <Field name="dueDate" label={t("fields.dueDate")}>
-            <Input id={`task-due-${itemId}`} name="dueDate" type="date" defaultValue={dueDate ?? ""} />
+            <DatePicker id={`task-due-${itemId}`} name="dueDate" defaultValue={dueDate ?? ""} />
           </Field>
         </ActionForm>
       </div>
@@ -198,7 +199,7 @@ export function MeetingForm({ projectId, people, meeting, today }: { projectId: 
           <Input id={`m-title-${id}`} name="title" required maxLength={200} defaultValue={meeting?.title ?? ""} placeholder={t("titleHint")} />
         </Field>
         <Field name="heldOn" label={t("fields.heldOn")}>
-          <Input id={`m-date-${id}`} name="heldOn" type="date" required defaultValue={meeting?.heldOn ?? today} />
+          <DatePicker id={`m-date-${id}`} name="heldOn" required defaultValue={meeting?.heldOn ?? today} />
         </Field>
       </div>
       {/* The hour is what a calendar invitation is made of (FR-PJM-30); notes written up afterwards need none. */}
@@ -261,7 +262,7 @@ export function MeetingForm({ projectId, people, meeting, today }: { projectId: 
                 </option>
               ))}
             </Select>
-            <Input aria-label={t("fields.due")} id={`m-actd-${id}-${index}`} name={`actions.${index}.dueDate`} type="date" />
+            <DatePicker aria-label={t("fields.due")} id={`m-actd-${id}-${index}`} name={`actions.${index}.dueDate`} />
           </div>
         ))}
       </fieldset>

@@ -6,6 +6,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { REVIEW_CYCLE_KINDS, type ReviewCycleKind, type ReviewFormKind, type ReviewFormShape } from "../enums";
 import {
@@ -345,7 +346,7 @@ export function CycleForm({ value, entities, templates }: { value: CycleFormValu
           </Field>
           {DATES.map((key) => (
             <Field key={key} name={key} label={t(`timeline.${key}`)}>
-              <Input name={key} id={key} type="date" defaultValue={value[key] ?? ""} required={key === "periodStart" || key === "periodEnd"} />
+              <DatePicker name={key} id={key} defaultValue={value[key] ?? ""} required={key === "periodStart" || key === "periodEnd"} />
             </Field>
           ))}
         </div>

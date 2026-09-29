@@ -6,6 +6,7 @@ import { Field, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { RECORD_ONLY_EVENT_TYPES, TERMINATION_REASONS } from "../enums";
 import { cancelLifecycleEventAction, recordLifecycleEventAction, rehirePersonAction, submitResignationAction, terminateEmploymentAction, transferToEntityAction } from "../lifecycle-actions";
@@ -38,7 +39,7 @@ export function RecordEventForm({ personId, today }: { personId: string; today: 
             </Select>
           </Field>
           <Field name="effectiveDate" label={t("fields.effectiveDate")}>
-            <Input id="effectiveDate" name="effectiveDate" type="date" required defaultValue={today} />
+            <DatePicker id="effectiveDate" name="effectiveDate" required defaultValue={today} />
           </Field>
           <Field name="reason" label={t("fields.reason")}>
             <Input id="reason" name="reason" maxLength={300} />
@@ -76,7 +77,7 @@ export function TerminateForm({ personId, today, resignation }: { personId: stri
         <p className="text-sm text-muted-foreground">{t("terminate.hint")}</p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field name="lastDay" label={t("fields.lastDay")}>
-            <Input id="lastDay" name="lastDay" type="date" required defaultValue={resignation?.lastDay ?? today} />
+            <DatePicker id="lastDay" name="lastDay" required defaultValue={resignation?.lastDay ?? today} />
           </Field>
           <Field name="reason" label={t("fields.terminationReason")}>
             <Select id="reason" name="reason" required defaultValue={resignation ? "resignation" : "contract_end"}>
@@ -147,10 +148,10 @@ export function RehireForm({ personId, entities, options, today, defaultEntityId
           </Field>
           <div className="hidden lg:block" />
           <Field name="startDate" label={tp("fields.startDate")}>
-            <Input id="startDate" name="startDate" type="date" required defaultValue={today} />
+            <DatePicker id="startDate" name="startDate" required defaultValue={today} />
           </Field>
           <Field name="seniorityDate" label={tp("fields.seniorityDate")}>
-            <Input id="seniorityDate" name="seniorityDate" type="date" />
+            <DatePicker id="seniorityDate" name="seniorityDate" />
           </Field>
         </div>
         <PlacementFields options={{ ...options, branches: options.branches.filter((branch) => branch.entityId === entityId) }} exceptPersonId={personId} />
@@ -199,7 +200,7 @@ export function TransferEntityForm({ personId, entities, options, today, minDate
             </Select>
           </Field>
           <Field name="startDate" label={t("transfer.startDate")}>
-            <Input id="startDate" name="startDate" type="date" required defaultValue={today} min={minDate} max={today} />
+            <DatePicker id="startDate" name="startDate" required defaultValue={today} min={minDate} max={today} />
           </Field>
           <Field name="employeeCode" label={tp("fields.employeeCode")}>
             <Input id="employeeCode" name="employeeCode" maxLength={30} placeholder={tp("fields.employeeCodeHint")} />
@@ -241,7 +242,7 @@ export function ResignationForm({ today }: { today: string }) {
         <p className="text-sm text-muted-foreground">{t("resign.hint")}</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field name="lastWorkingDay" label={t("fields.lastDay")}>
-            <Input id="lastWorkingDay" name="lastWorkingDay" type="date" required min={today} />
+            <DatePicker id="lastWorkingDay" name="lastWorkingDay" required min={today} />
           </Field>
           <Field name="reason" label={t("fields.reason")}>
             <Input id="reason" name="reason" maxLength={1000} />

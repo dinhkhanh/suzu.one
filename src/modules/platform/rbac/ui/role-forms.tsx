@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { Field, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { grantRoleAction, revokeRoleAction } from "../actions";
 import { ROLES } from "../roles";
@@ -77,10 +77,10 @@ export function GrantRoleForm({ people, scopes, today }: { people: Option[]; sco
           </Field>
         )}
         <Field name="validFrom" label={t("validFrom")}>
-          <Input id="validFrom" name="validFrom" type="date" required defaultValue={today} />
+          <DatePicker id="validFrom" name="validFrom" required defaultValue={today} />
         </Field>
         <Field name="validTo" label={t("validTo")}>
-          <Input id="validTo" name="validTo" type="date" />
+          <DatePicker id="validTo" name="validTo" />
         </Field>
       </div>
       <FormError namespace="rbac.errors" errorKey={errorKey} />

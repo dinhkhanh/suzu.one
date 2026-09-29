@@ -8,6 +8,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
@@ -197,10 +198,10 @@ export function PhaseForm({ projectId, phase, onDone }: { projectId: string; pha
         <Input id={`phase-name-${id}`} name="name" required maxLength={120} defaultValue={phase?.name ?? ""} />
       </Field>
       <Field name="startDate" label={t("fields.startDate")}>
-        <Input id={`phase-start-${id}`} name="startDate" type="date" defaultValue={phase?.startDate ?? ""} />
+        <DatePicker id={`phase-start-${id}`} name="startDate" defaultValue={phase?.startDate ?? ""} />
       </Field>
       <Field name="endDate" label={t("fields.endDate")}>
-        <Input id={`phase-end-${id}`} name="endDate" type="date" defaultValue={phase?.endDate ?? ""} />
+        <DatePicker id={`phase-end-${id}`} name="endDate" defaultValue={phase?.endDate ?? ""} />
       </Field>
       <Field name="budgetHours" label={t("fields.budgetHours")}>
         <Input id={`phase-budget-${id}`} name="budgetHours" type="number" min={0} step="0.5" defaultValue={hoursOf(phase?.budgetMinutes)} />
@@ -222,7 +223,7 @@ export function MilestoneForm({ projectId, milestone, phases, people, showAmount
           <Input id={`ms-name-${id}`} name="name" required maxLength={160} defaultValue={milestone?.name ?? ""} />
         </Field>
         <Field name="dueDate" label={t("fields.dueDate")}>
-          <Input id={`ms-due-${id}`} name="dueDate" type="date" defaultValue={milestone?.dueDate ?? ""} />
+          <DatePicker id={`ms-due-${id}`} name="dueDate" defaultValue={milestone?.dueDate ?? ""} />
         </Field>
         <Field name="ownerPersonId" label={t("fields.owner")}>
           <Select id={`ms-owner-${id}`} name="ownerPersonId" defaultValue={milestone?.ownerPersonId ?? ""}>
@@ -372,7 +373,7 @@ export function DeliverableForm({ projectId, line, milestones }: { projectId: st
           </Select>
         </Field>
         <Field name="dueDate" label={t("fields.dueDate")}>
-          <Input id={`line-due-${id}`} name="dueDate" type="date" defaultValue={line?.dueDate ?? ""} />
+          <DatePicker id={`line-due-${id}`} name="dueDate" defaultValue={line?.dueDate ?? ""} />
         </Field>
       </div>
       <input type="hidden" name="sortOrder" value={line?.sortOrder ?? 0} />
@@ -403,7 +404,7 @@ export function LineTasksForm({ deliverableId, missing, people }: { deliverableI
         </Select>
       </Field>
       <Field name="dueDate" label={t("due")}>
-        <Input id={`due-${deliverableId}`} name="dueDate" type="date" className="sm:w-40" />
+        <DatePicker id={`due-${deliverableId}`} name="dueDate" className="sm:w-40" />
       </Field>
     </ActionForm>
   );

@@ -8,6 +8,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
 import { createProjectFromTemplatePlanAction, saveTemplatePlanAction } from "../actions";
@@ -81,7 +82,7 @@ export function TemplateProjectForm({ templates, teams, peopleByTeam, today }: {
           <option value="start">{t("anchor.start")}</option>
           <option value="end">{t("anchor.end")}</option>
         </Select>
-        <Input name="anchorDate" type="date" required defaultValue={today} aria-label={t("anchorDate")} className="sm:w-44" />
+        <DatePicker name="anchorDate" required defaultValue={today} aria-label={t("anchorDate")} className="sm:w-44" />
       </div>
       {template?.roleKeys.length ? (
         <fieldset className="flex flex-col gap-2">

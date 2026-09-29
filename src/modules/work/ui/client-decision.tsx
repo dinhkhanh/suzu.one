@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
@@ -83,7 +84,7 @@ export function ClientDecisionForm({ target, version, clientName, files, today, 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1">
           <Label htmlFor={`cd-on-${version}`}>{t("decidedOn")}</Label>
-          <Input id={`cd-on-${version}`} name="decidedOn" type="date" required defaultValue={today} max={today} />
+          <DatePicker id={`cd-on-${version}`} name="decidedOn" required defaultValue={today} max={today} />
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor={`cd-channel-${version}`}>{t("channel")}</Label>

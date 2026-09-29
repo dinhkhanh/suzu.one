@@ -9,6 +9,7 @@ import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { updateTaskAction } from "../actions";
 import { type CustomValue, customKey } from "../engine/custom-fields";
@@ -247,8 +248,7 @@ export function TaskTableView({
                   </td>
                   {(["startDate", "dueDate"] as const).map((key) => (
                     <td key={key} className="px-2 py-1">
-                      <Input
-                        type="date"
+                      <DatePicker
                         aria-label={t(key)}
                         key={task[key] ?? ""}
                         defaultValue={task[key] ?? ""}
@@ -377,7 +377,7 @@ function BulkBar({ ids, options, fields, pending, onClear, onApply }: { ids: str
 
   const control = () => {
     if (field) return <CustomValueInput compact field={field} value={customValue} people={options.people} onCommit={setCustomValue} />;
-    if (what === "startDate" || what === "dueDate") return <Input type="date" aria-label={t("value")} value={value} onChange={(event) => setValue(event.target.value)} className="h-8 w-40" />;
+    if (what === "startDate" || what === "dueDate") return <DatePicker aria-label={t("value")} value={value} onChange={(event) => setValue(event.target.value)} className="h-8 w-40" />;
     const choices =
       what === "state"
         ? options.states.filter((state) => state.isActive).map((state) => ({ id: state.id, label: state.name }))

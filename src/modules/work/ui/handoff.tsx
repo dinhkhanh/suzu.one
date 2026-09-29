@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import type { HandoffRequirement } from "../handoff-gate";
@@ -205,7 +206,11 @@ export function HandoffSheet({ requirement, onClose, onDone }: { requirement: Ha
                 {field.label}
                 {field.required ? " *" : ""}
               </Label>
-              <Input id={`value-${field.key}`} name={`value.${field.key}`} type={field.type === "url" ? "url" : field.type === "date" ? "date" : field.type === "number" ? "number" : "text"} step={field.type === "number" ? "any" : undefined} required={field.required} maxLength={2000} />
+              {field.type === "date" ? (
+                <DatePicker id={`value-${field.key}`} name={`value.${field.key}`} required={field.required} />
+              ) : (
+                <Input id={`value-${field.key}`} name={`value.${field.key}`} type={field.type === "url" ? "url" : field.type === "number" ? "number" : "text"} step={field.type === "number" ? "any" : undefined} required={field.required} maxLength={2000} />
+              )}
             </div>
           ))}
           {pkg.checklist.length ? (
@@ -480,7 +485,7 @@ function SendToTeamForm({ taskId, taskTitle, teams }: { taskId: string; taskTitl
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="send-due">{t("dueDate")}</Label>
-            <Input id="send-due" name="dueDate" type="date" />
+            <DatePicker id="send-due" name="dueDate" />
           </div>
         </div>
         <div className="flex flex-col gap-1.5">

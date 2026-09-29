@@ -5,6 +5,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { createProjectAction, saveClientAction, updateProjectAction } from "../actions";
 import { CLIENT_KINDS, PROJECT_STATUSES, VISIBILITIES } from "../enums";
@@ -79,10 +80,10 @@ export function ProjectForm({ project, teams, clients, people }: { project?: Pro
             </Field>
           ) : null}
           <Field name="startDate" label={t("fields.startDate")}>
-            <Input id="startDate" name="startDate" type="date" defaultValue={project?.startDate ?? ""} />
+            <DatePicker id="startDate" name="startDate" defaultValue={project?.startDate ?? ""} />
           </Field>
           <Field name="dueDate" label={t("fields.dueDate")}>
-            <Input id="dueDate" name="dueDate" type="date" defaultValue={project?.dueDate ?? ""} />
+            <DatePicker id="dueDate" name="dueDate" defaultValue={project?.dueDate ?? ""} />
           </Field>
           <div className="sm:col-span-2 lg:col-span-3">
             <Field name="description" label={t("fields.description")}>

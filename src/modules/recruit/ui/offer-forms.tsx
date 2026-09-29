@@ -13,6 +13,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { EMPLOYMENT_TYPES, OFFER_DECLINE_REASONS, OFFER_LIMITS } from "../enums";
 import { convertOfferToEmployeeAction, decideOfferAction, makeOfferAction, respondToOfferAction, sendOfferAction, submitOfferAction, updateOfferAction, withdrawOfferAction } from "../offer-actions";
@@ -95,10 +96,10 @@ export function OfferForm({
             </Select>
           </Field>
           <Field name="startDate" label={t("startDate")}>
-            <Input id="startDate" name="startDate" type="date" defaultValue={values?.startDate ?? ""} required />
+            <DatePicker id="startDate" name="startDate" defaultValue={values?.startDate ?? ""} required />
           </Field>
           <Field name="expiresOn" label={t("expiresOn")}>
-            <Input id="expiresOn" name="expiresOn" type="date" defaultValue={values?.expiresOn ?? ""} />
+            <DatePicker id="expiresOn" name="expiresOn" defaultValue={values?.expiresOn ?? ""} />
           </Field>
           <Field name="letterTemplateId" label={t("letterTemplate")}>
             <Select id="letterTemplateId" name="letterTemplateId" defaultValue={values?.letterTemplateId ?? ""}>

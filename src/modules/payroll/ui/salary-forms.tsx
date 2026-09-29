@@ -6,6 +6,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { INSURANCE_EXEMPTIONS, PAY_PROFILES, PIT_METHODS, SALARY_CHANGE_REASONS, type SalaryTerms, SIMPLE_BASES, TAX_RESIDENCIES } from "../enums";
 import { submitProfileAction } from "../rule-actions";
@@ -31,7 +32,7 @@ export function SalaryChangeForm({ personId, allowances, current, initial, reque
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field name="validFrom" label={t("validFrom")}>
-            <Input id="validFrom" name="validFrom" type="date" required defaultValue={defaults?.validFrom} />
+            <DatePicker id="validFrom" name="validFrom" required defaultValue={defaults?.validFrom} />
           </Field>
           <Field name="reason" label={t("reason")}>
             <Select id="reason" name="reason" defaultValue={defaults?.reason ?? (initial ? "initial" : "raise")}>
@@ -130,7 +131,7 @@ export function ProfileForm({ personId, hasProfile }: { personId: string; hasPro
             </Select>
           </Field>
           <Field name="validFrom" label={t("validFrom")}>
-            <Input id="validFrom" name="validFrom" type="date" required />
+            <DatePicker id="validFrom" name="validFrom" required />
           </Field>
           {profile === "simple" ? (
             <>
@@ -144,7 +145,7 @@ export function ProfileForm({ personId, hasProfile }: { personId: string; hasPro
                 </Select>
               </Field>
               <Field name="reviewDate" label={t("reviewDate")}>
-                <Input id="reviewDate" name="reviewDate" type="date" />
+                <DatePicker id="reviewDate" name="reviewDate" />
               </Field>
             </>
           ) : null}

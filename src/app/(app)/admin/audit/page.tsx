@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { AUDIT_PAGE_SIZE, type AuditFilters, listAuditEntries, listAuditResourceTypes } from "@/modules/platform/audit/service";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -70,8 +71,8 @@ export default async function AuditPage(props: PageProps<"/admin/audit">) {
             </option>
           ))}
         </Select>
-        <Input name="from" type="date" defaultValue={filters.from} aria-label={t("filters.from")} />
-        <Input name="to" type="date" defaultValue={filters.to} aria-label={t("filters.to")} />
+        <DatePicker name="from" defaultValue={filters.from} aria-label={t("filters.from")} />
+        <DatePicker name="to" defaultValue={filters.to} aria-label={t("filters.to")} />
         {filters.resourceId ? <input type="hidden" name="resourceId" value={filters.resourceId} /> : null}
         <div className="flex gap-2">
           <Button type="submit">{t("filters.apply")}</Button>

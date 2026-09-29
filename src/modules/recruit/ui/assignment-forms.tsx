@@ -11,6 +11,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { cancelAssignmentAction, rateAssignmentAction, sendAssignmentAction } from "../assignment-actions";
 import { SCORE_MAX, SCORE_MIN } from "../enums";
@@ -65,7 +66,7 @@ export function SendAssignment({ applicationId, origin }: { applicationId: strin
           <textarea id="assignment-brief" name="brief" rows={6} required maxLength={20_000} className="w-full rounded-lg border bg-transparent px-3 py-2 text-sm" />
         </Field>
         <Field name="dueAt" label={t("due")}>
-          <Input id="assignment-due" name="dueAt" type="datetime-local" required />
+          <DateTimePicker id="assignment-due" name="dueAt" required />
         </Field>
       </FieldErrors>
       <FormError namespace="recruit.errors" errorKey={form.errorKey} />

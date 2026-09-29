@@ -5,6 +5,7 @@ import { Field, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker, MonthPicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
@@ -159,7 +160,7 @@ export function SensitivePanel({ personId, summary, canManage, dependentNames }:
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {SENSITIVE_TEXT_FIELDS.map((field) => (
                 <Field key={field} name={field} label={t(`sensitive.fields.${field}`)}>
-                  <Input id={field} name={field} type={field === "nationalIdIssuedOn" ? "date" : "text"} maxLength={200} defaultValue={revealed[field] ?? ""} autoComplete="off" />
+                  {field === "nationalIdIssuedOn" ? <DatePicker id={field} name={field} defaultValue={revealed[field] ?? ""} /> : <Input id={field} name={field} maxLength={200} defaultValue={revealed[field] ?? ""} autoComplete="off" />}
                 </Field>
               ))}
             </div>
@@ -212,14 +213,14 @@ export function ContractForm({ personId, parents, canWritePay, today }: { person
             <Input id="number" name="number" required maxLength={60} />
           </Field>
           <Field name="signDate" label={t("contracts.signDate")}>
-            <Input id="signDate" name="signDate" type="date" />
+            <DatePicker id="signDate" name="signDate" />
           </Field>
           <Field name="startDate" label={t("contracts.startDate")}>
-            <Input id="startDate" name="startDate" type="date" required defaultValue={today} />
+            <DatePicker id="startDate" name="startDate" required defaultValue={today} />
           </Field>
           {type === "indefinite" ? null : (
             <Field name="endDate" label={t("contracts.endDate")}>
-              <Input id="endDate" name="endDate" type="date" required={type === "fixed_term" || type === "probation"} />
+              <DatePicker id="endDate" name="endDate" required={type === "fixed_term" || type === "probation"} />
             </Field>
           )}
           {type === "probation" ? (
@@ -265,7 +266,7 @@ export function TerminateContractForm({ contractId, today }: { contractId: strin
   const { onSubmit, pending, errorKey } = useActionForm(terminateContractAction, { extra: { contractId } });
   return (
     <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-2">
-      <Input name="terminatedOn" type="date" required defaultValue={today} aria-label={t("contracts.terminatedOn")} className="w-40" />
+      <DatePicker name="terminatedOn" required defaultValue={today} aria-label={t("contracts.terminatedOn")} className="w-40" />
       <Button type="submit" size="xs" variant="outline" disabled={pending}>
         {t("contracts.terminate")}
       </Button>
@@ -357,7 +358,7 @@ export function DependentForm({ personId, thisMonth }: { personId: string; thisM
             </Select>
           </Field>
           <Field name="dependent.dateOfBirth" label={t("dependents.dateOfBirth")}>
-            <Input id="dependent.dateOfBirth" name="dateOfBirth" type="date" />
+            <DatePicker id="dependent.dateOfBirth" name="dateOfBirth" />
           </Field>
           <Field name="idNumber" label={t("dependents.idNumber")}>
             <Input id="idNumber" name="idNumber" maxLength={40} autoComplete="off" />
@@ -367,10 +368,10 @@ export function DependentForm({ personId, thisMonth }: { personId: string; thisM
           </Field>
           <div className="hidden lg:block" />
           <Field name="deductionFrom" label={t("dependents.deductionFrom")}>
-            <Input id="deductionFrom" name="deductionFrom" type="month" required defaultValue={thisMonth} />
+            <MonthPicker id="deductionFrom" name="deductionFrom" required defaultValue={thisMonth} />
           </Field>
           <Field name="deductionTo" label={t("dependents.deductionTo")}>
-            <Input id="deductionTo" name="deductionTo" type="month" />
+            <MonthPicker id="deductionTo" name="deductionTo" />
           </Field>
           <Field name="dependent.note" label={t("dependents.note")}>
             <Input id="dependent.note" name="note" maxLength={500} />
@@ -387,7 +388,7 @@ export function EndDeductionForm({ dependentId, current }: { dependentId: string
   const { onSubmit, pending, errorKey } = useActionForm(endDependentDeductionAction, { extra: { dependentId } });
   return (
     <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-2">
-      <Input name="deductionTo" type="month" defaultValue={current?.slice(0, 7) ?? ""} aria-label={t("dependents.deductionTo")} className="w-40" />
+      <MonthPicker name="deductionTo" defaultValue={current?.slice(0, 7) ?? ""} aria-label={t("dependents.deductionTo")} className="w-40" />
       <Button type="submit" size="xs" variant="outline" disabled={pending}>
         {t("dependents.endDeduction")}
       </Button>
@@ -443,7 +444,7 @@ export function DocumentUploadForm({ personId, categories }: { personId: string;
             <Input id="title" name="title" required maxLength={200} />
           </Field>
           <Field name="expiresOn" label={t("documents.expiresOn")}>
-            <Input id="expiresOn" name="expiresOn" type="date" />
+            <DatePicker id="expiresOn" name="expiresOn" />
           </Field>
           <Field name="file" label={t("documents.file")}>
             <Input id="file" name="file" type="file" required accept={ACCEPT_ATTRIBUTE} />

@@ -5,6 +5,7 @@ import { Field, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { decideParameterAction, proposeParameterAction } from "../actions";
 import { PARAMETER_KEYS, type ParameterKey } from "../catalogue";
@@ -31,7 +32,7 @@ export function ProposeParameterForm({ current }: { current: Partial<Record<Para
           </Select>
         </Field>
         <Field name="validFrom" label={t("validFrom")}>
-          <Input id="validFrom" name="validFrom" type="date" required />
+          <DatePicker id="validFrom" name="validFrom" required />
         </Field>
         <div className="sm:col-span-2">
           <Field name="value" label={t("propose.value")}>

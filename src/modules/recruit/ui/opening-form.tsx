@@ -8,6 +8,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { createOpeningAction, updateOpeningAction } from "../actions";
 import { EMPLOYMENT_TYPES, type EmploymentType, WORK_MODES, type WorkMode } from "../enums";
@@ -131,7 +132,7 @@ export function OpeningForm({
             </Select>
           </Field>
           <Field name="targetStartDate" label={t("targetStartDate")}>
-            <Input id="targetStartDate" name="targetStartDate" type="date" defaultValue={value?.targetStartDate ?? ""} />
+            <DatePicker id="targetStartDate" name="targetStartDate" defaultValue={value?.targetStartDate ?? ""} />
           </Field>
         </div>
 

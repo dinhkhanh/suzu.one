@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { PALETTE_EVENT } from "@/components/shell/palette-bus";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { toSearchKey } from "@/lib/text";
 import { createTaskAction } from "../actions";
@@ -190,7 +191,7 @@ export function CommandPalette({ pages, selfId }: { pages: { label: string; href
                     </option>
                   ))}
               </Select>
-              <Input name="dueDate" type="date" aria-label={t("dueDate")} className="w-40" />
+              <DatePicker name="dueDate" aria-label={t("dueDate")} className="w-40" />
               <label className="flex items-center gap-1.5 text-sm">
                 <input type="checkbox" name="mine" defaultChecked /> {t("assignMe")}
               </label>

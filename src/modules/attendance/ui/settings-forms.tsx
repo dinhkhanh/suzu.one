@@ -5,6 +5,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import type { DayRule, SchedulePattern, Weekday } from "../engine/calendar";
@@ -37,7 +38,7 @@ export function CalendarDayForm({ entities, canGroup }: { entities: Option[]; ca
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-3 sm:grid-cols-4">
           <Field name="date" label={t("calendar.date")}>
-            <Input id="date" name="date" type="date" required />
+            <DatePicker id="date" name="date" required />
           </Field>
           <Field name="kind" label={t("calendar.kind")}>
             <Select id="kind" name="kind" defaultValue="public_holiday">
@@ -259,7 +260,7 @@ export function ScheduleForm({ schedule, entities, canGroup }: { schedule?: Sche
         {alternate ? (
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
             {t("schedules.anchor")}
-            <Input className="w-40" type="date" required value={anchor} onChange={(event) => setAnchor(event.target.value)} />
+            <DatePicker className="w-40" required value={anchor} onChange={(event) => setAnchor(event.target.value)} />
           </label>
         ) : null}
       </div>
@@ -347,10 +348,10 @@ export function AssignmentForm({ schedules, entities, departments, people, today
             </Select>
           </Field>
           <Field name="validFrom" label={t("assignments.from")}>
-            <Input id="validFrom" name="validFrom" type="date" required defaultValue={today} />
+            <DatePicker id="validFrom" name="validFrom" required defaultValue={today} />
           </Field>
           <Field name="validTo" label={t("assignments.until")}>
-            <Input id="validTo" name="validTo" type="date" />
+            <DatePicker id="validTo" name="validTo" />
           </Field>
         </div>
         <Field name="note" label={t("assignments.note")}>
@@ -397,10 +398,10 @@ export function RosterForm({ people, shifts, today }: { people: Option[]; shifts
             </Select>
           </Field>
           <Field name="from" label={t("assignments.from")}>
-            <Input id="from" name="from" type="date" required defaultValue={today} />
+            <DatePicker id="from" name="from" required defaultValue={today} />
           </Field>
           <Field name="to" label={t("assignments.until")}>
-            <Input id="to" name="to" type="date" required defaultValue={today} />
+            <DatePicker id="to" name="to" required defaultValue={today} />
           </Field>
         </div>
       </FieldErrors>

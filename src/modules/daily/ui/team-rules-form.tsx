@@ -7,6 +7,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { saveTeamRulesAction } from "../actions";
 import { RULE_MODES, WEEKDAYS } from "../enums";
@@ -71,7 +72,7 @@ export function TeamRulesForm({ teamId, rules, canManage }: { teamId: string; ru
             </Select>
           </Field>
           <Field name="cycleStart" label={t("fields.cycleStart")}>
-            <Input id="cycleStart" name="cycleStart" type="date" defaultValue={rules.cycleStart ?? ""} disabled={!canManage} />
+            <DatePicker id="cycleStart" name="cycleStart" defaultValue={rules.cycleStart ?? ""} disabled={!canManage} />
           </Field>
         </div>
       </FieldErrors>

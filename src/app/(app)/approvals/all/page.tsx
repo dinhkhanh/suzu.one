@@ -10,6 +10,7 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { entityReach } from "@/modules/platform/rbac/policy";
 import { allRequestTypes } from "../registry";
 import { pageTitle } from "@/i18n/page-title";
+import { DatePicker } from "@/components/ui/date-picker";
 
 export const generateMetadata = pageTitle("approvalsAll");
 
@@ -64,7 +65,7 @@ export default async function AllRequestsPage({ searchParams }: PageProps<"/appr
               </option>
             ))}
           </Select>
-          <input type="date" name="since" defaultValue={since ?? ""} aria-label={t("oversight.since")} className="h-9 rounded-[0.625rem] border border-input bg-background px-2.5 text-sm" />
+          <DatePicker name="since" defaultValue={since ?? ""} aria-label={t("oversight.since")} className="w-44" />
           <button type="submit" className={buttonVariants({ size: "sm", variant: "outline" })}>
             {t("oversight.apply")}
           </button>

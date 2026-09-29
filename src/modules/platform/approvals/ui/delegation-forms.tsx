@@ -4,6 +4,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { createDelegationAction, revokeDelegationAction } from "../actions";
 
@@ -37,10 +38,10 @@ export function DelegationForm({ people, requestTypes, today }: { people: { id: 
             </Select>
           </Field>
           <Field name="validFrom" label={t("delegation.from")}>
-            <Input id="validFrom" name="validFrom" type="date" required defaultValue={today} />
+            <DatePicker id="validFrom" name="validFrom" required defaultValue={today} />
           </Field>
           <Field name="validTo" label={t("delegation.until")}>
-            <Input id="validTo" name="validTo" type="date" required min={today} />
+            <DatePicker id="validTo" name="validTo" required min={today} />
           </Field>
         </div>
         <Field name="reason" label={t("delegation.reason")}>

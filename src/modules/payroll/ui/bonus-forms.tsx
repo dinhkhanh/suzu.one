@@ -8,6 +8,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { bonusWhatIfAction, createBonusRunAction, decideBonusSchemeAction, overrideBonusLineAction, payBonusRunAction, proposeBonusSchemeAction, simulateBonusRunAction, stepBonusRunAction } from "../bonus-actions";
 import type { BonusStep } from "../bonus";
@@ -203,7 +204,7 @@ export function ProposeSchemeForm({ entities, current }: { entities: EntityOptio
             </Select>
           </Field>
           <Field name="validFrom" label={t("scheme.validFrom")}>
-            <Input id="validFrom" name="validFrom" type="date" required />
+            <DatePicker id="validFrom" name="validFrom" required />
           </Field>
           <Field name="note" label={t("scheme.note")}>
             <Input id="note" name="note" maxLength={500} />

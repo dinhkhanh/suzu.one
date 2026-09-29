@@ -7,6 +7,7 @@ import { useActionForm } from "@/components/forms/use-action-form";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { confirmCashReceiptAction, generateBankFileAction, openCashSheetAction, recordCashDisbursementAction } from "../payment-actions";
 import type { SkippedRow } from "../exports/banks";
@@ -58,7 +59,7 @@ export function BankFileForm({ runId, banks, defaultValueDate }: { runId: string
             </Select>
           </Field>
           <Field name="valueDate" label={t("bank.valueDate")}>
-            <Input id="valueDate" name="valueDate" type="date" defaultValue={defaultValueDate} required />
+            <DatePicker id="valueDate" name="valueDate" defaultValue={defaultValueDate} required />
           </Field>
           <Field name="accountNumber" label={t("bank.accountNumber")}>
             <Input id="accountNumber" name="accountNumber" inputMode="numeric" maxLength={32} required />
@@ -117,7 +118,7 @@ export function DisbursementForm({ runId, personId, defaultDate }: { runId: stri
   const { onSubmit, pending, errorKey } = useActionForm(recordCashDisbursementAction, { extra: { runId, personId }, onSuccess: () => router.refresh() });
   return (
     <form onSubmit={onSubmit} className="flex items-center gap-2">
-      <Input name="disbursedOn" type="date" defaultValue={defaultDate} required aria-label={t("cash.disbursedOn")} className="w-36" />
+      <DatePicker name="disbursedOn" defaultValue={defaultDate} required aria-label={t("cash.disbursedOn")} className="w-36" />
       <Button type="submit" size="sm" disabled={pending}>
         {pending ? "…" : t("cash.record")}
       </Button>

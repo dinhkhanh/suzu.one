@@ -13,7 +13,15 @@
   },
   "controls": {
     "search": "Search",
-    "noResults": "No matches"
+    "noResults": "No matches",
+    "pickDate": "Pick a date",
+    "pickMonth": "Pick a month",
+    "today": "Today",
+    "thisMonth": "This month",
+    "clear": "Clear",
+    "time": "Time",
+    "previousYear": "Previous year",
+    "nextYear": "Next year"
   },
   "signIn": {
     "title": "Sign in",

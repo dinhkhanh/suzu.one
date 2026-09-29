@@ -6,6 +6,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { beginEvidenceUploadAction, cancelObligationAction, completeEvidenceUploadAction, completeObligationAction, openEvidenceFileAction, reassignObligationAction, removeEvidenceFileAction, reopenObligationAction, saveObligationProgressAction } from "../actions";
@@ -72,7 +73,7 @@ export function InstancePanel({ taskId, open, canWork, canManage, checklist, che
               <Input id="referenceNumber" name="referenceNumber" defaultValue={evidence.referenceNumber ?? ""} maxLength={120} />
             </Field>
             <Field name="submittedDate" label={`${t("submittedDate")}${star("submittedDate")}`}>
-              <Input id="submittedDate" name="submittedDate" type="date" max={today} defaultValue={evidence.submittedDate ?? ""} />
+              <DatePicker id="submittedDate" name="submittedDate" max={today} defaultValue={evidence.submittedDate ?? ""} />
             </Field>
             <Field name="amountPaid" label={`${t("amountPaid")}${star("amount")}`}>
               <Input id="amountPaid" name="amountPaid" inputMode="numeric" defaultValue={evidence.amountPaid === null ? "" : format.number(evidence.amountPaid)} />

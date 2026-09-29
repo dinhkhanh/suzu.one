@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { hirePersonAction } from "../actions";
 import Link from "next/link";
@@ -45,10 +46,10 @@ export function HireForm({ entities, options, today }: { entities: { id: string;
           </Field>
           <div className="hidden lg:block" />
           <Field name="startDate" label={t("fields.startDate")}>
-            <Input id="startDate" name="startDate" type="date" required defaultValue={today} />
+            <DatePicker id="startDate" name="startDate" required defaultValue={today} />
           </Field>
           <Field name="seniorityDate" label={t("fields.seniorityDate")}>
-            <Input id="seniorityDate" name="seniorityDate" type="date" />
+            <DatePicker id="seniorityDate" name="seniorityDate" />
           </Field>
         </div>
       </section>

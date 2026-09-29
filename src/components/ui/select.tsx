@@ -23,6 +23,7 @@ import {
   ComboboxValue,
   useComboboxAnchor,
 } from "@/components/ui/combobox"
+import { splitClasses, useFormReset } from "@/components/ui/form-control"
 import { InputGroupAddon } from "@/components/ui/input-group"
 import { toSearchKey } from "@/lib/text"
 
@@ -95,20 +96,6 @@ function readOptions(children: React.ReactNode): Group[] {
 const matches = (item: Option, query: string) => toSearchKey(item.label).includes(toSearchKey(query))
 const sameOption = (a: Option, b: Option) => a.value === b.value
 
-const LAYOUT = /^-?(w-|min-w-|max-w-|flex-|basis-|grow|shrink|self-|order-|col-|row-|m[trblxyse]?-)/
-
-/**
- * Splits a caller's classes between the wrapper (how the field sits in its row: width, flex, margin)
- * and the control (how it looks: height, text size). The wrapper is `relative` because Base UI's
- * hidden form input is absolutely positioned, and the browser's "please fill in" bubble points at it.
- */
-function splitClasses(className: string | undefined) {
-  const layout: string[] = []
-  const look: string[] = []
-  for (const token of className?.split(/\s+/).filter(Boolean) ?? []) (LAYOUT.test(token.slice(token.lastIndexOf(":") + 1)) ? layout : look).push(token)
-  return { wrapper: cn("relative inline-flex w-full min-w-0 align-middle", layout), control: look.join(" ") }
-}
-
 /** The parsed options, kept as the same objects while they do not change, so the combobox keeps its highlight and scroll. */
 function useOptions(children: React.ReactNode) {
   const parsed = readOptions(children)
@@ -118,22 +105,6 @@ function useOptions(children: React.ReactNode) {
   const options = React.useMemo(() => groups.flatMap((group) => group.items), [groups])
   const grouped = groups.some((group) => group.label !== null)
   return { items: grouped ? groups : options, options, grouped }
-}
-
-/** Calls `reset` when the form that owns `input` is reset, as it would put a native select back to its default. */
-function useFormReset(input: React.RefObject<HTMLInputElement | null>, reset: (() => void) | null) {
-  const latest = React.useRef(reset)
-  React.useEffect(() => {
-    latest.current = reset
-  })
-  const active = reset !== null
-  React.useEffect(() => {
-    const owner = input.current?.form
-    if (!owner || !active) return
-    const onReset = () => latest.current?.()
-    owner.addEventListener("reset", onReset)
-    return () => owner.removeEventListener("reset", onReset)
-  }, [input, active])
 }
 
 function OptionList({ grouped }: { grouped: boolean }) {
