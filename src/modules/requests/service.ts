@@ -7,13 +7,20 @@
 // generic — the effect of an approval — is nothing here: a purchase request that is approved is
 // simply approved, and finance reads it. Types whose approval must *do* something belong to the
 // module that owns the doing.
+//
+// A request may be filed *under* another (FR-REQ-05): a business trip's advance, and the payment
+// that settles it once the trip is over. The parent type's rules (engine/follow-ups.ts) say which
+// types and when; the child is an ordinary request of its own type that remembers its parent.
 import "server-only";
 import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { ActionError } from "@/lib/action";
 import { cached, invalidate } from "@/lib/cache";
+import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { decideRequest, defineRequestType, getRequest, type RequestTypeDefinition, type RequestView, resubmitRequest, type SubmitInput, submitRequest } from "@/modules/platform/approvals/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
+import { carryOver, type FollowUpGate, type FollowUpRule, followUpGate, followUpProblems, LIVE_STATUSES } from "./engine/follow-ups";
 import { conditionFieldsOf, flowConditionData, type FormDefinition, type FormValues, formProblems, validateSubmission } from "./engine/form";
 import { ATTACHMENT_OWNER_TYPE, type RequestCategory } from "./enums";
 import { EXPENSE_CLAIM_CODE, postApprovedClaim } from "./expense-posting";
@@ -58,8 +65,9 @@ export function genericRequestType(row: Pick<RequestTypeRow, "code" | "form" | "
 
 // The catalogue is reference data read by every inbox and picker, so the whole (small) table lives
 // in the shared cache (src/lib/cache). `saveRequestType` and `setRequestTypeActive` drop it once
-// their change is committed; the TTL bounds writers outside the app (the seed script).
-const TYPES_CACHE = "requests:types";
+// their change is committed; the TTL bounds writers outside the app (the seed script). The key
+// carries the row's shape: an entry an older deployment stored has no follow-up rules in it.
+const TYPES_CACHE = "requests:types:v2";
 const TYPES_TTL = 60 * 60;
 
 const readTypes = (executor: Executor) => executor.select().from(schema.requestType).orderBy(schema.requestType.sortOrder, schema.requestType.code);
@@ -83,10 +91,13 @@ export async function findRequestTypeByCode(code: string, executor?: Executor): 
   return row ?? null;
 }
 
-/** The types this person may file right now: active, and either the group's or their own entity's. */
+/**
+ * The types this person may file on their own right now: active, either the group's or their own
+ * entity's, and not one that is only ever filed under another request (FR-REQ-05).
+ */
 export async function listAvailableTypes(entityId: string | null): Promise<RequestTypeRow[]> {
   const rows = await listRequestTypes({ activeOnly: true });
-  return rows.filter((row) => row.entityId === null || row.entityId === entityId);
+  return rows.filter((row) => row.standalone && (row.entityId === null || row.entityId === entityId));
 }
 
 // ── Designing one ───────────────────────────────────────────────────────────────────────────
@@ -106,6 +117,8 @@ export type SaveTypeInput = {
   slaRemindAfterDays: number;
   slaEscalateAfterDays: number;
   slaEscalateTo: Record<string, unknown> | null;
+  followUps: FollowUpRule[];
+  standalone: boolean;
 };
 
 export async function saveRequestType(id: string | null, input: SaveTypeInput, actorPersonId: string): Promise<{ before: RequestTypeRow | null; after: RequestTypeRow }> {
@@ -120,6 +133,11 @@ export async function saveRequestType(id: string | null, input: SaveTypeInput, a
     if (before && before.code !== input.code) throw new ActionError("request_type_code_fixed");
     const [clash] = await tx.select({ id: schema.requestType.id }).from(schema.requestType).where(eq(schema.requestType.code, input.code)).limit(1);
     if (clash && clash.id !== id) throw new ActionError("request_type_code_taken");
+    // Checked against the catalogue as this transaction sees it: a follow-up must name a type that
+    // exists, and no type may end up under itself however deep the chain.
+    const catalogue = await tx.select({ code: schema.requestType.code, followUps: schema.requestType.followUps }).from(schema.requestType);
+    const followUpProblem = followUpProblems(input, catalogue)[0];
+    if (followUpProblem) throw new ActionError(followUpProblem);
 
     const values = { ...input, updatedByPersonId: actorPersonId, updatedAt: new Date() };
     const [after] = before
@@ -145,7 +163,8 @@ export async function setRequestTypeActive(id: string, active: boolean, actorPer
 
 // ── Filing one ──────────────────────────────────────────────────────────────────────────────
 
-export type FileRequestInput = { code: string; values: FormValues };
+/** `parentRequestId`: the request this one is filed under (FR-REQ-05), when it is a follow-up. */
+export type FileRequestInput = { code: string; values: FormValues; parentRequestId?: string | null };
 
 /**
  * What a type that is more than a form adds to a submission (FR-REQ-03: an expense claim's lines).
@@ -206,6 +225,8 @@ export async function fileRequest(
     const type = await findRequestTypeByCode(input.code, tx);
     if (!type || !type.active) throw new ActionError("request_type_not_found");
     if (type.entityId && type.entityId !== requester.entityId) throw new ActionError("request_type_not_for_entity");
+    const parentSubmissionId = input.parentRequestId ? await checkParent(tx, input.parentRequestId, type.code, requester.personId) : null;
+    if (!type.standalone && !parentSubmissionId) throw new ActionError("request_type_needs_parent");
 
     const { values, problems } = validateSubmission(type.form, input.values);
     // The form on screen checks the same rules; anything reaching here bypassed it.
@@ -235,11 +256,40 @@ export async function fileRequest(
 
     const [submission] = await tx
       .insert(schema.requestSubmission)
-      .values({ approvalRequestId: request.id, requestTypeId: type.id, typeCode: type.code, values, attachmentFileIds: fileIds.length ? fileIds : null, amount })
+      .values({ approvalRequestId: request.id, requestTypeId: type.id, typeCode: type.code, values, attachmentFileIds: fileIds.length ? fileIds : null, amount, parentSubmissionId })
       .returning({ id: schema.requestSubmission.id });
     await extras.afterInsert?.(tx, submission.id);
     return { requestId: request.id, submissionId: submission.id, outcome };
   });
+}
+
+/**
+ * May a request of `code` be filed under this parent, by this person, today? Returns the parent's
+ * submission id, or throws the reason. The parent's submission row is locked first, so two
+ * follow-ups sent together cannot both slip under a limit of one.
+ */
+async function checkParent(tx: Tx, parentRequestId: string, code: string, requesterPersonId: string): Promise<string> {
+  const [parent] = await tx
+    .select({ submission: schema.requestSubmission, followUps: schema.requestType.followUps, status: schema.approvalRequest.status, requesterPersonId: schema.approvalRequest.requesterPersonId })
+    .from(schema.requestSubmission)
+    .innerJoin(schema.requestType, eq(schema.requestType.id, schema.requestSubmission.requestTypeId))
+    .innerJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.requestSubmission.approvalRequestId))
+    .where(eq(schema.requestSubmission.approvalRequestId, parentRequestId))
+    .limit(1)
+    .for("update", { of: schema.requestSubmission });
+  // Somebody else's trip is not a way to reach an advance: only its requester files under it.
+  if (!parent || parent.requesterPersonId !== requesterPersonId) throw new ActionError("follow_up_parent_not_found");
+  const rule = parent.followUps.find((entry) => entry.code === code);
+  if (!rule) throw new ActionError("follow_up_not_allowed");
+
+  const [row] = await tx
+    .select({ live: count() })
+    .from(schema.requestSubmission)
+    .innerJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.requestSubmission.approvalRequestId))
+    .where(and(eq(schema.requestSubmission.parentSubmissionId, parent.submission.id), eq(schema.requestSubmission.typeCode, code), inArray(schema.approvalRequest.status, [...LIVE_STATUSES])));
+  const gate = followUpGate(rule, { status: parent.status, values: parent.submission.values as FormValues }, Number(row?.live ?? 0), todayInVietnam());
+  if (!gate.open) throw new ActionError(`follow_up_${gate.reason}`);
+  return parent.submission.id;
 }
 
 /** After "return for changes": the requester corrects the answers and sends it round again. */
@@ -313,6 +363,105 @@ export async function getGenericRequest(viewer: { personId: string; principal: P
   return view ? { ...view, ...loaded } : null;
 }
 
+// ── A request's family (FR-REQ-05) ──────────────────────────────────────────────────────────
+
+/** One request above or below the one on screen: enough to recognise it and follow the link. */
+export type FamilyMember = { requestId: string; code: string; nameVi: string; nameEn: string; summary: string; status: string; amount: number | null; createdAt: Date };
+
+/** One follow-up type the parent's rules name, with how it stands under this parent. */
+export type FollowUpStanding = {
+  code: string;
+  nameVi: string;
+  nameEn: string;
+  /** How many still count against the rule's limit, and what the approved ones come to. */
+  live: number;
+  approvedAmount: number;
+  /** For the parent's requester only: whether they may file one now, and if not, why. */
+  gate: FollowUpGate | null;
+};
+
+export type RequestFamily = { parent: FamilyMember | null; children: FamilyMember[]; followUps: FollowUpStanding[] };
+
+const memberColumns = {
+  requestId: schema.approvalRequest.id,
+  code: schema.requestSubmission.typeCode,
+  nameVi: schema.requestType.nameVi,
+  nameEn: schema.requestType.nameEn,
+  summary: schema.approvalRequest.summary,
+  status: schema.approvalRequest.status,
+  amount: schema.requestSubmission.amount,
+  createdAt: schema.approvalRequest.createdAt,
+};
+
+const members = () =>
+  db()
+    .select(memberColumns)
+    .from(schema.requestSubmission)
+    .innerJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.requestSubmission.approvalRequestId))
+    .innerJoin(schema.requestType, eq(schema.requestType.id, schema.requestSubmission.requestTypeId));
+
+/**
+ * The request a viewed one was filed under, the ones filed under it, and — for its requester —
+ * which follow-ups they may file now. Whoever may open the request sees the summary line of its
+ * parent and of its children (the same line an inbox shows); opening one of them is that request's
+ * own access rule, so an advance's approver reads which trip it is for without being let into it.
+ */
+export async function getRequestFamily(view: GenericRequestView, requester: { entityId: string | null }): Promise<RequestFamily> {
+  const { submission, type } = view;
+  const rules = type.followUps;
+  const [parentRows, children, totals, catalogue] = await Promise.all([
+    submission.parentSubmissionId ? members().where(eq(schema.requestSubmission.id, submission.parentSubmissionId)).limit(1) : Promise.resolve([]),
+    members().where(eq(schema.requestSubmission.parentSubmissionId, submission.id)).orderBy(schema.approvalRequest.createdAt),
+    rules.length
+      ? db()
+          .select({
+            code: schema.requestSubmission.typeCode,
+            live: sql<number>`count(*) filter (where ${inArray(schema.approvalRequest.status, [...LIVE_STATUSES])})`,
+            approvedAmount: sql<number>`coalesce(sum(${schema.requestSubmission.amount}) filter (where ${schema.approvalRequest.status} = 'approved'), 0)`,
+          })
+          .from(schema.requestSubmission)
+          .innerJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.requestSubmission.approvalRequestId))
+          .where(eq(schema.requestSubmission.parentSubmissionId, submission.id))
+          .groupBy(schema.requestSubmission.typeCode)
+      : Promise.resolve([]),
+    rules.length ? cachedTypes() : Promise.resolve([]),
+  ]);
+
+  const byCode = new Map(catalogue.map((row) => [row.code, row]));
+  const totalsByCode = new Map(totals.map((row) => [row.code, { live: Number(row.live), approvedAmount: Number(row.approvedAmount) }]));
+  const today = todayInVietnam();
+  const followUps = rules.flatMap((rule): FollowUpStanding[] => {
+    const child = byCode.get(rule.code);
+    if (!child) return [];
+    const { live, approvedAmount } = totalsByCode.get(rule.code) ?? { live: 0, approvedAmount: 0 };
+    // A type switched off, or kept to another entity, is still listed for what was filed under it,
+    // but offers nothing new.
+    const fileable = view.isRequester && child.active && (child.entityId === null || child.entityId === requester.entityId);
+    const gate = fileable ? followUpGate(rule, { status: view.request.status, values: submission.values as FormValues }, live, today) : null;
+    if (!fileable && live === 0 && !children.some((row) => row.code === rule.code)) return [];
+    return [{ code: child.code, nameVi: child.nameVi, nameEn: child.nameEn, live, approvedAmount, gate }];
+  });
+  return { parent: parentRows[0] ?? null, children, followUps };
+}
+
+/**
+ * The parent a follow-up is being filed under, checked for the filing page before the form is
+ * drawn — the same rule `fileRequest` applies again when it is sent. `null` = not this person's, or
+ * not a parent this type may be filed under at all.
+ */
+export async function followUpContext(
+  viewer: { personId: string; principal: Principal; entityId: string | null },
+  parentRequestId: string,
+  child: RequestTypeRow,
+): Promise<{ parent: GenericRequestView; gate: FollowUpGate; values: FormValues } | null> {
+  const parent = await getGenericRequest(viewer, parentRequestId);
+  if (!parent || !parent.isRequester) return null;
+  const family = await getRequestFamily(parent, { entityId: viewer.entityId });
+  const standing = family.followUps.find((entry) => entry.code === child.code);
+  if (!standing?.gate) return null;
+  return { parent, gate: standing.gate, values: carryOver(parent.type.form, parent.submission.values as FormValues, child.form) };
+}
+
 // ── Tracking (FR-REQ-04) ────────────────────────────────────────────────────────────────────
 
 export type SubmissionListRow = {
@@ -326,7 +475,14 @@ export type SubmissionListRow = {
   requesterName: string;
   createdAt: Date;
   decidedAt: Date | null;
+  /** FR-REQ-05: the request this one was filed under, and its type's name. */
+  parentRequestId: string | null;
+  parentNameVi: string | null;
+  parentNameEn: string | null;
 };
+
+const parentSubmission = alias(schema.requestSubmission, "parent_submission");
+const parentType = alias(schema.requestType, "parent_type");
 
 const listColumns = {
   requestId: schema.approvalRequest.id,
@@ -339,6 +495,9 @@ const listColumns = {
   requesterName: schema.person.fullName,
   createdAt: schema.approvalRequest.createdAt,
   decidedAt: schema.approvalRequest.decidedAt,
+  parentRequestId: parentSubmission.approvalRequestId,
+  parentNameVi: parentType.nameVi,
+  parentNameEn: parentType.nameEn,
 };
 
 const listFrom = () =>
@@ -347,7 +506,9 @@ const listFrom = () =>
     .from(schema.requestSubmission)
     .innerJoin(schema.approvalRequest, eq(schema.approvalRequest.id, schema.requestSubmission.approvalRequestId))
     .innerJoin(schema.requestType, eq(schema.requestType.id, schema.requestSubmission.requestTypeId))
-    .innerJoin(schema.person, eq(schema.person.id, schema.approvalRequest.requesterPersonId));
+    .innerJoin(schema.person, eq(schema.person.id, schema.approvalRequest.requesterPersonId))
+    .leftJoin(parentSubmission, eq(parentSubmission.id, schema.requestSubmission.parentSubmissionId))
+    .leftJoin(parentType, eq(parentType.id, parentSubmission.requestTypeId));
 
 /** What this person has filed, newest first. */
 export async function listMySubmissions(personId: string, limit = 100): Promise<SubmissionListRow[]> {

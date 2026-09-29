@@ -631,6 +631,7 @@ For HR, C&B and finance: never miss a recurring job, and be able to prove it was
 | FR-REQ-02 | Seed request types: purchase request, payment request, expense claim/reimbursement, advance request, business trip, equipment request, employment/income confirmation letter, stamp/seal usage, IT support, recruitment request. | M |
 | FR-REQ-03 | Expense claims: line items, receipts, category, project/client tag, approval, reimbursement via payroll or separate payment batch. | S |
 | FR-REQ-04 | Request tracking for requester; SLA reporting per request type. | S |
+| FR-REQ-05 | **Follow-up requests**: a request type names the types filed *under* one of its requests, and when each opens — once the parent is sent or approved, optionally not before a date on the parent (e.g. a business trip's last day), at most N at a time. A follow-up is an ordinary request of its own type and flow that remembers its parent; only the parent's requester files one, answers the two forms share by field key start pre-filled, and each side shows the other (the parent lists its follow-ups with what the approved ones come to). A type may be marked follow-up only. Seed: business trip → advance (once approved), payment (from the trip's last day, one). | S |
 
 ---
 

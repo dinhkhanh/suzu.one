@@ -5,13 +5,14 @@
 // A submission is an `approval_request` like any other — inbox, delegation, history and bulk
 // approve all work untouched. This table holds only what the engine has no business knowing: the
 // answers, the attachments, and the figure a report adds up.
-import { bigint, boolean, date, index, jsonb, pgTable, smallint, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, bigint, boolean, date, index, jsonb, pgTable, smallint, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { payrollRun } from "../payroll/schema";
 import { approvalRequest } from "../platform/approvals/schema";
 import { storedFile } from "../platform/files/schema";
 import { entity } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
 import type { ExpenseCategory } from "./engine/expense";
+import type { FollowUpRule } from "./engine/follow-ups";
 import type { FormDefinition } from "./engine/form";
 
 export const requestType = pgTable(
@@ -39,6 +40,11 @@ export const requestType = pgTable(
     slaRemindAfterDays: smallint("sla_remind_after_days").notNull().default(0),
     slaEscalateAfterDays: smallint("sla_escalate_after_days").notNull().default(0),
     slaEscalateTo: jsonb("sla_escalate_to").$type<Record<string, unknown> | null>(),
+    // FR-REQ-05: the types filed *under* one of this type's requests, and when each opens
+    // (engine/follow-ups.ts) — a business trip's advance, then the payment that settles it.
+    followUps: jsonb("follow_ups").$type<FollowUpRule[]>().notNull().default([]),
+    // False = only ever filed as a follow-up of another request; it is left off the picker.
+    standalone: boolean("standalone").notNull().default(true),
     updatedByPersonId: uuid("updated_by_person_id").references(() => person.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -65,10 +71,17 @@ export const requestSubmission = pgTable(
     // The figure the type calls its amount, in whole đồng, when it has one — so purchase and
     // payment requests can be reported and a flow can condition on it.
     amount: bigint("amount", { mode: "number" }),
+    // FR-REQ-05: the request this one was filed under (an advance under its business trip). Set
+    // once at filing and never changed; the parent type's rules decided it was allowed then.
+    parentSubmissionId: uuid("parent_submission_id").references((): AnyPgColumn => requestSubmission.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique("request_submission_approval_key").on(t.approvalRequestId), index("request_submission_type_idx").on(t.requestTypeId, t.createdAt)],
+  (t) => [
+    unique("request_submission_approval_key").on(t.approvalRequestId),
+    index("request_submission_type_idx").on(t.requestTypeId, t.createdAt),
+    index("request_submission_parent_idx").on(t.parentSubmissionId),
+  ],
 ).enableRLS();
 
 // ── Expense claims (FR-REQ-03) ──────────────────────────────────────────────────────────────

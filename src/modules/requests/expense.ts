@@ -35,7 +35,7 @@ async function writeLines(tx: Tx, submissionId: string, lines: readonly ExpenseL
   await tx.insert(schema.expenseClaimLine).values(lines.map((line, index) => ({ submissionId, ...line, sortOrder: index })));
 }
 
-export type FileClaimInput = { values: FormValues; lines: readonly ExpenseLine[] };
+export type FileClaimInput = { values: FormValues; lines: readonly ExpenseLine[]; parentRequestId?: string | null };
 
 /**
  * Files a claim. The figure the approvers see and the figure payroll pays are the lines added up —
@@ -47,7 +47,7 @@ export async function fileExpenseClaim(
   formatMoney: (amount: number) => string,
 ): Promise<{ requestId: string; submissionId: string; outcome: string }> {
   const { lines, total } = checked(input.lines);
-  return fileRequest({ code: EXPENSE_CLAIM_CODE, values: input.values }, requester, formatMoney, {
+  return fileRequest({ code: EXPENSE_CLAIM_CODE, values: input.values, parentRequestId: input.parentRequestId }, requester, formatMoney, {
     amount: total,
     // The receipts ride in the submission's attachment list too, so the file-opening action that
     // already guards a request's attachments guards them as well — one rule, not two.

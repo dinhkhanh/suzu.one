@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createAction } from "@/lib/action";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import { approverRuleSchema, conditionSchema } from "@/modules/platform/approvals/flows";
+import { FOLLOW_UP_OPENS, MAX_FOLLOW_UPS, MAX_PER_PARENT } from "./engine/follow-ups";
 import { FIELD_TYPES, MAX_FIELDS, MAX_OPTIONS, MAX_TEXT } from "./engine/form";
 import { canFileRequests, canManageRequestTypes } from "./policy";
 import { REQUEST_CATEGORIES } from "./enums";
@@ -37,6 +38,14 @@ const formField = z.object({
   visibleWhen: z.preprocess(blankToNull, conditionSchema.nullable().default(null)),
 });
 
+// FR-REQ-05: one type filed under this one's requests. The engine checks the rest against the catalogue.
+const followUpRule = z.object({
+  code: z.string().trim().min(1).max(40),
+  opensWhen: z.enum(FOLLOW_UP_OPENS),
+  notBeforeField: z.preprocess(blankToNull, z.string().trim().max(40).nullable().default(null)),
+  max: z.preprocess(blankToNull, z.coerce.number().int().min(1).max(MAX_PER_PARENT).nullable().default(null)),
+});
+
 // The designer posts the whole form as JSON text — a field list is not a flat form.
 const jsonText = <Schema extends z.ZodType>(schema: Schema) =>
   z.preprocess((value) => {
@@ -66,6 +75,8 @@ const savePipeline = createAction({
     slaEscalateAfterDays: z.coerce.number().int().min(0).max(180).default(0),
     slaEscalateTo: jsonText(approverRuleSchema.nullable().default(null)),
     form: jsonText(z.object({ fields: z.array(formField).max(MAX_FIELDS) })),
+    followUps: jsonText(z.array(followUpRule).max(MAX_FOLLOW_UPS)).default([]),
+    standalone: z.preprocess((value) => value === "on" || value === true || value === "true", z.boolean()).default(true),
   }),
   authorize: (user, input) => canManageRequestTypes(user.principal, input.entityId),
   run: async ({ user, input }) => {
@@ -78,8 +89,8 @@ const savePipeline = createAction({
       audit: {
         resource: { type: "request_type", id: after.id, entityId: after.entityId },
         summary: `${after.code}: ${after.nameVi}`,
-        before: before ? { form: before.form, active: before.active, nameVi: before.nameVi } : null,
-        after: { form: after.form, active: after.active, nameVi: after.nameVi },
+        before: before ? { form: before.form, active: before.active, nameVi: before.nameVi, followUps: before.followUps, standalone: before.standalone } : null,
+        after: { form: after.form, active: after.active, nameVi: after.nameVi, followUps: after.followUps, standalone: after.standalone },
       },
     };
   },
@@ -119,14 +130,19 @@ const answers = z.record(z.string().max(40), z.union([z.string().max(MAX_TEXT), 
 
 const filePipeline = createAction({
   name: "request.file",
-  input: z.object({ code: z.string().trim().min(1).max(40), values: answers }),
+  // `parentRequestId`: the request this one is filed under (FR-REQ-05); the service checks it may be.
+  input: z.object({ code: z.string().trim().min(1).max(40), values: answers, parentRequestId: z.preprocess(blankToNull, z.uuid().nullable().default(null)) }),
   authorize: (user) => canFileRequests(user.principal),
   run: async ({ user, input }) => {
     const target = await getPersonTarget(user.person.id);
     const filed = await fileRequest(input, { personId: user.person.id, entityId: target?.entityId ?? null, unitPath: target?.unitPath ?? [], managerId: target?.managerId ?? null }, formatDong);
     revalidatePath("/requests");
     revalidatePath("/approvals");
-    return { data: filed, audit: { resource: { type: `approval:request:${input.code}`, id: filed.requestId, entityId: target?.entityId ?? null }, summary: input.code, after: { outcome: filed.outcome } } };
+    if (input.parentRequestId) revalidatePath(`/approvals/request/${input.parentRequestId}`);
+    return {
+      data: filed,
+      audit: { resource: { type: `approval:request:${input.code}`, id: filed.requestId, entityId: target?.entityId ?? null }, summary: input.code, after: { outcome: filed.outcome, parentRequestId: input.parentRequestId } },
+    };
   },
 });
 

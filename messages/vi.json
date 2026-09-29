@@ -8079,6 +8079,28 @@
         "lt": "nhỏ hơn",
         "lte": "đến",
         "in": "thuộc"
+      },
+      "followUpCount": "{count} đề nghị kèm theo",
+      "followUpOnly": "Chỉ kèm theo",
+      "followUps": {
+        "title": "Đề nghị kèm theo",
+        "hint": "Các đề nghị được lập dưới một đề nghị thuộc loại này — ví dụ chuyến công tác có đề nghị tạm ứng, và sau khi kết thúc là đề nghị thanh toán để quyết toán. Các câu trả lời có cùng mã trường ở hai biểu mẫu được chép sang làm giá trị ban đầu.",
+        "add": "Thêm đề nghị kèm theo",
+        "none": "Chưa có đề nghị nào lập kèm loại này.",
+        "type": "Loại đề nghị",
+        "opensWhen": "Được lập khi",
+        "opens": {
+          "submitted": "Đề nghị này đã được gửi",
+          "approved": "Đề nghị này đã được duyệt"
+        },
+        "notBefore": "Không sớm hơn",
+        "anyDay": "Bất kỳ ngày nào",
+        "fromField": "ngày ở trường “{field}”",
+        "max": "Tối đa",
+        "noLimit": "Không giới hạn",
+        "remove": "Xóa",
+        "standalone": "Có thể lập riêng",
+        "standaloneHint": "Bỏ chọn nếu loại này chỉ được lập kèm một đề nghị khác; khi đó nó không hiện trong danh sách “Tạo đề nghị”."
       }
     },
     "errors": {
@@ -8136,7 +8158,21 @@
       "expense_bad_date": "Ngày chi không hợp lệ.",
       "expense_date_in_future": "Ngày chi chưa đến.",
       "expense_date_too_old": "Khoản chi đã quá hạn kê khai.",
-      "expense_receipt_required": "Khoản chi trên mức quy định phải có hóa đơn."
+      "expense_receipt_required": "Khoản chi trên mức quy định phải có hóa đơn.",
+      "request_type_needs_parent": "Loại đề nghị này chỉ được lập kèm theo một đề nghị khác.",
+      "too_many_follow_ups": "Quá nhiều loại đề nghị kèm theo.",
+      "follow_up_unknown_type": "Một đề nghị kèm theo trỏ tới loại đề nghị không tồn tại.",
+      "follow_up_self": "Một loại đề nghị không thể kèm theo chính nó.",
+      "follow_up_duplicate": "Một loại đề nghị kèm theo bị lặp lại.",
+      "follow_up_cycle": "Thiết lập này khiến loại đề nghị nằm dưới chính nó, qua đề nghị kèm theo của loại khác.",
+      "follow_up_bad_date_field": "“Không sớm hơn” phải là một trường ngày của biểu mẫu này.",
+      "follow_up_bad_max": "“Tối đa” là số nguyên từ 1 đến 50, hoặc để trống.",
+      "follow_up_parent_not_found": "Không tìm thấy đề nghị gốc.",
+      "follow_up_not_allowed": "Loại đề nghị này không được lập kèm theo đề nghị đó.",
+      "follow_up_parent_closed": "Đề nghị gốc đã đóng; không thể lập thêm đề nghị kèm theo.",
+      "follow_up_parent_not_approved": "Đề nghị gốc cần được duyệt trước.",
+      "follow_up_not_yet": "Chưa đến lúc lập đề nghị này.",
+      "follow_up_limit_reached": "Đã lập đủ số đề nghị loại này cho đề nghị gốc."
     },
     "expense": {
       "linesTitle": "Các khoản chi",
@@ -8201,6 +8237,21 @@
         "date_in_future": "Ngày chi chưa đến.",
         "date_too_old": "Khoản chi đã quá hạn kê khai.",
         "receipt_required": "Khoản này cần hóa đơn, chứng từ."
+      }
+    },
+    "followUps": {
+      "title": "Đề nghị kèm theo",
+      "filedUnder": "Lập kèm theo",
+      "under": "kèm theo {name}",
+      "carriedOver": "Một số câu trả lời được chép từ {name}. Bạn có thể sửa lại tùy ý.",
+      "file": "Lập: {name}",
+      "count": "{count, plural, =0 {chưa lập} other {đã lập #}}",
+      "approvedAmount": "đã duyệt {amount}",
+      "gate": {
+        "parent_closed": "Đề nghị này đã đóng; không thể lập thêm đề nghị kèm theo.",
+        "parent_not_approved": "Được lập sau khi đề nghị này được duyệt.",
+        "not_yet": "Được lập từ ngày {date}.",
+        "limit_reached": "Đã lập đủ (tối đa {max})."
       }
     }
   },

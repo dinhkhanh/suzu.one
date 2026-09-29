@@ -41,9 +41,11 @@ export default async function RequestTypesPage() {
               <p className="text-xs text-muted-foreground">
                 <code>{type.code}</code> · {t("fieldCount", { count: type.form.fields.length })}
                 {type.slaRemindAfterDays > 0 ? ` · ${t("remindsAfter", { days: type.slaRemindAfterDays })}` : ""}
+                {type.followUps.length > 0 ? ` · ${t("followUpCount", { count: type.followUps.length })}` : ""}
               </p>
             </div>
             <Badge variant="secondary">{type.entityId ? (entityName.get(type.entityId) ?? "—") : t("wholeGroup")}</Badge>
+            {type.standalone ? null : <Badge variant="outline">{t("followUpOnly")}</Badge>}
             {type.active ? null : <Badge variant="outline">{t("off")}</Badge>}
           </li>
         ))}

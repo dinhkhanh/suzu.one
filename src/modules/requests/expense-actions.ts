@@ -37,7 +37,8 @@ const formatDong = (amount: number) => `${new Intl.NumberFormat("vi-VN").format(
 
 const filePipeline = createAction({
   name: "expense_claim.file",
-  input: z.object({ values: answers, lines }),
+  // An expense claim may be filed under another request too (FR-REQ-05), when that type names it.
+  input: z.object({ values: answers, lines, parentRequestId: z.preprocess(blankToNull, z.uuid().nullable().default(null)) }),
   authorize: (user) => canFileRequests(user.principal),
   run: async ({ user, input }) => {
     const target = await getPersonTarget(user.person.id);
@@ -45,6 +46,7 @@ const filePipeline = createAction({
     revalidatePath("/requests");
     revalidatePath("/requests/claims");
     revalidatePath("/approvals");
+    if (input.parentRequestId) revalidatePath(`/approvals/request/${input.parentRequestId}`);
     return {
       data: filed,
       // The audit line says how many lines and what they come to — the claim's own figure, which

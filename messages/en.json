@@ -8079,6 +8079,28 @@
         "lt": "less than",
         "lte": "at most",
         "in": "one of"
+      },
+      "followUpCount": "{count, plural, one {# follow-up} other {# follow-ups}}",
+      "followUpOnly": "Follow-up only",
+      "followUps": {
+        "title": "Follow-up requests",
+        "hint": "Requests filed under one of this type's — a business trip's advance, then the payment that settles it once the trip is over. Answers the two forms share by field key are copied over as a starting point.",
+        "add": "Add a follow-up",
+        "none": "Nothing is filed under this type.",
+        "type": "Request type",
+        "opensWhen": "May be filed",
+        "opens": {
+          "submitted": "Once this request is sent",
+          "approved": "Once this request is approved"
+        },
+        "notBefore": "Not before",
+        "anyDay": "Any day",
+        "fromField": "the day in “{field}”",
+        "max": "At most",
+        "noLimit": "No limit",
+        "remove": "Remove",
+        "standalone": "Can be filed on its own",
+        "standaloneHint": "Untick it for a type that only ever follows another request; it is left off the “New request” list."
       }
     },
     "errors": {
@@ -8136,7 +8158,21 @@
       "expense_bad_date": "That is not a date.",
       "expense_date_in_future": "That day has not happened yet.",
       "expense_date_too_old": "That spend is too old to claim.",
-      "expense_receipt_required": "A line above the threshold needs a receipt."
+      "expense_receipt_required": "A line above the threshold needs a receipt.",
+      "request_type_needs_parent": "This kind of request is only filed under another one.",
+      "too_many_follow_ups": "Too many follow-up types.",
+      "follow_up_unknown_type": "A follow-up names a request type that does not exist.",
+      "follow_up_self": "A request type cannot follow itself.",
+      "follow_up_duplicate": "The same follow-up type is listed twice.",
+      "follow_up_cycle": "That would put this type under itself, through another type's follow-ups.",
+      "follow_up_bad_date_field": "“Not before” must name a date field of this form.",
+      "follow_up_bad_max": "“At most” is a whole number from 1 to 50, or empty.",
+      "follow_up_parent_not_found": "The request this was to be filed under was not found.",
+      "follow_up_not_allowed": "This kind of request cannot be filed under that one.",
+      "follow_up_parent_closed": "That request is closed; nothing more can be filed under it.",
+      "follow_up_parent_not_approved": "That request has to be approved first.",
+      "follow_up_not_yet": "It is too early to file this under that request.",
+      "follow_up_limit_reached": "As many of these as are allowed have already been filed under that request."
     },
     "expense": {
       "linesTitle": "Expense lines",
@@ -8201,6 +8237,21 @@
         "date_in_future": "That day has not happened yet.",
         "date_too_old": "That spend is too old to claim.",
         "receipt_required": "This line needs a receipt."
+      }
+    },
+    "followUps": {
+      "title": "Follow-up requests",
+      "filedUnder": "Filed under",
+      "under": "under {name}",
+      "carriedOver": "Some answers were copied from the {name}. Change whatever you need.",
+      "file": "New: {name}",
+      "count": "{count, plural, =0 {none filed yet} other {# filed}}",
+      "approvedAmount": "{amount} approved",
+      "gate": {
+        "parent_closed": "This request is closed; nothing more can be filed under it.",
+        "parent_not_approved": "Opens once this request is approved.",
+        "not_yet": "Opens on {date}.",
+        "limit_reached": "Already filed ({max} at most)."
       }
     }
   },

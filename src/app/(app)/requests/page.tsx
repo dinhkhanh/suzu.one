@@ -61,6 +61,11 @@ export default async function RequestsPage() {
                     {locale === "en" ? row.nameEn : row.nameVi}
                   </Link>
                   <p className="text-xs text-muted-foreground">{row.summary}</p>
+                  {row.parentRequestId ? (
+                    <Link href={`/approvals/request/${row.parentRequestId}`} className="text-xs text-muted-foreground hover:underline">
+                      ↳ {t("followUps.under", { name: (locale === "en" ? row.parentNameEn : row.parentNameVi) ?? "" })}
+                    </Link>
+                  ) : null}
                   <p className="text-xs text-muted-foreground">{format.dateTime(row.createdAt, { dateStyle: "medium", timeStyle: "short" })}</p>
                 </div>
                 <Badge dot variant={statusTone(row.status)}>{tApprovals(`status.${row.status}` as "status.pending")}</Badge>

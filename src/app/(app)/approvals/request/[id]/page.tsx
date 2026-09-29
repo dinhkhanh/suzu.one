@@ -1,6 +1,7 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getPersonTarget } from "@/modules/core-hr/service";
 import { DecisionForm, WithdrawForm } from "@/modules/platform/approvals/ui/decision-form";
 import { RequestHistory, RequestStatusBadge, RequestTools } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -11,8 +12,9 @@ import { todayInVietnam } from "@/lib/dates";
 import { decideRequestAction, refileRequestAction } from "@/modules/requests/actions";
 import { EXPENSE_CLAIM_CODE, getExpenseClaim } from "@/modules/requests/expense";
 import { refileExpenseClaimAction } from "@/modules/requests/expense-actions";
-import { getGenericRequest } from "@/modules/requests/service";
+import { getGenericRequest, getRequestFamily } from "@/modules/requests/service";
 import { Answers } from "@/modules/requests/ui/answers";
+import { FollowUps, ParentRequest } from "@/modules/requests/ui/follow-ups";
 import { ClaimLines } from "@/modules/requests/ui/claim-lines";
 import { ExpenseClaimForm } from "@/modules/requests/ui/expense-claim-form";
 import { RequestForm } from "@/modules/requests/ui/request-form";
@@ -38,7 +40,10 @@ export default async function GenericRequestPage(props: PageProps<"/approvals/re
   const { request, type, submission } = view;
   const returned = view.isRequester && request.status === "returned";
   const fileIds = submission.attachmentFileIds ?? [];
-  const [fileNames, people, entities] = await Promise.all([
+  const [family, fileNames, people, entities] = await Promise.all([
+    // FR-REQ-05: what it was filed under and what was filed under it. The requester's entity only
+    // decides which follow-up types they may file themselves.
+    (view.isRequester && view.type.followUps.length > 0 ? getPersonTarget(user.person.id) : Promise.resolve(null)).then((target) => getRequestFamily(view, { entityId: target?.entityId ?? null })),
     fileIds.length ? listFileNames(fileIds) : Promise.resolve(new Map<string, string>()),
     returned && type.form.fields.some((field) => field.type === "person") ? listPersonNames() : Promise.resolve([]),
     returned && type.form.fields.some((field) => field.type === "entity") ? listEntities() : Promise.resolve([]),
@@ -59,8 +64,11 @@ export default async function GenericRequestPage(props: PageProps<"/approvals/re
         </p>
       </header>
 
+      {family.parent ? <ParentRequest parent={family.parent} /> : null}
       <Answers form={type.form} values={submission.values} requestId={request.id} fileNames={fileNames} />
       {claim ? <ClaimLines lines={claim.lines} total={claim.total} byCategory={claim.byCategory} payment={claim.payment} requestId={request.id} fileNames={fileNames} /> : null}
+
+      <FollowUps family={family} requestId={request.id} />
 
       {view.canDecide ? <DecisionForm requestId={request.id} action={decideRequestAction} /> : null}
       {returned ? (

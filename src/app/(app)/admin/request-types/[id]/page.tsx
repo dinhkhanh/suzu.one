@@ -12,7 +12,7 @@ import { can } from "@/modules/platform/rbac/policy";
 import { ROLES } from "@/modules/platform/rbac/roles";
 import { conditionFieldsOf } from "@/modules/requests/engine/form";
 import { canManageRequestTypes } from "@/modules/requests/policy";
-import { approvalTypeOf, findRequestType } from "@/modules/requests/service";
+import { approvalTypeOf, findRequestType, listRequestTypes } from "@/modules/requests/service";
 import { TypeDesigner } from "@/modules/requests/ui/type-designer";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -28,7 +28,7 @@ export default async function RequestTypePage(props: PageProps<"/admin/request-t
   const type = UUID.test(id) ? await findRequestType(id) : null;
   if (!type || !canManageRequestTypes(user.principal, type.entityId)) notFound();
 
-  const [t, entities, people, flows] = await Promise.all([getTranslations("requests.designer"), listEntities(), listPersonNames(), listFlows()]);
+  const [t, entities, people, flows, types] = await Promise.all([getTranslations("requests.designer"), listEntities(), listPersonNames(), listFlows(), listRequestTypes()]);
   const approvalType = approvalTypeOf(type.code);
   const mine = flows.filter((flow) => flow.requestType === approvalType);
   const options = {
@@ -57,6 +57,7 @@ export default async function RequestTypePage(props: PageProps<"/admin/request-t
         draft={{ ...type, form: type.form, slaEscalateTo: type.slaEscalateTo ?? null }}
         entities={entities.filter((entity) => can(user.principal, "org:manage", { entityId: entity.id })).map((entity) => ({ id: entity.id, name: entity.shortName }))}
         canGroup={can(user.principal, "org:manage", {})}
+        catalogue={types.map((row) => ({ code: row.code, nameVi: row.nameVi, nameEn: row.nameEn, followUps: row.followUps }))}
       />
 
       <section className="flex flex-col gap-3">

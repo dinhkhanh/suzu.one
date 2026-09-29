@@ -7,6 +7,7 @@
 // The thresholds below are the company's current practice as far as this build knows it; they are
 // configuration precisely so that the owner can correct them without a deployment.
 import type { FlowDefinition } from "@/modules/platform/approvals/engine/flow";
+import type { FollowUpRule } from "./engine/follow-ups";
 import type { FormDefinition } from "./engine/form";
 
 export type RequestTypeSeed = {
@@ -24,6 +25,8 @@ export type RequestTypeSeed = {
   slaEscalateAfterDays: number;
   /** Whoever the request is escalated to when nobody has answered. */
   slaEscalateTo: { rule: string; [key: string]: unknown } | null;
+  /** FR-REQ-05: the types filed under one of this type's requests. */
+  followUps?: FollowUpRule[];
 };
 
 const finance = { rule: "permission", permission: "payroll:pay" } as const;
@@ -247,6 +250,14 @@ export const REQUEST_TYPE_SEED: RequestTypeSeed[] = [
         { key: "purpose", type: "textarea", labelVi: "Nội dung công việc", labelEn: "What the trip is for", required: true, minLength: 10, maxLength: 2000 },
       ],
     },
+    // FR-REQ-05. Money for the trip is asked for under the trip, so whoever approves it sees what it
+    // is for: an advance once the trip is approved, as many as it needs; and once it is over (from
+    // its last day) one payment request that settles it. Both carry the trip's amount and purpose
+    // over as a starting point — the fields share their keys on purpose.
+    followUps: [
+      { code: "advance", opensWhen: "approved", notBeforeField: null, max: null },
+      { code: "payment", opensWhen: "approved", notBeforeField: "end_date", max: 1 },
+    ],
     flow: {
       steps: [
         { key: "manager", mode: "any", approvers: [{ rule: "line_manager" }] },

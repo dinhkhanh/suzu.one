@@ -1,11 +1,12 @@
 "use client";
 // The form designer (FR-REQ-01): a request type's name, its fields and their validation, and the
 // conditions that decide which field is shown. The *flow* is edited on the same screen by the
-// approval engine's own `FlowEditor` — one idea, one editor, no second flow store.
+// approval engine's own `FlowEditor` — one idea, one editor, no second flow store. Below the
+// fields, the requests that may be filed under one of this type's (FR-REQ-05).
 //
 // Everything is checked here by the very engine the server uses, so "save" is refused for the same
 // reasons in both places and the designer sees why before a round trip.
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import type { Condition } from "@/modules/platform/approvals/engine/flow";
+import { FOLLOW_UP_OPENS, type FollowUpOpens, type FollowUpRule, followUpProblems, MAX_FOLLOW_UPS, MAX_PER_PARENT } from "../engine/follow-ups";
 import { FIELD_TYPES, type FieldType, type FormDefinition, type FormField, formProblems } from "../engine/form";
 import { REQUEST_CATEGORIES } from "../enums";
 import { saveRequestTypeAction, setRequestTypeActiveAction } from "../actions";
@@ -39,11 +41,17 @@ export type TypeDraft = {
   slaEscalateAfterDays: number;
   slaEscalateTo: Record<string, unknown> | null;
   form: FormDefinition;
+  followUps: FollowUpRule[];
+  standalone: boolean;
 };
 
-export function TypeDesigner({ draft, entities, canGroup }: { draft: TypeDraft; entities: { id: string; name: string }[]; canGroup: boolean }) {
+/** Every other type, for the follow-up picker and for the check that no type ends up under itself. */
+export type CatalogueEntry = { code: string; nameVi: string; nameEn: string; followUps: FollowUpRule[] };
+
+export function TypeDesigner({ draft, entities, canGroup, catalogue }: { draft: TypeDraft; entities: { id: string; name: string }[]; canGroup: boolean; catalogue: CatalogueEntry[] }) {
   const t = useTranslations("requests.designer");
   const tErrors = useTranslations("requests.errors");
+  const locale = useLocale();
   const router = useRouter();
   const [type, setType] = useState(draft);
   const [fields, setFields] = useState<Editable[]>(() => draft.form.fields.map((field) => ({ ...field, options: [...(field.options ?? [])] })));
@@ -51,7 +59,13 @@ export function TypeDesigner({ draft, entities, canGroup }: { draft: TypeDraft; 
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
 
+  const [followUps, setFollowUps] = useState<FollowUpRule[]>(() => draft.followUps.map((rule) => ({ ...rule })));
+
   const problems = formProblems({ fields });
+  const others = catalogue.filter((entry) => entry.code !== type.code);
+  const followUpErrors = followUpProblems({ code: type.code, form: { fields }, followUps }, catalogue);
+  const dateFields = fields.filter((field) => field.type === "date");
+  const patchRule = (index: number, change: Partial<FollowUpRule>) => setFollowUps((current) => current.map((rule, position) => (position === index ? { ...rule, ...change } : rule)));
   const patch = (index: number, change: Partial<Editable>) => setFields((current) => current.map((field, position) => (position === index ? { ...field, ...change } : field)));
   const move = (index: number, by: number) =>
     setFields((current) => {
@@ -77,6 +91,7 @@ export function TypeDesigner({ draft, entities, canGroup }: { draft: TypeDraft; 
         descriptionEn: type.descriptionEn ?? "",
         active: type.active,
         slaEscalateTo: JSON.stringify(type.slaEscalateTo),
+        followUps: JSON.stringify(followUps),
         form: JSON.stringify({ fields: fields.map(({ options, ...field }) => (needsOptions(field.type) ? { ...field, options } : field)) }),
       });
       if (result.ok) {
@@ -335,8 +350,93 @@ export function TypeDesigner({ draft, entities, canGroup }: { draft: TypeDraft; 
         ) : null}
       </section>
 
+      <section className="flex flex-col gap-4 rounded-xl border p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-medium">{t("followUps.title")}</h2>
+            <p className="text-xs text-muted-foreground">{t("followUps.hint")}</p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={others.length === 0 || followUps.length >= MAX_FOLLOW_UPS}
+            onClick={() => setFollowUps((current) => [...current, { code: others.find((entry) => !current.some((rule) => rule.code === entry.code))?.code ?? others[0].code, opensWhen: "approved", notBeforeField: null, max: null }])}
+          >
+            {t("followUps.add")}
+          </Button>
+        </div>
+        {followUps.length === 0 ? <p className="text-sm text-muted-foreground">{t("followUps.none")}</p> : null}
+        <ul className="flex flex-col gap-3">
+          {followUps.map((rule, index) => (
+            <li key={index} className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[2fr_1.5fr_1.5fr_1fr_auto] sm:items-end">
+              <label className="flex flex-col gap-1.5">
+                <Label htmlFor={`follow-type-${index}`}>{t("followUps.type")}</Label>
+                <Select id={`follow-type-${index}`} value={rule.code} onChange={(event) => patchRule(index, { code: event.target.value })}>
+                  {others.map((entry) => (
+                    <option key={entry.code} value={entry.code}>
+                      {locale === "en" ? entry.nameEn : entry.nameVi}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <Label htmlFor={`follow-opens-${index}`}>{t("followUps.opensWhen")}</Label>
+                <Select id={`follow-opens-${index}`} value={rule.opensWhen} onChange={(event) => patchRule(index, { opensWhen: event.target.value as FollowUpOpens })}>
+                  {FOLLOW_UP_OPENS.map((opens) => (
+                    <option key={opens} value={opens}>
+                      {t(`followUps.opens.${opens}` as "followUps.opens.approved")}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <Label htmlFor={`follow-day-${index}`}>{t("followUps.notBefore")}</Label>
+                <Select id={`follow-day-${index}`} value={rule.notBeforeField ?? ""} onChange={(event) => patchRule(index, { notBeforeField: event.target.value || null })}>
+                  <option value="">{t("followUps.anyDay")}</option>
+                  {dateFields.map((field) => (
+                    <option key={field.key} value={field.key}>
+                      {t("followUps.fromField", { field: (locale === "en" ? field.labelEn : field.labelVi) || field.key })}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <Label htmlFor={`follow-max-${index}`}>{t("followUps.max")}</Label>
+                <Input
+                  id={`follow-max-${index}`}
+                  type="number"
+                  min={1}
+                  max={MAX_PER_PARENT}
+                  placeholder={t("followUps.noLimit")}
+                  value={rule.max ?? ""}
+                  onChange={(event) => patchRule(index, { max: event.target.value === "" ? null : Number(event.target.value) })}
+                />
+              </label>
+              <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => setFollowUps((current) => current.filter((_, position) => position !== index))}>
+                {t("followUps.remove")}
+              </Button>
+            </li>
+          ))}
+        </ul>
+        <Label className="flex items-start gap-2 text-sm font-normal">
+          <input type="checkbox" className="mt-0.5 size-4" checked={type.standalone} onChange={(event) => set("standalone", event.target.checked)} />
+          <span className="flex flex-col">
+            {t("followUps.standalone")}
+            <span className="text-xs text-muted-foreground">{t("followUps.standaloneHint")}</span>
+          </span>
+        </Label>
+        {followUpErrors.length > 0 ? (
+          <ul className="flex flex-col gap-1 text-sm text-destructive" role="alert">
+            {followUpErrors.map((problem) => (
+              <li key={problem}>{tErrors.has(problem) ? tErrors(problem as "generic") : problem}</li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
+
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" onClick={save} disabled={pending || problems.length > 0}>
+        <Button type="button" onClick={save} disabled={pending || problems.length > 0 || followUpErrors.length > 0}>
           {t("save")}
         </Button>
         {type.id ? (
