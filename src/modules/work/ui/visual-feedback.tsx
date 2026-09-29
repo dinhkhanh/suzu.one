@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { addPinAction, setPinResolvedAction } from "../delivery-actions";
 import { formatTimecode, type MediaKind } from "../engine/delivery";
-import { DeliveryError, errorKeyOf, type Result, useSignedUrl } from "./delivery-shared";
+import { DeliveryError, errorKeyOf, type Result, SignedVideo, useSignedUrl } from "./delivery-shared";
 
 export type PinItem = { id: string; x: number | null; y: number | null; timecodeMs: number | null; body: string; authorName: string | null; resolved: boolean; createdAt: string; canResolve: boolean };
 export type MediaVersion = { id: string; version: number; fileId: string; fileName: string; media: MediaKind };
@@ -94,7 +94,7 @@ export function PinBoard({ version, pins, canPin }: { version: MediaVersion; pin
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          <video ref={video} src={url} controls playsInline preload="metadata" className="w-full rounded-lg border bg-black" onError={refresh} onTimeUpdate={(event) => setPlayhead(Math.round(event.currentTarget.currentTime * 1000))} />
+          <SignedVideo url={url} refresh={refresh} videoRef={video} className="w-full rounded-lg border bg-black" onTimeUpdate={(event) => setPlayhead(Math.round(event.currentTarget.currentTime * 1000))} />
           {canPin ? (
             <Button type="button" size="sm" variant="outline" className="w-fit" onClick={() => {
                 video.current?.pause();
@@ -222,7 +222,7 @@ function CompareSide({ version }: { version: MediaVersion }) {
         // eslint-disable-next-line @next/next/no-img-element
         <img src={url} alt={version.fileName} className="h-auto w-full rounded-lg border" onError={refresh} />
       ) : (
-        <video src={url} controls playsInline preload="metadata" className="w-full rounded-lg border bg-black" onError={refresh} />
+        <SignedVideo url={url} refresh={refresh} className="w-full rounded-lg border bg-black" />
       )}
     </figure>
   );

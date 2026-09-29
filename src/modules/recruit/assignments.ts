@@ -24,6 +24,7 @@ import { z } from "zod";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { createPublicAction, type Visitor } from "@/lib/public-action";
+import { MAX_REQUEST_FILE_BYTES } from "@/modules/platform/files/rules";
 import { reownFile, softDeleteFile, storeIncomingFile } from "@/modules/platform/files/service";
 import { notify } from "@/modules/platform/notifications/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
@@ -39,8 +40,8 @@ export type AssignmentRow = typeof schema.recruitAssignment.$inferSelect;
 const now = () => new Date();
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** A submission is a document or an archive, not a film. Well under the platform's 20 MB. */
-export const MAX_SUBMISSION_BYTES = 10 * 1024 * 1024;
+/** A submission is a document or an archive, not a film; it arrives inside the form's request. Larger work is sent as a link. */
+export const MAX_SUBMISSION_BYTES = MAX_REQUEST_FILE_BYTES;
 
 // ── The link ────────────────────────────────────────────────────────────────────────────────
 

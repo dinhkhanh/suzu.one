@@ -1,10 +1,23 @@
 // Pure rules for what may be uploaded (FR-PLT-32, NFR-SEC-03). Shared by server and forms.
 
-export const MAX_FILE_BYTES = 20 * 1024 * 1024;
-/** Video is far bigger than a document: a cut for review runs to a couple of hundred megabytes. */
-export const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
-/** The largest file any owner may take: the storage bucket's own limit. */
+// The caps are ours, not the storage's: an R2 upload may be up to 5 GB in one request.
+
+/** A document or picture: a scanned contract, a high-resolution mock-up, a photographed receipt. */
+export const MAX_FILE_BYTES = 50 * 1024 * 1024;
+/**
+ * A cut for review on a work task — a TVC or social video, 4K included — not a master (masters stay
+ * in the production pipeline). A browser upload is one request that cannot resume, so a much larger
+ * file mostly means a longer wait before a dropped connection starts it all over.
+ */
+export const MAX_VIDEO_BYTES = 1024 * 1024 * 1024;
+/** The largest file any owner may take. */
 export const MAX_UPLOAD_BYTES = Math.max(MAX_FILE_BYTES, MAX_VIDEO_BYTES);
+/**
+ * A file that travels inside a request to the app instead of straight to storage — the public
+ * careers forms and a referral's CV. The hosting platform takes at most 4.5 MB per request body, and
+ * the form's other fields ride along with the file.
+ */
+export const MAX_REQUEST_FILE_BYTES = 4 * 1024 * 1024;
 
 type FileType = {
   extensions: readonly string[];

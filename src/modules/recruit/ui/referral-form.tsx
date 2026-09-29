@@ -12,10 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { MAX_REQUEST_FILE_BYTES } from "@/modules/platform/files/rules";
 import { submitReferralAction } from "../referral-actions";
 
 const textarea = "w-full rounded-md border bg-transparent px-3 py-2 text-sm";
-const MAX_CV_BYTES = 5 * 1024 * 1024;
 
 export type ReferralOpening = { id: string; title: string; code: string; departmentName: string | null; entityName: string | null };
 
@@ -31,7 +31,7 @@ export function ReferralForm({ openings }: { openings: ReferralOpening[] }) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const cv = form.get("cv");
-    if (cv instanceof File && cv.size > MAX_CV_BYTES) return setErrorKey("file_too_large");
+    if (cv instanceof File && cv.size > MAX_REQUEST_FILE_BYTES) return setErrorKey("file_too_large");
     const element = event.currentTarget;
     setErrorKey(null);
     startTransition(async () => {

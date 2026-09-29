@@ -12,8 +12,9 @@ const nextConfig: NextConfig = {
   // actions take salary figures as arguments — a developer's terminal would hold people's pay in
   // its scrollback. Off (see docs/PAYROLL_SECURITY_REVIEW.md, finding 3).
   logging: { serverFunctions: false },
-  // Spreadsheet imports arrive through a server action; everything else is far below the default.
-  experimental: { serverActions: { bodySizeLimit: "4mb" } },
+  // Spreadsheet imports and a referral's CV (4 MB each) arrive through a server action with the
+  // form's other fields; 4.5 MB is also all the hosting platform takes per request.
+  experimental: { serverActions: { bodySizeLimit: "4.5mb" } },
   // The payslip PDF embeds a font it reads from disk at runtime (FR-PAY-32). Tracing a
   // `readFileSync` is best-effort, so the file is named here and copied into the deployment.
   outputFileTracingIncludes: { "/payslips/[payslipId]/pdf": ["./src/modules/platform/pdf/fonts/*.ttf"], "/payroll/runs/[runId]/payments/cash-sheet": ["./src/modules/platform/pdf/fonts/*.ttf"], "/assets/labels": ["./src/modules/platform/pdf/fonts/*.ttf"] },

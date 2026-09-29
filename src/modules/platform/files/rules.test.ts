@@ -18,6 +18,8 @@ describe("checkUpload", () => {
   it("refuses empty, oversized and nameless files", () => {
     expect(checkUpload({ fileName: "a.pdf", sizeBytes: 0 })).toEqual({ ok: false, problem: "file_empty" });
     expect(checkUpload({ fileName: "a.pdf", sizeBytes: MAX_FILE_BYTES + 1 })).toEqual({ ok: false, problem: "file_too_large" });
+    // A 40 MB scanned contract or mock-up is fine.
+    expect(checkUpload({ fileName: "Hợp đồng scan.pdf", sizeBytes: 40 * 1024 * 1024 })).toMatchObject({ ok: true });
     expect(checkUpload({ fileName: ".pdf", sizeBytes: 5 })).toEqual({ ok: false, problem: "file_name_invalid" });
     expect(checkUpload({ fileName: "///", sizeBytes: 5 })).toEqual({ ok: false, problem: "file_name_invalid" });
   });
@@ -52,6 +54,8 @@ describe("video (FR-PJM-52)", () => {
 
   it("is taken on a work task only, with a larger cap", () => {
     expect(checkUpload({ fileName: "Cut v3.mp4", sizeBytes: 150 * 1024 * 1024 }, "work_task")).toEqual({ ok: true, fileName: "Cut v3.mp4", contentType: "video/mp4" });
+    // A 4K review cut of a TVC.
+    expect(checkUpload({ fileName: "TVC 4K v2.mov", sizeBytes: 900 * 1024 * 1024 }, "work_task")).toMatchObject({ ok: true, contentType: "video/quicktime" });
     expect(checkUpload({ fileName: "take.MOV", sizeBytes: 1000 }, "work_task")).toMatchObject({ ok: true, contentType: "video/quicktime" });
     expect(checkUpload({ fileName: "cut.mp4", sizeBytes: MAX_VIDEO_BYTES + 1 }, "work_task")).toEqual({ ok: false, problem: "file_too_large" });
     // Everywhere else a video is no document: an HR record, a CV, a page.

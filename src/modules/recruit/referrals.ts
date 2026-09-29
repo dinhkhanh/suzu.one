@@ -25,6 +25,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import { MAX_REQUEST_FILE_BYTES } from "@/modules/platform/files/rules";
 import { reownFile, storeIncomingFile, softDeleteFile } from "@/modules/platform/files/service";
 import { entityReach, type Principal } from "@/modules/platform/rbac/policy";
 import { type ReferralBonusState, referralBonusState } from "./engine/referral";
@@ -39,7 +40,7 @@ const now = () => new Date();
 export type ReferralRow = typeof schema.referral.$inferSelect;
 
 /** A referral's CV is a CV: the same allow-list, the same size, the same magic-byte check. */
-export const MAX_REFERRAL_CV_BYTES = 5 * 1024 * 1024;
+export const MAX_REFERRAL_CV_BYTES = MAX_REQUEST_FILE_BYTES;
 
 export type ReferralInput = {
   openingId: string;

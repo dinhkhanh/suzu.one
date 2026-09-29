@@ -2,7 +2,7 @@
 // Small pieces the delivery screens share: reading a refusal, showing it, and a file's one-minute
 // link made when it is needed and made again when it has run out (FR-PLT-32).
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type RefObject, type SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 import { openTaskFileAction } from "../actions";
 
 export type Result = { ok: boolean; error?: string; message?: string; details?: unknown };
@@ -52,4 +52,43 @@ export function useSignedUrl(fileId: string | null, enabled = true) {
   }, []);
 
   return { url, failed, refresh };
+}
+
+/**
+ * A task video on its short-lived link. When the link lapses mid-watch (a seek or a buffer after
+ * its minute), the fresh one picks up where the viewer was — the moment, and whether it was
+ * playing — instead of starting a long review cut over from 0:00.
+ */
+export function SignedVideo({ url, refresh, videoRef, onTimeUpdate, className }: { url: string; refresh: () => void; videoRef?: RefObject<HTMLVideoElement | null>; onTimeUpdate?: (event: SyntheticEvent<HTMLVideoElement>) => void; className?: string }) {
+  const own = useRef<HTMLVideoElement>(null);
+  const playing = useRef(false);
+  const resume = useRef<{ time: number; play: boolean } | null>(null);
+  return (
+    <video
+      ref={videoRef ?? own}
+      src={url}
+      controls
+      playsInline
+      preload="metadata"
+      className={className}
+      onPlay={() => {
+        playing.current = true;
+      }}
+      onPause={() => {
+        playing.current = false;
+      }}
+      onError={(event) => {
+        resume.current ??= { time: event.currentTarget.currentTime, play: playing.current };
+        refresh();
+      }}
+      onLoadedMetadata={(event) => {
+        const at = resume.current;
+        if (!at) return;
+        resume.current = null;
+        event.currentTarget.currentTime = at.time;
+        if (at.play) void event.currentTarget.play().catch(() => undefined);
+      }}
+      onTimeUpdate={onTimeUpdate}
+    />
+  );
 }

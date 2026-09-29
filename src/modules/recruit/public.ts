@@ -24,6 +24,7 @@ import { ActionError } from "@/lib/action";
 import { createPublicAction, type RateLimitOutcome, type Visitor } from "@/lib/public-action";
 import { db, schema, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
+import { MAX_REQUEST_FILE_BYTES } from "@/modules/platform/files/rules";
 import { reownFile, softDeleteFile, storeIncomingFile } from "@/modules/platform/files/service";
 import { CONSENT_VERSION, OPENING_PUBLIC_STATUSES, type OpeningQuestion, PUBLIC_LIMITS } from "./enums";
 import { signFormToken, verifyFormToken } from "./engine/form-token";
@@ -35,8 +36,8 @@ type Executor = Tx | ReturnType<typeof db>;
 
 const now = () => new Date();
 
-/** A CV is a document, not a video. Well under the platform's 20 MB, and stated to the applicant. */
-export const MAX_CV_BYTES = 5 * 1024 * 1024;
+/** A CV is a document, not a video; it arrives inside the form's request, and the cap is stated to the applicant. */
+export const MAX_CV_BYTES = MAX_REQUEST_FILE_BYTES;
 
 // ── Rate limiting ───────────────────────────────────────────────────────────────────────────
 
