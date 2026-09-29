@@ -405,17 +405,17 @@ describe("chunks and retrieval", () => {
     expect(await chunksOf(page.id)).toHaveLength(0);
     const first = await publishPage(page.id, hr);
     const cut = await chunksOf(page.id);
-    expect(cut.map((chunk) => [chunk.headingPath, chunk.versionId === first.version.id, chunk.embedding])).toEqual([["Công tác phí › Tạm ứng", true, null], ["Công tác phí › Hoàn ứng", true, null]]);
+    expect(cut.map((chunk) => [chunk.headingPath, chunk.versionId === first.version.id, chunk.embeddingVector])).toEqual([["Công tác phí › Tạm ứng", true, null], ["Công tác phí › Hoàn ứng", true, null]]);
 
     expect(await embedPendingChunks()).toMatchObject({ model: "fake-hash-256", remaining: 0 });
     expect(await embedPendingChunks()).toMatchObject({ embedded: 0 });
     const embedded = await chunksOf(page.id);
-    expect(embedded.every((chunk) => chunk.embedding?.length === 256 && chunk.embeddingModel === "fake-hash-256")).toBe(true);
+    expect(embedded.every((chunk) => chunk.embeddingVector?.length === 256 && chunk.embeddingModel === "fake-hash-256")).toBe(true);
 
     await saveDraft(page.id, { title: "Công tác phí", content: doc(heading(1, "Tạm ứng"), paragraph("Lập đề nghị tạm ứng trước chuyến công tác."), heading(1, "Hoàn ứng"), paragraph("Nộp chứng từ trong 7 ngày làm việc.")) }, hr);
     const second = await publishPage(page.id, hr);
     const recut = await chunksOf(page.id);
-    expect(recut.map((chunk) => [chunk.versionId === second.version.id, chunk.embedding !== null])).toEqual([[true, true], [true, false]]);
+    expect(recut.map((chunk) => [chunk.versionId === second.version.id, chunk.embeddingVector !== null])).toEqual([[true, true], [true, false]]);
     expect(recut[0].embeddedAt).toEqual(embedded[0].embeddedAt);
     await embedPendingChunks();
 
@@ -454,6 +454,22 @@ describe("chunks and retrieval", () => {
     expect(await ask("owner", "nghỉ phép không lương bản nháp", 50)).not.toContain("Nghỉ phép không lương (nháp)");
     expect(await ask("owner", "mẹo cũ", 50)).not.toContain("Nghỉ phép: mẹo cũ");
     expect(await retrieveKbChunks(viewers.huy, { query: "  ?? " })).toEqual([]);
+  });
+
+  it("still finds a passage that has no vector yet — after the ranked ones, at score 0 — and ranks it once embedded", async () => {
+    const hr = { personId: ids.hrGroup };
+    const page = await createPage({ spaceId: spaces.tools, parentId: null, title: "Gửi xe máy", content: doc(heading(1, "Bãi xe"), paragraph("Gửi xe máy ở tầng hầm B2, xuất trình thẻ nhân viên.")) }, hr);
+    await publishPage(page.id, hr);
+    const before = await retrieveKbChunks(viewers.huy, { query: "gửi xe máy ở đâu", limit: 200 });
+    const waiting = before.filter((chunk) => chunk.pageId === page.id);
+    expect(waiting.length).toBeGreaterThan(0);
+    expect(waiting.every((chunk) => chunk.score === 0)).toBe(true);
+    expect(before.slice(0, before.indexOf(waiting[0])).every((chunk) => chunk.pageId !== page.id)).toBe(true);
+
+    await embedPendingChunks();
+    const [best] = await retrieveKbChunks(viewers.huy, { query: "gửi xe máy ở đâu", limit: 3 });
+    expect(best).toMatchObject({ pageId: page.id, pageTitle: "Gửi xe máy" });
+    expect(best.score).toBeGreaterThan(0.2);
   });
 });
 

@@ -1,76 +1,62 @@
 import "server-only";
+import { AwsClient } from "aws4fetch";
 import { env } from "@/lib/env";
 
-// A thin client for Supabase Storage's REST API: only what the files service needs, no SDK (the
-// SDK cannot read a byte range, which inspectObject needs). The secret key never leaves the
-// server; browsers only ever get short-lived signed URLs.
+// A thin client for Cloudflare R2 over its S3-compatible API: only what the files service needs,
+// signed with SigV4 (aws4fetch, the signer Cloudflare documents for R2), no SDK. The access keys
+// never leave the server; browsers only ever get short-lived presigned URLs.
+//
+// The bucket is private and made ahead of time (README, "File storage"), with a CORS rule that
+// lets the app's origin PUT to it. Unlike Supabase Storage, R2 cannot be asked for a filename at
+// download time (GetObject takes no `response-content-disposition`), so every object carries its
+// own `Content-Disposition`: set on the server-side write, and set on a browser upload by
+// `finalizeObject` once its bytes have been checked.
 
 export class StorageError extends Error {}
 
-function config() {
-  const { SUPABASE_URL: url, supabaseSecretKey: key, STORAGE_BUCKET: bucket } = env();
-  if (!url || !key) throw new StorageError("storage_not_configured");
-  return { base: `${url.replace(/\/$/, "")}/storage/v1`, key, bucket };
+type Config = { client: AwsClient; base: string; bucket: string };
+let configured: Config | undefined;
+
+function config(): Config {
+  if (configured) return configured;
+  const { R2_ACCESS_KEY_ID: accessKeyId, R2_SECRET_ACCESS_KEY: secretAccessKey, STORAGE_BUCKET: bucket, r2Endpoint: endpoint } = env();
+  if (!endpoint || !accessKeyId || !secretAccessKey) throw new StorageError("storage_not_configured");
+  // No retries of our own making: a failed call surfaces as the error it is, as it always has.
+  const client = new AwsClient({ accessKeyId, secretAccessKey, service: "s3", region: "auto", retries: 0 });
+  return (configured = { client, base: `${endpoint.replace(/\/$/, "")}/${bucket}`, bucket });
 }
 
 const encodePath = (objectPath: string) => objectPath.split("/").map(encodeURIComponent).join("/");
+const objectUrl = (objectPath: string) => `${config().base}/${encodePath(objectPath)}`;
 
-async function call(path: string, init: RequestInit & { json?: unknown } = {}): Promise<Response> {
-  const { base, key } = config();
-  const { json, ...rest } = init;
-  return fetch(`${base}${path}`, {
-    ...rest,
-    headers: { apikey: key, authorization: `Bearer ${key}`, ...(json === undefined ? {} : { "content-type": "application/json" }), ...rest.headers },
-    body: json === undefined ? rest.body : JSON.stringify(json),
-    signal: AbortSignal.timeout(15_000),
-  });
+function call(objectPath: string, init: RequestInit = {}): Promise<Response> {
+  return config().client.fetch(objectUrl(objectPath), { ...init, signal: AbortSignal.timeout(15_000) });
 }
 
 async function fail(response: Response, what: string): Promise<never> {
   throw new StorageError(`${what}: ${response.status} ${(await response.text()).slice(0, 200)}`);
 }
 
-let bucketReady: Promise<void> | undefined;
-
 /**
- * Creates the private bucket on first use, or lifts a size limit an existing one carries. The
- * bucket gets no limit of its own: the project's cap applies, and each file's cap is the files
- * service's check (rules.ts). A bucket-level limit can only ever be lower than the project's, and
- * asking for one above it is refused with 413 — which, done before the "already exists" check,
- * once failed every upload on the first request of every instance. Safe to race.
+ * `attachment` under the file's own name: RFC 6266's `filename*` carries the Vietnamese, and a
+ * plain-ASCII `filename` stands in for a client that reads only that.
  */
-function ensureBucket(): Promise<void> {
-  return (bucketReady ??= (async () => {
-    const { bucket } = config();
-    const settings = { public: false, file_size_limit: null };
-    const existing = await call(`/bucket/${encodeURIComponent(bucket)}`);
-    if (existing.ok) {
-      const current = (await existing.json()) as { public: boolean; file_size_limit: number | null };
-      if (!current.public && current.file_size_limit === null) return;
-      const updated = await call(`/bucket/${encodeURIComponent(bucket)}`, { method: "PUT", json: settings });
-      if (!updated.ok) await fail(updated, "update bucket");
-      return;
-    }
-    if (existing.status !== 404 && existing.status !== 400) await fail(existing, "inspect bucket");
-    const created = await call("/bucket", { method: "POST", json: { id: bucket, name: bucket, ...settings } });
-    if (created.ok) return;
-    const body = await created.text();
-    // Another instance made it first.
-    if (!/exist/i.test(body)) throw new StorageError(`create bucket: ${created.status} ${body.slice(0, 200)}`);
-  })().catch((error) => {
-    bucketReady = undefined;
-    throw error;
-  }));
+export function attachmentDisposition(fileName: string): string {
+  const ascii = fileName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
+  const encoded = encodeURIComponent(fileName).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
 }
 
-/** A URL the browser can PUT one file to, once, within two hours. */
-export async function createSignedUploadUrl(objectPath: string): Promise<string> {
-  await ensureBucket();
-  const { base, bucket } = config();
-  const response = await call(`/object/upload/sign/${bucket}/${encodePath(objectPath)}`, { method: "POST" });
-  if (!response.ok) await fail(response, "sign upload");
-  const { url } = (await response.json()) as { url: string };
-  return `${base}${url}`;
+/**
+ * A URL the browser can PUT one file to within two hours, with exactly this `Content-Type` (it is
+ * part of the signature). R2 cannot cap the size of a presigned PUT; `completeUpload` measures
+ * what arrived and removes what is too large.
+ */
+export async function createSignedUploadUrl(objectPath: string, contentType: string): Promise<string> {
+  const url = new URL(objectUrl(objectPath));
+  url.searchParams.set("X-Amz-Expires", String(2 * 60 * 60));
+  const signed = await config().client.sign(url, { method: "PUT", headers: { "content-type": contentType }, aws: { signQuery: true, allHeaders: true } });
+  return signed.url;
 }
 
 /**
@@ -79,25 +65,21 @@ export async function createSignedUploadUrl(objectPath: string): Promise<string>
  * visitor must never be handed a capability to write into private storage, so their file arrives
  * inside the request, is checked in memory, and only then lands here.
  */
-export async function putObject(objectPath: string, bytes: Uint8Array, contentType: string): Promise<void> {
-  await ensureBucket();
-  const { bucket } = config();
-  const response = await call(`/object/${bucket}/${encodePath(objectPath)}`, {
-    method: "POST",
-    // `x-upsert: false` — an object path is a fresh uuid, so a collision means something is wrong.
-    headers: { "content-type": contentType, "x-upsert": "false" },
+export async function putObject(objectPath: string, bytes: Uint8Array, contentType: string, fileName: string): Promise<void> {
+  const response = await call(objectPath, {
+    method: "PUT",
+    // `If-None-Match: *` — an object path is a fresh uuid, so a collision means something is wrong.
+    headers: { "content-type": contentType, "content-disposition": attachmentDisposition(fileName), "if-none-match": "*" },
     body: new Uint8Array(bytes),
   });
-  // Larger than the project's cap: our own size rule passed, the storage's did not.
   if (response.status === 413) throw new StorageError("file_storage_limit");
   if (!response.ok) await fail(response, "put object");
 }
 
 /** Size of the stored object and its first bytes, or null when nothing was uploaded. */
 export async function inspectObject(objectPath: string, headBytes = 512): Promise<{ sizeBytes: number; head: Uint8Array } | null> {
-  const { bucket } = config();
-  const response = await call(`/object/authenticated/${bucket}/${encodePath(objectPath)}`, { headers: { range: `bytes=0-${headBytes - 1}` } });
-  if (response.status === 404 || response.status === 400) return null;
+  const response = await call(objectPath, { headers: { range: `bytes=0-${headBytes - 1}` } });
+  if (response.status === 404) return null;
   if (!response.ok) await fail(response, "inspect");
   const head = new Uint8Array(await response.arrayBuffer()).slice(0, headBytes);
   // "bytes 0-511/12345" when the range was honoured; otherwise the whole object came back.
@@ -106,19 +88,30 @@ export async function inspectObject(objectPath: string, headBytes = 512): Promis
   return { sizeBytes, head };
 }
 
-/** A link that works for `expiresInSeconds` and downloads under `fileName` instead of opening in the page. */
-export async function createSignedDownloadUrl(objectPath: string, fileName: string, expiresInSeconds: number): Promise<string> {
-  const { base, bucket } = config();
-  const response = await call(`/object/sign/${bucket}/${encodePath(objectPath)}`, { method: "POST", json: { expiresIn: expiresInSeconds } });
-  if (!response.ok) await fail(response, "sign download");
-  const { signedURL } = (await response.json()) as { signedURL: string };
-  return `${base}${signedURL}&download=${encodeURIComponent(fileName)}`;
+/**
+ * Gives a checked browser upload its type and download name. A copy of the object onto itself
+ * with its metadata replaced: server-side, so the bytes do not travel.
+ */
+export async function finalizeObject(objectPath: string, contentType: string, fileName: string): Promise<void> {
+  const { bucket } = config();
+  const response = await call(objectPath, {
+    method: "PUT",
+    headers: { "x-amz-copy-source": `/${bucket}/${encodePath(objectPath)}`, "x-amz-metadata-directive": "REPLACE", "content-type": contentType, "content-disposition": attachmentDisposition(fileName) },
+  });
+  if (!response.ok) await fail(response, "finalize");
+}
+
+/** A link that works for `expiresInSeconds`; the object's own `Content-Disposition` makes it a download. */
+export async function createSignedDownloadUrl(objectPath: string, expiresInSeconds: number): Promise<string> {
+  const url = new URL(objectUrl(objectPath));
+  url.searchParams.set("X-Amz-Expires", String(expiresInSeconds));
+  const signed = await config().client.sign(url, { method: "GET", aws: { signQuery: true } });
+  return signed.url;
 }
 
 export async function removeObject(objectPath: string): Promise<void> {
-  const { bucket } = config();
-  const response = await call(`/object/${bucket}/${encodePath(objectPath)}`, { method: "DELETE" });
-  if (!response.ok && response.status !== 404 && response.status !== 400) await fail(response, "remove");
+  const response = await call(objectPath, { method: "DELETE" });
+  if (!response.ok && response.status !== 404) await fail(response, "remove");
 }
 
 export const currentBucket = () => config().bucket;

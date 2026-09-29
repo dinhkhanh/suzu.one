@@ -1,11 +1,18 @@
-// Talks to a real Supabase Storage (the local stack). Skipped unless pointed at one:
-//   SUPABASE_URL=http://127.0.0.1:55321 SUPABASE_SECRET_KEY=... pnpm vitest run tests/storage.integration.test.ts
+// Talks to a real R2 bucket — a development one, never production's: the test writes and deletes.
+// Skipped unless pointed at one (the bucket needs the CORS rule from the README only for browsers):
+//   CLOUDFLARE_ACCOUNT_ID=... R2_ACCESS_KEY_ID=... R2_SECRET_ACCESS_KEY=... STORAGE_BUCKET=suzu-dev \
+//     pnpm vitest run tests/storage.integration.test.ts
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("./helpers/db"));
 vi.mock("@/lib/action", () => ({ ActionError: class ActionError extends Error {} }));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ SUPABASE_URL: process.env.SUPABASE_URL, supabaseSecretKey: process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY, STORAGE_BUCKET: "suzu-test" }),
+  env: () => ({
+    r2Endpoint: process.env.R2_ENDPOINT ?? `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
+    R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
+    STORAGE_BUCKET: process.env.STORAGE_BUCKET,
+  }),
 }));
 
 import { eq } from "drizzle-orm";
@@ -14,14 +21,14 @@ import { beginUpload, completeUpload, createDownloadLink, findFile, listFilesOf,
 import { inspectObject } from "@/modules/platform/files/storage";
 import { migrateTestDb } from "./helpers/db";
 
-const configured = !!process.env.SUPABASE_URL && !!(process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY);
+const configured = !!(process.env.R2_ENDPOINT ?? process.env.CLOUDFLARE_ACCOUNT_ID) && !!process.env.R2_ACCESS_KEY_ID && !!process.env.R2_SECRET_ACCESS_KEY && !!process.env.STORAGE_BUCKET;
 const pdf = new TextEncoder().encode("%PDF-1.7\nHợp đồng lao động\n%%EOF");
 const owner = { ownerType: "test_document", ownerId: "doc-1", entityId: null, tier: "restricted" as const };
 let actor: { personId: string; email: string };
 
 const put = (url: string, body: Uint8Array, contentType: string) => fetch(url, { method: "PUT", body: Buffer.from(body), headers: { "content-type": contentType } });
 
-describe.skipIf(!configured)("file storage against Supabase", () => {
+describe.skipIf(!configured)("file storage against R2", () => {
   beforeAll(async () => {
     await migrateTestDb();
     const [person] = await db().insert(schema.person).values({ fullName: "Uploader", searchName: "uploader", workEmail: "up@suzu.vn", status: "active" }).returning();
@@ -41,6 +48,8 @@ describe.skipIf(!configured)("file storage against Supabase", () => {
     const download = await fetch(link);
     expect(new Uint8Array(await download.arrayBuffer())).toEqual(pdf);
     expect(download.headers.get("content-disposition")).toContain("attachment");
+    // R2 cannot be told the name when the link is made; the object carries it since completeUpload.
+    expect(download.headers.get("content-disposition")).toContain(`filename*=UTF-8''${encodeURIComponent("Hợp đồng.pdf")}`);
     // Opening a restricted file leaves a trace.
     expect((await db().select().from(schema.auditLog)).map((row) => row.action)).toContain("file.read");
 

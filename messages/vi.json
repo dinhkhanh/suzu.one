@@ -11163,7 +11163,7 @@
     "privacy": {
       "title": "Chính sách quyền riêng tư",
       "description": "Cách SuZu Group thu thập, sử dụng, chia sẻ và bảo vệ dữ liệu cá nhân trong SuZu One.",
-      "updated": "Cập nhật lần cuối: 24/09/2026",
+      "updated": "Cập nhật lần cuối: 30/09/2026",
       "intro": [
         "Chính sách này giải thích cách Công ty Cổ phần SuZu Group (\"SuZu Group\", \"chúng tôi\") thu thập, sử dụng, chia sẻ và bảo vệ dữ liệu cá nhân trong SuZu One — nền tảng vận hành nội bộ tại https://suzu.one (\"Dịch vụ\").",
         "SuZu One là công cụ nội bộ, chỉ dành cho nhân viên, cộng tác viên và nhân sự khác của SuZu Group và các công ty liên kết đã được cấp tài khoản Google Workspace của công ty trên suzu.vn hoặc suzu.group. Dịch vụ không cung cấp cho công chúng. Trang tuyển dụng công khai tại https://suzu.one/careers áp dụng thông báo quyền riêng tư hiển thị trên mẫu ứng tuyển."
@@ -11266,12 +11266,13 @@
           ],
           "list": [
             "Vercel Inc. — lưu trữ ứng dụng;",
-            "Supabase Inc. — cơ sở dữ liệu và kho tệp riêng tư, đặt tại Singapore;",
+            "Supabase Inc. — cơ sở dữ liệu, đặt tại Singapore;",
             "Upstash Inc. — bộ nhớ đệm cho cấu hình và dữ liệu tham chiếu (không bao giờ chứa lương hay dữ liệu cá nhân nhạy cảm khác);",
+            "Cloudflare, Inc. — kho tệp riêng tư (R2), lưu tại khu vực châu Á – Thái Bình Dương, và phân tích văn bản phục vụ tìm kiếm kho tri thức (Workers AI), nhận nội dung kho tri thức và các câu hỏi được đặt ra;",
             "Resend — gửi email do Dịch vụ phát đi;",
             "Functional Software Inc. (Sentry) — theo dõi lỗi;",
             "Google LLC — đăng nhập Google Workspace, và thông báo, lịch họp qua Google Chat, Google Lịch khi công ty bật các tính năng này;",
-            "Anthropic PBC và Voyage AI — trợ lý và tìm kiếm kho tri thức, khi công ty bật các tính năng này; họ nhận câu hỏi được đặt ra và nội dung kho tri thức cần để trả lời."
+            "Anthropic PBC — trợ lý, khi công ty bật tính năng này; họ nhận câu hỏi được đặt ra và nội dung kho tri thức cần để trả lời."
           ],
           "after": [
             "Chúng tôi cũng cung cấp dữ liệu cá nhân khi pháp luật yêu cầu — ví dụ cho cơ quan thuế, cơ quan bảo hiểm xã hội hoặc ngân hàng chi trả lương — và, nếu SuZu Group hoặc một công ty trong nhóm được tổ chức lại, sáp nhập hay chuyển nhượng, cho bên kế thừa với cùng mức bảo vệ."
@@ -11280,7 +11281,7 @@
         {
           "heading": "9. Chuyển dữ liệu ra nước ngoài",
           "body": [
-            "Cơ sở dữ liệu và tệp của Dịch vụ được lưu tại Singapore, và một số nhà cung cấp nêu trên có thể xử lý dữ liệu ở các quốc gia khác, bao gồm Hoa Kỳ. Chúng tôi chỉ chuyển dữ liệu cá nhân ra nước ngoài khi cần để cung cấp Dịch vụ và thực hiện các thủ tục mà pháp luật Việt Nam yêu cầu đối với việc chuyển dữ liệu cá nhân xuyên biên giới."
+            "Cơ sở dữ liệu của Dịch vụ được lưu tại Singapore và các tệp tại khu vực châu Á – Thái Bình Dương của Cloudflare, và một số nhà cung cấp nêu trên có thể xử lý dữ liệu ở các quốc gia khác, bao gồm Hoa Kỳ. Chúng tôi chỉ chuyển dữ liệu cá nhân ra nước ngoài khi cần để cung cấp Dịch vụ và thực hiện các thủ tục mà pháp luật Việt Nam yêu cầu đối với việc chuyển dữ liệu cá nhân xuyên biên giới."
           ]
         },
         {

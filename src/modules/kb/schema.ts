@@ -8,6 +8,17 @@ import { person } from "../platform/people/schema";
 
 const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" });
 
+/**
+ * pgvector's `vector` (installed in the `extensions` schema, as Supabase keeps extensions), with no
+ * fixed dimension: each model's vectors are only ever compared with their own (`embedding_model`),
+ * and a model change needs no migration. Travels as pgvector's text form, `[0.1,0.2,…]`.
+ */
+export const pgVector = customType<{ data: number[]; driverData: string }>({
+  dataType: () => "extensions.vector",
+  toDriver: (value) => `[${value.join(",")}]`,
+  fromDriver: (value) => JSON.parse(value) as number[],
+});
+
 // open = any editor publishes; controlled = publishing goes through review (policies, FR-KB-04).
 export const kbSpaceKind = pgEnum("kb_space_kind", ["open", "controlled"]);
 export const kbAccessLevel = pgEnum("kb_access_level", ["view", "edit"]);
@@ -239,10 +250,11 @@ export const kbTemplate = pgTable(
 
 // Passages of the PUBLISHED version of each page, for the Phase 9 assistant (FR-KB-11). Rebuilt
 // inside `publishPage`; gone when the page is unpublished, archived or deleted.
-// Decision: the vector is `real[]`, not pgvector's `vector(n)`. The local Supabase image ships
-// pgvector 0.8.2 (not installed), but PGlite — every test — has none, and `n` depends on a model
-// nobody has chosen. Phase 9 adds `vector(n)` + an HNSW index in its own migration when it
-// re-embeds with the real model; until then a company-sized table is ranked in the application.
+// The vector is pgvector's (`embedding_vector`, 0100), ranked in SQL by cosine distance. No HNSW
+// index, on purpose: an exact scan of a company's knowledge base (thousands of passages) takes
+// milliseconds and always honours the permission filter, where an approximate index returns its
+// nearest few before the WHERE clause and can leave a narrowly-permitted reader with fewer
+// answers. Add one (with `hnsw.iterative_scan`) past ~50k passages.
 export const kbPageChunk = pgTable(
   "kb_page_chunk",
   {
@@ -261,7 +273,10 @@ export const kbPageChunk = pgTable(
     // sha256 of heading path + content: an unchanged passage keeps its vector across versions.
     contentHash: text("content_hash").notNull(),
     tokenEstimate: integer("token_estimate").notNull().default(0),
+    // Superseded by `embedding_vector`; still written by the deployment before 0100, dropped once
+    // no running code reads it.
     embedding: real("embedding").array(),
+    embeddingVector: pgVector("embedding_vector"),
     embeddingModel: text("embedding_model"),
     embeddedAt: timestamp("embedded_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

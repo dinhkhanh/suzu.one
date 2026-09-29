@@ -3,11 +3,12 @@
 // Each test file gets its own empty database; call `migrateTestDb()` in `beforeAll`.
 import { PGlite } from "@electric-sql/pglite";
 import { btree_gist } from "@electric-sql/pglite/contrib/btree_gist";
+import { vector } from "@electric-sql/pglite-pgvector";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import * as schema from "@/lib/db/schema";
 
-const database = drizzle(new PGlite({ extensions: { btree_gist } }), { schema });
+const database = drizzle(new PGlite({ extensions: { btree_gist, vector } }), { schema });
 
 export const db = () => database;
 export { schema };

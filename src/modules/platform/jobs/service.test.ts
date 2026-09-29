@@ -3,9 +3,10 @@ import { beforeAll, expect, it, vi } from "vitest";
 vi.mock("@/lib/db", async () => {
   const { PGlite } = await import("@electric-sql/pglite");
   const { btree_gist } = await import("@electric-sql/pglite/contrib/btree_gist");
+  const { vector } = await import("@electric-sql/pglite-pgvector");
   const { drizzle } = await import("drizzle-orm/pglite");
   const schema = await import("@/lib/db/schema");
-  const database = drizzle(new PGlite({ extensions: { btree_gist } }), { schema });
+  const database = drizzle(new PGlite({ extensions: { btree_gist, vector } }), { schema });
   return { db: () => database, schema };
 });
 

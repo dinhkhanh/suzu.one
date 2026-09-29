@@ -6,7 +6,7 @@ import { db, schema } from "@/lib/db";
 import { recordAudit } from "../audit/service";
 import { type Tier, tierRank } from "../rbac/roles";
 import { checkUpload, matchesSignature, MAX_FILE_BYTES, maxBytesFor } from "./rules";
-import { createSignedDownloadUrl, createSignedUploadUrl, currentBucket, inspectObject, putObject, removeObject } from "./storage";
+import { createSignedDownloadUrl, createSignedUploadUrl, currentBucket, finalizeObject, inspectObject, putObject, removeObject } from "./storage";
 
 // This service checks *what* is uploaded. *Who* may upload to or open the files of a record is
 // decided by the module that owns the record, before it calls in here (FR-PLT-32).
@@ -26,7 +26,7 @@ export async function beginUpload(owner: FileOwner, file: { fileName: string; si
   const extension = checked.fileName.split(".").pop()!.toLowerCase();
   // Nothing the uploader typed ends up in the path.
   const objectPath = `${owner.ownerType}/${new Date().getUTCFullYear()}/${fileId}.${extension}`;
-  const uploadUrl = await createSignedUploadUrl(objectPath);
+  const uploadUrl = await createSignedUploadUrl(objectPath, checked.contentType);
   await db().insert(schema.storedFile).values({
     id: fileId,
     bucket: currentBucket(),
@@ -58,6 +58,8 @@ export async function completeUpload(fileId: string, actor: Actor): Promise<Stor
     await db().update(schema.storedFile).set({ status: "rejected" }).where(eq(schema.storedFile.id, fileId));
     throw new ActionError(problem);
   }
+  // Only a checked file is given its download name (the object said nothing about it until now).
+  await finalizeObject(file.objectPath, file.contentType, file.fileName);
   const [ready] = await db().update(schema.storedFile).set({ status: "ready", sizeBytes: stored.sizeBytes }).where(eq(schema.storedFile.id, fileId)).returning();
   return ready;
 }
@@ -90,7 +92,7 @@ export async function storeIncomingFile(owner: FileOwner, file: { fileName: stri
   const extension = checked.fileName.split(".").pop()!.toLowerCase();
   // Nothing the uploader typed ends up in the path.
   const objectPath = `${owner.ownerType}/${new Date().getUTCFullYear()}/${fileId}.${extension}`;
-  await putObject(objectPath, file.bytes, checked.contentType);
+  await putObject(objectPath, file.bytes, checked.contentType, checked.fileName);
   const [row] = await db()
     .insert(schema.storedFile)
     .values({
@@ -138,7 +140,7 @@ export async function findFile(fileId: string): Promise<StoredFileRow | undefine
 
 /** A one-minute download link. Opening a restricted or compensation file is written to the audit log. */
 export async function createDownloadLink(file: StoredFileRow, actor: Actor, request?: { ipAddress?: string | null; userAgent?: string | null }): Promise<string> {
-  const url = await createSignedDownloadUrl(file.objectPath, file.fileName, DOWNLOAD_LINK_SECONDS);
+  const url = await createSignedDownloadUrl(file.objectPath, DOWNLOAD_LINK_SECONDS);
   if (tierRank(file.tier as Tier) >= tierRank("restricted")) {
     await recordAudit({ action: "file.read", actor: { personId: actor.personId, email: actor.email }, request, resource: { type: file.ownerType, id: file.ownerId, entityId: file.entityId }, summary: file.fileName });
   }

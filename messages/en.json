@@ -11163,7 +11163,7 @@
     "privacy": {
       "title": "Privacy Policy",
       "description": "How SuZu Group collects, uses, shares and protects personal data in SuZu One.",
-      "updated": "Last updated: 24 September 2026",
+      "updated": "Last updated: 30 September 2026",
       "intro": [
         "This Privacy Policy explains how Công ty Cổ phần SuZu Group (\"SuZu Group\", \"we\", \"us\") collects, uses, shares and protects personal data in SuZu One, the internal operations platform available at https://suzu.one (the \"Service\").",
         "SuZu One is an internal tool. It is available only to employees, collaborators and other personnel of SuZu Group and its affiliated companies who have been given a company Google Workspace account on suzu.vn or suzu.group. It is not offered to the public. The public careers pages at https://suzu.one/careers are covered by the privacy notice shown on the application form."
@@ -11266,12 +11266,13 @@
           ],
           "list": [
             "Vercel Inc. — application hosting;",
-            "Supabase Inc. — database and private file storage, hosted in Singapore;",
+            "Supabase Inc. — database, hosted in Singapore;",
             "Upstash Inc. — a cache for configuration and reference data (never salary or other sensitive personal data);",
+            "Cloudflare, Inc. — private file storage (R2), kept in the Asia-Pacific region, and the text analysis behind knowledge base search (Workers AI), which receives the knowledge base content and the questions asked;",
             "Resend — delivery of emails the Service sends;",
             "Functional Software Inc. (Sentry) — error monitoring;",
             "Google LLC — Google Workspace sign-in, and Google Chat and Google Calendar notifications and meetings where the company has enabled them;",
-            "Anthropic PBC and Voyage AI — the assistant and knowledge base search, where the company has enabled them; they receive the question asked and the knowledge base content needed to answer it."
+            "Anthropic PBC — the assistant, where the company has enabled it; it receives the question asked and the knowledge base content needed to answer it."
           ],
           "after": [
             "We also disclose personal data where the law requires it — for example to the tax authority, the social insurance agency, or banks paying salaries — and, if SuZu Group or a group company is reorganised, merged or sold, to the successor, under the same protections."
@@ -11280,7 +11281,7 @@
         {
           "heading": "9. Transfers outside Vietnam",
           "body": [
-            "The Service's database and files are hosted in Singapore, and some providers listed above may process data in other countries, including the United States. We transfer personal data abroad only as needed to provide the Service and take the steps Vietnamese law requires for cross-border transfers of personal data."
+            "The Service's database is hosted in Singapore and its files in Cloudflare's Asia-Pacific region, and some providers listed above may process data in other countries, including the United States. We transfer personal data abroad only as needed to provide the Service and take the steps Vietnamese law requires for cross-border transfers of personal data."
           ]
         },
         {

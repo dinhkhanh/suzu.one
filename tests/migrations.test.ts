@@ -1,13 +1,14 @@
 // Applies the real SQL migrations to an in-process Postgres (PGlite) and checks database-level guarantees.
 import { PGlite } from "@electric-sql/pglite";
 import { btree_gist } from "@electric-sql/pglite/contrib/btree_gist";
+import { vector } from "@electric-sql/pglite-pgvector";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import * as schema from "@/lib/db/schema";
 
-const client = new PGlite({ extensions: { btree_gist } });
+const client = new PGlite({ extensions: { btree_gist, vector } });
 const db = drizzle(client, { schema });
 
 beforeAll(async () => {

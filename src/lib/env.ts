@@ -29,12 +29,15 @@ const schema = z.object({
   // first (docs/KEY_ROTATION.md). Losing these keys loses the data; they live only in the secret store.
   DATA_ENCRYPTION_KEYS: z.string().min(1).optional(),
   DATA_BLIND_INDEX_KEY: z.string().min(1).optional(),
-  // Private file storage (Supabase Storage). The integration provides the URL and both keys: the
-  // secret key (`sb_secret_…`) is the current kind and the one used; the service-role JWT is the
-  // fallback for a local stack that only prints that one. Either is server-only.
-  SUPABASE_URL: z.url().optional(),
-  SUPABASE_SECRET_KEY: z.string().min(1).optional(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+  // The Cloudflare account that holds the file bucket (R2) and runs the embeddings (Workers AI).
+  CLOUDFLARE_ACCOUNT_ID: z.string().regex(/^[0-9a-f]{32}$/, "the 32-character account ID from the Cloudflare dashboard").optional(),
+  // Private file storage (Cloudflare R2, over its S3-compatible API). An R2 API token's access key
+  // pair, scoped to the one bucket with Object Read & Write; server-only. `R2_ENDPOINT` overrides
+  // the account's endpoint (https://<account>.r2.cloudflarestorage.com) for another S3-compatible
+  // store. Unset = uploads and downloads fail with "storage_not_configured".
+  R2_ACCESS_KEY_ID: z.string().min(1).optional(),
+  R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  R2_ENDPOINT: z.url().optional(),
   STORAGE_BUCKET: z.string().regex(/^[a-z0-9-]+$/).default("suzu-private"),
   // Outgoing email (Resend). Unset = emails are written to the outbox and marked "skipped".
   RESEND_API_KEY: z.string().min(1).optional(),
@@ -44,10 +47,12 @@ const schema = z.object({
   VAPID_PUBLIC_KEY: z.string().min(80).optional(),
   VAPID_PRIVATE_KEY: z.string().min(40).optional(),
   VAPID_SUBJECT: z.string().default("mailto:it@suzu.one"),
-  // Embeddings for the knowledge base (Voyage AI). Unset = a deterministic local fake: chunks are
-  // still cut, stored and ranked, but the vectors mean nothing outside this machine.
-  EMBEDDINGS_API_KEY: z.string().min(1).optional(),
-  EMBEDDINGS_MODEL: z.string().min(1).default("voyage-3.5"),
+  // Embeddings for the knowledge base (Cloudflare Workers AI, called over its REST API): an API
+  // token from the dashboard's "Workers AI" template, limited to CLOUDFLARE_ACCOUNT_ID. Unset = a deterministic
+  // local fake: chunks are still cut, stored and ranked, but the vectors mean nothing outside this
+  // machine.
+  CLOUDFLARE_AI_API_TOKEN: z.string().min(1).optional(),
+  EMBEDDINGS_MODEL: z.string().min(1).default("@cf/baai/bge-m3"),
   // The assistant's model (Phase 9, FR-AI-01). Unset = the local extractive driver: it answers with
   // the knowledge base's own words, generates nothing, and nothing leaves the machine. With a key
   // the Claude driver runs instead — **written against the Messages API and never run**, because
@@ -104,6 +109,16 @@ const schema = z.object({
   KV_REST_API_TOKEN: z.string().min(1).optional(),
 });
 
+/**
+ * The S3 endpoint of the file bucket, without the bucket: the account's R2 endpoint, or
+ * `R2_ENDPOINT`. The dashboard shows a bucket's S3 URL with the bucket's name on the end; pasted as
+ * it is, that name is dropped here rather than doubled in every object's path.
+ */
+export function r2EndpointFor(input: { R2_ENDPOINT?: string; CLOUDFLARE_ACCOUNT_ID?: string; STORAGE_BUCKET: string }): string | undefined {
+  if (input.R2_ENDPOINT) return input.R2_ENDPOINT.replace(/\/+$/, "").replace(new RegExp(`/${input.STORAGE_BUCKET}$`), "");
+  return input.CLOUDFLARE_ACCOUNT_ID ? `https://${input.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com` : undefined;
+}
+
 /** The local step-up driver skips Google, so it must never exist where real salaries do. */
 export function stepUpDriverProblem(input: { driver: "google" | "local"; nodeEnv: string | undefined; vercelEnv: string | undefined }): string | null {
   if (input.driver !== "local") return null;
@@ -132,7 +147,7 @@ function load() {
     ...parsed.data,
     allowedWorkspaceDomains: csv(parsed.data.ALLOWED_WORKSPACE_DOMAINS),
     bootstrapOwnerEmails: csv(parsed.data.BOOTSTRAP_OWNER_EMAILS),
-    supabaseSecretKey: parsed.data.SUPABASE_SECRET_KEY ?? parsed.data.SUPABASE_SERVICE_ROLE_KEY,
+    r2Endpoint: r2EndpointFor(parsed.data),
   };
 }
 

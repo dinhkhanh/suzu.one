@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 // No key: the local extractive driver and the local fake embeddings, which is the point.
-vi.mock("@/lib/env", () => ({ env: () => ({ ANTHROPIC_MODEL: "claude-opus-5", EMBEDDINGS_MODEL: "voyage-3.5" }) }));
+vi.mock("@/lib/env", () => ({ env: () => ({ ANTHROPIC_MODEL: "claude-opus-5", EMBEDDINGS_MODEL: "@cf/baai/bge-m3" }) }));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
     constructor(

@@ -5,6 +5,7 @@
 // with evidence (one of them late), a few left overdue, a few in progress.
 // Order: `pnpm db:seed && pnpm db:seed:demo`, `pnpm dev` in another terminal, then `pnpm db:seed:demo:ops`.
 // To start over: delete from stored_file where owner_type = 'obligation_instance'; delete from task where kind = 'obligation';
+import { AwsClient } from "aws4fetch";
 import { config } from "dotenv";
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray, isNotNull, lt } from "drizzle-orm";
@@ -62,8 +63,11 @@ async function main() {
     .innerJoin(entity, eq(entity.id, obligationInstance.entityId))
     .where(and(inArray(task.status, ["todo", "in_progress"]), lt(task.dueDate, addDays(today, 16))));
 
-  const storage = process.env.SUPABASE_URL && (process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY) ? { base: `${process.env.SUPABASE_URL.replace(/\/$/, "")}/storage/v1`, key: (process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY)!, bucket: process.env.STORAGE_BUCKET ?? "suzu-private" } : null;
-  if (storage) await fetch(`${storage.base}/bucket`, { method: "POST", headers: { authorization: `Bearer ${storage.key}`, "content-type": "application/json" }, body: JSON.stringify({ id: storage.bucket, name: storage.bucket, public: false }) }).catch(() => undefined);
+  // The receipts go into the R2 bucket when one is configured (the bucket itself is made by hand,
+  // README "File storage"); without one the rows still appear and a download says so.
+  const bucket = process.env.STORAGE_BUCKET ?? "suzu-private";
+  const endpoint = process.env.R2_ENDPOINT ? process.env.R2_ENDPOINT.replace(/\/+$/, "").replace(new RegExp(`/${bucket}$`), "") : process.env.CLOUDFLARE_ACCOUNT_ID ? `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com` : null;
+  const storage = endpoint && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY ? { base: `${endpoint.replace(/\/$/, "")}/${bucket}`, client: new AwsClient({ accessKeyId: process.env.R2_ACCESS_KEY_ID, secretAccessKey: process.env.R2_SECRET_ACCESS_KEY, service: "s3", region: "auto" }) } : null;
 
   let closed = 0;
   let late = 0;
@@ -97,8 +101,9 @@ async function main() {
     if (template.evidence.file) {
       const fileId = randomUUID();
       const objectPath = `obligation_instance/${due.slice(0, 4)}/${fileId}.pdf`;
-      if (storage) await fetch(`${storage.base}/object/${storage.bucket}/${objectPath}`, { method: "POST", headers: { authorization: `Bearer ${storage.key}`, "content-type": "application/pdf" }, body: RECEIPT }).catch(() => undefined);
-      await db.insert(storedFile).values({ id: fileId, bucket: storage?.bucket ?? "suzu-private", objectPath, fileName: `bien-nhan-${template.code.toLowerCase()}-${instance.periodKey.replace(/[^0-9a-zA-Z-]/g, "").slice(0, 12)}.pdf`, contentType: "application/pdf", sizeBytes: RECEIPT.length, ownerType: "obligation_instance", ownerId: instance.id, entityId: instance.entityId, tier: "public_internal", status: "ready", uploadedByPersonId: closedBy });
+      const fileName = `bien-nhan-${template.code.toLowerCase()}-${instance.periodKey.replace(/[^0-9a-zA-Z-]/g, "").slice(0, 12)}.pdf`;
+      if (storage) await storage.client.fetch(`${storage.base}/${objectPath}`, { method: "PUT", headers: { "content-type": "application/pdf", "content-disposition": `attachment; filename="${fileName}"` }, body: RECEIPT }).catch(() => undefined);
+      await db.insert(storedFile).values({ id: fileId, bucket, objectPath, fileName, contentType: "application/pdf", sizeBytes: RECEIPT.length, ownerType: "obligation_instance", ownerId: instance.id, entityId: instance.entityId, tier: "public_internal", status: "ready", uploadedByPersonId: closedBy });
       files++;
     }
     await db

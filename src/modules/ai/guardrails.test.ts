@@ -16,7 +16,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({
-  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", ANTHROPIC_MODEL: "claude-opus-5", EMBEDDINGS_MODEL: "voyage-3.5", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64") }),
+  env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one", ANTHROPIC_MODEL: "claude-opus-5", EMBEDDINGS_MODEL: "@cf/baai/bge-m3", DATA_ENCRYPTION_KEYS: `k1:${Buffer.alloc(32, 7).toString("base64")}`, DATA_BLIND_INDEX_KEY: Buffer.alloc(32, 9).toString("base64") }),
   isDevelopmentEnvironment: () => true,
 }));
 vi.mock("@/lib/action", () => ({
