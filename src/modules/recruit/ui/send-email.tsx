@@ -9,6 +9,7 @@ import { FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { sendCandidateEmailAction } from "../actions";
 
 export type EmailTemplateOption = { id: string; name: string; kind: string };
@@ -27,20 +28,20 @@ export function SendCandidateEmail({ applicationId, templates, hasEmail }: { app
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex min-w-48 flex-1 flex-col gap-1.5">
           <Label htmlFor="templateId">{t("email.template")}</Label>
-          <select id="templateId" name="templateId" required disabled={!hasEmail} className="h-9 w-full rounded-md border bg-transparent px-3 text-sm">
+          <Select id="templateId" name="templateId" required disabled={!hasEmail}>
             {templates.map((template) => (
               <option key={template.id} value={template.id}>
                 {template.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="locale">{t("email.language")}</Label>
-          <select id="locale" name="locale" defaultValue="vi" disabled={!hasEmail} className="h-9 rounded-md border bg-transparent px-3 text-sm">
+          <Select id="locale" name="locale" defaultValue="vi" disabled={!hasEmail} className="w-auto">
             <option value="vi">Tiếng Việt</option>
             <option value="en">English</option>
-          </select>
+          </Select>
         </div>
         <Button type="submit" size="sm" disabled={form.pending || !hasEmail}>
           {t("email.send")}

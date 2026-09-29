@@ -11,6 +11,10 @@
     "light": "Sáng",
     "dark": "Tối"
   },
+  "controls": {
+    "search": "Tìm kiếm",
+    "noResults": "Không có kết quả phù hợp"
+  },
   "signIn": {
     "title": "Đăng nhập",
     "subtitle": "Dùng tài khoản Google Workspace của công ty (suzu.vn hoặc suzu.group).",

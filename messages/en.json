@@ -11,6 +11,10 @@
     "light": "Light",
     "dark": "Dark"
   },
+  "controls": {
+    "search": "Search",
+    "noResults": "No matches"
+  },
   "signIn": {
     "title": "Sign in",
     "subtitle": "Use your company Google Workspace account (suzu.vn or suzu.group).",

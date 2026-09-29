@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Select } from "@/components/ui/select";
 import { statusTone } from "@/components/ui/tone";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -46,14 +47,14 @@ export default async function PayrollRunsPage({ searchParams }: PageProps<"/payr
       </header>
 
       <form className="toolbar" action="/payroll/runs">
-        <select name="entity" defaultValue={entityId ?? ""} className="h-9 rounded-md border bg-transparent px-2 text-sm">
+        <Select name="entity" defaultValue={entityId ?? ""} aria-label={t("salaries.allEntities")} className="w-auto min-w-40">
           <option value="">{t("salaries.allEntities")}</option>
           {entities.map((entity) => (
             <option key={entity.id} value={entity.id}>
               {entity.code}
             </option>
           ))}
-        </select>
+        </Select>
         <input name="month" defaultValue={month ?? ""} placeholder="2026-08" pattern="\d{4}-\d{2}" className="h-9 w-28 rounded-md border bg-transparent px-3 text-sm" />
         <button type="submit" className="h-9 rounded-md border px-3 text-sm hover:bg-muted">
           {t("salaries.filter")}

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
 import { CONSENT_VERSION, PUBLIC_LIMITS } from "@/modules/recruit/enums";
 import { findPublicOpening, issueFormToken, MAX_CV_BYTES } from "@/modules/recruit/public";
@@ -143,14 +144,14 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
                 {question.required ? " *" : ""}
               </Label>
               {question.kind === "choice" ? (
-                <select id={`answers.${question.key}`} name={`answers.${question.key}`} required={question.required} defaultValue="" className="h-9 w-full rounded-md border bg-transparent px-3 text-sm">
+                <Select id={`answers.${question.key}`} name={`answers.${question.key}`} required={question.required} defaultValue="">
                   <option value="">—</option>
                   {question.choices.map((choice) => (
                     <option key={choice} value={choice}>
                       {choice}
                     </option>
                   ))}
-                </select>
+                </Select>
               ) : question.kind === "long_text" ? (
                 <textarea id={`answers.${question.key}`} name={`answers.${question.key}`} rows={4} required={question.required} maxLength={PUBLIC_LIMITS.answer} className="w-full rounded-md border bg-transparent px-3 py-2 text-sm" />
               ) : (

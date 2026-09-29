@@ -40,22 +40,24 @@ export const APP_SURFACE = "app";
 type Surface = { prefix: string; name: string; namespaces: readonly string[]; exact?: boolean };
 
 /** The public site: what the product is, and the policies Google's OAuth review reads. */
-const SITE_NAMESPACES = ["app", "site", "legal", "theme"] as const;
+const SITE_NAMESPACES = ["app", "site", "legal", "theme", "controls"] as const;
 
 /**
  * The pages a stranger may open, with the words each one needs. A namespace can be a path
  * (`recruit.careers`), which is how the careers pages get their own words without the rest of
- * recruitment — pipelines, candidates, scorecards — going with them.
+ * recruitment — pipelines, candidates, scorecards — going with them. Every one also carries
+ * `theme` and `controls`: the theme switch, and the few words inside a select (its search box,
+ * "no matches").
  */
 export const PUBLIC_SURFACES: readonly Surface[] = [
   /** The client's review link (D24, FR-PJM-51a), unauthenticated by design. */
-  { prefix: "/preview", name: "preview", namespaces: ["preview", "theme"] },
+  { prefix: "/preview", name: "preview", namespaces: ["preview", "theme", "controls"] },
   /** The careers page and the take-home brief (FR-REC-03). */
-  { prefix: "/careers", name: "careers", namespaces: ["recruit.careers", "recruit.assignment", "theme"] },
+  { prefix: "/careers", name: "careers", namespaces: ["recruit.careers", "recruit.assignment", "theme", "controls"] },
   /** The public domain's own home page: the company, not the app (`src/lib/site-routing.ts`). */
-  { prefix: "/portfolio", name: "portfolio", namespaces: ["portfolio", "theme"] },
+  { prefix: "/portfolio", name: "portfolio", namespaces: ["portfolio", "theme", "controls"] },
   /** Nobody is signed in here either, by definition. */
-  { prefix: "/sign-in", name: "signIn", namespaces: ["app", "signIn", "theme"] },
+  { prefix: "/sign-in", name: "signIn", namespaces: ["app", "signIn", "theme", "controls"] },
   /** The home page a signed-out visitor sees; a signed-in one is sent on to the app. */
   { prefix: "/", exact: true, name: "site", namespaces: SITE_NAMESPACES },
   { prefix: "/privacy", name: "site", namespaces: SITE_NAMESPACES },

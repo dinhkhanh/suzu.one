@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { type DragEvent, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { moveApplicationAction, rejectApplicationAction } from "../actions";
 import { REJECTION_REASONS } from "../enums";
 
@@ -66,14 +67,13 @@ export function PipelineBoard({ stages, cards }: { stages: BoardStage[]; cards: 
       {selected.size > 0 ? (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2 text-sm">
           <span className="font-medium">{t("board.selected", { count: selected.size })}</span>
-          <select
+          <Select
             aria-label={t("board.moveTo")}
-            defaultValue=""
+            value=""
             disabled={pending}
-            className="h-8 rounded-md border bg-background px-2 text-sm"
+            className="h-8 w-auto"
             onChange={(event) => {
               if (event.target.value) moveTo(event.target.value, [...selected]);
-              event.target.value = "";
             }}
           >
             <option value="">{t("board.moveTo")}</option>
@@ -82,15 +82,14 @@ export function PipelineBoard({ stages, cards }: { stages: BoardStage[]; cards: 
                 {stage.name}
               </option>
             ))}
-          </select>
-          <select
+          </Select>
+          <Select
             aria-label={t("board.rejectWith")}
-            defaultValue=""
+            value=""
             disabled={pending}
-            className="h-8 rounded-md border bg-background px-2 text-sm"
+            className="h-8 w-auto"
             onChange={(event) => {
               if (event.target.value) rejectSelected(event.target.value);
-              event.target.value = "";
             }}
           >
             <option value="">{t("board.rejectWith")}</option>
@@ -99,7 +98,7 @@ export function PipelineBoard({ stages, cards }: { stages: BoardStage[]; cards: 
                 {t(`rejection.${reason}` as "rejection.other")}
               </option>
             ))}
-          </select>
+          </Select>
           <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => setSelected(new Set())}>
             {t("board.clear")}
           </Button>

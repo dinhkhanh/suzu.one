@@ -8,6 +8,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { saveRecruitEmailTemplateAction } from "../actions";
 import { RECRUIT_EMAIL_KINDS, RECRUIT_EMAIL_PLACEHOLDERS } from "../enums";
 
@@ -31,13 +32,13 @@ export function EmailTemplateForm({ template }: { template: EmailTemplateDraft }
             <Input id="name" name="name" defaultValue={template?.name ?? ""} required />
           </Field>
           <Field name="kind" label={t("form.kind")}>
-            <select id="kind" name="kind" defaultValue={template?.kind ?? "general"} className="h-9 w-full rounded-md border bg-transparent px-3 text-sm">
+            <Select id="kind" name="kind" defaultValue={template?.kind ?? "general"}>
               {RECRUIT_EMAIL_KINDS.map((kind) => (
                 <option key={kind} value={kind}>
                   {t(`emailKind.${kind}` as "emailKind.general")}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
         </div>
 

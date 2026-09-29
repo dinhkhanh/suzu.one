@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -37,14 +38,14 @@ export default async function SalariesPage({ searchParams }: PageProps<"/payroll
       </header>
       <form className="toolbar" action="/payroll/salaries">
         <input name="q" defaultValue={search ?? ""} placeholder={t("salaries.search")} className="h-9 rounded-md border bg-transparent px-3 text-sm" />
-        <select name="entity" defaultValue={entityId ?? ""} className="h-9 rounded-md border bg-transparent px-2 text-sm">
+        <Select name="entity" defaultValue={entityId ?? ""} aria-label={t("salaries.allEntities")} className="w-auto min-w-40">
           <option value="">{t("salaries.allEntities")}</option>
           {entities.map((entity) => (
             <option key={entity.id} value={entity.id}>
               {entity.code}
             </option>
           ))}
-        </select>
+        </Select>
         <button type="submit" className="h-9 rounded-md border px-3 text-sm hover:bg-muted">
           {t("salaries.filter")}
         </button>

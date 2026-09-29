@@ -40,8 +40,9 @@ import catalogue from "../messages/vi.json";
 /** The namespaces nothing outside the company may ever be handed. */
 const INTERNAL = ["payroll", "people", "rbac", "roles", "audit", "work", "projects", "daily", "leave", "attendance", "assets", "performance", "recruit"] as const;
 
-/** The one namespace every public page carries besides its own: the three words of the theme switch. */
+/** The namespaces every public page carries besides its own: the theme switch, and the words inside a select. */
 const THEME = "theme";
+const CONTROLS = "controls";
 
 /** The messages the real request config returns for a request the proxy marked `surface`. */
 async function messagesFor(surface: string | null, session = true): Promise<Record<string, unknown>> {
@@ -124,7 +125,7 @@ describe("which surface a path is", () => {
 describe("which words a request is handed", () => {
   it("gives a client on a review link the review page's namespace and nothing else", async () => {
     const messages = await messagesFor("preview");
-    expect(Object.keys(messages)).toEqual(["preview", THEME]);
+    expect(Object.keys(messages)).toEqual(["preview", THEME, CONTROLS]);
     for (const namespace of INTERNAL) expect(messages[namespace], namespace).toBeUndefined();
     // Not a word of the compensation screens travels with it, at any depth.
     expect(JSON.stringify(messages)).not.toContain(JSON.stringify(catalogue.payroll).slice(0, 120));
@@ -134,20 +135,20 @@ describe("which words a request is handed", () => {
 
   it("gives a candidate the careers pages' words, without the rest of recruitment", async () => {
     const messages = await messagesFor("careers");
-    expect(Object.keys(messages)).toEqual(["recruit", THEME]);
+    expect(Object.keys(messages)).toEqual(["recruit", THEME, CONTROLS]);
     expect(Object.keys(messages.recruit as object).sort()).toEqual(["assignment", "careers"]);
   });
 
   it("gives a visitor to the public site its own words and the policies, nothing internal", async () => {
     const messages = await messagesFor("site", false);
-    expect(Object.keys(messages).sort()).toEqual(["app", "legal", "site", THEME]);
+    expect(Object.keys(messages).sort()).toEqual(["app", CONTROLS, "legal", "site", THEME]);
     for (const namespace of INTERNAL) expect(messages[namespace], namespace).toBeUndefined();
     expect(messages.legal).toEqual(catalogue.legal);
   });
 
   it("gives a visitor to the public domain's home page its words and nothing of the app", async () => {
     const messages = await messagesFor("portfolio", false);
-    expect(Object.keys(messages).sort()).toEqual(["portfolio", THEME]);
+    expect(Object.keys(messages).sort()).toEqual([CONTROLS, "portfolio", THEME]);
     expect(messages.portfolio).toEqual(catalogue.portfolio);
   });
 
@@ -166,7 +167,7 @@ describe("which words a request is handed", () => {
     // words wait for a session that exists.
     const messages = await messagesFor("app", false);
     for (const namespace of INTERNAL.filter((name) => name !== "recruit")) expect(messages[namespace], namespace).toBeUndefined();
-    expect(Object.keys(messages).sort()).toEqual(["app", "legal", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
+    expect(Object.keys(messages).sort()).toEqual(["app", CONTROLS, "legal", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
     // Recruitment only as far as the careers pages: no pipelines, no candidates, no scorecards.
     expect(Object.keys(messages.recruit as object).sort()).toEqual(["assignment", "careers"]);
     // And the page they were on is a redirect to sign-in, whose words are among the ones left.
@@ -177,7 +178,7 @@ describe("which words a request is handed", () => {
     for (const marker of [null, "", "unknown", "APP", "app-ish"]) {
       const messages = await messagesFor(marker);
       expect(JSON.stringify(messages), String(marker)).not.toContain('"payroll":');
-      expect(Object.keys(messages).sort(), String(marker)).toEqual(["app", "legal", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
+      expect(Object.keys(messages).sort(), String(marker)).toEqual(["app", CONTROLS, "legal", "portfolio", "preview", "recruit", "signIn", "site", THEME]);
     }
   });
 
@@ -186,7 +187,7 @@ describe("which words a request is handed", () => {
     // only value that unlocks everything is the one the proxy writes for its own pages.
     expect(SURFACE_HEADER).toBe("x-surface");
     expect(namespacesForSurface("app")).toBeNull();
-    expect(namespacesForSurface(surfaceForPath("/preview/x.png"))).toEqual(["preview", THEME]);
+    expect(namespacesForSurface(surfaceForPath("/preview/x.png"))).toEqual(["preview", THEME, CONTROLS]);
   });
 });
 

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { MultiSelect, Select } from "@/components/ui/select";
 import { addDependencyAction, createTaskAction, deleteTaskAction, removeDependencyAction, updateTaskAction } from "../actions";
 import { CHANNELS, CONTENT_FORMATS, PRIORITIES } from "../enums";
 import { useHandoffGate } from "./handoff";
@@ -408,13 +408,13 @@ export function TaskDetailView({ task, options, subtasks, linked, canEdit, canDe
           ) : null}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="collaboratorIds">{t("fields.collaborators")}</Label>
-            <select id="collaboratorIds" name="collaboratorIds" multiple form="task-fields" defaultValue={task.collaboratorIds} disabled={!canEdit} className="h-28 rounded-lg border border-input bg-transparent px-2 py-1 text-sm dark:bg-input/30">
+            <MultiSelect id="collaboratorIds" name="collaboratorIds" form="task-fields" defaultValue={task.collaboratorIds} disabled={!canEdit}>
               {options.people.map((person) => (
                 <option key={person.id} value={person.id}>
                   {person.fullName}
                 </option>
               ))}
-            </select>
+            </MultiSelect>
           </div>
         {canEdit ? (
           <div className="flex items-center gap-3">

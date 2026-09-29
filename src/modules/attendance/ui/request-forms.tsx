@@ -8,12 +8,12 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { approveMonthsAction, beginEvidenceAction, cancelAttendanceRequestAction, completeEvidenceAction, confirmMonthAction, confirmWorkedMinutesAction, createAdjustmentAction, evidenceLinkAction, lockPeriodAction, nudgeAction, remindToConfirmAction, reopenMonthAction, resubmitAttendanceRequestAction, submitAttendanceRequestAction, voidAdjustmentAction } from "../request-actions";
 
 const ERRORS = "attendance.requests.errors";
-const SELECT = "h-9 rounded-md border border-input bg-transparent px-3 text-sm";
 type RequestType = "attendance_correction" | "remote_work" | "overtime" | "holiday_work";
 export type RequestDefaults = Partial<Record<"startDate" | "endDate" | "reason" | "cause" | "inTime" | "outTime" | "kind" | "portion" | "locationName" | "latitude" | "longitude" | "radiusM" | "from" | "to" | "compensation", string>> & { outNextDay?: boolean };
 
@@ -74,13 +74,13 @@ export function AttendanceRequestForm({ type, personId, defaults, resubmit }: { 
               <input type="checkbox" name="outNextDay" defaultChecked={defaults.outNextDay} /> {t("fields.outNextDay")}
             </label>
             <Field name="cause" label={t("fields.cause")}>
-              <select id="cause" name="cause" className={SELECT} defaultValue={defaults.cause ?? "forgot"}>
+              <Select id="cause" name="cause" defaultValue={defaults.cause ?? "forgot"}>
                 {(["forgot", "device_error", "other"] as const).map((value) => (
                   <option key={value} value={value}>
                     {t(`causes.${value}`)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field name="evidence" label={t("fields.evidence")}>
               {evidence ? <p className="text-sm">{evidence.fileName}</p> : <Input id="evidence" type="file" accept=".pdf,.jpg,.jpeg,.png" disabled={uploading} onChange={(event) => upload(event.target.files?.[0])} />}
@@ -92,22 +92,22 @@ export function AttendanceRequestForm({ type, personId, defaults, resubmit }: { 
           <>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field name="kind" label={t("fields.kind")}>
-                <select id="kind" name="kind" className={SELECT} value={kind} onChange={(event) => setKind(event.target.value)}>
+                <Select id="kind" name="kind" value={kind} onChange={(event) => setKind(event.target.value)}>
                   {(["wfh", "off_site", "business_trip"] as const).map((value) => (
                     <option key={value} value={value}>
                       {t(`kinds.${value}`)}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
               <Field name="portion" label={t("fields.portion")}>
-                <select id="portion" name="portion" className={SELECT} defaultValue={defaults.portion ?? "full"}>
+                <Select id="portion" name="portion" defaultValue={defaults.portion ?? "full"}>
                   {(["full", "am", "pm"] as const).map((value) => (
                     <option key={value} value={value}>
                       {t(`portions.${value}`)}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
             </div>
             {kind === "wfh" ? null : (
@@ -143,10 +143,10 @@ export function AttendanceRequestForm({ type, personId, defaults, resubmit }: { 
               </Field>
             </div>
             <Field name="compensation" label={t("fields.compensation")}>
-              <select id="compensation" name="compensation" className={SELECT} defaultValue={defaults.compensation ?? "pay"}>
+              <Select id="compensation" name="compensation" defaultValue={defaults.compensation ?? "pay"}>
                 <option value="pay">{t("compensation.pay")}</option>
                 <option value="time_off">{t("compensation.time_off")}</option>
-              </select>
+              </Select>
             </Field>
           </>
         ) : null}
@@ -327,13 +327,13 @@ export function AdjustmentForm({ month, people }: { month: string; people: { id:
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field name="personId" label={t("adjust.person")}>
-            <select id="personId" name="personId" className={SELECT} required>
+            <Select id="personId" name="personId" required>
               {people.map((person) => (
                 <option key={person.id} value={person.id}>
                   {person.fullName}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
           <Field name="date" label={t("adjust.date")}>
             <Input id="date" name="date" type="date" min={`${month}-01`} max={`${month}-31`} />
