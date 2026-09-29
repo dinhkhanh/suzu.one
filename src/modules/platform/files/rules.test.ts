@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acceptAttributeFor, checkUpload, cleanFileName, matchesSignature, MAX_FILE_BYTES, MAX_VIDEO_BYTES, maxBytesFor } from "./rules";
+import { acceptAttributeFor, checkUpload, cleanFileName, matchesSignature, MAX_FILE_BYTES, MAX_PHOTO_BYTES, MAX_VIDEO_BYTES, maxBytesFor, PHOTO_OWNER_TYPE } from "./rules";
 
 const bytes = (...values: number[]) => new Uint8Array(values);
 
@@ -76,5 +76,20 @@ describe("video (FR-PJM-52)", () => {
     expect(matchesSignature("cut.mp4", oldMov, "work_task")).toBe(false);
     expect(matchesSignature("cut.mp4", bytes(0x4d, 0x5a, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00), "work_task")).toBe(false);
     expect(matchesSignature("cut.mp4", mp4)).toBe(false);
+  });
+});
+
+describe("profile pictures (FR-CHR-01)", () => {
+  it("are JPG, PNG or WebP pictures under the photo cap", () => {
+    expect(checkUpload({ fileName: "photo.jpg", sizeBytes: 400 * 1024 }, PHOTO_OWNER_TYPE)).toEqual({ ok: true, fileName: "photo.jpg", contentType: "image/jpeg" });
+    expect(checkUpload({ fileName: "me.webp", sizeBytes: MAX_PHOTO_BYTES }, PHOTO_OWNER_TYPE)).toMatchObject({ ok: true, contentType: "image/webp" });
+    expect(checkUpload({ fileName: "photo.jpg", sizeBytes: MAX_PHOTO_BYTES + 1 }, PHOTO_OWNER_TYPE)).toEqual({ ok: false, problem: "file_too_large" });
+    for (const fileName of ["cv.pdf", "list.csv", "clip.mp4", "logo.svg"]) {
+      expect(checkUpload({ fileName, sizeBytes: 1000 }, PHOTO_OWNER_TYPE), fileName).toEqual({ ok: false, problem: "file_type_not_allowed" });
+    }
+    expect(maxBytesFor("photo.png", PHOTO_OWNER_TYPE)).toBe(MAX_PHOTO_BYTES);
+    expect(acceptAttributeFor(PHOTO_OWNER_TYPE)).toBe(".jpg,.jpeg,.png,.webp");
+    expect(matchesSignature("photo.jpg", bytes(0xff, 0xd8, 0xff, 0xe0), PHOTO_OWNER_TYPE)).toBe(true);
+    expect(matchesSignature("photo.jpg", bytes(0x25, 0x50, 0x44, 0x46), PHOTO_OWNER_TYPE)).toBe(false);
   });
 });

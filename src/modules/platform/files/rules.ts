@@ -57,7 +57,19 @@ export const VIDEO_FILE_TYPES: readonly FileType[] = [
  */
 export const VIDEO_OWNER_TYPES: readonly string[] = ["work_task"];
 
-const typesFor = (ownerType?: string): readonly FileType[] => (ownerType && VIDEO_OWNER_TYPES.includes(ownerType) ? [...ALLOWED_FILE_TYPES, ...VIDEO_FILE_TYPES] : ALLOWED_FILE_TYPES);
+/**
+ * A person's profile picture (FR-CHR-01): shown on every screen that lists them, so pictures only.
+ * The browser crops and shrinks it before upload (`PHOTO_EDGE_PX`); the cap is a guard on what is
+ * stored, not on what the person may pick from their phone.
+ */
+export const PHOTO_OWNER_TYPE = "person_photo";
+export const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+/** The side of the square picture the browser uploads. */
+export const PHOTO_EDGE_PX = 1024;
+const PHOTO_FILE_TYPES: readonly FileType[] = ALLOWED_FILE_TYPES.filter((type) => type.contentType.startsWith("image/")).map((type) => ({ ...type, maxBytes: MAX_PHOTO_BYTES }));
+
+const typesFor = (ownerType?: string): readonly FileType[] =>
+  ownerType === PHOTO_OWNER_TYPE ? PHOTO_FILE_TYPES : ownerType && VIDEO_OWNER_TYPES.includes(ownerType) ? [...ALLOWED_FILE_TYPES, ...VIDEO_FILE_TYPES] : ALLOWED_FILE_TYPES;
 
 /** The `accept` attribute of a file input for this owner's files. */
 export const acceptAttributeFor = (ownerType?: string): string => typesFor(ownerType).flatMap((type) => type.extensions.map((extension) => `.${extension}`)).join(",");

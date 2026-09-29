@@ -146,6 +146,20 @@ export async function wouldCreateReportingLoop(tx: Tx, personId: string, manager
   return false;
 }
 
+/**
+ * Puts up a profile picture, or takes it down (null). Returns the picture it replaced, which the
+ * caller retires once this has committed; undefined when there is no such person.
+ */
+export async function setPersonPhoto(personId: string, photoFileId: string | null): Promise<{ previousFileId: string | null } | undefined> {
+  return db().transaction(async (tx) => {
+    const [before] = await tx.select({ photoFileId: schema.person.photoFileId }).from(schema.person).where(eq(schema.person.id, personId)).for("update");
+    if (!before) return undefined;
+    const rows = await tx.update(schema.person).set({ photoFileId, updatedAt: new Date() }).where(eq(schema.person.id, personId)).returning(identity());
+    await invalidatePeople(rows);
+    return { previousFileId: before.photoFileId };
+  });
+}
+
 /** The person confirmed the first-sign-in guide. The first confirmation stands; returns whether this one was it. */
 export async function completeWelcome(personId: string): Promise<boolean> {
   const rows = await db()

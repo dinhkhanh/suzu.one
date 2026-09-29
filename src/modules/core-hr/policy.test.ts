@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
-import { canBrowsePeople, canDecideProfileChange, canEditPerson, canFilterByPersonalFacts, canHireInto, canManageRecords, canReadRecords, canReassign } from "./policy";
+import { canBrowsePeople, canChangePhoto, canDecideProfileChange, canEditPerson, canFilterByPersonalFacts, canHireInto, canManageRecords, canReadRecords, canReassign, canSeePhoto } from "./policy";
 
 const ENTITY_A = "entity-a";
 const ENTITY_B = "entity-b";
@@ -95,5 +95,26 @@ describe("core HR policy", () => {
       expect(canDecideProfileChange({ ...hrOfA, personId: "someone" }, someone, { hasRestricted })).toBe(false);
       expect(canDecideProfileChange(owner, null, { hasRestricted })).toBe(false);
     }
+  });
+
+  it("lets the person and HR over them change the profile picture — not the line manager", () => {
+    expect(canChangePhoto(principal([], { personId: "someone" }), someone)).toBe(true);
+    expect(canChangePhoto(hrOfA, someone)).toBe(true);
+    expect(canChangePhoto(hrOfA, { ...someone, entityId: ENTITY_B })).toBe(false);
+    expect(canChangePhoto(lineManager, someone)).toBe(false);
+    expect(canChangePhoto(principal([]), someone)).toBe(false);
+    expect(canChangePhoto(owner, null)).toBe(false);
+  });
+
+  it("shows the picture to whoever sees the directory entry", () => {
+    expect(canSeePhoto(principal([]), someone, "active")).toBe(true);
+    // Collaborators have no directory.
+    expect(canSeePhoto(principal([], { workforceType: "collaborator" }), someone, "active")).toBe(false);
+    // Former and future colleagues: personal-tier readers only.
+    expect(canSeePhoto(principal([]), someone, "offboarded")).toBe(false);
+    expect(canSeePhoto(lineManager, someone, "offboarded")).toBe(true);
+    expect(canSeePhoto(hrOfA, someone, "preboarding")).toBe(true);
+    expect(canSeePhoto(principal([], { personId: "someone" }), someone, "offboarded")).toBe(true);
+    expect(canSeePhoto(owner, null, "active")).toBe(false);
   });
 });

@@ -7,6 +7,7 @@ import { canRunRecruitment } from "@/modules/recruit/policy";
 import { SignOutButton } from "@/components/shell/sign-out-button";
 import { ThemeSwitch } from "@/components/shell/theme-switch";
 import { peopleModuleOpen } from "@/modules/core-hr/service";
+import { photoUrlOf } from "@/modules/core-hr/ui/person-avatar";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ImpersonationBanner } from "@/modules/platform/auth/ui/impersonation";
 import { vapidPublicKey } from "@/modules/platform/notifications/push";
@@ -67,7 +68,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         pinned={pinned}
         main={main}
         admin={admin}
-        user={{ name: user.person.fullName, email: user.email }}
+        user={{ name: user.person.fullName, email: user.email, photoUrl: photoUrlOf(user.person) }}
         // Feedback on the app, one click from every page while it is new to everybody.
         headerEnd={<FeedbackButton />}
         // Seeing the app as somebody else (FR-PLT-40) is said on every page, with the way back.

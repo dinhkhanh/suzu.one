@@ -109,6 +109,14 @@ export async function createSignedDownloadUrl(objectPath: string, expiresInSecon
   return signed.url;
 }
 
+/** The object's bytes as a stream, for the server to pass on; null when there is no such object. */
+export async function readObject(objectPath: string): Promise<ReadableStream<Uint8Array> | null> {
+  const response = await call(objectPath);
+  if (response.status === 404) return null;
+  if (!response.ok) await fail(response, "read");
+  return response.body;
+}
+
 export async function removeObject(objectPath: string): Promise<void> {
   const response = await call(objectPath, { method: "DELETE" });
   if (!response.ok && response.status !== 404) await fail(response, "remove");

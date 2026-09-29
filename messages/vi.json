@@ -320,7 +320,14 @@
       "transfer_same_entity": "Người này đã làm việc tại pháp nhân đó.",
       "transfer_before_start": "Ngày đầu tiên ở pháp nhân mới phải sau ngày bắt đầu của quan hệ lao động hiện tại.",
       "transfer_in_future": "Hãy ghi nhận việc chuyển vào hoặc sau ngày đầu tiên; không thể đặt ngày trước.",
-      "last_owner": "Không thể kết thúc quyền của Owner cuối cùng."
+      "last_owner": "Không thể kết thúc quyền của Owner cuối cùng.",
+      "photo_unreadable": "Không mở được ảnh này. Hãy dùng ảnh JPG, PNG hoặc WebP.",
+      "file_too_large": "Ảnh lớn hơn 50 MB.",
+      "file_type_not_allowed": "Hãy dùng ảnh JPG, PNG hoặc WebP.",
+      "file_content_mismatch": "Nội dung tệp không phải là ảnh.",
+      "file_upload_failed": "Tải lên chưa tới nơi lưu trữ. Vui lòng thử lại.",
+      "file_storage_limit": "Nơi lưu trữ từ chối ảnh vì quá lớn.",
+      "file_not_uploaded": "Ảnh chưa được tải lên. Vui lòng thử lại."
     },
     "orgChart": {
       "title": "Sơ đồ tổ chức",
@@ -350,6 +357,14 @@
         "personal_email": "trùng email cá nhân",
         "phone": "trùng số điện thoại"
       }
+    },
+    "photo": {
+      "label": "Ảnh đại diện",
+      "add": "Thêm ảnh",
+      "change": "Đổi ảnh",
+      "remove": "Gỡ ảnh",
+      "saving": "Đang tải lên…",
+      "hint": "JPG, PNG hoặc WebP, tối đa 50 MB. Ảnh được cắt vuông và thu nhỏ trước khi tải lên."
     }
   },
   "records": {

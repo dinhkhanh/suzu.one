@@ -95,6 +95,7 @@ export type PeopleListRow = {
   id: string;
   fullName: string;
   workEmail: string | null;
+  photoFileId: string | null;
   employeeCode: string | null;
   entityName: string | null;
   departmentName: string | null;
@@ -139,6 +140,7 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
         id: schema.person.id,
         fullName: schema.person.fullName,
         workEmail: schema.person.workEmail,
+        photoFileId: schema.person.photoFileId,
         status: schema.person.status,
         employeeCode: e.employeeCode,
         entityId: e.entityId,
@@ -178,6 +180,7 @@ export async function listPeople(principal: Principal, filters: PeopleFilters, o
         id: row.id,
         fullName: row.fullName,
         workEmail: row.workEmail,
+        photoFileId: row.photoFileId,
         employeeCode: row.employeeCode,
         entityName: row.entityName,
         departmentName: row.departmentName,
@@ -299,6 +302,8 @@ export type PersonView = {
   id: string;
   fullName: string;
   workEmail: string | null;
+  /** The profile picture (directory tier, FR-CHR-01). */
+  photoFileId: string | null;
   employeeCode: string | null;
   entityId: string | null;
   entityName: string | null;
@@ -385,6 +390,8 @@ export async function getPersonView(principal: Principal, personId: string): Pro
     id: person.id,
     fullName: person.fullName,
     workEmail: person.workEmail,
+    // A row cached before the column existed has none.
+    photoFileId: person.photoFileId ?? null,
     employeeCode: employment?.row.employeeCode ?? null,
     entityId: employment?.row.entityId ?? null,
     entityName: employment?.entityName ?? null,

@@ -708,6 +708,13 @@
       "when": 1790705537049,
       "tag": "0100_kb_pgvector",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1790709932179,
+      "tag": "0101_person_photo",
+      "breakpoints": true
     }
   ]
 }

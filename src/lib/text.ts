@@ -9,3 +9,15 @@ export function toSearchKey(value: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+// Two letters for a picture-less avatar. Vietnamese names end with the given name, so the last two
+// words: "Nguyễn Thị Đào" → "TĐ".
+export function initialsOf(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(-2)
+    .map((part) => part[0] ?? "")
+    .join("")
+    .toUpperCase();
+}

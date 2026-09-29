@@ -42,6 +42,12 @@ export const person = pgTable(
     teamId: uuid("team_id").references(() => orgUnit.id),
     managerId: uuid("manager_id").references((): AnyPgColumn => person.id),
     /**
+     * The profile picture (FR-CHR-01): a `stored_file` of owner type `person_photo`, directory tier.
+     * No foreign key: `stored_file` already references `person`, and the schema files would import
+     * each other. Only `setPersonPhoto` writes it.
+     */
+    photoFileId: uuid("photo_file_id"),
+    /**
      * When the person confirmed they had been through the first-sign-in guide. Until then the
      * guide opens at every sign-in; putting it off only lasts for the session.
      */

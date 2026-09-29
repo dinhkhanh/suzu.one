@@ -6,7 +6,7 @@ import { db, schema } from "@/lib/db";
 import { recordAudit } from "../audit/service";
 import { type Tier, tierRank } from "../rbac/roles";
 import { checkUpload, matchesSignature, MAX_FILE_BYTES, maxBytesFor } from "./rules";
-import { createSignedDownloadUrl, createSignedUploadUrl, currentBucket, finalizeObject, inspectObject, putObject, removeObject } from "./storage";
+import { createSignedDownloadUrl, createSignedUploadUrl, currentBucket, finalizeObject, inspectObject, putObject, readObject, removeObject } from "./storage";
 
 // This service checks *what* is uploaded. *Who* may upload to or open the files of a record is
 // decided by the module that owns the record, before it calls in here (FR-PLT-32).
@@ -145,6 +145,16 @@ export async function createDownloadLink(file: StoredFileRow, actor: Actor, requ
     await recordAudit({ action: "file.read", actor: { personId: actor.personId, email: actor.email }, request, resource: { type: file.ownerType, id: file.ownerId, entityId: file.entityId }, summary: file.fileName });
   }
   return url;
+}
+
+/**
+ * The bytes of a directory-tier file for the app to serve itself — a profile picture, shown on
+ * many screens at once, where a signed link per picture per page would be a round trip each.
+ * Never for anything above the directory tier: those are opened through `createDownloadLink`.
+ */
+export async function readPublicInternalFile(file: StoredFileRow): Promise<ReadableStream<Uint8Array> | null> {
+  if (file.tier !== "public_internal") throw new Error("only directory-tier files are served by the app");
+  return readObject(file.objectPath);
 }
 
 /** Hides the file at once; the bytes go when the retention process purges them (DR-03). */

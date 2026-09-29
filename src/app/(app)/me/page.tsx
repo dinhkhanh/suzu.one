@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { listProfileChanges } from "@/modules/core-hr/change-requests";
 import { getPersonView } from "@/modules/core-hr/service";
 import { ChangeRequestForm } from "@/modules/core-hr/ui/change-request-forms";
+import { PersonAvatar } from "@/modules/core-hr/ui/person-avatar";
+import { PhotoEditor } from "@/modules/core-hr/ui/photo-editor";
 import { ResignationForm } from "@/modules/core-hr/ui/lifecycle-forms";
 import { PersonEquipment } from "@/modules/assets/ui/person-equipment";
 import { LifecycleSection } from "@/modules/core-hr/ui/lifecycle-section";
@@ -25,7 +27,8 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-// Self-service (FR-CHR-12): everything the company holds about the signed-in person, read-only.
+// Self-service (FR-CHR-12): everything the company holds about the signed-in person, read-only
+// but for the profile picture.
 // Not behind the People feature flag — seeing your own data does not wait for a pilot.
 export default async function MyProfilePage() {
   const user = await requireUser();
@@ -43,9 +46,14 @@ export default async function MyProfilePage() {
 
   return (
     <div className="flex max-w-5xl flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <h1>{person.fullName}</h1>
-        <p className="text-sm text-muted-foreground">{[person.employeeCode, person.current?.positionName, person.current?.departmentName, person.entityName].filter(Boolean).join(" · ")}</p>
+      <header className="flex items-center gap-4">
+        <PersonAvatar person={person} className="size-20 text-xl" />
+        <div className="flex min-w-0 flex-col gap-1">
+          <h1>{person.fullName}</h1>
+          <p className="text-sm text-muted-foreground">{[person.employeeCode, person.current?.positionName, person.current?.departmentName, person.entityName].filter(Boolean).join(" · ")}</p>
+          {/* Your own picture is yours to change, no change request (canChangePhoto). */}
+          <PhotoEditor person={person} />
+        </div>
       </header>
 
       <section className="flex flex-col gap-3">

@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PERSON_STATUSES, WORKFORCE_TYPES } from "@/modules/core-hr/enums";
 import { canBrowsePeople, canFilterByPersonalFacts } from "@/modules/core-hr/policy";
 import { listPeople, listSavedViews, type PeopleFilters, peopleModuleOpen } from "@/modules/core-hr/service";
+import { PersonAvatar } from "@/modules/core-hr/ui/person-avatar";
 import { SavedViews } from "@/modules/core-hr/ui/saved-views";
 import { exportPeopleAction } from "@/modules/core-hr/export-actions";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
@@ -156,10 +157,15 @@ export default async function PeoplePage(props: PageProps<"/people">) {
               <TableRow key={row.id}>
                 <TableCell className="font-mono text-xs">{row.employeeCode ?? "—"}</TableCell>
                 <TableCell>
-                  <Link href={`/people/${row.id}`} className="font-medium hover:underline">
-                    {row.fullName}
-                  </Link>
-                  <p className="text-xs text-muted-foreground">{row.workEmail ?? "—"}</p>
+                  <div className="flex items-center gap-2.5">
+                    <PersonAvatar person={row} />
+                    <div className="min-w-0">
+                      <Link href={`/people/${row.id}`} className="font-medium hover:underline">
+                        {row.fullName}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">{row.workEmail ?? "—"}</p>
+                    </div>
+                  </div>
                 </TableCell>
                 <TableCell>{row.positionName ?? "—"}</TableCell>
                 <TableCell>{row.departmentName ?? "—"}</TableCell>

@@ -54,3 +54,21 @@ export function canManageRecords(principal: Principal, person: PersonTarget | nu
 export function canDecideProfileChange(principal: Principal, person: PersonTarget | null, request: { hasRestricted: boolean }): boolean {
   return !!person && principal.personId !== person.personId && can(principal, "person:manage", person) && (!request.hasRestricted || canReadTier(principal, person, "restricted"));
 }
+
+/**
+ * The profile picture (FR-CHR-01): the person puts up their own, straight away — it is how
+ * colleagues recognise them, not a fact HR vouches for, so no change request — and HR with
+ * authority over them may put one up or take one down.
+ */
+export function canChangePhoto(principal: Principal, person: PersonTarget | null): boolean {
+  return !!person && (principal.personId === person.personId || can(principal, "person:manage", person));
+}
+
+/**
+ * Seeing the picture is seeing the directory entry (`getPersonView`): anyone who reads the person
+ * at all, but former and future colleagues only for those who read them at the personal tier.
+ */
+export function canSeePhoto(principal: Principal, person: PersonTarget | null, status: string): boolean {
+  if (!person) return false;
+  return status === "active" ? canReadTier(principal, person, "public_internal") : canReadTier(principal, person, "personal");
+}

@@ -11,6 +11,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useState, useSyncExternalStore } from "react";
 import { NavIcon } from "@/components/shell/nav-icons";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { openCommandPalette } from "@/components/shell/palette-bus";
 import {
@@ -19,6 +20,7 @@ import {
   subscribeCollapsed,
   writeCollapsed,
 } from "@/components/shell/sidebar-store";
+import { initialsOf } from "@/lib/text";
 import { cn } from "@/lib/utils";
 
 export type NavRow = {
@@ -44,7 +46,8 @@ type Props = {
   pinned: NavRow[];
   main: NavRow[];
   admin: NavRow[];
-  user: { name: string; email: string };
+  /** `photoUrl`: the profile picture, when the person has put one up. */
+  user: { name: string; email: string; photoUrl: string | null };
   footer: ReactNode;
   /** At the right end of the header on every page: the feedback button. */
   headerEnd?: ReactNode;
@@ -146,13 +149,6 @@ export function AppFrame({
   const rows = [...pinned, ...main, ...admin];
   const crumbs = crumbsFor(pathname, rows);
   const activeKey = crumbs.at(-1)?.key;
-  const initials = user.name
-    .trim()
-    .split(/\s+/)
-    .slice(-2)
-    .map((part) => part[0] ?? "")
-    .join("")
-    .toUpperCase();
 
   const group = (label: string, items: NavRow[]) =>
     items.length === 0 ? null : (
@@ -294,9 +290,12 @@ export function AppFrame({
             )}
           >
             <div className="flex items-center gap-2">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted text-[0.6875rem] font-semibold text-muted-foreground">
-                {initials}
-              </span>
+              <Avatar className="size-7 rounded-lg after:rounded-lg">
+                {user.photoUrl ? <AvatarImage src={user.photoUrl} alt={user.name} className="rounded-lg" /> : null}
+                <AvatarFallback className="rounded-lg text-[0.6875rem] font-semibold">
+                  {initialsOf(user.name)}
+                </AvatarFallback>
+              </Avatar>
               {collapsed ? null : (
                 <span className="flex min-w-0 flex-col">
                   <span className="truncate text-[0.8125rem] font-medium">
