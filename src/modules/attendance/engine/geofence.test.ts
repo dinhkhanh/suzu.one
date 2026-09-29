@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluatePunch, haversineM, ipAllowed, ipInCidr, locationProblems, parseCidr, parseIp, type WorkLocationRule } from "./geofence";
+import { allowlistHostnames, evaluatePunch, expandAllowlist, haversineM, ipAllowed, ipInCidr, isHostname, locationProblems, normaliseNetwork, parseCidr, parseIp, type WorkLocationRule } from "./geofence";
 
 // Bitexco tower and two points measured from it.
 const OFFICE = { latitude: 10.771595, longitude: 106.704758 };
@@ -49,6 +49,28 @@ describe("IP matching", () => {
   });
 });
 
+describe("networks named by DNS", () => {
+  it("tells a name from an address", () => {
+    for (const name of ["wan1.office.example.com", "Office.DuckDNS.org.", " suzu-hq.ddns.net ", "a.b"]) expect(isHostname(name)).toBe(true);
+    for (const bad of ["office", "203.0.113.5", "203.0.113", "-wan.example.com", "wan-.example.com", "wan_1.example.com", "wan..example.com", "https://wan.example.com", "*.example.com", `${"a".repeat(64)}.example.com`]) expect(isHostname(bad)).toBe(false);
+    expect(normaliseNetwork(" Office.DuckDNS.org. ")).toBe("office.duckdns.org");
+  });
+
+  it("lists each name once and leaves addresses alone", () => {
+    expect(allowlistHostnames(["203.0.113.0/24", "WAN1.office.example.com", "wan1.office.example.com.", "2001:db8::/32"])).toEqual(["wan1.office.example.com"]);
+    expect(allowlistHostnames(["203.0.113.0/24"])).toEqual([]);
+  });
+
+  it("swaps a name for what it resolved to, and a name that did not resolve for nothing", () => {
+    const resolved = new Map([["wan1.office.example.com", ["198.51.100.7", "2001:db8:7::1"]]]);
+    expect(expandAllowlist(["203.0.113.0/24", "WAN1.office.example.com", "wan2.office.example.com"], resolved)).toEqual(["203.0.113.0/24", "198.51.100.7", "2001:db8:7::1"]);
+    const named = office({ ipAllowlist: expandAllowlist(["wan1.office.example.com"], resolved), rule: "ip" });
+    expect(evaluatePunch({ locations: [named], position: null, ip: "198.51.100.7" }).outcome).toBe("accepted");
+    // Unexpanded, the name is not an address and lets nobody through.
+    expect(evaluatePunch({ locations: [office({ ipAllowlist: ["wan1.office.example.com"], rule: "ip" })], position: null, ip: "198.51.100.7" })).toMatchObject({ outcome: "flagged", flags: ["ip_not_allowed"] });
+  });
+});
+
 describe("locationProblems", () => {
   it("accepts usable locations", () => {
     expect(locationProblems(office())).toEqual([]);
@@ -60,6 +82,8 @@ describe("locationProblems", () => {
     expect(locationProblems(office({ latitude: 95 }))).toContain("location_position_invalid");
     expect(locationProblems(office({ radiusM: 0 }))).toContain("location_radius_invalid");
     expect(locationProblems(office({ ipAllowlist: ["10.0.0.0/40"] }))).toContain("location_ip_invalid");
+    expect(locationProblems(office({ ipAllowlist: ["wan_1.example.com"] }))).toContain("location_ip_invalid");
+    expect(locationProblems(office({ latitude: null, longitude: null, radiusM: null, ipAllowlist: ["wan1.office.example.com"], rule: "ip" }))).toEqual([]);
     expect(locationProblems(office({ latitude: null, longitude: null, radiusM: null, rule: "gps" }))).toEqual(["location_needs_position"]);
     expect(locationProblems(office({ ipAllowlist: [], rule: "gps_and_ip" }))).toEqual(["location_needs_ip"]);
     expect(locationProblems(office({ latitude: null, longitude: null, radiusM: null, ipAllowlist: [] }))).toEqual(["location_needs_rule"]);

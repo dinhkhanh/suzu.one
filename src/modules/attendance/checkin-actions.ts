@@ -73,8 +73,8 @@ const saveLocationPipeline = createAction({
     longitude: coordinate(180),
     radiusM: optional(z.coerce.number().int().min(10).max(50_000)),
     accuracyLimitM: z.coerce.number().int().min(10).max(5_000).default(100),
-    // One block per line or comma: "203.0.113.0/24".
-    ipAllowlist: z.preprocess((value) => (typeof value === "string" ? value.split(/[\s,;]+/).filter(Boolean) : value), z.array(z.string().max(60)).max(50).default([])),
+    // One entry per line or comma: a block ("203.0.113.0/24") or a DNS name ("wan1.office.example.com").
+    ipAllowlist: z.preprocess((value) => (typeof value === "string" ? value.split(/[\s,;]+/).filter(Boolean) : value), z.array(z.string().max(253)).max(50).default([])),
     rule: z.enum(["gps_or_ip", "gps", "ip", "gps_and_ip"]),
     mode: z.enum(["flag", "block"]),
     isActive: checkbox,

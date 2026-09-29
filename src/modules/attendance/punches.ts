@@ -9,8 +9,9 @@ import { db, schema, type Tx } from "@/lib/db";
 import { getLeaveOnDays } from "@/modules/leave/service";
 import { matchesReach, permissionReach, type Principal, tierReach } from "@/modules/platform/rbac/policy";
 import type { DayPlan } from "./engine/calendar";
-import { evaluatePunch, type Position, type PunchFlag, type WorkLocationRule } from "./engine/geofence";
+import { allowlistHostnames, evaluatePunch, expandAllowlist, type Position, type PunchFlag, type WorkLocationRule } from "./engine/geofence";
 import { listAllLocations } from "./locations";
+import { resolveNetworkNames } from "./network-names";
 import { anyReachSql } from "./people-sql";
 import { canSeePunchDetailOf } from "./policy";
 import { requestTimesheetRecompute } from "./recompute";
@@ -29,7 +30,7 @@ const OPEN_PUNCH_HOURS = 20;
 /** Vietnam has no daylight saving: a business date starts at 00:00 +07:00. */
 export const startOfVietnamDay = (date: IsoDate): Date => new Date(`${date}T00:00:00+07:00`);
 
-const asRule = (row: typeof schema.workLocation.$inferSelect): WorkLocationRule => ({ id: row.id, latitude: row.latitude, longitude: row.longitude, radiusM: row.radiusM, accuracyLimitM: row.accuracyLimitM, ipAllowlist: row.ipAllowlist, rule: row.rule, mode: row.mode });
+const asRule = (row: typeof schema.workLocation.$inferSelect, networkNames: ReadonlyMap<string, readonly string[]>): WorkLocationRule => ({ id: row.id, latitude: row.latitude, longitude: row.longitude, radiusM: row.radiusM, accuracyLimitM: row.accuracyLimitM, ipAllowlist: expandAllowlist(row.ipAllowlist, networkNames), rule: row.rule, mode: row.mode });
 
 const offSiteLocationsFor = declaredOffSiteLocations;
 
@@ -80,7 +81,10 @@ export async function recordAppPunch(input: AppPunchInput, now: Date = new Date(
     }
     if (last && last.direction === "in" && input.direction === "in" && todayInVietnam(last.at) === today) throw new ActionError("punch_already_in");
 
-    const verdict = evaluatePunch({ locations: [...locations.map(asRule), ...declared], position: input.position, ip: input.ipAddress });
+    // Offices on a dynamic address are named by DNS; only locations that carry a name pay for the lookup.
+    const hostnames = allowlistHostnames(locations.flatMap((row) => row.ipAllowlist));
+    const networkNames = hostnames.length ? await resolveNetworkNames(hostnames) : new Map<string, string[]>();
+    const verdict = evaluatePunch({ locations: [...locations.map((row) => asRule(row, networkNames)), ...declared], position: input.position, ip: input.ipAddress });
     if (verdict.outcome === "blocked") throw new ActionError("punch_blocked", { flags: verdict.flags, distanceM: verdict.distanceM });
 
     // Only the entity's own locations are rows; a declared off-site place is not.

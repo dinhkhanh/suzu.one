@@ -6,7 +6,7 @@ import { ActionError } from "@/lib/action";
 import { cached, invalidate } from "@/lib/cache";
 import { db, schema } from "@/lib/db";
 import { listEntities } from "@/modules/platform/org/service";
-import { locationProblems, type LocationMode, type LocationRule } from "./engine/geofence";
+import { locationProblems, normaliseNetwork, type LocationMode, type LocationRule } from "./engine/geofence";
 
 export type WorkLocationRow = typeof schema.workLocation.$inferSelect;
 
@@ -52,7 +52,7 @@ export async function listLocations(): Promise<(WorkLocationRow & { entityName: 
 }
 
 export async function saveLocation(input: LocationInput): Promise<{ before: WorkLocationRow | null; after: WorkLocationRow }> {
-  const ipAllowlist = [...new Set(input.ipAllowlist.map((cidr) => cidr.trim()).filter(Boolean))];
+  const ipAllowlist = [...new Set(input.ipAllowlist.map(normaliseNetwork).filter(Boolean))];
   const [problem] = locationProblems({ ...input, ipAllowlist });
   if (problem) throw new ActionError(problem);
   const values = { name: input.name, address: input.address, latitude: input.latitude, longitude: input.longitude, radiusM: input.radiusM, accuracyLimitM: input.accuracyLimitM, ipAllowlist, rule: input.rule, mode: input.mode, isActive: input.isActive };

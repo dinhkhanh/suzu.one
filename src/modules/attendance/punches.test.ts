@@ -4,6 +4,8 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/db", () => import("../../../tests/helpers/db"));
 vi.mock("@/lib/env", () => ({ env: () => ({ allowedWorkspaceDomains: ["suzu.vn", "suzu.group"], bootstrapOwnerEmails: [], BETTER_AUTH_URL: "https://suzu.one" }) }));
 vi.mock("next/cache", () => ({ revalidatePath: () => undefined }));
+const resolveNetworkNames = vi.hoisted(() => vi.fn(async (names: readonly string[]) => new Map(names.map((name): [string, string[]] => [name, name === "wan1.office.example.com" ? ["192.0.2.44"] : []]))));
+vi.mock("./network-names", () => ({ resolveNetworkNames }));
 vi.mock("@/lib/action", () => ({
   ActionError: class ActionError extends Error {
     constructor(
@@ -156,5 +158,21 @@ describe("who's in today", () => {
   it("shows nobody but themselves to a collaborator", async () => {
     const view = await getWhoIsIn({ personId: ids.huy, principal: { ...principal(ids.huy), workforceType: "collaborator" } }, {}, at("14:00"));
     expect(view.rows.map((row) => row.fullName)).toEqual(["Huy"]);
+  });
+});
+
+describe("an office on a dynamic address", () => {
+  it("is recognised by the DNS name its router publishes", async () => {
+    // Every check-in above met addresses only: none of them asked the DNS.
+    expect(resolveNetworkNames).not.toHaveBeenCalled();
+    const [entity] = await db().insert(schema.entity).values({ code: "SZD", legalName: "SuZu Dynamic", shortName: "Dynamic" }).returning();
+    const [person] = await db().insert(schema.person).values({ fullName: "Mai", searchName: "mai", primaryEntityId: entity.id, orgUnitId: ids.video, status: "active" }).returning();
+    const { after } = await saveLocation({ id: null, entityId: entity.id, name: "Dynamic HQ", address: null, latitude: null, longitude: null, radiusM: null, accuracyLimitM: 100, ipAllowlist: [" WAN1.office.example.com. ", "wan2.office.example.com"], rule: "ip", mode: "block", isActive: true });
+    expect(after.ipAllowlist).toEqual(["wan1.office.example.com", "wan2.office.example.com"]);
+    const input = (direction: "in" | "out", ipAddress: string) => ({ person: { id: person.id, primaryEntityId: entity.id, status: "active" }, direction, position: null, ipAddress, userAgent: "vitest", deviceInfo: null, note: null });
+
+    await expect(recordAppPunch(input("in", "198.51.100.7"), at("08:00"))).rejects.toThrow("punch_blocked");
+    expect(await recordAppPunch(input("in", "192.0.2.44"), at("08:05"))).toMatchObject({ outcome: "accepted", flags: [], locationName: "Dynamic HQ" });
+    expect(resolveNetworkNames).toHaveBeenLastCalledWith(["wan1.office.example.com", "wan2.office.example.com"]);
   });
 });

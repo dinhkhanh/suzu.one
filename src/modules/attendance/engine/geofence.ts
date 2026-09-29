@@ -2,7 +2,9 @@
 //
 // A work location is a circle on the map and/or a list of office networks. Browsers cannot read
 // the Wi-Fi name, so the "Wi-Fi rule" is the office's public IP range: whoever is on the office
-// network leaves through it. A check-in passes when any one location is satisfied; otherwise it is
+// network leaves through it. An office whose address changes (a dynamic WAN) is named instead: the
+// router publishes its current address under a DNS name (DDNS), the allowlist carries the name and
+// the caller resolves it at check-in. A check-in passes when any one location is satisfied; otherwise it is
 // accepted and flagged for review — or refused when every location it could belong to says "block".
 
 export type LocationRule = "gps_or_ip" | "gps" | "ip" | "gps_and_ip";
@@ -15,7 +17,11 @@ export type WorkLocationRule = {
   radiusM: number | null;
   /** A reading less certain than this many metres does not prove anything. */
   accuracyLimitM: number;
-  /** CIDR blocks ("203.0.113.0/24", "2001:db8::/32") or single addresses. */
+  /**
+   * CIDR blocks ("203.0.113.0/24", "2001:db8::/32") or single addresses. A DNS name
+   * ("wan1.office.example.com") matches nothing here: the caller swaps it for the addresses it
+   * resolved to first (`expandAllowlist`).
+   */
   ipAllowlist: readonly string[];
   rule: LocationRule;
   mode: LocationMode;
@@ -121,6 +127,31 @@ export function ipInCidr(ipText: string, cidrText: string): boolean {
 
 export const ipAllowed = (ip: string | null, allowlist: readonly string[]): boolean => !!ip && allowlist.some((cidr) => ipInCidr(ip, cidr));
 
+// ── Networks named by DNS ───────────────────────────────────────────────────────────────────
+
+const LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+
+/** An allowlist entry as it is stored: trimmed, lower case, no trailing dot. */
+export const normaliseNetwork = (entry: string): string => entry.trim().toLowerCase().replace(/\.$/, "");
+
+/** A fully qualified DNS name ("wan1.office.example.com"), never an address in disguise. */
+export function isHostname(entry: string): boolean {
+  const name = normaliseNetwork(entry);
+  if (name.length > 253) return false;
+  const labels = name.split(".");
+  // A single label is not resolvable on the public DNS; an all-digit last label is an IPv4 address.
+  if (labels.length < 2 || /^\d+$/.test(labels.at(-1)!)) return false;
+  return labels.every((label) => LABEL.test(label));
+}
+
+/** The DNS names an allowlist carries, each once. */
+export const allowlistHostnames = (allowlist: readonly string[]): string[] => [...new Set(allowlist.filter((entry) => !parseCidr(entry) && isHostname(entry)).map(normaliseNetwork))];
+
+/** The allowlist with every DNS name replaced by the addresses it resolved to. A name that did not resolve matches nothing. */
+export function expandAllowlist(allowlist: readonly string[], resolved: ReadonlyMap<string, readonly string[]>): string[] {
+  return allowlist.flatMap((entry) => (parseCidr(entry) ? [entry] : [...(resolved.get(normaliseNetwork(entry)) ?? [])]));
+}
+
 /** What is wrong with a location as HR typed it. Empty = usable. */
 export function locationProblems(location: Pick<WorkLocationRule, "latitude" | "longitude" | "radiusM" | "ipAllowlist" | "rule">): string[] {
   const problems: string[] = [];
@@ -128,7 +159,7 @@ export function locationProblems(location: Pick<WorkLocationRule, "latitude" | "
   if ((location.latitude === null) !== (location.longitude === null)) problems.push("location_position_incomplete");
   if (hasCircle && (Math.abs(location.latitude!) > 90 || Math.abs(location.longitude!) > 180)) problems.push("location_position_invalid");
   if (hasCircle && location.radiusM! <= 0) problems.push("location_radius_invalid");
-  if (location.ipAllowlist.some((cidr) => !parseCidr(cidr))) problems.push("location_ip_invalid");
+  if (location.ipAllowlist.some((entry) => !parseCidr(entry) && !isHostname(entry))) problems.push("location_ip_invalid");
   const needsCircle = location.rule === "gps" || location.rule === "gps_and_ip";
   const needsIp = location.rule === "ip" || location.rule === "gps_and_ip";
   if (needsCircle && !hasCircle) problems.push("location_needs_position");

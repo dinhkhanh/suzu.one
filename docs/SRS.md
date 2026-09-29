@@ -297,7 +297,7 @@ Two platform engines are deliberately shared:
 | FR-ATT-01 | **Work schedules**: fixed office hours, flexible hours (core hours + required daily total), shifts (incl. split and overnight shifts for production/shooting crews), part-time patterns. Assigned by entity/department/person, effective-dated. | M |
 | FR-ATT-02 | **Working calendar** per entity: working weekdays (incl. alternate Saturdays), Vietnamese public holidays, compensatory days off, company days off. | M |
 | FR-ATT-03 | **App check-in/out** (mobile web/PWA): captures time (server time), GPS position with accuracy, network info, device info, optional selfie. | M |
-| FR-ATT-04 | Check-in validation rules per location: GPS geofence radius, and/or office public IP/Wi-Fi allowlist. Out-of-policy check-ins are accepted but flagged for manager review (not blocked) — configurable. | M |
+| FR-ATT-04 | Check-in validation rules per location: GPS geofence radius, and/or office public IP/Wi-Fi allowlist (addresses, CIDR blocks, or a DNS name the office router keeps current with Dynamic DNS, resolved at check-in). Out-of-policy check-ins are accepted but flagged for manager review (not blocked) — configurable. | M |
 | FR-ATT-05 | Anti-fraud basics: server timestamps only, mock-location heuristics, one active device per user with change alerts, flag impossible travel. | S |
 | FR-ATT-06 | **Biometric device import**: upload raw log exports (CSV/Excel/DAT) with a mapping profile per device model; map device user IDs to employees; idempotent re-import; error report for unmapped IDs. | M |
 | FR-ATT-07 | Direct device integration (scheduled pull or device push via vendor SDK/ADMS) once device models are confirmed. | S |

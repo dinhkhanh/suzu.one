@@ -2514,7 +2514,7 @@
         "location_position_incomplete": "Cần nhập cả vĩ độ và kinh độ.",
         "location_position_invalid": "Toạ độ nằm ngoài phạm vi hợp lệ.",
         "location_radius_invalid": "Bán kính phải lớn hơn 0.",
-        "location_ip_invalid": "Có một mạng không phải địa chỉ IP hoặc dải CIDR hợp lệ.",
+        "location_ip_invalid": "Có một mạng không phải địa chỉ IP, dải CIDR hoặc tên miền hợp lệ.",
         "location_needs_position": "Quy tắc này cần toạ độ và bán kính.",
         "location_needs_ip": "Quy tắc này cần ít nhất một mạng văn phòng.",
         "location_needs_rule": "Hãy nhập toạ độ kèm bán kính, mạng văn phòng, hoặc cả hai."
@@ -2533,8 +2533,8 @@
         "radiusValue": "{metres} m",
         "networks": "{count} mạng",
         "accuracyLimit": "Bỏ qua vị trí kém chính xác hơn (m)",
-        "ipAllowlist": "Mạng văn phòng (địa chỉ IP công cộng hoặc dải CIDR, mỗi dòng một mục)",
-        "ipHint": "Hỏi bộ phận IT địa chỉ công cộng của văn phòng (kết quả whatismyip khi dùng Wi-Fi văn phòng), VD: 203.0.113.0/24.",
+        "ipAllowlist": "Mạng văn phòng (địa chỉ IP công cộng, dải CIDR hoặc tên miền, mỗi dòng một mục)",
+        "ipHint": "Hỏi bộ phận IT địa chỉ công cộng của văn phòng (kết quả whatismyip khi dùng Wi-Fi văn phòng), VD: 203.0.113.0/24. Nếu địa chỉ thay đổi (WAN IP động), hãy cho router cập nhật nó qua Dynamic DNS và nhập tên miền thay thế, VD: wan1.office.example.com. Không nhập đường truyền nằm sau NAT dùng chung của nhà mạng: khách hàng khác cũng đi ra qua cùng địa chỉ đó.",
         "rule": "Lần chấm hợp lệ khi",
         "mode": "Nếu không",
         "rules": {
