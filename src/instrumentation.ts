@@ -1,15 +1,22 @@
+import * as Sentry from "@sentry/nextjs";
 import type { Instrumentation } from "next";
-import { reportError } from "@/lib/observability/report";
-import { withoutQuery } from "@/lib/observability/sentry";
+import { logError } from "@/lib/observability/report";
+
+// Starts Sentry on the Node.js server. Nothing here runs on the edge: the proxy and every route
+// use the Node.js runtime.
+export async function register() {
+  if (process.env.NEXT_RUNTIME === "nodejs") await import("@/lib/observability/server");
+}
 
 // Every server-side error (pages, server actions, route handlers) passes through here. It becomes
-// one structured log line and, with a Sentry DSN set, a Sentry event (src/lib/observability/report.ts).
+// one structured log line and, with a Sentry DSN set, a Sentry event (src/lib/observability).
 export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {
-  await reportError(error, {
+  logError(error, {
     event: "request.failed",
     source: "request",
-    request: { method: request.method, path: withoutQuery(request.path) },
+    request: { method: request.method, path: request.path },
     route: context.routePath,
     tags: { routeType: context.routeType },
   });
+  Sentry.captureRequestError(error, request, context);
 };

@@ -36,6 +36,7 @@
     "@base-ui/react": "^1.8.0",
     "@better-auth/drizzle-adapter": "^1.7.6",
     "@electric-sql/pglite": "^0.5.8",
+    "@sentry/nextjs": "^11.1.0",
     "@tiptap/core": "3.31.3",
     "@tiptap/extension-table": "3.31.3",
     "@tiptap/pm": "3.31.3",

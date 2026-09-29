@@ -40,7 +40,7 @@ Local ports are moved to the 5532x range in `supabase/config.toml` so this proje
 | `CLOUDFLARE_AI_API_TOKEN` / `EMBEDDINGS_MODEL` | Knowledge-base embeddings through Workers AI (default `@cf/baai/bge-m3`). Without a token a deterministic local fake stands in |
 | `DATA_ENCRYPTION_KEYS` / `DATA_BLIND_INDEX_KEY` | Field encryption for restricted and compensation data — **unrecoverable if lost**; see [docs/KEY_ROTATION.md](docs/KEY_ROTATION.md) |
 | `RESEND_API_KEY` / `EMAIL_FROM` | Outgoing email. Without a key, emails are only written to the `email_outbox` table |
-| `SENTRY_DSN` | Optional error tracking; without it server errors are only logged |
+| `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | Optional error tracking (Sentry SDK); without them errors are only logged. `SENTRY_TRACES_SAMPLE_RATE` (0–1) turns on tracing; `SENTRY_ORG` / `SENTRY_PROJECT` / `SENTRY_AUTH_TOKEN` upload source maps at build time. Nothing about a person or a request's content is sent (`src/lib/observability/scrub.ts`) |
 
 ## Deployment
 

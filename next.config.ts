@@ -1,3 +1,4 @@
+import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
@@ -72,4 +73,14 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default createNextIntlPlugin("./src/i18n/request.ts")(nextConfig);
+// Source maps go to Sentry at build time and are deleted from the deployment afterwards, so stacks
+// are readable in Sentry and the source is not served to browsers. The upload needs SENTRY_ORG,
+// SENTRY_PROJECT and SENTRY_AUTH_TOKEN (the Vercel Sentry integration sets them); without a token
+// the build still succeeds and uploads nothing. Sentry's tunnel route is not used: the proxy would
+// send its requests to sign-in. The route manifest is left out of the browser bundle, which would otherwise
+// list every route pattern to everyone, the public pages' visitors included.
+export default withSentryConfig(createNextIntlPlugin("./src/i18n/request.ts")(nextConfig), {
+  silent: !process.env.CI,
+  telemetry: false,
+  routeManifestInjection: false,
+});
