@@ -23,7 +23,7 @@ const schema = z.object({
   PUBLIC_SITE_URL: z.url().optional(),
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
-  ALLOWED_WORKSPACE_DOMAINS: z.string().default("suzu.vn,suzu.group"),
+  ALLOWED_WORKSPACE_DOMAINS: z.string().default("suzu.vn,suzu.group,bambooads.net"),
   BOOTSTRAP_OWNER_EMAILS: z.string().default(""),
   // Field encryption for restricted/compensation data: "k2:<base64 32 bytes>,k1:<...>", active key
   // first (docs/KEY_ROTATION.md). Losing these keys loses the data; they live only in the secret store.

@@ -32,7 +32,7 @@ Local ports are moved to the 5532x range in `supabase/config.toml` so this proje
 | `BETTER_AUTH_SECRET` | `openssl rand -base64 32` |
 | `BETTER_AUTH_URL` | `http://localhost:3000` locally, `https://suzu.one` in production |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google Cloud OAuth client, user type **External** (the two Workspaces are separate organisations). Redirect URI: `{BETTER_AUTH_URL}/api/auth/callback/google` |
-| `ALLOWED_WORKSPACE_DOMAINS` | `suzu.vn,suzu.group` |
+| `ALLOWED_WORKSPACE_DOMAINS` | `suzu.vn,suzu.group,bambooads.net` (the sign-in page names only the first two) |
 | `BOOTSTRAP_OWNER_EMAILS` | Workspace emails that may sign in before any person record exists; they become Owner on first sign-in |
 | `CRON_SECRET` | Shared with Vercel Cron (`vercel.json`); without it the scheduled jobs under `/api/cron/*` refuse to run |
 | `SUPABASE_URL` / `SUPABASE_SECRET_KEY` | Private file storage. Set by the Supabase integration on Vercel. Locally: `http://127.0.0.1:55321` and the stack's secret key — or `SUPABASE_SERVICE_ROLE_KEY` from `docker exec supabase_storage_suzu-one printenv SERVICE_KEY`, which is the fallback |
