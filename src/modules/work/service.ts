@@ -5,8 +5,8 @@ export * from "./enums";
 export { invalidateMemberships, loadViewer, loadViewerWith, type ViewerSource } from "./viewer";
 export { canAdminTeam, canContributeToProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canViewProject, canViewTask, canViewTeam, canViewTeamBacklog, canDecideReview, canSubmitIntake, canManageTemplate, canNudgeTask, canSubmitDeliverable, readsPrivateByPortfolio, type WorkViewer } from "./policy";
 export { notePrivateProjectRead, notePrivateProjectReads } from "./private-reads";
-export { addableMembers, type ClientRow, entryState, findClient, findLabel, findState, findTeam, type LabelRow, listClients, listLabels, listStates, listTeamMembers, listTeams, type MemberChoice, type MemberView, type StateRow, teamFacts, type TeamRow, type TeamSummary } from "./teams";
-export { type CreateTargets, findProject, listAssignable, listAssignableByTeam, listCreateTargets, listProjectMembers, listProjectOptions, projectFacts, projectRoleOf, type ProjectMemberView, type ProjectRow, type ProjectSummary, visibleProjects } from "./projects";
+export { addableMembers, type ClientInput, type ClientRow, entryState, findClient, invalidateWorkClients, saveClient, findLabel, findState, findTeam, type LabelRow, listClients, listLabels, listStates, listTeamMembers, listTeams, type MemberChoice, type MemberView, type StateRow, teamFacts, type TeamRow, type TeamSummary } from "./teams";
+export { createProjectIn, type ProjectInput, type CreateTargets, findProject, listAssignable, listAssignableByTeam, listCreateTargets, listProjectMembers, listProjectOptions, projectFacts, projectRoleOf, type ProjectMemberView, type ProjectRow, type ProjectSummary, visibleProjects } from "./projects";
 export { type ActivityView, createWorkTask, createWorkTaskIn, getTaskDetail, type LinkedTask, listActivity, listLinkableTasks, listProjectTasks, listTeamBacklog, listVisibleTaskIds, loadTask, type NewWorkTask, searchTasks, type TaskDetail, taskKey, type TaskListItem, type TaskSearchHit, visibleTaskCondition, WORK_KIND } from "./tasks";
 export { listSavedViews, type SavedViewRow } from "./views";
 export { type CalendarItem, listCalendarTasks, withEditable } from "./calendar";
@@ -39,7 +39,7 @@ export { countOpenBlockersRaisedBy, type DayTask, type FeedEvent, type FeedKind,
  * Phase 10 (FR-PJM-01..27): the project layer builds on projects and tasks. Work never imports
  * projects — the plan half of a template is applied through `createProjectFromTemplate`'s callback.
  */
-export { invalidateWorkDirectory } from "./directory";
+export { invalidateWorkDirectory, projectsWithTeams, workDirectory, type WorkDirectory } from "./directory";
 export { createProjectFromTemplate, findWorkTemplate, type ProjectCreatedHook, type TemplateUse } from "./templates";
 export { loadTasks, type LoadedTask } from "./tasks";
 export { viewersOfPeople } from "./viewer";

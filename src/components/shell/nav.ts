@@ -32,8 +32,14 @@ export function navFor(principal: Principal, open: { people: boolean; recruit: b
     { key: "daily", href: "/daily" },
     // Time on tasks (FR-PJM-24); approving weeks and utilisation are reached from the day's pages.
     { key: "time", href: "/daily/time" },
+    // Clients & sales (Phase 11): the account list is every employee's, as the client list was;
+    // the pipeline, contracts and receivables decide on their own pages what the reader holds. A
+    // collaborator on an account's team reaches it from their project instead.
+    ...(principal.workforceType === "collaborator" ? [] : [{ key: "crm", href: "/crm" }]),
     // Finance's ready-to-invoice queue (FR-PJM-56): whoever holds `pjm:commercial` anywhere.
     ...(can(principal, "pjm:commercial") ? [{ key: "billing", href: "/projects/billing" }] : []),
+    // Receivables (FR-CRM-32): finance and the sales directors; account managers find them on the CRM's tabs.
+    ...(can(principal, "pjm:commercial") || can(principal, "crm:manage") ? [{ key: "receivables", href: "/crm/invoices" }] : []),
     // Capacity (FR-PJM-13) for leaders over a scope; team leads also reach it from their projects.
     // The grant clause of `canOpenCapacity` and nothing else: `pjm:portfolio` is finance's way into
     // project pages since 2026-09-23 and opens no capacity page, so offering the entry to it only

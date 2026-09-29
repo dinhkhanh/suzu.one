@@ -17,6 +17,7 @@ export const ROLES = [
   "asset_admin",
   "auditor",
   "support",
+  "sales",
 ] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -75,6 +76,14 @@ export type Permission =
   | "pjm:commercial"
   | "pjm:cost"
   | "pjm:portfolio"
+  // CRM (Phase 11). An account's own people — its account manager, sales owner and team, the owners
+  // of its deals, the people of its open projects — work it without any permission. `crm:sell`
+  // holds a pipeline over the entities of the grant: owns leads and deals, creates accounts and
+  // quotes, reads the contacts and deal values there. `crm:manage` runs the pipeline: stages, the
+  // rate card, quote thresholds, every account and deal in scope, reassigning them. Invoices and
+  // payments stay with `pjm:commercial` (finance); cost and margin with `pjm:cost`.
+  | "crm:sell"
+  | "crm:manage"
   // Feedback about SuZu One itself: triage it — status, priority, the reply the submitter reads and
   // the internal note (`feedback:manage`); read the inbox without changing it (`feedback:read`).
   // Anyone may send feedback and read their own; neither needs a permission.
@@ -114,8 +123,8 @@ type RoleDefinition = {
 
 export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
   owner: { permissions: ["*"], maxTier: "compensation" },
-  c_level: { permissions: ["org:read", "person:read", "report:read", "payroll:read", "payroll:approve", "work:manage", "ops:read", "performance:goals", "performance:read", "comms:manage", "kb:manage_unit", "pjm:commercial", "pjm:cost", "pjm:portfolio", "feedback:read"], maxTier: "compensation" },
-  entity_director: { permissions: ["org:read", "person:read", "report:read", "work:manage", "ops:read", "performance:goals", "performance:read", "comms:manage", "kb:manage_unit", "pjm:commercial", "pjm:portfolio", "feedback:read"], maxTier: "restricted" },
+  c_level: { permissions: ["org:read", "person:read", "report:read", "payroll:read", "payroll:approve", "work:manage", "ops:read", "performance:goals", "performance:read", "comms:manage", "kb:manage_unit", "pjm:commercial", "pjm:cost", "pjm:portfolio", "crm:sell", "crm:manage", "feedback:read"], maxTier: "compensation" },
+  entity_director: { permissions: ["org:read", "person:read", "report:read", "work:manage", "ops:read", "performance:goals", "performance:read", "comms:manage", "kb:manage_unit", "pjm:commercial", "pjm:portfolio", "crm:sell", "crm:manage", "feedback:read"], maxTier: "restricted" },
   hr_admin: {
     permissions: ["org:read", "org:manage", "person:read", "person:manage", "attendance:manage", "leave:manage", "payroll:read", "payroll:propose", "rules:propose", "recruit:manage", "report:read", "audit:read", "ops:manage", "performance:manage", "kb:manage", "comms:manage", "feedback:manage"],
     maxTier: "compensation",
@@ -135,6 +144,9 @@ export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
   // reaches a role holder (`canImpersonate`), and the step-up proof does not travel with it, so a
   // support person sees no payslip that their own grants would not show them.
   support: { permissions: ["org:read", "person:read", "auth:impersonate"], maxTier: "public_internal" },
+  // Business development and account executives (CRM, Phase 11): a pipeline over the grant's
+  // entities. No person data beyond the directory, and no money but the deals' own values.
+  sales: { permissions: ["org:read", "crm:sell"], maxTier: "public_internal" },
 };
 
 export function tierRank(tier: Tier): number {

@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Version** | 0.3 (Phase 10 — projects & daily work management — added) |
-| **Date** | 2026-09-22 |
+| **Version** | 0.4 (Phase 11 — CRM — added) |
+| **Date** | 2026-09-30 |
 | **Companion doc** | [SRS.md](./SRS.md) — requirement IDs below (FR-…, NFR-…) refer to it |
 
 ---
@@ -33,7 +33,7 @@ Four principles drive the order of work:
 | **8** | Performance reviews + performance-driven year-end bonus | 3 wks | **M8** — review cycle in-system; 2027 year-end bonus computed from KPI/OKR results |
 | **9** | AI assistant + analytics | 3 wks | **M9** — "Ask SuZu" and owner dashboard v2 |
 | **10** | Projects & daily work management (PJM) — six releases | 12 wks | **M10** — every team plans, executes, hands off and delivers in the app; old trackers retired (SRS D21) |
-| **11** | CRM | separate SRS | — |
+| **11** | CRM — five releases (SRS §4.15) | 10 wks | **M11** — deal → project → invoice → cash in one app; client profitability without a spreadsheet |
 
 Build time for the full HRM suite (phases 0–9) is roughly **41 weeks ≈ 9–10 months**. Starting late September 2026, that puts M1 in early November 2026, M2 in mid-December 2026, M3 in late January 2027, M3.5 in February 2027 and the first official payroll (M5) around mid-2027. The payroll parallel run overlaps phases 6–7.
 
@@ -540,9 +540,49 @@ This phase must be live by **November 2027** to serve the year-end review and th
 - Finance receives every billing item for the pilot month from the queue, not from chat.
 - No fee is visible to a person without `pjm:commercial` and no cost rate to a person without `pjm:cost` — proven by PGlite tests on every list, export and rollup.
 
-### Phase 11 — CRM
+### Phase 11 — CRM (10 weeks, five releases) → **M11**
 
-A separate SRS will be written after Phase 10. It will reuse org, RBAC, the approval and task engines, clients/brands from the Work module, files, notifications and AI. The target outcome is deal → project → tasks → time → cost → **client profitability**.
+> **Status, 2026-09-30 — all five releases built on branch `phase-11-crm` (not pushed, not merged, not deployed). One migration, 0101, additive (new `crm_*` tables only). New RBAC permissions `crm:sell` (role `sales`, c_level, entity_director) and `crm:manage` (c_level, entity_director); policy tests added and `docs/permission-matrix.md` regenerated. `pnpm check` (3,497 tests) and `pnpm build` pass.** Every M and S item of §4.15 is built except those under *Not built*. None of the exit criteria can be met without the owner: they need the real client list, a pilot month of deals and invoices, and finance's ledger to reconcile against.
+> **Done — the CRM (`src/modules/crm/`, routes under `/crm`):** accounts on `work_client` (profile, lifecycle proposed nightly, duplicate guard by tax code and name, account team), contacts (PDPL basis, erasure that keeps the name, details only to the account team), activities and follow-ups (Today, My work, morning reminders), **Account 360** with one timeline from CRM and PJM records; leads (anyone refers, converted into account + contact + deal), deals with stages, gates, history, board / list / forecast, stale reminders, lost reasons, pitch projects as cost of sale, **won → delivery set-up** from the accepted quote (register and budget prefilled through the projects service) with the sales → delivery hand-off on the delivery lead's Today; rate card with effective-dated prices, quotes with versions, VAT from the parameter store, approval on discount or margin (request type `crm_quote`), PDF from the `TM-BAO-GIA` template; contracts and appendices, renewal deals opened ahead of the end; invoices over finance's billing items, payments, receivables aging and reminders; client profitability with cost of sale; revenue outlook; sales dashboard; **sales commission** with owner-approved schemes and sealed monthly statements; the staffing check on a deal.
+> **Done — the integrations (HR and PJM never import the CRM):** exit and transfer handover list, gate and reassign CRM ownership through `platform/ownership/registry.ts`; the end-of-day prefill reads client activities and deal moves through `platform/day-activity/registry.ts`; leave cover moves follow-ups to the cover plan's default cover and back; KPI actuals from sales (won value, invoiced, collected, new accounts, win rate, follow-ups on time); the project page shows its account, deal (to deal readers only) and contract; billing shows the contract and sends client items to receivables; client decisions, acceptances and briefs offer the account's contacts; a person's profile lists the accounts they manage; the owner dashboard has a sales tile; the report catalogue has a weekly pipeline and a receivables aging (both schedulable); confirmed commission goes into the payroll run as `COMMISSION`; a staffing shortfall opens a prefilled hiring request.
+> **Decisions made during the build** (confirm or overrule): the sales → delivery hand-off lives on the deal's project link, not in the task hand-off inbox; a client billing item can no longer be invoiced from PJM's billing screen — it is invoiced in receivables, so every invoice has payments behind it; the quote's margin check uses a blended cost rate over at least two people, shown only to `pjm:cost`; **commission** is paid on cash collected net of VAT, shared over the invoice's items and credited to the owner of the deal the item's project came from (the account's sales owner when there is none) and/or the account manager, tiers are marginal like tax brackets, a missing earner's share is paid to nobody, the sales director proposes and the owner (`payroll:rules`) decides, C&B (`payroll:propose`) confirm, the amount goes into the person's employer's open regular run (a nightly sweep posts what found no open run), and statements are sealed with the field cipher and never cached; the staffing check compares the quote's total hours with the team's free hours over the eight-week capacity window from the expected close — by position, not by quote role, because the rate card's roles are not positions — and only for readers who may plan that team.
+> **Found and fixed on the way:** the pipeline forecast grouped by an expression carrying a bound parameter, which Postgres rejects (`must appear in the GROUP BY clause`) — the forecast view would have failed in production; it now groups by position, and the sales dashboard and revenue outlook have database tests too.
+> **Not built:** AI account brief and follow-up drafts (FR-CRM-53, C); tentative bookings placed from a deal (part of FR-CRM-17 — bookings belong to projects, and a deal has none until the pitch or delivery project exists); the seller and owner pickers list every active person rather than only those eligible (the service refuses an ineligible choice); a quote approval can be withdrawn only by its requester; and, as planned, CSV import (FR-CRM-08), mail sync (FR-CRM-54), the web enquiry form (FR-CRM-55) and satisfaction surveys (FR-CRM-56).
+> **Needs the owner:** answers to Q26–Q29 (who sells; stages, probabilities and the discount threshold; the rate card and the quote wording; the commission scheme, or none) and Q30 when wanted; then merge and deploy, `pnpm db:seed` on production (stages, rate card, the quote template), and enter the real accounts with their contacts, account managers and payment terms before the pilot month.
+
+**Why now.** PJM made the app the record of delivery, from the brief to the billing hand-off. What is still in spreadsheets and chat is everything before the brief — enquiries, pitches, quotes, contracts — and everything after the billing item — invoices, cash, and whether a client is worth what it costs. The CRM adds both ends to the same records, so the owner's question "which clients make us money?" is answered from data the teams already enter.
+
+**Scope:** SRS §4.15, FR-CRM-01..56 (M and S items; C and L items as noted below).
+
+**Architecture notes**
+
+- New module `src/modules/crm/`, usual shape (`schema.ts` / `service.ts` / `policy.ts` / `actions.ts` / `engine/` / `ui/`). Routes under `/crm`.
+- **No second client table.** `crm_account` is 1:1 with `work_client` (like `project_plan` with `work_project`); contacts, deals, contracts and invoices point at `work_client.id`. The account list the work module caches stays the one list.
+- **The CRM depends on work, projects, daily, payroll and the platform; they never import it.** Where an HR or PJM screen shows CRM items — the exit handover, leave cover, Today, My work, the end-of-day prefill — the CRM registers a provider with a small platform registry (the pattern of the task engine's completion guards), so the older modules ask "does anyone else own work of this person?" without knowing the CRM exists.
+- **Won → project** uses the existing project-from-template path (`createProjectFromTemplate` with the plan hook), then fills the plan through the projects service in the same transaction. The deal keeps the link (`crm_deal_project`); nothing in PJM points back.
+- **Invoices are finance's billing items grouped.** Recording an invoice marks its billing items invoiced through the projects service, in the same transaction; payments and receivables hang off the invoice.
+- **Money split** as in PJM: values need the deal/account role or `crm:sell` / `crm:manage` / `pjm:commercial`; cost and margin come only from payroll's `loadedCostRates` under `pjm:cost`, as aggregates.
+- **Configuration, not constants:** VAT rates, the quote discount threshold and margin floor, stale-deal days, renewal lead time, receivables reminder days and default payment terms live in the effective-dated parameter store.
+- **Pure engines with golden tests:** quote totals and VAT, stage gates, weighted forecast, deal → project plan mapping, lifecycle proposal, receivables aging and reminder plan, renewal plan, client profitability (extends the PJM engine with cost of sale), commission statement.
+- **Reference data through the cache:** stages, the rate card and prices, the commission scheme — one key per table, every writer invalidates. Contacts are `personal` tier and are not cached; receivables and commission are never cached.
+
+| Release | Weeks | Content | SRS |
+|---|---|---|---|
+| **R1 — Accounts** | 2 | Account profile on clients, contacts (PDPL basis, erasure), account team, activities and follow-ups (Today, My work, reminders), **Account 360** with PJM facts, timeline from CRM + PJM records, duplicate guard; permissions `crm:sell`, `crm:manage`, role `sales` | FR-CRM-01..07, 43 (follow-ups), 46 |
+| **R2 — Pipeline** | 2 | Leads (anyone refers), convert; deals with stages, gates and history; board, list, forecast, stale deals; pitch projects (cost of sale); **won → delivery set-up** from the quote with the sales → delivery hand-off; lost reasons | FR-CRM-10..16 |
+| **R3 — Quotes & contracts** | 2 | Rate card with effective-dated prices; quotes with versions, VAT from the parameter store, approval on discount / margin, PDF from a document template; contracts and appendices; renewal deals; billing items carry the contract number | FR-CRM-20..27 |
+| **R4 — Cash & profitability** | 2 | Invoices over billing items, payments, receivables aging and reminders, credit hold; client profitability with cost of sale; revenue outlook; sales dashboard and owner dashboard tiles | FR-CRM-30..34, 50, 51 |
+| **R5 — HRM links & insight** | 2 | Exit and transfer handover, leave cover and account handover extended to CRM ownership; EOD prefill; KPI actuals from sales; staffing check → hiring request; commission scheme and statements (owner-approved, into the payroll run as an input); scheduled reports; AI account brief and follow-up drafts | FR-CRM-17, 40..45, 52, 53 |
+
+**Not in this phase:** Gmail and Calendar sync of client correspondence (FR-CRM-54, L — needs Workspace-wide mail delegation), the public web enquiry form (FR-CRM-55, C — a third public surface, Q30), client satisfaction surveys (FR-CRM-56, C), CSV import of accounts and contacts (FR-CRM-08) until the real client list is known.
+
+**Exit criteria**
+- Every client of the pilot month exists once, as an account with its contacts, account manager and payment terms; no parallel client sheet.
+- Every new project of the pilot month comes from a won deal (or is marked internal), with its register and budget prefilled from the accepted quote.
+- Every billing item of the month is invoiced through the app, and every payment received is recorded against its invoice; the receivables aging matches finance's ledger.
+- The owner reads client profitability — revenue, delivery cost, cost of sale, margin — for the last quarter without a spreadsheet.
+- A leaver's accounts, deals and follow-ups are reassigned before their offboarding checklist closes (verified on a test case).
+- No deal value is visible to a person without the rule's role or permission, no contact detail outside the account team, and no cost or margin without `pjm:cost` — proven by PGlite tests on every list, export and rollup.
 
 ---
 

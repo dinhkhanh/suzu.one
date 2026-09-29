@@ -9,6 +9,7 @@ import { AcceptanceWaitingList } from "@/modules/projects/ui/acceptance-waiting"
 import { AcceptanceButtons, ManualBillingForm, NewAcceptanceForm, SignAcceptanceForm, SignedScanLink } from "@/modules/projects/ui/commercial-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
 import { pageTitle } from "@/i18n/page-title";
+import { contactChoicesFor } from "@/modules/crm/service";
 
 export const generateMetadata = pageTitle("acceptance");
 
@@ -25,7 +26,8 @@ export default async function ProjectAcceptancePage({ params }: PageProps<"/proj
   const context = await openProject(user, projectId);
   if (!context) notFound();
   const { project, can, viewer, facts } = context;
-  const [t, tBilling, format, acceptances, structure, periods, billing, waiting] = await Promise.all([
+  const manage = canManageAcceptance(viewer, facts);
+  const [t, tBilling, format, acceptances, structure, periods, billing, waiting, signers] = await Promise.all([
     getTranslations("projects.acceptance"),
     getTranslations("projects.billing"),
     getFormatter(),
@@ -34,8 +36,8 @@ export default async function ProjectAcceptancePage({ params }: PageProps<"/proj
     listPeriodOptions(project.id),
     listProjectBilling(project.id, can.seeFees),
     awaitingAcceptance(project.id),
+    manage ? contactChoicesFor(project.clientId) : [],
   ]);
-  const manage = canManageAcceptance(viewer, facts);
   const addsBilling = canDecideBilling(user.principal, { entityId: project.entityId });
   const today = todayInVietnam();
   const date = (value: string | null) => (value ? format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" }) : "—");
@@ -117,7 +119,7 @@ export default async function ProjectAcceptancePage({ params }: PageProps<"/proj
               <details>
                 <summary className="cursor-pointer text-sm text-muted-foreground">{t("recordSignature")}</summary>
                 <div className="pt-2">
-                  <SignAcceptanceForm acceptanceId={acceptance.id} today={today} />
+                  <SignAcceptanceForm acceptanceId={acceptance.id} today={today} contacts={signers} />
                 </div>
               </details>
             ) : null}

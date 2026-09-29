@@ -265,3 +265,41 @@ export async function countOpenBilling(executor: Executor, projectId: string): P
   const [row] = await executor.select({ value: count() }).from(schema.projectBillingItem).where(and(eq(schema.projectBillingItem.projectId, projectId), eq(schema.projectBillingItem.status, "ready")));
   return row?.value ?? 0;
 }
+
+/**
+ * Finance's invoice over one or more items (CRM, FR-CRM-30), inside the caller's transaction: each
+ * item ready → invoiced with the invoice's number and date, an item made without an amount takes
+ * the one finance typed. An item not ready — invoiced or waived meanwhile — refuses the whole
+ * invoice. The account managers of the projects hear, as for a single item.
+ */
+export async function invoiceItemsIn(tx: Tx, itemIds: readonly string[], invoice: { number: string; date: IsoDate }, amounts: ReadonlyMap<string, number>, actorPersonId: string): Promise<BillingItemRow[]> {
+  if (itemIds.length === 0) return [];
+  const rows = await tx.select().from(schema.projectBillingItem).where(inArray(schema.projectBillingItem.id, [...itemIds])).for("update");
+  if (rows.length !== new Set(itemIds).size) throw new ActionError("billing_not_found");
+  if (rows.some((row) => !billingDecidable(row.status as BillingStatus))) throw new ActionError("billing_decided");
+  const now = new Date();
+  const after: BillingItemRow[] = [];
+  for (const row of rows) {
+    const amountVnd = row.amountVnd ?? amounts.get(row.id) ?? null;
+    if (amountVnd === null) throw new ActionError("billing_amount_required");
+    const [updated] = await tx
+      .update(schema.projectBillingItem)
+      .set({ status: "invoiced", invoiceNumber: invoice.number, invoiceDate: invoice.date, amountVnd, decidedByPersonId: actorPersonId, decidedAt: now, updatedAt: now })
+      .where(eq(schema.projectBillingItem.id, row.id))
+      .returning();
+    after.push(updated);
+  }
+  const projectIds = [...new Set(after.map((row) => row.projectId))];
+  const projects = await tx.select({ id: schema.workProject.id, name: schema.workProject.name, manager: schema.projectPlan.accountManagerPersonId }).from(schema.workProject).leftJoin(schema.projectPlan, eq(schema.projectPlan.projectId, schema.workProject.id)).where(inArray(schema.workProject.id, projectIds));
+  for (const project of projects) {
+    const job = after.find((row) => row.projectId === project.id)?.jobNumber ?? "—";
+    if (project.manager) await notify({ recipients: [project.manager], kind: "projects.billing_invoiced", params: { project: project.name, job }, link: `/projects/${project.id}/acceptance` }, tx);
+  }
+  return after;
+}
+
+/** Ready items by id, for finance's invoice form (the CRM checks the reader's reach first). */
+export async function billingItemsByIds(itemIds: readonly string[], executor: Executor = db()): Promise<BillingItemRow[]> {
+  if (itemIds.length === 0) return [];
+  return executor.select().from(schema.projectBillingItem).where(inArray(schema.projectBillingItem.id, [...itemIds]));
+}

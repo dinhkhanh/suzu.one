@@ -13,12 +13,13 @@ import { cached, invalidate, TTL } from "./index";
 // A change that neither rule reaches (a cron job, a teammate's silent state change) shows within
 // `TTL.live` seconds.
 
-export const LIVE_SCREENS = ["shell", "today", "tasks", "approvals", "notifications"] as const;
+// `followups`: the CRM follow-ups due by today, on Today and My work (FR-CRM-06).
+export const LIVE_SCREENS = ["shell", "today", "tasks", "approvals", "notifications", "followups"] as const;
 export type LiveScreen = (typeof LIVE_SCREENS)[number];
 
-/** Today's page is a different entry each day, so yesterday's never answers for today. */
+/** Today's page (and what falls due by today) is a different entry each day, so yesterday's never answers for today. */
 export function liveKey(personId: string, screen: LiveScreen, date: IsoDate = todayInVietnam()): string {
-  return screen === "today" ? `live:${personId}:today:${date}` : `live:${personId}:${screen}`;
+  return screen === "today" || screen === "followups" ? `live:${personId}:${screen}:${date}` : `live:${personId}:${screen}`;
 }
 
 /** `cached()` for one person's screen, under the live tier's TTL. */

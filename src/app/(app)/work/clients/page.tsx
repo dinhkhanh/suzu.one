@@ -43,6 +43,9 @@ export default async function ClientsPage() {
           {client.isActive ? null : <Badge variant="secondary">{t("inactive")}</Badge>}
           {client.note ? <span className="text-xs text-muted-foreground">{client.note}</span> : null}
           {client.accountManagerPersonId ? <span className="text-xs text-muted-foreground">{tHandoff("current", { name: nameOf(client.accountManagerPersonId) ?? "—" })}</span> : null}
+          <Link href={`/crm/accounts/${client.parentId ?? client.id}`} className="ml-auto text-xs underline">
+            {t("openAccount")}
+          </Link>
         </summary>
         {manage ? (
           <div className="pt-3">

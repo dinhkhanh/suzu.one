@@ -84,7 +84,9 @@ export function ActionButton({ action, input, label, confirm, variant = "outline
 
 export type BriefValues = { objective?: string; scopeIn?: string; scopeOut?: string; successCriteria?: string; assumptions?: string; audience?: string; keyMessages?: string; clientContacts?: { name: string; role?: string; contact?: string }[]; links?: string[] };
 
-export function BriefForm({ projectId, brief, kind }: { projectId: string; brief: BriefValues; kind: string }) {
+/** `accountContacts`: the account's contacts (FR-CRM-46), put in the contacts field while the brief names none. */
+export function BriefForm({ projectId, brief, kind, accountContacts = [] }: { projectId: string; brief: BriefValues; kind: string; accountContacts?: { name: string; title: string | null }[] }) {
+  const contacts = brief.clientContacts?.length ? brief.clientContacts : accountContacts.map((contact) => ({ name: contact.name, role: contact.title ?? undefined }));
   const t = useTranslations("projects.brief");
   const area = (name: keyof BriefValues, rows = 3) => (
     <Field name={name} label={t(`fields.${name}`)}>
@@ -105,7 +107,7 @@ export function BriefForm({ projectId, brief, kind }: { projectId: string; brief
       </div>
       {area("assumptions", 2)}
       <Field name="clientContacts" label={t("fields.clientContacts")}>
-        <textarea id="clientContacts" name="clientContacts" rows={3} defaultValue={(brief.clientContacts ?? []).map((contact) => [contact.name, contact.role, contact.contact].filter(Boolean).join(" — ")).join("\n")} placeholder={t("contactsHint")} className={textarea} />
+        <textarea id="clientContacts" name="clientContacts" rows={3} defaultValue={contacts.map((contact: { name: string; role?: string; contact?: string }) => [contact.name, contact.role, contact.contact].filter(Boolean).join(" — ")).join("\n")} placeholder={t("contactsHint")} className={textarea} />
       </Field>
       <Field name="links" label={t("fields.links")}>
         <textarea id="links" name="links" rows={2} defaultValue={(brief.links ?? []).join("\n")} placeholder="https://drive.google.com/…" className={`${textarea} font-mono`} />

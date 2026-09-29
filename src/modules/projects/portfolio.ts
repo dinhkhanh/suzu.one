@@ -64,8 +64,9 @@ const matches = (row: PortfolioRow, filters: PortfolioFilters) =>
   (!filters.kind || row.kind === filters.kind) &&
   (!filters.health || (filters.health === "stale" ? row.stale : filters.health === "none" ? row.health === null : row.health === filters.health));
 
-export async function listPortfolio(viewer: WorkViewer, options: { today: IsoDate; filters?: PortfolioFilters; includeDone?: boolean }): Promise<PortfolioRow[]> {
-  const projects = (await visibleProjects(viewer, { today: options.today })).filter((project) => options.includeDone || project.status !== "done");
+export async function listPortfolio(viewer: WorkViewer, options: { today: IsoDate; filters?: PortfolioFilters; includeDone?: boolean; /** Only these clients' projects (an account and its brands, FR-CRM-04), narrowed before any figure is read. */ clientIds?: readonly string[] }): Promise<PortfolioRow[]> {
+  const clients = options.clientIds ? new Set(options.clientIds) : null;
+  const projects = (await visibleProjects(viewer, { today: options.today })).filter((project) => (options.includeDone || project.status !== "done") && (!clients || (!!project.clientId && clients.has(project.clientId))));
   if (projects.length === 0) return [];
   const ids = projects.map((project) => project.id);
   const plans = await readPlans(ids);

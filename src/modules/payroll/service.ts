@@ -62,4 +62,4 @@ export { costTrend, type ReportFilter, reportOptions, type TrendPoint } from "./
  * and the caller must roll the rates up before anything is shown: never a rate, or one person's
  * cost, per person to anybody.
  */
-export { type LoadedCostRate, loadedCostRates } from "./cost-rates";
+export { blendedCostRate, type LoadedCostRate, loadedCostRates } from "./cost-rates";

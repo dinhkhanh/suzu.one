@@ -11,6 +11,7 @@ import { notify } from "@/modules/platform/notifications/service";
 import { countOpenBlockersRaisedBy, type DayTask, listDayTasks, listOpenBlockersRaisedBy, listOpenWorkOf, listWorkActivityBetween, type OpenBlocker } from "@/modules/work/service";
 import { dayOf, type PersonDay } from "./days";
 import { prefillReport, type ReportDraft } from "./engine/prefill";
+import { dayActivities } from "../platform/day-activity/registry";
 import { type ShownActivity, type ShownLine, showActivity, showLine } from "./engine/redact";
 import { DEFAULT_TEAM_RULES, isLate, type NotRequiredReason } from "./engine/rules";
 import { loadSeen, readsOwn } from "./labels";
@@ -34,18 +35,22 @@ export async function findReport(personId: string, date: IsoDate): Promise<Repor
 
 /** The day, as its activity tells it (FR-PJM-22 "prefilled"): read now, from the record. */
 export async function buildDraft(personId: string, date: IsoDate): Promise<ReportDraft> {
-  const [plan, events, time] = await Promise.all([findPlan(personId, date), listWorkActivityBetween([personId], date, date), listTimeOf([personId], date, date)]);
+  const [plan, events, time, elsewhere] = await Promise.all([findPlan(personId, date), listWorkActivityBetween([personId], date, date), listTimeOf([personId], date, date), dayActivities(db(), personId, date)]);
   const plannedTasks = await listDayTasks((plan?.items ?? []).map((item) => item.taskId));
   const planned = (plan?.items ?? []).flatMap((item) => {
     const task = plannedTasks.find((row) => row.taskId === item.taskId);
     return task ? [{ taskId: task.taskId, key: task.key, title: task.title, status: task.status, completedOn: task.completedOn }] : [];
   });
-  return prefillReport({
+  const draft = prefillReport({
     date,
     planned,
     events,
     time: time.map((entry) => ({ taskId: entry.taskId, key: entry.key, title: entry.title ?? entry.category ?? "", minutes: entry.minutes, at: entry.createdAt })),
   });
+  // What other modules recorded of the day (the CRM's calls and deals, FR-CRM-43): lines of their own, on no task.
+  if (elsewhere.length === 0) return draft;
+  const activity = [...draft.activity, ...elsewhere.map((item) => ({ kind: item.kind, taskId: null, title: item.title, ref: null, detail: item.detail, at: item.at }))].sort((a, b) => a.at.localeCompare(b.at));
+  return { ...draft, activity };
 }
 
 export type ReportForm = {

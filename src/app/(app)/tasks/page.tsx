@@ -10,6 +10,9 @@ import { loadMyWork } from "@/modules/work/service";
 import { CoverCheck } from "@/modules/work/ui/cover";
 import { HandoffNoteView, HandoffResponder } from "@/modules/work/ui/handoff";
 import { pageTitle } from "@/i18n/page-title";
+import { listPersonNames } from "@/modules/platform/people/service";
+import { canEditActivity, listAllFollowUpsOf, loadCrm } from "@/modules/crm/service";
+import { FollowUpList } from "@/modules/crm/ui/views";
 
 export const generateMetadata = pageTitle("myWork");
 
@@ -21,7 +24,8 @@ export default async function MyWorkPage() {
   const user = await requireUser();
   const today = todayInVietnam();
   // Every list in one cached entry (work/my-work.ts); the messages beside it.
-  const [t, format, tWork, mine] = await Promise.all([getTranslations("tasks"), getFormatter(), getTranslations("work"), loadMyWork(user.person.id, today)]);
+  const [t, format, tWork, mine, followUps, crm] = await Promise.all([getTranslations("tasks"), getFormatter(), getTranslations("work"), loadMyWork(user.person.id, today), listAllFollowUpsOf(user.person.id), loadCrm(user)]);
+  const people = followUps.length ? await listPersonNames() : [];
   const { tasks: { open, recentlyDone }, workItems, reviews, approvals, triage, blockers, handoffs, coverPlans, handovers } = mine;
   const linkFor = (task: { id: string; kind: string }) => (task.kind === "work" ? `/work/tasks/${task.id}` : task.kind === "obligation" ? `/ops/obligations/${task.id}` : null);
   const work = sortInbox(workItems, today);
@@ -202,6 +206,13 @@ export default async function MyWorkPage() {
               </li>
             ))}
           </ul>
+        </section>
+      ) : null}
+
+      {followUps.length > 0 ? (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-medium text-muted-foreground">{t("sections.followUps", { count: followUps.length })}</h2>
+          <FollowUpList items={followUps} canEdit={(item) => canEditActivity(crm.viewer, item, null)} people={people} meId={user.person.id} today={today} />
         </section>
       ) : null}
 

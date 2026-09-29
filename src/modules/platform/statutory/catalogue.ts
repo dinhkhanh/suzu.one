@@ -39,6 +39,21 @@ export const PARAMETERS = {
   // Not law but company practice, kept here so it is effective-dated and owner-approved like the rest:
   // how many days ahead HR and managers are warned. Each list is a countdown, e.g. [45, 30, 15].
   "hr.alert_thresholds": z.object({ contractExpiryDays: z.array(count).min(1), probationEndDays: z.array(count).min(1), documentExpiryDays: z.array(count).min(1) }),
+  // Value-added tax on the services the entities sell (CRM quotes and invoices): the rate a quote
+  // starts with, and the rates a quote or an invoice may use. Law, so effective-dated and verified.
+  "tax.vat": z.object({ defaultBp: basisPoints, allowedBp: z.array(basisPoints).min(1) }).refine((value) => value.allowedBp.includes(value.defaultBp), "the default rate must be one of the allowed rates"),
+  // CRM company practice (Phase 11): when a deal counts as stale, how early renewals open, when
+  // receivables are chased (days past due), the default payment terms and quote validity, and when
+  // a quote needs approval — a line discount above the threshold, or an estimated margin below the floor.
+  "crm.settings": z.object({
+    staleDealDays: count,
+    renewalLeadDays: count,
+    receivableReminderDays: z.array(count).min(1),
+    defaultPaymentTermsDays: count,
+    quoteValidityDays: count,
+    quoteDiscountApprovalBp: basisPoints,
+    quoteMarginFloorBp: basisPoints,
+  }),
 } as const;
 
 export type ParameterKey = keyof typeof PARAMETERS;

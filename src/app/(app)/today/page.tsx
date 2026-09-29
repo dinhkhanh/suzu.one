@@ -17,6 +17,10 @@ import { ClientDecisionQuick } from "@/modules/work/ui/client-decision";
 import { HandoffResponder } from "@/modules/work/ui/handoff";
 import { TaskStateSelect } from "@/modules/work/ui/task-state-select";
 import { pageTitle } from "@/i18n/page-title";
+import { listPersonNames } from "@/modules/platform/people/service";
+import { canEditActivity, listFollowUpsOf, listSalesHandoffsFor, loadCrm } from "@/modules/crm/service";
+import { HandoffAnswerForm } from "@/modules/crm/ui/deal-forms";
+import { FollowUpList } from "@/modules/crm/ui/views";
 
 export const generateMetadata = pageTitle("today");
 
@@ -37,7 +41,9 @@ export default async function TodayPage() {
   const date = todayInVietnam();
   const [t, format, view, viewer] = await Promise.all([getTranslations("daily"), getFormatter(), getToday(user.person.id, date), loadViewer(user)]);
   const tasksOnScreen = [...view.planned, ...view.due];
-  const [targets, states] = await Promise.all([listCreateTargets(viewer), listStates([...new Set(tasksOnScreen.map((task) => task.teamId))])]);
+  // The CRM's share of the day (FR-CRM-06, 16, 43): client follow-ups due, won deals handed over.
+  const [targets, states, followUps, salesHandoffs, crm] = await Promise.all([listCreateTargets(viewer), listStates([...new Set(tasksOnScreen.map((task) => task.teamId))]), listFollowUpsOf(user.person.id, date), listSalesHandoffsFor(user.person.id), loadCrm(user)]);
+  const people = followUps.length ? await listPersonNames() : [];
   const statesOf = (teamId: string) => states.filter((state) => state.teamId === teamId && state.isActive).map(({ id, name, category }) => ({ id, name, category }));
   const day = view.day;
   const off = !!day?.dayOff;
@@ -158,6 +164,31 @@ export default async function TodayPage() {
               </li>
             ))}
           </ul>
+        </Section>
+      ) : null}
+
+      {salesHandoffs.length > 0 ? (
+        <Section title={t("today.salesHandoffs", { count: salesHandoffs.length })}>
+          <ul className="flex flex-col divide-y rounded-xl border text-sm">
+            {salesHandoffs.map((handoff) => (
+              <li key={handoff.projectId} className="flex flex-col gap-2 p-3">
+                <div>
+                  <Link href={`/crm/deals/${handoff.dealId}`} className="font-medium hover:underline">
+                    {handoff.dealTitle}
+                  </Link>{" "}
+                  → <Link href={`/projects/${handoff.projectId}`}>{handoff.projectName}</Link>
+                  <p className="text-xs text-muted-foreground">{t("today.handoffFrom", { name: handoff.fromName ?? "—" })}</p>
+                </div>
+                <HandoffAnswerForm projectId={handoff.projectId} />
+              </li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
+
+      {followUps.length > 0 ? (
+        <Section title={t("today.followUps", { count: followUps.length })}>
+          <FollowUpList items={followUps} canEdit={(item) => canEditActivity(crm.viewer, item, null)} people={people} meId={user.person.id} today={date} />
         </Section>
       ) : null}
 

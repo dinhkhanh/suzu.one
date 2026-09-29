@@ -127,6 +127,11 @@ describe("the catalogue", () => {
     expect(await buildReportFor(users.head, "payroll_cost", {}, PERIOD, "vi")).toBeNull();
     expect(await buildReportFor(users.huy, "headcount", {}, PERIOD, "vi")).toBeNull();
     expect(await buildReportFor(users.hr, "headcount", {}, PERIOD, "vi")).not.toBeNull();
+    // The sales reports (FR-CRM-52) follow the CRM's own screens: nobody here sells, runs sales, bills or manages an account.
+    for (const who of ["hr", "head", "huy"] as const) {
+      expect(await buildReportFor(users[who], "crm_pipeline", {}, PERIOD, "vi")).toBeNull();
+      expect(await buildReportFor(users[who], "crm_receivables", {}, PERIOD, "vi")).toBeNull();
+    }
   });
 
   it("refuses a report key that does not exist", async () => {

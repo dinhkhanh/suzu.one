@@ -26,6 +26,7 @@ import { ImpersonateButton } from "@/modules/platform/auth/ui/impersonation";
 import { listEntities } from "@/modules/platform/org/service";
 import { can, canImpersonate } from "@/modules/platform/rbac/policy";
 import { pageTitle } from "@/i18n/page-title";
+import { accountsManagedBy } from "@/modules/crm/service";
 
 export const generateMetadata = pageTitle("person");
 
@@ -58,7 +59,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
   // A move to another entity is for someone employed now, by HR of both entities (the action re-checks).
   const today = todayInVietnam();
   const transferring = person.canManage && !!personal?.startDate && personal.startDate < today && personal.endDate === null && !!person.entityId;
-  const [changeRequests, options, otherEntityOptions, entities, borrowable, target] = await Promise.all([
+  const [changeRequests, options, otherEntityOptions, entities, borrowable, target, managed] = await Promise.all([
     person.id === user.person.id ? null : listProfileChanges({ personId: user.person.id, principal: user.principal }, person.id, "pending"),
     person.canManage && person.entityId ? loadPlacementOptions(person.entityId) : null,
     rehiring || transferring ? loadPlacementOptions() : null,
@@ -67,8 +68,11 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
     // is not already borrowing, then decided against their grants and this person's own.
     !user.impersonator && person.id !== user.person.id && can(user.principal, "auth:impersonate") ? impersonationTargetOf(person.id) : null,
     getPersonTarget(person.id),
+    // The clients this person looks after (FR-CRM-46): directory information, like their team.
+    user.principal.workforceType === "collaborator" ? new Map<string, { id: string; name: string }[]>() : accountsManagedBy([person.id]),
   ]);
   const photoEditable = canChangePhoto(user.principal, target);
+  const accounts = managed.get(person.id) ?? [];
   const impersonable = !!borrowable && canImpersonate(user.principal, borrowable.target);
   const manageableEntities = entities.filter((entity) => entity.isActive && can(user.principal, "person:manage", { entityId: entity.id })).map((entity) => ({ id: entity.id, name: entity.shortName }));
   const transferTargets = transferring ? manageableEntities.filter((entity) => entity.id !== person.entityId) : [];
@@ -95,6 +99,18 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
         <Fact label={t("fields.workEmail")}>{person.workEmail}</Fact>
         <Fact label={t("fields.team")}>{person.current?.teamName}</Fact>
         <Fact label={t("fields.managerId")}>{personLink(person.current?.managerId ?? null, person.current?.managerName ?? null)}</Fact>
+        {accounts.length ? (
+          <Fact label={t("fields.accountsManaged")}>
+            {accounts.map((account, index) => (
+              <span key={account.id}>
+                {index ? ", " : ""}
+                <Link href={`/crm/accounts/${account.id}`} className="hover:underline">
+                  {account.name}
+                </Link>
+              </span>
+            ))}
+          </Fact>
+        ) : null}
       </dl>
 
       {personal ? (

@@ -18,6 +18,7 @@ import { createTranslator } from "next-intl";
 import { z } from "zod";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { getHeadcountReport } from "@/modules/core-hr/service";
+import { AGING_BUCKETS, agingSummary, canOpenPipeline, canOpenReceivables, forecast, listInvoices, loadCrm, managesAnAccount, ownsAnyDeal, salesDashboard } from "@/modules/crm/service";
 import { listInstances } from "@/modules/ops/service";
 import { costTrend, payrollReadReach } from "@/modules/payroll/service";
 import { type CsvFile, type ExportColumn, toCsv } from "@/modules/platform/export/csv";
@@ -298,10 +299,67 @@ const profitabilityReport: ReportDefinition<{ clientId?: string }> = {
   },
 };
 
+// ── sales pipeline (FR-CRM-52) ──────────────────────────────────────────────────────────────
+
+const crmPipeline: ReportDefinition<{ entityId?: string }> = {
+  key: "crm_pipeline",
+  parameters: z.object({ entityId: optionalUuid }),
+  // The pipeline screen's own rule; the figures are summed in SQL over the deals whose value the
+  // reader may see (`dealValueReach`), so a seller's weekly email is their own deals and no more.
+  canSee: async (user) => canOpenPipeline((await loadCrm(user)).viewer, await ownsAnyDeal(user.person.id)),
+  href: () => "/crm/reports",
+  build: async (user, parameters, period, locale) => {
+    const t = translator(locale);
+    const { viewer } = await loadCrm(user);
+    const scope = { entityId: parameters.entityId ?? null };
+    const [dashboard, months] = await Promise.all([salesDashboard(viewer, scope, period.to), forecast(viewer, scope, period.to)]);
+    const rows: (string | number)[][] = [];
+    if (dashboard) {
+      for (const stage of dashboard.byStage) rows.push([t("reports.catalogue.crm_pipeline.byStage"), locale === "en" ? (stage.nameEn ?? stage.name) : stage.name, stage.count, stage.value, stage.weighted]);
+      for (const month of months) rows.push([t("reports.catalogue.crm_pipeline.byCloseMonth"), month.month === "none" ? t("reports.catalogue.crm_pipeline.noDate") : month.month, month.count, month.value, month.weighted]);
+      for (const month of dashboard.byMonth) rows.push([t("reports.catalogue.crm_pipeline.won"), month.month, month.wonCount, month.wonValue, "—"]);
+    }
+    const weighted = dashboard?.byStage.reduce((sum, stage) => sum + stage.weighted, 0) ?? 0;
+    return {
+      title: t("reports.catalogue.crm_pipeline.name"),
+      columns: (["section", "name", "deals", "value", "weighted"] as const).map((key) => t(`reports.catalogue.crm_pipeline.${key}`)),
+      rows,
+      summary: dashboard ? t("reports.catalogue.crm_pipeline.summary", { open: dashboard.openCount, weighted, stale: dashboard.staleCount, winRate: percent(dashboard.winRate) }) : t("reports.catalogue.empty"),
+    };
+  },
+};
+
+// ── receivables aging (FR-CRM-52) ───────────────────────────────────────────────────────────
+
+const crmReceivables: ReportDefinition<{ entityId?: string }> = {
+  key: "crm_receivables",
+  parameters: z.object({ entityId: optionalUuid }),
+  // Finance, the sales director, and an account manager for their own accounts (`invoiceReach`).
+  canSee: async (user) => {
+    const { viewer } = await loadCrm(user);
+    return canOpenReceivables(viewer, managesAnAccount(viewer));
+  },
+  href: () => "/crm/invoices?status=overdue",
+  build: async (user, parameters, period, locale) => {
+    const t = translator(locale);
+    const { viewer } = await loadCrm(user);
+    const [aging, overdue] = await Promise.all([agingSummary(viewer, { entityId: parameters.entityId ?? null }, period.to), listInvoices(viewer, { status: "overdue", entityId: parameters.entityId ?? null }, period.to, 200)]);
+    return {
+      title: t("reports.catalogue.crm_receivables.name"),
+      columns: (["section", "name", "due", "daysLate", "owed"] as const).map((key) => t(`reports.catalogue.crm_receivables.${key}`)),
+      rows: [
+        ...AGING_BUCKETS.map((bucket) => [t("reports.catalogue.crm_receivables.aging"), t(`crm.enums.aging.${bucket}`), "—", "—", aging[bucket]] as (string | number)[]),
+        ...overdue.map((invoice) => [invoice.accountName, invoice.number, invoice.dueOn, invoice.daysPastDue, invoice.outstandingVnd] as (string | number)[]),
+      ],
+      summary: t("reports.catalogue.crm_receivables.summary", { total: aging.total, overdue: aging.total - aging.current, invoices: overdue.length }),
+    };
+  },
+};
+
 // ── the catalogue ───────────────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- each entry has its own parameter type; the map is keyed by report, not by shape.
-const DEFINITIONS: ReportDefinition<any>[] = [headcount, payrollCost, workAnalytics, opsOverdue, recruitFunnel, delivery, profitabilityReport];
+const DEFINITIONS: ReportDefinition<any>[] = [headcount, payrollCost, workAnalytics, opsOverdue, recruitFunnel, delivery, profitabilityReport, crmPipeline, crmReceivables];
 
 export const REPORT_KEYS = DEFINITIONS.map((definition) => definition.key);
 export type ReportKey = (typeof REPORT_KEYS)[number];

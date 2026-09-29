@@ -30,6 +30,18 @@ describe("navigation entries behind a permission", () => {
   });
 });
 
+describe("clients and sales", () => {
+  it("offers the CRM to every employee, not to a collaborator", () => {
+    expect(hrefs([])).toContain("/crm");
+    expect(navFor({ personId: "me", workforceType: "collaborator", grants: [] }, closed).main.map((item) => item.href)).not.toContain("/crm");
+  });
+
+  it("offers receivables to finance and sales directors, as the receivables page does", () => {
+    for (const role of ["finance", "c_level", "entity_director"] as const) expect(hrefs([{ role, scope: group }]), role).toContain("/crm/invoices");
+    for (const role of ["sales", "payroll", "hr_admin", "department_head"] as const) expect(hrefs([{ role, scope: group }]), role).not.toContain("/crm/invoices");
+  });
+});
+
 describe("feedback", () => {
   const admin = (grants: Grant[]) => navFor(principal(grants), closed).admin.map((item) => item.href);
 

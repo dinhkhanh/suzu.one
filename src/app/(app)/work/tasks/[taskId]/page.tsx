@@ -16,6 +16,7 @@ import { canDecideStage, canManagePublish, canManagePreviewLinks, canPinFeedback
 import { checklistChoices, listStateChecklists } from "@/modules/work/service";
 import { DeliveryPanel } from "@/modules/work/ui/delivery";
 import { auditPrivateTaskRead } from "@/modules/projects/service";
+import { contactChoicesFor } from "@/modules/crm/service";
 import { PreviewLinkPanel } from "@/modules/work/ui/preview-links";
 import { PublishPanel } from "@/modules/work/ui/publish";
 import { pageTitle } from "@/i18n/page-title";
@@ -61,6 +62,8 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
     canEdit ? listMoveTargets(viewer, detail.facts) : [],
   ]);
   const [pins, deliveries, publishes, client, checklists, stageHooks] = await Promise.all([listTaskPins(task.id), listDeliveriesByTask([task.id]), listPublishesByTask([task.id]), clientOfTask(detail), checklistChoices(), listStateChecklists([work.stateId])]);
+  const recordsClient = canRecordClientDecision(viewer, detail.facts, client);
+  const clientContacts = recordsClient ? await contactChoicesFor(client.id) : [];
   const stageChecklists = stageHooks.flatMap((hook) => {
     const list = checklists.find((choice) => choice.id === hook.checklistId);
     return list ? [{ id: list.id, name: list.name, required: hook.required }] : [];
@@ -188,9 +191,10 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
           canSubmit={canSubmitDeliverable(viewer, detail.facts) && task.status !== "cancelled"}
           canDecide={canDecide}
           canEdit={canEdit}
-          canRecordClient={canRecordClientDecision(viewer, detail.facts, client)}
+          canRecordClient={recordsClient}
           canPin={canPinFeedback(viewer, detail.facts)}
           clientName={client.name}
+          clientContacts={clientContacts}
           today={today}
         />
         <PreviewLinkPanel

@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
+import { type ClientContactChoice, ContactSuggestions } from "../../work/ui/client-decision";
 import {
   beginChangeEvidenceAction,
   beginSignedScanAction,
@@ -311,7 +312,8 @@ export function AcceptanceButtons({ acceptanceId, status }: { acceptanceId: stri
   );
 }
 
-export function SignAcceptanceForm({ acceptanceId, today }: { acceptanceId: string; today: string }) {
+/** `contacts`: the account's contacts (FR-CRM-46), suggested for the signer; the name is stored as typed. */
+export function SignAcceptanceForm({ acceptanceId, today, contacts = [] }: { acceptanceId: string; today: string; contacts?: ClientContactChoice[] }) {
   const t = useTranslations("projects.acceptance");
   return (
     <ActionForm action={signAcceptanceAction} extra={{ acceptanceId }} submit={t("sign")}>
@@ -321,7 +323,8 @@ export function SignAcceptanceForm({ acceptanceId, today }: { acceptanceId: stri
           <DatePicker id={`signedOn-${acceptanceId}`} name="signedOn" required max={today} defaultValue={today} />
         </Field>
         <Field name="signedByClient" label={t("signedBy")}>
-          <Input id={`signedBy-${acceptanceId}`} name="signedByClient" required maxLength={200} />
+          <Input id={`signedBy-${acceptanceId}`} name="signedByClient" required maxLength={200} list={contacts.length ? `signers-${acceptanceId}` : undefined} autoComplete="off" />
+          <ContactSuggestions id={`signers-${acceptanceId}`} contacts={contacts} />
         </Field>
       </div>
     </ActionForm>
@@ -334,7 +337,8 @@ export function SignedScanLink({ acceptanceId, label }: { acceptanceId: string; 
 
 // ── Billing (FR-PJM-56) ─────────────────────────────────────────────────────────────────────
 
-export function BillingDecisionForm({ itemId, needsAmount, today }: { itemId: string; needsAmount: boolean; today: string }) {
+/** `invoiceIn`: where a client's item is invoiced instead (the receivables record, FR-CRM-30) — the tab links there. */
+export function BillingDecisionForm({ itemId, needsAmount, today, invoiceIn }: { itemId: string; needsAmount: boolean; today: string; invoiceIn?: string }) {
   const t = useTranslations("projects.billing");
   const [mode, setMode] = useState<"invoice" | "waive">("invoice");
   return (
@@ -346,7 +350,13 @@ export function BillingDecisionForm({ itemId, needsAmount, today }: { itemId: st
           </Button>
         ))}
       </div>
-      {mode === "invoice" ? (
+      {mode === "invoice" && invoiceIn ? (
+        <p className="text-sm">
+          <a href={invoiceIn} className="underline">
+            {t("invoiceInReceivables")}
+          </a>
+        </p>
+      ) : mode === "invoice" ? (
         <ActionForm action={decideBillingAction} extra={{ itemId, action: "invoice" }} submit={t("markInvoiced")}>
           <div className="grid gap-2 sm:grid-cols-3">
             <Field name="invoiceNumber" label={t("invoiceNumber")}>

@@ -10,6 +10,7 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { BILLING_STATUSES, billingEntities, type BillingStatus, canDecideBilling, canOpenBillingQueue, listBillingQueue, openProject } from "@/modules/projects/service";
 import { BillingDecisionForm, ManualBillingForm, SignedScanLink } from "@/modules/projects/ui/commercial-forms";
 import { pageTitle } from "@/i18n/page-title";
+import { contractNumbersOfProjects } from "@/modules/crm/service";
 
 export const generateMetadata = pageTitle("billing");
 
@@ -31,6 +32,8 @@ export default async function BillingQueuePage({ searchParams }: PageProps<"/pro
   // Finance is usually on none of these projects: the name links only where the reader may open it,
   // and the acceptance an item carries opens from the item itself.
   const projectIds = [...new Set(items.map((item) => item.projectId))];
+  // The contract each project is delivered under (FR-CRM-25): the reference finance invoices against.
+  const contractOf = await contractNumbersOfProjects(projectIds);
   const openable = new Set((await Promise.all(projectIds.map(async (id) => ((await openProject(user, id)) ? id : null)))).filter((id) => id !== null));
   const today = todayInVietnam();
   const money = (value: number | null | undefined) => (value === null || value === undefined ? t("noAmount") : format.number(value, { style: "currency", currency: "VND", maximumFractionDigits: 0 }));
@@ -95,7 +98,7 @@ export default async function BillingQueuePage({ searchParams }: PageProps<"/pro
               {item.description}
               <span className="text-muted-foreground"> · {t(`sources.${item.source as "manual"}`)}</span>
             </p>
-            <p className="text-xs text-muted-foreground">{[item.clientName, item.entityName, item.reference ? t("referenceValue", { reference: item.reference }) : null, format.dateTime(item.createdAt, { dateStyle: "medium" })].filter(Boolean).join(" · ")}</p>
+            <p className="text-xs text-muted-foreground">{[item.clientName, item.entityName, (item.reference ?? contractOf.get(item.projectId)) ? t("referenceValue", { reference: item.reference ?? contractOf.get(item.projectId)! }) : null, format.dateTime(item.createdAt, { dateStyle: "medium" })].filter(Boolean).join(" · ")}</p>
             {item.acceptanceId && canDecideBilling(user.principal, item) ? (
               <p className="flex flex-wrap items-center gap-3 text-sm">
                 <a href={`/projects/${item.projectId}/acceptance/${item.acceptanceId}/pdf`} className="underline">
@@ -106,7 +109,7 @@ export default async function BillingQueuePage({ searchParams }: PageProps<"/pro
             ) : null}
             {item.status === "invoiced" ? <p className="text-sm text-muted-foreground">{t("invoicedAs", { number: item.invoiceNumber ?? "—", date: date(item.invoiceDate) })}{item.decidedByName ? ` · ${item.decidedByName}` : ""}</p> : null}
             {item.status === "waived" ? <p className="text-sm text-muted-foreground">{t("waivedBecause", { reason: item.waivedReason ?? "—" })}{item.decidedByName ? ` · ${item.decidedByName}` : ""}</p> : null}
-            {item.status === "ready" && canDecideBilling(user.principal, item) ? <BillingDecisionForm itemId={item.id} needsAmount={item.amountVnd === null} today={today} /> : null}
+            {item.status === "ready" && canDecideBilling(user.principal, item) ? <BillingDecisionForm itemId={item.id} needsAmount={item.amountVnd === null} today={today} invoiceIn={item.clientId ? "/crm/invoices" : undefined} /> : null}
           </li>
         ))}
       </ul>

@@ -17,7 +17,7 @@ export type Placeholder = {
   /** The tier of the fact this reveals. A template naming it must be at least this sensitive. */
   tier: Tier;
   /** Message key for the designer's field list: `documents.placeholders.<key>`. */
-  group: "company" | "person" | "employment" | "salary" | "document" | "offer" | "project";
+  group: "company" | "person" | "employment" | "salary" | "document" | "offer" | "project" | "sales";
 };
 
 const RANK: Record<Tier, number> = { public_internal: 0, personal: 1, restricted: 2, compensation: 3 };
@@ -81,6 +81,21 @@ export const PLACEHOLDERS: readonly Placeholder[] = [
   { key: "acceptance.scope", tier: "public_internal", group: "project" },
   { key: "acceptance.items", tier: "public_internal", group: "project" },
   { key: "acceptance.totals", tier: "public_internal", group: "project" },
+
+  // Sales paperwork — the quote, báo giá (FR-CRM-23). Prices the company offers a client: money,
+  // but the company's own prices, not anybody's pay, and nothing personal (no contact is named) —
+  // so public_internal like the acceptance. Who may *print* a quote is the deal's value rule, which
+  // the quote's page and its PDF route check; the template itself holds nothing to leak.
+  { key: "quote.number", tier: "public_internal", group: "sales" },
+  { key: "quote.title", tier: "public_internal", group: "sales" },
+  { key: "quote.validUntil", tier: "public_internal", group: "sales" },
+  { key: "quote.intro", tier: "public_internal", group: "sales" },
+  { key: "quote.lines", tier: "public_internal", group: "sales" },
+  { key: "quote.subtotal", tier: "public_internal", group: "sales" },
+  { key: "quote.discount", tier: "public_internal", group: "sales" },
+  { key: "quote.vat", tier: "public_internal", group: "sales" },
+  { key: "quote.total", tier: "public_internal", group: "sales" },
+  { key: "quote.terms", tier: "public_internal", group: "sales" },
 ];
 
 const BY_KEY = new Map(PLACEHOLDERS.map((placeholder) => [placeholder.key, placeholder]));

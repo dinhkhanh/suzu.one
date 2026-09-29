@@ -352,6 +352,10 @@ const decideBillingPipeline = createAction({
     return !!item && canDecideBilling(user.principal, item);
   },
   run: async ({ user, input }) => {
+    // A client's item is invoiced through the receivables record (CRM, FR-CRM-30), which marks it
+    // invoiced in the same step — invoicing it here alone would leave the money owed untracked.
+    // Internal work, which has no client, is still marked here; waiving is always here.
+    if (input.action === "invoice" && (await findBillingItem(input.itemId))?.clientId) throw new ActionError("billing_invoice_in_receivables");
     const decision = input.action === "invoice" ? { action: "invoice" as const, invoiceNumber: input.invoiceNumber, invoiceDate: input.invoiceDate, amountVnd: input.amountVnd } : { action: "waive" as const, reason: input.reason };
     const { before, after } = await decideBillingItem(input.itemId, decision, user.person.id);
     refresh(after.projectId);

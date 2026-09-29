@@ -17,7 +17,7 @@ describe("workMetricValue", () => {
 
   it("proposes nothing where the period gives no basis — except a count, whose zero is real", () => {
     const values = Object.fromEntries(WORK_METRICS.map((metric) => [metric, workMetricValue(metric, EMPTY_WORK_FACTS)]));
-    expect(values).toEqual({ on_time_rate: null, deliverables_accepted: 0, utilisation: null, revision_rounds_avg: null, eod_compliance: null });
+    expect(values).toEqual({ on_time_rate: null, deliverables_accepted: 0, utilisation: null, revision_rounds_avg: null, eod_compliance: null, sales_won_value: 0, sales_invoiced: 0, sales_collected: 0, sales_new_accounts: 0, sales_win_rate: null, followups_on_time: null });
   });
 
   it("never reports more than every required report", () => {
@@ -26,6 +26,18 @@ describe("workMetricValue", () => {
 
   it("lets utilisation run over 100 % — overtime is the scorer's to judge", () => {
     expect(workMetricValue("utilisation", { ...month, loggedMinutes: 12_000 })).toBe(11_364);
+  });
+});
+
+describe("sales metrics (FR-CRM-44)", () => {
+  const sales = { wonValueVnd: 180_000_000, dealsWon: 3, dealsLost: 1, newAccounts: 2, invoicedVnd: 95_000_000, collectedVnd: 60_000_000, followUpsDue: 8, followUpsOnTime: 6 };
+  it("proposes money in whole VND, counts in hundredths and rates in hundredths of a percent", () => {
+    expect(workMetricValue("sales_won_value", { ...month, sales })).toBe(180_000_000);
+    expect(workMetricValue("sales_invoiced", { ...month, sales })).toBe(95_000_000);
+    expect(workMetricValue("sales_collected", { ...month, sales })).toBe(60_000_000);
+    expect(workMetricValue("sales_new_accounts", { ...month, sales })).toBe(200);
+    expect(workMetricValue("sales_win_rate", { ...month, sales })).toBe(7500);
+    expect(workMetricValue("followups_on_time", { ...month, sales })).toBe(7500);
   });
 });
 

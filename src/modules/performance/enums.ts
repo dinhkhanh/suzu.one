@@ -247,9 +247,26 @@ export type OneOnOneStatus = (typeof ONE_ON_ONE_STATUSES)[number];
 // A KPI may name one of these as its work source; the monthly job then proposes its actual from
 // PJM data and the scorer confirms or corrects it. Each metric is only meaningful in one unit.
 
-export const WORK_METRICS = ["on_time_rate", "deliverables_accepted", "utilisation", "revision_rounds_avg", "eod_compliance"] as const;
+// The `sales_*` and `followups_on_time` metrics come from the CRM (FR-CRM-44): value won and deals
+// won or lost by their owner, new accounts won, invoiced and collected on the accounts a person
+// manages, and follow-ups done by their day.
+export const WORK_METRICS = ["on_time_rate", "deliverables_accepted", "utilisation", "revision_rounds_avg", "eod_compliance", "sales_won_value", "sales_invoiced", "sales_collected", "sales_new_accounts", "sales_win_rate", "followups_on_time"] as const;
 export type WorkMetric = (typeof WORK_METRICS)[number];
-export const WORK_METRIC_UNITS: Record<WorkMetric, KpiUnit> = { on_time_rate: "percent", deliverables_accepted: "number", utilisation: "percent", revision_rounds_avg: "number", eod_compliance: "percent" };
+export const WORK_METRIC_UNITS: Record<WorkMetric, KpiUnit> = {
+  on_time_rate: "percent",
+  deliverables_accepted: "number",
+  utilisation: "percent",
+  revision_rounds_avg: "number",
+  eod_compliance: "percent",
+  sales_won_value: "currency",
+  sales_invoiced: "currency",
+  sales_collected: "currency",
+  sales_new_accounts: "number",
+  sales_win_rate: "percent",
+  followups_on_time: "percent",
+};
+/** The metrics read from the CRM rather than from work — the job reads the sales figures only for these. */
+export const SALES_METRICS: readonly WorkMetric[] = ["sales_won_value", "sales_invoiced", "sales_collected", "sales_new_accounts", "sales_win_rate", "followups_on_time"];
 export const isWorkMetric = (value: unknown): value is WorkMetric => typeof value === "string" && (WORK_METRICS as readonly string[]).includes(value);
 /** The status of an actual: entered by a person, proposed by the work job, or a proposal turned down. */
 export const KPI_ACTUAL_STATUSES = ["confirmed", "proposed", "dismissed"] as const;

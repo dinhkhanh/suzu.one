@@ -1,7 +1,7 @@
 // The catalogue of notifications. Plain module: shared by the server and the preferences screen.
 // Wording lives in messages/*.json under `notifications.kinds.<kind>` (dots become underscores).
 
-export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks", "attendance", "ops", "kb", "comms", "payroll", "recruit", "performance", "projects", "daily", "feedback"] as const;
+export const CATEGORIES = ["security", "system", "hr", "approvals", "tasks", "attendance", "ops", "kb", "comms", "payroll", "recruit", "performance", "projects", "daily", "crm", "feedback"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const EMAIL_CHANNELS = ["instant", "digest", "off"] as const;
@@ -53,6 +53,10 @@ export const CATEGORY_DEFINITIONS: Record<Category, { defaults: ChannelChoice; /
   // The day (Phase 10): plan and report reminders, a lead's comment on a report, timesheets.
   // On the phone, not in the mailbox: a reminder by email tomorrow is no reminder.
   daily: { defaults: { inApp: true, email: "off", push: true }, mandatory: false, thirdParty: "full" },
+  // CRM (Phase 11): a follow-up due, a lead or deal handed to you, a won deal to set up, a hand-off
+  // from sales, a renewal, an overdue invoice. Clients and deals by name — as projects are — but
+  // never an amount and never a contact's name: those are money and other people's personal data.
+  crm: { defaults: { inApp: true, email: "digest", push: true }, mandatory: false, thirdParty: "full" },
   // Feedback about the app: a new item for whoever triages it, a reply for whoever sent it.
   feedback: { defaults: { inApp: true, email: "digest", push: false }, mandatory: false, thirdParty: "full" },
 };
@@ -189,6 +193,22 @@ export const KINDS = {
   "daily.timesheet_reminder": "daily",
   "daily.timesheet_submitted": "daily",
   "daily.timesheet_decided": "daily",
+  // Phase 11 — CRM. Account, deal and quote names; never an amount, never a contact's name.
+  "crm.followup_due": "crm",
+  "crm.followup_assigned": "crm",
+  "crm.cover_followups": "crm",
+  "crm.account_team_added": "crm",
+  "crm.lead_assigned": "crm",
+  "crm.lead_converted": "crm",
+  "crm.deal_assigned": "crm",
+  "crm.deal_stale": "crm",
+  "crm.deal_won": "crm",
+  "crm.delivery_handoff": "crm",
+  "crm.delivery_handoff_answered": "crm",
+  "crm.renewal_opened": "crm",
+  "crm.invoice_overdue": "crm",
+  // A commission statement to read: generic wording, like every notification about pay.
+  "crm.commission_ready": "payroll",
   // Feedback about SuZu One: a new item to triage (the category and the area, never the text),
   // and the answer to the person who sent it.
   "feedback.received": "feedback",

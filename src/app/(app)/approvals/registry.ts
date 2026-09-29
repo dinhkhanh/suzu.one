@@ -28,6 +28,8 @@ import { decideHiringRequestAction } from "@/modules/recruit/actions";
 import { hiringRequestType } from "@/modules/recruit/hiring";
 import { decideOfferAction } from "@/modules/recruit/offer-actions";
 import { offerRequestType } from "@/modules/recruit/offers";
+import { decideQuoteAction } from "@/modules/crm/quote-actions";
+import { quoteRequestType } from "@/modules/crm/service";
 import { decideRequestAction } from "@/modules/requests/actions";
 import { registeredGenericTypes } from "@/modules/requests/service";
 
@@ -56,6 +58,8 @@ const REGISTERED: RegisteredRequestType[] = [
   { definition: projectBriefRequest, approve: (requestId) => decideBriefAction({ requestId, decision: "approve", comment: null }) },
   // A change request moves scope, hours and perhaps the fee (FR-PJM-11): read before it is approved, never bulk-approvable.
   { definition: changeRequestType, approve: (requestId) => decideChangeAction({ requestId, decision: "approve", comment: null }) },
+  // A quote asking for approval has a discount or a margin someone must look at (FR-CRM-22): read on its page, never bulk-approvable.
+  { definition: quoteRequestType, approve: (requestId) => decideQuoteAction({ requestId, decision: "approve", comment: null }) },
 ];
 
 export const REQUEST_TYPES: ReadonlyMap<string, RegisteredRequestType> = new Map(REGISTERED.map((entry) => [entry.definition.type, entry]));

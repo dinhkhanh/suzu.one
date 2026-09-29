@@ -33,7 +33,24 @@ async function uploadEvidence(taskId: string, file: File): Promise<{ ok: true; f
 }
 
 /** The full form: on the task page, for the client stage or any version. */
-export function ClientDecisionForm({ target, version, clientName, files, today, onDone }: { target: DecisionTarget; version: number; clientName: string | null; files: { id: string; fileName: string }[]; today: string; onDone?: () => void }) {
+export type ClientContactChoice = { name: string; title: string | null };
+
+/** The account's contacts as suggestions for a free-text name field. */
+export function ContactSuggestions({ id, contacts }: { id: string; contacts: readonly ClientContactChoice[] }) {
+  if (contacts.length === 0) return null;
+  return (
+    <datalist id={id}>
+      {contacts.map((contact) => (
+        <option key={`${contact.name}|${contact.title ?? ""}`} value={contact.name}>
+          {contact.title ?? undefined}
+        </option>
+      ))}
+    </datalist>
+  );
+}
+
+/** `contacts`: the account's contacts (the CRM's, FR-CRM-46), offered as suggestions — the name is still typed text. */
+export function ClientDecisionForm({ target, version, clientName, contacts = [], files, today, onDone }: { target: DecisionTarget; version: number; clientName: string | null; contacts?: ClientContactChoice[]; files: { id: string; fileName: string }[]; today: string; onDone?: () => void }) {
   const t = useTranslations("work.clientDecision");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -98,7 +115,8 @@ export function ClientDecisionForm({ target, version, clientName, files, today, 
         </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor={`cd-by-${version}`}>{t("decidedBy")}</Label>
-          <Input id={`cd-by-${version}`} name="decidedByName" maxLength={120} placeholder={clientName ?? t("decidedByPlaceholder")} />
+          <Input id={`cd-by-${version}`} name="decidedByName" maxLength={120} placeholder={clientName ?? t("decidedByPlaceholder")} list={contacts.length ? `cd-contacts-${version}` : undefined} autoComplete="off" />
+          <ContactSuggestions id={`cd-contacts-${version}`} contacts={contacts} />
         </div>
       </div>
       <div className="flex flex-col gap-1">

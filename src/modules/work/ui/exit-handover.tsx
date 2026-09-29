@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { isReassignable, OWNERSHIP_KINDS } from "../engine/exit";
+import { heldKinds, isReassignable } from "../engine/exit";
 import type { OwnedItemView } from "../exit";
 import { changeAccountManagerAction, completeExitHandoverAction, reassignOwnershipAction } from "../handoff-actions";
 import { HandoffNoteFields, readNote } from "./handoff";
@@ -49,7 +49,8 @@ export function ExitHandoverForm({ handoverId, owned, people, canRun, open }: { 
   const reassignable = owned.filter((item) => item.canReassign);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
   const keyOf = (item: OwnedItemView) => `${item.kind}:${item.id}`;
-  const groups = OWNERSHIP_KINDS.map((kind) => ({ kind, items: owned.filter((item) => item.kind === kind) })).filter((group) => group.items.length);
+  // This module's kinds in their order, then those other modules list (the CRM's, FR-CRM-40).
+  const groups = heldKinds(owned).map((kind) => ({ kind, items: owned.filter((item) => item.kind === kind) }));
   const toggle = (key: string, on: boolean) => setChosen((current) => new Set(on ? [...current, key] : [...current].filter((row) => row !== key)));
   // Work of a place this runner does not run has no name here: they are told whom to ask.
   const label = (item: OwnedItemView) => (item.label === null ? (item.ownerName ? t("privateItemAsk", { name: item.ownerName }) : t("privateItem")) : item.kind === "time_week" ? t("week", { date: format.dateTime(new Date(`${item.label}T00:00:00`), { dateStyle: "medium" }) }) : item.label);

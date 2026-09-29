@@ -17,6 +17,7 @@ import { kbTemplateSeedRows } from "../src/modules/kb/seed-templates";
 import { kpiSeedRows } from "../src/modules/performance/seed-kpis";
 import { WORK_TEMPLATE_SEED } from "../src/modules/work/seed-templates";
 import { seedAcceptanceTemplate, seedProjectTemplatePlans } from "../src/modules/projects/seed";
+import { seedQuoteTemplate, seedRateCard, seedStages } from "../src/modules/crm/seed";
 import { STATUTORY_SEED } from "../src/modules/platform/statutory/seed-values";
 import { DEFAULT_PAYROLL_POLICY } from "../src/modules/payroll/enums";
 import { PAY_COMPONENT_SEED_VALID_FROM, payComponentSeedRows } from "../src/modules/payroll/seed-components";
@@ -193,6 +194,12 @@ async function main() {
   // The acceptance record (biên bản nghiệm thu, FR-PJM-55): a draft for counsel to read, never money.
   const { seeded: acceptanceTemplates } = await seedAcceptanceTemplate(db);
   console.log(`Seeded ${acceptanceTemplates} acceptance template (existing code left untouched).`);
+  // CRM (Phase 11): the starter pipeline, rate card and quote template — each only into an empty
+  // table (or a missing code), so what sales has changed is never overwritten (SRS Q27, Q28).
+  const { seeded: stages } = await seedStages(db);
+  const { seeded: services } = await seedRateCard(db);
+  const { seeded: quoteTemplates } = await seedQuoteTemplate(db);
+  console.log(`Seeded ${stages} pipeline stages, ${services} rate-card services and ${quoteTemplates} quote template (skipped where any already exist).`);
 
   // Hiring pipelines (FR-REC-02): only codes that do not exist yet, so a pipeline whose stages a
   // recruiter has renamed or reordered is never overwritten. The seed is validated first — a

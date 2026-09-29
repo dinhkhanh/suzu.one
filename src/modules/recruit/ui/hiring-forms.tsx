@@ -21,10 +21,13 @@ export function HiringRequestForm({
   canSetMoney,
   defaultEntityId,
   defaultDepartmentId,
+  prefill = {},
 }: {
   entities: { id: string; shortName: string | null; code: string }[];
   departments: { id: string; name: string }[];
   people: { id: string; fullName: string }[];
+  /** Filled in from a link (the CRM's staffing check); every field stays editable. */
+  prefill?: { positionTitle?: string; targetStartDate?: string; reason?: string };
   canSetMoney: boolean;
   defaultEntityId: string | null;
   defaultDepartmentId: string | null;
@@ -42,7 +45,7 @@ export function HiringRequestForm({
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field name="positionTitle" label={t("title")}>
-            <Input id="positionTitle" name="positionTitle" required maxLength={200} />
+            <Input id="positionTitle" name="positionTitle" required maxLength={200} defaultValue={prefill.positionTitle} />
           </Field>
           <Field name="headcount" label={t("headcount")}>
             <Input id="headcount" name="headcount" type="number" min={1} max={100} required defaultValue={1} />
@@ -82,7 +85,7 @@ export function HiringRequestForm({
             <Input id="workLocation" name="workLocation" maxLength={200} />
           </Field>
           <Field name="targetStartDate" label={t("targetStartDate")}>
-            <DatePicker id="targetStartDate" name="targetStartDate" />
+            <DatePicker id="targetStartDate" name="targetStartDate" defaultValue={prefill.targetStartDate} />
           </Field>
           <Field name="hiringManagerPersonId" label={t("hiringManager")}>
             <Select id="hiringManagerPersonId" name="hiringManagerPersonId" defaultValue="">
@@ -97,7 +100,7 @@ export function HiringRequestForm({
         </div>
 
         <Field name="reason" label={t("reason")}>
-          <textarea id="reason" name="reason" rows={4} required maxLength={2000} className={textarea} />
+          <textarea id="reason" name="reason" rows={4} required maxLength={2000} className={textarea} defaultValue={prefill.reason} />
         </Field>
 
         {canSetMoney ? (

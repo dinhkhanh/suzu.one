@@ -70,3 +70,22 @@ export async function loadedCostRates(principal: Principal, input: { personIds: 
     return [{ personId, month, ratePerHourVnd: Math.round((cost * 60) / minutes) }];
   });
 }
+
+/** The reader of the automated checks below: they answer with an aggregate, never with a rate. */
+const CHECKS: Principal = { personId: null, workforceType: null, grants: [{ role: "owner", scope: { type: "group" } }] };
+
+/**
+ * The average loaded hourly cost of a group of people over a span of months — an **aggregate**, for
+ * the CRM's quote margin (FR-CRM-22, 24): the automated approval check, whoever submits the quote,
+ * and the estimate a `pjm:cost` holder reads. Each person's months are averaged, then the people.
+ * null for fewer than two people with a signed month: the "average" of one person is their rate,
+ * and a rate is never handed out (see the rules above).
+ */
+export async function blendedCostRate(personIds: readonly string[], fromMonth: string, toMonth: string): Promise<number | null> {
+  const rates = await loadedCostRates(CHECKS, { personIds, fromMonth, toMonth });
+  const byPerson = new Map<string, number[]>();
+  for (const rate of rates) byPerson.set(rate.personId, [...(byPerson.get(rate.personId) ?? []), rate.ratePerHourVnd]);
+  if (byPerson.size < 2) return null;
+  const averages = [...byPerson.values()].map((values) => values.reduce((sum, value) => sum + value, 0) / values.length);
+  return Math.round(averages.reduce((sum, value) => sum + value, 0) / averages.length);
+}

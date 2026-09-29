@@ -16,6 +16,7 @@ import { AccountManagerForm, BriefForm, PlanSettingsForm, SubmitBriefButton } fr
 import { healthVariant, ProjectHeader } from "@/modules/projects/ui/project-header";
 import { listProjectMembers } from "@/modules/work/service";
 import { pageTitle } from "@/i18n/page-title";
+import { canViewDeal, contactChoicesFor, contractNumbersOfProjects, type DealStatus, dealOfProject, findAccount, loadCrm } from "@/modules/crm/service";
 
 export const generateMetadata = pageTitle("project");
 
@@ -53,9 +54,23 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
   }
 
   const { project, plan, can } = context;
-  const [request, updates, members, people, waiting] = await Promise.all([getBriefRequest({ personId: user.person.id, principal: user.principal }, plan), listStatusUpdates(project.id, 10), listProjectMembers(project.id), can.editPlan ? listPersonNames() : Promise.resolve([]), awaitingAcceptance(project.id)]);
+  const [request, updates, members, people, waiting, origin, contracts, account] = await Promise.all([
+    getBriefRequest({ personId: user.person.id, principal: user.principal }, plan),
+    listStatusUpdates(project.id, 10),
+    listProjectMembers(project.id),
+    can.editPlan ? listPersonNames() : Promise.resolve([]),
+    awaitingAcceptance(project.id),
+    // Where the work came from (FR-CRM-46): the account, the won deal and the contract it is delivered under.
+    dealOfProject(project.id),
+    contractNumbersOfProjects([project.id]),
+    project.clientId ? findAccount(project.clientId) : Promise.resolve(null),
+  ]);
+  // The deal is shown only to whoever may see it (`canViewDeal`): reading a project does not open its sale.
+  const showsDeal = !!origin && !!account && canViewDeal((await loadCrm(user)).viewer, { id: origin.dealId, entityId: origin.entityId, ownerPersonId: origin.ownerPersonId, status: origin.status as DealStatus, account: account.facts });
   const status = plan.briefStatus as BriefStatus;
   const editable = can.editClientSide && briefEditable(status);
+  // A brief naming nobody on the client's side starts from the account's contacts (FR-CRM-46).
+  const accountContacts = editable && !plan.brief.clientContacts?.length ? await contactChoicesFor(project.clientId) : [];
   const problems = briefProblems(plan.brief, plan.kind as ProjectKind);
   const lastComment = request?.events.findLast((event) => event.type === "returned" || event.type === "rejected")?.comment ?? null;
   const accountManager = members.find((member) => member.role === "account_manager");
@@ -63,6 +78,27 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
   return (
     <div className="flex max-w-5xl flex-col gap-8">
       <ProjectHeader context={context} current="overview" />
+      {account ? (
+        <p className="-mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+          <span>
+            {t("crm.client")}{" "}
+            <Link href={`/crm/accounts/${account.client.id}`} className="underline">
+              {account.client.name}
+            </Link>
+          </span>
+          {origin && showsDeal ? (
+            <span>
+              {t("crm.fromDeal")}{" "}
+              <Link href={`/crm/deals/${origin.dealId}`} className="underline">
+                {origin.code} · {origin.title}
+              </Link>{" "}
+              ({t(`crm.handoff.${origin.handoffStatus as "pending"}`)})
+            </span>
+          ) : null}
+          {contracts.get(project.id) ? <span>{t("crm.contract", { number: contracts.get(project.id)! })}</span> : null}
+          {account.profile?.creditHold ? <Badge variant="destructive">{t("crm.creditHold")}</Badge> : null}
+        </p>
+      ) : null}
 
       <section className="flex flex-col gap-4 rounded-xl border p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -77,7 +113,7 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
           <Alert variant="warning">{t("kickoff.returnedWith", { comment: lastComment })}</Alert>
         ) : null}
 
-        {editable ? <BriefForm projectId={project.id} brief={plan.brief} kind={plan.kind} /> : <BriefView brief={plan.brief} />}
+        {editable ? <BriefForm projectId={project.id} brief={plan.brief} kind={plan.kind} accountContacts={accountContacts} /> : <BriefView brief={plan.brief} />}
 
         {editable && briefSubmittable(status) ? (
           <div className="flex flex-col gap-2 border-t pt-3">

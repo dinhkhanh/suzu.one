@@ -12,19 +12,22 @@
 import "server-only";
 import type { IsoDate } from "@/lib/dates";
 import { daysOf } from "@/modules/daily/service";
-import { availableMinutesOf, isProposalDay, listWorkKpiDue, periodRange, previousMonth, proposeWorkActuals, type WorkFacts, type WorkKpiLine, workMetricValue, type WorkProposal } from "@/modules/performance/service";
+import { availableMinutesOf, isProposalDay, listWorkKpiDue, periodRange, previousMonth, proposeWorkActuals, SALES_METRICS, type WorkFacts, type WorkKpiLine, workMetricValue, type WorkProposal } from "@/modules/performance/service";
+import { salesFactsOf } from "@/modules/crm/service";
 import type { JobDefinition } from "../platform/jobs/service";
 import { acceptedDeliverablesByAssignee, loggedMinutesByPerson, submittedReportDates, taskCountsByAssignee } from "./pjm-queries";
 
 /** One period's work for these people, as the counts the metrics are computed from. */
-async function workFactsOf(personIds: readonly string[], range: { from: IsoDate; to: IsoDate }, needsDays: boolean): Promise<Map<string, WorkFacts>> {
-  const [tasks, accepted, logged, reports, days] = await Promise.all([
+async function workFactsOf(personIds: readonly string[], range: { from: IsoDate; to: IsoDate }, needsDays: boolean, needsSales: boolean): Promise<Map<string, WorkFacts>> {
+  const [tasks, accepted, logged, reports, days, sales] = await Promise.all([
     taskCountsByAssignee(personIds, range),
     acceptedDeliverablesByAssignee(personIds, range),
     loggedMinutesByPerson(personIds, range),
     submittedReportDates(personIds, range),
     // The calendar and the rules of the day are only read when a metric needs them.
     needsDays ? daysOf(personIds, range.from, range.to) : Promise.resolve(new Map()),
+    // And the CRM's figures only for a sales metric (FR-CRM-44).
+    needsSales ? salesFactsOf(personIds, range) : Promise.resolve(new Map()),
   ]);
   const result = new Map<string, WorkFacts>();
   for (const personId of personIds) {
@@ -42,6 +45,7 @@ async function workFactsOf(personIds: readonly string[], range: { from: IsoDate;
       availableMinutes: availableMinutesOf(own.map((day) => ({ date: day.day.date, kind: day.day.kind, minutes: day.minutes }))),
       reportsRequired: required.length,
       reportsSubmitted: required.filter((day) => submitted.has(day.day.date)).length,
+      ...(sales.has(personId) ? { sales: sales.get(personId) } : {}),
     });
   }
   return result;
@@ -53,7 +57,8 @@ export async function computeProposals(lines: readonly WorkKpiLine[]): Promise<W
   // A monthly and a quarterly KPI cover different spans: each period is counted once, for its people.
   for (const [periodKey, group] of Map.groupBy(lines, (line) => line.periodKey)) {
     const needsDays = group.some((line) => line.metric === "utilisation" || line.metric === "eod_compliance");
-    const facts = await workFactsOf([...new Set(group.map((line) => line.personId))], periodRange(periodKey), needsDays);
+    const needsSales = group.some((line) => SALES_METRICS.includes(line.metric));
+    const facts = await workFactsOf([...new Set(group.map((line) => line.personId))], periodRange(periodKey), needsDays, needsSales);
     for (const line of group) {
       const value = workMetricValue(line.metric, facts.get(line.personId)!);
       if (value !== null) proposals.push({ line, value });

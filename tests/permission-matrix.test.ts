@@ -35,6 +35,8 @@ const PERMISSIONS = [
   "pjm:commercial",
   "pjm:cost",
   "pjm:portfolio",
+  "crm:sell",
+  "crm:manage",
   "feedback:manage",
   "feedback:read",
   "auth:impersonate",

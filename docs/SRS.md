@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Product** | SuZu One (working name) — internal HRM + work platform for SuZu Group, CRM to follow |
-| **Version** | 0.3 (projects & daily work management — PJM — added 2026-09-22) |
-| **Date** | 2026-09-22 |
+| **Version** | 0.4 (CRM — §4.15 — specified 2026-09-30) |
+| **Date** | 2026-09-30 |
 | **Owner** | Company owner (product owner and final approver) |
 | **Companion doc** | [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) |
 
@@ -410,7 +410,7 @@ Goal: Linear-level speed and clarity, shaped for social media, content and creat
 | FR-WRK-18 | Privacy: projects can be open to the entity, team-only, or private to members. HR and finance teams default to private. | M |
 | FR-WRK-19 | Project dashboard: progress, burndown by status, overdue, revision rounds, on-time delivery rate. | S |
 | FR-WRK-20 | Task outcomes feed performance reviews as evidence (on-time rate, volume, review rounds) — informational, never an automatic score. | C |
-| FR-WRK-21 | Later link to CRM: client and deal on projects; client-facing review links. | L |
+| FR-WRK-21 | Link to CRM: client and deal on projects (FR-CRM-15, 46); client-facing review links (FR-PJM-51a). | M |
 
 ---
 
@@ -676,17 +676,100 @@ For HR, C&B and finance: never miss a recurring job, and be able to prove it was
 
 ---
 
-### 4.15 CRM (future phase — outline only)
+### 4.15 CRM — clients, pipeline and money after delivery (CRM)
 
-Not specified in detail now; listed so the foundation is built to receive it.
+**Goal:** the selling side of the same company, in the same app. The CRM closes the loop the rest of SuZu One opened: **lead → deal → quote → contract → project → tasks → time → acceptance → invoice → cash → client profitability**, on one list of clients, one list of people, one permission model. It is not a separate product bolted on: an account *is* the client the work module already uses, a won deal *becomes* a PJM project, the people who sell *are* HR's people, and what they own goes through the same handover, cover, KPI and dashboard machinery as everything else.
 
-- Accounts (clients/brands), contacts, leads, deal pipeline, activities, quotes/proposals, client contracts and retainers, renewal reminders.
-- Gmail and Calendar sync for client communication history.
-- Link **deal → project → tasks → time logs → staff cost → client profitability**. PJM (§4.6b) builds everything from the project onward; the CRM adds the deal before it and the invoice after the billing hand-off (FR-PJM-56).
-- Client portal for deliverable review and approval.
-- Invoicing handoff to accounting.
+Design rules for the whole of the CRM:
 
-**Foundation requirements now:** the `client/brand` entity exists from the Work module (FR-WRK-02) as a lightweight record so it can be promoted to a full CRM account later without migration pain.
+1. **One client record.** `work_client` is the account. The CRM adds a profile beside it (1:1, like `project_plan` beside `work_project`); brands stay under their client. There is no second list of clients, and no task, project or billing item moves.
+2. **Nothing is typed twice.** A won deal prefills its project — brief, deliverables register, retainer, hours budget, fee, account manager, client contacts. Quote lines become register lines. Client meetings, decisions, deliveries, acceptances and billing items from PJM appear on the account's timeline without being re-entered. Finance's invoice record is the billing item it invoices.
+3. **Money follows the PJM split (D26).** Deal values and quotes: the deal's owner, the account's account manager, `crm:sell` / `crm:manage` holders and `pjm:commercial` holders over the entity. Cost and margin (salary-derived): `pjm:cost` only, never per person. Receivables: finance and the account's account manager.
+4. **Client contacts are personal data of people outside the company** (PDPL, §6.2). Each contact records its source and lawful basis; the details (phone, email, Zalo, birthday, notes) are read only by the people who work with the account; a contact can be erased on request; contact details are never sent to the AI model.
+5. **Sales records never drive pay automatically** (PJM design rule 3). A commission statement is computed and shown; a person puts it into a payroll run.
+6. **Clients have no accounts** (D14, A9 unchanged). Everything a client sends is recorded by our people, or arrives through a public surface the owner has approved.
+
+#### Accounts and contacts
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-CRM-01 | **Account profile** on any client (not on a brand, which inherits it): legal name, tax code (MST, 10 or 10-3 digits), registered address, website, industry, size, source, **tier** (A/B/C), **lifecycle** (prospect → active → dormant → churned), the SuZu entity that usually contracts with it, **payment terms** in days, and a **credit hold** flag with a reason. Lifecycle is proposed from the facts (an open project or a deal won in the last 12 months = active; nothing for 6 months = dormant) and can be set by hand. | M |
+| FR-CRM-02 | **Contacts**: name (with an accent-stripped search key, DR-08), job title, account and brands, email, phone, Zalo, **decision role** (decision maker, approver, influencer, user, finance/procurement), primary flag, preferred channel, birthday (optional), notes, status (active / left the client). **Source and lawful basis** are required (PDPL). Erasure on request blanks the details and keeps the name only where a signed record (acceptance, decision) cites it. | M |
+| FR-CRM-03 | **Account team**: the account manager (FR-PJM-46, unchanged), a sales owner, and named members. The team as the access rules use it also includes the owners of the account's deals and the leads, account managers and members of its open projects — derived, never typed. | M |
+| FR-CRM-04 | **Account 360** — one page per account: profile and brands; contacts; open deals and pipeline value; **projects with job number, phase, health and next milestone** (PJM); retainers with this month's consumption and overservicing; acceptances waiting for signature; billing items ready and invoiced; **receivables**; hours logged by month and the people who logged them; client decisions and revision rounds (internal vs client); contracts and renewals; **profitability** (`pjm:cost`). Every figure is scope- and money-filtered like its source screen. | M |
+| FR-CRM-05 | **Timeline**: the account's (and a deal's, and a contact's) history on one feed — CRM activities, plus from PJM: projects opened and closed, status updates, client decisions, deliveries, signed acceptances, client meetings, change requests; plus quotes sent, contracts signed, invoices and payments. Read from the source tables, never copied; each item links to its record and respects that record's access rule. | M |
+| FR-CRM-06 | **Activities and follow-ups**: log a call, meeting, email, message (Zalo, Messenger…) or note against an account, contact, deal or lead, with an optional outcome. A **follow-up** has an owner and a due date; it appears on the owner's **Today** page and in **My work**, reminds on the morning it is due, shows overdue, and when done asks for the outcome and offers the next follow-up. A meeting can be put in Google Calendar through the platform calendar adapter. | M |
+| FR-CRM-07 | **Duplicate guard**: a new account is checked against tax code and name key, a new contact against email, phone and name within the account; a likely duplicate is shown before saving. | S |
+| FR-CRM-08 | **Import** of accounts and contacts from CSV with a validation preview (the platform import). | S |
+
+#### Leads and pipeline
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-CRM-10 | **Leads**: an enquiry not yet qualified — company, contact name and details, need, budget as text, source (referral, website, event, social, cold outreach, existing client, other), owner, status new → contacted → qualified → **converted** / disqualified (reason required). **Any employee may log a lead** (a referral) and is recorded as its referrer; owning, qualifying and converting need `crm:sell` or the account manager's role on the account it names. **Convert** creates or links the account and contact (duplicate guard) and opens a deal in one step. | M |
+| FR-CRM-11 | **Deals** (opportunities): account and brand, title, **service lines**, stage, **value** — one-off amount and/or monthly recurring amount × months — expected close date, probability (the stage's default, overridable), owner, **delivering work team**, contracting entity, source (and the lead), competitors, next step, contacts on the deal with their roles. **Lost** needs a reason (price, scope, timing, competitor, no decision, other) and a note. Stage changes are kept as history. | M |
+| FR-CRM-12 | **Pipeline stages** are configurable (`crm:manage`): name, category (open / won / lost), default probability, order, and **stage gates** — what a deal must have to enter the stage (an accepted quote, a signed contract, a pitch project, contacts, an expected close date). Seeded: *Qualified* 10 % → *Discovery* 25 % → *Proposal / pitch* 50 % → *Negotiation* 75 % → *Won* / *Lost*. | M |
+| FR-CRM-13 | **Pipeline views**: board by stage (moving a card is a stage change, gates apply), list with filters (owner, team, entity, account, service line, close month) and CSV; **forecast** — weighted value by expected close month, per owner, team and entity; **stale deals** (no activity for N days, configurable) flagged to the owner. | M |
+| FR-CRM-14 | **Pitch projects**: a deal can open a PJM project of kind *pitch* with its delivering team; the pitch team's work, tentative bookings and **logged time are the deal's cost of sale**; winning or losing the deal closes the pitch project (the retrospective note records why). | M |
+| FR-CRM-15 | **Won → delivery set-up**: winning a deal opens one step that creates the delivery project(s) — choose a project template, team and lead — **prefilled** from the deal: client and brand, account manager, kind (*client* for one-off value, *retainer* for recurring), fee = the one-off value or the retainer's monthly fee and months, brief (objective, scope from the accepted quote, client contacts from the deal), **deliverables register from the quote lines** (quantity × format × channel), **hours budget by role** from the quote's estimates, contract reference. The project keeps the link to its deal; running the step twice makes nothing twice. | M |
+| FR-CRM-16 | **Sales → delivery hand-off**: the won deal hands the project lead a note in the FR-PJM-43 format (context, what was sold, what is promised, open questions, links, client contacts); the lead **accepts or returns** it with a reason; waiting time is measured, as for every other hand-off. | M |
+| FR-CRM-17 | **Staffing check**: a deal's estimated hours by role are set against capacity (FR-PJM-13: schedules, leave, holidays, bookings) for the delivery window; tentative bookings can be placed from the deal; an unfillable role can **raise a hiring request** (§4.9) prefilled with the role, the team and the dates. | S |
+
+#### Rate card, quotes and contracts
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-CRM-20 | **Service catalogue / rate card** (`crm:manage`): services with code, name, unit, category, one-off or monthly, the register line they produce (format, channel), default hours by role, and **effective-dated list prices** in VND, optionally per entity. | M |
+| FR-CRM-21 | **Quotes (báo giá)** on a deal, versioned: lines from the catalogue or free text — quantity, unit price, discount, months for a recurring line, estimated hours by role; subtotal, **VAT from the effective-dated rate** (statutory parameter store, never a constant), total; validity date, terms. Status draft → (approval) → approved → sent → accepted / rejected / expired. Accepting one sets the deal's value and supersedes the others. | M |
+| FR-CRM-22 | **Quote approval**: a discount above the entity's threshold, or — for readers who may see it — an estimated margin below the floor, sends the quote through the approval engine to `crm:manage` holders over the entity before it can be sent. Thresholds are company practice, effective-dated in the parameter store. | M |
+| FR-CRM-23 | **Quote document**: a PDF from a document template on the contracting entity's letterhead; client-facing, so no internal hours, cost or margin. | M |
+| FR-CRM-24 | **Estimated margin** on a quote: hours by role × the payroll-derived loaded cost rates (FR-PJM-63), shown only with `pjm:cost`, as an aggregate. | S |
+| FR-CRM-25 | **Client contracts** (hợp đồng dịch vụ, hợp đồng nguyên tắc, phụ lục): per account and entity — number, kind, parent contract (an appendix), dates, value, payment terms, auto-renewal and notice days, signed scan, status draft → signed → active → expired / terminated; linked to its deals, projects and retainers. A project's billing items carry the contract number as their reference (FR-PJM-56). | M |
+| FR-CRM-26 | **Renewals**: N days before a contract or retainer ends (configurable), a **renewal deal** is opened for the account manager (once) with a follow-up on Today; the account page and the pipeline show what expires in the next 90 days. | M |
+| FR-CRM-27 | **Contract document** generated from a document template. | S |
+
+#### Invoices, receivables and profitability
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-CRM-30 | **Invoice record**: finance records an invoice over one or several ready billing items of the same client and entity (FR-PJM-56) — number, date, VAT rate (from the parameter store), subtotal, VAT, total — which marks those items invoiced. The **due date** is the invoice date plus the payment terms of the contract, else of the account, else the entity's default. Legal e-invoices stay in the accounting system; the app records, it does not issue. | M |
+| FR-CRM-31 | **Payments received**: date, amount, method, bank reference, against an invoice; partial payments; status open → part paid → paid, or written off with a reason (`pjm:commercial`). | M |
+| FR-CRM-32 | **Receivables**: open and overdue amounts with **aging** (current, 1–30, 31–60, 61–90, > 90 days) per account, entity and account manager; reminders to the account manager and finance on the day after the due date and at configured intervals; an account over its limit or on credit hold warns whoever opens a deal or project for it. | M |
+| FR-CRM-33 | **Client profitability** (`pjm:cost`; FR-PJM-63 extended): per account and brand, per month, quarter and year — **revenue** (invoiced) − **delivery cost** (logged hours × loaded cost rate) − **cost of sale** (time on pitch projects) = gross margin and margin %; drill down to projects; win rate and average cost of a won deal. | M |
+| FR-CRM-34 | **Revenue outlook**: contracted revenue (retainer months and signed contracts not yet billed) plus weighted pipeline, by month, per entity. | S |
+
+#### Links into HRM and PJM
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-CRM-40 | **Exit and transfer handover** (FR-PJM-45 extended): the work handover of a leaver also lists the accounts they manage or own, their open deals and leads, and their open follow-ups; the offboarding step cannot close until each is reassigned or closed. | M |
+| FR-CRM-41 | **Leave cover** (FR-PJM-44 extended): follow-ups due and deals expected to close during the absence are listed with the person's tasks, and the cover person takes them over for the period. | S |
+| FR-CRM-42 | **Account handover** (FR-PJM-46 extended): changing an account's manager can also move its open deals and follow-ups to the new manager; the hand-off note travels with them. | M |
+| FR-CRM-43 | **Today, My work and the EOD report**: follow-ups due appear on Today and in My work; activities logged today and deals moved today are **prefilled into the end-of-day report** (FR-PJM-22) like task activity. | M |
+| FR-CRM-44 | **KPI actuals from sales** (FR-PJM-62 extended): KPIs with a CRM source — value won, cash collected, new accounts, win rate, pipeline created, follow-ups done on time — get their monthly actual proposed; the scorer confirms. | S |
+| FR-CRM-45 | **Sales commission**: a scheme decided by the owner (rate on cash collected per deal owner and/or account manager, optional tiers, effective-dated); a monthly **statement** per person with its trace (pure engine, golden tests); `compensation` tier — the person, C&B and the owner; the payroll proposer adds it to a run as the `COMMISSION` input (FR-PAY). Never automatic, never visible to line managers. | S |
+| FR-CRM-46 | **Directory and project links**: a person's profile lists the accounts they manage; a project shows the deal and contract it came from and links to its account; client decision records, acceptances and briefs pick the client-side person from the account's contacts (the name is still stored as text, so erasure never breaks a signed record). | M |
+
+#### Reporting and AI
+
+| ID | Requirement | Pri |
+|---|---|---|
+| FR-CRM-50 | **Sales dashboard** (scope-filtered): pipeline by stage, weighted forecast, won and lost by month, win rate, average deal value, sales cycle length, lost reasons, stale deals, renewals due, receivables aging, top accounts by revenue (margin with `pjm:cost`). Team and owner views; no company-wide ranking of individuals (R12). | M |
+| FR-CRM-51 | **Owner dashboard** (FR-RPT-01): value won this month, invoiced, cash collected, overdue receivables, weighted pipeline. | M |
+| FR-CRM-52 | **Scheduled reports** (FR-RPT-05): weekly pipeline, monthly receivables aging. | S |
+| FR-CRM-53 | **AI help** (FR-AI-06 guardrails): summarise an account's timeline into a brief before a meeting; draft a follow-up message from an activity; the assistant answers "my follow-ups" and "my pipeline" for the asker only. Contact details are never sent to the model. | C |
+| FR-CRM-54 | **Gmail and Calendar sync** of client correspondence (needs Workspace-wide delegation of mail scopes). | L |
+| FR-CRM-55 | **Web enquiry form** on the public site creating a lead — a third public surface, rate-limited and `noindex` like the others. | C |
+| FR-CRM-56 | **Client satisfaction** (CSAT / NPS) after an acceptance, on an expiring link like the review link. | C |
+
+#### Access rules specific to the CRM
+
+- **Account names, codes and the account list** stay what clients are today: readable by every employee except collaborators (FR-WRK-02). The profile's commercial fields (payment terms, credit hold) follow the receivables rule.
+- **Contact details** (`personal` tier): the account team (FR-CRM-03), `crm:sell` and `crm:manage` holders over the account's entity. Everyone else who may see the account sees a contact's name, title and decision role — enough to record a client decision — and nothing more. Collaborators see contacts only of accounts whose team they are in.
+- **Deals**: readable by the account team and by `crm:sell` / `crm:manage` holders over the deal's entity. **Values** only for the deal's owner, the account's manager, `crm:sell` / `crm:manage` and `pjm:commercial` holders over the entity — a delivery lead sees what is coming (stage, services, dates, hours) without the price.
+- **Quotes** follow the deal; **margin** needs `pjm:cost`. **Contracts** follow the account team for their existence and dates, the deal-value rule for their value.
+- **Invoices, payments and receivables**: recorded by `pjm:commercial` (finance); read by finance, the account's manager, and `crm:manage` holders over the entity.
+- **New permissions:** `crm:sell` (hold a pipeline: own and convert leads, own deals, create accounts and quotes — *new role* `sales`, and c_level, entity_director), `crm:manage` (stages, rate card, thresholds, every account and deal in scope, reassigning — c_level, entity_director). `pjm:commercial` and `pjm:cost` keep their meaning. New role cases go into `policy.test.ts`.
 
 ---
 
@@ -711,6 +794,8 @@ Project ─ Brief · Phase ─ Milestone · DeliverableLine (register) · Change
 Retainer ─ RetainerPeriod ─ DeliverableLine ; Task ─ HandOff (package, note, accept/return) · ClientDecision · DeliveryRecord · PublishLog
 Person ─ DailyPlan ─ DailyReport ; Person ─ TimeEntry ─ TimesheetWeek (submit/approve/lock)
 AcceptanceRecord (nghiệm thu) ─ BillingItem ; CustomFieldDef ─ CustomFieldValue ; AutomationRule ─ AutomationRun
+Client(work) ─ AccountProfile · AccountMember · Contact ; Lead → Deal ─ DealContact · StageChange · Quote ─ QuoteLine ; Deal ─ Project (won) · PitchProject
+Service ─ ServicePrice ; Contract ─ Appendix ; Activity (follow-up) ; BillingItem *─1 Invoice 1─* Payment ; CommissionScheme ─ CommissionStatement
 ObligationTemplate ─ ObligationInstance (= Task + evidence)
 Space ─ Page ─ PageVersion ─ Acknowledgement
 JobOpening ─ Application ─ Candidate ─ Interview ─ Scorecard ─ Offer
@@ -867,6 +952,11 @@ Still open:
 | Q14 | Year-end bonus formula: the first version of the scheme in FR-PAY-21 (weights of KPI vs OKR vs review rating, service-time factor, multiplier bands). | Phase 8 |
 | Q15 | Is Saturday WFH a full or a half working day, and does it count toward the month's standard working days for pro-rating? (Assumed: full day, counted.) | Phase 2 |
 | Q16 | PDPL legal work for offshore hosting (deferred by D10). | Before payroll go-live |
+| Q26 | CRM: who sells? Name the people who get the new `sales` role (business development, account executives) and whether account managers who are not in sales should own deals too (the build lets an account's manager own deals on that account without the role). | Phase 11 go-live |
+| Q27 | CRM: the pipeline's stages and their probabilities, and the discount above which a quote needs approval per entity (seeded: 10 %; margin floor 30 %, shown only to `pjm:cost`). | Phase 11 go-live |
+| Q28 | CRM: the rate card — which services, units and list prices per entity — and the wording of the quote (báo giá) template. | Phase 11 go-live |
+| Q29 | CRM: the sales commission scheme (FR-CRM-45) — rate, base (cash collected, the build's default), who earns (deal owner, account manager, split), tiers — or no commission. Nothing is computed until the owner approves a scheme. | Before the first commission month |
+| Q30 | CRM: a web enquiry form on the public site (FR-CRM-55) — a third public surface, which amends A8. | When wanted |
 
 ---
 

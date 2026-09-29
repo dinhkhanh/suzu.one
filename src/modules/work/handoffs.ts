@@ -355,7 +355,7 @@ export async function changeAccountManager(clientId: string, input: { toPersonId
   return result;
 }
 
-export type AccountHandoffView = { id: string; fromName: string | null; toName: string | null; byName: string | null; note: Note; createdAt: Date };
+export type AccountHandoffView = { id: string; fromPersonId: string | null; fromName: string | null; toName: string | null; byName: string | null; note: Note; createdAt: Date };
 
 /** A client's account handovers, newest first — the relationship's own history. */
 export async function listAccountHandoffs(clientIds: readonly string[]): Promise<Map<string, AccountHandoffView[]>> {
@@ -364,7 +364,7 @@ export async function listAccountHandoffs(clientIds: readonly string[]): Promise
   const to = alias(schema.person, "to_person");
   const by = alias(schema.person, "by_person");
   const rows = await db()
-    .select({ id: schema.workHandoff.id, clientId: schema.workHandoff.clientId, fromName: from.fullName, toName: to.fullName, byName: by.fullName, note: schema.workHandoff.note, createdAt: schema.workHandoff.createdAt })
+    .select({ id: schema.workHandoff.id, clientId: schema.workHandoff.clientId, fromPersonId: schema.workHandoff.fromPersonId, fromName: from.fullName, toName: to.fullName, byName: by.fullName, note: schema.workHandoff.note, createdAt: schema.workHandoff.createdAt })
     .from(schema.workHandoff)
     .leftJoin(from, eq(from.id, schema.workHandoff.fromPersonId))
     .leftJoin(to, eq(to.id, schema.workHandoff.toPersonId))

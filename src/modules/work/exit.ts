@@ -17,7 +17,8 @@ import { invalidateAutomations } from "./automations";
 import { invalidateWorkDirectory } from "./directory";
 import { invalidateMemberships } from "./viewer";
 import { invalidateIntakeForms } from "./intake";
-import { HANDOVER_EVENT_TYPES, isReassignable, type OwnedItem, type OwnershipKind, ownershipSummary, reassignProblem } from "./engine/exit";
+import { HANDOVER_EVENT_TYPES, type HeldKind, isReassignable, type OwnedItem, OWNERSHIP_KINDS, type OwnershipKind, ownershipSummary, reassignProblem } from "./engine/exit";
+import { ownershipProviders } from "../platform/ownership/registry";
 import { normalizeNote, type Note, noteIsEmpty } from "./engine/handoff";
 import { canAdminTeam, canChangeAccountManager, canGiveProjectRole, canManageProject, canModerateTask, canViewProject, canViewTask, canViewTeamBacklog, type ExitHandoverFacts, type ProjectFacts, type WorkViewer } from "./policy";
 import { notePrivateProjectReads } from "./private-reads";
@@ -119,6 +120,8 @@ export async function listOwnership(personId: string, executor: Executor = db(),
       .where(and(eq(schema.workTeamMember.personId, personId), eq(schema.workTeamMember.role, "lead"), eq(schema.workTeam.isActive, true))),
   ]);
   const timeWeeks = options.timeWeeks === false ? [] : await openTimeWeeks(personId, options.today ?? todayInVietnam());
+  // What other modules hold of the person (the CRM's accounts, deals, leads, follow-ups — FR-CRM-40).
+  const provided = (await Promise.all((await ownershipProviders()).map((provider) => provider.list(executor, personId)))).flat();
   const item = (kind: OwnershipKind, id: string, label: string, context: string | null): OwnedItem => ({ kind, id, label, context });
   return [
     ...tasks.map((row) => item("task", row.id, `${taskKey(row.teamKey, row.number)} ${row.title}`, row.context)),
@@ -131,6 +134,7 @@ export async function listOwnership(personId: string, executor: Executor = db(),
     ...automations.map((row) => item("automation", row.id, row.name, row.teamName)),
     ...teams.map((row) => item("team_lead", row.id, row.name, null)),
     ...timeWeeks,
+    ...provided,
   ];
 }
 
@@ -144,7 +148,7 @@ export async function listOwnership(personId: string, executor: Executor = db(),
  */
 export type ItemGate = { /** May the runner read the item's name? */ visible: boolean; /** May the runner hand it on? */ manage: boolean; /** Who to ask when they may not. */ ownerName: string | null; /** Who may receive it: the people of its project and team; null = no place decides (a client relationship). */ eligible: ReadonlySet<string> | null };
 
-const gateKey = (item: { kind: OwnershipKind; id: string }) => `${item.kind}:${item.id}`;
+const gateKey = (item: { kind: HeldKind; id: string }) => `${item.kind}:${item.id}`;
 const CLOSED_GATE: ItemGate = { visible: false, manage: false, ownerName: null, eligible: new Set() };
 /** The item as the runner may see it: `label` null where they may not read its name. */
 export type OwnedItemView = Omit<OwnedItem, "label"> & { label: string | null; canReassign: boolean; ownerName: string | null };
@@ -155,7 +159,7 @@ export async function gateOwnership(
   items: readonly OwnedItem[],
   options: { leaverId: string; /** A read path (the handover page): private projects it names are recorded (Q25). A reassignment does not record — it leaves its own trail. */ record?: boolean },
 ): Promise<Map<string, ItemGate>> {
-  const idsOf = (...kinds: OwnershipKind[]) => items.filter((item) => kinds.includes(item.kind)).map((item) => item.id);
+  const idsOf = (...kinds: OwnershipKind[]) => items.filter((item) => (kinds as readonly string[]).includes(item.kind)).map((item) => item.id);
   const taskIds = idsOf("task", "review");
   const projectIds = idsOf("project_lead", "account_manager");
   const recurrenceIds = idsOf("recurrence");
@@ -234,6 +238,14 @@ export async function gateOwnership(
       const client = clients.find((entry) => entry.id === item.id);
       if (!client) continue;
       gates.set(key, { visible: true, manage: canChangeAccountManager(viewer, client), ownerName: null, eligible: null });
+    }
+  }
+  // The other modules' items, each gated by its own module.
+  const external = items.filter((item) => !(OWNERSHIP_KINDS as readonly string[]).includes(item.kind));
+  if (external.length) {
+    for (const provider of await ownershipProviders()) {
+      const mine = external.filter((item) => provider.kinds.includes(item.kind));
+      if (mine.length) for (const [key, gate] of await provider.gate(executor, { principal: viewer.principal }, mine)) gates.set(key, gate);
     }
   }
   if (options.record) await notePrivateProjectReads(viewer, read);
@@ -358,7 +370,7 @@ export async function listExitHandoversFor(personId: string): Promise<{ id: stri
 
 // ── Reassigning ─────────────────────────────────────────────────────────────────────────────
 
-export type ReassignResult = { moved: { kind: OwnershipKind; id: string; label: string }[]; remaining: number };
+export type ReassignResult = { moved: { kind: HeldKind; id: string; label: string }[]; remaining: number };
 
 /**
  * Hands the chosen items to one person, with one note (FR-PJM-43): each becomes an `exit` hand-off
@@ -366,7 +378,7 @@ export type ReassignResult = { moved: { kind: OwnershipKind; id: string; label: 
  * Items the person no longer owns are skipped (someone else was quicker). The new owner of a task
  * hears as for any task handed to them.
  */
-export async function reassignOwnership(handoverId: string, input: { items: { kind: OwnershipKind; id: string }[]; toPersonId: string; note: Note }, actor: { personId: string; fullName: string }, viewer: WorkViewer): Promise<ReassignResult> {
+export async function reassignOwnership(handoverId: string, input: { items: { kind: HeldKind; id: string }[]; toPersonId: string; note: Note }, actor: { personId: string; fullName: string }, viewer: WorkViewer): Promise<ReassignResult> {
   const result = await db().transaction(async (tx) => {
     const handover = await findExitHandover(handoverId, tx);
     if (!handover || handover.status !== "open") throw new ActionError("exit_handover_closed");
@@ -451,12 +463,25 @@ export async function reassignOwnership(handoverId: string, input: { items: { ki
           break;
         case "time_week":
           break;
+        default:
+          // Another module's item: moved by its provider below, recorded here like every exit hand-off.
+          await record({ ref: { [item.kind]: item.id } });
+      }
+    }
+    const external = chosen.filter((item) => !(OWNERSHIP_KINDS as readonly string[]).includes(item.kind));
+    const afterCommit: (() => Promise<void>)[] = [];
+    if (external.length) {
+      for (const provider of await ownershipProviders()) {
+        const mine = external.filter((item) => provider.kinds.includes(item.kind));
+        if (!mine.length) continue;
+        const then = await provider.reassign(tx, mine, leaver, to.id, actor.personId);
+        if (then) afterCommit.push(then);
       }
     }
     await tx.update(schema.workExitHandover).set({ updatedAt: new Date() }).where(eq(schema.workExitHandover.id, handoverId));
-    return { moved: chosen.map(({ kind, id, label }) => ({ kind, id, label })), leaver, directory, clients, forms, rules };
+    return { moved: chosen.map(({ kind, id, label }) => ({ kind, id, label })), leaver, directory, clients, forms, rules, afterCommit };
   });
-  await Promise.all([result.directory ? invalidateWorkDirectory() : null, result.clients ? invalidateWorkClients() : null, result.forms ? invalidateIntakeForms() : null, result.rules ? invalidateAutomations() : null]);
+  await Promise.all([result.directory ? invalidateWorkDirectory() : null, result.clients ? invalidateWorkClients() : null, result.forms ? invalidateIntakeForms() : null, result.rules ? invalidateAutomations() : null, ...result.afterCommit.map((then) => then())]);
   return { moved: result.moved, remaining: (await listOwnership(result.leaver)).length };
 }
 

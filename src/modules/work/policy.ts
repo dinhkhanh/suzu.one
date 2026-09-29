@@ -392,7 +392,8 @@ export function canViewExitHandover(viewer: WorkViewer, handover: ExitHandoverFa
  * grant. The projects the role moves on are weighed one by one (`canManageProject`).
  */
 export function canChangeAccountManager(viewer: WorkViewer, client: { entityId: string | null }): boolean {
-  return canManageWorkspace(viewer, { entityId: client.entityId, departmentId: null });
+  // Whoever keeps the client list, and — since the CRM (Phase 11) — whoever runs sales over the client.
+  return canManageWorkspace(viewer, { entityId: client.entityId, departmentId: null }) || can(viewer.principal, "crm:manage", { entityId: client.entityId });
 }
 
 // ── Delivery (FR-PJM-50..57) ────────────────────────────────────────────────────────────────

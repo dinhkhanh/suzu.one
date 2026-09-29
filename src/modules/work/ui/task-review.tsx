@@ -13,7 +13,7 @@ import { openTaskFileAction, updateTaskAction } from "../actions";
 import { decideStageAction } from "../delivery-actions";
 import { type MediaKind, mediaKindOf, STAGE_DECISIONS } from "../engine/delivery";
 import { decideReviewAction, submitDeliverableAction } from "../review-actions";
-import { ClientDecisionForm } from "./client-decision";
+import { type ClientContactChoice, ClientDecisionForm } from "./client-decision";
 import { CompareVersions, type MediaVersion, PinBoard, type PinItem } from "./visual-feedback";
 
 export type ReviewDecisionItem = { id: string; stageName: string | null; decision: string; comment: string | null; isClient: boolean; decidedByName: string | null; createdAt: string; client: { channel: string; decidedByName: string; decidedOn: string; evidenceUrl?: string | null; evidenceFileId?: string | null } | null; evidenceFileName: string | null };
@@ -67,6 +67,7 @@ export function TaskReview({
   canRecordClient = false,
   canPin = false,
   clientName = null,
+  clientContacts = [],
   today,
 }: {
   taskId: string;
@@ -85,6 +86,8 @@ export function TaskReview({
   canRecordClient?: boolean;
   canPin?: boolean;
   clientName?: string | null;
+  /** The account's contacts, suggested for "decided by" (FR-CRM-46). */
+  clientContacts?: ClientContactChoice[];
   today: string;
 }) {
   const t = useTranslations("work.review");
@@ -155,7 +158,7 @@ export function TaskReview({
       ) : null}
 
       {canDecide && status === "submitted" && waiting && atClientStage ? (
-        <ClientDecisionForm target={{ kind: "stage", taskId }} version={waiting.version} clientName={clientName} files={files} today={today} />
+        <ClientDecisionForm target={{ kind: "stage", taskId }} version={waiting.version} clientName={clientName} contacts={clientContacts} files={files} today={today} />
       ) : canDecide && status === "submitted" && waiting ? (
         <form
           className="flex flex-col gap-2 rounded-xl border p-3"
@@ -301,7 +304,7 @@ export function TaskReview({
                   ) : null}
                 </div>
                 {media && pinsFor === item.id ? <PinBoard version={media} pins={item.pins} canPin={canPin} /> : null}
-                {recordingFor === item.id ? <ClientDecisionForm target={{ kind: "version", taskId, deliverableId: item.id }} version={item.version} clientName={clientName} files={files} today={today} onDone={() => setRecordingFor(null)} /> : null}
+                {recordingFor === item.id ? <ClientDecisionForm target={{ kind: "version", taskId, deliverableId: item.id }} version={item.version} clientName={clientName} contacts={clientContacts} files={files} today={today} onDone={() => setRecordingFor(null)} /> : null}
               </li>
             );
           })}

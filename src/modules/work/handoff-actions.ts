@@ -8,7 +8,6 @@ import { todayInVietnam } from "@/lib/dates";
 import { acknowledgeCover, coverPlanFacts, findCoverPlan, handBackCover, saveCoverPlan, submitCoverPlan, syncCoverPlans } from "./cover";
 import { MAX_CHECKLIST_ITEMS, MAX_LINKED_CHECKLISTS } from "./engine/checklists";
 import { HANDOFF_FIELD_TYPES, MAX_NOTE_LINKS, MAX_PACKAGE_CHECKS, MAX_PACKAGE_FIELDS } from "./engine/handoff";
-import { OWNERSHIP_KINDS } from "./engine/exit";
 import { completeExitHandover, exitHandoverFacts, findExitHandover, reassignOwnership } from "./exit";
 import { acceptHandoff, changeAccountManager, deletePackage, findHandoff, findPackage, handOffStage, returnHandoff, savePackage, sendToTeam } from "./handoffs";
 import { canAcknowledgeCover, canChangeAccountManager, canHandBackCover, canHandOff, canManageHandoffPackages, canRespondToHandoff, canRunExitHandover, canSendToTeam, canSubmitCoverPlan } from "./policy";
@@ -314,7 +313,8 @@ const runsHandover = async (user: User, handoverId: string) => {
 
 const reassignPipeline = createAction({
   name: "work.exit.reassign",
-  input: z.object({ handoverId: z.uuid(), toPersonId: z.uuid(), items: z.array(z.object({ kind: z.enum(OWNERSHIP_KINDS), id: z.uuid() })).min(1).max(500), note: noteInput }),
+  // A kind of this module's or of another module's provider ("crm_deal"): the service keeps only what the leaver still owns.
+  input: z.object({ handoverId: z.uuid(), toPersonId: z.uuid(), items: z.array(z.object({ kind: z.string().regex(/^[a-z][a-z_]{1,39}$/), id: z.uuid() })).min(1).max(500), note: noteInput }),
   authorize: (user, input) => runsHandover(user, input.handoverId),
   run: async ({ user, input }) => {
     const { handoverId, ...rest } = input;

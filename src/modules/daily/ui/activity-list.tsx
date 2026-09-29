@@ -4,7 +4,8 @@ import Link from "next/link";
 import type { ShownActivity, ShownLine } from "../engine/redact";
 import { hoursOf } from "./format";
 
-const ACTIVITY_KINDS = ["created", "moved", "completed", "submitted", "reviewed", "commented", "handoff_sent", "handoff_received", "blocker_raised", "blocker_resolved", "time_logged"] as const;
+// `client_activity` and `deal_moved` come from the CRM, through the platform's day-activity registry (FR-CRM-43).
+const ACTIVITY_KINDS = ["created", "moved", "completed", "submitted", "reviewed", "commented", "handoff_sent", "handoff_received", "blocker_raised", "blocker_resolved", "time_logged", "client_activity", "deal_moved"] as const;
 
 /** `hidden` lines are work on something this reader may not open: said, never named (SRS §4.6b). */
 export function TaskLines({ lines, empty }: { lines: readonly ShownLine[]; empty: string }) {

@@ -42,6 +42,8 @@ import {
   Users,
   Wallet,
   type LucideIcon,
+  Handshake,
+  HandCoins,
 } from "lucide-react";
 
 /**
@@ -65,6 +67,8 @@ const ICONS: Record<string, LucideIcon> = {
   daily: NotebookPen,
   time: Clock,
   billing: ReceiptText,
+  crm: Handshake,
+  receivables: HandCoins,
   capacity: Gauge,
   assets: Package,
   bookings: CalendarRange,

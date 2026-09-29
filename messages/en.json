@@ -94,7 +94,9 @@
     "profitability": "Profitability",
     "billing": "Ready to invoice",
     "feedback": "Feedback",
-    "feedbackInbox": "Feedback inbox"
+    "feedbackInbox": "Feedback inbox",
+    "crm": "Clients & sales",
+    "receivables": "Receivables"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -139,7 +141,8 @@
     "recruiter": "Recruiter",
     "asset_admin": "Asset admin",
     "auditor": "Auditor (read-only)",
-    "support": "Support"
+    "support": "Support",
+    "sales": "Sales / business development"
   },
   "entities": {
     "title": "Legal entities",
@@ -261,7 +264,8 @@
       "dottedManagerId": "Dotted-line manager",
       "workLocation": "Work location",
       "validFrom": "Effective from",
-      "changeReason": "Reason"
+      "changeReason": "Reason",
+      "accountsManaged": "Clients looked after"
     },
     "workforceType": {
       "employee": "Employee",
@@ -678,7 +682,8 @@
         "performance": "Performance reviews",
         "projects": "Projects",
         "daily": "Daily plan & report",
-        "feedback": "Feedback on SuZu One"
+        "feedback": "Feedback on SuZu One",
+        "crm": "Clients & sales"
       },
       "push": "Push"
     },
@@ -1078,6 +1083,62 @@
       "security_telegram_linked": {
         "title": "Telegram was linked to your account",
         "body": "A Telegram account was just linked to receive your notifications. If this wasn't you, unlink it now on the Notifications page."
+      },
+      "crm_followup_due": {
+        "title": "Follow-up due today",
+        "body": "“{subject}” with {account} is due today."
+      },
+      "crm_followup_assigned": {
+        "title": "A follow-up for you",
+        "body": "{by} asked you to follow up with {account}: “{subject}”."
+      },
+      "crm_account_team_added": {
+        "title": "Added to an account team",
+        "body": "You are now on the team of {account}."
+      },
+      "crm_lead_assigned": {
+        "title": "A lead for you",
+        "body": "The enquiry from {company} is yours to follow up."
+      },
+      "crm_lead_converted": {
+        "title": "Your referral became a deal",
+        "body": "The enquiry you passed on from {company} is now a deal. Thank you."
+      },
+      "crm_deal_assigned": {
+        "title": "A deal for you",
+        "body": "{deal} ({account}) is now yours."
+      },
+      "crm_deal_stale": {
+        "title": "A deal has gone quiet",
+        "body": "Nothing has happened on {deal} ({account}) for {days} days."
+      },
+      "crm_deal_won": {
+        "title": "Deal won",
+        "body": "{deal} ({account}) is won."
+      },
+      "crm_delivery_handoff": {
+        "title": "A won deal to take over",
+        "body": "{deal} is handed to you as {project}. Read the note and accept it."
+      },
+      "crm_delivery_handoff_answered": {
+        "title": "Delivery hand-off answered",
+        "body": "The hand-off of {deal} to {project} was {outcome}."
+      },
+      "crm_renewal_opened": {
+        "title": "A renewal to work",
+        "body": "Contract {contract} of {account} ends on {endDate}. A renewal deal is open for you."
+      },
+      "crm_invoice_overdue": {
+        "title": "Invoice overdue",
+        "body": "Invoice {invoice} of {account} is {days} days past due."
+      },
+      "crm_commission_ready": {
+        "title": "Commission statement",
+        "body": "Your commission statement for {month} is ready to read."
+      },
+      "crm_cover_followups": {
+        "title": "Client follow-ups while someone is away",
+        "body": "You cover {count} client follow-ups of {name} during their leave."
       }
     },
     "errors": {
@@ -1236,7 +1297,9 @@
       "insurance_unpaid_leave_threshold": "Insurance – unpaid days in a month above which nothing is contributed",
       "pit_overtime_exemption": "PIT – exempt part of overtime and night pay",
       "hr_alert_thresholds": "HR alert countdowns (days ahead)",
-      "work_night_window": "Night work hours"
+      "work_night_window": "Night work hours",
+      "tax_vat": "VAT on services sold (default and allowed rates)",
+      "crm_settings": "CRM – stale deals, renewals, receivables reminders, payment terms, quote approval"
     },
     "errors": {
       "parameter_unknown": "Unknown parameter.",
@@ -1428,7 +1491,8 @@
       "kb_publish": "Knowledge-base page review",
       "salary_change": "Salary change",
       "project_brief": "Project kick-off brief",
-      "project_change": "Project change request"
+      "project_change": "Project change request",
+      "crm_quote": "Quote"
     },
     "status": {
       "pending": "Waiting for approval",
@@ -1714,7 +1778,8 @@
       "obligations": "Compliance obligations ({count})",
       "checklist": "Checklist steps ({count})",
       "triage": "New work waiting for your triage ({count})",
-      "blockers": "Blocked, waiting on you ({count})"
+      "blockers": "Blocked, waiting on you ({count})",
+      "followUps": "Client follow-ups ({count})"
     },
     "reviewFrom": "version {version} from {name}",
     "toReview": "To review",
@@ -2029,7 +2094,8 @@
         "work": "Work to watch",
         "approvals": "Waiting on you",
         "delivery": "Project health",
-        "profitability": "Profitability"
+        "profitability": "Profitability",
+        "sales": "Sales and receivables"
       },
       "headcount": {
         "total": "Total headcount",
@@ -2086,6 +2152,12 @@
         "stale": "Update overdue",
         "overdueMilestones": "Overdue milestones",
         "of": "Of {total} running projects you can see."
+      },
+      "sales": {
+        "won": "Won this month ({count, plural, one {# deal} other {# deals}})",
+        "pipeline": "Weighted pipeline ({count, plural, one {# open deal} other {# open deals}})",
+        "collected": "Collected this month",
+        "overdue": "Overdue receivables"
       }
     },
     "analytics": {
@@ -2158,6 +2230,27 @@
       "profitability": {
         "name": "Project profitability",
         "summary": "{projects} projects, margin {margin}."
+      },
+      "crm_pipeline": {
+        "name": "Stage or month",
+        "summary": "{open} open deals, weighted {weighted}; {stale} gone quiet; win rate {winRate}.",
+        "byStage": "By stage",
+        "byCloseMonth": "By expected close",
+        "noDate": "No close date",
+        "won": "Won",
+        "section": "Section",
+        "deals": "Deals",
+        "value": "Value",
+        "weighted": "Weighted"
+      },
+      "crm_receivables": {
+        "name": "Invoice or bucket",
+        "summary": "{total} owed, of which {overdue} overdue across {invoices} invoices.",
+        "aging": "Aging",
+        "section": "Account",
+        "due": "Due",
+        "daysLate": "Days late",
+        "owed": "Owed"
       }
     },
     "schedules": {
@@ -3648,7 +3741,8 @@
         "entityId": "Served by",
         "note": "Note",
         "isActive": "Active"
-      }
+      },
+      "openAccount": "Open the account"
     },
     "list": {
       "search": "Filter by title or key…",
@@ -4776,7 +4870,11 @@
         "intake_form": "Intake forms",
         "automation": "Automations",
         "team_lead": "Teams they lead",
-        "time_week": "Time weeks not submitted"
+        "time_week": "Time weeks not submitted",
+        "crm_sales_owner": "Clients they sell to",
+        "crm_deal": "Open deals",
+        "crm_lead": "Open leads",
+        "crm_followup": "Client follow-ups"
       },
       "selectAll": "Select all",
       "week": "Week of {date}",
@@ -6365,7 +6463,13 @@
         "deliverables_accepted": "Deliverables accepted",
         "utilisation": "Utilisation",
         "revision_rounds_avg": "Average revision rounds",
-        "eod_compliance": "EOD report compliance"
+        "eod_compliance": "EOD report compliance",
+        "sales_won_value": "Value won (VND)",
+        "sales_invoiced": "Invoiced on managed accounts (VND)",
+        "sales_collected": "Cash collected on managed accounts (VND)",
+        "sales_new_accounts": "New accounts won",
+        "sales_win_rate": "Win rate",
+        "followups_on_time": "Client follow-ups on time"
       }
     }
   },
@@ -9536,7 +9640,9 @@
       "blockerNeeds": "Needs {name}: {reason}",
       "bookings": "Booked this week",
       "tentative": "Tentative",
-      "time": "Time logged today · {value} h"
+      "time": "Time logged today · {value} h",
+      "salesHandoffs": "Won deals handed to you ({count})",
+      "followUps": "Client follow-ups ({count})"
     },
     "time": {
       "log": "Log time",
@@ -9661,7 +9767,9 @@
         "handoff_received": "Received from",
         "blocker_raised": "Blocked",
         "blocker_resolved": "Unblocked",
-        "time_logged": "Logged"
+        "time_logged": "Logged",
+        "client_activity": "Client",
+        "deal_moved": "Deal moved"
       },
       "privateWork": "Private work"
     },
@@ -10258,7 +10366,8 @@
       "meeting_time_invalid": "That is not a valid start time.",
       "meeting_duration_invalid": "A meeting runs between 5 minutes and 12 hours.",
       "meeting_time_required": "Give the meeting a start time before putting it in the calendar.",
-      "meeting_not_in_calendar": "This meeting is not in the calendar."
+      "meeting_not_in_calendar": "This meeting is not in the calendar.",
+      "billing_invoice_in_receivables": "A client's item is invoiced in Receivables, so the money owed is tracked."
     },
     "timeline": {
       "title": "Timeline",
@@ -10572,7 +10681,8 @@
       "referenceHint": "Optional",
       "referenceValue": "Contract/PO {reference}",
       "projectItems": "Items handed to finance",
-      "projectEmpty": "Nothing handed to finance yet."
+      "projectEmpty": "Nothing handed to finance yet.",
+      "invoiceInReceivables": "Record the invoice in Receivables — it marks this item invoiced and tracks what the client owes."
     },
     "reports": {
       "list": "Client reports",
@@ -10824,6 +10934,17 @@
       "audience": "The project's members and its team leads can read and edit; anyone added to the project sees it straight away.",
       "files": "All files",
       "noFiles": "No files uploaded to the project's pages yet."
+    },
+    "crm": {
+      "client": "Client:",
+      "fromDeal": "From deal",
+      "contract": "Under contract {number}",
+      "creditHold": "Client on credit hold",
+      "handoff": {
+        "pending": "hand-off waiting",
+        "accepted": "hand-off accepted",
+        "returned": "hand-off sent back"
+      }
     }
   },
   "preview": {
@@ -11097,7 +11218,24 @@
     "approve": "Approve",
     "feedback": "Feedback",
     "feedbackInbox": "Feedback inbox",
-    "feedbackItem": "Feedback"
+    "feedbackItem": "Feedback",
+    "crm": "Clients & sales",
+    "crmAccounts": "Accounts",
+    "crmAccount": "Account",
+    "crmLeads": "Leads",
+    "crmLead": "Lead",
+    "crmDeals": "Pipeline",
+    "crmDeal": "Deal",
+    "crmQuote": "Quote",
+    "crmContracts": "Contracts",
+    "crmContract": "Contract",
+    "crmInvoices": "Receivables",
+    "crmInvoice": "Invoice",
+    "crmReports": "Sales reports",
+    "crmProfitability": "Client profitability",
+    "crmRateCard": "Rate card",
+    "crmSettings": "Sales settings",
+    "crmCommission": "Sales commission"
   },
   "portfolio": {
     "title": "SuZu Group",
@@ -11661,6 +11799,1014 @@
       "file_not_uploaded": "The upload did not arrive. Try again.",
       "file_content_mismatch": "That file is not the image it claims to be.",
       "file_not_found": "The file was not found."
+    }
+  },
+  "crm": {
+    "title": "Clients & sales",
+    "saved": "Saved.",
+    "save": "Save",
+    "filter": "Filter",
+    "tabs": {
+      "label": "Clients & sales",
+      "home": "My sales",
+      "accounts": "Accounts",
+      "leads": "Leads",
+      "deals": "Pipeline",
+      "contracts": "Contracts",
+      "invoices": "Receivables",
+      "reports": "Reports",
+      "rateCard": "Rate card",
+      "settings": "Settings",
+      "commission": "Commission"
+    },
+    "home": {
+      "intro": "Your follow-ups, deals and leads today, the renewals coming up and what clients owe.",
+      "handoffs": "Won deals handed to you",
+      "handoffFrom": "from {name}, {date}",
+      "followUps": "Follow-ups due",
+      "myDeals": "My open deals",
+      "noDeals": "No open deals of yours.",
+      "pipeline": "Open the pipeline",
+      "myLeads": "Leads",
+      "renewals": "Contracts ending in the next 90 days",
+      "endsOn": "ends {date}",
+      "receivables": "Receivables",
+      "overdue": "{amount} overdue",
+      "openReceivables": "Open receivables"
+    },
+    "accounts": {
+      "title": "Accounts",
+      "intro": "Every client, with its brands, people, projects, pipeline and money in one place. The list is the same client list projects use.",
+      "search": "Name, code, tax code, brand",
+      "anyLifecycle": "Any stage",
+      "anyTier": "Any tier",
+      "mine": "Only mine",
+      "empty": "No accounts match.",
+      "new": "New account",
+      "create": "Create account",
+      "duplicates": "This looks like an account that already exists:",
+      "duplicateReason": {
+        "tax_code": "same tax code",
+        "name": "same name"
+      },
+      "confirmDuplicate": "It is a different company — create it anyway",
+      "columns": {
+        "account": "Account",
+        "lifecycle": "Stage",
+        "manager": "Account manager",
+        "projects": "Open projects",
+        "deals": "Open deals",
+        "pipeline": "Pipeline",
+        "overdue": "Overdue",
+        "lastActivity": "Last activity",
+        "nextFollowUp": "Next follow-up"
+      }
+    },
+    "account": {
+      "groupWide": "Whole group",
+      "creditHold": "Credit hold",
+      "taxCodeIs": "Tax code {code}",
+      "managerIs": "Account manager: {name}",
+      "salesOwnerIs": "Sales owner: {name}",
+      "brands": "Brands: {names}",
+      "lifecycleAuto": "Automatic (now {lifecycle})",
+      "defaultTerms": "Contract or default",
+      "editProfile": "Edit the profile",
+      "editTerms": "Payment terms and credit",
+      "termsAre": "Payment terms: {days} days",
+      "changeManager": "Change the account manager",
+      "handedOver": "{from} → {to}, {date}",
+      "noProjects": "No projects yet.",
+      "noDeals": "No deals yet.",
+      "noContracts": "No contracts recorded.",
+      "registerProgress": "{accepted}/{promised} accepted",
+      "retainerMonth": "{month}: {delivered}/{contracted} delivered, {hours} h",
+      "overservicing": "Over the retainer",
+      "workFacts": "Client decisions in 90 days: {approved} approved, {withChanges} with changes, {changes} changes asked · {ready} items ready to invoice",
+      "billingReady": "{amount} ready to invoice",
+      "hoursByMonth": "Hours logged (people)",
+      "signals": {
+        "openProjects": "Open projects",
+        "openDeals": "Open deals",
+        "pipeline": "Weighted pipeline",
+        "won12m": "Won in 12 months",
+        "receivable": "Receivable",
+        "overdue": "Overdue",
+        "hours": "Hours, 6 months",
+        "clientRounds": "Changes asked, 90 days"
+      },
+      "sections": {
+        "projects": "Projects",
+        "deals": "Deals",
+        "contracts": "Contracts",
+        "invoices": "Invoices",
+        "timeline": "Timeline",
+        "followUps": "Follow-ups",
+        "contacts": "Contacts",
+        "team": "Account team",
+        "profile": "Profile",
+        "activities": "Activities"
+      },
+      "team": {
+        "add": "Add to the team",
+        "remove": "Remove",
+        "person": "Person"
+      },
+      "fields": {
+        "name": "Name",
+        "code": "Code",
+        "entity": "Entity",
+        "legalName": "Legal name",
+        "taxCode": "Tax code (MST)",
+        "address": "Registered address",
+        "website": "Website",
+        "industry": "Industry",
+        "size": "Size",
+        "tier": "Tier",
+        "source": "Source",
+        "contractingEntity": "Usually contracts with",
+        "accountManager": "Account manager",
+        "salesOwner": "Sales owner",
+        "note": "Note",
+        "lifecycle": "Stage",
+        "paymentTermsDays": "Payment terms (days)",
+        "creditLimit": "Credit limit (VND)",
+        "creditHold": "On credit hold",
+        "creditHoldReason": "Why"
+      },
+      "leftBehind": "{name}, the previous account manager, still holds {deals} open deals and {followUps} follow-ups here.",
+      "moveWork": "Give them to {name}"
+    },
+    "contacts": {
+      "add": "Add a contact",
+      "empty": "No contacts yet.",
+      "primary": "Primary",
+      "duplicates": "Probably already here: {names}",
+      "confirmDuplicate": "It is a different person — add anyway",
+      "pdpl": "A contact's details are personal data of someone outside the company: only the account's team and the people who sell to it read them. Record where they came from and on what basis we keep them.",
+      "erase": "Erase on request",
+      "eraseType": "Type ERASE to confirm",
+      "eraseConfirm": "Erase the details",
+      "fields": {
+        "fullName": "Full name",
+        "title": "Job title",
+        "decisionRole": "Part in decisions",
+        "email": "Email",
+        "phone": "Phone",
+        "zalo": "Zalo",
+        "preferredChannel": "Prefers",
+        "source": "Where the details came from",
+        "lawfulBasis": "Basis for keeping them",
+        "birthday": "Birthday",
+        "status": "Status",
+        "brands": "Brands",
+        "notes": "Notes",
+        "isPrimary": "Primary contact"
+      }
+    },
+    "activity": {
+      "save": "Save",
+      "log": "Log an activity or plan a follow-up",
+      "happened": "It happened",
+      "planOnly": "Plan a follow-up only",
+      "kind": "Kind",
+      "subject": "Subject",
+      "subjectHint": "Called about the Tết brief",
+      "contact": "With",
+      "body": "Notes",
+      "outcome": "Outcome",
+      "outcomeIs": "Outcome: {outcome}",
+      "alsoPlan": "Plan the next step",
+      "nextStep": "Next step",
+      "dueOn": "On",
+      "owner": "Who",
+      "markDone": "Done",
+      "reschedule": "Move",
+      "drop": "Drop",
+      "dropConfirm": "Drop this follow-up?",
+      "open": "Open",
+      "noFollowUps": "Nothing to follow up.",
+      "none": "No activities yet."
+    },
+    "timeline": {
+      "empty": "Nothing recorded yet.",
+      "kinds": {
+        "activity": "Activity",
+        "deal_opened": "Deal opened",
+        "deal_won": "Deal won",
+        "deal_lost": "Deal lost",
+        "quote_sent": "Quote sent",
+        "contract_signed": "Contract signed",
+        "project_opened": "Project opened",
+        "project_closed": "Project closed",
+        "status_update": "Status update",
+        "client_decision": "Client decision",
+        "delivery": "Delivered",
+        "acceptance_signed": "Acceptance signed",
+        "client_meeting": "Client meeting",
+        "change_approved": "Change approved",
+        "invoice": "Invoice",
+        "payment": "Payment received"
+      }
+    },
+    "leads": {
+      "title": "Leads",
+      "intro": "Enquiries before anyone has qualified them. Anyone may pass one on; the people who sell work it and turn it into a deal.",
+      "new": "Pass on an enquiry",
+      "create": "Send",
+      "referralHint": "It goes to the sales team, and you are credited as the referrer.",
+      "status": "Status",
+      "openOnes": "Open",
+      "allOnes": "All",
+      "mine": "Only mine",
+      "empty": "No leads here.",
+      "unassigned": "Not assigned yet",
+      "referredBy": "referred by {name}"
+    },
+    "lead": {
+      "me": "Me",
+      "ownerIs": "Owner: {name}",
+      "openDeal": "Open the deal",
+      "disqualifiedBecause": "Not pursued: {reason}",
+      "markContacted": "Contacted",
+      "markQualified": "Qualified",
+      "disqualify": "Not pursued",
+      "disqualifyReason": "Why",
+      "assign": "Assign",
+      "convert": "Turn into a deal",
+      "edit": "Edit the lead",
+      "existingAccount": "An existing account",
+      "newAccount": "A new account",
+      "createContact": "Add {name} as a contact",
+      "confirmDuplicate": "Probably already an account: {names}. Tick to create a new one anyway.",
+      "fields": {
+        "companyName": "Company",
+        "existingAccount": "Account",
+        "entity": "Entity",
+        "contactName": "Contact",
+        "contactTitle": "Their title",
+        "email": "Email",
+        "phone": "Phone",
+        "need": "What they need",
+        "budget": "Budget",
+        "source": "Source",
+        "owner": "Owner"
+      }
+    },
+    "deals": {
+      "title": "Pipeline",
+      "intro": "Every deal you may see, by stage. Drag a card to move it; a stage asks for what it needs first.",
+      "views": "Views",
+      "view": {
+        "board": "Board",
+        "list": "List",
+        "forecast": "Forecast"
+      },
+      "search": "Title, code, account",
+      "anyTeam": "Any team",
+      "anyService": "Any service",
+      "status": "Status",
+      "statuses": {
+        "open": "Open",
+        "won": "Won",
+        "lost": "Lost",
+        "all": "All"
+      },
+      "mine": "Only mine",
+      "empty": "No deals here.",
+      "new": "New deal",
+      "create": "Create the deal",
+      "stale": "Quiet",
+      "columnWeighted": "{total} · weighted {weighted}",
+      "valuedOf": "{valued} of {count} valued",
+      "gatesNeeded": "This stage needs: {gates}",
+      "noForecast": "No open deals with a value you may see.",
+      "undatedOrLate": "No date, or the date has passed",
+      "columns": {
+        "deal": "Deal",
+        "account": "Account",
+        "stage": "Stage",
+        "owner": "Owner",
+        "close": "Expected close",
+        "value": "Value",
+        "weighted": "Weighted",
+        "closeMonth": "Close month",
+        "count": "Deals"
+      }
+    },
+    "deal": {
+      "ownerIs": "Owner: {name}",
+      "teamIs": "Delivered by {name}",
+      "valueIs": "Value {total} · weighted {weighted} at {probability}%",
+      "monthlyIs": "{amount} a month for {months} months",
+      "closeIs": "Expected to close {date}",
+      "nextStepIs": "Next: {step}",
+      "lostBecause": "Lost: {reason}. {note}",
+      "creditHoldWarning": "The account is on credit hold: {reason}",
+      "stageDefault": "Stage's",
+      "accountEntity": "The account's",
+      "contactRole": "Part in the deal",
+      "gatesNeeded": "This stage needs: {gates}",
+      "move": "Move",
+      "reopen": "Reopen",
+      "reassign": "Give to",
+      "edit": "Edit the deal",
+      "editContacts": "Change the people on the deal",
+      "noQuotes": "No quotes yet.",
+      "stageChange": "{from} → {to} by {by}, {date}",
+      "sections": {
+        "delivery": "Delivery",
+        "quotes": "Quotes",
+        "pitch": "Pitch",
+        "history": "History",
+        "contacts": "The client's people",
+        "details": "Details"
+      },
+      "fields": {
+        "title": "Title",
+        "brand": "Brand",
+        "serviceLines": "Services",
+        "oneOff": "One-off value (VND)",
+        "monthly": "Monthly value (VND)",
+        "months": "Months",
+        "probability": "Probability %",
+        "expectedClose": "Expected close",
+        "team": "Delivering team",
+        "entity": "Contracting entity",
+        "source": "Source",
+        "competitors": "Competitors",
+        "nextStep": "Next step",
+        "stage": "Stage",
+        "owner": "Owner",
+        "contact": "Contact",
+        "lostReason": "Why it was lost",
+        "lostNote": "Note"
+      },
+      "pitch": {
+        "open": "Open a pitch project",
+        "name": "Project name",
+        "dueDate": "Pitch date",
+        "openProject": "Open the pitch project",
+        "costHint": "Time logged there is this deal's cost of sale."
+      },
+      "delivery": {
+        "title": "Set up delivery",
+        "none": "No delivery project yet.",
+        "lead": "Project lead",
+        "name": "Project name",
+        "template": "Project template",
+        "noTemplate": "No template",
+        "startDate": "Start",
+        "dueDate": "Due",
+        "visibility": "Visible to",
+        "visibilities": {
+          "team": "The team",
+          "entity": "The entity",
+          "private": "Its people only"
+        },
+        "contract": "Under contract",
+        "note": "Hand-off note to the lead",
+        "context": "Context — what the client wants and why",
+        "next": "Next steps",
+        "questions": "Open questions",
+        "prefillHint": "The project starts with the accepted quote's lines as its register, its hours as the budget, its monthly lines as the retainer, and the deal's contacts in the brief.",
+        "create": "Create the project and hand it over"
+      },
+      "handoff": {
+        "waiting": "{project} is handed to you — accept it or send it back",
+        "to": "to {name}, {date}",
+        "note": "The hand-off note",
+        "returnedBecause": "Sent back: {reason}",
+        "resend": "Send it again",
+        "accept": "Accept",
+        "return": "Send back",
+        "reason": "Why"
+      },
+      "staffing": {
+        "title": "Staffing check",
+        "summary": "Quote {quote} estimates {need} h. The team has {free} h free across {people} people in the {weeks} weeks from {from}.",
+        "role": "{role}: {hours} h",
+        "position": "{position}: {hours} h free ({people})",
+        "noPosition": "No position",
+        "short": "About {hours} h short.",
+        "hire": "Raise a hiring request",
+        "fits": "The team has room for it in that window.",
+        "reason": "Deal {deal} needs about {need} h; the team has {free} h free in the {weeks} weeks from {from}."
+      }
+    },
+    "quote": {
+      "create": "New quote",
+      "save": "Save the draft",
+      "title": "Title",
+      "validUntil": "Valid until",
+      "intro": "Opening text",
+      "terms": "Terms",
+      "service": "Service",
+      "freeLine": "Free line",
+      "lineTitle": "Line",
+      "quantity": "Qty",
+      "unit": "Unit",
+      "unitPrice": "Unit price",
+      "discount": "Discount %",
+      "months": "Months",
+      "monthsHint": "Months (monthly)",
+      "format": "Format",
+      "channel": "Channel",
+      "description": "Description",
+      "hoursByRole": "Hours by role ({hours} h)",
+      "role": "Role",
+      "hours": "Hours",
+      "removeLine": "Remove the line",
+      "addLine": "Add a line",
+      "vat": "VAT",
+      "subtotal": "Before discount",
+      "discountTotal": "Discount",
+      "vatAmount": "VAT",
+      "total": "Total",
+      "amount": "Amount",
+      "totalIs": "Total {total}, valid until {valid}",
+      "sentOn": "sent {date}",
+      "noteIs": "Note: {note}",
+      "pdf": "Download the PDF",
+      "decide": "Your decision on this quote",
+      "approvalReasons": "Asked because of: {reasons}",
+      "needsApproval": "Needs approval before it is sent: {reasons}",
+      "policy": "the company's rules",
+      "margin": "Estimated: {hours} h at the team's average hour ≈ {cost}; margin {margin} ({percent})",
+      "noMargin": "No margin estimate: the delivering team has no signed payroll months to average.",
+      "documentTitle": "Quotation",
+      "monthsCount": "{count} months",
+      "steps": {
+        "submit": "Send for approval",
+        "send": "Mark as sent to the client",
+        "accept": "Client accepted",
+        "reject": "Client declined",
+        "revise": "New version",
+        "clientNote": "What the client said",
+        "withdraw": "Take back from approval"
+      }
+    },
+    "contract": {
+      "new": "Record a contract",
+      "create": "Record",
+      "save": "Save",
+      "sign": "Mark as signed",
+      "terminate": "End the contract early",
+      "edit": "Edit",
+      "projects": "Projects delivered under it",
+      "noProjects": "No project linked.",
+      "hiddenProject": "A project you may not open",
+      "linkProject": "Link a project",
+      "unlinkProject": "Unlink",
+      "scan": "Signed scan",
+      "uploaded": "Uploaded: {name}",
+      "termsIs": "{days} days to pay",
+      "signedOnIs": "Signed {date}",
+      "kinds": {
+        "service": "Service contract",
+        "framework": "Framework contract",
+        "appendix": "Appendix"
+      },
+      "fields": {
+        "number": "Number",
+        "title": "Title",
+        "kind": "Kind",
+        "entity": "Signed by",
+        "parent": "Appendix of",
+        "deal": "Deal",
+        "startDate": "Start",
+        "endDate": "End",
+        "paymentTerms": "Payment terms (days)",
+        "noticeDays": "Notice (days)",
+        "value": "Value (VND)",
+        "autoRenew": "Renews automatically",
+        "note": "Note",
+        "signedOn": "Signed on",
+        "scan": "Signed scan",
+        "terminatedOn": "Ended on",
+        "terminationReason": "Why",
+        "project": "Project"
+      }
+    },
+    "contracts": {
+      "title": "Contracts",
+      "intro": "Client contracts and appendices: what is active, what ends soon, and what each project is delivered under.",
+      "empty": "No contracts here.",
+      "renewal": "Renewal deal",
+      "states": {
+        "live": "Current",
+        "active": "Active",
+        "draft": "Draft",
+        "expired": "Expired",
+        "terminated": "Ended",
+        "all": "All"
+      },
+      "columns": {
+        "number": "Number",
+        "account": "Account",
+        "kind": "Kind",
+        "state": "State",
+        "period": "Period",
+        "value": "Value"
+      }
+    },
+    "invoices": {
+      "title": "Receivables",
+      "intro": "Invoices issued in the accounting system, what has been paid and what is owed, by age.",
+      "totalOpen": "Open ({count} invoices)",
+      "empty": "No invoices here.",
+      "daysLate": "{days} days late",
+      "recordTitle": "Record an invoice",
+      "recordIntro": "Items ready to invoice, by client and entity. Pick the items the invoice covers.",
+      "readyCount": "{count} ready",
+      "statuses": {
+        "open": "Open",
+        "overdue": "Overdue",
+        "paid": "Paid",
+        "written_off": "Written off",
+        "all": "All"
+      },
+      "columns": {
+        "number": "Invoice",
+        "account": "Account",
+        "issued": "Issued",
+        "due": "Due",
+        "standing": "Standing",
+        "total": "Total",
+        "outstanding": "Owed"
+      }
+    },
+    "invoice": {
+      "heading": "Invoice {number}",
+      "record": "Record the invoice",
+      "amount": "Amount",
+      "subtotal": "Subtotal",
+      "vatAmount": "VAT",
+      "total": "Total",
+      "outstandingIs": "{amount} owed",
+      "issuedIs": "issued {date}",
+      "dueIs": "due {date}",
+      "figures": "{subtotal} + VAT {vat} ({rate}%) = {total} · paid {paid} · owed {outstanding}",
+      "writtenOffBecause": "Written off: {reason}",
+      "items": "What it invoices",
+      "payments": "Payments",
+      "noPayments": "No payments yet.",
+      "recordPayment": "Record the payment",
+      "removePayment": "Remove",
+      "removePaymentConfirm": "Remove this payment?",
+      "writeOff": "Write off",
+      "methods": {
+        "transfer": "Bank transfer",
+        "cash": "Cash",
+        "offset": "Offset",
+        "other": "Other"
+      },
+      "fields": {
+        "number": "Invoice number",
+        "issuedOn": "Issued on",
+        "vat": "VAT",
+        "note": "Note",
+        "receivedOn": "Received on",
+        "amount": "Amount (VND)",
+        "method": "Method",
+        "reference": "Reference",
+        "writeOffReason": "Why"
+      }
+    },
+    "reports": {
+      "title": "Sales reports",
+      "intro": "The pipeline and its outcomes over the deals whose value you may see.",
+      "profitabilityLink": "Client profitability",
+      "openDeals": "Open deals",
+      "winRate": "Win rate, 6 months",
+      "averageWon": "Average won deal",
+      "cycle": "Average sales cycle",
+      "days": "{days} days",
+      "stale": "Quiet deals",
+      "byStage": "Open pipeline by stage",
+      "byMonth": "Won and lost by month",
+      "noClosed": "No deal closed in the period.",
+      "month": "Month",
+      "won": "Won",
+      "wonValue": "Value won",
+      "lost": "Lost",
+      "lostReasons": "Why deals were lost: {reasons}",
+      "nothing": "No deals you may value.",
+      "outlook": "Revenue outlook",
+      "contracted": "Contracted (retainers)",
+      "weightedPipeline": "Weighted pipeline",
+      "overdueShare": "of which overdue {amount}"
+    },
+    "profitability": {
+      "title": "Client profitability",
+      "intro": "Per account: revenue against the cost of delivering it and the cost of winning it (pitch projects). No figure belongs to one person.",
+      "from": "From",
+      "to": "To",
+      "account": "Account",
+      "revenue": "Revenue",
+      "deliveryCost": "Delivery cost",
+      "costOfSale": "Cost of sale",
+      "margin": "Margin",
+      "rate": "Margin %",
+      "hours": "Hours",
+      "noClient": "No client",
+      "counts": "{projects} projects, {pitches} pitches",
+      "estimated": "estimated",
+      "total": "Total",
+      "private": "Private",
+      "privateLine": "{projects} private projects: cost {cost}, fee {fee}",
+      "basis": "Revenue is each project's invoiced amount in the period, else its retainer or fee for the period; cost is hours logged × the loaded cost of the month's signed payroll."
+    },
+    "rateCard": {
+      "title": "Rate card",
+      "intro": "What we sell, per unit: the list price in force, the hours it takes by role, and the register line it becomes.",
+      "empty": "No services yet.",
+      "monthly": "Monthly",
+      "inactive": "Inactive",
+      "perUnit": "per {unit}, {hours} h",
+      "upcoming": "Coming: {prices}",
+      "from": "from {date}",
+      "addService": "Add a service",
+      "save": "Save",
+      "setPrice": "Set the price",
+      "groupPrice": "Group price",
+      "fields": {
+        "code": "Code",
+        "name": "Name",
+        "nameEn": "English name",
+        "category": "Service line",
+        "unit": "Unit",
+        "format": "Format",
+        "channel": "Channel",
+        "isRecurring": "Sold monthly",
+        "isActive": "In use",
+        "hoursPerUnit": "Hours per unit, by role",
+        "role": "Role",
+        "hours": "Hours",
+        "description": "Description",
+        "price": "Price (VND)",
+        "validFrom": "From",
+        "priceScope": "For"
+      }
+    },
+    "settings": {
+      "title": "Sales settings",
+      "intro": "The pipeline's stages and what each asks of a deal. Figures such as the quote approval threshold are company rules, decided on Admin → Rules.",
+      "stages": "Stages",
+      "needs": "needs {gates}",
+      "inactive": "Inactive",
+      "addStage": "Add a stage",
+      "save": "Save",
+      "parameters": "Rules in force",
+      "parameterValues": "A deal is quiet after {stale} days · renewals open {renewal} days ahead · overdue reminders at {reminders} days · default payment terms {terms} days · quotes valid {validity} days · approval above a {discount}% discount or under a {margin}% margin",
+      "vat": "VAT: {rate}% by default; allowed {allowed}",
+      "parametersHint": "Change them as a proposal the owner approves:",
+      "rulesLink": "Admin → Rules",
+      "fields": {
+        "name": "Name",
+        "nameEn": "English name",
+        "category": "Kind",
+        "probability": "Probability %",
+        "sortOrder": "Order",
+        "gates": "To enter, a deal needs",
+        "allowsPitch": "A pitch project may be opened here",
+        "isActive": "In use"
+      }
+    },
+    "enums": {
+      "lifecycle": {
+        "prospect": "Prospect",
+        "active": "Active",
+        "dormant": "Dormant",
+        "churned": "Churned"
+      },
+      "tier": {
+        "a": "Tier A",
+        "b": "Tier B",
+        "c": "Tier C"
+      },
+      "size": {
+        "micro": "Micro",
+        "small": "Small",
+        "medium": "Medium",
+        "large": "Large",
+        "enterprise": "Enterprise"
+      },
+      "source": {
+        "referral": "Referral",
+        "website": "Website",
+        "event": "Event",
+        "social": "Social media",
+        "cold": "Outreach",
+        "existing": "Existing client",
+        "other": "Other"
+      },
+      "decisionRole": {
+        "decision_maker": "Decides",
+        "approver": "Approves",
+        "influencer": "Influences",
+        "user": "Uses",
+        "finance": "Finance / purchasing"
+      },
+      "channel": {
+        "email": "Email",
+        "phone": "Phone",
+        "zalo": "Zalo",
+        "meeting": "In person"
+      },
+      "contactSource": {
+        "business_card": "Business card",
+        "referral": "Referral",
+        "client_sent": "Sent by the client",
+        "public": "Public source",
+        "event": "Event",
+        "other": "Other"
+      },
+      "lawfulBasis": {
+        "contract": "Needed for a contract",
+        "consent": "Consent",
+        "legitimate_interest": "Legitimate business interest"
+      },
+      "contactStatus": {
+        "active": "Active",
+        "left": "Left the client"
+      },
+      "activityKind": {
+        "call": "Call",
+        "meeting": "Meeting",
+        "email": "Email",
+        "message": "Message",
+        "note": "Note",
+        "task": "To do"
+      },
+      "leadStatus": {
+        "new": "New",
+        "contacted": "Contacted",
+        "qualified": "Qualified",
+        "converted": "Converted",
+        "disqualified": "Not pursued"
+      },
+      "stageCategory": {
+        "open": "Open",
+        "won": "Won",
+        "lost": "Lost"
+      },
+      "gate": {
+        "contacts": "a client contact",
+        "close_date": "an expected close date",
+        "value": "a value",
+        "quote_accepted": "an accepted quote",
+        "contract_signed": "a signed contract",
+        "pitch_project": "a pitch project"
+      },
+      "serviceLine": {
+        "social": "Social",
+        "video": "Video",
+        "kol": "KOL / KOC",
+        "event": "Event",
+        "media": "Media buying",
+        "design": "Design",
+        "other": "Other"
+      },
+      "lostReason": {
+        "price": "Price",
+        "scope": "Scope",
+        "timing": "Timing",
+        "competitor": "A competitor",
+        "no_decision": "No decision",
+        "other": "Other"
+      },
+      "quoteStatus": {
+        "draft": "Draft",
+        "in_approval": "In approval",
+        "approved": "Approved",
+        "sent": "Sent",
+        "accepted": "Accepted",
+        "rejected": "Declined",
+        "expired": "Expired",
+        "superseded": "Superseded"
+      },
+      "contractState": {
+        "draft": "Draft",
+        "upcoming": "Starts later",
+        "active": "Active",
+        "expired": "Expired",
+        "terminated": "Ended"
+      },
+      "invoiceStanding": {
+        "open": "Open",
+        "part_paid": "Part paid",
+        "paid": "Paid",
+        "written_off": "Written off"
+      },
+      "aging": {
+        "current": "Not due",
+        "d1_30": "1–30 days",
+        "d31_60": "31–60 days",
+        "d61_90": "61–90 days",
+        "d90_plus": "Over 90 days"
+      },
+      "tie": {
+        "manager": "Account manager",
+        "sales_owner": "Sales owner",
+        "member": "Team",
+        "deal_owner": "Owns a deal",
+        "project": "In a project",
+        "project_lead": "Leads a project"
+      },
+      "unit": {
+        "item": "item",
+        "post": "post",
+        "video": "video",
+        "month": "month",
+        "day": "day",
+        "hour": "hour",
+        "package": "package"
+      },
+      "handoffStatus": {
+        "pending": "Waiting",
+        "accepted": "Accepted",
+        "returned": "Sent back"
+      },
+      "approvalReason": {
+        "discount": "a discount above the threshold",
+        "margin": "an estimated margin under the floor"
+      },
+      "decision": {
+        "approved": "Approved",
+        "approved_with_changes": "Approved with changes",
+        "changes_required": "Changes asked"
+      },
+      "health": {
+        "on_track": "On track",
+        "at_risk": "At risk",
+        "off_track": "Off track"
+      },
+      "commissionStatus": {
+        "draft": "Draft",
+        "confirmed": "Confirmed",
+        "in_payroll": "In payroll",
+        "proposed": "Proposed",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      }
+    },
+    "errors": {
+      "generic": "That did not work. Try again, or tell us through Feedback.",
+      "forbidden": "You may not do that here.",
+      "invalid": "Some fields need another look.",
+      "unauthenticated": "Your session has ended. Sign in again.",
+      "account_not_found": "That account no longer exists.",
+      "account_duplicate": "This looks like an account that already exists — see below.",
+      "account_required": "Choose an account or give the new one a name and a code.",
+      "tax_code_invalid": "A tax code is 10 digits, or 10-3 for a branch.",
+      "credit_hold_reason_required": "Say why the account is on credit hold.",
+      "client_code_taken": "That code is already used by another client.",
+      "client_parent_invalid": "A brand must belong to a client.",
+      "person_not_found": "That person is not active.",
+      "contact_not_found": "That contact is not on this account.",
+      "contact_duplicate": "This contact is probably already here — see below.",
+      "contact_erased": "This contact was erased on request.",
+      "contact_brand_invalid": "Pick brands of this account only.",
+      "activity_target_required": "An activity belongs to an account or a lead.",
+      "activity_not_found": "That follow-up no longer exists.",
+      "activity_done": "That follow-up is already done.",
+      "activity_empty": "Log what happened, plan a follow-up, or both.",
+      "followup_owner_invalid": "A follow-up goes to an active employee.",
+      "lead_not_found": "That lead no longer exists.",
+      "lead_closed": "That lead is already converted or closed.",
+      "lead_reason_required": "Say why it is not pursued.",
+      "deal_not_found": "That deal no longer exists.",
+      "deal_closed": "The deal is already won or lost.",
+      "deal_open": "The deal is still open.",
+      "deal_gates": "The deal does not have what that stage needs yet.",
+      "deal_lost_reason_required": "Say why the deal was lost.",
+      "deal_brand_invalid": "Pick a brand of this account.",
+      "deal_months_invalid": "A monthly value runs for at least one month.",
+      "deal_owner_ineligible": "That person cannot own a deal here.",
+      "deal_has_projects": "The deal already became a project; it cannot be reopened.",
+      "deal_not_won": "Only a won deal is set up for delivery.",
+      "team_not_found": "That team is not active.",
+      "stage_not_found": "That stage is not in use.",
+      "stage_in_use": "Deals sit in this stage; its kind cannot change.",
+      "pitch_exists": "The deal already has a pitch project.",
+      "pitch_not_allowed": "A pitch project is not opened at this stage.",
+      "handoff_not_found": "That hand-off no longer exists.",
+      "handoff_answered": "The hand-off was already answered.",
+      "handoff_not_yours": "The hand-off was made to someone else.",
+      "handoff_reason_required": "Say why you send it back.",
+      "handoff_not_returned": "Only a returned hand-off is sent again.",
+      "quote_not_found": "That quote no longer exists.",
+      "quote_locked": "Only a draft can be changed.",
+      "quote_changed": "The quote changed meanwhile. Open it again.",
+      "quote_empty": "A quote needs at least one line.",
+      "quote_vat_invalid": "That VAT rate is not allowed.",
+      "quote_needs_approval": "The quote needs approval before it is sent.",
+      "quote_not_sendable": "Only an approved quote is sent.",
+      "quote_not_sent": "Only a sent quote gets the client's answer.",
+      "quote_not_revisable": "This quote cannot be revised now.",
+      "approval_not_found": "That approval no longer matches the quote.",
+      "contract_not_found": "That contract is not this account's.",
+      "contract_dates_invalid": "The end is before the start.",
+      "contract_parent_required": "An appendix belongs to a contract.",
+      "contract_parent_invalid": "An appendix belongs to a contract of the same account.",
+      "contract_number_taken": "That number is already used by the entity.",
+      "contract_terminated": "An ended contract is not changed.",
+      "contract_not_draft": "The contract is already signed.",
+      "contract_not_signed": "Only a signed contract is ended early.",
+      "contract_reason_required": "Say why the contract ends.",
+      "project_not_found": "That project is not this account's.",
+      "project_dates_invalid": "The due date is before the start.",
+      "template_not_found": "That template is not in use.",
+      "template_other_team": "That template belongs to another team.",
+      "template_empty": "That template has no steps.",
+      "retainer_months_invalid": "The retainer's months do not add up.",
+      "account_manager_is_lead": "The project's lead cannot also be its account manager.",
+      "billing_not_found": "Some of those items no longer exist.",
+      "billing_decided": "Some items were invoiced or waived meanwhile.",
+      "billing_amount_required": "Give the amount of every item without one.",
+      "invoice_no_client": "An item of internal work has no client to invoice.",
+      "invoice_mixed_items": "One invoice covers one client and one entity.",
+      "invoice_number_taken": "That invoice number is already recorded.",
+      "invoice_not_found": "That invoice no longer exists.",
+      "invoice_closed": "The invoice is paid or written off.",
+      "invoice_reason_required": "Say why it is written off.",
+      "payment_amount_invalid": "A payment is more than zero.",
+      "payment_not_found": "That payment no longer exists.",
+      "service_code_taken": "That code is already used.",
+      "service_not_found": "That service no longer exists.",
+      "file_not_found": "Upload the signed scan first.",
+      "file_upload_failed": "The upload failed. Try again.",
+      "file_storage_limit": "The file is too large for storage.",
+      "file_too_large": "The file is too large.",
+      "file_type_not_allowed": "That kind of file is not accepted.",
+      "step_up_required": "Confirm it is you again to continue.",
+      "quote_not_in_approval": "The quote is not waiting for approval.",
+      "approval_not_pending": "The approval was already decided.",
+      "approval_not_assignee": "The approval is not yours to decide.",
+      "approval_not_requester": "Only the person who sent it for approval may take it back.",
+      "approval_own_request": "You cannot approve your own quote.",
+      "account_work_nowhere": "The account has no other manager to give them to.",
+      "commission_base": "The commission base must be cash collected.",
+      "commission_split": "The deal owner's share must be between 0 and 100%.",
+      "commission_tiers": "Give at least one tier, each with a starting amount and a rate of at most 30%, no two starting at the same amount.",
+      "commission_scheme_not_found": "That scheme no longer exists.",
+      "commission_scheme_decided": "That scheme has already been decided.",
+      "commission_month": "Pick a month.",
+      "commission_statement_not_found": "That statement no longer exists.",
+      "commission_statement_confirmed": "That statement is already confirmed."
+    },
+    "commission": {
+      "title": "Sales commission",
+      "intro": "Commission on cash collected, net of VAT, under the scheme the owner approved. Each statement shows the payments behind it. Once C&B confirm a statement it goes into the person's payroll run.",
+      "noScheme": "No commission scheme has been approved, so nothing is worked out. The owner decides the scheme (rate, who earns, tiers).",
+      "statements": "Statements",
+      "month": "Month",
+      "compute": "Work out the month",
+      "confirm": "Confirm and send to payroll",
+      "confirmPrompt": "Confirm this statement? It becomes final for the month and goes into the person's payroll run.",
+      "monthsWith": "Months with statements: {months}",
+      "noStatements": "No statements for this month.",
+      "baseOf": "Base {base}",
+      "traceScheme": "Scheme: {scheme}",
+      "columns": {
+        "received": "Received",
+        "invoice": "Invoice",
+        "account": "Account",
+        "as": "As",
+        "net": "Cash net of VAT",
+        "share": "Share",
+        "base": "Base"
+      },
+      "band": "{from} – {to}",
+      "bandFrom": "From {from}",
+      "bandLine": "{base} × {rate} = {amount}",
+      "schemes": "Schemes",
+      "noSchemes": "No scheme has been proposed yet.",
+      "group": "Whole group",
+      "validity": "{from} → {to}",
+      "splitLine": "deal owner {owner}, account manager {manager}",
+      "tierLine": "from {from}: {rate}",
+      "proposeTitle": "Propose a scheme",
+      "propose": "Propose to the owner",
+      "approve": "Approve",
+      "reject": "Reject",
+      "tiersHint": "Each tier is paid on the part of the month's base above its starting amount (like tax brackets). Rate in %, at most 30%.",
+      "earners": {
+        "deal_owner": "Deal owner",
+        "account_manager": "Account manager",
+        "split": "Split between both"
+      },
+      "fields": {
+        "name": "Name",
+        "entity": "Entity",
+        "validFrom": "From",
+        "earner": "Who earns",
+        "splitOwner": "Deal owner's share (%) when split",
+        "tiers": "Tiers",
+        "tierFrom": "From (VND)",
+        "tierRate": "Rate (%)"
+      }
     }
   }
 }

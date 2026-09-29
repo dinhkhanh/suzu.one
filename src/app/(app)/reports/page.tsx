@@ -182,6 +182,18 @@ export default async function ReportsOverviewPage() {
     );
   }
 
+  if (dashboard.sales) {
+    const tile = dashboard.sales;
+    tiles.push(
+      <Tile key="sales" title={t("tiles.sales")} href="/crm/reports" openLabel={t("open")}>
+        <Figure label={t("sales.won", { count: tile.wonCount })} value={money(tile.wonVnd)} />
+        <Figure label={t("sales.pipeline", { count: tile.openDeals })} value={money(tile.weightedVnd)} />
+        {tile.collectedVnd !== null ? <Figure label={t("sales.collected")} value={money(tile.collectedVnd)} /> : null}
+        {tile.overdueVnd !== null ? <Figure label={t("sales.overdue")} value={money(tile.overdueVnd)} tone={tile.overdueVnd > 0 ? "danger" : undefined} /> : null}
+      </Tile>,
+    );
+  }
+
   tiles.push(
     <Tile key="approvals" title={t("tiles.approvals")} href="/approvals" openLabel={t("open")}>
       {dashboard.approvals.waiting > 0 ? <p className="text-lg font-semibold tabular-nums">{t("approvals.waiting", { count: dashboard.approvals.waiting })}</p> : <p className="text-muted-foreground">{t("approvals.none")}</p>}

@@ -28,7 +28,13 @@ export type WorkFacts = {
   /** Days an end-of-day report was required of the person, and of those, days one was submitted. */
   reportsRequired: number;
   reportsSubmitted: number;
+  /** Read only when a sales metric is asked for; absent = nothing sold. */
+  sales?: SalesFacts;
 };
+
+/** A person's selling in the period (FR-CRM-44), from the CRM. Money in whole VND. */
+export type SalesFacts = { wonValueVnd: number; dealsWon: number; dealsLost: number; newAccounts: number; invoicedVnd: number; collectedVnd: number; followUpsDue: number; followUpsOnTime: number };
+export const EMPTY_SALES_FACTS: SalesFacts = { wonValueVnd: 0, dealsWon: 0, dealsLost: 0, newAccounts: 0, invoicedVnd: 0, collectedVnd: 0, followUpsDue: 0, followUpsOnTime: 0 };
 
 export const EMPTY_WORK_FACTS: WorkFacts = { completedDated: 0, completedOnTime: 0, completedTasks: 0, revisionRounds: 0, deliverablesAccepted: 0, loggedMinutes: 0, availableMinutes: 0, reportsRequired: 0, reportsSubmitted: 0 };
 
@@ -49,6 +55,22 @@ export function workMetricValue(metric: WorkMetric, facts: WorkFacts): number | 
       return facts.completedTasks > 0 ? Math.round((facts.revisionRounds / facts.completedTasks) * 100) : null;
     case "eod_compliance":
       return percentHundredths(Math.min(facts.reportsSubmitted, facts.reportsRequired), facts.reportsRequired);
+  }
+  const sales = facts.sales ?? EMPTY_SALES_FACTS;
+  switch (metric) {
+    // Money is a figure in whole VND: a month that sold or collected nothing is a real zero.
+    case "sales_won_value":
+      return sales.wonValueVnd;
+    case "sales_invoiced":
+      return sales.invoicedVnd;
+    case "sales_collected":
+      return sales.collectedVnd;
+    case "sales_new_accounts":
+      return sales.newAccounts * 100;
+    case "sales_win_rate":
+      return percentHundredths(sales.dealsWon, sales.dealsWon + sales.dealsLost);
+    case "followups_on_time":
+      return percentHundredths(sales.followUpsOnTime, sales.followUpsDue);
   }
 }
 

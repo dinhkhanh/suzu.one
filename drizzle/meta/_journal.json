@@ -715,6 +715,13 @@
       "when": 1790709932179,
       "tag": "0101_person_photo",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1790744782888,
+      "tag": "0102_crm",
+      "breakpoints": true
     }
   ]
 }

@@ -85,4 +85,4 @@ export { decideOutcome, findOutcome, listOutcomes, OUTCOME_CONTEXT, type Outcome
 // The reports module's job computes the figures from PJM data and hands them here; a proposal is
 // never scored until the KPI's scorer confirms or corrects it through the actuals grid.
 export { listWorkKpiDue, proposeWorkActuals, proposalsFor, type WorkKpiLine, type WorkProposal } from "./work-actuals";
-export { availableMinutesOf, EMPTY_WORK_FACTS, isProposalDay, periodRange, previousMonth, type WorkFacts, workMetricValue } from "./engine/work-metrics";
+export { availableMinutesOf, EMPTY_SALES_FACTS, EMPTY_WORK_FACTS, isProposalDay, periodRange, previousMonth, type SalesFacts, type WorkFacts, workMetricValue } from "./engine/work-metrics";

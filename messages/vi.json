@@ -94,7 +94,9 @@
     "profitability": "Lợi nhuận dự án",
     "billing": "Chờ xuất hoá đơn",
     "feedback": "Góp ý",
-    "feedbackInbox": "Hộp thư góp ý"
+    "feedbackInbox": "Hộp thư góp ý",
+    "crm": "Khách hàng & kinh doanh",
+    "receivables": "Công nợ"
   },
   "home": {
     "greeting": "Xin chào, {name}",
@@ -139,7 +141,8 @@
     "recruiter": "Tuyển dụng",
     "asset_admin": "Quản lý tài sản",
     "auditor": "Kiểm toán (chỉ xem)",
-    "support": "Hỗ trợ hệ thống"
+    "support": "Hỗ trợ hệ thống",
+    "sales": "Kinh doanh / phát triển khách hàng"
   },
   "entities": {
     "title": "Pháp nhân",
@@ -261,7 +264,8 @@
       "dottedManagerId": "Quản lý gián tiếp",
       "workLocation": "Nơi làm việc",
       "validFrom": "Hiệu lực từ",
-      "changeReason": "Lý do"
+      "changeReason": "Lý do",
+      "accountsManaged": "Khách hàng phụ trách"
     },
     "workforceType": {
       "employee": "Chính thức",
@@ -678,7 +682,8 @@
         "performance": "Đánh giá hiệu suất",
         "projects": "Dự án",
         "daily": "Kế hoạch & báo cáo ngày",
-        "feedback": "Góp ý về SuZu One"
+        "feedback": "Góp ý về SuZu One",
+        "crm": "Khách hàng & kinh doanh"
       },
       "push": "Đẩy"
     },
@@ -1078,6 +1083,62 @@
       "security_telegram_linked": {
         "title": "Telegram đã được liên kết với tài khoản của bạn",
         "body": "Một tài khoản Telegram vừa được liên kết để nhận thông báo của bạn. Nếu không phải bạn, hãy huỷ liên kết ngay trong trang Thông báo."
+      },
+      "crm_followup_due": {
+        "title": "Việc cần theo dõi hôm nay",
+        "body": "“{subject}” với {account} đến hạn hôm nay."
+      },
+      "crm_followup_assigned": {
+        "title": "Có việc theo dõi khách hàng cho bạn",
+        "body": "{by} nhờ bạn theo dõi {account}: “{subject}”."
+      },
+      "crm_account_team_added": {
+        "title": "Bạn được thêm vào nhóm khách hàng",
+        "body": "Bạn đã có tên trong nhóm phụ trách {account}."
+      },
+      "crm_lead_assigned": {
+        "title": "Có khách hàng tiềm năng cho bạn",
+        "body": "Yêu cầu từ {company} được giao cho bạn theo dõi."
+      },
+      "crm_lead_converted": {
+        "title": "Khách bạn giới thiệu đã thành cơ hội",
+        "body": "Yêu cầu từ {company} bạn chuyển đến đã trở thành một cơ hội bán hàng. Cảm ơn bạn."
+      },
+      "crm_deal_assigned": {
+        "title": "Có cơ hội giao cho bạn",
+        "body": "{deal} ({account}) nay do bạn phụ trách."
+      },
+      "crm_deal_stale": {
+        "title": "Cơ hội đang đứng yên",
+        "body": "{deal} ({account}) đã {days} ngày không có hoạt động nào."
+      },
+      "crm_deal_won": {
+        "title": "Đã chốt thành công",
+        "body": "{deal} ({account}) đã chốt thành công."
+      },
+      "crm_delivery_handoff": {
+        "title": "Nhận bàn giao từ kinh doanh",
+        "body": "{deal} được bàn giao cho bạn thành dự án {project}. Hãy đọc ghi chú và xác nhận nhận bàn giao."
+      },
+      "crm_delivery_handoff_answered": {
+        "title": "Bàn giao triển khai đã được phản hồi",
+        "body": "Bàn giao {deal} sang dự án {project}: {outcome}."
+      },
+      "crm_renewal_opened": {
+        "title": "Có hợp đồng cần gia hạn",
+        "body": "Hợp đồng {contract} của {account} hết hạn ngày {endDate}. Một cơ hội gia hạn đã được mở cho bạn."
+      },
+      "crm_invoice_overdue": {
+        "title": "Hoá đơn quá hạn",
+        "body": "Hoá đơn {invoice} của {account} đã quá hạn {days} ngày."
+      },
+      "crm_commission_ready": {
+        "title": "Bảng hoa hồng",
+        "body": "Bảng hoa hồng tháng {month} của bạn đã sẵn sàng."
+      },
+      "crm_cover_followups": {
+        "title": "Việc theo dõi khách hàng khi đồng nghiệp nghỉ",
+        "body": "Bạn đảm nhận {count} việc theo dõi khách hàng của {name} trong thời gian họ nghỉ phép."
       }
     },
     "errors": {
@@ -1236,7 +1297,9 @@
       "insurance_unpaid_leave_threshold": "Bảo hiểm – số ngày nghỉ không lương trong tháng thì không đóng",
       "pit_overtime_exemption": "Thuế TNCN – phần tiền làm thêm, làm đêm được miễn",
       "hr_alert_thresholds": "Số ngày nhắc trước các hạn nhân sự",
-      "work_night_window": "Giờ làm việc ban đêm"
+      "work_night_window": "Giờ làm việc ban đêm",
+      "tax_vat": "Thuế GTGT trên dịch vụ bán ra (thuế suất mặc định và được phép)",
+      "crm_settings": "CRM – cơ hội đứng yên, gia hạn, nhắc công nợ, hạn thanh toán, duyệt báo giá"
     },
     "errors": {
       "parameter_unknown": "Tham số không tồn tại.",
@@ -1428,7 +1491,8 @@
       "kb_publish": "Duyệt xuất bản trang tri thức",
       "salary_change": "Điều chỉnh lương",
       "project_brief": "Duyệt brief khởi động dự án",
-      "project_change": "Yêu cầu thay đổi dự án"
+      "project_change": "Yêu cầu thay đổi dự án",
+      "crm_quote": "Báo giá"
     },
     "status": {
       "pending": "Đang chờ duyệt",
@@ -1714,7 +1778,8 @@
       "obligations": "Nghĩa vụ tuân thủ ({count})",
       "checklist": "Bước checklist ({count})",
       "triage": "Việc mới chờ bạn phân loại ({count})",
-      "blockers": "Đang chờ bạn gỡ vướng ({count})"
+      "blockers": "Đang chờ bạn gỡ vướng ({count})",
+      "followUps": "Việc theo dõi khách hàng ({count})"
     },
     "reviewFrom": "phiên bản {version} từ {name}",
     "toReview": "Cần duyệt",
@@ -2029,7 +2094,8 @@
         "work": "Công việc cần để mắt",
         "approvals": "Chờ bạn duyệt",
         "delivery": "Tình hình dự án",
-        "profitability": "Lợi nhuận dự án"
+        "profitability": "Lợi nhuận dự án",
+        "sales": "Kinh doanh và công nợ"
       },
       "headcount": {
         "total": "Tổng quân số",
@@ -2086,6 +2152,12 @@
         "stale": "Quá hạn cập nhật",
         "overdueMilestones": "Mốc quá hạn",
         "of": "Trên {total} dự án đang chạy mà bạn được xem."
+      },
+      "sales": {
+        "won": "Thắng trong tháng ({count} cơ hội)",
+        "pipeline": "Pipeline có trọng số ({count} cơ hội đang mở)",
+        "collected": "Đã thu trong tháng",
+        "overdue": "Công nợ quá hạn"
       }
     },
     "analytics": {
@@ -2158,6 +2230,27 @@
       "profitability": {
         "name": "Lợi nhuận dự án",
         "summary": "{projects} dự án, biên lợi nhuận {margin}."
+      },
+      "crm_pipeline": {
+        "name": "Giai đoạn hoặc tháng",
+        "summary": "{open} cơ hội đang mở, giá trị có trọng số {weighted}; {stale} cơ hội im lặng; tỷ lệ thắng {winRate}.",
+        "byStage": "Theo giai đoạn",
+        "byCloseMonth": "Theo tháng dự kiến chốt",
+        "noDate": "Chưa có ngày chốt",
+        "won": "Đã thắng",
+        "section": "Phần",
+        "deals": "Cơ hội",
+        "value": "Giá trị",
+        "weighted": "Có trọng số"
+      },
+      "crm_receivables": {
+        "name": "Hóa đơn hoặc nhóm tuổi nợ",
+        "summary": "Phải thu {total}, trong đó quá hạn {overdue} trên {invoices} hóa đơn.",
+        "aging": "Tuổi nợ",
+        "section": "Khách hàng",
+        "due": "Hạn",
+        "daysLate": "Số ngày trễ",
+        "owed": "Còn nợ"
       }
     },
     "schedules": {
@@ -3648,7 +3741,8 @@
         "entityId": "Công ty phục vụ",
         "note": "Ghi chú",
         "isActive": "Đang hoạt động"
-      }
+      },
+      "openAccount": "Mở hồ sơ khách hàng"
     },
     "list": {
       "search": "Lọc theo tiêu đề hoặc mã…",
@@ -4776,7 +4870,11 @@
         "intake_form": "Biểu mẫu yêu cầu",
         "automation": "Quy tắc tự động",
         "team_lead": "Nhóm đang làm trưởng nhóm",
-        "time_week": "Tuần chấm công chưa nộp"
+        "time_week": "Tuần chấm công chưa nộp",
+        "crm_sales_owner": "Khách hàng họ phụ trách kinh doanh",
+        "crm_deal": "Cơ hội đang mở",
+        "crm_lead": "Khách tiềm năng đang theo",
+        "crm_followup": "Việc theo dõi khách hàng"
       },
       "selectAll": "Chọn tất cả",
       "week": "Tuần từ {date}",
@@ -6365,7 +6463,13 @@
         "deliverables_accepted": "Số sản phẩm được duyệt",
         "utilisation": "Mức sử dụng giờ làm",
         "revision_rounds_avg": "Số vòng chỉnh sửa trung bình",
-        "eod_compliance": "Tỷ lệ nộp báo cáo cuối ngày"
+        "eod_compliance": "Tỷ lệ nộp báo cáo cuối ngày",
+        "sales_won_value": "Giá trị chốt (VNĐ)",
+        "sales_invoiced": "Doanh thu xuất hoá đơn của khách phụ trách (VNĐ)",
+        "sales_collected": "Tiền thu về của khách phụ trách (VNĐ)",
+        "sales_new_accounts": "Khách hàng mới chốt được",
+        "sales_win_rate": "Tỉ lệ chốt",
+        "followups_on_time": "Việc theo dõi khách hàng đúng hạn"
       }
     }
   },
@@ -9536,7 +9640,9 @@
       "blockerNeeds": "Cần {name}: {reason}",
       "bookings": "Lịch phân bổ tuần này",
       "tentative": "Dự kiến",
-      "time": "Giờ đã ghi hôm nay · {value} giờ"
+      "time": "Giờ đã ghi hôm nay · {value} giờ",
+      "salesHandoffs": "Cơ hội đã chốt bàn giao cho bạn ({count})",
+      "followUps": "Việc theo dõi khách hàng ({count})"
     },
     "time": {
       "log": "Ghi giờ",
@@ -9661,7 +9767,9 @@
         "handoff_received": "Nhận bàn giao từ",
         "blocker_raised": "Báo vướng",
         "blocker_resolved": "Gỡ vướng",
-        "time_logged": "Ghi giờ"
+        "time_logged": "Ghi giờ",
+        "client_activity": "Khách hàng",
+        "deal_moved": "Chuyển cơ hội"
       },
       "privateWork": "Việc riêng tư"
     },
@@ -10258,7 +10366,8 @@
       "meeting_time_invalid": "Giờ bắt đầu không hợp lệ.",
       "meeting_duration_invalid": "Thời lượng phải từ 5 phút đến 12 tiếng.",
       "meeting_time_required": "Hãy nhập giờ bắt đầu trước khi đưa cuộc họp lên lịch.",
-      "meeting_not_in_calendar": "Cuộc họp này chưa có trên lịch."
+      "meeting_not_in_calendar": "Cuộc họp này chưa có trên lịch.",
+      "billing_invoice_in_receivables": "Khoản của khách hàng được xuất hoá đơn ở mục Công nợ để theo dõi số phải thu."
     },
     "timeline": {
       "title": "Biểu đồ tiến độ",
@@ -10572,7 +10681,8 @@
       "referenceHint": "Không bắt buộc",
       "referenceValue": "HĐ/PO {reference}",
       "projectItems": "Các khoản chuyển kế toán",
-      "projectEmpty": "Dự án chưa có khoản nào chuyển kế toán."
+      "projectEmpty": "Dự án chưa có khoản nào chuyển kế toán.",
+      "invoiceInReceivables": "Ghi nhận hoá đơn ở mục Công nợ — khoản này sẽ được đánh dấu đã xuất hoá đơn và công nợ của khách được theo dõi."
     },
     "reports": {
       "list": "Báo cáo khách hàng",
@@ -10824,6 +10934,17 @@
       "audience": "Thành viên dự án và trưởng nhóm phụ trách xem và sửa được; ai được thêm vào dự án sẽ thấy ngay.",
       "files": "Tất cả tệp",
       "noFiles": "Chưa có tệp nào được tải lên các trang của dự án."
+    },
+    "crm": {
+      "client": "Khách hàng:",
+      "fromDeal": "Từ cơ hội",
+      "contract": "Theo hợp đồng {number}",
+      "creditHold": "Khách đang tạm ngưng tín dụng",
+      "handoff": {
+        "pending": "chờ nhận bàn giao",
+        "accepted": "đã nhận bàn giao",
+        "returned": "bàn giao bị trả lại"
+      }
     }
   },
   "preview": {
@@ -11097,7 +11218,24 @@
     "approve": "Phê duyệt nhanh",
     "feedback": "Góp ý",
     "feedbackInbox": "Hộp thư góp ý",
-    "feedbackItem": "Góp ý"
+    "feedbackItem": "Góp ý",
+    "crm": "Khách hàng & kinh doanh",
+    "crmAccounts": "Khách hàng",
+    "crmAccount": "Khách hàng",
+    "crmLeads": "Khách tiềm năng",
+    "crmLead": "Khách tiềm năng",
+    "crmDeals": "Cơ hội bán hàng",
+    "crmDeal": "Cơ hội",
+    "crmQuote": "Báo giá",
+    "crmContracts": "Hợp đồng",
+    "crmContract": "Hợp đồng",
+    "crmInvoices": "Công nợ",
+    "crmInvoice": "Hoá đơn",
+    "crmReports": "Báo cáo kinh doanh",
+    "crmProfitability": "Hiệu quả theo khách hàng",
+    "crmRateCard": "Bảng giá dịch vụ",
+    "crmSettings": "Cài đặt kinh doanh",
+    "crmCommission": "Hoa hồng kinh doanh"
   },
   "portfolio": {
     "title": "SuZu Group",
@@ -11661,6 +11799,1014 @@
       "file_not_uploaded": "Tệp chưa được tải lên. Vui lòng thử lại.",
       "file_content_mismatch": "Tệp này không phải là ảnh như tên của nó.",
       "file_not_found": "Không tìm thấy tệp."
+    }
+  },
+  "crm": {
+    "title": "Khách hàng & kinh doanh",
+    "saved": "Đã lưu.",
+    "save": "Lưu",
+    "filter": "Lọc",
+    "tabs": {
+      "label": "Khách hàng & kinh doanh",
+      "home": "Việc bán hàng của tôi",
+      "accounts": "Khách hàng",
+      "leads": "Khách tiềm năng",
+      "deals": "Cơ hội",
+      "contracts": "Hợp đồng",
+      "invoices": "Công nợ",
+      "reports": "Báo cáo",
+      "rateCard": "Bảng giá",
+      "settings": "Cài đặt",
+      "commission": "Hoa hồng"
+    },
+    "home": {
+      "intro": "Việc cần theo dõi, cơ hội và khách tiềm năng của bạn hôm nay, các hợp đồng sắp gia hạn và công nợ khách hàng.",
+      "handoffs": "Cơ hội đã chốt được bàn giao cho bạn",
+      "handoffFrom": "từ {name}, {date}",
+      "followUps": "Việc cần theo dõi",
+      "myDeals": "Cơ hội đang mở của tôi",
+      "noDeals": "Bạn không có cơ hội nào đang mở.",
+      "pipeline": "Mở danh sách cơ hội",
+      "myLeads": "Khách tiềm năng",
+      "renewals": "Hợp đồng hết hạn trong 90 ngày tới",
+      "endsOn": "hết hạn {date}",
+      "receivables": "Công nợ",
+      "overdue": "{amount} quá hạn",
+      "openReceivables": "Mở công nợ"
+    },
+    "accounts": {
+      "title": "Khách hàng",
+      "intro": "Mọi khách hàng cùng thương hiệu, đầu mối liên hệ, dự án, cơ hội và công nợ ở một nơi. Đây chính là danh sách khách hàng mà dự án đang dùng.",
+      "search": "Tên, mã, mã số thuế, thương hiệu",
+      "anyLifecycle": "Mọi giai đoạn",
+      "anyTier": "Mọi hạng",
+      "mine": "Chỉ của tôi",
+      "empty": "Không có khách hàng phù hợp.",
+      "new": "Khách hàng mới",
+      "create": "Tạo khách hàng",
+      "duplicates": "Có vẻ khách hàng này đã có trong hệ thống:",
+      "duplicateReason": {
+        "tax_code": "trùng mã số thuế",
+        "name": "trùng tên"
+      },
+      "confirmDuplicate": "Đây là công ty khác — vẫn tạo mới",
+      "columns": {
+        "account": "Khách hàng",
+        "lifecycle": "Giai đoạn",
+        "manager": "Phụ trách khách hàng",
+        "projects": "Dự án đang chạy",
+        "deals": "Cơ hội mở",
+        "pipeline": "Giá trị cơ hội",
+        "overdue": "Quá hạn",
+        "lastActivity": "Hoạt động gần nhất",
+        "nextFollowUp": "Theo dõi kế tiếp"
+      }
+    },
+    "account": {
+      "groupWide": "Toàn tập đoàn",
+      "creditHold": "Tạm ngưng tín dụng",
+      "taxCodeIs": "MST {code}",
+      "managerIs": "Phụ trách khách hàng: {name}",
+      "salesOwnerIs": "Phụ trách kinh doanh: {name}",
+      "brands": "Thương hiệu: {names}",
+      "lifecycleAuto": "Tự động (hiện là {lifecycle})",
+      "defaultTerms": "Theo hợp đồng hoặc mặc định",
+      "editProfile": "Sửa hồ sơ",
+      "editTerms": "Hạn thanh toán và tín dụng",
+      "termsAre": "Hạn thanh toán: {days} ngày",
+      "changeManager": "Đổi người phụ trách khách hàng",
+      "handedOver": "{from} → {to}, {date}",
+      "noProjects": "Chưa có dự án.",
+      "noDeals": "Chưa có cơ hội.",
+      "noContracts": "Chưa ghi nhận hợp đồng.",
+      "registerProgress": "Đã nghiệm thu {accepted}/{promised}",
+      "retainerMonth": "{month}: đã giao {delivered}/{contracted}, {hours} giờ",
+      "overservicing": "Vượt phạm vi retainer",
+      "workFacts": "Quyết định của khách trong 90 ngày: {approved} duyệt, {withChanges} duyệt kèm sửa, {changes} yêu cầu sửa · {ready} khoản chờ xuất hoá đơn",
+      "billingReady": "{amount} chờ xuất hoá đơn",
+      "hoursByMonth": "Giờ công đã ghi (số người)",
+      "signals": {
+        "openProjects": "Dự án đang chạy",
+        "openDeals": "Cơ hội mở",
+        "pipeline": "Giá trị cơ hội (có trọng số)",
+        "won12m": "Đã chốt 12 tháng",
+        "receivable": "Phải thu",
+        "overdue": "Quá hạn",
+        "hours": "Giờ công 6 tháng",
+        "clientRounds": "Lần khách yêu cầu sửa, 90 ngày"
+      },
+      "sections": {
+        "projects": "Dự án",
+        "deals": "Cơ hội",
+        "contracts": "Hợp đồng",
+        "invoices": "Hoá đơn",
+        "timeline": "Dòng thời gian",
+        "followUps": "Việc cần theo dõi",
+        "contacts": "Đầu mối liên hệ",
+        "team": "Nhóm phụ trách",
+        "profile": "Hồ sơ",
+        "activities": "Hoạt động"
+      },
+      "team": {
+        "add": "Thêm vào nhóm",
+        "remove": "Bỏ ra",
+        "person": "Người"
+      },
+      "fields": {
+        "name": "Tên",
+        "code": "Mã",
+        "entity": "Pháp nhân",
+        "legalName": "Tên pháp lý",
+        "taxCode": "Mã số thuế",
+        "address": "Địa chỉ đăng ký",
+        "website": "Website",
+        "industry": "Ngành",
+        "size": "Quy mô",
+        "tier": "Hạng",
+        "source": "Nguồn",
+        "contractingEntity": "Thường ký với",
+        "accountManager": "Phụ trách khách hàng",
+        "salesOwner": "Phụ trách kinh doanh",
+        "note": "Ghi chú",
+        "lifecycle": "Giai đoạn",
+        "paymentTermsDays": "Hạn thanh toán (ngày)",
+        "creditLimit": "Hạn mức công nợ (VNĐ)",
+        "creditHold": "Tạm ngưng tín dụng",
+        "creditHoldReason": "Lý do"
+      },
+      "leftBehind": "{name}, người phụ trách trước, vẫn giữ {deals} cơ hội đang mở và {followUps} việc theo dõi ở khách hàng này.",
+      "moveWork": "Chuyển cho {name}"
+    },
+    "contacts": {
+      "add": "Thêm đầu mối",
+      "empty": "Chưa có đầu mối liên hệ.",
+      "primary": "Chính",
+      "duplicates": "Có thể đã có: {names}",
+      "confirmDuplicate": "Đây là người khác — vẫn thêm",
+      "pdpl": "Thông tin liên hệ là dữ liệu cá nhân của người ngoài công ty: chỉ nhóm phụ trách khách hàng và người bán hàng cho khách này được xem. Hãy ghi rõ thông tin lấy từ đâu và căn cứ lưu giữ.",
+      "erase": "Xoá theo yêu cầu",
+      "eraseType": "Gõ ERASE để xác nhận",
+      "eraseConfirm": "Xoá thông tin",
+      "fields": {
+        "fullName": "Họ và tên",
+        "title": "Chức danh",
+        "decisionRole": "Vai trò trong quyết định",
+        "email": "Email",
+        "phone": "Điện thoại",
+        "zalo": "Zalo",
+        "preferredChannel": "Ưa liên hệ qua",
+        "source": "Nguồn thông tin",
+        "lawfulBasis": "Căn cứ lưu giữ",
+        "birthday": "Sinh nhật",
+        "status": "Trạng thái",
+        "brands": "Thương hiệu",
+        "notes": "Ghi chú",
+        "isPrimary": "Đầu mối chính"
+      }
+    },
+    "activity": {
+      "save": "Lưu",
+      "log": "Ghi hoạt động hoặc hẹn việc theo dõi",
+      "happened": "Đã diễn ra",
+      "planOnly": "Chỉ hẹn việc theo dõi",
+      "kind": "Loại",
+      "subject": "Nội dung",
+      "subjectHint": "Gọi trao đổi brief Tết",
+      "contact": "Với",
+      "body": "Ghi chú",
+      "outcome": "Kết quả",
+      "outcomeIs": "Kết quả: {outcome}",
+      "alsoPlan": "Hẹn bước tiếp theo",
+      "nextStep": "Bước tiếp theo",
+      "dueOn": "Ngày",
+      "owner": "Người làm",
+      "markDone": "Xong",
+      "reschedule": "Dời lịch",
+      "drop": "Bỏ",
+      "dropConfirm": "Bỏ việc theo dõi này?",
+      "open": "Mở",
+      "noFollowUps": "Không có việc cần theo dõi.",
+      "none": "Chưa có hoạt động."
+    },
+    "timeline": {
+      "empty": "Chưa ghi nhận gì.",
+      "kinds": {
+        "activity": "Hoạt động",
+        "deal_opened": "Mở cơ hội",
+        "deal_won": "Chốt thành công",
+        "deal_lost": "Không thành công",
+        "quote_sent": "Gửi báo giá",
+        "contract_signed": "Ký hợp đồng",
+        "project_opened": "Mở dự án",
+        "project_closed": "Đóng dự án",
+        "status_update": "Cập nhật tình hình",
+        "client_decision": "Quyết định của khách",
+        "delivery": "Bàn giao",
+        "acceptance_signed": "Ký nghiệm thu",
+        "client_meeting": "Họp với khách",
+        "change_approved": "Duyệt thay đổi",
+        "invoice": "Hoá đơn",
+        "payment": "Nhận thanh toán"
+      }
+    },
+    "leads": {
+      "title": "Khách tiềm năng",
+      "intro": "Các yêu cầu chưa được đánh giá. Ai cũng có thể chuyển khách tiềm năng; người bán hàng sẽ theo đuổi và chuyển thành cơ hội.",
+      "new": "Giới thiệu khách hàng",
+      "create": "Gửi",
+      "referralHint": "Yêu cầu sẽ chuyển tới bộ phận kinh doanh, và bạn được ghi nhận là người giới thiệu.",
+      "status": "Trạng thái",
+      "openOnes": "Đang mở",
+      "allOnes": "Tất cả",
+      "mine": "Chỉ của tôi",
+      "empty": "Không có khách tiềm năng.",
+      "unassigned": "Chưa giao",
+      "referredBy": "{name} giới thiệu"
+    },
+    "lead": {
+      "me": "Tôi",
+      "ownerIs": "Phụ trách: {name}",
+      "openDeal": "Mở cơ hội",
+      "disqualifiedBecause": "Không theo đuổi: {reason}",
+      "markContacted": "Đã liên hệ",
+      "markQualified": "Đã xác định nhu cầu",
+      "disqualify": "Không theo đuổi",
+      "disqualifyReason": "Lý do",
+      "assign": "Giao",
+      "convert": "Chuyển thành cơ hội",
+      "edit": "Sửa khách tiềm năng",
+      "existingAccount": "Khách hàng đã có",
+      "newAccount": "Khách hàng mới",
+      "createContact": "Thêm {name} làm đầu mối",
+      "confirmDuplicate": "Có thể đã có khách hàng: {names}. Đánh dấu để vẫn tạo mới.",
+      "fields": {
+        "companyName": "Công ty",
+        "existingAccount": "Khách hàng",
+        "entity": "Pháp nhân",
+        "contactName": "Người liên hệ",
+        "contactTitle": "Chức danh",
+        "email": "Email",
+        "phone": "Điện thoại",
+        "need": "Nhu cầu",
+        "budget": "Ngân sách",
+        "source": "Nguồn",
+        "owner": "Phụ trách"
+      }
+    },
+    "deals": {
+      "title": "Cơ hội bán hàng",
+      "intro": "Mọi cơ hội bạn được xem, theo giai đoạn. Kéo thẻ để chuyển giai đoạn; giai đoạn nào cần gì sẽ được nhắc trước.",
+      "views": "Cách xem",
+      "view": {
+        "board": "Bảng",
+        "list": "Danh sách",
+        "forecast": "Dự báo"
+      },
+      "search": "Tên, mã, khách hàng",
+      "anyTeam": "Mọi đội",
+      "anyService": "Mọi dịch vụ",
+      "status": "Trạng thái",
+      "statuses": {
+        "open": "Đang mở",
+        "won": "Đã chốt",
+        "lost": "Không thành công",
+        "all": "Tất cả"
+      },
+      "mine": "Chỉ của tôi",
+      "empty": "Không có cơ hội.",
+      "new": "Cơ hội mới",
+      "create": "Tạo cơ hội",
+      "stale": "Đứng yên",
+      "columnWeighted": "{total} · trọng số {weighted}",
+      "valuedOf": "{valued}/{count} có giá trị",
+      "gatesNeeded": "Giai đoạn này cần: {gates}",
+      "noForecast": "Không có cơ hội đang mở nào bạn được xem giá trị.",
+      "undatedOrLate": "Chưa có ngày, hoặc đã quá ngày",
+      "columns": {
+        "deal": "Cơ hội",
+        "account": "Khách hàng",
+        "stage": "Giai đoạn",
+        "owner": "Phụ trách",
+        "close": "Dự kiến chốt",
+        "value": "Giá trị",
+        "weighted": "Có trọng số",
+        "closeMonth": "Tháng chốt",
+        "count": "Số cơ hội"
+      }
+    },
+    "deal": {
+      "ownerIs": "Phụ trách: {name}",
+      "teamIs": "Đội thực hiện: {name}",
+      "valueIs": "Giá trị {total} · trọng số {weighted} ở {probability}%",
+      "monthlyIs": "{amount} mỗi tháng trong {months} tháng",
+      "closeIs": "Dự kiến chốt {date}",
+      "nextStepIs": "Tiếp theo: {step}",
+      "lostBecause": "Không thành công: {reason}. {note}",
+      "creditHoldWarning": "Khách hàng đang tạm ngưng tín dụng: {reason}",
+      "stageDefault": "Theo giai đoạn",
+      "accountEntity": "Theo khách hàng",
+      "contactRole": "Vai trò trong cơ hội",
+      "gatesNeeded": "Giai đoạn này cần: {gates}",
+      "move": "Chuyển",
+      "reopen": "Mở lại",
+      "reassign": "Giao cho",
+      "edit": "Sửa cơ hội",
+      "editContacts": "Đổi người phía khách",
+      "noQuotes": "Chưa có báo giá.",
+      "stageChange": "{from} → {to} bởi {by}, {date}",
+      "sections": {
+        "delivery": "Triển khai",
+        "quotes": "Báo giá",
+        "pitch": "Pitch",
+        "history": "Lịch sử",
+        "contacts": "Người phía khách",
+        "details": "Chi tiết"
+      },
+      "fields": {
+        "title": "Tên cơ hội",
+        "brand": "Thương hiệu",
+        "serviceLines": "Dịch vụ",
+        "oneOff": "Giá trị một lần (VNĐ)",
+        "monthly": "Giá trị hằng tháng (VNĐ)",
+        "months": "Số tháng",
+        "probability": "Xác suất %",
+        "expectedClose": "Dự kiến chốt",
+        "team": "Đội thực hiện",
+        "entity": "Pháp nhân ký",
+        "source": "Nguồn",
+        "competitors": "Đối thủ",
+        "nextStep": "Bước tiếp theo",
+        "stage": "Giai đoạn",
+        "owner": "Phụ trách",
+        "contact": "Đầu mối",
+        "lostReason": "Lý do không thành công",
+        "lostNote": "Ghi chú"
+      },
+      "pitch": {
+        "open": "Mở dự án pitch",
+        "name": "Tên dự án",
+        "dueDate": "Ngày pitch",
+        "openProject": "Mở dự án pitch",
+        "costHint": "Giờ công ghi vào đó là chi phí bán hàng của cơ hội này."
+      },
+      "delivery": {
+        "title": "Thiết lập triển khai",
+        "none": "Chưa có dự án triển khai.",
+        "lead": "Trưởng dự án",
+        "name": "Tên dự án",
+        "template": "Mẫu dự án",
+        "noTemplate": "Không dùng mẫu",
+        "startDate": "Bắt đầu",
+        "dueDate": "Hạn",
+        "visibility": "Ai được xem",
+        "visibilities": {
+          "team": "Cả đội",
+          "entity": "Cả pháp nhân",
+          "private": "Chỉ thành viên"
+        },
+        "contract": "Theo hợp đồng",
+        "note": "Ghi chú bàn giao cho trưởng dự án",
+        "context": "Bối cảnh — khách muốn gì và vì sao",
+        "next": "Bước tiếp theo",
+        "questions": "Câu hỏi còn mở",
+        "prefillHint": "Dự án bắt đầu với các dòng của báo giá đã chấp nhận làm danh mục sản phẩm, giờ công làm ngân sách, các dòng hằng tháng làm retainer, và đầu mối của cơ hội trong brief.",
+        "create": "Tạo dự án và bàn giao"
+      },
+      "handoff": {
+        "waiting": "{project} được bàn giao cho bạn — nhận hoặc trả lại",
+        "to": "cho {name}, {date}",
+        "note": "Ghi chú bàn giao",
+        "returnedBecause": "Bị trả lại: {reason}",
+        "resend": "Gửi lại",
+        "accept": "Nhận bàn giao",
+        "return": "Trả lại",
+        "reason": "Lý do"
+      },
+      "staffing": {
+        "title": "Kiểm tra nguồn lực",
+        "summary": "Báo giá {quote} ước tính {need} giờ. Nhóm còn trống {free} giờ trên {people} người trong {weeks} tuần kể từ {from}.",
+        "role": "{role}: {hours} giờ",
+        "position": "{position}: trống {hours} giờ ({people})",
+        "noPosition": "Chưa có vị trí",
+        "short": "Thiếu khoảng {hours} giờ.",
+        "hire": "Tạo yêu cầu tuyển dụng",
+        "fits": "Nhóm đủ nguồn lực trong khoảng thời gian đó.",
+        "reason": "Cơ hội {deal} cần khoảng {need} giờ; nhóm còn trống {free} giờ trong {weeks} tuần kể từ {from}."
+      }
+    },
+    "quote": {
+      "create": "Báo giá mới",
+      "save": "Lưu bản nháp",
+      "title": "Tiêu đề",
+      "validUntil": "Hiệu lực đến",
+      "intro": "Lời mở đầu",
+      "terms": "Điều khoản",
+      "service": "Dịch vụ",
+      "freeLine": "Dòng tự do",
+      "lineTitle": "Hạng mục",
+      "quantity": "SL",
+      "unit": "Đơn vị",
+      "unitPrice": "Đơn giá",
+      "discount": "Chiết khấu %",
+      "months": "Số tháng",
+      "monthsHint": "Số tháng (hằng tháng)",
+      "format": "Định dạng",
+      "channel": "Kênh",
+      "description": "Mô tả",
+      "hoursByRole": "Giờ công theo vai trò ({hours} giờ)",
+      "role": "Vai trò",
+      "hours": "Giờ",
+      "removeLine": "Xoá dòng",
+      "addLine": "Thêm dòng",
+      "vat": "Thuế GTGT",
+      "subtotal": "Trước chiết khấu",
+      "discountTotal": "Chiết khấu",
+      "vatAmount": "Thuế GTGT",
+      "total": "Tổng cộng",
+      "amount": "Thành tiền",
+      "totalIs": "Tổng {total}, hiệu lực đến {valid}",
+      "sentOn": "gửi {date}",
+      "noteIs": "Ghi chú: {note}",
+      "pdf": "Tải PDF",
+      "decide": "Quyết định của bạn về báo giá này",
+      "approvalReasons": "Cần duyệt vì: {reasons}",
+      "needsApproval": "Cần được duyệt trước khi gửi: {reasons}",
+      "policy": "quy định của công ty",
+      "margin": "Ước tính: {hours} giờ theo giờ công bình quân của đội ≈ {cost}; biên lợi nhuận {margin} ({percent})",
+      "noMargin": "Chưa ước tính được biên lợi nhuận: đội thực hiện chưa có tháng lương đã ký để tính bình quân.",
+      "documentTitle": "Báo giá",
+      "monthsCount": "{count} tháng",
+      "steps": {
+        "submit": "Gửi duyệt",
+        "send": "Đánh dấu đã gửi khách",
+        "accept": "Khách đồng ý",
+        "reject": "Khách từ chối",
+        "revise": "Phiên bản mới",
+        "clientNote": "Ý kiến của khách",
+        "withdraw": "Rút lại khỏi phê duyệt"
+      }
+    },
+    "contract": {
+      "new": "Ghi nhận hợp đồng",
+      "create": "Ghi nhận",
+      "save": "Lưu",
+      "sign": "Đánh dấu đã ký",
+      "terminate": "Chấm dứt hợp đồng trước hạn",
+      "edit": "Sửa",
+      "projects": "Dự án thực hiện theo hợp đồng",
+      "noProjects": "Chưa gắn dự án.",
+      "hiddenProject": "Một dự án bạn không được mở",
+      "linkProject": "Gắn dự án",
+      "unlinkProject": "Gỡ",
+      "scan": "Bản scan đã ký",
+      "uploaded": "Đã tải lên: {name}",
+      "termsIs": "thanh toán trong {days} ngày",
+      "signedOnIs": "Ký ngày {date}",
+      "kinds": {
+        "service": "Hợp đồng dịch vụ",
+        "framework": "Hợp đồng nguyên tắc",
+        "appendix": "Phụ lục"
+      },
+      "fields": {
+        "number": "Số hợp đồng",
+        "title": "Tên",
+        "kind": "Loại",
+        "entity": "Bên ký",
+        "parent": "Phụ lục của",
+        "deal": "Cơ hội",
+        "startDate": "Bắt đầu",
+        "endDate": "Kết thúc",
+        "paymentTerms": "Hạn thanh toán (ngày)",
+        "noticeDays": "Báo trước (ngày)",
+        "value": "Giá trị (VNĐ)",
+        "autoRenew": "Tự động gia hạn",
+        "note": "Ghi chú",
+        "signedOn": "Ngày ký",
+        "scan": "Bản scan đã ký",
+        "terminatedOn": "Chấm dứt ngày",
+        "terminationReason": "Lý do",
+        "project": "Dự án"
+      }
+    },
+    "contracts": {
+      "title": "Hợp đồng",
+      "intro": "Hợp đồng và phụ lục với khách hàng: đang hiệu lực, sắp hết hạn, và mỗi dự án thực hiện theo hợp đồng nào.",
+      "empty": "Không có hợp đồng.",
+      "renewal": "Cơ hội gia hạn",
+      "states": {
+        "live": "Hiện hành",
+        "active": "Đang hiệu lực",
+        "draft": "Bản nháp",
+        "expired": "Hết hạn",
+        "terminated": "Đã chấm dứt",
+        "all": "Tất cả"
+      },
+      "columns": {
+        "number": "Số",
+        "account": "Khách hàng",
+        "kind": "Loại",
+        "state": "Tình trạng",
+        "period": "Thời hạn",
+        "value": "Giá trị"
+      }
+    },
+    "invoices": {
+      "title": "Công nợ",
+      "intro": "Hoá đơn đã xuất trên phần mềm kế toán, số đã thu và số còn phải thu, theo tuổi nợ.",
+      "totalOpen": "Còn phải thu ({count} hoá đơn)",
+      "empty": "Không có hoá đơn.",
+      "daysLate": "trễ {days} ngày",
+      "recordTitle": "Ghi nhận hoá đơn",
+      "recordIntro": "Các khoản chờ xuất hoá đơn, theo khách hàng và pháp nhân. Chọn các khoản thuộc hoá đơn.",
+      "readyCount": "{count} khoản chờ",
+      "statuses": {
+        "open": "Còn phải thu",
+        "overdue": "Quá hạn",
+        "paid": "Đã thu",
+        "written_off": "Đã xoá nợ",
+        "all": "Tất cả"
+      },
+      "columns": {
+        "number": "Hoá đơn",
+        "account": "Khách hàng",
+        "issued": "Ngày xuất",
+        "due": "Hạn thu",
+        "standing": "Tình trạng",
+        "total": "Tổng",
+        "outstanding": "Còn phải thu"
+      }
+    },
+    "invoice": {
+      "heading": "Hoá đơn {number}",
+      "record": "Ghi nhận hoá đơn",
+      "amount": "Số tiền",
+      "subtotal": "Tiền dịch vụ",
+      "vatAmount": "Thuế GTGT",
+      "total": "Tổng cộng",
+      "outstandingIs": "còn {amount}",
+      "issuedIs": "xuất ngày {date}",
+      "dueIs": "hạn thu {date}",
+      "figures": "{subtotal} + thuế GTGT {vat} ({rate}%) = {total} · đã thu {paid} · còn {outstanding}",
+      "writtenOffBecause": "Đã xoá nợ: {reason}",
+      "items": "Các khoản trong hoá đơn",
+      "payments": "Thanh toán",
+      "noPayments": "Chưa nhận thanh toán.",
+      "recordPayment": "Ghi nhận thanh toán",
+      "removePayment": "Xoá",
+      "removePaymentConfirm": "Xoá khoản thanh toán này?",
+      "writeOff": "Xoá nợ",
+      "methods": {
+        "transfer": "Chuyển khoản",
+        "cash": "Tiền mặt",
+        "offset": "Cấn trừ",
+        "other": "Khác"
+      },
+      "fields": {
+        "number": "Số hoá đơn",
+        "issuedOn": "Ngày xuất",
+        "vat": "Thuế GTGT",
+        "note": "Ghi chú",
+        "receivedOn": "Ngày nhận",
+        "amount": "Số tiền (VNĐ)",
+        "method": "Hình thức",
+        "reference": "Tham chiếu",
+        "writeOffReason": "Lý do"
+      }
+    },
+    "reports": {
+      "title": "Báo cáo kinh doanh",
+      "intro": "Cơ hội và kết quả bán hàng trên những cơ hội bạn được xem giá trị.",
+      "profitabilityLink": "Hiệu quả theo khách hàng",
+      "openDeals": "Cơ hội đang mở",
+      "winRate": "Tỉ lệ chốt, 6 tháng",
+      "averageWon": "Giá trị chốt bình quân",
+      "cycle": "Chu kỳ bán hàng bình quân",
+      "days": "{days} ngày",
+      "stale": "Cơ hội đứng yên",
+      "byStage": "Cơ hội đang mở theo giai đoạn",
+      "byMonth": "Chốt và không thành công theo tháng",
+      "noClosed": "Không có cơ hội nào kết thúc trong kỳ.",
+      "month": "Tháng",
+      "won": "Đã chốt",
+      "wonValue": "Giá trị chốt",
+      "lost": "Không thành công",
+      "lostReasons": "Lý do không thành công: {reasons}",
+      "nothing": "Không có cơ hội nào bạn được xem giá trị.",
+      "outlook": "Dự báo doanh thu",
+      "contracted": "Đã ký (retainer)",
+      "weightedPipeline": "Cơ hội có trọng số",
+      "overdueShare": "trong đó quá hạn {amount}"
+    },
+    "profitability": {
+      "title": "Hiệu quả theo khách hàng",
+      "intro": "Theo từng khách hàng: doanh thu so với chi phí thực hiện và chi phí để giành được việc (dự án pitch). Không số liệu nào thuộc về một cá nhân.",
+      "from": "Từ",
+      "to": "Đến",
+      "account": "Khách hàng",
+      "revenue": "Doanh thu",
+      "deliveryCost": "Chi phí thực hiện",
+      "costOfSale": "Chi phí bán hàng",
+      "margin": "Lợi nhuận gộp",
+      "rate": "Tỉ suất %",
+      "hours": "Giờ công",
+      "noClient": "Không có khách hàng",
+      "counts": "{projects} dự án, {pitches} pitch",
+      "estimated": "ước tính",
+      "total": "Tổng",
+      "private": "Riêng tư",
+      "privateLine": "{projects} dự án riêng tư: chi phí {cost}, phí {fee}",
+      "basis": "Doanh thu là số đã xuất hoá đơn của dự án trong kỳ, nếu chưa có thì là phí retainer hoặc phí dự án trong kỳ; chi phí là giờ công đã ghi × chi phí nhân sự của tháng theo bảng lương đã ký."
+    },
+    "rateCard": {
+      "title": "Bảng giá dịch vụ",
+      "intro": "Những gì chúng ta bán, theo đơn vị: giá niêm yết đang áp dụng, số giờ công theo vai trò, và hạng mục bàn giao tương ứng.",
+      "empty": "Chưa có dịch vụ.",
+      "monthly": "Hằng tháng",
+      "inactive": "Ngưng dùng",
+      "perUnit": "mỗi {unit}, {hours} giờ",
+      "upcoming": "Sắp áp dụng: {prices}",
+      "from": "từ {date}",
+      "addService": "Thêm dịch vụ",
+      "save": "Lưu",
+      "setPrice": "Đặt giá",
+      "groupPrice": "Giá chung của tập đoàn",
+      "fields": {
+        "code": "Mã",
+        "name": "Tên",
+        "nameEn": "Tên tiếng Anh",
+        "category": "Nhóm dịch vụ",
+        "unit": "Đơn vị",
+        "format": "Định dạng",
+        "channel": "Kênh",
+        "isRecurring": "Bán theo tháng",
+        "isActive": "Đang dùng",
+        "hoursPerUnit": "Giờ công mỗi đơn vị, theo vai trò",
+        "role": "Vai trò",
+        "hours": "Giờ",
+        "description": "Mô tả",
+        "price": "Giá (VNĐ)",
+        "validFrom": "Từ ngày",
+        "priceScope": "Áp dụng cho"
+      }
+    },
+    "settings": {
+      "title": "Cài đặt kinh doanh",
+      "intro": "Các giai đoạn của cơ hội và điều kiện của từng giai đoạn. Các con số như ngưỡng duyệt báo giá là quy định của công ty, được quyết định tại Quản trị → Quy định.",
+      "stages": "Giai đoạn",
+      "needs": "cần {gates}",
+      "inactive": "Ngưng dùng",
+      "addStage": "Thêm giai đoạn",
+      "save": "Lưu",
+      "parameters": "Quy định đang áp dụng",
+      "parameterValues": "Cơ hội đứng yên sau {stale} ngày · mở gia hạn trước {renewal} ngày · nhắc công nợ quá hạn ở mốc {reminders} ngày · hạn thanh toán mặc định {terms} ngày · báo giá hiệu lực {validity} ngày · cần duyệt khi chiết khấu trên {discount}% hoặc biên lợi nhuận dưới {margin}%",
+      "vat": "Thuế GTGT: mặc định {rate}%; được dùng {allowed}",
+      "parametersHint": "Muốn thay đổi, hãy đề xuất để chủ doanh nghiệp duyệt:",
+      "rulesLink": "Quản trị → Quy định",
+      "fields": {
+        "name": "Tên",
+        "nameEn": "Tên tiếng Anh",
+        "category": "Loại",
+        "probability": "Xác suất %",
+        "sortOrder": "Thứ tự",
+        "gates": "Để vào giai đoạn, cơ hội cần có",
+        "allowsPitch": "Được mở dự án pitch ở giai đoạn này",
+        "isActive": "Đang dùng"
+      }
+    },
+    "enums": {
+      "lifecycle": {
+        "prospect": "Tiềm năng",
+        "active": "Đang hợp tác",
+        "dormant": "Tạm ngưng",
+        "churned": "Đã rời"
+      },
+      "tier": {
+        "a": "Hạng A",
+        "b": "Hạng B",
+        "c": "Hạng C"
+      },
+      "size": {
+        "micro": "Siêu nhỏ",
+        "small": "Nhỏ",
+        "medium": "Vừa",
+        "large": "Lớn",
+        "enterprise": "Tập đoàn"
+      },
+      "source": {
+        "referral": "Giới thiệu",
+        "website": "Website",
+        "event": "Sự kiện",
+        "social": "Mạng xã hội",
+        "cold": "Chủ động tiếp cận",
+        "existing": "Khách hàng cũ",
+        "other": "Khác"
+      },
+      "decisionRole": {
+        "decision_maker": "Người quyết định",
+        "approver": "Người phê duyệt",
+        "influencer": "Người ảnh hưởng",
+        "user": "Người sử dụng",
+        "finance": "Tài chính / mua hàng"
+      },
+      "channel": {
+        "email": "Email",
+        "phone": "Điện thoại",
+        "zalo": "Zalo",
+        "meeting": "Gặp trực tiếp"
+      },
+      "contactSource": {
+        "business_card": "Danh thiếp",
+        "referral": "Được giới thiệu",
+        "client_sent": "Khách hàng cung cấp",
+        "public": "Nguồn công khai",
+        "event": "Sự kiện",
+        "other": "Khác"
+      },
+      "lawfulBasis": {
+        "contract": "Cần cho hợp đồng",
+        "consent": "Có sự đồng ý",
+        "legitimate_interest": "Lợi ích hợp pháp trong kinh doanh"
+      },
+      "contactStatus": {
+        "active": "Đang làm",
+        "left": "Đã nghỉ bên khách"
+      },
+      "activityKind": {
+        "call": "Gọi điện",
+        "meeting": "Gặp mặt",
+        "email": "Email",
+        "message": "Nhắn tin",
+        "note": "Ghi chú",
+        "task": "Việc cần làm"
+      },
+      "leadStatus": {
+        "new": "Mới",
+        "contacted": "Đã liên hệ",
+        "qualified": "Đã xác định nhu cầu",
+        "converted": "Đã chuyển thành cơ hội",
+        "disqualified": "Không theo đuổi"
+      },
+      "stageCategory": {
+        "open": "Đang mở",
+        "won": "Chốt thành công",
+        "lost": "Không thành công"
+      },
+      "gate": {
+        "contacts": "một đầu mối phía khách",
+        "close_date": "ngày dự kiến chốt",
+        "value": "giá trị",
+        "quote_accepted": "báo giá được chấp nhận",
+        "contract_signed": "hợp đồng đã ký",
+        "pitch_project": "dự án pitch"
+      },
+      "serviceLine": {
+        "social": "Mạng xã hội",
+        "video": "Video",
+        "kol": "KOL / KOC",
+        "event": "Sự kiện",
+        "media": "Mua quảng cáo",
+        "design": "Thiết kế",
+        "other": "Khác"
+      },
+      "lostReason": {
+        "price": "Giá",
+        "scope": "Phạm vi",
+        "timing": "Thời điểm",
+        "competitor": "Đối thủ",
+        "no_decision": "Khách chưa quyết",
+        "other": "Khác"
+      },
+      "quoteStatus": {
+        "draft": "Bản nháp",
+        "in_approval": "Chờ duyệt",
+        "approved": "Đã duyệt",
+        "sent": "Đã gửi",
+        "accepted": "Khách đồng ý",
+        "rejected": "Khách từ chối",
+        "expired": "Hết hiệu lực",
+        "superseded": "Đã thay thế"
+      },
+      "contractState": {
+        "draft": "Bản nháp",
+        "upcoming": "Chưa bắt đầu",
+        "active": "Đang hiệu lực",
+        "expired": "Hết hạn",
+        "terminated": "Đã chấm dứt"
+      },
+      "invoiceStanding": {
+        "open": "Chưa thu",
+        "part_paid": "Thu một phần",
+        "paid": "Đã thu đủ",
+        "written_off": "Đã xoá nợ"
+      },
+      "aging": {
+        "current": "Chưa đến hạn",
+        "d1_30": "1–30 ngày",
+        "d31_60": "31–60 ngày",
+        "d61_90": "61–90 ngày",
+        "d90_plus": "Trên 90 ngày"
+      },
+      "tie": {
+        "manager": "Phụ trách khách hàng",
+        "sales_owner": "Phụ trách kinh doanh",
+        "member": "Thành viên nhóm",
+        "deal_owner": "Phụ trách cơ hội",
+        "project": "Trong dự án",
+        "project_lead": "Trưởng dự án"
+      },
+      "unit": {
+        "item": "hạng mục",
+        "post": "bài",
+        "video": "video",
+        "month": "tháng",
+        "day": "ngày",
+        "hour": "giờ",
+        "package": "gói"
+      },
+      "handoffStatus": {
+        "pending": "Chờ nhận",
+        "accepted": "Đã nhận",
+        "returned": "Bị trả lại"
+      },
+      "approvalReason": {
+        "discount": "chiết khấu vượt ngưỡng",
+        "margin": "biên lợi nhuận ước tính dưới mức sàn"
+      },
+      "decision": {
+        "approved": "Duyệt",
+        "approved_with_changes": "Duyệt kèm sửa",
+        "changes_required": "Yêu cầu sửa"
+      },
+      "health": {
+        "on_track": "Đúng tiến độ",
+        "at_risk": "Có rủi ro",
+        "off_track": "Chệch hướng"
+      },
+      "commissionStatus": {
+        "draft": "Nháp",
+        "confirmed": "Đã xác nhận",
+        "in_payroll": "Đã vào kỳ lương",
+        "proposed": "Đề xuất",
+        "approved": "Đã duyệt",
+        "rejected": "Từ chối"
+      }
+    },
+    "errors": {
+      "generic": "Chưa thực hiện được. Hãy thử lại, hoặc báo cho chúng tôi qua mục Góp ý.",
+      "forbidden": "Bạn không có quyền làm việc này ở đây.",
+      "invalid": "Một số trường cần kiểm tra lại.",
+      "unauthenticated": "Phiên đăng nhập đã hết. Hãy đăng nhập lại.",
+      "account_not_found": "Khách hàng này không còn nữa.",
+      "account_duplicate": "Có vẻ khách hàng này đã có — xem bên dưới.",
+      "account_required": "Hãy chọn khách hàng, hoặc đặt tên và mã cho khách hàng mới.",
+      "tax_code_invalid": "Mã số thuế gồm 10 chữ số, hoặc 10-3 cho chi nhánh.",
+      "credit_hold_reason_required": "Hãy ghi lý do tạm ngưng tín dụng.",
+      "client_code_taken": "Mã này đã được khách hàng khác dùng.",
+      "client_parent_invalid": "Thương hiệu phải thuộc một khách hàng.",
+      "person_not_found": "Người này không còn làm việc.",
+      "contact_not_found": "Đầu mối này không thuộc khách hàng này.",
+      "contact_duplicate": "Đầu mối này có thể đã có — xem bên dưới.",
+      "contact_erased": "Đầu mối này đã được xoá theo yêu cầu.",
+      "contact_brand_invalid": "Chỉ chọn thương hiệu của khách hàng này.",
+      "activity_target_required": "Hoạt động phải thuộc một khách hàng hoặc một khách tiềm năng.",
+      "activity_not_found": "Việc theo dõi này không còn nữa.",
+      "activity_done": "Việc theo dõi này đã xong.",
+      "activity_empty": "Hãy ghi điều đã diễn ra, hẹn việc theo dõi, hoặc cả hai.",
+      "followup_owner_invalid": "Việc theo dõi phải giao cho một nhân viên đang làm việc.",
+      "lead_not_found": "Khách tiềm năng này không còn nữa.",
+      "lead_closed": "Khách tiềm năng này đã được chuyển hoặc đã đóng.",
+      "lead_reason_required": "Hãy ghi lý do không theo đuổi.",
+      "deal_not_found": "Cơ hội này không còn nữa.",
+      "deal_closed": "Cơ hội đã chốt hoặc đã không thành công.",
+      "deal_open": "Cơ hội vẫn đang mở.",
+      "deal_gates": "Cơ hội chưa có đủ điều kiện của giai đoạn đó.",
+      "deal_lost_reason_required": "Hãy ghi lý do không thành công.",
+      "deal_brand_invalid": "Hãy chọn thương hiệu của khách hàng này.",
+      "deal_months_invalid": "Giá trị hằng tháng phải kéo dài ít nhất một tháng.",
+      "deal_owner_ineligible": "Người này không thể phụ trách cơ hội ở đây.",
+      "deal_has_projects": "Cơ hội đã thành dự án nên không mở lại được.",
+      "deal_not_won": "Chỉ cơ hội đã chốt mới thiết lập triển khai.",
+      "team_not_found": "Đội này không còn hoạt động.",
+      "stage_not_found": "Giai đoạn này không còn dùng.",
+      "stage_in_use": "Đang có cơ hội ở giai đoạn này nên không đổi loại được.",
+      "pitch_exists": "Cơ hội đã có dự án pitch.",
+      "pitch_not_allowed": "Không mở dự án pitch ở giai đoạn này.",
+      "handoff_not_found": "Bàn giao này không còn nữa.",
+      "handoff_answered": "Bàn giao này đã được phản hồi.",
+      "handoff_not_yours": "Bàn giao này dành cho người khác.",
+      "handoff_reason_required": "Hãy ghi lý do trả lại.",
+      "handoff_not_returned": "Chỉ gửi lại bàn giao đã bị trả lại.",
+      "quote_not_found": "Báo giá này không còn nữa.",
+      "quote_locked": "Chỉ sửa được bản nháp.",
+      "quote_changed": "Báo giá vừa được thay đổi. Hãy mở lại.",
+      "quote_empty": "Báo giá cần ít nhất một dòng.",
+      "quote_vat_invalid": "Thuế suất này không được dùng.",
+      "quote_needs_approval": "Báo giá cần được duyệt trước khi gửi.",
+      "quote_not_sendable": "Chỉ gửi được báo giá đã duyệt.",
+      "quote_not_sent": "Chỉ ghi nhận ý kiến khách cho báo giá đã gửi.",
+      "quote_not_revisable": "Báo giá này chưa thể làm phiên bản mới.",
+      "approval_not_found": "Yêu cầu duyệt không còn khớp với báo giá.",
+      "contract_not_found": "Hợp đồng này không thuộc khách hàng này.",
+      "contract_dates_invalid": "Ngày kết thúc trước ngày bắt đầu.",
+      "contract_parent_required": "Phụ lục phải thuộc một hợp đồng.",
+      "contract_parent_invalid": "Phụ lục phải thuộc một hợp đồng của cùng khách hàng.",
+      "contract_number_taken": "Pháp nhân đã dùng số hợp đồng này.",
+      "contract_terminated": "Không sửa hợp đồng đã chấm dứt.",
+      "contract_not_draft": "Hợp đồng đã được ký.",
+      "contract_not_signed": "Chỉ chấm dứt sớm hợp đồng đã ký.",
+      "contract_reason_required": "Hãy ghi lý do chấm dứt.",
+      "project_not_found": "Dự án này không thuộc khách hàng này.",
+      "project_dates_invalid": "Hạn chót trước ngày bắt đầu.",
+      "template_not_found": "Mẫu này không còn dùng.",
+      "template_other_team": "Mẫu này thuộc đội khác.",
+      "template_empty": "Mẫu này chưa có bước nào.",
+      "retainer_months_invalid": "Các tháng của retainer không hợp lệ.",
+      "account_manager_is_lead": "Trưởng dự án không đồng thời là người phụ trách khách hàng của dự án.",
+      "billing_not_found": "Một số khoản không còn nữa.",
+      "billing_decided": "Một số khoản vừa được xuất hoá đơn hoặc miễn thu.",
+      "billing_amount_required": "Hãy nhập số tiền cho các khoản chưa có.",
+      "invoice_no_client": "Khoản của việc nội bộ không có khách hàng để xuất hoá đơn.",
+      "invoice_mixed_items": "Một hoá đơn chỉ cho một khách hàng và một pháp nhân.",
+      "invoice_number_taken": "Số hoá đơn này đã được ghi nhận.",
+      "invoice_not_found": "Hoá đơn này không còn nữa.",
+      "invoice_closed": "Hoá đơn đã thu đủ hoặc đã xoá nợ.",
+      "invoice_reason_required": "Hãy ghi lý do xoá nợ.",
+      "payment_amount_invalid": "Số tiền thanh toán phải lớn hơn 0.",
+      "payment_not_found": "Khoản thanh toán này không còn nữa.",
+      "service_code_taken": "Mã này đã được dùng.",
+      "service_not_found": "Dịch vụ này không còn nữa.",
+      "file_not_found": "Hãy tải bản scan đã ký lên trước.",
+      "file_upload_failed": "Tải lên không thành công. Hãy thử lại.",
+      "file_storage_limit": "Tệp quá lớn so với giới hạn lưu trữ.",
+      "file_too_large": "Tệp quá lớn.",
+      "file_type_not_allowed": "Không nhận loại tệp này.",
+      "step_up_required": "Hãy xác nhận lại danh tính để tiếp tục.",
+      "quote_not_in_approval": "Báo giá không ở trạng thái chờ duyệt.",
+      "approval_not_pending": "Yêu cầu duyệt đã có quyết định.",
+      "approval_not_assignee": "Bạn không phải người duyệt yêu cầu này.",
+      "approval_not_requester": "Chỉ người gửi duyệt mới rút lại được.",
+      "approval_own_request": "Bạn không thể tự duyệt báo giá của mình.",
+      "account_work_nowhere": "Khách hàng chưa có người phụ trách khác để chuyển.",
+      "commission_base": "Cơ sở tính hoa hồng phải là tiền đã thu.",
+      "commission_split": "Phần của người phụ trách cơ hội phải từ 0 đến 100%.",
+      "commission_tiers": "Nhập ít nhất một bậc, mỗi bậc có mức bắt đầu và tỷ lệ tối đa 30%, không trùng mức bắt đầu.",
+      "commission_scheme_not_found": "Quy chế này không còn.",
+      "commission_scheme_decided": "Quy chế này đã được quyết định.",
+      "commission_month": "Chọn một tháng.",
+      "commission_statement_not_found": "Bảng kê này không còn.",
+      "commission_statement_confirmed": "Bảng kê này đã được xác nhận."
+    },
+    "commission": {
+      "title": "Hoa hồng kinh doanh",
+      "intro": "Hoa hồng trên tiền đã thu (chưa gồm VAT) theo quy chế chủ doanh nghiệp đã duyệt. Mỗi bảng kê kèm các khoản thu làm căn cứ. Sau khi C&B xác nhận, bảng kê được đưa vào kỳ lương của người đó.",
+      "noScheme": "Chưa có quy chế hoa hồng nào được duyệt nên chưa tính gì. Chủ doanh nghiệp quyết định quy chế (tỷ lệ, người hưởng, các bậc).",
+      "statements": "Bảng kê",
+      "month": "Tháng",
+      "compute": "Tính hoa hồng tháng",
+      "confirm": "Xác nhận và đưa vào lương",
+      "confirmPrompt": "Xác nhận bảng kê này? Bảng kê sẽ chốt cho tháng và được đưa vào kỳ lương của người đó.",
+      "monthsWith": "Các tháng có bảng kê: {months}",
+      "noStatements": "Tháng này chưa có bảng kê.",
+      "baseOf": "Cơ sở {base}",
+      "traceScheme": "Quy chế: {scheme}",
+      "columns": {
+        "received": "Ngày thu",
+        "invoice": "Hóa đơn",
+        "account": "Khách hàng",
+        "as": "Vai trò",
+        "net": "Tiền thu chưa VAT",
+        "share": "Tỷ lệ hưởng",
+        "base": "Cơ sở"
+      },
+      "band": "{from} – {to}",
+      "bandFrom": "Từ {from}",
+      "bandLine": "{base} × {rate} = {amount}",
+      "schemes": "Quy chế",
+      "noSchemes": "Chưa có quy chế nào được đề xuất.",
+      "group": "Toàn tập đoàn",
+      "validity": "{from} → {to}",
+      "splitLine": "người phụ trách cơ hội {owner}, quản lý khách hàng {manager}",
+      "tierLine": "từ {from}: {rate}",
+      "proposeTitle": "Đề xuất quy chế",
+      "propose": "Gửi chủ doanh nghiệp duyệt",
+      "approve": "Duyệt",
+      "reject": "Từ chối",
+      "tiersHint": "Mỗi bậc tính trên phần cơ sở của tháng vượt mức bắt đầu của bậc (như biểu thuế lũy tiến). Tỷ lệ tính theo %, tối đa 30%.",
+      "earners": {
+        "deal_owner": "Người phụ trách cơ hội",
+        "account_manager": "Quản lý khách hàng",
+        "split": "Chia cho cả hai"
+      },
+      "fields": {
+        "name": "Tên",
+        "entity": "Pháp nhân",
+        "validFrom": "Từ ngày",
+        "earner": "Người hưởng",
+        "splitOwner": "Phần của người phụ trách cơ hội (%) khi chia",
+        "tiers": "Các bậc",
+        "tierFrom": "Từ (VND)",
+        "tierRate": "Tỷ lệ (%)"
+      }
     }
   }
 }
