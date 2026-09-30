@@ -45,6 +45,11 @@ export const DEPENDENCY_TYPES = ["blocks", "relates"] as const;
 export type DependencyType = (typeof DEPENDENCY_TYPES)[number];
 
 export const LABEL_COLORS = ["gray", "red", "orange", "yellow", "green", "teal", "blue", "purple", "pink"] as const;
+/** A team's or a project's colour: the label palette, worn as the accent of its pages (`data-accent`, globals.css). */
+export const ACCENT_COLORS = LABEL_COLORS;
+export type AccentColor = (typeof ACCENT_COLORS)[number];
+/** The first set colour of a record and what it belongs to (a project, then its team), for `data-accent`. */
+export const accentOf = (...colors: (string | null | undefined)[]): AccentColor | undefined => colors.find((color): color is AccentColor => !!color && (ACCENT_COLORS as readonly string[]).includes(color));
 
 /** Starter workflows a new team can take (FR-WRK-03); the team edits its states afterwards. */
 export const WORKFLOW_PRESETS: Record<"simple" | "content", { key: string; category: StateCategory }[]> = {

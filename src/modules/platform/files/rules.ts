@@ -68,8 +68,15 @@ export const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 export const PHOTO_EDGE_PX = 1024;
 const PHOTO_FILE_TYPES: readonly FileType[] = ALLOWED_FILE_TYPES.filter((type) => type.contentType.startsWith("image/")).map((type) => ({ ...type, maxBytes: MAX_PHOTO_BYTES }));
 
+/**
+ * A project's poster or key visual, shown beside its name in lists and headers. Pictures only; the
+ * browser shrinks it to at most `POSTER_EDGE_PX` on its longer side before upload, keeping its shape.
+ */
+export const POSTER_OWNER_TYPE = "work_project_poster";
+export const POSTER_EDGE_PX = 1600;
+
 const typesFor = (ownerType?: string): readonly FileType[] =>
-  ownerType === PHOTO_OWNER_TYPE ? PHOTO_FILE_TYPES : ownerType && VIDEO_OWNER_TYPES.includes(ownerType) ? [...ALLOWED_FILE_TYPES, ...VIDEO_FILE_TYPES] : ALLOWED_FILE_TYPES;
+  ownerType === PHOTO_OWNER_TYPE || ownerType === POSTER_OWNER_TYPE ? PHOTO_FILE_TYPES : ownerType && VIDEO_OWNER_TYPES.includes(ownerType) ? [...ALLOWED_FILE_TYPES, ...VIDEO_FILE_TYPES] : ALLOWED_FILE_TYPES;
 
 /** The `accept` attribute of a file input for this owner's files. */
 export const acceptAttributeFor = (ownerType?: string): string => typesFor(ownerType).flatMap((type) => type.extensions.map((extension) => `.${extension}`)).join(",");

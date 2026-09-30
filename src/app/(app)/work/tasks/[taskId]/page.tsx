@@ -19,6 +19,7 @@ import { auditPrivateTaskRead } from "@/modules/projects/service";
 import { contactChoicesFor } from "@/modules/crm/service";
 import { PreviewLinkPanel } from "@/modules/work/ui/preview-links";
 import { PublishPanel } from "@/modules/work/ui/publish";
+import { accentOf } from "@/modules/work/enums";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("task");
@@ -92,7 +93,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
   }
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
+    <div className="flex max-w-6xl flex-col gap-6" data-accent={accentOf(project?.color, team.color)}>
       <header className="flex flex-col gap-1">
         <p className="text-sm text-muted-foreground">
           <Link href="/work" className="underline">

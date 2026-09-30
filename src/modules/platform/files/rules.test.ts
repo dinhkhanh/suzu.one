@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acceptAttributeFor, checkUpload, cleanFileName, matchesSignature, MAX_FILE_BYTES, MAX_PHOTO_BYTES, MAX_VIDEO_BYTES, maxBytesFor, PHOTO_OWNER_TYPE } from "./rules";
+import { acceptAttributeFor, checkUpload, cleanFileName, matchesSignature, MAX_FILE_BYTES, MAX_PHOTO_BYTES, MAX_VIDEO_BYTES, maxBytesFor, PHOTO_OWNER_TYPE, POSTER_OWNER_TYPE } from "./rules";
 
 const bytes = (...values: number[]) => new Uint8Array(values);
 
@@ -91,5 +91,16 @@ describe("profile pictures (FR-CHR-01)", () => {
     expect(acceptAttributeFor(PHOTO_OWNER_TYPE)).toBe(".jpg,.jpeg,.png,.webp");
     expect(matchesSignature("photo.jpg", bytes(0xff, 0xd8, 0xff, 0xe0), PHOTO_OWNER_TYPE)).toBe(true);
     expect(matchesSignature("photo.jpg", bytes(0x25, 0x50, 0x44, 0x46), PHOTO_OWNER_TYPE)).toBe(false);
+  });
+});
+
+describe("project posters", () => {
+  it("take the same pictures as a profile picture, and nothing else", () => {
+    expect(checkUpload({ fileName: "poster.jpg", sizeBytes: 800 * 1024 }, POSTER_OWNER_TYPE)).toEqual({ ok: true, fileName: "poster.jpg", contentType: "image/jpeg" });
+    expect(checkUpload({ fileName: "poster.png", sizeBytes: MAX_PHOTO_BYTES + 1 }, POSTER_OWNER_TYPE)).toEqual({ ok: false, problem: "file_too_large" });
+    for (const fileName of ["brief.pdf", "teaser.mp4", "logo.svg"]) {
+      expect(checkUpload({ fileName, sizeBytes: 1000 }, POSTER_OWNER_TYPE), fileName).toEqual({ ok: false, problem: "file_type_not_allowed" });
+    }
+    expect(acceptAttributeFor(POSTER_OWNER_TYPE)).toBe(".jpg,.jpeg,.png,.webp");
   });
 });

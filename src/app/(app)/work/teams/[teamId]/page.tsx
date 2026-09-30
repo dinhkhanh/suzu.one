@@ -15,7 +15,10 @@ import { ViewTabs } from "@/modules/work/ui/filter-bar";
 import { TaskTableView } from "@/modules/work/ui/task-table-view";
 import { IntakeFormManager } from "@/modules/work/ui/intake-forms";
 import { canViewAutomations, listOpenCycles } from "@/modules/work/service";
-import { LabelManager, MemberManager, StateManager, TeamForm } from "@/modules/work/ui/team-forms";
+import { accentOf } from "@/modules/work/enums";
+import { EditTeamButton } from "@/modules/work/ui/edit-dialogs";
+import { ProjectPoster } from "@/modules/work/ui/project-poster";
+import { LabelManager, MemberManager, StateManager } from "@/modules/work/ui/team-forms";
 import { checklistChoices, listStateChecklists } from "@/modules/work/service";
 import { StageChecklists } from "@/modules/work/ui/checklists";
 import { pageTitle } from "@/i18n/page-title";
@@ -57,17 +60,20 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
   const sort = readSort(query.sort);
 
   return (
-    <div className="flex max-w-6xl flex-col gap-8">
+    <div className="flex max-w-6xl flex-col gap-8" data-accent={accentOf(team.color)}>
       <header>
         <p className="text-sm text-muted-foreground">
           <Link href="/work" className="underline">
             {t("title")}
           </Link>
         </p>
-        <h1 className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-base text-muted-foreground">{team.key}</span> {team.name}
-          {team.isActive ? null : <Badge variant="outline">{t("teams.inactive")}</Badge>}
-        </h1>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-base text-muted-foreground">{team.key}</span> {team.name}
+            {team.isActive ? null : <Badge variant="outline">{t("teams.inactive")}</Badge>}
+          </h1>
+          {admin ? <EditTeamButton team={team} entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} /> : null}
+        </div>
         {team.description ? <p className="text-sm text-muted-foreground">{team.description}</p> : null}
         <p className="flex flex-wrap gap-x-4 pt-1 text-sm">
           {triageCounts ? (
@@ -98,7 +104,8 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
           {projects
             .filter((project) => project.teamId === team.id)
             .map((project) => (
-              <li key={project.id} className="flex flex-wrap items-center gap-3 p-3 text-sm">
+              <li key={project.id} className="flex flex-wrap items-center gap-3 p-3 text-sm" data-accent={accentOf(project.color, team.color)}>
+                <ProjectPoster project={project} size="sm" />
                 <Link href={`/work/projects/${project.id}`} className="min-w-0 flex-1 font-medium hover:underline">
                   {project.name}
                 </Link>
@@ -177,12 +184,6 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
 
       <DailyRulesSection teamId={team.id} canManage={admin} />
 
-      {admin ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("teams.settings")}</h2>
-          <TeamForm team={team} entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} />
-        </section>
-      ) : null}
     </div>
   );
 }

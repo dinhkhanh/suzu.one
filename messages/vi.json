@@ -3647,7 +3647,8 @@
         "defaultVisibility": "Dự án mới sẽ",
         "preset": "Quy trình khởi đầu",
         "description": "Nhóm làm gì",
-        "isActive": "Đang hoạt động"
+        "isActive": "Đang hoạt động",
+        "color": "Màu"
       },
       "wholeGroup": "Toàn tập đoàn",
       "noDepartment": "Không thuộc phòng ban",
@@ -3664,7 +3665,10 @@
       "backlog": "Việc tồn của nhóm (chưa thuộc dự án)",
       "settings": "Thiết lập nhóm",
       "triage": "Hàng chờ phân loại",
-      "triageCount": "{count, plural, =0 {Hàng chờ phân loại} other {Hàng chờ phân loại (#)}}"
+      "triageCount": "{count, plural, =0 {Hàng chờ phân loại} other {Hàng chờ phân loại (#)}}",
+      "edit": "Sửa nhóm",
+      "editTitle": "Sửa {name}",
+      "noColor": "Không (xanh mặc định)"
     },
     "members": {
       "title": "Thành viên",
@@ -3738,9 +3742,21 @@
         "status": "Trạng thái",
         "startDate": "Bắt đầu",
         "dueDate": "Hạn",
-        "description": "Mô tả"
+        "description": "Mô tả",
+        "color": "Màu"
       },
-      "planning": "Việc lặp lại và mẫu ({count} đang chạy)"
+      "planning": "Việc lặp lại và mẫu ({count} đang chạy)",
+      "edit": "Sửa dự án",
+      "editTitle": "Sửa {name}",
+      "poster": {
+        "label": "Ảnh đại diện dự án",
+        "add": "Thêm poster",
+        "change": "Đổi poster",
+        "remove": "Gỡ poster",
+        "saving": "Đang tải lên…",
+        "hint": "JPG, PNG hoặc WebP. Ảnh được thu nhỏ trước khi tải lên; danh sách hiển thị dạng hình vuông."
+      },
+      "teamColor": "Theo màu của nhóm"
     },
     "clients": {
       "title": "Khách hàng và nhãn hàng",
@@ -4124,7 +4140,8 @@
       "checklist_links_too_many": "Chọn tối đa 5 checklist.",
       "checklist_incomplete": "Bước này bắt buộc checklist: tick đủ mọi ô trước khi chuyển tiếp.",
       "checklist_item_locked": "Không thể xóa ô của checklist mà bước này bắt buộc.",
-      "task_checklist_full": "Công việc đã có quá nhiều mục checklist để thêm checklist này."
+      "task_checklist_full": "Công việc đã có quá nhiều mục checklist để thêm checklist này.",
+      "poster_unreadable": "Không mở được ảnh này. Hãy dùng ảnh JPG, PNG hoặc WebP."
     },
     "views": {
       "list": "Danh sách",
@@ -10009,6 +10026,7 @@
     "tabs": {
       "label": "Các phần của dự án",
       "tasks": "Công việc",
+      "board": "Bảng Kanban",
       "overview": "Tổng quan",
       "plan": "Kế hoạch",
       "deliverables": "Sản phẩm bàn giao",

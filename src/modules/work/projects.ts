@@ -85,6 +85,7 @@ export type ProjectInput = {
   leadPersonId: string | null;
   startDate: string | null;
   dueDate: string | null;
+  color?: string | null;
 };
 
 async function checkProjectInput(tx: Executor, input: ProjectInput): Promise<void> {

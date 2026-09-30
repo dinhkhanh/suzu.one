@@ -3647,7 +3647,8 @@
         "defaultVisibility": "New projects are",
         "preset": "Starting workflow",
         "description": "What the team does",
-        "isActive": "Active"
+        "isActive": "Active",
+        "color": "Colour"
       },
       "wholeGroup": "Whole group",
       "noDepartment": "No department",
@@ -3664,7 +3665,10 @@
       "backlog": "Team backlog (tasks outside a project)",
       "settings": "Team settings",
       "triage": "Triage",
-      "triageCount": "{count, plural, =0 {Triage} other {Triage (#)}}"
+      "triageCount": "{count, plural, =0 {Triage} other {Triage (#)}}",
+      "edit": "Edit team",
+      "editTitle": "Edit {name}",
+      "noColor": "None (the app's blue)"
     },
     "members": {
       "title": "Members",
@@ -3738,9 +3742,21 @@
         "status": "Status",
         "startDate": "Start",
         "dueDate": "Due",
-        "description": "Description"
+        "description": "Description",
+        "color": "Colour"
       },
-      "planning": "Recurring tasks and templates ({count} active)"
+      "planning": "Recurring tasks and templates ({count} active)",
+      "edit": "Edit project",
+      "editTitle": "Edit {name}",
+      "poster": {
+        "label": "Project poster",
+        "add": "Add a poster",
+        "change": "Change poster",
+        "remove": "Remove poster",
+        "saving": "Uploading…",
+        "hint": "JPG, PNG or WebP. Resized before upload; lists show it as a square."
+      },
+      "teamColor": "The team's colour"
     },
     "clients": {
       "title": "Clients and brands",
@@ -4124,7 +4140,8 @@
       "checklist_links_too_many": "Choose at most 5 checklists.",
       "checklist_incomplete": "This stage requires its checklist: tick every box before moving on.",
       "checklist_item_locked": "Boxes of a checklist this stage requires cannot be removed.",
-      "task_checklist_full": "The task has too many checklist items to add this one."
+      "task_checklist_full": "The task has too many checklist items to add this one.",
+      "poster_unreadable": "That picture could not be opened. Use a JPG, PNG or WebP image."
     },
     "views": {
       "list": "List",
@@ -10009,6 +10026,7 @@
     "tabs": {
       "label": "Project sections",
       "tasks": "Tasks",
+      "board": "Board",
       "overview": "Overview",
       "plan": "Plan",
       "deliverables": "Deliverables",

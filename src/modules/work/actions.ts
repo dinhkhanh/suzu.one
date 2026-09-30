@@ -8,7 +8,7 @@ import { beginTaskUpload, completeTaskUpload, findTaskFile, removeTaskFile, task
 import { MAX_LINKED_CHECKLISTS, MAX_TASK_CHECKLIST } from "./engine/checklists";
 import { FILTER_KEYS, isFilterKey } from "./engine/filter";
 import { setFollowing } from "./followers";
-import { CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_ROLES, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "./enums";
+import { ACCENT_COLORS, CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_ROLES, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "./enums";
 import { canAddTeamMember, canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canTakeOutOfProject, canViewTask } from "./policy";
 import { createProject, findProject, projectFacts, projectRoleOf, setProjectMember, updateProject } from "./projects";
 import { addDependency, createWorkTask, deleteWorkTask, findDependency, loadTask, removeDependency, updateWorkTask } from "./tasks";
@@ -32,6 +32,7 @@ const teamFields = {
   departmentId: optional(z.uuid()),
   defaultVisibility: z.enum(VISIBILITIES),
   isActive: checkbox.default(true),
+  color: optional(z.enum(ACCENT_COLORS)),
 };
 
 const createTeamPipeline = createAction({
@@ -194,6 +195,7 @@ const projectFields = {
   leadPersonId: optional(z.uuid()),
   startDate: optional(isoDate),
   dueDate: optional(isoDate),
+  color: optional(z.enum(ACCENT_COLORS)),
 };
 
 const createProjectPipeline = createAction({

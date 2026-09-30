@@ -2,15 +2,15 @@
 // between the work and the plan in one tap. Links, not state: every tab is its own page and checks
 // access itself. Scrolls sideways on a phone rather than wrapping. The retainer tab is there only
 // for a retainer project; a caller that does not know the project's kind (the work page) lets the
-// tab bar look it up.
+// tab bar look it up. The kanban board is the task page in its board view, with a tab of its own.
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { planKindOf } from "../plans";
 
-export const PROJECT_TABS = ["tasks", "overview", "plan", "timeline", "team", "deliverables", "budget", "updates", "risks", "meetings", "documents", "retainer", "changes", "acceptance", "reports", "close"] as const;
+export const PROJECT_TABS = ["tasks", "board", "overview", "plan", "timeline", "team", "deliverables", "budget", "updates", "risks", "meetings", "documents", "retainer", "changes", "acceptance", "reports", "close"] as const;
 export type ProjectTab = (typeof PROJECT_TABS)[number];
 
-const hrefOf = (projectId: string, tab: ProjectTab) => (tab === "tasks" ? `/work/projects/${projectId}` : tab === "overview" ? `/projects/${projectId}` : `/projects/${projectId}/${tab}`);
+const hrefOf = (projectId: string, tab: ProjectTab) => (tab === "tasks" ? `/work/projects/${projectId}` : tab === "board" ? `/work/projects/${projectId}?view=board` : tab === "overview" ? `/projects/${projectId}` : `/projects/${projectId}/${tab}`);
 
 export async function ProjectTabs({ projectId, current, kind }: { projectId: string; current: ProjectTab; kind?: string }) {
   const t = await getTranslations("projects.tabs");

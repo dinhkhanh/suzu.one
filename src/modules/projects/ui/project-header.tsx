@@ -4,6 +4,9 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
+import { canManageProject, listAssignable, listClients } from "../../work/service";
+import { EditProjectButton } from "../../work/ui/edit-dialogs";
+import { ProjectPoster } from "../../work/ui/project-poster";
 import type { ProjectContext } from "../views";
 import { type ProjectTab, ProjectTabs } from "./project-tabs";
 
@@ -13,6 +16,8 @@ export async function ProjectHeader({ context, current }: { context: ProjectCont
   const t = await getTranslations("projects");
   const tWork = await getTranslations("work");
   const { project, team, plan } = context;
+  // The project's own details (name, client, lead, dates, status) are edited from every plan page.
+  const [clients, people] = canManageProject(context.viewer, context.facts) ? await Promise.all([listClients({ activeOnly: true }), listAssignable(team.id, project.id)]) : [null, null];
   return (
     <header className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
@@ -25,10 +30,14 @@ export async function ProjectHeader({ context, current }: { context: ProjectCont
             {team.name}
           </Link>
         </p>
-        <h1 className="flex flex-wrap items-center gap-2">
-          {plan.jobNumber ? <span className="font-mono text-base text-muted-foreground">{plan.jobNumber}</span> : null}
-          {project.name}
-        </h1>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="flex flex-wrap items-center gap-2">
+            <ProjectPoster project={project} />
+            {plan.jobNumber ? <span className="font-mono text-base text-muted-foreground">{plan.jobNumber}</span> : null}
+            {project.name}
+          </h1>
+          {clients && people ? <EditProjectButton project={project} clients={clients.map(({ id, name }) => ({ id, name }))} people={people} /> : null}
+        </div>
         <div className="flex flex-wrap gap-1.5">
           <Badge variant="outline">{t(`kinds.${plan.kind as "client"}`)}</Badge>
           <Badge dot variant={statusTone(project.status)}>{tWork(`projects.status.${project.status as "active"}`)}</Badge>

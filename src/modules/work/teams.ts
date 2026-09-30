@@ -47,7 +47,7 @@ export const listTeams = cache(async (): Promise<TeamSummary[]> => {
   return rows.map(({ team, ...rest }) => ({ ...team, ...rest }));
 });
 
-export type TeamInput = { key: string; name: string; description: string | null; entityId: string | null; departmentId: string | null; defaultVisibility: Visibility; isActive: boolean };
+export type TeamInput = { key: string; name: string; description: string | null; entityId: string | null; departmentId: string | null; defaultVisibility: Visibility; isActive: boolean; color?: string | null };
 
 /** A new team starts with a workflow preset and its creator as lead. */
 export async function createTeam(input: TeamInput, preset: WorkflowPreset, stateNames: Record<string, string>, actorPersonId: string): Promise<TeamRow> {

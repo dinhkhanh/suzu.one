@@ -38,6 +38,8 @@ export const workTeam = pgTable(
     departmentId: uuid("department_id").references(() => orgUnit.id),
     // What a new project of this team starts with (HR and finance teams: "private", FR-WRK-18).
     defaultVisibility: text("default_visibility").notNull().default("team"),
+    // One of ACCENT_COLORS: tells the team apart on /work and is the accent of its pages. null = the app's own.
+    color: text("color"),
     // Last task number handed out.
     taskSeq: integer("task_seq").notNull().default(0),
     isActive: boolean("is_active").notNull().default(true),
@@ -129,6 +131,11 @@ export const workProject = pgTable(
     leadPersonId: uuid("lead_person_id").references(() => person.id),
     startDate: date("start_date"),
     dueDate: date("due_date"),
+    // The project's picture (its poster or key visual): a `stored_file` of owner type
+    // `work_project_poster`. No foreign key, as with `person.photo_file_id`; only `poster.ts` writes it.
+    posterFileId: uuid("poster_file_id"),
+    // One of ACCENT_COLORS, as for a team; null = the team's colour.
+    color: text("color"),
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     ...timestamps,
   },

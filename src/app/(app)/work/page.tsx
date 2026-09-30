@@ -6,7 +6,9 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { canManageWorkspace, canViewTeam, listClients, listCreateTargets, listTeams, loadViewer, teamFacts, visibleProjects } from "@/modules/work/service";
+import { accentOf } from "@/modules/work/enums";
 import { ProjectForm } from "@/modules/work/ui/project-forms";
+import { ProjectPoster } from "@/modules/work/ui/project-poster";
 import { TeamForm } from "@/modules/work/ui/team-forms";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -19,6 +21,8 @@ export default async function WorkPage() {
   const today = todayInVietnam();
   const [allTeams, projects, targets, clients] = await Promise.all([listTeams(), visibleProjects(viewer, { today }), listCreateTargets(viewer), listClients({ activeOnly: true })]);
   const teams = allTeams.filter((team) => team.isActive && canViewTeam(viewer, teamFacts(team)));
+  // A project without a colour of its own wears its team's, so the cards of one team read as one.
+  const teamColors = new Map(allTeams.map((team) => [team.id, team.color]));
   const mine = teams.filter((team) => viewer.teamRoles.has(team.id));
   const others = teams.filter((team) => !viewer.teamRoles.has(team.id));
   const projectTeams = targets.teams.filter((team) => team.canCreateProject);
@@ -26,8 +30,8 @@ export default async function WorkPage() {
   const [entities, departments, people] = canCreateTeam || projectTeams.length ? await Promise.all([listEntities(), unitChoices(), listPersonNames()]) : [[], [], []];
 
   const teamCard = (team: (typeof teams)[number]) => (
-    <li key={team.id}>
-      <Link href={`/work/teams/${team.id}`} className="flex h-full flex-col gap-1 rounded-xl border p-4 hover:bg-muted/50">
+    <li key={team.id} data-accent={accentOf(team.color)}>
+      <Link href={`/work/teams/${team.id}`} className={`flex h-full flex-col gap-1 rounded-xl border p-4 hover:bg-muted/50 ${team.color ? "border-l-4 border-l-primary" : ""}`}>
         <span className="flex items-center gap-2 text-sm font-medium">
           <span className="font-mono text-xs text-muted-foreground">{team.key}</span> {team.name}
           {viewer.teamRoles.get(team.id) === "lead" ? <Badge variant="secondary">{t("members.roles.lead")}</Badge> : null}
@@ -80,9 +84,10 @@ export default async function WorkPage() {
         {projects.length === 0 ? <p className="text-sm text-muted-foreground">{t("projects.empty")}</p> : null}
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => (
-            <li key={project.id}>
-              <Link href={`/work/projects/${project.id}`} className="flex h-full flex-col gap-2 rounded-xl border p-4 hover:bg-muted/50">
+            <li key={project.id} data-accent={accentOf(project.color, teamColors.get(project.teamId))}>
+              <Link href={`/work/projects/${project.id}`} className={`flex h-full flex-col gap-2 rounded-xl border p-4 hover:bg-muted/50 ${accentOf(project.color, teamColors.get(project.teamId)) ? "border-l-4 border-l-primary" : ""}`}>
                 <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                  <ProjectPoster project={project} size="sm" />
                   {project.name}
                   {project.visibility === "private" ? <Badge variant="outline">{t("visibility.private")}</Badge> : null}
                   {project.status === "active" ? null : <Badge variant="secondary">{t(`projects.status.${project.status}`)}</Badge>}

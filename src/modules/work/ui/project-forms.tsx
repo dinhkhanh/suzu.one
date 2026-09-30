@@ -8,18 +8,23 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { createProjectAction, saveClientAction, updateProjectAction } from "../actions";
+import { ColorSelect } from "./team-forms";
 import { CLIENT_KINDS, PROJECT_STATUSES, VISIBILITIES } from "../enums";
 
 type Option = { id: string; name: string };
-type Project = { id: string; teamId: string; name: string; description: string | null; clientId: string | null; status: string; visibility: string; leadPersonId: string | null; startDate: string | null; dueDate: string | null };
+type Project = { id: string; teamId: string; name: string; description: string | null; clientId: string | null; status: string; visibility: string; leadPersonId: string | null; startDate: string | null; dueDate: string | null; color: string | null };
 
-export function ProjectForm({ project, teams, clients, people }: { project?: Project; /** Teams the viewer may start a project in, with their default visibility. */ teams: (Option & { defaultVisibility: string })[]; clients: Option[]; people: { id: string; fullName: string }[] }) {
+export function ProjectForm({ project, teams, clients, people, onSaved }: { project?: Project; /** Teams the viewer may start a project in, with their default visibility. */ teams: (Option & { defaultVisibility: string })[]; clients: Option[]; people: { id: string; fullName: string }[]; /** After an edit is saved — the dialog closes. */ onSaved?: () => void }) {
   const t = useTranslations("work.projects");
   const tWork = useTranslations("work");
   const router = useRouter();
   const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(project ? updateProjectAction : createProjectAction, {
     extra: project ? { projectId: project.id } : {},
-    onSuccess: (data) => (project ? router.refresh() : router.push(`/work/projects/${(data as { id: string }).id}`)),
+    onSuccess: (data) => {
+      if (!project) return router.push(`/work/projects/${(data as { id: string }).id}`);
+      router.refresh();
+      onSaved?.();
+    },
   });
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
@@ -79,6 +84,9 @@ export function ProjectForm({ project, teams, clients, people }: { project?: Pro
               </Select>
             </Field>
           ) : null}
+          <Field name="color" label={t("fields.color")}>
+            <ColorSelect id="color" name="color" defaultValue={project?.color ?? ""} none={t("teamColor")} />
+          </Field>
           <Field name="startDate" label={t("fields.startDate")}>
             <DatePicker id="startDate" name="startDate" defaultValue={project?.startDate ?? ""} />
           </Field>

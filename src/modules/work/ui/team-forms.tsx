@@ -9,12 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { createTeamAction, deleteLabelAction, saveLabelAction, saveStateAction, setProjectMemberAction, setTeamMemberAction, updateTeamAction } from "../actions";
-import { LABEL_COLORS, PROJECT_ROLES, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "../enums";
+import { ACCENT_COLORS, LABEL_COLORS, PROJECT_ROLES, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "../enums";
 
 type Option = { id: string; name: string };
-type Team = { id: string; key: string; name: string; description: string | null; entityId: string | null; departmentId: string | null; defaultVisibility: string; isActive: boolean };
+type Team = { id: string; key: string; name: string; description: string | null; entityId: string | null; departmentId: string | null; defaultVisibility: string; isActive: boolean; color: string | null };
 
-export function TeamForm({ team, entities, departments, allowGroup }: { team?: Team; entities: Option[]; departments: Option[]; /** May the viewer file the team under the whole group? */ allowGroup: boolean }) {
+export function TeamForm({ team, entities, departments, allowGroup, onSaved }: { team?: Team; entities: Option[]; departments: Option[]; /** May the viewer file the team under the whole group? */ allowGroup: boolean; /** After an edit is saved — the dialog closes. */ onSaved?: () => void }) {
   const t = useTranslations("work.teams");
   const tWork = useTranslations("work");
   const router = useRouter();
@@ -23,7 +23,11 @@ export function TeamForm({ team, entities, departments, allowGroup }: { team?: T
   const stateNames = Object.fromEntries(WORKFLOW_PRESETS[preset].map((state) => [state.key, tWork(`presetStates.${state.key}`)]));
   const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(team ? updateTeamAction : createTeamAction, {
     extra: team ? { teamId: team.id } : { stateNames },
-    onSuccess: (data) => (team ? router.refresh() : router.push(`/work/teams/${(data as { id: string }).id}`)),
+    onSuccess: (data) => {
+      if (!team) return router.push(`/work/teams/${(data as { id: string }).id}`);
+      router.refresh();
+      onSaved?.();
+    },
   });
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
@@ -66,6 +70,9 @@ export function TeamForm({ team, entities, departments, allowGroup }: { team?: T
               ))}
             </Select>
           </Field>
+          <Field name="color" label={t("fields.color")}>
+            <ColorSelect id="color" name="color" defaultValue={team?.color ?? ""} none={t("noColor")} />
+          </Field>
           {team ? null : (
             <Field name="preset" label={t("fields.preset")}>
               <Select id="preset" name="preset" value={preset} onChange={(event) => setPreset(event.target.value as keyof typeof WORKFLOW_PRESETS)}>
@@ -99,6 +106,21 @@ export function TeamForm({ team, entities, departments, allowGroup }: { team?: T
         {saved && team ? <span className="text-sm text-muted-foreground">{tWork("saved")}</span> : null}
       </div>
     </form>
+  );
+}
+
+/** A team's or a project's colour (ACCENT_COLORS), in the label palette's names; blank = `none`. */
+export function ColorSelect({ id, name, defaultValue, none }: { id: string; name: string; defaultValue: string; none: string }) {
+  const t = useTranslations("work.labels.colors");
+  return (
+    <Select id={id} name={name} defaultValue={defaultValue}>
+      <option value="">{none}</option>
+      {ACCENT_COLORS.map((color) => (
+        <option key={color} value={color}>
+          {t(color)}
+        </option>
+      ))}
+    </Select>
   );
 }
 

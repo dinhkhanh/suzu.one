@@ -19,7 +19,9 @@ import { BoardView } from "@/modules/work/ui/board-view";
 import { CalendarView } from "@/modules/work/ui/calendar-view";
 import { ViewTabs } from "@/modules/work/ui/filter-bar";
 import { RecurrenceManager, TemplateUseForm } from "@/modules/work/ui/planning-forms";
-import { ProjectForm } from "@/modules/work/ui/project-forms";
+import { accentOf } from "@/modules/work/enums";
+import { EditProjectButton } from "@/modules/work/ui/edit-dialogs";
+import { ProjectPoster } from "@/modules/work/ui/project-poster";
 import { TaskListView } from "@/modules/work/ui/task-list-view";
 import { auditPrivateRead } from "@/modules/projects/service";
 import { ProjectTabs } from "@/modules/projects/ui/project-tabs";
@@ -74,7 +76,7 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const [calendarTasks, daysOff, content] = view === "calendar" ? await Promise.all([withEditable(viewer, tasks), getDaysOff(project.entityId ?? team.entityId, grid.from, grid.to), contentCalendar(viewer, { ...grid, projectId: project.id }, tasks.filter((task) => task.dueDate && task.dueDate >= grid.from && task.dueDate <= grid.to))]) : [[], [], null];
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
+    <div className="flex max-w-6xl flex-col gap-6" data-accent={accentOf(project.color, team.color)}>
       <header className="flex flex-col gap-1">
         <p className="text-sm text-muted-foreground">
           <Link href="/work" className="underline">
@@ -85,15 +87,19 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
             {team.name}
           </Link>
         </p>
-        <h1 className="flex flex-wrap items-center gap-2">
-          {project.name}
-          <Badge variant="outline">{t(`visibility.${project.visibility}`)}</Badge>
-          {project.status === "active" ? null : <Badge variant="secondary">{t(`projects.status.${project.status}`)}</Badge>}
-        </h1>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="flex flex-wrap items-center gap-2">
+            <ProjectPoster project={project} />
+            {project.name}
+            <Badge variant="outline">{t(`visibility.${project.visibility}`)}</Badge>
+            {project.status === "active" ? null : <Badge variant="secondary">{t(`projects.status.${project.status}`)}</Badge>}
+          </h1>
+          {manage ? <EditProjectButton project={project} clients={clients.map(({ id, name }) => ({ id, name }))} people={assignable} /> : null}
+        </div>
         <p className="text-sm text-muted-foreground">{[clientName, project.description].filter(Boolean).join(" · ")}</p>
       </header>
 
-      <ProjectTabs projectId={project.id} current="tasks" />
+      <ProjectTabs projectId={project.id} current={view === "board" ? "board" : "tasks"} />
       <ViewTabs current={view} />
       {view === "table" ? (
         <TaskTableView tasks={tasks} options={options} initialFilters={filters} initialSort={sort} selfId={user.person.id} today={today} canContribute={canContribute} logged={logged} />
@@ -167,7 +173,6 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
               <AutomationManager teamId={team.id} projectId={project.id} rules={automations.rules} options={automations.options} runs={automations.runs} canManage={canManageAutomations(viewer, teamFacts(team), facts)} />
             </section>
           ) : null}
-          {manage ? <ProjectForm project={project} teams={[]} clients={clients.map(({ id, name }) => ({ id, name }))} people={assignable} /> : null}
         </div>
       </details>
     </div>
