@@ -1,7 +1,8 @@
 // One-time Messenger setup for the company Page (docs/MESSENGER.md): pnpm messenger:setup
 //   1. subscribes the app to the Page's messages, postbacks and referrals (the webhook's input);
 //   2. sets the Get Started button — a first conversation delivers the m.me `ref` only through
-//      it — and removes any greeting: the Page does not say what it is to whoever opens it;
+//      it. No greeting: the Page does not say what it is to whoever opens it (Graph v26 no longer
+//      manages greetings; any left over is removed in Meta Business Suite → Inbox → Automations);
 //   3. creates the utility template used outside Meta's 24-hour window, unless it exists.
 // Safe to run again. Reads the same variables as the app (.env.local, or `vercel env pull`).
 import { createHmac } from "node:crypto";
@@ -23,7 +24,7 @@ const token = need("MESSENGER_PAGE_ACCESS_TOKEN");
 const proof = createHmac("sha256", need("MESSENGER_APP_SECRET")).update(token).digest("hex");
 const origin = new URL(need("BETTER_AUTH_URL")).origin;
 
-async function graph(method: "GET" | "POST" | "DELETE", path: string, body?: unknown): Promise<Record<string, unknown>> {
+async function graph(method: "GET" | "POST", path: string, body?: unknown): Promise<Record<string, unknown>> {
   const separator = path.includes("?") ? "&" : "?";
   const response = await fetch(`${GRAPH}/${path}${separator}appsecret_proof=${proof}`, {
     method,
@@ -40,8 +41,7 @@ async function main() {
   console.log("✓ webhook fields subscribed");
 
   await graph("POST", `${pageId}/messenger_profile`, { get_started: { payload: "GET_STARTED" } });
-  await graph("DELETE", `${pageId}/messenger_profile`, { fields: ["greeting"] });
-  console.log("✓ Get Started button set, greeting removed");
+  console.log("✓ Get Started button set");
 
   const existing = (await graph("GET", `${pageId}/message_templates?name=${TEMPLATE}`)) as { data?: { name: string; status?: string }[] };
   const found = existing.data?.find((row) => row.name === TEMPLATE);

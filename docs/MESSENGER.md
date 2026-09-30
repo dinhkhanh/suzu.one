@@ -49,7 +49,7 @@ about a PSID says which employee it is. The design rests on never guessing:
 7. **The Page stays quiet.** The Page does not reveal SuZu One to the public. The bot answers only
    a live token (with the code) and a linked person's stop word. Everything else gets no reply:
    other messages, spent or made-up tokens, Get Started without a token, and a linked person's
-   chatter. The Page has no greeting.
+   chatter. The Page has no greeting or automated reply (Meta Business Suite → Inbox → Automations).
 
 ## What a message contains
 
@@ -97,8 +97,8 @@ They go through if the person writes to the Page before then.
 4. **Webhook**: in the app dashboard, callback URL `https://<app domain>/api/messenger/webhook`
    and the same verify token. It is served on the app's domain only, never on `PUBLIC_SITE_URL`.
 5. `pnpm messenger:setup` subscribes the webhook fields, sets the Get Started button (a first
-   conversation delivers the `ref` only through it), removes the greeting and creates the utility
-   template. Once the
+   conversation delivers the `ref` only through it) and creates the utility template. The Page
+   should have no greeting or instant reply: check Meta Business Suite → Inbox → Automations. Once the
    template shows `APPROVED`, set `MESSENGER_UTILITY_TEMPLATE`.
 6. In the app: **Notifications → Connect Messenger → Send a test.**
 
