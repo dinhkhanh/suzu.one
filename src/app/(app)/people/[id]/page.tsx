@@ -8,7 +8,7 @@ import { addDays, todayInVietnam } from "@/lib/dates";
 import { listProfileChanges } from "@/modules/core-hr/change-requests";
 import { canChangePhoto } from "@/modules/core-hr/policy";
 import { getPersonTarget, getPersonView, loadPlacementOptions, peopleModuleOpen } from "@/modules/core-hr/service";
-import { AssignmentForm } from "@/modules/core-hr/ui/assignment-form";
+import { AssignmentForm, PastAssignmentForm } from "@/modules/core-hr/ui/assignment-form";
 import { EditPersonForm } from "@/modules/core-hr/ui/edit-person-form";
 import { PersonAvatar } from "@/modules/core-hr/ui/person-avatar";
 import { PhotoEditor } from "@/modules/core-hr/ui/photo-editor";
@@ -59,9 +59,11 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
   // A move to another entity is for someone employed now, by HR of both entities (the action re-checks).
   const today = todayInVietnam();
   const transferring = person.canManage && !!personal?.startDate && personal.startDate < today && personal.endDate === null && !!person.entityId;
-  const [changeRequests, options, otherEntityOptions, entities, borrowable, target, managed] = await Promise.all([
+  const [changeRequests, options, pastOptions, otherEntityOptions, entities, borrowable, target, managed] = await Promise.all([
     person.id === user.person.id ? null : listProfileChanges({ personId: user.person.id, principal: user.principal }, person.id, "pending"),
     person.canManage && person.entityId ? loadPlacementOptions(person.entityId) : null,
+    // Work history that is already over (roll-out): only for someone who started before today.
+    person.canManage && person.entityId && personal?.startDate && personal.startDate < today ? loadPlacementOptions(person.entityId, { includeInactive: true }) : null,
     rehiring || transferring ? loadPlacementOptions() : null,
     rehiring || transferring ? listEntities() : [],
     // Seeing the app as this person (FR-PLT-40): offered to whoever holds the permission at all and
@@ -201,6 +203,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
               </TableBody>
             </Table>
             {options ? <AssignmentForm person={person} options={options} today={today} /> : null}
+            {pastOptions ? <PastAssignmentForm person={person} options={pastOptions} today={addDays(today, -1)} /> : null}
             {transferring && otherEntityOptions && transferTargets.length > 0 && personal.startDate ? (
               <TransferEntityForm
                 personId={person.id}

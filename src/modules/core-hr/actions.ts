@@ -9,7 +9,7 @@ import { holdsRoleGrants } from "@/modules/platform/rbac/service";
 import { ASSIGNMENT_CHANGE_KINDS, GENDERS, MARITAL_STATUSES, WORKFORCE_TYPES } from "./enums";
 import { findLikelyDuplicates } from "./lifecycle";
 import { canBrowsePeople, canEditPerson, canHireInto, canReassign } from "./policy";
-import { changeAssignment, deleteSavedView, getPersonTarget, hirePerson, saveView, updatePersonBasics } from "./service";
+import { changeAssignment, deleteSavedView, getPersonTarget, hirePerson, recordPastAssignment, saveView, updatePersonBasics } from "./service";
 
 // Forms post every field; a blank one means "no value".
 const blankToNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value);
@@ -127,6 +127,30 @@ const assignmentPipeline = createAction({
 
 export async function changeAssignmentAction(input: unknown) {
   return assignmentPipeline(input);
+}
+
+// Work history from before the system (roll-out): a period already over, beside the rows on file.
+const pastAssignmentPipeline = createAction({
+  name: "person.assignment.record_past",
+  input: z.object({ personId: z.uuid(), validFrom: day, validTo: day, changeReason: text(300), placement: placementInput }).refine((input) => input.validTo >= input.validFrom, { path: ["validTo"] }),
+  authorize: async (user, input) => {
+    const target = await getPersonTarget(input.personId);
+    if (!target) return false;
+    return canReassign(user.principal, target, { entityId: target.entityId, unitPath: await unitPathOf(input.placement.orgUnitId) });
+  },
+  run: async ({ user, input }) => {
+    const { personId, ...period } = input;
+    const { employment, before, after, shortened, delayed } = await recordPastAssignment(personId, period, user.person.id);
+    revalidatePath(`/people/${personId}`);
+    return {
+      data: { id: after.id },
+      audit: { resource: { type: "assignment", id: after.id, entityId: employment.entityId }, summary: `${employment.employeeCode} past period ${after.validFrom} → ${after.validTo}`, before, after: { ...after, shortenedId: shortened, delayedId: delayed } },
+    };
+  },
+});
+
+export async function recordPastAssignmentAction(input: unknown) {
+  return pastAssignmentPipeline(input);
 }
 
 // Saved views belong to whoever made them, so the only question is whether they may use the list.

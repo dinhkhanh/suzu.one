@@ -232,6 +232,12 @@
         "correction": "Sửa thông tin (không ghi sự kiện)",
         "transfer": "Điều chuyển",
         "promotion": "Thăng chức / bổ nhiệm"
+      },
+      "past": {
+        "title": "Thêm quá trình công tác trước đây",
+        "hint": "Dùng cho lịch sử trước khi có SuZu One: một giai đoạn đã kết thúc, ví dụ phòng ban và chức danh của nhân viên những năm trước. Nhập giai đoạn cũ nhất trước. Giai đoạn mới thay cho những ngày nó bao phủ: giai đoạn chứa ngày bắt đầu sẽ kết thúc hôm trước, giai đoạn chứa ngày kết thúc sẽ bắt đầu hôm sau. Nhập đúng ngày của một giai đoạn đã có để sửa giai đoạn đó. Vị trí hiện tại không thay đổi.",
+        "from": "Từ ngày",
+        "to": "Đến ngày (ngày cuối)"
       }
     },
     "fields": {
@@ -331,7 +337,12 @@
       "file_content_mismatch": "Nội dung tệp không phải là ảnh.",
       "file_upload_failed": "Tải lên chưa tới nơi lưu trữ. Vui lòng thử lại.",
       "file_storage_limit": "Nơi lưu trữ từ chối ảnh vì quá lớn.",
-      "file_not_uploaded": "Ảnh chưa được tải lên. Vui lòng thử lại."
+      "file_not_uploaded": "Ảnh chưa được tải lên. Vui lòng thử lại.",
+      "assignment_period_reversed": "Ngày cuối sớm hơn ngày đầu.",
+      "assignment_not_ended": "Quá trình công tác phải kết thúc muộn nhất là hôm qua. Thay đổi từ hôm nay trở đi hãy dùng \"Thay đổi vị trí công tác\".",
+      "assignment_covers_recorded_period": "Giai đoạn này bao trùm trọn một giai đoạn đã có. Hãy sửa giai đoạn đó bằng đúng ngày của nó.",
+      "assignment_inside_recorded_period": "Giai đoạn này nằm gọn trong một giai đoạn đã có và sẽ chia đôi nó. Hãy nhập giai đoạn cũ nhất trước, bắt đầu từ ngày vào làm.",
+      "assignment_moves_recorded_event": "Thao tác này sẽ dời ngày của một lần điều chuyển hoặc bổ nhiệm trên dòng thời gian. Hãy kết thúc giai đoạn trước ngày đó."
     },
     "orgChart": {
       "title": "Sơ đồ tổ chức",
@@ -349,7 +360,10 @@
         "manager": "Quản lý trực tiếp ghi bằng mã nhân viên hoặc email công việc, và có thể nằm ở bất kỳ dòng nào trong cùng tệp.",
         "restricted": "Số CCCD, mã số thuế, số sổ BHXH và số tài khoản ngân hàng được lưu mã hóa và được che trong bản xem trước.",
         "phone": "Hãy định dạng cột số điện thoại là văn bản trong Excel, nếu không số 0 đầu sẽ bị mất."
-      }
+      },
+      "historyTitle": "Quá trình công tác trước đây",
+      "historyDescription": "Cho nhân viên đã có trong hệ thống: mỗi dòng là một giai đoạn đã qua (mã nhân viên, từ ngày, đến ngày, phòng ban, chức danh…). Các dòng của một người được áp dụng từ cũ đến mới, như \"Thêm quá trình công tác trước đây\" trên trang nhân viên.",
+      "historyWizard": "Tệp quá trình công tác"
     },
     "duplicates": {
       "title": "Có thể người này đã có hồ sơ:",
@@ -1354,7 +1368,9 @@
       "unmapped": "dòng chờ gán mã",
       "people": "người",
       "saved": "đã lưu",
-      "unchanged": "không đổi"
+      "unchanged": "không đổi",
+      "periods": "giai đoạn đã ghi",
+      "adjusted": "lần giai đoạn cũ được điều chỉnh cho vừa"
     },
     "problems": {
       "column_missing": "Thiếu cột bắt buộc này",
@@ -1419,7 +1435,13 @@
       "post_reference_required": "Cần đường dẫn bài đăng hoặc mã công việc",
       "post_not_found": "Không tìm thấy bài đã đăng nào khớp mà bạn được cập nhật",
       "post_ambiguous": "Công việc này có nhiều bài đã đăng: hãy ghi đường dẫn bài",
-      "metrics_required": "Cần ít nhất một chỉ số"
+      "metrics_required": "Cần ít nhất một chỉ số",
+      "period_reversed": "Ngày cuối sớm hơn ngày đầu",
+      "not_ended": "Giai đoạn phải kết thúc muộn nhất là hôm qua",
+      "outside_employment": "Nằm ngoài thời gian làm việc của nhân viên này",
+      "covers_recorded_period": "Bao trùm trọn một giai đoạn đã có hoặc có trong tệp",
+      "inside_recorded_period": "Nằm gọn trong một giai đoạn và sẽ chia đôi nó; hãy bắt đầu từ giai đoạn cũ nhất",
+      "moves_recorded_event": "Sẽ dời ngày của một lần điều chuyển hoặc bổ nhiệm"
     },
     "errors": {
       "import_file_type": "Chỉ nhận file .xlsx hoặc .csv.",

@@ -232,6 +232,12 @@
         "correction": "Correction (no event)",
         "transfer": "Transfer",
         "promotion": "Promotion / appointment"
+      },
+      "past": {
+        "title": "Add past work history",
+        "hint": "For history from before SuZu One: a period that is already over, e.g. the department and position someone held in earlier years. Enter the oldest period first. The new period takes over the days it covers: the period it starts in ends the day before, the one it ends in starts the day after. Entering the exact dates of an earlier period corrects it. Today's assignment is not changed.",
+        "from": "From",
+        "to": "To (last day)"
       }
     },
     "fields": {
@@ -331,7 +337,12 @@
       "file_content_mismatch": "The file's content is not a picture.",
       "file_upload_failed": "The upload did not reach storage. Try again.",
       "file_storage_limit": "Storage refused the picture: it is too large.",
-      "file_not_uploaded": "The upload did not arrive. Try again."
+      "file_not_uploaded": "The upload did not arrive. Try again.",
+      "assignment_period_reversed": "The last day is before the first day.",
+      "assignment_not_ended": "Work history must be over by yesterday. For a change from today on, use Change assignment.",
+      "assignment_covers_recorded_period": "This period would swallow a whole period already on file. Correct that period with its exact dates instead.",
+      "assignment_inside_recorded_period": "This period falls inside one period on file and would split it. Enter the oldest periods first, starting on the employment's first day.",
+      "assignment_moves_recorded_event": "This would move the date of a transfer or promotion on the timeline. End the period before that date."
     },
     "orgChart": {
       "title": "Org chart",
@@ -349,7 +360,10 @@
         "manager": "Managers are given by employee code or work email, and may appear anywhere in the same file.",
         "restricted": "Citizen ID, tax code, social insurance number and bank account are stored encrypted and are hidden in the preview.",
         "phone": "Format the phone column as text in Excel, or the leading zero is lost."
-      }
+      },
+      "historyTitle": "Past work history",
+      "historyDescription": "For people already in the system: one row per past period (employee code, from, to, department, position…). Rows of one person are applied oldest first, each as in \"Add past work history\" on the person's page.",
+      "historyWizard": "Work history file"
     },
     "duplicates": {
       "title": "This person may already be on file:",
@@ -1354,7 +1368,9 @@
       "unmapped": "lines waiting for an ID to be mapped",
       "people": "people",
       "saved": "saved",
-      "unchanged": "unchanged"
+      "unchanged": "unchanged",
+      "periods": "periods recorded",
+      "adjusted": "periods on file moved to make room"
     },
     "problems": {
       "column_missing": "This required column is missing",
@@ -1419,7 +1435,13 @@
       "post_reference_required": "Needs the post's link or the task number",
       "post_not_found": "No published post you may update matches",
       "post_ambiguous": "This task has several published posts: give the post's link",
-      "metrics_required": "Needs at least one figure"
+      "metrics_required": "Needs at least one figure",
+      "period_reversed": "The last day is before the first day",
+      "not_ended": "The period must be over by yesterday",
+      "outside_employment": "Outside this person's employment",
+      "covers_recorded_period": "Swallows a whole period already on file or in the file",
+      "inside_recorded_period": "Falls inside one period and would split it; start from the oldest period",
+      "moves_recorded_event": "Would move the date of a transfer or promotion"
     },
     "errors": {
       "import_file_type": "Only .xlsx and .csv files are accepted.",

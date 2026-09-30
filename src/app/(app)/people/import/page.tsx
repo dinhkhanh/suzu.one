@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { employeeTemplate } from "@/modules/core-hr/import";
-import { commitEmployeeImportAction, stageEmployeeImportAction } from "@/modules/core-hr/import-actions";
+import { historyTemplate } from "@/modules/core-hr/history-import";
+import { commitEmployeeImportAction, commitHistoryImportAction, stageEmployeeImportAction, stageHistoryImportAction } from "@/modules/core-hr/import-actions";
 import { peopleModuleOpen } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
@@ -35,6 +36,13 @@ export default async function ImportPeoplePage() {
         <li>{t("import.notes.phone")}</li>
       </ul>
       <ImportWizard title={t("import.wizard")} template={{ fileName: "employees.csv", csv: employeeTemplate() }} stageAction={stageEmployeeImportAction} commitAction={commitEmployeeImportAction} />
+      <section className="flex flex-col gap-3 border-t pt-6">
+        <div>
+          <h2>{t("import.historyTitle")}</h2>
+          <p className="max-w-3xl text-sm text-muted-foreground">{t("import.historyDescription")}</p>
+        </div>
+        <ImportWizard title={t("import.historyWizard")} template={{ fileName: "work-history.csv", csv: historyTemplate() }} stageAction={stageHistoryImportAction} commitAction={commitHistoryImportAction} />
+      </section>
     </div>
   );
 }

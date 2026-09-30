@@ -15,7 +15,7 @@ import { activatePerson, createPerson, invalidatePeople, listPersonNames, type P
 import { can, matchesReach, type Principal, readableTier, type Target, tierReach, type TierReach } from "@/modules/platform/rbac/policy";
 import { type Tier, tierRank } from "@/modules/platform/rbac/roles";
 import { revokeSessionsOf } from "@/modules/platform/auth/service";
-import { periodOn, planAssignmentChange } from "./engine/assignment-plan";
+import { periodOn, planAssignmentChange, planPastPeriod } from "./engine/assignment-plan";
 import { defaultCodeScheme, formatEmployeeCode, normalizeEmployeeCode } from "./engine/employee-code";
 import { describePlacement, markDueTerminationsApplied, recordLifecycleEvent, startChecklist } from "./lifecycle-events";
 
@@ -245,11 +245,11 @@ export function getPersonTarget(personId: string, executor?: Tx | ReturnType<typ
 }
 
 /** `getPersonTarget` for many people in one query; people who do not exist are absent from the map. */
-export async function getPersonTargets(personIds: readonly string[]): Promise<Map<string, Target & { personId: string }>> {
+export async function getPersonTargets(personIds: readonly string[], executor: Tx | ReturnType<typeof db> = db()): Promise<Map<string, Target & { personId: string }>> {
   const ids = [...new Set(personIds)];
   if (ids.length === 0) return new Map();
   const { e, a } = placementOn(todayInVietnam());
-  const rows = await db()
+  const rows = await executor
     .select({ personId: schema.person.id, entityId: e.entityId, unitPath: schema.person.orgUnitPath, managerId: a.managerId })
     .from(schema.person)
     .leftJoinLateral(e, sql`true`)
@@ -483,12 +483,12 @@ export async function listPositions(): Promise<{ id: string; name: string }[]> {
 }
 
 /** Choices for the placement fields. Names only: nothing here is above the directory tier. */
-export async function loadPlacementOptions(entityId?: string) {
-  const [units, branches, positions, people] = await Promise.all([orgUnitOptions({ activeOnly: true }), listBranches(), listPositionNames(), listPersonNames()]);
+export async function loadPlacementOptions(entityId?: string, options: { /** Past periods may name units and branches since closed. */ includeInactive?: boolean } = {}) {
+  const [units, branches, positions, people] = await Promise.all([orgUnitOptions({ activeOnly: !options.includeInactive }), listBranches(), listPositionNames(), listPersonNames()]);
   return {
     // A unit of another entity is not a place this person can be put; shared units always are.
     units: units.filter((unit) => unit.entityId === null || !entityId || unit.entityId === entityId).map(({ id, name, depth, entityId }) => ({ id, name: `${"— ".repeat(depth)}${name}`, entityId })),
-    branches: branches.filter((row) => row.isActive && (!entityId || row.entityId === entityId)).map(({ id, name, entityId }) => ({ id, name, entityId })),
+    branches: branches.filter((row) => (row.isActive || options.includeInactive) && (!entityId || row.entityId === entityId)).map(({ id, name, entityId }) => ({ id, name, entityId })),
     positions,
     people,
   };
@@ -724,6 +724,78 @@ function changeAssignmentInTransaction(personId: string, input: Parameters<typeo
   });
 }
 
+export type PastPeriodInput = { validFrom: IsoDate; validTo: IsoDate; changeReason: string | null; placement: PlacementInput };
+
+/**
+ * Writes down a period of work history that is already over (FR-PLT-12, DR-02) — for roll-out,
+ * where someone sat before the system knew them. Goes into whichever of the person's employments
+ * holds the dates; see `planPastPeriod` for how it fits beside the rows already there. Not an event
+ * on the timeline, and never moves today's placement, so `person` is left alone.
+ */
+export async function recordPastAssignment(personId: string, input: PastPeriodInput, actorPersonId: string) {
+  const result = await inTransaction((tx) => recordPastAssignmentInTransaction(tx, personId, input, actorPersonId));
+  await invalidatePersonView(personId);
+  return result;
+}
+
+export async function recordPastAssignmentInTransaction(tx: Tx, personId: string, input: PastPeriodInput, actorPersonId: string) {
+  if (input.validTo < input.validFrom) throw new ActionError("assignment_period_reversed");
+  const employments = await tx.select().from(schema.employment).where(eq(schema.employment.personId, personId)).orderBy(desc(schema.employment.startDate)).for("update");
+  if (employments.length === 0) throw new ActionError("no_employment");
+  // The employment the period starts in; the planner then says whether it also ends inside it.
+  const employment = employments.find((row) => row.startDate <= input.validFrom) ?? employments[employments.length - 1];
+
+  const existing = await tx
+    .select()
+    .from(schema.assignment)
+    .where(and(eq(schema.assignment.employmentId, employment.id), eq(schema.assignment.kind, "primary")));
+  const events = existing.length
+    ? await tx
+        .select()
+        .from(schema.lifecycleEvent)
+        .where(and(inArray(schema.lifecycleEvent.assignmentId, existing.map((row) => row.id)), sql`${schema.lifecycleEvent.status} <> 'cancelled'`))
+    : [];
+  // What opened the employment sits on its first day; any other transfer or promotion keeps its date.
+  const opens = (event: (typeof events)[number]) => event.effectiveDate === employment.startDate && (event.type === "hire" || event.type === "rehire" || event.type === "transfer");
+  const pinned = new Set(events.flatMap((event) => (event.assignmentId && (event.type === "transfer" || event.type === "promotion") && !opens(event) ? [event.assignmentId] : [])));
+  const plan = planPastPeriod(employment, existing, input, todayInVietnam(), pinned);
+  if (plan.kind === "rejected") throw new ActionError(`assignment_${plan.reason}`);
+
+  // A past manager may report to this person now: the reporting-loop check is about today's lines.
+  const values = { ...(await resolvePlacement(tx, input.placement, { entityId: employment.entityId, personId }, { checkLoop: false })), changeReason: input.changeReason };
+  let before: typeof schema.assignment.$inferSelect | null = null;
+  let after: typeof schema.assignment.$inferSelect;
+  if (plan.kind === "replace") {
+    before = existing.find((row) => row.id === plan.id) ?? null;
+    [after] = await tx.update(schema.assignment).set({ ...values, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.id)).returning();
+  } else {
+    // Make room first: the exclusion constraint checks every statement.
+    if (plan.shortenId) await tx.update(schema.assignment).set({ validTo: plan.shortenTo, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.shortenId));
+    if (plan.delayId) await tx.update(schema.assignment).set({ validFrom: plan.delayFrom!, updatedAt: new Date() }).where(eq(schema.assignment.id, plan.delayId));
+    [after] = await tx
+      .insert(schema.assignment)
+      .values({ ...values, employmentId: employment.id, validFrom: input.validFrom, validTo: input.validTo, createdByPersonId: actorPersonId })
+      .returning();
+    // The hire now points at where the person really started.
+    if (plan.delayId && input.validFrom === employment.startDate) {
+      for (const event of events.filter((row) => row.assignmentId === plan.delayId && opens(row))) {
+        await tx.update(schema.lifecycleEvent).set({ assignmentId: after.id, updatedAt: new Date() }).where(eq(schema.lifecycleEvent.id, event.id));
+      }
+    }
+  }
+
+  // Events that point at the written row describe it as it now reads.
+  const described = await tx.select().from(schema.lifecycleEvent).where(eq(schema.lifecycleEvent.assignmentId, after.id));
+  if (described.length) {
+    const to = await describePlacement(tx, after);
+    for (const event of described) {
+      await tx.update(schema.lifecycleEvent).set({ details: { ...event.details, to: { ...(event.details.to as Record<string, unknown> | undefined), ...to } }, updatedAt: new Date() }).where(eq(schema.lifecycleEvent.id, event.id));
+    }
+  }
+  await invalidatePersonView(personId);
+  return { employment, before, after, shortened: plan.kind === "insert" ? plan.shortenId : null, delayed: plan.kind === "insert" ? plan.delayId : null };
+}
+
 /**
  * Brings `person` (what sign-in and RBAC read) up to date with the assignment in force on `today`:
  * future-dated changes that have now started, and new starters whose first day has come.
@@ -781,7 +853,7 @@ export async function offboardLeavers(today: IsoDate, onlyPersonId?: string, exe
 }
 
 // Checks that the pieces of a placement belong together and turns the position name into a row.
-export async function resolvePlacement(tx: Tx, input: PlacementInput, context: { entityId: string; personId: string | null }) {
+export async function resolvePlacement(tx: Tx, input: PlacementInput, context: { entityId: string; personId: string | null }, options: { checkLoop?: boolean } = {}) {
   // A unit belongs to the person's entity, or is shared by the group — as does every unit above
   // it, so a shared department may still hold an entity's own team.
   if (input.orgUnitId) {
@@ -798,7 +870,7 @@ export async function resolvePlacement(tx: Tx, input: PlacementInput, context: {
     const [manager] = await tx.select({ id: schema.person.id }).from(schema.person).where(eq(schema.person.id, managerId)).limit(1);
     if (!manager) throw new ActionError("manager_not_found");
   }
-  if (input.managerId && context.personId && (await wouldCreateReportingLoop(tx, context.personId, input.managerId))) {
+  if (input.managerId && context.personId && options.checkLoop !== false && (await wouldCreateReportingLoop(tx, context.personId, input.managerId))) {
     throw new ActionError("manager_loop");
   }
 
