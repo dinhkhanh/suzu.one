@@ -175,7 +175,7 @@ const attachmentLinkPipeline = createAction({
     const file = view?.leaveRequest.attachmentFileId ? await findFile(view.leaveRequest.attachmentFileId) : undefined;
     if (!file) throw new ActionError("file_not_found");
     const url = await createDownloadLink(file, { personId: user.person.id, email: user.email }, user.request);
-    return { data: { url }, audit: { resource: { type: "file", id: file.id, entityId: file.entityId }, summary: `leave attachment opened: ${file.fileName}` } };
+    return { data: { url, fileName: file.fileName }, audit: { resource: { type: "file", id: file.id, entityId: file.entityId }, summary: `leave attachment opened: ${file.fileName}` } };
   },
 });
 export async function leaveAttachmentLinkAction(input: unknown) {

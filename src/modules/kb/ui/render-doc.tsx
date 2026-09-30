@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { type CalloutKind, CALLOUT_KINDS } from "../engine/callouts";
 import { type Doc, type DocMark, type DocNode, headingId } from "../engine/doc";
 import { isInternalHref, normalizeEmbed, safeHref } from "../engine/embed";
+import { KbFileLink } from "./kb-file-link";
 
 const CALLOUT_STYLE: Record<CalloutKind, string> = {
   info: "border-sky-300 bg-sky-50 dark:border-sky-800 dark:bg-sky-950/40",
@@ -165,16 +166,24 @@ function renderNode(node: DocNode, key: string, context: Context): ReactNode {
       const src = typeof node.attrs?.fileId === "string" ? fileHref(node.attrs.fileId) : typeof node.attrs?.src === "string" && /^https:\/\//i.test(node.attrs.src) ? safeHref(node.attrs.src) : null;
       if (!src) return null;
       // eslint-disable-next-line @next/next/no-img-element -- private files behind a signed redirect: the image optimiser cannot fetch them
-      return <img key={key} src={src} alt={String(node.attrs?.alt ?? "")} loading="lazy" referrerPolicy="no-referrer" className="max-w-full rounded-md border" />;
+      const image = <img src={src} alt={String(node.attrs?.alt ?? "")} loading="lazy" referrerPolicy="no-referrer" className="max-w-full rounded-md border" />;
+      // An uploaded picture opens larger in the preview dialog; an outside one is only shown.
+      return typeof node.attrs?.fileId === "string" ? (
+        <KbFileLink key={key} fileId={node.attrs.fileId} className="block w-fit max-w-full cursor-zoom-in">
+          {image}
+        </KbFileLink>
+      ) : (
+        <span key={key}>{image}</span>
+      );
     }
     case "attachment":
       if (typeof node.attrs?.fileId !== "string") return null;
       return (
-        <a key={key} href={fileHref(node.attrs.fileId)} className="flex w-fit max-w-full items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted">
+        <KbFileLink key={key} fileId={node.attrs.fileId} fileName={typeof node.attrs.fileName === "string" ? node.attrs.fileName : undefined} className="flex w-fit max-w-full items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted">
           <span aria-hidden>📎</span>
           <span className="truncate">{String(node.attrs.fileName ?? "")}</span>
           {typeof node.attrs.sizeBytes === "number" ? <span className="shrink-0 text-xs text-muted-foreground">{formatBytes(node.attrs.sizeBytes)}</span> : null}
-        </a>
+        </KbFileLink>
       );
     default:
       return null;

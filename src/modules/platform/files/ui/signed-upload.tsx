@@ -2,6 +2,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import type { ActionResult } from "@/lib/action";
+import { useFilePreview } from "./file-preview";
 
 type Upload = { fileId: string; uploadUrl: string; contentType: string };
 type Failure = { error: string; message?: string };
@@ -27,27 +28,35 @@ export async function uploadThroughSignedUrl<Done>(
   return finished.ok ? { ok: true, data: finished.data } : { ok: false, errorKey: keyOf(finished) };
 }
 
-/** Opens a file through a one-minute link made on click, so no link ever sits in the page. */
+/**
+ * Opens a file in the preview dialog through a one-minute link made on click, so no link ever sits
+ * in the page. The dialog asks `download` again when it needs a fresh link (a long video, a save).
+ */
 export function FileLink({ fileId, fileName, download, onError }: { fileId: string; fileName: string; download: (input: unknown) => Promise<ActionResult<{ url: string }>>; onError?: (errorKey: string) => void }) {
   const [pending, startTransition] = useTransition();
   const [failed, setFailed] = useState(false);
+  const preview = useFilePreview();
+  const openLink = () => download({ fileId });
   return (
-    <Button
-      type="button"
-      variant="link"
-      size="sm"
-      className={failed ? "h-auto p-0 text-destructive" : "h-auto p-0"}
-      disabled={pending}
-      onClick={() =>
-        startTransition(async () => {
-          const result = await download({ fileId });
-          setFailed(!result.ok);
-          if (result.ok) window.location.assign(result.data.url);
-          else onError?.(keyOf(result));
-        })
-      }
-    >
-      {fileName}
-    </Button>
+    <>
+      <Button
+        type="button"
+        variant="link"
+        size="sm"
+        className={failed ? "h-auto p-0 text-destructive" : "h-auto p-0"}
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            const result = await openLink();
+            setFailed(!result.ok);
+            if (result.ok) preview.show({ url: result.data.url, fileName, openLink });
+            else onError?.(keyOf(result));
+          })
+        }
+      >
+        {fileName}
+      </Button>
+      {preview.dialog}
+    </>
   );
 }

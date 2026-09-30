@@ -46,6 +46,7 @@
     "@vercel/analytics": "^2.0.1",
     "@vercel/functions": "^3.9.9",
     "@vercel/speed-insights": "^2.0.0",
+    "@videojs/react": "10.0.0-rc.4",
     "aws4fetch": "^1.0.20",
     "better-auth": "^1.7.6",
     "class-variance-authority": "^0.7.1",

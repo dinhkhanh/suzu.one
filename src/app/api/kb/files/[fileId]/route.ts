@@ -7,12 +7,14 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // document); what it answers with is a one-minute signed link, made only after the KB policy has
 // said this viewer may see the page the file belongs to — and, for a reader, that the published
 // version shows the file (a draft's uploads are its editors'). Anything else is "not found".
-export async function GET(_request: Request, context: RouteContext<"/api/kb/files/[fileId]">) {
+// With `?link=1` the link comes back as JSON instead, for the preview dialog to open.
+export async function GET(request: Request, context: RouteContext<"/api/kb/files/[fileId]">) {
   const user = await getCurrentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
   const { fileId } = await context.params;
   const found = UUID.test(fileId) ? await findPageFile(fileId) : undefined;
   if (!found || !(await mayOpenPageFile(kbViewerOf(user), found.loaded, found.file.id))) return new Response("Not found", { status: 404 });
   const url = await pageFileLink(found.file, { personId: user.person.id, email: user.email }, user.request);
+  if (new URL(request.url).searchParams.has("link")) return Response.json({ url, fileName: found.file.fileName }, { headers: { "cache-control": "private, no-store" } });
   return new Response(null, { status: 302, headers: { location: url, "cache-control": "private, no-store" } });
 }

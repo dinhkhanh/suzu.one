@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
+import { useFilePreview } from "@/modules/platform/files/ui/file-preview";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { approveMonthsAction, beginEvidenceAction, cancelAttendanceRequestAction, completeEvidenceAction, confirmMonthAction, confirmWorkedMinutesAction, createAdjustmentAction, evidenceLinkAction, lockPeriodAction, nudgeAction, remindToConfirmAction, reopenMonthAction, resubmitAttendanceRequestAction, submitAttendanceRequestAction, voidAdjustmentAction } from "../request-actions";
 
@@ -214,23 +215,29 @@ export function ConfirmHoursForm({ attendanceRequestId, defaultMinutes }: { atte
   );
 }
 
+/** Opens the request's evidence in the preview dialog, through a one-minute link made on click. */
 export function EvidenceButton({ requestId, label }: { requestId: string; label: string }) {
   const [pending, start] = useTransition();
+  const preview = useFilePreview();
+  const openLink = () => evidenceLinkAction({ requestId });
   return (
-    <Button
-      type="button"
-      size="sm"
-      variant="outline"
-      disabled={pending}
-      onClick={() =>
-        start(async () => {
-          const result = await evidenceLinkAction({ requestId });
-          if (result.ok) window.open(result.data.url, "_blank", "noopener");
-        })
-      }
-    >
-      {label}
-    </Button>
+    <>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            const result = await openLink();
+            if (result.ok) preview.show({ url: result.data.url, fileName: result.data.fileName, openLink });
+          })
+        }
+      >
+        {label}
+      </Button>
+      {preview.dialog}
+    </>
   );
 }
 

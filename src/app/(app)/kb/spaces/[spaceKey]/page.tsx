@@ -11,6 +11,7 @@ import { AccessForm } from "@/modules/kb/ui/access-form";
 import { PageTree } from "@/modules/kb/ui/page-tree";
 import { ArchiveSpaceButton, SpaceSettingsForm } from "@/modules/kb/ui/space-forms";
 import { pageTitle } from "@/i18n/page-title";
+import { KbFileLink } from "@/modules/kb/ui/kb-file-link";
 
 export const generateMetadata = pageTitle("knowledgeBase");
 
@@ -77,9 +78,9 @@ export default async function SpacePage(props: PageProps<"/kb/spaces/[spaceKey]"
           <ul className="flex flex-col divide-y rounded-md border">
             {files.map((file) => (
               <li key={file.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 p-3 text-sm">
-                <a href={`/api/kb/files/${file.id}`} className="font-medium underline underline-offset-2">
+                <KbFileLink fileId={file.id} fileName={file.fileName} className="font-medium underline underline-offset-2">
                   {file.fileName}
-                </a>
+                </KbFileLink>
                 <span className="text-xs text-muted-foreground">{Math.max(1, Math.round(file.sizeBytes / 1024))} KB</span>
                 <Link href={`/kb/pages/${file.pageId}`} className="min-w-0 truncate text-xs text-link hover:underline">
                   {file.pageTitle}

@@ -57,9 +57,9 @@ Files live in a private Cloudflare R2 bucket; the app talks to it over R2's S3-c
 Setting up a bucket (once per environment):
 
 1. `npx wrangler r2 bucket create suzu-private --location apac` (a development bucket the same way, e.g. `suzu-dev`).
-2. Bucket → Settings → CORS policy, so browsers may PUT to it:
+2. Bucket → Settings → CORS policy, so browsers may PUT to it, and GET from it for the preview dialog (a PDF, a Word or Excel file, a CSV or a zip is read in the browser before it is shown):
    ```json
-   [{ "AllowedOrigins": ["https://suzu.one"], "AllowedMethods": ["PUT"], "AllowedHeaders": ["content-type"], "MaxAgeSeconds": 3600 }]
+   [{ "AllowedOrigins": ["https://suzu.one"], "AllowedMethods": ["GET", "PUT"], "AllowedHeaders": ["content-type"], "MaxAgeSeconds": 3600 }]
    ```
    (the development bucket: `http://localhost:3000` and the preview domains instead).
 3. R2 → Manage API tokens → **Object Read & Write**, limited to that bucket. Its access key ID and secret are `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`; set them with `CLOUDFLARE_ACCOUNT_ID` in Vercel (production → the production bucket, previews → the development one).

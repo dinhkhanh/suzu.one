@@ -7,6 +7,7 @@ import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ActionResult } from "@/lib/action";
+import { useFilePreview } from "@/modules/platform/files/ui/file-preview";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { amendLeaveAction, beginLeaveAttachmentAction, cancelLeaveAction, completeLeaveAttachmentAction, leaveAttachmentLinkAction, submitLeaveAction } from "../actions";
 
@@ -86,10 +87,12 @@ export function CancelLeaveButton({ leaveRequestId, label, confirm, askReason }:
   );
 }
 
-/** Opens the request's attachment through a one-minute link made on click. */
+/** Opens the request's attachment in the preview dialog, through a one-minute link made on click. */
 export function AttachmentButton({ requestId, label }: { requestId: string; label: string }) {
   const [pending, startTransition] = useTransition();
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const preview = useFilePreview();
+  const openLink = () => leaveAttachmentLinkAction({ requestId });
   return (
     <span className="inline-flex items-center gap-2">
       <Button
@@ -99,8 +102,8 @@ export function AttachmentButton({ requestId, label }: { requestId: string; labe
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
-            const result = await leaveAttachmentLinkAction({ requestId });
-            if (result.ok) window.open(result.data.url, "_blank", "noopener");
+            const result = await openLink();
+            if (result.ok) preview.show({ url: result.data.url, fileName: result.data.fileName, openLink });
             else setErrorKey(result.error === "failed" ? (result.message ?? "generic") : result.error);
           })
         }
@@ -108,6 +111,7 @@ export function AttachmentButton({ requestId, label }: { requestId: string; labe
         {label}
       </Button>
       <FormError namespace={ERRORS} errorKey={errorKey} />
+      {preview.dialog}
     </span>
   );
 }

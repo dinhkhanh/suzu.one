@@ -12848,5 +12848,17 @@
         "tierRate": "Rate (%)"
       }
     }
+  },
+  "files": {
+    "preview": "Preview",
+    "download": "Download",
+    "loading": "Opening file…",
+    "failed": "Couldn’t open this file. Try downloading it.",
+    "unsupported": "This file type can’t be previewed yet.",
+    "sheetEmpty": "This sheet is empty.",
+    "rowsCut": "Showing {shown} of {total} rows.",
+    "archiveEntries": "{count, plural, one {# item} other {# items}}",
+    "archiveEmpty": "This archive is empty.",
+    "archiveUnreadable": "Couldn’t read the contents of this archive."
   }
 }

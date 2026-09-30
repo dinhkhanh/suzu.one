@@ -12848,5 +12848,17 @@
         "tierRate": "Tỷ lệ (%)"
       }
     }
+  },
+  "files": {
+    "preview": "Xem trước",
+    "download": "Tải xuống",
+    "loading": "Đang mở tệp…",
+    "failed": "Không mở được tệp. Hãy thử tải xuống.",
+    "unsupported": "Chưa xem trước được loại tệp này.",
+    "sheetEmpty": "Trang tính này trống.",
+    "rowsCut": "Chỉ hiển thị {shown} trên {total} dòng.",
+    "archiveEntries": "{count, plural, other {# mục}}",
+    "archiveEmpty": "Tệp nén trống.",
+    "archiveUnreadable": "Không đọc được nội dung tệp nén."
   }
 }
