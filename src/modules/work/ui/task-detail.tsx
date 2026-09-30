@@ -240,7 +240,7 @@ export function TaskDetailView({
             defaultValue={task.title}
             disabled={!canEdit}
             aria-label={t("fields.title")}
-            className="text-lg font-semibold md:text-lg"
+            className="h-auto text-lg font-semibold md:text-lg"
           />
           <textarea
             name="description"
