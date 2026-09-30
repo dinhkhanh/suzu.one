@@ -45,9 +45,10 @@ export default async function GenericRequestPage(props: PageProps<"/approvals/re
     // decides which follow-up types they may file themselves.
     (view.isRequester && view.type.followUps.length > 0 ? getPersonTarget(user.person.id) : Promise.resolve(null)).then((target) => getRequestFamily(view, { entityId: target?.entityId ?? null })),
     fileIds.length ? listFileNames(fileIds) : Promise.resolve(new Map<string, string>()),
-    returned && type.form.fields.some((field) => field.type === "person") ? listPersonNames() : Promise.resolve([]),
-    returned && type.form.fields.some((field) => field.type === "entity") ? listEntities() : Promise.resolve([]),
+    type.form.fields.some((field) => field.type === "person") ? listPersonNames() : Promise.resolve([]),
+    type.form.fields.some((field) => field.type === "entity") ? listEntities() : Promise.resolve([]),
   ]);
+  const recordNames = new Map<string, string>([...people.map((person) => [person.id, person.fullName] as const), ...entities.map((entity) => [entity.id, entity.shortName] as const)]);
 
   return (
     <div className="flex max-w-3xl flex-col gap-8">
@@ -65,7 +66,7 @@ export default async function GenericRequestPage(props: PageProps<"/approvals/re
       </header>
 
       {family.parent ? <ParentRequest parent={family.parent} /> : null}
-      <Answers form={type.form} values={submission.values} requestId={request.id} fileNames={fileNames} />
+      <Answers form={type.form} values={submission.values} requestId={request.id} fileNames={fileNames} recordNames={recordNames} />
       {claim ? <ClaimLines lines={claim.lines} total={claim.total} byCategory={claim.byCategory} payment={claim.payment} requestId={request.id} fileNames={fileNames} /> : null}
 
       <FollowUps family={family} requestId={request.id} />

@@ -29,7 +29,9 @@ export type FormField = {
   required?: boolean;
   /** select / multi_select only. */
   options?: readonly FieldOption[];
-  /** number / money: bounds on the value; multi_select: how many may be chosen. */
+  /** person / entity only: several may be chosen, and the answer is a list of ids. */
+  multiple?: boolean;
+  /** number / money: bounds on the value; multi_select and a `multiple` pick: how many may be chosen. */
   min?: number | null;
   max?: number | null;
   /** date only: the earliest and latest day accepted, as ISO dates. */
@@ -54,12 +56,17 @@ export const MAX_FIELDS = 30;
 export const MAX_OPTIONS = 40;
 export const MAX_TEXT = 4000;
 export const MAX_FILES = 10;
+/** How many people or entities one `multiple` field may name. */
+export const MAX_PICKS = 50;
 /** 999,999,999,999 đồng: more than this company will ever request, and safely an integer. */
 export const MAX_MONEY = 999_999_999_999;
 const KEY = /^[a-z][a-z0-9_]{0,39}$/;
 
 const isChoice = (type: FieldType) => type === "select" || type === "multi_select";
 const isNumeric = (type: FieldType) => type === "number" || type === "money";
+/** The field types an administrator may let pick several: the ones that name a record. */
+export const allowsMultiple = (type: FieldType) => type === "person" || type === "entity";
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ── What a designer may save ────────────────────────────────────────────────────────────────
 
@@ -70,6 +77,7 @@ export type FormProblem =
   | "no_label"
   | "options_required"
   | "options_not_allowed"
+  | "multiple_not_allowed"
   | "too_many_options"
   | "duplicate_option"
   | "bad_range"
@@ -98,6 +106,7 @@ export function formProblems(form: FormDefinition): FormProblem[] {
       if (options.length > MAX_OPTIONS) problems.add("too_many_options");
       if (new Set(options.map((option) => option.value)).size !== options.length) problems.add("duplicate_option");
     } else if (field.options?.length) problems.add("options_not_allowed");
+    if (field.multiple && !allowsMultiple(field.type)) problems.add("multiple_not_allowed");
 
     if (field.min != null && field.max != null && field.min > field.max) problems.add("bad_range");
     if (field.minLength != null && field.maxLength != null && field.minLength > field.maxLength) problems.add("bad_range");
@@ -192,6 +201,11 @@ function coerce(field: FormField, raw: FieldValue | undefined): FieldValue {
     }
     case "multi_select":
       return (Array.isArray(raw) ? raw : [raw]).map(String).filter((value) => value !== "");
+    case "person":
+    case "entity":
+      // A field made `multiple` after a request was filed still reads the old single answer.
+      if (field.multiple) return [...new Set((Array.isArray(raw) ? raw : [raw]).map((value) => String(value).trim()).filter((value) => value !== ""))];
+      return typeof raw === "string" ? raw.trim() : String(raw);
     case "file":
       return (Array.isArray(raw) ? raw : [raw]).map(String).filter((value) => value !== "");
     default:
@@ -248,12 +262,18 @@ function check(field: FormField, value: FieldValue, refuse: (field: string, prob
     }
     case "person":
     case "entity": {
-      if (typeof value !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) refuse(field.key, "not_an_id");
+      if (field.multiple) {
+        if (!Array.isArray(value) || value.some((entry) => !UUID.test(entry))) return refuse(field.key, "not_an_id");
+        if (value.length > Math.min(field.max ?? MAX_PICKS, MAX_PICKS)) refuse(field.key, "above_max");
+        else if (field.min != null && value.length < field.min) refuse(field.key, "below_min");
+        return;
+      }
+      if (typeof value !== "string" || !UUID.test(value)) refuse(field.key, "not_an_id");
       return;
     }
     case "file": {
       // Stored-file ids; whose files they are is the service's question (it needs the database).
-      if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entry))) return refuse(field.key, "not_a_file");
+      if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string" || !UUID.test(entry))) return refuse(field.key, "not_a_file");
       if (value.length > MAX_FILES) refuse(field.key, "too_many_files");
       return;
     }

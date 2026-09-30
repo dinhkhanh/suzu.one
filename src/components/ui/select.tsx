@@ -233,10 +233,12 @@ type MultiSelectProps = {
   disabled?: boolean
   className?: string
   "aria-label"?: string
+  /** Called with every chosen value whenever the choice changes, for a form that keeps its own state. */
+  onValueChange?: (values: string[]) => void
   children?: React.ReactNode
 }
 
-function MultiSelect({ id, name, form, defaultValue, disabled, className, "aria-label": ariaLabel, children }: MultiSelectProps) {
+function MultiSelect({ id, name, form, defaultValue, disabled, className, "aria-label": ariaLabel, onValueChange, children }: MultiSelectProps) {
   const { items, options, grouped } = useOptions(children)
   const anchor = useComboboxAnchor()
   const [initial] = React.useState<readonly string[]>(defaultValue ?? [])
@@ -253,7 +255,11 @@ function MultiSelect({ id, name, form, defaultValue, disabled, className, "aria-
         multiple
         items={items}
         value={selected}
-        onValueChange={(next) => setValues(next.map((option) => option.value))}
+        onValueChange={(next) => {
+          const chosen = next.map((option) => option.value)
+          setValues(chosen)
+          onValueChange?.(chosen)
+        }}
         isItemEqualToValue={sameOption}
         itemToStringLabel={(item) => item.label}
         itemToStringValue={(item) => item.value}

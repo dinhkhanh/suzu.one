@@ -28,6 +28,7 @@ const formField = z.object({
   hintEn: optionalText(300),
   required: z.preprocess((value) => value === "on" || value === true, z.boolean()).default(false),
   options: z.array(fieldOption).max(MAX_OPTIONS).optional(),
+  multiple: z.preprocess((value) => value === "on" || value === true, z.boolean()).default(false),
   min: optionalNumber,
   max: optionalNumber,
   minDate: optionalDay,

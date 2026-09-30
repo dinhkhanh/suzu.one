@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { MultiSelect, Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { type FieldValue, type FormDefinition, type FormField, type FormValues, MAX_TEXT, validateSubmission, visibleFields } from "../engine/form";
@@ -18,7 +18,7 @@ import { beginRequestAttachmentAction, completeRequestAttachmentAction } from ".
 
 type Submit = (input: unknown) => Promise<ActionResult<{ requestId: string }>>;
 
-const emptyValue = (field: FormField): FieldValue => (field.type === "checkbox" ? false : field.type === "multi_select" || field.type === "file" ? [] : "");
+const emptyValue = (field: FormField): FieldValue => (field.type === "checkbox" ? false : field.type === "multi_select" || field.type === "file" || field.multiple ? [] : "");
 
 export function RequestForm({
   form,
@@ -183,6 +183,19 @@ function FieldInput({
     case "person":
     case "entity": {
       const list = field.type === "person" ? people.map((person) => ({ id: person.id, name: person.fullName })) : entities;
+      if (field.multiple) {
+        // A single answer from before the field took several is shown as the first of the list.
+        const chosen = Array.isArray(value) ? value : text ? [text] : [];
+        return (
+          <MultiSelect id={field.key} defaultValue={chosen} onValueChange={set}>
+            {list.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {entry.name}
+              </option>
+            ))}
+          </MultiSelect>
+        );
+      }
       return (
         <Select id={field.key} name={field.key} value={text} onChange={(event) => set(event.target.value)}>
           <option value="">—</option>

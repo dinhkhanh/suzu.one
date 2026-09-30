@@ -6,7 +6,20 @@ import { Badge } from "@/components/ui/badge";
 import type { FormDefinition } from "../engine/form";
 import { AttachmentLink } from "./attachment-link";
 
-export async function Answers({ form, values, requestId, fileNames }: { form: FormDefinition; values: Record<string, unknown>; requestId: string; fileNames: ReadonlyMap<string, string> }) {
+export async function Answers({
+  form,
+  values,
+  requestId,
+  fileNames,
+  recordNames,
+}: {
+  form: FormDefinition;
+  values: Record<string, unknown>;
+  requestId: string;
+  fileNames: ReadonlyMap<string, string>;
+  /** A person's or entity's name by id, for the fields that name one; an unknown id shows as itself. */
+  recordNames: ReadonlyMap<string, string>;
+}) {
   const locale = await getLocale();
   const t = await getTranslations("requests");
   const format = await getFormatter();
@@ -37,6 +50,8 @@ export async function Answers({ form, values, requestId, fileNames }: { form: Fo
                 (Array.isArray(value) ? value : [])
                   .map((entry) => label((field.options ?? []).find((option) => option.value === entry) ?? { labelVi: String(entry), labelEn: String(entry) }))
                   .join(", ") || "—"
+              ) : field.type === "person" || field.type === "entity" ? (
+                (Array.isArray(value) ? value : [value]).map((entry) => recordNames.get(String(entry)) ?? String(entry)).join(", ") || "—"
               ) : field.type === "file" ? (
                 <ul className="flex flex-col gap-1">
                   {(Array.isArray(value) ? value : []).map((fileId) => (

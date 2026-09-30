@@ -26,6 +26,11 @@ describe("formProblems — what a designer may save", () => {
     expect(formProblems(duplicated)).toContain("duplicate_option");
   });
 
+  it("lets only a person or entity field take several answers", () => {
+    expect(formProblems(form(field({ key: "a", type: "person", multiple: true }), field({ key: "b", type: "entity", multiple: true })))).toEqual([]);
+    expect(formProblems(form(field({ key: "a", type: "text", multiple: true })))).toContain("multiple_not_allowed");
+  });
+
   it("refuses a range that cannot be satisfied and a pattern that does not compile", () => {
     expect(formProblems(form(field({ key: "a", type: "number", min: 10, max: 1 })))).toContain("bad_range");
     expect(formProblems(form(field({ key: "a", type: "date", minDate: "2026-12-01", maxDate: "2026-01-01" })))).toContain("bad_range");
@@ -115,6 +120,7 @@ describe("validateSubmission", () => {
     const choice = form(field({ key: "c", type: "select", options: [{ value: "x", labelVi: "X", labelEn: "X" }] }));
     expect(validateSubmission(choice, { c: "y" }).problems).toEqual([{ field: "c", problem: "not_an_option" }]);
     expect(validateSubmission(form(field({ key: "p", type: "person" })), { p: "not-a-uuid" }).problems).toEqual([{ field: "p", problem: "not_an_id" }]);
+    expect(validateSubmission(form(field({ key: "p", type: "person" })), { p: ["11111111-1111-1111-1111-111111111111", "22222222-2222-2222-2222-222222222222"] }).problems).toEqual([{ field: "p", problem: "not_an_id" }]);
     const files = form(field({ key: "f", type: "file" }));
     expect(validateSubmission(files, { f: Array.from({ length: 11 }, () => "11111111-1111-1111-1111-111111111111") }).problems).toEqual([{ field: "f", problem: "too_many_files" }]);
   });
@@ -160,5 +166,30 @@ describe("what a flow may condition on", () => {
 
   it("passes those answers to the engine and leaves the rest out", () => {
     expect(flowConditionData(definition, { amount: 25_000_000, category: "it", urgent: false, note: "x", who: "id" })).toEqual({ amount: 25_000_000, category: "it", urgent: false });
+  });
+});
+
+describe("a person field that takes several", () => {
+  const one = "11111111-1111-1111-1111-111111111111";
+  const two = "22222222-2222-2222-2222-222222222222";
+  const three = "33333333-3333-3333-3333-333333333333";
+  const people = (partial: Partial<FormField> = {}) => form(field({ key: "who", type: "person", multiple: true, ...partial }));
+
+  it("keeps a list of ids, once each", () => {
+    expect(validateSubmission(people(), { who: [one, two, one] })).toEqual({ values: { who: [one, two] }, problems: [] });
+  });
+
+  it("reads an answer given before the field took several as a list of one", () => {
+    expect(validateSubmission(people(), { who: one }).values).toEqual({ who: [one] });
+  });
+
+  it("treats an empty list as unanswered", () => {
+    expect(validateSubmission(people({ required: true }), { who: [] }).problems).toEqual([{ field: "who", problem: "required" }]);
+  });
+
+  it("refuses what is not an id and holds the count to its bounds", () => {
+    expect(validateSubmission(people(), { who: [one, "x"] }).problems).toEqual([{ field: "who", problem: "not_an_id" }]);
+    expect(validateSubmission(people({ max: 2 }), { who: [one, two, three] }).problems).toEqual([{ field: "who", problem: "above_max" }]);
+    expect(validateSubmission(people({ min: 2 }), { who: [one] }).problems).toEqual([{ field: "who", problem: "below_min" }]);
   });
 });

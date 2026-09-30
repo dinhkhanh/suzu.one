@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import type { Condition } from "@/modules/platform/approvals/engine/flow";
 import { FOLLOW_UP_OPENS, type FollowUpOpens, type FollowUpRule, followUpProblems, MAX_FOLLOW_UPS, MAX_PER_PARENT } from "../engine/follow-ups";
-import { FIELD_TYPES, type FieldType, type FormDefinition, type FormField, formProblems } from "../engine/form";
+import { allowsMultiple, FIELD_TYPES, type FieldType, type FormDefinition, type FormField, formProblems } from "../engine/form";
 import { REQUEST_CATEGORIES } from "../enums";
 import { saveRequestTypeAction, setRequestTypeActiveAction } from "../actions";
 
@@ -217,7 +217,11 @@ export function TypeDesigner({ draft, entities, canGroup, catalogue }: { draft: 
                 </label>
                 <label className="flex flex-col gap-1.5">
                   <Label htmlFor={`type-${index}`}>{t("fieldType")}</Label>
-                  <Select id={`type-${index}`} value={field.type} onChange={(event) => patch(index, { type: event.target.value as FieldType })}>
+                  <Select id={`type-${index}`} value={field.type} onChange={(event) => {
+                      const next = event.target.value as FieldType;
+                      patch(index, { type: next, multiple: allowsMultiple(next) ? field.multiple : undefined });
+                    }}
+                  >
                     {FIELD_TYPES.map((fieldType) => (
                       <option key={fieldType} value={fieldType}>
                         {t(`types.${fieldType}` as "types.text")}
@@ -240,7 +244,13 @@ export function TypeDesigner({ draft, entities, canGroup, catalogue }: { draft: 
                   <input type="checkbox" className="size-4" checked={!!field.required} onChange={(event) => patch(index, { required: event.target.checked })} />
                   {t("required")}
                 </Label>
-                {field.type === "number" || field.type === "money" || field.type === "multi_select" ? (
+                {allowsMultiple(field.type) ? (
+                  <Label className="flex items-center gap-1.5 text-sm font-normal">
+                    <input type="checkbox" className="size-4" checked={!!field.multiple} onChange={(event) => patch(index, { multiple: event.target.checked, ...(event.target.checked ? {} : { min: null, max: null }) })} />
+                    {t("multiple")}
+                  </Label>
+                ) : null}
+                {field.type === "number" || field.type === "money" || field.type === "multi_select" || (allowsMultiple(field.type) && field.multiple) ? (
                   <>
                     <label className="flex flex-col gap-1.5">
                       <Label htmlFor={`min-${index}`}>{t("min")}</Label>
