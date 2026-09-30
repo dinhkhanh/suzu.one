@@ -11,7 +11,9 @@ import { config } from "dotenv";
 config({ path: ".env.local" });
 
 const GRAPH = "https://graph.facebook.com/v26.0";
-const TEMPLATE = process.env.MESSENGER_UTILITY_TEMPLATE || "suzu_one_notification";
+// The template's button URL is fixed to the origin it was created from, and Meta never lets an
+// approved template change: `suzu_one_notification` was made from localhost, hence `_v2`.
+const TEMPLATE = process.env.MESSENGER_UTILITY_TEMPLATE || "suzu_one_notification_v2";
 const LANGUAGE = process.env.MESSENGER_TEMPLATE_LANGUAGE || "vi";
 
 const need = (name: string) => {
@@ -23,6 +25,7 @@ const pageId = need("MESSENGER_PAGE_ID");
 const token = need("MESSENGER_PAGE_ACCESS_TOKEN");
 const proof = createHmac("sha256", need("MESSENGER_APP_SECRET")).update(token).digest("hex");
 const origin = new URL(need("BETTER_AUTH_URL")).origin;
+const isLocal = ["localhost", "127.0.0.1"].includes(new URL(origin).hostname);
 
 async function graph(method: "GET" | "POST", path: string, body?: unknown): Promise<Record<string, unknown>> {
   const separator = path.includes("?") ? "&" : "?";
@@ -47,6 +50,8 @@ async function main() {
   const found = existing.data?.find((row) => row.name === TEMPLATE);
   if (found) {
     console.log(`✓ template ${TEMPLATE} exists (${found.status ?? "status unknown"})`);
+  } else if (isLocal) {
+    throw new Error(`template ${TEMPLATE} not found, and BETTER_AUTH_URL is ${origin}: a template made from here would open localhost forever. Run with the production BETTER_AUTH_URL.`);
   } else {
     // `{{1}}` is the notification's title (or, for sensitive categories, only which area has news);
     // the button can only open a path of this app.
