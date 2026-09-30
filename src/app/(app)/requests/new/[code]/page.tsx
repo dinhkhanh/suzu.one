@@ -43,11 +43,11 @@ export default async function FileRequestPage(props: PageProps<"/requests/new/[c
     <div className="flex max-w-3xl flex-col gap-6">
       <header>
         {followUp ? (
-          <Link href={`/approvals/request/${followUp.parent.request.id}`} className="text-sm text-muted-foreground hover:underline">
+          <Link href={`/approvals/request/${followUp.parent.request.id}`} className="text-sm text-link hover:underline">
             ← {parentName}
           </Link>
         ) : (
-          <Link href="/requests/new" className="text-sm text-muted-foreground hover:underline">
+          <Link href="/requests/new" className="text-sm text-link hover:underline">
             ← {t("new")}
           </Link>
         )}

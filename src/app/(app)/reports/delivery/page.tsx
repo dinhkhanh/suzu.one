@@ -61,7 +61,7 @@ export default async function DeliveryPage({ searchParams }: PageProps<"/reports
   const decimal = (value: number | null) => (value === null ? "—" : format.number(value, { maximumFractionDigits: 1 }));
   const hours = (minutes: number | null) => (minutes === null ? "—" : format.number(minutes / 60, { maximumFractionDigits: 1 }));
   const compliance = (value: Compliance) => (value.due === 0 ? "—" : `${percent(value.rate)} (${value.met}/${value.due})`);
-  const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted"}`;
+  const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "pill-on" : "pill-off"}`;
   const link = (team: string | null) => {
     const query = new URLSearchParams({ from: period.from, to: period.to, ...(team ? { team } : {}) });
     return `/reports/delivery?${query.toString()}`;

@@ -49,7 +49,7 @@ export default async function ProjectRisksPage({ params, searchParams }: PagePro
           <ul className="flex w-max gap-1 text-sm">
             {[null, ...RAID_KINDS].map((value) => (
               <li key={value ?? "all"}>
-                <Link href={tab(value)} aria-current={value === kind ? "page" : undefined} className={`block rounded-md border px-3 py-1 whitespace-nowrap ${value === kind ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted/60"}`}>
+                <Link href={tab(value)} aria-current={value === kind ? "page" : undefined} className={`block rounded-md border px-3 py-1 whitespace-nowrap ${value === kind ? "pill-on" : "pill-off"}`}>
                   {value ? t(`kindsPlural.${value}`) : t("all")} ({value ? all.filter((item) => item.kind === value).length : all.length})
                 </Link>
               </li>

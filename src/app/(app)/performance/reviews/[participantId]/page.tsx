@@ -89,7 +89,7 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <Link href="/performance/reviews" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+        <Link href="/performance/reviews" className="text-sm text-link underline-offset-4 hover:underline">
           {t("back")}
         </Link>
         <div className="flex flex-wrap items-center gap-3">

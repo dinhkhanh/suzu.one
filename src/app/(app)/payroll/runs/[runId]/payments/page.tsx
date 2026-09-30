@@ -43,7 +43,7 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <Link href={`/payroll/runs/${runId}`} className="text-sm text-muted-foreground hover:underline">
+        <Link href={`/payroll/runs/${runId}`} className="text-sm text-link hover:underline">
           ← {run.month}
         </Link>
         <h1>{t("title")}</h1>

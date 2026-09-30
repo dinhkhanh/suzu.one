@@ -90,7 +90,7 @@ export default async function ProjectDocumentsPage({ params }: PageProps<"/proje
                     {file.fileName}
                   </a>
                   <span className="text-xs text-muted-foreground">{size(file.sizeBytes)}</span>
-                  <Link href={`/kb/pages/${file.pageId}`} className="min-w-0 truncate text-xs text-muted-foreground hover:underline">
+                  <Link href={`/kb/pages/${file.pageId}`} className="min-w-0 truncate text-xs text-link hover:underline">
                     {file.pageTitle}
                   </Link>
                   <span className="ml-auto text-xs text-muted-foreground">{[file.uploadedByName, format.dateTime(file.createdAt, { dateStyle: "medium" })].filter(Boolean).join(" · ")}</span>

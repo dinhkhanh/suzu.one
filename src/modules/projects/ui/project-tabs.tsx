@@ -21,7 +21,7 @@ export async function ProjectTabs({ projectId, current, kind }: { projectId: str
       <ul className="flex w-max gap-1 rounded-lg border p-0.5 text-sm">
         {tabs.map((tab) => (
           <li key={tab}>
-            <Link href={hrefOf(projectId, tab)} aria-current={tab === current ? "page" : undefined} className={`block rounded-md px-3 py-1 whitespace-nowrap ${tab === current ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted/60"}`}>
+            <Link href={hrefOf(projectId, tab)} aria-current={tab === current ? "page" : undefined} className={`block rounded-md px-3 py-1 whitespace-nowrap ${tab === current ? "pill-on" : "pill-off"}`}>
               {t(tab)}
             </Link>
           </li>

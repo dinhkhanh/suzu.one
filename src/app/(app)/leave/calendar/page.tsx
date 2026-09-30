@@ -54,11 +54,11 @@ export default async function TeamCalendarPage(props: PageProps<"/leave/calendar
       </header>
       {calendar.departments.length > 1 ? (
         <nav className="tab-row">
-          <Link href={link(month, null)} className={departmentId ? "text-muted-foreground hover:underline" : "font-semibold"}>
+          <Link href={link(month, null)} className={departmentId ? "pill-off" : "pill-on"}>
             {t("calendar.everyone")}
           </Link>
           {calendar.departments.map((row) => (
-            <Link key={row.id} href={link(month, row.id)} className={departmentId === row.id ? "font-semibold" : "text-muted-foreground hover:underline"}>
+            <Link key={row.id} href={link(month, row.id)} className={departmentId === row.id ? "pill-on" : "pill-off"}>
               {row.name}
             </Link>
           ))}

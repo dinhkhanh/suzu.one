@@ -24,7 +24,7 @@ export default async function ProfilesPage() {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <header>
-        <Link href="/payroll" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/payroll" className="text-sm text-link hover:underline">
           ← {t("title")}
         </Link>
         <h1>{t("profiles.proposalsTitle")}</h1>

@@ -29,7 +29,7 @@ export default async function LeaveBalancesPage(props: PageProps<"/leave/admin/b
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
         <div className="flex items-center gap-3">
           {[year - 1, year, year + 1].map((value) => (
-            <Link key={value} href={`/leave/admin/balances?year=${value}`} className={value === year ? "font-semibold" : "text-muted-foreground hover:underline"}>
+            <Link key={value} href={`/leave/admin/balances?year=${value}`} className={value === year ? "pill-on" : "pill-off"}>
               {value}
             </Link>
           ))}

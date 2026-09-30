@@ -53,7 +53,7 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href="/payroll/runs" className="text-sm text-muted-foreground hover:underline">
+          <Link href="/payroll/runs" className="text-sm text-link hover:underline">
             ← {t("runs.title")}
           </Link>
           <h1>
@@ -242,7 +242,7 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
                     {person.fullName}
                   </Link>
                   {payslipOf.get(person.personId)?.payslipId ? (
-                    <Link href={`/payslips/${payslipOf.get(person.personId)!.payslipId}`} className="ml-2 text-xs text-muted-foreground hover:underline">
+                    <Link href={`/payslips/${payslipOf.get(person.personId)!.payslipId}`} className="ml-2 text-xs text-link hover:underline">
                       {t("payslips.open")}
                     </Link>
                   ) : null}

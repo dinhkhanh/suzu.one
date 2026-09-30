@@ -80,7 +80,7 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
       <PerformanceNav active="results" />
       <nav className="flex flex-wrap items-center gap-1">
         {yearChoices(today).map((choice) => (
-          <Link key={choice} href={`/performance/results?year=${choice}`} className={`rounded-md px-2 py-1 text-sm ${choice === year ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+          <Link key={choice} href={`/performance/results?year=${choice}`} className={`rounded-md px-2 py-1 text-sm ${choice === year ? "pill-on" : "pill-off"}`}>
             {choice}
           </Link>
         ))}

@@ -17,7 +17,7 @@ function Tile({ title, href, openLabel, children }: { title: string; href: strin
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-2">
         <CardTitle className="text-base">{title}</CardTitle>
-        <Link href={href} className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+        <Link href={href} className="text-sm text-link underline-offset-4 hover:underline">
           {openLabel}
         </Link>
       </CardHeader>

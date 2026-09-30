@@ -36,7 +36,7 @@ export default async function WorkAnalyticsPage({ searchParams }: PageProps<"/wo
   const [t, tWork, tExports, format, locale] = await Promise.all([getTranslations("reports.analytics"), getTranslations("work"), getTranslations("exports"), getFormatter(), getLocale()]);
   const percent = (rate: number | null) => (rate === null ? "—" : format.number(rate, { style: "percent", maximumFractionDigits: 0 }));
   const revisions = (value: number | null) => (value === null ? "—" : format.number(value, { maximumFractionDigits: 1 }));
-  const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted"}`;
+  const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "pill-on" : "pill-off"}`;
   const link = (next: Record<string, string | null>) => {
     const query = new URLSearchParams({ from: period.from, to: period.to, ...(teamId ? { team: teamId } : {}) });
     for (const [key, value] of Object.entries(next)) if (value === null) query.delete(key);

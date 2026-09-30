@@ -27,7 +27,7 @@ export default async function CalendarSettingsPage(props: PageProps<"/attendance
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-3 text-sm">
         {[year - 1, year, year + 1].map((value) => (
-          <Link key={value} href={`/attendance/settings/calendar?year=${value}`} className={value === year ? "font-semibold" : "text-muted-foreground hover:underline"}>
+          <Link key={value} href={`/attendance/settings/calendar?year=${value}`} className={value === year ? "pill-on" : "pill-off"}>
             {value}
           </Link>
         ))}

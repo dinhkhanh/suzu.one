@@ -29,7 +29,7 @@ export default async function PayPolicyPage() {
   return (
     <div className="flex max-w-4xl flex-col gap-8">
       <header>
-        <Link href="/payroll" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/payroll" className="text-sm text-link hover:underline">
           ← {t("title")}
         </Link>
         <h1>{t("policy.title")}</h1>

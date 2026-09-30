@@ -81,7 +81,7 @@ export default async function SpacePage(props: PageProps<"/kb/spaces/[spaceKey]"
                   {file.fileName}
                 </a>
                 <span className="text-xs text-muted-foreground">{Math.max(1, Math.round(file.sizeBytes / 1024))} KB</span>
-                <Link href={`/kb/pages/${file.pageId}`} className="min-w-0 truncate text-xs text-muted-foreground hover:underline">
+                <Link href={`/kb/pages/${file.pageId}`} className="min-w-0 truncate text-xs text-link hover:underline">
                   {file.pageTitle}
                 </Link>
                 {file.uploadedByName ? <span className="ml-auto text-xs text-muted-foreground">{file.uploadedByName}</span> : null}

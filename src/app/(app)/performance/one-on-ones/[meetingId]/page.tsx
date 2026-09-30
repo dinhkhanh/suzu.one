@@ -40,7 +40,7 @@ export default async function OneOnOnePage({ params }: PageProps<"/performance/o
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <header>
-        <Link href="/performance/one-on-ones" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/performance/one-on-ones" className="text-sm text-link hover:underline">
           ← {t("title")}
         </Link>
         <h1 className="flex flex-wrap items-center gap-2">

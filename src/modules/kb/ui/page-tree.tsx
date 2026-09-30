@@ -11,7 +11,7 @@ export async function PageTree({ tree, currentId, compact = false }: { tree: Tre
     <ul className="flex flex-col gap-0.5">
       {tree.map((node) => (
         <li key={node.id} style={{ paddingLeft: `${node.depth * (compact ? 0.75 : 1.25)}rem` }} className="flex items-center gap-2">
-          <Link href={`/kb/pages/${node.id}`} aria-current={node.id === currentId ? "page" : undefined} className={`min-w-0 truncate rounded px-1.5 py-1 text-sm hover:bg-muted ${node.id === currentId ? "bg-muted font-medium" : ""} ${node.status === "archived" ? "text-muted-foreground line-through" : ""}`}>
+          <Link href={`/kb/pages/${node.id}`} aria-current={node.id === currentId ? "page" : undefined} className={`min-w-0 truncate rounded px-1.5 py-1 text-sm hover:bg-muted ${node.id === currentId ? "pill-on" : ""} ${node.status === "archived" ? "text-muted-foreground line-through" : ""}`}>
             {node.title}
           </Link>
           {node.restricted ? <span title={t("page.restricted")} aria-label={t("page.restricted")}>🔒</span> : null}

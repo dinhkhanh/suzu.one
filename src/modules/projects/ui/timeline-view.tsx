@@ -414,7 +414,7 @@ export function TimelineView({ view }: { view: View }) {
     }
   };
 
-  const toggle = (active: boolean) => `rounded-md px-2 py-1 text-xs ${active ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted/60"}`;
+  const toggle = (active: boolean) => `rounded-md px-2 py-1 text-xs ${active ? "pill-on" : "pill-off"}`;
 
   return (
     <div className="flex flex-col gap-3">

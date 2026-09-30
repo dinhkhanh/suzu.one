@@ -44,7 +44,7 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
     <div className="flex flex-col gap-8">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href="/payroll/bonus" className="text-sm text-muted-foreground hover:underline">
+          <Link href="/payroll/bonus" className="text-sm text-link hover:underline">
             ← {t("title")}
           </Link>
           <h1 className="flex flex-wrap items-center gap-2">

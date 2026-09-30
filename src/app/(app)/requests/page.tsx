@@ -62,7 +62,7 @@ export default async function RequestsPage() {
                   </Link>
                   <p className="text-xs text-muted-foreground">{row.summary}</p>
                   {row.parentRequestId ? (
-                    <Link href={`/approvals/request/${row.parentRequestId}`} className="text-xs text-muted-foreground hover:underline">
+                    <Link href={`/approvals/request/${row.parentRequestId}`} className="text-xs text-link hover:underline">
                       ↳ {t("followUps.under", { name: (locale === "en" ? row.parentNameEn : row.parentNameVi) ?? "" })}
                     </Link>
                   ) : null}

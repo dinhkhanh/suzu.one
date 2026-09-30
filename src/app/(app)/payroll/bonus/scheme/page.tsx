@@ -34,7 +34,7 @@ export default async function BonusSchemePage() {
   return (
     <div className="flex max-w-4xl flex-col gap-8">
       <header>
-        <Link href="/payroll/bonus" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/payroll/bonus" className="text-sm text-link hover:underline">
           ← {t("title")}
         </Link>
         <h1>{t("scheme.title")}</h1>

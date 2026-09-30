@@ -24,7 +24,7 @@ export default async function DelegationPage() {
   return (
     <div className="flex max-w-3xl flex-col gap-8">
       <header>
-        <Link href="/approvals" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/approvals" className="text-sm text-link hover:underline">
           ← {t("title")}
         </Link>
         <h1>{t("delegation.title")}</h1>

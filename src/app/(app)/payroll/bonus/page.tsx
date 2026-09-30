@@ -35,7 +35,7 @@ export default async function BonusRunsPage() {
     <div className="flex max-w-4xl flex-col gap-8">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href="/payroll" className="text-sm text-muted-foreground hover:underline">
+          <Link href="/payroll" className="text-sm text-link hover:underline">
             ← {t("back")}
           </Link>
           <h1>{t("title")}</h1>

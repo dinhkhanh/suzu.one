@@ -35,7 +35,7 @@ export default async function ContractsPage({ searchParams }: PageProps<"/crm/co
       <CrmTabs current="contracts" show={shell.show} />
       <nav className="flex flex-wrap gap-2 text-sm">
         {(["live", "active", "draft", "expired", "terminated", "all"] as const).map((value) => (
-          <Link key={value} href={`/crm/contracts?state=${value}`} aria-current={value === state ? "page" : undefined} className={`rounded-md border px-3 py-1 ${value === state ? "bg-muted font-medium" : "text-muted-foreground"}`}>
+          <Link key={value} href={`/crm/contracts?state=${value}`} aria-current={value === state ? "page" : undefined} className={`rounded-md border px-3 py-1 ${value === state ? "pill-on" : "pill-off"}`}>
             {t(`contracts.states.${value}`)}
           </Link>
         ))}

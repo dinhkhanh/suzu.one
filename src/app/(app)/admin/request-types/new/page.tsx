@@ -20,7 +20,7 @@ export default async function NewRequestTypePage() {
   return (
     <div className="flex max-w-4xl flex-col gap-6">
       <header>
-        <Link href="/admin/request-types" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/admin/request-types" className="text-sm text-link hover:underline">
           ← {t("title")}
         </Link>
         <h1>{t("add")}</h1>

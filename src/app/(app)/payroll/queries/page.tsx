@@ -24,7 +24,7 @@ export default async function PayslipQueriesPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <Link href="/payroll" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/payroll" className="text-sm text-link hover:underline">
           ← {t("queue")}
         </Link>
         <h1>{t("queue")}</h1>

@@ -81,7 +81,7 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
             {t("review.title")} <Badge className="text-[10px]">{toReview}</Badge>
           </Link>
         ) : (
-          <Link href="/attendance/review" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+          <Link href="/attendance/review" className="text-sm text-link underline-offset-4 hover:underline">
             {t("review.title")}
           </Link>
         )}

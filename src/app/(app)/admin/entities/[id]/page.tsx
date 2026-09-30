@@ -31,7 +31,7 @@ export default async function EntityPage({ params }: PageProps<"/admin/entities/
   return (
     <div className="flex max-w-5xl flex-col gap-8">
       <header className="flex flex-col gap-1">
-        <Link href="/admin/entities" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/admin/entities" className="text-sm text-link hover:underline">
           ← {t("title")}
         </Link>
         <h1 className="flex items-center gap-3">

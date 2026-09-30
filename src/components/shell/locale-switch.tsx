@@ -24,9 +24,9 @@ export function LocaleSwitch({ compact = false }: { compact?: boolean } = {}) {
           aria-pressed={locale === current}
           aria-label={compact ? LABELS[locale] : undefined}
           className={cn(
-            "rounded-md px-2 py-1 text-muted-foreground hover:text-foreground",
+            "rounded-md px-2 py-1 pill-off",
             compact && "px-1.5 py-0.5 font-medium",
-            locale === current && "bg-muted font-medium text-foreground",
+            locale === current && "pill-on",
           )}
           onClick={() =>
             startTransition(async () => {

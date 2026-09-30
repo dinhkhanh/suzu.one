@@ -35,7 +35,7 @@ export default async function SalaryFilePage({ params }: PageProps<"/payroll/sal
   return (
     <div className="flex max-w-4xl flex-col gap-8">
       <header>
-        <Link href={file.canManage ? "/payroll/salaries" : "/payroll"} className="text-sm text-muted-foreground hover:underline">
+        <Link href={file.canManage ? "/payroll/salaries" : "/payroll"} className="text-sm text-link hover:underline">
           ← {file.canManage ? t("salaries.title") : t("title")}
         </Link>
         <h1>{file.person.fullName}</h1>
@@ -71,7 +71,7 @@ export default async function SalaryFilePage({ params }: PageProps<"/payroll/sal
                 </span>
                 <Badge variant="outline">{t(`salaries.reasons.${structure.reason}`)}</Badge>
                 {structure.decisionNumber ? (
-                  <Link href={`/payroll/salaries/decisions/${structure.id}`} className="text-xs text-muted-foreground hover:underline">
+                  <Link href={`/payroll/salaries/decisions/${structure.id}`} className="text-xs text-link hover:underline">
                     {t("salaries.decision", { number: structure.decisionNumber })}
                   </Link>
                 ) : null}

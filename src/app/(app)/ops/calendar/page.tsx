@@ -39,7 +39,7 @@ export default async function OpsCalendarPage({ searchParams }: PageProps<"/ops/
   const t = await getTranslations("ops");
   const format = await getFormatter();
   const href = (next: { month?: string; entity?: string | null }) => `/ops/calendar${overviewParams(query, { month: next.month ?? month, entity: next.entity === undefined ? entityId : next.entity })}`;
-  const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted"}`;
+  const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "pill-on" : "pill-off"}`;
   const weekdays = grid.weeks[0].map((day) => format.dateTime(new Date(`${day.date}T00:00:00`), { weekday: "short" }));
 
   return (

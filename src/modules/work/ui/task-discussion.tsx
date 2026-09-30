@@ -308,7 +308,7 @@ export function TaskDiscussion({ taskId, comments, activity, people, selfId, can
         <h2 className="text-sm font-medium text-muted-foreground">{t("title", { count: comments.filter((comment) => !comment.deleted).length })}</h2>
         <div className="flex gap-1 text-xs">
           {(["all", "comments"] as const).map((value) => (
-            <button key={value} type="button" aria-pressed={show === value} onClick={() => setShow(value)} className={`rounded-md px-2 py-0.5 ${show === value ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted/60"}`}>
+            <button key={value} type="button" aria-pressed={show === value} onClick={() => setShow(value)} className={`rounded-md px-2 py-0.5 ${show === value ? "pill-on" : "pill-off"}`}>
               {t(`show.${value}`)}
             </button>
           ))}

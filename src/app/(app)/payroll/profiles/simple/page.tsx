@@ -26,7 +26,7 @@ export default async function SimpleProfileReportPage() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <Link href="/payroll/profiles" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/payroll/profiles" className="text-sm text-link hover:underline">
           ← {t("profiles.proposalsTitle")}
         </Link>
         <h1>{t("exposure.title")}</h1>

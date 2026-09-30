@@ -16,7 +16,7 @@ export async function OpsNav({ active, reads }: { active: OpsSection; /** Withou
   return (
     <nav className="flex flex-wrap items-center gap-1 border-b pb-2">
       {sections.map((section) => (
-        <Link key={section} href={SECTION_HREF[section]} className={`rounded-md px-2 py-1 text-sm ${section === active ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+        <Link key={section} href={SECTION_HREF[section]} className={`rounded-md px-2 py-1 text-sm ${section === active ? "pill-on" : "pill-off"}`}>
           {t(section)}
         </Link>
       ))}

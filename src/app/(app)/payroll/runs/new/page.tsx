@@ -24,7 +24,7 @@ export default async function NewPayrollRunPage() {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <header>
-        <Link href="/payroll/runs" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/payroll/runs" className="text-sm text-link hover:underline">
           ← {t("runs.title")}
         </Link>
         <h1>{t("runs.new.title")}</h1>

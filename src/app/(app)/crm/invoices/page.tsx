@@ -63,7 +63,7 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/crm/inv
 
       <nav className="flex flex-wrap gap-2 text-sm">
         {STATUSES.map((value) => (
-          <Link key={value} href={`/crm/invoices?status=${value}`} aria-current={value === status ? "page" : undefined} className={`rounded-md border px-3 py-1 ${value === status ? "bg-muted font-medium" : "text-muted-foreground"}`}>
+          <Link key={value} href={`/crm/invoices?status=${value}`} aria-current={value === status ? "page" : undefined} className={`rounded-md border px-3 py-1 ${value === status ? "pill-on" : "pill-off"}`}>
             {t(`invoices.statuses.${value}`)}
           </Link>
         ))}

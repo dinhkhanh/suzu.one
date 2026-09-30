@@ -38,9 +38,9 @@ export function ThemeSwitch({ theme, compact = false }: { theme: Theme; compact?
             aria-label={t(option)}
             title={t(option)}
             className={cn(
-              "flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground",
+              "flex items-center justify-center rounded-md pill-off",
               compact ? "size-6" : "size-7",
-              option === current && "bg-muted text-foreground",
+              option === current && "pill-on",
             )}
             onClick={() =>
               startTransition(async () => {

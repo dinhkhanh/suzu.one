@@ -24,11 +24,11 @@ export default async function AssistantPage(props: PageProps<"/assistant">) {
         <h1>{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("intro")}</p>
         <nav className="tab-row">
-          <Link href="/assistant" className="text-muted-foreground hover:underline">
+          <Link href="/assistant" aria-current="page">
             {t("newChat")}
           </Link>
           {canReadUnansweredLog(user.principal) ? (
-            <Link href="/assistant/unanswered" className="text-muted-foreground hover:underline">
+            <Link href="/assistant/unanswered">
               {t("unanswered.link")}
             </Link>
           ) : null}

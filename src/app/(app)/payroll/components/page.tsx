@@ -33,7 +33,7 @@ export default async function ComponentsPage() {
   return (
     <div className="flex flex-col gap-8">
       <header>
-        <Link href="/payroll" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/payroll" className="text-sm text-link hover:underline">
           ← {t("title")}
         </Link>
         <h1>{t("components.title")}</h1>

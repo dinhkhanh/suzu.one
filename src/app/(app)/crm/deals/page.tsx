@@ -67,7 +67,7 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
       <CrmTabs current="deals" show={shell.show} />
       <nav className="flex flex-wrap gap-2 text-sm" aria-label={t("deals.views")}>
         {VIEWS.map((value) => (
-          <Link key={value} href={params_({ view: value })} aria-current={value === view ? "page" : undefined} className={`rounded-md border px-3 py-1 ${value === view ? "bg-muted font-medium" : "text-muted-foreground"}`}>
+          <Link key={value} href={params_({ view: value })} aria-current={value === view ? "page" : undefined} className={`rounded-md border px-3 py-1 ${value === view ? "pill-on" : "pill-off"}`}>
             {t(`deals.view.${value}`)}
           </Link>
         ))}

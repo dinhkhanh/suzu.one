@@ -38,7 +38,7 @@ export default async function BonusExplanationPage({ params }: PageProps<"/payro
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <header>
-        <Link href={`/payroll/bonus/${runId}`} className="text-sm text-muted-foreground hover:underline">
+        <Link href={`/payroll/bonus/${runId}`} className="text-sm text-link hover:underline">
           ← {run.name}
         </Link>
         <h1 className="flex flex-wrap items-center gap-2">

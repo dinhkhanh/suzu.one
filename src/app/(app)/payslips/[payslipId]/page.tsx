@@ -31,7 +31,7 @@ export default async function PayslipPage({ params }: PageProps<"/payslips/[pays
   return (
     <div className="flex max-w-4xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
-        <Link href={view.isOwner ? "/payslips" : `/payroll/runs/${view.run.id}`} className="text-sm text-muted-foreground hover:underline">
+        <Link href={view.isOwner ? "/payslips" : `/payroll/runs/${view.run.id}`} className="text-sm text-link hover:underline">
           ← {view.isOwner ? t("mine") : t("backToRun")}
         </Link>
         <a href={`/payslips/${payslipId}/pdf`} className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted" download>

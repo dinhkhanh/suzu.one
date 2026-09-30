@@ -40,7 +40,7 @@ export default async function SalaryChangePage({ params }: PageProps<"/payroll/s
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <header>
-        <Link href={view.request.subjectPersonId && view.figures ? `/payroll/salaries/${view.request.subjectPersonId}` : "/approvals"} className="text-sm text-muted-foreground hover:underline">
+        <Link href={view.request.subjectPersonId && view.figures ? `/payroll/salaries/${view.request.subjectPersonId}` : "/approvals"} className="text-sm text-link hover:underline">
           ← {view.subjectName}
         </Link>
         <h1>{view.request.summary}</h1>

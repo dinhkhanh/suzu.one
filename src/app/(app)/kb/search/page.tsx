@@ -40,13 +40,13 @@ export default async function KbSearchPage(props: PageProps<"/kb/search">) {
         <KbSearchBox query={query} spaceId={spaceId} />
         {query ? (
           <nav aria-label={t("search.filter")} className="flex flex-wrap gap-2 text-sm">
-            <Link href={href({ space: null })} className={spaceId ? "text-muted-foreground hover:underline" : "font-medium underline underline-offset-4"}>
+            <Link href={href({ space: null })} className={spaceId ? "pill-off" : "pill-on"}>
               {t("search.allSpaces")}
             </Link>
             {spaces
               .filter((space) => !space.archivedAt)
               .map((space) => (
-                <Link key={space.id} href={href({ space: space.id })} className={space.id === spaceId ? "font-medium underline underline-offset-4" : "text-muted-foreground hover:underline"}>
+                <Link key={space.id} href={href({ space: space.id })} className={space.id === spaceId ? "pill-on" : "pill-off"}>
                   {space.name}
                 </Link>
               ))}

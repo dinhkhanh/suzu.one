@@ -27,7 +27,7 @@ export default async function AlignmentPage({ searchParams }: PageProps<"/perfor
   // The tree starts at the group's goals and at anything whose parent is out of sight; a goal below the group that names no parent is unaligned.
   const roots = goals.filter((goal) => (goal.parentGoalId ? !ids.has(goal.parentGoalId) : goal.level === "group"));
   const unaligned = goals.filter((goal) => !goal.parentGoalId && goal.level !== "group");
-  const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted"}`;
+  const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "pill-on" : "pill-off"}`;
   const href = (next: { year?: number; period?: string | null }) => {
     const search = new URLSearchParams({ year: String(next.year ?? year) });
     const period = next.period === undefined ? periodKey : next.period;

@@ -43,7 +43,7 @@ export default async function RequestTypePage(props: PageProps<"/admin/request-t
   return (
     <div className="flex max-w-4xl flex-col gap-8">
       <header>
-        <Link href="/admin/request-types" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/admin/request-types" className="text-sm text-link hover:underline">
           ← {t("title")}
         </Link>
         <div className="flex flex-wrap items-center gap-2">

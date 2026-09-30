@@ -52,7 +52,7 @@ export default async function GenericRequestPage(props: PageProps<"/approvals/re
   return (
     <div className="flex max-w-3xl flex-col gap-8">
       <header className="flex flex-col gap-1">
-        <Link href="/approvals" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/approvals" className="text-sm text-link hover:underline">
           ← {t("backToApprovals")}
         </Link>
         <div className="flex flex-wrap items-center gap-2">

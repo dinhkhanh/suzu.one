@@ -33,7 +33,7 @@ export default async function PayrollRunsPage({ searchParams }: PageProps<"/payr
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href="/payroll" className="text-sm text-muted-foreground hover:underline">
+          <Link href="/payroll" className="text-sm text-link hover:underline">
             ← {t("title")}
           </Link>
           <h1>{t("runs.title")}</h1>

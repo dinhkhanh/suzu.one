@@ -47,7 +47,7 @@ export default async function OpsListPage({ searchParams }: PageProps<"/ops/list
     return `/ops/list${overviewParams(query, { show: (next.show ?? show) === "closed" ? "closed" : null, entity, month: next.show ? null : month, colour: next.show ? null : colour })}`;
   };
   const counts = { overdue: items.filter((item) => item.colour === "overdue").length, dueSoon: items.filter((item) => item.colour === "due_soon").length };
-  const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted"}`;
+  const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "pill-on" : "pill-off"}`;
 
   return (
     <div className="flex max-w-5xl flex-col gap-6">

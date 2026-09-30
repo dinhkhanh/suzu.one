@@ -48,7 +48,7 @@ export function ViewTabs({ current, views = WORK_VIEWS }: { current: WorkView; /
   return (
     <div role="tablist" className="flex w-fit gap-1 rounded-lg border p-0.5 text-sm">
       {views.map((view) => (
-        <button key={view} type="button" role="tab" aria-selected={view === current} onClick={() => open(view)} className={`rounded-md px-3 py-1 ${view === current ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted/60"}`}>
+        <button key={view} type="button" role="tab" aria-selected={view === current} onClick={() => open(view)} className={`rounded-md px-3 py-1 ${view === current ? "pill-on" : "pill-off"}`}>
           {t(view)}
         </button>
       ))}

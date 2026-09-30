@@ -25,7 +25,7 @@ export default async function WorkloadPage({ searchParams }: PageProps<"/work/wo
   const tWork = await getTranslations("work");
   const format = await getFormatter();
   const day = (date: string) => format.dateTime(new Date(`${date}T00:00:00`), { day: "numeric", month: "numeric" });
-  const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted"}`;
+  const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "pill-on" : "pill-off"}`;
 
   return (
     <div className="flex max-w-6xl flex-col gap-6">

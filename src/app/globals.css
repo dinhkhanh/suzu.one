@@ -84,7 +84,7 @@
    and never says "something is wrong" — that is `destructive`, a deeper crimson only ever shown
    tinted. State speaks through the tones below. */
 :root {
-  --canvas: oklch(0.962 0.003 60);
+  --canvas: oklch(0.95 0.003 60);
   --background: oklch(1 0 0);
   --foreground: oklch(0.21 0 0);
   --card: oklch(1 0 0);
@@ -96,10 +96,10 @@
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.973 0 0);
   --secondary-foreground: oklch(0.21 0 0);
-  --muted: oklch(0.968 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --faint: oklch(0.708 0 0);
-  --accent: oklch(0.962 0 0);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.48 0 0);
+  --faint: oklch(0.62 0 0);
+  --accent: oklch(0.94 0 0);
   --accent-foreground: oklch(0.21 0 0);
   --destructive: oklch(0.53 0.2 24);
   --success: oklch(0.52 0.14 158);
@@ -111,8 +111,8 @@
   --tone-orange: oklch(0.6 0.17 45);
   --tone-pink: oklch(0.58 0.2 350);
   --tone-indigo: oklch(0.5 0.19 275);
-  --border: oklch(0.925 0 0);
-  --input: oklch(0.917 0 0);
+  --border: oklch(0.895 0 0);
+  --input: oklch(0.85 0 0);
   --ring: oklch(0.576 0.208 258.6);
   --chart-1: oklch(0.576 0.208 258.6);
   --chart-2: oklch(0.62 0.12 195);
@@ -124,9 +124,9 @@
   --sidebar-foreground: oklch(0.21 0 0);
   --sidebar-primary: oklch(0.576 0.208 258.6);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.955 0 0);
+  --sidebar-accent: oklch(0.94 0 0);
   --sidebar-accent-foreground: oklch(0.21 0 0);
-  --sidebar-border: oklch(0.925 0 0);
+  --sidebar-border: oklch(0.895 0 0);
   --sidebar-ring: oklch(0.576 0.208 258.6);
   /* The card floats: a hairline, then a shadow shallow enough to read as paper rather than a modal. */
   --shell-shadow: 0 0 0 1px oklch(0 0 0 / 4%), 0 1px 2px oklch(0 0 0 / 4%), 0 12px 32px -16px oklch(0 0 0 / 18%);
@@ -152,8 +152,8 @@
     --secondary: oklch(0.255 0 0);
     --secondary-foreground: oklch(0.97 0 0);
     --muted: oklch(0.245 0 0);
-    --muted-foreground: oklch(0.7 0 0);
-    --faint: oklch(0.6 0 0);
+    --muted-foreground: oklch(0.74 0 0);
+    --faint: oklch(0.64 0 0);
     --accent: oklch(0.265 0 0);
     --accent-foreground: oklch(0.97 0 0);
     --destructive: oklch(0.72 0.17 22);
@@ -166,8 +166,8 @@
     --tone-orange: oklch(0.78 0.15 55);
     --tone-pink: oklch(0.78 0.15 350);
     --tone-indigo: oklch(0.74 0.14 275);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 14%);
+    --border: oklch(1 0 0 / 14%);
+    --input: oklch(1 0 0 / 22%);
     --ring: oklch(0.62 0.19 258.6);
     --chart-1: oklch(0.62 0.19 258.6);
     --chart-2: oklch(0.72 0.12 195);
@@ -180,7 +180,7 @@
     --sidebar-primary-foreground: oklch(1 0 0);
     --sidebar-accent: oklch(0.255 0 0);
     --sidebar-accent-foreground: oklch(0.97 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-border: oklch(1 0 0 / 14%);
     --sidebar-ring: oklch(0.62 0.19 258.6);
     --shell-shadow: 0 0 0 1px oklch(1 0 0 / 8%), 0 12px 32px -16px oklch(0 0 0 / 60%);
   }
@@ -222,10 +222,11 @@
   /* A sidebar row: icon, label, and what waits there as a filled pill at the end — the one
      place the sidebar raises its voice, so a number is seen before it is read. */
   .nav-row {
-    @apply relative flex h-8 items-center gap-2.5 rounded-lg px-2 text-sm font-medium text-foreground/85 transition-colors hover:bg-sidebar-accent hover:text-foreground [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground;
+    @apply relative flex h-8 items-center gap-2.5 rounded-lg px-2 text-sm font-medium text-foreground transition-colors hover:bg-sidebar-accent [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-foreground/60 hover:[&>svg]:text-foreground;
   }
+  /* Where you are is said in the accent, not in one more grey: a blue wash, blue label and icon. */
   .nav-row[aria-current="page"] {
-    @apply bg-sidebar-accent text-foreground [&>svg]:text-primary;
+    @apply bg-primary/10 font-semibold text-link hover:bg-primary/15 dark:bg-primary/20 [&>svg]:text-link hover:[&>svg]:text-link;
   }
   .nav-section {
     @apply px-2 pt-4 pb-1 text-xs font-medium text-faint;
@@ -247,20 +248,37 @@
   .toolbar {
     @apply flex flex-wrap items-end gap-2;
   }
-  /* A page's own sub-navigation, as the reference draws it: quiet pills rather than a row of
-     underlined links. The rule un-underlines its children, which arrive with `underline` on
-     them, so it has to outrank that utility. */
+  /* A page's own sub-navigation: pills, the open one washed in the accent so it is told from its
+     neighbours at a glance. The rule un-underlines its children, which may arrive with
+     `underline` on them, so it has to outrank that utility. */
   .tab-row {
     @apply flex flex-wrap items-center gap-1 text-sm;
   }
   .tab-row > a,
   .tab-row > button {
-    @apply flex h-8 items-center rounded-lg px-2.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground;
+    @apply flex h-8 items-center rounded-lg px-2.5 font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground;
     text-decoration: none !important;
   }
   .tab-row > a[aria-current="page"],
   .tab-row > button[aria-current="page"] {
-    @apply bg-muted text-foreground;
+    @apply bg-primary/10 font-semibold text-link hover:bg-primary/15 hover:text-link dark:bg-primary/20;
+  }
+}
+
+/* The two halves of every ad-hoc switch (view toggles, year pickers, segmented groups): the chosen
+   option and the rest. Utilities, so a ternary in a className can pick one. */
+@utility pill-on {
+  @apply bg-primary/10 font-semibold text-link dark:bg-primary/20;
+}
+@utility pill-off {
+  @apply font-medium text-muted-foreground hover:bg-accent hover:text-foreground;
+}
+
+/* A link that is always underlined is a plain text link, and reads as one: in the link colour
+   unless the caller gave it a colour of its own (base layer, so any text utility wins). */
+@layer base {
+  a:where([class~="underline"]) {
+    color: var(--link);
   }
 }
 

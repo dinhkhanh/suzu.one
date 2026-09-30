@@ -43,7 +43,7 @@ export async function PerformanceNav({ active, year }: { active: PerformanceSect
   return (
     <nav className="flex flex-wrap items-center gap-1 border-b pb-2">
       {PERFORMANCE_SECTIONS.filter((section) => shown[section]).map((section) => (
-        <Link key={section} href={`${SECTION_HREF[section]}${year && TAKES_YEAR.includes(section) ? `?year=${year}` : ""}`} className={`rounded-md px-2 py-1 text-sm ${section === active ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+        <Link key={section} href={`${SECTION_HREF[section]}${year && TAKES_YEAR.includes(section) ? `?year=${year}` : ""}`} className={`rounded-md px-2 py-1 text-sm ${section === active ? "pill-on" : "pill-off"}`}>
           {t(section)}
         </Link>
       ))}

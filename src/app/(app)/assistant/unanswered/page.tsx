@@ -31,10 +31,10 @@ export default async function UnansweredPage(props: PageProps<"/assistant/unansw
         <h1>{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("intro")}</p>
         <nav className="tab-row">
-          <Link href="/assistant/unanswered" className={resolved ? "text-muted-foreground hover:underline" : "font-medium underline underline-offset-4"}>
+          <Link href="/assistant/unanswered" className={resolved ? "pill-off" : "pill-on"}>
             {t("open")}
           </Link>
-          <Link href="/assistant/unanswered?show=resolved" className={resolved ? "font-medium underline underline-offset-4" : "text-muted-foreground hover:underline"}>
+          <Link href="/assistant/unanswered?show=resolved" className={resolved ? "pill-on" : "pill-off"}>
             {t("all")}
           </Link>
         </nav>
