@@ -14,8 +14,11 @@ about a PSID says which employee it is. The design rests on never guessing:
    - The signed-in person clicks *Connect Messenger*. The app mints a one-time token (32 random
      bytes, stored as a SHA-256 hash, valid 15 minutes) and opens `m.me/<page>?ref=<token>`.
    - Meta posts the token and the opener's PSID to our webhook. The call is signed with the app
-     secret. The **first** PSID to present a live token owns the attempt. The bot sends that PSID a
-     six-digit code (hashed at rest, valid 10 minutes). Any other PSID gets "link no longer valid".
+     secret. For a first conversation Meta passes the `ref` only when the person taps Get Started,
+     and not reliably even then, so the app also shows the token (16 characters, e.g.
+     `7K3M-Q9TR-X2VD-HN5B`) for the person to send to the Page as a plain message. The **first**
+     PSID to present a live token, either way, owns the attempt. The bot sends that PSID a
+     six-digit code (hashed at rest, valid 10 minutes). Any other PSID gets no answer.
    - The person types the code into the app. Only the caller's own attempt is checked. Five wrong
      codes end it.
 
@@ -43,6 +46,11 @@ about a PSID says which employee it is. The design rests on never guessing:
 6. **Ways out.** *Unlink* in the app. Typing `dừng` / `stop` / `hủy` to the bot. Meta reporting the
    account gone (blocked, deleted) revokes the link automatically.
 
+7. **The Page stays quiet.** The Page does not reveal SuZu One to the public. The bot answers only
+   a live token (with the code) and a linked person's stop word. Everything else gets no reply:
+   other messages, spent or made-up tokens, Get Started without a token, and a linked person's
+   chatter. The Page has no greeting.
+
 ## What a message contains
 
 Unlike web push, which is encrypted for the device, a Page's messages can be read by Meta, and
@@ -55,7 +63,7 @@ they stay in a chat history. Each category in `kinds.ts` declares `thirdParty: "
 
 Every message carries one button that opens a page **of this app**, which needs sign-in. The
 one-shot "approve" links sent to Google Chat are never sent to Messenger. The bot never answers
-questions with data. To any other input it says what it is for.
+questions with data, and it does not answer other input at all.
 
 Messenger follows each person's **Push** column in their notification preferences. Choosing
 "on my phone" covers both web push and Messenger.
@@ -89,7 +97,8 @@ They go through if the person writes to the Page before then.
 4. **Webhook**: in the app dashboard, callback URL `https://<app domain>/api/messenger/webhook`
    and the same verify token. It is served on the app's domain only, never on `PUBLIC_SITE_URL`.
 5. `pnpm messenger:setup` subscribes the webhook fields, sets the Get Started button (a first
-   conversation delivers the `ref` only through it) and creates the utility template. Once the
+   conversation delivers the `ref` only through it), removes the greeting and creates the utility
+   template. Once the
    template shows `APPROVED`, set `MESSENGER_UTILITY_TEMPLATE`.
 6. In the app: **Notifications → Connect Messenger → Send a test.**
 

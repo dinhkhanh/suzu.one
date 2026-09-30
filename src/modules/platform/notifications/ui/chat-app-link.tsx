@@ -17,7 +17,8 @@ export type ChatAppStatus = {
 };
 
 export type ChatAppActions = {
-  start: (input: unknown) => Promise<ActionResult<{ url: string; expiresAt: string }>>;
+  /** `sendText`: the token as a message, for when the chat app does not pass the link's token on. */
+  start: (input: unknown) => Promise<ActionResult<{ url: string; sendText?: string; expiresAt: string }>>;
   confirm: (input: unknown) => Promise<ActionResult<{ linked: boolean }>>;
   unlink: (input: unknown) => Promise<ActionResult<{ removed: number }>>;
   test: (input: unknown) => Promise<ActionResult<{ sent: number; simulated: number }>>;
@@ -30,10 +31,10 @@ export function ChatAppLink({ namespace, actions, configured, status }: { namesp
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   // The connect URL carries the one-time token: it lives in this page's memory only, never in the HTML.
-  const [started, setStarted] = useState<{ url: string; expiresAt: string } | null>(null);
+  const [started, setStarted] = useState<{ url: string; sendText?: string; expiresAt: string } | null>(null);
   const confirm = useActionForm(actions.confirm, { onSuccess: () => router.refresh() });
 
-  const waiting = started ?? (status.pending ? { url: null, expiresAt: status.pending.expiresAt } : null);
+  const waiting = started ?? (status.pending ? { url: null, sendText: undefined, expiresAt: status.pending.expiresAt } : null);
 
   function connect() {
     startTransition(async () => {
@@ -98,6 +99,11 @@ export function ChatAppLink({ namespace, actions, configured, status }: { namesp
                 <a href={waiting.url} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "outline", size: "sm" }) + " w-fit"}>
                   {t("openLink")}
                 </a>
+              ) : null}
+              {waiting.sendText && !status.pending?.codeSent ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("sendText")} <span className="font-mono text-sm font-medium tracking-wider text-foreground select-all">{waiting.sendText}</span>
+                </p>
               ) : null}
               <p className="text-sm">{status.pending?.codeSent ? t("waitingCode") : t("step2")}</p>
               <form onSubmit={confirm.onSubmit} className="flex flex-wrap items-end gap-2">

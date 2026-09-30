@@ -98,9 +98,9 @@ const messengerStartPipeline = createAction({
   input: z.object({}),
   authorize: () => true,
   run: async ({ user }) => {
-    const { url, expiresAt } = await startMessengerLink(user.person.id);
-    // The URL carries the one-time token: it goes to the caller's browser and nowhere else, not the log.
-    return { data: { url, expiresAt: expiresAt.toISOString() }, audit: { resource: { type: "messenger_link", id: user.person.id }, summary: "link started" } };
+    const { url, sendText, expiresAt } = await startMessengerLink(user.person.id);
+    // The URL and the text carry the one-time token: they go to the caller's browser and nowhere else, not the log.
+    return { data: { url, sendText, expiresAt: expiresAt.toISOString() }, audit: { resource: { type: "messenger_link", id: user.person.id }, summary: "link started" } };
   },
 });
 export async function startMessengerLinkAction(input: unknown) {

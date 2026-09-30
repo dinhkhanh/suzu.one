@@ -1181,6 +1181,7 @@
       "connect": "Connect Messenger",
       "step1": "1. Open the conversation with the SuZu One page on Messenger (tap Get Started if asked).",
       "openLink": "Open Messenger",
+      "sendText": "No code arriving? Send this message to the page on Messenger:",
       "step2": "2. Enter the 6-digit code SuZu One just sent you on Messenger.",
       "codeLabel": "Verification code",
       "confirm": "Confirm",
@@ -1197,11 +1198,8 @@
       "failed": "That didn't work. Please try again.",
       "bot": {
         "code": "Your SuZu One verification code: {code}\nEnter it on the SuZu One Notifications page within {minutes} minutes. If you didn't ask for this, ignore this message — nobody else can use this code.",
-        "linkInvalid": "This connect link is no longer valid. Open SuZu One → Notifications → Connect Messenger for a new one.",
         "linked": "Connected. SuZu One will now send your notifications here. Message \"stop\" at any time to stop.",
-        "stopped": "Notifications to this Messenger account have stopped. You can connect again in SuZu One.",
-        "notLinked": "This is SuZu One's automated notification bot. This Messenger account isn't connected — connect it in SuZu One → Notifications.",
-        "help": "This is SuZu One's automated notification bot: it only sends notifications and doesn't answer questions. Open SuZu One for details. Message \"stop\" to stop receiving."
+        "stopped": "Notifications to this Messenger account have stopped. You can connect again in SuZu One."
       },
       "generic": {
         "title": "You have a new notification: {category}",

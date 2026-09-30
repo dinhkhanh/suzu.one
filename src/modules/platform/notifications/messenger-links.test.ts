@@ -70,7 +70,8 @@ beforeEach(async () => {
 describe("linking", () => {
   it("links only after the Messenger account got the code and the signed-in person typed it back", async () => {
     const { url } = await startMessengerLink(people.an);
-    expect(url).toMatch(/^https:\/\/m\.me\/[^?]+\?ref=link\./);
+    // Meta's ref alphabet is [A-Za-z0-9_=-]: anything else and the ref may never arrive.
+    expect(url).toMatch(/^https:\/\/m\.me\/[^?]+\?ref=link_[0-9A-Z]{16}$/);
     expect((await getMessengerStatus(people.an)).pending).toMatchObject({ codeSent: false });
 
     await handleMessengerEvents([{ type: "ref", psid: "psid-an", ref: tokenOf(url) }], new Date(), driver);
@@ -112,15 +113,27 @@ describe("linking", () => {
     expect(await db().$count(schema.messengerLink)).toBe(0);
   });
 
-  it("refuses unknown, expired and replaced links without saying whose they were", async () => {
+  it("takes the token sent as a message, for a first conversation where Meta passed no ref on", async () => {
+    const { sendText } = await startMessengerLink(people.an);
+    expect(sendText).toMatch(/^[0-9A-Z]{4}(-[0-9A-Z]{4}){3}$/);
+    // Get Started arrived without the ref: nothing is said.
+    await handleMessengerEvents([{ type: "other", psid: "psid-an" }], new Date(), driver);
+    expect(sent).toEqual([]);
+    // Pasted as it comes, lower-cased by a keyboard, spaced out: still the token.
+    await handleMessengerEvents([{ type: "text", psid: "psid-an", text: ` ${sendText.toLowerCase().replaceAll("-", " ")} ` }], new Date(), driver);
+    await confirmMessengerLink(people.an, codeSentTo("psid-an")!, new Date(), driver);
+    expect((await getMessengerStatus(people.an)).link).not.toBeNull();
+  });
+
+  it("answers unknown, expired and replaced links with silence", async () => {
     const start = new Date();
     const first = await startMessengerLink(people.an, start);
     const second = await startMessengerLink(people.an, start);
     await handleMessengerEvents([{ type: "ref", psid: "p1", ref: tokenOf(first.url) }], start, driver);
-    await handleMessengerEvents([{ type: "ref", psid: "p2", ref: "link.made-up" }], start, driver);
+    await handleMessengerEvents([{ type: "ref", psid: "p2", ref: "link_0000000000000000" }], start, driver);
+    await handleMessengerEvents([{ type: "text", psid: "p2", text: "0000-0000-0000-0000" }], start, driver);
     await handleMessengerEvents([{ type: "ref", psid: "p3", ref: tokenOf(second.url) }], minutes(start, 16), driver);
-    expect(sent.map((row) => codeSentTo(row.psid))).toEqual([undefined, undefined, undefined]);
-    expect(new Set(sent.map((row) => row.message.title)).size).toBe(1);
+    expect(sent).toEqual([]);
   });
 
   it("expires the code, and does not resend it for a double tap", async () => {
@@ -149,11 +162,24 @@ describe("linking", () => {
     await link(people.an, "psid-an");
     expect(await unlinkMessenger(people.an)).toBe(1);
     expect((await getMessengerStatus(people.an)).link).toBeNull();
-    // Anything else is answered, never with data.
+  });
+
+  it("says nothing to anybody else who writes to the Page, linked or not", async () => {
+    await link(people.an, "psid-an");
     sent = [];
-    await handleMessengerEvents([{ type: "text", psid: "psid-an", text: "lương tháng này bao nhiêu?" }], new Date(), driver);
-    expect(sent).toHaveLength(1);
-    expect(sent[0].message.link).toBe("https://suzu.one/notifications");
+    await handleMessengerEvents(
+      [
+        { type: "text", psid: "psid-an", text: "lương tháng này bao nhiêu?" },
+        { type: "other", psid: "psid-an" },
+        { type: "text", psid: "stranger", text: "xin chào" },
+        { type: "text", psid: "stranger", text: "stop" },
+        { type: "other", psid: "stranger" },
+      ],
+      new Date(),
+      driver,
+    );
+    expect(sent).toEqual([]);
+    expect((await getMessengerStatus(people.an)).link).not.toBeNull();
   });
 });
 

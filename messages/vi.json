@@ -1181,6 +1181,7 @@
       "connect": "Kết nối Messenger",
       "step1": "1. Mở cuộc trò chuyện với trang SuZu One trên Messenger (bấm Bắt đầu nếu được hỏi).",
       "openLink": "Mở Messenger",
+      "sendText": "Không nhận được mã? Gửi tin nhắn này cho trang trên Messenger:",
       "step2": "2. Nhập mã 6 chữ số mà SuZu One vừa gửi cho bạn trên Messenger.",
       "codeLabel": "Mã xác nhận",
       "confirm": "Xác nhận",
@@ -1197,11 +1198,8 @@
       "failed": "Không thực hiện được. Vui lòng thử lại.",
       "bot": {
         "code": "Mã xác nhận SuZu One của bạn: {code}\nNhập mã này trong trang Thông báo của SuZu One trong vòng {minutes} phút. Nếu bạn không yêu cầu, hãy bỏ qua tin nhắn này — không ai khác dùng được mã này.",
-        "linkInvalid": "Liên kết kết nối này không còn hiệu lực. Hãy mở SuZu One → Thông báo → Kết nối Messenger để lấy liên kết mới.",
         "linked": "Đã kết nối. Từ giờ SuZu One sẽ gửi thông báo của bạn tới đây. Nhắn \"dừng\" bất cứ lúc nào để ngừng nhận.",
-        "stopped": "Đã ngừng gửi thông báo tới Messenger này. Bạn có thể kết nối lại trong SuZu One.",
-        "notLinked": "Đây là bot thông báo tự động của SuZu One. Tài khoản Messenger này chưa được kết nối — hãy kết nối trong SuZu One → Thông báo.",
-        "help": "Đây là bot thông báo tự động của SuZu One: bot chỉ gửi thông báo, không trả lời câu hỏi. Mở SuZu One để xem chi tiết. Nhắn \"dừng\" để ngừng nhận."
+        "stopped": "Đã ngừng gửi thông báo tới Messenger này. Bạn có thể kết nối lại trong SuZu One."
       },
       "generic": {
         "title": "Bạn có thông báo mới: {category}",

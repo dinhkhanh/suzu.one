@@ -4,14 +4,19 @@
 // only through a two-sided proof:
 //   1. The signed-in person asks to connect. The app mints a one-time token and opens
 //      m.me/<page>?ref=<token>. Meta hands the token back to the webhook — signed with the app
-//      secret — together with the PSID of whoever opened it. The first PSID to present a live
-//      token is attached to the attempt and gets a six-digit code from the bot; nobody else can.
+//      secret — together with the PSID of whoever opened it. Meta passes the ref of a first
+//      conversation only through Get Started, and not always then, so the app also shows the token
+//      for the person to send as a plain message. The first PSID to present a live token, either
+//      way, is attached to the attempt and gets a six-digit code from the bot; nobody else can.
 //   2. The person types that code into the app, in the same signed-in session's account.
 // So the Messenger account proved it holds the token, and the app account proved it can read that
 // Messenger account's chat. A leaked link (a screenshot, a shoulder) gets its finder a code in
 // their own Messenger that they cannot type into anybody else's session.
 //
 // Tokens and codes are stored only as hashes, expire in minutes, and five wrong codes end the attempt.
+//
+// The Page is not advertised as SuZu One's: the bot is silent to everybody except a live token's
+// holder (the code) and a linked person (the link and stop confirmations).
 import "server-only";
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { and, desc, eq, gt, isNotNull, isNull, or } from "drizzle-orm";
@@ -26,7 +31,14 @@ import { invalidateMessengerStatus, messengerStatusKey } from "./messenger-outbo
 import { notify } from "./service";
 
 /** Prefix of the m.me `ref`, so a ref meant for something else one day is never taken for a link. */
-const REF_PREFIX = "link.";
+const REF_PREFIX = "link_";
+/**
+ * The token: 16 characters of Crockford's base32 (80 bits), within Meta's ref alphabet
+ * ([A-Za-z0-9_=-]) and short enough to paste as a message. Shown in groups of four.
+ */
+const TOKEN_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const TOKEN_LENGTH = 16;
+const TOKEN_PATTERN = new RegExp(`^[${TOKEN_ALPHABET}]{${TOKEN_LENGTH}}$`);
 const TOKEN_TTL_MINUTES = 15;
 /** How long the person has to type the code once the bot sent it. */
 const CODE_TTL_MINUTES = 10;
@@ -44,6 +56,16 @@ const sha256 = (value: string) => createHash("sha256").update(value).digest("hex
 const codeHashOf = (requestId: string, code: string) => sha256(`${requestId}:${code}`);
 const sameHash = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 const appUrl = (path: string) => new URL(path, env().BETTER_AUTH_URL).toString();
+
+const newToken = () => Array.from(randomBytes(TOKEN_LENGTH), (byte) => TOKEN_ALPHABET[byte % TOKEN_ALPHABET.length]).join("");
+const groupToken = (token: string) => token.match(/.{4}/g)!.join("-");
+/** The token in an m.me ref, or null for any other ref. */
+const tokenFromRef = (ref: string) => (ref.startsWith(REF_PREFIX) && TOKEN_PATTERN.test(ref.slice(REF_PREFIX.length)) ? ref.slice(REF_PREFIX.length) : null);
+/** The token in a message, however it was pasted (case, dashes, spaces), or null for anything else. */
+function tokenFromText(text: string): string | null {
+  const compact = text.toUpperCase().replace(/[\s-]/g, "");
+  return TOKEN_PATTERN.test(compact) ? compact : null;
+}
 
 // ── The person's status, for the notifications page ─────────────────────────────────────────
 
@@ -77,9 +99,12 @@ export async function getMessengerStatus(personId: string, now: Date = new Date(
 
 // ── Step 1: the link ────────────────────────────────────────────────────────────────────────
 
-/** A fresh attempt for the caller; any earlier open attempt of theirs is closed. Returns the m.me URL. */
-export async function startMessengerLink(personId: string, now: Date = new Date()): Promise<{ url: string; expiresAt: Date }> {
-  const token = `${REF_PREFIX}${randomBytes(32).toString("base64url")}`;
+/**
+ * A fresh attempt for the caller; any earlier open attempt of theirs is closed. Returns the m.me
+ * URL, and the token as the person may send it by message when Meta does not pass the ref on.
+ */
+export async function startMessengerLink(personId: string, now: Date = new Date()): Promise<{ url: string; sendText: string; expiresAt: Date }> {
+  const token = newToken();
   const expiresAt = new Date(now.getTime() + TOKEN_TTL_MINUTES * 60_000);
   await db().transaction(async (tx) => {
     await tx
@@ -89,28 +114,21 @@ export async function startMessengerLink(personId: string, now: Date = new Date(
     await tx.insert(schema.messengerLinkRequest).values({ personId, tokenHash: sha256(token), expiresAt, createdAt: now });
   });
   await invalidateMessengerStatus(personId);
-  return { url: messengerConnectUrl(token), expiresAt };
+  return { url: messengerConnectUrl(`${REF_PREFIX}${token}`), sendText: groupToken(token), expiresAt };
 }
 
 /**
- * Somebody on Messenger opened a connect link. The first PSID to present a live token owns the
- * attempt and receives a code; a different PSID is told the link is spent. Never says whose link
- * it was: the reply is the same for an unknown, expired or taken token.
+ * Somebody on Messenger presented a connect token, by opening the link or by sending it. The first
+ * PSID to present a live token owns the attempt and receives a code. An unknown, expired or taken
+ * token gets no answer at all: the Page does not say what it is to whoever wanders into it.
  */
-async function receiveRef(driver: MessengerDriver, psid: string, ref: string, now: Date): Promise<void> {
-  const request = ref.startsWith(REF_PREFIX)
-    ? (
-        await db()
-          .select()
-          .from(schema.messengerLinkRequest)
-          .where(and(eq(schema.messengerLinkRequest.tokenHash, sha256(ref)), isNull(schema.messengerLinkRequest.closedAt), gt(schema.messengerLinkRequest.expiresAt, now)))
-          .limit(1)
-      )[0]
-    : undefined;
-  if (!request || (request.psid !== null && request.psid !== psid)) {
-    await reply(driver, psid, botText("linkInvalid"), appUrl("/notifications"));
-    return;
-  }
+async function receiveToken(driver: MessengerDriver, psid: string, token: string, now: Date): Promise<void> {
+  const [request] = await db()
+    .select()
+    .from(schema.messengerLinkRequest)
+    .where(and(eq(schema.messengerLinkRequest.tokenHash, sha256(token)), isNull(schema.messengerLinkRequest.closedAt), gt(schema.messengerLinkRequest.expiresAt, now)))
+    .limit(1);
+  if (!request || (request.psid !== null && request.psid !== psid)) return;
   // Meta may deliver the same event twice, and people tap twice: one code per half-minute.
   if (request.codeSentAt && now.getTime() - request.codeSentAt.getTime() < RESEND_AFTER_SECONDS * 1000) return;
 
@@ -122,10 +140,7 @@ async function receiveRef(driver: MessengerDriver, psid: string, ref: string, no
     .set({ psid, codeHash: codeHashOf(request.id, code), codeSentAt: now, attempts: 0, expiresAt: new Date(now.getTime() + CODE_TTL_MINUTES * 60_000) })
     .where(and(eq(schema.messengerLinkRequest.id, request.id), isNull(schema.messengerLinkRequest.closedAt), or(isNull(schema.messengerLinkRequest.psid), eq(schema.messengerLinkRequest.psid, psid))))
     .returning({ id: schema.messengerLinkRequest.id });
-  if (!claimed) {
-    await reply(driver, psid, botText("linkInvalid"), appUrl("/notifications"));
-    return;
-  }
+  if (!claimed) return;
   await invalidateMessengerStatus(request.personId);
   await reply(driver, psid, botText("code", { code, minutes: CODE_TTL_MINUTES }), null);
 }
@@ -213,8 +228,8 @@ const normalise = (text: string) => text.trim().toLowerCase().replace(/\s+/g, " 
 
 /**
  * Handles what arrived at the webhook, already verified as Meta's and as this Page's. The bot
- * holds no conversation: it links, it stops, and to anything else it says what it is for. It never
- * answers a question with data — whatever the person wants to read is behind the app's sign-in.
+ * holds no conversation: it sends a live token's holder the code, lets a linked person stop, and
+ * says nothing to anything else — not even to a linked person, and never with data.
  */
 export async function handleMessengerEvents(events: readonly InboundEvent[], now: Date = new Date(), driver: MessengerDriver = messengerDriverFor()): Promise<void> {
   for (const event of events) {
@@ -225,16 +240,13 @@ export async function handleMessengerEvents(events: readonly InboundEvent[], now
       .where(and(eq(schema.messengerLink.psid, event.psid), isNull(schema.messengerLink.revokedAt)))
       .returning({ id: schema.messengerLink.id, personId: schema.messengerLink.personId });
 
-    if (event.type === "ref") {
-      await receiveRef(driver, event.psid, event.ref, now);
-    } else if (event.type === "text" && STOP_WORDS.has(normalise(event.text))) {
-      if (live) {
-        await db().update(schema.messengerLink).set({ revokedAt: now, revokedReason: "stopped" }).where(eq(schema.messengerLink.id, live.id));
-        await invalidateMessengerStatus(live.personId);
-      }
-      await reply(driver, event.psid, botText(live ? "stopped" : "notLinked"), appUrl("/notifications"));
-    } else {
-      await reply(driver, event.psid, botText(live ? "help" : "notLinked"), appUrl("/notifications"));
+    const token = event.type === "ref" ? tokenFromRef(event.ref) : event.type === "text" ? tokenFromText(event.text) : null;
+    if (token) {
+      await receiveToken(driver, event.psid, token, now);
+    } else if (live && event.type === "text" && STOP_WORDS.has(normalise(event.text))) {
+      await db().update(schema.messengerLink).set({ revokedAt: now, revokedReason: "stopped" }).where(eq(schema.messengerLink.id, live.id));
+      await invalidateMessengerStatus(live.personId);
+      await reply(driver, event.psid, botText("stopped"), appUrl("/notifications"));
     }
   }
 }
