@@ -1,4 +1,5 @@
 // Value lists shared by the server and the forms. Plain module: never "use client".
+import { slugify } from "@/lib/slug";
 import { ROLES } from "../platform/rbac/roles";
 
 export const SPACE_KINDS = ["open", "controlled"] as const;
@@ -40,3 +41,19 @@ export function parseSubjectKey(key: string): { type: SubjectType; id: string | 
 }
 
 export const SPACE_KEY = /^[a-z0-9][a-z0-9-]{1,39}$/;
+/** What a space key is made of when nobody types one: "Sổ tay nhân viên" → "so-tay-nhan-vien". */
+export const spaceKeyOf = (name: string): string => slugify(name, { maxLength: 40 });
+
+// ── Page addresses ──────────────────────────────────────────────────────────────────────────
+// A page lives at /kb/spaces/<space key>/<page slug>. The slug is made from the title and can be
+// changed; it is unique in its space, and an old one still leads to the page.
+
+export const PAGE_SLUG = /^[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?$/;
+/** The space's own addresses (/kb/spaces/<key>/new, /import): no page may take them. */
+export const RESERVED_PAGE_SLUGS: readonly string[] = ["new", "import"];
+/** A slug may be typed only if it reads as one — and never as a page id, which is looked up as an id. */
+export const isPageSlug = (value: string): boolean => PAGE_SLUG.test(value) && !UUID.test(value) && !RESERVED_PAGE_SLUGS.includes(value);
+export const pageSlugOf = (title: string): string => slugify(title, { maxLength: 80 }) || "trang";
+
+/** Where a page is read. A page from before slugs is found by its id there too. */
+export const pagePath = (spaceKey: string, page: { id: string; slug: string | null }): string => `/kb/spaces/${spaceKey}/${page.slug ?? page.id}`;

@@ -1,6 +1,6 @@
 // Spaces (FR-KB-01) and who they are open to (FR-KB-03).
 import "server-only";
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { listEntities, listOrgUnits, unitChoices } from "../platform/org/service";
@@ -37,8 +37,14 @@ async function spaceAccessRows(executor: Executor, spaceIds: readonly string[]):
   return bySpace;
 }
 
+/** By id, or by key — a key the space had before finds it too (the caller sends the reader on to `space.key`). */
 export async function loadSpace(where: { id: string } | { key: string }, executor: Executor = db()): Promise<LoadedSpace | null> {
-  const [space] = await executor.select().from(schema.kbSpace).where("id" in where ? eq(schema.kbSpace.id, where.id) : eq(schema.kbSpace.key, where.key)).limit(1);
+  const [space] = await executor
+    .select()
+    .from(schema.kbSpace)
+    .where("id" in where ? eq(schema.kbSpace.id, where.id) : or(eq(schema.kbSpace.key, where.key), sql`${where.key} = any(${schema.kbSpace.formerKeys})`))
+    .orderBy(...("key" in where ? [sql`${schema.kbSpace.key} = ${where.key} desc`] : []))
+    .limit(1);
   if (!space) return null;
   const access = (await spaceAccessRows(executor, [space.id])).get(space.id)!;
   return { space, access, facts: spaceFacts(space, access) };
@@ -73,6 +79,8 @@ export async function createSpace(input: SpaceInput, actorPersonId: string, acce
   const run = async (tx: Tx) => {
     const [taken] = await tx.select({ id: schema.kbSpace.id }).from(schema.kbSpace).where(eq(schema.kbSpace.key, input.key)).limit(1);
     if (taken) throw new ActionError("kb_space_key_taken");
+    // A space that had this key before gives it up to the new one.
+    await tx.update(schema.kbSpace).set({ formerKeys: sql`array_remove(${schema.kbSpace.formerKeys}, ${input.key})` }).where(sql`${input.key} = any(${schema.kbSpace.formerKeys})`);
     if (input.entityId) {
       const [entity] = await tx.select({ id: schema.entity.id }).from(schema.entity).where(eq(schema.entity.id, input.entityId)).limit(1);
       if (!entity) throw new ActionError("kb_subject_unknown");
@@ -93,12 +101,30 @@ export async function createSpace(input: SpaceInput, actorPersonId: string, acce
   return executor ? run(executor) : db().transaction(run);
 }
 
-/** The key and the entity stay: the key is in every link, and the entity decides who manages the space. */
-export async function updateSpace(spaceId: string, values: Pick<SpaceInput, "name" | "description" | "icon" | "kind" | "sortOrder">): Promise<{ before: SpaceRow; after: SpaceRow }> {
-  const [before] = await db().select().from(schema.kbSpace).where(eq(schema.kbSpace.id, spaceId)).limit(1);
-  if (!before) throw new ActionError("kb_space_not_found");
-  const [after] = await db().update(schema.kbSpace).set({ ...values, updatedAt: new Date() }).where(eq(schema.kbSpace.id, spaceId)).returning();
-  return { before, after };
+/**
+ * The entity stays: it decides who manages the space. The key can change: the old one is kept
+ * among the space's former keys, so a link to it still finds the space; a space that had the new
+ * key before gives it up.
+ */
+export async function updateSpace(spaceId: string, values: Pick<SpaceInput, "name" | "description" | "icon" | "kind" | "sortOrder"> & { key?: string }): Promise<{ before: SpaceRow; after: SpaceRow }> {
+  return db().transaction(async (tx) => {
+    const [before] = await tx.select().from(schema.kbSpace).where(eq(schema.kbSpace.id, spaceId)).for("update").limit(1);
+    if (!before) throw new ActionError("kb_space_not_found");
+    const { key = before.key, ...rest } = values;
+    let formerKeys = before.formerKeys;
+    if (key !== before.key) {
+      if (!SPACE_KEY.test(key)) throw new ActionError("kb_space_key_invalid");
+      const [taken] = await tx.select({ id: schema.kbSpace.id }).from(schema.kbSpace).where(and(eq(schema.kbSpace.key, key), ne(schema.kbSpace.id, spaceId))).limit(1);
+      if (taken) throw new ActionError("kb_space_key_taken");
+      await tx
+        .update(schema.kbSpace)
+        .set({ formerKeys: sql`array_remove(${schema.kbSpace.formerKeys}, ${key})` })
+        .where(and(ne(schema.kbSpace.id, spaceId), sql`${key} = any(${schema.kbSpace.formerKeys})`));
+      formerKeys = [...new Set([...before.formerKeys, before.key])].filter((old) => old !== key).slice(-20);
+    }
+    const [after] = await tx.update(schema.kbSpace).set({ ...rest, key, formerKeys, updatedAt: new Date() }).where(eq(schema.kbSpace.id, spaceId)).returning();
+    return { before, after };
+  });
 }
 
 export async function setSpaceArchived(spaceId: string, archived: boolean): Promise<{ before: SpaceRow; after: SpaceRow }> {

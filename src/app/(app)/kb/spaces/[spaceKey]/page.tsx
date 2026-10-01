@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -22,6 +22,8 @@ export default async function SpacePage(props: PageProps<"/kb/spaces/[spaceKey]"
   const loaded = /^[a-z0-9-]{1,40}$/.test(spaceKey) ? await loadSpace({ key: spaceKey }) : null;
   const level = loaded ? spaceLevel(viewer, loaded.facts) : null;
   if (!loaded || !level) notFound();
+  // A key the space had before: on to the one it has now.
+  if (loaded.space.key !== spaceKey) redirect(`/kb/spaces/${loaded.space.key}`);
 
   const { space } = loaded;
   const manages = level === "manage";
@@ -68,7 +70,7 @@ export default async function SpacePage(props: PageProps<"/kb/spaces/[spaceKey]"
             </Link>
           ) : null}
         </div>
-        <PageTree tree={tree} />
+        <PageTree tree={tree} spaceKey={loaded.space.key} />
       </section>
 
       {files.length > 0 ? (
@@ -101,7 +103,7 @@ export default async function SpacePage(props: PageProps<"/kb/spaces/[spaceKey]"
           </section>
           <section className="flex flex-col gap-3 rounded-md border p-4">
             <h2 className="text-sm font-medium">{t("space.settings")}</h2>
-            <SpaceSettingsForm space={{ id: space.id, name: space.name, description: space.description, icon: space.icon, kind: space.kind, sortOrder: space.sortOrder }} />
+            <SpaceSettingsForm space={{ id: space.id, key: space.key, name: space.name, description: space.description, icon: space.icon, kind: space.kind, sortOrder: space.sortOrder }} />
             <div>
               <ArchiveSpaceButton spaceId={space.id} archived={!!space.archivedAt} />
             </div>

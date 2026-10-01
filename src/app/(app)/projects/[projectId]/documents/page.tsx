@@ -78,7 +78,7 @@ export default async function ProjectDocumentsPage({ params }: PageProps<"/proje
               </div>
             </div>
             <p className="text-xs text-muted-foreground">{t("audience")}</p>
-            <PageTree tree={documents.tree} />
+            <PageTree tree={documents.tree} spaceKey={documents.space.key} />
           </section>
 
           <section className="flex flex-col gap-3">

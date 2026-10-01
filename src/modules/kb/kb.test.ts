@@ -21,9 +21,9 @@ import { migrateTestDb } from "../../../tests/helpers/db";
 import type { Grant, Principal } from "../platform/rbac/policy";
 import { pageVisibleSql, spaceEditableSql } from "./access-sql";
 import { doc, heading, link, paragraph } from "@/modules/platform/rich-text/engine/build";
-import { compareVersions, createPage, deletePage, getReadingView, levelOf, listTree, listVersions, loadPage, movePage, publishPage, recordView, restoreVersion, saveDraft, setPageAccess, setPageArchived, unpublishPage } from "./pages";
+import { compareVersions, createPage, deletePage, getReadingView, levelOf, listTree, listVersions, loadPage, loadPageInSpace, movePage, publishPage, recordView, restoreVersion, saveDraft, setPageAccess, setPageArchived, setPageSlug, unpublishPage } from "./pages";
 import { atLeast, type KbViewer, spaceLevel, viewerKeys } from "./policy";
-import { createSpace, listSpaces, loadSpace, setSpaceAccess, setSpaceArchived } from "./spaces";
+import { createSpace, listSpaces, loadSpace, setSpaceAccess, setSpaceArchived, updateSpace } from "./spaces";
 
 type Who = "owner" | "hrGroup" | "hrSzm" | "head" | "huy" | "khoi" | "ngo";
 const ids = {} as Record<Who | "szm" | "szc" | "vid" | "des", string>;
@@ -248,5 +248,53 @@ describe("working copy, publishing, versions", () => {
     await recordView(pages.leave, ids.huy, "2026-09-20");
     await recordView(pages.leave, ids.huy, "2026-09-21");
     expect(await db().select().from(schema.kbPageView).where(eq(schema.kbPageView.personId, ids.huy))).toHaveLength(2);
+  });
+});
+
+describe("addresses", () => {
+  const actor = () => ({ personId: ids.hrGroup });
+  const slugOf = async (pageId: string) => (await loadPage(pageId))!.page.slug;
+
+  it("give a page its title's slug, unique in its space, never one of the space's own", async () => {
+    expect(await slugOf(pages.leave)).toBe("quy-dinh-nghi-phep");
+    const twin = await createPage({ spaceId: spaces.handbook, parentId: null, title: "Quy định nghỉ phép" }, actor());
+    expect(twin.slug).toBe("quy-dinh-nghi-phep-2");
+    // Another space has its own addresses.
+    expect((await createPage({ spaceId: spaces.tools, parentId: null, title: "Quy định nghỉ phép" }, actor())).slug).toBe("quy-dinh-nghi-phep");
+    expect((await createPage({ spaceId: spaces.tools, parentId: null, title: "New" }, actor())).slug).toBe("new-2");
+    expect((await createPage({ spaceId: spaces.tools, parentId: null, title: "Đặt tên", slug: "ten-rieng" }, actor())).slug).toBe("ten-rieng");
+    expect(await fails(createPage({ spaceId: spaces.handbook, parentId: null, title: "x", slug: "quy-dinh-nghi-phep" }, actor()))).toBe("kb_page_slug_taken");
+    expect(await fails(createPage({ spaceId: spaces.handbook, parentId: null, title: "x", slug: "import" }, actor()))).toBe("kb_page_slug_reserved");
+    expect(await fails(createPage({ spaceId: spaces.handbook, parentId: null, title: "x", slug: "Có Dấu" }, actor()))).toBe("kb_page_slug_invalid");
+  });
+
+  it("find a page by its slug, an old slug or its id — and an old slug can be taken over", async () => {
+    const page = await createPage({ spaceId: spaces.tools, parentId: null, title: "Hướng dẫn VPN" }, actor());
+    await setPageSlug(page.id, "vpn");
+    expect((await loadPageInSpace(spaces.tools, "vpn"))?.page.id).toBe(page.id);
+    expect((await loadPageInSpace(spaces.tools, "huong-dan-vpn"))?.page.slug).toBe("vpn");
+    expect((await loadPageInSpace(spaces.tools, page.id))?.page.slug).toBe("vpn");
+    expect(await loadPageInSpace(spaces.handbook, "vpn")).toBeNull();
+
+    // Another page takes the old address: it is found there now, and the first page lets it go.
+    const other = await createPage({ spaceId: spaces.tools, parentId: null, title: "x", slug: "huong-dan-vpn" }, actor());
+    expect((await loadPageInSpace(spaces.tools, "huong-dan-vpn"))?.page.id).toBe(other.id);
+    await setPageSlug(other.id, "khac");
+    await setPageSlug(page.id, "huong-dan-vpn");
+    expect((await loadPage(other.id))!.page.formerSlugs).not.toContain("huong-dan-vpn");
+    expect((await loadPage(page.id))!.page.formerSlugs).toEqual(["vpn"]);
+    expect(await fails(setPageSlug(page.id, "khac"))).toBe("kb_page_slug_taken");
+  });
+
+  it("let a space change its key and still be found by the old one", async () => {
+    const space = await createSpace({ key: "so-tay-cu", name: "Sổ tay", description: null, icon: null, entityId: null, kind: "open", sortOrder: 0 }, ids.owner);
+    const { after } = await updateSpace(space.id, { key: "so-tay", name: "Sổ tay", description: null, icon: null, kind: "open", sortOrder: 0 });
+    expect(after.formerKeys).toEqual(["so-tay-cu"]);
+    expect((await loadSpace({ key: "so-tay-cu" }))?.space.key).toBe("so-tay");
+    expect(await fails(updateSpace(space.id, { key: "handbook", name: "Sổ tay", description: null, icon: null, kind: "open", sortOrder: 0 }))).toBe("kb_space_key_taken");
+    // A new space may take the old key; the first space gives it up.
+    const newcomer = await createSpace({ key: "so-tay-cu", name: "Mới", description: null, icon: null, entityId: null, kind: "open", sortOrder: 0 }, ids.owner);
+    expect((await loadSpace({ key: "so-tay-cu" }))?.space.id).toBe(newcomer.id);
+    expect((await loadSpace({ id: space.id }))!.space.formerKeys).toEqual([]);
   });
 });

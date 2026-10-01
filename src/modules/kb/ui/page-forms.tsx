@@ -6,23 +6,50 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
-import { archivePageAction, createPageAction, deletePageAction, movePageAction, publishPageAction, restoreVersionAction, savePageAsTemplateAction, setPageMetaAction, submitPageReviewAction, unpublishPageAction } from "../actions";
+import { archivePageAction, createPageAction, deletePageAction, movePageAction, publishPageAction, restoreVersionAction, savePageAsTemplateAction, setPageMetaAction, setPageSlugAction, submitPageReviewAction, unpublishPageAction } from "../actions";
+import { pagePath, pageSlugOf } from "../enums";
 
 type ParentOption = { id: string; title: string; depth: number };
 const indent = (option: ParentOption) => `${"— ".repeat(option.depth)}${option.title}`;
 
-export function NewPageForm({ spaceId, parents, defaultParentId, templates = [] }: { spaceId: string; parents: ParentOption[]; defaultParentId: string; templates?: { id: string; name: string; description: string | null }[] }) {
+/** A page's address in its space: "/kb/spaces/<key>/" before the box that takes the slug. */
+function SlugInput({ spaceKey, value, onChange }: { spaceKey: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <InputGroup>
+      <InputGroupAddon>
+        <InputGroupText className="max-w-[60%] truncate font-mono text-xs">/kb/spaces/{spaceKey}/</InputGroupText>
+      </InputGroupAddon>
+      <InputGroupInput id="slug" name="slug" value={value} onChange={(event) => onChange(event.target.value.toLowerCase())} maxLength={100} pattern="[a-z0-9](?:[a-z0-9\-]{0,98}[a-z0-9])?" spellCheck={false} autoComplete="off" className="font-mono" />
+    </InputGroup>
+  );
+}
+
+export function NewPageForm({ spaceId, spaceKey, parents, defaultParentId, templates = [] }: { spaceId: string; spaceKey: string; parents: ParentOption[]; defaultParentId: string; templates?: { id: string; name: string; description: string | null }[] }) {
   const t = useTranslations("kb");
   const router = useRouter();
   const form = useActionForm(createPageAction, { extra: { spaceId }, onSuccess: (data) => router.push(`/kb/pages/${data.id}/edit`) });
+  // The address follows the title until somebody types their own; left empty, the server makes it.
+  const [slug, setSlug] = useState("");
+  const [slugEdited, setSlugEdited] = useState(false);
   return (
     <form onSubmit={form.onSubmit} className="flex max-w-xl flex-col gap-3">
       <FieldErrors value={form.fieldErrors}>
         <Field name="title" label={t("fields.title")}>
-          <Input id="title" name="title" required maxLength={200} autoFocus />
+          <Input id="title" name="title" required maxLength={200} autoFocus onChange={(event) => (slugEdited ? null : setSlug(event.target.value.trim() ? pageSlugOf(event.target.value) : ""))} />
+        </Field>
+        <Field name="slug" label={t("fields.pageSlug")}>
+          <SlugInput
+            spaceKey={spaceKey}
+            value={slug}
+            onChange={(value) => {
+              setSlugEdited(value !== "");
+              setSlug(value);
+            }}
+          />
         </Field>
         <Field name="parentId" label={t("fields.parent")}>
           <Select id="parentId" name="parentId" defaultValue={defaultParentId}>
@@ -152,6 +179,33 @@ export function MovePageForm({ pageId, parents, parentId, siblingCount }: { page
       <div className="sm:col-span-3">
         <FormError namespace="kb.errors" errorKey={form.errorKey} />
       </div>
+    </form>
+  );
+}
+
+/** The page's address: edited here, made again from the title on request. Old addresses keep working. */
+export function PageSlugForm({ pageId, spaceKey, slug, title }: { pageId: string; spaceKey: string; slug: string | null; title: string }) {
+  const t = useTranslations("kb");
+  const router = useRouter();
+  const [value, setValue] = useState(slug ?? "");
+  const form = useActionForm(setPageSlugAction, { extra: { pageId }, onSuccess: (data) => router.replace(pagePath(spaceKey, { id: data.id, slug: data.slug })) });
+  return (
+    <form onSubmit={form.onSubmit} className="flex flex-col gap-2">
+      <FieldErrors value={form.fieldErrors}>
+        <Field name="slug" label={t("page.address")}>
+          <SlugInput spaceKey={spaceKey} value={value} onChange={setValue} />
+        </Field>
+      </FieldErrors>
+      <p className="text-xs text-muted-foreground">{t("page.slugHint")}</p>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="ghost" size="sm" onClick={() => setValue(pageSlugOf(title))}>
+          {t("page.slugFromTitle")}
+        </Button>
+        <Button type="submit" variant="outline" size="sm" disabled={form.pending || !value || value === slug}>
+          {t("save")}
+        </Button>
+      </div>
+      <FormError namespace="kb.errors" errorKey={form.errorKey} />
     </form>
   );
 }

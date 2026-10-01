@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { pagePath } from "@/modules/kb/enums";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { canManageSpace, spaceOwner, getAckReport, loadPage } from "@/modules/kb/service";
@@ -30,7 +31,7 @@ export default async function AckReportPage(props: PageProps<"/kb/pages/[pageId]
     <div className="flex max-w-4xl flex-col gap-8">
       <header className="flex flex-col gap-1">
         <p className="text-sm text-muted-foreground">
-          <Link href={`/kb/pages/${page.id}`} className="hover:underline">
+          <Link href={pagePath(loaded.space.key, page)} className="hover:underline">
             {page.publishedTitle ?? page.title}
           </Link>
         </p>

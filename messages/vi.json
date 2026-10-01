@@ -6587,7 +6587,8 @@
       "kind": "Cách xuất bản",
       "icon": "Biểu tượng",
       "sortOrder": "Thứ tự",
-      "description": "Mô tả"
+      "description": "Mô tả",
+      "pageSlug": "Đường dẫn trang"
     },
     "space": {
       "new": "Tạo không gian mới",
@@ -6608,7 +6609,8 @@
       "archive": "Lưu trữ không gian",
       "restore": "Khôi phục không gian",
       "archived": "Đã lưu trữ",
-      "archiveConfirm": "Lưu trữ không gian này? Người đọc sẽ không còn thấy nó; nội dung vẫn được giữ."
+      "archiveConfirm": "Lưu trữ không gian này? Người đọc sẽ không còn thấy nó; nội dung vẫn được giữ.",
+      "keyHint": "Chữ thường, số và dấu gạch ngang. Đổi mã thì các liên kết cũ vẫn dẫn về không gian này."
     },
     "page": {
       "new": "Trang mới",
@@ -6636,7 +6638,10 @@
       "archive": "Lưu trữ",
       "unarchive": "Bỏ lưu trữ",
       "delete": "Xoá trang",
-      "deleteConfirm": "Xoá trang này?"
+      "deleteConfirm": "Xoá trang này?",
+      "address": "Địa chỉ trang",
+      "slugHint": "Tự tạo từ tiêu đề; có thể sửa. Đổi đường dẫn thì các liên kết cũ vẫn dẫn về trang này.",
+      "slugFromTitle": "Tạo lại từ tiêu đề"
     },
     "editor": {
       "body": "Nội dung trang",
@@ -6763,7 +6768,10 @@
       "kb_template_not_found": "Không tìm thấy mẫu trang (hoặc mẫu đã tắt).",
       "kb_import_empty": "Chưa có nội dung để nhập.",
       "kb_import_too_large": "Nội dung quá dài để nhập một lần.",
-      "kb_import_unreadable": "Không đọc được tệp này."
+      "kb_import_unreadable": "Không đọc được tệp này.",
+      "kb_page_slug_invalid": "Đường dẫn chỉ gồm chữ thường, số và dấu gạch ngang (tối đa 100 ký tự).",
+      "kb_page_slug_taken": "Trong không gian này đã có trang dùng đường dẫn này.",
+      "kb_page_slug_reserved": "Đường dẫn này được không gian dùng riêng, hãy chọn đường dẫn khác."
     },
     "review": {
       "title": "Duyệt xuất bản",

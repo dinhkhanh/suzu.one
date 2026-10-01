@@ -6587,7 +6587,8 @@
       "kind": "Publishing",
       "icon": "Icon",
       "sortOrder": "Order",
-      "description": "Description"
+      "description": "Description",
+      "pageSlug": "Page address"
     },
     "space": {
       "new": "Create a space",
@@ -6608,7 +6609,8 @@
       "archive": "Archive space",
       "restore": "Restore space",
       "archived": "Archived",
-      "archiveConfirm": "Archive this space? Readers will no longer see it; its content is kept."
+      "archiveConfirm": "Archive this space? Readers will no longer see it; its content is kept.",
+      "keyHint": "Lower-case letters, digits and hyphens. Old links keep leading here after the key changes."
     },
     "page": {
       "new": "New page",
@@ -6636,7 +6638,10 @@
       "archive": "Archive",
       "unarchive": "Unarchive",
       "delete": "Delete page",
-      "deleteConfirm": "Delete this page?"
+      "deleteConfirm": "Delete this page?",
+      "address": "Page address",
+      "slugHint": "Made from the title; you can change it. Old links keep leading here after it changes.",
+      "slugFromTitle": "Make from the title"
     },
     "editor": {
       "body": "Page content",
@@ -6763,7 +6768,10 @@
       "kb_template_not_found": "Template not found (or switched off).",
       "kb_import_empty": "Nothing to import.",
       "kb_import_too_large": "Too long to import in one go.",
-      "kb_import_unreadable": "This file could not be read."
+      "kb_import_unreadable": "This file could not be read.",
+      "kb_page_slug_invalid": "The address takes lower-case letters, digits and hyphens (up to 100 characters).",
+      "kb_page_slug_taken": "Another page in this space already uses this address.",
+      "kb_page_slug_reserved": "The space uses this address for itself; please pick another."
     },
     "review": {
       "title": "Publish review",

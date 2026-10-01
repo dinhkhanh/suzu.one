@@ -1,6 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { after } from "next/server";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -8,11 +8,11 @@ import { buttonVariants } from "@/components/ui/button";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { setPageAccessAction } from "@/modules/kb/actions";
-import { parseSubjectKey } from "@/modules/kb/enums";
-import { atLeast, breadcrumbOf, canManageSpace, spaceOwner, canOrganisePages, getAckSettings, getAckStatus, canPublishDirectly, getReadingView, kbViewerOf, levelOf, listPageAccess, listTree, loadPage, moveTargets, outlineOf, recordView, subjectNames, subjectOptions, syncReviewState } from "@/modules/kb/service";
+import { pagePath, parseSubjectKey } from "@/modules/kb/enums";
+import { atLeast, breadcrumbOf, canManageSpace, spaceOwner, canOrganisePages, getAckSettings, getAckStatus, canPublishDirectly, getReadingView, kbViewerOf, levelOf, listPageAccess, listTree, loadPage, loadPageInSpace, loadSpace, moveTargets, outlineOf, recordView, subjectNames, subjectOptions, syncReviewState } from "@/modules/kb/service";
 import { AccessForm } from "@/modules/kb/ui/access-form";
 import { AckSettingsForm, AcknowledgeButton } from "@/modules/kb/ui/ack-forms";
-import { MovePageForm, PageLifecycleButtons, PageMetaForm, PublishDraftButton, SaveAsTemplateForm, SubmitReviewButton } from "@/modules/kb/ui/page-forms";
+import { MovePageForm, PageLifecycleButtons, PageMetaForm, PageSlugForm, PublishDraftButton, SaveAsTemplateForm, SubmitReviewButton } from "@/modules/kb/ui/page-forms";
 import { PageTree } from "@/modules/kb/ui/page-tree";
 import { PageDoc } from "@/modules/kb/ui/page-doc";
 import { KbSearchBox } from "@/modules/kb/ui/search-box";
@@ -20,18 +20,21 @@ import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("knowledgeBase");
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
+/** A page, read at its address in its space: /kb/spaces/<key>/<slug>. */
+export default async function KbPage(props: PageProps<"/kb/spaces/[spaceKey]/[pageSlug]">) {
   const user = await requireUser();
-  const { pageId } = await props.params;
+  const { spaceKey, pageSlug } = await props.params;
   const query = await props.searchParams;
   const viewer = kbViewerOf(user);
-  let loaded = UUID.test(pageId) ? await loadPage(pageId) : null;
+  const inSpace = /^[a-z0-9-]{1,40}$/.test(spaceKey) ? await loadSpace({ key: spaceKey }) : null;
+  let loaded = inSpace ? await loadPageInSpace(inSpace.space.id, pageSlug) : null;
   // A review that was withdrawn through the generic approvals screen leaves the page to be released here.
-  if (loaded && loaded.page.status === "in_review" && (await syncReviewState(loaded.page))) loaded = await loadPage(pageId);
+  if (loaded && loaded.page.status === "in_review" && (await syncReviewState(loaded.page))) loaded = await loadPage(loaded.page.id);
   const level = loaded ? levelOf(viewer, loaded) : null;
   if (!loaded || !level) notFound();
+  // An old key, an old slug or the page's id: on to the address it has now.
+  const here = pagePath(loaded.space.key, loaded.page);
+  if (here !== `/kb/spaces/${spaceKey}/${pageSlug}`) redirect(query.draft === "1" ? `${here}?draft=1` : here);
 
   const { page, space } = loaded;
   const editor = atLeast(level, "edit");
@@ -82,7 +85,7 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
           <span aria-hidden>{space.icon ?? "📄"}</span> {space.name}
         </Link>
         <KbSearchBox spaceId={space.id} compact />
-        <PageTree tree={tree} currentId={page.id} compact />
+        <PageTree tree={tree} spaceKey={space.key} currentId={page.id} compact />
       </aside>
 
       <article className="order-1 flex min-w-0 max-w-3xl flex-col gap-6 lg:order-2">
@@ -98,7 +101,7 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
             {trail.map((node) => (
               <span key={node.id} className="flex items-center gap-1">
                 <span aria-hidden>/</span>
-                <Link href={`/kb/pages/${node.id}`} className="hover:underline">
+                <Link href={pagePath(space.key, node)} className="hover:underline">
                   {node.title}
                 </Link>
               </span>
@@ -136,7 +139,7 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
         {editor && page.publishedVersionId && page.hasUnpublishedChanges ? (
           <Alert variant="warning">
             <span>{view.showing === "draft" ? t("page.showingDraft") : t("page.hasDraft")}</span>
-            <Link href={view.showing === "draft" ? `/kb/pages/${page.id}` : `/kb/pages/${page.id}?draft=1`} className="underline underline-offset-2">
+            <Link href={view.showing === "draft" ? here : `${here}?draft=1`} className="underline underline-offset-2">
               {view.showing === "draft" ? t("page.viewPublished") : t("page.viewDraft")}
             </Link>
             {page.status === "in_review" ? null : publishes ? <PublishDraftButton pageId={page.id} /> : space.kind === "controlled" ? <SubmitReviewButton pageId={page.id} /> : null}
@@ -201,6 +204,7 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
             <summary className="cursor-pointer text-sm font-medium">{t("page.manage")}</summary>
             <div className="flex flex-col gap-6 pt-4">
               <PageMetaForm pageId={page.id} ownerPersonId={page.ownerPersonId} reviewBy={page.reviewBy} people={ownerChoices} />
+              {editor && !page.deletedAt ? <PageSlugForm pageId={page.id} spaceKey={space.key} slug={page.slug} title={page.publishedTitle ?? page.title} /> : null}
               {manages ? <SaveAsTemplateForm pageId={page.id} defaultName={page.title} /> : null}
               {manages && choices ? <AckSettingsForm pageId={page.id} required={page.ackRequired} dueDays={page.ackDueDays} audience={audienceRows} choices={choices} /> : null}
               {organises && choices ? (

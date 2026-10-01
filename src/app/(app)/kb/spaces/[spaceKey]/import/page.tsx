@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { atLeast, canCreatePage, kbViewerOf, listTree, loadPage, loadSpace, spaceLevel } from "@/modules/kb/service";
 import { ImportPageForm } from "@/modules/kb/ui/import-form";
@@ -17,6 +17,7 @@ export default async function ImportPagePage(props: PageProps<"/kb/spaces/[space
   const viewer = kbViewerOf(user);
   const loaded = /^[a-z0-9-]{1,40}$/.test(spaceKey) ? await loadSpace({ key: spaceKey }) : null;
   if (!loaded || loaded.space.archivedAt || !spaceLevel(viewer, loaded.facts)) notFound();
+  if (loaded.space.key !== spaceKey) redirect(`/kb/spaces/${loaded.space.key}/import${typeof query.parent === "string" ? `?parent=${encodeURIComponent(query.parent)}` : ""}`);
 
   // Under a page the viewer may edit (a delegated subtree), or anywhere for the space's editors.
   const parentId = typeof query.parent === "string" && UUID.test(query.parent) ? query.parent : "";

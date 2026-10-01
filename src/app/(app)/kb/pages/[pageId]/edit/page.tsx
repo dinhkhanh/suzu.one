@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { pagePath } from "@/modules/kb/enums";
 import { requireUser } from "@/modules/platform/auth/session";
 import { atLeast, canPublishDirectly, kbViewerOf, levelOf, loadPage, syncReviewState } from "@/modules/kb/service";
 import { PageEditor } from "@/modules/kb/ui/editor";
@@ -28,7 +29,7 @@ export default async function EditKbPage(props: PageProps<"/kb/pages/[pageId]/ed
           {space.name}
         </Link>
         <span aria-hidden> / </span>
-        <Link href={`/kb/pages/${page.id}`} className="hover:underline">
+        <Link href={pagePath(space.key, page)} className="hover:underline">
           {t("page.backToPage")}
         </Link>
       </p>

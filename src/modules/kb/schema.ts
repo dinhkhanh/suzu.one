@@ -28,8 +28,11 @@ export const kbSpace = pgTable(
   "kb_space",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    // The address of the space: /kb/spaces/<key>.
+    // The address of the space: /kb/spaces/<key>. Made from the name, and can be changed.
     key: text("key").notNull().unique(),
+    // Keys it had before: an old link still finds the space and is sent on to the current key. A
+    // key another space takes for its own leaves this list.
+    formerKeys: text("former_keys").array().notNull().default(sql`'{}'::text[]`),
     name: text("name").notNull(),
     description: text("description"),
     icon: text("icon"),
@@ -65,6 +68,12 @@ export const kbPage = pgTable(
       .notNull()
       .references(() => kbSpace.id),
     parentId: uuid("parent_id").references((): AnyPgColumn => kbPage.id),
+    // The page's address in its space, /kb/spaces/<key>/<slug>: made from the title when the page
+    // is made, and can be changed. Unique within the space. null only for a page made by code older
+    // than slugs; its id still finds it.
+    slug: text("slug"),
+    // Slugs it had before, sent on to the current one; a slug another page takes leaves this list.
+    formerSlugs: text("former_slugs").array().notNull().default(sql`'{}'::text[]`),
     // The working copy: what editors see and change. Readers get the published version.
     title: text("title").notNull(),
     content: jsonb("content").notNull(),
@@ -110,6 +119,8 @@ export const kbPage = pgTable(
     index("kb_page_access_root_idx").on(t.accessRootId),
     index("kb_page_published_at_idx").on(t.publishedAt),
     index("kb_page_search_idx").using("gin", t.searchVector),
+    uniqueIndex("kb_page_space_slug_idx").on(t.spaceId, t.slug),
+    index("kb_page_former_slugs_idx").using("gin", t.formerSlugs),
   ],
 ).enableRLS();
 

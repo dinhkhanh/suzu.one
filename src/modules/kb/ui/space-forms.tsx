@@ -7,9 +7,8 @@ import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { slugify } from "@/lib/slug";
 import { archiveSpaceAction, createSpaceAction, updateSpaceAction } from "../actions";
-import { SPACE_KINDS, type SpaceKind } from "../enums";
+import { SPACE_KINDS, spaceKeyOf, type SpaceKind } from "../enums";
 
 type Option = { id: string; name: string };
 
@@ -40,14 +39,14 @@ export function NewSpaceForm({ entities, units, groupWide }: { entities: Option[
       <FieldErrors value={form.fieldErrors}>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field name="name" label={t("fields.spaceName")}>
-            <Input id="name" name="name" required maxLength={120} onChange={(event) => (keyEdited ? null : setKey(slugify(event.target.value, { maxLength: 40 })))} />
+            <Input id="name" name="name" required maxLength={120} onChange={(event) => (keyEdited ? null : setKey(spaceKeyOf(event.target.value)))} />
           </Field>
           <Field name="key" label={t("fields.spaceKey")}>
             <Input
               id="key"
               name="key"
               required
-              pattern="[a-z0-9][a-z0-9-]{1,39}"
+              pattern="[a-z0-9][a-z0-9\-]{1,39}"
               placeholder="so-tay"
               value={key}
               onChange={(event) => {
@@ -100,16 +99,23 @@ export function NewSpaceForm({ entities, units, groupWide }: { entities: Option[
   );
 }
 
-export function SpaceSettingsForm({ space }: { space: { id: string; name: string; description: string | null; icon: string | null; kind: SpaceKind; sortOrder: number } }) {
+export function SpaceSettingsForm({ space }: { space: { id: string; key: string; name: string; description: string | null; icon: string | null; kind: SpaceKind; sortOrder: number } }) {
   const t = useTranslations("kb");
   const router = useRouter();
-  const form = useActionForm(updateSpaceAction, { extra: { spaceId: space.id }, onSuccess: () => router.refresh() });
+  // A new key is a new address: go there (the old one would only send us on).
+  const form = useActionForm(updateSpaceAction, { extra: { spaceId: space.id }, onSuccess: (data) => (data.key !== space.key ? router.replace(`/kb/spaces/${data.key}`) : router.refresh()) });
   return (
     <form onSubmit={form.onSubmit} className="flex flex-col gap-3">
       <FieldErrors value={form.fieldErrors}>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field name="name" label={t("fields.spaceName")}>
             <Input id="name" name="name" required maxLength={120} defaultValue={space.name} />
+          </Field>
+          <Field name="key" label={t("fields.spaceKey")}>
+            <Input id="key" name="key" required pattern="[a-z0-9][a-z0-9\-]{1,39}" maxLength={40} defaultValue={space.key} aria-describedby="key-hint" />
+            <p id="key-hint" className="text-xs text-muted-foreground">
+              {t("space.keyHint")}
+            </p>
           </Field>
           <Field name="kind" label={t("fields.kind")}>
             <KindSelect defaultValue={space.kind} />

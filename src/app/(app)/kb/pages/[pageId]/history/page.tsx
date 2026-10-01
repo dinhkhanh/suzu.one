@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { pagePath } from "@/modules/kb/enums";
 import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/modules/platform/auth/session";
 import { atLeast, compareVersions, kbViewerOf, levelOf, listVersions, loadPage } from "@/modules/kb/service";
@@ -35,7 +36,7 @@ export default async function KbPageHistory(props: PageProps<"/kb/pages/[pageId]
     <div className="flex max-w-4xl flex-col gap-6">
       <header className="flex flex-col gap-1">
         <p className="text-sm text-muted-foreground">
-          <Link href={`/kb/pages/${loaded.page.id}`} className="hover:underline">
+          <Link href={pagePath(loaded.space.key, loaded.page)} className="hover:underline">
             {loaded.page.publishedTitle ?? loaded.page.title}
           </Link>
         </p>

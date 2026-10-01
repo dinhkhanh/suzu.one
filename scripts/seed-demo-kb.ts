@@ -15,6 +15,7 @@ import { toSearchKey } from "../src/lib/text";
 import { chunkDoc, chunkEmbeddingText } from "../src/modules/kb/engine/chunk";
 import { FAKE_EMBEDDING_MODEL, fakeEmbedding } from "../src/modules/kb/engine/fake-embedding";
 import { markdownToDoc } from "../src/modules/platform/rich-text/engine/markdown";
+import { pageSlugOf, RESERVED_PAGE_SLUGS } from "../src/modules/kb/enums";
 import { HANDBOOK_PAGES, REMOTE_DRAFT, SECURITY_V1, SECURITY_V2 } from "./seed-demo-kb-pages";
 import { bold, bulletList, callout, doc, embed, heading, link, orderedList, paragraph, table } from "../src/modules/platform/rich-text/engine/build";
 import { type Doc, docToPlainText, validateDoc } from "../src/modules/platform/rich-text/engine/doc";
@@ -211,15 +212,21 @@ export async function seedKb(db: Db): Promise<string> {
   let versions = 0;
   const versionIds = new Map<string, string[]>();
   let chunkCount = 0;
+  const slugsTaken = new Set<string>();
   for (const [index, page] of ALL.entries()) {
     const spaceId = spaceIds.get(page.space)!;
     const parentId = page.parent ? pageIds.get(page.parent)! : null;
     const last = page.revisions.at(-1);
     const working = checked(page.draft?.content ?? last!.content);
     const workingTitle = page.draft?.title ?? last?.title ?? page.title;
+    // The address the published title gives, as the app makes it; "-2" when a space has it already.
+    const base = pageSlugOf(last?.title ?? page.title);
+    let slug = base;
+    for (let n = 2; slugsTaken.has(`${page.space}/${slug}`) || RESERVED_PAGE_SLUGS.includes(slug); n++) slug = `${base}-${n}`;
+    slugsTaken.add(`${page.space}/${slug}`);
     const [row] = await db
       .insert(kbPage)
-      .values({ spaceId, parentId, title: workingTitle, content: working, contentText: docToPlainText(working), hasUnpublishedChanges: !!page.draft, sortOrder: index, status: last ? "published" : "draft", ownerPersonId: who(page.owner), reviewBy: page.reviewBy ?? null, createdByPersonId: who(page.owner), updatedByPersonId: who(page.owner), createdAt: new Date(`${page.revisions[0]?.on ?? "2026-09-01"}T02:00:00Z`) })
+      .values({ spaceId, parentId, title: workingTitle, slug, content: working, contentText: docToPlainText(working), hasUnpublishedChanges: !!page.draft, sortOrder: index, status: last ? "published" : "draft", ownerPersonId: who(page.owner), reviewBy: page.reviewBy ?? null, createdByPersonId: who(page.owner), updatedByPersonId: who(page.owner), createdAt: new Date(`${page.revisions[0]?.on ?? "2026-09-01"}T02:00:00Z`) })
       .returning();
     pageIds.set(page.key, row.id);
 

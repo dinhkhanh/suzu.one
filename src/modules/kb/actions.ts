@@ -9,7 +9,7 @@ import { embedPendingChunks } from "./chunks";
 import { embeddingDriver } from "./embeddings";
 import { ACCESS_LEVELS, parseSubjectKey, SPACE_KEY, SPACE_KINDS } from "./enums";
 import { beginPageUpload, completePageUpload, findPageFile, removePageFile, shownByPublishedVersion } from "./files";
-import { createPage, deletePage, type LoadedPage, loadPage, movePage, type PageRow, publishPage, restoreVersion, saveDraft, setPageAccess, setPageArchived, setPageMeta, unpublishPage } from "./pages";
+import { createPage, deletePage, type LoadedPage, loadPage, movePage, type PageRow, publishPage, restoreVersion, saveDraft, setPageAccess, setPageArchived, setPageMeta, setPageSlug, unpublishPage } from "./pages";
 import { canCreatePage, canEditPage, canManageSpace, canOrganisePages, canPublishDirectly, canViewPage, kbViewerOf, spaceOwner } from "./policy";
 import { decidePageReview, getPublishReview, submitPageForReview, withdrawPageReview } from "./publishing";
 import { docxToMarkdown, importMarkdownPage, MAX_IMPORT_CHARS, saveAsTemplate, setTemplateActive, templateContent } from "./templates";
@@ -33,7 +33,7 @@ const auditSpace = (space: Pick<SpaceRow, "id" | "entityId">) => ({ type: "kb_sp
 const auditPage = (loaded: { page: Pick<PageRow, "id">; space: Pick<SpaceRow, "entityId"> }) => ({ type: "kb_page", id: loaded.page.id, entityId: loaded.space.entityId });
 const spaceFactsForAudit = (space: SpaceRow) => ({ key: space.key, name: space.name, kind: space.kind, entityId: space.entityId, sortOrder: space.sortOrder, archivedAt: space.archivedAt });
 // What the audit log keeps of a page: what happened to it, none of the prose.
-const pageFactsForAudit = (page: PageRow) => ({ title: page.title, status: page.status, parentId: page.parentId, sortOrder: page.sortOrder, publishedVersionId: page.publishedVersionId, hasUnpublishedChanges: page.hasUnpublishedChanges, ownerPersonId: page.ownerPersonId, reviewBy: page.reviewBy });
+const pageFactsForAudit = (page: PageRow) => ({ title: page.title, slug: page.slug, status: page.status, parentId: page.parentId, sortOrder: page.sortOrder, publishedVersionId: page.publishedVersionId, hasUnpublishedChanges: page.hasUnpublishedChanges, ownerPersonId: page.ownerPersonId, reviewBy: page.reviewBy });
 
 /** With the local fake there is no network call to wait for: a freshly published page is ready for retrieval at once. The real driver is the job's business. */
 async function embedAfterPublish() {
@@ -94,13 +94,15 @@ const managesSpace = async (user: CurrentUser, spaceId: string) => {
 
 const updateSpacePipeline = createAction({
   name: "kb.space.update",
-  input: z.object({ spaceId: z.uuid(), ...spaceFields }),
+  // The key is the space's address; changing it keeps the old one leading here.
+  input: z.object({ spaceId: z.uuid(), key: z.string().trim().toLowerCase().regex(SPACE_KEY).optional(), ...spaceFields }),
   authorize: (user, input) => managesSpace(user, input.spaceId),
   run: async ({ input }) => {
     const { spaceId, ...values } = input;
     const { before, after } = await updateSpace(spaceId, values);
     refresh(after.key);
-    return { data: { id: after.id }, audit: { resource: auditSpace(after), summary: after.name, before: spaceFactsForAudit(before), after: spaceFactsForAudit(after) } };
+    if (before.key !== after.key) refresh(before.key);
+    return { data: { id: after.id, key: after.key }, audit: { resource: auditSpace(after), summary: after.name, before: spaceFactsForAudit(before), after: spaceFactsForAudit(after) } };
   },
 });
 export async function updateSpaceAction(input: unknown) {
@@ -140,10 +142,12 @@ export async function setSpaceAccessAction(input: unknown) {
 // ── Pages ───────────────────────────────────────────────────────────────────────────────────
 
 const title = z.string().trim().min(1).max(200);
+// What the form posts for a page's address; the service says whether it is a usable one.
+const slug = z.string().trim().toLowerCase().max(100);
 
 const createPagePipeline = createAction({
   name: "kb.page.create",
-  input: z.object({ spaceId: z.uuid(), parentId: optional(z.uuid()), title, content: content.optional(), templateId: optional(z.uuid()) }),
+  input: z.object({ spaceId: z.uuid(), parentId: optional(z.uuid()), title, slug: optional(slug), content: content.optional(), templateId: optional(z.uuid()) }),
   authorize: async (user, input) => {
     const space = await loadSpace({ id: input.spaceId });
     if (!space) return false;
@@ -369,6 +373,21 @@ const pageMetaPipeline = createAction({
 });
 export async function setPageMetaAction(input: unknown) {
   return pageMetaPipeline(input);
+}
+
+const pageSlugPipeline = createAction({
+  name: "kb.page.slug",
+  input: z.object({ pageId: z.uuid(), slug: slug.min(1) }),
+  authorize: (user, input) => editsPage(user, input.pageId),
+  run: async ({ user, input }) => {
+    const loaded = await must(user, input.pageId);
+    const { before, after } = await setPageSlug(input.pageId, input.slug);
+    refresh(loaded.space.key, after.id);
+    return { data: { id: after.id, slug: after.slug }, audit: { resource: auditPage(loaded), summary: `${after.title}: address`, before: { slug: before.slug }, after: { slug: after.slug, formerSlugs: after.formerSlugs } } };
+  },
+});
+export async function setPageSlugAction(input: unknown) {
+  return pageSlugPipeline(input);
 }
 
 const restorePipeline = createAction({

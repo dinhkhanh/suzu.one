@@ -1,6 +1,6 @@
 // Pages: the tree, the working copy, publishing, versions (FR-KB-01, 02, 04).
 import "server-only";
-import { and, asc, count, desc, eq, inArray, isNotNull, isNull, max, type SQL, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, max, ne, or, type SQL, sql } from "drizzle-orm";
 import { ActionError } from "@/lib/action";
 import type { IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
@@ -10,6 +10,7 @@ import { ackOnPublish } from "./acknowledgements";
 import { rebuildChunks, removeChunks } from "./chunks";
 import { type DiffLine, diffLines } from "./engine/diff";
 import { type Doc, docToPlainText, EMPTY_DOC, validateDoc } from "@/modules/platform/rich-text/engine/doc";
+import { isPageSlug, pageSlugOf, RESERVED_PAGE_SLUGS } from "./enums";
 import { type AccessRow, atLeast, type KbLevel, type KbViewer, type PageFacts, pageLevel, spaceLevel } from "./policy";
 import { type LoadedSpace, replaceAccess, spaceFacts } from "./spaces";
 
@@ -35,6 +36,24 @@ const accessJson = (where: SQL) =>
  * and those of the page's access root, in one round trip. No authorization here: callers ask `levelOf`.
  */
 export async function loadPage(pageId: string, executor: Executor = db()): Promise<LoadedPage | null> {
+  return loadPageWhere(eq(schema.kbPage.id, pageId), executor);
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The page an address in a space names: its slug, a slug it had before, or — for a link from
+ * before slugs — its id. Whether it named the page by its current slug is the caller's to check
+ * (`page.slug`), to send the reader on to it.
+ */
+export async function loadPageInSpace(spaceId: string, ref: string, executor: Executor = db()): Promise<LoadedPage | null> {
+  if (UUID.test(ref)) return loadPageWhere(and(eq(schema.kbPage.spaceId, spaceId), eq(schema.kbPage.id, ref.toLowerCase()))!, executor);
+  if (ref.length > 100) return null;
+  // The current slug wins over a page that once had it.
+  return loadPageWhere(and(eq(schema.kbPage.spaceId, spaceId), or(eq(schema.kbPage.slug, ref), sql`${ref} = any(${schema.kbPage.formerSlugs})`))!, executor, sql`${schema.kbPage.slug} = ${ref} desc nulls last`);
+}
+
+async function loadPageWhere(where: SQL, executor: Executor, order?: SQL): Promise<LoadedPage | null> {
   const [row] = await executor
     .select({
       page: schema.kbPage,
@@ -44,7 +63,8 @@ export async function loadPage(pageId: string, executor: Executor = db()): Promi
     })
     .from(schema.kbPage)
     .innerJoin(schema.kbSpace, eq(schema.kbSpace.id, schema.kbPage.spaceId))
-    .where(eq(schema.kbPage.id, pageId))
+    .where(where)
+    .orderBy(...(order ? [order] : []))
     .limit(1);
   if (!row) return null;
   const { page, space, access } = row;
@@ -68,7 +88,7 @@ const cleanTitle = (title: string): string => {
 
 // ── The tree ────────────────────────────────────────────────────────────────────────────────
 
-export type TreeNode = { id: string; parentId: string | null; title: string; status: PageRow["status"]; published: boolean; hasUnpublishedChanges: boolean; restricted: boolean; sortOrder: number; depth: number };
+export type TreeNode = { id: string; slug: string | null; parentId: string | null; title: string; status: PageRow["status"]; published: boolean; hasUnpublishedChanges: boolean; restricted: boolean; sortOrder: number; depth: number };
 
 /**
  * The pages of a space the viewer may open, in reading order, each with its depth. Filtered in
@@ -77,7 +97,7 @@ export type TreeNode = { id: string; parentId: string | null; title: string; sta
 export async function listTree(viewer: KbViewer, space: LoadedSpace): Promise<TreeNode[]> {
   const editor = atLeast(spaceLevel(viewer, space.facts), "edit");
   const rows = await db()
-    .select({ id: schema.kbPage.id, parentId: schema.kbPage.parentId, title: schema.kbPage.title, publishedTitle: schema.kbPage.publishedTitle, status: schema.kbPage.status, publishedVersionId: schema.kbPage.publishedVersionId, hasUnpublishedChanges: schema.kbPage.hasUnpublishedChanges, accessRootId: schema.kbPage.accessRootId, sortOrder: schema.kbPage.sortOrder })
+    .select({ id: schema.kbPage.id, slug: schema.kbPage.slug, parentId: schema.kbPage.parentId, title: schema.kbPage.title, publishedTitle: schema.kbPage.publishedTitle, status: schema.kbPage.status, publishedVersionId: schema.kbPage.publishedVersionId, hasUnpublishedChanges: schema.kbPage.hasUnpublishedChanges, accessRootId: schema.kbPage.accessRootId, sortOrder: schema.kbPage.sortOrder })
     .from(schema.kbPage)
     .innerJoin(schema.kbSpace, eq(schema.kbSpace.id, schema.kbPage.spaceId))
     .where(and(eq(schema.kbPage.spaceId, space.space.id), pageVisibleSql(viewer)))
@@ -88,7 +108,7 @@ export async function listTree(viewer: KbViewer, space: LoadedSpace): Promise<Tr
   const walk = (parentKey: string, depth: number) => {
     for (const row of children.get(parentKey) ?? []) {
       // Readers know a page by its published title; a draft title is the editors' business.
-      ordered.push({ id: row.id, parentId: parentKey || null, title: editor ? row.title : (row.publishedTitle ?? row.title), status: row.status, published: !!row.publishedVersionId, hasUnpublishedChanges: row.hasUnpublishedChanges, restricted: row.accessRootId === row.id, sortOrder: row.sortOrder, depth });
+      ordered.push({ id: row.id, slug: row.slug, parentId: parentKey || null, title: editor ? row.title : (row.publishedTitle ?? row.title), status: row.status, published: !!row.publishedVersionId, hasUnpublishedChanges: row.hasUnpublishedChanges, restricted: row.accessRootId === row.id, sortOrder: row.sortOrder, depth });
       if (depth < 30) walk(row.id, depth + 1);
     }
   };
@@ -135,9 +155,56 @@ async function nextSortOrder(executor: Executor, spaceId: string, parentId: stri
   return (row?.last ?? -1) + 1;
 }
 
+// ── Addresses ───────────────────────────────────────────────────────────────────────────────
+
+/** A slug someone typed: refused when it is malformed, one of the space's own, or another page's. */
+async function checkedSlug(executor: Executor, spaceId: string, slug: string, pageId?: string): Promise<string> {
+  if (!isPageSlug(slug)) throw new ActionError(RESERVED_PAGE_SLUGS.includes(slug) ? "kb_page_slug_reserved" : "kb_page_slug_invalid");
+  const [taken] = await executor
+    .select({ id: schema.kbPage.id })
+    .from(schema.kbPage)
+    .where(and(eq(schema.kbPage.spaceId, spaceId), eq(schema.kbPage.slug, slug), ...(pageId ? [ne(schema.kbPage.id, pageId)] : [])))
+    .limit(1);
+  if (taken) throw new ActionError("kb_page_slug_taken");
+  return slug;
+}
+
+/** The slug a title gives in a space: its own, or the first of "-2", "-3"… nobody there has. */
+export async function freePageSlug(executor: Executor, spaceId: string, title: string): Promise<string> {
+  const base = pageSlugOf(title).slice(0, 90).replace(/-+$/, "");
+  const rows = await executor
+    .select({ slug: schema.kbPage.slug })
+    .from(schema.kbPage)
+    .where(and(eq(schema.kbPage.spaceId, spaceId), or(eq(schema.kbPage.slug, base), sql`${schema.kbPage.slug} like ${`${base}-%`}`)));
+  const taken = new Set([...rows.map((row) => row.slug), ...RESERVED_PAGE_SLUGS]);
+  if (!taken.has(base)) return base;
+  for (let n = 2; ; n++) if (!taken.has(`${base}-${n}`)) return `${base}-${n}`;
+}
+
+/**
+ * Gives a page a new address. The old one is kept among its former slugs so links to it still
+ * lead here; a page that had the new slug before gives it up.
+ */
+export async function setPageSlug(pageId: string, slug: string): Promise<{ before: PageRow; after: PageRow }> {
+  return db().transaction(async (tx) => {
+    const [before] = await tx.select().from(schema.kbPage).where(eq(schema.kbPage.id, pageId)).for("update").limit(1);
+    if (!before || before.deletedAt) throw new ActionError("kb_page_not_found");
+    if (before.slug === slug) return { before, after: before };
+    await checkedSlug(tx, before.spaceId, slug, pageId);
+    await tx
+      .update(schema.kbPage)
+      .set({ formerSlugs: sql`array_remove(${schema.kbPage.formerSlugs}, ${slug})` })
+      .where(and(eq(schema.kbPage.spaceId, before.spaceId), ne(schema.kbPage.id, pageId), sql`${slug} = any(${schema.kbPage.formerSlugs})`));
+    const former = [...new Set([...before.formerSlugs, ...(before.slug ? [before.slug] : [])])].filter((old) => old !== slug).slice(-20);
+    const [after] = await tx.update(schema.kbPage).set({ slug, formerSlugs: former, updatedAt: new Date() }).where(eq(schema.kbPage.id, pageId)).returning();
+    return { before, after };
+  });
+}
+
 // ── Writing ─────────────────────────────────────────────────────────────────────────────────
 
-export type NewPage = { spaceId: string; parentId: string | null; title: string; content?: unknown; ownerPersonId?: string | null };
+/** `slug`: the address someone typed; made from the title when not given. */
+export type NewPage = { spaceId: string; parentId: string | null; title: string; slug?: string | null; content?: unknown; ownerPersonId?: string | null };
 
 export async function createPage(input: NewPage, actor: Actor, executor?: Tx): Promise<PageRow> {
   const content = checkedDoc(input.content ?? EMPTY_DOC);
@@ -148,9 +215,11 @@ export async function createPage(input: NewPage, actor: Actor, executor?: Tx): P
       if (!parent || parent.spaceId !== input.spaceId || parent.deletedAt) throw new ActionError("kb_parent_not_found");
       accessRootId = parent.accessRootId;
     }
+    const title = cleanTitle(input.title);
+    const slug = input.slug ? await checkedSlug(tx, input.spaceId, input.slug) : await freePageSlug(tx, input.spaceId, title);
     const [page] = await tx
       .insert(schema.kbPage)
-      .values({ spaceId: input.spaceId, parentId: input.parentId, title: cleanTitle(input.title), content, contentText: docToPlainText(content), sortOrder: await nextSortOrder(tx, input.spaceId, input.parentId), accessRootId, ownerPersonId: input.ownerPersonId ?? actor.personId, createdByPersonId: actor.personId, updatedByPersonId: actor.personId })
+      .values({ spaceId: input.spaceId, parentId: input.parentId, title, slug, content, contentText: docToPlainText(content), sortOrder: await nextSortOrder(tx, input.spaceId, input.parentId), accessRootId, ownerPersonId: input.ownerPersonId ?? actor.personId, createdByPersonId: actor.personId, updatedByPersonId: actor.personId })
       .returning();
     return page;
   };
