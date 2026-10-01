@@ -388,20 +388,23 @@ export function TaskListView({
                 {groupName(group.key)} <span className="text-xs text-muted-foreground">{group.tasks.length}</span>
               </h3>
             )}
-            <ul className="flex flex-col divide-y rounded-xl border">
+            <ul className="@container flex flex-col divide-y rounded-xl border">
               {nestTasks(group.tasks).map(({ task, depth }) => {
                 const open = task.status === "todo" || task.status === "in_progress";
                 const overdue = open && task.dueDate !== null && task.dueDate < today;
                 const editable = (canContribute || task.assigneePersonId === selfId) && !task.id.startsWith("new-");
                 return (
                   <li key={task.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm" style={{ paddingLeft: `${0.75 + depth * 1.25}rem` }}>
-                    <span className={`w-4 text-center text-xs font-bold ${task.priority ? PRIORITY_CLASS[task.priority] : "text-transparent"}`} title={task.priority ? tWork(`priority.${task.priority}`) : undefined}>
-                      {task.priority ? (task.priority === 4 ? "↓" : "!".repeat(4 - task.priority)) : "·"}
-                    </span>
-                    <span className="w-16 shrink-0 font-mono text-xs text-muted-foreground">{task.key}</span>
-                    <Link href={`/work/tasks/${task.id}`} className={`min-w-0 flex-1 truncate hover:underline ${open ? "font-medium" : "text-muted-foreground line-through"}`}>
-                      {task.title}
-                    </Link>
+                    {/* The title is what a row is for: a narrow list gives it a line of its own, wrapped rather than cut short. */}
+                    <div className="flex min-w-0 basis-full items-baseline gap-x-3 @2xl:flex-1 @2xl:basis-0">
+                      <span className={`w-4 shrink-0 text-center text-xs font-bold ${task.priority ? PRIORITY_CLASS[task.priority] : "text-transparent"}`} title={task.priority ? tWork(`priority.${task.priority}`) : undefined}>
+                        {task.priority ? (task.priority === 4 ? "↓" : "!".repeat(4 - task.priority)) : "·"}
+                      </span>
+                      <span className="shrink-0 font-mono text-xs text-muted-foreground @2xl:w-16">{task.key}</span>
+                      <Link href={`/work/tasks/${task.id}`} title={task.title} className={`min-w-0 flex-1 break-words hover:underline @2xl:truncate ${open ? "font-medium" : "text-muted-foreground line-through"}`}>
+                        {task.title}
+                      </Link>
+                    </div>
                     {task.blocker ? (
                       <Badge variant="destructive" title={task.blocker.neededName ? `${task.blocker.reason} — ${tWork("blockers.waitingOn", { name: task.blocker.neededName })}` : task.blocker.reason}>
                         {tWork("blockers.badge")}
@@ -423,8 +426,8 @@ export function TaskListView({
                       const label = options.labels.find((row) => row.id === id);
                       return label ? <LabelChip key={id} name={label.name} color={label.color} /> : null;
                     })}
-                    <span className="w-32 truncate text-xs text-muted-foreground">{task.assigneeName ?? options.people.find((person) => person.id === task.assigneePersonId)?.fullName ?? t("unassigned")}</span>
-                    <span className={`w-24 text-xs ${overdue ? "font-medium text-destructive" : "text-muted-foreground"}`}>{task.dueDate ? format.dateTime(new Date(`${task.dueDate}T00:00:00`), { day: "numeric", month: "short" }) : ""}</span>
+                    <span className="truncate text-xs text-muted-foreground @2xl:w-32">{task.assigneeName ?? options.people.find((person) => person.id === task.assigneePersonId)?.fullName ?? t("unassigned")}</span>
+                    <span className={`text-xs empty:hidden @2xl:w-24 @2xl:empty:block ${overdue ? "font-medium text-destructive" : "text-muted-foreground"}`}>{task.dueDate ? format.dateTime(new Date(`${task.dueDate}T00:00:00`), { day: "numeric", month: "short" }) : ""}</span>
                     {editable ? (
                       <Select aria-label={t("state")} value={task.stateId} disabled={pending} onChange={(event) => moveState(task, event.target.value)} className="h-7 w-36 text-xs md:text-xs">
                         {options.states
