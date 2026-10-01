@@ -20,7 +20,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* The desk the app card floats on, and the grey used for counts and other quiet numbers. */
+  /* The paper the app is printed on (the phone's ground, the desktop's sidebar), and the grey used
+     for counts and other quiet numbers. */
   --color-canvas: var(--canvas);
   --color-faint: var(--faint);
   /* The identity colour: the app mark and nothing else (see the note on :root). */
@@ -68,6 +69,10 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* The ink: what a filled button and a selected row are made of. Near-black on paper, near-white
+     at night, so the strongest thing on the page is always text-coloured, never a hue. */
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -75,133 +80,182 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* One easing for everything that moves: fast out, long settle (see the motion notes below). */
+  --ease-settle: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-rise: rise 0.4s var(--ease-settle) both;
+  --animate-rise-up: rise-up 0.36s var(--ease-settle) both;
+  --animate-pop: pop 0.4s var(--ease-settle) both;
+  --animate-fade: fade 0.2s ease-out both;
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes rise-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: none;
+    }
+  }
+  @keyframes pop {
+    0% {
+      transform: scale(0.6);
+      opacity: 0;
+    }
+    70% {
+      transform: scale(1.12);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 }
 
-/* A white app card on a light grey desk, hairline borders, one blue accent: the primary button,
-   the focus ring, the active nav icon and the selection. Greys are neutral with a breath of warmth.
+/* "Quiet ink": paper ground, ink text, one accent. Hairlines, not boxes; depth only on what floats
+   (sheets, menus, the palette). Greys lean a breath warm so the page reads as paper, not screen.
    The brand's red (#EA3026) is `brand`, and it is worn by the app mark alone: a red button, badge
    or ring reads as "danger" before it reads as "SuZu", so the brand colour never says "act here"
-   and never says "something is wrong" — that is `destructive`, a deeper crimson only ever shown
-   tinted. State speaks through the tones below. */
+   and never says "something is wrong" — that is `destructive`, a crimson only ever shown tinted.
+   The one accent (`primary`) is for the single key action, the focus ring, selection and the
+   active navigation; filled buttons are ink. State speaks through the tones. */
 :root {
-  --canvas: oklch(0.95 0.003 60);
+  --canvas: oklch(0.986 0.002 80);
   --background: oklch(1 0 0);
   --foreground: oklch(0.21 0 0);
+  --ink: oklch(0.21 0 0);
+  --ink-foreground: oklch(1 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.21 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.21 0 0);
   --brand: oklch(0.609 0.222 28.8);
-  --primary: oklch(0.576 0.208 258.6);
+  --primary: oklch(0.5 0.19 265);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.973 0 0);
+  --secondary: oklch(0.965 0.003 80);
   --secondary-foreground: oklch(0.21 0 0);
-  --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.48 0 0);
-  --faint: oklch(0.62 0 0);
-  --accent: oklch(0.94 0 0);
+  --muted: oklch(0.962 0.003 80);
+  --muted-foreground: oklch(0.45 0 0);
+  --faint: oklch(0.54 0 0);
+  --accent: oklch(0.945 0.004 80);
   --accent-foreground: oklch(0.21 0 0);
-  --destructive: oklch(0.53 0.2 24);
-  --success: oklch(0.52 0.14 158);
-  --warning: oklch(0.58 0.15 60);
-  --info: oklch(0.54 0.19 256);
-  --link: oklch(0.5 0.19 256);
-  --tone-violet: oklch(0.52 0.2 295);
-  --tone-teal: oklch(0.52 0.11 195);
-  --tone-orange: oklch(0.6 0.17 45);
-  --tone-pink: oklch(0.58 0.2 350);
-  --tone-indigo: oklch(0.5 0.19 275);
-  --border: oklch(0.895 0 0);
-  --input: oklch(0.85 0 0);
-  --ring: oklch(0.576 0.208 258.6);
-  --chart-1: oklch(0.576 0.208 258.6);
+  --destructive: oklch(0.5 0.17 27);
+  --success: oklch(0.52 0.12 158);
+  --warning: oklch(0.56 0.13 60);
+  --info: oklch(0.5 0.19 265);
+  --link: oklch(0.47 0.19 265);
+  --tone-violet: oklch(0.5 0.19 295);
+  --tone-teal: oklch(0.55 0.1 195);
+  --tone-orange: oklch(0.6 0.16 45);
+  --tone-pink: oklch(0.56 0.19 350);
+  --tone-indigo: oklch(0.48 0.18 275);
+  --border: oklch(0.905 0.004 80);
+  --input: oklch(0.875 0.004 80);
+  --ring: oklch(0.5 0.19 265);
+  --chart-1: oklch(0.5 0.19 265);
   --chart-2: oklch(0.62 0.12 195);
   --chart-3: oklch(0.75 0.16 70);
   --chart-4: oklch(0.6 0.2 295);
   --chart-5: oklch(0.6 0.17 45);
   --radius: 0.625rem;
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.21 0 0);
-  --sidebar-primary: oklch(0.576 0.208 258.6);
+  --sidebar: oklch(0.973 0.003 80);
+  --sidebar-foreground: oklch(0.3 0 0);
+  --sidebar-primary: oklch(0.5 0.19 265);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.94 0 0);
+  --sidebar-accent: oklch(0.93 0.004 80);
   --sidebar-accent-foreground: oklch(0.21 0 0);
-  --sidebar-border: oklch(0.895 0 0);
-  --sidebar-ring: oklch(0.576 0.208 258.6);
-  /* The card floats: a hairline, then a shadow shallow enough to read as paper rather than a modal. */
-  --shell-shadow: 0 0 0 1px oklch(0 0 0 / 4%), 0 1px 2px oklch(0 0 0 / 4%), 0 12px 32px -16px oklch(0 0 0 / 18%);
+  --sidebar-border: oklch(0.905 0.004 80);
+  --sidebar-ring: oklch(0.5 0.19 265);
+  /* What floats: a soft, wide shadow under sheets, menus and the palette; a hairline around it. */
+  --float-shadow: 0 0 0 1px oklch(0 0 0 / 6%), 0 24px 64px -12px oklch(0 0 0 / 22%);
   /* Native controls, scrollbars and the default form colours follow the palette. */
   color-scheme: light;
 }
 
-/* The same desk at night. Written once, under the variant above, so both the chosen-dark and the
-   device-is-dark branches get it. */
+/* The same paper at night: one swap of the tokens, the layout untouched. */
 :root {
   @variant dark {
     color-scheme: dark;
-    --canvas: oklch(0.145 0 0);
-    --background: oklch(0.185 0 0);
-    --foreground: oklch(0.97 0 0);
-    --card: oklch(0.185 0 0);
-    --card-foreground: oklch(0.97 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.97 0 0);
+    --canvas: oklch(0.17 0.002 80);
+    --background: oklch(0.205 0.002 80);
+    --foreground: oklch(0.94 0 0);
+    --ink: oklch(0.94 0 0);
+    --ink-foreground: oklch(0.17 0 0);
+    --card: oklch(0.205 0.002 80);
+    --card-foreground: oklch(0.94 0 0);
+    --popover: oklch(0.23 0.002 80);
+    --popover-foreground: oklch(0.94 0 0);
     --brand: oklch(0.66 0.2 28.8);
-    --primary: oklch(0.62 0.19 258.6);
-    --primary-foreground: oklch(1 0 0);
-    --secondary: oklch(0.255 0 0);
-    --secondary-foreground: oklch(0.97 0 0);
-    --muted: oklch(0.245 0 0);
-    --muted-foreground: oklch(0.74 0 0);
+    --primary: oklch(0.66 0.16 265);
+    --primary-foreground: oklch(0.14 0.02 265);
+    --secondary: oklch(0.26 0.002 80);
+    --secondary-foreground: oklch(0.94 0 0);
+    --muted: oklch(0.255 0.002 80);
+    --muted-foreground: oklch(0.73 0 0);
     --faint: oklch(0.64 0 0);
-    --accent: oklch(0.265 0 0);
-    --accent-foreground: oklch(0.97 0 0);
-    --destructive: oklch(0.72 0.17 22);
-    --success: oklch(0.78 0.15 160);
-    --warning: oklch(0.82 0.15 80);
-    --info: oklch(0.75 0.14 250);
-    --link: oklch(0.75 0.14 250);
+    --accent: oklch(0.28 0.002 80);
+    --accent-foreground: oklch(0.94 0 0);
+    --destructive: oklch(0.72 0.15 25);
+    --success: oklch(0.76 0.14 158);
+    --warning: oklch(0.8 0.14 70);
+    --info: oklch(0.74 0.13 265);
+    --link: oklch(0.76 0.13 265);
     --tone-violet: oklch(0.76 0.15 295);
-    --tone-teal: oklch(0.78 0.11 195);
-    --tone-orange: oklch(0.78 0.15 55);
-    --tone-pink: oklch(0.78 0.15 350);
-    --tone-indigo: oklch(0.74 0.14 275);
-    --border: oklch(1 0 0 / 14%);
-    --input: oklch(1 0 0 / 22%);
-    --ring: oklch(0.62 0.19 258.6);
-    --chart-1: oklch(0.62 0.19 258.6);
+    --tone-teal: oklch(0.78 0.1 195);
+    --tone-orange: oklch(0.78 0.14 55);
+    --tone-pink: oklch(0.78 0.14 350);
+    --tone-indigo: oklch(0.74 0.13 275);
+    --border: oklch(1 0 0 / 12%);
+    --input: oklch(1 0 0 / 18%);
+    --ring: oklch(0.66 0.16 265);
+    --chart-1: oklch(0.66 0.16 265);
     --chart-2: oklch(0.72 0.12 195);
     --chart-3: oklch(0.78 0.15 70);
     --chart-4: oklch(0.7 0.17 295);
     --chart-5: oklch(0.78 0.15 55);
-    --sidebar: oklch(0.185 0 0);
-    --sidebar-foreground: oklch(0.97 0 0);
-    --sidebar-primary: oklch(0.62 0.19 258.6);
-    --sidebar-primary-foreground: oklch(1 0 0);
-    --sidebar-accent: oklch(0.255 0 0);
-    --sidebar-accent-foreground: oklch(0.97 0 0);
-    --sidebar-border: oklch(1 0 0 / 14%);
-    --sidebar-ring: oklch(0.62 0.19 258.6);
-    --shell-shadow: 0 0 0 1px oklch(1 0 0 / 8%), 0 12px 32px -16px oklch(0 0 0 / 60%);
+    --sidebar: oklch(0.185 0.002 80);
+    --sidebar-foreground: oklch(0.8 0 0);
+    --sidebar-primary: oklch(0.66 0.16 265);
+    --sidebar-primary-foreground: oklch(0.14 0.02 265);
+    --sidebar-accent: oklch(0.27 0.002 80);
+    --sidebar-accent-foreground: oklch(0.94 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.66 0.16 265);
+    --float-shadow: 0 0 0 1px oklch(1 0 0 / 10%), 0 24px 64px -12px oklch(0 0 0 / 70%);
   }
 }
 
 /* A team's or a project's colour (work ACCENT_COLORS), worn by its pages: `data-accent` on the page
-   swaps the one blue accent — primary button, focus ring, links, the open tab — for the colour, in
+   swaps the one blue accent — the key action, focus ring, links, the open tab — for the colour, in
    the app's own lightness and chroma so it reads the same in both themes. A page with no colour
    keeps the blue. Dialogs and popovers render outside the page and keep the blue too. */
 [data-accent] {
   --accent-c: 0.17;
-  --primary: oklch(0.56 var(--accent-c) var(--accent-h));
-  --ring: oklch(0.56 var(--accent-c) var(--accent-h));
-  --link: oklch(0.49 var(--accent-c) var(--accent-h));
+  --primary: oklch(0.52 var(--accent-c) var(--accent-h));
+  --ring: oklch(0.52 var(--accent-c) var(--accent-h));
+  --link: oklch(0.47 var(--accent-c) var(--accent-h));
   @variant dark {
-    --primary: oklch(0.64 var(--accent-c) var(--accent-h));
-    --ring: oklch(0.64 var(--accent-c) var(--accent-h));
+    --primary: oklch(0.68 var(--accent-c) var(--accent-h));
+    --ring: oklch(0.68 var(--accent-c) var(--accent-h));
     --link: oklch(0.76 calc(var(--accent-c) * 0.8) var(--accent-h));
   }
 }
-[data-accent="blue"] { --accent-h: 258.6; --accent-c: 0.2; }
+[data-accent="blue"] { --accent-h: 265; --accent-c: 0.19; }
 [data-accent="purple"] { --accent-h: 300; }
 [data-accent="pink"] { --accent-h: 350; }
 [data-accent="red"] { --accent-h: 25; }
@@ -216,77 +270,134 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-canvas text-foreground;
+    @apply bg-background text-foreground;
   }
   html {
     @apply font-sans;
-    /* The reference sets text slightly tight; Inter reads denser and more deliberate that way. */
-    letter-spacing: -0.011em;
+    /* Be Vietnam Pro is set a hair tight at text sizes; headings tighten further below. */
+    letter-spacing: -0.006em;
+    /* The finger-and-thumb sizes below use these: 44px on a phone, the reference's 36px on a desk. */
+    -webkit-tap-highlight-color: transparent;
   }
-  /* Headings across the app share one scale: pages set no size of their own. */
+  /* Headings across the app share one scale: pages set no size of their own. The page title is a
+     real title — the phone has no header bar to carry it — and tightens as it grows. */
   h1 {
-    @apply text-[1.0625rem] leading-6 font-semibold tracking-[-0.015em];
+    @apply text-[1.625rem] leading-[1.15] font-semibold tracking-[-0.025em] md:text-[1.75rem];
+    text-wrap: balance;
   }
   h2 {
-    @apply text-[0.9375rem] leading-5 font-semibold tracking-[-0.01em];
+    @apply text-[1.0625rem] leading-6 font-semibold tracking-[-0.015em];
   }
   h3 {
-    @apply text-sm leading-5 font-semibold;
+    @apply text-[0.9375rem] leading-5 font-semibold tracking-[-0.01em];
   }
   ::selection {
     @apply bg-primary/15;
   }
+  /* Figures line up in columns everywhere: times, money, counts. */
+  .font-mono,
+  [data-slot="table-cell"] {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Everything that moves honours the reader who asked it not to. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
 @layer components {
-  /* The shell: one white card on the desk, its own scroll, hairlines inside it. */
-  .shell-card {
-    @apply flex min-h-0 flex-1 overflow-hidden bg-background md:rounded-2xl;
-    box-shadow: var(--shell-shadow);
+  /* The shell: on a desk, a tinted sidebar beside a white page; on a phone, the page alone with a
+     tab bar along the bottom. Neither floats — the app is the window. */
+  .shell {
+    @apply flex min-h-0 flex-1 overflow-hidden bg-background;
   }
-  /* A sidebar row: icon, label, and what waits there as a filled pill at the end — the one
+  /* A sidebar row: 28px, icon, label, and what waits there as a filled pill at the end — the one
      place the sidebar raises its voice, so a number is seen before it is read. */
   .nav-row {
-    @apply relative flex h-8 items-center gap-2.5 rounded-lg px-2 text-sm font-medium text-foreground transition-colors hover:bg-sidebar-accent [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-foreground/60 hover:[&>svg]:text-foreground;
+    @apply relative flex h-7 items-center gap-2.5 rounded-[7px] px-2 text-[0.8125rem] font-medium text-sidebar-foreground transition-colors duration-100 hover:bg-sidebar-accent hover:text-foreground [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground hover:[&>svg]:text-foreground;
   }
-  /* Where you are is said in the accent, not in one more grey: a blue wash, blue label and icon. */
+  /* Where you are: a deeper wash, ink label, the icon in the accent. */
   .nav-row[aria-current="page"] {
-    @apply bg-primary/10 font-semibold text-link hover:bg-primary/15 dark:bg-primary/20 [&>svg]:text-link hover:[&>svg]:text-link;
+    @apply bg-sidebar-accent font-medium text-foreground [&>svg]:text-primary hover:[&>svg]:text-primary;
   }
   .nav-section {
-    @apply px-2 pt-4 pb-1 text-xs font-medium text-faint;
+    @apply flex h-6 items-center gap-1 px-2 text-[0.6875rem] font-semibold tracking-[0.06em] text-faint uppercase;
   }
   .nav-count {
-    @apply ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[0.6875rem] leading-none font-semibold text-primary-foreground tabular-nums;
+    @apply ml-auto flex h-[1.125rem] min-w-[1.125rem] shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[0.6875rem] leading-none font-semibold text-primary-foreground tabular-nums;
   }
   /* The same count when the sidebar is a rail of icons: a small pill on the icon's shoulder,
      ringed in the sidebar's own colour so it stands off the icon. */
   .nav-count-rail {
-    @apply absolute top-0.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[0.625rem] leading-none font-semibold text-primary-foreground tabular-nums ring-2 ring-sidebar;
+    @apply absolute top-0 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[0.625rem] leading-none font-semibold text-primary-foreground tabular-nums ring-2 ring-sidebar;
   }
-  /* The phone's menu button when anything waits behind the drawer. */
-  .nav-menu-dot {
-    @apply absolute top-1 right-1 size-2 rounded-full bg-primary ring-2 ring-background;
+  /* The phone's tab bar: five stops along the bottom, the open one in the accent, a count on the
+     shoulder of the one that has something waiting. Sits above the home indicator. */
+  .tab-bar {
+    @apply fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-canvas/90 px-2 pt-1.5 backdrop-blur-xl md:hidden;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+  }
+  .tab-stop {
+    @apply relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[0.6875rem] font-medium text-faint transition-colors [&>svg]:size-6 [&>svg]:shrink-0;
+  }
+  .tab-stop[aria-current="page"] {
+    @apply text-primary;
+  }
+  .tab-count {
+    @apply absolute top-0.5 left-1/2 ml-1.5 flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-primary px-1 text-[0.6875rem] leading-none font-semibold text-primary-foreground tabular-nums ring-2 ring-canvas;
   }
   /* The row of filters and actions over a list. Aligned on the bottom edge: some of the controls
      in it carry a label above them, and the plain ones have to line up with those. */
   .toolbar {
     @apply flex flex-wrap items-end gap-2;
   }
-  /* A page's own sub-navigation: pills, the open one washed in the accent so it is told from its
-     neighbours at a glance. The rule un-underlines its children, which may arrive with
-     `underline` on them, so it has to outrank that utility. */
+  /* A page's own sub-navigation: an underlined row of tabs, the open one in ink. The rule
+     un-underlines its children, which may arrive with `underline` on them, so it has to outrank
+     that utility. Scrolls sideways on a phone rather than wrapping into a cloud. */
   .tab-row {
-    @apply flex flex-wrap items-center gap-1 text-sm;
+    @apply -mb-px flex items-center gap-1 overflow-x-auto border-b border-border text-sm;
+    scrollbar-width: none;
+  }
+  .tab-row::-webkit-scrollbar {
+    display: none;
   }
   .tab-row > a,
   .tab-row > button {
-    @apply flex h-8 items-center rounded-lg px-2.5 font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground;
+    @apply flex h-10 shrink-0 items-center gap-1.5 border-b-2 border-transparent px-2.5 font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground md:h-9;
     text-decoration: none !important;
   }
   .tab-row > a[aria-current="page"],
   .tab-row > button[aria-current="page"] {
-    @apply bg-primary/10 font-semibold text-link hover:bg-primary/15 hover:text-link dark:bg-primary/20;
+    @apply border-ink font-medium text-foreground;
+  }
+  /* The small caption that heads a section of a page: the design's uppercase label. */
+  .section-label {
+    @apply text-[0.6875rem] font-semibold tracking-[0.06em] text-faint uppercase;
+  }
+  /* A stat tile: the figure in mono, its name beneath. */
+  .tile {
+    @apply flex min-w-0 flex-col gap-1 rounded-xl border border-border bg-background px-4 py-3.5;
+  }
+  .tile-value {
+    @apply font-mono text-2xl leading-none font-medium tracking-[-0.02em] tabular-nums;
+  }
+  .tile-label {
+    @apply text-xs text-muted-foreground;
+  }
+  /* The press: every tappable thing gives under the finger. */
+  .press {
+    @apply transition-[transform,background-color,color,box-shadow] duration-100 ease-(--ease-settle) active:scale-[0.97];
+  }
+  /* A list that arrives row by row: give each row `--i` (its index) and the class. */
+  .rise {
+    animation: var(--animate-rise);
+    animation-delay: calc(var(--i, 0) * 40ms);
   }
 
   /* The gutter of row numbers down the left of every grid (src/components/ui/table.tsx and
@@ -298,7 +409,7 @@
     --table-gutter: 0px;
   }
   [data-slot="table-card"]:has([data-numbered]) {
-    --table-gutter: 3.5rem;
+    --table-gutter: 2.75rem;
   }
   .table-grid[data-numbered] > tbody {
     counter-reset: table-row var(--table-row-start, 0);
@@ -306,13 +417,13 @@
   .table-grid[data-numbered] > :is(thead, tbody, tfoot) > tr::before {
     content: "";
     display: table-cell;
-    width: 3.5rem;
-    min-width: 3.5rem;
-    border-right: 1px solid var(--border);
+    width: 2.75rem;
+    min-width: 2.75rem;
     vertical-align: middle;
     text-align: center;
     color: var(--faint);
-    font-size: 0.8125rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
     font-variant-numeric: tabular-nums;
   }
   .table-grid[data-numbered] > tbody > tr:not([data-slot="table-empty"], [data-unnumbered]) {
@@ -336,10 +447,10 @@
     justify-content: center;
     align-self: stretch;
     flex: none;
-    width: 3.5rem;
-    border-right: 1px solid var(--border);
+    width: 2.75rem;
     color: var(--faint);
-    font-size: 0.8125rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
     font-variant-numeric: tabular-nums;
   }
   .list-grid[data-numbered] > li[data-slot="list-empty"]::before {
@@ -348,12 +459,17 @@
 }
 
 /* The two halves of every ad-hoc switch (view toggles, year pickers, segmented groups): the chosen
-   option and the rest. Utilities, so a ternary in a className can pick one. */
+   option and the rest. Utilities, so a ternary in a className can pick one. The chosen one is a
+   white key lifted off a washed track (the segmented control of the design). */
 @utility pill-on {
-  @apply bg-primary/10 font-semibold text-link dark:bg-primary/20;
+  @apply bg-background font-medium text-foreground shadow-[0_1px_2px_oklch(0_0_0/8%),0_0_0_1px_oklch(0_0_0/4%)] dark:bg-accent dark:shadow-none;
 }
 @utility pill-off {
-  @apply font-medium text-muted-foreground hover:bg-accent hover:text-foreground;
+  @apply font-medium text-muted-foreground hover:text-foreground;
+}
+/* The track those keys sit on. */
+@utility segmented {
+  @apply inline-flex gap-0.5 rounded-[10px] bg-muted p-[3px];
 }
 
 /* A link that is always underlined is a plain text link, and reads as one: in the link colour

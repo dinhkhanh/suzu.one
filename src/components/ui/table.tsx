@@ -24,10 +24,10 @@ import {
 import Link from "next/link"
 import { cn } from "cn"
 
-// The reference's database grid: a framed sheet with a gutter of row numbers down the left,
-// hairlines between every column and row, typed column headers (an icon saying what the column
-// holds before its name), roomy rows, a faint wash under the row the pointer is on, and an
-// "+ Add …" row closing the sheet.
+// The reference grid: a framed sheet with a gutter of row numbers down the left, a paper-tinted
+// header row of typed columns (an icon saying what the column holds before its name), hairlines
+// between rows and none between columns, 44px rows, a paper wash under the row the pointer is on,
+// and an "+ Add …" row closing the sheet.
 //
 //   <TableCard>                          the white sheet; optional
 //     <TableCardHeader title icon …/>    its title row; optional
@@ -90,7 +90,7 @@ const NUMERIC: ReadonlySet<ColumnKind> = new Set(["number", "money", "percent", 
 /** The classes a cell of the given kind carries, so a header and its cells line up. */
 function kindCell(kind: ColumnKind | undefined) {
   if (!kind) return undefined
-  if (NUMERIC.has(kind)) return "text-right tabular-nums"
+  if (NUMERIC.has(kind)) return "text-right font-mono text-[0.8125rem] tabular-nums"
   if (kind === "id") return "font-mono text-xs text-muted-foreground"
   if (kind === "link" || kind === "email")
     return "[&_a]:text-foreground/80 [&_a]:underline [&_a]:decoration-foreground/30 [&_a]:underline-offset-4 [&_a:hover]:decoration-foreground"
@@ -100,7 +100,7 @@ function kindCell(kind: ColumnKind | undefined) {
 
 // A frame of its own, unless a TableCard already draws one.
 const FRAME =
-  "rounded-xl border border-border bg-background in-data-[slot=table-card]:rounded-none in-data-[slot=table-card]:border-0"
+  "rounded-[14px] border border-border bg-background in-data-[slot=table-card]:rounded-none in-data-[slot=table-card]:border-0"
 
 function Table({
   className,
@@ -141,7 +141,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("[&_tr]:border-b [&_tr]:hover:bg-transparent", className)}
+      className={cn("bg-canvas [&_tr]:border-b [&_tr]:hover:bg-transparent", className)}
       {...props}
     />
   )
@@ -162,7 +162,7 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
     <tfoot
       data-slot="table-footer"
       className={cn(
-        "border-t bg-muted/40 font-medium [&>tr]:last:border-b-0",
+        "border-t bg-canvas font-medium [&>tr]:last:border-b-0",
         className
       )}
       {...props}
@@ -175,7 +175,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors last:border-b-0 hover:bg-muted/40 has-aria-expanded:bg-muted/40 data-[state=selected]:bg-primary/5 [&>*+*]:border-l [&>*+*]:border-border",
+        "border-b border-border/70 transition-colors duration-100 last:border-b-0 hover:bg-canvas has-aria-expanded:bg-canvas data-[state=selected]:bg-primary/6",
         className
       )}
       {...props}
@@ -201,7 +201,7 @@ function TableHead({
     <th
       data-slot="table-head"
       className={cn(
-        "h-12 px-3 text-left align-middle font-normal whitespace-nowrap text-foreground/65",
+        "h-9 px-3 text-left align-middle text-xs font-medium whitespace-nowrap text-muted-foreground",
         kind && NUMERIC.has(kind) && "text-right",
         kind === "actions" && "w-px",
         className
@@ -209,7 +209,7 @@ function TableHead({
       {...props}
     >
       {glyph ? (
-        <span className="inline-flex items-center gap-2 align-middle [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5 align-middle [&_svg]:size-3.5 [&_svg]:shrink-0 [&_svg]:text-faint">
           {glyph}
           {children}
         </span>
@@ -232,7 +232,7 @@ function TableCell({
     <td
       data-slot="table-cell"
       className={cn(
-        "h-12 px-3 py-2 align-middle whitespace-nowrap",
+        "h-11 px-3 py-2 align-middle whitespace-nowrap",
         kindCell(kind),
         className
       )}
@@ -257,7 +257,8 @@ function TableEmpty({
         )}
         {...props}
       >
-        {children}
+        {/* A wide table scrolls sideways on a phone; the sentence stays in the part on screen. */}
+        <span className="sticky left-3 inline-block max-w-[calc(100vw-3rem)]">{children}</span>
       </td>
     </tr>
   )
@@ -270,11 +271,11 @@ function TableGroupRow({
   ...props
 }: React.ComponentProps<"td">) {
   return (
-    <tr data-slot="table-group-row" data-unnumbered="" className="border-b bg-muted/40">
+    <tr data-slot="table-group-row" data-unnumbered="" className="border-b bg-canvas">
       <td
         colSpan={1000}
         className={cn(
-          "h-9 px-3 text-xs font-medium whitespace-nowrap text-muted-foreground",
+          "h-8 px-3 text-xs font-semibold whitespace-nowrap text-foreground/80",
           className
         )}
         {...props}
@@ -304,7 +305,7 @@ function TableCard({ className, ...props }: React.ComponentProps<"section">) {
     <section
       data-slot="table-card"
       className={cn(
-        "flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-background",
+        "flex min-w-0 flex-col overflow-hidden rounded-[14px] border border-border bg-background",
         className
       )}
       {...props}
@@ -333,22 +334,22 @@ function TableCardHeader({
     <header
       data-slot="table-card-header"
       className={cn(
-        "flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-3.5",
+        "flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-3",
         className
       )}
       {...props}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
         {icon ? (
-          <span className="flex shrink-0 text-muted-foreground [&_svg]:size-5">
+          <span className="flex shrink-0 text-muted-foreground [&_svg]:size-[1.125rem]">
             {icon}
           </span>
         ) : null}
         <div className="min-w-0">
-          <h2 className="flex items-baseline gap-2 text-base font-semibold">
+          <h2 className="flex items-baseline gap-2 text-[0.9375rem] font-semibold tracking-[-0.01em]">
             <span className="truncate">{title}</span>
             {count !== undefined && count !== null ? (
-              <span className="text-sm font-normal text-faint tabular-nums">
+              <span className="font-mono text-xs font-normal text-faint tabular-nums">
                 {count}
               </span>
             ) : null}
@@ -367,7 +368,7 @@ function TableCardHeader({
 }
 
 const ADD_ROW =
-  "flex h-12 w-full cursor-pointer items-center gap-2 border-t px-3 text-sm text-muted-foreground transition-colors select-none hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-inset [&_svg]:size-4"
+  "flex h-11 w-full cursor-pointer items-center gap-2 border-t px-3 text-[0.8125rem] font-medium text-link transition-colors select-none hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-inset [&_svg]:size-3.5"
 
 /**
  * The "+ Add …" row that closes a sheet. Given `href`, it is a link to the create page; given
@@ -412,10 +413,10 @@ function TableAddRow({
           "list-none group-open/add:text-foreground [&::-webkit-details-marker]:hidden"
         )}
       >
-        <PlusIcon aria-hidden className="transition-transform group-open/add:rotate-45" />
+        <PlusIcon aria-hidden className="transition-transform duration-200 ease-(--ease-settle) group-open/add:rotate-45" />
         {label}
       </summary>
-      <div className={cn("border-t bg-muted/20 p-4", bodyClassName)}>{children}</div>
+      <div className={cn("border-t bg-canvas p-4", bodyClassName)}>{children}</div>
     </details>
   )
 }

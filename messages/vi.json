@@ -37,6 +37,26 @@
     }
   },
   "nav": {
+    "tabs": {
+      "today": "Hôm nay",
+      "work": "Công việc",
+      "inbox": "Hộp thư",
+      "me": "Tôi",
+      "more": "Thêm"
+    },
+    "quickAdd": {
+      "title": "Thêm nhanh",
+      "button": "Thêm nhanh",
+      "task": "Công việc",
+      "taskHint": "cho tôi hoặc đồng nghiệp",
+      "time": "Ghi giờ",
+      "timeHint": "cho việc của hôm nay",
+      "leave": "Nghỉ phép",
+      "leaveHint": "nghỉ cả ngày, nửa ngày, làm ở nhà",
+      "request": "Đề nghị",
+      "requestHint": "mua sắm, tạm ứng, giấy xác nhận",
+      "cancel": "Hủy"
+    },
     "home": "Trang chủ",
     "people": "Nhân sự",
     "attendance": "Chấm công",
@@ -142,7 +162,9 @@
     "noKudos": "Chưa có lời ghi nhận nào — hãy là người đầu tiên.",
     "giveKudos": "Gửi ghi nhận",
     "newPages": "Trang tri thức mới",
-    "nothingThisWeek": "Tuần này chưa có gì."
+    "nothingThisWeek": "Tuần này chưa có gì.",
+    "roleLine": "Vai trò: {roles}",
+    "eventsTitle": "Tuần này"
   },
   "roles": {
     "owner": "Chủ sở hữu",
@@ -160,6 +182,7 @@
     "sales": "Kinh doanh / phát triển khách hàng"
   },
   "entities": {
+    "details": "Thông tin pháp nhân",
     "title": "Pháp nhân",
     "description": "Các công ty trong tập đoàn. Phòng ban được dùng chung giữa các pháp nhân.",
     "code": "Mã",
@@ -226,6 +249,20 @@
       "personal": "Chi tiết cá nhân",
       "history": "Lịch sử công tác",
       "changeRequests": "Yêu cầu thay đổi đang chờ Nhân sự"
+    },
+    "me": {
+      "mine": "Của tôi",
+      "profile": "Hồ sơ",
+      "preferences": "Tuỳ chọn",
+      "equipment": "Thiết bị của tôi",
+      "leaveLeft": "Phép còn lại",
+      "leaveUsed": "đã dùng {days}",
+      "days": "{days} ngày",
+      "hoursThisMonth": "Giờ làm tháng này",
+      "hoursHint": "{days, plural, other {# ngày công}}",
+      "pendingRequests": "Đề nghị đang chờ",
+      "pendingCount": "{count, plural, =0 {Không có} other {# đang chờ}}",
+      "pendingHint": "chờ duyệt"
     },
     "hire": {
       "title": "Thêm nhân sự",
@@ -575,6 +612,21 @@
     }
   },
   "org": {
+    "tree": "Cây đơn vị",
+    "pickUnit": "Chọn đơn vị",
+    "empty": "Chưa có đơn vị nào.",
+    "path": "Đường dẫn",
+    "unitsInside": "Đơn vị bên trong",
+    "status": "Trạng thái",
+    "noChildren": "Chưa có đơn vị nào bên trong.",
+    "rolesOnUnit": "Vai trò trên đơn vị này",
+    "noRoles": "Chưa có vai trò nào được cấp trên đơn vị này.",
+    "edit": "Sửa đơn vị",
+    "reach": {
+      "title": "Nêu tên đơn vị này là bao trùm mọi đơn vị bên dưới",
+      "body": "Một phạm vi vai trò, một dòng quyền truy cập hay một thông báo nhắm tới “{name}” sẽ tới cả {count, plural, =0 {mọi đơn vị sau này nằm bên trong} other {# đơn vị bên trong}}.",
+      "optOut": "Chỉ riêng đơn vị này, không gồm bên dưới: <code>{id}</code>."
+    },
     "title": "Cơ cấu tổ chức",
     "description": "Một cây đơn vị: phòng ban, nhóm lớn, nhóm nhỏ — sâu bao nhiêu cấp cũng được. Đơn vị cấp trên bao trùm mọi đơn vị bên dưới.",
     "code": "Mã",
@@ -607,6 +659,17 @@
     "importTitle": "Nhập phòng ban từ Excel / CSV"
   },
   "rbac": {
+    "grants": "Vai trò đã cấp",
+    "noGrants": "Chưa cấp vai trò nào.",
+    "matrix": {
+      "title": "Vai trò × quyền",
+      "hint": "Quyền của mỗi vai trò là cố định; phạm vi do từng lần cấp quyết định.",
+      "permission": "Quyền",
+      "everywhere": "Mọi nơi",
+      "scoped": "Trong phạm vi được cấp",
+      "none": "Không",
+      "tierHint": "Dưới tên vai trò: mức dữ liệu nhạy cảm cao nhất được xem."
+    },
     "title": "Phân quyền",
     "description": "Vai trò luôn được cấp tường minh cho từng người, kèm phạm vi áp dụng. Thu hồi có hiệu lực ngay ở thao tác kế tiếp của người đó.",
     "person": "Nhân sự",
@@ -645,6 +708,14 @@
     }
   },
   "audit": {
+    "when": "Thời điểm",
+    "who": "Người thực hiện",
+    "action": "Hành động",
+    "field": "Trường",
+    "close": "Đóng",
+    "noDiff": "Bản ghi này không kèm dữ liệu trước/sau.",
+    "appendOnly": "Nhật ký được ghi bởi trigger trong cơ sở dữ liệu: chỉ ghi thêm, không ai sửa hay xóa được.",
+    "removeFilter": "Bỏ lọc {filter}",
     "title": "Nhật ký hệ thống",
     "description": "Mọi thay đổi dữ liệu, mọi lần bị từ chối và mọi tác vụ tự động. Nhật ký chỉ ghi thêm, không ai sửa hay xóa được.",
     "count": "{count, plural, =0 {Không có bản ghi} other {# bản ghi}}",
@@ -659,6 +730,9 @@
     "next": "Sau",
     "page": "Trang {page}/{pageCount}",
     "filters": {
+      "actionShort": "Hành động",
+      "actorShort": "Người thực hiện",
+      "resourceTypeShort": "Đối tượng",
       "action": "Hành động, vd. person. hoặc .denied",
       "actor": "Email người thực hiện",
       "resourceType": "Loại đối tượng",
@@ -679,6 +753,12 @@
     "unread": "Chưa đọc",
     "read": "Đã đọc",
     "markRead": "Đánh dấu đã đọc",
+    "groups": {
+      "today": "Hôm nay",
+      "yesterday": "Hôm qua",
+      "earlier": "Trước đó"
+    },
+    "settings": "Cài đặt",
     "previous": "Trước",
     "next": "Sau",
     "page": "Trang {page}/{pageCount}",
@@ -1268,6 +1348,16 @@
     }
   },
   "jobs": {
+    "tiles": {
+      "jobs": "Tác vụ",
+      "failed": "Lỗi",
+      "last24h": "trong 24 giờ qua",
+      "median": "Thời gian chạy trung vị",
+      "next": "Lần chạy tiếp"
+    },
+    "runs": "Lần chạy gần đây",
+    "schedule": "Lịch",
+    "daily": "Hằng ngày {time}",
     "title": "Tác vụ tự động",
     "description": "Các tác vụ chạy theo lịch: cập nhật nhân sự hằng ngày, gửi email thông báo. Khi một tác vụ lỗi, Chủ sở hữu nhận được thông báo.",
     "started": "Bắt đầu",
@@ -1284,6 +1374,33 @@
     }
   },
   "rules": {
+    "pendingCount": "{count, plural, other {# đề xuất đang chờ Chủ sở hữu phê duyệt.}}",
+    "view": "Xem",
+    "search": "Tìm tham số…",
+    "filter": "Lọc",
+    "asOf": "Tính đến",
+    "value": "Giá trị",
+    "version": "Phiên bản",
+    "noMatch": "Không có tham số nào khớp.",
+    "versions": "Các phiên bản",
+    "noVersions": "Chưa có phiên bản nào.",
+    "inForce": "Đang hiệu lực",
+    "proposed": "Đề xuất",
+    "unverifiedShort": "Chưa xác nhận",
+    "groups": {
+      "insurance": "Bảo hiểm xã hội, y tế, thất nghiệp",
+      "union": "Công đoàn",
+      "pit": "Thuế thu nhập cá nhân",
+      "wage": "Tiền lương",
+      "overtime": "Làm thêm giờ",
+      "work": "Giờ làm việc",
+      "leave": "Nghỉ phép",
+      "probation": "Thử việc",
+      "contract": "Hợp đồng lao động",
+      "hr": "Nhắc việc nhân sự",
+      "tax": "Thuế",
+      "crm": "Khách hàng & kinh doanh"
+    },
     "title": "Tham số pháp định",
     "description": "Tỷ lệ bảo hiểm, thuế TNCN, lương tối thiểu vùng, hệ số tăng ca… Mỗi giá trị có ngày hiệu lực và căn cứ pháp lý; không có con số nào nằm trong mã nguồn. Nhân sự / C&B đề xuất thay đổi, Chủ sở hữu phê duyệt.",
     "pending": "Đề xuất chờ duyệt",
@@ -1340,6 +1457,12 @@
     }
   },
   "flags": {
+    "modules": "Phân hệ",
+    "everyoneShort": "Toàn tập đoàn",
+    "pilot": "Nhóm thử nghiệm",
+    "noPilot": "Chưa chọn ai.",
+    "add": "Thêm",
+    "discard": "Bỏ thay đổi",
     "title": "Triển khai tính năng",
     "description": "Mở từng phân hệ cho một nhóm thử nghiệm trước, rồi mở rộng ra toàn tập đoàn. Đây chỉ là việc ai nhìn thấy phân hệ; quyền hạn bên trong vẫn do vai trò quyết định. Quản trị nhân sự và Chủ sở hữu luôn nhìn thấy mọi phân hệ.",
     "everyone": "Bật cho toàn tập đoàn",
@@ -1508,12 +1631,24 @@
     },
     "withdraw": "Rút yêu cầu",
     "withdrawConfirm": "Rút yêu cầu này?",
+    "age": {
+      "hours": "{hours} giờ",
+      "days": "{days} ngày"
+    },
+    "resolved": "Đã xử lý ({count})",
+    "step": {
+      "yourTurn": "Chờ bạn"
+    },
     "columns": {
       "request": "Yêu cầu",
       "requester": "Người gửi",
       "submitted": "Gửi lúc",
       "status": "Trạng thái",
-      "waitingOn": "Đang chờ"
+      "waitingOn": "Đang chờ",
+      "type": "Loại",
+      "amount": "Số tiền",
+      "step": "Bước",
+      "age": "Tuổi"
     },
     "types": {
       "profile_change": "Thay đổi thông tin cá nhân",
@@ -1559,7 +1694,10 @@
       "step": "Bước {number} ({mode, select, all {tất cả phải duyệt} other {một người duyệt là đủ}}):",
       "verified": "Đã xác minh qua kênh thứ hai",
       "parallel": "· cùng lúc với bước trước",
-      "standingInFor": "thay {name}"
+      "standingInFor": "thay {name}",
+      "chain": "Chuỗi phê duyệt",
+      "stepTitle": "Bước {number}",
+      "mode": "{mode, select, all {tất cả phải duyệt} other {một người duyệt là đủ}}"
     },
     "decide": {
       "title": "Quyết định của bạn",
@@ -1636,6 +1774,13 @@
       "delegator": "Người ủy quyền"
     },
     "flows": {
+      "status": "Trạng thái",
+      "edit": "Sửa luồng",
+      "activeOn": "Đang dùng",
+      "yes": "Có",
+      "no": "Không",
+      "conditionOn": "Chỉ áp dụng khi điều kiện đúng",
+      "conditionOff": "Áp dụng cho mọi yêu cầu",
       "title": "Luồng phê duyệt",
       "description": "Ai duyệt từng loại yêu cầu. Luồng lưu tại đây thay cho luồng mặc định của một pháp nhân hoặc cả tập đoàn; yêu cầu đã gửi giữ nguyên luồng lúc gửi.",
       "defaults": "Mặc định",
@@ -1783,6 +1928,14 @@
     "open": "Đang mở ({count})",
     "openEmpty": "Không có việc nào đang chờ bạn.",
     "recentlyDone": "Hoàn thành gần đây",
+    "views": {
+      "label": "Hiển thị",
+      "all": "Tất cả",
+      "work": "Công việc",
+      "reviews": "Cần duyệt",
+      "approvals": "Phê duyệt",
+      "handoffs": "Bàn giao"
+    },
     "about": "Về {name}",
     "due": "Hạn {date}",
     "unassigned": "Chưa giao cho ai",
@@ -1903,6 +2056,11 @@
     },
     "pageTitle": "Checklist",
     "pageDescription": "Checklist của mọi phòng ban — trước khi bàn giao, khi nhận brief, trước khi đăng — soạn ở một nơi và gắn vào đúng công việc cần đến.",
+    "tabs": {
+      "label": "Các phần",
+      "library": "Thư viện",
+      "lifecycle": "Tiếp nhận & thôi việc"
+    },
     "library": {
       "title": "Thư viện checklist",
       "description": "Dùng để làm gì",
@@ -1939,7 +2097,15 @@
       "deleteConfirm": "Xóa checklist này? Nó cũng bị gỡ khỏi mọi bước quy trình, gói bàn giao, mẫu yêu cầu và bước mẫu đang dùng. Các ô đã có trên công việc vẫn giữ nguyên.",
       "pickLegend": "Checklist từ thư viện",
       "pickHint": "Tối đa {max}. Các mục được lấy theo nội dung checklist tại thời điểm dùng.",
-      "usedBy": "Đang dùng ở {list}"
+      "usedBy": "Đang dùng ở {list}",
+      "columns": {
+        "items": "Mục",
+        "usedBy": "Dùng ở",
+        "state": "Trạng thái"
+      },
+      "collapse": "Thu gọn",
+      "expand": "Mở rộng",
+      "noItems": "Checklist chưa có mục nào."
     },
     "stages": {
       "title": "Checklist theo bước",
@@ -2749,7 +2915,18 @@
       "onLeavePart": "Hôm nay bạn có đơn nghỉ phép đã duyệt cho một phần ngày.",
       "noLocations": "Công ty chưa thiết lập địa điểm làm việc nên việc chấm công chưa được kiểm tra vị trí.",
       "today": "Các lần chấm hôm nay",
+      "todaySection": "Hôm nay",
       "noPunches": "Hôm nay chưa có lần chấm nào.",
+      "status": {
+        "in": "Đang ở văn phòng",
+        "out": "Đã ra ca",
+        "none": "Chưa vào ca"
+      },
+      "since": "Vào ca lúc {time} · {elapsed}",
+      "locationChecked": "Vị trí được kiểm tra khi chấm công",
+      "week": {
+        "title": "Tuần này"
+      },
       "flags": {
         "outside_geofence": "Ngoài phạm vi địa điểm làm việc (cách {distance} m)",
         "low_accuracy": "Vị trí điện thoại báo về quá kém chính xác",
@@ -2786,6 +2963,7 @@
     "today": {
       "title": "Hôm nay ai có mặt",
       "everyone": "Tất cả",
+      "empty": "Không có ai để hiển thị.",
       "you": "bạn",
       "partLeave": "Nghỉ nửa ngày",
       "flagged": "Chờ xem xét",
@@ -3003,6 +3181,8 @@
     "timesheet": {
       "myMonth": "Tháng của tôi",
       "monthOf": "Bảng công của {name}",
+      "previousMonth": "Tháng trước",
+      "nextMonth": "Tháng sau",
       "tapHint": "Chạm vào một ngày để xem cách tính.",
       "empty": "Chưa có ngày công nào.",
       "why": "Ngày này được tính thế nào",
@@ -3290,6 +3470,7 @@
         "notOver": "Tháng chưa kết thúc."
       },
       "issues": {
+        "blocking": "Chặn khoá",
         "not_approved": "bảng công chưa được duyệt",
         "missing_punch": "{count} ngày thiếu chấm công",
         "punch_to_review": "{count} lần chấm công gắn cờ chờ xem",
@@ -3465,7 +3646,11 @@
       "away": "Vắng mặt",
       "nonWorking": "Không phải ngày làm việc",
       "list": "Nghỉ trong tháng",
-      "noneAway": "Tháng này không có ai nghỉ."
+      "noneAway": "Tháng này không có ai nghỉ.",
+      "half": "Nửa ngày",
+      "remote": "Làm từ xa",
+      "previous": "Tháng trước",
+      "next": "Tháng sau"
     },
     "errors": {
       "generic": "Không thực hiện được. Vui lòng thử lại.",
@@ -3620,6 +3805,7 @@
         "no_accrual": "Không được cộng"
       },
       "balances": {
+        "title": "Số dư phép",
         "hint": "Số dư tính đến hôm nay; trong ngoặc là số ngày các đơn chờ duyệt đang giữ. Bấm vào tên để xem sổ chi tiết.",
         "person": "Nhân viên",
         "unit": "Pháp nhân · phòng ban",
@@ -3862,7 +4048,8 @@
         "hint": "JPG, PNG hoặc WebP. Ảnh được thu nhỏ trước khi tải lên; danh sách hiển thị dạng hình vuông."
       },
       "teamColor": "Theo màu của nhóm",
-      "openTasks": "Việc đang mở"
+      "openTasks": "Việc đang mở",
+      "progress": "{done}/{total} việc đã xong"
     },
     "clients": {
       "title": "Khách hàng và nhãn hàng",
@@ -3917,6 +4104,8 @@
       "clear": "Xóa bộ lọc",
       "count": "{shown} / {total}",
       "quickCreate": "Công việc mới — gõ tiêu đề rồi nhấn Enter",
+      "addFilter": "Thêm bộ lọc",
+      "newTask": "Công việc mới",
       "add": "Thêm",
       "empty": "Chưa có công việc.",
       "noMatch": "Không có công việc nào khớp bộ lọc.",
@@ -4057,9 +4246,13 @@
       "checklistFromLibrary": "Thêm từ thư viện…",
       "dependencyAdd": "Thêm liên kết phụ thuộc",
       "noSubtasks": "Chưa có việc con.",
-      "noDependencies": "Chưa có liên kết phụ thuộc."
+      "noDependencies": "Chưa có liên kết phụ thuộc.",
+      "properties": "Thuộc tính",
+      "overview": "Tổng quan"
     },
     "palette": {
+      "groups": { "tasks": "Công việc", "actions": "Thao tác", "pages": "Đi tới" },
+      "hints": { "move": "di chuyển", "open": "mở" },
       "title": "Bảng lệnh",
       "placeholder": "Đi tới trang, tìm công việc (VID-12)…",
       "create": "Tạo công việc",
@@ -4256,7 +4449,8 @@
       "list": "Danh sách",
       "board": "Bảng",
       "calendar": "Lịch",
-      "table": "Dạng bảng"
+      "table": "Dạng bảng",
+      "label": "Cách xem"
     },
     "board": {
       "moveUp": "Chuyển lên",
@@ -5743,7 +5937,12 @@
       "clear": "Bỏ lọc"
     },
     "list": {
-      "narrowed": "{count, plural, =0 {Không có nghĩa vụ nào} other {# nghĩa vụ}}{hasMonth, select, yes { đến hạn trong {month}} other {}}{hasColour, select, yes { · {colour}} other {}}."
+      "narrowed": "{count, plural, =0 {Không có nghĩa vụ nào} other {# nghĩa vụ}}{hasMonth, select, yes { đến hạn trong {month}} other {}}{hasColour, select, yes { · {colour}} other {}}.",
+      "bands": {
+        "overdue": "Quá hạn",
+        "soon": "30 ngày tới",
+        "later": "Sau đó"
+      }
     },
     "escalation": {
       "level1": "Đã báo lên quản lý",
@@ -5754,6 +5953,11 @@
       "entity": "Pháp nhân",
       "totals": "{overdue, plural, =0 {Không có việc quá hạn} other {# việc quá hạn}} · {dueSoon, plural, =0 {không có việc đến hạn trong tuần} other {# việc đến hạn trong tuần}} · {escalated, plural, =0 {chưa việc nào bị báo lên cấp trên} other {# việc đã báo lên cấp trên}}.",
       "seeOverdue": "Xem các việc quá hạn",
+      "tiles": {
+        "overdue": "Quá hạn",
+        "dueSoon": "Đến hạn trong 7 ngày",
+        "escalated": "Đã báo lên cấp trên"
+      },
       "escalated": "{count} việc đã báo lên cấp trên",
       "legend": "Mỗi ô mang màu của việc nghiêm trọng nhất. Bấm vào con số để mở các nghĩa vụ đó; bấm vào tháng để mở lịch của tháng. Các việc \"không áp dụng\" không được tính."
     },
@@ -5799,10 +6003,25 @@
     "title": "Mục tiêu của tôi",
     "description": "OKR: mục tiêu, kết quả then chốt và cập nhật hằng tuần.",
     "newGoal": "Mục tiêu mới",
+    "yearLabel": "Năm",
+    "keyResultCount": "{count, plural, other {# kết quả then chốt}}",
+    "tiles": {
+      "quarter": "Tiến độ quý",
+      "quarterHint": "{count, plural, =0 {Chưa có mục tiêu của quý} other {trung bình # mục tiêu}}",
+      "goals": "Mục tiêu của tôi",
+      "atRisk": "{count, plural, other {# có rủi ro}}",
+      "onTrack": "Đều đúng hướng",
+      "kpis": "KPI đạt mục tiêu",
+      "kpisHint": "Tháng vừa qua",
+      "checkIns": "Cập nhật tuần",
+      "checkInsDue": "Đang chờ cập nhật",
+      "checkInsDone": "Đã cập nhật đủ"
+    },
     "notMeasured": "chưa đo",
     "stale": "cần cập nhật tuần này",
     "hiddenChildren": "{count, plural, other {# mục tiêu cá nhân bạn không xem được}}",
     "nav": {
+      "label": "Các mục",
       "mine": "Của tôi",
       "alignment": "Cây mục tiêu",
       "kpis": "KPI của tôi",
@@ -5888,6 +6107,8 @@
       "noCheckIn": "chưa cập nhật lần nào"
     },
     "checkIn": {
+      "unfold": "Cập nhật",
+      "fold": "Thu gọn",
       "open": "Cập nhật tuần này",
       "dueNow": "Cập nhật tuần này (đã quá một tuần)",
       "value": "Giá trị hiện tại",
@@ -5945,13 +6166,20 @@
       "superseded": "Các lần chốt trước (đã thay thế)",
       "supersededLine": "Lần {revision}: {score} — thay thế ngày {date}",
       "noLines": "Chưa có KPI nào.",
+      "lineState": {
+        "met": "Đạt",
+        "short": "Chưa đạt",
+        "pending": "Chờ số liệu",
+        "excluded": "Không tính"
+      },
       "columns": {
         "kpi": "KPI",
         "target": "Chỉ tiêu",
         "actual": "Thực đạt",
         "attainment": "Mức đạt",
         "weight": "Trọng số",
-        "contribution": "Đóng góp"
+        "contribution": "Đóng góp",
+        "state": "Trạng thái"
       },
       "direction": {
         "higher_better": "càng cao càng tốt",
@@ -6463,6 +6691,7 @@
       }
     },
     "results": {
+      "yearLabel": "Năm",
       "title": "Kết quả hiệu suất cả năm",
       "description": "Điểm đánh giá, điểm KPI và tiến độ OKR gộp lại theo trọng số đã phê duyệt, ra một điểm và một mức.",
       "year": "Năm {year}",
@@ -6699,6 +6928,9 @@
     "title": "Tri thức",
     "description": "Sổ tay, chính sách, quy trình và hướng dẫn của công ty.",
     "noSpaces": "Chưa có không gian nào dành cho bạn.",
+    "shell": {
+      "spaces": "Không gian"
+    },
     "save": "Lưu",
     "saved": "Đã lưu.",
     "groups": {
@@ -6773,6 +7005,9 @@
       "manage": "Quản lý trang",
       "breadcrumb": "Đường dẫn",
       "contents": "Trong trang này",
+      "onThisPage": "Trên trang này",
+      "appLinks": "Liên kết trong ứng dụng",
+      "versionShort": "v{n}",
       "restricted": "Giới hạn người xem",
       "unpublishedChanges": "Có thay đổi chưa xuất bản",
       "versionLine": "Phiên bản {n} · {date} · {name}",
@@ -6938,6 +7173,7 @@
     },
     "ack": {
       "confirm": "Tôi đã đọc và hiểu",
+      "requiredBadge": "Cần xác nhận đã đọc",
       "confirmHelp": "Đọc hết nội dung ở trên rồi xác nhận.",
       "banner": "Bạn cần đọc và xác nhận trang này trước ngày {date}.",
       "bannerOverdue": "Bạn cần đọc và xác nhận trang này — đã quá hạn từ ngày {date}.",
@@ -6983,6 +7219,7 @@
       "count": "{count, plural, =0 {Không tìm thấy trang nào.} other {# trang phù hợp}}",
       "filter": "Lọc theo không gian",
       "allSpaces": "Tất cả không gian",
+      "none": "Không tìm thấy trang nào.",
       "previous": "Trang trước",
       "next": "Trang sau"
     },
@@ -7036,7 +7273,8 @@
       "pinned": "Ghim",
       "mustAcknowledge": "Cần xác nhận",
       "acknowledged": "Đã xác nhận",
-      "all": "Xem tất cả thông báo"
+      "all": "Xem tất cả thông báo",
+      "open": "Mở"
     },
     "detail": {
       "readMore": "Đọc thêm trong kho tri thức:",
@@ -7147,7 +7385,16 @@
   "payroll": {
     "title": "Lương",
     "description": "Hồ sơ lương của bạn và — nếu bạn có quyền — bàn làm việc C&B. Mọi màn hình ở đây yêu cầu xác thực lại gần đây.",
+    "tabs": {
+      "label": "Bàn lương",
+      "runs": "Kỳ lương",
+      "salaries": "Cơ cấu lương",
+      "bonus": "Thưởng",
+      "reports": "Báo cáo"
+    },
     "desk": {
+      "mineSection": "Của tôi",
+      "deskSection": "Bàn làm việc C&B",
       "mine": {
         "title": "Hồ sơ lương của tôi",
         "description": "Mức lương, phụ cấp và lịch sử điều chỉnh của bạn."
@@ -7734,7 +7981,22 @@
         "run_has_no_lines": "Chưa có khoản nào để chi.",
         "run_not_settled": "Chưa thể ghi nhận “đã chi”: còn tệp ngân hàng hoặc bảng tiền mặt chưa hoàn tất."
       },
-      "payments": "Chi lương"
+      "payments": "Chi lương",
+      "stages": {
+        "label": "Tiến trình kỳ lương",
+        "collect": "Thu thập",
+        "compute": "Tính",
+        "review": "Rà soát",
+        "approve": "Ký duyệt",
+        "pay": "Chi"
+      },
+      "exceptions": "Ngoại lệ",
+      "openPayFile": "Hồ sơ lương",
+      "compliance": "Dữ liệu lương · không cache · mọi lượt xem được ghi log",
+      "lineStatus": {
+        "published": "Đã phát hành",
+        "read": "Đã xem"
+      }
     },
     "payslips": {
       "mine": "Phiếu lương của tôi",
@@ -7749,6 +8011,11 @@
       "queryOpen": "Đang có thắc mắc",
       "backToRun": "Bảng lương",
       "downloadPdf": "Tải bản PDF",
+      "publishedOn": "Phát hành {date}",
+      "paidDaysShort": "{days} ngày công",
+      "monthTitle": "Tháng {month}",
+      "rulesNote": "Mức đóng, trần bảo hiểm và bậc thuế là cấu hình có hiệu lực theo thời gian, không phải hằng số trong mã.",
+      "rulesLink": "Xem quy tắc đang áp dụng",
       "titleFor": "PHIẾU LƯƠNG THÁNG {month}",
       "taxCode": "Mã số thuế",
       "person": "Nhân viên",
@@ -8334,6 +8601,15 @@
     "mine": "Đề nghị của tôi",
     "mineEmpty": "Bạn chưa gửi đề nghị nào.",
     "backToApprovals": "Phê duyệt",
+    "hub": "Đề nghị",
+    "newShort": "Đề nghị mới",
+    "tabs": {
+      "label": "Các mục đề nghị",
+      "mine": "Của tôi",
+      "inbox": "Cần duyệt",
+      "claims": "Bàn thanh toán",
+      "all": "Tất cả"
+    },
     "elsewhere": {
       "title": "Các loại đề nghị khác",
       "leave": "Xin nghỉ phép",
@@ -8367,9 +8643,12 @@
       "yes": "Có",
       "no": "Không",
       "correctAndResend": "Chỉnh sửa và gửi lại",
+      "details": "Nội dung đề nghị",
       "resend": "Gửi lại"
     },
     "designer": {
+      "on": "Đang bật",
+      "flowOn": "Đang dùng",
       "title": "Loại đề nghị",
       "description": "Thiết kế biểu mẫu và luồng duyệt cho từng loại đề nghị, không cần lập trình.",
       "add": "Thêm loại đề nghị",
@@ -8590,6 +8869,7 @@
       "sweep": "Đưa vào kỳ lương",
       "sweptResult": "Đã đưa vào kỳ lương: {posted} · còn chờ: {waiting}",
       "sweepFailed": "Không thực hiện được.",
+      "owed": "Tổng còn nợ",
       "columns": {
         "requester": "Người đề nghị",
         "summary": "Nội dung",
@@ -8664,7 +8944,8 @@
       "edit": "Sửa thông tin",
       "import": "Nhập từ tệp",
       "bookings": "Lịch đặt thiết bị",
-      "licences": "Bản quyền & thuê bao"
+      "licences": "Bản quyền & thuê bao",
+      "register": "Sổ tài sản"
     },
     "columns": {
       "code": "Mã",
@@ -9017,6 +9298,9 @@
       "compensation": "Lương thưởng"
     },
     "designer": {
+      "inactive": "Ngừng dùng",
+      "basics": "Thông tin chung",
+      "letterheadHint": "In ở đầu mỗi văn bản tạo từ mẫu này.",
       "title": "Mẫu văn bản",
       "description": "Hợp đồng, quyết định và giấy xác nhận. Mức nhạy cảm của mẫu phải đủ cao cho những thông tin mà nội dung mẫu in ra — hệ thống từ chối lưu nếu không.",
       "new": "Tạo mẫu mới",
@@ -9071,6 +9355,23 @@
     "pipelines": "Quy trình tuyển dụng",
     "headcount": "Kế hoạch nhân sự",
     "newOpening": "Tạo tin tuyển dụng",
+    "candidate": {
+      "properties": "Thông tin",
+      "links": "Liên kết"
+    },
+    "home": {
+      "newOpening": "Vị trí mới",
+      "careers": "Trang tuyển dụng",
+      "openingsLabel": "Vị trí đang tuyển",
+      "pipeline": "Ứng viên theo vòng",
+      "board": "Mở bảng",
+      "openOpening": "Chi tiết vị trí",
+      "noActive": "Không có ứng viên đang tiến hành ở vị trí này.",
+      "interviewsToday": "Phỏng vấn hôm nay",
+      "noInterviewsToday": "Hôm nay bạn không có buổi phỏng vấn nào.",
+      "openInterview": "Mở",
+      "allOpenings": "Tất cả tin tuyển dụng"
+    },
     "newCandidate": "Thêm ứng viên",
     "newHiring": "Đề nghị tuyển dụng",
     "none": "Chưa có dữ liệu.",
@@ -9231,6 +9532,7 @@
       "isActive": "Đang dùng"
     },
     "actions": {
+      "editCandidate": "Sửa hồ sơ",
       "publish": "Đăng tuyển",
       "hold": "Tạm dừng",
       "reopen": "Mở lại",
@@ -9455,7 +9757,14 @@
       "clear": "Bỏ chọn",
       "days": "{days} ngày ở bước này",
       "empty": "Chưa có ai",
-      "title": "Bảng tuyển dụng"
+      "title": "Bảng tuyển dụng",
+      "flags": {
+        "new": "Mới",
+        "referral": "Giới thiệu",
+        "scheduled": "Đã hẹn",
+        "today": "Hôm nay",
+        "awaiting": "Chờ phản hồi"
+      }
     },
     "emailKind": {
       "invite": "Mời phỏng vấn",
@@ -9749,6 +10058,7 @@
     "thinking": "Đang tìm…",
     "newChat": "Cuộc trò chuyện mới",
     "history": "Đã hỏi gần đây",
+    "noHistory": "Chưa có cuộc trò chuyện nào.",
     "emptyHint": "Hỏi về nội quy, chính sách và quy trình. Gõ không dấu cũng được.",
     "mayBeWrong": "Câu trả lời được trích từ trang Tri thức và có thể chưa đầy đủ — hãy mở trang nguồn để đọc đủ.",
     "noAnswer": "Mình không tìm thấy câu trả lời trong các trang bạn được xem.",
@@ -9918,6 +10228,35 @@
       "time": "Giờ đã ghi hôm nay · {value} giờ",
       "salesHandoffs": "Cơ hội đã chốt bàn giao cho bạn ({count})",
       "followUps": "Việc theo dõi khách hàng ({count})",
+      "greeting": {
+        "morning": "Chào buổi sáng, {name}",
+        "afternoon": "Chào buổi chiều, {name}",
+        "evening": "Chào buổi tối, {name}"
+      },
+      "profile": "Hồ sơ của tôi",
+      "checkedIn": "Đã vào ca lúc {time}",
+      "checkedOut": "Đã ra ca lúc {time}",
+      "notCheckedIn": "Chưa vào ca",
+      "elapsed": "{hours}h {minutes}m",
+      "checkIn": "Vào ca",
+      "checkOut": "Ra ca",
+      "planShort": "Kế hoạch",
+      "reportShort": "Báo cáo",
+      "planSummary": "{count} việc · {planned}h / {available}h",
+      "writeReportBy": "Viết báo cáo · trước {time}",
+      "reportDone": "Đã gửi báo cáo",
+      "waiting": "Đang chờ bạn",
+      "markDone": "Đánh dấu xong",
+      "doneAlready": "Đã xong",
+      "timerRunning": "Đang bấm giờ",
+      "planSection": "Kế hoạch hôm nay",
+      "dueSection": "Đến hạn hoặc quá hạn",
+      "timeSection": "Giờ đã ghi hôm nay",
+      "review": "Chờ bạn duyệt",
+      "handoff": "Bàn giao",
+      "salesHandoff": "Cơ hội đã chốt",
+      "blocker": "Vướng mắc",
+      "planHint": "Chọn việc ở “Lên kế hoạch” hoặc thêm nhanh ở trên.",
       "columns": {
         "key": "Mã",
         "title": "Công việc",
@@ -10022,7 +10361,9 @@
       "requiredBy": "Bắt buộc, trước {time}",
       "dayOff": "Ngày nghỉ — không bắt buộc",
       "carried": "Lấy từ “ngày mai” trong báo cáo hôm trước",
-      "savedAt": "Đã lưu lúc {time}"
+      "savedAt": "Đã lưu lúc {time}",
+      "hoursLabel": "Số giờ",
+      "hoursShort": "giờ"
     },
     "activity": {
       "empty": "Hôm nay chưa có hoạt động nào được ghi nhận.",
@@ -10190,6 +10531,7 @@
       "recent": "Báo cáo gần đây",
       "empty": "Bạn chưa gửi báo cáo ngày nào.",
       "hasBlockers": "Có vướng mắc",
+      "screens": "Các màn hình",
       "columns": {
         "date": "Ngày",
         "status": "Trạng thái",
@@ -10222,7 +10564,8 @@
       "timesheet_not_found": "Không tìm thấy bảng giờ này.",
       "timesheet_changed": "Bảng giờ vừa được người khác xử lý. Tải lại trang để xem.",
       "publish_required": "Cần ghi nhận bài đã đăng kèm đường dẫn trước khi chuyển sang trạng thái đã đăng.",
-      "time_window_closed": "Dòng giờ này đã quá hạn sửa (35 ngày), trừ khi người duyệt trả tuần đó về."
+      "time_window_closed": "Dòng giờ này đã quá hạn sửa (35 ngày), trừ khi người duyệt trả tuần đó về.",
+      "handoff_required": "Việc này cần gói bàn giao khi hoàn thành — đổi trạng thái ở ô bên cạnh để điền."
     },
     "timesheets": {
       "title": "Duyệt bảng giờ",
@@ -10399,6 +10742,25 @@
       "role": "Vai trò / dịch vụ",
       "noAccountManager": "Chưa có account phụ trách"
     },
+    "overview": {
+      "properties": "Thông tin",
+      "people": "Nhân sự",
+      "peopleCount": "{count} người",
+      "dates": "Thời gian",
+      "daysLeft": "{count} ngày còn lại",
+      "daysOver": "trễ {count} ngày",
+      "dueToday": "đến hạn hôm nay",
+      "origin": "Nguồn việc",
+      "allPlan": "Xem kế hoạch",
+      "activity": "Hoạt động gần đây",
+      "progress": "Tiến độ",
+      "tasksHint": "{overdue} quá hạn · {blocked} bị chặn",
+      "nextDeliverables": "Sản phẩm bàn giao tiếp theo",
+      "noNextDeliverables": "Không có sản phẩm nào sắp đến hạn.",
+      "thisWeek": "Tuần này",
+      "nobodyThisWeek": "Chưa ai được phân bổ cho tuần này.",
+      "allTeam": "Xem phân bổ nhân sự"
+    },
     "fields": {
       "jobNumber": "Mã dự án",
       "name": "Tên dự án",
@@ -10478,7 +10840,12 @@
       "acceptedValue": "{accepted}/{promised} ({percent}%)",
       "hours": "Giờ",
       "hoursValue": "{used}/{budget} giờ · dự kiến {percent}%",
-      "hoursNoBudget": "{used} giờ · chưa có ngân sách"
+      "hoursNoBudget": "{used} giờ · chưa có ngân sách",
+      "cardProgress": "{accepted}/{promised} sản phẩm · {percent}%",
+      "cardHours": "{used}/{budget} giờ",
+      "cardHoursNoBudget": "{used} giờ",
+      "noRegister": "Chưa có sản phẩm cam kết",
+      "noMilestone": "Chưa có mốc tiếp theo"
     },
     "plan": {
       "slip": "{direction, select, late {trễ {days} ngày} early {sớm {days} ngày} other {đúng hạn}}",
@@ -10528,6 +10895,11 @@
         "cancelled": "Đã hủy"
       },
       "lineProgress": "nghiệm thu {accepted}/{promised} · {linked} việc đã gắn",
+      "columns": {
+        "progress": "Nghiệm thu",
+        "tasks": "Việc đã gắn"
+      },
+      "tasksLinked": "{count, plural, other {# việc đã gắn}}",
       "manage": "Quản lý dòng này",
       "newLine": "Thêm sản phẩm cam kết",
       "add": "Thêm dòng",
@@ -10796,7 +11168,9 @@
       "daysOff": "Ngày nghỉ: {list}",
       "legend": "Mỗi ô: giờ đã xác nhận / giờ có thể làm. Giờ dự kiến hiện riêng và không tính là tải. “Vắng” là nghỉ phép đã duyệt — không hiện loại phép.",
       "openRoles": "Vai trò đang chờ người",
-      "openRolesHint": "Các dự án bạn xem được đang cần người cho những vai trò này."
+      "openRolesHint": "Các dự án bạn xem được đang cần người cho những vai trò này.",
+      "heatmap": "Tải theo tuần",
+      "heatmapLegend": "Mỗi ô: giờ đã xác nhận so với giờ có thể làm. Xanh tới 90%, vàng tới 100%, đỏ khi quá tải. Dấu + là có giờ dự kiến chưa tính; chấm vàng là có ngày nghỉ phép đã duyệt. Di chuột vào ô để xem chi tiết."
     },
     "uploading": "Đang tải lên…",
     "uploaded": "Đã tải lên: {name}",
@@ -10963,6 +11337,12 @@
       "filter": "Lọc",
       "empty": "Không có khoản nào.",
       "readyTotal": "{count} khoản chờ xuất, tổng {total}",
+      "readyTotalLabel": "Tổng chờ xuất hoá đơn",
+      "columns": {
+        "project": "Dự án",
+        "client": "Khách hàng",
+        "created": "Ngày tạo"
+      },
       "noAmount": "Chưa có số tiền",
       "status": {
         "ready": "Chờ xuất hoá đơn",
@@ -12157,7 +12537,18 @@
       "endsOn": "hết hạn {date}",
       "receivables": "Công nợ",
       "overdue": "{amount} quá hạn",
-      "openReceivables": "Mở công nợ"
+      "openReceivables": "Mở công nợ",
+      "tiles": {
+        "pipeline": "Pipeline có trọng số",
+        "pipelineHint": "{count, plural, =0 {Không có cơ hội đang mở} other {# cơ hội đang mở}}",
+        "won": "Chốt trong tháng",
+        "wonHint": "{count, plural, =0 {Chưa chốt cơ hội nào} other {# cơ hội}}",
+        "followUps": "Việc cần theo dõi",
+        "followUpsOverdue": "Có việc đã quá hạn",
+        "followUpsDue": "Đến hôm nay",
+        "winRate": "Tỉ lệ chốt",
+        "winRateHint": "6 tháng gần đây"
+      }
     },
     "accounts": {
       "title": "Khách hàng",

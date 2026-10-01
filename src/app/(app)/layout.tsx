@@ -1,10 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import { cookies } from "next/headers";
-import type { ReactNode } from "react";
-import { AppFrame, type NavRow } from "@/components/shell/app-frame";
+import { AppFrame, type NavRow, type TabStop } from "@/components/shell/app-frame";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
 import { groupNav, navFor } from "@/components/shell/nav";
-import { NavIcon } from "@/components/shell/nav-icons";
 import { canRunRecruitment } from "@/modules/recruit/policy";
 import { SignOutButton } from "@/components/shell/sign-out-button";
 import { ThemeSwitch } from "@/components/shell/theme-switch";
@@ -49,24 +47,21 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const row = (item: { key: string; href?: string }): NavRow => ({ key: item.key, href: item.href, label: label(item.key) });
   // Today's inboxes, the modules, the preferences and the admin desk, sorted into the sidebar's
   // folds (nav.ts). The language and the theme are switched in place, under the preference rows.
-  const preferenceRow = (key: string, control: ReactNode) => (
-    <div key={key} className="flex h-8 items-center gap-2.5 px-2 text-sm font-medium">
-      <NavIcon name={key} className="size-4 shrink-0 text-foreground/60" />
-      <span className="min-w-0 flex-1 truncate">{label(key)}</span>
-      {control}
-    </div>
-  );
+  // The phone's tab bar: the day, the work, what waits for me, and me. "More" opens the rest.
+  const tabs: TabStop[] = [
+    { key: "today", href: "/today", label: t("nav.tabs.today") },
+    { key: "work", href: "/work", label: t("nav.tabs.work") },
+    { key: "inbox", href: "/tasks", label: t("nav.tabs.inbox"), count: tasks },
+    { key: "me", href: "/me", label: t("nav.tabs.me") },
+  ];
+  const quickAdd = { title: t("nav.quickAdd.title"), button: t("nav.quickAdd.button"), task: t("nav.quickAdd.task"), taskHint: t("nav.quickAdd.taskHint"), time: t("nav.quickAdd.time"), timeHint: t("nav.quickAdd.timeHint"), leave: t("nav.quickAdd.leave"), leaveHint: t("nav.quickAdd.leaveHint"), request: t("nav.quickAdd.request"), requestHint: t("nav.quickAdd.requestHint"), cancel: t("nav.quickAdd.cancel") };
   const sections = groupNav([...today, ...nav.main.map(row), row({ key: "notificationSettings", href: "/notifications#settings" }), ...nav.admin.map(row)]).map((section) => ({
     key: section.key,
     label: t(`nav.sections.${section.key}`),
     items: section.items,
-    end:
-      section.key === "preferences" ? (
-        <>
-          {preferenceRow("language", <LocaleSwitch compact />)}
-          {preferenceRow("appearance", <ThemeSwitch theme={theme} compact />)}
-        </>
-      ) : undefined,
+    // The language and the theme are switched in place, under the preference rows; the shell draws
+    // the rows (icon, label) around the controls handed to it.
+    controls: section.key === "preferences" ? [{ key: "language", label: label("language"), control: <LocaleSwitch compact /> }, { key: "appearance", label: label("appearance"), control: <ThemeSwitch theme={theme} compact /> }] : undefined,
   }));
   // The first-sign-in guide, until confirmed: it points only at pages this person's sidebar offers.
   // Vietnamese names end with the given name, which is what the greeting uses.
@@ -88,8 +83,13 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           close: t("nav.close"),
           collapse: t("nav.collapse"),
           soon: t("nav.soon"),
+          more: t("nav.tabs.more"),
+          notifications: t("nav.notifications"),
         }}
         sections={sections}
+        tabs={tabs}
+        quickAdd={quickAdd}
+        unread={unread}
         pins={user.preferences.navPins}
         user={{ name: user.person.fullName, email: user.email, photoUrl: photoUrlOf(user.person) }}
         // Feedback on the app, one click from every page while it is new to everybody.

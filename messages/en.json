@@ -37,6 +37,26 @@
     }
   },
   "nav": {
+    "tabs": {
+      "today": "Today",
+      "work": "Work",
+      "inbox": "Inbox",
+      "me": "Me",
+      "more": "More"
+    },
+    "quickAdd": {
+      "title": "Quick add",
+      "button": "Quick add",
+      "task": "Task",
+      "taskHint": "for me or a teammate",
+      "time": "Log time",
+      "timeHint": "on a task of today",
+      "leave": "Leave",
+      "leaveHint": "a day off, a half day, working from home",
+      "request": "Request",
+      "requestHint": "purchase, advance, letter",
+      "cancel": "Cancel"
+    },
     "home": "Home",
     "people": "People",
     "attendance": "Attendance",
@@ -142,7 +162,9 @@
     "noKudos": "No kudos yet — be the first.",
     "giveKudos": "Give kudos",
     "newPages": "New knowledge-base pages",
-    "nothingThisWeek": "Nothing this week."
+    "nothingThisWeek": "Nothing this week.",
+    "roleLine": "Roles: {roles}",
+    "eventsTitle": "This week"
   },
   "roles": {
     "owner": "Owner",
@@ -160,6 +182,7 @@
     "sales": "Sales / business development"
   },
   "entities": {
+    "details": "Entity details",
     "title": "Legal entities",
     "description": "The companies in the group. Departments are shared across entities.",
     "code": "Code",
@@ -226,6 +249,20 @@
       "personal": "Personal details",
       "history": "Assignment history",
       "changeRequests": "Change requests waiting for HR"
+    },
+    "me": {
+      "mine": "Mine",
+      "profile": "Profile",
+      "preferences": "Preferences",
+      "equipment": "My equipment",
+      "leaveLeft": "Leave left",
+      "leaveUsed": "{days} used",
+      "days": "{days} days",
+      "hoursThisMonth": "Hours this month",
+      "hoursHint": "{days, plural, one {# working day} other {# working days}}",
+      "pendingRequests": "Pending requests",
+      "pendingCount": "{count, plural, =0 {None} one {# pending} other {# pending}}",
+      "pendingHint": "awaiting approval"
     },
     "hire": {
       "title": "Add person",
@@ -575,6 +612,21 @@
     }
   },
   "org": {
+    "tree": "Unit tree",
+    "pickUnit": "Choose a unit",
+    "empty": "No units yet.",
+    "path": "Path",
+    "unitsInside": "Units inside",
+    "status": "Status",
+    "noChildren": "Nothing sits inside this unit yet.",
+    "rolesOnUnit": "Roles on this unit",
+    "noRoles": "No role is granted over this unit.",
+    "edit": "Edit unit",
+    "reach": {
+      "title": "Naming this unit reaches everything below it",
+      "body": "A role scope, an access row or an announcement audience naming “{name}” reaches {count, plural, =0 {every unit later placed inside it} one {the # unit inside it} other {all # units inside it}}.",
+      "optOut": "This unit alone, nothing below: <code>{id}</code>."
+    },
     "title": "Org units",
     "description": "One tree of units: departments, big teams, small teams — as deep as you need. A unit covers everything below it.",
     "code": "Code",
@@ -607,6 +659,17 @@
     "importTitle": "Import departments from Excel / CSV"
   },
   "rbac": {
+    "grants": "Granted roles",
+    "noGrants": "No role granted yet.",
+    "matrix": {
+      "title": "Roles × permissions",
+      "hint": "A role's permissions are fixed; each grant decides the scope.",
+      "permission": "Permission",
+      "everywhere": "Everywhere",
+      "scoped": "Within the grant's scope",
+      "none": "No",
+      "tierHint": "Under each role: the highest sensitivity tier it may read."
+    },
     "title": "Access",
     "description": "Roles are always granted explicitly, person by person, each with a scope. Revoking takes effect on that person's very next action.",
     "person": "Person",
@@ -645,6 +708,14 @@
     }
   },
   "audit": {
+    "when": "When",
+    "who": "Who",
+    "action": "Action",
+    "field": "Field",
+    "close": "Close",
+    "noDiff": "This entry carries no before/after data.",
+    "appendOnly": "The log is written by a database trigger: append-only, nobody can edit or delete it.",
+    "removeFilter": "Remove filter {filter}",
     "title": "Audit log",
     "description": "Every data change, every refusal and every automated job. The log is append-only; nobody can edit or delete it.",
     "count": "{count, plural, =0 {No entries} one {# entry} other {# entries}}",
@@ -659,6 +730,9 @@
     "next": "Next",
     "page": "Page {page} of {pageCount}",
     "filters": {
+      "actionShort": "Action",
+      "actorShort": "Actor",
+      "resourceTypeShort": "Resource",
       "action": "Action, e.g. person. or .denied",
       "actor": "Actor's email",
       "resourceType": "Resource type",
@@ -679,6 +753,12 @@
     "unread": "Unread",
     "read": "Read",
     "markRead": "Mark as read",
+    "groups": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "earlier": "Earlier"
+    },
+    "settings": "Settings",
     "previous": "Previous",
     "next": "Next",
     "page": "Page {page} of {pageCount}",
@@ -1268,6 +1348,16 @@
     }
   },
   "jobs": {
+    "tiles": {
+      "jobs": "Jobs",
+      "failed": "Failed",
+      "last24h": "in the last 24 hours",
+      "median": "Median run",
+      "next": "Next run"
+    },
+    "runs": "Recent runs",
+    "schedule": "Schedule",
+    "daily": "Daily at {time}",
     "title": "Scheduled jobs",
     "description": "Work that runs on a schedule: the daily people roll-over, notification emails. Owners are notified when a job fails.",
     "started": "Started",
@@ -1284,6 +1374,33 @@
     }
   },
   "rules": {
+    "pendingCount": "{count, plural, one {# proposal is waiting for the Owner's decision.} other {# proposals are waiting for the Owner's decision.}}",
+    "view": "View",
+    "search": "Search parameters…",
+    "filter": "Filter",
+    "asOf": "As of",
+    "value": "Value",
+    "version": "Versions",
+    "noMatch": "No parameter matches.",
+    "versions": "Versions",
+    "noVersions": "No versions yet.",
+    "inForce": "In force",
+    "proposed": "Proposed",
+    "unverifiedShort": "Unverified",
+    "groups": {
+      "insurance": "Social, health and unemployment insurance",
+      "union": "Trade union",
+      "pit": "Personal income tax",
+      "wage": "Wages",
+      "overtime": "Overtime",
+      "work": "Working hours",
+      "leave": "Leave",
+      "probation": "Probation",
+      "contract": "Employment contracts",
+      "hr": "HR reminders",
+      "tax": "Tax",
+      "crm": "Clients & sales"
+    },
     "title": "Statutory parameters",
     "description": "Insurance rates, income tax, regional minimum wages, overtime multipliers… Every value has a start date and a legal source; no figure lives in code. HR / C&B propose changes and the Owner approves them.",
     "pending": "Proposals awaiting a decision",
@@ -1340,6 +1457,12 @@
     }
   },
   "flags": {
+    "modules": "Modules",
+    "everyoneShort": "Everyone",
+    "pilot": "Pilot",
+    "noPilot": "Nobody chosen yet.",
+    "add": "Add",
+    "discard": "Discard",
     "title": "Feature rollout",
     "description": "Open each module to a pilot group first, then to the whole group. This only controls who sees a module; what they may do inside it is still decided by their roles. HR administrators and Owners always see every module.",
     "everyone": "On for the whole group",
@@ -1508,12 +1631,24 @@
     },
     "withdraw": "Withdraw request",
     "withdrawConfirm": "Withdraw this request?",
+    "age": {
+      "hours": "{hours}h",
+      "days": "{days}d"
+    },
+    "resolved": "Resolved ({count})",
+    "step": {
+      "yourTurn": "Your turn"
+    },
     "columns": {
       "request": "Request",
       "requester": "From",
       "submitted": "Sent",
       "status": "Status",
-      "waitingOn": "Waiting for"
+      "waitingOn": "Waiting for",
+      "type": "Type",
+      "amount": "Amount",
+      "step": "Step",
+      "age": "Age"
     },
     "types": {
       "profile_change": "Personal data change",
@@ -1559,7 +1694,10 @@
       "step": "Step {number} ({mode, select, all {everyone must approve} other {any one approver}}):",
       "verified": "Verified through a second channel",
       "parallel": "· together with the previous step",
-      "standingInFor": "for {name}"
+      "standingInFor": "for {name}",
+      "chain": "Approval chain",
+      "stepTitle": "Step {number}",
+      "mode": "{mode, select, all {everyone must approve} other {one approval is enough}}"
     },
     "decide": {
       "title": "Your decision",
@@ -1636,6 +1774,13 @@
       "delegator": "Delegated by"
     },
     "flows": {
+      "status": "Status",
+      "edit": "Edit flow",
+      "activeOn": "In use",
+      "yes": "Yes",
+      "no": "No",
+      "conditionOn": "Only when the condition holds",
+      "conditionOff": "For every request",
       "title": "Approval flows",
       "description": "Who approves each kind of request. A flow saved here replaces the default for one entity or for the whole group; requests already sent keep the flow they started with.",
       "defaults": "Defaults",
@@ -1783,6 +1928,14 @@
     "open": "Open ({count})",
     "openEmpty": "Nothing is waiting for you.",
     "recentlyDone": "Recently done",
+    "views": {
+      "label": "Show",
+      "all": "All",
+      "work": "Work",
+      "reviews": "To review",
+      "approvals": "Approvals",
+      "handoffs": "Hand-offs"
+    },
     "about": "About {name}",
     "due": "Due {date}",
     "unassigned": "Unassigned",
@@ -1903,6 +2056,11 @@
     },
     "pageTitle": "Checklists",
     "pageDescription": "Every department's tick-lists — before a hand-off, when a brief comes in, before publishing — kept in one place and hooked into the work that needs them.",
+    "tabs": {
+      "label": "Sections",
+      "library": "Library",
+      "lifecycle": "Onboarding & offboarding"
+    },
     "library": {
       "title": "Checklist library",
       "description": "What it is for",
@@ -1939,7 +2097,15 @@
       "deleteConfirm": "Delete this checklist? It is also taken off every stage, hand-off package, intake form and template step that uses it. Boxes already on tasks stay.",
       "pickLegend": "Checklists from the library",
       "pickHint": "Up to {max}. Their items are asked for as they stand at the time.",
-      "usedBy": "Used by {list}"
+      "usedBy": "Used by {list}",
+      "columns": {
+        "items": "Items",
+        "usedBy": "Used by",
+        "state": "State"
+      },
+      "collapse": "Collapse",
+      "expand": "Expand",
+      "noItems": "This checklist has no items yet."
     },
     "stages": {
       "title": "Stage checklists",
@@ -2749,7 +2915,18 @@
       "onLeavePart": "You have approved leave for part of today.",
       "noLocations": "Your company has not set up work locations yet, so check-ins are not location-checked.",
       "today": "Today's punches",
+      "todaySection": "Today",
       "noPunches": "Nothing recorded yet today.",
+      "status": {
+        "in": "At the office",
+        "out": "Checked out",
+        "none": "Not checked in yet"
+      },
+      "since": "In since {time} · {elapsed}",
+      "locationChecked": "Your location is checked when you punch",
+      "week": {
+        "title": "This week"
+      },
       "flags": {
         "outside_geofence": "Outside the work location ({distance} m from it)",
         "low_accuracy": "The phone's position was too imprecise",
@@ -2786,6 +2963,7 @@
     "today": {
       "title": "Who's in today",
       "everyone": "Everyone",
+      "empty": "Nobody to show.",
       "you": "you",
       "partLeave": "Half-day leave",
       "flagged": "To review",
@@ -3003,6 +3181,8 @@
     "timesheet": {
       "myMonth": "My month",
       "monthOf": "Month of {name}",
+      "previousMonth": "Previous month",
+      "nextMonth": "Next month",
       "tapHint": "Tap a day to see how it was computed.",
       "empty": "No timesheet days yet.",
       "why": "How this day was computed",
@@ -3290,6 +3470,7 @@
         "notOver": "The month is not over yet."
       },
       "issues": {
+        "blocking": "Blocks the lock",
         "not_approved": "month not approved",
         "missing_punch": "{count} day(s) with a missing punch",
         "punch_to_review": "{count} flagged punch(es) to review",
@@ -3465,7 +3646,11 @@
       "away": "Away",
       "nonWorking": "Not a working day",
       "list": "Away this month",
-      "noneAway": "Nobody is away this month."
+      "noneAway": "Nobody is away this month.",
+      "half": "Half day",
+      "remote": "Remote",
+      "previous": "Previous month",
+      "next": "Next month"
     },
     "errors": {
       "generic": "That did not work. Please try again.",
@@ -3620,6 +3805,7 @@
         "no_accrual": "Does not accrue"
       },
       "balances": {
+        "title": "Leave balances",
         "hint": "Balance at today's date; in brackets what pending requests hold. Open a person for the ledger behind the number.",
         "person": "Person",
         "unit": "Entity · department",
@@ -3862,7 +4048,8 @@
         "hint": "JPG, PNG or WebP. Resized before upload; lists show it as a square."
       },
       "teamColor": "The team's colour",
-      "openTasks": "Open tasks"
+      "openTasks": "Open tasks",
+      "progress": "{done}/{total} tasks done"
     },
     "clients": {
       "title": "Clients and brands",
@@ -3917,6 +4104,8 @@
       "clear": "Clear filters",
       "count": "{shown} of {total}",
       "quickCreate": "New task — type a title and press Enter",
+      "addFilter": "Add filter",
+      "newTask": "New task",
       "add": "Add",
       "empty": "No tasks yet.",
       "noMatch": "No task matches these filters.",
@@ -4057,9 +4246,13 @@
       "checklistFromLibrary": "Add from the library…",
       "dependencyAdd": "Add a dependency",
       "noSubtasks": "No sub-tasks.",
-      "noDependencies": "No dependencies."
+      "noDependencies": "No dependencies.",
+      "properties": "Properties",
+      "overview": "Overview"
     },
     "palette": {
+      "groups": { "tasks": "Tasks", "actions": "Actions", "pages": "Go to" },
+      "hints": { "move": "move", "open": "open" },
       "title": "Command palette",
       "placeholder": "Go to a page, find a task (VID-12)…",
       "create": "Create a task",
@@ -4256,7 +4449,8 @@
       "list": "List",
       "board": "Board",
       "calendar": "Calendar",
-      "table": "Table"
+      "table": "Table",
+      "label": "View"
     },
     "board": {
       "moveUp": "Move up",
@@ -5743,7 +5937,12 @@
       "clear": "Clear filters"
     },
     "list": {
-      "narrowed": "{count, plural, =0 {Nothing} =1 {1 obligation} other {# obligations}}{hasMonth, select, yes { due in {month}} other {}}{hasColour, select, yes { · {colour}} other {}}."
+      "narrowed": "{count, plural, =0 {Nothing} =1 {1 obligation} other {# obligations}}{hasMonth, select, yes { due in {month}} other {}}{hasColour, select, yes { · {colour}} other {}}.",
+      "bands": {
+        "overdue": "Overdue",
+        "soon": "Next 30 days",
+        "later": "Later"
+      }
     },
     "escalation": {
       "level1": "Escalated to the manager",
@@ -5754,6 +5953,11 @@
       "entity": "Entity",
       "totals": "{overdue, plural, =0 {Nothing overdue} =1 {1 overdue} other {# overdue}} · {dueSoon, plural, =0 {nothing due this week} =1 {1 due this week} other {# due this week}} · {escalated, plural, =0 {none escalated} =1 {1 escalated} other {# escalated}}.",
       "seeOverdue": "See what is overdue",
+      "tiles": {
+        "overdue": "Overdue",
+        "dueSoon": "Due within 7 days",
+        "escalated": "Escalated"
+      },
       "escalated": "{count, plural, =1 {1 escalated} other {# escalated}}",
       "legend": "A cell takes the colour of its worst item. Click a count to open those obligations; click a month to open its calendar. Items marked \"not applicable\" are not counted."
     },
@@ -5799,10 +6003,25 @@
     "title": "My goals",
     "description": "OKRs: goals, key results and the weekly check-in.",
     "newGoal": "New goal",
+    "yearLabel": "Year",
+    "keyResultCount": "{count, plural, one {# key result} other {# key results}}",
+    "tiles": {
+      "quarter": "Quarter progress",
+      "quarterHint": "{count, plural, =0 {No goals this quarter} one {over # goal} other {over # goals}}",
+      "goals": "My goals",
+      "atRisk": "{count, plural, one {# at risk} other {# at risk}}",
+      "onTrack": "All on track",
+      "kpis": "KPIs on target",
+      "kpisHint": "Last month",
+      "checkIns": "Check-ins",
+      "checkInsDue": "Waiting for you",
+      "checkInsDone": "All up to date"
+    },
     "notMeasured": "not measured",
     "stale": "check-in due",
     "hiddenChildren": "{count, plural, one {# individual goal you cannot see} other {# individual goals you cannot see}}",
     "nav": {
+      "label": "Sections",
       "mine": "Mine",
       "alignment": "Alignment",
       "kpis": "My KPIs",
@@ -5888,6 +6107,8 @@
       "noCheckIn": "never checked in"
     },
     "checkIn": {
+      "unfold": "Check in",
+      "fold": "Fold",
       "open": "Check in this week",
       "dueNow": "Check in this week (over a week old)",
       "value": "Current value",
@@ -5945,13 +6166,20 @@
       "superseded": "Earlier closes (superseded)",
       "supersededLine": "Revision {revision}: {score} — superseded on {date}",
       "noLines": "No KPIs yet.",
+      "lineState": {
+        "met": "Met",
+        "short": "Short",
+        "pending": "Awaiting figure",
+        "excluded": "Not counted"
+      },
       "columns": {
         "kpi": "KPI",
         "target": "Target",
         "actual": "Actual",
         "attainment": "Attainment",
         "weight": "Weight",
-        "contribution": "Contribution"
+        "contribution": "Contribution",
+        "state": "State"
       },
       "direction": {
         "higher_better": "higher is better",
@@ -6463,6 +6691,7 @@
       }
     },
     "results": {
+      "yearLabel": "Year",
       "title": "Final performance result",
       "description": "The review rating, the KPI score and OKR attainment combined by the approved weighting into one score and one band.",
       "year": "{year}",
@@ -6699,6 +6928,9 @@
     "title": "Knowledge base",
     "description": "The company's handbook, policies, procedures and how-tos.",
     "noSpaces": "No space is open to you yet.",
+    "shell": {
+      "spaces": "Spaces"
+    },
     "save": "Save",
     "saved": "Saved.",
     "groups": {
@@ -6773,6 +7005,9 @@
       "manage": "Manage page",
       "breadcrumb": "Breadcrumb",
       "contents": "On this page",
+      "onThisPage": "On this page",
+      "appLinks": "Links in the app",
+      "versionShort": "v{n}",
       "restricted": "Restricted readers",
       "unpublishedChanges": "Unpublished changes",
       "versionLine": "Version {n} · {date} · {name}",
@@ -6938,6 +7173,7 @@
     },
     "ack": {
       "confirm": "I have read and understood",
+      "requiredBadge": "Must read",
       "confirmHelp": "Read everything above, then confirm.",
       "banner": "You need to read and confirm this page by {date}.",
       "bannerOverdue": "You need to read and confirm this page — it was due on {date}.",
@@ -6983,6 +7219,7 @@
       "count": "{count, plural, =0 {No pages found.} one {# page} other {# pages}}",
       "filter": "Filter by space",
       "allSpaces": "All spaces",
+      "none": "No pages found.",
       "previous": "Previous",
       "next": "Next"
     },
@@ -7036,7 +7273,8 @@
       "pinned": "Pinned",
       "mustAcknowledge": "Needs acknowledgement",
       "acknowledged": "Acknowledged",
-      "all": "All announcements"
+      "all": "All announcements",
+      "open": "Open"
     },
     "detail": {
       "readMore": "Read more in the knowledge base:",
@@ -7147,7 +7385,16 @@
   "payroll": {
     "title": "Pay",
     "description": "Your own pay file and — if you hold a payroll role — the C&B desk. Every screen here asks for a recent re-authentication.",
+    "tabs": {
+      "label": "Payroll desk",
+      "runs": "Runs",
+      "salaries": "Salaries",
+      "bonus": "Bonus",
+      "reports": "Reports"
+    },
     "desk": {
+      "mineSection": "Mine",
+      "deskSection": "C&B desk",
       "mine": {
         "title": "My pay file",
         "description": "Your salary, allowances and their history."
@@ -7734,7 +7981,22 @@
         "run_has_no_lines": "There is nothing to pay.",
         "run_not_settled": "Cannot mark this paid yet: a bank file or the cash sheet is still outstanding."
       },
-      "payments": "Payment"
+      "payments": "Payment",
+      "stages": {
+        "label": "Run progress",
+        "collect": "Collect",
+        "compute": "Compute",
+        "review": "Review",
+        "approve": "Approve",
+        "pay": "Pay"
+      },
+      "exceptions": "Exceptions",
+      "openPayFile": "Pay file",
+      "compliance": "Payroll data · never cached · every view is logged",
+      "lineStatus": {
+        "published": "Published",
+        "read": "Read"
+      }
     },
     "payslips": {
       "mine": "My payslips",
@@ -7749,6 +8011,11 @@
       "queryOpen": "Query open",
       "backToRun": "Payroll run",
       "downloadPdf": "Download PDF",
+      "publishedOn": "Published {date}",
+      "paidDaysShort": "{days} paid days",
+      "monthTitle": "{month}",
+      "rulesNote": "Contribution rates, insurance caps and tax brackets are effective-dated configuration, never constants in code.",
+      "rulesLink": "See the rules in force",
       "titleFor": "PAYSLIP FOR {month}",
       "taxCode": "Tax code",
       "person": "Employee",
@@ -8334,6 +8601,15 @@
     "mine": "My requests",
     "mineEmpty": "You have not made a request yet.",
     "backToApprovals": "Approvals",
+    "hub": "Requests",
+    "newShort": "New request",
+    "tabs": {
+      "label": "Request views",
+      "mine": "Mine",
+      "inbox": "To approve",
+      "claims": "Settlement desk",
+      "all": "All"
+    },
     "elsewhere": {
       "title": "Other kinds of request",
       "leave": "Request leave",
@@ -8367,9 +8643,12 @@
       "yes": "Yes",
       "no": "No",
       "correctAndResend": "Correct it and send it again",
+      "details": "Details",
       "resend": "Send again"
     },
     "designer": {
+      "on": "On",
+      "flowOn": "In use",
       "title": "Request types",
       "description": "Design the form and the approval flow of each kind of request, without code.",
       "add": "Add a request type",
@@ -8590,6 +8869,7 @@
       "sweep": "Put into a payroll run",
       "sweptResult": "Posted: {posted} · still waiting: {waiting}",
       "sweepFailed": "That did not work.",
+      "owed": "Owed",
       "columns": {
         "requester": "Requester",
         "summary": "What for",
@@ -8664,7 +8944,8 @@
       "edit": "Edit",
       "import": "Import",
       "bookings": "Equipment bookings",
-      "licences": "Licences"
+      "licences": "Licences",
+      "register": "Register"
     },
     "columns": {
       "code": "Code",
@@ -9017,6 +9298,9 @@
       "compensation": "Compensation"
     },
     "designer": {
+      "inactive": "Inactive",
+      "basics": "Basics",
+      "letterheadHint": "Printed at the head of every document made from this template.",
       "title": "Document templates",
       "description": "Contracts, decisions and confirmation letters. A template's sensitivity must cover everything its body prints — the system refuses to save it otherwise.",
       "new": "New template",
@@ -9071,6 +9355,23 @@
     "pipelines": "Pipelines",
     "headcount": "Headcount plan",
     "newOpening": "New opening",
+    "candidate": {
+      "properties": "Details",
+      "links": "Link"
+    },
+    "home": {
+      "newOpening": "New opening",
+      "careers": "Careers site",
+      "openingsLabel": "Open positions",
+      "pipeline": "Candidates by stage",
+      "board": "Open board",
+      "openOpening": "Opening details",
+      "noActive": "Nobody is in progress on this opening.",
+      "interviewsToday": "Interviews today",
+      "noInterviewsToday": "You have no interviews today.",
+      "openInterview": "Open",
+      "allOpenings": "All job openings"
+    },
     "newCandidate": "Add candidate",
     "newHiring": "Request a hire",
     "none": "Nothing yet.",
@@ -9231,6 +9532,7 @@
       "isActive": "In use"
     },
     "actions": {
+      "editCandidate": "Edit candidate",
       "publish": "Publish",
       "hold": "Put on hold",
       "reopen": "Reopen",
@@ -9455,7 +9757,14 @@
       "clear": "Clear",
       "days": "{days} days in this stage",
       "empty": "Nobody yet",
-      "title": "Pipeline board"
+      "title": "Pipeline board",
+      "flags": {
+        "new": "New",
+        "referral": "Referral",
+        "scheduled": "Scheduled",
+        "today": "Today",
+        "awaiting": "Awaiting"
+      }
     },
     "emailKind": {
       "invite": "Invitation",
@@ -9749,6 +10058,7 @@
     "thinking": "Looking…",
     "newChat": "New chat",
     "history": "Asked recently",
+    "noHistory": "No conversations yet.",
     "emptyHint": "Ask about the work rules, policies and procedures. Accents are optional.",
     "mayBeWrong": "The answer is quoted from a knowledge-base page and may be incomplete — open the source to read it in full.",
     "noAnswer": "I could not find an answer in the pages you may read.",
@@ -9918,6 +10228,35 @@
       "time": "Time logged today · {value} h",
       "salesHandoffs": "Won deals handed to you ({count})",
       "followUps": "Client follow-ups ({count})",
+      "greeting": {
+        "morning": "Good morning, {name}",
+        "afternoon": "Good afternoon, {name}",
+        "evening": "Good evening, {name}"
+      },
+      "profile": "My profile",
+      "checkedIn": "Checked in at {time}",
+      "checkedOut": "Checked out at {time}",
+      "notCheckedIn": "Not checked in",
+      "elapsed": "{hours}h {minutes}m",
+      "checkIn": "Check in",
+      "checkOut": "Check out",
+      "planShort": "Plan",
+      "reportShort": "Report",
+      "planSummary": "{count} tasks · {planned}h / {available}h",
+      "writeReportBy": "Write report · by {time}",
+      "reportDone": "Report sent",
+      "waiting": "Waiting for you",
+      "markDone": "Mark done",
+      "doneAlready": "Done",
+      "timerRunning": "Timer running",
+      "planSection": "Today's plan",
+      "dueSection": "Due or overdue",
+      "timeSection": "Time logged today",
+      "review": "Your review",
+      "handoff": "Hand-off",
+      "salesHandoff": "Won deal",
+      "blocker": "Blocker",
+      "planHint": "Pick tasks in “Plan my day” or add one above.",
       "columns": {
         "key": "Key",
         "title": "Task",
@@ -10022,7 +10361,9 @@
       "requiredBy": "Required, by {time}",
       "dayOff": "Day off — not required",
       "carried": "Carried over from your last report's “tomorrow”",
-      "savedAt": "Saved at {time}"
+      "savedAt": "Saved at {time}",
+      "hoursLabel": "Hours",
+      "hoursShort": "h"
     },
     "activity": {
       "empty": "No recorded activity today yet.",
@@ -10190,6 +10531,7 @@
       "recent": "Recent reports",
       "empty": "You have not sent a daily report yet.",
       "hasBlockers": "Blockers",
+      "screens": "Screens",
       "columns": {
         "date": "Day",
         "status": "Status",
@@ -10222,7 +10564,8 @@
       "timesheet_not_found": "Timesheet not found.",
       "timesheet_changed": "Someone else has just decided this timesheet. Reload the page to see it.",
       "publish_required": "Record the published post with its link before moving to a published state.",
-      "time_window_closed": "This entry is older than the 35-day window and cannot be changed unless the approver returns that week."
+      "time_window_closed": "This entry is older than the 35-day window and cannot be changed unless the approver returns that week.",
+      "handoff_required": "Finishing this task needs a hand-off package — change its state in the control beside it to fill one in."
     },
     "timesheets": {
       "title": "Timesheets",
@@ -10399,6 +10742,25 @@
       "role": "Role / service",
       "noAccountManager": "No account manager"
     },
+    "overview": {
+      "properties": "Properties",
+      "people": "People",
+      "peopleCount": "{count} people",
+      "dates": "Dates",
+      "daysLeft": "{count} days left",
+      "daysOver": "{count} days over",
+      "dueToday": "due today",
+      "origin": "Origin",
+      "allPlan": "Open the plan",
+      "activity": "Recent activity",
+      "progress": "Progress",
+      "tasksHint": "{overdue} overdue · {blocked} blocked",
+      "nextDeliverables": "Next deliverables",
+      "noNextDeliverables": "Nothing is due soon.",
+      "thisWeek": "This week",
+      "nobodyThisWeek": "Nobody is booked this week.",
+      "allTeam": "See the bookings"
+    },
     "fields": {
       "jobNumber": "Job number",
       "name": "Project name",
@@ -10478,7 +10840,12 @@
       "acceptedValue": "{accepted}/{promised} ({percent}%)",
       "hours": "Hours",
       "hoursValue": "{used}/{budget} h · forecast {percent}%",
-      "hoursNoBudget": "{used} h · no budget"
+      "hoursNoBudget": "{used} h · no budget",
+      "cardProgress": "{accepted}/{promised} deliverables · {percent}%",
+      "cardHours": "{used}/{budget} h",
+      "cardHoursNoBudget": "{used} h",
+      "noRegister": "Nothing promised yet",
+      "noMilestone": "No next milestone"
     },
     "plan": {
       "slip": "{direction, select, late {{days, plural, one {# day late} other {# days late}}} early {{days, plural, one {# day early} other {# days early}}} other {on time}}",
@@ -10528,6 +10895,11 @@
         "cancelled": "Cancelled"
       },
       "lineProgress": "accepted {accepted}/{promised} · {linked} tasks linked",
+      "columns": {
+        "progress": "Accepted",
+        "tasks": "Tasks linked"
+      },
+      "tasksLinked": "{count, plural, one {# task linked} other {# tasks linked}}",
       "manage": "Manage this line",
       "newLine": "Add a promised deliverable",
       "add": "Add line",
@@ -10796,7 +11168,9 @@
       "daysOff": "Days off: {list}",
       "legend": "Each cell: confirmed hours / hours available. Tentative hours are shown apart and never counted. “Away” is approved leave — its type is never shown.",
       "openRoles": "Roles waiting for someone",
-      "openRolesHint": "Projects you can see need people for these roles."
+      "openRolesHint": "Projects you can see need people for these roles.",
+      "heatmap": "Load by week",
+      "heatmapLegend": "Each cell: confirmed hours against what the person can work. Green up to 90%, amber up to 100%, red when over. A + marks tentative hours not counted; an amber dot marks approved leave. Hover a cell for the detail."
     },
     "uploading": "Uploading…",
     "uploaded": "Uploaded: {name}",
@@ -10963,6 +11337,12 @@
       "filter": "Filter",
       "empty": "Nothing here.",
       "readyTotal": "{count} items ready, {total} in total",
+      "readyTotalLabel": "Ready to invoice",
+      "columns": {
+        "project": "Project",
+        "client": "Client",
+        "created": "Created"
+      },
       "noAmount": "No amount yet",
       "status": {
         "ready": "Ready to invoice",
@@ -12157,7 +12537,18 @@
       "endsOn": "ends {date}",
       "receivables": "Receivables",
       "overdue": "{amount} overdue",
-      "openReceivables": "Open receivables"
+      "openReceivables": "Open receivables",
+      "tiles": {
+        "pipeline": "Weighted pipeline",
+        "pipelineHint": "{count, plural, =0 {No open deals} one {# open deal} other {# open deals}}",
+        "won": "Won this month",
+        "wonHint": "{count, plural, =0 {Nothing won yet} one {# deal} other {# deals}}",
+        "followUps": "Follow-ups",
+        "followUpsOverdue": "Some are overdue",
+        "followUpsDue": "Due by today",
+        "winRate": "Win rate",
+        "winRateHint": "Last 6 months"
+      }
     },
     "accounts": {
       "title": "Accounts",

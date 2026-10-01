@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Be_Vietnam_Pro, JetBrains_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import { headers } from "next/headers";
@@ -10,9 +10,10 @@ import { themeAttribute } from "@/theme/config";
 import { getTheme } from "@/theme/server";
 import "./globals.css";
 
-// Inter ships a Vietnamese subset, so diacritics render in the same face as the rest of the UI.
-const sans = Inter({ variable: "--font-sans", subsets: ["latin", "vietnamese"] });
-const mono = JetBrains_Mono({ variable: "--font-mono", subsets: ["latin", "vietnamese"] });
+// Be Vietnam Pro was drawn for Vietnamese first, so diacritics sit in the face rather than being
+// bolted on; four weights cover body, labels and titles. JetBrains Mono for keys, times and money.
+const sans = Be_Vietnam_Pro({ variable: "--font-sans", weight: ["400", "500", "600", "700"], subsets: ["latin", "vietnamese"], display: "swap" });
+const mono = JetBrains_Mono({ variable: "--font-mono", subsets: ["latin", "vietnamese"], display: "swap" });
 
 const icons: Metadata["icons"] = { icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }], apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }] };
 
@@ -35,7 +36,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 // The browser chrome around the page matches the desk (`--canvas`): the device's own setting when
 // the reader follows it, otherwise the one they chose.
-const THEME_COLOR = { light: "#f4f4f3", dark: "#0a0a0a" } as const;
+const THEME_COLOR = { light: "#fafaf9", dark: "#141413" } as const;
 
 export async function generateViewport(): Promise<Viewport> {
   const forced = themeAttribute(await getTheme());

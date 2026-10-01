@@ -20,7 +20,7 @@ function List({
       data-slot="list"
       data-numbered={numbered ? "" : undefined}
       className={cn(
-        "list-grid flex flex-col divide-y overflow-hidden rounded-xl border border-border bg-background text-sm empty:hidden in-data-[slot=table-card]:rounded-none in-data-[slot=table-card]:border-0",
+        "list-grid flex flex-col divide-y divide-border/70 overflow-hidden rounded-[14px] border border-border bg-background text-sm empty:hidden in-data-[slot=table-card]:rounded-none in-data-[slot=table-card]:border-0",
         className
       )}
       {...props}
@@ -28,7 +28,7 @@ function List({
   )
 }
 
-const ROW = "flex min-h-12 min-w-0 flex-1 items-center gap-3 px-3 py-2.5"
+const ROW = "flex min-h-[3.25rem] min-w-0 flex-1 items-center gap-3 px-4 py-2.5 md:min-h-12 md:px-3.5"
 
 /**
  * One row. Given `href`, the whole row is the link (with the hover wash); otherwise it holds
@@ -50,7 +50,7 @@ function ListItem({
           href={href}
           className={cn(
             ROW,
-            "transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none",
+            "transition-colors duration-100 hover:bg-canvas focus-visible:bg-canvas focus-visible:outline-none",
             className
           )}
         >
@@ -69,7 +69,7 @@ function ListEmpty({ className, ...props }: React.ComponentProps<"li">) {
     <li
       data-slot="list-empty"
       className={cn(
-        "flex min-h-16 items-center justify-center px-3 py-4 text-center text-sm text-muted-foreground",
+        "flex min-h-20 items-center justify-center px-4 py-5 text-center text-sm text-muted-foreground",
         className
       )}
       {...props}

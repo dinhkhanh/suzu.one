@@ -1,15 +1,6 @@
 "use client";
 import { Logo } from "@/components/brand/logo";
-import {
-  ChevronDown,
-  ChevronRight,
-  Menu,
-  PanelLeft,
-  Pin,
-  PinOff,
-  Search,
-  X,
-} from "lucide-react";
+import { Bell, ChevronDown, ChevronRight, LayoutGrid, PanelLeft, Pin, PinOff, Search, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useState, useSyncExternalStore, useTransition } from "react";
@@ -18,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { openCommandPalette } from "@/components/shell/palette-bus";
+import { QuickAdd, type QuickAddLabels } from "@/components/shell/quick-add";
 import {
   readCollapsed,
   readCollapsedOnServer,
@@ -40,13 +32,16 @@ export type NavRow = {
   count?: number;
 };
 
-/** One fold of the sidebar; `end` is drawn under its rows (the preference switches), never on the rail. */
+/** One fold of the sidebar; `controls` are drawn as rows under its items (the preference switches), never on the rail. */
 export type NavSection = {
   key: string;
   label: string;
   items: NavRow[];
-  end?: ReactNode;
+  controls?: { key: string; label: string; control: ReactNode }[];
 };
+
+/** The phone's tab bar: four stops with a page each, and "More", which opens the full menu. */
+export type TabStop = { key: "today" | "work" | "inbox" | "me"; href: string; label: string; count?: number };
 
 export type FrameLabels = {
   workspace: string;
@@ -56,14 +51,20 @@ export type FrameLabels = {
   unpin: string;
   pinLimit: string;
   menu: string;
+  more: string;
   close: string;
   collapse: string;
   soon: string;
+  notifications: string;
 };
 
 type Props = {
   labels: FrameLabels;
   sections: NavSection[];
+  tabs: TabStop[];
+  quickAdd: QuickAddLabels;
+  /** Unread notifications: the dot on the header's bell. */
+  unread: number;
   /** The entries this person pinned, as stored on their account; any they are not offered is skipped. */
   pins: string[];
   /** `photoUrl`: the profile picture, when the person has put one up. `footer` sits at the end of their row. */
@@ -79,11 +80,7 @@ type Props = {
 // A stored href is the crumb for every path below it, so /assets/bookings reads
 // "Assets / Equipment bookings" and a person's page reads "People".
 function crumbsFor(pathname: string, rows: NavRow[]): NavRow[] {
-  const matches = rows.filter(
-    (row) =>
-      row.href &&
-      (pathname === row.href || pathname.startsWith(`${row.href}/`)),
-  );
+  const matches = rows.filter((row) => row.href && (pathname === row.href || pathname.startsWith(`${row.href}/`)));
   matches.sort((a, b) => (a.href?.length ?? 0) - (b.href?.length ?? 0));
   return matches.slice(-2);
 }
@@ -98,26 +95,11 @@ type PinControl = {
   onToggle: () => void;
 };
 
-function Row({
-  row,
-  collapsed,
-  active,
-  soonLabel,
-  pin,
-}: {
-  row: NavRow;
-  collapsed: boolean;
-  active: boolean;
-  soonLabel: string;
-  /** Absent on the rail and for an entry that has not arrived yet. */
-  pin?: PinControl;
-}) {
+function Row({ row, collapsed, active, soonLabel, pin }: { row: NavRow; collapsed: boolean; active: boolean; soonLabel: string; /** Absent on the rail and for an entry that has not arrived yet. */ pin?: PinControl }) {
   const body = (
     <>
       <NavIcon name={row.key} />
-      {collapsed ? null : (
-        <span className="min-w-0 flex-1 truncate">{row.label}</span>
-      )}
+      {collapsed ? null : <span className="min-w-0 flex-1 truncate">{row.label}</span>}
       {row.count ? (
         <span
           className={cn(
@@ -135,10 +117,7 @@ function Row({
   // A module that has not arrived yet: shown with the label rather than hidden.
   if (!row.href) {
     return (
-      <span
-        className={cn(className, "text-muted-foreground")}
-        title={row.label}
-      >
+      <span className={cn(className, "text-muted-foreground")} title={row.label}>
         {body}
         {collapsed ? null : (
           <Badge variant="outline" className="h-5 px-1.5 text-[0.6875rem]">
@@ -149,12 +128,7 @@ function Row({
     );
   }
   const link = (
-    <Link
-      href={row.href}
-      aria-current={active ? "page" : undefined}
-      className={className}
-      title={collapsed ? row.label : undefined}
-    >
+    <Link href={row.href} aria-current={active ? "page" : undefined} className={className} title={collapsed ? row.label : undefined}>
       {body}
     </Link>
   );
@@ -176,65 +150,40 @@ function Row({
           event.stopPropagation();
           pin.onToggle();
         }}
-        className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100 group-has-[:focus-visible]/row:opacity-100 hover:bg-background hover:text-foreground focus-visible:opacity-100 disabled:cursor-not-allowed disabled:hover:bg-transparent pointer-coarse:opacity-70"
+        className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100 group-has-[:focus-visible]/row:opacity-100 hover:bg-background hover:text-foreground focus-visible:opacity-100 disabled:cursor-not-allowed disabled:hover:bg-transparent pointer-coarse:opacity-70"
       >
-        <Icon className="size-3.5" aria-hidden />
+        <Icon className="size-3" aria-hidden />
       </button>
     </div>
   );
 }
 
-function SectionHeading({
-  label,
-  open,
-  count,
-  current,
-}: {
-  label: string;
-  open: boolean;
-  /** What waits behind the rows of a shut section, so folding it hides no badge. */
-  count: number;
-  /** The page open now is one of this shut section's rows. */
-  current: boolean;
-}) {
+function SectionHeading({ label, open, count, current }: { label: string; open: boolean; /** What waits behind the rows of a shut section, so folding it hides no badge. */ count: number; /** The page open now is one of this shut section's rows. */ current: boolean }) {
   return (
-    <CollapsibleTrigger
-      onClick={(event) => event.stopPropagation()}
-      className="nav-section group/heading flex w-full items-center gap-1 rounded-md text-left outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <span className={cn("min-w-0 flex-1 truncate", !open && current && "text-link")}>{label}</span>
+    <CollapsibleTrigger onClick={(event) => event.stopPropagation()} className="nav-section group/heading mt-3 w-full rounded-md text-left outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+      <span className={cn("min-w-0 flex-1 truncate", !open && current && "text-primary")}>{label}</span>
       {!open && count ? <span className="nav-count">{countOf(count)}</span> : null}
-      <ChevronRight
-        className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-90")}
-        aria-hidden
-      />
+      <ChevronRight className={cn("size-3 shrink-0 text-faint transition-transform duration-200 ease-(--ease-settle)", open && "rotate-90")} aria-hidden />
     </CollapsibleTrigger>
   );
 }
 
+const TAB_ICON: Record<TabStop["key"], string> = { today: "today", work: "work", inbox: "tasks", me: "me" };
+
 /**
- * The workspace shell of the design reference: a white card on a grey desk, a sidebar of icon
- * rows with their counts, and a breadcrumb bar over the page. The sidebar folds to a rail on a
- * wide screen (remembered) and slides in over the page on a phone.
+ * The workspace shell: a tinted sidebar of 28px icon rows beside the white page on a desk, folding
+ * to a rail (remembered); on a phone the page alone, a tab bar of five stops along the bottom and
+ * the full menu sliding in over it from "More". A 52px header carries the breadcrumb, the bell and
+ * the feedback button.
  */
-export function AppFrame({
-  labels,
-  sections,
-  pins: storedPins,
-  user,
-  footer,
-  headerEnd,
-  notice,
-  children,
-}: Props) {
+export function AppFrame({ labels, sections, tabs, quickAdd, unread, pins: storedPins, user, footer, headerEnd, notice, children }: Props) {
   const pathname = usePathname();
-  const collapsed = useSyncExternalStore(
-    subscribeCollapsed,
-    readCollapsed,
-    readCollapsedOnServer,
-  );
+  const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, readCollapsedOnServer);
   const folded = useSyncExternalStore(subscribeFolded, readFolded, readFoldedOnServer);
-  const [open, setOpen] = useState(false);
+  // The phone drawer remembers the page it was opened on, so it is shut on every other page.
+  const [openAt, setOpenAt] = useState<string | null>(null);
+  const open = openAt === pathname;
+  const setOpen = (next: boolean) => setOpenAt(next ? pathname : null);
   const toggleCollapsed = () => writeCollapsed(!collapsed);
 
   // The pins as this sidebar shows them: changed here at once, then saved to the account. The
@@ -256,6 +205,8 @@ export function AppFrame({
   const activeKey = crumbs.at(-1)?.key;
   const byKey = new Map(rows.map((row) => [row.key, row]));
   const pinnedRows = pins.flatMap((key) => byKey.get(key) ?? []);
+  // Which tab stop the page belongs to: the stop whose page is the first crumb, else none.
+  const activeTab = tabs.find((tab) => crumbs[0]?.href === tab.href || pathname === tab.href || pathname.startsWith(`${tab.href}/`))?.key;
 
   const rowOf = (row: NavRow) => (
     <Row
@@ -264,16 +215,7 @@ export function AppFrame({
       collapsed={collapsed}
       active={row.key === activeKey}
       soonLabel={labels.soon}
-      pin={
-        row.href && !collapsed
-          ? {
-              pinned: pins.includes(row.key),
-              full: pins.length >= MAX_NAV_PINS,
-              labels,
-              onToggle: () => togglePin(row.key),
-            }
-          : undefined
-      }
+      pin={row.href && !collapsed ? { pinned: pins.includes(row.key), full: pins.length >= MAX_NAV_PINS, labels, onToggle: () => togglePin(row.key) } : undefined}
     />
   );
 
@@ -282,7 +224,7 @@ export function AppFrame({
   const section = (entry: NavSection, index: number) => {
     if (collapsed) {
       return (
-        <div key={entry.key} className="flex flex-col gap-0.5">
+        <div key={entry.key} className="flex flex-col gap-px">
           {index > 0 || pinnedRows.length > 0 ? <div className="mx-2 my-2 border-t" /> : null}
           {entry.items.map(rowOf)}
         </div>
@@ -290,22 +232,18 @@ export function AppFrame({
     }
     const shut = folded.includes(entry.key);
     return (
-      <Collapsible
-        key={entry.key}
-        open={!shut}
-        onOpenChange={(next) => writeFolded(entry.key, !next)}
-        className="flex flex-col"
-      >
-        <SectionHeading
-          label={entry.label}
-          open={!shut}
-          count={entry.items.reduce((sum, row) => sum + (row.count ?? 0), 0)}
-          current={entry.items.some((row) => row.key === activeKey)}
-        />
-        <CollapsibleContent className="h-(--collapsible-panel-height) overflow-hidden transition-[height] duration-150 ease-out data-ending-style:h-0 data-starting-style:h-0">
-          <div className="flex flex-col gap-0.5">
+      <Collapsible key={entry.key} open={!shut} onOpenChange={(next) => writeFolded(entry.key, !next)} className="flex flex-col">
+        <SectionHeading label={entry.label} open={!shut} count={entry.items.reduce((sum, row) => sum + (row.count ?? 0), 0)} current={entry.items.some((row) => row.key === activeKey)} />
+        <CollapsibleContent className="h-(--collapsible-panel-height) overflow-hidden transition-[height] duration-200 ease-(--ease-settle) data-ending-style:h-0 data-starting-style:h-0">
+          <div className="flex flex-col gap-px">
             {entry.items.map(rowOf)}
-            {entry.end}
+            {entry.controls?.map((row) => (
+              <div key={row.key} className="flex h-8 items-center gap-2.5 px-2 text-[0.8125rem] font-medium text-sidebar-foreground">
+                <NavIcon name={row.key} className="size-4 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 flex-1 truncate">{row.label}</span>
+                {row.control}
+              </div>
+            ))}
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -313,17 +251,10 @@ export function AppFrame({
   };
 
   return (
-    <div className="flex h-dvh flex-col bg-canvas p-0 md:p-2.5">
-      <div className="shell-card">
+    <div className="flex h-dvh flex-col bg-background">
+      <div className="shell">
         {/* The phone drawer's scrim. */}
-        {open ? (
-          <button
-            type="button"
-            aria-label={labels.close}
-            className="fixed inset-0 z-30 bg-black/30 md:hidden"
-            onClick={() => setOpen(false)}
-          />
-        ) : null}
+        {open ? <button type="button" aria-label={labels.close} className="fixed inset-0 z-40 animate-fade bg-ink/30 md:hidden" onClick={() => setOpen(false)} /> : null}
 
         <aside
           data-collapsed={collapsed ? "" : undefined}
@@ -331,57 +262,37 @@ export function AppFrame({
           // the time) has done its job, so it closes again.
           onClick={() => setOpen(false)}
           className={cn(
-            "fixed inset-y-0 left-0 z-40 flex w-66 shrink-0 flex-col border-r border-border bg-sidebar transition-transform md:static md:z-auto md:translate-x-0 md:transition-[width]",
-            collapsed && "md:w-16",
-            open ? "translate-x-0" : "-translate-x-full",
+            "fixed inset-y-0 left-0 z-50 flex w-[min(20rem,85vw)] shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-300 ease-(--ease-settle) md:static md:z-auto md:w-60 md:translate-x-0 md:transition-[width]",
+            collapsed && "md:w-14",
+            open ? "translate-x-0 shadow-(--float-shadow)" : "-translate-x-full",
           )}
         >
-          <div
-            className={cn(
-              "flex h-14 shrink-0 items-center gap-2 px-3",
-              collapsed && "md:justify-center md:px-0",
-            )}
-          >
-            <Link href="/home" className="flex min-w-0 items-center gap-2">
-              <Logo className="size-7 shrink-0 text-brand" />
+          <div className={cn("flex h-13 shrink-0 items-center gap-2 px-3", collapsed && "md:justify-center md:px-0")}>
+            <Link href="/home" className="flex min-w-0 items-center gap-2 rounded-md py-1 pr-1 pl-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Logo className="size-5 shrink-0 text-brand" />
               {collapsed ? null : (
                 <>
-                  <span className="truncate text-[0.9375rem] font-semibold tracking-[-0.015em]">
-                    {labels.workspace}
-                  </span>
-                  <ChevronDown
-                    className="size-3.5 shrink-0 text-faint"
-                    aria-hidden
-                  />
+                  <span className="truncate text-sm font-semibold tracking-[-0.01em] text-foreground">{labels.workspace}</span>
+                  <ChevronDown className="size-3.5 shrink-0 text-faint" aria-hidden />
                 </>
               )}
             </Link>
             {collapsed ? null : (
-              <button
-                type="button"
-                onClick={toggleCollapsed}
-                aria-label={labels.collapse}
-                className="ml-auto hidden size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground md:flex"
-              >
+              <button type="button" onClick={toggleCollapsed} aria-label={labels.collapse} className="ml-auto hidden size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-foreground md:flex">
                 <PanelLeft className="size-4" aria-hidden />
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label={labels.close}
-              className="ml-auto flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted md:hidden"
-            >
+            <button type="button" onClick={() => setOpen(false)} aria-label={labels.close} className="ml-auto flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent md:hidden">
               <X className="size-4" aria-hidden />
             </button>
           </div>
 
-          <div className={cn("px-3 pb-1", collapsed && "md:px-2")}>
+          <div className={cn("px-2.5 pb-1", collapsed && "md:px-2")}>
             <button
               type="button"
               onClick={openCommandPalette}
               className={cn(
-                "flex h-9 w-full items-center gap-2 rounded-[0.625rem] border border-input bg-background px-3 text-sm text-faint shadow-[0_1px_1px_oklch(0_0_0/3%)] transition-colors hover:bg-muted",
+                "press flex h-8 w-full items-center gap-2 rounded-[8px] border border-border bg-background px-2.5 text-[0.8125rem] text-faint shadow-[0_1px_1px_oklch(0_0_0/3%)] hover:text-muted-foreground",
                 collapsed && "md:justify-center md:px-0",
               )}
               title={labels.quickActions}
@@ -389,53 +300,33 @@ export function AppFrame({
               <Search className="size-4 shrink-0" aria-hidden />
               {collapsed ? null : (
                 <>
-                  <span className="min-w-0 flex-1 truncate text-left">
-                    {labels.quickActions}
-                  </span>
-                  <kbd className="rounded border border-border px-1 font-sans text-[0.6875rem] text-faint">
-                    ⌘K
-                  </kbd>
+                  <span className="min-w-0 flex-1 truncate text-left">{labels.quickActions}</span>
+                  <kbd className="rounded border border-border bg-background px-1 font-mono text-[0.625rem] text-faint">⌘K</kbd>
                 </>
               )}
             </button>
           </div>
 
-          <nav
-            className={cn(
-              "flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 pt-2 pb-3",
-              collapsed && "md:px-2",
-            )}
-          >
+          <nav className={cn("flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-2.5 pt-1 pb-3", collapsed && "md:px-2")}>
             {pinnedRows.length > 0 ? (
-              <div className="flex flex-col gap-0.5">
-                {collapsed ? null : <p className="nav-section pt-1">{labels.pinned}</p>}
+              <div className="flex flex-col gap-px">
+                {collapsed ? null : <p className="nav-section mt-1">{labels.pinned}</p>}
                 {pinnedRows.map(rowOf)}
               </div>
             ) : null}
             {sections.map(section)}
           </nav>
 
-          <div
-            className={cn(
-              "flex shrink-0 flex-col gap-2 border-t border-border p-3",
-              collapsed && "md:items-center md:px-2",
-            )}
-          >
+          <div className={cn("flex shrink-0 flex-col gap-2 border-t border-sidebar-border p-2.5", collapsed && "md:items-center md:px-2")}>
             <div className="flex items-center gap-2">
-              <Avatar className="size-7 rounded-lg after:rounded-lg">
-                {user.photoUrl ? <AvatarImage src={user.photoUrl} alt={user.name} className="rounded-lg" /> : null}
-                <AvatarFallback className="rounded-lg text-[0.6875rem] font-semibold">
-                  {initialsOf(user.name)}
-                </AvatarFallback>
+              <Avatar className="size-7">
+                {user.photoUrl ? <AvatarImage src={user.photoUrl} alt={user.name} /> : null}
+                <AvatarFallback className="text-[0.6875rem] font-semibold">{initialsOf(user.name)}</AvatarFallback>
               </Avatar>
               {collapsed ? null : (
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-[0.8125rem] font-medium">
-                    {user.name}
-                  </span>
-                  <span className="truncate text-xs text-faint">
-                    {user.email}
-                  </span>
+                  <span className="truncate text-[0.8125rem] font-medium text-foreground">{user.name}</span>
+                  <span className="truncate text-[0.6875rem] text-faint">{user.email}</span>
                 </span>
               )}
               {collapsed ? null : footer}
@@ -445,54 +336,20 @@ export function AppFrame({
 
         <div className="flex min-w-0 flex-1 flex-col">
           {notice}
-          <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              aria-label={labels.menu}
-              className="relative flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted md:hidden"
-            >
-              <Menu className="size-4" aria-hidden />
-              {/* The drawer is shut on a phone: the button says something waits in it. */}
-              {rows.some((row) => row.count) ? <span className="nav-menu-dot" aria-hidden /> : null}
-            </button>
+          <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3 md:h-13 md:px-5">
             {collapsed ? (
-              <button
-                type="button"
-                onClick={toggleCollapsed}
-                aria-label={labels.collapse}
-                className="hidden size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground md:flex"
-              >
+              <button type="button" onClick={toggleCollapsed} aria-label={labels.collapse} className="hidden size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground md:flex">
                 <PanelLeft className="size-4" aria-hidden />
               </button>
             ) : null}
-            <nav
-              aria-label="Breadcrumb"
-              className="flex min-w-0 items-center gap-2 text-sm"
-            >
+            <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-[0.8125rem]">
               {crumbs.map((crumb, index) => {
                 const last = index === crumbs.length - 1;
                 return (
-                  <span
-                    key={crumb.key}
-                    className="flex min-w-0 items-center gap-2"
-                  >
-                    {index > 0 ? <span className="text-faint">/</span> : null}
-                    {index === 0 ? (
-                      <NavIcon
-                        name={crumb.key}
-                        className="size-4 shrink-0 text-muted-foreground"
-                      />
-                    ) : null}
-                    <Link
-                      href={crumb.href ?? "/home"}
-                      className={cn(
-                        "truncate",
-                        last
-                          ? "font-medium text-foreground"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
+                  <span key={crumb.key} className="flex min-w-0 items-center gap-1.5">
+                    {index > 0 ? <ChevronRight className="size-3.5 shrink-0 text-faint" aria-hidden /> : null}
+                    {index === 0 ? <NavIcon name={crumb.key} className="size-4 shrink-0 text-muted-foreground" /> : null}
+                    <Link href={crumb.href ?? "/home"} className={cn("truncate", last ? "font-semibold text-foreground" : "font-medium text-muted-foreground hover:text-foreground")}>
                       {crumb.label}
                     </Link>
                   </span>
@@ -501,19 +358,37 @@ export function AppFrame({
             </nav>
             {crumbs.at(-1)?.count ? (
               <Badge variant="secondary" className="shrink-0">
-                {(crumbs.at(-1)?.count ?? 0) > 99
-                  ? "99+"
-                  : crumbs.at(-1)?.count}
+                {countOf(crumbs.at(-1)?.count ?? 0)}
               </Badge>
             ) : null}
-            {headerEnd ? <div className="ml-auto flex shrink-0 items-center gap-2">{headerEnd}</div> : null}
+            <div className="ml-auto flex shrink-0 items-center gap-1">
+              {headerEnd}
+              <Link href="/notifications" aria-label={labels.notifications} className="press relative flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
+                <Bell className="size-[1.125rem]" aria-hidden />
+                {unread > 0 ? <span aria-hidden className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary ring-2 ring-background" /> : null}
+              </Link>
+            </div>
           </header>
 
-          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-5 md:px-6">
-            {children}
-          </main>
+          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 pt-5 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] md:px-8 md:py-7 md:pb-12">{children}</main>
         </div>
       </div>
+
+      <QuickAdd labels={quickAdd} />
+
+      <nav className="tab-bar" aria-label={labels.menu}>
+        {tabs.map((tab) => (
+          <Link key={tab.key} href={tab.href} aria-current={activeTab === tab.key ? "page" : undefined} className="tab-stop press">
+            {tab.count ? <span className="tab-count">{countOf(tab.count)}</span> : null}
+            <NavIcon name={TAB_ICON[tab.key]} />
+            {tab.label}
+          </Link>
+        ))}
+        <button type="button" onClick={() => setOpen(true)} aria-expanded={open} className={cn("tab-stop press", open && "text-primary")}>
+          <LayoutGrid aria-hidden />
+          {labels.more}
+        </button>
+      </nav>
     </div>
   );
 }

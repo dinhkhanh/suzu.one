@@ -181,7 +181,7 @@ function Select({ id, name, form, value, defaultValue, onChange, required, disab
               disabled={disabled}
               // Typing replaces the chosen name rather than adding to it.
               onFocus={(event) => event.currentTarget.select()}
-              className={cn("h-9 w-full", classes.control)}
+              className={cn("h-10 w-full md:h-9", classes.control)}
             >
               <InputGroupAddon>
                 <SearchIcon />
@@ -199,7 +199,7 @@ function Select({ id, name, form, value, defaultValue, onChange, required, disab
               aria-label={ariaLabel}
               disabled={disabled}
               className={cn(
-                "flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-[0.625rem] border border-input bg-background px-2.5 py-1 text-left text-base font-medium whitespace-nowrap shadow-[0_1px_1px_oklch(0_0_0/3%)] transition-colors outline-none focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/25 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-60 md:text-sm dark:bg-input/20 *:data-[slot=combobox-value]:truncate",
+                "flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[0.625rem] border border-input bg-background px-2.5 py-1 text-left text-base font-medium whitespace-nowrap transition-[border-color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/20 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-60 md:h-9 md:text-sm dark:bg-input/20 *:data-[slot=combobox-value]:truncate",
                 classes.control
               )}
             >
@@ -270,7 +270,7 @@ function MultiSelect({ id, name, form, defaultValue, disabled, className, "aria-
         disabled={disabled}
         inputRef={hidden}
       >
-        <ComboboxChips ref={anchor} className={cn("min-h-9 rounded-[0.625rem] bg-background px-2 shadow-[0_1px_1px_oklch(0_0_0/3%)] focus-within:border-ring/60 focus-within:ring-2 focus-within:ring-ring/25 dark:bg-input/20", classes.control)}>
+        <ComboboxChips ref={anchor} className={cn("min-h-10 rounded-[0.625rem] bg-background px-2 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/20 md:min-h-9 dark:bg-input/20", classes.control)}>
           <ComboboxValue>
             {(chosen: Option[]) => (
               <>

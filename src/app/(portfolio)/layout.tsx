@@ -30,7 +30,7 @@ export default async function PortfolioLayout({ children }: LayoutProps<"/">) {
   const theme = await getTheme();
   return (
     <div className="flex min-h-dvh flex-col bg-canvas p-0 md:p-2.5">
-      <div className="flex min-h-0 flex-1 flex-col bg-background md:rounded-2xl md:shadow-[var(--shell-shadow)]">
+      <div className="flex min-h-0 flex-1 flex-col bg-background md:rounded-2xl md:border md:border-border">
         <header className="border-b border-border">
           <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between gap-3 px-4">
             <Link href="/" className="flex items-center gap-2 text-[0.9375rem] font-semibold tracking-[-0.015em]">

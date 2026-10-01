@@ -125,9 +125,10 @@ export function WelcomeGuide({ steps, name }: { steps: WelcomeStep[]; name: stri
           event.preventDefault();
           setFolded(true);
         }}
-        className="m-auto w-[calc(100%-2rem)] max-w-lg overflow-hidden rounded-2xl border border-border bg-background p-0 text-foreground shadow-[0_24px_60px_-20px_oklch(0_0_0/35%)] backdrop:bg-black/40"
+        // A sheet along the bottom of a phone, a card in the middle of a desk — like every dialog.
+        className="mx-auto mt-auto mb-0 w-full max-w-none overflow-hidden rounded-t-[22px] bg-background p-0 text-foreground shadow-(--float-shadow) backdrop:bg-ink/30 open:animate-in open:slide-in-from-bottom-full open:duration-300 open:ease-(--ease-settle) sm:m-auto sm:w-[calc(100%-2rem)] sm:max-w-lg sm:rounded-2xl sm:open:zoom-in-95 sm:open:slide-in-from-bottom-0 sm:open:duration-150"
       >
-        <div className="flex flex-col gap-5 p-6">
+        <div className="flex flex-col gap-5 p-5 pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs font-medium text-muted-foreground">
               {t("label")} · {t("stepOf", { current: index + 1, total: steps.length })}
@@ -193,7 +194,8 @@ export function WelcomeGuide({ steps, name }: { steps: WelcomeStep[]; name: stri
         <button
           type="button"
           onClick={() => setFolded(false)}
-          className="fixed right-4 bottom-4 z-40 flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-sm font-medium shadow-[0_12px_30px_-12px_oklch(0_0_0/35%)] hover:bg-muted"
+          // Above the phone's tab bar and clear of its "+"; in the corner of a desk.
+          className="press fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] left-4 z-30 flex items-center gap-2 rounded-full bg-background px-4 py-2.5 text-sm font-medium shadow-(--float-shadow) hover:bg-muted md:right-4 md:bottom-4 md:left-auto"
         >
           <Sparkles className="size-4 text-primary" aria-hidden />
           {t("resume", { current: index + 1, total: steps.length })}

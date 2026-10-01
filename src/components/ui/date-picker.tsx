@@ -92,7 +92,7 @@ function HiddenInput({ inputRef, trigger, value, name, form, required, disabled 
 }
 
 const TRIGGER =
-  "flex h-9 w-full min-w-0 items-center gap-2 rounded-[0.625rem] border border-input bg-background px-2.5 py-1 text-left text-base whitespace-nowrap shadow-[0_1px_1px_oklch(0_0_0/3%)] transition-colors outline-none focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/25 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-60 data-[popup-open]:border-ring/60 md:text-sm dark:bg-input/20 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground"
+  "flex h-10 w-full min-w-0 items-center gap-2 rounded-[0.625rem] border border-input bg-background px-2.5 py-1 text-left text-base whitespace-nowrap transition-[border-color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/20 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-60 data-[popup-open]:border-ring md:h-9 md:text-sm dark:bg-input/20 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground"
 
 function TriggerLabel({ text, placeholder }: { text: string | null; placeholder: string }) {
   return (

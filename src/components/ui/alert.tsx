@@ -12,15 +12,15 @@ import type * as React from "react"
 // A notice in the flow of a page: a tinted box with an icon that says the tone before the text
 // does. `warning` and `destructive` announce themselves to a screen reader; the others wait.
 const alertVariants = cva(
-  "flex w-full items-start gap-2.5 rounded-xl border px-3.5 py-3 text-sm text-foreground [&_a]:underline [&_a]:underline-offset-2",
+  "flex w-full items-start gap-2.5 rounded-xl border border-transparent px-3.5 py-3 text-sm text-foreground [&_a]:underline [&_a]:underline-offset-2",
   {
     variants: {
       variant: {
-        neutral: "border-border bg-muted/40",
-        info: "border-info/30 bg-info/8 dark:bg-info/12",
-        success: "border-success/30 bg-success/8 dark:bg-success/12",
-        warning: "border-warning/35 bg-warning/10 dark:bg-warning/12",
-        destructive: "border-destructive/30 bg-destructive/8 dark:bg-destructive/12",
+        neutral: "bg-muted",
+        info: "bg-info/8 text-info dark:bg-info/14 [&_a]:text-info",
+        success: "bg-success/8 text-success dark:bg-success/14 [&_a]:text-success",
+        warning: "bg-warning/10 text-warning dark:bg-warning/14 [&_a]:text-warning",
+        destructive: "bg-destructive/8 text-destructive dark:bg-destructive/14 [&_a]:text-destructive",
       },
     },
     defaultVariants: { variant: "neutral" },
