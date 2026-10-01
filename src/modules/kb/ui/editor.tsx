@@ -24,6 +24,7 @@ import {
   Paperclip,
   Pilcrow,
   Quote,
+  RemoveFormatting,
   SquareCode,
   SquarePlay,
   Strikethrough,
@@ -40,6 +41,7 @@ import { Input } from "@/components/ui/input";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
 import { CALLOUT_KINDS } from "@/modules/platform/rich-text/engine/callouts";
+import { clearSelectionFormatting } from "@/modules/platform/rich-text/ui/extensions";
 import { MOD, ToolButton, Toolbar, ToolSeparator } from "@/modules/platform/rich-text/ui/toolbar";
 import { beginPageUploadAction, completePageUploadAction, publishPageAction, savePageDraftAction, submitPageReviewAction } from "../actions";
 import { pageExtensions } from "./editor-nodes";
@@ -123,6 +125,7 @@ function SelectionMenu({ editor, onLink }: { editor: Editor; onLink: () => void 
         <ToolButton label={t("inlineCode")} icon={Code} active={state.code} onClick={() => chain().toggleCode().run()} />
         <ToolSeparator />
         <ToolButton label={t("link")} shortcut={`${MOD}K`} icon={Link2} active={state.link} onClick={onLink} />
+        <ToolButton label={t("clearFormatting")} shortcut={`${MOD}\\`} icon={RemoveFormatting} onClick={() => clearSelectionFormatting(editor)} />
       </Toolbar>
     </BubbleMenu>
   );

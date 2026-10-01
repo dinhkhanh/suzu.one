@@ -1,7 +1,7 @@
 // The editor's schema, shared by the knowledge-base page editor and the note editor. Every node and
 // mark here is one the validator (engine/doc.ts) stores and the reading view (render-doc.tsx)
 // renders; editor-schema.test.ts holds the three to the same list.
-import { mergeAttributes, Node, type AnyExtension } from "@tiptap/core";
+import { type AnyExtension, type Editor, Extension, mergeAttributes, Node } from "@tiptap/core";
 import Highlight from "@tiptap/extension-highlight";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { TableKit } from "@tiptap/extension-table";
@@ -9,6 +9,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import { Placeholder } from "@tiptap/extensions";
 import StarterKit from "@tiptap/starter-kit";
 import { CALLOUT_KINDS } from "../engine/callouts";
+import { clearFormatting } from "./clear-formatting";
 
 export const Callout = Node.create({
   name: "callout",
@@ -42,6 +43,25 @@ const FormlessTaskItem = TaskItem.extend({
   },
 });
 
+/** The toolbar's "clear formatting" (clear-formatting.ts), with the focus kept in the text. */
+export const clearSelectionFormatting = (editor: Editor) =>
+  editor
+    .chain()
+    .focus()
+    .command(({ tr }) => {
+      clearFormatting(tr);
+      return true;
+    })
+    .run();
+
+/** Mod-\ clears formatting, as in Google Docs and Word. */
+const ClearFormattingKey = Extension.create({
+  name: "clearFormattingKey",
+  addKeyboardShortcuts() {
+    return { "Mod-\\": () => clearSelectionFormatting(this.editor) };
+  },
+});
+
 const LINK = { openOnClick: false, autolink: true, linkOnPaste: true, defaultProtocol: "https", protocols: ["http", "https", "mailto"] };
 
 /**
@@ -58,6 +78,7 @@ export function textExtensions({ placeholder }: { placeholder?: string } = {}): 
     TextAlign.configure({ types: ["heading", "paragraph"] }),
     TableKit.configure({ table: { resizable: false } }),
     Callout,
+    ClearFormattingKey,
     ...(placeholder ? [Placeholder.configure({ placeholder })] : []),
   ];
 }

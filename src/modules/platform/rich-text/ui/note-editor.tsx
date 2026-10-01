@@ -7,12 +7,12 @@
 import { Extension } from "@tiptap/core";
 import { EditorContent, type Editor, useEditor, useEditorState } from "@tiptap/react";
 import { cn } from "cn";
-import { Bold, Code, Italic, List, ListOrdered, ListTodo, Quote, SquareCode, Strikethrough } from "lucide-react";
+import { Bold, Code, Italic, List, ListOrdered, ListTodo, Quote, RemoveFormatting, SquareCode, Strikethrough } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type FocusEvent, useEffect, useMemo, useRef, useState } from "react";
 import { docToNote, noteToDoc } from "../engine/note";
 import type { Doc } from "../engine/doc";
-import { textExtensions } from "./extensions";
+import { clearSelectionFormatting, textExtensions } from "./extensions";
 import { LinkControl, MOD, Toolbar, ToolButton, ToolSeparator } from "./toolbar";
 
 type NoteEditorProps = {
@@ -68,6 +68,8 @@ function NoteToolbar({ editor, linkOpen, setLinkOpen }: { editor: Editor; linkOp
       <ToolSeparator />
       <ToolButton label={t("quote")} icon={Quote} active={state.quote} onClick={() => chain().toggleBlockquote().run()} />
       <ToolButton label={t("codeBlock")} icon={SquareCode} active={state.codeBlock} onClick={() => chain().toggleCodeBlock().run()} />
+      <ToolSeparator />
+      <ToolButton label={t("clearFormatting")} shortcut={`${MOD}\\`} icon={RemoveFormatting} onClick={() => clearSelectionFormatting(editor)} />
     </Toolbar>
   );
 }

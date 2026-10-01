@@ -54,6 +54,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
 import { CALLOUT_KINDS, type CalloutKind } from "@/modules/platform/rich-text/engine/callouts";
 import { normalizeEmbed, safeHref } from "@/modules/platform/rich-text/engine/embed";
+import { clearSelectionFormatting } from "@/modules/platform/rich-text/ui/extensions";
 import { keepSelection, LinkControl, MOD, Toolbar, ToolButton, toolClass, ToolSeparator } from "@/modules/platform/rich-text/ui/toolbar";
 import { cn } from "cn";
 
@@ -220,7 +221,7 @@ export function PageToolbar({ editor, panels, setPanel, onPickFile, uploading }:
       <ToolButton label={t("highlight")} shortcut={`${MOD}⇧H`} icon={Highlighter} active={state.highlight} onClick={() => chain().toggleHighlight().run()} />
       <ToolButton label={t("inlineCode")} shortcut={`${MOD}E`} icon={Code} active={state.code} onClick={() => chain().toggleCode().run()} />
       <LinkControl editor={editor} active={state.link} open={panels.link} onOpenChange={(open) => setPanel("link", open)} />
-      <ToolButton label={t("clearFormatting")} icon={RemoveFormatting} onClick={() => chain().unsetAllMarks().clearNodes().run()} />
+      <ToolButton label={t("clearFormatting")} shortcut={`${MOD}\\`} icon={RemoveFormatting} onClick={() => clearSelectionFormatting(editor)} />
       <ToolSeparator />
       <Menu label={t("align")} icon={AlignIcon}>
         {(["left", "center", "right", "justify"] as const).map((align) => (
