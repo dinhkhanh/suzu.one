@@ -1,6 +1,7 @@
 "use client";
-// "Edit" and "Archive" beside a team's or a project's name: the same forms as before, opened where they are found.
-import { ArchiveIcon, ArchiveRestoreIcon, PencilIcon } from "lucide-react";
+// "Edit" and "Archive" beside a team's or a project's name, "New" beside a list of them: the same
+// forms as before, opened where they are found.
+import { ArchiveIcon, ArchiveRestoreIcon, PencilIcon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { type ComponentProps, useState, useTransition } from "react";
@@ -33,6 +34,42 @@ function EditDialog({ label, title, children }: { label: string; title: string; 
 export function EditTeamButton(props: Omit<ComponentProps<typeof TeamForm>, "onSaved"> & { team: NonNullable<ComponentProps<typeof TeamForm>["team"]> }) {
   const t = useTranslations("work.teams");
   return <EditDialog label={t("edit")} title={t("editTitle", { name: props.team.name })}>{(close) => <TeamForm {...props} onSaved={close} />}</EditDialog>;
+}
+
+/** The primary "New team" / "New project" button: the form opens in a dialog, and saving goes to what was made. */
+function CreateDialog({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <Dialog>
+      <DialogTrigger render={<Button size="sm" />}>
+        <PlusIcon />
+        {label}
+      </DialogTrigger>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{label}</DialogTitle>
+        </DialogHeader>
+        {children}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function CreateTeamButton(props: Omit<ComponentProps<typeof TeamForm>, "team" | "onSaved">) {
+  const t = useTranslations("work.teams");
+  return (
+    <CreateDialog label={t("create")}>
+      <TeamForm {...props} />
+    </CreateDialog>
+  );
+}
+
+export function CreateProjectButton(props: Omit<ComponentProps<typeof ProjectForm>, "project" | "onSaved">) {
+  const t = useTranslations("work.projects");
+  return (
+    <CreateDialog label={t("create")}>
+      <ProjectForm {...props} />
+    </CreateDialog>
+  );
 }
 
 export function EditProjectButton(props: Omit<ComponentProps<typeof ProjectForm>, "onSaved" | "teams"> & { project: NonNullable<ComponentProps<typeof ProjectForm>["project"]> & { posterFileId: string | null } }) {

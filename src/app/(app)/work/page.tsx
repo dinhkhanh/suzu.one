@@ -10,9 +10,8 @@ import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { canManageWorkspace, canViewTeam, listClients, listCreateTargets, listTeams, loadViewer, teamFacts, visibleProjects } from "@/modules/work/service";
 import { accentOf, projectShelf, type Shelf, teamShelf, type TeamStatus, teamStatusOf } from "@/modules/work/enums";
-import { ProjectForm } from "@/modules/work/ui/project-forms";
 import { ProjectPoster } from "@/modules/work/ui/project-poster";
-import { TeamForm } from "@/modules/work/ui/team-forms";
+import { CreateProjectButton, CreateTeamButton } from "@/modules/work/ui/edit-dialogs";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("work");
@@ -142,7 +141,10 @@ export default async function WorkPage() {
       </header>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("projects.title")}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-medium text-muted-foreground">{t("projects.title")}</h2>
+          {projectTeams.length ? <CreateProjectButton teams={projectTeams.map((team) => ({ id: team.id, name: team.name, defaultVisibility: team.defaultVisibility }))} clients={clients.map(({ id, name }) => ({ id, name }))} people={people} /> : null}
+        </div>
         {projectsOn("current").length === 0 ? <p className="text-sm text-muted-foreground">{t("projects.empty")}</p> : <ul className={grid}>{projectsOn("current").map(projectCard)}</ul>}
         {inactiveProjects.length ? (
           <>
@@ -151,18 +153,13 @@ export default async function WorkPage() {
           </>
         ) : null}
         {archivedProjects.length ? <ArchivedShelf label={t("shelves.archivedProjects", { count: archivedProjects.length })}><ul className={grid}>{archivedProjects.map(projectCard)}</ul></ArchivedShelf> : null}
-        {projectTeams.length ? (
-          <details className="rounded-xl border p-4">
-            <summary className="cursor-pointer text-sm font-medium">{t("projects.create")}</summary>
-            <div className="pt-4">
-              <ProjectForm teams={projectTeams.map((team) => ({ id: team.id, name: team.name, defaultVisibility: team.defaultVisibility }))} clients={clients.map(({ id, name }) => ({ id, name }))} people={people} />
-            </div>
-          </details>
-        ) : null}
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("teams.mine")}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-medium text-muted-foreground">{t("teams.mine")}</h2>
+          {canCreateTeam ? <CreateTeamButton entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} /> : null}
+        </div>
         {mine.length === 0 ? <p className="text-sm text-muted-foreground">{t("teams.mineEmpty")}</p> : <ul className={grid}>{mine.map(teamCard)}</ul>}
         {others.length ? (
           <>
@@ -177,14 +174,6 @@ export default async function WorkPage() {
           </>
         ) : null}
         {archivedTeams.length ? <ArchivedShelf label={t("shelves.archivedTeams", { count: archivedTeams.length })}><ul className={grid}>{archivedTeams.map(teamCard)}</ul></ArchivedShelf> : null}
-        {canCreateTeam ? (
-          <details className="rounded-xl border p-4">
-            <summary className="cursor-pointer text-sm font-medium">{t("teams.create")}</summary>
-            <div className="pt-4">
-              <TeamForm entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} />
-            </div>
-          </details>
-        ) : null}
       </section>
     </div>
   );
