@@ -42,10 +42,13 @@ export const workTeam = pgTable(
     color: text("color"),
     // Last task number handed out.
     taskSeq: integer("task_seq").notNull().default(0),
+    // Inactive: takes no new projects or tasks, still listed. Archived: put away as well — kept for
+    // its history, shelved apart on /work. An archived team is never active.
     isActive: boolean("is_active").notNull().default(true),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     ...timestamps,
   },
-  (t) => [index("work_team_entity_idx").on(t.entityId)],
+  (t) => [index("work_team_entity_idx").on(t.entityId), check("work_team_archived_inactive", sql`${t.archivedAt} IS NULL OR NOT ${t.isActive}`)],
 ).enableRLS();
 
 export const workTeamMember = pgTable(

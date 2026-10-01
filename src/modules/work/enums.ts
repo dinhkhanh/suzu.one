@@ -32,6 +32,23 @@ export type ProjectRole = (typeof PROJECT_ROLES)[number];
 export const PROJECT_STATUSES = ["planned", "active", "paused", "done", "archived"] as const;
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 
+/** A team's status, as its two columns hold it: `is_active`, and `archived_at` (archived is never active). */
+export const TEAM_STATUSES = ["active", "inactive", "archived"] as const;
+export type TeamStatus = (typeof TEAM_STATUSES)[number];
+export const teamStatusOf = (team: { isActive: boolean; archivedAt: Date | string | null }): TeamStatus => (team.archivedAt ? "archived" : team.isActive ? "active" : "inactive");
+
+/**
+ * Where a team or a project sits on /work: at work, set aside (an inactive team; a paused or
+ * finished project), or archived. A project is never shelved above its team: the projects of an
+ * archived team are archived with it.
+ */
+export const SHELVES = ["current", "inactive", "archived"] as const;
+export type Shelf = (typeof SHELVES)[number];
+const TEAM_SHELF: Record<TeamStatus, Shelf> = { active: "current", inactive: "inactive", archived: "archived" };
+const PROJECT_SHELF: Record<ProjectStatus, Shelf> = { planned: "current", active: "current", paused: "inactive", done: "inactive", archived: "archived" };
+export const teamShelf = (status: TeamStatus): Shelf => TEAM_SHELF[status];
+export const projectShelf = (status: string, teamStatus: TeamStatus): Shelf => SHELVES[Math.max(SHELVES.indexOf(PROJECT_SHELF[status as ProjectStatus] ?? "current"), SHELVES.indexOf(TEAM_SHELF[teamStatus]))];
+
 export const CLIENT_KINDS = ["client", "brand"] as const;
 export type ClientKind = (typeof CLIENT_KINDS)[number];
 

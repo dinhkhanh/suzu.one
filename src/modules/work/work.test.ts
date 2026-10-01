@@ -24,9 +24,10 @@ import { countMyOpenTasks, listMyTasks } from "@/modules/platform/tasks-engine/s
 import { loadShellCounts } from "@/modules/platform/shell/service";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { canViewTask } from "./policy";
-import { createProject, setProjectMember, visibleProjects } from "./projects";
+import { createProject, setProjectArchived, setProjectMember, visibleProjects } from "./projects";
 import { addDependency, createWorkTask, deleteWorkTask, getTaskDetail, listActivity, listProjectTasks, listVisibleTaskIds, loadTask, searchTasks, updateWorkTask } from "./tasks";
-import { createTeam, listStates, saveClient, saveState, setTeamMember } from "./teams";
+import { createTeam, listStates, saveClient, saveState, setTeamArchived, setTeamMember, updateTeam } from "./teams";
+import { projectShelf, teamStatusOf } from "./enums";
 import { getWorkAnalytics } from "./analytics";
 import { analyse, type AnalyticsTask } from "./engine/analytics";
 import { getPersonTaskStats } from "./stats";
@@ -88,6 +89,33 @@ describe("teams and workflows", () => {
     }
     const published = await stateNamed(ids.video, "Published");
     await saveState(ids.video, published.id, { name: "Published", category: "done", sortOrder: published.sortOrder, isActive: true });
+  });
+  it("go inactive, are archived — never active while archived — and come back", async () => {
+    const values = { name: "Archive me", description: null, entityId: ids.szm, departmentId: null, defaultVisibility: "team" as const };
+    const team = await createTeam({ ...values, key: "ARC", isActive: true }, "simple", {}, ids.long);
+    const project = await createProject({ teamId: team.id, name: "Old campaign", description: null, clientId: null, status: "done", visibility: "team", leadPersonId: null, startDate: null, dueDate: null }, ids.long);
+    expect((await setProjectArchived(project.id, true)).after.status).toBe("archived");
+    const listed = async (includeArchived: boolean) => (await visibleProjects(await viewerOf(ids.long, ids.szm), { today: "2026-10-01", includeArchived })).some((row) => row.id === project.id);
+    expect([await listed(false), await listed(true)]).toEqual([false, true]);
+    expect((await setProjectArchived(project.id, false)).after.status).toBe("active");
+    await setProjectArchived(project.id, true); // out of the later lists' way
+    expect(teamStatusOf((await updateTeam(team.id, { ...values, isActive: false })).after)).toBe("inactive");
+    const archived = (await updateTeam(team.id, { ...values, isActive: true, archived: true })).after;
+    expect(teamStatusOf(archived)).toBe("archived");
+    expect(archived.isActive).toBe(false);
+    // A later edit that leaves the archive alone keeps it, and its date.
+    const edited = (await updateTeam(team.id, { ...values, name: "Archived team", isActive: true })).after;
+    expect([teamStatusOf(edited), edited.archivedAt?.getTime()]).toEqual(["archived", archived.archivedAt?.getTime()]);
+    expect(await fails(createWorkTask({ teamId: team.id, projectId: null, title: "Too late" }, ids.long))).not.toBe("no error");
+    expect(await fails(db().update(schema.workTeam).set({ isActive: true }).where(eq(schema.workTeam.id, team.id)))).not.toBe("no error");
+    expect(teamStatusOf((await setTeamArchived(team.id, false)).after)).toBe("active");
+  });
+  it("shelve a project no higher than its team", () => {
+    expect(projectShelf("active", "active")).toBe("current");
+    expect(projectShelf("planned", "inactive")).toBe("inactive");
+    expect(projectShelf("done", "active")).toBe("inactive");
+    expect(projectShelf("paused", "archived")).toBe("archived");
+    expect(projectShelf("archived", "active")).toBe("archived");
   });
 });
 

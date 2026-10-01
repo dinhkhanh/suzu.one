@@ -63,11 +63,33 @@ export async function createTeam(input: TeamInput, preset: WorkflowPreset, state
   return created;
 }
 
-/** The key stays: task numbers ("VID-12") are quoted in chats and briefs. */
-export async function updateTeam(teamId: string, input: Omit<TeamInput, "key">): Promise<{ before: TeamRow; after: TeamRow }> {
+/**
+ * The key stays: task numbers ("VID-12") are quoted in chats and briefs. `archived` absent leaves
+ * the archive alone; an archived team stays inactive whatever `isActive` says.
+ */
+export async function updateTeam(teamId: string, input: Omit<TeamInput, "key"> & { archived?: boolean }): Promise<{ before: TeamRow; after: TeamRow }> {
   const before = await findTeam(teamId);
   if (!before) throw new ActionError("team_not_found");
-  const [after] = await db().update(schema.workTeam).set({ ...input, updatedAt: new Date() }).where(eq(schema.workTeam.id, teamId)).returning();
+  const { archived, ...values } = input;
+  const archivedAt = archived === undefined ? before.archivedAt : archived ? (before.archivedAt ?? new Date()) : null;
+  const [after] = await db()
+    .update(schema.workTeam)
+    .set({ ...values, isActive: values.isActive && !archivedAt, archivedAt, updatedAt: new Date() })
+    .where(eq(schema.workTeam.id, teamId))
+    .returning();
+  await invalidateWorkDirectory();
+  return { before, after };
+}
+
+/** Archive a team, or bring it back — active again. */
+export async function setTeamArchived(teamId: string, archived: boolean): Promise<{ before: TeamRow; after: TeamRow }> {
+  const before = await findTeam(teamId);
+  if (!before) throw new ActionError("team_not_found");
+  const [after] = await db()
+    .update(schema.workTeam)
+    .set(archived ? { isActive: false, archivedAt: before.archivedAt ?? new Date(), updatedAt: new Date() } : { isActive: true, archivedAt: null, updatedAt: new Date() })
+    .where(eq(schema.workTeam.id, teamId))
+    .returning();
   await invalidateWorkDirectory();
   return { before, after };
 }

@@ -139,6 +139,19 @@ export async function updateProject(projectId: string, input: Omit<ProjectInput,
   return updated;
 }
 
+/** Archive a project, or bring it back as active. */
+export async function setProjectArchived(projectId: string, archived: boolean): Promise<{ before: ProjectRow; after: ProjectRow }> {
+  const found = await findProject(projectId);
+  if (!found) throw new ActionError("project_not_found");
+  const [after] = await db()
+    .update(schema.workProject)
+    .set({ status: archived ? "archived" : "active", updatedAt: new Date() })
+    .where(eq(schema.workProject.id, projectId))
+    .returning();
+  await invalidateWorkDirectory();
+  return { before: found.project, after };
+}
+
 export type ProjectMemberView = { personId: string; fullName: string; role: ProjectRole; workforceType: string };
 
 export async function listProjectMembers(projectId: string): Promise<ProjectMemberView[]> {

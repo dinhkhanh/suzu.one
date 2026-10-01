@@ -15,8 +15,8 @@ import { ViewTabs } from "@/modules/work/ui/filter-bar";
 import { TaskTableView } from "@/modules/work/ui/task-table-view";
 import { IntakeFormManager } from "@/modules/work/ui/intake-forms";
 import { canViewAutomations, listOpenCycles } from "@/modules/work/service";
-import { accentOf } from "@/modules/work/enums";
-import { EditTeamButton } from "@/modules/work/ui/edit-dialogs";
+import { accentOf, teamStatusOf } from "@/modules/work/enums";
+import { ArchiveButton, EditTeamButton } from "@/modules/work/ui/edit-dialogs";
 import { ProjectPoster } from "@/modules/work/ui/project-poster";
 import { LabelManager, MemberManager, StateManager } from "@/modules/work/ui/team-forms";
 import { checklistChoices, listStateChecklists } from "@/modules/work/service";
@@ -33,6 +33,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
   if (!team || !canViewTeam(viewer, teamFacts(team))) notFound();
   const facts = teamFacts(team);
   const admin = canAdminTeam(viewer, facts);
+  const status = teamStatusOf(team);
   const seesBacklog = canViewTeamBacklog(viewer, facts);
   const today = todayInVietnam();
 
@@ -70,9 +71,14 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-base text-muted-foreground">{team.key}</span> {team.name}
-            {team.isActive ? null : <Badge variant="outline">{t("teams.inactive")}</Badge>}
+            {status === "active" ? null : <Badge variant={status === "archived" ? "secondary" : "outline"}>{t(`teams.status.${status}`)}</Badge>}
           </h1>
-          {admin ? <EditTeamButton team={team} entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} /> : null}
+          {admin ? (
+            <div className="flex flex-wrap items-start gap-2">
+              <EditTeamButton team={team} entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} />
+              <ArchiveButton target={{ teamId: team.id }} name={team.name} archived={status === "archived"} />
+            </div>
+          ) : null}
         </div>
         {team.description ? <p className="text-sm text-muted-foreground">{team.description}</p> : null}
         <p className="flex flex-wrap gap-x-4 pt-1 text-sm">
@@ -109,6 +115,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
                 <Link href={`/work/projects/${project.id}`} className="min-w-0 flex-1 font-medium hover:underline">
                   {project.name}
                 </Link>
+                {project.status === "active" ? null : <Badge variant="secondary">{t(`projects.status.${project.status}`)}</Badge>}
                 <span className="text-xs text-muted-foreground">{t("projects.open", { count: project.openTasks })}</span>
                 <Badge variant="outline">{t(`visibility.${project.visibility}`)}</Badge>
               </li>

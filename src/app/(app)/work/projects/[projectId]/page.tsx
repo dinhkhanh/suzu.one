@@ -20,7 +20,7 @@ import { CalendarView } from "@/modules/work/ui/calendar-view";
 import { ViewTabs } from "@/modules/work/ui/filter-bar";
 import { RecurrenceManager, TemplateUseForm } from "@/modules/work/ui/planning-forms";
 import { accentOf } from "@/modules/work/enums";
-import { EditProjectButton } from "@/modules/work/ui/edit-dialogs";
+import { ArchiveButton, EditProjectButton } from "@/modules/work/ui/edit-dialogs";
 import { ProjectPoster } from "@/modules/work/ui/project-poster";
 import { TaskListView } from "@/modules/work/ui/task-list-view";
 import { auditPrivateRead } from "@/modules/projects/service";
@@ -94,7 +94,12 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
             <Badge variant="outline">{t(`visibility.${project.visibility}`)}</Badge>
             {project.status === "active" ? null : <Badge variant="secondary">{t(`projects.status.${project.status}`)}</Badge>}
           </h1>
-          {manage ? <EditProjectButton project={project} clients={clients.map(({ id, name }) => ({ id, name }))} people={assignable} /> : null}
+          {manage ? (
+            <div className="flex flex-wrap items-start gap-2">
+              <EditProjectButton project={project} clients={clients.map(({ id, name }) => ({ id, name }))} people={assignable} />
+              <ArchiveButton target={{ projectId: project.id }} name={project.name} archived={project.status === "archived"} />
+            </div>
+          ) : null}
         </div>
         <p className="text-sm text-muted-foreground">{[clientName, project.description].filter(Boolean).join(" · ")}</p>
       </header>

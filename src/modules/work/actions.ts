@@ -8,11 +8,11 @@ import { beginTaskUpload, completeTaskUpload, findTaskFile, removeTaskFile, task
 import { MAX_LINKED_CHECKLISTS, MAX_TASK_CHECKLIST } from "./engine/checklists";
 import { FILTER_KEYS, isFilterKey } from "./engine/filter";
 import { setFollowing } from "./followers";
-import { ACCENT_COLORS, CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_ROLES, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "./enums";
+import { ACCENT_COLORS, CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_ROLES, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, TEAM_STATUSES, VISIBILITIES, WORKFLOW_PRESETS } from "./enums";
 import { canAddTeamMember, canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canTakeOutOfProject, canViewTask } from "./policy";
-import { createProject, findProject, projectFacts, projectRoleOf, setProjectMember, updateProject } from "./projects";
+import { createProject, findProject, projectFacts, projectRoleOf, setProjectArchived, setProjectMember, updateProject } from "./projects";
 import { addDependency, createWorkTask, deleteWorkTask, findDependency, loadTask, removeDependency, updateWorkTask } from "./tasks";
-import { createTeam, deleteLabel, findLabel, findTeam, isTeamMember, personPlacement, saveClient, saveLabel, saveState, setTeamMember, teamFacts, updateTeam } from "./teams";
+import { createTeam, deleteLabel, findLabel, findTeam, isTeamMember, personPlacement, saveClient, saveLabel, saveState, setTeamArchived, setTeamMember, teamFacts, updateTeam } from "./teams";
 import { loadViewer } from "./viewer";
 import { createSavedView, deleteSavedView, findSavedView } from "./views";
 
@@ -31,7 +31,6 @@ const teamFields = {
   entityId: optional(z.uuid()),
   departmentId: optional(z.uuid()),
   defaultVisibility: z.enum(VISIBILITIES),
-  isActive: checkbox.default(true),
   color: optional(z.enum(ACCENT_COLORS)),
 };
 
@@ -42,7 +41,7 @@ const createTeamPipeline = createAction({
   run: async ({ user, input }) => {
     const { preset, stateNames, ...values } = input;
     if (values.departmentId && !(await findOrgUnit(values.departmentId))) values.departmentId = null;
-    const team = await createTeam(values, preset, stateNames, user.person.id);
+    const team = await createTeam({ ...values, isActive: true }, preset, stateNames, user.person.id);
     revalidatePath("/work");
     return { data: { id: team.id }, audit: { resource: { type: "work_team", id: team.id, entityId: team.entityId }, summary: `${team.key}: ${team.name}`, after: team } };
   },
@@ -53,7 +52,8 @@ export async function createTeamAction(input: unknown) {
 
 const updateTeamPipeline = createAction({
   name: "work.team.update",
-  input: z.object({ teamId: z.uuid(), ...teamFields }),
+  // A select, not a checkbox: an unticked box is not posted at all, and read as "active".
+  input: z.object({ teamId: z.uuid(), ...teamFields, status: z.enum(TEAM_STATUSES) }),
   authorize: async (user, input) => {
     const team = await findTeam(input.teamId);
     if (!team) return false;
@@ -63,8 +63,8 @@ const updateTeamPipeline = createAction({
     return canAdminTeam(viewer, teamFacts(team)) && (!moved || canManageWorkspace(viewer, { entityId: input.entityId, departmentId: input.departmentId }));
   },
   run: async ({ input }) => {
-    const { teamId, ...values } = input;
-    const { before, after } = await updateTeam(teamId, values);
+    const { teamId, status, ...values } = input;
+    const { before, after } = await updateTeam(teamId, { ...values, isActive: status === "active", archived: status === "archived" });
     revalidatePath("/work");
     revalidatePath(`/work/teams/${teamId}`);
     return { data: { id: after.id }, audit: { resource: { type: "work_team", id: after.id, entityId: after.entityId }, summary: after.name, before, after } };
@@ -72,6 +72,24 @@ const updateTeamPipeline = createAction({
 });
 export async function updateTeamAction(input: unknown) {
   return updateTeamPipeline(input);
+}
+
+const archiveTeamPipeline = createAction({
+  name: "work.team.archive",
+  input: z.object({ teamId: z.uuid(), archived: z.boolean() }),
+  authorize: async (user, input) => {
+    const team = await findTeam(input.teamId);
+    return !!team && canAdminTeam(await loadViewer(user), teamFacts(team));
+  },
+  run: async ({ input }) => {
+    const { before, after } = await setTeamArchived(input.teamId, input.archived);
+    revalidatePath("/work");
+    revalidatePath(`/work/teams/${input.teamId}`);
+    return { data: { id: after.id }, audit: { resource: { type: "work_team", id: after.id, entityId: after.entityId }, summary: `${after.name}: ${input.archived ? "archived" : "restored"}`, before, after } };
+  },
+});
+export async function setTeamArchivedAction(input: unknown) {
+  return archiveTeamPipeline(input);
 }
 
 const adminsTeam = async (user: Parameters<typeof loadViewer>[0], teamId: string) => {
@@ -169,7 +187,8 @@ const clientPipeline = createAction({
     parentId: optional(z.uuid()),
     entityId: optional(z.uuid()),
     note: optional(z.string().trim().max(1000)),
-    isActive: checkbox.default(true),
+    // No default: an unticked box is not posted, and that means inactive.
+    isActive: checkbox,
   }),
   // The client list is shared by every team: leaders keep it, whatever their scope.
   authorize: async (user) => canManageWorkspace(await loadViewer(user)),
@@ -238,6 +257,24 @@ const updateProjectPipeline = createAction({
 });
 export async function updateProjectAction(input: unknown) {
   return updateProjectPipeline(input);
+}
+
+const archiveProjectPipeline = createAction({
+  name: "work.project.archive",
+  input: z.object({ projectId: z.uuid(), archived: z.boolean() }),
+  authorize: async (user, input) => {
+    const found = await findProject(input.projectId);
+    return !!found && canManageProject(await loadViewer(user), projectFacts(found.project, found.team));
+  },
+  run: async ({ input }) => {
+    const { before, after } = await setProjectArchived(input.projectId, input.archived);
+    revalidatePath("/work");
+    revalidatePath(`/work/projects/${input.projectId}`);
+    return { data: { id: after.id }, audit: { resource: { type: "work_project", id: after.id, entityId: after.entityId }, summary: `${after.name}: ${input.archived ? "archived" : "restored"}`, before, after } };
+  },
+});
+export async function setProjectArchivedAction(input: unknown) {
+  return archiveProjectPipeline(input);
 }
 
 const projectMemberPipeline = createAction({

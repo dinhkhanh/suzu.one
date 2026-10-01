@@ -1,12 +1,15 @@
+import { ArchiveIcon, ChevronRightIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "cn";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { canManageWorkspace, canViewTeam, listClients, listCreateTargets, listTeams, loadViewer, teamFacts, visibleProjects } from "@/modules/work/service";
-import { accentOf } from "@/modules/work/enums";
+import { accentOf, projectShelf, type Shelf, teamShelf, type TeamStatus, teamStatusOf } from "@/modules/work/enums";
 import { ProjectForm } from "@/modules/work/ui/project-forms";
 import { ProjectPoster } from "@/modules/work/ui/project-poster";
 import { TeamForm } from "@/modules/work/ui/team-forms";
@@ -19,29 +22,88 @@ export default async function WorkPage() {
   const viewer = await loadViewer(user);
   const t = await getTranslations("work");
   const today = todayInVietnam();
-  const [allTeams, projects, targets, clients] = await Promise.all([listTeams(), visibleProjects(viewer, { today }), listCreateTargets(viewer), listClients({ activeOnly: true })]);
-  const teams = allTeams.filter((team) => team.isActive && canViewTeam(viewer, teamFacts(team)));
+  // Archived projects too: they are shelved apart below, not hidden.
+  const [allTeams, projects, targets, clients] = await Promise.all([listTeams(), visibleProjects(viewer, { today, includeArchived: true }), listCreateTargets(viewer), listClients({ activeOnly: true })]);
+  const teams = allTeams.filter((team) => canViewTeam(viewer, teamFacts(team)));
   // A project without a colour of its own wears its team's, so the cards of one team read as one.
   const teamColors = new Map(allTeams.map((team) => [team.id, team.color]));
-  const mine = teams.filter((team) => viewer.teamRoles.has(team.id));
-  const others = teams.filter((team) => !viewer.teamRoles.has(team.id));
+  const teamStatuses = new Map(allTeams.map((team) => [team.id, teamStatusOf(team)]));
+  const teamStatus = (teamId: string): TeamStatus => teamStatuses.get(teamId) ?? "active";
+  const shelfOfProject = (project: (typeof projects)[number]) => projectShelf(project.status, teamStatus(project.teamId));
+  const shelfOfTeam = (team: (typeof teams)[number]) => teamShelf(teamStatusOf(team));
+  const projectsOn = (shelf: Shelf) => projects.filter((project) => shelfOfProject(project) === shelf);
+  const teamsOn = (shelf: Shelf) => teams.filter((team) => shelfOfTeam(team) === shelf);
+  const current = teamsOn("current");
+  const mine = current.filter((team) => viewer.teamRoles.has(team.id));
+  const others = current.filter((team) => !viewer.teamRoles.has(team.id));
   const projectTeams = targets.teams.filter((team) => team.canCreateProject);
   const canCreateTeam = canManageWorkspace(viewer);
   const [entities, departments, people] = canCreateTeam || projectTeams.length ? await Promise.all([listEntities(), unitChoices(), listPersonNames()]) : [[], [], []];
 
-  const teamCard = (team: (typeof teams)[number]) => (
-    <li key={team.id} data-accent={accentOf(team.color)}>
-      <Link href={`/work/teams/${team.id}`} className={`flex h-full flex-col gap-1 rounded-xl border p-4 hover:bg-muted/50 ${team.color ? "border-l-4 border-l-primary" : ""}`}>
-        <span className="flex items-center gap-2 text-sm font-medium">
-          <span className="font-mono text-xs text-muted-foreground">{team.key}</span> {team.name}
-          {viewer.teamRoles.get(team.id) === "lead" ? <Badge variant="secondary">{t("members.roles.lead")}</Badge> : null}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {team.entityName ?? t("teams.wholeGroup")} · {t("teams.memberCount", { count: team.memberCount })}
-        </span>
-      </Link>
-    </li>
-  );
+  // Each shelf looks its part: a set-aside card is dashed and faded, an archived one greyed out and plain.
+  const cardClass = (shelf: Shelf, accent: boolean) =>
+    cn(
+      "flex h-full flex-col rounded-xl border p-4 hover:bg-muted/50",
+      shelf === "current" && accent && "border-l-4 border-l-primary",
+      shelf === "inactive" && "border-dashed bg-muted/20 opacity-80 hover:opacity-100",
+      shelf === "archived" && "border-dashed bg-muted/40 text-muted-foreground grayscale hover:grayscale-0",
+    );
+
+  /** Why a card is set aside: its own status, else its team's. */
+  const projectBadge = (project: (typeof projects)[number]) => {
+    if (project.status === "archived") return <ArchivedBadge label={t("projects.status.archived")} />;
+    if (project.status !== "active") return <Badge variant="secondary">{t(`projects.status.${project.status}`)}</Badge>;
+    const status = teamStatus(project.teamId);
+    return status === "active" ? null : <Badge variant="outline">{t(`shelves.team.${status}`)}</Badge>;
+  };
+
+  const projectCard = (project: (typeof projects)[number]) => {
+    const shelf = shelfOfProject(project);
+    const accent = accentOf(project.color, teamColors.get(project.teamId));
+    return (
+      <li key={project.id} data-accent={shelf === "current" ? accent : undefined}>
+        <Link href={`/work/projects/${project.id}`} className={cn(cardClass(shelf, !!accent), "gap-2")}>
+          <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
+            <ProjectPoster project={project} size="sm" />
+            {project.name}
+            {project.visibility === "private" ? <Badge variant="outline">{t("visibility.private")}</Badge> : null}
+            {projectBadge(project)}
+          </span>
+          <span className="text-xs text-muted-foreground">{[project.teamName, project.clientName, project.leadName].filter(Boolean).join(" · ")}</span>
+          <span className="mt-auto flex flex-wrap gap-3 text-xs text-muted-foreground">
+            <span>{t("projects.open", { count: project.openTasks })}</span>
+            <span>{t("projects.done", { count: project.doneTasks })}</span>
+            {project.overdueTasks > 0 && shelf === "current" ? <span className="font-medium text-destructive">{t("projects.overdue", { count: project.overdueTasks })}</span> : null}
+          </span>
+        </Link>
+      </li>
+    );
+  };
+
+  const teamCard = (team: (typeof teams)[number]) => {
+    const status = teamStatusOf(team);
+    const shelf = teamShelf(status);
+    return (
+      <li key={team.id} data-accent={shelf === "current" ? accentOf(team.color) : undefined}>
+        <Link href={`/work/teams/${team.id}`} className={cn(cardClass(shelf, !!team.color), "gap-1")}>
+          <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
+            <span className="font-mono text-xs text-muted-foreground">{team.key}</span> {team.name}
+            {viewer.teamRoles.get(team.id) === "lead" ? <Badge variant="secondary">{t("members.roles.lead")}</Badge> : null}
+            {status === "archived" ? <ArchivedBadge label={t("teams.status.archived")} /> : status === "inactive" ? <Badge variant="outline">{t("teams.status.inactive")}</Badge> : null}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {team.entityName ?? t("teams.wholeGroup")} · {t("teams.memberCount", { count: team.memberCount })}
+          </span>
+        </Link>
+      </li>
+    );
+  };
+
+  const grid = "grid gap-3 sm:grid-cols-2 lg:grid-cols-3";
+  const inactiveProjects = projectsOn("inactive");
+  const archivedProjects = projectsOn("archived");
+  const inactiveTeams = teamsOn("inactive");
+  const archivedTeams = teamsOn("archived");
 
   return (
     <div className="flex max-w-6xl flex-col gap-8">
@@ -81,27 +143,14 @@ export default async function WorkPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">{t("projects.title")}</h2>
-        {projects.length === 0 ? <p className="text-sm text-muted-foreground">{t("projects.empty")}</p> : null}
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => (
-            <li key={project.id} data-accent={accentOf(project.color, teamColors.get(project.teamId))}>
-              <Link href={`/work/projects/${project.id}`} className={`flex h-full flex-col gap-2 rounded-xl border p-4 hover:bg-muted/50 ${accentOf(project.color, teamColors.get(project.teamId)) ? "border-l-4 border-l-primary" : ""}`}>
-                <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                  <ProjectPoster project={project} size="sm" />
-                  {project.name}
-                  {project.visibility === "private" ? <Badge variant="outline">{t("visibility.private")}</Badge> : null}
-                  {project.status === "active" ? null : <Badge variant="secondary">{t(`projects.status.${project.status}`)}</Badge>}
-                </span>
-                <span className="text-xs text-muted-foreground">{[project.teamName, project.clientName, project.leadName].filter(Boolean).join(" · ")}</span>
-                <span className="mt-auto flex flex-wrap gap-3 text-xs text-muted-foreground">
-                  <span>{t("projects.open", { count: project.openTasks })}</span>
-                  <span>{t("projects.done", { count: project.doneTasks })}</span>
-                  {project.overdueTasks > 0 ? <span className="font-medium text-destructive">{t("projects.overdue", { count: project.overdueTasks })}</span> : null}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        {projectsOn("current").length === 0 ? <p className="text-sm text-muted-foreground">{t("projects.empty")}</p> : <ul className={grid}>{projectsOn("current").map(projectCard)}</ul>}
+        {inactiveProjects.length ? (
+          <>
+            <h3 className="pt-2 text-sm font-medium text-muted-foreground">{t("shelves.inactiveProjects", { count: inactiveProjects.length })}</h3>
+            <ul className={grid}>{inactiveProjects.map(projectCard)}</ul>
+          </>
+        ) : null}
+        {archivedProjects.length ? <ArchivedShelf label={t("shelves.archivedProjects", { count: archivedProjects.length })}><ul className={grid}>{archivedProjects.map(projectCard)}</ul></ArchivedShelf> : null}
         {projectTeams.length ? (
           <details className="rounded-xl border p-4">
             <summary className="cursor-pointer text-sm font-medium">{t("projects.create")}</summary>
@@ -114,13 +163,20 @@ export default async function WorkPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">{t("teams.mine")}</h2>
-        {mine.length === 0 ? <p className="text-sm text-muted-foreground">{t("teams.mineEmpty")}</p> : <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{mine.map(teamCard)}</ul>}
+        {mine.length === 0 ? <p className="text-sm text-muted-foreground">{t("teams.mineEmpty")}</p> : <ul className={grid}>{mine.map(teamCard)}</ul>}
         {others.length ? (
           <>
             <h2 className="pt-2 text-sm font-medium text-muted-foreground">{t("teams.others")}</h2>
-            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{others.map(teamCard)}</ul>
+            <ul className={grid}>{others.map(teamCard)}</ul>
           </>
         ) : null}
+        {inactiveTeams.length ? (
+          <>
+            <h2 className="pt-2 text-sm font-medium text-muted-foreground">{t("shelves.inactiveTeams", { count: inactiveTeams.length })}</h2>
+            <ul className={grid}>{inactiveTeams.map(teamCard)}</ul>
+          </>
+        ) : null}
+        {archivedTeams.length ? <ArchivedShelf label={t("shelves.archivedTeams", { count: archivedTeams.length })}><ul className={grid}>{archivedTeams.map(teamCard)}</ul></ArchivedShelf> : null}
         {canCreateTeam ? (
           <details className="rounded-xl border p-4">
             <summary className="cursor-pointer text-sm font-medium">{t("teams.create")}</summary>
@@ -131,5 +187,28 @@ export default async function WorkPage() {
         ) : null}
       </section>
     </div>
+  );
+}
+
+function ArchivedBadge({ label }: { label: string }) {
+  return (
+    <Badge variant="outline" className="gap-1 text-muted-foreground">
+      <ArchiveIcon />
+      {label}
+    </Badge>
+  );
+}
+
+/** Archived teams or projects: out of the way, shut until opened. */
+function ArchivedShelf({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <Collapsible className="flex flex-col gap-3 rounded-xl border border-dashed bg-muted/20 p-3">
+      <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-md text-left text-sm font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+        <ChevronRightIcon className="size-4 transition-transform group-data-[panel-open]:rotate-90" />
+        <ArchiveIcon className="size-4" />
+        {label}
+      </CollapsibleTrigger>
+      <CollapsibleContent>{children}</CollapsibleContent>
+    </Collapsible>
   );
 }

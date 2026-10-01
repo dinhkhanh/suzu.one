@@ -9,10 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { createTeamAction, deleteLabelAction, saveLabelAction, saveStateAction, setProjectMemberAction, setTeamMemberAction, updateTeamAction } from "../actions";
-import { ACCENT_COLORS, LABEL_COLORS, PROJECT_ROLES, STATE_CATEGORIES, TEAM_ROLES, VISIBILITIES, WORKFLOW_PRESETS } from "../enums";
+import { ACCENT_COLORS, LABEL_COLORS, PROJECT_ROLES, STATE_CATEGORIES, TEAM_ROLES, TEAM_STATUSES, teamStatusOf, VISIBILITIES, WORKFLOW_PRESETS } from "../enums";
 
 type Option = { id: string; name: string };
-type Team = { id: string; key: string; name: string; description: string | null; entityId: string | null; departmentId: string | null; defaultVisibility: string; isActive: boolean; color: string | null };
+type Team = { id: string; key: string; name: string; description: string | null; entityId: string | null; departmentId: string | null; defaultVisibility: string; isActive: boolean; archivedAt: Date | string | null; color: string | null };
 
 export function TeamForm({ team, entities, departments, allowGroup, onSaved }: { team?: Team; entities: Option[]; departments: Option[]; /** May the viewer file the team under the whole group? */ allowGroup: boolean; /** After an edit is saved — the dialog closes. */ onSaved?: () => void }) {
   const t = useTranslations("work.teams");
@@ -90,9 +90,15 @@ export function TeamForm({ team, entities, departments, allowGroup, onSaved }: {
             </Field>
           </div>
           {team ? (
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="isActive" defaultChecked={team.isActive} /> {t("fields.isActive")}
-            </label>
+            <Field name="status" label={t("fields.status")}>
+              <Select id="status" name="status" defaultValue={teamStatusOf(team)}>
+                {TEAM_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {t(`status.${status}`)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
           ) : (
             <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">{WORKFLOW_PRESETS[preset].map((state) => tWork(`presetStates.${state.key}`)).join(" → ")}</p>
           )}

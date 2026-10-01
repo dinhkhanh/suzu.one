@@ -3662,7 +3662,7 @@
         "defaultVisibility": "New projects are",
         "preset": "Starting workflow",
         "description": "What the team does",
-        "isActive": "Active",
+        "status": "Status",
         "color": "Colour"
       },
       "wholeGroup": "Whole group",
@@ -3676,14 +3676,18 @@
       "mineEmpty": "You are not in a team yet.",
       "others": "Other teams",
       "memberCount": "{count, plural, =0 {no members} one {# member} other {# members}}",
-      "inactive": "Inactive",
       "backlog": "Team backlog (tasks outside a project)",
       "settings": "Team settings",
       "triage": "Triage",
       "triageCount": "{count, plural, =0 {Triage} other {Triage (#)}}",
       "edit": "Edit team",
       "editTitle": "Edit {name}",
-      "noColor": "None (the app's blue)"
+      "noColor": "None (the app's blue)",
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "archived": "Archived"
+      }
     },
     "members": {
       "title": "Members",
@@ -5360,6 +5364,26 @@
         "decided": "Answered",
         "expired": "Expired",
         "revoked": "Revoked"
+      }
+    },
+    "archive": {
+      "archive": "Archive",
+      "restore": "Restore",
+      "cancel": "Cancel",
+      "confirmTitle": "Archive {name}?",
+      "confirm": {
+        "team": "The team takes no new projects or tasks, and moves to the archived teams on the Work page. Its tasks and history stay, and it can be restored at any time.",
+        "project": "The project closes to new work and moves to the archived projects on the Work page. Its tasks and history stay, and it can be restored at any time."
+      }
+    },
+    "shelves": {
+      "inactiveProjects": "Paused and finished ({count})",
+      "archivedProjects": "Archived projects ({count})",
+      "inactiveTeams": "Inactive teams ({count})",
+      "archivedTeams": "Archived teams ({count})",
+      "team": {
+        "inactive": "Team inactive",
+        "archived": "Team archived"
       }
     }
   },

@@ -3662,7 +3662,7 @@
         "defaultVisibility": "Dự án mới sẽ",
         "preset": "Quy trình khởi đầu",
         "description": "Nhóm làm gì",
-        "isActive": "Đang hoạt động",
+        "status": "Trạng thái",
         "color": "Màu"
       },
       "wholeGroup": "Toàn tập đoàn",
@@ -3676,14 +3676,18 @@
       "mineEmpty": "Bạn chưa thuộc nhóm nào.",
       "others": "Nhóm khác",
       "memberCount": "{count, plural, =0 {chưa có thành viên} other {# thành viên}}",
-      "inactive": "Ngừng hoạt động",
       "backlog": "Việc tồn của nhóm (chưa thuộc dự án)",
       "settings": "Thiết lập nhóm",
       "triage": "Hàng chờ phân loại",
       "triageCount": "{count, plural, =0 {Hàng chờ phân loại} other {Hàng chờ phân loại (#)}}",
       "edit": "Sửa nhóm",
       "editTitle": "Sửa {name}",
-      "noColor": "Không (xanh mặc định)"
+      "noColor": "Không (xanh mặc định)",
+      "status": {
+        "active": "Đang hoạt động",
+        "inactive": "Ngừng hoạt động",
+        "archived": "Lưu trữ"
+      }
     },
     "members": {
       "title": "Thành viên",
@@ -5360,6 +5364,26 @@
         "decided": "Đã phản hồi",
         "expired": "Hết hạn",
         "revoked": "Đã thu hồi"
+      }
+    },
+    "archive": {
+      "archive": "Lưu trữ",
+      "restore": "Khôi phục",
+      "cancel": "Huỷ",
+      "confirmTitle": "Lưu trữ {name}?",
+      "confirm": {
+        "team": "Nhóm sẽ không nhận dự án hay công việc mới và được chuyển vào mục nhóm lưu trữ ở trang Công việc. Công việc và lịch sử vẫn được giữ, có thể khôi phục bất cứ lúc nào.",
+        "project": "Dự án sẽ không nhận việc mới và được chuyển vào mục dự án lưu trữ ở trang Công việc. Công việc và lịch sử vẫn được giữ, có thể khôi phục bất cứ lúc nào."
+      }
+    },
+    "shelves": {
+      "inactiveProjects": "Tạm dừng và đã xong ({count})",
+      "archivedProjects": "Dự án lưu trữ ({count})",
+      "inactiveTeams": "Nhóm ngừng hoạt động ({count})",
+      "archivedTeams": "Nhóm lưu trữ ({count})",
+      "team": {
+        "inactive": "Nhóm ngừng hoạt động",
+        "archived": "Nhóm đã lưu trữ"
       }
     }
   },
