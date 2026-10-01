@@ -6,8 +6,8 @@
 // blocks under one heading are packed up to `maxChars` with a blank line between them; a block
 // longer than that is split at line, then sentence, boundaries — a long table at row boundaries,
 // with its header repeated so every piece is still a table.
-import { blockMarkdown, headingsIn } from "./doc-markdown";
-import { type Doc, docToPlainText, headingId, inlineText } from "./doc";
+import { blockMarkdown, headingsIn } from "@/modules/platform/rich-text/engine/doc-markdown";
+import { type Doc, docToPlainText, headingId, inlineText } from "@/modules/platform/rich-text/engine/doc";
 
 export type Chunk = { index: number; headingPath: string; anchor: string | null; content: string; tokenEstimate: number };
 

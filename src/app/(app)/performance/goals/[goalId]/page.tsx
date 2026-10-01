@@ -8,6 +8,7 @@ import { GoalLine, periodLabel, progressLabel } from "@/modules/performance/ui/g
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { ConfidenceBadge, GoalStatusBadge, metricText, ProgressBar } from "@/modules/performance/ui/progress";
 import { requireUser } from "@/modules/platform/auth/session";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("goal");
@@ -56,7 +57,7 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
           <ConfidenceBadge confidence={goal.progress.confidence} label={goal.progress.confidence ? t(`enums.confidence.${goal.progress.confidence}`) : ""} />
         </div>
         <p className="text-sm text-muted-foreground">{[`${t(`enums.level.${goal.level}`)}${goal.unitName ? ` · ${goal.unitName}` : ""}`, t("detail.owner", { name: goal.ownerName }), periodLabel(t, goal.periodKey), t("detail.weight", { weight: goal.weight })].join(" · ")}</p>
-        {goal.description ? <p className="text-sm whitespace-pre-line">{goal.description}</p> : null}
+        <RichText text={goal.description} />
         <ProgressBar bp={goal.progress.progressBp} label={progressLabel(labels, goal.progress.progressBp)} />
         {goal.status === "closed" && goal.closedAt ? <p className="text-xs text-muted-foreground">{t("detail.frozen", { date: dateTime(goal.closedAt) })}</p> : null}
         <GoalMoves goalId={goal.id} moves={moves} />

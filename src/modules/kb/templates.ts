@@ -5,9 +5,9 @@ import { ActionError } from "@/lib/action";
 import { cached, invalidate } from "@/lib/cache";
 import { db, schema } from "@/lib/db";
 import { slugify } from "@/lib/slug";
-import { type Doc, validateDoc } from "./engine/doc";
+import { type Doc, validateDoc } from "@/modules/platform/rich-text/engine/doc";
 import { mammothHtmlToMarkdown } from "./engine/docx-html";
-import { markdownToDoc } from "./engine/markdown";
+import { markdownToDoc } from "@/modules/platform/rich-text/engine/markdown";
 import { type Actor, createPage, type PageRow } from "./pages";
 import { kbTemplateSeedRows, PROJECT_STARTER_TEMPLATES } from "./seed-templates";
 

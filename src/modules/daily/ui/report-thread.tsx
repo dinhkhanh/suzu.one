@@ -4,9 +4,9 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { FormError } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { commentOnReportAction } from "../actions";
 import { REPORT_REACTIONS } from "../enums";
-import { TEXTAREA } from "./format";
 import { useRun } from "./use-run";
 
 export function ReportThread({ reportId }: { reportId: string }) {
@@ -29,7 +29,7 @@ export function ReportThread({ reportId }: { reportId: string }) {
           if (body.trim()) run(commentOnReportAction, { reportId, body }, () => setBody(""));
         }}
       >
-        <textarea aria-label={t("comment")} value={body} onChange={(event) => setBody(event.target.value)} maxLength={2000} className={TEXTAREA} placeholder={t("placeholder")} />
+        <NoteEditor aria-label={t("comment")} value={body} onChange={setBody} maxLength={2000} placeholder={t("placeholder")} />
         <Button type="submit" size="sm" disabled={pending || !body.trim()} className="self-start">
           {t("send")}
         </Button>

@@ -26,6 +26,7 @@ import { BandBadge, ResultTraceTable } from "@/modules/performance/ui/result";
 import { FilledForm, ratingText, StageBadge, Timeline } from "@/modules/performance/ui/review";
 import { AcknowledgeForm, CalibrateForm, NominatePeerForm, NominationDecisionForm, ReleaseForm, ReviewFormEditor } from "@/modules/performance/ui/review-forms";
 import { requireUser } from "@/modules/platform/auth/session";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("review");
@@ -234,11 +235,11 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
         <section className="flex flex-col gap-3 rounded-xl border p-3">
           <h2 className="text-sm font-medium">{t("acknowledge.title")}</h2>
           {participant.acknowledgedAt ? (
-            <p className="text-sm text-muted-foreground">
-              {t("acknowledge.done", { date: format.dateTime(participant.acknowledgedAt, { dateStyle: "medium" }) })}
+            <>
+              <p className="text-sm text-muted-foreground">{t("acknowledge.done", { date: format.dateTime(participant.acknowledgedAt, { dateStyle: "medium" }) })}</p>
               {/* The subject's own words about their review: theirs, their line and HR's — not a peer's. */}
-              {participant.acknowledgementNote && seesNominations ? ` — ${participant.acknowledgementNote}` : ""}
-            </p>
+              {seesNominations ? <RichText text={participant.acknowledgementNote} /> : null}
+            </>
           ) : canAcknowledgeReview(user.principal, parties) ? (
             <AcknowledgeForm participantId={participantId} />
           ) : (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bulletList, callout, doc, heading, paragraph, table } from "./build";
+import { bulletList, callout, doc, heading, paragraph, table } from "@/modules/platform/rich-text/engine/build";
 import { chunkDoc, chunkEmbeddingText } from "./chunk";
 import { cosine, FAKE_EMBEDDING_DIMS, fakeEmbedding } from "./fake-embedding";
 
@@ -44,7 +44,7 @@ describe("chunkDoc", () => {
 
   it("writes marks and links as Markdown and escapes what would change the structure", () => {
     const marked = doc({ type: "paragraph", content: [{ type: "text", text: "Nộp " }, { type: "text", text: "trước ngày 5", marks: [{ type: "bold" }] }, { type: "text", text: " tại " }, { type: "text", text: "mục Nghỉ phép", marks: [{ type: "link", attrs: { href: "/leave" } }] }, { type: "text", text: " (a*b_c)." }] }, paragraph("1. Không phải danh sách"), paragraph("# Không phải tiêu đề"));
-    expect(chunkDoc(marked, "T")[0].content).toBe("Nộp **trước ngày 5** tại [mục Nghỉ phép](/leave) (a\\*b\\_c).\n\n1\\. Không phải danh sách\n\n\\# Không phải tiêu đề");
+    expect(chunkDoc(marked, "T")[0].content).toBe("Nộp **trước ngày 5** tại [mục Nghỉ phép](/leave) (a\\*b_c).\n\n1\\. Không phải danh sách\n\n\\# Không phải tiêu đề");
   });
 
   it("packs blocks up to the limit, splits what is longer at line and sentence ends, and is deterministic", () => {

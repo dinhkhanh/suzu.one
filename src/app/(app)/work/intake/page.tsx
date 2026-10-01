@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/modules/platform/auth/session";
+import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import { listMyIntakeRequests, listOpenIntakeForms, loadViewer } from "@/modules/work/service";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -38,7 +39,7 @@ export default async function IntakeIndexPage() {
                 <Link href={`/work/intake/${form.id}`} className="font-medium hover:underline">
                   {form.name}
                 </Link>
-                {form.description ? <p className="text-xs text-muted-foreground">{form.description}</p> : null}
+                {form.description?.trim() ? <p className="line-clamp-2 text-xs text-muted-foreground">{noteToPlainText(form.description)}</p> : null}
               </li>
             ))}
           </ul>

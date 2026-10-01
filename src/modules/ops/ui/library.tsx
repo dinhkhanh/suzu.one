@@ -7,6 +7,7 @@ import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { reviewObligationTemplateAction, saveObligationTemplateAction, syncObligationsAction } from "../actions";
 import { AUTHORITIES, EVENT_TYPES, EVIDENCE_KEYS, OBLIGATION_CATEGORIES, RECURRENCES, SHIFTS } from "../enums";
 
@@ -215,13 +216,13 @@ export function TemplateForm({ value, options }: { value: TemplateFormValue; opt
             <textarea id="checklist" name="checklist" rows={4} defaultValue={value.checklist.join("\n")} className={textarea} />
           </Field>
           <Field name="guidance" label={t("guidance")}>
-            <textarea id="guidance" name="guidance" rows={4} defaultValue={value.guidance ?? ""} className={textarea} />
+            <NoteEditor id="guidance" name="guidance" rows={4} maxLength={4000} defaultValue={value.guidance ?? ""} />
           </Field>
           <Field name="links" label={t("links")}>
             <textarea id="links" name="links" rows={2} defaultValue={value.links.map((link) => `${link.title} | ${link.url}`).join("\n")} placeholder="Quy trình | https://…" className={textarea} />
           </Field>
           <Field name="penaltyNote" label={t("penaltyNote")}>
-            <textarea id="penaltyNote" name="penaltyNote" rows={2} defaultValue={value.penaltyNote ?? ""} className={textarea} />
+            <NoteEditor id="penaltyNote" name="penaltyNote" rows={2} maxLength={1000} defaultValue={value.penaltyNote ?? ""} />
           </Field>
         </div>
 

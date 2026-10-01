@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { MAX_REQUEST_FILE_BYTES } from "@/modules/platform/files/rules";
 import { submitReferralAction } from "../referral-actions";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 
 const textarea = "w-full rounded-md border bg-transparent px-3 py-2 text-sm";
 
@@ -97,7 +98,7 @@ export function ReferralForm({ openings }: { openings: ReferralOpening[] }) {
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="referral-note">{t("note")}</Label>
-        <textarea id="referral-note" name="note" rows={3} maxLength={2000} className={textarea} placeholder={t("noteHint")} />
+        <NoteEditor id="referral-note" name="note" rows={3} maxLength={2000} placeholder={t("noteHint")} />
       </div>
 
       {/* PDPL: the person being referred has agreed to nothing, and the referrer should know it. */}

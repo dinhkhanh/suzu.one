@@ -13,8 +13,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { createOpeningAction, updateOpeningAction } from "../actions";
 import { EMPLOYMENT_TYPES, type EmploymentType, WORK_MODES, type WorkMode } from "../enums";
-
-const textarea = "w-full rounded-md border bg-transparent px-3 py-2 text-sm";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 
 export type OpeningFormValue = {
   id: string | null;
@@ -138,13 +137,13 @@ export function OpeningForm({
         </div>
 
         <Field name="description" label={t("description")}>
-          <textarea id="description" name="description" rows={6} maxLength={20_000} className={textarea} defaultValue={value?.description ?? ""} />
+          <NoteEditor id="description" name="description" rows={6} maxLength={20_000} defaultValue={value?.description ?? ""} />
         </Field>
         <Field name="requirements" label={t("requirements")}>
-          <textarea id="requirements" name="requirements" rows={5} maxLength={20_000} className={textarea} defaultValue={value?.requirements ?? ""} />
+          <NoteEditor id="requirements" name="requirements" rows={5} maxLength={20_000} defaultValue={value?.requirements ?? ""} />
         </Field>
         <Field name="benefits" label={t("benefits")}>
-          <textarea id="benefits" name="benefits" rows={4} maxLength={20_000} className={textarea} defaultValue={value?.benefits ?? ""} />
+          <NoteEditor id="benefits" name="benefits" rows={4} maxLength={20_000} defaultValue={value?.benefits ?? ""} />
         </Field>
 
         {canSetMoney ? (

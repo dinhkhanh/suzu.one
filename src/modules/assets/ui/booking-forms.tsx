@@ -11,10 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DateTimePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { bookAssetAction, cancelBookingAction, checkInBookingAction, checkOutBookingAction, decideBookingAction } from "../actions";
 import { ASSET_CONDITIONS, type AssetCondition } from "../enums";
 
-const textarea = "w-full rounded-md border bg-transparent px-3 py-2 text-sm";
 
 export type BookableAsset = { id: string; code: string; name: string; categoryName: string };
 
@@ -171,10 +171,10 @@ export function MoveBookingForm({ bookingId, direction, defaultCondition }: { bo
             ))}
           </Select>
         </label>
-        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-          {t("move.note")}
-          <textarea name="note" rows={2} maxLength={1000} className={textarea} />
-        </label>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted-foreground">{t("move.note")}</span>
+          <NoteEditor name="note" rows={2} maxLength={1000} aria-label={t("move.note")} />
+        </div>
       </div>
       <FormError namespace="assets.errors" errorKey={errorKey} />
       <div>

@@ -6,6 +6,7 @@ import { PREVIEW_DECISIONS, openPreviewLink } from "@/modules/work/service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 /**
  * One version of one piece of work, as the client holding the link sees it (D24, FR-PJM-51a).
@@ -95,8 +96,8 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
       {page.message ? (
         <section className="flex flex-col gap-2">
           <h2 className="text-sm font-medium">{t("messageFrom", { name: page.senderName })}</h2>
-          {/* Plain text: a note typed into a textarea is not a place to start rendering markup. */}
-          <p className="whitespace-pre-line text-sm text-muted-foreground">{page.message}</p>
+          {/* The note is built into the document allow-list and rendered from that, never as HTML. */}
+          <RichText text={page.message} className="text-sm text-muted-foreground" />
         </section>
       ) : null}
 

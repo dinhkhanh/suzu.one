@@ -14,10 +14,10 @@ import { approvalAssignee, approvalEvent, approvalRequest, approvalStep, orgUnit
 import { toSearchKey } from "../src/lib/text";
 import { chunkDoc, chunkEmbeddingText } from "../src/modules/kb/engine/chunk";
 import { FAKE_EMBEDDING_MODEL, fakeEmbedding } from "../src/modules/kb/engine/fake-embedding";
-import { markdownToDoc } from "../src/modules/kb/engine/markdown";
+import { markdownToDoc } from "../src/modules/platform/rich-text/engine/markdown";
 import { HANDBOOK_PAGES, REMOTE_DRAFT, SECURITY_V1, SECURITY_V2 } from "./seed-demo-kb-pages";
-import { bold, bulletList, callout, doc, embed, heading, link, orderedList, paragraph, table } from "../src/modules/kb/engine/build";
-import { type Doc, docToPlainText, validateDoc } from "../src/modules/kb/engine/doc";
+import { bold, bulletList, callout, doc, embed, heading, link, orderedList, paragraph, table } from "../src/modules/platform/rich-text/engine/build";
+import { type Doc, docToPlainText, validateDoc } from "../src/modules/platform/rich-text/engine/doc";
 
 type Db = ReturnType<typeof drizzle>;
 type Access = [subject: string, level: "view" | "edit"];

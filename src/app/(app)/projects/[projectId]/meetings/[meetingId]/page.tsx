@@ -8,6 +8,7 @@ import { canEditMeeting, DEFAULT_MEETING_MINUTES, getMeeting, type MeetingKind, 
 import { MeetingCalendar, MeetingForm } from "@/modules/projects/ui/collab-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
 import { pageTitle } from "@/i18n/page-title";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 export const generateMetadata = pageTitle("meeting");
 
@@ -54,11 +55,11 @@ export default async function ProjectMeetingPage({ params }: PageProps<"/project
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">{t("fields.agenda")}</dt>
-            <dd className="whitespace-pre-line">{meeting.agenda ?? "—"}</dd>
+            <dd>{meeting.agenda?.trim() ? <RichText text={meeting.agenda} /> : "—"}</dd>
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">{t("fields.notes")}</dt>
-            <dd className="whitespace-pre-line">{meeting.notes ?? "—"}</dd>
+            <dd>{meeting.notes?.trim() ? <RichText text={meeting.notes} /> : "—"}</dd>
           </div>
         </dl>
       </section>
@@ -70,7 +71,7 @@ export default async function ProjectMeetingPage({ params }: PageProps<"/project
           {meeting.decisions.map((decision) => (
             <li key={decision.id} className="rounded-lg border p-3 text-sm">
               <p className="font-medium">{decision.title}</p>
-              {decision.description ? <p className="whitespace-pre-line text-muted-foreground">{decision.description}</p> : null}
+              <RichText text={decision.description} className="text-muted-foreground" />
               <p className="text-xs text-muted-foreground">{[tRaid("decidedOnValue", { date: date(decision.decidedOn) }), tRaid(`statuses.${decision.status as "open"}`)].join(" · ")}</p>
             </li>
           ))}

@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import { reassignTaskAction, setTaskStatusAction } from "../actions";
 
 export type TaskItem = {
@@ -61,7 +62,7 @@ export function TaskList({ tasks, today, showSubject = false, people }: { tasks:
                     task.title
                   )}
                 </p>
-                {task.description ? <p className="text-xs text-muted-foreground">{task.description}</p> : null}
+                {task.description?.trim() ? <p className="line-clamp-2 text-xs text-muted-foreground">{noteToPlainText(task.description)}</p> : null}
                 {task.linkUrl ? (
                   <p className="text-xs">
                     <a href={task.linkUrl} className="underline underline-offset-2" {...(task.linkUrl.startsWith("/") ? {} : { target: "_blank", rel: "noopener noreferrer" })}>

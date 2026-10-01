@@ -8,6 +8,7 @@ import { canAddRaid, canBecomeTask, canCloseRaidItem, canEditRaidItem, listRaid,
 import { IssueToTaskForm, RaidEdit, RaidEvidenceLink, RaidForm, RaidStatusButton } from "@/modules/projects/ui/collab-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
 import { pageTitle } from "@/i18n/page-title";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 export const generateMetadata = pageTitle("risksDecisions");
 
@@ -70,7 +71,7 @@ export default async function ProjectRisksPage({ params, searchParams }: PagePro
                   <Badge dot variant={open ? "info" : "secondary"}>{t(`statuses.${item.status as "open"}`)}</Badge>
                 </div>
                 <p className="font-medium">{item.title}</p>
-                {item.description ? <p className="text-sm whitespace-pre-line text-muted-foreground">{item.description}</p> : null}
+                <RichText text={item.description} className="text-sm text-muted-foreground" />
                 <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
                   <div>
                     <dt className="text-xs text-muted-foreground">{t("fields.owner")}</dt>

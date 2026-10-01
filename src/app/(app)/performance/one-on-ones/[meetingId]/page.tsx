@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canReadOneOnOne, canReadOneOnOnePrivate, canWriteOneOnOne, canWriteOneOnOnePrivate, findOneOnOne, loadDirectory, loadOneOnOne } from "@/modules/performance/service";
 import { AddActionForm, CompleteActionButton, EditOneOnOneForm, ShareOneOnOneButton } from "@/modules/performance/ui/one-on-one-forms";
@@ -58,11 +59,11 @@ export default async function OneOnOnePage({ params }: PageProps<"/performance/o
         <dl className="flex flex-col gap-3 rounded-xl border p-4 text-sm">
           <div>
             <dt className="text-muted-foreground">{t("agenda")}</dt>
-            <dd className="whitespace-pre-wrap">{meeting.agenda ?? "—"}</dd>
+            <dd>{meeting.agenda?.trim() ? <RichText text={meeting.agenda} /> : "—"}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">{t("sharedNotes")}</dt>
-            <dd className="whitespace-pre-wrap">{meeting.sharedNotes ?? "—"}</dd>
+            <dd>{meeting.sharedNotes?.trim() ? <RichText text={meeting.sharedNotes} /> : "—"}</dd>
           </div>
         </dl>
       )}
@@ -71,7 +72,7 @@ export default async function OneOnOnePage({ params }: PageProps<"/performance/o
         <dl className="flex flex-col gap-3 rounded-xl border p-4 text-sm">
           <div>
             <dt className="text-muted-foreground">{t("privateNotes")}</dt>
-            <dd className="whitespace-pre-wrap">{meeting.privateNotes ?? "—"}</dd>
+            <dd>{meeting.privateNotes?.trim() ? <RichText text={meeting.privateNotes} /> : "—"}</dd>
           </div>
         </dl>
       ) : null}

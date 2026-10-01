@@ -6,6 +6,7 @@ import { addDays, todayInVietnam } from "@/lib/dates";
 import { type BoardRow, getTeamBoard, loadReportReader } from "@/modules/daily/service";
 import { RemindButton } from "@/modules/daily/ui/remind-button";
 import { requireUser } from "@/modules/platform/auth/session";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("teamDailyBoard");
@@ -36,7 +37,7 @@ export default async function TeamBoardPage({ searchParams }: PageProps<"/daily/
         {person.comments > 0 ? <span className="text-xs text-muted-foreground">{t("board.comments", { count: person.comments })}</span> : null}
         {person.status === "missing" && isToday && remindable ? <RemindButton date={date} personIds={[person.personId]} label={t("board.remind")} done={person.reminded} /> : null}
       </div>
-      {person.blockers?.trim() ? <p className="text-sm whitespace-pre-wrap text-destructive">{person.blockers}</p> : null}
+      <RichText text={person.blockers} className="text-destructive" />
       {person.openBlockers > 0 ? <p className="text-xs text-destructive">{t("board.openBlockers", { count: person.openBlockers })}</p> : null}
       {person.submittedAt ? <p className="text-xs text-muted-foreground">{t("view.sentAt", { time: format.dateTime(person.submittedAt, { timeStyle: "short" }) })}</p> : null}
     </li>

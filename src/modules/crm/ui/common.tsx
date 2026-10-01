@@ -13,8 +13,6 @@ export type Action = (input: unknown) => Promise<ActionResult<unknown>>;
 export type Person = { id: string; fullName: string };
 export type Named = { id: string; name: string };
 
-export const textarea = "min-h-20 w-full rounded-lg border bg-background px-2.5 py-1.5 text-sm";
-
 /** A form that posts to an action and shows what went wrong in the CRM's words. `children` may be a function of the refusal's details. */
 export function CrmForm({ action, extra, children, submit, className, onDone, navigateTo, footer }: { action: Action; extra?: Record<string, unknown>; children: ReactNode | ((details: unknown) => ReactNode); submit: string; className?: string; onDone?: (data: unknown) => void; navigateTo?: (data: unknown) => string | null; footer?: ReactNode }) {
   const t = useTranslations("crm");

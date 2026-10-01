@@ -1,5 +1,6 @@
 // The brief as read by everyone who may open the project (and by its kick-off approver).
 import { getTranslations } from "next-intl/server";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import type { ProjectBrief } from "../schema";
 
 const TEXT_FIELDS = ["objective", "scopeIn", "scopeOut", "successCriteria", "audience", "keyMessages", "assumptions"] as const;
@@ -13,7 +14,9 @@ export async function BriefView({ brief }: { brief: ProjectBrief }) {
       {filled.map((field) => (
         <div key={field} className={field === "objective" || field === "successCriteria" ? "sm:col-span-2" : undefined}>
           <dt className="text-xs text-muted-foreground">{t(`fields.${field}`)}</dt>
-          <dd className="whitespace-pre-line break-words">{brief[field]}</dd>
+          <dd>
+            <RichText text={brief[field]} className="break-words" />
+          </dd>
         </div>
       ))}
       {brief.clientContacts?.length ? (

@@ -13,6 +13,7 @@ import { ContractForm, ContractScanLink, LinkProjectForm, SignContractForm, Term
 import { CrmTabs } from "@/modules/crm/ui/tabs";
 import { formatters } from "@/modules/crm/ui/views";
 import { workDirectory } from "@/modules/work/service";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 export const generateMetadata = pageTitle("crmContract");
 
@@ -119,7 +120,7 @@ export default async function ContractPage({ params }: PageProps<"/crm/contracts
           </div>
         </details>
       ) : null}
-      {contract.note ? <p className="whitespace-pre-line text-sm text-muted-foreground">{contract.note}</p> : null}
+      <RichText text={contract.note} className="text-sm text-muted-foreground" />
     </div>
   );
 }

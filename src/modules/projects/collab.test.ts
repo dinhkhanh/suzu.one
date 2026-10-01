@@ -25,7 +25,7 @@ import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { pageVisibleSql } from "../kb/access-sql";
 import { retrieveKbChunks } from "../kb/chunks";
-import { doc, heading, paragraph } from "../kb/engine/build";
+import { doc, heading, paragraph } from "@/modules/platform/rich-text/engine/build";
 import { listSpaceFiles } from "../kb/files";
 import { levelOf, listTree, loadPage, publishPage, saveDraft } from "../kb/pages";
 import { type KbViewer, viewerKeys } from "../kb/policy";

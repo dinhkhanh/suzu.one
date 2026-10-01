@@ -8,6 +8,7 @@ import { canCloseProject, canHoldRetro, type CloseReport, getCloseChecklist, get
 import { CloseProjectForm, PublishLessonsForm, RetroForm } from "@/modules/projects/ui/commercial-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
 import { pageTitle } from "@/i18n/page-title";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 export const generateMetadata = pageTitle("closeProject");
 
@@ -108,7 +109,7 @@ export default async function ProjectClosePage({ params }: PageProps<"/projects/
             {(["wentWell", "improve", "actions"] as const).map((key) => (
               <div key={key} className="rounded-xl border p-3">
                 <p className="text-xs text-muted-foreground">{t(`retro.${key}`)}</p>
-                <p className="whitespace-pre-line">{retro.retro?.[key] ?? "—"}</p>
+                {retro.retro?.[key]?.trim() ? <RichText text={retro.retro[key]} /> : <p>—</p>}
               </div>
             ))}
           </div>

@@ -11,6 +11,7 @@ import { canManageChanges, CHANGE_REQUESTERS, changeEditable, type ChangeLedger,
 import { ChangeButtons, ChangeForm, EvidenceLink } from "@/modules/projects/ui/commercial-forms";
 import { ProjectHeader } from "@/modules/projects/ui/project-header";
 import { pageTitle } from "@/i18n/page-title";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 export const generateMetadata = pageTitle("changeRequests");
 
@@ -66,7 +67,7 @@ export default async function ProjectChangesPage({ params }: PageProps<"/project
             <h2 className="text-base font-medium">
               CR-{change.number} · {change.title}
             </h2>
-            {change.description ? <p className="text-sm whitespace-pre-line">{change.description}</p> : null}
+            <RichText text={change.description} className="text-sm" />
             {impactOf(change, approver.seesFees)}
             {change.request.canDecide ? <DecisionForm requestId={change.request.request.id} action={decideChangeAction} /> : null}
             <RequestTools view={change.request} viewerPersonId={user.person.id} />
@@ -139,7 +140,7 @@ export default async function ProjectChangesPage({ params }: PageProps<"/project
                 <Badge variant="outline">{t(`requesters.${change.requestedBy as "client"}`)}</Badge>
               </div>
               <p className="text-xs text-muted-foreground">{[change.authorName, format.dateTime(change.createdAt, { dateStyle: "medium" }), change.appliedAt ? t("appliedOn", { date: format.dateTime(change.appliedAt, { dateStyle: "medium" }) }) : null].filter(Boolean).join(" · ")}</p>
-              {change.description ? <p className="text-sm whitespace-pre-line">{change.description}</p> : null}
+              <RichText text={change.description} className="text-sm" />
               {impactOf(change, can.seeFees)}
               <p className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="text-muted-foreground">{t("evidence")}:</span>

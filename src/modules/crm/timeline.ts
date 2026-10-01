@@ -8,6 +8,7 @@ import "server-only";
 import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db, schema } from "@/lib/db";
+import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import { activityLink } from "./activities";
 
 export const TIMELINE_KINDS = [
@@ -140,7 +141,7 @@ export async function accountTimeline(scope: TimelineScope, limit = 60): Promise
         .where(inProjects)
         .orderBy(desc(schema.projectStatusUpdate.createdAt))
         .limit(each)
-        .then((rows) => rows.map((row) => ({ key: `s:${row.id}`, kind: "status_update" as const, at: iso(row.at), title: row.summary.slice(0, 200), detail: row.health, actorName: row.actorName, projectName: row.projectName, link: `/projects/${row.projectId}/updates` }))),
+        .then((rows) => rows.map((row) => ({ key: `s:${row.id}`, kind: "status_update" as const, at: iso(row.at), title: noteToPlainText(row.summary).replace(/\n/g, " ").slice(0, 200), detail: row.health, actorName: row.actorName, projectName: row.projectName, link: `/projects/${row.projectId}/updates` }))),
       db()
         .select({ id: schema.workDeliverableDecision.id, decision: schema.workDeliverableDecision.decision, at: schema.workDeliverableDecision.createdAt, taskId: schema.workTask.taskId, taskTitle: schema.task.title, projectName: schema.workProject.name, actorName: actor.fullName })
         .from(schema.workDeliverableDecision)

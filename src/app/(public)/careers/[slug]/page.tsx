@@ -9,6 +9,8 @@ import { Select } from "@/components/ui/select";
 import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
 import { CONSENT_VERSION, PUBLIC_LIMITS } from "@/modules/recruit/enums";
 import { findPublicOpening, issueFormToken, MAX_CV_BYTES } from "@/modules/recruit/public";
+import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 /**
  * One advertisement and its application form (FR-REC-03).
@@ -24,7 +26,7 @@ export async function generateMetadata({ params }: PageProps<"/careers/[slug]">)
   const opening = await findPublicOpening(slug);
   // A refused page must not even have a title that says something exists here.
   if (!opening) return { title: "—", robots: { index: false, follow: false } };
-  return { title: opening.title, description: opening.description.slice(0, 200) };
+  return { title: opening.title, description: noteToPlainText(opening.description).slice(0, 200) };
 }
 
 export default async function CareersOpeningPage({ params, searchParams }: PageProps<"/careers/[slug]">) {
@@ -71,9 +73,9 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
         .map(([key, body]) => (
           <section key={key} className="flex flex-col gap-2">
             <h2 className="text-sm font-medium">{t(key)}</h2>
-            {/* Plain text with paragraph breaks. Never `dangerouslySetInnerHTML`: an advertisement
-                is typed by a recruiter into a textarea and is not a place to start rendering markup. */}
-            <p className="whitespace-pre-line text-sm text-muted-foreground">{body}</p>
+            {/* The recruiter's note, built into a document and rendered from that. Never
+                `dangerouslySetInnerHTML`: an advertisement is not a place to start rendering markup. */}
+            <RichText text={body} className="text-sm text-muted-foreground" />
           </section>
         ))}
 

@@ -12,6 +12,7 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
 import { cancelDeliverableAction, createLineTasksAction, deleteMilestoneAction, deletePhaseAction, linkTaskAction, postStatusUpdateAction, rebaselineAction, saveDeliverableAction, saveMilestoneAction, savePhaseAction, setAccountManagerAction, setFeeAction, setMilestoneDoneAction, submitBriefAction, unlinkTaskAction, updateBriefAction, updatePlanSettingsAction } from "../actions";
 
@@ -91,7 +92,7 @@ export function BriefForm({ projectId, brief, kind, accountContacts = [] }: { pr
   const t = useTranslations("projects.brief");
   const area = (name: keyof BriefValues, rows = 3) => (
     <Field name={name} label={t(`fields.${name}`)}>
-      <textarea id={name} name={name} rows={rows} maxLength={4000} defaultValue={(brief[name] as string | undefined) ?? ""} placeholder={t.has(`hints.${kind}.${name}`) ? t(`hints.${kind}.${name}` as "hints.client.objective") : undefined} className={textarea} />
+      <NoteEditor id={name} name={name} rows={rows} maxLength={4000} defaultValue={(brief[name] as string | undefined) ?? ""} placeholder={t.has(`hints.${kind}.${name}`) ? t(`hints.${kind}.${name}` as "hints.client.objective") : undefined} />
     </Field>
   );
   return (
@@ -457,14 +458,14 @@ export function StatusUpdateForm({ projectId, healths, draft }: { projectId: str
         </div>
       </fieldset>
       <Field name="summary" label={t("fields.summary")}>
-        <textarea id="summary" name="summary" required rows={3} maxLength={4000} className={textarea} />
+        <NoteEditor id="summary" name="summary" required rows={3} maxLength={4000} />
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field name="highlights" label={t("fields.highlights")}>
-          <textarea id="highlights" name="highlights" rows={3} maxLength={4000} className={textarea} />
+          <NoteEditor id="highlights" name="highlights" rows={3} maxLength={4000} />
         </Field>
         <Field name="nextSteps" label={t("fields.nextSteps")}>
-          <textarea id="nextSteps" name="nextSteps" rows={3} maxLength={4000} className={textarea} />
+          <NoteEditor id="nextSteps" name="nextSteps" rows={3} maxLength={4000} />
         </Field>
       </div>
     </ActionForm>

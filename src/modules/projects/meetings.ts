@@ -18,6 +18,7 @@ import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { TIME_ZONE } from "@/i18n/config";
+import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import { type CalendarDelivery, putInCalendar, removeFromCalendar } from "../platform/calendar/service";
 import { createWorkTaskIn, listAssignable, taskKey } from "../work/service";
 import { type ActionItem, type MeetingKind, meetingProblems, meetingWindow, normaliseMeetingTime } from "./engine/raid";
@@ -119,7 +120,7 @@ async function eventFor(meeting: MeetingRow): Promise<Parameters<typeof putInCal
   return {
     uid: uidFor(meeting.id),
     summary: `${meeting.title} — ${project.name}`,
-    description: [meeting.agenda, link].filter(Boolean).join("\n\n"),
+    description: [noteToPlainText(meeting.agenda), link].filter(Boolean).join("\n\n"),
     location: null,
     start: window.start,
     end: window.end,

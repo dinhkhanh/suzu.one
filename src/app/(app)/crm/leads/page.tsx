@@ -14,6 +14,7 @@ import { crmShell, sells } from "@/modules/crm/pages";
 import { NewLeadForm } from "@/modules/crm/ui/deal-forms";
 import { CrmTabs } from "@/modules/crm/ui/tabs";
 import { formatters } from "@/modules/crm/ui/views";
+import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 
 export const generateMetadata = pageTitle("crmLeads");
 
@@ -64,7 +65,7 @@ export default async function LeadsPage({ searchParams }: PageProps<"/crm/leads"
                 {t(`enums.leadStatus.${lead.status as LeadStatus}`)}
               </Badge>
               <span className="text-xs text-muted-foreground">{t(`enums.source.${lead.source as "referral"}`)}</span>
-              {lead.need ? <span className="max-w-md truncate text-xs text-muted-foreground">{lead.need}</span> : null}
+              {lead.need ? <span className="max-w-md truncate text-xs text-muted-foreground">{noteToPlainText(lead.need)}</span> : null}
               <span className="ml-auto text-xs text-muted-foreground">
                 {lead.ownerName ?? t("leads.unassigned")}
                 {lead.referrerName ? ` · ${t("leads.referredBy", { name: lead.referrerName })}` : ""} · {f.when(lead.createdAt)}

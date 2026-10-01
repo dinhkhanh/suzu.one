@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { MultiSelect, Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { type FieldValue, type FormDefinition, type FormField, type FormValues, MAX_TEXT, validateSubmission, visibleFields } from "../engine/form";
 import { beginRequestAttachmentAction, completeRequestAttachmentAction } from "../file-actions";
 
@@ -149,7 +150,7 @@ function FieldInput({
 
   switch (field.type) {
     case "textarea":
-      return <textarea id={field.key} name={field.key} rows={4} value={text} maxLength={Math.min(field.maxLength ?? MAX_TEXT, MAX_TEXT)} onChange={(event) => set(event.target.value)} className="rounded-lg border bg-transparent px-2.5 py-1.5 text-sm" />;
+      return <NoteEditor id={field.key} name={field.key} rows={4} value={text} maxLength={Math.min(field.maxLength ?? MAX_TEXT, MAX_TEXT)} onChange={set} />;
     case "number":
       return <Input id={field.key} name={field.key} inputMode="numeric" value={text} onChange={(event) => set(event.target.value)} />;
     case "money":

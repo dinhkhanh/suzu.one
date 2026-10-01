@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { FileLink } from "@/modules/platform/files/ui/signed-upload";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { openTaskFileAction, updateTaskAction } from "../actions";
 import { decideStageAction } from "../delivery-actions";
 import { type MediaKind, mediaKindOf, STAGE_DECISIONS } from "../engine/delivery";
@@ -171,7 +173,7 @@ export function TaskReview({
           }}
         >
           <p className="text-sm font-medium">{inChain ? tChain("decideTitle", { version: waiting.version, stage: waiting.stages[stageIndex] }) : t("decideTitle", { version: waiting.version })}</p>
-          <textarea name="comment" rows={3} maxLength={4000} placeholder={t("commentPlaceholder")} aria-label={t("comment")} className="rounded-md border bg-transparent px-3 py-2 text-sm" />
+          <NoteEditor name="comment" rows={3} maxLength={4000} placeholder={t("commentPlaceholder")} aria-label={t("comment")} />
           <div className="flex flex-wrap gap-2">
             {inChain ? (
               STAGE_DECISIONS.map((decision) => (
@@ -276,7 +278,7 @@ export function TaskReview({
                         {tChain(`decisions.${decision.decision}`)}
                         {" · "}
                         {decision.isClient && decision.client ? tClient("recordedAs", { client: decision.client.decidedByName || "—", channel: tClient(`channels.${decision.client.channel}`), date: decision.client.decidedOn.split("-").reverse().join("/"), name: decision.decidedByName ?? "—" }) : `${decision.decidedByName ?? "—"}, ${when(decision.createdAt)}`}
-                        {decision.comment ? <span className="block text-sm whitespace-pre-wrap">{decision.comment}</span> : null}
+                        <RichText text={decision.comment} className="text-sm" />
                         {decision.client?.evidenceUrl ? (
                           <a href={decision.client.evidenceUrl} target="_blank" rel="noopener noreferrer nofollow" className="block underline">
                             {tClient("evidenceLink")}
@@ -290,7 +292,7 @@ export function TaskReview({
                 ) : null}
                 {/* A single-step review keeps its decision on the version; a chain's are the rows above. */}
                 {!item.chainId && item.decidedAt && item.decidedByName ? <p className="text-xs text-muted-foreground">{t("decidedBy", { name: item.decidedByName, when: when(item.decidedAt) })}</p> : null}
-                {!item.chainId && item.decisionComment ? <p className="border-l-2 pl-2 text-sm whitespace-pre-wrap">{item.decisionComment}</p> : null}
+                {!item.chainId && item.decisionComment?.trim() ? <RichText text={item.decisionComment} className="border-l-2 pl-2 text-sm" /> : null}
                 <div className="flex flex-wrap gap-2 pt-1">
                   {media ? (
                     <Button type="button" size="xs" variant="outline" onClick={() => setPinsFor(pinsFor === item.id ? null : item.id)}>

@@ -14,7 +14,7 @@ import { AccessForm } from "@/modules/kb/ui/access-form";
 import { AckSettingsForm, AcknowledgeButton } from "@/modules/kb/ui/ack-forms";
 import { MovePageForm, PageLifecycleButtons, PageMetaForm, PublishDraftButton, SaveAsTemplateForm, SubmitReviewButton } from "@/modules/kb/ui/page-forms";
 import { PageTree } from "@/modules/kb/ui/page-tree";
-import { RenderDoc } from "@/modules/kb/ui/render-doc";
+import { PageDoc } from "@/modules/kb/ui/page-doc";
 import { KbSearchBox } from "@/modules/kb/ui/search-box";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -187,7 +187,7 @@ export default async function KbPage(props: PageProps<"/kb/pages/[pageId]">) {
           </nav>
         ) : null}
 
-        <RenderDoc doc={view.content} />
+        <PageDoc doc={view.content} />
 
         {ack.inAudience && !ack.acknowledgedAt && view.showing === "published" ? (
           <div className="flex flex-wrap items-center gap-3 rounded-md border p-4 text-sm">

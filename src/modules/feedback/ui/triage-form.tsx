@@ -6,6 +6,7 @@ import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { FileLink } from "@/modules/platform/files/ui/signed-upload";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { openFeedbackScreenshotAction, triageFeedbackAction } from "../actions";
 import { FEEDBACK_PRIORITIES, FEEDBACK_REPLY_MAX, FEEDBACK_STATUSES, type FeedbackPriority, type FeedbackStatus } from "../enums";
 
@@ -37,10 +38,10 @@ export function TriageForm({ id, status, priority, reply, internalNote }: { id: 
           </Field>
         </div>
         <Field name="reply" label={t("triage.reply")}>
-          <textarea id="reply" name="reply" rows={4} maxLength={FEEDBACK_REPLY_MAX} defaultValue={reply ?? ""} placeholder={t("triage.replyPlaceholder")} className="rounded-lg border bg-background px-2.5 py-2 text-sm" />
+          <NoteEditor id="reply" name="reply" rows={4} maxLength={FEEDBACK_REPLY_MAX} defaultValue={reply ?? ""} placeholder={t("triage.replyPlaceholder")} />
         </Field>
         <Field name="internalNote" label={t("triage.internalNote")}>
-          <textarea id="internalNote" name="internalNote" rows={3} maxLength={FEEDBACK_REPLY_MAX} defaultValue={internalNote ?? ""} placeholder={t("triage.internalNotePlaceholder")} className="rounded-lg border bg-background px-2.5 py-2 text-sm" />
+          <NoteEditor id="internalNote" name="internalNote" rows={3} maxLength={FEEDBACK_REPLY_MAX} defaultValue={internalNote ?? ""} placeholder={t("triage.internalNotePlaceholder")} />
         </Field>
       </FieldErrors>
       <FormError namespace="feedback.errors" errorKey={form.errorKey} />

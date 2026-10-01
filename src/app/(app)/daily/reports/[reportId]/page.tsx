@@ -9,6 +9,7 @@ import { ActivityList, TaskLines } from "@/modules/daily/ui/activity-list";
 import { hoursOf } from "@/modules/daily/ui/format";
 import { ReportThread } from "@/modules/daily/ui/report-thread";
 import { requireUser } from "@/modules/platform/auth/session";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("dailyReport");
@@ -53,7 +54,7 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
       {report.blockers || view.openBlockers.length > 0 ? (
         <section className="flex flex-col gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
           <h2 className="text-sm font-medium text-destructive">{t("report.blockers")}</h2>
-          {report.blockers ? <p className="text-sm whitespace-pre-wrap">{report.blockers}</p> : null}
+          <RichText text={report.blockers} />
           {view.openBlockers.length > 0 ? (
             <ul className="flex flex-col gap-1 text-sm">
               {view.openBlockers.map((blocker) => (
@@ -86,7 +87,7 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
       {report.notes ? (
         <section className="flex flex-col gap-2">
           <h2 className="text-sm font-medium text-muted-foreground">{t("report.notes")}</h2>
-          <p className="text-sm whitespace-pre-wrap">{report.notes}</p>
+          <RichText text={report.notes} />
         </section>
       ) : null}
       <section className="flex flex-col gap-2">
@@ -110,7 +111,7 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
                   <span className="font-medium text-foreground">{comment.authorName}</span> · {format.dateTime(comment.createdAt, { dateStyle: "short", timeStyle: "short" })}
                 </p>
                 {comment.reaction ? <p className="text-lg">{comment.reaction}</p> : null}
-                {comment.body ? <p className="whitespace-pre-wrap">{comment.body}</p> : null}
+                <RichText text={comment.body} />
               </li>
             ))}
           </ul>

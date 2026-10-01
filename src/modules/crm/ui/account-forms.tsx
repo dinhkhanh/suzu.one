@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { accountMemberAction, createAccountAction, eraseContactAction, moveAccountWorkAction, saveContactAction, saveProfileAction, saveTermsAction, setLifecycleAction, setSalesOwnerAction } from "../account-actions";
 import { ACCOUNT_SIZES, ACCOUNT_TIERS, CONTACT_CHANNELS, CONTACT_SOURCES, CONTACT_STATUSES, DECISION_ROLES, LAWFUL_BASES, LIFECYCLES, SOURCES } from "../enums";
-import { CrmButton, CrmForm, type Named, type Person, textarea } from "./common";
+import { CrmButton, CrmForm, type Named, type Person } from "./common";
 
 type Profile = { legalName: string | null; taxCode: string | null; address: string | null; website: string | null; industry: string | null; size: string | null; source: string | null; tier: string | null; contractingEntityId: string | null };
 
@@ -340,7 +341,7 @@ export function ContactForm({ clientId, contact, brands }: { clientId: string; c
               </fieldset>
             ) : null}
             <Field name="notes" label={t("contacts.fields.notes")}>
-              <textarea id={`notes-${id}`} name="notes" rows={2} maxLength={2000} defaultValue={details?.notes ?? ""} className={textarea} />
+              <NoteEditor id={`notes-${id}`} name="notes" rows={2} maxLength={2000} defaultValue={details?.notes ?? ""} />
             </Field>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="isPrimary" defaultChecked={contact?.isPrimary} /> {t("contacts.fields.isPrimary")}

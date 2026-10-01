@@ -12,8 +12,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { decideHiringRequestAction, submitHiringRequestAction } from "../actions";
 import { EMPLOYMENT_TYPES } from "../enums";
-
-const textarea = "w-full rounded-md border bg-transparent px-3 py-2 text-sm";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 
 export function HiringRequestForm({
   entities,
@@ -101,7 +100,7 @@ export function HiringRequestForm({
         </div>
 
         <Field name="reason" label={t("reason")}>
-          <textarea id="reason" name="reason" rows={4} required maxLength={2000} className={textarea} defaultValue={prefill.reason} />
+          <NoteEditor id="reason" name="reason" rows={4} required maxLength={2000} defaultValue={prefill.reason} />
         </Field>
 
         {canSetMoney ? (

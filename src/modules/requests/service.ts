@@ -20,6 +20,7 @@ import { todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { decideRequest, defineRequestType, getRequest, type RequestTypeDefinition, type RequestView, resubmitRequest, type SubmitInput, submitRequest } from "@/modules/platform/approvals/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
+import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import { carryOver, type FollowUpGate, type FollowUpRule, followUpGate, followUpProblems, LIVE_STATUSES } from "./engine/follow-ups";
 import { conditionFieldsOf, flowConditionData, type FormDefinition, type FormValues, formProblems, validateSubmission } from "./engine/form";
 import { ATTACHMENT_OWNER_TYPE, type RequestCategory } from "./enums";
@@ -194,7 +195,7 @@ function summarize(type: RequestTypeRow, values: FormValues, formatMoney: (amoun
   const amountField = amountFieldOf(type.form);
   const amount = override ?? (amountField && typeof values[amountField] === "number" ? (values[amountField] as number) : null);
   const firstText = type.form.fields.find((field) => (field.type === "text" || field.type === "textarea") && typeof values[field.key] === "string" && (values[field.key] as string).length > 0);
-  const words = firstText ? String(values[firstText.key]).replaceAll(/\s+/g, " ").slice(0, 120) : "";
+  const words = firstText ? (firstText.type === "textarea" ? noteToPlainText(String(values[firstText.key])) : String(values[firstText.key])).replaceAll(/\s+/g, " ").trim().slice(0, 120) : "";
   return [amount === null ? null : formatMoney(amount), words || null].filter(Boolean).join(" · ") || type.nameVi;
 }
 

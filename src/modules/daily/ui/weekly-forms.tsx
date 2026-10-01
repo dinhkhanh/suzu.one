@@ -6,8 +6,8 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { FormError } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { generateTeamWeekAction, saveWeeklySummaryAction } from "../actions";
-import { TEXTAREA } from "./format";
 import { useRun } from "./use-run";
 
 export function WeeklySummaryForm({ id, summary }: { id: string; summary: string | null }) {
@@ -23,15 +23,15 @@ export function WeeklySummaryForm({ id, summary }: { id: string; summary: string
         run(saveWeeklySummaryAction, { id, summary: text }, () => setSaved(true));
       }}
     >
-      <textarea
+      <NoteEditor
         aria-label={t("summary")}
         value={text}
-        onChange={(event) => {
-          setText(event.target.value);
+        onChange={(next) => {
+          setText(next);
           setSaved(false);
         }}
         maxLength={5000}
-        className={TEXTAREA}
+        rows={5}
         placeholder={t("summaryPlaceholder")}
       />
       <div className="flex items-center gap-3">

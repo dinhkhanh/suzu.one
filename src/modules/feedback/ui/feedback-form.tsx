@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import type { ActionResult } from "@/lib/action";
 import { cn } from "@/lib/utils";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { beginFeedbackScreenshotAction, completeFeedbackScreenshotAction, submitFeedbackAction } from "../actions";
 import { FEEDBACK_CATEGORIES, FEEDBACK_MESSAGE_MAX, type FeedbackCategory } from "../enums";
 import { CATEGORY_ICONS } from "./icons";
@@ -50,10 +51,11 @@ export function FeedbackForm({ pagePath, onSent, autoFocus }: { pagePath: string
   }
 
   // A screenshot pasted into the text box is the fastest way there is: Print Screen, Ctrl+V.
-  function onPaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+  function onPaste(event: ClipboardEvent<HTMLDivElement>) {
     const image = [...event.clipboardData.files].find((file) => file.type.startsWith("image/"));
     if (!image) return;
     event.preventDefault();
+    event.stopPropagation();
     const extension = image.type === "image/jpeg" ? "jpg" : image.type === "image/webp" ? "webp" : "png";
     upload(new File([image], image.name && /\.(png|jpe?g|webp)$/i.test(image.name) ? image.name : `screenshot.${extension}`, { type: image.type }));
   }
@@ -87,18 +89,10 @@ export function FeedbackForm({ pagePath, onSent, autoFocus }: { pagePath: string
         </fieldset>
 
         <Field name="message" label={t("form.message")}>
-          <textarea
-            id="message"
-            name="message"
-            required
-            minLength={5}
-            rows={5}
-            maxLength={FEEDBACK_MESSAGE_MAX}
-            autoFocus={autoFocus}
-            onPaste={onPaste}
-            placeholder={t(`form.placeholders.${category}`)}
-            className="rounded-lg border bg-background px-2.5 py-2 text-sm"
-          />
+          {/* Captured before the editor sees it, so a pasted image becomes the screenshot. */}
+          <div onPasteCapture={onPaste}>
+            <NoteEditor id="message" name="message" required rows={5} maxLength={FEEDBACK_MESSAGE_MAX} autoFocus={autoFocus} placeholder={t(`form.placeholders.${category}`)} />
+          </div>
         </Field>
         <p className="-mt-2 text-xs text-muted-foreground">{t("form.privacy")}</p>
 

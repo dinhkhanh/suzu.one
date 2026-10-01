@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { TRIAGE_SOURCES } from "../engine/triage";
 import { PRIORITIES } from "../enums";
 import { acceptTriageAction, declineTriageAction, deleteTriageRuleAction, mergeTriageAction, saveTriageRuleAction, snoozeTriageAction } from "../foundation-actions";
@@ -98,7 +99,7 @@ function TriageItemCard({ item, choices, canDecide, today }: { item: TriageCard;
       {item.description ? (
         <details>
           <summary className="cursor-pointer text-xs text-muted-foreground">{tWork("task.fields.description")}</summary>
-          <p className="mt-1 whitespace-pre-wrap">{item.description}</p>
+          <RichText text={item.description} className="mt-1" />
         </details>
       ) : null}
       {item.assigneePersonId || item.projectId || item.priority || item.labelIds.length ? (

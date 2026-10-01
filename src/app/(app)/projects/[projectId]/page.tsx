@@ -17,6 +17,7 @@ import { healthVariant, ProjectHeader } from "@/modules/projects/ui/project-head
 import { listProjectMembers } from "@/modules/work/service";
 import { pageTitle } from "@/i18n/page-title";
 import { canViewDeal, contactChoicesFor, contractNumbersOfProjects, type DealStatus, dealOfProject, findAccount, loadCrm } from "@/modules/crm/service";
+import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 
 export const generateMetadata = pageTitle("project");
 
@@ -151,7 +152,7 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
             <li key={update.id} className="flex flex-wrap items-start gap-2 text-sm">
               <Badge variant={healthVariant(update.health)}>{t(`health.${update.health as "on_track"}`)}</Badge>
               <span className="text-muted-foreground">{format.dateTime(update.createdAt, { dateStyle: "medium" })}</span>
-              <span className="min-w-0 flex-1">{update.summary}</span>
+              <span className="min-w-0 flex-1">{noteToPlainText(update.summary)}</span>
             </li>
           ))}
         </ol>

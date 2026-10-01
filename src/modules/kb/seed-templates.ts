@@ -1,7 +1,7 @@
 // The starter page templates (FR-KB-09), seeded by `pnpm db:seed`. Written in Markdown and turned
 // into documents by the same importer people use. Re-seeding only adds keys that do not exist yet,
 // so a template HR rewrote or switched off never comes back.
-import { markdownToDoc } from "./engine/markdown";
+import { markdownToDoc } from "@/modules/platform/rich-text/engine/markdown";
 
 type TemplateSeed = { key: string; name: string; description: string; markdown: string };
 

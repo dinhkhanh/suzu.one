@@ -15,6 +15,7 @@ import { DateTimePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { cancelAssignmentAction, rateAssignmentAction, sendAssignmentAction } from "../assignment-actions";
 import { SCORE_MAX, SCORE_MIN } from "../enums";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 
 const SCORES = Array.from({ length: SCORE_MAX - SCORE_MIN + 1 }, (_, index) => SCORE_MIN + index);
 
@@ -63,7 +64,7 @@ export function SendAssignment({ applicationId, origin }: { applicationId: strin
           <Input id="assignment-title" name="title" required maxLength={200} />
         </Field>
         <Field name="brief" label={t("brief")}>
-          <textarea id="assignment-brief" name="brief" rows={6} required maxLength={20_000} className="w-full rounded-lg border bg-transparent px-3 py-2 text-sm" />
+          <NoteEditor id="assignment-brief" name="brief" rows={6} required maxLength={20_000} />
         </Field>
         <Field name="dueAt" label={t("due")}>
           <DateTimePicker id="assignment-due" name="dueAt" required />

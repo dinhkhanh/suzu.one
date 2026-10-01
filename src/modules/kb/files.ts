@@ -8,7 +8,7 @@ import { ActionError } from "@/lib/action";
 import { db, schema } from "@/lib/db";
 import { beginUpload, completeUpload, createDownloadLink, findFile, listFilesOf, softDeleteFile, type StoredFileRow } from "../platform/files/service";
 import { pageVisibleSql, spaceEditableSql } from "./access-sql";
-import { type Doc, fileIdsOf } from "./engine/doc";
+import { type Doc, fileIdsOf } from "@/modules/platform/rich-text/engine/doc";
 import { levelOf, type LoadedPage, loadPage } from "./pages";
 import { atLeast, type KbViewer } from "./policy";
 

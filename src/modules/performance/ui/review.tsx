@@ -1,5 +1,6 @@
 // Display pieces of the review screens. No hooks: labels and the number format come in as props,
 // so the same pieces work in server and client components.
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import type { ReviewFormKind, ReviewStage, ReviewFormShape, RatingPoint } from "../enums";
 
 type Translate = (key: string, values?: Record<string, string | number>) => string;
@@ -51,7 +52,7 @@ export function FilledForm({ shape, kind, answers, overallRatingBp, comment, aut
           return (
             <div key={section.key} className="flex flex-col gap-0.5">
               <dt className="text-xs text-muted-foreground">{section.title}</dt>
-              <dd className="text-sm whitespace-pre-wrap">{section.kind === "rating" ? (point ? `${point.label} (${ratingText(format, point.scoreBp)})` : "—") : typeof answer === "string" && answer.trim() !== "" ? answer : "—"}</dd>
+              <dd className="text-sm">{section.kind === "rating" ? (point ? `${point.label} (${ratingText(format, point.scoreBp)})` : "—") : typeof answer === "string" && answer.trim() !== "" ? <RichText text={answer} /> : "—"}</dd>
             </div>
           );
         })}
@@ -59,7 +60,7 @@ export function FilledForm({ shape, kind, answers, overallRatingBp, comment, aut
       {comment ? (
         <div className="border-t pt-2">
           <p className="text-xs text-muted-foreground">{t("form.comment")}</p>
-          <p className="text-sm whitespace-pre-wrap">{comment}</p>
+          <RichText text={comment} />
         </div>
       ) : null}
     </article>

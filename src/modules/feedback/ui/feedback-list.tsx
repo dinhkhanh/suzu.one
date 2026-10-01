@@ -3,6 +3,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
+import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import type { FeedbackPriority, FeedbackStatus } from "../enums";
 import type { FeedbackListItem } from "../service";
 import { CATEGORY_ICONS } from "./icons";
@@ -28,7 +29,7 @@ export async function FeedbackList({ items, showPerson, empty }: { items: Feedba
             <Link href={`/feedback/${item.id}`} className="flex gap-3 px-4 py-3 hover:bg-muted/60">
               <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-label={t(`categories.${item.category}`)} />
               <span className="flex min-w-0 flex-1 flex-col gap-1">
-                <span className="line-clamp-2 text-sm break-words">{item.message}</span>
+                <span className="line-clamp-2 text-sm break-words">{noteToPlainText(item.message)}</span>
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                   {showPerson ? <span className="font-medium text-foreground/80">{item.personName}</span> : null}
                   <span>{format.dateTime(item.createdAt, { dateStyle: "short", timeStyle: "short" })}</span>

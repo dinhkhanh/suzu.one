@@ -9,11 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import type { IntakeField } from "../engine/intake";
 import { saveIntakeFormAction, submitIntakeAction } from "../intake-actions";
 import { type ChecklistChoice, ChecklistPicker } from "./checklists";
 
-const TEXTAREA = "min-h-20 w-full rounded-md border bg-transparent px-3 py-2 text-sm";
 const FIELD_TYPES = ["text", "long_text", "select", "date", "url"] as const;
 
 export type IntakeFormValue = { id: string | null; name: string; description: string | null; projectId: string | null; audience: string; fields: IntakeField[]; checklistIds: string[]; isActive: boolean; submissions: number };
@@ -48,7 +49,7 @@ function IntakeFormEditor({ teamId, value, projects, checklists }: { teamId: str
           </Select>
         </Field>
         <Field name="description" label={t("description")}>
-          <textarea id="description" name="description" maxLength={1000} defaultValue={value.description ?? ""} className={TEXTAREA} />
+          <NoteEditor id="description" name="description" maxLength={1000} defaultValue={value.description ?? ""} />
         </Field>
         <fieldset className="flex flex-col gap-2">
           <legend className="pb-1 text-sm font-medium">{t("fields")}</legend>
@@ -117,7 +118,7 @@ export function IntakeFormManager({ teamId, forms, projects, checklists, canMana
                   </Link>
                 ) : null}
               </summary>
-              <div className="border-t p-3">{canManage ? <IntakeFormEditor teamId={teamId} value={form} projects={projects} checklists={checklists} /> : <p className="text-muted-foreground">{form.description ?? t("noDescription")}</p>}</div>
+              <div className="border-t p-3">{canManage ? <IntakeFormEditor teamId={teamId} value={form} projects={projects} checklists={checklists} /> : form.description?.trim() ? <RichText text={form.description} className="text-muted-foreground" /> : <p className="text-muted-foreground">{t("noDescription")}</p>}</div>
             </details>
           </li>
         ))}
@@ -176,7 +177,7 @@ export function IntakeSubmitForm({ formId, fields }: { formId: string; fields: I
                 {field.required ? <span className="text-destructive"> *</span> : null}
               </label>
               {field.type === "long_text" ? (
-                <textarea id={name} name={name} required={field.required} maxLength={4000} className={TEXTAREA} />
+                <NoteEditor id={name} name={name} required={field.required} maxLength={4000} />
               ) : field.type === "select" ? (
                 <Select id={name} name={name} required={field.required} defaultValue="">
                   <option value="">{t("choose")}</option>

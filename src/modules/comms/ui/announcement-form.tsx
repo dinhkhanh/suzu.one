@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DateTimePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { saveAnnouncementAction } from "../actions";
 import { type AudienceType, audienceKey } from "../enums";
 
@@ -40,7 +41,7 @@ export function AnnouncementForm({ draft, choices }: { draft: AnnouncementDraft;
           <Input id="title" name="title" required maxLength={200} defaultValue={draft.title} />
         </Field>
         <Field name="body" label={t("form.body")}>
-          <textarea id="body" name="body" required rows={10} maxLength={10000} defaultValue={draft.body} className="rounded-lg border bg-background px-2.5 py-1.5 text-sm" />
+          <NoteEditor id="body" name="body" required rows={10} maxLength={10000} defaultValue={draft.body} />
         </Field>
         <Field name="kbPageId" label={t("form.kbPage")}>
           <Input id="kbPageId" name="kbPageId" defaultValue={draft.kbPageId ? `/kb/pages/${draft.kbPageId}` : ""} placeholder="/kb/pages/…" />

@@ -6,6 +6,7 @@ import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getCandidateView } from "@/modules/recruit/service";
 import { pageTitle } from "@/i18n/page-title";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 export const generateMetadata = pageTitle("candidate");
 
@@ -71,7 +72,7 @@ export default async function CandidatePage({ params }: PageProps<"/recruit/cand
         </ul>
       ) : null}
 
-      {candidate.notes ? <p className="whitespace-pre-line rounded-xl border p-4 text-sm text-muted-foreground">{candidate.notes}</p> : null}
+      <RichText text={candidate.notes} className="rounded-xl border p-4 text-sm text-muted-foreground" />
 
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-medium text-muted-foreground">{t("openings")}</h2>

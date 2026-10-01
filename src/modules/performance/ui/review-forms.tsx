@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { REVIEW_CYCLE_KINDS, type ReviewCycleKind, type ReviewFormKind, type ReviewFormShape } from "../enums";
 import {
   acknowledgeReviewAction,
@@ -59,19 +60,12 @@ export function ReviewFormEditor({ value }: { value: ReviewFormValue }) {
                   ))}
                 </Select>
               ) : (
-                <textarea
-                  name={`answers.${section.key}`}
-                  id={`answers.${section.key}`}
-                  defaultValue={String(value.answers[section.key] ?? "")}
-                  rows={4}
-                  maxLength={8000}
-                  className="w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                />
+                <NoteEditor name={`answers.${section.key}`} id={`answers.${section.key}`} defaultValue={String(value.answers[section.key] ?? "")} rows={4} maxLength={8000} />
               )}
             </Field>
           ))}
           <Field name="comment" label={t("form.comment")}>
-            <textarea name="comment" id="comment" defaultValue={value.comment ?? ""} rows={3} maxLength={8000} className="w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" />
+            <NoteEditor name="comment" id="comment" defaultValue={value.comment ?? ""} rows={3} maxLength={8000} />
           </Field>
         </div>
       </FieldErrors>
@@ -164,7 +158,7 @@ export function AcknowledgeForm({ participantId }: { participantId: string }) {
       <FieldErrors value={form.fieldErrors}>
         <input type="hidden" name="participantId" value={participantId} />
         <Field name="note" label={t("acknowledge.note")}>
-          <textarea name="note" id="note" rows={2} maxLength={4000} className="w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" />
+          <NoteEditor name="note" id="note" rows={2} maxLength={4000} />
         </Field>
       </FieldErrors>
       <div className="flex flex-wrap items-center gap-3">

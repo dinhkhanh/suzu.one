@@ -19,6 +19,8 @@ import { listEmailTemplates } from "@/modules/recruit/emails";
 import { ScheduleInterview } from "@/modules/recruit/ui/interview-form";
 import { SendCandidateEmail } from "@/modules/recruit/ui/send-email";
 import { pageTitle } from "@/i18n/page-title";
+import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 export const generateMetadata = pageTitle("application");
 
@@ -117,7 +119,7 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
         </dl>
       ) : null}
 
-      {view.application.coverLetter ? <p className="whitespace-pre-line rounded-xl border p-4 text-sm text-muted-foreground">{view.application.coverLetter}</p> : null}
+      <RichText text={view.application.coverLetter} className="rounded-xl border p-4 text-sm text-muted-foreground" />
 
       {view.application.portfolioLinks.length > 0 ? (
         <ul className="flex flex-col gap-1 text-sm">
@@ -240,7 +242,7 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
               <span className="min-w-0 flex-1 basis-56">
                 {t(`event.${event.type}`)}
                 {event.toStageName ? ` → ${event.toStageName}` : ""}
-                {event.note ? <span className="block text-xs text-muted-foreground">{event.note}</span> : null}
+                {event.note ? <span className="block text-xs text-muted-foreground">{noteToPlainText(event.note)}</span> : null}
               </span>
               <span className="text-xs text-muted-foreground">{event.actorName ?? t("source.careers_page")}</span>
               <span className="text-xs text-muted-foreground">{format.dateTime(event.at, { dateStyle: "medium", timeStyle: "short" })}</span>

@@ -10,10 +10,11 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
 import { quoteTotals } from "../engine/quote";
 import { quoteStepAction, saveQuoteAction } from "../quote-actions";
-import { CrmButton, CrmForm, textarea } from "./common";
+import { CrmButton, CrmForm } from "./common";
 
 export type ServiceChoice = { id: string; code: string; name: string; unit: string; isRecurring: boolean; format: string | null; channel: string | null; priceVnd: number | null; roleMinutes: { role: string; minutes: number }[] };
 type Role = { role: string; hours: string };
@@ -68,7 +69,7 @@ export function QuoteEditor({ quoteId, quote, lines: initial, services, vatRates
         </Field>
       </div>
       <Field name="intro" label={t("intro")}>
-        <textarea id="quote-intro" name="intro" rows={2} maxLength={4000} defaultValue={quote.intro ?? ""} className={textarea} />
+        <NoteEditor id="quote-intro" name="intro" rows={2} maxLength={4000} defaultValue={quote.intro ?? ""} />
       </Field>
       <ol className="flex flex-col gap-3">
         {lines.map((line, index) => (
@@ -179,7 +180,7 @@ export function QuoteEditor({ quoteId, quote, lines: initial, services, vatRates
         </dl>
       </div>
       <Field name="terms" label={t("terms")}>
-        <textarea id="quote-terms" name="terms" rows={3} maxLength={4000} defaultValue={quote.terms ?? ""} className={textarea} />
+        <NoteEditor id="quote-terms" name="terms" rows={3} maxLength={4000} defaultValue={quote.terms ?? ""} />
       </Field>
     </CrmForm>
   );

@@ -5,6 +5,7 @@
 // This is what the client reads, so what it may say is decided here and nowhere else: never a fee,
 // never a cost, and internal hours only when the author ticks "show hours".
 import type { IsoDate } from "@/lib/dates";
+import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 
 export type ReportLine = { title: string; promised: number; accepted: number; delivered: number };
 export type ReportPublish = { platform: string; url: string | null; publishedOn: IsoDate; title: string; metrics: { reach?: number; views?: number; engagement?: number; clicks?: number } };
@@ -73,19 +74,21 @@ export type ReportWords = {
   date: (date: IsoDate) => string;
 };
 
-/** The report as the body of a letterhead PDF: headed sections of plain text. */
+/** The report as the body of a letterhead PDF: headed sections of plain text. The written parts are notes, read as their words. */
 export function reportText(report: { periodFrom: IsoDate; periodTo: IsoDate; summary: string | null; nextPlan: string | null }, figures: ReportFigures, words: ReportWords): string {
   const section = (title: string, body: string[]) => [title.toUpperCase(), ...(body.length ? body : [words.none]), ""];
+  const summary = noteToPlainText(report.summary);
+  const nextPlan = noteToPlainText(report.nextPlan);
   return [
     `${words.period}: ${words.date(report.periodFrom)} – ${words.date(report.periodTo)}`,
     "",
-    ...section(words.summary, report.summary ? [report.summary] : []),
+    ...section(words.summary, summary ? [summary] : []),
     ...section(words.register, [words.registerTotal(figures.register), ...figures.lines.map((line) => `- ${words.registerLine(line)}`)]),
     ...section(words.publishing, figures.publishing.count ? [words.publishingTotal(figures.publishing), ...figures.publishes.map((row) => `- ${words.date(row.publishedOn)} · ${words.platform(row.platform)} · ${row.title}${row.url ? ` · ${row.url}` : ""}`)] : []),
     ...section(words.milestones, figures.milestones.map((row) => `- ${words.date(row.doneOn)} · ${row.name}`)),
-    ...section(words.updates, figures.updates.map((row) => `- ${words.date(row.on)} · ${words.health(row.health)}: ${row.summary}`)),
+    ...section(words.updates, figures.updates.map((row) => `- ${words.date(row.on)} · ${words.health(row.health)}: ${noteToPlainText(row.summary).replace(/\n/g, " ")}`)),
     ...(figures.hours ? [words.hours(figures.hours), ""] : []),
-    ...section(words.nextPlan, report.nextPlan ? [report.nextPlan] : []),
+    ...section(words.nextPlan, nextPlan ? [nextPlan] : []),
   ]
     .join("\n")
     .trimEnd();

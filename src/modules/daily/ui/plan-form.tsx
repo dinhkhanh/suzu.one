@@ -9,8 +9,9 @@ import { FormError } from "@/components/forms/field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { savePlanAction } from "../actions";
-import { hoursOf, TEXTAREA } from "./format";
+import { hoursOf } from "./format";
 
 type Candidate = { taskId: string; key: string; title: string; dueDate: string | null; estimateMinutes: number | null; projectName: string | null; stateName: string; status: string };
 
@@ -110,7 +111,7 @@ export function PlanForm({ date, today, candidates, selected, dayMinutes, note }
         <label htmlFor="plan-note" className="text-sm font-medium text-muted-foreground">
           {t("plan.note")}
         </label>
-        <textarea id="plan-note" value={text} onChange={(event) => setText(event.target.value)} maxLength={1000} className={TEXTAREA} placeholder={t("plan.notePlaceholder")} />
+        <NoteEditor id="plan-note" value={text} onChange={setText} maxLength={1000} placeholder={t("plan.notePlaceholder")} />
       </section>
 
       <div className="sticky bottom-0 flex items-center gap-3 border-t bg-background py-3">

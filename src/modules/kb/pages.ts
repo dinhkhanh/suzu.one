@@ -9,7 +9,7 @@ import { pageVisibleSql, projectPeopleSql, projectPlaceSql } from "./access-sql"
 import { ackOnPublish } from "./acknowledgements";
 import { rebuildChunks, removeChunks } from "./chunks";
 import { type DiffLine, diffLines } from "./engine/diff";
-import { type Doc, docToPlainText, EMPTY_DOC, validateDoc } from "./engine/doc";
+import { type Doc, docToPlainText, EMPTY_DOC, validateDoc } from "@/modules/platform/rich-text/engine/doc";
 import { type AccessRow, atLeast, type KbLevel, type KbViewer, type PageFacts, pageLevel, spaceLevel } from "./policy";
 import { type LoadedSpace, replaceAccess, spaceFacts } from "./spaces";
 

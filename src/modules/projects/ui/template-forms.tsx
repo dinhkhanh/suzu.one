@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
 import { createProjectFromTemplatePlanAction, saveTemplatePlanAction } from "../actions";
 import type { ProjectBrief, RoleBudget, TemplateLine, TemplateMilestone, TemplatePhase } from "../schema";
@@ -118,7 +119,6 @@ export function TemplateProjectForm({ templates, teams, peopleByTeam, today }: {
 export type TemplatePlanValues = { kind: string; updateCadenceDays: number; phases: TemplatePhase[]; milestones: TemplateMilestone[]; deliverables: TemplateLine[]; budgetByRole: RoleBudget[]; brief: ProjectBrief };
 
 const hoursOf = (minutes: number) => (minutes ? String(Math.round((minutes / 60) * 100) / 100) : "");
-const textarea = "min-h-16 w-full rounded-lg border bg-background px-2.5 py-1.5 text-sm";
 
 /**
  * The plan half of a project template: phases, milestones and register lines with days from day 0
@@ -239,7 +239,7 @@ export function TemplatePlanEditor({ templateId, values, kinds }: { templateId: 
           <legend className="text-sm font-medium">{t("templates.brief")}</legend>
           {(["objective", "scopeIn", "scopeOut", "successCriteria", "assumptions"] as const).map((field) => (
             <Field key={field} name={field} label={t(`brief.fields.${field}`)}>
-              <textarea id={`tp-${field}-${templateId}`} name={field} rows={2} maxLength={4000} defaultValue={values.brief[field] ?? ""} className={textarea} />
+              <NoteEditor id={`tp-${field}-${templateId}`} name={field} rows={2} maxLength={4000} defaultValue={values.brief[field] ?? ""} />
             </Field>
           ))}
         </fieldset>

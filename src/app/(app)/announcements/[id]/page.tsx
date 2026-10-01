@@ -4,9 +4,9 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { commsViewerOf, getAnnouncementView, markAnnouncementRead } from "@/modules/comms/service";
 import { AcknowledgeAnnouncementButton } from "@/modules/comms/ui/buttons";
-import { PlainText } from "@/modules/comms/ui/cards";
 import { canViewPage, kbViewerOf, loadPage } from "@/modules/kb/service";
 import { requireUser } from "@/modules/platform/auth/session";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("announcement");
@@ -49,7 +49,7 @@ export default async function AnnouncementPage(props: PageProps<"/announcements/
         </p>
       </header>
 
-      <PlainText text={row.body} />
+      <RichText text={row.body} className="break-words" />
 
       {page ? (
         <p className="text-sm">

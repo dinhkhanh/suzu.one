@@ -211,7 +211,7 @@ export async function cancelInstance(taskId: string, reason: string): Promise<Lo
     if (!loaded) throw new ActionError("obligation_not_found");
     requireOpen(loaded);
     await tx.update(schema.task).set({ status: "cancelled", updatedAt: new Date() }).where(eq(schema.task.id, taskId));
-    await tx.update(schema.obligationInstance).set({ note: [loaded.instance.note, reason].filter(Boolean).join("\n"), updatedAt: new Date() }).where(eq(schema.obligationInstance.id, loaded.instance.id));
+    await tx.update(schema.obligationInstance).set({ note: [loaded.instance.note, reason].filter(Boolean).join("\n\n"), updatedAt: new Date() }).where(eq(schema.obligationInstance.id, loaded.instance.id));
     return loaded;
   });
 }

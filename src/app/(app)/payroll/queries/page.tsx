@@ -6,6 +6,7 @@ import { statusTone } from "@/components/ui/tone";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
+import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import { listQueriesForManager } from "@/modules/payroll/payslips";
 import { compensationReach } from "@/modules/payroll/policy";
 import { pageTitle } from "@/i18n/page-title";
@@ -52,7 +53,7 @@ export default async function PayslipQueriesPage() {
                     {row.entityCode} · {row.payslip.month}
                   </span>
                 </TableCell>
-                <TableCell className="max-w-md truncate text-sm text-muted-foreground">{row.lastMessage}</TableCell>
+                <TableCell className="max-w-md truncate text-sm text-muted-foreground">{noteToPlainText(row.lastMessage)}</TableCell>
                 <TableCell>
                   <Badge dot variant={statusTone(row.query.status)}>{t(`statuses.${row.query.status}` as "statuses.open")}</Badge>
                   <span className="ml-2 text-xs text-muted-foreground">{format.dateTime(row.lastAt, { dateStyle: "short", timeStyle: "short" })}</span>

@@ -19,6 +19,7 @@ import { BandBadge, percentText, ResultTraceTable, StatusBadge } from "@/modules
 import { ComputeResultsForm, OverrideResultForm, RecomputeResultForm, ResultStepForm } from "@/modules/performance/ui/result-forms";
 import { OutcomeDecisionButtons, RaiseOutcomeForm } from "@/modules/performance/ui/one-on-one-forms";
 import { requireUser } from "@/modules/platform/auth/session";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import Link from "next/link";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -157,11 +158,13 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
                       <div className="flex flex-col gap-2 border-t pt-2">
                         {own.map((outcome) => (
                           <div key={outcome.row.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                            <span>
-                              {tOutcome(`type.${outcome.row.type as "promotion"}`)}
-                              <span className="ml-2 text-xs text-muted-foreground">{tOutcome(`status.${outcome.row.status as "proposed"}`)}</span>
-                              {outcome.row.note ? <span className="ml-2 text-xs text-muted-foreground">{outcome.row.note}</span> : null}
-                            </span>
+                            <div className="flex min-w-0 flex-col gap-1">
+                              <span>
+                                {tOutcome(`type.${outcome.row.type as "promotion"}`)}
+                                <span className="ml-2 text-xs text-muted-foreground">{tOutcome(`status.${outcome.row.status as "proposed"}`)}</span>
+                              </span>
+                              <RichText text={outcome.row.note} className="text-xs text-muted-foreground" />
+                            </div>
                             {mayDecide && outcome.row.status === "proposed" ? <OutcomeDecisionButtons outcomeId={outcome.row.id} /> : null}
                           </div>
                         ))}

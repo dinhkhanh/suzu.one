@@ -9,6 +9,7 @@ import { getHiringRequestView } from "@/modules/recruit/hiring";
 import { canOpenFromHiringRequest } from "@/modules/recruit/service";
 import { HiringDecisionForm } from "@/modules/recruit/ui/hiring-forms";
 import { pageTitle } from "@/i18n/page-title";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 export const generateMetadata = pageTitle("hiringRequest");
 
@@ -67,7 +68,9 @@ export default async function HiringRequestPage({ params }: PageProps<"/recruit/
         ) : null}
         <div className="flex flex-col gap-1 sm:col-span-2">
           <dt className="text-muted-foreground">{t("columns.reason")}</dt>
-          <dd className="whitespace-pre-line">{hiringRequest.reason}</dd>
+          <dd>
+            <RichText text={hiringRequest.reason} />
+          </dd>
         </div>
       </dl>
 

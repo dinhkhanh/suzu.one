@@ -1,10 +1,10 @@
 // Golden tests of the page document rules: what is stored, what is refused, what search and the
 // version diff read.
 import { describe, expect, it } from "vitest";
-import { bold, bulletList, callout, codeBlock, doc, embed, heading, link, orderedList, paragraph, rule, table, text } from "./build";
+import { bold, bulletList, callout, codeBlock, doc, embed, heading, link, orderedList, paragraph, rule, table, text } from "@/modules/platform/rich-text/engine/build";
 import { diffLines, diffStats } from "./diff";
-import { docToPlainText, fileIdsOf, MAX_DOC_BYTES, outlineOf, validateDoc } from "./doc";
-import { normalizeEmbed, safeHref } from "./embed";
+import { docToPlainText, fileIdsOf, MAX_DOC_BYTES, outlineOf, validateDoc } from "@/modules/platform/rich-text/engine/doc";
+import { normalizeEmbed, safeHref } from "@/modules/platform/rich-text/engine/embed";
 
 const FILE = "0b0e7c2e-6f0a-4c55-9f59-3d1f5a1c2b3d";
 const PERSON = "7d9a3f10-1111-4222-8333-944455556666";

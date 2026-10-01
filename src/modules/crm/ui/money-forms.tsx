@@ -11,9 +11,10 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { CONTRACT_KINDS, PAYMENT_METHODS } from "../enums";
 import { beginContractScanAction, completeContractScanAction, linkProjectContractAction, openContractScanAction, recordInvoiceAction, recordPaymentAction, removePaymentAction, saveContractAction, signContractAction, terminateContractAction, writeOffInvoiceAction } from "../money-actions";
-import { CrmButton, CrmForm, type Named, textarea } from "./common";
+import { CrmButton, CrmForm, type Named } from "./common";
 
 type ContractValues = { id: string; number: string; title: string; kind: string; entityId: string | null; parentContractId: string | null; dealId: string | null; startDate: string | null; endDate: string | null; valueVnd?: number | null; paymentTermsDays: number | null; autoRenew: boolean; noticeDays: number | null; note: string | null };
 
@@ -100,7 +101,7 @@ export function ContractForm({ clientId, contract, entities, parents, deals, see
         </label>
       </div>
       <Field name="note" label={t("fields.note")}>
-        <textarea id={`c-note-${id}`} name="note" rows={2} maxLength={2000} defaultValue={contract?.note ?? ""} className={textarea} />
+        <NoteEditor id={`c-note-${id}`} name="note" rows={2} maxLength={2000} defaultValue={contract?.note ?? ""} />
       </Field>
     </CrmForm>
   );

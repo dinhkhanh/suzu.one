@@ -15,6 +15,8 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { INTERVIEW_RECOMMENDATIONS, SCORE_MAX, SCORE_MIN, type InterviewRecommendation, type ScorecardCriterion } from "../enums";
 import { saveScorecardAction } from "../interview-actions";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 export type MyCard = { ratings: Record<string, number>; recommendation: InterviewRecommendation | null; strengths: string | null; concerns: string | null; notes: string | null; submitted: boolean };
 
@@ -95,13 +97,13 @@ export function ScorecardForm({ interviewId, criteria, mine, canScore }: { inter
           </Select>
         </Field>
         <Field name="strengths" label={t("strengths")}>
-          <textarea id="strengths" name="strengths" rows={3} maxLength={4000} defaultValue={mine?.strengths ?? ""} className="w-full rounded-lg border bg-transparent px-3 py-2 text-sm" />
+          <NoteEditor id="strengths" name="strengths" rows={3} maxLength={4000} defaultValue={mine?.strengths ?? ""} />
         </Field>
         <Field name="concerns" label={t("concerns")}>
-          <textarea id="concerns" name="concerns" rows={3} maxLength={4000} defaultValue={mine?.concerns ?? ""} className="w-full rounded-lg border bg-transparent px-3 py-2 text-sm" />
+          <NoteEditor id="concerns" name="concerns" rows={3} maxLength={4000} defaultValue={mine?.concerns ?? ""} />
         </Field>
         <Field name="notes" label={t("notes")}>
-          <textarea id="notes" name="notes" rows={3} maxLength={4000} defaultValue={mine?.notes ?? ""} className="w-full rounded-lg border bg-transparent px-3 py-2 text-sm" />
+          <NoteEditor id="notes" name="notes" rows={3} maxLength={4000} defaultValue={mine?.notes ?? ""} />
         </Field>
       </FieldErrors>
       <FormError namespace="recruit.errors" errorKey={form.errorKey} />
@@ -138,9 +140,9 @@ function CardBody({ criteria, card }: { criteria: ScorecardCriterion[]; card: { 
           {t(`recommendations.${card.recommendation}`)}
         </p>
       ) : null}
-      {card.strengths ? <p className="whitespace-pre-line">{card.strengths}</p> : null}
-      {card.concerns ? <p className="whitespace-pre-line text-muted-foreground">{card.concerns}</p> : null}
-      {card.notes ? <p className="whitespace-pre-line text-muted-foreground">{card.notes}</p> : null}
+      <RichText text={card.strengths} />
+      <RichText text={card.concerns} className="text-muted-foreground" />
+      <RichText text={card.notes} className="text-muted-foreground" />
     </div>
   );
 }

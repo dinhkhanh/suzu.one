@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { decidePageReviewAction } from "@/modules/kb/actions";
 import { getPublishReview } from "@/modules/kb/service";
 import { DiffView } from "@/modules/kb/ui/diff-view";
-import { RenderDoc } from "@/modules/kb/ui/render-doc";
+import { PageDoc } from "@/modules/kb/ui/page-doc";
 import { WithdrawReviewForm } from "@/modules/kb/ui/review-forms";
 import { DecisionForm } from "@/modules/platform/approvals/ui/decision-form";
 import { RequestHistory, RequestStatusBadge, RequestTools } from "@/modules/platform/approvals/ui/request-views";
@@ -76,7 +76,7 @@ export default async function KbPublishReviewPage(props: PageProps<"/approvals/k
           <h2 className="text-sm font-medium">{t("review.submitted")}</h2>
           <div className="rounded-md border p-4">
             <h3 className="mb-3 text-xl font-semibold tracking-tight">{view.submitted.title}</h3>
-            <RenderDoc doc={view.submitted.content} />
+            <PageDoc doc={view.submitted.content} />
           </div>
         </section>
       ) : null}

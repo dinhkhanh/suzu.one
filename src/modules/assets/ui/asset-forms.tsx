@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { assignAssetAction, confirmHandoverAction, registerAssetAction, returnAssetAction, saveAssetCategoryAction, setAssetStatusAction, updateAssetAction } from "../actions";
 import { ASSET_CONDITIONS, ASSET_KINDS, ASSET_STATUSES, type AssetCondition, type HolderType } from "../enums";
 
@@ -111,7 +112,7 @@ export function AssetForm({ value, options }: { value: AssetFormValue; options: 
         ) : null}
       </div>
       <Field name="notes" label={t("notes")}>
-        <textarea id="notes" name="notes" defaultValue={value.notes ?? ""} rows={3} maxLength={2000} className={textarea} />
+        <NoteEditor id="notes" name="notes" defaultValue={value.notes ?? ""} rows={3} maxLength={2000} />
       </Field>
       <FormError namespace="assets.errors" errorKey={form.errorKey} />
       <div>
@@ -231,7 +232,7 @@ export function ReturnForm({ assignmentId }: { assignmentId: string }) {
         </Field>
       </div>
       <Field name="returnNote" label={t("note")}>
-        <textarea id="returnNote" name="returnNote" rows={2} maxLength={1000} className={textarea} />
+        <NoteEditor id="returnNote" name="returnNote" rows={2} maxLength={1000} />
       </Field>
       <FormError namespace="assets.errors" errorKey={form.errorKey} />
       <div>

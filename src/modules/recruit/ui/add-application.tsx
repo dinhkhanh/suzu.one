@@ -11,6 +11,7 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { Select } from "@/components/ui/select";
 import { createApplicationAction } from "../actions";
 import { CANDIDATE_SOURCES } from "../enums";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 
 export function AddApplicationForm({ openingId, candidates, canSetMoney }: { openingId: string; candidates: { id: string; fullName: string }[]; canSetMoney: boolean }) {
   const t = useTranslations("recruit.form");
@@ -54,7 +55,7 @@ export function AddApplicationForm({ openingId, candidates, canSetMoney }: { ope
           ) : null}
         </div>
         <Field name="coverLetter" label={t("coverLetter")}>
-          <textarea id="coverLetter" name="coverLetter" rows={3} maxLength={10_000} className="w-full rounded-md border bg-transparent px-3 py-2 text-sm" />
+          <NoteEditor id="coverLetter" name="coverLetter" rows={3} maxLength={10_000} />
         </Field>
       </FieldErrors>
       <FormError namespace="recruit.errors" errorKey={errorKey} />

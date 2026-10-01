@@ -20,7 +20,7 @@ import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import type { Grant, Principal } from "../platform/rbac/policy";
 import { pageVisibleSql, spaceEditableSql } from "./access-sql";
-import { doc, heading, link, paragraph } from "./engine/build";
+import { doc, heading, link, paragraph } from "@/modules/platform/rich-text/engine/build";
 import { compareVersions, createPage, deletePage, getReadingView, levelOf, listTree, listVersions, loadPage, movePage, publishPage, recordView, restoreVersion, saveDraft, setPageAccess, setPageArchived, unpublishPage } from "./pages";
 import { atLeast, type KbViewer, spaceLevel, viewerKeys } from "./policy";
 import { createSpace, listSpaces, loadSpace, setSpaceAccess, setSpaceArchived } from "./spaces";

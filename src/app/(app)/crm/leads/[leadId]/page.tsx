@@ -14,6 +14,7 @@ import { LogActivityForm } from "@/modules/crm/ui/activity-forms";
 import { AssignLeadForm, ConvertLeadForm, DisqualifyForm, EditLeadForm, LeadStatusButtons } from "@/modules/crm/ui/deal-forms";
 import { CrmTabs } from "@/modules/crm/ui/tabs";
 import { ActivityList, FollowUpList, formatters } from "@/modules/crm/ui/views";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 export const generateMetadata = pageTitle("crmLead");
 
@@ -77,10 +78,10 @@ export default async function LeadPage({ params }: PageProps<"/crm/leads/[leadId
           <span className="text-muted-foreground">{t("lead.fields.email")}: </span>
           {[lead.email, lead.phone].filter(Boolean).join(" · ") || "—"}
         </p>
-        <p className="sm:col-span-2">
+        <div className="sm:col-span-2">
           <span className="text-muted-foreground">{t("lead.fields.need")}: </span>
-          {lead.need ?? "—"}
-        </p>
+          {lead.need?.trim() ? <RichText text={lead.need} /> : "—"}
+        </div>
         <p>
           <span className="text-muted-foreground">{t("lead.fields.budget")}: </span>
           {lead.budgetText ?? "—"}

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { PREVIEW_DEFAULT_DAYS, PREVIEW_LABEL_MAX, PREVIEW_MAX_DAYS, PREVIEW_MESSAGE_MAX, PREVIEW_MIN_DAYS, type PreviewState } from "../engine/preview";
 import { createPreviewLinkAction, revokePreviewLinkAction } from "../preview-actions";
 import { DeliveryError, errorKeyOf, type Result } from "./delivery-shared";
@@ -37,8 +38,6 @@ export type PreviewLinkItem = {
 };
 
 export type PreviewVersion = { id: string; version: number; frozen: boolean };
-
-const textareaClass = "min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30";
 
 export function PreviewLinkPanel({ taskId, links, versions, canManage }: { taskId: string; links: PreviewLinkItem[]; versions: PreviewVersion[]; canManage: boolean }) {
   const t = useTranslations("work.preview");
@@ -174,7 +173,7 @@ export function PreviewLinkPanel({ taskId, links, versions, canManage }: { taskI
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="preview-message">{t("message")}</Label>
-              <textarea id="preview-message" name="message" rows={3} maxLength={PREVIEW_MESSAGE_MAX} className={textareaClass} placeholder={t("messagePlaceholder")} />
+              <NoteEditor id="preview-message" name="message" rows={3} maxLength={PREVIEW_MESSAGE_MAX} placeholder={t("messagePlaceholder")} />
             </div>
             <label className="flex items-start gap-2 text-sm">
               <input type="checkbox" name="allowDecision" defaultChecked className="mt-0.5 size-4" />

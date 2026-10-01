@@ -3,6 +3,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import type { ActivityView } from "../activities";
 import type { TimelineItem } from "../timeline";
 import { CancelFollowUpButton, CompleteFollowUpForm, RescheduleForm } from "./activity-forms";
@@ -80,7 +81,7 @@ export async function ActivityList({ items }: { items: ActivityView[] }) {
               {item.contactName ? ` · ${item.contactName}` : ""}
             </span>
           </p>
-          {item.body ? <p className="mt-1 whitespace-pre-line text-muted-foreground">{item.body}</p> : null}
+          <RichText text={item.body} className="mt-1 text-muted-foreground" />
           {item.outcome ? <p className="mt-1">{t("outcomeIs", { outcome: item.outcome })}</p> : null}
         </li>
       ))}

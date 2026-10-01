@@ -12,6 +12,7 @@ import { createTranslator } from "next-intl";
 import { db, schema } from "@/lib/db";
 import vi from "../../../messages/vi.json";
 import { rulesOfPeople, sumLoggedMinutesByProject } from "../daily/service";
+import { noteToDoc } from "@/modules/platform/rich-text/engine/note";
 import { canCreatePage, createPage, type Doc, type DocNode, type KbViewer, loadSpace } from "../kb/service";
 import { awaitingAcceptance } from "./acceptance";
 import { countOpenBilling } from "./billing";
@@ -179,15 +180,14 @@ export async function saveRetro(projectId: string, input: RetroInput, actorPerso
   return { before: null, after };
 }
 
-/** The retrospective as a knowledge-base page: a heading per part, a paragraph per line. */
+/** The retrospective as a knowledge-base page: a heading per part, then the part's note as written. */
 export function retroDoc(retro: MeetingRetro, headings: { wentWell: string; improve: string; actions: string }): Doc {
   const text = (value: string): DocNode[] => [{ type: "text", text: value }];
   const content: DocNode[] = [];
   for (const key of ["wentWell", "improve", "actions"] as const) {
-    const lines = (retro[key] ?? "").split("\n").map((line) => line.trim()).filter(Boolean);
-    if (lines.length === 0) continue;
+    if (!retro[key]?.trim()) continue;
     content.push({ type: "heading", attrs: { level: 2 }, content: text(headings[key]) });
-    for (const line of lines) content.push({ type: "paragraph", content: text(line) });
+    content.push(...noteToDoc(retro[key]).content);
   }
   return { type: "doc", content: content.length ? content : [{ type: "paragraph" }] };
 }

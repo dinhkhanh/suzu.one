@@ -11,12 +11,12 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { addOneOnOneActionAction, completeOneOnOneActionAction, createOneOnOneAction, shareOneOnOneAction, updateOneOnOneAction } from "../one-on-one-actions";
 import { decideOutcomeAction, raiseOutcomeAction } from "../one-on-one-actions";
 import { OUTCOME_TYPES } from "../enums";
 
 const ERRORS = "performance.oneOnOnes.errors";
-const textarea = "w-full rounded-md border bg-transparent px-3 py-2 text-sm";
 
 type Person = { id: string; fullName: string };
 
@@ -44,7 +44,7 @@ export function NewOneOnOneForm({ reports, today }: { reports: Person[]; today: 
           </Field>
         </div>
         <Field name="agenda" label={t("agenda")}>
-          <textarea id="agenda" name="agenda" rows={3} maxLength={4000} className={textarea} />
+          <NoteEditor id="agenda" name="agenda" rows={3} maxLength={4000} />
         </Field>
       </FieldErrors>
       <FormError namespace={ERRORS} errorKey={errorKey} />
@@ -69,15 +69,15 @@ export function EditOneOnOneForm({ meeting, seesPrivate }: { meeting: { id: stri
           <DatePicker id="meetingOn" name="meetingOn" defaultValue={meeting.meetingOn} required className="max-w-48" />
         </Field>
         <Field name="agenda" label={t("agenda")}>
-          <textarea id="agenda" name="agenda" rows={3} maxLength={4000} defaultValue={meeting.agenda ?? ""} className={textarea} />
+          <NoteEditor id="agenda" name="agenda" rows={3} maxLength={4000} defaultValue={meeting.agenda ?? ""} />
         </Field>
         <Field name="sharedNotes" label={t("sharedNotes")}>
-          <textarea id="sharedNotes" name="sharedNotes" rows={5} maxLength={8000} defaultValue={meeting.sharedNotes ?? ""} className={textarea} />
+          <NoteEditor id="sharedNotes" name="sharedNotes" rows={5} maxLength={8000} defaultValue={meeting.sharedNotes ?? ""} />
         </Field>
         {seesPrivate ? (
           <Field name="privateNotes" label={t("privateNotes")}>
             <>
-              <textarea id="privateNotes" name="privateNotes" rows={5} maxLength={8000} defaultValue={meeting.privateNotes ?? ""} className={textarea} />
+              <NoteEditor id="privateNotes" name="privateNotes" rows={5} maxLength={8000} defaultValue={meeting.privateNotes ?? ""} />
               <p className="text-xs text-muted-foreground">{t("privateHint")}</p>
             </>
           </Field>
@@ -215,7 +215,7 @@ export function RaiseOutcomeForm({ resultId, mayProposeSalary }: { resultId: str
           ) : null}
         </div>
         <Field name="note" label={t("note")}>
-          <textarea id="note" name="note" rows={2} maxLength={2000} className={textarea} />
+          <NoteEditor id="note" name="note" rows={2} maxLength={2000} />
         </Field>
       </FieldErrors>
       <FormError namespace={ERRORS} errorKey={errorKey} />

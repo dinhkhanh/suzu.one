@@ -72,13 +72,29 @@ const cellAttrs = (attrs: Attrs, path: string) => {
   return Object.keys(kept).length ? kept : undefined;
 };
 
+export const TEXT_ALIGNS = ["left", "center", "right", "justify"] as const;
+export type TextAlign = (typeof TEXT_ALIGNS)[number];
+/** Left is how text sits anyway: it is not stored. */
+const textAlign = (value: unknown) => ((TEXT_ALIGNS as readonly unknown[]).includes(value) ? value : undefined);
+const aligned = (kept: Attrs) => {
+  if (kept.textAlign === "left") delete kept.textAlign;
+  return kept;
+};
+
 const NODES: Record<string, NodeSpec> = {
-  paragraph: { group: "block", children: "inline", attrs: none },
+  paragraph: {
+    group: "block",
+    children: "inline",
+    attrs: (attrs, path) => {
+      const kept = aligned(pick(attrs, path, { textAlign }));
+      return Object.keys(kept).length ? kept : undefined;
+    },
+  },
   heading: {
     group: "block",
     children: "inline",
     attrs: (attrs, path) => {
-      const kept = pick(attrs, path, { level: intBetween(1, 3) });
+      const kept = aligned(pick(attrs, path, { level: intBetween(1, 3), textAlign }));
       if (!kept.level) throw new Invalid("bad_attribute", `${path}.level`);
       return kept;
     },
@@ -94,6 +110,16 @@ const NODES: Record<string, NodeSpec> = {
     },
   },
   listItem: { group: "structure", children: "block", min: 1, attrs: none },
+  taskList: { group: "block", children: ["taskItem"], min: 1, attrs: none },
+  taskItem: {
+    group: "structure",
+    children: "block",
+    min: 1,
+    attrs: (attrs, path) => {
+      const kept = pick(attrs, path, { checked: (value) => (typeof value === "boolean" ? value : undefined) });
+      return kept.checked ? { checked: true } : undefined;
+    },
+  },
   blockquote: { group: "block", children: "block", min: 1, attrs: none },
   codeBlock: {
     group: "block",
@@ -166,6 +192,7 @@ const MARKS: Record<string, (attrs: Attrs, path: string) => Attrs | undefined> =
   italic: none,
   strike: none,
   underline: none,
+  highlight: none,
   code: none,
   link: (attrs, path) => {
     // The editor also sends target, rel and class: the reading view decides those itself.
@@ -271,6 +298,10 @@ function blockLines(node: DocNode): string[] {
       return [String(node.attrs?.alt ?? "")];
     case "horizontalRule":
       return [];
+    case "taskItem": {
+      const [first = "", ...rest] = (node.content ?? []).flatMap(blockLines);
+      return [`${node.attrs?.checked ? "☑" : "☐"} ${first}`, ...rest];
+    }
     default:
       return (node.content ?? []).flatMap(blockLines);
   }

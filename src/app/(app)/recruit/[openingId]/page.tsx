@@ -13,6 +13,7 @@ import { pageTitle } from "@/i18n/page-title";
 import { publicOrigin } from "@/lib/site";
 import { OPENING_PUBLIC_STATUSES } from "@/modules/recruit/enums";
 import { CareersLinks } from "@/modules/recruit/ui/careers-link";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 export const generateMetadata = pageTitle("jobOpening");
 
@@ -127,7 +128,7 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
             .map(([key, body]) => (
               <div key={key} className="flex flex-col gap-1">
                 <h2 className="text-sm font-medium">{t(`form.${key}` as "form.description")}</h2>
-                <p className="whitespace-pre-line text-muted-foreground">{body}</p>
+                <RichText text={body} className="text-muted-foreground" />
               </div>
             ))}
         </section>

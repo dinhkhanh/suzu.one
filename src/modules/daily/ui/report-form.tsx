@@ -9,10 +9,11 @@ import { FormError } from "@/components/forms/field";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import type { ActivityItem, DailyTaskLine } from "../schema";
 import { submitReportAction } from "../actions";
 import { ActivityList, TaskLines } from "./activity-list";
-import { hoursOf, TEXTAREA } from "./format";
+import { hoursOf } from "./format";
 import { QuickLog } from "./quick-actions";
 
 type Candidate = { taskId: string; key: string; title: string; dueDate: string | null; projectName: string | null; /** Its project's time is billed to the client by default (FR-PJM-24). */ billable: boolean };
@@ -92,7 +93,7 @@ export function ReportForm({
         <label htmlFor="blockers" className="text-sm font-medium">
           {t("report.blockers")}
         </label>
-        <textarea id="blockers" value={blockers} onChange={(event) => setBlockers(event.target.value)} maxLength={2000} className={TEXTAREA} placeholder={t("report.blockersPlaceholder")} />
+        <NoteEditor id="blockers" value={blockers} onChange={setBlockers} maxLength={2000} placeholder={t("report.blockersPlaceholder")} />
       </section>
       <section className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -101,7 +102,7 @@ export function ReportForm({
           </label>
           {notesDraft}
         </div>
-        <textarea id="notes" value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={2000} className={TEXTAREA} placeholder={t("report.notesPlaceholder")} />
+        <NoteEditor id="notes" value={notes} onChange={setNotes} maxLength={2000} placeholder={t("report.notesPlaceholder")} />
       </section>
 
       <section className="flex flex-col gap-2">

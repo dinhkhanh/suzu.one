@@ -16,6 +16,8 @@ import {
   removeDependencyAction,
   updateTaskAction,
 } from "../actions";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { CHANNELS, CONTENT_FORMATS, PRIORITIES } from "../enums";
 import { useHandoffGate } from "./handoff";
 import { LabelChip } from "./team-forms";
@@ -97,8 +99,6 @@ export type DetailActivity = {
   actorName: string | null;
 };
 
-const textareaClass =
-  "min-h-28 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 md:text-sm dark:bg-input/30";
 const newId = () => Math.random().toString(36).slice(2, 10);
 
 /** `intercept`: a refusal the screen answers itself (the hand-off gate opens its sheet, FR-PJM-40). */
@@ -242,15 +242,18 @@ export function TaskDetailView({
             aria-label={t("fields.title")}
             className="h-auto text-lg font-semibold md:text-lg"
           />
-          <textarea
-            name="description"
-            maxLength={10000}
-            defaultValue={task.description ?? ""}
-            disabled={!canEdit}
-            aria-label={t("fields.description")}
-            placeholder={t("descriptionPlaceholder")}
-            className={textareaClass}
-          />
+{canEdit ? (
+            <NoteEditor
+              name="description"
+              maxLength={10000}
+              rows={5}
+              defaultValue={task.description ?? ""}
+              aria-label={t("fields.description")}
+              placeholder={t("descriptionPlaceholder")}
+            />
+          ) : (
+            <RichText text={task.description} />
+          )}
         </form>
 
         <TaskChecklist

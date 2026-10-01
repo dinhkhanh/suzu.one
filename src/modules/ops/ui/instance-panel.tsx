@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { beginEvidenceUploadAction, cancelObligationAction, completeEvidenceUploadAction, completeObligationAction, openEvidenceFileAction, reassignObligationAction, removeEvidenceFileAction, reopenObligationAction, saveObligationProgressAction } from "../actions";
 import type { EvidenceKey, EvidenceRequirement } from "../enums";
@@ -81,7 +82,7 @@ export function InstancePanel({ taskId, open, canWork, canManage, checklist, che
             </Field>
             <div className="sm:col-span-3">
               <Field name="note" label={t("note")}>
-                <textarea id="note" name="note" rows={2} maxLength={2000} defaultValue={evidence.note ?? ""} className="w-full rounded-md border bg-transparent px-3 py-2 text-sm" />
+                <NoteEditor id="note" name="note" rows={2} maxLength={2000} defaultValue={evidence.note ?? ""} disabled={!editable} />
               </Field>
             </div>
           </fieldset>

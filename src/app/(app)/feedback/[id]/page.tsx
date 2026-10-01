@@ -8,6 +8,7 @@ import { PriorityBadge, StatusBadge } from "@/modules/feedback/ui/feedback-list"
 import { CATEGORY_ICONS } from "@/modules/feedback/ui/icons";
 import { ScreenshotLink, TriageForm } from "@/modules/feedback/ui/triage-form";
 import { requireUser } from "@/modules/platform/auth/session";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("feedbackItem");
@@ -50,7 +51,9 @@ export default async function FeedbackItemPage({ params }: PageProps<"/feedback/
         </p>
       </header>
 
-      <section className="rounded-xl border p-4 text-sm leading-relaxed whitespace-pre-wrap break-words">{row.message}</section>
+      <section className="rounded-xl border p-4 break-words">
+        <RichText text={row.message} />
+      </section>
 
       <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
         {row.pagePath ? (
@@ -100,8 +103,8 @@ export default async function FeedbackItemPage({ params }: PageProps<"/feedback/
           <section className="flex flex-col gap-2">
             <h2 className="text-sm font-medium">{t("detail.reply")}</h2>
             {row.reply ? (
-              <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm leading-relaxed whitespace-pre-wrap break-words">
-                {row.reply}
+              <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 break-words">
+                <RichText text={row.reply} />
                 {row.repliedAt ? <p className="mt-2 text-xs text-muted-foreground">{when(row.repliedAt)}</p> : null}
               </div>
             ) : (
@@ -111,7 +114,7 @@ export default async function FeedbackItemPage({ params }: PageProps<"/feedback/
           {staff && row.internalNote ? (
             <section className="flex flex-col gap-2">
               <h2 className="text-sm font-medium">{t("triage.internalNote")}</h2>
-              <p className="rounded-xl border p-4 text-sm whitespace-pre-wrap break-words">{row.internalNote}</p>
+              <RichText text={row.internalNote} className="rounded-xl border p-4 break-words" />
             </section>
           ) : null}
         </>

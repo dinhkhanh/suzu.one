@@ -14,7 +14,8 @@ import type { DocMark, DocNode } from "./doc";
 const CALLOUT_SIGN: Record<CalloutKind, string> = { info: "ℹ️", warning: "⚠️", success: "✅", danger: "⛔" };
 
 const escapeInline = (text: string, inTable: boolean): string => {
-  const escaped = text.replace(/([\\`*_[\]])/g, "\\$1");
+  // An underscore inside a word (snake_case) never makes emphasis, so it is left alone.
+  const escaped = text.replace(/([\\`*[\]])/g, "\\$1").replace(/(?<![\p{L}\p{N}])_|_(?![\p{L}\p{N}])/gu, "\\_");
   return inTable ? escaped.replace(/\|/g, "\\|") : escaped;
 };
 
@@ -52,18 +53,23 @@ function inline(node: DocNode, inTable = false): string {
 
 const indent = (lines: string[], by: string): string[] => lines.map((line) => (line ? `${by}${line}` : line));
 
-function listLines(node: DocNode, ordered: boolean): string[] {
-  const start = ordered && typeof node.attrs?.start === "number" ? node.attrs.start : 1;
+const LISTS = ["bulletList", "orderedList", "taskList"];
+
+function listLines(node: DocNode): string[] {
+  const start = node.type === "orderedList" && typeof node.attrs?.start === "number" ? node.attrs.start : 1;
   return (node.content ?? []).flatMap((item, index) => {
-    const marker = ordered ? `${start + index}. ` : "- ";
-    // An item's own paragraphs join into one line; a nested list follows, indented under it.
+    const marker = node.type === "orderedList" ? `${start + index}. ` : "- ";
+    const box = node.type === "taskList" ? (item.attrs?.checked ? "[x] " : "[ ] ") : "";
+    // An item's own lines follow its marker, the later ones indented under it (a line break
+    // stays a line break); a nested list follows, indented the same way.
     const own: string[] = [];
     const nested: string[] = [];
     for (const child of item.content ?? []) {
-      if (child.type === "bulletList" || child.type === "orderedList") nested.push(...listLines(child, child.type === "orderedList"));
-      else own.push(blockMarkdown(child).join(" "));
+      if (LISTS.includes(child.type)) nested.push(...listLines(child));
+      else own.push(...blockMarkdown(child));
     }
-    return [`${marker}${own.join(" ").trim()}`, ...indent(nested, " ".repeat(marker.length))];
+    const [first = "", ...rest] = own;
+    return [`${marker}${box}${first.trim()}`, ...indent([...rest, ...nested], " ".repeat(marker.length))];
   });
 }
 
@@ -85,7 +91,8 @@ export function blockMarkdown(node: DocNode): string[] {
       return inline(node).split("\n").map((line) => escapeLineStart(line.trim())).filter(Boolean);
     case "bulletList":
     case "orderedList":
-      return listLines(node, node.type === "orderedList");
+    case "taskList":
+      return listLines(node);
     case "table":
       return tableLines(node);
     case "blockquote":

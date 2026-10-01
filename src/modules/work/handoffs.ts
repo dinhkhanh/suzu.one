@@ -273,8 +273,9 @@ export async function sendToTeam(taskId: string, input: CrossTeamInput, actor: A
 
 /**
  * The note in the receiving task's brief, so triage reads it without opening anything else. The
- * section names are stored in the task's description, so they are written once in the company's
- * language, from the messages — never as literals here.
+ * parts and the brief are all notes (Markdown), so the parts go in as written. The section names
+ * are stored in the task's description, so they are written once in the company's language, from
+ * the messages — never as literals here.
  */
 function describeNote(note: Note, from: string): string {
   const label = createTranslator({ locale: "vi", messages: vi, namespace: "work.handoff.note" });
@@ -290,7 +291,8 @@ function describeNote(note: Note, from: string): string {
   ];
   return parts
     .filter(([, value]) => value)
-    .map(([label, value]) => `${label}: ${value}`)
+    // A part written over several lines (a list, a quote) starts on its own line, so it stays one.
+    .map(([label, value]) => (value!.includes("\n") ? `${label}:\n${value}` : `${label}: ${value}`))
     .join("\n\n")
     .slice(0, 10000);
 }

@@ -6,6 +6,7 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import { type LetterheadFields, renderTemplate } from "../documents/service";
 import { lineDiscount, lineNet, periodsOf } from "./engine/quote";
 import type { QuoteLineRow, QuoteRow } from "./quotes";
@@ -29,7 +30,7 @@ export function quoteLinesText(lines: readonly Pick<QuoteLineRow, "title" | "des
 
 export type QuoteDocument = { title: string; number: string; text: string; missing: string[]; letterhead: LetterheadFields };
 
-/** The quote as text on the letterhead. The caller has checked the reader may see the deal's value. */
+/** The quote as text on the letterhead; the intro and the terms are notes, put in as their words. The caller has checked the reader may see the deal's value. */
 export async function quoteDocument(quote: QuoteRow, lines: readonly QuoteLineRow[], words: QuoteWords): Promise<QuoteDocument> {
   const [[deal], [template]] = await Promise.all([
     db()
@@ -59,13 +60,13 @@ export async function quoteDocument(quote: QuoteRow, lines: readonly QuoteLineRo
     "quote.number": number,
     "quote.title": quote.title,
     "quote.validUntil": quote.validUntil ? formatDay(quote.validUntil) : words.none,
-    "quote.intro": quote.intro ?? "",
+    "quote.intro": noteToPlainText(quote.intro),
     "quote.lines": quoteLinesText(lines, words),
     "quote.subtotal": words.money(quote.subtotalVnd),
     "quote.discount": words.money(quote.discountVnd),
     "quote.vat": `${words.money(quote.vatVnd)} (${quote.vatRateBp / 100}%)`,
     "quote.total": words.money(quote.totalVnd),
-    "quote.terms": quote.terms ?? words.none,
+    "quote.terms": noteToPlainText(quote.terms) || words.none,
   };
   const { text, missing } = renderTemplate(template?.body ?? QUOTE_TEMPLATE_BODY, context);
   return { title: template?.name ?? words.title, number, text, missing, letterhead };

@@ -11,10 +11,10 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { saveLicenceAction } from "../actions";
 import { BILLING_CYCLES, type BillingCycle, LICENCE_STATUSES, type LicenceStatus } from "../enums";
 
-const textarea = "w-full rounded-md border bg-transparent px-3 py-2 text-sm";
 
 export type LicenceFormValue = {
   id: string | null;
@@ -127,7 +127,7 @@ export function LicenceForm({
         </label>
 
         <Field name="notes" label={t("form.notes")}>
-          <textarea id="notes" name="notes" rows={3} maxLength={2000} defaultValue={value?.notes ?? ""} className={textarea} />
+          <NoteEditor id="notes" name="notes" rows={3} maxLength={2000} defaultValue={value?.notes ?? ""} />
         </Field>
       </FieldErrors>
 

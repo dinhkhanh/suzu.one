@@ -13,7 +13,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import { pagePublishedVisibleSql } from "./access-sql";
 import { embeddingDriver, embedTexts } from "./embeddings";
 import { CHUNK_FORMAT, chunkDoc, chunkEmbeddingText } from "./engine/chunk";
-import type { Doc } from "./engine/doc";
+import type { Doc } from "@/modules/platform/rich-text/engine/doc";
 import { searchTokens } from "./engine/search";
 import type { KbViewer } from "./policy";
 

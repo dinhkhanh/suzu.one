@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import type { HandoffRequirement } from "../handoff-gate";
 import { NOTE_PARTS, type Note, type NotePart } from "../engine/handoff";
 import { acceptHandoffAction, handOffTaskAction, returnHandoffAction, sendToTeamAction } from "../handoff-actions";
@@ -64,7 +66,7 @@ export function HandoffNoteFields({
           <Label htmlFor={`${idPrefix}-${part}`} className="text-xs text-muted-foreground">
             {t(part)}
           </Label>
-          <textarea id={`${idPrefix}-${part}`} name={`note.${part}`} maxLength={4000} defaultValue={defaultValue?.[part] ?? ""} required={required && part === "context"} placeholder={t(`${part}Hint`)} className={textareaClass} />
+          <NoteEditor id={`${idPrefix}-${part}`} name={`note.${part}`} defaultValue={defaultValue?.[part] ?? ""} maxLength={4000} required={required && part === "context"} placeholder={t(`${part}Hint`)} />
         </div>
       ))}
       <div className="flex flex-col gap-1">
@@ -102,7 +104,9 @@ export function HandoffNoteView({ note }: { note: Note }) {
       {parts.map((part: NotePart) => (
         <div key={part} className="contents">
           <dt className="text-xs text-muted-foreground">{t(part)}</dt>
-          <dd className="whitespace-pre-line">{note[part]}</dd>
+          <dd className="min-w-0">
+            <RichText text={note[part]} />
+          </dd>
         </div>
       ))}
       {note.links?.length ? (

@@ -7,6 +7,7 @@ import { canManageInstance, canReadOps, canViewInstance, canWorkInstance, escala
 import { InstancePanel, ReassignForm } from "@/modules/ops/ui/instance-panel";
 import { StatusBadge } from "@/modules/ops/ui/status-badge";
 import { requireUser } from "@/modules/platform/auth/session";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
 import { listEntities } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
@@ -87,8 +88,13 @@ export default async function ObligationPage({ params }: PageProps<"/ops/obligat
       {template.guidance || template.penaltyNote || template.links.length ? (
         <section className="flex flex-col gap-2 text-sm">
           <h2 className="text-sm font-medium text-muted-foreground">{t("instance.guidance")}</h2>
-          {template.guidance ? <p className="whitespace-pre-line">{template.guidance}</p> : null}
-          {template.penaltyNote ? <p className="text-destructive">{t("instance.penalty", { note: template.penaltyNote })}</p> : null}
+          <RichText text={template.guidance} />
+          {template.penaltyNote?.trim() ? (
+            <div className="flex flex-col gap-1 text-destructive">
+              <p>{t("instance.penalty")}</p>
+              <RichText text={template.penaltyNote} />
+            </div>
+          ) : null}
           {template.links.length ? (
             <ul className="list-disc pl-5">
               {template.links.map((link) => (

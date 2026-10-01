@@ -6,6 +6,7 @@ import { canManageLibrary, canReadOps, DEFAULT_ESCALATION, DEFAULT_REMINDER_LEAD
 import { ReviewButton, TemplateForm, type TemplateFormValue } from "@/modules/ops/ui/library";
 import { OpsNav } from "@/modules/ops/ui/overview";
 import { requireUser } from "@/modules/platform/auth/session";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { listEntities } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { ROLE_DEFINITIONS, ROLES } from "@/modules/platform/rbac/roles";
@@ -79,7 +80,7 @@ export default async function ObligationLibraryPage() {
                         </>
                       ) : (
                         <div className="flex flex-col gap-2 p-3">
-                          {row.guidance ? <p className="whitespace-pre-line">{row.guidance}</p> : null}
+                          <RichText text={row.guidance} />
                           {row.checklist.length ? (
                             <ol className="list-decimal pl-5">
                               {row.checklist.map((step) => (
@@ -87,7 +88,7 @@ export default async function ObligationLibraryPage() {
                               ))}
                             </ol>
                           ) : null}
-                          {row.penaltyNote ? <p className="text-destructive">{row.penaltyNote}</p> : null}
+                          <RichText text={row.penaltyNote} className="text-destructive" />
                         </div>
                       )}
                     </div>

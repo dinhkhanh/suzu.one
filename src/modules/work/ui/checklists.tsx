@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { deleteChecklistAction, saveChecklistAction, setStateChecklistsAction } from "../checklist-actions";
 import { MAX_CHECKLIST_ITEMS, MAX_LINKED_CHECKLISTS } from "../engine/checklists";
 
@@ -110,7 +112,7 @@ function ChecklistReadOnly({ checklist }: { checklist: ChecklistCard }) {
   const t = useTranslations("checklists.library");
   return (
     <div className="flex flex-col gap-2">
-      {checklist.description ? <p className="text-muted-foreground">{checklist.description}</p> : null}
+      <RichText text={checklist.description} className="text-muted-foreground" />
       <ul className="flex flex-col gap-1">
         {checklist.items.map((item) => (
           <li key={item.id} className="flex flex-wrap gap-x-2">
@@ -188,7 +190,7 @@ function ChecklistEditor({ checklist, owners }: { checklist?: ChecklistCard; own
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`description-${key}`}>{t("description")}</Label>
-        <textarea id={`description-${key}`} name="description" maxLength={1000} defaultValue={checklist?.description ?? ""} placeholder={t("descriptionPlaceholder")} className="min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30" />
+        <NoteEditor id={`description-${key}`} name="description" maxLength={1000} defaultValue={checklist?.description ?? ""} placeholder={t("descriptionPlaceholder")} />
       </div>
 
       <fieldset className="flex flex-col gap-2">

@@ -24,7 +24,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { embedPendingChunks } from "../kb/chunks";
-import { doc, heading, paragraph } from "../kb/engine/build";
+import { doc, heading, paragraph } from "@/modules/platform/rich-text/engine/build";
 import { createPage, publishPage } from "../kb/pages";
 import { type KbViewer, viewerKeys } from "../kb/policy";
 import { createSpace } from "../kb/spaces";

@@ -8,6 +8,7 @@ import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { currentBranchOf, listPeopleAtBranches } from "../core-hr/service";
 import { notify } from "../platform/notifications/service";
+import { noteToPlainText } from "../platform/rich-text/engine/note";
 import { listBranches, listEntities, listOrgUnits, unitChoices } from "../platform/org/service";
 import type { Principal } from "../platform/rbac/policy";
 import { type AnnouncementPhase, parseAudienceKey } from "./enums";
@@ -133,7 +134,7 @@ export function visibleSql(viewer: CommsViewer): SQL {
 export type AnnouncementCard = { id: string; title: string; excerpt: string; pinned: boolean; mustAcknowledge: boolean; publishAt: Date; authorName: string; read: boolean; acknowledged: boolean };
 
 const excerptOf = (body: string, max = 220) => {
-  const flat = body.replace(/\s+/g, " ").trim();
+  const flat = noteToPlainText(body).replace(/\s+/g, " ").trim();
   return flat.length > max ? `${flat.slice(0, max).trimEnd()}…` : flat;
 };
 

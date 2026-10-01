@@ -7,6 +7,8 @@ import { TaskLines } from "@/modules/daily/ui/activity-list";
 import { hoursOf } from "@/modules/daily/ui/format";
 import { GenerateWeekButton, WeeklySummaryForm } from "@/modules/daily/ui/weekly-forms";
 import { requireUser } from "@/modules/platform/auth/session";
+import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { canAdminTeam, listTeams, loadViewer, teamFacts } from "@/modules/work/service";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -71,7 +73,7 @@ export default async function WeeklyPage({ searchParams }: PageProps<"/daily/wee
               <ul className="flex flex-col gap-1 text-sm">
                 {content.blockers.map((blocker, index) => (
                   <li key={`${blocker.personId}:${blocker.date}:${index}`}>
-                    <span className="font-medium">{blocker.name}</span> · {day(blocker.date)} · {blocker.text}
+                    <span className="font-medium">{blocker.name}</span> · {day(blocker.date)} · {noteToPlainText(blocker.text)}
                   </li>
                 ))}
               </ul>
@@ -131,14 +133,14 @@ export default async function WeeklyPage({ searchParams }: PageProps<"/daily/wee
                     <ul className="flex flex-col gap-0.5">
                       {content.blockers.map((blocker) => (
                         <li key={blocker.date}>
-                          {day(blocker.date)} · {blocker.text}
+                          {day(blocker.date)} · {noteToPlainText(blocker.text)}
                         </li>
                       ))}
                     </ul>
                   </div>
                 ) : null}
                 {hoursList(content)}
-                {row.summary && !canSummarise ? <p className="whitespace-pre-wrap rounded-lg bg-muted p-3">{row.summary}</p> : null}
+                {row.summary && !canSummarise ? <RichText text={row.summary} className="rounded-lg bg-muted p-3" /> : null}
                 {canSummarise ? <WeeklySummaryForm id={row.id} summary={row.summary} /> : null}
               </div>
             </details>

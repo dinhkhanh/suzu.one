@@ -6,6 +6,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { giveKudosAction } from "../actions";
 import { KUDOS_MESSAGE_MAX } from "../enums";
 
@@ -46,7 +47,7 @@ export function KudosForm({ people, values }: { people: { id: string; fullName: 
           </Field>
         </div>
         <Field name="message" label={t("kudos.message")}>
-          <textarea id="message" name="message" required rows={3} maxLength={KUDOS_MESSAGE_MAX} className="rounded-lg border bg-background px-2.5 py-1.5 text-sm" />
+          <NoteEditor id="message" name="message" required rows={3} maxLength={KUDOS_MESSAGE_MAX} />
         </Field>
       </FieldErrors>
       <FormError namespace="comms.errors" errorKey={form.errorKey} />

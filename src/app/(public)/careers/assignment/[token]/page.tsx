@@ -8,6 +8,7 @@ import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
 import { visitorOf } from "@/lib/public-action";
 import { MAX_SUBMISSION_BYTES, countAssignmentView, findPublicAssignment } from "@/modules/recruit/assignments";
 import { ASSIGNMENT_LIMITS } from "@/modules/recruit/enums";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 /**
  * A take-home brief, as the candidate holding the link sees it (FR-REC-07).
@@ -48,10 +49,10 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
         </p>
       </header>
 
-      {/* Plain text. A brief is typed into a textarea and is not a place to start rendering markup. */}
+      {/* The recruiter's note, built into a document and rendered from that — never as HTML. */}
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-medium">{t("brief")}</h2>
-        <p className="whitespace-pre-line text-sm text-muted-foreground">{assignment.brief}</p>
+        <RichText text={assignment.brief} className="text-sm text-muted-foreground" />
       </section>
 
       <section className="flex flex-col gap-4 rounded-xl border p-4">

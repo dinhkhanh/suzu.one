@@ -1,23 +1,9 @@
-// The editor's own blocks. Each stores exactly the attributes the server-side validator
-// (engine/doc.ts) accepts; what they look like to a reader is render-doc.tsx's business.
-import { mergeAttributes, Node } from "@tiptap/core";
-import { CALLOUT_KINDS } from "../engine/callouts";
-
-export const Callout = Node.create({
-  name: "callout",
-  group: "block",
-  content: "block+",
-  defining: true,
-  addAttributes() {
-    return { kind: { default: "info", parseHTML: (element) => ((CALLOUT_KINDS as readonly string[]).includes(element.getAttribute("data-callout") ?? "") ? element.getAttribute("data-callout") : "info"), renderHTML: (attributes) => ({ "data-callout": attributes.kind }) } };
-  },
-  parseHTML() {
-    return [{ tag: "div[data-callout]" }];
-  },
-  renderHTML({ HTMLAttributes }) {
-    return ["div", mergeAttributes(HTMLAttributes), 0];
-  },
-});
+// The page editor's own blocks, on top of the shared text schema (platform/rich-text/ui/extensions).
+// Each stores exactly the attributes the server-side validator (engine/doc.ts) accepts; what they
+// look like to a reader is render-doc.tsx's business.
+import { type AnyExtension, Node } from "@tiptap/core";
+import { CharacterCount } from "@tiptap/extensions";
+import { textExtensions } from "@/modules/platform/rich-text/ui/extensions";
 
 export const Embed = Node.create({
   name: "embed",
@@ -65,3 +51,6 @@ export const KbImage = Node.create({
     return ["img", { src: node.attrs.fileId ? `/api/kb/files/${node.attrs.fileId}` : node.attrs.src, alt: node.attrs.alt ?? "", referrerpolicy: "no-referrer" }];
   },
 });
+
+/** Everything the page editor is made of. The schema test builds from this same list. */
+export const pageExtensions = (options: { placeholder?: string } = {}): AnyExtension[] => [...textExtensions(options), CharacterCount, Embed, Attachment, KbImage];

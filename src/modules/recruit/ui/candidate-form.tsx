@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/select";
 import { createCandidateAction, updateCandidateAction } from "../actions";
 import { CANDIDATE_SOURCES, type CandidateSource } from "../enums";
 import type { DuplicateSignal, RedactedDuplicateMatch } from "../engine/duplicates";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 
 const textarea = "w-full rounded-md border bg-transparent px-3 py-2 text-sm";
 
@@ -101,7 +102,7 @@ export function CandidateForm({ value, people }: { value: CandidateFormValue | n
           <textarea id="tags" name="tags" rows={2} className={textarea} defaultValue={(value?.tags ?? []).join("\n")} />
         </Field>
         <Field name="notes" label={t("notes")}>
-          <textarea id="notes" name="notes" rows={4} maxLength={5000} className={textarea} defaultValue={value?.notes ?? ""} />
+          <NoteEditor id="notes" name="notes" rows={4} maxLength={5000} defaultValue={value?.notes ?? ""} />
         </Field>
       </FieldErrors>
 

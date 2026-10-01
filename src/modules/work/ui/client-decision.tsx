@@ -13,14 +13,13 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { beginEvidenceUploadAction, completeEvidenceUploadAction, decideStageAction, recordClientDecisionAction } from "../delivery-actions";
 import { CLIENT_CHANNELS, STAGE_DECISIONS, type StageDecision } from "../engine/delivery";
 import { DeliveryError, errorKeyOf, type Result } from "./delivery-shared";
 
 /** Where the decision goes: the client stage a version waits at, or any version. */
 export type DecisionTarget = { kind: "stage"; taskId: string } | { kind: "version"; taskId: string; deliverableId: string };
-
-const textareaClass = "min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30";
 
 async function sendDecision(target: DecisionTarget, input: Record<string, unknown>): Promise<Result> {
   return target.kind === "stage" ? decideStageAction({ taskId: target.taskId, ...input }) : recordClientDecisionAction({ deliverableId: target.deliverableId, ...input });
@@ -121,7 +120,7 @@ export function ClientDecisionForm({ target, version, clientName, contacts = [],
       </div>
       <div className="flex flex-col gap-1">
         <Label htmlFor={`cd-comment-${version}`}>{t("comment")}</Label>
-        <textarea id={`cd-comment-${version}`} name="comment" maxLength={4000} required={decision !== "approved"} placeholder={t(decision === "approved" ? "commentOptional" : "commentRequired")} className={textareaClass} />
+        <NoteEditor id={`cd-comment-${version}`} name="comment" maxLength={4000} required={decision !== "approved"} placeholder={t(decision === "approved" ? "commentOptional" : "commentRequired")} />
       </div>
       <fieldset className="flex flex-col gap-2">
         <legend className="pb-1 text-sm font-medium">{t("evidence")}</legend>

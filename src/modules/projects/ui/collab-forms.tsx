@@ -12,6 +12,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { FileLink } from "@/modules/platform/files/ui/signed-upload";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { beginRaidEvidenceAction, completeRaidEvidenceAction, createProjectSpaceAction, issueToTaskAction, meetingCalendarAction, openRaidEvidenceAction, saveMeetingAction, saveRaidItemAction, setRaidStatusAction } from "../collab-actions";
 import { RAID_KINDS, RAID_SEVERITIES, type RaidKind, RECORDABLE_MEETING_KINDS } from "../engine/raid";
 import { UploadField } from "./commercial-forms";
@@ -20,8 +21,6 @@ import { ActionButton, ActionForm } from "./plan-forms";
 type Person = { id: string; fullName: string };
 type Upload = { fileId: string; uploadUrl: string; contentType: string };
 type Stored = { fileId: string; fileName: string };
-
-const textarea = "min-h-20 w-full rounded-lg border bg-background px-2.5 py-1.5 text-sm";
 
 // ── The RAID log (FR-PJM-29) ────────────────────────────────────────────────────────────────
 
@@ -61,7 +60,7 @@ export function RaidForm({ projectId, people, item, today, onDone }: { projectId
         <Input id={`raid-title-${id}`} name="title" required maxLength={300} defaultValue={item?.title ?? ""} placeholder={t(`placeholders.${kind}`)} />
       </Field>
       <Field name="description" label={t("fields.description")}>
-        <textarea id={`raid-desc-${id}`} name="description" rows={2} maxLength={4000} defaultValue={item?.description ?? ""} className={textarea} />
+        <NoteEditor id={`raid-desc-${id}`} name="description" rows={2} maxLength={4000} defaultValue={item?.description ?? ""} />
       </Field>
       <div className="grid gap-3 sm:grid-cols-3">
         <Field name="ownerPersonId" label={t("fields.owner")}>
@@ -230,10 +229,10 @@ export function MeetingForm({ projectId, people, meeting, today }: { projectId: 
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field name="agenda" label={t("fields.agenda")}>
-          <textarea id={`m-agenda-${id}`} name="agenda" rows={4} maxLength={8000} defaultValue={meeting?.agenda ?? ""} className={textarea} />
+          <NoteEditor id={`m-agenda-${id}`} name="agenda" rows={4} maxLength={8000} defaultValue={meeting?.agenda ?? ""} />
         </Field>
         <Field name="notes" label={t("fields.notes")}>
-          <textarea id={`m-notes-${id}`} name="notes" rows={4} maxLength={20000} defaultValue={meeting?.notes ?? ""} className={textarea} />
+          <NoteEditor id={`m-notes-${id}`} name="notes" rows={4} maxLength={20000} defaultValue={meeting?.notes ?? ""} />
         </Field>
       </div>
 

@@ -39,7 +39,7 @@ import type { Principal } from "@/modules/platform/rbac/policy";
 import { STATUTORY_SEED } from "@/modules/platform/statutory/seed-values";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { embedPendingChunks } from "../kb/chunks";
-import { doc, heading, paragraph } from "../kb/engine/build";
+import { doc, heading, paragraph } from "@/modules/platform/rich-text/engine/build";
 import { createPage, publishPage } from "../kb/pages";
 import { createSpace } from "../kb/spaces";
 import { DEFAULT_PAYROLL_POLICY } from "../payroll/enums";

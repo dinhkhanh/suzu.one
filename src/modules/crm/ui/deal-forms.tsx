@@ -9,9 +9,10 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { assignLeadAction, convertLeadAction, createDealAction, createLeadAction, moveDealAction, openPitchAction, reassignDealAction, reopenDealAction, resendHandoffAction, respondToHandoffAction, setDealContactsAction, setLeadStatusAction, setUpDeliveryAction, updateDealAction, updateLeadAction } from "../deal-actions";
 import { ACCOUNT_TIERS, LOST_REASONS, SERVICE_LINES, SOURCES } from "../enums";
-import { CrmButton, CrmForm, type Named, type Person, textarea } from "./common";
+import { CrmButton, CrmForm, type Named, type Person } from "./common";
 
 export type StageOption = { id: string; name: string; category: string };
 type LeadValues = { entityId: string | null; clientId: string | null; companyName: string; contactName: string | null; contactTitle: string | null; email: string | null; phone: string | null; need: string | null; budgetText: string | null; source: string };
@@ -60,7 +61,7 @@ function LeadFields({ lead, entities, accounts }: { lead?: LeadValues; entities:
         </Field>
       </div>
       <Field name="need" label={t("lead.fields.need")}>
-        <textarea id="need" name="need" rows={2} maxLength={2000} defaultValue={lead?.need ?? ""} className={textarea} />
+        <NoteEditor id="need" name="need" rows={2} maxLength={2000} defaultValue={lead?.need ?? ""} />
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field name="budgetText" label={t("lead.fields.budget")}>
@@ -524,14 +525,14 @@ export function DeliverySetupForm({ dealId, dealTitle, teams, defaultTeamId, tem
       </div>
       <p className="text-sm font-medium">{t("deal.delivery.note")}</p>
       <Field name="context" label={t("deal.delivery.context")}>
-        <textarea id="setup-context" name="context" rows={2} maxLength={4000} className={textarea} />
+        <NoteEditor id="setup-context" name="context" rows={2} maxLength={4000} />
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field name="next" label={t("deal.delivery.next")}>
-          <textarea id="setup-next" name="next" rows={2} maxLength={4000} className={textarea} />
+          <NoteEditor id="setup-next" name="next" rows={2} maxLength={4000} />
         </Field>
         <Field name="questions" label={t("deal.delivery.questions")}>
-          <textarea id="setup-questions" name="questions" rows={2} maxLength={4000} className={textarea} />
+          <NoteEditor id="setup-questions" name="questions" rows={2} maxLength={4000} />
         </Field>
       </div>
       <p className="text-xs text-muted-foreground">{t("deal.delivery.prefillHint")}</p>
@@ -565,14 +566,14 @@ export function ResendHandoffForm({ dealId, projectId }: { dealId: string; proje
   return (
     <CrmForm action={resendHandoffAction} extra={{ dealId, projectId }} submit={t("handoff.resend")}>
       <Field name="context" label={t("delivery.context")}>
-        <textarea id={`resend-context-${projectId}`} name="context" rows={2} maxLength={4000} className={textarea} />
+        <NoteEditor id={`resend-context-${projectId}`} name="context" rows={2} maxLength={4000} />
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field name="next" label={t("delivery.next")}>
-          <textarea id={`resend-next-${projectId}`} name="next" rows={2} maxLength={4000} className={textarea} />
+          <NoteEditor id={`resend-next-${projectId}`} name="next" rows={2} maxLength={4000} />
         </Field>
         <Field name="questions" label={t("delivery.questions")}>
-          <textarea id={`resend-questions-${projectId}`} name="questions" rows={2} maxLength={4000} className={textarea} />
+          <NoteEditor id={`resend-questions-${projectId}`} name="questions" rows={2} maxLength={4000} />
         </Field>
       </div>
     </CrmForm>

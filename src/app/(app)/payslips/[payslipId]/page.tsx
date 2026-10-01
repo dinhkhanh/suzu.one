@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { getPayslipView, recordPayslipView } from "@/modules/payroll/payslips";
 import { PayslipDetail } from "@/modules/payroll/ui/payslip-detail";
 import { ClosePayslipQueryButton, PayslipQueryForm, PayslipReplyForm } from "@/modules/payroll/ui/payslip-forms";
@@ -58,7 +59,7 @@ export default async function PayslipPage({ params }: PageProps<"/payslips/[pays
                     <span className="font-medium">{message.authorName}</span>
                     <span className="text-xs text-muted-foreground">{format.dateTime(message.createdAt, { dateStyle: "medium", timeStyle: "short" })}</span>
                   </div>
-                  <p className="whitespace-pre-wrap">{message.body}</p>
+                  <RichText text={message.body} />
                 </li>
               ))}
             </ol>

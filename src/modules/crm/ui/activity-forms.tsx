@@ -7,9 +7,10 @@ import { Field } from "@/components/forms/field";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { cancelFollowUpAction, completeFollowUpAction, recordActivityAction, rescheduleFollowUpAction } from "../account-actions";
 import { ACTIVITY_KINDS } from "../enums";
-import { CrmButton, CrmForm, type Named, type Person, textarea } from "./common";
+import { CrmButton, CrmForm, type Named, type Person } from "./common";
 
 type Target = { clientId?: string | null; dealId?: string | null; leadId?: string | null };
 
@@ -68,7 +69,7 @@ export function LogActivityForm({ target, contacts, people, meId, today }: { tar
       {logged ? (
         <>
           <Field name="body" label={t("body")}>
-            <textarea id="activity-body" name="body" rows={2} maxLength={4000} className={textarea} />
+            <NoteEditor id="activity-body" name="body" rows={2} maxLength={4000} />
           </Field>
           <Field name="outcome" label={t("outcome")}>
             <Input id="activity-outcome" name="outcome" maxLength={1000} />

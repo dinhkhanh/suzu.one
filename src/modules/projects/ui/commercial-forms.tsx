@@ -14,6 +14,7 @@ import { DatePicker, MonthPicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
 import { type ClientContactChoice, ContactSuggestions } from "../../work/ui/client-decision";
 import {
@@ -199,7 +200,7 @@ export function ChangeForm({ projectId, change, register, requesters, editFee }:
         </Field>
       </div>
       <Field name="description" label={t("fields.description")}>
-        <textarea id={`cr-desc-${id}`} name="description" rows={3} maxLength={4000} defaultValue={change?.description ?? ""} className={textarea} />
+        <NoteEditor id={`cr-desc-${id}`} name="description" rows={3} maxLength={4000} defaultValue={change?.description ?? ""} />
       </Field>
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium">{t("fields.addLines")}</legend>
@@ -431,10 +432,10 @@ export function ClientReportForm({ projectId, report, defaults }: { projectId: s
         </Field>
       </div>
       <Field name="summary" label={t("fields.summary")}>
-        <textarea id={`rep-summary-${id}`} name="summary" rows={5} maxLength={8000} defaultValue={report?.summary ?? ""} className={textarea} />
+        <NoteEditor id={`rep-summary-${id}`} name="summary" rows={5} maxLength={8000} defaultValue={report?.summary ?? ""} />
       </Field>
       <Field name="nextPlan" label={t("fields.nextPlan")}>
-        <textarea id={`rep-next-${id}`} name="nextPlan" rows={4} maxLength={8000} defaultValue={report?.nextPlan ?? ""} className={textarea} />
+        <NoteEditor id={`rep-next-${id}`} name="nextPlan" rows={4} maxLength={8000} defaultValue={report?.nextPlan ?? ""} />
       </Field>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="showHours" defaultChecked={report?.showHours ?? false} />
@@ -452,7 +453,7 @@ export function RetroForm({ projectId, retro, today }: { projectId: string; retr
   const t = useTranslations("projects.close");
   const area = (name: "wentWell" | "improve" | "actions") => (
     <Field name={name} label={t(`retro.${name}`)}>
-      <textarea id={`retro-${name}`} name={name} rows={4} maxLength={8000} defaultValue={retro?.[name] ?? ""} placeholder={t(`retro.hints.${name}`)} className={textarea} />
+      <NoteEditor id={`retro-${name}`} name={name} rows={4} maxLength={8000} defaultValue={retro?.[name] ?? ""} placeholder={t(`retro.hints.${name}`)} />
     </Field>
   );
   return (

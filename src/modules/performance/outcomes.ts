@@ -14,6 +14,7 @@ import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import type { IsoDate } from "@/lib/dates";
 import { submitSalaryChange } from "@/modules/payroll/service";
+import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import { createTask } from "@/modules/platform/tasks-engine/service";
 import { OUTCOME_TYPES, type OutcomeType } from "./enums";
 import { findResultById } from "./final-results";
@@ -65,7 +66,7 @@ export async function raiseOutcome(input: OutcomeInput, actorPersonId: string, e
       validFrom: input.salary.validFrom,
       reason: "adjustment",
       terms: { baseSalary: input.salary.baseSalary, insuranceSalary: input.salary.insuranceSalary, allowances: [] },
-      note: `Kết quả đánh giá ${result.year}${input.note ? ` — ${input.note}` : ""}`,
+      note: `Kết quả đánh giá ${result.year}${input.note?.trim() ? ` — ${noteToPlainText(input.note)}` : ""}`,
     });
     const [created] = await executor
       .insert(schema.reviewOutcome)

@@ -3,6 +3,7 @@
 // old request into a puzzle.
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import type { FormDefinition } from "../engine/form";
 import { AttachmentLink } from "./attachment-link";
 
@@ -35,7 +36,7 @@ export async function Answers({
         return (
           <div key={field.key} className={field.type === "textarea" ? "sm:col-span-2" : undefined}>
             <dt className="text-xs text-muted-foreground">{label(field)}</dt>
-            <dd className="text-sm whitespace-pre-wrap">
+            <dd className={field.type === "textarea" ? "text-sm" : "text-sm whitespace-pre-wrap"}>
               {value === null || value === "" ? (
                 "—"
               ) : field.type === "checkbox" ? (
@@ -52,6 +53,8 @@ export async function Answers({
                   .join(", ") || "—"
               ) : field.type === "person" || field.type === "entity" ? (
                 (Array.isArray(value) ? value : [value]).map((entry) => recordNames.get(String(entry)) ?? String(entry)).join(", ") || "—"
+              ) : field.type === "textarea" ? (
+                <RichText text={String(value)} />
               ) : field.type === "file" ? (
                 <ul className="flex flex-col gap-1">
                   {(Array.isArray(value) ? value : []).map((fileId) => (

@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { ASSET_STATUSES, type AssetStatus } from "../enums";
 import type { AssetHistoryEntry, AssetListRow } from "../service";
 import { qrSvg } from "../labels";
@@ -128,7 +129,7 @@ export async function AssetHistory({ entries }: { entries: readonly AssetHistory
           <Badge variant="secondary">{t.has(entry.type) ? t(entry.type) : entry.type}</Badge>
           <span className="text-xs text-muted-foreground">{entry.at.toLocaleString("vi-VN")}</span>
           {entry.actorName ? <span className="text-xs text-muted-foreground">· {entry.actorName}</span> : null}
-          {entry.note ? <span className="w-full text-muted-foreground">{entry.note}</span> : null}
+          <RichText text={entry.note} className="w-full text-muted-foreground" />
         </li>
       ))}
     </ol>

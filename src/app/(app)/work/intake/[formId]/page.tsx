@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { canSubmitIntake, findIntakeForm, type IntakeAudience, loadViewer, teamFacts } from "@/modules/work/service";
 import { IntakeSubmitForm } from "@/modules/work/ui/intake-forms";
 import { pageTitle } from "@/i18n/page-title";
@@ -26,7 +27,7 @@ export default async function IntakeFormPage({ params }: PageProps<"/work/intake
           · {found.team.name}
         </p>
         <h1>{found.form.name}</h1>
-        {found.form.description ? <p className="text-sm whitespace-pre-line text-muted-foreground">{found.form.description}</p> : null}
+        <RichText text={found.form.description} className="text-sm text-muted-foreground" />
       </header>
       <IntakeSubmitForm formId={found.form.id} fields={found.form.fields} />
     </div>

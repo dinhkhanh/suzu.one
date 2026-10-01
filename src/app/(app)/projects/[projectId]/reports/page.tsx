@@ -6,6 +6,8 @@ import { canWriteClientReport, clientReportFigures, defaultReportPeriod, listCli
 import { ClientReportForm } from "@/modules/projects/ui/commercial-forms";
 import { healthVariant, ProjectHeader } from "@/modules/projects/ui/project-header";
 import { pageTitle } from "@/i18n/page-title";
+import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 export const generateMetadata = pageTitle("clientReports");
 
@@ -68,7 +70,7 @@ export default async function ProjectReportsPage({ params }: PageProps<"/project
             <li key={index} className="flex flex-wrap items-center gap-2">
               <Badge variant={healthVariant(update.health)}>{tProjects(`health.${update.health as "on_track"}`)}</Badge>
               <span className="text-muted-foreground">{date(update.on)}</span>
-              <span>{update.summary}</span>
+              <span>{noteToPlainText(update.summary)}</span>
             </li>
           ))}
         </ul>
@@ -109,12 +111,12 @@ export default async function ProjectReportsPage({ params }: PageProps<"/project
                 {t("pdf")}
               </a>
             </div>
-            {report.summary ? <p className="text-sm whitespace-pre-line">{report.summary}</p> : null}
+            <RichText text={report.summary} className="text-sm" />
             {summary(figures[index])}
             {report.nextPlan ? (
               <div className="text-sm">
                 <p className="text-xs text-muted-foreground">{t("fields.nextPlan")}</p>
-                <p className="whitespace-pre-line">{report.nextPlan}</p>
+                <RichText text={report.nextPlan} />
               </div>
             ) : null}
             {write ? (

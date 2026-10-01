@@ -4,9 +4,8 @@ import { useRouter } from "next/navigation";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { closePayslipQueryAction, publishPayslipsAction, raisePayslipQueryAction, replyToPayslipQueryAction } from "../payslip-actions";
-
-const TEXTAREA = "min-h-20 w-full rounded-md border bg-transparent px-3 py-2 text-sm";
 
 /** C&B releases an approved run to the people in it (FR-PAY-32). */
 export function PublishPayslipsButton({ runId, published }: { runId: string; published: boolean }) {
@@ -34,7 +33,7 @@ export function PayslipQueryForm({ payslipId }: { payslipId: string }) {
       <p className="text-sm text-muted-foreground">{t("askHint")}</p>
       <FieldErrors value={fieldErrors}>
         <Field name="body" label={t("question")}>
-          <textarea id="body" name="body" rows={3} maxLength={4000} required className={TEXTAREA} />
+          <NoteEditor id="body" name="body" rows={3} maxLength={4000} required />
         </Field>
       </FieldErrors>
       <FormError namespace="payroll.payslips.errors" errorKey={errorKey} />
@@ -56,7 +55,7 @@ export function PayslipReplyForm({ queryId }: { queryId: string }) {
     <form onSubmit={onSubmit} className="flex flex-col gap-2">
       <FieldErrors value={fieldErrors}>
         <Field name="body" label={t("reply")}>
-          <textarea id={`reply-${queryId}`} name="body" rows={2} maxLength={4000} required className={TEXTAREA} />
+          <NoteEditor id={`reply-${queryId}`} name="body" rows={2} maxLength={4000} required aria-label={t("reply")} />
         </Field>
       </FieldErrors>
       <FormError namespace="payroll.payslips.errors" errorKey={errorKey} />

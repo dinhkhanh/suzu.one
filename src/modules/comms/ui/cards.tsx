@@ -1,22 +1,11 @@
-// Server-rendered pieces shared by the home feed and the comms pages. Text is always text:
-// an announcement's body becomes paragraphs and line breaks, never markup.
+// Server-rendered pieces shared by the home feed and the comms pages. A body or a message is a
+// note (Markdown, rendered by RichText), never HTML.
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import type { AnnouncementCard, KudosCard } from "../service";
-
-export function PlainText({ text }: { text: string }) {
-  return (
-    <div className="flex flex-col gap-3 text-sm leading-6">
-      {text.split(/\n{2,}/).map((paragraph, index) => (
-        <p key={index} className="whitespace-pre-line break-words">
-          {paragraph}
-        </p>
-      ))}
-    </div>
-  );
-}
 
 export async function AnnouncementList({ cards, empty }: { cards: AnnouncementCard[]; empty: string }) {
   const t = await getTranslations("comms");
@@ -57,7 +46,7 @@ export async function KudosList({ cards, empty, action }: { cards: KudosCard[]; 
             <span>{t.rich("kudos.line", { from: card.fromName, to: card.toName, b: (chunks) => <strong className="font-semibold">{chunks}</strong> })}</span>
             <Badge variant="secondary">{(locale === "en" ? card.valueNameEn : card.valueNameVi) ?? card.valueKey}</Badge>
           </div>
-          <p className="whitespace-pre-line break-words text-sm">{card.message}</p>
+          <RichText text={card.message} className="break-words" />
           <p className="flex items-center gap-2 text-xs text-muted-foreground">
             {format.dateTime(card.createdAt, { dateStyle: "medium", timeZone: "Asia/Ho_Chi_Minh" })}
             {action?.(card)}

@@ -10,7 +10,7 @@ import { db, schema, type Tx } from "@/lib/db";
 import { decideRequest, defineRequestType, getRequest, type RequestView, resubmitRequest, submitRequest, withdrawRequest } from "../platform/approvals/service";
 import { can, type Principal } from "../platform/rbac/policy";
 import { type DiffLine, diffLines } from "./engine/diff";
-import type { Doc } from "./engine/doc";
+import type { Doc } from "@/modules/platform/rich-text/engine/doc";
 import { type PageRow, type PageVersionRow, publishPage, saveDraft } from "./pages";
 
 export type PublishReviewPayload = { pageId: string; spaceId: string; title: string; changeNote: string | null; isMajor: boolean };

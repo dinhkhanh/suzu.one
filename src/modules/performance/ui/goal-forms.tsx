@@ -7,6 +7,7 @@ import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { createCheckInAction, createGoalAction, moveGoalAction, removeKeyResultAction, reparentGoalAction, saveKeyResultAction, updateGoalAction } from "../actions";
 import { MetricValueInput } from "./metric-input";
 import { CONFIDENCES, type GoalLevel, isAnnual, levelRank, METRIC_TYPES, type MetricType, metricValueText, type Milestone, periodsOfYear } from "../enums";
@@ -85,7 +86,7 @@ export function NewGoalForm({ year, choices, parents, defaults }: { year: number
           <Input id="title" name="title" required maxLength={200} />
         </Field>
         <Field name="description" label={t("form.description")}>
-          <textarea id="description" name="description" rows={3} maxLength={4000} className={textarea} />
+          <NoteEditor id="description" name="description" rows={3} maxLength={4000} />
         </Field>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="sm:col-span-2">
@@ -123,7 +124,7 @@ export function EditGoalForm({ goal, owners }: { goal: { id: string; title: stri
           <Input id="title" name="title" defaultValue={goal.title} required maxLength={200} />
         </Field>
         <Field name="description" label={t("form.description")}>
-          <textarea id="description" name="description" rows={3} maxLength={4000} defaultValue={goal.description ?? ""} className={textarea} />
+          <NoteEditor id="description" name="description" rows={3} maxLength={4000} defaultValue={goal.description ?? ""} />
         </Field>
         <div className="grid gap-3 sm:grid-cols-3">
           <Field name="periodKey" label={t("form.period")}>

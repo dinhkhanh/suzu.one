@@ -8,6 +8,7 @@ import { HEALTHS, isStale, listStatusUpdates, loadStatusFacts, openProject, slip
 import { StatusUpdateForm } from "@/modules/projects/ui/plan-forms";
 import { healthVariant, ProjectHeader } from "@/modules/projects/ui/project-header";
 import { pageTitle } from "@/i18n/page-title";
+import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 
 export const generateMetadata = pageTitle("projectUpdates");
 
@@ -51,17 +52,17 @@ export default async function ProjectUpdatesPage({ params }: PageProps<"/project
                 <Badge variant={healthVariant(update.health)}>{t(`health.${update.health as "on_track"}`)}</Badge>
                 <span className="text-sm text-muted-foreground">{[update.authorName, format.dateTime(update.createdAt, { dateStyle: "medium", timeStyle: "short" })].filter(Boolean).join(" · ")}</span>
               </div>
-              <p className="text-sm whitespace-pre-line">{update.summary}</p>
+              <RichText text={update.summary} className="text-sm" />
               {update.highlights ? (
                 <div className="text-sm">
                   <p className="text-xs text-muted-foreground">{t("fields.highlights")}</p>
-                  <p className="whitespace-pre-line">{update.highlights}</p>
+                  <RichText text={update.highlights} />
                 </div>
               ) : null}
               {update.nextSteps ? (
                 <div className="text-sm">
                   <p className="text-xs text-muted-foreground">{t("fields.nextSteps")}</p>
-                  <p className="whitespace-pre-line">{update.nextSteps}</p>
+                  <RichText text={update.nextSteps} />
                 </div>
               ) : null}
               <details>

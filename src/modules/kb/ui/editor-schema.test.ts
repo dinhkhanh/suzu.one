@@ -2,20 +2,21 @@
 // has to load into the editor's ProseMirror schema unchanged, and what the editor produces has to
 // pass the validator. No DOM needed: the schema is built from the same extensions the editor uses.
 import { getSchema } from "@tiptap/core";
-import { TableKit } from "@tiptap/extension-table";
 import { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import StarterKit from "@tiptap/starter-kit";
 import { describe, expect, it } from "vitest";
-import { bold, bulletList, callout, codeBlock, doc, embed, heading, link, orderedList, paragraph, rule, table } from "../engine/build";
-import { validateDoc } from "../engine/doc";
-import { Attachment, Callout, Embed, KbImage } from "./editor-nodes";
+import { bold, bulletList, callout, codeBlock, doc, embed, heading, link, orderedList, paragraph, rule, table, text } from "@/modules/platform/rich-text/engine/build";
+import { validateDoc } from "@/modules/platform/rich-text/engine/doc";
+import { pageExtensions } from "./editor-nodes";
 
-const schema = getSchema([StarterKit.configure({ heading: { levels: [1, 2, 3] } }), TableKit, Callout, Embed, Attachment, KbImage]);
+const schema = getSchema(pageExtensions());
 const FILE = "0b0e7c2e-6f0a-4c55-9f59-3d1f5a1c2b3d";
 
 const sample = doc(
   heading(1, "Quy định"),
-  paragraph("Được ", bold("12 ngày"), ", xem ", link("biểu mẫu", "/kb/pages/abc"), "."),
+  paragraph("Được ", bold("12 ngày"), ", xem ", link("biểu mẫu", "/kb/pages/abc"), ".", text("Nhớ", { type: "underline" }, { type: "highlight" })),
+  { type: "paragraph", attrs: { textAlign: "center" }, content: [text("Giữa trang")] },
+  { type: "heading", attrs: { level: 2, textAlign: "right" }, content: [text("Bên phải")] },
+  { type: "taskList", content: [{ type: "taskItem", attrs: { checked: true }, content: [paragraph("Xong"), { type: "taskList", content: [{ type: "taskItem", content: [paragraph("Con")] }] }] }] },
   callout("warning", "Báo trước 3 ngày.", bulletList("a", "b")),
   orderedList("Một", "Hai"),
   table(["Loại", "Số ngày"], ["Phép năm", "12"]),
@@ -38,7 +39,7 @@ describe("the editor's schema and the server's validator", () => {
   });
 
   it("know the same blocks and marks", () => {
-    for (const name of ["paragraph", "heading", "bulletList", "orderedList", "listItem", "blockquote", "codeBlock", "horizontalRule", "hardBreak", "table", "tableRow", "tableCell", "tableHeader", "callout", "embed", "attachment", "image"]) expect(schema.nodes[name], name).toBeDefined();
-    for (const name of ["bold", "italic", "strike", "underline", "code", "link"]) expect(schema.marks[name], name).toBeDefined();
+    for (const name of ["paragraph", "heading", "bulletList", "orderedList", "listItem", "blockquote", "codeBlock", "horizontalRule", "hardBreak", "table", "tableRow", "tableCell", "tableHeader", "callout", "embed", "attachment", "image", "taskList", "taskItem"]) expect(schema.nodes[name], name).toBeDefined();
+    for (const name of ["bold", "italic", "strike", "underline", "highlight", "code", "link"]) expect(schema.marks[name], name).toBeDefined();
   });
 });
