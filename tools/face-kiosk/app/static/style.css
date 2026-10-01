@@ -28,6 +28,8 @@
   }
 }
 * { box-sizing: border-box; }
+/* `hidden` must win over the display a class gives (the kiosk's setup overlay is a grid). */
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; }
 body { background: var(--bg); color: var(--fg); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--fg); padding: 8px 14px; }
