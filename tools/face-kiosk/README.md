@@ -48,9 +48,13 @@ Tablet (browser, /kiosk) ──LAN, HTTPS──▶ NAS container (this folder) �
 1. Install **Container Manager** from the Package Center.
 2. Copy this folder to the NAS as `/volume1/docker/face-kiosk` (File Station, or
    `git clone` and copy `tools/face-kiosk`).
-3. Edit `docker-compose.yml`:
-   - `SUZU_URL` and `SUZU_DEVICE_TOKEN` from step 1.3;
-   - `KIOSK_KEY` and `ADMIN_PASSWORD`: two different long random strings.
+3. Copy `.env.example` to `.env` in the same folder and fill it in. `.env` holds the secrets and
+   is never committed:
+   - `SUZU_DEVICE_TOKEN` from step 1.3;
+   - `KIOSK_KEY` and `ADMIN_PASSWORD`: two different long random strings
+     (`openssl rand -hex 32`).
+
+   `SUZU_URL` and the other settings stay in `docker-compose.yml`.
 4. **Container Manager → Project → Create**. Name it `face-kiosk`, set the path to
    `/volume1/docker/face-kiosk`, and choose "Use existing docker-compose.yml". The first build
    takes 10–15 minutes, because it downloads the face models into the image.
@@ -122,7 +126,7 @@ Within 60 seconds the same face shows the earlier time instead of punching again
 
 - **Backups:** the `data/` folder holds the faces and the punch log. Include
   `/volume1/docker/face-kiosk/data` in Hyper Backup.
-- **Updates:** copy the new folder over, keeping `data/` and your `docker-compose.yml`. Then
+- **Updates:** copy the new folder over, keeping `data/` and your `.env`. Then
   Container Manager → Project → face-kiosk → Build.
 - **Kiosk health:** SuZu One's device page shows "liên lạc gần nhất (last called in)". The kiosk
   calls in at least every 5 minutes, so a time much older than that means it is down.
