@@ -2,6 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListItem } from "@/components/ui/list";
+import { Table, TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
@@ -50,131 +52,138 @@ export default async function ProjectTeamPage({ params, searchParams }: PageProp
         <ProjectHeader context={context} current="team" />
       </div>
 
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-medium">{t("title")}</h2>
-          <nav className="flex items-center gap-3 text-sm">
-            <Link href={nav(addDays(from, -7 * WEEKS))} className="underline">
-              {t("earlier")}
-            </Link>
-            <Link href={nav(mondayOf(today))} className="underline">
-              {t("thisWeek")}
-            </Link>
-            <Link href={nav(addDays(from, 7 * WEEKS))} className="underline">
-              {t("later")}
-            </Link>
-            {reader.mayOpen ? (
-              <Link href="/projects/capacity" className="underline">
-                {t("capacityLink")}
+      <TableCard>
+        <TableCardHeader
+          title={t("title")}
+          description={t("description")}
+          actions={
+            <nav className="flex items-center gap-3 text-sm">
+              <Link href={nav(addDays(from, -7 * WEEKS))} className="underline">
+                {t("earlier")}
               </Link>
-            ) : null}
-          </nav>
-        </div>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
+              <Link href={nav(mondayOf(today))} className="underline">
+                {t("thisWeek")}
+              </Link>
+              <Link href={nav(addDays(from, 7 * WEEKS))} className="underline">
+                {t("later")}
+              </Link>
+              {reader.mayOpen ? (
+                <Link href="/projects/capacity" className="underline">
+                  {t("capacityLink")}
+                </Link>
+              ) : null}
+            </nav>
+          }
+        />
 
         {lines.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("empty")}</p>
+          <p className="flex h-20 items-center justify-center px-3 text-center text-sm text-muted-foreground">{t("empty")}</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] border-separate border-spacing-1 text-sm">
-              <thead>
-                <tr className="text-left text-xs text-muted-foreground">
-                  <th className="w-48 px-2 font-medium">{t("who")}</th>
-                  {weeks.map((week) => (
-                    <th key={week.start} className={`px-2 font-medium ${week.start === mondayOf(today) ? "text-foreground" : ""}`}>
-                      {weekLabel(week.start)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {lines.map(([key, own]) => {
-                  const personId = own[0].personId;
-                  const row = personId ? capacity.get(personId) : undefined;
-                  return (
-                    <tr key={key}>
-                      <th scope="row" className="px-2 text-left align-top font-medium">
-                        {personId ? own[0].personName : <span className="italic">{t("placeholder", { role: own[0].placeholderRole ?? "" })}</span>}
-                        {personId && own.some((booking) => booking.placeholderRole) ? <span className="block text-xs font-normal text-muted-foreground">{own.find((booking) => booking.placeholderRole)?.placeholderRole}</span> : null}
-                      </th>
-                      {weeks.map((week, index) => {
-                        const cell = own.filter((booking) => booking.weekStart === week.start);
-                        const capacityCell = row?.cells[index];
-                        const tentative = cell.every((booking) => booking.status === "tentative");
-                        return (
-                          <td key={week.start} className={`rounded-lg border p-2 align-top ${cell.length === 0 ? "text-muted-foreground" : tentative ? "border-dashed" : ""} ${capacityCell?.over ? "border-destructive/50 bg-destructive/5" : ""}`}>
-                            {cell.length ? (
-                              <p className="font-medium tabular-nums">
-                                {t("hoursShort", { hours: hours(cell.reduce((sum, booking) => sum + booking.minutes, 0)) })}
-                                {tentative ? <span className="ml-1 text-xs font-normal text-muted-foreground">{t("statuses.tentative")}</span> : null}
-                              </p>
-                            ) : (
-                              "—"
-                            )}
-                            {capacityCell ? (
-                              <p className="text-xs text-muted-foreground">
-                                {t("free", { free: hours(capacityCell.freeMinutes), available: hours(capacityCell.availableMinutes) })}
-                                {capacityCell.awayDays > 0 ? ` · ${t("away", { days: capacityCell.awayDays })}` : ""}
-                              </p>
-                            ) : null}
-                            {capacityCell?.over ? <p className="text-xs font-medium text-destructive">{t("over")}</p> : null}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-                <tr className="text-xs text-muted-foreground">
-                  <th scope="row" className="px-2 text-left font-medium">
-                    {t("total")}
+          <Table numbered={false} className="min-w-[860px] border-separate border-spacing-1">
+            <thead>
+              <tr className="text-left text-xs text-muted-foreground">
+                <th className="w-48 px-2 font-medium">{t("who")}</th>
+                {weeks.map((week) => (
+                  <th key={week.start} className={`px-2 font-medium ${week.start === mondayOf(today) ? "text-foreground" : ""}`}>
+                    {weekLabel(week.start)}
                   </th>
-                  {totals.map((total, index) => (
-                    <td key={weeks[index].start} className="px-2 tabular-nums">
-                      {t("hoursShort", { hours: hours(total.confirmed) })}
-                      {total.tentative ? ` + ${t("tentativeHours", { hours: hours(total.tentative) })}` : ""}
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map(([key, own]) => {
+                const personId = own[0].personId;
+                const row = personId ? capacity.get(personId) : undefined;
+                return (
+                  <tr key={key}>
+                    <th scope="row" className="px-2 text-left align-top font-medium">
+                      {personId ? own[0].personName : <span className="italic">{t("placeholder", { role: own[0].placeholderRole ?? "" })}</span>}
+                      {personId && own.some((booking) => booking.placeholderRole) ? <span className="block text-xs font-normal text-muted-foreground">{own.find((booking) => booking.placeholderRole)?.placeholderRole}</span> : null}
+                    </th>
+                    {weeks.map((week, index) => {
+                      const cell = own.filter((booking) => booking.weekStart === week.start);
+                      const capacityCell = row?.cells[index];
+                      const tentative = cell.every((booking) => booking.status === "tentative");
+                      return (
+                        <td key={week.start} className={`rounded-lg border p-2 align-top ${cell.length === 0 ? "text-muted-foreground" : tentative ? "border-dashed" : ""} ${capacityCell?.over ? "border-destructive/50 bg-destructive/5" : ""}`}>
+                          {cell.length ? (
+                            <p className="font-medium tabular-nums">
+                              {t("hoursShort", { hours: hours(cell.reduce((sum, booking) => sum + booking.minutes, 0)) })}
+                              {tentative ? <span className="ml-1 text-xs font-normal text-muted-foreground">{t("statuses.tentative")}</span> : null}
+                            </p>
+                          ) : (
+                            "—"
+                          )}
+                          {capacityCell ? (
+                            <p className="text-xs text-muted-foreground">
+                              {t("free", { free: hours(capacityCell.freeMinutes), available: hours(capacityCell.availableMinutes) })}
+                              {capacityCell.awayDays > 0 ? ` · ${t("away", { days: capacityCell.awayDays })}` : ""}
+                            </p>
+                          ) : null}
+                          {capacityCell?.over ? <p className="text-xs font-medium text-destructive">{t("over")}</p> : null}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+              <tr className="text-xs text-muted-foreground">
+                <th scope="row" className="px-2 text-left font-medium">
+                  {t("total")}
+                </th>
+                {totals.map((total, index) => (
+                  <td key={weeks[index].start} className="px-2 tabular-nums">
+                    {t("hoursShort", { hours: hours(total.confirmed) })}
+                    {total.tentative ? ` + ${t("tentativeHours", { hours: hours(total.tentative) })}` : ""}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </Table>
         )}
-        <p className="text-xs text-muted-foreground">{t("legend")}</p>
-      </section>
+        <p className="border-t px-4 py-3 text-xs text-muted-foreground">{t("legend")}</p>
+        {can.editPlan ? (
+          <TableAddRow label={t("add")} open={lines.length === 0}>
+            <BookForm projectId={project.id} people={people} weeks={bookingWeeks} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
 
       {can.editPlan ? (
         <>
-          <section className="flex flex-col gap-3 rounded-xl border p-4">
-            <h2 className="text-base font-medium">{t("add")}</h2>
-            <BookForm projectId={project.id} people={people} weeks={bookingWeeks} />
-          </section>
-
           {openRoles.length ? (
-            <section className="flex flex-col gap-3">
-              <h2 className="text-base font-medium">{t("openRoles")}</h2>
-              <p className="text-sm text-muted-foreground">{t("fillHint")}</p>
-              {openRoles.map((role) => (
-                <FillPlaceholderForm key={role} projectId={project.id} role={role} people={people} />
-              ))}
-            </section>
+            <TableCard>
+              <TableCardHeader title={t("openRoles")} count={openRoles.length} description={t("fillHint")} />
+              <List>
+                {openRoles.map((role) => (
+                  <ListItem key={role} className="block">
+                    <FillPlaceholderForm projectId={project.id} role={role} people={people} />
+                  </ListItem>
+                ))}
+              </List>
+            </TableCard>
           ) : null}
 
           {lines.length ? (
-            <section className="flex flex-col gap-3">
-              <h2 className="text-base font-medium">{t("edit")}</h2>
-              {lines.map(([key, own]) => (
-                <details key={key} className="rounded-xl border p-3">
-                  <summary className="cursor-pointer text-sm font-medium">
-                    {own[0].personId ? own[0].personName : t("placeholder", { role: own[0].placeholderRole ?? "" })} <Badge variant="secondary">{t("weeksCount", { count: own.length })}</Badge>
-                  </summary>
-                  <div className="flex flex-col gap-2 pt-3">
-                    {own.map((booking) => (
-                      <BookingEditor key={booking.id} booking={{ id: booking.id, minutes: booking.minutes, status: booking.status, note: booking.note, weekLabel: weekLabel(booking.weekStart) }} />
-                    ))}
-                  </div>
-                </details>
-              ))}
-            </section>
+            <TableCard>
+              <TableCardHeader title={t("edit")} count={lines.length} />
+              <List>
+                {lines.map(([key, own]) => (
+                  <ListItem key={key} className="block">
+                    <details>
+                      <summary className="cursor-pointer font-medium">
+                        {own[0].personId ? own[0].personName : t("placeholder", { role: own[0].placeholderRole ?? "" })} <Badge variant="secondary">{t("weeksCount", { count: own.length })}</Badge>
+                      </summary>
+                      <div className="flex flex-col gap-2 pt-3">
+                        {own.map((booking) => (
+                          <BookingEditor key={booking.id} booking={{ id: booking.id, minutes: booking.minutes, status: booking.status, note: booking.note, weekLabel: weekLabel(booking.weekStart) }} />
+                        ))}
+                      </div>
+                    </details>
+                  </ListItem>
+                ))}
+              </List>
+            </TableCard>
           ) : null}
         </>
       ) : null}

@@ -2,7 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listRecentJobRuns } from "@/modules/platform/jobs/service";
 import { can } from "@/modules/platform/rbac/policy";
@@ -26,32 +26,26 @@ export default async function JobsPage() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>{t("started")}</TableHead>
-            <TableHead>{t("job")}</TableHead>
-            <TableHead>{t("status")}</TableHead>
-            <TableHead>{t("took")}</TableHead>
-            <TableHead>{t("result")}</TableHead>
+            <TableHead kind="date">{t("started")}</TableHead>
+            <TableHead kind="id">{t("job")}</TableHead>
+            <TableHead kind="status">{t("status")}</TableHead>
+            <TableHead kind="time">{t("took")}</TableHead>
+            <TableHead kind="text">{t("result")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {runs.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={5} className="text-muted-foreground">
-                {t("empty")}
-              </TableCell>
-            </TableRow>
-          ) : null}
+          {runs.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
           {runs.map((run) => (
             <TableRow key={run.id}>
-              <TableCell className="whitespace-nowrap">{format.dateTime(run.startedAt, { dateStyle: "short", timeStyle: "medium" })}</TableCell>
-              <TableCell className="font-mono text-xs">{run.job}</TableCell>
+              <TableCell>{format.dateTime(run.startedAt, { dateStyle: "short", timeStyle: "medium" })}</TableCell>
+              <TableCell kind="id">{run.job}</TableCell>
               <TableCell>
                 <Badge dot variant={statusTone(run.status)}>{t(`statuses.${run.status}`)}</Badge>
               </TableCell>
-              <TableCell className="whitespace-nowrap text-muted-foreground">
+              <TableCell kind="time" className="text-muted-foreground">
                 {run.finishedAt ? t("seconds", { seconds: Math.max(0, Math.round((run.finishedAt.getTime() - run.startedAt.getTime()) / 100) / 10) }) : "—"}
               </TableCell>
-              <TableCell className="max-w-md font-mono text-xs break-words">{run.error ?? (run.result ? JSON.stringify(run.result) : "—")}</TableCell>
+              <TableCell className="max-w-md font-mono text-xs break-words whitespace-normal">{run.error ?? (run.result ? JSON.stringify(run.result) : "—")}</TableCell>
             </TableRow>
           ))}
         </TableBody>

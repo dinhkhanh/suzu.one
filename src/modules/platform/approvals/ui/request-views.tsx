@@ -3,7 +3,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { List, ListItem } from "@/components/ui/list";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listPersonNames } from "../../people/service";
 import type { RequestListRow, RequestView } from "../service";
 import { CommentForm, DelegateForm } from "./request-tools";
@@ -16,19 +17,21 @@ export async function RequestStatusBadge({ status }: { status: string }) {
 export async function RequestTable({ rows, empty, showRequester, labels, showWaitingOn = false }: { rows: (RequestListRow & { waitingOn?: string | null })[]; empty: string; showRequester: boolean; /** Names of the request builder's types, which the message bundle does not know. */ labels?: ReadonlyMap<string, string>; /** Whose answer each open request is waiting for — the oversight list. */ showWaitingOn?: boolean }) {
   const t = await getTranslations("approvals");
   const format = await getFormatter();
-  if (rows.length === 0) return <p className="text-sm text-muted-foreground">{empty}</p>;
+  // No message, no empty state: the caller hides the list when there is nothing to show.
+  if (rows.length === 0 && !empty) return null;
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>{t("columns.request")}</TableHead>
-          {showRequester ? <TableHead>{t("columns.requester")}</TableHead> : null}
-          <TableHead>{t("columns.submitted")}</TableHead>
-          <TableHead>{t("columns.status")}</TableHead>
-          {showWaitingOn ? <TableHead>{t("columns.waitingOn")}</TableHead> : null}
+          <TableHead kind="text">{t("columns.request")}</TableHead>
+          {showRequester ? <TableHead kind="person">{t("columns.requester")}</TableHead> : null}
+          <TableHead kind="date">{t("columns.submitted")}</TableHead>
+          <TableHead kind="status">{t("columns.status")}</TableHead>
+          {showWaitingOn ? <TableHead kind="person">{t("columns.waitingOn")}</TableHead> : null}
         </TableRow>
       </TableHeader>
       <TableBody>
+        {rows.length === 0 ? <TableEmpty>{empty}</TableEmpty> : null}
         {rows.map((row) => (
           <TableRow key={row.id}>
             <TableCell>
@@ -38,7 +41,7 @@ export async function RequestTable({ rows, empty, showRequester, labels, showWai
               <p className="text-xs text-muted-foreground">{row.summary}</p>
             </TableCell>
             {showRequester ? <TableCell>{row.requesterName}</TableCell> : null}
-            <TableCell className="whitespace-nowrap">{format.dateTime(row.createdAt, { dateStyle: "medium", timeStyle: "short" })}</TableCell>
+            <TableCell>{format.dateTime(row.createdAt, { dateStyle: "medium", timeStyle: "short" })}</TableCell>
             <TableCell>
               <RequestStatusBadge status={row.status} />
             </TableCell>
@@ -55,13 +58,13 @@ export async function RequestHistory({ view }: { view: RequestView }) {
   const t = await getTranslations("approvals");
   const format = await getFormatter();
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-medium text-muted-foreground">{t("history.title")}</h2>
-      <ul className="flex flex-col gap-1 text-sm">
+    <TableCard>
+      <TableCardHeader title={t("history.title")} />
+      <List>
         {view.steps
           .filter((step) => step.status !== "skipped")
           .map((step, index) => (
-            <li key={step.key}>
+            <ListItem key={step.key} className="block">
               <span className="text-muted-foreground">
                 {t("history.step", { number: index + 1, mode: step.mode })}
                 {step.parallel ? ` ${t("history.parallel")}` : ""}
@@ -69,12 +72,12 @@ export async function RequestHistory({ view }: { view: RequestView }) {
               {step.assignees
                 .map((assignee) => `${assignee.name}${assignee.delegatedFromName ? ` ${t("history.standingInFor", { name: assignee.delegatedFromName })}` : ""} (${t(`assignee.${assignee.status}` as "assignee.pending")})`)
                 .join(", ")}
-            </li>
+            </ListItem>
           ))}
-      </ul>
-      <ol className="flex flex-col gap-2 border-l pl-4 text-sm">
+      </List>
+      <List className="border-t">
         {view.events.map((event) => (
-          <li key={event.id}>
+          <ListItem key={event.id} className="block">
             <span className="font-medium">{t(`events.${event.type}` as "events.submitted")}</span>
             <span className="text-muted-foreground">
               {" "}
@@ -83,10 +86,10 @@ export async function RequestHistory({ view }: { view: RequestView }) {
             {typeof event.meta?.toName === "string" ? <span className="text-muted-foreground"> → {event.meta.toName}</span> : null}
             {event.meta?.verifiedSecondChannel ? <Badge variant="outline" className="ml-2">{t("history.verified")}</Badge> : null}
             {event.comment ? <p className="text-muted-foreground">“{event.comment}”</p> : null}
-          </li>
+          </ListItem>
         ))}
-      </ol>
-    </section>
+      </List>
+    </TableCard>
   );
 }
 

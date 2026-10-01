@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listMyParticipations, listPeerInvitations, listReviewsIOwe } from "@/modules/performance/service";
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { FormStatusBadge, ratingText, StageBadge } from "@/modules/performance/ui/review";
@@ -22,67 +23,111 @@ export default async function ReviewsPage() {
       </header>
       <PerformanceNav active="reviews" />
 
-      <section className="flex flex-col gap-2">
-        <h2>{t("mine.title")}</h2>
-        {mine.length === 0 ? <p className="text-sm text-muted-foreground">{t("mine.empty")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border">
-          {mine.map((line) => (
-            <li key={line.participantId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
-              <Link href={`/performance/reviews/${line.participantId}`} className="min-w-0 flex-1 text-sm underline-offset-4 hover:underline">
-                {line.cycleName}
-              </Link>
-              <StageBadge stage={line.stage} label={t(`stage.${line.stage}`)} />
-              <span className="text-xs text-muted-foreground">{t("mine.self")}</span>
-              <FormStatusBadge status={line.selfStatus} label={t(`formStatus.${line.selfStatus ?? "none"}`)} />
-              {line.released ? <span className="text-xs tabular-nums">{ratingText(format, line.reviewScoreBp)}</span> : null}
-              {line.selfDueOn && line.selfStatus !== "submitted" ? <span className="text-xs text-warning">{t("mine.selfDue", { date: format.dateTime(new Date(`${line.selfDueOn}T00:00:00Z`), { dateStyle: "medium" }) })}</span> : null}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <TableCard>
+        <TableCardHeader title={t("mine.title")} count={mine.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("columns.cycle")}</TableHead>
+              <TableHead kind="status">{t("columns.stage")}</TableHead>
+              <TableHead kind="status">{t("mine.self")}</TableHead>
+              <TableHead kind="percent">{t("calibrate.title")}</TableHead>
+              <TableHead kind="date">{t("timeline.selfDueOn")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {mine.length === 0 ? <TableEmpty>{t("mine.empty")}</TableEmpty> : null}
+            {mine.map((line) => (
+              <TableRow key={line.participantId}>
+                <TableCell>
+                  <Link href={`/performance/reviews/${line.participantId}`} className="font-medium underline-offset-4 hover:underline">
+                    {line.cycleName}
+                  </Link>
+                </TableCell>
+                <TableCell>
+                  <StageBadge stage={line.stage} label={t(`stage.${line.stage}`)} />
+                </TableCell>
+                <TableCell>
+                  <FormStatusBadge status={line.selfStatus} label={t(`formStatus.${line.selfStatus ?? "none"}`)} />
+                </TableCell>
+                <TableCell kind="percent">{line.released ? ratingText(format, line.reviewScoreBp) : null}</TableCell>
+                <TableCell className="text-warning">{line.selfDueOn && line.selfStatus !== "submitted" ? format.dateTime(new Date(`${line.selfDueOn}T00:00:00Z`), { dateStyle: "medium" }) : null}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableCard>
 
       {/* 360 feedback other people asked of me (FR-PRF-03). Nothing here says what anybody else
           wrote — only that somebody is waiting on me. */}
       {invitations.length > 0 ? (
-        <section className="flex flex-col gap-2">
-          <h2>{t("peers.invitations")}</h2>
-          <ul className="flex flex-col divide-y rounded-xl border">
-            {invitations.map((invitation) => (
-              <li key={invitation.nominationId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
-                <Link href={`/performance/reviews/${invitation.participantId}`} className="min-w-0 flex-1 text-sm underline-offset-4 hover:underline">
-                  {invitation.subjectName}
-                </Link>
-                <span className="text-xs text-muted-foreground">{invitation.cycleName}</span>
-                <FormStatusBadge status={invitation.submitted ? "submitted" : invitation.written ? "draft" : null} label={t(`formStatus.${invitation.submitted ? "submitted" : invitation.written ? "draft" : "none"}`)} />
-                {invitation.peerDueOn && !invitation.submitted ? (
-                  <span className="text-xs text-warning">{t("peers.invitationDue", { date: format.dateTime(new Date(`${invitation.peerDueOn}T00:00:00Z`), { dateStyle: "medium" }) })}</span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </section>
+        <TableCard>
+          <TableCardHeader title={t("peers.invitations")} count={invitations.length} />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="person">{t("columns.person")}</TableHead>
+                <TableHead kind="text">{t("columns.cycle")}</TableHead>
+                <TableHead kind="status">{t("columns.status")}</TableHead>
+                <TableHead kind="date">{t("timeline.peerDueOn")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {invitations.map((invitation) => (
+                <TableRow key={invitation.nominationId}>
+                  <TableCell>
+                    <Link href={`/performance/reviews/${invitation.participantId}`} className="font-medium underline-offset-4 hover:underline">
+                      {invitation.subjectName}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{invitation.cycleName}</TableCell>
+                  <TableCell>
+                    <FormStatusBadge status={invitation.submitted ? "submitted" : invitation.written ? "draft" : null} label={t(`formStatus.${invitation.submitted ? "submitted" : invitation.written ? "draft" : "none"}`)} />
+                  </TableCell>
+                  <TableCell className="text-warning">{invitation.peerDueOn && !invitation.submitted ? format.dateTime(new Date(`${invitation.peerDueOn}T00:00:00Z`), { dateStyle: "medium" }) : null}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       ) : null}
 
       {owed.length > 0 ? (
-        <section className="flex flex-col gap-2">
-          <h2>{t("owed.title")}</h2>
-          <p className="text-sm text-muted-foreground">{t("owed.description")}</p>
-          <ul className="flex flex-col divide-y rounded-xl border">
-            {owed.map((line) => (
-              <li key={line.participantId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
-                <Link href={`/performance/reviews/${line.participantId}`} className="min-w-0 flex-1 text-sm underline-offset-4 hover:underline">
-                  {line.personName}
-                </Link>
-                <span className="text-xs text-muted-foreground">{line.cycleName}</span>
-                <span className="text-xs text-muted-foreground">{t("owed.selfLabel")}</span>
-                <FormStatusBadge status={line.selfStatus} label={t(`formStatus.${line.selfStatus ?? "none"}`)} />
-                <span className="text-xs text-muted-foreground">{t("owed.managerLabel")}</span>
-                <FormStatusBadge status={line.managerStatus} label={t(`formStatus.${line.managerStatus ?? "none"}`)} />
-                <StageBadge stage={line.stage} label={t(`stage.${line.stage}`)} />
-              </li>
-            ))}
-          </ul>
-        </section>
+        <TableCard>
+          <TableCardHeader title={t("owed.title")} count={owed.length} description={t("owed.description")} />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="person">{t("columns.person")}</TableHead>
+                <TableHead kind="text">{t("columns.cycle")}</TableHead>
+                <TableHead kind="status">{t("owed.selfLabel")}</TableHead>
+                <TableHead kind="status">{t("owed.managerLabel")}</TableHead>
+                <TableHead kind="status">{t("columns.stage")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {owed.map((line) => (
+                <TableRow key={line.participantId}>
+                  <TableCell>
+                    <Link href={`/performance/reviews/${line.participantId}`} className="font-medium underline-offset-4 hover:underline">
+                      {line.personName}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{line.cycleName}</TableCell>
+                  <TableCell>
+                    <FormStatusBadge status={line.selfStatus} label={t(`formStatus.${line.selfStatus ?? "none"}`)} />
+                  </TableCell>
+                  <TableCell>
+                    <FormStatusBadge status={line.managerStatus} label={t(`formStatus.${line.managerStatus ?? "none"}`)} />
+                  </TableCell>
+                  <TableCell>
+                    <StageBadge stage={line.stage} label={t(`stage.${line.stage}`)} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       ) : null}
     </div>
   );

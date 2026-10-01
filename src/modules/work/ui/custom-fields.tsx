@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
+import { TableAddRow, TableCard } from "@/components/ui/table";
 import { updateTaskAction } from "../actions";
 import { CUSTOM_FIELD_TYPES, type CustomFieldType, type CustomValue, currentValue, customKey, EMPTY, type FieldView, formatDuration, SET } from "../engine/custom-fields";
 import type { TaskFilters } from "../engine/filter";
@@ -228,35 +230,39 @@ export function TaskCustomFields({ taskId, fields, values, people, canEdit }: { 
 export function CustomFieldManager({ teamId, projectId, fields, canManage }: { teamId: string; projectId: string | null; fields: FieldView[]; canManage: boolean }) {
   const t = useTranslations("work.customFields");
   const [editing, setEditing] = useState<string | null>(null);
+  // The add row folds shut when its form is done: a new key mounts it closed again.
+  const [addRow, setAddRow] = useState(0);
   const own = fields.filter((field) => field.projectId === projectId);
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs text-muted-foreground">{projectId ? t("projectDescription") : t("description")}</p>
-      {own.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : null}
-      <ul className="flex flex-col divide-y rounded-xl border empty:hidden">
-        {own.map((field) => (
-          <li key={field.id} className="flex flex-col gap-2 p-3 text-sm">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`font-medium ${field.isActive ? "" : "text-muted-foreground line-through"}`}>{field.name}</span>
-              <Badge variant="outline">{t(`types.${field.type}`)}</Badge>
-              {field.showOnCard ? <Badge variant="secondary">{t("onCard")}</Badge> : null}
-              {field.isActive ? null : <Badge variant="secondary">{t("retired")}</Badge>}
-              {field.options.length ? <span className="text-xs text-muted-foreground">{field.options.map((option) => option.label).join(" · ")}</span> : null}
-              {canManage && editing !== field.id ? (
-                <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setEditing(field.id)}>
-                  {t("edit")}
-                </Button>
-              ) : null}
-            </div>
-            {editing === field.id ? <CustomFieldForm teamId={teamId} projectId={projectId} field={field} onDone={() => setEditing(null)} /> : null}
-          </li>
-        ))}
-      </ul>
-      {canManage ? editing === "new" ? <CustomFieldForm teamId={teamId} projectId={projectId} onDone={() => setEditing(null)} /> : (
-        <Button size="sm" variant="outline" className="self-start" onClick={() => setEditing("new")}>
-          {t("add")}
-        </Button>
-      ) : null}
+      <TableCard>
+        <List>
+          {own.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
+          {own.map((field) => (
+            <ListItem key={field.id} className="flex-col items-stretch gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`font-medium ${field.isActive ? "" : "text-muted-foreground line-through"}`}>{field.name}</span>
+                <Badge variant="outline">{t(`types.${field.type}`)}</Badge>
+                {field.showOnCard ? <Badge variant="secondary">{t("onCard")}</Badge> : null}
+                {field.isActive ? null : <Badge variant="secondary">{t("retired")}</Badge>}
+                {field.options.length ? <span className="text-xs text-muted-foreground">{field.options.map((option) => option.label).join(" · ")}</span> : null}
+                {canManage && editing !== field.id ? (
+                  <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setEditing(field.id)}>
+                    {t("edit")}
+                  </Button>
+                ) : null}
+              </div>
+              {editing === field.id ? <CustomFieldForm teamId={teamId} projectId={projectId} field={field} onDone={() => setEditing(null)} /> : null}
+            </ListItem>
+          ))}
+        </List>
+        {canManage ? (
+          <TableAddRow key={addRow} label={t("add")}>
+            <CustomFieldForm teamId={teamId} projectId={projectId} onDone={() => setAddRow((count) => count + 1)} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

@@ -8,14 +8,16 @@
 // a new link, which is the safe direction and the reason it is built that way.
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { PREVIEW_DEFAULT_DAYS, PREVIEW_LABEL_MAX, PREVIEW_MAX_DAYS, PREVIEW_MESSAGE_MAX, PREVIEW_MIN_DAYS, type PreviewState } from "../engine/preview";
 import { createPreviewLinkAction, revokePreviewLinkAction } from "../preview-actions";
@@ -45,7 +47,8 @@ export function PreviewLinkPanel({ taskId, links, versions, canManage }: { taskI
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [errorKey, setErrorKey] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
+  // The add row folds shut once a link is made or the form is cancelled: a new key mounts it closed.
+  const [addRow, setAddRow] = useState(0);
   const [fresh, setFresh] = useState<{ url: string; expiresAt: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -66,11 +69,12 @@ export function PreviewLinkPanel({ taskId, links, versions, canManage }: { taskI
       if (!result.ok) return;
       setFresh({ url: result.data.url, expiresAt: result.data.expiresAt });
       setCopied(false);
-      setOpen(false);
+      setAddRow((count) => count + 1);
       router.refresh();
     });
 
   if (!canManage && links.length === 0) return null;
+  const revocable = links.some((link) => link.canRevoke && (link.state === "active" || link.state === "viewed"));
 
   return (
     <section className="flex flex-col gap-3">
@@ -99,102 +103,125 @@ export function PreviewLinkPanel({ taskId, links, versions, canManage }: { taskI
         </Alert>
       ) : null}
 
-      {links.length ? (
-        <ul className="flex flex-col divide-y rounded-xl border text-sm">
-          {links.map((link) => (
-            <li key={link.id} className="flex flex-col gap-1 p-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge dot variant={statusTone(link.state)}>{t(`states.${link.state}`)}</Badge>
-                <span className="font-medium">{link.label ?? t("noLabel")}</span>
-                <span className="font-mono text-xs">{link.version ? `v${link.version}` : t("currentVersion")}</span>
-                {!link.allowDecision ? <span className="text-xs text-muted-foreground">{t("viewOnly")}</span> : null}
-                {link.state === "active" || link.state === "viewed" ? (
-                  link.canRevoke ? (
-                    <Button type="button" size="xs" variant="ghost" className="ml-auto" disabled={pending} onClick={() => window.confirm(t("revokeConfirm")) && run(() => revokePreviewLinkAction({ linkId: link.id }))}>
-                      {t("revoke")}
-                    </Button>
-                  ) : null
+      <TableCard>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("label")}</TableHead>
+              <TableHead kind="status">{t("columns.state")}</TableHead>
+              <TableHead kind="id">{t("version")}</TableHead>
+              <TableHead kind="person">{t("columns.createdBy")}</TableHead>
+              <TableHead kind="date">{t("columns.created")}</TableHead>
+              <TableHead kind="date">{t("columns.expires")}</TableHead>
+              <TableHead kind="number">{t("columns.views")}</TableHead>
+              <TableHead kind="date">{t("columns.lastViewed")}</TableHead>
+              {revocable ? <TableHead kind="actions" /> : null}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {links.length === 0 ? <TableEmpty>{t("none")}</TableEmpty> : null}
+            {links.map((link) => (
+              <Fragment key={link.id}>
+                <TableRow>
+                  <TableCell>
+                    <span className="font-medium">{link.label ?? t("noLabel")}</span>
+                    {!link.allowDecision ? <span className="ml-2 text-xs text-muted-foreground">{t("viewOnly")}</span> : null}
+                  </TableCell>
+                  <TableCell>
+                    <Badge dot variant={statusTone(link.state)}>{t(`states.${link.state}`)}</Badge>
+                  </TableCell>
+                  <TableCell kind="id">{link.version ? `v${link.version}` : t("currentVersion")}</TableCell>
+                  <TableCell>{link.createdByName ?? "—"}</TableCell>
+                  <TableCell>{day(link.createdAt)}</TableCell>
+                  <TableCell>{day(link.expiresAt)}</TableCell>
+                  <TableCell kind="number">{link.viewCount}</TableCell>
+                  <TableCell className="text-muted-foreground">{link.viewCount ? (link.lastViewedAt ? when(link.lastViewedAt) : "—") : t("noViews")}</TableCell>
+                  {revocable ? (
+                    <TableCell kind="actions">
+                      {(link.state === "active" || link.state === "viewed") && link.canRevoke ? (
+                        <Button type="button" size="xs" variant="ghost" disabled={pending} onClick={() => window.confirm(t("revokeConfirm")) && run(() => revokePreviewLinkAction({ linkId: link.id }))}>
+                          {t("revoke")}
+                        </Button>
+                      ) : null}
+                    </TableCell>
+                  ) : null}
+                </TableRow>
+                {link.decision ? (
+                  <TableRow data-unnumbered>
+                    <TableCell colSpan={revocable ? 9 : 8} className="h-auto whitespace-normal">
+                      {t("decided", { decision: t(`decisions.${link.decision.decision}` as "decisions.approved"), name: link.decision.decidedByName || "—", at: when(link.decision.at) })}
+                      {link.decision.comment ? <span className="block whitespace-pre-wrap text-muted-foreground">{link.decision.comment}</span> : null}
+                    </TableCell>
+                  </TableRow>
                 ) : null}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t("meta", { name: link.createdByName ?? "—", created: day(link.createdAt), expires: day(link.expiresAt) })}
-                {" · "}
-                {link.viewCount ? t("views", { count: link.viewCount, last: link.lastViewedAt ? when(link.lastViewedAt) : "—" }) : t("noViews")}
-              </p>
-              {link.decision ? (
-                <p className="text-sm">
-                  {t("decided", { decision: t(`decisions.${link.decision.decision}` as "decisions.approved"), name: link.decision.decidedByName || "—", at: when(link.decision.at) })}
-                  {link.decision.comment ? <span className="block whitespace-pre-wrap text-muted-foreground">{link.decision.comment}</span> : null}
-                </p>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      ) : null}
+              </Fragment>
+            ))}
+          </TableBody>
+        </Table>
+        {canManage ? (
+          versions.length === 0 ? (
+            <p className="flex h-12 items-center border-t px-3 text-sm text-muted-foreground">{t("noVersionYet")}</p>
+          ) : (
+            <TableAddRow key={addRow} label={t("new")}>
+              <form
+                className="flex flex-col gap-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const data = new FormData(event.currentTarget);
+                  create({
+                    deliverableId: data.get("deliverableId"),
+                    label: data.get("label"),
+                    message: data.get("message"),
+                    allowDecision: data.get("allowDecision") ?? false,
+                    days: data.get("days"),
+                  });
+                }}
+              >
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor="preview-version">{t("version")}</Label>
+                    <Select id="preview-version" name="deliverableId" defaultValue="">
+                      <option value="">{t("currentVersion")}</option>
+                      {versions.map((row) => (
+                        <option key={row.id} value={row.id}>
+                          v{row.version} {row.frozen ? `· ${t("frozen")}` : ""}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor="preview-label">{t("label")}</Label>
+                    <Input id="preview-label" name="label" maxLength={PREVIEW_LABEL_MAX} placeholder={t("labelPlaceholder")} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor="preview-days">{t("days")}</Label>
+                    <Input id="preview-days" name="days" type="number" min={PREVIEW_MIN_DAYS} max={PREVIEW_MAX_DAYS} defaultValue={PREVIEW_DEFAULT_DAYS} />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="preview-message">{t("message")}</Label>
+                  <NoteEditor id="preview-message" name="message" rows={3} maxLength={PREVIEW_MESSAGE_MAX} placeholder={t("messagePlaceholder")} />
+                </div>
+                <label className="flex items-start gap-2 text-sm">
+                  <Checkbox name="allowDecision" defaultChecked className="mt-0.5" />
+                  {t("allowDecision")}
+                </label>
+                <p className="text-xs text-muted-foreground">{t("privacyNote")}</p>
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={pending}>
+                    {t("create")}
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => setAddRow((count) => count + 1)}>
+                    {t("cancel")}
+                  </Button>
+                </div>
+              </form>
+            </TableAddRow>
+          )
+        ) : null}
+      </TableCard>
 
       <DeliveryError errorKey={errorKey} />
-
-      {canManage ? (
-        open ? (
-          <form
-            className="flex flex-col gap-3 rounded-xl border p-3"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const data = new FormData(event.currentTarget);
-              create({
-                deliverableId: data.get("deliverableId"),
-                label: data.get("label"),
-                message: data.get("message"),
-                allowDecision: data.get("allowDecision") ?? false,
-                days: data.get("days"),
-              });
-            }}
-          >
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="preview-version">{t("version")}</Label>
-                <Select id="preview-version" name="deliverableId" defaultValue="">
-                  <option value="">{t("currentVersion")}</option>
-                  {versions.map((row) => (
-                    <option key={row.id} value={row.id}>
-                      v{row.version} {row.frozen ? `· ${t("frozen")}` : ""}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="preview-label">{t("label")}</Label>
-                <Input id="preview-label" name="label" maxLength={PREVIEW_LABEL_MAX} placeholder={t("labelPlaceholder")} />
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="preview-days">{t("days")}</Label>
-                <Input id="preview-days" name="days" type="number" min={PREVIEW_MIN_DAYS} max={PREVIEW_MAX_DAYS} defaultValue={PREVIEW_DEFAULT_DAYS} />
-              </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="preview-message">{t("message")}</Label>
-              <NoteEditor id="preview-message" name="message" rows={3} maxLength={PREVIEW_MESSAGE_MAX} placeholder={t("messagePlaceholder")} />
-            </div>
-            <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" name="allowDecision" defaultChecked className="mt-0.5 size-4" />
-              {t("allowDecision")}
-            </label>
-            <p className="text-xs text-muted-foreground">{t("privacyNote")}</p>
-            <div className="flex gap-2">
-              <Button type="submit" disabled={pending}>
-                {t("create")}
-              </Button>
-              <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-                {t("cancel")}
-              </Button>
-            </div>
-          </form>
-        ) : (
-          <Button type="button" variant="secondary" className="self-start" onClick={() => setOpen(true)} disabled={versions.length === 0}>
-            {versions.length === 0 ? t("noVersionYet") : t("new")}
-          </Button>
-        )
-      ) : null}
     </section>
   );
 }

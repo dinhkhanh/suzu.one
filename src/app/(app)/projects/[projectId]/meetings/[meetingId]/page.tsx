@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canEditMeeting, DEFAULT_MEETING_MINUTES, getMeeting, type MeetingKind, meetingPeople, openProject } from "@/modules/projects/service";
@@ -26,7 +27,7 @@ export default async function ProjectMeetingPage({ params }: PageProps<"/project
   // The retrospective lives on the close-out page.
   if (meeting.kind === "retro") redirect(`/projects/${project.id}/close`);
   const edits = canEditMeeting(viewer, facts, meeting);
-  const [t, tRaid, format, people] = await Promise.all([getTranslations("projects.meetings"), getTranslations("projects.raid"), getFormatter(), edits ? meetingPeople(project.id) : Promise.resolve([])]);
+  const [t, tRaid, tProjects, format, people] = await Promise.all([getTranslations("projects.meetings"), getTranslations("projects.raid"), getTranslations("projects"), getFormatter(), edits ? meetingPeople(project.id) : Promise.resolve([])]);
   const date = (value: string | null) => (value ? format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" }) : "—");
 
   return (
@@ -64,40 +65,69 @@ export default async function ProjectMeetingPage({ params }: PageProps<"/project
         </dl>
       </section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-base font-medium">{t("fields.decisions")}</h2>
-        {meeting.decisions.length === 0 ? <p className="text-sm text-muted-foreground">{t("noDecisions")}</p> : null}
-        <ul className="flex flex-col gap-2">
-          {meeting.decisions.map((decision) => (
-            <li key={decision.id} className="rounded-lg border p-3 text-sm">
-              <p className="font-medium">{decision.title}</p>
-              <RichText text={decision.description} className="text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">{[tRaid("decidedOnValue", { date: date(decision.decidedOn) }), tRaid(`statuses.${decision.status as "open"}`)].join(" · ")}</p>
-            </li>
-          ))}
-        </ul>
-        <Link href={`/projects/${project.id}/risks?kind=decision`} className="text-sm underline">
-          {t("toLog")}
-        </Link>
-      </section>
+      <TableCard>
+        <TableCardHeader
+          title={t("fields.decisions")}
+          count={meeting.decisions.length || null}
+          actions={
+            <Link href={`/projects/${project.id}/risks?kind=decision`} className="text-sm underline">
+              {t("toLog")}
+            </Link>
+          }
+        />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{tRaid("fields.title")}</TableHead>
+              <TableHead kind="date">{tRaid("fields.decidedOn")}</TableHead>
+              <TableHead kind="status">{tProjects("fields.status")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {meeting.decisions.length === 0 ? <TableEmpty>{t("noDecisions")}</TableEmpty> : null}
+            {meeting.decisions.map((decision) => (
+              <TableRow key={decision.id}>
+                <TableCell className="whitespace-normal">
+                  <p className="font-medium">{decision.title}</p>
+                  <RichText text={decision.description} className="text-muted-foreground" />
+                </TableCell>
+                <TableCell>{date(decision.decidedOn)}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{tRaid(`statuses.${decision.status as "open"}`)}</Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableCard>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-base font-medium">{t("fields.actions")}</h2>
-        {meeting.actions.length === 0 ? <p className="text-sm text-muted-foreground">{t("noActions")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border">
-          {meeting.actions.map((action) => (
-            <li key={action.taskId}>
-              <Link href={`/work/tasks/${action.taskId}`} className="flex flex-col gap-0.5 p-3 text-sm hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
-                <span>
-                  <span className="mr-2 font-mono text-xs text-muted-foreground">{action.key}</span>
-                  <span className={action.status === "done" || action.status === "cancelled" ? "line-through" : undefined}>{action.title}</span>
-                </span>
-                <span className="text-xs text-muted-foreground">{[action.assigneeName ?? t("unassigned"), action.dueDate ? date(action.dueDate) : null].filter(Boolean).join(" · ")}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <TableCard>
+        <TableCardHeader title={t("fields.actions")} count={meeting.actions.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("fields.action")}</TableHead>
+              <TableHead kind="person">{t("fields.assignee")}</TableHead>
+              <TableHead kind="date">{t("fields.due")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {meeting.actions.length === 0 ? <TableEmpty>{t("noActions")}</TableEmpty> : null}
+            {meeting.actions.map((action) => (
+              <TableRow key={action.taskId}>
+                <TableCell className="max-w-96 truncate">
+                  <Link href={`/work/tasks/${action.taskId}`} className="hover:underline">
+                    <span className="mr-2 font-mono text-xs text-muted-foreground">{action.key}</span>
+                    <span className={action.status === "done" || action.status === "cancelled" ? "line-through" : undefined}>{action.title}</span>
+                  </Link>
+                </TableCell>
+                <TableCell>{action.assigneeName ?? t("unassigned")}</TableCell>
+                <TableCell>{action.dueDate ? date(action.dueDate) : "—"}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableCard>
 
       {edits ? (
         <>

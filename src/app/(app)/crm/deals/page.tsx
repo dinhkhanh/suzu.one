@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -113,72 +113,66 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
       {view === "board" ? <DealBoard columns={columns} /> : null}
 
       {view === "list" ? (
-        deals.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("deals.empty")}</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("deals.columns.deal")}</TableHead>
-                <TableHead>{t("deals.columns.account")}</TableHead>
-                <TableHead>{t("deals.columns.stage")}</TableHead>
-                <TableHead>{t("deals.columns.owner")}</TableHead>
-                <TableHead>{t("deals.columns.close")}</TableHead>
-                <TableHead className="text-right">{t("deals.columns.value")}</TableHead>
-                <TableHead className="text-right">{t("deals.columns.weighted")}</TableHead>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("deals.columns.deal")}</TableHead>
+              <TableHead kind="org">{t("deals.columns.account")}</TableHead>
+              <TableHead kind="status">{t("deals.columns.stage")}</TableHead>
+              <TableHead kind="person">{t("deals.columns.owner")}</TableHead>
+              <TableHead kind="date">{t("deals.columns.close")}</TableHead>
+              <TableHead kind="money">{t("deals.columns.value")}</TableHead>
+              <TableHead kind="money">{t("deals.columns.weighted")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {deals.length === 0 ? <TableEmpty>{t("deals.empty")}</TableEmpty> : null}
+            {deals.map((deal) => (
+              <TableRow key={deal.id}>
+                <TableCell>
+                  <Link href={`/crm/deals/${deal.id}`} className="font-medium hover:underline">
+                    {deal.title}
+                  </Link>
+                  <p className="font-mono text-xs text-muted-foreground">{deal.code}</p>
+                </TableCell>
+                <TableCell>{deal.accountName}</TableCell>
+                <TableCell>
+                  <Badge dot variant={deal.status === "won" ? "success" : deal.status === "lost" ? "secondary" : "info"}>
+                    {stageName(deal.stage, locale)}
+                  </Badge>
+                </TableCell>
+                <TableCell>{deal.ownerName}</TableCell>
+                <TableCell>{f.date(deal.expectedCloseOn)}</TableCell>
+                <TableCell kind="money">{deal.value ? f.money(deal.value.totalVnd) : "—"}</TableCell>
+                <TableCell kind="money">{deal.value && deal.status === "open" ? f.money(deal.value.weightedVnd) : "—"}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {deals.map((deal) => (
-                <TableRow key={deal.id}>
-                  <TableCell>
-                    <Link href={`/crm/deals/${deal.id}`} className="font-medium hover:underline">
-                      {deal.title}
-                    </Link>
-                    <p className="font-mono text-xs text-muted-foreground">{deal.code}</p>
-                  </TableCell>
-                  <TableCell>{deal.accountName}</TableCell>
-                  <TableCell>
-                    <Badge dot variant={deal.status === "won" ? "success" : deal.status === "lost" ? "secondary" : "info"}>
-                      {stageName(deal.stage, locale)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm">{deal.ownerName}</TableCell>
-                  <TableCell className="text-sm">{f.date(deal.expectedCloseOn)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{deal.value ? f.money(deal.value.totalVnd) : "—"}</TableCell>
-                  <TableCell className="text-right tabular-nums">{deal.value && deal.status === "open" ? f.money(deal.value.weightedVnd) : "—"}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )
+            ))}
+          </TableBody>
+        </Table>
       ) : null}
 
       {view === "forecast" ? (
-        months.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("deals.noForecast")}</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("deals.columns.closeMonth")}</TableHead>
-                <TableHead className="text-right">{t("deals.columns.count")}</TableHead>
-                <TableHead className="text-right">{t("deals.columns.value")}</TableHead>
-                <TableHead className="text-right">{t("deals.columns.weighted")}</TableHead>
+        <Table numbered={false}>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="date">{t("deals.columns.closeMonth")}</TableHead>
+              <TableHead kind="number">{t("deals.columns.count")}</TableHead>
+              <TableHead kind="money">{t("deals.columns.value")}</TableHead>
+              <TableHead kind="money">{t("deals.columns.weighted")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {months.length === 0 ? <TableEmpty>{t("deals.noForecast")}</TableEmpty> : null}
+            {months.map((row) => (
+              <TableRow key={row.month}>
+                <TableCell>{row.month === "none" ? t("deals.undatedOrLate") : row.month}</TableCell>
+                <TableCell kind="number">{row.count}</TableCell>
+                <TableCell kind="money">{f.money(row.value)}</TableCell>
+                <TableCell kind="money">{f.money(row.weighted)}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {months.map((row) => (
-                <TableRow key={row.month}>
-                  <TableCell>{row.month === "none" ? t("deals.undatedOrLate") : row.month}</TableCell>
-                  <TableCell className="text-right tabular-nums">{row.count}</TableCell>
-                  <TableCell className="text-right tabular-nums">{f.money(row.value)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{f.money(row.weighted)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )
+            ))}
+          </TableBody>
+        </Table>
       ) : null}
     </div>
   );

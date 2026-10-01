@@ -9,6 +9,8 @@ import { FormError } from "@/components/forms/field";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import type { ActivityItem, DailyTaskLine } from "../schema";
 import { submitReportAction } from "../actions";
@@ -107,21 +109,21 @@ export function ReportForm({
 
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-medium">{t("report.tomorrow", { count: picked.length })}</h2>
-        {candidates.length === 0 ? <p className="text-sm text-muted-foreground">{t("plan.noMoreWork")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border">
+        <List>
+          {candidates.length === 0 ? <ListEmpty>{t("plan.noMoreWork")}</ListEmpty> : null}
           {shown.map((task) => (
-            <li key={task.taskId}>
-              <label className="flex items-start gap-2 p-2.5 text-sm">
-                <input type="checkbox" className="mt-1" checked={picked.includes(task.taskId)} onChange={(event) => setPicked((current) => (event.target.checked ? [...current, task.taskId] : current.filter((id) => id !== task.taskId)))} />
+            <ListItem key={task.taskId} className="p-0">
+              <label className="flex flex-1 items-start gap-2 px-3 py-2.5">
+                <Checkbox className="mt-0.5" checked={picked.includes(task.taskId)} onCheckedChange={(checked) => setPicked((current) => (checked ? [...current, task.taskId] : current.filter((id) => id !== task.taskId)))} />
                 <span className="min-w-0 flex-1">
                   <span className="font-mono text-xs text-muted-foreground">{task.key}</span> {task.title}
                   {task.projectName ? <span className="block text-xs text-muted-foreground">{task.projectName}</span> : null}
                 </span>
                 {notDone.has(task.taskId) ? <Badge variant="outline">{t("report.carried")}</Badge> : null}
               </label>
-            </li>
+            </ListItem>
           ))}
-        </ul>
+        </List>
         {!showAll && shown.length < candidates.length ? (
           <Button type="button" size="sm" variant="ghost" onClick={() => setShowAll(true)} className="self-start">
             {t("report.showAll", { count: candidates.length })}

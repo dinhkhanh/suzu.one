@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canRecordMeeting, listMeetings, type MeetingKind, meetingPeople, openProject } from "@/modules/projects/service";
@@ -31,38 +32,53 @@ export default async function ProjectMeetingsPage({ params }: PageProps<"/projec
     <div className="flex max-w-4xl flex-col gap-8">
       <ProjectHeader context={context} current="meetings" />
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-base font-medium">{t("title")}</h2>
-        {meetings.length === 0 ? <p className="text-sm text-muted-foreground">{t("none")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border">
-          {meetings.map((meeting) => (
-            <li key={meeting.id}>
-              <Link href={meeting.kind === "retro" ? `/projects/${project.id}/close` : `/projects/${project.id}/meetings/${meeting.id}`} className="flex flex-col gap-1 p-3 hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
-                <span className="flex min-w-0 flex-col gap-1">
-                  <span className="flex flex-wrap items-center gap-1.5">
-                    <Badge variant="outline">{t(`kinds.${meeting.kind as MeetingKind}`)}</Badge>
-                    <span className="truncate font-medium">{meeting.title}</span>
+      <TableCard>
+        <TableCardHeader title={t("title")} count={meetings.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("fields.title")}</TableHead>
+              <TableHead kind="select">{t("fields.kind")}</TableHead>
+              <TableHead kind="date">{t("fields.heldOn")}</TableHead>
+              <TableHead kind="person">{t("fields.author")}</TableHead>
+              <TableHead kind="number">{t("fields.attendees")}</TableHead>
+              <TableHead kind="number">{t("fields.decisions")}</TableHead>
+              <TableHead kind="status">{t("fields.actions")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {meetings.length === 0 ? <TableEmpty>{t("none")}</TableEmpty> : null}
+            {meetings.map((meeting) => (
+              <TableRow key={meeting.id}>
+                <TableCell className="max-w-80">
+                  <span className="flex items-center gap-2">
+                    <Link href={meeting.kind === "retro" ? `/projects/${project.id}/close` : `/projects/${project.id}/meetings/${meeting.id}`} className="truncate font-medium hover:underline">
+                      {meeting.title}
+                    </Link>
+                    {meeting.calendarEventId ? <Badge variant="outline">{t("inCalendar")}</Badge> : null}
                   </span>
-                  <span className="text-xs text-muted-foreground">{[date(meeting.heldOn), meeting.startTime ? meeting.startTime.slice(0, 5) : null, meeting.authorName, t("attendeesCount", { count: meeting.attendeeIds.length })].filter(Boolean).join(" · ")}</span>
-                </span>
-                <span className="flex flex-wrap gap-1.5 text-xs">
-                  {meeting.calendarEventId ? <Badge variant="outline">{t("inCalendar")}</Badge> : null}
-                  {meeting.decisions ? <Badge variant="secondary">{t("decisionsCount", { count: meeting.decisions })}</Badge> : null}
-                  {meeting.actionItems ? <Badge variant={meeting.openActionItems ? "warning" : "success"}>{t("actionsCount", { open: meeting.openActionItems, total: meeting.actionItems })}</Badge> : null}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {records ? (
-        <section className="flex flex-col gap-3 rounded-xl border p-4">
-          <h2 className="text-base font-medium">{t("new")}</h2>
-          <MeetingForm projectId={project.id} people={people} today={todayInVietnam()} />
-          <p className="text-xs text-muted-foreground">{t("calendarNote")}</p>
-        </section>
-      ) : null}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{t(`kinds.${meeting.kind as MeetingKind}`)}</Badge>
+                </TableCell>
+                <TableCell>{[date(meeting.heldOn), meeting.startTime ? meeting.startTime.slice(0, 5) : null].filter(Boolean).join(" · ")}</TableCell>
+                <TableCell>{meeting.authorName ?? "—"}</TableCell>
+                <TableCell kind="number">{meeting.attendeeIds.length}</TableCell>
+                <TableCell kind="number">{meeting.decisions}</TableCell>
+                <TableCell>{meeting.actionItems ? <Badge dot variant={meeting.openActionItems ? "warning" : "success"}>{t("actionsCount", { open: meeting.openActionItems, total: meeting.actionItems })}</Badge> : "—"}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {records ? (
+          <TableAddRow label={t("new")} open={meetings.length === 0}>
+            <div className="flex flex-col gap-3">
+              <MeetingForm projectId={project.id} people={people} today={todayInVietnam()} />
+              <p className="text-xs text-muted-foreground">{t("calendarNote")}</p>
+            </div>
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

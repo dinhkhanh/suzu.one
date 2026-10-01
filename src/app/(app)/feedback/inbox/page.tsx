@@ -106,7 +106,7 @@ export default async function FeedbackInboxPage(props: PageProps<"/feedback/inbo
         </Button>
       </Form>
 
-      <FeedbackList items={rows} showPerson empty={t("inbox.empty")} />
+      <FeedbackList items={rows} showPerson empty={t("inbox.empty")} numberFrom={(page - 1) * FEEDBACK_PAGE_SIZE + 1} />
 
       {pages > 1 ? (
         <div className="flex items-center justify-between gap-3 text-sm">

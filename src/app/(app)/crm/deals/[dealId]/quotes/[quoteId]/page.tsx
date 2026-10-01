@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { getRequest } from "@/modules/platform/approvals/service";
@@ -105,12 +105,12 @@ export default async function QuotePage({ params }: PageProps<"/crm/deals/[dealI
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("quote.lineTitle")}</TableHead>
-              <TableHead className="text-right">{t("quote.quantity")}</TableHead>
-              <TableHead className="text-right">{t("quote.unitPrice")}</TableHead>
-              <TableHead className="text-right">{t("quote.months")}</TableHead>
-              <TableHead className="text-right">{t("quote.discount")}</TableHead>
-              <TableHead className="text-right">{t("quote.amount")}</TableHead>
+              <TableHead kind="text">{t("quote.lineTitle")}</TableHead>
+              <TableHead kind="number">{t("quote.quantity")}</TableHead>
+              <TableHead kind="money">{t("quote.unitPrice")}</TableHead>
+              <TableHead kind="number">{t("quote.months")}</TableHead>
+              <TableHead kind="percent">{t("quote.discount")}</TableHead>
+              <TableHead kind="money">{t("quote.amount")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -120,28 +120,30 @@ export default async function QuotePage({ params }: PageProps<"/crm/deals/[dealI
                   {line.title}
                   {line.description ? <p className="text-xs text-muted-foreground">{line.description}</p> : null}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell kind="number">
                   {line.quantity} {line.unit ?? ""}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">{f.money(line.unitPriceVnd)}</TableCell>
-                <TableCell className="text-right tabular-nums">{line.months ?? "—"}</TableCell>
-                <TableCell className="text-right tabular-nums">{line.discountBp ? `${line.discountBp / 100}%` : "—"}</TableCell>
-                <TableCell className="text-right tabular-nums">{f.money(lineNet(line))}</TableCell>
+                <TableCell kind="money">{f.money(line.unitPriceVnd)}</TableCell>
+                <TableCell kind="number">{line.months ?? "—"}</TableCell>
+                <TableCell kind="percent">{line.discountBp ? `${line.discountBp / 100}%` : "—"}</TableCell>
+                <TableCell kind="money">{f.money(lineNet(line))}</TableCell>
               </TableRow>
             ))}
+          </TableBody>
+          <TableFooter>
             <TableRow>
-              <TableCell colSpan={5} className="text-right text-muted-foreground">
+              <TableCell colSpan={5} className="text-right font-normal text-muted-foreground">
                 {t("quote.vatAmount")} ({quote.quote.vatRateBp / 100}%)
               </TableCell>
-              <TableCell className="text-right tabular-nums">{f.money(quote.quote.vatVnd)}</TableCell>
+              <TableCell kind="money">{f.money(quote.quote.vatVnd)}</TableCell>
             </TableRow>
             <TableRow>
               <TableCell colSpan={5} className="text-right font-medium">
                 {t("quote.total")}
               </TableCell>
-              <TableCell className="text-right font-medium tabular-nums">{f.money(quote.quote.totalVnd)}</TableCell>
+              <TableCell kind="money">{f.money(quote.quote.totalVnd)}</TableCell>
             </TableRow>
-          </TableBody>
+          </TableFooter>
         </Table>
       )}
     </div>

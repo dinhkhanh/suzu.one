@@ -2,7 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, unitChoices } from "@/modules/platform/org/service";
@@ -30,52 +30,55 @@ export default async function RolesPage() {
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t("person")}</TableHead>
-            <TableHead>{t("role")}</TableHead>
-            <TableHead>{t("scopeType")}</TableHead>
-            <TableHead>{t("period")}</TableHead>
-            <TableHead>{t("grantedBy")}</TableHead>
-            <TableHead />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {grants.map((grant) => (
-            <TableRow key={grant.id}>
-              <TableCell>
-                <Link href={`/people/${grant.personId}`} className="font-medium hover:underline">
-                  {grant.personName}
-                </Link>
-                <p className="text-xs text-muted-foreground">{grant.workEmail ?? t("noAccess")}</p>
-              </TableCell>
-              <TableCell>{roleName.has(grant.role) ? roleName(grant.role) : grant.role}</TableCell>
-              <TableCell>
-                {t(`scope.${grant.scopeType}`)}
-                {grant.scopeType === "group" ? null : <span className="text-muted-foreground"> · {grant.scopeName ?? "?"}</span>}
-              </TableCell>
-              <TableCell className="whitespace-nowrap">
-                {day(grant.validFrom)} → {grant.validTo ? day(grant.validTo) : "…"}
-                {grant.validFrom > today ? <Badge variant="outline" className="ml-2">{t("notYet")}</Badge> : null}
-              </TableCell>
-              <TableCell className="text-muted-foreground">{grant.grantedByName ?? t("system")}</TableCell>
-              <TableCell className="text-right">
-                <RevokeRoleButton id={grant.id} />
-              </TableCell>
+      <TableCard>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="person">{t("person")}</TableHead>
+              <TableHead kind="select">{t("role")}</TableHead>
+              <TableHead kind="org">{t("scopeType")}</TableHead>
+              <TableHead kind="date">{t("period")}</TableHead>
+              <TableHead kind="person">{t("grantedBy")}</TableHead>
+              <TableHead kind="actions" />
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      <GrantRoleForm
-        today={today}
-        people={people.map((person) => ({ id: person.id, name: person.fullName }))}
-        scopes={{
-          entity: entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName })),
-          unit: units,
-        }}
-      />
+          </TableHeader>
+          <TableBody>
+            {grants.map((grant) => (
+              <TableRow key={grant.id}>
+                <TableCell>
+                  <Link href={`/people/${grant.personId}`} className="font-medium hover:underline">
+                    {grant.personName}
+                  </Link>
+                  <p className="text-xs text-muted-foreground">{grant.workEmail ?? t("noAccess")}</p>
+                </TableCell>
+                <TableCell>{roleName.has(grant.role) ? roleName(grant.role) : grant.role}</TableCell>
+                <TableCell>
+                  {t(`scope.${grant.scopeType}`)}
+                  {grant.scopeType === "group" ? null : <span className="text-muted-foreground"> · {grant.scopeName ?? "?"}</span>}
+                </TableCell>
+                <TableCell>
+                  {day(grant.validFrom)} → {grant.validTo ? day(grant.validTo) : "…"}
+                  {grant.validFrom > today ? <Badge variant="outline" className="ml-2">{t("notYet")}</Badge> : null}
+                </TableCell>
+                <TableCell className="text-muted-foreground">{grant.grantedByName ?? t("system")}</TableCell>
+                <TableCell kind="actions">
+                  <RevokeRoleButton id={grant.id} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <TableAddRow label={t("grant")}>
+          <GrantRoleForm
+            today={today}
+            people={people.map((person) => ({ id: person.id, name: person.fullName }))}
+            scopes={{
+              entity: entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName })),
+              unit: units,
+            }}
+          />
+        </TableAddRow>
+      </TableCard>
     </div>
   );
 }

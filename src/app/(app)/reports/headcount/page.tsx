@@ -1,10 +1,11 @@
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { exportHeadcountAction } from "@/modules/core-hr/export-actions";
 import { getHeadcountReport } from "@/modules/core-hr/reports";
@@ -97,72 +98,85 @@ export default async function HeadcountPage(props: PageProps<"/reports/headcount
 
       <div className="grid gap-6 md:grid-cols-2">
         {(["byEntity", "byDepartment", "byWorkforceType", "byGender", "byAge", "bySeniority"] as const).map((group) => (
-          <section key={group} className="flex flex-col gap-2">
-            <h2 className="text-sm font-medium text-muted-foreground">{t(`groups.${group}`)}</h2>
-            <Table>
+          <TableCard key={group}>
+            <TableCardHeader title={t(`groups.${group}`)} />
+            <Table numbered={false}>
+              <TableHeader>
+                <TableRow>
+                  <TableHead kind={group === "byEntity" || group === "byDepartment" ? "org" : "select"}>{t("columns.group")}</TableHead>
+                  <TableHead kind="number" className="w-24">{t("count")}</TableHead>
+                  <TableHead kind="percent" className="w-24">{t("share")}</TableHead>
+                </TableRow>
+              </TableHeader>
               <TableBody>
+                {snapshot[group].length === 0 ? <TableEmpty>{t("none")}</TableEmpty> : null}
                 {snapshot[group].map((row) => (
                   <TableRow key={row.key}>
                     <TableCell>{label(group, row.key)}</TableCell>
-                    <TableCell className="w-16 text-right tabular-nums">{row.count}</TableCell>
-                    <TableCell className="w-16 text-right text-muted-foreground tabular-nums">{percent(row.count)}</TableCell>
+                    <TableCell kind="number">{row.count}</TableCell>
+                    <TableCell kind="percent" className="text-muted-foreground">{percent(row.count)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </section>
+          </TableCard>
         ))}
         {(["joinersByDepartment", "leaversByDepartment"] as const).map((group) => (
-          <section key={group} className="flex flex-col gap-2">
-            <h2 className="text-sm font-medium text-muted-foreground">{t(group)}</h2>
-            {movement[group].length === 0 ? <p className="text-sm text-muted-foreground">{t("none")}</p> : null}
-            <Table>
+          <TableCard key={group}>
+            <TableCardHeader title={t(group)} />
+            <Table numbered={false}>
+              <TableHeader>
+                <TableRow>
+                  <TableHead kind="org">{t("department")}</TableHead>
+                  <TableHead kind="number" className="w-24">{t("count")}</TableHead>
+                </TableRow>
+              </TableHeader>
               <TableBody>
+                {movement[group].length === 0 ? <TableEmpty>{t("none")}</TableEmpty> : null}
                 {movement[group].map((row) => (
                   <TableRow key={row.key}>
                     <TableCell>{row.key === "unknown" ? t("unknown") : row.key}</TableCell>
-                    <TableCell className="w-16 text-right tabular-nums">{row.count}</TableCell>
+                    <TableCell kind="number">{row.count}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </section>
+          </TableCard>
         ))}
       </div>
 
       {(["contractsExpiring", "probations"] as const).map((list) => (
-        <section key={list} className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">{t(list)}</h2>
-          {report[list].length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("none")}</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("person")}</TableHead>
-                  <TableHead>{t("department")}</TableHead>
-                  <TableHead>{t("contractType")}</TableHead>
-                  <TableHead>{t("endDate")}</TableHead>
+        <TableCard key={list}>
+          <TableCardHeader title={t(list)} count={report[list].length || null} />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="person">{t("person")}</TableHead>
+                <TableHead kind="org">{t("department")}</TableHead>
+                <TableHead kind="select">{t("contractType")}</TableHead>
+                <TableHead kind="date">{t("endDate")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {report[list].length === 0 ? <TableEmpty>{t("none")}</TableEmpty> : null}
+              {report[list].map((row) => (
+                <TableRow key={`${row.personId}-${row.endDate}-${row.type}`}>
+                  <TableCell>
+                    <Link href={`/people/${row.personId}`} className="font-medium hover:underline">
+                      {row.fullName}
+                    </Link>{" "}
+                    <span className="font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
+                  </TableCell>
+                  <TableCell>{[row.department, row.entity].filter(Boolean).join(" · ") || "—"}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{tc(row.type as "probation")}</Badge>
+                  </TableCell>
+                  <TableCell>{day(row.endDate)}</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {report[list].map((row) => (
-                  <TableRow key={`${row.personId}-${row.endDate}-${row.type}`}>
-                    <TableCell>
-                      <Link href={`/people/${row.personId}`} className="hover:underline">
-                        {row.fullName}
-                      </Link>{" "}
-                      <span className="text-xs text-muted-foreground">{row.employeeCode}</span>
-                    </TableCell>
-                    <TableCell>{[row.department, row.entity].filter(Boolean).join(" · ")}</TableCell>
-                    <TableCell>{tc(row.type as "probation")}</TableCell>
-                    <TableCell className="whitespace-nowrap">{day(row.endDate)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </section>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       ))}
     </div>
   );

@@ -2,7 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { listEntityOptions } from "@/modules/payroll/options";
@@ -42,17 +42,18 @@ export default async function SimpleProfileReportPage() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>{t("salaries.person")}</TableHead>
-            <TableHead>{t("salaries.entity")}</TableHead>
-            <TableHead>{t("profiles.basis")}</TableHead>
-            <TableHead>{t("exposure.contract")}</TableHead>
-            <TableHead>{t("exposure.since")}</TableHead>
-            <TableHead className="text-right">{t("exposure.months")}</TableHead>
-            <TableHead>{t("profiles.reviewDate")}</TableHead>
-            <TableHead>{t("exposure.flags")}</TableHead>
+            <TableHead kind="person">{t("salaries.person")}</TableHead>
+            <TableHead kind="org">{t("salaries.entity")}</TableHead>
+            <TableHead kind="select">{t("profiles.basis")}</TableHead>
+            <TableHead kind="select">{t("exposure.contract")}</TableHead>
+            <TableHead kind="date">{t("exposure.since")}</TableHead>
+            <TableHead kind="number">{t("exposure.months")}</TableHead>
+            <TableHead kind="date">{t("profiles.reviewDate")}</TableHead>
+            <TableHead kind="tags">{t("exposure.flags")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
+          {rows.length === 0 ? <TableEmpty>{t("exposure.empty")}</TableEmpty> : null}
           {rows.map((row) => (
             <TableRow key={row.personId}>
               <TableCell>
@@ -65,20 +66,21 @@ export default async function SimpleProfileReportPage() {
               <TableCell>{t(`profiles.bases.${row.basis}`)}</TableCell>
               <TableCell>{row.contractType ? t(`exposure.contracts.${row.contractType}` as "exposure.contracts.probation") : "—"}</TableCell>
               <TableCell>{day(row.since)}</TableCell>
-              <TableCell className="text-right tabular-nums">{row.months}</TableCell>
+              <TableCell kind="number">{row.months}</TableCell>
               <TableCell>{row.reviewDate ? day(row.reviewDate) : "—"}</TableCell>
-              <TableCell className="flex flex-wrap gap-1">
-                {row.flags.map((flag) => (
-                  <Badge key={flag} variant="destructive">
-                    {t(`exposure.flagLabels.${flag}`)}
-                  </Badge>
-                ))}
+              <TableCell>
+                <span className="flex flex-wrap gap-1">
+                  {row.flags.map((flag) => (
+                    <Badge key={flag} variant="destructive">
+                      {t(`exposure.flagLabels.${flag}`)}
+                    </Badge>
+                  ))}
+                </span>
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-      {rows.length === 0 ? <p className="text-sm text-muted-foreground">{t("exposure.empty")}</p> : null}
       <p className="max-w-3xl text-xs text-muted-foreground">{t("exposure.legalNote")}</p>
     </div>
   );

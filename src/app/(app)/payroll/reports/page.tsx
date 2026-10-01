@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { costReport, costTrend, insuranceSummary, payrollRegister, pitSummary, reportOptions, seesNamedReports, unionReport } from "@/modules/payroll/reports";
@@ -55,21 +55,18 @@ export default async function PayrollReportsPage({ searchParams }: PageProps<"/p
 
       {/* ── The register: the one report that names people and their pay (C&B only) ── */}
       {register ? (
-        <section className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-medium">{t("register.title")}</h2>
-            <ExportReportButton report="register" entityId={entityId} month={month} />
-          </div>
+        <TableCard>
+          <TableCardHeader title={t("register.title")} count={register.lines.length} actions={<ExportReportButton report="register" entityId={entityId} month={month} />} />
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("person")}</TableHead>
-                <TableHead>{t("register.department")}</TableHead>
-                <TableHead className="text-right">{t("register.gross")}</TableHead>
-                <TableHead className="text-right">{t("register.insurance")}</TableHead>
-                <TableHead className="text-right">{t("register.pit")}</TableHead>
-                <TableHead className="text-right">{t("register.net")}</TableHead>
-                <TableHead className="text-right">{t("register.employerCost")}</TableHead>
+                <TableHead kind="person">{t("person")}</TableHead>
+                <TableHead kind="org">{t("register.department")}</TableHead>
+                <TableHead kind="money">{t("register.gross")}</TableHead>
+                <TableHead kind="money">{t("register.insurance")}</TableHead>
+                <TableHead kind="money">{t("register.pit")}</TableHead>
+                <TableHead kind="money">{t("register.net")}</TableHead>
+                <TableHead kind="money">{t("register.employerCost")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -79,65 +76,66 @@ export default async function PayrollReportsPage({ searchParams }: PageProps<"/p
                     {line.fullName}
                     <span className="ml-2 font-mono text-xs text-muted-foreground">{line.employeeCode}</span>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{line.departmentName ?? "—"}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(line.gross)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(line.employeeInsurance)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(line.pit)}</TableCell>
-                  <TableCell className="text-right font-medium tabular-nums">{formatVnd(line.net)}</TableCell>
-                  <TableCell className="text-right tabular-nums text-muted-foreground">{formatVnd(line.employerCost)}</TableCell>
+                  <TableCell className="text-muted-foreground">{line.departmentName ?? "—"}</TableCell>
+                  <TableCell kind="money">{formatVnd(line.gross)}</TableCell>
+                  <TableCell kind="money">{formatVnd(line.employeeInsurance)}</TableCell>
+                  <TableCell kind="money">{formatVnd(line.pit)}</TableCell>
+                  <TableCell kind="money" className="font-medium">{formatVnd(line.net)}</TableCell>
+                  <TableCell kind="money" className="text-muted-foreground">{formatVnd(line.employerCost)}</TableCell>
                 </TableRow>
               ))}
-              <TableRow>
-                <TableCell className="font-medium">{t("total")}</TableCell>
-                <TableCell />
-                <TableCell className="text-right font-semibold tabular-nums">{formatVnd(register.totals.grossEarnings)}</TableCell>
-                <TableCell className="text-right font-semibold tabular-nums">{formatVnd(register.totals.employeeInsurance)}</TableCell>
-                <TableCell className="text-right font-semibold tabular-nums">{formatVnd(register.totals.pit)}</TableCell>
-                <TableCell className="text-right font-semibold tabular-nums">{formatVnd(register.totals.net)}</TableCell>
-                <TableCell className="text-right font-semibold tabular-nums">{formatVnd(register.totals.employerCost)}</TableCell>
-              </TableRow>
             </TableBody>
+            <TableFooter>
+              <TableRow>
+                <TableCell>{t("total")}</TableCell>
+                <TableCell />
+                <TableCell kind="money" className="font-semibold">{formatVnd(register.totals.grossEarnings)}</TableCell>
+                <TableCell kind="money" className="font-semibold">{formatVnd(register.totals.employeeInsurance)}</TableCell>
+                <TableCell kind="money" className="font-semibold">{formatVnd(register.totals.pit)}</TableCell>
+                <TableCell kind="money" className="font-semibold">{formatVnd(register.totals.net)}</TableCell>
+                <TableCell kind="money" className="font-semibold">{formatVnd(register.totals.employerCost)}</TableCell>
+              </TableRow>
+            </TableFooter>
           </Table>
-        </section>
+        </TableCard>
       ) : null}
 
       {/* ── Cost by department (everyone with payroll:read) ── */}
       {cost && cost.byDepartment.length > 0 ? (
-        <section className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-medium">{t("cost.title")}</h2>
-            <ExportReportButton report="cost" entityId={entityId} month={month} />
-          </div>
-          <Table>
+        <TableCard>
+          <TableCardHeader title={t("cost.title")} actions={<ExportReportButton report="cost" entityId={entityId} month={month} />} />
+          <Table numbered={false}>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("cost.department")}</TableHead>
-                <TableHead className="text-right">{t("cost.headcount")}</TableHead>
-                <TableHead className="text-right">{t("register.gross")}</TableHead>
-                <TableHead className="text-right">{t("cost.employerInsurance")}</TableHead>
-                <TableHead className="text-right">{t("register.employerCost")}</TableHead>
+                <TableHead kind="org">{t("cost.department")}</TableHead>
+                <TableHead kind="number">{t("cost.headcount")}</TableHead>
+                <TableHead kind="money">{t("register.gross")}</TableHead>
+                <TableHead kind="money">{t("cost.employerInsurance")}</TableHead>
+                <TableHead kind="money">{t("register.employerCost")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {cost.byDepartment.map((row) => (
                 <TableRow key={row.key}>
                   <TableCell>{row.label}</TableCell>
-                  <TableCell className="text-right tabular-nums">{row.headcount}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(row.gross)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(row.employerInsurance)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(row.employerCost)}</TableCell>
+                  <TableCell kind="number">{row.headcount}</TableCell>
+                  <TableCell kind="money">{formatVnd(row.gross)}</TableCell>
+                  <TableCell kind="money">{formatVnd(row.employerInsurance)}</TableCell>
+                  <TableCell kind="money">{formatVnd(row.employerCost)}</TableCell>
                 </TableRow>
               ))}
-              <TableRow>
-                <TableCell className="font-medium">{t("total")}</TableCell>
-                <TableCell className="text-right font-semibold tabular-nums">{cost.total.headcount}</TableCell>
-                <TableCell className="text-right font-semibold tabular-nums">{formatVnd(cost.total.gross)}</TableCell>
-                <TableCell className="text-right font-semibold tabular-nums">{formatVnd(cost.total.employerInsurance)}</TableCell>
-                <TableCell className="text-right font-semibold tabular-nums">{formatVnd(cost.total.employerCost)}</TableCell>
-              </TableRow>
             </TableBody>
+            <TableFooter>
+              <TableRow>
+                <TableCell>{t("total")}</TableCell>
+                <TableCell kind="number" className="font-semibold">{cost.total.headcount}</TableCell>
+                <TableCell kind="money" className="font-semibold">{formatVnd(cost.total.gross)}</TableCell>
+                <TableCell kind="money" className="font-semibold">{formatVnd(cost.total.employerInsurance)}</TableCell>
+                <TableCell kind="money" className="font-semibold">{formatVnd(cost.total.employerCost)}</TableCell>
+              </TableRow>
+            </TableFooter>
           </Table>
-        </section>
+        </TableCard>
       ) : null}
 
       {/* ── Insurance: the figures the BHXH monthly notice is checked against ── */}
@@ -194,31 +192,31 @@ export default async function PayrollReportsPage({ searchParams }: PageProps<"/p
 
       {/* ── The trend (FR-PAY-34: headcount cost trend) ── */}
       {trend.length > 0 ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium">{t("trend.title")}</h2>
-          <Table>
+        <TableCard>
+          <TableCardHeader title={t("trend.title")} />
+          <Table numbered={false}>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("month")}</TableHead>
-                <TableHead className="text-right">{t("cost.headcount")}</TableHead>
-                <TableHead className="text-right">{t("register.gross")}</TableHead>
-                <TableHead className="text-right">{t("register.net")}</TableHead>
-                <TableHead className="text-right">{t("register.employerCost")}</TableHead>
+                <TableHead kind="date">{t("month")}</TableHead>
+                <TableHead kind="number">{t("cost.headcount")}</TableHead>
+                <TableHead kind="money">{t("register.gross")}</TableHead>
+                <TableHead kind="money">{t("register.net")}</TableHead>
+                <TableHead kind="money">{t("register.employerCost")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {trend.map((point) => (
                 <TableRow key={point.month}>
                   <TableCell className="tabular-nums">{point.month}</TableCell>
-                  <TableCell className="text-right tabular-nums">{point.headcount}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(point.gross)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(point.net)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(point.employerCost)}</TableCell>
+                  <TableCell kind="number">{point.headcount}</TableCell>
+                  <TableCell kind="money">{formatVnd(point.gross)}</TableCell>
+                  <TableCell kind="money">{formatVnd(point.net)}</TableCell>
+                  <TableCell kind="money">{formatVnd(point.employerCost)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </section>
+        </TableCard>
       ) : null}
     </div>
   );

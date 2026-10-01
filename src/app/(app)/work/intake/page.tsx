@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import { listMyIntakeRequests, listOpenIntakeForms, loadViewer } from "@/modules/work/service";
@@ -29,40 +31,61 @@ export default async function IntakeIndexPage() {
         <p className="text-sm text-muted-foreground">{t("indexDescription")}</p>
       </header>
 
-      {forms.length === 0 ? <p className="text-sm text-muted-foreground">{t("noneOpen")}</p> : null}
+      {forms.length === 0 ? (
+        <List>
+          <ListEmpty>{t("noneOpen")}</ListEmpty>
+        </List>
+      ) : null}
       {[...Map.groupBy(forms, (form) => form.teamName)].map(([teamName, own]) => (
-        <section key={teamName} className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">{teamName}</h2>
-          <ul className="flex flex-col divide-y rounded-xl border text-sm">
+        <TableCard key={teamName}>
+          <TableCardHeader title={teamName} count={own.length} />
+          <List>
             {own.map((form) => (
-              <li key={form.id} className="p-3">
-                <Link href={`/work/intake/${form.id}`} className="font-medium hover:underline">
-                  {form.name}
-                </Link>
-                {form.description?.trim() ? <p className="line-clamp-2 text-xs text-muted-foreground">{noteToPlainText(form.description)}</p> : null}
-              </li>
+              <ListItem key={form.id}>
+                <div className="min-w-0 flex-1">
+                  <Link href={`/work/intake/${form.id}`} className="font-medium hover:underline">
+                    {form.name}
+                  </Link>
+                  {form.description?.trim() ? <p className="line-clamp-2 text-xs text-muted-foreground">{noteToPlainText(form.description)}</p> : null}
+                </div>
+              </ListItem>
             ))}
-          </ul>
-        </section>
+          </List>
+        </TableCard>
       ))}
 
       {mine.length > 0 ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("myRequests")}</h2>
-          <ul className="flex flex-col divide-y rounded-xl border text-sm">
-            {mine.map((request) => (
-              <li key={request.taskId} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3">
-                <div className="min-w-0 flex-1 basis-56">
-                  <Link href={`/work/tasks/${request.taskId}`} className="font-medium hover:underline">
-                    <span className="font-mono text-xs text-muted-foreground">{request.key}</span> {request.title}
-                  </Link>
-                  <p className="text-xs text-muted-foreground">{[request.formName, format.dateTime(request.createdAt, { dateStyle: "medium" })].filter(Boolean).join(" · ")}</p>
-                </div>
-                <Badge variant="outline">{request.stateName}</Badge>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <TableCard>
+          <TableCardHeader title={t("myRequests")} count={mine.length} />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="id">{tWork("table.key")}</TableHead>
+                <TableHead kind="text">{tWork("table.title")}</TableHead>
+                <TableHead kind="select">{tWork("triage.rules.form")}</TableHead>
+                <TableHead kind="date">{t("sentOn")}</TableHead>
+                <TableHead kind="status">{tWork("task.fields.state")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {mine.map((request) => (
+                <TableRow key={request.taskId}>
+                  <TableCell kind="id">{request.key}</TableCell>
+                  <TableCell className="max-w-80">
+                    <Link href={`/work/tasks/${request.taskId}`} className="block truncate font-medium hover:underline">
+                      {request.title}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{request.formName ?? "—"}</TableCell>
+                  <TableCell>{format.dateTime(request.createdAt, { dateStyle: "medium" })}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{request.stateName}</Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       ) : null}
     </div>
   );

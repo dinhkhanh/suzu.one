@@ -1,6 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
@@ -56,17 +58,22 @@ export default async function CommissionPage({ searchParams }: PageProps<"/crm/c
       <CrmTabs current="commission" show={shell.show} />
       {approved.length === 0 ? <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">{t("noScheme")}</p> : null}
 
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <h2 className="mr-auto">{t("statements")}</h2>
-          <CommissionMonthPicker month={month} />
-          {runs && approved.length ? <ComputeButton month={month} /> : null}
-        </div>
-        {months.length ? <p className="text-xs text-muted-foreground">{t("monthsWith", { months: months.join(", ") })}</p> : null}
-        {statements.length === 0 ? <p className="text-sm text-muted-foreground">{t("noStatements")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border">
+      <TableCard>
+        <TableCardHeader
+          title={t("statements")}
+          count={statements.length || null}
+          description={months.length ? t("monthsWith", { months: months.join(", ") }) : undefined}
+          actions={
+            <>
+              <CommissionMonthPicker month={month} />
+              {runs && approved.length ? <ComputeButton month={month} /> : null}
+            </>
+          }
+        />
+        <List>
+          {statements.length === 0 ? <ListEmpty>{t("noStatements")}</ListEmpty> : null}
           {statements.map((statement) => (
-            <li key={statement.row.id} className="p-3 text-sm">
+            <ListItem key={statement.row.id} className="block">
               <details>
                 <summary className="flex cursor-pointer flex-wrap items-center gap-2">
                   <span className="font-medium">{statement.personName}</span>
@@ -79,34 +86,32 @@ export default async function CommissionPage({ searchParams }: PageProps<"/crm/c
                   {statement.trace ? (
                     <>
                       <p className="text-xs text-muted-foreground">{t("traceScheme", { scheme: statement.trace.schemeName })}</p>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
-                          <thead className="text-left text-muted-foreground">
-                            <tr>
-                              <th className="py-1 pr-3 font-normal">{t("columns.received")}</th>
-                              <th className="py-1 pr-3 font-normal">{t("columns.invoice")}</th>
-                              <th className="py-1 pr-3 font-normal">{t("columns.account")}</th>
-                              <th className="py-1 pr-3 font-normal">{t("columns.as")}</th>
-                              <th className="py-1 pr-3 text-right font-normal">{t("columns.net")}</th>
-                              <th className="py-1 pr-3 text-right font-normal">{t("columns.share")}</th>
-                              <th className="py-1 text-right font-normal">{t("columns.base")}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {statement.trace.lines.map((line, index) => (
-                              <tr key={`${line.paymentId}-${index}`} className="border-t">
-                                <td className="py-1 pr-3">{f.date(line.receivedOn)}</td>
-                                <td className="py-1 pr-3 font-mono">{line.invoiceNumber}</td>
-                                <td className="py-1 pr-3">{line.accountName}</td>
-                                <td className="py-1 pr-3">{t(`earners.${line.as}`)}</td>
-                                <td className="py-1 pr-3 text-right tabular-nums">{f.money(line.netVnd)}</td>
-                                <td className="py-1 pr-3 text-right tabular-nums">{rate(line.shareBp)}</td>
-                                <td className="py-1 text-right tabular-nums">{f.money(line.baseVnd)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                      <Table numbered={false}>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead kind="date">{t("columns.received")}</TableHead>
+                            <TableHead kind="id">{t("columns.invoice")}</TableHead>
+                            <TableHead kind="org">{t("columns.account")}</TableHead>
+                            <TableHead kind="select">{t("columns.as")}</TableHead>
+                            <TableHead kind="money">{t("columns.net")}</TableHead>
+                            <TableHead kind="percent">{t("columns.share")}</TableHead>
+                            <TableHead kind="money">{t("columns.base")}</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {statement.trace.lines.map((line, index) => (
+                            <TableRow key={`${line.paymentId}-${index}`}>
+                              <TableCell>{f.date(line.receivedOn)}</TableCell>
+                              <TableCell kind="id">{line.invoiceNumber}</TableCell>
+                              <TableCell>{line.accountName}</TableCell>
+                              <TableCell>{t(`earners.${line.as}`)}</TableCell>
+                              <TableCell kind="money">{f.money(line.netVnd)}</TableCell>
+                              <TableCell kind="percent">{rate(line.shareBp)}</TableCell>
+                              <TableCell kind="money">{f.money(line.baseVnd)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                       <ul className="flex flex-col gap-1 text-xs">
                         {statement.trace.bands.map((band) => (
                           <li key={band.fromVnd} className="flex flex-wrap gap-2">
@@ -120,18 +125,18 @@ export default async function CommissionPage({ searchParams }: PageProps<"/crm/c
                   {statement.canConfirm ? <ConfirmStatementButton statementId={statement.row.id} /> : null}
                 </div>
               </details>
-            </li>
+            </ListItem>
           ))}
-        </ul>
-      </section>
+        </List>
+      </TableCard>
 
       {seesSchemes ? (
-        <section className="flex flex-col gap-3">
-          <h2>{t("schemes")}</h2>
-          {schemes.length === 0 ? <p className="text-sm text-muted-foreground">{t("noSchemes")}</p> : null}
-          <ul className="flex flex-col divide-y rounded-xl border">
+        <TableCard>
+          <TableCardHeader title={t("schemes")} count={schemes.length || null} />
+          <List>
+            {schemes.length === 0 ? <ListEmpty>{t("noSchemes")}</ListEmpty> : null}
             {schemes.map((scheme) => (
-              <li key={scheme.id} className="flex flex-col gap-2 p-3 text-sm">
+              <ListItem key={scheme.id} className="flex-col items-stretch gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{scheme.name}</span>
                   <span className="text-xs text-muted-foreground">{scheme.entityId ? entityName.get(scheme.entityId) : t("group")}</span>
@@ -145,18 +150,15 @@ export default async function CommissionPage({ searchParams }: PageProps<"/crm/c
                   {scheme.rule.tiers.map((tier) => t("tierLine", { from: f.money(tier.fromVnd), rate: rate(tier.rateBp) })).join("; ")}
                 </p>
                 {decides && scheme.status === "proposed" ? <SchemeDecision schemeId={scheme.id} /> : null}
-              </li>
+              </ListItem>
             ))}
-          </ul>
+          </List>
           {proposes ? (
-            <details className="rounded-xl border p-3">
-              <summary className="cursor-pointer text-sm font-medium">{t("proposeTitle")}</summary>
-              <div className="mt-3">
-                <CommissionSchemeForm entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} today={today} />
-              </div>
-            </details>
+            <TableAddRow label={t("proposeTitle")}>
+              <CommissionSchemeForm entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} today={today} />
+            </TableAddRow>
           ) : null}
-        </section>
+        </TableCard>
       ) : null}
     </div>
   );

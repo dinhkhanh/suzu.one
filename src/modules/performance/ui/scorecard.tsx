@@ -2,6 +2,7 @@
 // month is open), the whole working out, and the year so far from the stored months.
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getKpiResults, getScorecard } from "../kpi-scores";
 import { bpText, MonthPicker, monthLabel, periodLabel, ScoreFigure, ScoreState, TraceTable } from "./kpi";
 
@@ -58,28 +59,26 @@ export async function ScorecardView({ personId, month, basePath }: { personId: s
           </ul>
         ) : null}
         {results.byKpi.length > 0 ? (
-          <div className="overflow-x-auto rounded-xl border">
-            <table className="w-full text-sm">
-              <thead className="text-left text-xs text-muted-foreground">
-                <tr className="border-b">
-                  <th className="p-2 font-medium">{t("kpi.columns.kpi")}</th>
-                  <th className="p-2 font-medium">{t("kpi.year.periods")}</th>
-                  <th className="p-2 text-right font-medium">{t("kpi.year.weightMonths")}</th>
-                  <th className="p-2 text-right font-medium">{t("kpi.year.average")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.byKpi.map((line) => (
-                  <tr key={line.kpiCode} className="border-b last:border-0">
-                    <td className="p-2">{line.kpiName}</td>
-                    <td className="p-2 text-xs text-muted-foreground">{line.periods.map(periodLabel).join(", ")}</td>
-                    <td className="p-2 text-right tabular-nums">{line.weightMonths}</td>
-                    <td className="p-2 text-right tabular-nums">{bpText(format, line.averageBp)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table numbered={false}>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="text">{t("kpi.columns.kpi")}</TableHead>
+                <TableHead kind="date">{t("kpi.year.periods")}</TableHead>
+                <TableHead kind="number">{t("kpi.year.weightMonths")}</TableHead>
+                <TableHead kind="percent">{t("kpi.year.average")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {results.byKpi.map((line) => (
+                <TableRow key={line.kpiCode}>
+                  <TableCell>{line.kpiName}</TableCell>
+                  <TableCell className="whitespace-normal text-xs text-muted-foreground">{line.periods.map(periodLabel).join(", ")}</TableCell>
+                  <TableCell kind="number">{line.weightMonths}</TableCell>
+                  <TableCell kind="percent">{bpText(format, line.averageBp)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         ) : null}
         <p className="text-xs text-muted-foreground">{t("kpi.year.formula")}</p>
       </section>

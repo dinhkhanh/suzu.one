@@ -2,6 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
 import { entityReach } from "@/modules/platform/rbac/policy";
 import { listExpenseClaims } from "@/modules/requests/expense";
@@ -35,48 +37,45 @@ export default async function ExpenseClaimsPage() {
         <SweepClaimsButton label={t("sweep")} />
       </header>
 
-      {claims.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("none")}</p>
-      ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2 text-left font-medium">{t("columns.requester")}</th>
-                <th className="px-3 py-2 text-left font-medium">{t("columns.summary")}</th>
-                <th className="px-3 py-2 text-left font-medium">{t("columns.filed")}</th>
-                <th className="px-3 py-2 text-left font-medium">{t("columns.status")}</th>
-                <th className="px-3 py-2 text-left font-medium">{t("columns.payment")}</th>
-                <th className="px-3 py-2 text-right font-medium">{t("amount")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {claims.map((claim) => (
-                <tr key={claim.requestId} className="border-t">
-                  <td className="px-3 py-2 whitespace-nowrap">{claim.requesterName}</td>
-                  <td className="px-3 py-2">
-                    <Link href={`/approvals/request/${claim.requestId}`} className="hover:underline">
-                      {claim.summary}
-                    </Link>
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{format.dateTime(claim.createdAt, { dateStyle: "medium" })}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{t(`status.${claim.status}` as "status.approved")}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    {claim.payment ? (
-                      <Badge variant="secondary">{t("postedTo", { month: claim.payment.month })}</Badge>
-                    ) : claim.status === "approved" ? (
-                      <Badge variant="outline">{t("awaitingPayroll")}</Badge>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{money(claim.total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="person">{t("columns.requester")}</TableHead>
+            <TableHead kind="text">{t("columns.summary")}</TableHead>
+            <TableHead kind="date">{t("columns.filed")}</TableHead>
+            <TableHead kind="status">{t("columns.status")}</TableHead>
+            <TableHead kind="status">{t("columns.payment")}</TableHead>
+            <TableHead kind="money">{t("amount")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {claims.length === 0 ? <TableEmpty>{t("none")}</TableEmpty> : null}
+          {claims.map((claim) => (
+            <TableRow key={claim.requestId}>
+              <TableCell>{claim.requesterName}</TableCell>
+              <TableCell className="max-w-96 truncate">
+                <Link href={`/approvals/request/${claim.requestId}`} className="font-medium hover:underline">
+                  {claim.summary}
+                </Link>
+              </TableCell>
+              <TableCell className="text-muted-foreground">{format.dateTime(claim.createdAt, { dateStyle: "medium" })}</TableCell>
+              <TableCell>
+                <Badge dot variant={statusTone(claim.status)}>{t(`status.${claim.status}` as "status.approved")}</Badge>
+              </TableCell>
+              <TableCell>
+                {claim.payment ? (
+                  <Badge variant="secondary">{t("postedTo", { month: claim.payment.month })}</Badge>
+                ) : claim.status === "approved" ? (
+                  <Badge variant="outline">{t("awaitingPayroll")}</Badge>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </TableCell>
+              <TableCell kind="money">{money(claim.total)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

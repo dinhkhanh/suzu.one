@@ -288,6 +288,63 @@
   .tab-row > button[aria-current="page"] {
     @apply bg-primary/10 font-semibold text-link hover:bg-primary/15 hover:text-link dark:bg-primary/20;
   }
+
+  /* The gutter of row numbers down the left of every grid (src/components/ui/table.tsx and
+     list.tsx). Drawn as each row's ::before, so no caller writes a cell for it: an empty cell in
+     the header and the footer, the row's number in the body. The number is hidden from screen
+     readers (the `/ ""`), which already announce the row's position. A row marked
+     `data-unnumbered` (an expanded detail under its parent) keeps the gutter but not a number. */
+  [data-slot="table-card"] {
+    --table-gutter: 0px;
+  }
+  [data-slot="table-card"]:has([data-numbered]) {
+    --table-gutter: 3.5rem;
+  }
+  .table-grid[data-numbered] > tbody {
+    counter-reset: table-row var(--table-row-start, 0);
+  }
+  .table-grid[data-numbered] > :is(thead, tbody, tfoot) > tr::before {
+    content: "";
+    display: table-cell;
+    width: 3.5rem;
+    min-width: 3.5rem;
+    border-right: 1px solid var(--border);
+    vertical-align: middle;
+    text-align: center;
+    color: var(--faint);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .table-grid[data-numbered] > tbody > tr:not([data-slot="table-empty"], [data-unnumbered]) {
+    counter-increment: table-row;
+  }
+  .table-grid[data-numbered] > tbody > tr:not([data-slot="table-empty"], [data-unnumbered])::before {
+    content: counter(table-row);
+    content: counter(table-row) / "";
+  }
+  .list-grid[data-numbered] {
+    counter-reset: table-row var(--table-row-start, 0);
+  }
+  .list-grid[data-numbered] > li {
+    counter-increment: table-row;
+  }
+  .list-grid[data-numbered] > li::before {
+    content: counter(table-row);
+    content: counter(table-row) / "";
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: stretch;
+    flex: none;
+    width: 3.5rem;
+    border-right: 1px solid var(--border);
+    color: var(--faint);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .list-grid[data-numbered] > li[data-slot="list-empty"]::before {
+    content: "";
+  }
 }
 
 /* The two halves of every ad-hoc switch (view toggles, year pickers, segmented groups): the chosen

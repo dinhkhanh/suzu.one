@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { listEntityOptions } from "@/modules/payroll/options";
@@ -53,16 +53,17 @@ export default async function SalariesPage({ searchParams }: PageProps<"/payroll
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>{t("salaries.person")}</TableHead>
-            <TableHead>{t("salaries.entity")}</TableHead>
-            <TableHead>{t("profiles.profile")}</TableHead>
-            <TableHead className="text-right">{t("salaries.baseSalary")}</TableHead>
-            <TableHead className="text-right">{t("salaries.insuranceSalary")}</TableHead>
-            <TableHead className="text-right">{t("salaries.allowances")}</TableHead>
-            <TableHead>{t("salaries.validFrom")}</TableHead>
+            <TableHead kind="person">{t("salaries.person")}</TableHead>
+            <TableHead kind="org">{t("salaries.entity")}</TableHead>
+            <TableHead kind="select">{t("profiles.profile")}</TableHead>
+            <TableHead kind="money">{t("salaries.baseSalary")}</TableHead>
+            <TableHead kind="money">{t("salaries.insuranceSalary")}</TableHead>
+            <TableHead kind="money">{t("salaries.allowances")}</TableHead>
+            <TableHead kind="date">{t("salaries.validFrom")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
+          {rows.length === 0 ? <TableEmpty>{t("salaries.empty")}</TableEmpty> : null}
           {rows.map((row) => (
             <TableRow key={row.personId}>
               <TableCell>
@@ -80,9 +81,9 @@ export default async function SalariesPage({ searchParams }: PageProps<"/payroll
               <TableCell>{row.profile ? <Badge variant={row.profile === "simple" ? "outline" : "secondary"}>{t(`profiles.kinds.${row.profile}`)}</Badge> : <span className="text-destructive">{t("salaries.noProfile")}</span>}</TableCell>
               {row.structure ? (
                 <>
-                  <TableCell className="text-right tabular-nums">{formatVnd(row.structure.baseSalary)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(row.structure.insuranceSalary)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(row.structure.allowancesTotal)}</TableCell>
+                  <TableCell kind="money">{formatVnd(row.structure.baseSalary)}</TableCell>
+                  <TableCell kind="money">{formatVnd(row.structure.insuranceSalary)}</TableCell>
+                  <TableCell kind="money">{formatVnd(row.structure.allowancesTotal)}</TableCell>
                   <TableCell>{day(row.structure.validFrom)}</TableCell>
                 </>
               ) : (
@@ -94,7 +95,6 @@ export default async function SalariesPage({ searchParams }: PageProps<"/payroll
           ))}
         </TableBody>
       </Table>
-      {rows.length === 0 ? <p className="text-sm text-muted-foreground">{t("salaries.empty")}</p> : null}
     </div>
   );
 }

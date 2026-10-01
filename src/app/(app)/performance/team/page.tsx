@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { getTeamDashboard } from "@/modules/performance/service";
 import { bpText, MonthPicker, readMonth, ScoreFigure, ScoreState } from "@/modules/performance/ui/kpi";
@@ -43,53 +44,51 @@ export default async function TeamPerformancePage({ searchParams }: PageProps<"/
         <MonthPicker month={month} href={(next) => `/performance/team?month=${next}`} labels={{ previous: t("kpi.previousMonth"), next: t("kpi.nextMonth") }} />
         <p className="text-sm text-muted-foreground">{t("team.summary", { people: rows.length, measured: measured.length, missing })}</p>
       </div>
-      <div className="overflow-x-auto rounded-xl border">
-        <table className="w-full text-sm">
-          <thead className="text-left text-xs text-muted-foreground">
-            <tr className="border-b">
-              <th className="p-2 font-medium">{t("team.person")}</th>
-              <th className="p-2 font-medium">{t("team.kpiScore")}</th>
-              <th className="p-2 text-right font-medium">{t("team.missing")}</th>
-              <th className="p-2 font-medium">{t("team.goals")}</th>
-              <th className="p-2 text-right font-medium">{t("team.stale")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.personId} className="border-b last:border-0">
-                <td className="p-2">
-                  <Link href={`/performance/kpis/${row.personId}?month=${month}`} className="font-medium hover:underline">
-                    {row.fullName}
-                  </Link>
-                </td>
-                <td className="p-2">
-                  {row.kpi ? (
-                    <span className="flex items-center gap-2">
-                      <ScoreFigure bp={row.kpi.scoreBp} text={bpText(format, row.kpi.scoreBp)} />
-                      <ScoreState state={row.kpi.state} label={t(`kpi.state.${row.kpi.state}`)} />
-                    </span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">{t("team.noKpis")}</span>
-                  )}
-                </td>
-                <td className={`p-2 text-right tabular-nums ${row.kpi && row.kpi.missing > 0 ? "text-warning" : "text-muted-foreground"}`}>{row.kpi ? `${row.kpi.missing}/${row.kpi.lines}` : "—"}</td>
-                <td className="p-2">
-                  {row.okr ? (
-                    <span className="flex flex-wrap items-center gap-2">
-                      <ProgressBar bp={row.okr.progressBp} label={row.okr.progressBp === null ? t("notMeasured") : bpText(format, row.okr.progressBp)} />
-                      <ConfidenceBadge confidence={row.okr.confidence} label={row.okr.confidence ? t(`enums.confidence.${row.okr.confidence}`) : ""} />
-                      <span className="text-xs text-muted-foreground">{t("team.goalCount", { count: row.okr.goals })}</span>
-                    </span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">{t("team.noGoals")}</span>
-                  )}
-                </td>
-                <td className={`p-2 text-right tabular-nums ${row.okr && row.okr.stale > 0 ? "text-warning" : "text-muted-foreground"}`}>{row.okr ? row.okr.stale : "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="person">{t("team.person")}</TableHead>
+            <TableHead kind="percent" className="text-left">{t("team.kpiScore")}</TableHead>
+            <TableHead kind="number">{t("team.missing")}</TableHead>
+            <TableHead kind="percent" className="text-left">{t("team.goals")}</TableHead>
+            <TableHead kind="number">{t("team.stale")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.personId}>
+              <TableCell>
+                <Link href={`/performance/kpis/${row.personId}?month=${month}`} className="font-medium hover:underline">
+                  {row.fullName}
+                </Link>
+              </TableCell>
+              <TableCell>
+                {row.kpi ? (
+                  <span className="flex items-center gap-2">
+                    <ScoreFigure bp={row.kpi.scoreBp} text={bpText(format, row.kpi.scoreBp)} />
+                    <ScoreState state={row.kpi.state} label={t(`kpi.state.${row.kpi.state}`)} />
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">{t("team.noKpis")}</span>
+                )}
+              </TableCell>
+              <TableCell kind="number" className={row.kpi && row.kpi.missing > 0 ? "text-warning" : "text-muted-foreground"}>{row.kpi ? `${row.kpi.missing}/${row.kpi.lines}` : "—"}</TableCell>
+              <TableCell>
+                {row.okr ? (
+                  <span className="flex flex-wrap items-center gap-2">
+                    <ProgressBar bp={row.okr.progressBp} label={row.okr.progressBp === null ? t("notMeasured") : bpText(format, row.okr.progressBp)} />
+                    <ConfidenceBadge confidence={row.okr.confidence} label={row.okr.confidence ? t(`enums.confidence.${row.okr.confidence}`) : ""} />
+                    <span className="text-xs text-muted-foreground">{t("team.goalCount", { count: row.okr.goals })}</span>
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">{t("team.noGoals")}</span>
+                )}
+              </TableCell>
+              <TableCell kind="number" className={row.okr && row.okr.stale > 0 ? "text-warning" : "text-muted-foreground"}>{row.okr ? row.okr.stale : "—"}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
       <p className="text-xs text-muted-foreground">{t("team.hint")}</p>
     </div>
   );

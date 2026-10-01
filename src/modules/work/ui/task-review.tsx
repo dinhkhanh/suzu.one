@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { List, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
 import { FileLink } from "@/modules/platform/files/ui/signed-upload";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
@@ -243,12 +244,12 @@ export function TaskReview({
       <CompareVersions versions={mediaVersions} />
 
       {deliverables.length ? (
-        <ol className="flex flex-col divide-y rounded-xl border text-sm">
+        <List>
           {deliverables.map((item) => {
             const media = mediaVersions.find((row) => row.id === item.id);
             const openPins = item.pins.filter((pin) => !pin.resolved).length;
             return (
-              <li key={item.id} className="flex flex-col gap-1 px-3 py-2">
+              <ListItem key={item.id} className="flex-col items-stretch gap-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-xs">v{item.version}</span>
                   <span className="min-w-0 flex-1 truncate">
@@ -307,10 +308,10 @@ export function TaskReview({
                 </div>
                 {media && pinsFor === item.id ? <PinBoard version={media} pins={item.pins} canPin={canPin} /> : null}
                 {recordingFor === item.id ? <ClientDecisionForm target={{ kind: "version", taskId, deliverableId: item.id }} version={item.version} clientName={clientName} contacts={clientContacts} files={files} today={today} onDone={() => setRecordingFor(null)} /> : null}
-              </li>
+              </ListItem>
             );
           })}
-        </ol>
+        </List>
       ) : null}
     </section>
   );

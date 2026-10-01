@@ -5,10 +5,13 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
+import { List, ListItem } from "@/components/ui/list";
 import { MultiSelect, Select } from "@/components/ui/select";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   addDependencyAction,
   createTaskAction,
@@ -265,185 +268,203 @@ export function TaskDetailView({
           update={update}
         />
 
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            {t("subtasks")}
-          </h2>
-          {subtasks.length ? (
-            <ul className="flex flex-col divide-y rounded-xl border">
+        <TableCard>
+          <TableCardHeader title={t("subtasks")} count={subtasks.length || null} />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="id">{tWork("table.key")}</TableHead>
+                <TableHead kind="text">{tWork("table.title")}</TableHead>
+                <TableHead kind="person">{t("fields.assignee")}</TableHead>
+                <TableHead kind="status">{t("fields.state")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {subtasks.length === 0 ? <TableEmpty>{t("noSubtasks")}</TableEmpty> : null}
               {subtasks.map((subtask) => (
-                <li
-                  key={subtask.id}
-                  className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm"
-                >
-                  <span className="w-16 font-mono text-xs text-muted-foreground">
-                    {subtask.key}
-                  </span>
-                  <Link
-                    href={`/work/tasks/${subtask.id}`}
-                    className={`min-w-0 flex-1 truncate hover:underline ${subtask.status === "done" || subtask.status === "cancelled" ? "text-muted-foreground line-through" : "font-medium"}`}
-                  >
-                    {subtask.title}
-                  </Link>
-                  <span className="text-xs text-muted-foreground">
+                <TableRow key={subtask.id}>
+                  <TableCell kind="id">{subtask.key}</TableCell>
+                  <TableCell className="max-w-80">
+                    <Link
+                      href={`/work/tasks/${subtask.id}`}
+                      className={`block truncate hover:underline ${subtask.status === "done" || subtask.status === "cancelled" ? "text-muted-foreground line-through" : "font-medium"}`}
+                    >
+                      {subtask.title}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
                     {subtask.assigneeName ?? t("unassigned")}
-                  </span>
-                  <Badge variant="outline">
-                    {options.states.find(
-                      (state) => state.id === subtask.stateId,
-                    )?.name ?? subtask.status}
-                  </Badge>
-                </li>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {options.states.find(
+                        (state) => state.id === subtask.stateId,
+                      )?.name ?? subtask.status}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
               ))}
-            </ul>
-          ) : null}
+            </TableBody>
+          </Table>
           {canEdit ? (
-            <form
-              className="flex gap-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const title = subtaskInput.current?.value.trim();
-                if (title)
-                  run(
-                    createTaskAction,
-                    { teamId: task.teamId, parentTaskId: task.id, title },
-                    () => (subtaskInput.current!.value = ""),
-                  );
-              }}
-            >
-              <Input
-                ref={subtaskInput}
-                maxLength={200}
-                placeholder={t("subtaskAdd")}
-                aria-label={t("subtaskAdd")}
-              />
-              <Button
-                type="submit"
-                size="sm"
-                variant="outline"
-                disabled={pending}
-              >
-                {t("add")}
-              </Button>
-            </form>
-          ) : null}
-        </section>
-
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            {t("dependencies")}
-          </h2>
-          {linked.length ? (
-            <ul className="flex flex-col divide-y rounded-xl border">
-              {linked.map((link) => (
-                <li
-                  key={link.dependencyId}
-                  className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm"
+            <TableAddRow label={t("subtaskAdd")} open={subtasks.length === 0}>
+                <form
+                  className="flex gap-2"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const title = subtaskInput.current?.value.trim();
+                    if (title)
+                      run(
+                        createTaskAction,
+                        { teamId: task.teamId, parentTaskId: task.id, title },
+                        () => (subtaskInput.current!.value = ""),
+                      );
+                  }}
                 >
-                  <Badge
-                    variant={
-                      link.relation === "blocked_by" &&
-                      (link.status === "todo" || link.status === "in_progress")
-                        ? "destructive"
-                        : "secondary"
-                    }
+                  <Input
+                    ref={subtaskInput}
+                    maxLength={200}
+                    placeholder={t("subtaskAdd")}
+                    aria-label={t("subtaskAdd")}
+                  />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="outline"
+                    disabled={pending}
                   >
-                    {t(`relation.${link.relation}`)}
-                  </Badge>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {link.key}
-                  </span>
-                  <Link
-                    href={`/work/tasks/${link.id}`}
-                    className={`min-w-0 flex-1 truncate hover:underline ${link.status === "done" ? "text-muted-foreground line-through" : ""}`}
-                  >
-                    {link.title}
-                  </Link>
-                  {canEdit ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={pending}
-                      onClick={() =>
-                        run(removeDependencyAction, {
-                          dependencyId: link.dependencyId,
-                        })
+                    {t("add")}
+                  </Button>
+                </form>
+            </TableAddRow>
+          ) : null}
+        </TableCard>
+
+        <TableCard>
+          <TableCardHeader title={t("dependencies")} count={linked.length || null} />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="select">{t("relationLabel")}</TableHead>
+                <TableHead kind="id">{tWork("table.key")}</TableHead>
+                <TableHead kind="text">{tWork("table.title")}</TableHead>
+                {canEdit ? <TableHead kind="actions" /> : null}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {linked.length === 0 ? <TableEmpty>{t("noDependencies")}</TableEmpty> : null}
+              {linked.map((link) => (
+                <TableRow key={link.dependencyId}>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        link.relation === "blocked_by" &&
+                        (link.status === "todo" || link.status === "in_progress")
+                          ? "destructive"
+                          : "secondary"
                       }
                     >
-                      {t("remove")}
-                    </Button>
+                      {t(`relation.${link.relation}`)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell kind="id">{link.key}</TableCell>
+                  <TableCell className="max-w-80">
+                    <Link
+                      href={`/work/tasks/${link.id}`}
+                      className={`block truncate hover:underline ${link.status === "done" ? "text-muted-foreground line-through" : ""}`}
+                    >
+                      {link.title}
+                    </Link>
+                  </TableCell>
+                  {canEdit ? (
+                    <TableCell kind="actions">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={pending}
+                        onClick={() =>
+                          run(removeDependencyAction, {
+                            dependencyId: link.dependencyId,
+                          })
+                        }
+                      >
+                        {t("remove")}
+                      </Button>
+                    </TableCell>
                   ) : null}
-                </li>
+                </TableRow>
               ))}
-            </ul>
-          ) : null}
+            </TableBody>
+          </Table>
           {canEdit && options.linkable.length ? (
-            <form
-              className="flex flex-wrap gap-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const form = event.currentTarget;
-                const data = new FormData(form);
-                const [relation, other] = [
-                  String(data.get("relation")),
-                  String(data.get("otherTaskId")),
-                ];
-                if (!other) return;
-                const input =
-                  relation === "blocks"
-                    ? {
-                        blockerTaskId: task.id,
-                        blockedTaskId: other,
-                        type: "blocks",
-                      }
-                    : {
-                        blockerTaskId: other,
-                        blockedTaskId: task.id,
-                        type: relation === "relates" ? "relates" : "blocks",
-                      };
-                run(addDependencyAction, input, () => form.reset());
-              }}
-            >
-              <Select
-                name="relation"
-                aria-label={t("relationLabel")}
-                defaultValue="blocked_by"
-                className="w-40"
-              >
-                {(["blocked_by", "blocks", "relates"] as const).map(
-                  (relation) => (
-                    <option key={relation} value={relation}>
-                      {t(`relation.${relation}`)}
+            <TableAddRow label={t("dependencyAdd")}>
+                <form
+                  className="flex flex-wrap gap-2"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const form = event.currentTarget;
+                    const data = new FormData(form);
+                    const [relation, other] = [
+                      String(data.get("relation")),
+                      String(data.get("otherTaskId")),
+                    ];
+                    if (!other) return;
+                    const input =
+                      relation === "blocks"
+                        ? {
+                            blockerTaskId: task.id,
+                            blockedTaskId: other,
+                            type: "blocks",
+                          }
+                        : {
+                            blockerTaskId: other,
+                            blockedTaskId: task.id,
+                            type: relation === "relates" ? "relates" : "blocks",
+                          };
+                    run(addDependencyAction, input, () => form.reset());
+                  }}
+                >
+                  <Select
+                    name="relation"
+                    aria-label={t("relationLabel")}
+                    defaultValue="blocked_by"
+                    className="w-40"
+                  >
+                    {(["blocked_by", "blocks", "relates"] as const).map(
+                      (relation) => (
+                        <option key={relation} value={relation}>
+                          {t(`relation.${relation}`)}
+                        </option>
+                      ),
+                    )}
+                  </Select>
+                  <Select
+                    name="otherTaskId"
+                    aria-label={t("otherTask")}
+                    defaultValue=""
+                    className="min-w-0 flex-1"
+                  >
+                    <option value="" disabled>
+                      {t("otherTask")}
                     </option>
-                  ),
-                )}
-              </Select>
-              <Select
-                name="otherTaskId"
-                aria-label={t("otherTask")}
-                defaultValue=""
-                className="min-w-0 flex-1"
-              >
-                <option value="" disabled>
-                  {t("otherTask")}
-                </option>
-                {options.linkable.map((other) => (
-                  <option key={other.id} value={other.id}>
-                    {other.key} {other.title}
-                  </option>
-                ))}
-              </Select>
-              <Button
-                type="submit"
-                size="sm"
-                variant="outline"
-                disabled={pending}
-              >
-                {t("add")}
-              </Button>
-            </form>
+                    {options.linkable.map((other) => (
+                      <option key={other.id} value={other.id}>
+                        {other.key} {other.title}
+                      </option>
+                    ))}
+                  </Select>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="outline"
+                    disabled={pending}
+                  >
+                    {t("add")}
+                  </Button>
+                </form>
+            </TableAddRow>
           ) : null}
-        </section>
+        </TableCard>
 
         <section className="flex flex-col gap-2">
           <h2 className="text-sm font-medium text-muted-foreground">
@@ -825,12 +846,11 @@ function TaskChecklist({
     );
 
   const box = (item: ChecklistItem, removable: boolean) => (
-    <li key={item.id} className="flex items-center gap-2 text-sm">
-      <input
-        type="checkbox"
+    <ListItem key={item.id} className="gap-2">
+      <Checkbox
         checked={item.done}
         disabled={!canEdit || pending}
-        onChange={() => toggle(item.id)}
+        onCheckedChange={() => toggle(item.id)}
         aria-label={item.text}
       />
       <span
@@ -859,7 +879,7 @@ function TaskChecklist({
           ×
         </button>
       ) : null}
-    </li>
+    </ListItem>
   );
 
   return (
@@ -867,11 +887,7 @@ function TaskChecklist({
       <h2 className="text-sm font-medium text-muted-foreground">
         {t("checklist")}
       </h2>
-      {own.length ? (
-        <ul className="flex flex-col gap-1">
-          {own.map((item) => box(item, true))}
-        </ul>
-      ) : null}
+      {own.length ? <List>{own.map((item) => box(item, true))}</List> : null}
       {groups.map((group) => {
         const name =
           group.items[0].checklistName ??
@@ -879,41 +895,42 @@ function TaskChecklist({
           t("checklistFallback");
         const done = group.items.filter((item) => item.done).length;
         return (
-          <div
-            key={group.id}
-            className="flex flex-col gap-1 rounded-lg border p-2.5"
-          >
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="font-medium">{name}</span>
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {done}/{group.items.length}
-              </span>
-              {required.has(group.id) ? (
-                <Badge
-                  variant={
-                    done === group.items.length ? "secondary" : "outline"
-                  }
-                >
-                  {t("checklistRequired")}
-                </Badge>
-              ) : null}
-              {canEdit && !required.has(group.id) ? (
-                <button
-                  type="button"
-                  className="ml-auto text-xs text-muted-foreground hover:text-destructive"
-                  disabled={pending}
-                  onClick={() =>
-                    send(items.filter((row) => row.checklistId !== group.id))
-                  }
-                >
-                  {t("checklistRemove")}
-                </button>
-              ) : null}
-            </div>
-            <ul className="flex flex-col gap-1">
-              {group.items.map((item) => box(item, false))}
-            </ul>
-          </div>
+          <TableCard key={group.id}>
+            <TableCardHeader
+              title={name}
+              count={`${done}/${group.items.length}`}
+              actions={
+                required.has(group.id) || canEdit ? (
+                  <>
+                    {required.has(group.id) ? (
+                      <Badge
+                        variant={
+                          done === group.items.length ? "secondary" : "outline"
+                        }
+                      >
+                        {t("checklistRequired")}
+                      </Badge>
+                    ) : null}
+                    {canEdit && !required.has(group.id) ? (
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                        disabled={pending}
+                        onClick={() =>
+                          send(
+                            items.filter((row) => row.checklistId !== group.id),
+                          )
+                        }
+                      >
+                        {t("checklistRemove")}
+                      </button>
+                    ) : null}
+                  </>
+                ) : null
+              }
+            />
+            <List>{group.items.map((item) => box(item, false))}</List>
+          </TableCard>
         );
       })}
       {missing.map((hook) => (

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { listProfileChanges } from "@/modules/core-hr/change-requests";
 import { canChangePhoto } from "@/modules/core-hr/policy";
@@ -156,50 +156,43 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
 
           <RecordSections principal={user.principal} personId={person.id} />
 
-          <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium text-muted-foreground">{t("sections.history")}</h2>
+          <TableCard>
+            <TableCardHeader title={t("sections.history")} count={personal.history.length || null} />
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("assignment.period")}</TableHead>
-                  <TableHead>{t("fields.entity")}</TableHead>
-                  <TableHead>{t("fields.position")}</TableHead>
-                  <TableHead>{t("fields.department")}</TableHead>
-                  <TableHead>{t("fields.managerId")}</TableHead>
-                  <TableHead>{t("fields.workforceType")}</TableHead>
-                  <TableHead>{t("fields.changeReason")}</TableHead>
+                  <TableHead kind="date">{t("assignment.period")}</TableHead>
+                  <TableHead kind="org">{t("fields.entity")}</TableHead>
+                  <TableHead kind="text">{t("fields.position")}</TableHead>
+                  <TableHead kind="org">{t("fields.department")}</TableHead>
+                  <TableHead kind="person">{t("fields.managerId")}</TableHead>
+                  <TableHead kind="select">{t("fields.workforceType")}</TableHead>
+                  <TableHead kind="text">{t("fields.changeReason")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {personal.history.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-muted-foreground">
-                      {t("assignment.empty")}
+                {personal.history.length === 0 ? <TableEmpty>{t("assignment.empty")}</TableEmpty> : null}
+                {personal.history.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>
+                      {day(row.validFrom)} → {day(row.validTo) ?? t("assignment.ongoing")}
+                      {row.id === personal.current?.id ? (
+                        <Badge variant="secondary" className="ml-2">
+                          {t("assignment.current")}
+                        </Badge>
+                      ) : null}
                     </TableCell>
+                    <TableCell>
+                      {row.entityName}
+                      <span className="ml-1 text-muted-foreground">{row.employeeCode}</span>
+                    </TableCell>
+                    <TableCell>{row.positionName ?? "—"}</TableCell>
+                    <TableCell>{[row.departmentName, row.teamName].filter(Boolean).join(" · ") || "—"}</TableCell>
+                    <TableCell>{row.managerName ?? "—"}</TableCell>
+                    <TableCell>{t(`workforceType.${row.workforceType}`)}</TableCell>
+                    <TableCell className="text-muted-foreground">{row.changeReason ?? "—"}</TableCell>
                   </TableRow>
-                ) : (
-                  personal.history.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="whitespace-nowrap">
-                        {day(row.validFrom)} → {day(row.validTo) ?? t("assignment.ongoing")}
-                        {row.id === personal.current?.id ? (
-                          <Badge variant="secondary" className="ml-2">
-                            {t("assignment.current")}
-                          </Badge>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {row.entityName}
-                        <span className="ml-1 text-muted-foreground">{row.employeeCode}</span>
-                      </TableCell>
-                      <TableCell>{row.positionName ?? "—"}</TableCell>
-                      <TableCell>{[row.departmentName, row.teamName].filter(Boolean).join(" · ") || "—"}</TableCell>
-                      <TableCell>{row.managerName ?? "—"}</TableCell>
-                      <TableCell>{t(`workforceType.${row.workforceType}`)}</TableCell>
-                      <TableCell className="text-muted-foreground">{row.changeReason ?? "—"}</TableCell>
-                    </TableRow>
-                  ))
-                )}
+                ))}
               </TableBody>
             </Table>
             {options ? <AssignmentForm person={person} options={options} today={today} /> : null}
@@ -218,7 +211,7 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
                 }
               />
             ) : null}
-          </section>
+          </TableCard>
 
           {/* Compensation tier: renders only for the person and C&B; a line manager sees nothing. */}
           <PersonSalaryHistory viewer={{ personId: user.person.id, principal: user.principal }} personId={person.id} stepUpFresh={isStepUpFresh(user.reauthAt)} />

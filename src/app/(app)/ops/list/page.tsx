@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { isMonthKey } from "@/lib/month-grid";
 import { canManageLibrary, canManageOps, canReadOps, listInstances, opsReach, STATUS_COLOURS, type StatusColour } from "@/modules/ops/service";
@@ -89,27 +90,44 @@ export default async function OpsListPage({ searchParams }: PageProps<"/ops/list
       ) : null}
       {show === "open" && !narrowed ? <p className="text-sm text-muted-foreground">{t("summary", { total: items.length, overdue: counts.overdue, dueSoon: counts.dueSoon })}</p> : null}
 
-      {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("empty")}</p>
-      ) : (
-        <ul className="flex flex-col divide-y rounded-xl border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="text">{t("history.columns.obligation")}</TableHead>
+            <TableHead kind="select">{t("filters.authority")}</TableHead>
+            <TableHead kind="person">{t("history.columns.owner")}</TableHead>
+            <TableHead kind="date">{t("history.columns.dueDate")}</TableHead>
+            <TableHead kind="status">{t("history.columns.status")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
           {items.map((item) => (
-            <li key={item.taskId} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm">
-              <div className="min-w-0 flex-1 basis-56">
+            <TableRow key={item.taskId}>
+              <TableCell className="max-w-96 truncate">
                 <Link href={`/ops/obligations/${item.taskId}`} className="font-medium hover:underline">
                   {item.title}
                 </Link>
-                <p className="text-xs text-muted-foreground">
-                  {[t(`enums.authority.${item.authority}`), item.assigneeName ?? t("unassigned"), item.dueDate ? t("due", { date: format.dateTime(new Date(`${item.dueDate}T00:00:00`), { dateStyle: "medium" }) }) : null, item.dueDate && item.dueDate !== item.nominalDueDate ? t("shifted") : null].filter(Boolean).join(" · ")}
-                </p>
-              </div>
-              {item.escalationLevel > 0 ? <Badge variant="destructive">{t(`escalation.level${item.escalationLevel}`)}</Badge> : null}
-              {item.unreviewed ? <Badge variant="outline">{t("unreviewed")}</Badge> : null}
-              <StatusBadge colour={item.colour} label={t(`enums.colour.${item.colour}`)} />
-            </li>
+              </TableCell>
+              <TableCell>
+                <Badge variant="outline">{t(`enums.authority.${item.authority}`)}</Badge>
+              </TableCell>
+              <TableCell className={item.assigneeName ? undefined : "text-muted-foreground"}>{item.assigneeName ?? t("unassigned")}</TableCell>
+              <TableCell>
+                {item.dueDate ? format.dateTime(new Date(`${item.dueDate}T00:00:00`), { dateStyle: "medium" }) : "—"}
+                {item.dueDate && item.dueDate !== item.nominalDueDate ? <span className="ps-1.5 text-xs text-muted-foreground">({t("shifted")})</span> : null}
+              </TableCell>
+              <TableCell>
+                <span className="flex items-center gap-1.5">
+                  <StatusBadge colour={item.colour} label={t(`enums.colour.${item.colour}`)} />
+                  {item.escalationLevel > 0 ? <Badge variant="destructive">{t(`escalation.level${item.escalationLevel}`)}</Badge> : null}
+                  {item.unreviewed ? <Badge variant="outline">{t("unreviewed")}</Badge> : null}
+                </span>
+              </TableCell>
+            </TableRow>
           ))}
-        </ul>
-      )}
+        </TableBody>
+      </Table>
       {canManageLibrary(user.principal) && items.some((item) => item.unreviewed) ? <p className="text-xs text-muted-foreground">{t("unreviewedHint")}</p> : null}
     </div>
   );

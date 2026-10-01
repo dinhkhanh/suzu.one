@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { decideProfileChangeAction } from "@/modules/core-hr/change-request-actions";
 import { getProfileChange } from "@/modules/core-hr/change-requests";
 import { getPersonView } from "@/modules/core-hr/service";
@@ -43,14 +43,14 @@ export default async function ProfileChangePage(props: PageProps<"/approvals/pro
       </header>
 
       {personal.length > 0 ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("detail.personal")}</h2>
-          <Table>
+        <TableCard>
+          <TableCardHeader title={t("detail.personal")} />
+          <Table numbered={false}>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("detail.field")}</TableHead>
-                <TableHead>{t("detail.from")}</TableHead>
-                <TableHead>{t("detail.to")}</TableHead>
+                <TableHead kind="text">{t("detail.field")}</TableHead>
+                <TableHead kind="text">{t("detail.from")}</TableHead>
+                <TableHead kind="text">{t("detail.to")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -63,7 +63,7 @@ export default async function ProfileChangePage(props: PageProps<"/approvals/pro
               ))}
             </TableBody>
           </Table>
-        </section>
+        </TableCard>
       ) : null}
 
       {payload.restricted.length > 0 ? (

@@ -1,6 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { FlowDefinition } from "@/modules/platform/approvals/engine/flow";
 import { FLOW_PERMISSIONS, listFlows } from "@/modules/platform/approvals/flows";
 import { FlowEditor } from "@/modules/platform/approvals/ui/flow-editor";
@@ -45,28 +47,36 @@ export default async function ApprovalFlowsPage() {
         <h1>{t("flows.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("flows.description")}</p>
       </header>
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("flows.defaults")}</h2>
-        <ul className="flex flex-col divide-y rounded-xl border text-sm">
-          {[...registered.values()].map(({ definition }) => (
-            <li key={definition.type} className="flex flex-wrap items-center gap-2 p-3">
-              <span className="font-medium">{label(definition.type)}</span>
-              <span className="text-muted-foreground">{describe(definition.flow)}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("flows.configured")}</h2>
-        {flows.length === 0 ? <p className="text-sm text-muted-foreground">{t("flows.none")}</p> : null}
-        <ul className="flex flex-col gap-3">
+      <TableCard>
+        <TableCardHeader title={t("flows.defaults")} count={registered.size || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="select">{t("flows.requestType")}</TableHead>
+              <TableHead kind="text">{t("flows.steps")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {[...registered.values()].map(({ definition }) => (
+              <TableRow key={definition.type}>
+                <TableCell className="font-medium">{label(definition.type)}</TableCell>
+                <TableCell className="whitespace-normal text-muted-foreground">{describe(definition.flow)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableCard>
+      <TableCard>
+        <TableCardHeader title={t("flows.configured")} count={flows.length || null} />
+        <List>
+          {flows.length === 0 ? <ListEmpty>{t("flows.none")}</ListEmpty> : null}
           {flows.map((flow) => {
             const definition = flow.definition as FlowDefinition;
             const manage = can(user.principal, "org:manage", flow.entityId ? { entityId: flow.entityId } : {});
             return (
-              <li key={flow.id} className="rounded-xl border p-4">
-                <details>
-                  <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm">
+              <ListItem key={flow.id}>
+                <details className="w-full">
+                  <summary className="flex cursor-pointer flex-wrap items-center gap-2">
                     <span className="font-medium">{label(flow.requestType)}</span>
                     <Badge variant="secondary">{flow.entityName ?? t("flows.group")}</Badge>
                     {flow.active ? null : <Badge variant="outline">{t("flows.off")}</Badge>}
@@ -78,15 +88,14 @@ export default async function ApprovalFlowsPage() {
                     </div>
                   ) : null}
                 </details>
-              </li>
+              </ListItem>
             );
           })}
-        </ul>
-      </section>
-      <section className="flex flex-col gap-3 rounded-xl border p-4">
-        <h2 className="text-sm font-medium">{t("flows.add")}</h2>
-        <FlowEditor options={options} />
-      </section>
+        </List>
+        <TableAddRow label={t("flows.add")} open={flows.length === 0}>
+          <FlowEditor options={options} />
+        </TableAddRow>
+      </TableCard>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageTemplates, canReadTemplates, listTemplates, tierNeededFor } from "@/modules/documents/service";
 import { pageTitle } from "@/i18n/page-title";
@@ -29,40 +30,42 @@ export default async function DocumentTemplatesPage() {
         ) : null}
       </header>
 
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full min-w-[40rem] text-sm">
-          <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
-            <tr>
-              <th className="p-2 font-medium">{t("code")}</th>
-              <th className="p-2 font-medium">{t("name")}</th>
-              <th className="p-2 font-medium">{t("kind")}</th>
-              <th className="p-2 font-medium">{t("entity")}</th>
-              <th className="p-2 font-medium">{t("tier")}</th>
-              <th className="p-2 font-medium">{t("version")}</th>
-            </tr>
-          </thead>
-          <tbody>
+      <TableCard>
+        <Table className="min-w-[40rem]">
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="id">{t("code")}</TableHead>
+              <TableHead kind="text">{t("name")}</TableHead>
+              <TableHead kind="select">{t("kind")}</TableHead>
+              <TableHead kind="org">{t("entity")}</TableHead>
+              <TableHead kind="select">{t("tier")}</TableHead>
+              <TableHead kind="number">{t("version")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
             {rows.map((row) => (
-              <tr key={row.id} className={`border-t ${row.isActive ? "" : "text-muted-foreground"}`}>
-                <td className="whitespace-nowrap p-2 font-mono text-xs">
+              <TableRow key={row.id} className={row.isActive ? undefined : "text-muted-foreground"}>
+                <TableCell kind="id">
                   <Link href={`/admin/document-templates/${row.id}`} className="hover:underline">
                     {row.code}
                   </Link>
-                </td>
-                <td className="p-2">{row.name}</td>
-                <td className="p-2">{kinds(row.kind)}</td>
-                <td className="p-2">{row.entityName ?? t("groupWide")}</td>
-                <td className="p-2">
+                </TableCell>
+                <TableCell>{row.name}</TableCell>
+                <TableCell>{kinds(row.kind)}</TableCell>
+                <TableCell>{row.entityName ?? t("groupWide")}</TableCell>
+                <TableCell>
                   {tiers(row.tier)}
                   {/* What the body actually demands, so a mismatch is visible at a glance. */}
                   {row.tier !== tierNeededFor(row.body) ? <span className="ml-1 text-xs text-muted-foreground">({t("needs")} {tiers(tierNeededFor(row.body))})</span> : null}
-                </td>
-                <td className="p-2 tabular-nums">v{row.version}</td>
-              </tr>
+                </TableCell>
+                <TableCell kind="number">v{row.version}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+        {canManageTemplates(user.principal) ? <TableAddRow label={t("new")} href="/admin/document-templates/new" /> : null}
+      </TableCard>
     </div>
   );
 }

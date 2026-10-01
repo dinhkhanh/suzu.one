@@ -1,5 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { List, ListItem } from "@/components/ui/list";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { exportUnmappedAction } from "@/modules/attendance/device-actions";
 import { getDevice, listUnmapped, listUserMap } from "@/modules/attendance/devices";
 import { canManageDevices } from "@/modules/attendance/policy";
@@ -33,42 +35,51 @@ export default async function DeviceUsersPage({ params }: PageProps<"/attendance
       <h2>{device.name}</h2>
 
       {unmapped.length > 0 ? (
-        <section className="flex flex-col gap-3 rounded-xl border border-destructive/40 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-medium">{t("map.unmappedTitle", { count: unmapped.length })}</h3>
-            <ExportButton action={exportUnmappedAction} input={{ deviceId: id }} label={t("map.export")} failedLabel={t("errors.generic")} truncatedLabel={t("map.exportTruncated")} />
-          </div>
-          <p className="text-sm text-muted-foreground">{t("map.unmappedHint")}</p>
-          <ul className="flex flex-col divide-y">
+        <TableCard className="border-destructive/40">
+          <TableCardHeader title={t("map.unmappedTitle", { count: unmapped.length })} description={t("map.unmappedHint")} actions={<ExportButton action={exportUnmappedAction} input={{ deviceId: id }} label={t("map.export")} failedLabel={t("errors.generic")} truncatedLabel={t("map.exportTruncated")} />} />
+          <List>
             {unmapped.map((row) => (
-              <li key={row.deviceUserId} className="flex flex-wrap items-end justify-between gap-3 py-2 text-sm">
+              <ListItem key={row.deviceUserId} className="flex-wrap items-end justify-between">
                 <span>
                   <span className="font-mono font-medium">{row.deviceUserId}</span> · {t("map.lines", { count: row.lines })} · {when(row.firstAt)} → {when(row.lastAt)}
                 </span>
                 <MapUserForm deviceId={id} deviceUserId={row.deviceUserId} people={people} />
-              </li>
+              </ListItem>
             ))}
-          </ul>
-        </section>
+          </List>
+        </TableCard>
       ) : null}
 
-      <section className="flex flex-col gap-3">
-        <h3 className="text-sm font-medium text-muted-foreground">{t("map.title", { count: map.length })}</h3>
-        {map.length === 0 ? <p className="text-sm text-muted-foreground">{t("map.empty")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border empty:hidden">
-          {map.map((row) => (
-            <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 p-2 text-sm">
-              <span>
-                <span className="inline-block w-16 font-mono font-medium">{row.deviceUserId}</span>
-                {row.fullName}
-                {row.employeeCode ? <span className="text-muted-foreground"> · {row.employeeCode}</span> : null}
-              </span>
-              <UnmapButton id={row.id} label={t("map.remove")} confirm={t("map.removeConfirm")} />
-            </li>
-          ))}
-        </ul>
-        <MapUserForm deviceId={id} people={people} />
-      </section>
+      <TableCard>
+        <TableCardHeader title={t("map.title", { count: map.length })} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="id">{t("map.deviceUserId")}</TableHead>
+              <TableHead kind="person">{t("map.person")}</TableHead>
+              <TableHead kind="actions" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {map.length === 0 ? <TableEmpty>{t("map.empty")}</TableEmpty> : null}
+            {map.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell kind="id" className="font-medium text-foreground">{row.deviceUserId}</TableCell>
+                <TableCell>
+                  {row.fullName}
+                  {row.employeeCode ? <span className="text-muted-foreground"> · {row.employeeCode}</span> : null}
+                </TableCell>
+                <TableCell kind="actions">
+                  <UnmapButton id={row.id} label={t("map.remove")} confirm={t("map.removeConfirm")} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <TableAddRow label={t("map.add")} open={map.length === 0}>
+          <MapUserForm deviceId={id} people={people} />
+        </TableAddRow>
+      </TableCard>
 
       <section className="flex flex-col gap-3">
         <h3 className="text-sm font-medium text-muted-foreground">{t("map.bulkTitle")}</h3>

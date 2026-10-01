@@ -11,7 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker, DateTimePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
+import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { cancelPublishAction, markPublishedAction, planPublishAction, recordResultAction, removeResultAction, updatePublishPlanAction } from "../delivery-actions";
 import { type Metrics, publishFlag, RESULT_METRICS, toVietnamLocal } from "../engine/delivery";
 import { CHANNELS } from "../enums";
@@ -38,24 +40,28 @@ export function PublishPanel({ taskId, channel, publishes, canManage, today, now
   const t = useTranslations("work.publish");
   const tWork = useTranslations("work");
   const format = useFormatter();
-  const [planning, setPlanning] = useState(false);
+  // The add row folds shut when the plan form is done: a new key mounts it closed.
+  const [addRow, setAddRow] = useState(0);
   const when = (iso: string) => format.dateTime(new Date(iso), { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" });
   if (!canManage && publishes.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="flex flex-wrap items-center gap-2 text-sm font-medium text-muted-foreground">
-        {t("title")}
-        <Link href="/work/publish/results" className="ml-auto text-xs font-normal underline">
-          {t("importResults")}
-        </Link>
-      </h2>
-      {publishes.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : null}
-      <ul className="flex flex-col gap-2">
+    <TableCard>
+      <TableCardHeader
+        title={t("title")}
+        count={publishes.length || null}
+        actions={
+          <Link href="/work/publish/results" className="text-xs font-normal underline">
+            {t("importResults")}
+          </Link>
+        }
+      />
+      <List>
+        {publishes.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
         {publishes.map((publish) => {
           const flag = publishFlag({ status: publish.status, plannedAt: publish.plannedAt ? new Date(publish.plannedAt) : null }, new Date(now));
           return (
-            <li key={publish.id} className="flex flex-col gap-2 rounded-xl border p-3 text-sm">
+            <ListItem key={publish.id} className="flex-col items-stretch gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{tWork(`channels.${publish.platform}`)}</span>
                 {publish.page ? <span className="text-muted-foreground">{publish.page}</span> : null}
@@ -72,16 +78,16 @@ export function PublishPanel({ taskId, channel, publishes, canManage, today, now
               ) : null}
               {canManage && publish.status === "planned" ? <PublishActions publish={publish} /> : null}
               {publish.status === "published" ? <Results publish={publish} canManage={canManage} today={today} /> : null}
-            </li>
+            </ListItem>
           );
         })}
-      </ul>
-      {canManage ? planning ? <PlanForm taskId={taskId} defaultPlatform={channel} onDone={() => setPlanning(false)} /> : (
-        <Button type="button" size="sm" variant="outline" className="w-fit" onClick={() => setPlanning(true)}>
-          {t("plan")}
-        </Button>
+      </List>
+      {canManage ? (
+        <TableAddRow key={addRow} label={t("plan")}>
+          <PlanForm taskId={taskId} defaultPlatform={channel} onDone={() => setAddRow((count) => count + 1)} />
+        </TableAddRow>
       ) : null}
-    </section>
+    </TableCard>
   );
 }
 

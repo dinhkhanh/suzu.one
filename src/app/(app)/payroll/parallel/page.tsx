@@ -76,9 +76,9 @@ export default async function ParallelRunPage({ searchParams }: PageProps<"/payr
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("person")}</TableHead>
-                <TableHead>{t("differences")}</TableHead>
-                <TableHead className="w-40">{t("action")}</TableHead>
+                <TableHead kind="person">{t("person")}</TableHead>
+                <TableHead kind="text">{t("differences")}</TableHead>
+                <TableHead kind="actions" className="w-40 text-left">{t("action")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

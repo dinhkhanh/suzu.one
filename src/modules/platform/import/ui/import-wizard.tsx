@@ -2,6 +2,7 @@
 import { useTranslations } from "next-intl";
 import { type FormEvent, type ReactNode, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { List, ListItem } from "@/components/ui/list";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ActionResult } from "@/lib/action";
 import type { StagedImport } from "../service";
@@ -88,31 +89,35 @@ export function ImportWizard({ title, template, accept = ".xlsx,.csv", children,
           </p>
 
           {staged.problems.length > 0 ? (
-            <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-md border p-3 text-sm">
+            <List className="max-h-64 overflow-y-auto">
               {staged.problems.map((problem, index) => (
-                <li key={index} className={problem.code === "column_unknown" ? "text-muted-foreground" : problem.severity === "warning" ? "text-warning" : "text-destructive"}>
+                <ListItem key={index} className={`block min-h-0 py-2 ${problem.code === "column_unknown" ? "text-muted-foreground" : problem.severity === "warning" ? "text-warning" : "text-destructive"}`}>
                   {t("problemAt", { row: problem.row })}
                   {problem.column ? ` · ${problem.column}` : ""}: {t.has(`problems.${problem.code}`) ? t(`problems.${problem.code}`) : problem.code}
                   {problem.detail ? ` — ${problem.detail}` : ""}
-                </li>
+                </ListItem>
               ))}
-            </ul>
+            </List>
           ) : null}
 
           {staged.preview.length > 0 ? (
-            <Table>
+            <Table numbered={false}>
               <TableHeader>
                 <TableRow>
-                  <TableHead>#</TableHead>
+                  <TableHead kind="number">
+                    <span className="sr-only">#</span>
+                  </TableHead>
                   {staged.headers.map((header) => (
-                    <TableHead key={header}>{header}</TableHead>
+                    <TableHead key={header} kind="text">
+                      {header}
+                    </TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {staged.preview.map((row) => (
                   <TableRow key={row.row}>
-                    <TableCell className="text-muted-foreground">{row.row}</TableCell>
+                    <TableCell kind="number" className="text-muted-foreground">{row.row}</TableCell>
                     {row.cells.map((cell, index) => (
                       <TableCell key={index}>{cell || "—"}</TableCell>
                     ))}

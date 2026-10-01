@@ -8,7 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
+import { TableAddRow, TableCard } from "@/components/ui/table";
 import { HANDOFF_FIELD_TYPES, type HandoffFieldType, MAX_PACKAGE_CHECKS, MAX_PACKAGE_FIELDS } from "../engine/handoff";
 import { deleteHandoffPackageAction, saveHandoffPackageAction } from "../handoff-actions";
 import { type ChecklistChoice, ChecklistPicker } from "./checklists";
@@ -22,34 +24,33 @@ export function HandoffPackageManager({ teamId, packages, states, checklists, ca
   const stateName = (id: string | null) => (id ? (states.find((state) => state.id === id)?.name ?? "—") : t("anyState"));
   return (
     <div className="flex flex-col gap-3">
-      {packages.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : null}
-      <ul className="flex flex-col gap-2">
-        {packages.map((pkg) => (
-          <li key={pkg.id} className="rounded-xl border p-3 text-sm">
-            <details>
-              <summary className="flex cursor-pointer flex-wrap items-center gap-2">
-                <span className="font-medium">{pkg.name}</span>
-                <span className="text-muted-foreground">
-                  {stateName(pkg.fromStateId)} → {stateName(pkg.toStateId)}
-                </span>
-                {pkg.requireAccept ? <Badge variant="secondary">{t("mustAccept")}</Badge> : null}
-                {pkg.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
-                <span className="text-xs text-muted-foreground">{t("summary", { fields: pkg.fields.length, checks: pkg.checklist.length })}</span>
-                {pkg.checklistIds.length ? <span className="text-xs text-muted-foreground">{t("librarySummary", { count: pkg.checklistIds.length })}</span> : null}
-              </summary>
-              <div className="pt-3">{canManage ? <PackageForm teamId={teamId} states={states} checklists={checklists} pkg={pkg} /> : <PackageReadOnly pkg={pkg} checklists={checklists} />}</div>
-            </details>
-          </li>
-        ))}
-      </ul>
-      {canManage ? (
-        <details className="rounded-xl border p-3">
-          <summary className="cursor-pointer text-sm font-medium">{t("create")}</summary>
-          <div className="pt-3">
+      <TableCard>
+        <List>
+          {packages.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
+          {packages.map((pkg) => (
+            <ListItem key={pkg.id}>
+              <details className="min-w-0 flex-1">
+                <summary className="flex cursor-pointer flex-wrap items-center gap-2">
+                  <span className="font-medium">{pkg.name}</span>
+                  <span className="text-muted-foreground">
+                    {stateName(pkg.fromStateId)} → {stateName(pkg.toStateId)}
+                  </span>
+                  {pkg.requireAccept ? <Badge variant="secondary">{t("mustAccept")}</Badge> : null}
+                  {pkg.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
+                  <span className="text-xs text-muted-foreground">{t("summary", { fields: pkg.fields.length, checks: pkg.checklist.length })}</span>
+                  {pkg.checklistIds.length ? <span className="text-xs text-muted-foreground">{t("librarySummary", { count: pkg.checklistIds.length })}</span> : null}
+                </summary>
+                <div className="pt-3">{canManage ? <PackageForm teamId={teamId} states={states} checklists={checklists} pkg={pkg} /> : <PackageReadOnly pkg={pkg} checklists={checklists} />}</div>
+              </details>
+            </ListItem>
+          ))}
+        </List>
+        {canManage ? (
+          <TableAddRow label={t("create")}>
             <PackageForm teamId={teamId} states={states} checklists={checklists} />
-          </div>
-        </details>
-      ) : null}
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

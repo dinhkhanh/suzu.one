@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
+import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
 import { canBookAssets, canConfirmHandover, canManageAssets, getAssetView, listBookings, listCategories } from "@/modules/assets/service";
@@ -106,22 +107,29 @@ export default async function AssetPage({ params }: PageProps<"/assets/[assetId]
       ) : null}
 
       {bookable ? (
-        <section className="flex flex-col gap-3 rounded-md border p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-medium">{tBooking("title")}</h2>
-            <Link href="/assets/bookings" className="text-sm underline">
-              {tBooking("nav.calendar")}
-            </Link>
-          </div>
+        <TableCard>
+          <TableCardHeader
+            title={tBooking("title")}
+            count={upcoming.length || null}
+            actions={
+              <Link href="/assets/bookings" className="text-sm underline">
+                {tBooking("nav.calendar")}
+              </Link>
+            }
+          />
           <BookingList rows={upcoming} empty={tBooking("noneMine")} showAsset={false} />
-          {canBookAssets(user.principal) ? <BookAssetForm assets={[]} assetId={assetId} people={people} canBookForOthers={manage} /> : null}
-        </section>
+          {canBookAssets(user.principal) ? (
+            <TableAddRow label={tBooking("form.title")} open={upcoming.length === 0}>
+              <BookAssetForm assets={[]} assetId={assetId} people={people} canBookForOthers={manage} />
+            </TableAddRow>
+          ) : null}
+        </TableCard>
       ) : null}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="font-medium">{t("history")}</h2>
+      <TableCard>
+        <TableCardHeader title={t("history")} count={view.history.length || null} />
         <AssetHistory entries={view.history} />
-      </section>
+      </TableCard>
 
       {categories.length > 0 ? null : null}
     </div>

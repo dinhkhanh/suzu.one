@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { getTeamCalendar } from "@/modules/leave/calendar";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -34,6 +35,7 @@ export default async function TeamCalendarPage(props: PageProps<"/leave/calendar
   const calendar = await getTeamCalendar({ personId: user.person.id, principal: user.principal }, { from: range.from, to: range.to, departmentId });
   const link = (value: string, dept: string | null) => `/leave/calendar?month=${value}${dept ? `&department=${dept}` : ""}`;
   const off = (kind: string) => kind !== "working";
+  const awayPeople = calendar.people.filter((person) => person.cells.length > 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -64,38 +66,36 @@ export default async function TeamCalendarPage(props: PageProps<"/leave/calendar
           ))}
         </nav>
       ) : null}
-      <div className="overflow-x-auto rounded-xl border">
-        <table className="w-full border-collapse text-xs">
-          <thead>
-            <tr>
-              <th className="sticky left-0 z-10 min-w-40 bg-background p-2 text-left font-medium">{t("calendar.person")}</th>
-              {calendar.dates.map((day) => (
-                <th key={day.date} className={`w-8 min-w-8 p-1 text-center font-normal ${off(day.kind) ? "bg-muted text-muted-foreground" : ""} ${day.date === todayInVietnam() ? "font-semibold underline" : ""}`}>
-                  {Number(day.date.slice(8))}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {calendar.people.map((person) => (
-              <tr key={person.personId} className="border-t">
-                <td className="sticky left-0 z-10 bg-background p-2">
-                  <span className={person.isSelf ? "font-medium" : ""}>{person.fullName}</span>
-                </td>
-                {calendar.dates.map((day) => {
-                  const cell = person.cells.find((candidate) => candidate.date === day.date);
-                  const label = cell ? `${cell.typeName ?? t("calendar.away")}${cell.portion === "full" ? "" : ` · ${t(`portions.${cell.portion}`)}`}${cell.status === "pending" ? ` · ${t("status.pending")}` : ""}` : undefined;
-                  return (
-                    <td key={day.date} title={label} className={`p-0.5 text-center ${off(day.kind) ? "bg-muted" : ""}`}>
-                      {cell ? <span aria-label={label} className={`mx-auto block h-5 rounded ${cell.portion === "full" ? "w-6" : "w-3"} ${cell.status === "pending" ? "border border-dashed border-primary" : "bg-primary"}`} /> : null}
-                    </td>
-                  );
-                })}
-              </tr>
+      <Table numbered={false} className="text-xs">
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="person" className="sticky left-0 z-10 min-w-40 bg-background">{t("calendar.person")}</TableHead>
+            {calendar.dates.map((day) => (
+              <TableHead key={day.date} className={`h-auto w-8 min-w-8 p-1 text-center ${off(day.kind) ? "bg-muted text-muted-foreground" : ""} ${day.date === todayInVietnam() ? "font-semibold underline" : ""}`}>
+                {Number(day.date.slice(8))}
+              </TableHead>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {calendar.people.map((person) => (
+            <TableRow key={person.personId}>
+              <TableCell className="sticky left-0 z-10 h-auto bg-background p-2">
+                <span className={person.isSelf ? "font-medium" : ""}>{person.fullName}</span>
+              </TableCell>
+              {calendar.dates.map((day) => {
+                const cell = person.cells.find((candidate) => candidate.date === day.date);
+                const label = cell ? `${cell.typeName ?? t("calendar.away")}${cell.portion === "full" ? "" : ` · ${t(`portions.${cell.portion}`)}`}${cell.status === "pending" ? ` · ${t("status.pending")}` : ""}` : undefined;
+                return (
+                  <TableCell key={day.date} title={label} className={`h-auto p-0.5 text-center ${off(day.kind) ? "bg-muted" : ""}`}>
+                    {cell ? <span aria-label={label} className={`mx-auto block h-5 rounded ${cell.portion === "full" ? "w-6" : "w-3"} ${cell.status === "pending" ? "border border-dashed border-primary" : "bg-primary"}`} /> : null}
+                  </TableCell>
+                );
+              })}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
       <ul className="flex flex-wrap gap-4 text-xs text-muted-foreground">
         <li className="flex items-center gap-1.5">
           <span className="block h-3 w-4 rounded bg-primary" /> {t("status.approved")}
@@ -107,25 +107,33 @@ export default async function TeamCalendarPage(props: PageProps<"/leave/calendar
           <span className="block h-3 w-4 rounded bg-muted" /> {t("calendar.nonWorking")}
         </li>
       </ul>
-      <section className="flex flex-col gap-2 text-sm">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("calendar.list")}</h2>
-        <ul className="flex flex-col divide-y rounded-xl border empty:hidden">
-          {calendar.people
-            .filter((person) => person.cells.length > 0)
-            .map((person) => (
-              <li key={person.personId} className="p-3">
-                <span className="font-medium">{person.fullName}</span>{" "}
-                <span className="text-muted-foreground">
+      <TableCard>
+        <TableCardHeader title={t("calendar.list")} count={awayPeople.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="person">{t("calendar.person")}</TableHead>
+              <TableHead kind="date">{t("request.dates")}</TableHead>
+              <TableHead kind="select">{t("request.type")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {awayPeople.length === 0 ? <TableEmpty>{t("calendar.noneAway")}</TableEmpty> : null}
+            {awayPeople.map((person) => (
+              <TableRow key={person.personId}>
+                <TableCell className="font-medium">{person.fullName}</TableCell>
+                <TableCell className="whitespace-normal">
                   {[...person.cells]
                     .sort((a, b) => a.date.localeCompare(b.date))
                     .map((cell) => `${Number(cell.date.slice(8))}${cell.portion === "full" ? "" : "½"}`)
                     .join(", ")}
-                  {person.cells[0].typeName ? ` · ${[...new Set(person.cells.map((cell) => cell.typeName))].join(", ")}` : ""}
-                </span>
-              </li>
+                </TableCell>
+                <TableCell className="text-muted-foreground">{person.cells[0].typeName ? [...new Set(person.cells.map((cell) => cell.typeName))].join(", ") : "—"}</TableCell>
+              </TableRow>
             ))}
-        </ul>
-      </section>
+          </TableBody>
+        </Table>
+      </TableCard>
       <Link href="/leave" className="text-sm underline-offset-4 hover:underline">
         {t("back")}
       </Link>

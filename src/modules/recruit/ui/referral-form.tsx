@@ -50,7 +50,7 @@ export function ReferralForm({ openings }: { openings: ReferralOpening[] }) {
   if (openings.length === 0) return <p className="text-sm text-muted-foreground">{t("noOpenings")}</p>;
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border p-4">
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="referral-opening">{t("opening")}</Label>
         <Select id="referral-opening" name="openingId" required defaultValue={openings[0].id}>

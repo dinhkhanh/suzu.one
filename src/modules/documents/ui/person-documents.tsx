@@ -4,6 +4,7 @@
 // is invisible — not greyed out — to a reader without the compensation tier, because knowing one
 // exists is itself worth something.
 import { getTranslations } from "next-intl/server";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { canGenerate, listDocumentsAbout, listTemplates } from "../service";
@@ -21,48 +22,43 @@ export async function PersonDocuments({ principal, personId }: { principal: Prin
   if (mine.length === 0 && history.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-3">
-      <h2>{t("heading")}</h2>
-
-      {history.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("none")}</p>
-      ) : (
-        <div className="overflow-x-auto rounded-md border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
-              <tr>
-                <th className="p-2 font-medium">{t("columns.number")}</th>
-                <th className="p-2 font-medium">{t("columns.template")}</th>
-                <th className="p-2 font-medium">{t("columns.tier")}</th>
-                <th className="p-2 font-medium">{t("columns.by")}</th>
-                <th className="p-2 font-medium">{t("columns.at")}</th>
-                <th className="p-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((row) => (
-                <tr key={row.id} className="border-t">
-                  <td className="p-2 font-mono text-xs">{row.number}</td>
-                  <td className="p-2">
-                    {row.templateName}
-                    <span className="ml-1 text-xs text-muted-foreground">({kinds(row.kind)})</span>
-                  </td>
-                  <td className="p-2 text-xs">{tiers(row.tier)}</td>
-                  <td className="p-2">{row.generatedByName ?? "—"}</td>
-                  <td className="p-2 whitespace-nowrap text-xs">{row.createdAt.toLocaleDateString("vi-VN")}</td>
-                  <td className="p-2 text-right">
-                    <a href={`/documents/${row.id}/pdf`} className="text-sm underline">
-                      {t("download")}
-                    </a>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <GenerateDocumentForm subjectPersonId={personId} templates={mine.map((template) => ({ id: template.id, name: template.name, kind: template.kind }))} />
-    </section>
+    <TableCard>
+      <TableCardHeader title={t("heading")} count={history.length || null} />
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="id">{t("columns.number")}</TableHead>
+            <TableHead kind="text">{t("columns.template")}</TableHead>
+            <TableHead kind="select">{t("columns.tier")}</TableHead>
+            <TableHead kind="person">{t("columns.by")}</TableHead>
+            <TableHead kind="date">{t("columns.at")}</TableHead>
+            <TableHead kind="actions" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {history.length === 0 ? <TableEmpty>{t("none")}</TableEmpty> : null}
+          {history.map((row) => (
+            <TableRow key={row.id}>
+              <TableCell kind="id">{row.number}</TableCell>
+              <TableCell>
+                {row.templateName}
+                <span className="ml-1 text-xs text-muted-foreground">({kinds(row.kind)})</span>
+              </TableCell>
+              <TableCell>{tiers(row.tier)}</TableCell>
+              <TableCell>{row.generatedByName ?? "—"}</TableCell>
+              <TableCell>{row.createdAt.toLocaleDateString("vi-VN")}</TableCell>
+              <TableCell kind="actions">
+                <a href={`/documents/${row.id}/pdf`} className="text-sm underline">
+                  {t("download")}
+                </a>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <TableAddRow label={t("new")} open={history.length === 0}>
+        <GenerateDocumentForm subjectPersonId={personId} templates={mine.map((template) => ({ id: template.id, name: template.name, kind: template.kind }))} />
+      </TableAddRow>
+    </TableCard>
   );
 }

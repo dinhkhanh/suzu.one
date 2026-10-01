@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { CreateEntityForm } from "@/modules/platform/org/ui/entity-forms";
@@ -26,46 +26,43 @@ export default async function EntitiesPage() {
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t("code")}</TableHead>
-            <TableHead>{t("legalName")}</TableHead>
-            <TableHead>{t("taxCode")}</TableHead>
-            <TableHead>{t("wageRegion")}</TableHead>
-            <TableHead>{t("status")}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {entities.length === 0 ? (
+      <TableCard>
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={5} className="text-muted-foreground">
-                {t("empty")}
-              </TableCell>
+              <TableHead kind="id">{t("code")}</TableHead>
+              <TableHead kind="text">{t("legalName")}</TableHead>
+              <TableHead kind="id">{t("taxCode")}</TableHead>
+              <TableHead kind="select">{t("wageRegion")}</TableHead>
+              <TableHead kind="status">{t("status")}</TableHead>
             </TableRow>
-          ) : (
-            entities.map((entity) => (
+          </TableHeader>
+          <TableBody>
+            {entities.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
+            {entities.map((entity) => (
               <TableRow key={entity.id}>
-                <TableCell className="font-mono text-xs">{entity.code}</TableCell>
+                <TableCell kind="id">{entity.code}</TableCell>
                 <TableCell>
                   <Link href={`/admin/entities/${entity.id}`} className="font-medium hover:underline">
                     {entity.shortName}
                   </Link>
                   <p className="text-xs text-muted-foreground">{entity.legalName}</p>
                 </TableCell>
-                <TableCell>{entity.taxCode ?? "—"}</TableCell>
+                <TableCell kind="id">{entity.taxCode ?? "—"}</TableCell>
                 <TableCell>{entity.wageRegion ?? "—"}</TableCell>
                 <TableCell>
                   <Badge dot variant={entity.isActive ? "success" : "outline"}>{entity.isActive ? t("active") : t("inactive")}</Badge>
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-
-      {can(user.principal, "org:manage", {}) ? <CreateEntityForm /> : null}
-
+            ))}
+          </TableBody>
+        </Table>
+        {can(user.principal, "org:manage", {}) ? (
+          <TableAddRow label={t("add")} open={entities.length === 0}>
+            <CreateEntityForm />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

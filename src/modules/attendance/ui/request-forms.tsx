@@ -6,10 +6,14 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { statusTone } from "@/components/ui/tone";
 import type { ActionResult } from "@/lib/action";
 import { useFilePreview } from "@/modules/platform/files/ui/file-preview";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
@@ -264,24 +268,43 @@ export function ApproveMonthsForm({ month, rows }: { month: string; rows: { pers
     },
   });
   const errors = useTranslations(ERRORS);
+  // Only paints the ticked rows; the checkboxes themselves stay uncontrolled and post with the form.
+  const [selected, setSelected] = useState(() => new Set(rows.filter((row) => row.canApprove && row.status === "confirmed").map((row) => row.personId)));
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
-      <ul className="flex flex-col divide-y rounded-xl border">
-        {rows.map((row) => {
-          const failed = result?.results.find((item) => item.personId === row.personId && !item.ok);
-          return (
-            <li key={row.personId} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm">
-              <input type="checkbox" name="personIds[]" value={row.personId} disabled={!row.canApprove || row.status === "approved" || row.status === "locked"} defaultChecked={row.canApprove && row.status === "confirmed"} aria-label={row.fullName} />
-              <a href={row.href} className="min-w-40 font-medium underline-offset-4 hover:underline">
-                {row.fullName}
-              </a>
-              <span className="rounded-md bg-muted px-2 py-0.5 text-xs">{t(`status.${row.status}`)}</span>
-              <span className="text-muted-foreground">{row.line}</span>
-              {failed?.message ? <span className="text-xs text-destructive">{errors.has(failed.message) ? errors(failed.message) : errors("generic")}</span> : null}
-            </li>
-          );
-        })}
-      </ul>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="person">{t("adjust.person")}</TableHead>
+            <TableHead kind="status">{t("columns.status")}</TableHead>
+            <TableHead kind="text">{t("columns.summary")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => {
+            const failed = result?.results.find((item) => item.personId === row.personId && !item.ok);
+            return (
+              <TableRow key={row.personId} data-state={selected.has(row.personId) ? "selected" : undefined}>
+                <TableCell>
+                  <span className="flex items-center gap-3">
+                    <Checkbox name="personIds[]" value={row.personId} disabled={!row.canApprove || row.status === "approved" || row.status === "locked"} defaultChecked={row.canApprove && row.status === "confirmed"} onCheckedChange={(checked) => setSelected((current) => { const next = new Set(current); if (checked) next.add(row.personId); else next.delete(row.personId); return next; })} aria-label={row.fullName} />
+                    <a href={row.href} className="font-medium underline-offset-4 hover:underline">
+                      {row.fullName}
+                    </a>
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <Badge dot variant={statusTone(row.status)}>{t(`status.${row.status}`)}</Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {row.line}
+                  {failed?.message ? <span className="ml-3 text-xs text-destructive">{errors.has(failed.message) ? errors(failed.message) : errors("generic")}</span> : null}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" size="sm" disabled={pending}>
           {t("approveSelected")}
@@ -329,8 +352,7 @@ export function AdjustmentForm({ month, people }: { month: string; people: { id:
   const router = useRouter();
   const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(createAdjustmentAction, { extra: { month }, onSuccess: () => router.refresh() });
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-3 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("adjust.title")}</h2>
+    <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <p className="text-xs text-muted-foreground">{t("adjust.hint")}</p>
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-3 sm:grid-cols-2">

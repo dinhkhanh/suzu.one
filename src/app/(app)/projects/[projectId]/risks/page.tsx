@@ -2,6 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { TableAddRow, TableCard } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canAddRaid, canBecomeTask, canCloseRaidItem, canEditRaidItem, listRaid, meetingPeople, openProject, RAID_KINDS, type RaidKind, raidCounts } from "@/modules/projects/service";
@@ -58,91 +60,91 @@ export default async function ProjectRisksPage({ params, searchParams }: PagePro
           </ul>
         </nav>
 
-        {items.length === 0 ? <p className="text-sm text-muted-foreground">{t("none")}</p> : null}
-        <ul className="flex flex-col gap-3">
-          {items.map((item) => {
-            const open = item.status === "open";
-            const rights = { ownerPersonId: item.ownerPersonId, createdByPersonId: item.createdByPersonId };
-            return (
-              <li key={item.id} className={`flex flex-col gap-2 rounded-xl border p-4 ${open ? "" : "opacity-70"}`}>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <Badge variant="outline">{t(`kinds.${item.kind as RaidKind}`)}</Badge>
-                  {item.severity ? <Badge variant={severityVariant(item.severity)}>{t(`severities.${item.severity as "high"}`)}</Badge> : null}
-                  <Badge dot variant={open ? "info" : "secondary"}>{t(`statuses.${item.status as "open"}`)}</Badge>
-                </div>
-                <p className="font-medium">{item.title}</p>
-                <RichText text={item.description} className="text-sm text-muted-foreground" />
-                <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-                  <div>
-                    <dt className="text-xs text-muted-foreground">{t("fields.owner")}</dt>
-                    <dd>{item.ownerName ?? "—"}</dd>
+        <TableCard>
+          <List>
+            {items.length === 0 ? <ListEmpty>{t("none")}</ListEmpty> : null}
+            {items.map((item) => {
+              const open = item.status === "open";
+              const rights = { ownerPersonId: item.ownerPersonId, createdByPersonId: item.createdByPersonId };
+              return (
+                <ListItem key={item.id} className={`flex-col items-stretch gap-2 py-4 ${open ? "" : "opacity-70"}`}>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge variant="outline">{t(`kinds.${item.kind as RaidKind}`)}</Badge>
+                    {item.severity ? <Badge variant={severityVariant(item.severity)}>{t(`severities.${item.severity as "high"}`)}</Badge> : null}
+                    <Badge dot variant={open ? "info" : "secondary"}>{t(`statuses.${item.status as "open"}`)}</Badge>
                   </div>
-                  <div>
-                    <dt className="text-xs text-muted-foreground">{t("fields.dueDate")}</dt>
-                    <dd className={open && item.dueDate && item.dueDate < today ? "text-destructive" : undefined}>{date(item.dueDate) ?? "—"}</dd>
-                  </div>
-                  {item.kind === "decision" ? (
+                  <p className="font-medium">{item.title}</p>
+                  <RichText text={item.description} className="text-sm text-muted-foreground" />
+                  <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
                     <div>
-                      <dt className="text-xs text-muted-foreground">{t("fields.decidedOn")}</dt>
-                      <dd>{date(item.decidedOn) ?? "—"}</dd>
+                      <dt className="text-xs text-muted-foreground">{t("fields.owner")}</dt>
+                      <dd>{item.ownerName ?? "—"}</dd>
                     </div>
-                  ) : null}
-                  <div>
-                    <dt className="text-xs text-muted-foreground">{t("fields.author")}</dt>
-                    <dd>{item.authorName ?? "—"}</dd>
-                  </div>
-                </dl>
-                {item.evidenceFile || item.evidenceUrl ? (
-                  <p className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="text-xs text-muted-foreground">{t("evidence")}</span>
-                    {item.evidenceFile ? <RaidEvidenceLink projectId={project.id} fileId={item.evidenceFile.id} fileName={item.evidenceFile.fileName} /> : null}
-                    {item.evidenceUrl ? (
-                      <a href={item.evidenceUrl} target="_blank" rel="noopener noreferrer" className="break-all underline">
-                        {item.evidenceUrl}
-                      </a>
+                    <div>
+                      <dt className="text-xs text-muted-foreground">{t("fields.dueDate")}</dt>
+                      <dd className={open && item.dueDate && item.dueDate < today ? "text-destructive" : undefined}>{date(item.dueDate) ?? "—"}</dd>
+                    </div>
+                    {item.kind === "decision" ? (
+                      <div>
+                        <dt className="text-xs text-muted-foreground">{t("fields.decidedOn")}</dt>
+                        <dd>{date(item.decidedOn) ?? "—"}</dd>
+                      </div>
                     ) : null}
-                  </p>
-                ) : null}
-                {item.meeting ? (
-                  <p className="text-sm">
-                    <span className="text-xs text-muted-foreground">{t("fromMeeting")} </span>
-                    <Link href={`/projects/${project.id}/meetings/${item.meeting.id}`} className="underline">
-                      {item.meeting.title} · {date(item.meeting.heldOn)}
-                    </Link>
-                  </p>
-                ) : null}
-                {item.task ? (
-                  <p className="text-sm">
-                    <span className="text-xs text-muted-foreground">{t("task")} </span>
-                    <Link href={`/work/tasks/${item.task.id}`} className="underline">
-                      <span className="font-mono text-xs">{item.task.key}</span> {item.task.title}
-                    </Link>
-                  </p>
-                ) : null}
-                <div className="flex flex-wrap items-center gap-3">
-                  {canCloseRaidItem(viewer, facts, rights) ? <RaidStatusButton itemId={item.id} open={open} /> : null}
-                  {adds && canBecomeTask(item) ? <IssueToTaskForm itemId={item.id} people={people} ownerPersonId={item.ownerPersonId} dueDate={item.dueDate} /> : null}
-                  {canEditRaidItem(viewer, facts, rights) ? (
-                    <RaidEdit
-                      projectId={project.id}
-                      people={people}
-                      today={today}
-                      item={{ id: item.id, kind: item.kind as RaidKind, title: item.title, description: item.description, ownerPersonId: item.ownerPersonId, dueDate: item.dueDate, severity: item.severity, decidedOn: item.decidedOn, evidenceUrl: item.evidenceUrl, evidence: item.evidenceFile ? { fileId: item.evidenceFile.id, fileName: item.evidenceFile.fileName } : null }}
-                    />
+                    <div>
+                      <dt className="text-xs text-muted-foreground">{t("fields.author")}</dt>
+                      <dd>{item.authorName ?? "—"}</dd>
+                    </div>
+                  </dl>
+                  {item.evidenceFile || item.evidenceUrl ? (
+                    <p className="flex flex-wrap items-center gap-2 text-sm">
+                      <span className="text-xs text-muted-foreground">{t("evidence")}</span>
+                      {item.evidenceFile ? <RaidEvidenceLink projectId={project.id} fileId={item.evidenceFile.id} fileName={item.evidenceFile.fileName} /> : null}
+                      {item.evidenceUrl ? (
+                        <a href={item.evidenceUrl} target="_blank" rel="noopener noreferrer" className="break-all underline">
+                          {item.evidenceUrl}
+                        </a>
+                      ) : null}
+                    </p>
                   ) : null}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                  {item.meeting ? (
+                    <p className="text-sm">
+                      <span className="text-xs text-muted-foreground">{t("fromMeeting")} </span>
+                      <Link href={`/projects/${project.id}/meetings/${item.meeting.id}`} className="underline">
+                        {item.meeting.title} · {date(item.meeting.heldOn)}
+                      </Link>
+                    </p>
+                  ) : null}
+                  {item.task ? (
+                    <p className="text-sm">
+                      <span className="text-xs text-muted-foreground">{t("task")} </span>
+                      <Link href={`/work/tasks/${item.task.id}`} className="underline">
+                        <span className="font-mono text-xs">{item.task.key}</span> {item.task.title}
+                      </Link>
+                    </p>
+                  ) : null}
+                  <div className="flex flex-wrap items-center gap-3">
+                    {canCloseRaidItem(viewer, facts, rights) ? <RaidStatusButton itemId={item.id} open={open} /> : null}
+                    {adds && canBecomeTask(item) ? <IssueToTaskForm itemId={item.id} people={people} ownerPersonId={item.ownerPersonId} dueDate={item.dueDate} /> : null}
+                    {canEditRaidItem(viewer, facts, rights) ? (
+                      <RaidEdit
+                        projectId={project.id}
+                        people={people}
+                        today={today}
+                        item={{ id: item.id, kind: item.kind as RaidKind, title: item.title, description: item.description, ownerPersonId: item.ownerPersonId, dueDate: item.dueDate, severity: item.severity, decidedOn: item.decidedOn, evidenceUrl: item.evidenceUrl, evidence: item.evidenceFile ? { fileId: item.evidenceFile.id, fileName: item.evidenceFile.fileName } : null }}
+                      />
+                    ) : null}
+                  </div>
+                </ListItem>
+              );
+            })}
+          </List>
+          {adds ? (
+            <TableAddRow label={t("new")} open={items.length === 0}>
+              <RaidForm projectId={project.id} people={people} today={today} />
+            </TableAddRow>
+          ) : null}
+        </TableCard>
       </section>
-
-      {adds ? (
-        <section className="flex flex-col gap-3 rounded-xl border p-4">
-          <h2 className="text-base font-medium">{t("new")}</h2>
-          <RaidForm projectId={project.id} people={people} today={today} />
-        </section>
-      ) : null}
     </div>
   );
 }

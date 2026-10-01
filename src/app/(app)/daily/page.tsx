@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listMyReports } from "@/modules/daily/service";
 import { hoursOf } from "@/modules/daily/ui/format";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -42,22 +43,34 @@ export default async function DailyIndexPage() {
           </Link>
         </div>
       </header>
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("index.recent")}</h2>
-        {reports.length === 0 ? <p className="text-sm text-muted-foreground">{t("index.empty")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border text-sm">
-          {reports.map((report) => (
-            <li key={report.id} className="flex flex-wrap items-center gap-2 p-3">
-              <Link href={`/daily/reports/${report.id}`} className="min-w-0 flex-1 font-medium hover:underline">
-                {format.dateTime(new Date(`${report.date}T12:00:00Z`), { weekday: "short", day: "numeric", month: "short" })}
-              </Link>
-              {report.blockers?.trim() ? <Badge variant="destructive">{t("index.hasBlockers")}</Badge> : null}
-              <span className="text-xs text-muted-foreground">{t("hours", { value: hoursOf(report.minutesLogged) })}</span>
-              {report.status === "submitted" ? <Badge dot variant={report.late ? "warning" : "success"}>{report.late ? t("late") : t("submitted")}</Badge> : <Badge variant="outline">{t("draft")}</Badge>}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <TableCard>
+        <TableCardHeader title={t("index.recent")} count={reports.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="date">{t("index.columns.date")}</TableHead>
+              <TableHead kind="status">{t("index.columns.status")}</TableHead>
+              <TableHead kind="time">{t("index.columns.hours")}</TableHead>
+              <TableHead kind="check">{t("index.hasBlockers")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {reports.length === 0 ? <TableEmpty>{t("index.empty")}</TableEmpty> : null}
+            {reports.map((report) => (
+              <TableRow key={report.id}>
+                <TableCell>
+                  <Link href={`/daily/reports/${report.id}`} className="font-medium hover:underline">
+                    {format.dateTime(new Date(`${report.date}T12:00:00Z`), { weekday: "short", day: "numeric", month: "short" })}
+                  </Link>
+                </TableCell>
+                <TableCell>{report.status === "submitted" ? <Badge dot variant={report.late ? "warning" : "success"}>{report.late ? t("late") : t("submitted")}</Badge> : <Badge variant="outline">{t("draft")}</Badge>}</TableCell>
+                <TableCell kind="time" className="text-muted-foreground">{t("hours", { value: hoursOf(report.minutesLogged) })}</TableCell>
+                <TableCell>{report.blockers?.trim() ? <Badge variant="destructive">{t("index.hasBlockers")}</Badge> : null}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableCard>
     </div>
   );
 }

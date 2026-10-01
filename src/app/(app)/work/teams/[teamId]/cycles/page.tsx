@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canViewTask, canViewTeam, findTeam, getCyclePage, loadTasks, loadViewer, teamFacts } from "@/modules/work/service";
@@ -45,31 +46,38 @@ export default async function TeamCyclesPage({ params }: PageProps<"/work/teams/
       </header>
 
       {page.current ? (
-        <section className="flex flex-col gap-3 rounded-xl border p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-medium">{t("cycles.current", { number: page.current.number })}</h2>
-            <span className="text-sm text-muted-foreground">{range(page.current)}</span>
-            {page.current.rolledIn ? <Badge variant="secondary">{t("cycles.rolledIn", { count: page.current.rolledIn })}</Badge> : null}
-          </div>
-          <div className="flex items-center gap-3">
+        <TableCard>
+          <TableCardHeader title={t("cycles.current", { number: page.current.number })} description={range(page.current)} actions={page.current.rolledIn ? <Badge variant="secondary">{t("cycles.rolledIn", { count: page.current.rolledIn })}</Badge> : null} />
+          <div className="flex items-center gap-3 border-b px-4 py-3">
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={page.current.progress.percent}>
               <div className="h-full bg-primary" style={{ width: `${page.current.progress.percent}%` }} />
             </div>
             <span className="text-sm tabular-nums">{t("cycles.progress", { done: page.current.progress.done, planned: page.current.progress.planned, percent: page.current.progress.percent })}</span>
           </div>
-          <ul className="flex flex-col divide-y rounded-lg border text-sm">
-            {tasks.map((task) => (
-              <li key={task.id} className="flex flex-wrap items-center gap-2 p-2.5">
-                <span className="w-16 font-mono text-xs text-muted-foreground">{task.key}</span>
-                <Link href={`/work/tasks/${task.id}`} className={`min-w-0 flex-1 truncate hover:underline ${task.status === "done" || task.status === "cancelled" ? "text-muted-foreground line-through" : "font-medium"}`}>
-                  {task.title}
-                </Link>
-                <span className="text-xs text-muted-foreground">{task.assigneeName ?? t("list.unassigned")}</span>
-              </li>
-            ))}
-            {tasks.length === 0 ? <li className="p-2.5 text-muted-foreground">{t("cycles.empty")}</li> : null}
-          </ul>
-        </section>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="id">{t("table.key")}</TableHead>
+                <TableHead kind="text">{t("table.title")}</TableHead>
+                <TableHead kind="person">{t("table.assignee")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {tasks.map((task) => (
+                <TableRow key={task.id}>
+                  <TableCell kind="id">{task.key}</TableCell>
+                  <TableCell className="max-w-96">
+                    <Link href={`/work/tasks/${task.id}`} className={`block truncate hover:underline ${task.status === "done" || task.status === "cancelled" ? "text-muted-foreground line-through" : "font-medium"}`}>
+                      {task.title}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{task.assigneeName ?? t("list.unassigned")}</TableCell>
+                </TableRow>
+              ))}
+              {tasks.length === 0 ? <TableEmpty>{t("cycles.empty")}</TableEmpty> : null}
+            </TableBody>
+          </Table>
+        </TableCard>
       ) : (
         <p className="text-sm text-muted-foreground">{t("cycles.none")}</p>
       )}
@@ -80,25 +88,32 @@ export default async function TeamCyclesPage({ params }: PageProps<"/work/teams/
         </p>
       ) : null}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("cycles.past")}</h2>
-        {page.past.length === 0 ? <p className="text-sm text-muted-foreground">{t("cycles.noPast")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border text-sm empty:hidden">
-          {page.past.map((cycle) => (
-            <li key={cycle.id} className="flex flex-wrap items-center gap-3 p-3">
-              <span className="font-medium">#{cycle.number}</span>
-              <span className="text-muted-foreground">{range(cycle)}</span>
-              {cycle.summary ? (
-                <span className="ml-auto flex flex-wrap gap-2 text-xs">
-                  <Badge variant="outline">{t("cycles.planned", { count: cycle.summary.planned })}</Badge>
-                  <Badge>{t("cycles.done", { count: cycle.summary.done })}</Badge>
-                  {cycle.summary.rolled ? <Badge variant="secondary">{t("cycles.rolled", { count: cycle.summary.rolled })}</Badge> : null}
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <TableCard>
+        <TableCardHeader title={t("cycles.past")} count={page.past.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="id">{t("cycles.field")}</TableHead>
+              <TableHead kind="date">{t("cycles.columns.dates")}</TableHead>
+              <TableHead kind="number">{t("cycles.columns.planned")}</TableHead>
+              <TableHead kind="number">{t("cycles.columns.done")}</TableHead>
+              <TableHead kind="number">{t("cycles.columns.rolled")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {page.past.length === 0 ? <TableEmpty>{t("cycles.noPast")}</TableEmpty> : null}
+            {page.past.map((cycle) => (
+              <TableRow key={cycle.id}>
+                <TableCell className="font-medium">#{cycle.number}</TableCell>
+                <TableCell className="text-muted-foreground">{range(cycle)}</TableCell>
+                <TableCell kind="number">{cycle.summary ? cycle.summary.planned : "—"}</TableCell>
+                <TableCell kind="number">{cycle.summary ? cycle.summary.done : "—"}</TableCell>
+                <TableCell kind="number">{cycle.summary ? cycle.summary.rolled : "—"}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableCard>
     </div>
   );
 }

@@ -1,5 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { getPeriodOverview, listAdjustments, listMonthsToApprove } from "@/modules/attendance/months";
 import { canLockPeriod } from "@/modules/attendance/policy";
@@ -70,18 +73,16 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
           </>
         )}
         {unconfirmed.length > 0 ? (
-          <div className="flex flex-col gap-1 rounded-xl border p-4 text-sm">
-            <h3 className="font-medium">{t("team.hoursToConfirm")}</h3>
-            <ul className="list-disc pl-5">
+          <TableCard>
+            <TableCardHeader title={t("team.hoursToConfirm")} count={unconfirmed.length} />
+            <List>
               {unconfirmed.map((row) => (
-                <li key={row.id}>
-                  <Link href={`/approvals/attendance/${row.approvalRequestId}`} className="underline-offset-4 hover:underline">
-                    {team.find((person) => person.personId === row.personId)?.fullName} · {row.startDate.split("-").reverse().join("/")}
-                  </Link>
-                </li>
+                <ListItem key={row.id} href={`/approvals/attendance/${row.approvalRequestId}`}>
+                  {team.find((person) => person.personId === row.personId)?.fullName} · {row.startDate.split("-").reverse().join("/")}
+                </ListItem>
               ))}
-            </ul>
-          </div>
+            </List>
+          </TableCard>
         ) : null}
       </section>
 
@@ -115,21 +116,23 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
           ) : (
             <>
               {overview.issues.length > 0 ? (
-                <div className="flex flex-col gap-2 rounded-xl border p-4 text-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="font-medium">{t("period.issues", { blocking: blocking.length, total: overview.issues.length })}</h3>
-                    <Link href={`/attendance/anomalies?month=${month}&entity=${chosen.id}`} className="underline-offset-4 hover:underline">
-                      {t("period.openConsole")}
-                    </Link>
-                  </div>
-                  <ul className="flex flex-col gap-1">
+                <TableCard>
+                  <TableCardHeader
+                    title={t("period.issues", { blocking: blocking.length, total: overview.issues.length })}
+                    actions={
+                      <Link href={`/attendance/anomalies?month=${month}&entity=${chosen.id}`} className="text-sm underline-offset-4 hover:underline">
+                        {t("period.openConsole")}
+                      </Link>
+                    }
+                  />
+                  <List>
                     {overview.issues.map((issue) => (
-                      <li key={`${issue.personId}:${issue.code}`} className={issue.blocking ? "" : "text-muted-foreground"}>
+                      <ListItem key={`${issue.personId}:${issue.code}`} className={issue.blocking ? "" : "text-muted-foreground"}>
                         {nameOf.get(issue.personId)} — {t(`issues.${issue.code}`, { count: issue.count })}
-                      </li>
+                      </ListItem>
                     ))}
-                  </ul>
-                </div>
+                  </List>
+                </TableCard>
               ) : null}
               {overview.isOver && overview.people.length > 0 ? (
                 <>
@@ -143,26 +146,28 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
           )}
 
           {locked ? (
-            <>
-              <h3 className="text-sm font-medium text-muted-foreground">{t("adjust.listTitle")}</h3>
-              {adjustments.length === 0 ? <p className="text-sm text-muted-foreground">{t("adjust.none")}</p> : null}
-              <ul className="flex flex-col divide-y rounded-xl border empty:hidden">
+            <TableCard>
+              <TableCardHeader title={t("adjust.listTitle")} count={adjustments.length || null} />
+              <List>
+                {adjustments.length === 0 ? <ListEmpty>{t("adjust.none")}</ListEmpty> : null}
                 {adjustments.map((row) => (
-                  <li key={row.id} className="flex flex-col gap-1 p-3 text-sm">
+                  <ListItem key={row.id} className="flex-col items-stretch gap-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium">{row.fullName}</span>
                       {row.date ? <span className="text-muted-foreground">{row.date.split("-").reverse().join("/")}</span> : null}
-                      <span className="rounded-md bg-muted px-2 py-0.5 text-xs">{row.status === "voided" ? t("adjust.voided") : row.payrollMonth ? t("adjust.inPayroll", { month: row.payrollMonth }) : t("adjust.waiting")}</span>
+                      <Badge variant={row.status === "voided" ? "outline" : "secondary"}>{row.status === "voided" ? t("adjust.voided") : row.payrollMonth ? t("adjust.inPayroll", { month: row.payrollMonth }) : t("adjust.waiting")}</Badge>
                     </div>
                     <p className="text-muted-foreground">
                       {Object.entries(row.deltas).map(([field, value]) => `${t(`adjust.fields.${field}`)}: ${(value ?? 0) > 0 ? "+" : ""}${value}`).join(" · ")} — {row.reason}
                     </p>
                     {row.status === "active" && !row.payrollMonth ? <VoidAdjustmentButton adjustmentId={row.id} label={t("adjust.void")} placeholder={t("adjust.voidWhy")} /> : null}
-                  </li>
+                  </ListItem>
                 ))}
-              </ul>
-              <AdjustmentForm month={month} people={overview.people.map((person) => ({ id: person.personId, fullName: person.fullName }))} />
-            </>
+              </List>
+              <TableAddRow label={t("adjust.title")} open={adjustments.length === 0}>
+                <AdjustmentForm month={month} people={overview.people.map((person) => ({ id: person.personId, fullName: person.fullName }))} />
+              </TableAddRow>
+            </TableCard>
           ) : null}
         </section>
       ) : null}

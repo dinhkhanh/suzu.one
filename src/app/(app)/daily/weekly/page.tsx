@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
+import { List, ListItem } from "@/components/ui/list";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { listWeekly, loadReportReader, type ShownPersonWeek, type ShownTeamWeek, weekStartOf } from "@/modules/daily/service";
 import { TaskLines } from "@/modules/daily/ui/activity-list";
@@ -79,73 +81,95 @@ export default async function WeeklyPage({ searchParams }: PageProps<"/daily/wee
               </ul>
             </div>
           ) : null}
-          <ul className="flex flex-col divide-y rounded-lg border text-sm">
-            {content.people.map((person) => (
-              <li key={person.personId} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-2.5">
-                <a href={`#person-${person.personId}`} className="min-w-0 flex-1 font-medium hover:underline">
-                  {person.name}
-                </a>
-                <span className="text-xs text-muted-foreground">{t("weekly.personFacts", { done: person.done, slipped: person.slipped, hours: hoursOf(person.minutes), submitted: person.submitted, required: person.required })}</span>
-              </li>
-            ))}
-          </ul>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="person">{t("weekly.columns.person")}</TableHead>
+                <TableHead kind="number">{t("weekly.columns.done")}</TableHead>
+                <TableHead kind="number">{t("weekly.columns.slipped")}</TableHead>
+                <TableHead kind="time">{t("weekly.columns.hours")}</TableHead>
+                <TableHead kind="number">{t("weekly.columns.reports")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {content.people.map((person) => (
+                <TableRow key={person.personId}>
+                  <TableCell>
+                    <a href={`#person-${person.personId}`} className="font-medium hover:underline">
+                      {person.name}
+                    </a>
+                  </TableCell>
+                  <TableCell kind="number">{person.done}</TableCell>
+                  <TableCell kind="number">{person.slipped}</TableCell>
+                  <TableCell kind="time">{t("hours", { value: hoursOf(person.minutes) })}</TableCell>
+                  <TableCell kind="number">
+                    {person.submitted}/{person.required}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
           {hoursList(content)}
           <WeeklySummaryForm id={row.id} summary={row.summary} />
         </section>
       ))}
 
       {notGenerated.length > 0 ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("weekly.notGenerated")}</h2>
-          <ul className="flex flex-col divide-y rounded-xl border">
+        <TableCard>
+          <TableCardHeader title={t("weekly.notGenerated")} count={notGenerated.length} />
+          <List>
             {notGenerated.map((team) => (
-              <li key={team.id} className="flex items-center gap-2 p-3 text-sm">
+              <ListItem key={team.id}>
                 <span className="min-w-0 flex-1">{team.name}</span>
                 <GenerateWeekButton teamId={team.id} weekStart={weekStart} label={t("weekly.generate")} />
-              </li>
+              </ListItem>
             ))}
-          </ul>
-        </section>
+          </List>
+        </TableCard>
       ) : null}
 
       {people.length > 0 ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("weekly.people", { count: people.length })}</h2>
-          {people.map(({ row, personId, name, content, canSummarise }) => (
-            <details key={row.id} id={`person-${personId}`} className="rounded-xl border p-3" open={personId === user.person.id}>
-              <summary className="cursor-pointer text-sm font-medium">
-                {personId === user.person.id ? t("weekly.myWeek") : name} <span className="font-normal text-muted-foreground">· {t("weekly.personFacts", { done: content.done.length, slipped: content.slipped.length, hours: hoursOf(content.totalMinutes), submitted: content.submitted, required: content.required })}</span>
-              </summary>
-              <div className="mt-3 flex flex-col gap-3 text-sm">
-                <div>
-                  <h3 className="text-xs font-medium text-muted-foreground">{t("weekly.done", { count: content.done.length })}</h3>
-                  <TaskLines lines={content.done} empty={t("report.noneDone")} />
-                </div>
-                {content.slipped.length > 0 ? (
-                  <div>
-                    <h3 className="text-xs font-medium text-muted-foreground">{t("weekly.slipped", { count: content.slipped.length })}</h3>
-                    <TaskLines lines={content.slipped} empty={t("report.noneDone")} />
+        <TableCard>
+          <TableCardHeader title={t("weekly.people", { count: people.length })} />
+          <List>
+            {people.map(({ row, personId, name, content, canSummarise }) => (
+              <ListItem key={row.id} className="block">
+                <details id={`person-${personId}`} open={personId === user.person.id}>
+                  <summary className="cursor-pointer text-sm font-medium">
+                    {personId === user.person.id ? t("weekly.myWeek") : name} <span className="font-normal text-muted-foreground">· {t("weekly.personFacts", { done: content.done.length, slipped: content.slipped.length, hours: hoursOf(content.totalMinutes), submitted: content.submitted, required: content.required })}</span>
+                  </summary>
+                  <div className="mt-3 flex flex-col gap-3 text-sm">
+                    <div>
+                      <h3 className="text-xs font-medium text-muted-foreground">{t("weekly.done", { count: content.done.length })}</h3>
+                      <TaskLines lines={content.done} empty={t("report.noneDone")} />
+                    </div>
+                    {content.slipped.length > 0 ? (
+                      <div>
+                        <h3 className="text-xs font-medium text-muted-foreground">{t("weekly.slipped", { count: content.slipped.length })}</h3>
+                        <TaskLines lines={content.slipped} empty={t("report.noneDone")} />
+                      </div>
+                    ) : null}
+                    {content.blockers.length > 0 ? (
+                      <div>
+                        <h3 className="text-xs font-medium text-destructive">{t("weekly.blockers", { count: content.blockers.length })}</h3>
+                        <ul className="flex flex-col gap-0.5">
+                          {content.blockers.map((blocker) => (
+                            <li key={blocker.date}>
+                              {day(blocker.date)} · {noteToPlainText(blocker.text)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                    {hoursList(content)}
+                    {row.summary && !canSummarise ? <RichText text={row.summary} className="rounded-lg bg-muted p-3" /> : null}
+                    {canSummarise ? <WeeklySummaryForm id={row.id} summary={row.summary} /> : null}
                   </div>
-                ) : null}
-                {content.blockers.length > 0 ? (
-                  <div>
-                    <h3 className="text-xs font-medium text-destructive">{t("weekly.blockers", { count: content.blockers.length })}</h3>
-                    <ul className="flex flex-col gap-0.5">
-                      {content.blockers.map((blocker) => (
-                        <li key={blocker.date}>
-                          {day(blocker.date)} · {noteToPlainText(blocker.text)}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-                {hoursList(content)}
-                {row.summary && !canSummarise ? <RichText text={row.summary} className="rounded-lg bg-muted p-3" /> : null}
-                {canSummarise ? <WeeklySummaryForm id={row.id} summary={row.summary} /> : null}
-              </div>
-            </details>
-          ))}
-        </section>
+                </details>
+              </ListItem>
+            ))}
+          </List>
+        </TableCard>
       ) : null}
     </div>
   );

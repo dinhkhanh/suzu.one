@@ -40,8 +40,7 @@ export function CreateEntityForm() {
   const { onSubmit, pending, errorKey } = useActionForm(createEntityAction, { onSuccess: () => form.current?.reset() });
 
   return (
-    <form ref={form} onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("add")}</h2>
+    <form ref={form} onSubmit={onSubmit} className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Field name="code" label={t("code")}>
           <Input id="code" name="code" required minLength={2} maxLength={12} pattern="[A-Za-z0-9_-]+" />

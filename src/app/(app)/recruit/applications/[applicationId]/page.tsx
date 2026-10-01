@@ -2,8 +2,9 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
-import { buttonVariants } from "@/components/ui/button";
 import { publicOrigin } from "@/lib/site";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listAssignments } from "@/modules/recruit/assignments";
@@ -135,94 +136,114 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
 
       {/* Interviews (FR-REC-06). The list is everybody's; booking one is the hiring team's. */}
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{tInterview("heading")}</h2>
-        {interviews.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{tInterview("none")}</p>
-        ) : (
-          <ul className="flex flex-col divide-y rounded-xl border">
-            {interviews.map((row) => (
-              <li key={row.id} className="flex flex-wrap items-center gap-3 p-3">
-                <div className="min-w-0 flex-1 basis-56">
-                  <Link href={`/recruit/interviews/${row.id}`} className="text-sm font-medium hover:underline">
-                    {row.title}
-                  </Link>
-                  <p className="text-xs text-muted-foreground">{row.interviewers.map((person) => person.fullName).join(", ")}</p>
-                </div>
-                <span className="text-xs text-muted-foreground">{format.dateTime(row.startAt, { dateStyle: "medium", timeStyle: "short" })}</span>
-                <Badge dot variant={statusTone(row.status)}>{tInterview(`statuses.${row.status}`)}</Badge>
-              </li>
-            ))}
-          </ul>
-        )}
+        <TableCard>
+          <TableCardHeader title={tInterview("heading")} count={interviews.length || null} />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="text">{tInterview("title")}</TableHead>
+                <TableHead kind="person">{tInterview("interviewers")}</TableHead>
+                <TableHead kind="date">{tInterview("when")}</TableHead>
+                <TableHead kind="status">{t("columns.status")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {interviews.length === 0 ? <TableEmpty>{tInterview("none")}</TableEmpty> : null}
+              {interviews.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell className="max-w-72 truncate">
+                    <Link href={`/recruit/interviews/${row.id}`} className="font-medium hover:underline">
+                      {row.title}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="max-w-64 truncate">{row.interviewers.map((person) => person.fullName).join(", ") || "—"}</TableCell>
+                  <TableCell>{format.dateTime(row.startAt, { dateStyle: "medium", timeStyle: "short" })}</TableCell>
+                  <TableCell>
+                    <Badge dot variant={statusTone(row.status)}>{tInterview(`statuses.${row.status}`)}</Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
         {view.canAct && !closed ? <ScheduleInterview applicationId={applicationId} stages={view.stages} options={options} /> : null}
       </section>
 
       {/* Take-home assignments (FR-REC-07). The brief goes out as a link; the work comes back
           through the public page, and the file is `not_scanned` like every other candidate upload. */}
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{tAssignment("heading")}</h2>
-        {assignments.length === 0 ? <p className="text-sm text-muted-foreground">{tAssignment("none")}</p> : null}
-        {assignments.map((assignment) => (
-          <article key={assignment.id} className="flex flex-col gap-2 rounded-xl border p-4 text-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-medium">{assignment.title}</span>
-              <Badge dot variant={statusTone(assignment.status)}>{tAssignment(`statuses.${assignment.status}`)}</Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {tAssignment("due")}: {format.dateTime(assignment.dueAt, { dateStyle: "medium", timeStyle: "short" })}
-              {assignment.submittedAt ? ` · ${tAssignment("submittedAt")}: ${format.dateTime(assignment.submittedAt, { dateStyle: "medium", timeStyle: "short" })}` : ""}
-            </p>
-            {assignment.submissionNote ? <p className="whitespace-pre-line text-muted-foreground">{assignment.submissionNote}</p> : null}
-            {assignment.submissionLinks.length > 0 ? (
-              <ul className="flex flex-col gap-1">
-                {assignment.submissionLinks.map((link) => (
-                  <li key={link}>
-                    <a href={link} target="_blank" rel="noreferrer noopener" className="underline underline-offset-4">
-                      {link}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {assignment.submissionFileId ? (
-              <div className="flex flex-col gap-1">
-                <AssignmentLink assignmentId={assignment.id} fileId={assignment.submissionFileId} fileName={assignment.title} />
-                <p className="text-xs text-muted-foreground">{t("notScanned")}</p>
-              </div>
-            ) : null}
-            {view.canAct && assignment.submittedAt && assignment.status !== "cancelled" ? <RateAssignment assignmentId={assignment.id} rating={assignment.rating} /> : null}
-            {view.canAct && assignment.status === "sent" ? <CancelAssignment assignmentId={assignment.id} /> : null}
-          </article>
-        ))}
+        <TableCard>
+          <TableCardHeader title={tAssignment("heading")} count={assignments.length || null} />
+          <List>
+            {assignments.length === 0 ? <ListEmpty>{tAssignment("none")}</ListEmpty> : null}
+            {assignments.map((assignment) => (
+              <ListItem key={assignment.id} className="flex-col items-stretch gap-2 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium">{assignment.title}</span>
+                  <Badge dot variant={statusTone(assignment.status)}>{tAssignment(`statuses.${assignment.status}`)}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {tAssignment("due")}: {format.dateTime(assignment.dueAt, { dateStyle: "medium", timeStyle: "short" })}
+                  {assignment.submittedAt ? ` · ${tAssignment("submittedAt")}: ${format.dateTime(assignment.submittedAt, { dateStyle: "medium", timeStyle: "short" })}` : ""}
+                </p>
+                {assignment.submissionNote ? <p className="whitespace-pre-line text-muted-foreground">{assignment.submissionNote}</p> : null}
+                {assignment.submissionLinks.length > 0 ? (
+                  <ul className="flex flex-col gap-1">
+                    {assignment.submissionLinks.map((link) => (
+                      <li key={link}>
+                        <a href={link} target="_blank" rel="noreferrer noopener" className="underline underline-offset-4">
+                          {link}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {assignment.submissionFileId ? (
+                  <div className="flex flex-col gap-1">
+                    <AssignmentLink assignmentId={assignment.id} fileId={assignment.submissionFileId} fileName={assignment.title} />
+                    <p className="text-xs text-muted-foreground">{t("notScanned")}</p>
+                  </div>
+                ) : null}
+                {view.canAct && assignment.submittedAt && assignment.status !== "cancelled" ? <RateAssignment assignmentId={assignment.id} rating={assignment.rating} /> : null}
+                {view.canAct && assignment.status === "sent" ? <CancelAssignment assignmentId={assignment.id} /> : null}
+              </ListItem>
+            ))}
+          </List>
+        </TableCard>
         {view.canAct && !closed ? <SendAssignment applicationId={applicationId} origin={origin} /> : null}
       </section>
 
       {/* Offers (FR-REC-08). The list is the hiring team's; drafting one is the money authority's,
           so the "make an offer" link is only drawn for a reader who may type a figure. */}
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{tOffer("heading")}</h2>
-        {offers.length === 0 ? <p className="text-sm text-muted-foreground">{tOffer("none")}</p> : null}
-        {offers.length > 0 ? (
-          <ul className="flex flex-col divide-y rounded-xl border">
+      <TableCard>
+        <TableCardHeader title={tOffer("heading")} count={offers.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="id">{tOffer("heading")}</TableHead>
+              <TableHead kind="date">{tOffer("startDate")}</TableHead>
+              <TableHead kind="status">{t("columns.status")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {offers.length === 0 ? <TableEmpty>{tOffer("none")}</TableEmpty> : null}
             {offers.map((row) => (
-              <li key={row.id} className="flex flex-wrap items-center gap-3 p-3">
-                <Link href={`/recruit/offers/${row.id}`} className="min-w-0 flex-1 text-sm font-medium hover:underline">
-                  {row.number}
-                </Link>
-                <span className="text-xs text-muted-foreground">{format.dateTime(new Date(`${row.startDate}T00:00:00Z`), { dateStyle: "medium", timeZone: "UTC" })}</span>
-                <Badge dot variant={statusTone(row.status)}>{tOffer(`statuses.${row.status}`)}</Badge>
-              </li>
+              <TableRow key={row.id}>
+                <TableCell kind="id">
+                  <Link href={`/recruit/offers/${row.id}`} className="font-medium text-foreground hover:underline">
+                    {row.number}
+                  </Link>
+                </TableCell>
+                <TableCell>{format.dateTime(new Date(`${row.startDate}T00:00:00Z`), { dateStyle: "medium", timeZone: "UTC" })}</TableCell>
+                <TableCell>
+                  <Badge dot variant={statusTone(row.status)}>{tOffer(`statuses.${row.status}`)}</Badge>
+                </TableCell>
+              </TableRow>
             ))}
-          </ul>
-        ) : null}
-        {mayOffer && !closed ? (
-          <div>
-            <Link href={`/recruit/offers/new?applicationId=${applicationId}`} className={buttonVariants({ size: "sm", variant: "outline" })}>
-              {tOffer("create")}
-            </Link>
-          </div>
-        ) : null}
-      </section>
+          </TableBody>
+        </Table>
+        {mayOffer && !closed ? <TableAddRow label={tOffer("create")} href={`/recruit/offers/new?applicationId=${applicationId}`} /> : null}
+      </TableCard>
 
       {view.canAct ? <ApplicationActions applicationId={applicationId} stages={view.stages} currentStageId={view.stage.id} closed={closed} /> : null}
 
@@ -234,11 +255,11 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
         />
       ) : null}
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("history")}</h2>
-        <ul className="flex flex-col divide-y rounded-xl border text-sm">
+      <TableCard>
+        <TableCardHeader title={t("history")} />
+        <List>
           {view.events.map((event) => (
-            <li key={event.id} className="flex flex-wrap items-center gap-3 p-3">
+            <ListItem key={event.id} className="flex-wrap">
               <span className="min-w-0 flex-1 basis-56">
                 {t(`event.${event.type}`)}
                 {event.toStageName ? ` → ${event.toStageName}` : ""}
@@ -246,10 +267,10 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
               </span>
               <span className="text-xs text-muted-foreground">{event.actorName ?? t("source.careers_page")}</span>
               <span className="text-xs text-muted-foreground">{format.dateTime(event.at, { dateStyle: "medium", timeStyle: "short" })}</span>
-            </li>
+            </ListItem>
           ))}
-        </ul>
-      </section>
+        </List>
+      </TableCard>
 
       <p className="text-xs text-muted-foreground">{t("confidential")}</p>
     </div>

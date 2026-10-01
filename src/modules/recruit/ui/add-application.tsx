@@ -23,8 +23,7 @@ export function AddApplicationForm({ openingId, candidates, canSetMoney }: { ope
   if (candidates.length === 0) return null;
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-3 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{actions("addApplication")}</h2>
+    <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field name="candidateId" label={t("fullName")}>

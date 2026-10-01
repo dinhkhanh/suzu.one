@@ -30,7 +30,7 @@ export function BookAssetForm({ assets, assetId, people, canBookForOthers }: { a
   const { onSubmit, pending, errorKey, fieldErrors } = useActionForm(bookAssetAction, { onSuccess: () => router.refresh() });
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-md border p-4">
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <FieldErrors value={fieldErrors}>
         {assetId ? (
           <input type="hidden" name="assetId" value={assetId} />

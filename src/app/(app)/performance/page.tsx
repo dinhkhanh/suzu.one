@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { listGoals } from "@/modules/performance/service";
 import { CheckInForm } from "@/modules/performance/ui/goal-forms";
@@ -48,64 +50,67 @@ export default async function MyGoalsPage({ searchParams }: PageProps<"/performa
         ))}
       </nav>
 
-      <section className="flex flex-col gap-3">
-        <h2>{t("mine.title")}</h2>
-        {due > 0 ? <p className="text-sm text-warning">{t("mine.due", { count: due })}</p> : null}
-        {mine.length === 0 ? <p className="text-sm text-muted-foreground">{t("mine.empty", { year })}</p> : null}
-        {mine.map((goal) => {
-          // Everything listed here is mine or mine to answer for: the check-in is open while the goal runs.
-          const mayCheckIn = goal.status === "active";
-          return (
-            <article key={goal.id} className="rounded-xl border px-4 py-2">
-              <GoalLine goal={goal} labels={labels} />
-              {goal.keyResults.length === 0 ? <p className="pb-2 text-xs text-muted-foreground">{goal.childIds.length > 0 ? t("mine.rollsUp") : t("mine.noKeyResults")}</p> : null}
-              <ul className="flex flex-col divide-y border-t">
-                {goal.keyResults.map((keyResult) => (
-                  <li key={keyResult.id} className="flex flex-col gap-2 py-2 text-sm">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <span className="min-w-0 flex-1 basis-56">{keyResult.title}</span>
-                      <span className="text-xs text-muted-foreground tabular-nums">
-                        {metricText(format, keyResult.metricType, keyResult.currentValue, keyResult.milestones)}
-                        {keyResult.metricType === "milestone" ? "" : ` → ${metricText(format, keyResult.metricType, keyResult.targetValue)}`}
-                      </span>
-                      <ConfidenceBadge confidence={keyResult.confidence} label={keyResult.confidence ? t(`enums.confidence.${keyResult.confidence}`) : ""} />
-                      <ProgressBar bp={keyResult.progressBp} label={progressLabel(labels, keyResult.progressBp)} />
-                    </div>
-                    {mayCheckIn ? (
-                      <details>
-                        <summary className="cursor-pointer text-xs text-muted-foreground">{keyResult.stale ? t("checkIn.dueNow") : t("checkIn.open")}</summary>
-                        <div className="pt-2">
-                          <CheckInForm keyResult={{ id: keyResult.id, metricType: keyResult.metricType, currentValue: keyResult.currentValue, milestones: keyResult.milestones, confidence: keyResult.confidence }} />
-                        </div>
-                      </details>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </article>
-          );
-        })}
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <div className="flex items-baseline justify-between">
-          <h2>{t("company.title")}</h2>
-          <Link href={`/performance/goals?year=${year}`} className="text-sm underline">
-            {t("company.all")}
-          </Link>
-        </div>
-        {company.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("company.empty", { year })}</p>
-        ) : (
-          <ul className="flex flex-col divide-y rounded-xl border px-4">
-            {company.map((goal) => (
-              <li key={goal.id}>
+      {due > 0 ? <p className="text-sm text-warning">{t("mine.due", { count: due })}</p> : null}
+      <TableCard>
+        <TableCardHeader title={t("mine.title")} count={mine.length || null} />
+        <List>
+          {mine.length === 0 ? <ListEmpty>{t("mine.empty", { year })}</ListEmpty> : null}
+          {mine.map((goal) => {
+            // Everything listed here is mine or mine to answer for: the check-in is open while the goal runs.
+            const mayCheckIn = goal.status === "active";
+            return (
+              <ListItem key={goal.id} className="block py-0">
                 <GoalLine goal={goal} labels={labels} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                {goal.keyResults.length === 0 ? <p className="pb-2 text-xs text-muted-foreground">{goal.childIds.length > 0 ? t("mine.rollsUp") : t("mine.noKeyResults")}</p> : null}
+                <ul className="flex flex-col divide-y border-t empty:hidden">
+                  {goal.keyResults.map((keyResult) => (
+                    <li key={keyResult.id} className="flex flex-col gap-2 py-2 text-sm">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span className="min-w-0 flex-1 basis-56">{keyResult.title}</span>
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                          {metricText(format, keyResult.metricType, keyResult.currentValue, keyResult.milestones)}
+                          {keyResult.metricType === "milestone" ? "" : ` → ${metricText(format, keyResult.metricType, keyResult.targetValue)}`}
+                        </span>
+                        <ConfidenceBadge confidence={keyResult.confidence} label={keyResult.confidence ? t(`enums.confidence.${keyResult.confidence}`) : ""} />
+                        <ProgressBar bp={keyResult.progressBp} label={progressLabel(labels, keyResult.progressBp)} />
+                      </div>
+                      {mayCheckIn ? (
+                        <details>
+                          <summary className="cursor-pointer text-xs text-muted-foreground">{keyResult.stale ? t("checkIn.dueNow") : t("checkIn.open")}</summary>
+                          <div className="pt-2">
+                            <CheckInForm keyResult={{ id: keyResult.id, metricType: keyResult.metricType, currentValue: keyResult.currentValue, milestones: keyResult.milestones, confidence: keyResult.confidence }} />
+                          </div>
+                        </details>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </ListItem>
+            );
+          })}
+        </List>
+        <TableAddRow label={t("newGoal")} href={`/performance/goals/new?year=${year}`} />
+      </TableCard>
+
+      <TableCard>
+        <TableCardHeader
+          title={t("company.title")}
+          count={company.length || null}
+          actions={
+            <Link href={`/performance/goals?year=${year}`} className="text-sm underline">
+              {t("company.all")}
+            </Link>
+          }
+        />
+        <List>
+          {company.length === 0 ? <ListEmpty>{t("company.empty", { year })}</ListEmpty> : null}
+          {company.map((goal) => (
+            <ListItem key={goal.id} className="block py-0">
+              <GoalLine goal={goal} labels={labels} />
+            </ListItem>
+          ))}
+        </List>
+      </TableCard>
     </div>
   );
 }

@@ -5,10 +5,12 @@
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import { Field } from "@/components/forms/field";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ActionResult } from "@/lib/action";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
@@ -200,6 +202,8 @@ export type ReadyItem = { id: string; projectName: string; jobNumber: string | n
 /** An invoice over ready items of one client and entity: pick them, number and date it, choose the VAT. */
 export function RecordInvoiceForm({ items, vatRates, defaultVat, today }: { items: ReadyItem[]; vatRates: number[]; defaultVat: number; today: string }) {
   const t = useTranslations("crm.invoice");
+  const tCrm = useTranslations("crm");
+  const tProjects = useTranslations("projects");
   const format = useFormatter();
   const [picked, setPicked] = useState<Set<string>>(new Set(items.length === 1 ? [items[0].id] : []));
   const [typed, setTyped] = useState<Record<string, string>>({});
@@ -209,36 +213,50 @@ export function RecordInvoiceForm({ items, vatRates, defaultVat, today }: { item
   const vatAmount = Math.round((subtotal * vat) / 10_000);
   return (
     <CrmForm action={recordInvoiceAction} extra={{ itemIds: [...picked] }} submit={t("record")} navigateTo={(data) => `/crm/invoices/${(data as { id: string }).id}`}>
-      <ul className="flex flex-col divide-y rounded-lg border">
-        {items.map((item) => (
-          <li key={item.id} className="flex flex-wrap items-center gap-3 p-2 text-sm">
-            <input
-              type="checkbox"
-              aria-label={item.description}
-              checked={picked.has(item.id)}
-              onChange={(event) =>
-                setPicked((current) => {
-                  const next = new Set(current);
-                  if (event.target.checked) next.add(item.id);
-                  else next.delete(item.id);
-                  return next;
-                })
-              }
-            />
-            <span className="font-mono text-xs text-muted-foreground">{item.jobNumber ?? "—"}</span>
-            <span>{item.projectName}</span>
-            <span className="text-muted-foreground">{item.description}</span>
-            {item.reference ? <span className="text-xs text-muted-foreground">{item.reference}</span> : null}
-            <span className="ml-auto tabular-nums">
-              {item.amountVnd !== null ? (
-                money(item.amountVnd)
-              ) : (
-                <MoneyInput name={`amounts.${item.id}`} required={picked.has(item.id)} value={typed[item.id] ?? ""} onChange={(event) => setTyped((current) => ({ ...current, [item.id]: event.target.value }))} placeholder={t("amount")} aria-label={t("amount")} className="w-36" />
-              )}
-            </span>
-          </li>
-        ))}
-      </ul>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="id">{tProjects("fields.jobNumber")}</TableHead>
+            <TableHead kind="text">{tCrm("contract.fields.project")}</TableHead>
+            <TableHead kind="text">{tCrm("quote.description")}</TableHead>
+            <TableHead kind="id">{t("fields.reference")}</TableHead>
+            <TableHead kind="money">{t("amount")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map((item) => (
+            <TableRow key={item.id} data-state={picked.has(item.id) ? "selected" : undefined}>
+              <TableCell kind="id">
+                <span className="flex items-center gap-3">
+                  <Checkbox
+                    aria-label={item.description}
+                    checked={picked.has(item.id)}
+                    onCheckedChange={(checked) =>
+                      setPicked((current) => {
+                        const next = new Set(current);
+                        if (checked) next.add(item.id);
+                        else next.delete(item.id);
+                        return next;
+                      })
+                    }
+                  />
+                  {item.jobNumber ?? "—"}
+                </span>
+              </TableCell>
+              <TableCell>{item.projectName}</TableCell>
+              <TableCell className="whitespace-normal text-muted-foreground">{item.description}</TableCell>
+              <TableCell kind="id">{item.reference ?? "—"}</TableCell>
+              <TableCell kind="money">
+                {item.amountVnd !== null ? (
+                  money(item.amountVnd)
+                ) : (
+                  <MoneyInput name={`amounts.${item.id}`} required={picked.has(item.id)} value={typed[item.id] ?? ""} onChange={(event) => setTyped((current) => ({ ...current, [item.id]: event.target.value }))} placeholder={t("amount")} aria-label={t("amount")} className="ml-auto w-36" />
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
       <div className="grid gap-3 sm:grid-cols-4">
         <Field name="number" label={t("fields.number")}>
           <Input id="invoice-number" name="number" required maxLength={60} />

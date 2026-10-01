@@ -254,8 +254,7 @@ export function AdjustBalanceForm({ personId, year, types }: { personId: string;
   const t = useTranslations("leave.admin");
   const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(adjustLeaveBalanceAction, { extra: { personId, year } });
   return (
-    <form onSubmit={onSubmit} key={saved ? "saved" : "open"} className="flex flex-col gap-3 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("balances.adjust")}</h2>
+    <form onSubmit={onSubmit} key={saved ? "saved" : "open"} className="flex flex-col gap-3">
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-3 sm:grid-cols-3">
           <Field name="leaveTypeId" label={t("balances.type")}>
@@ -303,8 +302,7 @@ export function StaffingRuleForm({ entities, canGroup, departments, teams }: { e
   const t = useTranslations("leave.admin");
   const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(saveStaffingRuleAction);
   return (
-    <form onSubmit={onSubmit} key={saved ? "saved" : "open"} className="flex flex-col gap-3 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("staffing.add")}</h2>
+    <form onSubmit={onSubmit} key={saved ? "saved" : "open"} className="flex flex-col gap-3">
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-3 sm:grid-cols-4">
           <EntitySelect entities={entities} canGroup={canGroup} label={t("appliesTo")} groupLabel={t("everyEntity")} />

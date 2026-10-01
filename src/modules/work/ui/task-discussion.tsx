@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { addCommentAction, beginTaskUploadAction, completeTaskUploadAction, deleteCommentAction, editCommentAction, followTaskAction, openTaskFileAction, reactToCommentAction, removeTaskFileAction } from "../actions";
 import { mentionQueryAt, mentionToken, parseBody } from "../engine/mentions";
@@ -152,50 +153,68 @@ export function TaskFiles({ taskId, files, canAdd, accept }: { taskId: string; f
   const size = (bytes: number) => (bytes >= 1_048_576 ? `${format.number(bytes / 1_048_576, { maximumFractionDigits: 1 })} MB` : `${format.number(Math.max(1, Math.round(bytes / 1024)))} KB`);
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-sm font-medium text-muted-foreground">{t("files", { count: files.length })}</h2>
-      {files.length ? (
-        <ul className="flex flex-col divide-y rounded-xl border text-sm">
-          {files.map((file) => (
-            <li key={file.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
-              <span className="min-w-0 flex-1 basis-56 truncate">
-                <FileLink fileId={file.id} fileName={file.fileName} download={openTaskFileAction} onError={setErrorKey} />
-              </span>
-              <span className="text-xs text-muted-foreground">{[size(file.sizeBytes), file.uploadedByName, format.dateTime(new Date(file.createdAt), { dateStyle: "short" })].filter(Boolean).join(" · ")}</span>
-              {file.canRemove ? (
-                <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => removeTaskFileAction({ fileId: file.id }))}>
-                  {t("removeFile")}
-                </Button>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {canAdd ? (
-        <label className="flex w-fit cursor-pointer items-center gap-2 text-sm">
-          <input
-            type="file"
-            accept={accept}
-            disabled={pending}
-            className="text-sm file:mr-2 file:rounded-md file:border file:bg-transparent file:px-2 file:py-1 file:text-sm"
-            aria-label={t("addFile")}
-            onChange={(event) => {
-              const input = event.currentTarget;
-              const file = input.files?.[0];
-              if (!file) return;
-              run(async () => {
-                const result = await uploadThroughSignedUrl(
-                  file,
-                  (meta) => beginTaskUploadAction({ taskId, ...meta }),
-                  (fileId) => completeTaskUploadAction({ fileId }),
-                );
-                input.value = "";
-                return result.ok ? { ok: true } : { ok: false, error: "failed", message: result.errorKey };
-              });
-            }}
-          />
-          {pending ? <span className="text-xs text-muted-foreground">{t("uploading")}</span> : null}
-        </label>
-      ) : null}
+      <TableCard>
+        <TableCardHeader title={t("files", { count: files.length })} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="file">{t("columns.file")}</TableHead>
+              <TableHead kind="number">{t("columns.size")}</TableHead>
+              <TableHead kind="person">{t("columns.uploadedBy")}</TableHead>
+              <TableHead kind="date">{t("columns.added")}</TableHead>
+              {files.some((file) => file.canRemove) ? <TableHead kind="actions" /> : null}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {files.length === 0 ? <TableEmpty>{t("noFiles")}</TableEmpty> : null}
+            {files.map((file) => (
+              <TableRow key={file.id}>
+                <TableCell className="max-w-80 truncate">
+                  <FileLink fileId={file.id} fileName={file.fileName} download={openTaskFileAction} onError={setErrorKey} />
+                </TableCell>
+                <TableCell kind="number">{size(file.sizeBytes)}</TableCell>
+                <TableCell>{file.uploadedByName ?? "—"}</TableCell>
+                <TableCell>{format.dateTime(new Date(file.createdAt), { dateStyle: "short" })}</TableCell>
+                {files.some((row) => row.canRemove) ? (
+                  <TableCell kind="actions">
+                    {file.canRemove ? (
+                      <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => removeTaskFileAction({ fileId: file.id }))}>
+                        {t("removeFile")}
+                      </Button>
+                    ) : null}
+                  </TableCell>
+                ) : null}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {canAdd ? (
+          <label className="flex min-h-12 cursor-pointer items-center gap-2 border-t px-3 py-2 text-sm">
+            <input
+              type="file"
+              accept={accept}
+              disabled={pending}
+              className="text-sm file:mr-2 file:rounded-md file:border file:bg-transparent file:px-2 file:py-1 file:text-sm"
+              aria-label={t("addFile")}
+              onChange={(event) => {
+                const input = event.currentTarget;
+                const file = input.files?.[0];
+                if (!file) return;
+                run(async () => {
+                  const result = await uploadThroughSignedUrl(
+                    file,
+                    (meta) => beginTaskUploadAction({ taskId, ...meta }),
+                    (fileId) => completeTaskUploadAction({ fileId }),
+                  );
+                  input.value = "";
+                  return result.ok ? { ok: true } : { ok: false, error: "failed", message: result.errorKey };
+                });
+              }}
+            />
+            {pending ? <span className="text-xs text-muted-foreground">{t("uploading")}</span> : null}
+          </label>
+        ) : null}
+      </TableCard>
       {errorKey ? (
         <p role="alert" className="text-sm text-destructive">
           {t.has(`errors.${errorKey}`) ? t(`errors.${errorKey}`) : t("errors.generic")}

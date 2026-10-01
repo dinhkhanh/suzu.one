@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { List, ListItem } from "@/components/ui/list";
 import { getHomeFeed } from "@/modules/comms/service";
 import { AnnouncementList, KudosList } from "@/modules/comms/ui/cards";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -161,9 +162,9 @@ export default async function HomePage() {
       {feed.newPages.length > 0 ? (
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-medium text-muted-foreground">{t("home.newPages")}</h2>
-          <ul className="flex flex-col divide-y rounded-lg border">
+          <List>
             {feed.newPages.map((page) => (
-              <li key={page.pageId} className="flex flex-wrap items-center gap-2 p-3 text-sm">
+              <ListItem key={page.pageId} className="flex-wrap gap-2">
                 <Link href={`/kb/pages/${page.pageId}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
                   {page.title}
                 </Link>
@@ -171,9 +172,9 @@ export default async function HomePage() {
                   {page.spaceName}
                   {page.at ? ` · ${format.dateTime(page.at, { dateStyle: "medium" })}` : ""}
                 </span>
-              </li>
+              </ListItem>
             ))}
-          </ul>
+          </List>
         </section>
       ) : null}
     </div>

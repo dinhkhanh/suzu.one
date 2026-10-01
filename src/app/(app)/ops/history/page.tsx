@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { exportHistoryAction } from "@/modules/ops/actions";
 import { canReadOps, getHistory, listTemplates, periodLabel, readableEntities } from "@/modules/ops/service";
@@ -85,57 +86,57 @@ export default async function OpsHistoryPage({ searchParams }: PageProps<"/ops/h
 
       <p className="text-sm text-muted-foreground">{t("history.summary", { count: rows.length, late: lateCount })}</p>
 
-      {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("history.empty")}</p>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border">
-          <table className="w-full min-w-[960px] text-sm">
-            <thead className="bg-muted text-left text-xs text-muted-foreground">
-              <tr>
-                {(["entity", "obligation", "period", "dueDate", "status", "completedBy", "submittedDate", "reference", "amount", "files"] as const).map((column) => (
-                  <th key={column} className="px-3 py-2 font-medium">
-                    {t(`history.columns.${column}`)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {rows.map((row) => (
-                <tr key={row.taskId} className="align-top">
-                  <td className="px-3 py-2">{row.entityCode}</td>
-                  <td className="px-3 py-2">
-                    <Link href={`/ops/obligations/${row.taskId}`} className="font-medium hover:underline">
-                      {row.templateName}
-                    </Link>
-                    <p className="text-xs text-muted-foreground">{row.templateCode}</p>
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap">{row.periodKey.startsWith("event:") ? (row.subjectName ?? t("instance.eventDriven")) : periodLabel(row.periodKey)}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{day(row.dueDate)}</td>
-                  <td className="px-3 py-2">
-                    <StatusBadge colour={row.colour} label={t(`enums.colour.${row.colour}`)} />
-                  </td>
-                  <td className="px-3 py-2">
-                    {row.completedAt ? (
-                      <>
-                        {row.completedByName ?? t("instance.bySystem")}
-                        <p className="text-xs text-muted-foreground">{format.dateTime(row.completedAt, { dateStyle: "medium" })}</p>
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground">{row.assigneeName ?? t("unassigned")}</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap">{day(row.submittedDate)}</td>
-                  <td className="px-3 py-2">{row.referenceNumber ?? "—"}</td>
-                  <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums">{row.amountPaid === null ? "—" : format.number(row.amountPaid)}</td>
-                  <td className="px-3 py-2 text-xs">
-                    <EvidenceLinks files={row.files} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <Table className="min-w-[960px]">
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="org">{t("history.columns.entity")}</TableHead>
+            <TableHead kind="text">{t("history.columns.obligation")}</TableHead>
+            <TableHead kind="date">{t("history.columns.period")}</TableHead>
+            <TableHead kind="date">{t("history.columns.dueDate")}</TableHead>
+            <TableHead kind="status">{t("history.columns.status")}</TableHead>
+            <TableHead kind="person">{t("history.columns.completedBy")}</TableHead>
+            <TableHead kind="date">{t("history.columns.submittedDate")}</TableHead>
+            <TableHead kind="id">{t("history.columns.reference")}</TableHead>
+            <TableHead kind="money">{t("history.columns.amount")}</TableHead>
+            <TableHead kind="file">{t("history.columns.files")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.length === 0 ? <TableEmpty>{t("history.empty")}</TableEmpty> : null}
+          {rows.map((row) => (
+            <TableRow key={row.taskId}>
+              <TableCell>{row.entityCode}</TableCell>
+              <TableCell className="whitespace-normal">
+                <Link href={`/ops/obligations/${row.taskId}`} className="font-medium hover:underline">
+                  {row.templateName}
+                </Link>
+                <p className="font-mono text-xs text-muted-foreground">{row.templateCode}</p>
+              </TableCell>
+              <TableCell>{row.periodKey.startsWith("event:") ? (row.subjectName ?? t("instance.eventDriven")) : periodLabel(row.periodKey)}</TableCell>
+              <TableCell>{day(row.dueDate)}</TableCell>
+              <TableCell>
+                <StatusBadge colour={row.colour} label={t(`enums.colour.${row.colour}`)} />
+              </TableCell>
+              <TableCell>
+                {row.completedAt ? (
+                  <>
+                    {row.completedByName ?? t("instance.bySystem")}
+                    <p className="text-xs text-muted-foreground">{format.dateTime(row.completedAt, { dateStyle: "medium" })}</p>
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">{row.assigneeName ?? t("unassigned")}</span>
+                )}
+              </TableCell>
+              <TableCell>{day(row.submittedDate)}</TableCell>
+              <TableCell kind="id">{row.referenceNumber ?? "—"}</TableCell>
+              <TableCell kind="money">{row.amountPaid === null ? "—" : format.number(row.amountPaid)}</TableCell>
+              <TableCell className="text-xs">
+                <EvidenceLinks files={row.files} />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

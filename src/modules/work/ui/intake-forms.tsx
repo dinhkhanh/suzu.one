@@ -8,7 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
+import { TableAddRow, TableCard } from "@/components/ui/table";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import type { IntakeField } from "../engine/intake";
@@ -103,34 +105,33 @@ export function IntakeFormManager({ teamId, forms, projects, checklists, canMana
   const shown = canManage ? forms : forms.filter((form) => form.isActive);
   return (
     <div className="flex flex-col gap-3">
-      {shown.length === 0 ? <p className="text-sm text-muted-foreground">{t("none")}</p> : null}
-      <ul className="flex flex-col divide-y rounded-xl border empty:hidden">
-        {shown.map((form) => (
-          <li key={form.id} className="text-sm">
-            <details>
-              <summary className="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 p-3">
-                <span className="font-medium">{form.name}</span>
-                <span className="text-xs text-muted-foreground">{t("submissions", { count: form.submissions })}</span>
-                {form.isActive ? null : <Badge variant="outline">{t("retired")}</Badge>}
-                {form.isActive ? (
-                  <Link href={`/work/intake/${form.id}`} className="ml-auto text-xs underline">
-                    {t("open")}
-                  </Link>
-                ) : null}
-              </summary>
-              <div className="border-t p-3">{canManage ? <IntakeFormEditor teamId={teamId} value={form} projects={projects} checklists={checklists} /> : form.description?.trim() ? <RichText text={form.description} className="text-muted-foreground" /> : <p className="text-muted-foreground">{t("noDescription")}</p>}</div>
-            </details>
-          </li>
-        ))}
-      </ul>
-      {canManage ? (
-        <details className="rounded-xl border text-sm">
-          <summary className="cursor-pointer p-3 font-medium">{t("new")}</summary>
-          <div className="border-t p-3">
+      <TableCard>
+        <List>
+          {shown.length === 0 ? <ListEmpty>{t("none")}</ListEmpty> : null}
+          {shown.map((form) => (
+            <ListItem key={form.id}>
+              <details className="min-w-0 flex-1">
+                <summary className="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="font-medium">{form.name}</span>
+                  <span className="text-xs text-muted-foreground">{t("submissions", { count: form.submissions })}</span>
+                  {form.isActive ? null : <Badge variant="outline">{t("retired")}</Badge>}
+                  {form.isActive ? (
+                    <Link href={`/work/intake/${form.id}`} className="ml-auto text-xs underline">
+                      {t("open")}
+                    </Link>
+                  ) : null}
+                </summary>
+                <div className="mt-2.5 border-t pt-3">{canManage ? <IntakeFormEditor teamId={teamId} value={form} projects={projects} checklists={checklists} /> : form.description?.trim() ? <RichText text={form.description} className="text-muted-foreground" /> : <p className="text-muted-foreground">{t("noDescription")}</p>}</div>
+              </details>
+            </ListItem>
+          ))}
+        </List>
+        {canManage ? (
+          <TableAddRow label={t("new")}>
             <IntakeFormEditor teamId={teamId} value={blank} projects={projects} checklists={checklists} />
-          </div>
-        </details>
-      ) : null}
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

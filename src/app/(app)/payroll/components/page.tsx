@@ -2,7 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { List, ListItem } from "@/components/ui/list";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -41,11 +42,11 @@ export default async function ComponentsPage() {
       </header>
 
       {proposals.length ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("rules.waiting")}</h2>
-          <ul className="flex flex-col divide-y rounded-xl border">
+        <TableCard>
+          <TableCardHeader title={t("rules.waiting")} count={proposals.length} />
+          <List>
             {proposals.map((version) => (
-              <li key={version.id} className="flex flex-wrap items-start justify-between gap-3 p-3 text-sm">
+              <ListItem key={version.id} className="flex-wrap items-start justify-between">
                 <div className="flex flex-col gap-1">
                   <span>
                     <span className="font-mono text-xs">{version.code}</span> — {version.name} · {version.entityId ? entityCode.get(version.entityId) : t("components.groupWide")} · {day(version.validFrom)}
@@ -59,59 +60,65 @@ export default async function ComponentsPage() {
                   {version.note ? <span className="text-muted-foreground">{version.note}</span> : null}
                 </div>
                 {canDecide ? <RuleDecisionButtons id={version.id} kind="component" /> : null}
-              </li>
+              </ListItem>
             ))}
-          </ul>
-        </section>
+          </List>
+        </TableCard>
       ) : null}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t("components.code")}</TableHead>
-            <TableHead>{t("components.name")}</TableHead>
-            <TableHead>{t("components.scope")}</TableHead>
-            <TableHead>{t("components.kind")}</TableHead>
-            <TableHead>{t("components.source")}</TableHead>
-            <TableHead>{t("components.taxTreatment")}</TableHead>
-            <TableHead>{t("components.proration")}</TableHead>
-            <TableHead>{t("components.validFrom")}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {approved.map((version) => {
-            const inForce = version.validFrom <= today && (version.validTo === null || version.validTo >= today);
-            return (
-              <TableRow key={version.id} className={inForce ? undefined : "text-muted-foreground"}>
-                <TableCell className="font-mono text-xs">{version.code}</TableCell>
-                <TableCell>
-                  {version.name}
-                  {version.formula ? <code className="mt-1 block rounded bg-muted px-2 py-1 text-xs">{version.formula}</code> : null}
-                </TableCell>
-                <TableCell>{version.entityId ? entityCode.get(version.entityId) : t("components.groupWide")}</TableCell>
-                <TableCell>{t(`components.kinds.${version.kind}`)}</TableCell>
-                <TableCell>{t(`components.sources.${version.source}`)}</TableCell>
-                <TableCell>
-                  {t(`components.taxTreatments.${version.taxTreatment}`)}
-                  {version.exemptCap !== null ? ` (${formatVnd(version.exemptCap)})` : ""}
-                  {version.subjectToInsurance ? (
-                    <Badge variant="outline" className="ml-2 text-[10px]">
-                      {t("components.insurable")}
-                    </Badge>
-                  ) : null}
-                </TableCell>
-                <TableCell>{t(`components.prorations.${version.proration}`)}</TableCell>
-                <TableCell>
-                  {day(version.validFrom)}
-                  {version.validTo ? ` → ${day(version.validTo)}` : ""}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-
-      {canPropose ? <ProposeComponentForm entities={entities} /> : null}
+      <TableCard>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="id">{t("components.code")}</TableHead>
+              <TableHead kind="text">{t("components.name")}</TableHead>
+              <TableHead kind="org">{t("components.scope")}</TableHead>
+              <TableHead kind="select">{t("components.kind")}</TableHead>
+              <TableHead kind="select">{t("components.source")}</TableHead>
+              <TableHead kind="select">{t("components.taxTreatment")}</TableHead>
+              <TableHead kind="select">{t("components.proration")}</TableHead>
+              <TableHead kind="date">{t("components.validFrom")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {approved.length === 0 ? <TableEmpty>{t("components.empty")}</TableEmpty> : null}
+            {approved.map((version) => {
+              const inForce = version.validFrom <= today && (version.validTo === null || version.validTo >= today);
+              return (
+                <TableRow key={version.id} className={inForce ? undefined : "text-muted-foreground"}>
+                  <TableCell kind="id">{version.code}</TableCell>
+                  <TableCell>
+                    {version.name}
+                    {version.formula ? <code className="mt-1 block rounded bg-muted px-2 py-1 text-xs">{version.formula}</code> : null}
+                  </TableCell>
+                  <TableCell>{version.entityId ? entityCode.get(version.entityId) : t("components.groupWide")}</TableCell>
+                  <TableCell>{t(`components.kinds.${version.kind}`)}</TableCell>
+                  <TableCell>{t(`components.sources.${version.source}`)}</TableCell>
+                  <TableCell>
+                    {t(`components.taxTreatments.${version.taxTreatment}`)}
+                    {version.exemptCap !== null ? ` (${formatVnd(version.exemptCap)})` : ""}
+                    {version.subjectToInsurance ? (
+                      <Badge variant="outline" className="ml-2 text-[10px]">
+                        {t("components.insurable")}
+                      </Badge>
+                    ) : null}
+                  </TableCell>
+                  <TableCell>{t(`components.prorations.${version.proration}`)}</TableCell>
+                  <TableCell>
+                    {day(version.validFrom)}
+                    {version.validTo ? ` → ${day(version.validTo)}` : ""}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        {canPropose ? (
+          <TableAddRow label={t("components.propose.title")} open={approved.length === 0}>
+            <ProposeComponentForm entities={entities} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

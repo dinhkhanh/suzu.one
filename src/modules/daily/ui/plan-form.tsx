@@ -8,7 +8,9 @@ import { useMemo, useState, useTransition } from "react";
 import { FormError } from "@/components/forms/field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { savePlanAction } from "../actions";
 import { hoursOf } from "./format";
@@ -56,12 +58,12 @@ export function PlanForm({ date, today, candidates, selected, dayMinutes, note }
         <div className="h-2 overflow-hidden rounded-full bg-muted" aria-hidden>
           <div className={over ? "h-full bg-destructive" : "h-full bg-primary"} style={{ width: `${Math.min(100, dayMinutes ? (total / dayMinutes) * 100 : 0)}%` }} />
         </div>
-        {items.length === 0 ? <p className="text-sm text-muted-foreground">{t("plan.nothingChosen")}</p> : null}
-        <ol className="flex flex-col divide-y rounded-xl border">
+        <List numbered>
+          {items.length === 0 ? <ListEmpty>{t("plan.nothingChosen")}</ListEmpty> : null}
           {items.map((item, index) => {
             const task = byId.get(item.taskId)!;
             return (
-              <li key={item.taskId} className="flex items-center gap-2 p-2.5 text-sm">
+              <ListItem key={item.taskId} className="gap-2">
                 <div className="flex flex-col">
                   <Button type="button" size="icon-xs" variant="ghost" disabled={index === 0} onClick={() => move(index, -1)} aria-label={t("plan.up")}>
                     <ArrowUp aria-hidden />
@@ -71,7 +73,7 @@ export function PlanForm({ date, today, candidates, selected, dayMinutes, note }
                   </Button>
                 </div>
                 <label className="flex min-w-0 flex-1 items-start gap-2">
-                  <input type="checkbox" className="mt-1" checked onChange={() => toggle(task)} />
+                  <Checkbox className="mt-0.5" checked onCheckedChange={() => toggle(task)} />
                   <span className="min-w-0">
                     <span className="font-mono text-xs text-muted-foreground">{task.key}</span> {task.title}
                     {task.status === "done" ? (
@@ -82,29 +84,29 @@ export function PlanForm({ date, today, candidates, selected, dayMinutes, note }
                   </span>
                 </label>
                 <Input type="number" min={0} max={1440} step={15} value={item.minutes ?? ""} onChange={(event) => setMinutes(item.taskId, event.target.value)} aria-label={t("plan.minutes")} placeholder={t("plan.minutesShort")} className="h-8 w-20" />
-              </li>
+              </ListItem>
             );
           })}
-        </ol>
+        </List>
       </section>
 
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-medium text-muted-foreground">{t("plan.myWork", { count: rest.length })}</h2>
-        {rest.length === 0 ? <p className="text-sm text-muted-foreground">{t("plan.noMoreWork")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border">
+        <List>
+          {rest.length === 0 ? <ListEmpty>{t("plan.noMoreWork")}</ListEmpty> : null}
           {rest.map((task) => (
-            <li key={task.taskId}>
-              <label className="flex items-start gap-2 p-2.5 text-sm">
-                <input type="checkbox" className="mt-1" checked={false} onChange={() => toggle(task)} />
+            <ListItem key={task.taskId} className="p-0">
+              <label className="flex flex-1 items-start gap-2 px-3 py-2.5">
+                <Checkbox className="mt-0.5" checked={false} onCheckedChange={() => toggle(task)} />
                 <span className="min-w-0 flex-1">
                   <span className="font-mono text-xs text-muted-foreground">{task.key}</span> {task.title}
                   <span className="block text-xs text-muted-foreground">{[task.projectName, task.stateName, task.estimateMinutes ? t("hours", { value: hoursOf(task.estimateMinutes) }) : null].filter(Boolean).join(" · ")}</span>
                 </span>
                 {task.dueDate && task.dueDate < today ? <Badge variant="destructive">{t("overdue")}</Badge> : task.dueDate === today ? <Badge variant="warning">{t("dueToday")}</Badge> : null}
               </label>
-            </li>
+            </ListItem>
           ))}
-        </ul>
+        </List>
       </section>
 
       <section className="flex flex-col gap-2">

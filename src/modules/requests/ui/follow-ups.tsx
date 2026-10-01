@@ -4,6 +4,8 @@
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
+import { List, ListItem } from "@/components/ui/list";
+import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { RequestStatusBadge } from "@/modules/platform/approvals/ui/request-views";
 import type { FollowUpGate } from "../engine/follow-ups";
 import type { FamilyMember, RequestFamily } from "../service";
@@ -49,14 +51,14 @@ export async function FollowUps({ family, requestId }: { family: RequestFamily; 
   const strays = family.children.filter((child) => !named.has(child.code));
 
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-medium text-muted-foreground">{t("title")}</h2>
-      <ul className="flex flex-col divide-y rounded-xl border">
+    <TableCard>
+      <TableCardHeader title={t("title")} />
+      <List>
         {family.followUps.map((entry) => {
           const children = family.children.filter((child) => child.code === entry.code);
           const name = locale === "en" ? entry.nameEn : entry.nameVi;
           return (
-            <li key={entry.code} className="flex flex-col gap-2 p-3">
+            <ListItem key={entry.code} className="flex-col items-stretch gap-2 py-3">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="min-w-0 flex-1 basis-56">
                   <p className="text-sm font-medium">{name}</p>
@@ -74,16 +76,16 @@ export async function FollowUps({ family, requestId }: { family: RequestFamily; 
                 ) : null}
               </div>
               {children.length > 0 ? <Children rows={children} money={money} /> : null}
-            </li>
+            </ListItem>
           );
         })}
         {strays.length > 0 ? (
-          <li className="p-3">
+          <ListItem className="flex-col items-stretch py-3">
             <Children rows={strays} money={money} withName />
-          </li>
+          </ListItem>
         ) : null}
-      </ul>
-    </section>
+      </List>
+    </TableCard>
   );
 }
 

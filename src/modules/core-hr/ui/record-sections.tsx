@@ -5,7 +5,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { DOCUMENT_TIERS } from "../document-tiers";
@@ -50,14 +51,15 @@ export async function RecordSections({ principal, personId }: { principal: Princ
   return (
     <>
       {contracts ? (
-        <Section title={t("sections.contracts")}>
-          {contracts.length === 0 ? <p className="text-sm text-muted-foreground">{t("contracts.empty")}</p> : null}
-          <ul className="flex flex-col gap-3">
+        <TableCard>
+          <TableCardHeader title={t("sections.contracts")} count={contracts.length || null} />
+          <List>
+            {contracts.length === 0 ? <ListEmpty>{t("contracts.empty")}</ListEmpty> : null}
             {contracts.map((contract) => {
               const lastDay = contract.terminatedOn ?? contract.endDate;
               const state = contract.startDate > today ? "upcoming" : lastDay && lastDay < today ? "ended" : "active";
               return (
-                <li key={contract.id} className="flex flex-col gap-2 rounded-xl border p-4 text-sm">
+                <ListItem key={contract.id} className="flex-col items-stretch gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{t(`contracts.types.${contract.type}`)}</span>
                     <span className="font-mono text-xs text-muted-foreground">{contract.number}</span>
@@ -88,77 +90,96 @@ export async function RecordSections({ principal, personId }: { principal: Princ
                       <RowAction action={deleteContractAction} input={{ contractId: contract.id }} label={t("delete")} confirm={t("confirmDelete")} />
                     </div>
                   ) : null}
-                </li>
+                </ListItem>
               );
             })}
-          </ul>
+          </List>
           {manages.personal ? <ContractForm personId={personId} parents={contracts.filter((row) => row.type !== "appendix").map(({ id, number }) => ({ id, number }))} canWritePay={manages.compensation} today={today} /> : null}
-        </Section>
+        </TableCard>
       ) : null}
 
       {contacts ? (
-        <Section title={t("sections.emergencyContacts")}>
-          {contacts.length === 0 ? <p className="text-sm text-muted-foreground">{t("contacts.empty")}</p> : null}
-          <ul className="flex flex-col gap-1 text-sm">
-            {contacts.map((contact) => (
-              <li key={contact.id} className="flex flex-wrap items-center gap-2">
-                <span className="font-medium">{contact.fullName}</span>
-                <span className="text-muted-foreground">{[contact.relationship, contact.phone, contact.note].filter(Boolean).join(" · ")}</span>
-                {manages.personal ? <RowAction action={removeEmergencyContactAction} input={{ contactId: contact.id }} label={t("delete")} confirm={t("confirmDelete")} /> : null}
-              </li>
-            ))}
-          </ul>
+        <TableCard>
+          <TableCardHeader title={t("sections.emergencyContacts")} count={contacts.length || null} />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="person">{t("contacts.fullName")}</TableHead>
+                <TableHead kind="select">{t("contacts.relationship")}</TableHead>
+                <TableHead kind="phone">{t("contacts.phone")}</TableHead>
+                <TableHead kind="text">{t("contacts.note")}</TableHead>
+                {manages.personal ? <TableHead kind="actions" /> : null}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {contacts.length === 0 ? <TableEmpty>{t("contacts.empty")}</TableEmpty> : null}
+              {contacts.map((contact) => (
+                <TableRow key={contact.id}>
+                  <TableCell className="font-medium">{contact.fullName}</TableCell>
+                  <TableCell>{contact.relationship || "—"}</TableCell>
+                  <TableCell kind="phone">{contact.phone || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{contact.note || "—"}</TableCell>
+                  {manages.personal ? (
+                    <TableCell kind="actions">
+                      <RowAction action={removeEmergencyContactAction} input={{ contactId: contact.id }} label={t("delete")} confirm={t("confirmDelete")} />
+                    </TableCell>
+                  ) : null}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
           {manages.personal ? <EmergencyContactForm personId={personId} /> : null}
-        </Section>
+        </TableCard>
       ) : null}
 
       {documents.length > 0 || uploadable.length > 0 ? (
-        <Section title={t("sections.documents")}>
-          {documents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("documents.empty")}</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("documents.category")}</TableHead>
-                  <TableHead>{t("documents.title")}</TableHead>
-                  <TableHead>{t("documents.file")}</TableHead>
-                  <TableHead>{t("documents.expiresOn")}</TableHead>
-                  <TableHead />
+        <TableCard>
+          <TableCardHeader title={t("sections.documents")} count={documents.length || null} />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="select">{t("documents.category")}</TableHead>
+                <TableHead kind="text">{t("documents.title")}</TableHead>
+                <TableHead kind="file">{t("documents.file")}</TableHead>
+                <TableHead kind="date">{t("documents.expiresOn")}</TableHead>
+                <TableHead kind="actions" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {documents.length === 0 ? <TableEmpty>{t("documents.empty")}</TableEmpty> : null}
+              {documents.map((document) => (
+                <TableRow key={document.id}>
+                  <TableCell>
+                    <Badge variant="outline">{t(`documents.categories.${document.category}`)}</Badge>
+                  </TableCell>
+                  <TableCell>{document.title}</TableCell>
+                  <TableCell kind="file">
+                    <RecordFileLink fileId={document.fileId} fileName={document.fileName} />
+                  </TableCell>
+                  <TableCell>
+                    {day(document.expiresOn) ?? "—"}
+                    {document.expiresOn && document.expiresOn < today ? (
+                      <Badge variant="outline" className="ml-2">
+                        {t("documents.expired")}
+                      </Badge>
+                    ) : null}
+                  </TableCell>
+                  <TableCell kind="actions">{manages[document.tier as keyof typeof manages] ? <RowAction action={deleteDocumentAction} input={{ documentId: document.id }} label={t("delete")} confirm={t("confirmDelete")} /> : null}</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {documents.map((document) => (
-                  <TableRow key={document.id}>
-                    <TableCell>{t(`documents.categories.${document.category}`)}</TableCell>
-                    <TableCell>{document.title}</TableCell>
-                    <TableCell>
-                      <RecordFileLink fileId={document.fileId} fileName={document.fileName} />
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {day(document.expiresOn) ?? "—"}
-                      {document.expiresOn && document.expiresOn < today ? (
-                        <Badge variant="outline" className="ml-2">
-                          {t("documents.expired")}
-                        </Badge>
-                      ) : null}
-                    </TableCell>
-                    <TableCell>{manages[document.tier as keyof typeof manages] ? <RowAction action={deleteDocumentAction} input={{ documentId: document.id }} label={t("delete")} confirm={t("confirmDelete")} /> : null}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+              ))}
+            </TableBody>
+          </Table>
           {uploadable.length > 0 ? <DocumentUploadForm personId={personId} categories={uploadable} /> : null}
-        </Section>
+        </TableCard>
       ) : null}
 
       {dependents ? (
-        <Section title={t("sections.dependents")} note={t("tierNote.restricted")}>
-          {dependents.length === 0 ? <p className="text-sm text-muted-foreground">{t("dependents.empty")}</p> : null}
-          <ul className="flex flex-col gap-3">
+        <TableCard>
+          <TableCardHeader title={t("sections.dependents")} count={dependents.length || null} description={t("tierNote.restricted")} />
+          <List>
+            {dependents.length === 0 ? <ListEmpty>{t("dependents.empty")}</ListEmpty> : null}
             {dependents.map((dependent) => (
-              <li key={dependent.id} className="flex flex-col gap-2 rounded-xl border p-4 text-sm">
+              <ListItem key={dependent.id} className="flex-col items-stretch gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{dependent.fullName}</span>
                   <Badge variant="outline">{t(`dependents.relationships.${dependent.relationship}`)}</Badge>
@@ -166,7 +187,7 @@ export async function RecordSections({ principal, personId }: { principal: Princ
                     {[day(dependent.dateOfBirth), t("dependents.months", { from: month(dependent.deductionFrom) ?? "", to: month(dependent.deductionTo) ?? t("dependents.open") }), dependent.note].filter(Boolean).join(" · ")}
                   </span>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3 empty:hidden">
                   {dependent.files.map((file) => (
                     <span key={file.id} className="inline-flex items-center gap-1">
                       <RecordFileLink fileId={file.id} fileName={file.fileName} />
@@ -181,11 +202,11 @@ export async function RecordSections({ principal, personId }: { principal: Princ
                     <RowAction action={deleteDependentAction} input={{ dependentId: dependent.id }} label={t("delete")} confirm={t("confirmDelete")} />
                   </div>
                 ) : null}
-              </li>
+              </ListItem>
             ))}
-          </ul>
+          </List>
           {manages.restricted ? <DependentForm personId={personId} thisMonth={today.slice(0, 7)} /> : null}
-        </Section>
+        </TableCard>
       ) : null}
 
       {sensitive ? (

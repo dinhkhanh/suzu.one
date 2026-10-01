@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { hasReached } from "@/modules/payroll/lifecycle";
@@ -92,81 +92,80 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
       ) : null}
 
       {/* ── The bank batches (FR-PAY-33) ── */}
-      {pays && plan.banks.length > 0 ? <BankFileForm runId={runId} banks={plan.banks.map((group) => ({ key: group.key, name: group.name, people: group.people.length }))} defaultValueDate={today} /> : null}
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium">{t("bank.generatedFiles")}</h2>
-        {files.filter((file) => file.channel === "bank").length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("bank.noFiles")}</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("bank.file")}</TableHead>
-                <TableHead>{t("bank.formatVersion")}</TableHead>
-                <TableHead className="text-right">{t("bank.rows")}</TableHead>
-                <TableHead className="text-right">{t("bank.total")}</TableHead>
-                <TableHead>{t("bank.generatedAt")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {files
-                .filter((file) => file.channel === "bank")
-                .map((file) => (
-                  <TableRow key={file.id}>
-                    <TableCell className="font-mono text-xs">{file.fileName}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{file.formatVersion}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {file.rowCount}
-                      {file.skippedCount > 0 ? <span className="ml-2 text-xs text-destructive">+{file.skippedCount}</span> : null}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{formatVnd(openFileTotal(file))}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{format.dateTime(file.generatedAt, { dateStyle: "short", timeStyle: "short" })}</TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
-        )}
-      </section>
+      <TableCard>
+        <TableCardHeader title={t("bank.generatedFiles")} count={files.filter((file) => file.channel === "bank").length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="file">{t("bank.file")}</TableHead>
+              <TableHead kind="id">{t("bank.formatVersion")}</TableHead>
+              <TableHead kind="number">{t("bank.rows")}</TableHead>
+              <TableHead kind="money">{t("bank.total")}</TableHead>
+              <TableHead kind="date">{t("bank.generatedAt")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {files.filter((file) => file.channel === "bank").length === 0 ? <TableEmpty>{t("bank.noFiles")}</TableEmpty> : null}
+            {files
+              .filter((file) => file.channel === "bank")
+              .map((file) => (
+                <TableRow key={file.id}>
+                  <TableCell className="font-mono text-xs">{file.fileName}</TableCell>
+                  <TableCell kind="id">{file.formatVersion}</TableCell>
+                  <TableCell kind="number">
+                    {file.rowCount}
+                    {file.skippedCount > 0 ? <span className="ml-2 text-xs text-destructive">+{file.skippedCount}</span> : null}
+                  </TableCell>
+                  <TableCell kind="money">{formatVnd(openFileTotal(file))}</TableCell>
+                  <TableCell className="text-muted-foreground">{format.dateTime(file.generatedAt, { dateStyle: "short", timeStyle: "short" })}</TableCell>
+                </TableRow>
+              ))}
+          </TableBody>
+        </Table>
+        {pays && plan.banks.length > 0 ? (
+          <TableAddRow label={t("bank.title")} open={files.filter((file) => file.channel === "bank").length === 0}>
+            <BankFileForm runId={runId} banks={plan.banks.map((group) => ({ key: group.key, name: group.name, people: group.people.length }))} defaultValueDate={today} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
 
       {/* ── The cash sheet (FR-PAY-39) ── */}
       {plan.cash.length > 0 ? (
         <section className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-medium">{t("cash.title")}</h2>
-              <p className="text-sm text-muted-foreground">{t("cash.hint")}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              {cash.length > 0 ? (
-                <a href={`/payroll/runs/${runId}/payments/cash-sheet`} className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted" download>
-                  {t("cash.print")}
-                </a>
-              ) : null}
-              {pays || manages ? <OpenCashSheetButton runId={runId} opened={cash.length > 0} /> : null}
-            </div>
-          </div>
-
-          {cash.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("cash.notOpened")}</p>
-          ) : (
+          <TableCard>
+            <TableCardHeader
+              title={t("cash.title")}
+              count={cash.length || null}
+              description={t("cash.hint")}
+              actions={
+                <>
+                  {cash.length > 0 ? (
+                    <a href={`/payroll/runs/${runId}/payments/cash-sheet`} className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted" download>
+                      {t("cash.print")}
+                    </a>
+                  ) : null}
+                  {pays || manages ? <OpenCashSheetButton runId={runId} opened={cash.length > 0} /> : null}
+                </>
+              }
+            />
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("cash.person")}</TableHead>
-                  <TableHead className="text-right">{t("cash.amount")}</TableHead>
-                  <TableHead>{t("cash.disbursedOn")}</TableHead>
-                  <TableHead>{t("cash.receipt")}</TableHead>
+                  <TableHead kind="person">{t("cash.person")}</TableHead>
+                  <TableHead kind="money">{t("cash.amount")}</TableHead>
+                  <TableHead kind="date">{t("cash.disbursedOn")}</TableHead>
+                  <TableHead kind="status">{t("cash.receipt")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {cash.length === 0 ? <TableEmpty>{t("cash.notOpened")}</TableEmpty> : null}
                 {cash.map((row) => (
                   <TableRow key={row.personId}>
                     <TableCell>
                       {row.fullName}
                       <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{formatVnd(row.amount)}</TableCell>
+                    <TableCell kind="money">{formatVnd(row.amount)}</TableCell>
                     <TableCell>{row.disbursedOn ? <span className="tabular-nums">{row.disbursedOn}</span> : pays ? <DisbursementForm runId={runId} personId={row.personId} defaultDate={today} /> : <span className="text-muted-foreground">—</span>}</TableCell>
                     <TableCell>
                       <Badge variant={row.receiptConfirmed ? "secondary" : "outline"}>{t(row.receiptConfirmed ? "cash.confirmed" : "cash.awaitingReceipt")}</Badge>
@@ -175,7 +174,7 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
                 ))}
               </TableBody>
             </Table>
-          )}
+          </TableCard>
           <p className="text-xs text-muted-foreground">{t("cash.receiptNote")}</p>
         </section>
       ) : null}

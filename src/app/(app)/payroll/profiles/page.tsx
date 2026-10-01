@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { canDecidePayRules, canSeeSimpleProfileReport, compensationReach } from "@/modules/payroll/policy";
@@ -22,7 +23,7 @@ export default async function ProfilesPage() {
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00+07:00`), { dateStyle: "medium" });
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex max-w-5xl flex-col gap-6">
       <header>
         <Link href="/payroll" className="text-sm text-link hover:underline">
           ← {t("title")}
@@ -35,24 +36,45 @@ export default async function ProfilesPage() {
           </Link>
         ) : null}
       </header>
-      {proposals.length === 0 ? <p className="text-sm text-muted-foreground">{t("profiles.noProposals")}</p> : null}
-      <ul className="flex flex-col divide-y rounded-xl border empty:hidden">
-        {proposals.map((proposal) => (
-          <li key={proposal.id} className="flex flex-wrap items-center justify-between gap-3 p-3 text-sm">
-            <div className="flex flex-col gap-1">
-              <Link href={`/payroll/salaries/${proposal.personId}`} className="font-medium hover:underline">
-                {proposal.personName}
-              </Link>
-              <span className="flex flex-wrap items-center gap-2 text-muted-foreground">
-                {proposal.currentProfile ? <Badge variant="secondary">{t(`profiles.kinds.${proposal.currentProfile}`)}</Badge> : null}→<Badge variant="outline">{t(`profiles.kinds.${proposal.profile}`)}</Badge>
-                {proposal.simpleBasis ? t(`profiles.bases.${proposal.simpleBasis}`) : null} · {day(proposal.validFrom)} · {proposal.proposedByName}
-              </span>
-              {proposal.note ? <span className="text-muted-foreground">{proposal.note}</span> : null}
-            </div>
-            {canDecide ? <RuleDecisionButtons id={proposal.id} kind="profile" /> : null}
-          </li>
-        ))}
-      </ul>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="person">{t("salaries.person")}</TableHead>
+            <TableHead kind="select">{t("profiles.profile")}</TableHead>
+            <TableHead kind="select">{t("profiles.basis")}</TableHead>
+            <TableHead kind="date">{t("profiles.validFrom")}</TableHead>
+            <TableHead kind="person">{t("profiles.proposedBy")}</TableHead>
+            <TableHead kind="text">{t("profiles.note")}</TableHead>
+            {canDecide ? <TableHead kind="actions" /> : null}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {proposals.length === 0 ? <TableEmpty>{t("profiles.noProposals")}</TableEmpty> : null}
+          {proposals.map((proposal) => (
+            <TableRow key={proposal.id}>
+              <TableCell>
+                <Link href={`/payroll/salaries/${proposal.personId}`} className="font-medium hover:underline">
+                  {proposal.personName}
+                </Link>
+              </TableCell>
+              <TableCell>
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  {proposal.currentProfile ? <Badge variant="secondary">{t(`profiles.kinds.${proposal.currentProfile}`)}</Badge> : null}→<Badge variant="outline">{t(`profiles.kinds.${proposal.profile}`)}</Badge>
+                </span>
+              </TableCell>
+              <TableCell>{proposal.simpleBasis ? t(`profiles.bases.${proposal.simpleBasis}`) : "—"}</TableCell>
+              <TableCell>{day(proposal.validFrom)}</TableCell>
+              <TableCell>{proposal.proposedByName ?? "—"}</TableCell>
+              <TableCell className="max-w-64 truncate text-muted-foreground">{proposal.note ?? "—"}</TableCell>
+              {canDecide ? (
+                <TableCell kind="actions">
+                  <RuleDecisionButtons id={proposal.id} kind="profile" />
+                </TableCell>
+              ) : null}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

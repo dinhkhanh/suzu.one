@@ -41,8 +41,7 @@ export function NewBonusRunForm({ entities, year, payrollMonth }: { entities: En
   const { onSubmit, pending, errorKey, fieldErrors } = useActionForm(createBonusRunAction, { extra: { entityIds: chosen }, onSuccess: (data) => router.push(`/payroll/bonus/${(data as { id: string }).id}`) });
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("new.title")}</h2>
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">{t("new.hint")}</p>
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-4 sm:grid-cols-3">
@@ -189,8 +188,7 @@ export function ProposeSchemeForm({ entities, current }: { entities: EntityOptio
   const { onSubmit, pending, errorKey, fieldErrors } = useActionForm(proposeBonusSchemeAction, { extra: { value: parsed }, onSuccess: () => router.refresh() });
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("scheme.propose")}</h2>
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">{t("scheme.proposeHint")}</p>
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-4 sm:grid-cols-3">

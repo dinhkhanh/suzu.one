@@ -3,6 +3,8 @@
 // the client parts. Shown on the checklists page beside the library, to HR only.
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listPositions } from "../service";
 import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
@@ -25,14 +27,14 @@ export async function LifecycleTemplates({ principal }: { principal: Principal }
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <ul className="flex flex-col gap-3">
-        {templates.length === 0 ? <li className="text-sm text-muted-foreground">{t("empty")}</li> : null}
+    <TableCard>
+      <List>
+        {templates.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
         {templates.map((template) => {
           const manage = canManageTemplates(principal, template);
           const scope = [name(entityOptions, template.entityId), name(options.departments, template.departmentId), name(positions, template.positionId)].filter(Boolean).join(" · ");
           return (
-            <li key={template.id} className="rounded-xl border p-4">
+            <ListItem key={template.id} className="block">
               <details>
                 <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm">
                   <Badge variant="secondary">{t.has(`purpose.${template.purpose}`) ? t(`purpose.${template.purpose}` as "purpose.onboarding") : template.purpose}</Badge>
@@ -43,42 +45,60 @@ export async function LifecycleTemplates({ principal }: { principal: Principal }
                 </summary>
                 <div className="mt-4 flex flex-col gap-4">
                   {manage ? <TemplateForm template={template} options={options} /> : null}
-                  <ol className="flex flex-col divide-y rounded-lg border text-sm">
-                    {template.items.map((item) => (
-                      <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-2">
-                        <div className="min-w-0 flex-1 basis-56">
-                          <p>{item.title}</p>
-                          {item.description ? <p className="text-xs text-muted-foreground">{item.description}</p> : null}
-                          {item.linkUrl ? (
-                            <p className="text-xs">
-                              <a href={item.linkUrl} className="underline underline-offset-2">
-                                {t("fields.linkUrl")}: {item.linkUrl}
-                              </a>
-                            </p>
-                          ) : null}
+                  <TableCard>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead kind="text">{t("fields.title")}</TableHead>
+                          <TableHead kind="person">{t("fields.rule")}</TableHead>
+                          <TableHead kind="date">{t("columns.due")}</TableHead>
+                          {manage ? <TableHead kind="actions" /> : null}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {template.items.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="min-w-56 whitespace-normal">
+                              <p>{item.title}</p>
+                              {item.description ? <p className="text-xs text-muted-foreground">{item.description}</p> : null}
+                              {item.linkUrl ? (
+                                <p className="text-xs">
+                                  <a href={item.linkUrl} className="underline underline-offset-2">
+                                    {t("fields.linkUrl")}: {item.linkUrl}
+                                  </a>
+                                </p>
+                              ) : null}
+                            </TableCell>
+                            <TableCell>{item.assigneeRule === "person" ? people.find((person) => person.id === item.assigneePersonId)?.fullName : t(`rule.${item.assigneeRule.split(":")[0]}` as "rule.subject")}</TableCell>
+                            <TableCell>{t("offset", { days: item.dueOffsetDays })}</TableCell>
+                            {manage ? (
+                              <TableCell kind="actions">
+                                <RemoveItemButton itemId={item.id} />
+                              </TableCell>
+                            ) : null}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    {manage ? (
+                      <TableAddRow label={t("addItem")}>
+                        <div className="[&>form]:border-t-0 [&>form]:pt-0">
+                          <TemplateItemForm templateId={template.id} people={people} nextOrder={template.items.length} />
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          {item.assigneeRule === "person" ? people.find((person) => person.id === item.assigneePersonId)?.fullName : t(`rule.${item.assigneeRule.split(":")[0]}` as "rule.subject")}
-                          {" · "}
-                          {t("offset", { days: item.dueOffsetDays })}
-                        </span>
-                        {manage ? <RemoveItemButton itemId={item.id} /> : null}
-                      </li>
-                    ))}
-                  </ol>
-                  {manage ? <TemplateItemForm templateId={template.id} people={people} nextOrder={template.items.length} /> : null}
+                      </TableAddRow>
+                    ) : null}
+                  </TableCard>
                 </div>
               </details>
-            </li>
+            </ListItem>
           );
         })}
-      </ul>
+      </List>
       {options.canShare || options.entities.length > 0 ? (
-        <section className="flex flex-col gap-3 rounded-xl border p-4">
-          <h3 className="text-sm font-medium">{t("newTemplate")}</h3>
+        <TableAddRow label={t("newTemplate")} open={templates.length === 0}>
           <TemplateForm options={options} />
-        </section>
+        </TableAddRow>
       ) : null}
-    </div>
+    </TableCard>
   );
 }

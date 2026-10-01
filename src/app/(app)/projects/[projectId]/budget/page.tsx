@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { BUDGET_THRESHOLDS, listStructure, loadBurns, openProject, PROJECT_KINDS } from "@/modules/projects/service";
 import { FeeForm, PlanSettingsForm } from "@/modules/projects/ui/plan-forms";
@@ -70,30 +71,46 @@ export default async function ProjectBudgetPage({ params }: PageProps<"/projects
       {plan.budgetByRole.length || budgetedPhases.length ? (
         <section className="grid gap-4 sm:grid-cols-2">
           {plan.budgetByRole.length ? (
-            <div className="flex flex-col gap-2">
-              <h2 className="text-sm font-medium text-muted-foreground">{t("settings.byRole")}</h2>
-              <ul className="flex flex-col divide-y rounded-lg border text-sm">
-                {plan.budgetByRole.map((role) => (
-                  <li key={role.role} className="flex justify-between gap-2 px-3 py-2">
-                    <span>{role.role}</span>
-                    <span>{t("budget.hours", { hours: hours(role.minutes) })}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <TableCard>
+              <TableCardHeader title={t("settings.byRole")} />
+              <Table numbered={false}>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead kind="select">{t("bookings.placeholderRole")}</TableHead>
+                    <TableHead kind="time">{t("reports.hours")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {plan.budgetByRole.map((role) => (
+                    <TableRow key={role.role}>
+                      <TableCell>{role.role}</TableCell>
+                      <TableCell kind="time">{t("budget.hours", { hours: hours(role.minutes) })}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableCard>
           ) : null}
           {budgetedPhases.length ? (
-            <div className="flex flex-col gap-2">
-              <h2 className="text-sm font-medium text-muted-foreground">{t("budget.byPhase")}</h2>
-              <ul className="flex flex-col divide-y rounded-lg border text-sm">
-                {budgetedPhases.map((phase) => (
-                  <li key={phase.id} className="flex justify-between gap-2 px-3 py-2">
-                    <span>{phase.name}</span>
-                    <span>{t("budget.hours", { hours: hours(phase.budgetMinutes) })}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <TableCard>
+              <TableCardHeader title={t("budget.byPhase")} />
+              <Table numbered={false}>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead kind="text">{t("fields.phase")}</TableHead>
+                    <TableHead kind="time">{t("reports.hours")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {budgetedPhases.map((phase) => (
+                    <TableRow key={phase.id}>
+                      <TableCell>{phase.name}</TableCell>
+                      <TableCell kind="time">{t("budget.hours", { hours: hours(phase.budgetMinutes) })}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableCard>
           ) : null}
         </section>
       ) : null}

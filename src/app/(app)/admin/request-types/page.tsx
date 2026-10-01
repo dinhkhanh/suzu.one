@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { canManageRequestTypes } from "@/modules/requests/policy";
@@ -30,26 +31,47 @@ export default async function RequestTypesPage() {
           {t("add")}
         </Link>
       </header>
-      {types.length === 0 ? <p className="text-sm text-muted-foreground">{t("none")}</p> : null}
-      <ul className="flex flex-col divide-y rounded-xl border">
-        {types.map((type) => (
-          <li key={type.id} className="flex flex-wrap items-center gap-3 p-3">
-            <div className="min-w-0 flex-1 basis-56">
-              <Link href={`/admin/request-types/${type.id}`} className="text-sm font-medium hover:underline">
-                {locale === "en" ? type.nameEn : type.nameVi}
-              </Link>
-              <p className="text-xs text-muted-foreground">
-                <code>{type.code}</code> · {t("fieldCount", { count: type.form.fields.length })}
-                {type.slaRemindAfterDays > 0 ? ` · ${t("remindsAfter", { days: type.slaRemindAfterDays })}` : ""}
-                {type.followUps.length > 0 ? ` · ${t("followUpCount", { count: type.followUps.length })}` : ""}
-              </p>
-            </div>
-            <Badge variant="secondary">{type.entityId ? (entityName.get(type.entityId) ?? "—") : t("wholeGroup")}</Badge>
-            {type.standalone ? null : <Badge variant="outline">{t("followUpOnly")}</Badge>}
-            {type.active ? null : <Badge variant="outline">{t("off")}</Badge>}
-          </li>
-        ))}
-      </ul>
+      <TableCard>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("columns.name")}</TableHead>
+              <TableHead kind="id">{t("code")}</TableHead>
+              <TableHead kind="org">{t("entity")}</TableHead>
+              <TableHead kind="number">{t("columns.fields")}</TableHead>
+              <TableHead kind="number">{t("columns.followUps")}</TableHead>
+              <TableHead kind="time">{t("columns.reminder")}</TableHead>
+              <TableHead kind="status">{t("columns.status")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {types.length === 0 ? <TableEmpty>{t("none")}</TableEmpty> : null}
+            {types.map((type) => (
+              <TableRow key={type.id}>
+                <TableCell className="max-w-80 truncate">
+                  <Link href={`/admin/request-types/${type.id}`} className="font-medium hover:underline">
+                    {locale === "en" ? type.nameEn : type.nameVi}
+                  </Link>
+                </TableCell>
+                <TableCell kind="id">{type.code}</TableCell>
+                <TableCell>
+                  <Badge variant="secondary">{type.entityId ? (entityName.get(type.entityId) ?? "—") : t("wholeGroup")}</Badge>
+                </TableCell>
+                <TableCell kind="number">{type.form.fields.length}</TableCell>
+                <TableCell kind="number">{type.followUps.length || "—"}</TableCell>
+                <TableCell kind="time">{type.slaRemindAfterDays > 0 ? t("remindsAfter", { days: type.slaRemindAfterDays }) : "—"}</TableCell>
+                <TableCell>
+                  <span className="flex gap-1.5">
+                    {type.standalone ? null : <Badge variant="outline">{t("followUpOnly")}</Badge>}
+                    {type.active ? null : <Badge variant="outline">{t("off")}</Badge>}
+                  </span>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <TableAddRow label={t("add")} href="/admin/request-types/new" />
+      </TableCard>
     </div>
   );
 }

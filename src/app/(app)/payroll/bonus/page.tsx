@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -32,7 +33,7 @@ export default async function BonusRunsPage() {
   const year = Number(todayInVietnam().slice(0, 4));
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
+    <div className="flex max-w-5xl flex-col gap-8">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Link href="/payroll" className="text-sm text-link hover:underline">
@@ -46,30 +47,54 @@ export default async function BonusRunsPage() {
         </Link>
       </header>
 
-      <ul className="flex flex-col gap-3">
-        {runs.map((run) => {
-          const readable = mayRead(run.entityIds);
-          const totals = readable ? openBonusTotals(run) : null;
-          return (
-            <li key={run.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border p-4 text-sm">
-              <div className="flex flex-col gap-1">
-                <span className="flex flex-wrap items-center gap-2 font-medium">
-                  {readable ? <Link href={`/payroll/bonus/${run.id}`} className="underline">{run.name}</Link> : run.name}
-                  <Badge dot variant={statusTone(run.status)}>{t(`status.${run.status}`)}</Badge>
-                </span>
-                <span className="text-muted-foreground">
-                  {t("runYear", { year: run.year })} · {t("payrollMonth", { month: run.payrollMonth })} · {t("headcount", { count: run.headcount, eligible: run.eligibleCount })}
-                </span>
-                {run.approvedAt ? <span className="text-xs text-muted-foreground">{t("approvedAt", { at: format.dateTime(run.approvedAt, { dateStyle: "medium" }) })}</span> : null}
-              </div>
-              <span className="text-right tabular-nums">{totals ? formatVnd(totals.totalVnd) : t("hidden")}</span>
-            </li>
-          );
-        })}
-      </ul>
-      {runs.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : null}
-
-      {canCreate ? <NewBonusRunForm entities={entities} year={year} payrollMonth={`${year + 1}-01`} /> : null}
+      <TableCard>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("new.name")}</TableHead>
+              <TableHead kind="status">{t("columns.status")}</TableHead>
+              <TableHead kind="date">{t("new.year")}</TableHead>
+              <TableHead kind="date">{t("new.payrollMonth")}</TableHead>
+              <TableHead kind="number">{t("columns.people")}</TableHead>
+              <TableHead kind="date">{t("columns.approvedOn")}</TableHead>
+              <TableHead kind="money">{t("cost.total")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {runs.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
+            {runs.map((run) => {
+              const readable = mayRead(run.entityIds);
+              const totals = readable ? openBonusTotals(run) : null;
+              return (
+                <TableRow key={run.id}>
+                  <TableCell className="font-medium">
+                    {readable ? (
+                      <Link href={`/payroll/bonus/${run.id}`} className="underline">
+                        {run.name}
+                      </Link>
+                    ) : (
+                      run.name
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge dot variant={statusTone(run.status)}>{t(`status.${run.status}`)}</Badge>
+                  </TableCell>
+                  <TableCell className="tabular-nums">{run.year}</TableCell>
+                  <TableCell className="tabular-nums">{run.payrollMonth}</TableCell>
+                  <TableCell kind="number">{t("headcount", { count: run.headcount, eligible: run.eligibleCount })}</TableCell>
+                  <TableCell>{run.approvedAt ? format.dateTime(run.approvedAt, { dateStyle: "medium" }) : "—"}</TableCell>
+                  <TableCell kind="money">{totals ? formatVnd(totals.totalVnd) : t("hidden")}</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        {canCreate ? (
+          <TableAddRow label={t("new.title")} open={runs.length === 0}>
+            <NewBonusRunForm entities={entities} year={year} payrollMonth={`${year + 1}-01`} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

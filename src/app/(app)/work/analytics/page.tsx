@@ -2,7 +2,7 @@ import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
@@ -44,6 +44,7 @@ export default async function WorkAnalyticsPage({ searchParams }: PageProps<"/wo
     return `/work/analytics?${query.toString()}`;
   };
 
+  const empty = analytics.total.completed === 0 && analytics.total.open === 0;
   const rows: { label: string; groups: NamedGroup[] }[] = [
     { label: t("byTeam"), groups: analytics.byTeam },
     { label: t("byClient"), groups: analytics.byClient },
@@ -92,60 +93,66 @@ export default async function WorkAnalyticsPage({ searchParams }: PageProps<"/wo
         </nav>
       ) : null}
 
-      {analytics.total.completed === 0 && analytics.total.open === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("none")}</p>
-      ) : (
-        <div className="flex flex-col gap-6">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("columns.kind")}</TableHead>
-                <TableHead>{t("columns.name")}</TableHead>
-                <TableHead className="text-right">{t("columns.completed")}</TableHead>
-                <TableHead className="text-right">{t("columns.onTime")}</TableHead>
-                <TableHead className="text-right">{t("columns.late")}</TableHead>
-                <TableHead className="text-right">{t("columns.onTimeRate")}</TableHead>
-                <TableHead className="text-right">{t("columns.open")}</TableHead>
-                <TableHead className="text-right">{t("columns.overdue")}</TableHead>
-                <TableHead className="text-right">{t("columns.revisions")}</TableHead>
-                <TableHead className="text-right">{t("columns.contributors")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+      <div className="flex flex-col gap-6">
+        <Table numbered={false}>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="select">{t("columns.kind")}</TableHead>
+              <TableHead kind="text">{t("columns.name")}</TableHead>
+              <TableHead kind="number">{t("columns.completed")}</TableHead>
+              <TableHead kind="number">{t("columns.onTime")}</TableHead>
+              <TableHead kind="number">{t("columns.late")}</TableHead>
+              <TableHead kind="percent">{t("columns.onTimeRate")}</TableHead>
+              <TableHead kind="number">{t("columns.open")}</TableHead>
+              <TableHead kind="number">{t("columns.overdue")}</TableHead>
+              <TableHead kind="number">{t("columns.revisions")}</TableHead>
+              <TableHead kind="number">{t("columns.contributors")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {empty ? (
+              <TableEmpty>{t("none")}</TableEmpty>
+            ) : (
               <TableRow className="font-medium">
                 <TableCell>{t("total")}</TableCell>
                 <TableCell>—</TableCell>
-                <TableCell className="text-right tabular-nums">{analytics.total.completed}</TableCell>
-                <TableCell className="text-right tabular-nums">{analytics.total.onTime}</TableCell>
-                <TableCell className="text-right tabular-nums">{analytics.total.late}</TableCell>
-                <TableCell className="text-right tabular-nums">{percent(analytics.total.onTimeRate)}</TableCell>
-                <TableCell className="text-right tabular-nums">{analytics.total.open}</TableCell>
-                <TableCell className="text-right tabular-nums">{analytics.total.overdue}</TableCell>
-                <TableCell className="text-right tabular-nums">{revisions(analytics.total.revisionsPerTask)}</TableCell>
-                <TableCell className="text-right tabular-nums">{analytics.total.contributors}</TableCell>
+                <TableCell kind="number">{analytics.total.completed}</TableCell>
+                <TableCell kind="number">{analytics.total.onTime}</TableCell>
+                <TableCell kind="number">{analytics.total.late}</TableCell>
+                <TableCell kind="percent">{percent(analytics.total.onTimeRate)}</TableCell>
+                <TableCell kind="number">{analytics.total.open}</TableCell>
+                <TableCell kind="number">{analytics.total.overdue}</TableCell>
+                <TableCell kind="number">{revisions(analytics.total.revisionsPerTask)}</TableCell>
+                <TableCell kind="number">{analytics.total.contributors}</TableCell>
               </TableRow>
-              {rows.flatMap(({ label, groups }) =>
-                groups.map((group) => (
-                  <TableRow key={`${label}-${group.id}`}>
-                    <TableCell className="text-muted-foreground">{label}</TableCell>
-                    <TableCell>{group.name}</TableCell>
-                    <TableCell className="text-right tabular-nums">{group.cell.completed}</TableCell>
-                    <TableCell className="text-right tabular-nums">{group.cell.onTime}</TableCell>
-                    <TableCell className="text-right tabular-nums">{group.cell.late}</TableCell>
-                    <TableCell className="text-right tabular-nums">{percent(group.cell.onTimeRate)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{group.cell.open}</TableCell>
-                    <TableCell className="text-right tabular-nums">{group.cell.overdue}</TableCell>
-                    <TableCell className="text-right tabular-nums">{revisions(group.cell.revisionsPerTask)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{group.cell.contributors}</TableCell>
-                  </TableRow>
-                )),
-              )}
-            </TableBody>
-          </Table>
-          <p className="text-xs text-muted-foreground">{t("hint")}</p>
-          <p className="text-xs text-muted-foreground">{t("scoped")}</p>
-        </div>
-      )}
+            )}
+            {empty
+              ? null
+              : rows.flatMap(({ label, groups }) =>
+                  groups.map((group) => (
+                    <TableRow key={`${label}-${group.id}`}>
+                      <TableCell className="text-muted-foreground">{label}</TableCell>
+                      <TableCell>{group.name}</TableCell>
+                      <TableCell kind="number">{group.cell.completed}</TableCell>
+                      <TableCell kind="number">{group.cell.onTime}</TableCell>
+                      <TableCell kind="number">{group.cell.late}</TableCell>
+                      <TableCell kind="percent">{percent(group.cell.onTimeRate)}</TableCell>
+                      <TableCell kind="number">{group.cell.open}</TableCell>
+                      <TableCell kind="number">{group.cell.overdue}</TableCell>
+                      <TableCell kind="number">{revisions(group.cell.revisionsPerTask)}</TableCell>
+                      <TableCell kind="number">{group.cell.contributors}</TableCell>
+                    </TableRow>
+                  )),
+                )}
+          </TableBody>
+        </Table>
+        {empty ? null : (
+          <>
+            <p className="text-xs text-muted-foreground">{t("hint")}</p>
+            <p className="text-xs text-muted-foreground">{t("scoped")}</p>
+          </>
+        )}
+      </div>
     </div>
   );
 }

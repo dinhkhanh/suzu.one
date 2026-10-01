@@ -4,6 +4,7 @@
 // a receipt is never reachable on a file id alone.
 import { getFormatter, getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ClaimPayment } from "../expense-posting";
 import type { ExpenseClaimLineRow } from "../expense";
 import { AttachmentLink } from "./attachment-link";
@@ -29,45 +30,41 @@ export async function ClaimLines({
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <h2 className="text-sm font-medium">{t("linesTitle")}</h2>
-        <PaymentBadge payment={payment} />
-      </div>
-
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-xs text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2 text-left font-medium">{t("lineDate")}</th>
-              <th className="px-3 py-2 text-left font-medium">{t("category")}</th>
-              <th className="px-3 py-2 text-left font-medium">{t("description")}</th>
-              <th className="px-3 py-2 text-left font-medium">{t("projectTag")}</th>
-              <th className="px-3 py-2 text-left font-medium">{t("receipt")}</th>
-              <th className="px-3 py-2 text-right font-medium">{t("amount")}</th>
-            </tr>
-          </thead>
-          <tbody>
+      <TableCard>
+        <TableCardHeader title={t("linesTitle")} actions={<PaymentBadge payment={payment} />} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="date">{t("lineDate")}</TableHead>
+              <TableHead kind="select">{t("category")}</TableHead>
+              <TableHead kind="text">{t("description")}</TableHead>
+              <TableHead kind="text">{t("projectTag")}</TableHead>
+              <TableHead kind="file">{t("receipt")}</TableHead>
+              <TableHead kind="money">{t("amount")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {lines.map((line) => (
-              <tr key={line.id} className="border-t">
-                <td className="px-3 py-2 whitespace-nowrap">{format.dateTime(new Date(`${line.lineDate}T00:00:00`), { dateStyle: "medium" })}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{t(`categories.${line.category}` as "categories.other")}</td>
-                <td className="px-3 py-2">{line.description}</td>
-                <td className="px-3 py-2 text-muted-foreground">{line.projectTag ?? "—"}</td>
-                <td className="px-3 py-2">{line.receiptFileId ? <AttachmentLink requestId={requestId} fileId={line.receiptFileId} fileName={fileNames.get(line.receiptFileId) ?? t("receipt")} /> : <span className="text-muted-foreground">—</span>}</td>
-                <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{money(line.amount)}</td>
-              </tr>
+              <TableRow key={line.id}>
+                <TableCell>{format.dateTime(new Date(`${line.lineDate}T00:00:00`), { dateStyle: "medium" })}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{t(`categories.${line.category}` as "categories.other")}</Badge>
+                </TableCell>
+                <TableCell className="min-w-48 whitespace-normal">{line.description}</TableCell>
+                <TableCell className="text-muted-foreground">{line.projectTag ?? "—"}</TableCell>
+                <TableCell>{line.receiptFileId ? <AttachmentLink requestId={requestId} fileId={line.receiptFileId} fileName={fileNames.get(line.receiptFileId) ?? t("receipt")} /> : <span className="text-muted-foreground">—</span>}</TableCell>
+                <TableCell kind="money">{money(line.amount)}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t bg-muted/30 font-medium">
-              <td className="px-3 py-2" colSpan={5}>
-                {t("totalLabel")}
-              </td>
-              <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{money(total)}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+          </TableBody>
+          <TableFooter>
+            <TableRow>
+              <TableCell colSpan={5}>{t("totalLabel")}</TableCell>
+              <TableCell kind="money">{money(total)}</TableCell>
+            </TableRow>
+          </TableFooter>
+        </Table>
+      </TableCard>
 
       {byCategory.length > 1 ? (
         <p className="text-xs text-muted-foreground">

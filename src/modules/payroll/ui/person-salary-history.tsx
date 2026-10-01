@@ -6,7 +6,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { type SalaryDelta, salarySteps } from "../engine/salary-history";
@@ -20,12 +20,15 @@ export async function PersonSalaryHistory({ viewer, personId, stepUpFresh }: { v
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00+07:00`), { dateStyle: "medium" });
   const payFile = `/payroll/salaries/${personId}`;
 
+  const payFileLink = (
+    <Link href={payFile} className="text-xs underline underline-offset-4">
+      {t("openPayFile")}
+    </Link>
+  );
   const heading = (
     <div className="flex flex-wrap items-baseline justify-between gap-2">
       <h2 className="text-sm font-medium text-muted-foreground">{t("history")}</h2>
-      <Link href={payFile} className="text-xs underline underline-offset-4">
-        {t("openPayFile")}
-      </Link>
+      {payFileLink}
     </div>
   );
 
@@ -60,39 +63,35 @@ export async function PersonSalaryHistory({ viewer, personId, stepUpFresh }: { v
   };
 
   return (
-    <section className="flex flex-col gap-3">
-      {heading}
+    <TableCard>
+      <TableCardHeader title={t("history")} count={steps.length || null} actions={payFileLink} />
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>{t("period")}</TableHead>
-            <TableHead>{t("reason")}</TableHead>
-            <TableHead className="text-right">{t("baseSalary")}</TableHead>
-            <TableHead className="text-right">{t("total")}</TableHead>
-            <TableHead>{t("changeColumn")}</TableHead>
-            <TableHead>{t("decisionColumn")}</TableHead>
+            <TableHead kind="date">{t("period")}</TableHead>
+            <TableHead kind="select">{t("reason")}</TableHead>
+            <TableHead kind="money">{t("baseSalary")}</TableHead>
+            <TableHead kind="money">{t("total")}</TableHead>
+            <TableHead kind="money">{t("changeColumn")}</TableHead>
+            <TableHead kind="link">{t("decisionColumn")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {steps.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={6} className="text-muted-foreground">
-                {t("noStructure")}
-              </TableCell>
-            </TableRow>
+            <TableEmpty>{t("noStructure")}</TableEmpty>
           ) : (
             steps.map(({ structure, total, base, totalChange }) => (
               <TableRow key={structure.id}>
-                <TableCell className="whitespace-nowrap">
+                <TableCell>
                   {day(structure.validFrom)} → {structure.validTo ? day(structure.validTo) : t("open")}
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline">{t(`reasons.${structure.reason}`)}</Badge>
                 </TableCell>
-                <TableCell className="text-right tabular-nums">{formatVnd(structure.terms.baseSalary)}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatVnd(total)}</TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-0.5 text-xs">
+                <TableCell kind="money">{formatVnd(structure.terms.baseSalary)}</TableCell>
+                <TableCell kind="money">{formatVnd(total)}</TableCell>
+                <TableCell kind="money">
+                  <div className="flex flex-col items-end gap-0.5 text-xs">
                     {change(base)}
                     {/* The total moves on its own when only an allowance changed. */}
                     {totalChange && base && totalChange.amount !== base.amount ? (
@@ -102,7 +101,7 @@ export async function PersonSalaryHistory({ viewer, personId, stepUpFresh }: { v
                     ) : null}
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell kind="link">
                   {structure.decisionNumber ? (
                     <Link href={`/payroll/salaries/decisions/${structure.id}`} className="text-xs whitespace-nowrap hover:underline">
                       {structure.decisionNumber}
@@ -116,6 +115,6 @@ export async function PersonSalaryHistory({ viewer, personId, stepUpFresh }: { v
           )}
         </TableBody>
       </Table>
-    </section>
+    </TableCard>
   );
 }

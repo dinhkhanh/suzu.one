@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
@@ -23,7 +24,7 @@ export default async function InvoicePage({ params }: PageProps<"/crm/invoices/[
   if (!detail) notFound();
   const { invoice, items, payments } = detail;
   const records = canRecordInvoices(shell.viewer, invoice.entityId);
-  const [t, f] = await Promise.all([getTranslations("crm"), formatters()]);
+  const [t, tProjects, f] = await Promise.all([getTranslations("crm"), getTranslations("projects"), formatters()]);
 
   return (
     <div className="flex max-w-4xl flex-col gap-6">
@@ -49,47 +50,81 @@ export default async function InvoicePage({ params }: PageProps<"/crm/invoices/[
       </header>
       <CrmTabs current="invoices" show={shell.show} />
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium">{t("invoice.items")}</h2>
-        <ul className="flex flex-col divide-y rounded-xl border">
-          {items.map((item) => (
-            <li key={item.id} className="flex flex-wrap items-center gap-2 p-3 text-sm">
-              <span className="font-mono text-xs text-muted-foreground">{item.jobNumber ?? "—"}</span>
-              <Link href={`/projects/${item.projectId}/acceptance`} className="hover:underline">
-                {item.projectName}
-              </Link>
-              <span className="text-muted-foreground">{item.description}</span>
-              <span className="ml-auto tabular-nums">{f.money(item.amountVnd)}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <TableCard>
+        <TableCardHeader title={t("invoice.items")} count={items.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="id">{tProjects("fields.jobNumber")}</TableHead>
+              <TableHead kind="text">{t("contract.fields.project")}</TableHead>
+              <TableHead kind="text">{t("quote.description")}</TableHead>
+              <TableHead kind="money">{t("invoice.amount")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell kind="id">{item.jobNumber ?? "—"}</TableCell>
+                <TableCell>
+                  <Link href={`/projects/${item.projectId}/acceptance`} className="hover:underline">
+                    {item.projectName}
+                  </Link>
+                </TableCell>
+                <TableCell className="whitespace-normal text-muted-foreground">{item.description}</TableCell>
+                <TableCell kind="money">{f.money(item.amountVnd)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableCard>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium">{t("invoice.payments")}</h2>
-        {payments.length === 0 ? <p className="text-sm text-muted-foreground">{t("invoice.noPayments")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border">
-          {payments.map((payment) => (
-            <li key={payment.id} className="flex flex-wrap items-center gap-2 p-3 text-sm">
-              <span>{f.date(payment.receivedOn)}</span>
-              <span className="text-muted-foreground">{[t(`invoice.methods.${payment.method as "transfer"}`), payment.reference, payment.recordedByName].filter(Boolean).join(" · ")}</span>
-              <span className="ml-auto tabular-nums">{f.money(payment.amountVnd)}</span>
-              {records && invoice.status !== "written_off" ? <RemovePaymentButton invoiceId={invoice.id} paymentId={payment.id} /> : null}
-            </li>
-          ))}
-        </ul>
+      <TableCard>
+        <TableCardHeader title={t("invoice.payments")} count={payments.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="date">{t("invoice.fields.receivedOn")}</TableHead>
+              <TableHead kind="select">{t("invoice.fields.method")}</TableHead>
+              <TableHead kind="id">{t("invoice.fields.reference")}</TableHead>
+              <TableHead kind="person">{tProjects("meetings.fields.author")}</TableHead>
+              <TableHead kind="money">{t("invoice.amount")}</TableHead>
+              {records && invoice.status !== "written_off" ? <TableHead kind="actions" /> : null}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {payments.length === 0 ? <TableEmpty>{t("invoice.noPayments")}</TableEmpty> : null}
+            {payments.map((payment) => (
+              <TableRow key={payment.id}>
+                <TableCell>{f.date(payment.receivedOn)}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{t(`invoice.methods.${payment.method as "transfer"}`)}</Badge>
+                </TableCell>
+                <TableCell kind="id">{payment.reference ?? "—"}</TableCell>
+                <TableCell>{payment.recordedByName ?? "—"}</TableCell>
+                <TableCell kind="money">{f.money(payment.amountVnd)}</TableCell>
+                {records && invoice.status !== "written_off" ? (
+                  <TableCell kind="actions">
+                    <RemovePaymentButton invoiceId={invoice.id} paymentId={payment.id} />
+                  </TableCell>
+                ) : null}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
         {records && invoice.status === "open" ? (
-          <div className="flex flex-col gap-3 rounded-xl border p-4">
+          <TableAddRow label={t("invoice.recordPayment")} open={payments.length === 0}>
             <PaymentForm invoiceId={invoice.id} outstanding={invoice.outstandingVnd} today={today} />
-            <details>
-              <summary className="cursor-pointer text-sm text-destructive">{t("invoice.writeOff")}</summary>
-              <div className="pt-3">
-                <WriteOffForm invoiceId={invoice.id} />
-              </div>
-            </details>
-          </div>
+          </TableAddRow>
         ) : null}
-      </section>
+      </TableCard>
+      {records && invoice.status === "open" ? (
+        <details className="rounded-xl border p-4">
+          <summary className="cursor-pointer text-sm text-destructive">{t("invoice.writeOff")}</summary>
+          <div className="pt-3">
+            <WriteOffForm invoiceId={invoice.id} />
+          </div>
+        </details>
+      ) : null}
       {invoice.note ? <p className="text-sm text-muted-foreground">{invoice.note}</p> : null}
     </div>
   );

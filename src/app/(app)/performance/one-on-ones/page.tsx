@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -24,22 +25,40 @@ export default async function OneOnOnesPage() {
       </header>
       <PerformanceNav active={null} />
 
-      <ul className="flex flex-col gap-2">
-        {meetings.map(({ row, managerName, personName, actionCount }) => (
-          <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-3 rounded-xl border px-4 py-3 text-sm">
-            <Link href={`/performance/one-on-ones/${row.id}`} className="font-medium underline">
-              {format.dateTime(new Date(`${row.meetingOn}T00:00:00+07:00`), { dateStyle: "medium" })} · {row.managerPersonId === user.person.id ? t("with", { name: personName }) : t("with", { name: managerName })}
-            </Link>
-            <span className="flex items-center gap-2 text-muted-foreground">
-              {actionCount > 0 ? <span className="text-xs">{t("actions.title")}: {actionCount}</span> : null}
-              <Badge dot variant={statusTone(row.status)}>{t(`status.${row.status}`)}</Badge>
-            </span>
-          </li>
-        ))}
-      </ul>
-      {meetings.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : null}
-
-      {reports.length > 0 ? <NewOneOnOneForm reports={reports} today={todayInVietnam()} /> : null}
+      <TableCard>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="date">{t("meetingOn")}</TableHead>
+              <TableHead kind="person">{t("person")}</TableHead>
+              <TableHead kind="number">{t("actions.title")}</TableHead>
+              <TableHead kind="status">{t("columns.status")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {meetings.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
+            {meetings.map(({ row, managerName, personName, actionCount }) => (
+              <TableRow key={row.id}>
+                <TableCell>
+                  <Link href={`/performance/one-on-ones/${row.id}`} className="font-medium hover:underline">
+                    {format.dateTime(new Date(`${row.meetingOn}T00:00:00+07:00`), { dateStyle: "medium" })}
+                  </Link>
+                </TableCell>
+                <TableCell>{row.managerPersonId === user.person.id ? personName : managerName}</TableCell>
+                <TableCell kind="number">{actionCount > 0 ? actionCount : "—"}</TableCell>
+                <TableCell>
+                  <Badge dot variant={statusTone(row.status)}>{t(`status.${row.status}`)}</Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {reports.length > 0 ? (
+          <TableAddRow label={t("new")} open={meetings.length === 0}>
+            <NewOneOnOneForm reports={reports} today={todayInVietnam()} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

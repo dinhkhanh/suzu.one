@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { pagePath } from "@/modules/kb/enums";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { atLeast, compareVersions, kbViewerOf, levelOf, listVersions, loadPage } from "@/modules/kb/service";
 import { RestoreVersionButton } from "@/modules/kb/ui/page-forms";
@@ -43,33 +44,51 @@ export default async function KbPageHistory(props: PageProps<"/kb/pages/[pageId]
         <h1>{t("history.title")}</h1>
       </header>
 
-      <ul className="flex flex-col divide-y rounded-md border">
-        {versions.map((version, index) => {
-          const previous = versions[index + 1];
-          return (
-            <li key={version.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm">
-              <span className="font-medium">v{version.versionNo}</span>
-              {version.current ? <Badge variant="secondary">{t("history.current")}</Badge> : null}
-              {version.isMajor ? <Badge variant="outline">{t("history.major")}</Badge> : null}
-              <span className="min-w-0 flex-1 truncate">{version.changeNote ?? version.title}</span>
-              <span className="text-xs text-muted-foreground">
-                {version.authorName ?? "—"} · {format.dateTime(version.createdAt, { dateStyle: "medium", timeStyle: "short" })}
-              </span>
-              {previous ? (
-                <Link href={`/kb/pages/${loaded.page.id}/history?from=${previous.versionNo}&to=${version.versionNo}`} className="text-xs underline underline-offset-2">
-                  {t("history.compareWithPrevious")}
-                </Link>
-              ) : null}
-              {editor && loaded.page.hasUnpublishedChanges && version.current ? (
-                <Link href={`/kb/pages/${loaded.page.id}/history?from=${version.versionNo}&to=draft`} className="text-xs underline underline-offset-2">
-                  {t("history.compareWithDraft")}
-                </Link>
-              ) : null}
-              {editor && !version.current ? <RestoreVersionButton pageId={loaded.page.id} versionNo={version.versionNo} /> : null}
-            </li>
-          );
-        })}
-      </ul>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="id">{t("ack.version")}</TableHead>
+            <TableHead kind="text">{t("history.note")}</TableHead>
+            <TableHead kind="person">{t("history.author")}</TableHead>
+            <TableHead kind="date">{t("history.savedAt")}</TableHead>
+            <TableHead kind="actions" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {versions.map((version, index) => {
+            const previous = versions[index + 1];
+            return (
+              <TableRow key={version.id}>
+                <TableCell>
+                  <span className="flex items-center gap-2">
+                    <span className="font-medium">v{version.versionNo}</span>
+                    {version.current ? <Badge variant="secondary">{t("history.current")}</Badge> : null}
+                    {version.isMajor ? <Badge variant="outline">{t("history.major")}</Badge> : null}
+                  </span>
+                </TableCell>
+                <TableCell className="max-w-80 truncate">{version.changeNote ?? version.title}</TableCell>
+                <TableCell>{version.authorName ?? "—"}</TableCell>
+                <TableCell>{format.dateTime(version.createdAt, { dateStyle: "medium", timeStyle: "short" })}</TableCell>
+                <TableCell kind="actions">
+                  <span className="flex items-center justify-end gap-3">
+                    {previous ? (
+                      <Link href={`/kb/pages/${loaded.page.id}/history?from=${previous.versionNo}&to=${version.versionNo}`} className="text-xs underline underline-offset-2">
+                        {t("history.compareWithPrevious")}
+                      </Link>
+                    ) : null}
+                    {editor && loaded.page.hasUnpublishedChanges && version.current ? (
+                      <Link href={`/kb/pages/${loaded.page.id}/history?from=${version.versionNo}&to=draft`} className="text-xs underline underline-offset-2">
+                        {t("history.compareWithDraft")}
+                      </Link>
+                    ) : null}
+                    {editor && !version.current ? <RestoreVersionButton pageId={loaded.page.id} versionNo={version.versionNo} /> : null}
+                  </span>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
 
       {comparison ? (
         <section className="flex flex-col gap-2">

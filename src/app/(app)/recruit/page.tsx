@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canBrowseCandidates, canManagePipelines, canRunRecruitment, listOpenings, recruitModuleOpen } from "@/modules/recruit/service";
 import { canReadRecruitReports } from "@/modules/recruit/policy";
@@ -68,38 +69,47 @@ export default async function RecruitPage() {
         </nav>
       </header>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("openings")}</h2>
-        {openings.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("noOpenings")}</p>
-        ) : (
-          <ul className="flex flex-col divide-y rounded-xl border">
+      <TableCard>
+        <TableCardHeader title={t("openings")} count={openings.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("columns.title")}</TableHead>
+              <TableHead kind="id">{t("columns.code")}</TableHead>
+              <TableHead kind="org">{t("columns.entity")}</TableHead>
+              <TableHead kind="org">{t("columns.department")}</TableHead>
+              <TableHead kind="number">{t("columns.headcount")}</TableHead>
+              <TableHead kind="number">{t("columns.applications")}</TableHead>
+              <TableHead kind="number">{t("columns.hired")}</TableHead>
+              <TableHead kind="date">{t("columns.published")}</TableHead>
+              <TableHead kind="status">{t("columns.status")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {openings.length === 0 ? <TableEmpty>{t("noOpenings")}</TableEmpty> : null}
             {openings.map((opening) => (
-              <li key={opening.id} className="flex flex-wrap items-center gap-3 p-3">
-                <div className="min-w-0 flex-1 basis-56">
-                  <Link href={`/recruit/${opening.id}`} className="text-sm font-medium hover:underline">
+              <TableRow key={opening.id}>
+                <TableCell className="max-w-80 truncate">
+                  <Link href={`/recruit/${opening.id}`} className="font-medium hover:underline">
                     {opening.title}
                   </Link>
-                  <p className="text-xs text-muted-foreground">
-                    {opening.code}
-                    {opening.entityName ? ` · ${opening.entityName}` : ""}
-                    {opening.departmentName ? ` · ${opening.departmentName}` : ""}
-                    {` · ${t("columns.headcount")}: ${opening.headcount}`}
-                  </p>
-                  {opening.publishedAt ? <p className="text-xs text-muted-foreground">{format.dateTime(opening.publishedAt, { dateStyle: "medium" })}</p> : null}
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {t("columns.applications")}: {opening.activeApplications}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {t("columns.hired")}: {opening.hiredCount}
-                </span>
-                <Badge dot variant={statusTone(opening.status)}>{t(`status.${opening.status}`)}</Badge>
-              </li>
+                </TableCell>
+                <TableCell kind="id">{opening.code}</TableCell>
+                <TableCell>{opening.entityName ?? "—"}</TableCell>
+                <TableCell>{opening.departmentName ?? "—"}</TableCell>
+                <TableCell kind="number">{opening.headcount}</TableCell>
+                <TableCell kind="number">{opening.activeApplications}</TableCell>
+                <TableCell kind="number">{opening.hiredCount}</TableCell>
+                <TableCell>{opening.publishedAt ? format.dateTime(opening.publishedAt, { dateStyle: "medium" }) : "—"}</TableCell>
+                <TableCell>
+                  <Badge dot variant={statusTone(opening.status)}>{t(`status.${opening.status}`)}</Badge>
+                </TableCell>
+              </TableRow>
             ))}
-          </ul>
-        )}
-      </section>
+          </TableBody>
+        </Table>
+        {runs ? <TableAddRow label={t("newOpening")} href="/recruit/openings/new" /> : null}
+      </TableCard>
 
       <p className="text-xs text-muted-foreground">{t("confidential")}</p>
     </div>

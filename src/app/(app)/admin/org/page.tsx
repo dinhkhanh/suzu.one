@@ -1,6 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListItem } from "@/components/ui/list";
+import { TableAddRow, TableCard } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
 import { commitDepartmentImportAction, stageDepartmentImportAction } from "@/modules/platform/org/actions";
@@ -35,41 +37,41 @@ export default async function OrgPage() {
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
 
-      <ul className="flex flex-col gap-3">
-        {units.map((unit) => {
-          const manage = canManage(unit);
-          return (
-            <li key={unit.id} className="rounded-xl border p-4" style={{ marginInlineStart: `${unit.depth * 1.5}rem` }}>
-              <details>
-                <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm">
-                  {unit.code ? <span className="font-mono text-xs text-muted-foreground">{unit.code}</span> : null}
-                  <span className="font-medium">{unit.name}</span>
-                  <Badge variant="outline">{t(`kinds.${unit.kind}`)}</Badge>
-                  <Badge variant="outline">{unit.entityId ? entityName.get(unit.entityId) : t("shared")}</Badge>
-                  {unit.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
-                  {unit.children.length ? <span className="text-muted-foreground">{t("childCount", { count: unit.children.length })}</span> : null}
-                </summary>
-                {manage ? (
-                  <div className="mt-4 flex flex-col gap-4">
-                    <OrgUnitForm unit={unit} parents={parents} entities={manageableEntities} />
-                    <div className="flex flex-col gap-3 border-t pt-4">
-                      <h3 className="text-xs font-medium text-muted-foreground uppercase">{t("addInside", { name: unit.name })}</h3>
-                      <OrgUnitForm parents={parents} entities={manageableEntities} defaultParentId={unit.id} />
+      <TableCard>
+        <List>
+          {units.map((unit) => {
+            const manage = canManage(unit);
+            return (
+              <ListItem key={unit.id}>
+                <details className="w-full" style={{ paddingInlineStart: `${unit.depth * 1.5}rem` }}>
+                  <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm">
+                    {unit.code ? <span className="font-mono text-xs text-muted-foreground">{unit.code}</span> : null}
+                    <span className="font-medium">{unit.name}</span>
+                    <Badge variant="outline">{t(`kinds.${unit.kind}`)}</Badge>
+                    <Badge variant="outline">{unit.entityId ? entityName.get(unit.entityId) : t("shared")}</Badge>
+                    {unit.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
+                    {unit.children.length ? <span className="text-muted-foreground">{t("childCount", { count: unit.children.length })}</span> : null}
+                  </summary>
+                  {manage ? (
+                    <div className="mt-4 flex flex-col gap-4">
+                      <OrgUnitForm unit={unit} parents={parents} entities={manageableEntities} />
+                      <div className="flex flex-col gap-3 border-t pt-4">
+                        <h3 className="text-xs font-medium text-muted-foreground uppercase">{t("addInside", { name: unit.name })}</h3>
+                        <OrgUnitForm parents={parents} entities={manageableEntities} defaultParentId={unit.id} />
+                      </div>
                     </div>
-                  </div>
-                ) : null}
-              </details>
-            </li>
-          );
-        })}
-      </ul>
-
-      {canShare || manageableEntities.length > 0 ? (
-        <section className="flex flex-col gap-3 rounded-xl border p-4">
-          <h2 className="text-sm font-medium">{t("addUnit")}</h2>
-          <OrgUnitForm parents={parents} entities={manageableEntities} canShare={canShare} />
-        </section>
-      ) : null}
+                  ) : null}
+                </details>
+              </ListItem>
+            );
+          })}
+        </List>
+        {canShare || manageableEntities.length > 0 ? (
+          <TableAddRow label={t("addUnit")} open={units.length === 0}>
+            <OrgUnitForm parents={parents} entities={manageableEntities} canShare={canShare} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
 
       {canShare ? <ImportWizard title={t("importTitle")} template={{ fileName: "departments.csv", csv: departmentTemplate() }} stageAction={stageDepartmentImportAction} commitAction={commitDepartmentImportAction} /> : null}
     </div>

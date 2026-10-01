@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ActionResult } from "@/lib/action";
 
 export type BulkInboxRow = { id: string; type: string; summary: string; link: string | null; createdAt: Date; requesterName: string; bulk: boolean };
@@ -33,7 +35,6 @@ export function BulkInbox({ rows, action, labels = {} }: { rows: BulkInboxRow[];
     });
   }
 
-  if (rows.length === 0) return <p className="text-sm text-muted-foreground">{t("inboxEmpty")}</p>;
   return (
     <div className="flex flex-col gap-3">
       {tickable.length > 0 ? (
@@ -52,31 +53,46 @@ export function BulkInbox({ rows, action, labels = {} }: { rows: BulkInboxRow[];
           {t("errors.generic")}
         </p>
       ) : null}
-      <ul className="flex flex-col divide-y rounded-xl border">
-        {rows.map((row) => {
-          const result = results[row.id];
-          return (
-            <li key={row.id} className="flex items-start gap-3 p-3">
-              <input type="checkbox" className="mt-1 size-4" aria-label={t("bulk.tick")} disabled={!row.bulk || pending} checked={selected.includes(row.id)} onChange={() => toggle(row.id)} />
-              <div className="min-w-0 flex-1">
-                <Link href={row.link ?? "/approvals"} className="text-sm font-medium hover:underline">
-                  {labels[row.type] ?? (t.has(`types.${row.type}`) ? t(`types.${row.type}` as "types.profile_change") : row.type)}
-                </Link>
-                <p className="text-xs text-muted-foreground">{row.summary}</p>
-                <p className="text-xs text-muted-foreground">
-                  {row.requesterName} · {format.dateTime(row.createdAt, { dateStyle: "medium", timeStyle: "short" })}
-                </p>
-                {result && !result.ok ? (
-                  <p role="alert" className="text-xs text-destructive">
-                    {t.has(`errors.${result.error}`) ? t(`errors.${result.error}` as "errors.generic") : t("errors.generic")}
-                  </p>
-                ) : null}
-              </div>
-              {result?.ok ? <Badge variant="outline">{t("status.approved")}</Badge> : row.bulk ? null : <Badge variant="outline">{t("bulk.openIt")}</Badge>}
-            </li>
-          );
-        })}
-      </ul>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="text">{t("columns.request")}</TableHead>
+            <TableHead kind="person">{t("columns.requester")}</TableHead>
+            <TableHead kind="date">{t("columns.submitted")}</TableHead>
+            <TableHead kind="status">{t("columns.status")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.length === 0 ? <TableEmpty>{t("inboxEmpty")}</TableEmpty> : null}
+          {rows.map((row) => {
+            const result = results[row.id];
+            const ticked = selected.includes(row.id);
+            return (
+              <TableRow key={row.id} data-state={ticked ? "selected" : undefined}>
+                <TableCell className="max-w-96 whitespace-normal [&:has([role=checkbox])]:pr-3">
+                  <div className="flex items-start gap-3">
+                    <Checkbox className="mt-0.5" aria-label={t("bulk.tick")} disabled={!row.bulk || pending} checked={ticked} onCheckedChange={() => toggle(row.id)} />
+                    <div className="min-w-0 flex-1">
+                      <Link href={row.link ?? "/approvals"} className="font-medium hover:underline">
+                        {labels[row.type] ?? (t.has(`types.${row.type}`) ? t(`types.${row.type}` as "types.profile_change") : row.type)}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">{row.summary}</p>
+                      {result && !result.ok ? (
+                        <p role="alert" className="text-xs text-destructive">
+                          {t.has(`errors.${result.error}`) ? t(`errors.${result.error}` as "errors.generic") : t("errors.generic")}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>{row.requesterName}</TableCell>
+                <TableCell>{format.dateTime(row.createdAt, { dateStyle: "medium", timeStyle: "short" })}</TableCell>
+                <TableCell>{result?.ok ? <Badge variant="outline">{t("status.approved")}</Badge> : row.bulk ? null : <Badge variant="outline">{t("bulk.openIt")}</Badge>}</TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     </div>
   );
 }

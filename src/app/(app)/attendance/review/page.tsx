@@ -1,5 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { listFlaggedPunches } from "@/modules/attendance/punches";
 import { ReviewPunchForm } from "@/modules/attendance/ui/check-in";
@@ -49,32 +51,32 @@ export default async function ReviewPunchesPage() {
         <h1>{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("waiting", { count: waiting.length })}</h2>
-        {waiting.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : null}
-        <ul className="flex flex-col gap-3">
+      <TableCard>
+        <TableCardHeader title={t("waiting", { count: waiting.length })} />
+        <List>
+          {waiting.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
           {waiting.map((row) => (
-            <li key={row.id} className="flex flex-col gap-2 rounded-xl border p-4">
+            <ListItem key={row.id} className="flex-col items-stretch gap-2 p-4">
               {describe(row)}
               <ReviewPunchForm id={row.id} />
-            </li>
+            </ListItem>
           ))}
-        </ul>
-      </section>
+        </List>
+      </TableCard>
       {decided.length > 0 ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("decided")}</h2>
-          <ul className="flex flex-col divide-y rounded-xl border">
+        <TableCard>
+          <TableCardHeader title={t("decided")} count={decided.length} />
+          <List>
             {decided.map((row) => (
-              <li key={row.id} className="flex flex-col gap-1 p-3">
+              <ListItem key={row.id} className="flex-col items-stretch gap-1 p-3">
                 {describe(row)}
                 <p className="text-sm">
                   <Badge dot variant={statusTone(row.reviewStatus)}>{tFlags(`review.${row.reviewStatus}`)}</Badge> <span className="text-muted-foreground">{[row.reviewerName, row.reviewNote].filter(Boolean).join(" — ")}</span>
                 </p>
-              </li>
+              </ListItem>
             ))}
-          </ul>
-        </section>
+          </List>
+        </TableCard>
       ) : null}
     </div>
   );

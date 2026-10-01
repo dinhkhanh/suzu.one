@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { DailyRulesSection } from "@/modules/daily/ui/team-rules-section";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -59,6 +60,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
   const filters = readFilters(query);
   const grouping = readGrouping(query.group);
   const sort = readSort(query.sort);
+  const teamProjects = projects.filter((project) => project.teamId === team.id);
 
   return (
     <div className="flex max-w-6xl flex-col gap-8" data-accent={accentOf(team.color)}>
@@ -104,25 +106,41 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
         </p>
       </header>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("projects.title")}</h2>
-        <ul className="flex flex-col divide-y rounded-xl border">
-          {projects
-            .filter((project) => project.teamId === team.id)
-            .map((project) => (
-              <li key={project.id} className="flex flex-wrap items-center gap-3 p-3 text-sm" data-accent={accentOf(project.color, team.color)}>
-                <ProjectPoster project={project} size="sm" />
-                <Link href={`/work/projects/${project.id}`} className="min-w-0 flex-1 font-medium hover:underline">
-                  {project.name}
-                </Link>
-                {project.status === "active" ? null : <Badge variant="secondary">{t(`projects.status.${project.status}`)}</Badge>}
-                <span className="text-xs text-muted-foreground">{t("projects.open", { count: project.openTasks })}</span>
-                <Badge variant="outline">{t(`visibility.${project.visibility}`)}</Badge>
-              </li>
+      <TableCard>
+        <TableCardHeader title={t("projects.title")} count={teamProjects.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("projects.fields.name")}</TableHead>
+              <TableHead kind="status">{t("projects.fields.status")}</TableHead>
+              <TableHead kind="number">{t("projects.openTasks")}</TableHead>
+              <TableHead kind="select">{t("projects.fields.visibility")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {teamProjects.map((project) => (
+              <TableRow key={project.id} data-accent={accentOf(project.color, team.color)}>
+                <TableCell className="max-w-96">
+                  <span className="flex items-center gap-3">
+                    <ProjectPoster project={project} size="sm" />
+                    <Link href={`/work/projects/${project.id}`} className="min-w-0 truncate font-medium hover:underline">
+                      {project.name}
+                    </Link>
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={project.status === "active" ? "outline" : "secondary"}>{t(`projects.status.${project.status}`)}</Badge>
+                </TableCell>
+                <TableCell kind="number">{project.openTasks}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{t(`visibility.${project.visibility}`)}</Badge>
+                </TableCell>
+              </TableRow>
             ))}
-          {projects.every((project) => project.teamId !== team.id) ? <li className="p-3 text-sm text-muted-foreground">{t("projects.empty")}</li> : null}
-        </ul>
-      </section>
+            {teamProjects.length === 0 ? <TableEmpty>{t("projects.empty")}</TableEmpty> : null}
+          </TableBody>
+        </Table>
+      </TableCard>
 
       {seesBacklog ? (
         <section className="flex flex-col gap-3">

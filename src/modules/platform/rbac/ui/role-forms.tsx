@@ -26,8 +26,7 @@ export function GrantRoleForm({ people, scopes, today }: { people: Option[]; sco
   });
 
   return (
-    <form ref={form} onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("grant")}</h2>
+    <form ref={form} onSubmit={onSubmit} className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field name="personId" label={t("person")}>
           <Select id="personId" name="personId" required defaultValue="">

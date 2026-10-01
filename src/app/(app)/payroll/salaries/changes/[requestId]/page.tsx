@@ -2,6 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListItem } from "@/components/ui/list";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { resolveCatalogue } from "@/modules/payroll/components";
@@ -51,36 +53,36 @@ export default async function SalaryChangePage({ params }: PageProps<"/payroll/s
       </header>
 
       {figures ? (
-        <section className="rounded-xl border p-4">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-muted-foreground">
-                <th className="font-normal">{t("salaries.component")}</th>
-                <th className="text-right font-normal">{t("salaries.currentTerms")}</th>
-                <th className="text-right font-normal">{t("salaries.proposedTerms")}</th>
-              </tr>
-            </thead>
-            <tbody>
+        <TableCard>
+          <Table numbered={false}>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="text">{t("salaries.component")}</TableHead>
+                <TableHead kind="money">{t("salaries.currentTerms")}</TableHead>
+                <TableHead kind="money">{t("salaries.proposedTerms")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {lines.map((line) => (
-                <tr key={line.label} className={line.from !== null && line.from !== line.to ? "font-medium" : undefined}>
-                  <td>{line.label}</td>
-                  <td className="text-right tabular-nums">{line.from === null ? "—" : formatVnd(line.from)}</td>
-                  <td className="text-right tabular-nums">{formatVnd(line.to)}</td>
-                </tr>
+                <TableRow key={line.label} className={line.from !== null && line.from !== line.to ? "font-medium" : undefined}>
+                  <TableCell>{line.label}</TableCell>
+                  <TableCell kind="money">{line.from === null ? "—" : formatVnd(line.from)}</TableCell>
+                  <TableCell kind="money">{formatVnd(line.to)}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-          {figures.note ? <p className="mt-3 text-sm text-muted-foreground">{figures.note}</p> : null}
-        </section>
+            </TableBody>
+          </Table>
+          {figures.note ? <p className="border-t px-4 py-3 text-sm text-muted-foreground">{figures.note}</p> : null}
+        </TableCard>
       ) : (
         <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{t("salaries.figuresHidden")}</p>
       )}
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("salaries.steps")}</h2>
-        <ul className="flex flex-col divide-y rounded-xl border">
+      <TableCard>
+        <TableCardHeader title={t("salaries.steps")} count={view.steps.length || null} />
+        <List>
           {view.steps.map((step) => (
-            <li key={step.key} className="flex flex-wrap items-center gap-2 p-3 text-sm">
+            <ListItem key={step.key} className="flex-wrap gap-2">
               <Badge variant="outline">{step.status}</Badge>
               {step.assignees.map((assignee) => (
                 <span key={assignee.personId}>
@@ -88,10 +90,10 @@ export default async function SalaryChangePage({ params }: PageProps<"/payroll/s
                   {assignee.comment ? <span className="text-muted-foreground"> — “{assignee.comment}”</span> : null}
                 </span>
               ))}
-            </li>
+            </ListItem>
           ))}
-        </ul>
-      </section>
+        </List>
+      </TableCard>
 
       {view.canDecide ? <DecideSalaryChangeForm requestId={requestId} /> : null}
       {view.canResubmit && view.request.subjectPersonId && figures ? (

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { audienceNames, canPostAnywhere, listManagedAnnouncements } from "@/modules/comms/service";
 import { audienceLabel } from "@/modules/comms/ui/labels";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -33,20 +33,19 @@ export default async function ManageAnnouncementsPage() {
           {t("manage.new")}
         </Link>
       </header>
-      {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("manage.empty")}</p>
-      ) : (
+      <TableCard>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("form.title")}</TableHead>
-              <TableHead>{t("manage.phase")}</TableHead>
-              <TableHead>{t("form.audience")}</TableHead>
-              <TableHead>{t("form.publishAt")}</TableHead>
-              <TableHead>{t("manage.author")}</TableHead>
+              <TableHead kind="text">{t("form.title")}</TableHead>
+              <TableHead kind="status">{t("manage.phase")}</TableHead>
+              <TableHead kind="tags">{t("form.audience")}</TableHead>
+              <TableHead kind="date">{t("form.publishAt")}</TableHead>
+              <TableHead kind="person">{t("manage.author")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
+            {rows.length === 0 ? <TableEmpty>{t("manage.empty")}</TableEmpty> : null}
             {rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
@@ -65,7 +64,8 @@ export default async function ManageAnnouncementsPage() {
             ))}
           </TableBody>
         </Table>
-      )}
+        <TableAddRow label={t("manage.new")} href="/announcements/manage/new" />
+      </TableCard>
     </div>
   );
 }

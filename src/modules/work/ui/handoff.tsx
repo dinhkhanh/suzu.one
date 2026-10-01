@@ -11,7 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
+import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import type { HandoffRequirement } from "../handoff-gate";
@@ -383,12 +385,12 @@ export function HandoffPanel({ taskId, taskTitle, handoffs, teams, canSend }: { 
   };
 
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-medium text-muted-foreground">{t("title")}</h2>
-      {handoffs.length === 0 ? <p className="text-sm text-muted-foreground">{t("none")}</p> : null}
-      <ul className="flex flex-col gap-2">
+    <TableCard>
+      <TableCardHeader title={t("title")} count={handoffs.length || null} />
+      <List>
+        {handoffs.length === 0 ? <ListEmpty>{t("none")}</ListEmpty> : null}
         {handoffs.map((item) => (
-          <li key={item.id} className={`flex flex-col gap-2 rounded-xl border p-3 text-sm ${item.status === "pending" ? "border-primary/40" : ""}`}>
+          <ListItem key={item.id} className={`flex-col items-stretch gap-2 ${item.status === "pending" ? "bg-primary/5" : ""}`}>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">{t(`kinds.${item.kind}`)}</Badge>
               <Badge dot variant={statusTone(item.status)}>{t(`statuses.${item.status}`)}</Badge>
@@ -436,11 +438,11 @@ export function HandoffPanel({ taskId, taskTitle, handoffs, teams, canSend }: { 
             <HandoffNoteView note={item.note} />
             {item.returnReason ? <p className="text-destructive">{t("returnedBecause", { name: item.respondedByName ?? "—", reason: item.returnReason })}</p> : null}
             {item.status === "pending" && item.canRespond ? <HandoffResponder handoffId={item.id} /> : null}
-          </li>
+          </ListItem>
         ))}
-      </ul>
+      </List>
       {canSend && teams.length ? <SendToTeamForm taskId={taskId} taskTitle={taskTitle} teams={teams} /> : null}
-    </section>
+    </TableCard>
   );
 }
 
@@ -453,10 +455,9 @@ function SendToTeamForm({ taskId, taskTitle, teams }: { taskId: string; taskTitl
   const [sent, setSent] = useState<string | null>(null);
 
   return (
-    <details className="rounded-xl border p-3">
-      <summary className="cursor-pointer text-sm font-medium">{t("title")}</summary>
+    <TableAddRow label={t("title")}>
       <form
-        className="flex flex-col gap-3 pt-3"
+        className="flex flex-col gap-3"
         onSubmit={(event) => {
           event.preventDefault();
           const form = event.currentTarget;
@@ -503,6 +504,6 @@ function SendToTeamForm({ taskId, taskTitle, teams }: { taskId: string; taskTitl
           {t("submit")}
         </Button>
       </form>
-    </details>
+    </TableAddRow>
   );
 }

@@ -7,12 +7,14 @@ import { Plus, Trash2 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addAutomationPresetAction, removeAutomationAction, saveAutomationAction, toggleAutomationAction } from "../automation-actions";
 import { AUTOMATION_ACTIONS, AUTOMATION_PRESETS, AUTOMATION_TRIGGERS, type AutomationPreset, CLIENT_DECISIONS, CONDITION_FIELDS, CONDITION_OPS, MAX_RULE_ACTIONS, MAX_RULE_CONDITIONS, QUOTA_PERCENTS, ROLES_FOR, WATCHED_FIELDS } from "../engine/automation";
 import { CUSTOM_PREFIX } from "../engine/custom-fields";
@@ -141,71 +143,95 @@ export function AutomationManager({ teamId, projectId = null, rules, options, ru
       ) : null}
       <DeliveryError errorKey={errorKey} />
 
-      {rules.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : null}
-      <ul className="flex flex-col gap-2">
-        {rules.map((rule) => {
-          const inherited = !!projectId && !rule.projectId;
-          const editable = canManage && !inherited;
-          return (
-            <li key={rule.id} className="rounded-xl border p-3 text-sm">
-              <details>
-                <summary className="flex cursor-pointer flex-col gap-1">
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{rule.name}</span>
-                    {rule.projectName ? <Badge variant="secondary">{rule.projectName}</Badge> : null}
-                    {inherited ? <Badge variant="outline">{t("fromTeam")}</Badge> : null}
-                    {rule.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
-                    <span className="text-xs text-muted-foreground">{rule.lastRunAt ? t("runs.count", { count: rule.runCount, when: format.dateTime(new Date(rule.lastRunAt), { dateStyle: "short", timeStyle: "short" }) }) : t("runs.never")}</span>
-                  </span>
-                  <span className="text-muted-foreground">{describe(rule)}</span>
-                </summary>
-                {editable ? (
-                  <div className="flex flex-col gap-3 pt-3">
-                    <div className="flex flex-wrap gap-2">
-                      <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => run(() => toggleAutomationAction({ automationId: rule.id, isActive: !rule.isActive }))}>
-                        {rule.isActive ? t("turnOff") : t("turnOn")}
-                      </Button>
-                      <Button type="button" size="sm" variant="ghost" disabled={pending} className="text-destructive" onClick={() => window.confirm(t("confirmRemove", { name: rule.name })) && run(() => removeAutomationAction({ automationId: rule.id }))}>
-                        <Trash2 aria-hidden className="size-4" /> {t("remove")}
-                      </Button>
+      <TableCard>
+        <List>
+          {rules.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
+          {rules.map((rule) => {
+            const inherited = !!projectId && !rule.projectId;
+            const editable = canManage && !inherited;
+            return (
+              <ListItem key={rule.id}>
+                <details className="min-w-0 flex-1">
+                  <summary className="flex cursor-pointer flex-col gap-1">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">{rule.name}</span>
+                      {rule.projectName ? <Badge variant="secondary">{rule.projectName}</Badge> : null}
+                      {inherited ? <Badge variant="outline">{t("fromTeam")}</Badge> : null}
+                      {rule.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
+                      <span className="text-xs text-muted-foreground">{rule.lastRunAt ? t("runs.count", { count: rule.runCount, when: format.dateTime(new Date(rule.lastRunAt), { dateStyle: "short", timeStyle: "short" }) }) : t("runs.never")}</span>
+                    </span>
+                    <span className="text-muted-foreground">{describe(rule)}</span>
+                  </summary>
+                  {editable ? (
+                    <div className="flex flex-col gap-3 pt-3">
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => run(() => toggleAutomationAction({ automationId: rule.id, isActive: !rule.isActive }))}>
+                          {rule.isActive ? t("turnOff") : t("turnOn")}
+                        </Button>
+                        <Button type="button" size="sm" variant="ghost" disabled={pending} className="text-destructive" onClick={() => window.confirm(t("confirmRemove", { name: rule.name })) && run(() => removeAutomationAction({ automationId: rule.id }))}>
+                          <Trash2 aria-hidden className="size-4" /> {t("remove")}
+                        </Button>
+                      </div>
+                      <RuleForm teamId={teamId} projectId={rule.projectId} options={options} rule={rule} />
                     </div>
-                    <RuleForm teamId={teamId} projectId={rule.projectId} options={options} rule={rule} />
-                  </div>
-                ) : null}
-              </details>
-            </li>
-          );
-        })}
-      </ul>
-
-      {canManage ? (
-        <details className="rounded-xl border p-3">
-          <summary className="cursor-pointer text-sm font-medium">{t("create")}</summary>
-          <div className="pt-3">
+                  ) : null}
+                </details>
+              </ListItem>
+            );
+          })}
+        </List>
+        {canManage ? (
+          <TableAddRow label={t("create")}>
             <RuleForm teamId={teamId} projectId={projectId} options={options} />
-          </div>
-        </details>
-      ) : null}
+          </TableAddRow>
+        ) : null}
+      </TableCard>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("runs.title")}</h2>
-        {runs.length === 0 ? <p className="text-sm text-muted-foreground">{t("runs.empty")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border">
-          {runs.map((item) => (
-            <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-2.5 text-sm">
-              <Badge variant={item.outcome === "failed" ? "destructive" : item.outcome === "skipped" ? "outline" : "secondary"}>{t(`outcomes.${item.outcome}`)}</Badge>
-              <span className="font-medium">{item.ruleName}</span>
-              {item.taskId && item.taskKey ? (
-                <Link href={`/work/tasks/${item.taskId}`} className="min-w-0 truncate hover:underline">
-                  <span className="font-mono text-xs text-muted-foreground">{item.taskKey}</span> {item.taskTitle}
-                </Link>
-              ) : null}
-              <time className="ml-auto text-xs text-muted-foreground">{format.dateTime(new Date(item.createdAt), { dateStyle: "short", timeStyle: "short" })}</time>
-              {item.failure ? <p className="w-full text-xs text-destructive">{t("runs.failure", { error: item.failure })}</p> : null}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <TableCard>
+        <TableCardHeader title={t("runs.title")} count={runs.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="status">{t("columns.outcome")}</TableHead>
+              <TableHead kind="text">{t("columns.rule")}</TableHead>
+              <TableHead kind="link">{t("columns.task")}</TableHead>
+              <TableHead kind="date">{t("columns.ranAt")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {runs.length === 0 ? <TableEmpty>{t("runs.empty")}</TableEmpty> : null}
+            {runs.map((item) => (
+              <Fragment key={item.id}>
+                <TableRow>
+                  <TableCell>
+                    <Badge variant={item.outcome === "failed" ? "destructive" : item.outcome === "skipped" ? "outline" : "secondary"}>{t(`outcomes.${item.outcome}`)}</Badge>
+                  </TableCell>
+                  <TableCell className="font-medium">{item.ruleName}</TableCell>
+                  <TableCell className="max-w-80">
+                    {item.taskId && item.taskKey ? (
+                      <Link href={`/work/tasks/${item.taskId}`} className="block truncate hover:underline">
+                        <span className="font-mono text-xs text-muted-foreground">{item.taskKey}</span> {item.taskTitle}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    <time>{format.dateTime(new Date(item.createdAt), { dateStyle: "short", timeStyle: "short" })}</time>
+                  </TableCell>
+                </TableRow>
+                {item.failure ? (
+                  <TableRow data-unnumbered>
+                    <TableCell colSpan={4} className="h-auto text-xs whitespace-normal text-destructive">
+                      {t("runs.failure", { error: item.failure })}
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </Fragment>
+            ))}
+          </TableBody>
+        </Table>
+      </TableCard>
     </div>
   );
 }

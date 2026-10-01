@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { resolveCatalogue } from "@/modules/payroll/components";
@@ -141,31 +142,33 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
       </section>
 
       {/* ── The variance check (FR-PAY-31) ── */}
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium">{t("runs.variance.title")}</h2>
-        <p className="text-sm text-muted-foreground">
-          {variance.hasPrevious
-            ? t("runs.variance.against", { month: variance.previousMonth, previous: formatVnd(variance.totals.previousNet), change: variance.totals.changeBp === null ? "—" : `${(variance.totals.changeBp / 100).toFixed(2)}%` })
-            : t("runs.variance.noPrevious")}
-        </p>
-        {variance.flagged.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("runs.variance.clean")}</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("salaries.person")}</TableHead>
-                <TableHead>{t("runs.variance.flags")}</TableHead>
-                <TableHead className="text-right">{t("runs.variance.previousNet")}</TableHead>
-                <TableHead className="text-right">{t("runs.net")}</TableHead>
-                <TableHead className="text-right">{t("runs.variance.change")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {variance.flagged.map((person) => (
-                <TableRow key={person.personId}>
-                  <TableCell>{variance.names.get(person.personId)?.fullName ?? "—"}</TableCell>
-                  <TableCell className="flex flex-wrap gap-1">
+      <TableCard>
+        <TableCardHeader
+          title={t("runs.variance.title")}
+          count={variance.flagged.length || null}
+          description={
+            variance.hasPrevious
+              ? t("runs.variance.against", { month: variance.previousMonth, previous: formatVnd(variance.totals.previousNet), change: variance.totals.changeBp === null ? "—" : `${(variance.totals.changeBp / 100).toFixed(2)}%` })
+              : t("runs.variance.noPrevious")
+          }
+        />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="person">{t("salaries.person")}</TableHead>
+              <TableHead kind="tags">{t("runs.variance.flags")}</TableHead>
+              <TableHead kind="money">{t("runs.variance.previousNet")}</TableHead>
+              <TableHead kind="money">{t("runs.net")}</TableHead>
+              <TableHead kind="percent">{t("runs.variance.change")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {variance.flagged.length === 0 ? <TableEmpty>{t("runs.variance.clean")}</TableEmpty> : null}
+            {variance.flagged.map((person) => (
+              <TableRow key={person.personId}>
+                <TableCell>{variance.names.get(person.personId)?.fullName ?? "—"}</TableCell>
+                <TableCell>
+                  <span className="flex flex-wrap gap-1">
                     {person.flags.map((flag) => (
                       <Badge key={flag} variant={flag === "negative_net" || flag === "missing_bank_account" || flag === "missing_tax_code" ? "destructive" : "outline"}>
                         {t(`runs.variance.flagNames.${flag}`)}
@@ -176,16 +179,16 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
                         {t(`runs.warnings.${warning}`)}
                       </Badge>
                     ))}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{person.previousNet === null ? "—" : formatVnd(person.previousNet)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(person.net)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{person.changeBp === null ? "—" : `${(person.changeBp / 100).toFixed(2)}%`}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </section>
+                  </span>
+                </TableCell>
+                <TableCell kind="money">{person.previousNet === null ? "—" : formatVnd(person.previousNet)}</TableCell>
+                <TableCell kind="money">{formatVnd(person.net)}</TableCell>
+                <TableCell kind="percent">{person.changeBp === null ? "—" : `${(person.changeBp / 100).toFixed(2)}%`}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableCard>
 
       {/* ── Typed-in figures: bonuses, advances, penalties ── */}
       {seesPayslips && editable ? <RunInputForm runId={run.id} people={people.map(({ personId, fullName }) => ({ personId, fullName }))} codes={inputCodes} /> : null}
@@ -221,20 +224,21 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
       ) : null}
 
       {/* ── The people in the run ── */}
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium">{t("runs.people")}</h2>
+      <TableCard>
+        <TableCardHeader title={t("runs.people")} count={people.length || null} />
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("salaries.person")}</TableHead>
-              <TableHead>{t("profiles.profile")}</TableHead>
-              {seesPayslips ? <TableHead className="text-right">{t("runs.totals.gross")}</TableHead> : null}
-              {seesPayslips ? <TableHead className="text-right">{t("runs.totals.insurance")}</TableHead> : null}
-              {seesPayslips ? <TableHead className="text-right">{t("runs.totals.pit")}</TableHead> : null}
-              <TableHead className="text-right">{t("runs.net")}</TableHead>
+              <TableHead kind="person">{t("salaries.person")}</TableHead>
+              <TableHead kind="select">{t("profiles.profile")}</TableHead>
+              {seesPayslips ? <TableHead kind="money">{t("runs.totals.gross")}</TableHead> : null}
+              {seesPayslips ? <TableHead kind="money">{t("runs.totals.insurance")}</TableHead> : null}
+              {seesPayslips ? <TableHead kind="money">{t("runs.totals.pit")}</TableHead> : null}
+              <TableHead kind="money">{t("runs.net")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
+            {people.length === 0 ? <TableEmpty>{t("runs.noPeople")}</TableEmpty> : null}
             {people.map((person) => (
               <TableRow key={person.personId}>
                 <TableCell>
@@ -256,33 +260,32 @@ export default async function PayrollRunPage({ params }: PageProps<"/payroll/run
                 <TableCell>
                   <Badge variant={person.profile === "simple" ? "outline" : "secondary"}>{t(`profiles.kinds.${person.profile}`)}</Badge>
                 </TableCell>
-                {seesPayslips ? <TableCell className="text-right tabular-nums">{formatVnd(person.result!.totals.grossEarnings)}</TableCell> : null}
-                {seesPayslips ? <TableCell className="text-right tabular-nums">{formatVnd(person.result!.totals.employeeInsurance)}</TableCell> : null}
-                {seesPayslips ? <TableCell className="text-right tabular-nums">{formatVnd(person.result!.totals.pit)}</TableCell> : null}
-                <TableCell className="text-right tabular-nums">{formatVnd(person.net)}</TableCell>
+                {seesPayslips ? <TableCell kind="money">{formatVnd(person.result!.totals.grossEarnings)}</TableCell> : null}
+                {seesPayslips ? <TableCell kind="money">{formatVnd(person.result!.totals.employeeInsurance)}</TableCell> : null}
+                {seesPayslips ? <TableCell kind="money">{formatVnd(person.result!.totals.pit)}</TableCell> : null}
+                <TableCell kind="money">{formatVnd(person.net)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-        {people.length === 0 ? <p className="text-sm text-muted-foreground">{t("runs.noPeople")}</p> : null}
-      </section>
+      </TableCard>
 
       {/* ── Every step, who took it, and what they said ── */}
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium">{t("runs.history")}</h2>
-        <ul className="flex flex-col gap-2 text-sm">
+      <TableCard>
+        <TableCardHeader title={t("runs.history")} count={events.length || null} />
+        <List>
+          {events.length === 0 ? <ListEmpty>{t("runs.noHistory")}</ListEmpty> : null}
           {events.map((event) => (
-            <li key={event.id} className="flex flex-wrap gap-2 border-b pb-2">
+            <ListItem key={event.id} className="flex-wrap gap-2">
               <span className="tabular-nums text-muted-foreground">{when(event.createdAt)}</span>
               <span>
                 {t(`runs.statuses.${event.fromStatus}`)} → <span className="font-medium">{t(`runs.statuses.${event.toStatus}`)}</span>
               </span>
               {event.comment ? <span className="text-muted-foreground">“{event.comment}”</span> : null}
-            </li>
+            </ListItem>
           ))}
-        </ul>
-        {events.length === 0 ? <p className="text-sm text-muted-foreground">{t("runs.noHistory")}</p> : null}
-      </section>
+        </List>
+      </TableCard>
     </div>
   );
 }

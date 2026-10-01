@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { availableBonusSteps, canAdjustBonusLine, canManageBonusRun, canReadBonusRun, bonusCostOf, getBonusRun, getBonusScheme, listBonusLines, listBonusRunEvents, schemeDateOf } from "@/modules/payroll/service";
@@ -91,19 +92,20 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
         </section>
       ) : null}
 
-      <section className="flex flex-col gap-3">
-        <h2>{t("lines.title")}</h2>
+      <TableCard>
+        <TableCardHeader title={t("lines.title")} count={lines.length || null} description={canAdjustBonusLine(user.principal) ? t("lines.adjustHint") : undefined} />
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("lines.person")}</TableHead>
-              <TableHead>{t("lines.band")}</TableHead>
-              <TableHead className="text-right">{t("lines.multiplier")}</TableHead>
-              <TableHead className="text-right">{t("lines.computed")}</TableHead>
-              <TableHead className="text-right">{t("lines.final")}</TableHead>
+              <TableHead kind="person">{t("lines.person")}</TableHead>
+              <TableHead kind="select">{t("lines.band")}</TableHead>
+              <TableHead kind="number">{t("lines.multiplier")}</TableHead>
+              <TableHead kind="money">{t("lines.computed")}</TableHead>
+              <TableHead kind="money">{t("lines.final")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
+            {lines.length === 0 ? <TableEmpty>{t("lines.empty")}</TableEmpty> : null}
             {lines.map((line) => (
               <TableRow key={line.row.id}>
                 <TableCell>
@@ -113,34 +115,32 @@ export default async function BonusRunPage({ params }: PageProps<"/payroll/bonus
                   {line.trace.override ? <span className="ml-2 text-xs text-muted-foreground">{t("lines.overridden")}</span> : null}
                 </TableCell>
                 <TableCell>{line.row.eligible ? (line.trace.performance.bandLabel ?? "—") : <span className="text-muted-foreground">{t(`trace.exclusion.${line.trace.exclusion ?? "no_result"}`)}</span>}</TableCell>
-                <TableCell className="text-right tabular-nums">{factor(line.trace.combinedMultiplierBp)}</TableCell>
-                <TableCell className="text-right tabular-nums text-muted-foreground">{formatVnd(line.trace.computedAmountVnd)}</TableCell>
-                <TableCell className="text-right font-medium tabular-nums">{formatVnd(line.trace.finalAmountVnd)}</TableCell>
+                <TableCell kind="number">{factor(line.trace.combinedMultiplierBp)}</TableCell>
+                <TableCell kind="money" className="text-muted-foreground">{formatVnd(line.trace.computedAmountVnd)}</TableCell>
+                <TableCell kind="money" className="font-medium">{formatVnd(line.trace.finalAmountVnd)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-        {lines.length === 0 ? <p className="text-sm text-muted-foreground">{t("lines.empty")}</p> : null}
-        {canAdjustBonusLine(user.principal) ? <p className="text-sm text-muted-foreground">{t("lines.adjustHint")}</p> : null}
-      </section>
+      </TableCard>
 
       {manages && scheme ? <WhatIfForm runId={runId} current={scheme.value} /> : null}
 
-      <section className="flex flex-col gap-2">
-        <h2>{t("events.title")}</h2>
-        <ol className="flex flex-col divide-y rounded-xl border px-4 text-sm">
+      <TableCard>
+        <TableCardHeader title={t("events.title")} count={events.length || null} />
+        <List>
+          {events.length === 0 ? <ListEmpty>{t("events.empty")}</ListEmpty> : null}
           {events.map((event) => (
-            <li key={event.id} className="flex flex-wrap items-baseline justify-between gap-3 py-2">
+            <ListItem key={event.id} className="flex-wrap items-baseline justify-between">
               <span>
                 {t(`status.${event.fromStatus}`)} → {t(`status.${event.toStatus}`)}
                 {event.comment ? <span className="text-muted-foreground"> — {event.comment}</span> : null}
               </span>
               <span className="text-xs text-muted-foreground">{format.dateTime(event.createdAt, { dateStyle: "medium", timeStyle: "short" })}</span>
-            </li>
+            </ListItem>
           ))}
-        </ol>
-        {events.length === 0 ? <p className="text-sm text-muted-foreground">{t("events.empty")}</p> : null}
-      </section>
+        </List>
+      </TableCard>
     </div>
   );
 }

@@ -8,7 +8,9 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { FormError } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
+import { List, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
+import { Table, TableEmpty } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { setRowBillableAction, setTimeCellAction } from "../time-actions";
 import { durationText, hoursOf, parseCellDuration } from "./format";
@@ -153,28 +155,22 @@ export function WeekGrid({ rows, days, weekStart, editable, options, copyRows }:
   return (
     <div className="flex flex-col gap-3">
       {/* Desktop: the dense grid. */}
-      <div className="hidden overflow-x-auto rounded-xl border md:block">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/40 text-xs text-muted-foreground">
+      <div className="hidden md:block">
+        <Table numbered={false}>
+          <thead className="bg-muted/40 text-xs text-foreground/65">
             <tr className="border-b">
-              <th className="min-w-56 px-3 py-2 text-left font-medium">{t("row")}</th>
+              <th className="min-w-56 px-3 py-2 text-left font-normal">{t("row")}</th>
               {days.map((day) => (
-                <th key={day.date} className={cn("w-20 px-1 py-2 text-right font-medium", day.off && "bg-muted/60")}>
+                <th key={day.date} className={cn("w-20 px-1 py-2 text-right font-normal", day.off && "bg-muted/60")}>
                   <span className="block">{day.label}</span>
                   {day.note ? <span className="block font-normal text-faint">{day.note}</span> : null}
                 </th>
               ))}
-              <th className="w-20 px-3 py-2 text-right font-medium">{t("total")}</th>
+              <th className="w-20 px-3 py-2 text-right font-normal">{t("total")}</th>
             </tr>
           </thead>
           <tbody>
-            {shown.length === 0 ? (
-              <tr>
-                <td colSpan={days.length + 2} className="px-3 py-6 text-center text-muted-foreground">
-                  {t("noEntries")}
-                </td>
-              </tr>
-            ) : null}
+            {shown.length === 0 ? <TableEmpty>{t("noEntries")}</TableEmpty> : null}
             {shown.map((row) => (
               <tr key={row.key} className="border-b last:border-b-0">
                 <td className="px-3 py-1.5">
@@ -215,13 +211,13 @@ export function WeekGrid({ rows, days, weekStart, editable, options, copyRows }:
               </tr>
             ) : null}
           </tfoot>
-        </table>
+        </Table>
       </div>
 
-      {/* Phone: one card per day. */}
-      <ul className="flex flex-col gap-3 md:hidden">
+      {/* Phone: one row per day. */}
+      <List className="md:hidden">
         {days.map((day, index) => (
-          <li key={day.date} className={cn("flex flex-col gap-1 rounded-xl border p-3", day.off && "bg-muted/30")}>
+          <ListItem key={day.date} className={cn("flex-col items-stretch gap-1 p-3", day.off && "bg-muted/30")}>
             <div className="flex items-baseline gap-2">
               <span className="min-w-0 flex-1 text-sm font-medium">{day.label}</span>
               {day.note ? <span className="text-xs text-muted-foreground">{day.note}</span> : null}
@@ -247,13 +243,13 @@ export function WeekGrid({ rows, days, weekStart, editable, options, copyRows }:
                   </li>
                 ))}
             </ul>
-          </li>
+          </ListItem>
         ))}
-        <li className="flex items-center justify-between rounded-xl border bg-muted/20 p-3 text-sm font-medium">
+        <ListItem className="justify-between bg-muted/20 p-3 font-medium">
           <span>{t("total")}</span>
           <span className="tabular-nums">{t("hoursValue", { value: hoursOf(total) })}</span>
-        </li>
-      </ul>
+        </ListItem>
+      </List>
 
       <FormError namespace="daily.errors" errorKey={errorKey} />
       {addControls}

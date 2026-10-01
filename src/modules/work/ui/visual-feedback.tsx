@@ -8,7 +8,9 @@ import { useRef, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { List, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
+import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { addPinAction, setPinResolvedAction } from "../delivery-actions";
 import { formatTimecode, type MediaKind } from "../engine/delivery";
 import { DeliveryError, errorKeyOf, type Result, SignedVideo, useSignedUrl } from "./delivery-shared";
@@ -130,18 +132,20 @@ export function PinBoard({ version, pins, canPin }: { version: MediaVersion; pin
       <DeliveryError errorKey={errorKey} />
 
       {pins.length > 0 ? (
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-medium text-muted-foreground">{t("count", { open: pins.filter((pin) => !pin.resolved).length, total: pins.length })}</p>
-            {pins.some((pin) => pin.resolved) ? (
-              <Button type="button" size="xs" variant="ghost" onClick={() => setShowResolved(!showResolved)}>
-                {showResolved ? t("hideResolved") : t("showResolved")}
-              </Button>
-            ) : null}
-          </div>
-          <ol className="flex flex-col divide-y rounded-lg border text-sm">
+        <TableCard>
+          <TableCardHeader
+            title={t("count", { open: pins.filter((pin) => !pin.resolved).length, total: pins.length })}
+            actions={
+              pins.some((pin) => pin.resolved) ? (
+                <Button type="button" size="xs" variant="ghost" onClick={() => setShowResolved(!showResolved)}>
+                  {showResolved ? t("hideResolved") : t("showResolved")}
+                </Button>
+              ) : null
+            }
+          />
+          <List>
             {shown.map((pin) => (
-              <li key={pin.id} className={`flex items-start gap-2 p-2 ${active === pin.id ? "bg-muted/60" : ""}`}>
+              <ListItem key={pin.id} className={`items-start gap-2 ${active === pin.id ? "bg-muted/60" : ""}`}>
                 <button type="button" onClick={() => seek(pin)} className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${pin.resolved ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground"}`} aria-label={t("pinNumber", { number: numberOf(pin.id) })}>
                   {numberOf(pin.id)}
                 </button>
@@ -161,10 +165,10 @@ export function PinBoard({ version, pins, canPin }: { version: MediaVersion; pin
                 ) : pin.resolved ? (
                   <Badge variant="outline">{t("resolved")}</Badge>
                 ) : null}
-              </li>
+              </ListItem>
             ))}
-          </ol>
-        </div>
+          </List>
+        </TableCard>
       ) : null}
     </div>
   );

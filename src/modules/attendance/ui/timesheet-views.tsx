@@ -3,6 +3,8 @@
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableCard, TableEmpty } from "@/components/ui/table";
 import type { MonthSummary } from "../engine/timesheet";
 import type { TeamMonthRow, TimesheetDayRow } from "../timesheets";
 import { hoursText } from "./day-plan";
@@ -89,15 +91,15 @@ export function MonthDays({ days }: { days: TimesheetDayRow[] }) {
   const t = useTranslations("attendance.timesheet");
   const format = useFormatter();
   const clock = (at: Date | null) => (at ? format.dateTime(at, { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }) : "—");
-  if (days.length === 0) return <p className="text-sm text-muted-foreground">{t("empty")}</p>;
   return (
-    <ul className="flex flex-col divide-y rounded-xl border">
+    <List>
+      {days.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
       {days.map((day) => {
         const overtime = day.otWeekdayMinutes + day.otWeekdayNightMinutes + day.otRestDayMinutes + day.otRestDayNightMinutes + day.otHolidayMinutes + day.otHolidayNightMinutes;
         return (
-          <li key={day.date}>
+          <ListItem key={day.date} className="block p-0">
             <details>
-              <summary className="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm">
+              <summary className="flex min-h-12 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 text-sm hover:bg-muted/40">
                 <span className="w-28 font-medium">{format.dateTime(new Date(`${day.date}T00:00:00`), { weekday: "short", day: "numeric", month: "numeric" })}</span>
                 <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_TONE[day.status]}`}>{t(`statuses.${day.status}`)}</span>
                 {day.firstIn || day.lastOut ? (
@@ -138,10 +140,10 @@ export function MonthDays({ days }: { days: TimesheetDayRow[] }) {
                 </ul>
               </div>
             </details>
-          </li>
+          </ListItem>
         );
       })}
-    </ul>
+    </List>
   );
 }
 
@@ -149,13 +151,12 @@ const CODE: Record<TimesheetDayRow["status"], string> = { present: "✓", partia
 
 export function TeamGrid({ rows, month, dates }: { rows: TeamMonthRow[]; month: string; dates: string[] }) {
   const t = useTranslations("attendance.timesheet");
-  if (rows.length === 0) return <p className="text-sm text-muted-foreground">{t("team.empty")}</p>;
   return (
-    <div className="overflow-x-auto rounded-xl border">
-      <table className="w-full border-collapse text-xs">
+    <TableCard>
+      <Table numbered={false} className="border-collapse text-xs">
         <thead>
-          <tr className="border-b bg-muted/40">
-            <th className="sticky left-0 z-10 min-w-40 bg-muted px-2 py-1 text-left font-medium">{t("team.person")}</th>
+          <tr className="border-b bg-muted/40 text-foreground/65">
+            <th className="sticky left-0 z-10 min-w-40 bg-muted px-2 py-1 text-left font-normal">{t("team.person")}</th>
             {dates.map((date) => {
               const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
               return (
@@ -165,13 +166,14 @@ export function TeamGrid({ rows, month, dates }: { rows: TeamMonthRow[]; month: 
               );
             })}
             {(["paidDays", "late", "missing", "absent", "overtime"] as const).map((key) => (
-              <th key={key} className="px-2 py-1 text-right font-medium">
+              <th key={key} className="px-2 py-1 text-right font-normal">
                 {t(`team.columns.${key}`)}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
+          {rows.length === 0 ? <TableEmpty>{t("team.empty")}</TableEmpty> : null}
           {rows.map((row) => {
             const byDate = new Map(row.days.map((day) => [day.date, day]));
             return (
@@ -205,8 +207,8 @@ export function TeamGrid({ rows, month, dates }: { rows: TeamMonthRow[]; month: 
             );
           })}
         </tbody>
-      </table>
+      </Table>
       <p className="border-t p-2 text-[11px] text-muted-foreground">{t("team.legend")}</p>
-    </div>
+    </TableCard>
   );
 }

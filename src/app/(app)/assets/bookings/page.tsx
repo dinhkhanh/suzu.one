@@ -2,6 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { db, schema } from "@/lib/db";
+import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { canBookAssets, canDecideBookings, listBookableAssets, listBookingRequests, listBookings, listBookingsOfPerson, listCategories, shiftWeeks, weekStart } from "@/modules/assets/service";
@@ -77,23 +78,21 @@ export default async function BookingsPage({ searchParams }: PageProps<"/assets/
       </section>
 
       {waiting.length > 0 ? (
-        <section className="flex flex-col gap-3">
-          <h2>{t("waiting")}</h2>
+        <TableCard>
+          <TableCardHeader title={t("waiting")} count={waiting.length} />
           <BookingList rows={waiting} empty={t("noneWaiting")} />
-        </section>
+        </TableCard>
       ) : null}
 
-      <section className="flex flex-col gap-3">
-        <h2>{t("mine")}</h2>
+      <TableCard>
+        <TableCardHeader title={t("mine")} count={mine.length || null} />
         <BookingList rows={mine} empty={t("noneMine")} />
-      </section>
-
-      {canBookAssets(user.principal) && assets.length > 0 ? (
-        <section className="flex flex-col gap-3">
-          <h2>{t("form.title")}</h2>
-          <BookAssetForm assets={assets.map((asset) => ({ id: asset.id, code: asset.code, name: asset.name, categoryName: asset.categoryName }))} people={people} canBookForOthers={canDecideBookings(user.principal)} />
-        </section>
-      ) : null}
+        {canBookAssets(user.principal) && assets.length > 0 ? (
+          <TableAddRow label={t("form.title")} open={mine.length === 0}>
+            <BookAssetForm assets={assets.map((asset) => ({ id: asset.id, code: asset.code, name: asset.name, categoryName: asset.categoryName }))} people={people} canBookForOthers={canDecideBookings(user.principal)} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

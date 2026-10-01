@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canReadRecruitReports } from "@/modules/recruit/policy";
@@ -102,30 +102,29 @@ export default async function RecruitReportsPage(props: PageProps<"/recruit/repo
         ))}
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("funnel")}</h2>
-        <p className="text-xs text-muted-foreground">{t("funnelHint")}</p>
-        <Table>
+      <TableCard>
+        <TableCardHeader title={t("funnel")} description={t("funnelHint")} />
+        <Table numbered={false}>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("stage")}</TableHead>
-              <TableHead className="text-right">{t("reached")}</TableHead>
-              <TableHead className="text-right">{t("fromPrevious")}</TableHead>
-              <TableHead className="text-right">{t("ofApplied")}</TableHead>
+              <TableHead kind="select">{t("stage")}</TableHead>
+              <TableHead kind="number">{t("reached")}</TableHead>
+              <TableHead kind="percent">{t("fromPrevious")}</TableHead>
+              <TableHead kind="percent">{t("ofApplied")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {report.steps.map((step) => (
               <TableRow key={step.category}>
                 <TableCell>{tStage(step.category)}</TableCell>
-                <TableCell className="text-right tabular-nums">{step.reached}</TableCell>
-                <TableCell className="text-right tabular-nums">{percent(step.conversionFromPrevious)}</TableCell>
-                <TableCell className="text-right tabular-nums">{percent(step.shareOfApplied)}</TableCell>
+                <TableCell kind="number">{step.reached}</TableCell>
+                <TableCell kind="percent">{percent(step.conversionFromPrevious)}</TableCell>
+                <TableCell kind="percent">{percent(step.shareOfApplied)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      </section>
+      </TableCard>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-muted-foreground">{t("timeToHire")}</h2>
@@ -150,37 +149,34 @@ export default async function RecruitReportsPage(props: PageProps<"/recruit/repo
         )}
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("sources")}</h2>
-        {report.sources.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("noSources")}</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("source")}</TableHead>
-                <TableHead className="text-right">{t("applications")}</TableHead>
-                <TableHead className="text-right">{t("interviewed")}</TableHead>
-                <TableHead className="text-right">{t("hires")}</TableHead>
-                <TableHead className="text-right">{t("hireRate")}</TableHead>
-                <TableHead className="text-right">{t("medianDays")}</TableHead>
+      <TableCard>
+        <TableCardHeader title={t("sources")} />
+        <Table numbered={false}>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="select">{t("source")}</TableHead>
+              <TableHead kind="number">{t("applications")}</TableHead>
+              <TableHead kind="number">{t("interviewed")}</TableHead>
+              <TableHead kind="number">{t("hires")}</TableHead>
+              <TableHead kind="percent">{t("hireRate")}</TableHead>
+              <TableHead kind="time">{t("medianDays")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {report.sources.length === 0 ? <TableEmpty>{t("noSources")}</TableEmpty> : null}
+            {report.sources.map((row) => (
+              <TableRow key={row.source}>
+                <TableCell>{tSource(row.source)}</TableCell>
+                <TableCell kind="number">{row.applications}</TableCell>
+                <TableCell kind="number">{row.interviewed}</TableCell>
+                <TableCell kind="number">{row.hires}</TableCell>
+                <TableCell kind="percent">{percent(row.hireRate)}</TableCell>
+                <TableCell kind="time">{days(row.medianDaysToHire)}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {report.sources.map((row) => (
-                <TableRow key={row.source}>
-                  <TableCell>{tSource(row.source)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{row.applications}</TableCell>
-                  <TableCell className="text-right tabular-nums">{row.interviewed}</TableCell>
-                  <TableCell className="text-right tabular-nums">{row.hires}</TableCell>
-                  <TableCell className="text-right tabular-nums">{percent(row.hireRate)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{days(row.medianDaysToHire)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </section>
+            ))}
+          </TableBody>
+        </Table>
+      </TableCard>
 
       <p className="text-xs text-muted-foreground">{t("noCostPerHire")}</p>
     </div>

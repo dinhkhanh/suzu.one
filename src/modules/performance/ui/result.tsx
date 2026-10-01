@@ -4,6 +4,7 @@
 // The trace table is the phase's exit criterion made visible: every row says what a component
 // scored, what it weighed, what it weighed once the missing ones dropped out, and what it
 // therefore contributed — and the contributions add up to the score printed underneath.
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ResultBand } from "../enums";
 import type { ResultTrace } from "../engine/result";
 
@@ -42,31 +43,31 @@ export function ResultTraceTable({ trace, labels, locale, provenance }: { trace:
   const { t, format } = labels;
   return (
     <div className="flex flex-col gap-3">
-      <table className="w-full text-sm">
-        <thead className="text-xs text-muted-foreground">
-          <tr className="border-b text-left">
-            <th className="py-1 font-normal">{t("trace.component")}</th>
-            <th className="py-1 text-right font-normal">{t("trace.score")}</th>
-            <th className="py-1 text-right font-normal">{t("trace.weight")}</th>
-            <th className="py-1 text-right font-normal">{t("trace.normalised")}</th>
-            <th className="py-1 text-right font-normal">{t("trace.contribution")}</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table numbered={false}>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="select">{t("trace.component")}</TableHead>
+            <TableHead kind="percent">{t("trace.score")}</TableHead>
+            <TableHead kind="percent">{t("trace.weight")}</TableHead>
+            <TableHead kind="percent">{t("trace.normalised")}</TableHead>
+            <TableHead kind="percent">{t("trace.contribution")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {trace.components.map((line) => (
-            <tr key={line.key} className="border-b last:border-b-0">
-              <td className="py-1">
+            <TableRow key={line.key}>
+              <TableCell>
                 {t(`trace.components.${line.key}`)}
                 {line.flags.includes("missing") ? <span className="block text-xs text-warning">{t("trace.missing")}</span> : null}
-              </td>
-              <td className="py-1 text-right tabular-nums">{percentText(format, line.scoreBp)}</td>
-              <td className="py-1 text-right tabular-nums text-muted-foreground">{percentText(format, line.weightBp)}</td>
-              <td className="py-1 text-right tabular-nums">{percentText(format, line.normalisedWeightBp)}</td>
-              <td className="py-1 text-right tabular-nums">{percentText(format, line.contributionBp)}</td>
-            </tr>
+              </TableCell>
+              <TableCell kind="percent">{percentText(format, line.scoreBp)}</TableCell>
+              <TableCell kind="percent" className="text-muted-foreground">{percentText(format, line.weightBp)}</TableCell>
+              <TableCell kind="percent">{percentText(format, line.normalisedWeightBp)}</TableCell>
+              <TableCell kind="percent">{percentText(format, line.contributionBp)}</TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
 
       {trace.okr.lines.some((line) => line.normalisedWeightBp > 0) ? (
         <details className="text-sm">

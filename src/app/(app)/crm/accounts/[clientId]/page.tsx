@@ -2,6 +2,8 @@ import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
@@ -105,25 +107,44 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-w-0 flex-col gap-6">
           <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-medium">{t("account.sections.projects")}</h2>
-            {page.projects.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t("account.noProjects")}</p>
-            ) : (
-              <ul className="flex flex-col divide-y rounded-xl border">
-                {page.projects.map((project) => (
-                  <li key={project.id} className="flex flex-wrap items-center gap-2 p-3 text-sm">
-                    <span className="font-mono text-xs text-muted-foreground">{project.jobNumber ?? "—"}</span>
-                    <Link href={`/projects/${project.id}`} className="font-medium hover:underline">
-                      {project.name}
-                    </Link>
-                    <Badge variant="outline">{tProjects(`kinds.${project.kind as "client"}`)}</Badge>
-                    {project.health ? <Badge dot variant={project.health === "on_track" ? "success" : project.health === "at_risk" ? "warning" : "destructive"}>{tProjects(`health.${project.health as "on_track"}`)}</Badge> : null}
-                    <span className="text-xs text-muted-foreground">{[project.leadName, project.phaseName, project.nextMilestone ? `${project.nextMilestone.name} ${f.date(project.nextMilestone.dueDate)}` : null].filter(Boolean).join(" · ")}</span>
-                    <span className="ml-auto text-xs text-muted-foreground">{t("account.registerProgress", { accepted: project.register.accepted, promised: project.register.promised })}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <TableCard>
+              <TableCardHeader title={t("account.sections.projects")} count={page.projects.length || null} />
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead kind="id">{tProjects("fields.jobNumber")}</TableHead>
+                    <TableHead kind="text">{tProjects("fields.name")}</TableHead>
+                    <TableHead kind="select">{tProjects("fields.kind")}</TableHead>
+                    <TableHead kind="status">{tProjects("fields.health")}</TableHead>
+                    <TableHead kind="person">{tProjects("fields.lead")}</TableHead>
+                    <TableHead kind="select">{tProjects("fields.phase")}</TableHead>
+                    <TableHead kind="date">{tProjects("fields.nextMilestone")}</TableHead>
+                    <TableHead kind="number">{tProjects("fields.accepted")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {page.projects.length === 0 ? <TableEmpty>{t("account.noProjects")}</TableEmpty> : null}
+                  {page.projects.map((project) => (
+                    <TableRow key={project.id}>
+                      <TableCell kind="id">{project.jobNumber ?? "—"}</TableCell>
+                      <TableCell>
+                        <Link href={`/projects/${project.id}`} className="font-medium hover:underline">
+                          {project.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{tProjects(`kinds.${project.kind as "client"}`)}</Badge>
+                      </TableCell>
+                      <TableCell>{project.health ? <Badge dot variant={project.health === "on_track" ? "success" : project.health === "at_risk" ? "warning" : "destructive"}>{tProjects(`health.${project.health as "on_track"}`)}</Badge> : "—"}</TableCell>
+                      <TableCell>{project.leadName ?? "—"}</TableCell>
+                      <TableCell>{project.phaseName ?? "—"}</TableCell>
+                      <TableCell>{project.nextMilestone ? `${project.nextMilestone.name} · ${f.date(project.nextMilestone.dueDate)}` : "—"}</TableCell>
+                      <TableCell kind="number">{t("account.registerProgress", { accepted: project.register.accepted, promised: project.register.promised })}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableCard>
             {page.retainers.length ? (
               <ul className="flex flex-col gap-1 text-sm">
                 {page.retainers.map((row) => (
@@ -146,91 +167,124 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
             ) : null}
           </section>
 
-          <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-medium">{t("account.sections.deals")}</h2>
-            {deals.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t("account.noDeals")}</p>
-            ) : (
-              <ul className="flex flex-col divide-y rounded-xl border">
+          <TableCard>
+            <TableCardHeader title={t("account.sections.deals")} count={deals.length || null} />
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead kind="id">{t("account.fields.code")}</TableHead>
+                  <TableHead kind="text">{t("deals.columns.deal")}</TableHead>
+                  <TableHead kind="status">{t("deals.columns.stage")}</TableHead>
+                  <TableHead kind="person">{t("deals.columns.owner")}</TableHead>
+                  <TableHead kind="money">{t("deals.columns.value")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {deals.length === 0 ? <TableEmpty>{t("account.noDeals")}</TableEmpty> : null}
                 {deals.map((deal) => (
-                  <li key={deal.id} className="flex flex-wrap items-center gap-2 p-3 text-sm">
-                    <span className="font-mono text-xs text-muted-foreground">{deal.code}</span>
-                    <Link href={`/crm/deals/${deal.id}`} className="font-medium hover:underline">
-                      {deal.title}
-                    </Link>
-                    <Badge dot variant={deal.status === "won" ? "success" : deal.status === "lost" ? "secondary" : "info"}>
-                      {stageName(deal.stage, locale)}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">{deal.ownerName}</span>
-                    {deal.value ? <span className="ml-auto tabular-nums">{f.money(deal.value.totalVnd)}</span> : null}
-                  </li>
+                  <TableRow key={deal.id}>
+                    <TableCell kind="id">{deal.code}</TableCell>
+                    <TableCell>
+                      <Link href={`/crm/deals/${deal.id}`} className="font-medium hover:underline">
+                        {deal.title}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Badge dot variant={deal.status === "won" ? "success" : deal.status === "lost" ? "secondary" : "info"}>
+                        {stageName(deal.stage, locale)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{deal.ownerName ?? "—"}</TableCell>
+                    <TableCell kind="money">{deal.value ? f.money(deal.value.totalVnd) : "—"}</TableCell>
+                  </TableRow>
                 ))}
-              </ul>
-            )}
+              </TableBody>
+            </Table>
             {can.createDeal ? (
-              <details className="rounded-xl border p-4">
-                <summary className="cursor-pointer text-sm font-medium">{t("deals.new")}</summary>
-                <div className="pt-3">
-                  <NewDealForm clientId={account.client.id} brands={brands} teams={teams.filter((team) => team.isActive).map((team) => ({ id: team.id, name: team.name }))} entities={entityOptions} contacts={contactOptions} stages={stages.filter((stage) => stage.isActive).map((stage) => ({ id: stage.id, name: stageName(stage, locale), category: stage.category }))} sellers={people} meId={user.person.id} />
-                </div>
-              </details>
+              <TableAddRow label={t("deals.new")}>
+                <NewDealForm clientId={account.client.id} brands={brands} teams={teams.filter((team) => team.isActive).map((team) => ({ id: team.id, name: team.name }))} entities={entityOptions} contacts={contactOptions} stages={stages.filter((stage) => stage.isActive).map((stage) => ({ id: stage.id, name: stageName(stage, locale), category: stage.category }))} sellers={people} meId={user.person.id} />
+              </TableAddRow>
             ) : null}
-          </section>
+          </TableCard>
 
           {can.work ? (
-            <section className="flex flex-col gap-2">
-              <h2 className="text-sm font-medium">{t("account.sections.contracts")}</h2>
-              {contracts.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t("account.noContracts")}</p>
-              ) : (
-                <ul className="flex flex-col divide-y rounded-xl border">
+            <TableCard>
+              <TableCardHeader title={t("account.sections.contracts")} count={contracts.length || null} />
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead kind="id">{t("contracts.columns.number")}</TableHead>
+                    <TableHead kind="text">{t("contract.fields.title")}</TableHead>
+                    <TableHead kind="status">{t("contracts.columns.state")}</TableHead>
+                    <TableHead kind="date">{t("contracts.columns.period")}</TableHead>
+                    {can.seeMoney ? <TableHead kind="money">{t("contracts.columns.value")}</TableHead> : null}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contracts.length === 0 ? <TableEmpty>{t("account.noContracts")}</TableEmpty> : null}
                   {contracts.map((contract) => (
-                    <li key={contract.id} className="flex flex-wrap items-center gap-2 p-3 text-sm">
-                      <Link href={`/crm/contracts/${contract.id}`} className="font-medium hover:underline">
-                        {contract.number}
-                      </Link>
-                      <span>{contract.title}</span>
-                      <Badge dot variant={statusTone(contract.state === "upcoming" ? "scheduled" : contract.state)}>
-                        {t(`enums.contractState.${contract.state}`)}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
+                    <TableRow key={contract.id}>
+                      <TableCell kind="id">
+                        <Link href={`/crm/contracts/${contract.id}`} className="font-medium text-foreground hover:underline">
+                          {contract.number}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{contract.title}</TableCell>
+                      <TableCell>
+                        <Badge dot variant={statusTone(contract.state === "upcoming" ? "scheduled" : contract.state)}>
+                          {t(`enums.contractState.${contract.state}`)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         {f.date(contract.startDate)} – {f.date(contract.endDate)}
-                      </span>
-                      {"valueVnd" in contract && contract.valueVnd !== null ? <span className="ml-auto tabular-nums">{f.money(contract.valueVnd)}</span> : null}
-                    </li>
+                      </TableCell>
+                      {can.seeMoney ? <TableCell kind="money">{"valueVnd" in contract && contract.valueVnd !== null ? f.money(contract.valueVnd) : "—"}</TableCell> : null}
+                    </TableRow>
                   ))}
-                </ul>
-              )}
+                </TableBody>
+              </Table>
               {can.editContracts ? (
-                <details className="rounded-xl border p-4">
-                  <summary className="cursor-pointer text-sm font-medium">{t("contract.new")}</summary>
-                  <div className="pt-3">
-                    <ContractForm clientId={account.client.id} entities={entityOptions} parents={contracts.filter((contract) => contract.kind !== "appendix").map((contract) => ({ id: contract.id, name: `${contract.number} · ${contract.title}` }))} deals={deals.map((deal) => ({ id: deal.id, name: `${deal.code} · ${deal.title}` }))} seesValue={can.seeMoney} />
-                  </div>
-                </details>
+                <TableAddRow label={t("contract.new")}>
+                  <ContractForm clientId={account.client.id} entities={entityOptions} parents={contracts.filter((contract) => contract.kind !== "appendix").map((contract) => ({ id: contract.id, name: `${contract.number} · ${contract.title}` }))} deals={deals.map((deal) => ({ id: deal.id, name: `${deal.code} · ${deal.title}` }))} seesValue={can.seeMoney} />
+                </TableAddRow>
               ) : null}
-            </section>
+            </TableCard>
           ) : null}
 
           {can.seeReceivables && invoices.length ? (
-            <section className="flex flex-col gap-2">
-              <h2 className="text-sm font-medium">{t("account.sections.invoices")}</h2>
-              <ul className="flex flex-col divide-y rounded-xl border">
-                {invoices.map((invoice) => (
-                  <li key={invoice.id} className="flex flex-wrap items-center gap-2 p-3 text-sm">
-                    <Link href={`/crm/invoices/${invoice.id}`} className="font-medium hover:underline">
-                      {invoice.number}
-                    </Link>
-                    <span className="text-xs text-muted-foreground">{f.date(invoice.issuedOn)}</span>
-                    <Badge dot variant={statusTone(invoice.standing === "open" && invoice.daysPastDue > 0 ? "overdue" : invoice.standing === "part_paid" ? "pending" : invoice.standing)}>
-                      {t(`enums.invoiceStanding.${invoice.standing}`)}
-                    </Badge>
-                    <span className="ml-auto tabular-nums">{f.money(invoice.totalVnd)}</span>
-                    {invoice.outstandingVnd > 0 ? <span className="text-xs text-muted-foreground">{t("invoice.outstandingIs", { amount: f.money(invoice.outstandingVnd) })}</span> : null}
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <TableCard>
+              <TableCardHeader title={t("account.sections.invoices")} count={invoices.length} />
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead kind="id">{t("invoices.columns.number")}</TableHead>
+                    <TableHead kind="date">{t("invoices.columns.issued")}</TableHead>
+                    <TableHead kind="status">{t("invoices.columns.standing")}</TableHead>
+                    <TableHead kind="money">{t("invoices.columns.total")}</TableHead>
+                    <TableHead kind="money">{t("invoices.columns.outstanding")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invoices.map((invoice) => (
+                    <TableRow key={invoice.id}>
+                      <TableCell kind="id">
+                        <Link href={`/crm/invoices/${invoice.id}`} className="font-medium text-foreground hover:underline">
+                          {invoice.number}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{f.date(invoice.issuedOn)}</TableCell>
+                      <TableCell>
+                        <Badge dot variant={statusTone(invoice.standing === "open" && invoice.daysPastDue > 0 ? "overdue" : invoice.standing === "part_paid" ? "pending" : invoice.standing)}>
+                          {t(`enums.invoiceStanding.${invoice.standing}`)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell kind="money">{f.money(invoice.totalVnd)}</TableCell>
+                      <TableCell kind="money">{invoice.outstandingVnd > 0 ? f.money(invoice.outstandingVnd) : "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableCard>
           ) : null}
 
           <section className="flex flex-col gap-2">
@@ -255,12 +309,12 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
             </section>
           ) : null}
 
-          <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-medium">{t("account.sections.contacts")}</h2>
-            {page.contacts.length === 0 ? <p className="text-sm text-muted-foreground">{t("contacts.empty")}</p> : null}
-            <ul className="flex flex-col gap-2">
+          <TableCard>
+            <TableCardHeader title={t("account.sections.contacts")} count={page.contacts.length || null} />
+            <List>
+              {page.contacts.length === 0 ? <ListEmpty>{t("contacts.empty")}</ListEmpty> : null}
               {page.contacts.map((contact) => (
-                <li key={contact.id} className="rounded-lg border p-3 text-sm">
+                <ListItem key={contact.id} className="block">
                   <details>
                     <summary className="cursor-pointer">
                       <span className="font-medium">{contact.fullName}</span>
@@ -276,30 +330,27 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
                       </div>
                     ) : null}
                   </details>
-                </li>
+                </ListItem>
               ))}
-            </ul>
+            </List>
             {can.editContacts ? (
-              <details className="rounded-xl border p-3">
-                <summary className="cursor-pointer text-sm font-medium">{t("contacts.add")}</summary>
-                <div className="pt-3">
-                  <ContactForm clientId={account.client.id} brands={brands} />
-                </div>
-              </details>
+              <TableAddRow label={t("contacts.add")}>
+                <ContactForm clientId={account.client.id} brands={brands} />
+              </TableAddRow>
             ) : null}
-          </section>
+          </TableCard>
 
           <section className="flex flex-col gap-2">
             <h2 className="text-sm font-medium">{t("account.sections.team")}</h2>
-            <ul className="flex flex-col gap-1 text-sm">
+            <List>
               {page.team.map((member) => (
-                <li key={member.personId} className="flex flex-wrap items-center gap-2">
+                <ListItem key={member.personId} className="flex-wrap gap-2">
                   <span>{member.fullName}</span>
                   <span className="text-xs text-muted-foreground">{member.ties.map((tie) => t(`enums.tie.${tie as "member"}`)).join(", ")}</span>
                   {can.manageTeam && member.ties.includes("member") ? <RemoveMemberButton clientId={account.client.id} personId={member.personId} /> : null}
-                </li>
+                </ListItem>
               ))}
-            </ul>
+            </List>
             {can.manageTeam ? (
               <div className="flex flex-col gap-3 rounded-xl border p-3">
                 <SalesOwnerForm clientId={account.client.id} current={profile?.salesOwnerPersonId ?? null} people={people} />

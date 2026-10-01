@@ -1,5 +1,7 @@
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { canDecidePerformanceRules, canProposeWeighting, DEFAULT_PERFORMANCE_WEIGHTING, listWeightingVersions, performanceWeightingSchema } from "@/modules/performance/service";
 import { percentText } from "@/modules/performance/ui/result";
 import { DecideWeightingForm, WeightingForm } from "@/modules/performance/ui/result-forms";
@@ -34,14 +36,14 @@ export default async function WeightingPage() {
         <p className="text-sm text-muted-foreground">{t("weighting.description")}</p>
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h3 className="text-sm font-medium">{t("weighting.versions")}</h3>
-        {versions.length === 0 ? <p className="text-sm text-muted-foreground">{t("weighting.none")}</p> : null}
-        <ul className="flex flex-col gap-3">
+      <TableCard>
+        <TableCardHeader title={t("weighting.versions")} count={versions.length || null} />
+        <List>
+          {versions.length === 0 ? <ListEmpty>{t("weighting.none")}</ListEmpty> : null}
           {versions.map((version) => {
             const value = performanceWeightingSchema.safeParse(version.value).data;
             return (
-              <li key={version.id} className="flex flex-col gap-2 rounded-xl border p-3">
+              <ListItem key={version.id} className="flex-col items-stretch gap-2">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                   <span className="font-medium">{nameOf(version.entityId)}</span>
                   <span className="text-xs text-muted-foreground">
@@ -71,18 +73,16 @@ export default async function WeightingPage() {
                   </>
                 ) : null}
                 {mayDecide && version.status === "proposed" ? <DecideWeightingForm id={version.id} /> : null}
-              </li>
+              </ListItem>
             );
           })}
-        </ul>
-      </section>
-
-      {mayPropose ? (
-        <section className="flex flex-col gap-3">
-          <h3 className="text-sm font-medium">{t("weighting.propose")}</h3>
-          <WeightingForm entities={entities.map((row) => ({ id: row.id, name: row.shortName }))} start={start} />
-        </section>
-      ) : null}
+        </List>
+        {mayPropose ? (
+          <TableAddRow label={t("weighting.propose")} open={versions.length === 0}>
+            <WeightingForm entities={entities.map((row) => ({ id: row.id, name: row.shortName }))} start={start} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

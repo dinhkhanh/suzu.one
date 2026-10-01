@@ -1,7 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { List, ListItem } from "@/components/ui/list";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { listCashAwaitingReceipt } from "@/modules/payroll/payments";
@@ -28,61 +29,60 @@ export default async function MyPayslipsPage() {
       </header>
 
       {toConfirm.length > 0 ? (
-        <section className="flex flex-col gap-3 rounded-xl border p-4">
-          <h2 className="text-sm font-medium">{tCash("confirm")}</h2>
-          {toConfirm.map((row) => (
-            <div key={row.runId} className="flex flex-wrap items-center justify-between gap-3 text-sm">
-              <span>
-                {row.month} · <span className="tabular-nums">{formatVnd(row.amount)}</span>
-                <span className="ml-2 text-muted-foreground">{row.disbursedOn}</span>
-              </span>
-              <ConfirmReceiptButton runId={row.runId} />
-            </div>
-          ))}
-        </section>
+        <TableCard>
+          <TableCardHeader title={tCash("confirm")} count={toConfirm.length} />
+          <List>
+            {toConfirm.map((row) => (
+              <ListItem key={row.runId} className="flex-wrap justify-between">
+                <span>
+                  {row.month} · <span className="tabular-nums">{formatVnd(row.amount)}</span>
+                  <span className="ml-2 text-muted-foreground">{row.disbursedOn}</span>
+                </span>
+                <ConfirmReceiptButton runId={row.runId} />
+              </ListItem>
+            ))}
+          </List>
+        </TableCard>
       ) : null}
 
-      {payslips.length === 0 ? (
-        <p className="rounded-xl border p-4 text-sm text-muted-foreground">{t("none")}</p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("month")}</TableHead>
-              <TableHead>{t("entity")}</TableHead>
-              <TableHead className="text-right">{t("net")}</TableHead>
-              <TableHead>{t("published")}</TableHead>
-              <TableHead />
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="date">{t("month")}</TableHead>
+            <TableHead kind="org">{t("entity")}</TableHead>
+            <TableHead kind="money">{t("net")}</TableHead>
+            <TableHead kind="date">{t("published")}</TableHead>
+            <TableHead kind="actions" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {payslips.length === 0 ? <TableEmpty>{t("none")}</TableEmpty> : null}
+          {payslips.map((payslip) => (
+            <TableRow key={payslip.id}>
+              <TableCell>
+                <Link href={`/payslips/${payslip.id}`} className="font-medium hover:underline">
+                  {payslip.month}
+                </Link>
+                {payslip.kind === "off_cycle" ? <span className="ml-2 text-xs text-muted-foreground">{payslip.runName}</span> : null}
+                {payslip.firstViewedAt ? null : (
+                  <Badge className="ml-2 text-[10px]" variant="default">
+                    {t("new")}
+                  </Badge>
+                )}
+              </TableCell>
+              <TableCell className="font-mono text-xs">{payslip.entityCode}</TableCell>
+              <TableCell kind="money">{formatVnd(payslip.net)}</TableCell>
+              <TableCell className="text-muted-foreground">{format.dateTime(payslip.publishedAt, { dateStyle: "medium" })}</TableCell>
+              <TableCell kind="actions">
+                {payslip.openQueries > 0 ? <Badge variant="outline">{t("queryOpen")}</Badge> : null}
+                <Link href={`/payslips/${payslip.id}`} className="ml-2 text-sm hover:underline">
+                  {t("open")}
+                </Link>
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {payslips.map((payslip) => (
-              <TableRow key={payslip.id}>
-                <TableCell>
-                  <Link href={`/payslips/${payslip.id}`} className="font-medium hover:underline">
-                    {payslip.month}
-                  </Link>
-                  {payslip.kind === "off_cycle" ? <span className="ml-2 text-xs text-muted-foreground">{payslip.runName}</span> : null}
-                  {payslip.firstViewedAt ? null : (
-                    <Badge className="ml-2 text-[10px]" variant="default">
-                      {t("new")}
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell className="font-mono text-xs">{payslip.entityCode}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatVnd(payslip.net)}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{format.dateTime(payslip.publishedAt, { dateStyle: "medium" })}</TableCell>
-                <TableCell className="text-right">
-                  {payslip.openQueries > 0 ? <Badge variant="outline">{t("queryOpen")}</Badge> : null}
-                  <Link href={`/payslips/${payslip.id}`} className="ml-2 text-sm hover:underline">
-                    {t("open")}
-                  </Link>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

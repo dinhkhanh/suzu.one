@@ -6,7 +6,9 @@ import { useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
+import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { createTaskAction, deleteViewAction, saveViewAction, updateTaskAction } from "../actions";
 import { customKey, fieldIdOf } from "../engine/custom-fields";
 import { filterEntries, filterTasks, GROUPINGS, groupTasks, type ListGrouping, type ListSort, nestTasks, readFilters, readGrouping, readSort, SORTS, sortTasks, type TaskFilters } from "../engine/filter";
@@ -379,77 +381,83 @@ export function TaskListView({
         </form>
       ) : null}
 
-      {visible.length === 0 ? <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">{shown.length === 0 ? t("empty") : t("noMatch")}</p> : null}
-      {groups.map((group) =>
-        group.tasks.length === 0 ? null : (
-          <section key={group.key} className="flex flex-col gap-1">
-            {grouping === "none" ? null : (
-              <h3 className="flex items-center gap-2 px-1 pt-2 text-sm font-medium">
-                {groupName(group.key)} <span className="text-xs text-muted-foreground">{group.tasks.length}</span>
-              </h3>
-            )}
-            <ul className="@container flex flex-col divide-y rounded-xl border">
-              {nestTasks(group.tasks).map(({ task, depth }) => {
-                const open = task.status === "todo" || task.status === "in_progress";
-                const overdue = open && task.dueDate !== null && task.dueDate < today;
-                const editable = (canContribute || task.assigneePersonId === selfId) && !task.id.startsWith("new-");
-                return (
-                  <li key={task.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm" style={{ paddingLeft: `${0.75 + depth * 1.25}rem` }}>
-                    {/* The title is what a row is for: a narrow list gives it a line of its own, wrapped rather than cut short. */}
-                    <div className="flex min-w-0 basis-full items-baseline gap-x-3 @2xl:flex-1 @2xl:basis-0">
-                      <span className={`w-4 shrink-0 text-center text-xs font-bold ${task.priority ? PRIORITY_CLASS[task.priority] : "text-transparent"}`} title={task.priority ? tWork(`priority.${task.priority}`) : undefined}>
-                        {task.priority ? (task.priority === 4 ? "↓" : "!".repeat(4 - task.priority)) : "·"}
+      {visible.length === 0 ? (
+        <List>
+          <ListEmpty>{shown.length === 0 ? t("empty") : t("noMatch")}</ListEmpty>
+        </List>
+      ) : null}
+      {groups.map((group) => {
+        if (group.tasks.length === 0) return null;
+        const list = (
+          <List key={group.key} className="@container">
+            {nestTasks(group.tasks).map(({ task, depth }) => {
+              const open = task.status === "todo" || task.status === "in_progress";
+              const overdue = open && task.dueDate !== null && task.dueDate < today;
+              const editable = (canContribute || task.assigneePersonId === selfId) && !task.id.startsWith("new-");
+              return (
+                <ListItem key={task.id} className="flex-wrap gap-x-3 gap-y-1" style={{ paddingLeft: `${depth * 1.25}rem` }}>
+                  {/* The title is what a row is for: a narrow list gives it a line of its own, wrapped rather than cut short. */}
+                  <div className="flex min-w-0 basis-full items-baseline gap-x-3 @2xl:flex-1 @2xl:basis-0">
+                    <span className={`w-4 shrink-0 text-center text-xs font-bold ${task.priority ? PRIORITY_CLASS[task.priority] : "text-transparent"}`} title={task.priority ? tWork(`priority.${task.priority}`) : undefined}>
+                      {task.priority ? (task.priority === 4 ? "↓" : "!".repeat(4 - task.priority)) : "·"}
+                    </span>
+                    <span className="shrink-0 font-mono text-xs text-muted-foreground @2xl:w-16">{task.key}</span>
+                    <Link href={`/work/tasks/${task.id}`} title={task.title} className={`min-w-0 flex-1 break-words hover:underline @2xl:truncate ${open ? "font-medium" : "text-muted-foreground line-through"}`}>
+                      {task.title}
+                    </Link>
+                  </div>
+                  {task.blocker ? (
+                    <Badge variant="destructive" title={task.blocker.neededName ? `${task.blocker.reason} — ${tWork("blockers.waitingOn", { name: task.blocker.neededName })}` : task.blocker.reason}>
+                      {tWork("blockers.badge")}
+                    </Badge>
+                  ) : null}
+                  {task.blockedBy > 0 ? <Badge variant="destructive">{t("blocked")}</Badge> : null}
+                  {task.triageStatus === "pending" || task.triageStatus === "snoozed" ? <Badge variant="warning">{t("inTriage")}</Badge> : null}
+                  {task.away ? <Badge variant="outline">{task.away.coverName ? tWork("cover.awayCovered", { name: task.away.coverName }) : tWork("cover.away")}</Badge> : null}
+                  {cardFields.map((field) =>
+                    task.customValues?.[field.id] === undefined ? null : (
+                      <span key={field.id} className="text-xs text-muted-foreground" title={field.name}>
+                        <CustomValueText field={field} value={task.customValues[field.id]} people={options.people} />
                       </span>
-                      <span className="shrink-0 font-mono text-xs text-muted-foreground @2xl:w-16">{task.key}</span>
-                      <Link href={`/work/tasks/${task.id}`} title={task.title} className={`min-w-0 flex-1 break-words hover:underline @2xl:truncate ${open ? "font-medium" : "text-muted-foreground line-through"}`}>
-                        {task.title}
-                      </Link>
-                    </div>
-                    {task.blocker ? (
-                      <Badge variant="destructive" title={task.blocker.neededName ? `${task.blocker.reason} — ${tWork("blockers.waitingOn", { name: task.blocker.neededName })}` : task.blocker.reason}>
-                        {tWork("blockers.badge")}
-                      </Badge>
-                    ) : null}
-                    {task.blockedBy > 0 ? <Badge variant="destructive">{t("blocked")}</Badge> : null}
-                    {task.triageStatus === "pending" || task.triageStatus === "snoozed" ? <Badge variant="warning">{t("inTriage")}</Badge> : null}
-                    {task.away ? <Badge variant="outline">{task.away.coverName ? tWork("cover.awayCovered", { name: task.away.coverName }) : tWork("cover.away")}</Badge> : null}
-                    {cardFields.map((field) =>
-                      task.customValues?.[field.id] === undefined ? null : (
-                        <span key={field.id} className="text-xs text-muted-foreground" title={field.name}>
-                          <CustomValueText field={field} value={task.customValues[field.id]} people={options.people} />
-                        </span>
-                      ),
-                    )}
-                    {task.subtasks.total > 0 ? <span className="text-xs text-muted-foreground">{t("subtasks", task.subtasks)}</span> : null}
-                    {task.checklist.total > 0 ? <span className="text-xs text-muted-foreground">☑ {task.checklist.done}/{task.checklist.total}</span> : null}
-                    {task.labelIds.map((id) => {
-                      const label = options.labels.find((row) => row.id === id);
-                      return label ? <LabelChip key={id} name={label.name} color={label.color} /> : null;
-                    })}
-                    <span className="truncate text-xs text-muted-foreground @2xl:w-32">{task.assigneeName ?? options.people.find((person) => person.id === task.assigneePersonId)?.fullName ?? t("unassigned")}</span>
-                    <span className={`text-xs empty:hidden @2xl:w-24 @2xl:empty:block ${overdue ? "font-medium text-destructive" : "text-muted-foreground"}`}>{task.dueDate ? format.dateTime(new Date(`${task.dueDate}T00:00:00`), { day: "numeric", month: "short" }) : ""}</span>
-                    {editable ? (
-                      <Select aria-label={t("state")} value={task.stateId} disabled={pending} onChange={(event) => moveState(task, event.target.value)} className="h-7 w-36 text-xs md:text-xs">
-                        {options.states
-                          .filter((state) => state.isActive || state.id === task.stateId)
-                          .map((state) => (
-                            <option key={state.id} value={state.id}>
-                              {state.name}
-                            </option>
-                          ))}
-                      </Select>
-                    ) : (
-                      <Badge variant="outline" className="w-36 justify-start">
-                        {options.states.find((state) => state.id === task.stateId)?.name ?? "…"}
-                      </Badge>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ),
-      )}
+                    ),
+                  )}
+                  {task.subtasks.total > 0 ? <span className="text-xs text-muted-foreground">{t("subtasks", task.subtasks)}</span> : null}
+                  {task.checklist.total > 0 ? <span className="text-xs text-muted-foreground">☑ {task.checklist.done}/{task.checklist.total}</span> : null}
+                  {task.labelIds.map((id) => {
+                    const label = options.labels.find((row) => row.id === id);
+                    return label ? <LabelChip key={id} name={label.name} color={label.color} /> : null;
+                  })}
+                  <span className="truncate text-xs text-muted-foreground @2xl:w-32">{task.assigneeName ?? options.people.find((person) => person.id === task.assigneePersonId)?.fullName ?? t("unassigned")}</span>
+                  <span className={`text-xs empty:hidden @2xl:w-24 @2xl:empty:block ${overdue ? "font-medium text-destructive" : "text-muted-foreground"}`}>{task.dueDate ? format.dateTime(new Date(`${task.dueDate}T00:00:00`), { day: "numeric", month: "short" }) : ""}</span>
+                  {editable ? (
+                    <Select aria-label={t("state")} value={task.stateId} disabled={pending} onChange={(event) => moveState(task, event.target.value)} className="h-7 w-36 text-xs md:text-xs">
+                      {options.states
+                        .filter((state) => state.isActive || state.id === task.stateId)
+                        .map((state) => (
+                          <option key={state.id} value={state.id}>
+                            {state.name}
+                          </option>
+                        ))}
+                    </Select>
+                  ) : (
+                    <Badge variant="outline" className="w-36 justify-start">
+                      {options.states.find((state) => state.id === task.stateId)?.name ?? "…"}
+                    </Badge>
+                  )}
+                </ListItem>
+              );
+            })}
+          </List>
+        );
+        return grouping === "none" ? (
+          list
+        ) : (
+          <TableCard key={group.key}>
+            <TableCardHeader title={groupName(group.key)} count={group.tasks.length} />
+            {list}
+          </TableCard>
+        );
+      })}
     </div>
   );
 }

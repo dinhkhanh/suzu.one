@@ -28,11 +28,18 @@ import {
   updateSensitiveAction,
 } from "../records-actions";
 import type { SensitiveFields, SensitiveSummary } from "../records";
+import { TableAddRow } from "@/components/ui/table";
 
 const ERRORS = "records.errors";
 const BANK_ROWS = [0, 1];
 
-function Disclosure({ summary, children, formRef }: { summary: string; children: ReactNode; formRef?: React.RefObject<HTMLDetailsElement | null> }) {
+function Disclosure({ summary, children, formRef, addRow }: { summary: string; children: ReactNode; formRef?: React.RefObject<HTMLDetailsElement | null>; /** Drawn as the "+ Add …" row closing the section's sheet. */ addRow?: boolean }) {
+  if (addRow)
+    return (
+      <TableAddRow label={summary} ref={formRef}>
+        {children}
+      </TableAddRow>
+    );
   return (
     <details ref={formRef} className="rounded-xl border p-4">
       <summary className="cursor-pointer text-sm font-medium">{summary}</summary>
@@ -197,7 +204,7 @@ export function ContractForm({ personId, parents, canWritePay, today }: { person
     },
   });
   return (
-    <Disclosure summary={t("contracts.add")} formRef={details}>
+    <Disclosure summary={t("contracts.add")} formRef={details} addRow>
       <form ref={formRef} onSubmit={onSubmit} className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field name="type" label={t("contracts.type")}>
@@ -342,7 +349,7 @@ export function DependentForm({ personId, thisMonth }: { personId: string; thisM
     },
   });
   return (
-    <Disclosure summary={t("dependents.add")} formRef={details}>
+    <Disclosure summary={t("dependents.add")} formRef={details} addRow>
       <form ref={formRef} onSubmit={onSubmit} className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field name="dependent.fullName" label={t("dependents.fullName")}>
@@ -428,7 +435,7 @@ export function DocumentUploadForm({ personId, categories }: { personId: string;
   }
 
   return (
-    <Disclosure summary={t("documents.add")} formRef={details}>
+    <Disclosure summary={t("documents.add")} formRef={details} addRow>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field name="category" label={t("documents.category")}>
@@ -476,7 +483,7 @@ export function EmergencyContactForm({ personId }: { personId: string }) {
     },
   });
   return (
-    <Disclosure summary={t("contacts.add")} formRef={details}>
+    <Disclosure summary={t("contacts.add")} formRef={details} addRow>
       <form ref={formRef} onSubmit={onSubmit} className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field name="contact.fullName" label={t("contacts.fullName")}>

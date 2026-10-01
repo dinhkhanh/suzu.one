@@ -2,6 +2,8 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { TableAddRow, TableCard } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -41,42 +43,47 @@ export default async function BonusSchemePage() {
         <p className="text-sm text-muted-foreground">{t("scheme.description")}</p>
       </header>
 
-      <ul className="flex flex-col gap-3">
-        {versions.map((version) => (
-          <li key={version.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border p-4 text-sm">
-            <div className="flex flex-col gap-2">
-              <span className="flex flex-wrap items-center gap-2 font-medium">
-                {version.entityId ? entityCode.get(version.entityId) : t("scheme.groupWide")} · {version.validFrom}
-                {version.validTo ? ` → ${version.validTo}` : ""}
-                <Badge dot variant={statusTone(version.status)}>{t(`scheme.status.${version.status}`)}</Badge>
-              </span>
-              <dl className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-x-4 sm:grid-cols-[auto_1fr] gap-y-0.5 text-muted-foreground">
-                <dt>{t("scheme.payComponent")}</dt>
-                <dd className="text-foreground">{version.value.payComponentCode}</dd>
-                <dt>{t("scheme.base")}</dt>
-                <dd className="text-foreground">{version.value.baseComponentCode}</dd>
-                <dt>{t("scheme.cap")}</dt>
-                <dd className="text-foreground">{factor(version.value.capMultiplierBp)}</dd>
-                <dt>{t("scheme.rounding")}</dt>
-                <dd className="text-foreground">{version.value.roundingVnd.toLocaleString("vi-VN")} đ</dd>
-                <dt>{t("scheme.serviceBands")}</dt>
-                <dd className="text-foreground">{version.value.serviceBands.map((band) => `${band.label} ${factor(band.factorBp)}`).join(" · ")}</dd>
-                <dt>{t("scheme.performanceBands")}</dt>
-                <dd className="text-foreground">{t(`scheme.source.${version.value.performanceMultiplier.source}`)} — {version.value.performanceMultiplier.bands.map((band) => `${band.label} ≥ ${percent(band.minScoreBp)} ${factor(band.multiplierBp)}`).join(" · ")}</dd>
-                <dt>{t("scheme.unitOkr")}</dt>
-                <dd className="text-foreground">{version.value.unitOkr.level} — {version.value.unitOkr.bands.map((band) => `${band.label} ≥ ${percent(band.minProgressBp)} ${factor(band.multiplierBp)}`).join(" · ")}</dd>
-                <dt>{t("scheme.eligibility")}</dt>
-                <dd className="text-foreground">{t("scheme.eligibilityValue", { months: version.value.eligibility.minServiceMonths, excluded: version.value.eligibility.excludeWorkforceTypes.join(", ") || "—" })}</dd>
-              </dl>
-              {version.note ? <span className="text-muted-foreground">{version.note}</span> : null}
-            </div>
-            {version.status === "proposed" && canDecidePayRules(user.principal) ? <SchemeDecisionButtons id={version.id} /> : null}
-          </li>
-        ))}
-      </ul>
-      {versions.length === 0 ? <p className="text-sm text-muted-foreground">{t("scheme.empty")}</p> : null}
-
-      {canProposePayRules(user.principal) ? <ProposeSchemeForm entities={entities} current={groupCurrent?.value ?? DEFAULT_BONUS_SCHEME} /> : null}
+      <TableCard>
+        <List>
+          {versions.length === 0 ? <ListEmpty>{t("scheme.empty")}</ListEmpty> : null}
+          {versions.map((version) => (
+            <ListItem key={version.id} className="flex-wrap items-start justify-between py-3">
+              <div className="flex flex-col gap-2">
+                <span className="flex flex-wrap items-center gap-2 font-medium">
+                  {version.entityId ? entityCode.get(version.entityId) : t("scheme.groupWide")} · {version.validFrom}
+                  {version.validTo ? ` → ${version.validTo}` : ""}
+                  <Badge dot variant={statusTone(version.status)}>{t(`scheme.status.${version.status}`)}</Badge>
+                </span>
+                <dl className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-x-4 sm:grid-cols-[auto_1fr] gap-y-0.5 text-muted-foreground">
+                  <dt>{t("scheme.payComponent")}</dt>
+                  <dd className="text-foreground">{version.value.payComponentCode}</dd>
+                  <dt>{t("scheme.base")}</dt>
+                  <dd className="text-foreground">{version.value.baseComponentCode}</dd>
+                  <dt>{t("scheme.cap")}</dt>
+                  <dd className="text-foreground">{factor(version.value.capMultiplierBp)}</dd>
+                  <dt>{t("scheme.rounding")}</dt>
+                  <dd className="text-foreground">{version.value.roundingVnd.toLocaleString("vi-VN")} đ</dd>
+                  <dt>{t("scheme.serviceBands")}</dt>
+                  <dd className="text-foreground">{version.value.serviceBands.map((band) => `${band.label} ${factor(band.factorBp)}`).join(" · ")}</dd>
+                  <dt>{t("scheme.performanceBands")}</dt>
+                  <dd className="text-foreground">{t(`scheme.source.${version.value.performanceMultiplier.source}`)} — {version.value.performanceMultiplier.bands.map((band) => `${band.label} ≥ ${percent(band.minScoreBp)} ${factor(band.multiplierBp)}`).join(" · ")}</dd>
+                  <dt>{t("scheme.unitOkr")}</dt>
+                  <dd className="text-foreground">{version.value.unitOkr.level} — {version.value.unitOkr.bands.map((band) => `${band.label} ≥ ${percent(band.minProgressBp)} ${factor(band.multiplierBp)}`).join(" · ")}</dd>
+                  <dt>{t("scheme.eligibility")}</dt>
+                  <dd className="text-foreground">{t("scheme.eligibilityValue", { months: version.value.eligibility.minServiceMonths, excluded: version.value.eligibility.excludeWorkforceTypes.join(", ") || "—" })}</dd>
+                </dl>
+                {version.note ? <span className="text-muted-foreground">{version.note}</span> : null}
+              </div>
+              {version.status === "proposed" && canDecidePayRules(user.principal) ? <SchemeDecisionButtons id={version.id} /> : null}
+            </ListItem>
+          ))}
+        </List>
+        {canProposePayRules(user.principal) ? (
+          <TableAddRow label={t("scheme.propose")} open={versions.length === 0}>
+            <ProposeSchemeForm entities={entities} current={groupCurrent?.value ?? DEFAULT_BONUS_SCHEME} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

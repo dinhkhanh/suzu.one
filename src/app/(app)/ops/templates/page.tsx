@@ -2,6 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { TableAddRow, TableCard } from "@/components/ui/table";
 import { canManageLibrary, canReadOps, DEFAULT_ESCALATION, DEFAULT_REMINDER_LEAD_DAYS, listTemplates, NO_EVIDENCE, type ObligationTemplateRow } from "@/modules/ops/service";
 import { ReviewButton, TemplateForm, type TemplateFormValue } from "@/modules/ops/ui/library";
 import { OpsNav } from "@/modules/ops/ui/overview";
@@ -51,60 +53,65 @@ export default async function ObligationLibraryPage() {
       </header>
       <OpsNav active="library" reads />
 
-      {(["internal", "external"] as const).map((category) => (
-        <section key={category} className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">{t(`enums.category.${category}`)}</h2>
-          <ul className="flex flex-col divide-y rounded-xl border">
-            {templates
-              .filter((row) => row.category === category)
-              .map((row) => (
-                <li key={row.id} className="text-sm">
-                  <details>
-                    <summary className="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 p-3">
-                      <span className="min-w-0 flex-1">
-                        <span className={row.isActive ? "font-medium" : "font-medium text-muted-foreground line-through"}>{row.name}</span>
-                        <span className="block text-xs text-muted-foreground">
-                          {[row.code, t(`enums.recurrence.${row.recurrence}`), describeRule(row), t(`enums.authority.${row.authority}`)].join(" · ")}
+      <TableCard>
+        {(["internal", "external"] as const).map((category) => {
+          const rows = templates.filter((row) => row.category === category);
+          return (
+            <section key={category} className="border-b last:border-b-0">
+              <h2 className="flex h-10 items-center gap-2 border-b bg-muted/30 px-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                {t(`enums.category.${category}`)}
+                <span className="font-normal text-faint tabular-nums">{rows.length}</span>
+              </h2>
+              <List>
+                {rows.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
+                {rows.map((row) => (
+                  <ListItem key={row.id} className="block p-0">
+                    <details>
+                      <summary className="flex min-h-12 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 transition-colors hover:bg-muted/40">
+                        <span className="min-w-0 flex-1">
+                          <span className={row.isActive ? "font-medium" : "font-medium text-muted-foreground line-through"}>{row.name}</span>
+                          <span className="block text-xs text-muted-foreground">
+                            {[row.code, t(`enums.recurrence.${row.recurrence}`), describeRule(row), t(`enums.authority.${row.authority}`)].join(" · ")}
+                          </span>
                         </span>
-                      </span>
-                      {!row.isActive ? <Badge variant="outline">{t("library.inactive")}</Badge> : null}
-                      {row.reviewStatus === "reviewed" ? <Badge variant="secondary">{t("library.reviewedOn", { date: row.reviewedAt ? format.dateTime(row.reviewedAt, { dateStyle: "medium" }) : "" })}</Badge> : <Badge variant="outline">{t("unreviewed")}</Badge>}
-                    </summary>
-                    <div className="border-t bg-muted/30">
-                      {canEdit ? (
-                        <>
-                          <div className="flex justify-end px-3 pt-3">
-                            <ReviewButton templateId={row.id} reviewed={row.reviewStatus === "reviewed"} />
+                        {!row.isActive ? <Badge variant="outline">{t("library.inactive")}</Badge> : null}
+                        {row.reviewStatus === "reviewed" ? <Badge variant="secondary">{t("library.reviewedOn", { date: row.reviewedAt ? format.dateTime(row.reviewedAt, { dateStyle: "medium" }) : "" })}</Badge> : <Badge variant="outline">{t("unreviewed")}</Badge>}
+                      </summary>
+                      <div className="border-t bg-muted/30">
+                        {canEdit ? (
+                          <>
+                            <div className="flex justify-end px-3 pt-3">
+                              <ReviewButton templateId={row.id} reviewed={row.reviewStatus === "reviewed"} />
+                            </div>
+                            <TemplateForm value={toValue(row)} options={options} />
+                          </>
+                        ) : (
+                          <div className="flex flex-col gap-2 p-3">
+                            <RichText text={row.guidance} />
+                            {row.checklist.length ? (
+                              <ol className="list-decimal pl-5">
+                                {row.checklist.map((step) => (
+                                  <li key={step}>{step}</li>
+                                ))}
+                              </ol>
+                            ) : null}
+                            <RichText text={row.penaltyNote} className="text-destructive" />
                           </div>
-                          <TemplateForm value={toValue(row)} options={options} />
-                        </>
-                      ) : (
-                        <div className="flex flex-col gap-2 p-3">
-                          <RichText text={row.guidance} />
-                          {row.checklist.length ? (
-                            <ol className="list-decimal pl-5">
-                              {row.checklist.map((step) => (
-                                <li key={step}>{step}</li>
-                              ))}
-                            </ol>
-                          ) : null}
-                          <RichText text={row.penaltyNote} className="text-destructive" />
-                        </div>
-                      )}
-                    </div>
-                  </details>
-                </li>
-              ))}
-          </ul>
-        </section>
-      ))}
-
-      {canEdit ? (
-        <section className="flex flex-col gap-2 rounded-xl border">
-          <h2 className="px-3 pt-3 text-sm font-medium">{t("library.new")}</h2>
-          <TemplateForm value={BLANK} options={options} />
-        </section>
-      ) : null}
+                        )}
+                      </div>
+                    </details>
+                  </ListItem>
+                ))}
+              </List>
+            </section>
+          );
+        })}
+        {canEdit ? (
+          <TableAddRow label={t("library.new")} open={templates.length === 0}>
+            <TemplateForm value={BLANK} options={options} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

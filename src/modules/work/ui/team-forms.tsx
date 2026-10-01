@@ -6,8 +6,11 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { List, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createTeamAction, deleteLabelAction, saveLabelAction, saveStateAction, setProjectMemberAction, setTeamMemberAction, updateTeamAction } from "../actions";
 import { ACCENT_COLORS, LABEL_COLORS, PROJECT_ROLES, STATE_CATEGORIES, TEAM_ROLES, TEAM_STATUSES, teamStatusOf, VISIBILITIES, WORKFLOW_PRESETS } from "../enums";
 
@@ -160,62 +163,79 @@ export function MemberManager({ members, people, canManage, target }: { members:
   return (
     <div className="flex flex-col gap-3">
       <FormError namespace="work.errors" errorKey={errorKey} />
-      <ul className="flex flex-col divide-y rounded-xl border">
-        {members.map((member) => (
-          <li key={member.personId} className="flex flex-wrap items-center gap-3 p-3 text-sm">
-            <span className="min-w-0 flex-1 basis-56 font-medium">{member.fullName}</span>
-            {canManage ? (
-              <>
-                <Select aria-label={t("role")} className="w-36" value={member.role} disabled={pending} onChange={(event) => run(action, { ...target, personId: member.personId, role: event.target.value })}>
-                  {roles.map((role) => (
-                    <option key={role} value={role}>
-                      {t(`roles.${role}`)}
-                    </option>
-                  ))}
-                </Select>
-                <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(action, { ...target, personId: member.personId, role: "" })}>
-                  {t("remove")}
-                </Button>
-              </>
-            ) : (
-              <Badge variant="outline">{t(`roles.${member.role}`)}</Badge>
-            )}
-          </li>
-        ))}
-        {members.length === 0 ? <li className="p-3 text-sm text-muted-foreground">{t("empty")}</li> : null}
-      </ul>
-      {canManage ? (
-        <form
-          ref={form}
-          className="toolbar"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const data = new FormData(event.currentTarget);
-            run(action, { ...target, personId: data.get("personId"), role: data.get("role") }, () => form.current?.reset());
-          }}
-        >
-          <Select name="personId" aria-label={t("person")} required className="w-56" defaultValue="">
-            <option value="" disabled>
-              {t("pickPerson")}
-            </option>
-            {outsiders.map((person) => (
-              <option key={person.id} value={person.id}>
-                {person.fullName}
-              </option>
+      <TableCard>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="person">{t("person")}</TableHead>
+              <TableHead kind="select">{t("role")}</TableHead>
+              {canManage ? <TableHead kind="actions" /> : null}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {members.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
+            {members.map((member) => (
+              <TableRow key={member.personId}>
+                <TableCell className="font-medium">{member.fullName}</TableCell>
+                <TableCell>
+                  {canManage ? (
+                    <Select aria-label={t("role")} className="w-36" value={member.role} disabled={pending} onChange={(event) => run(action, { ...target, personId: member.personId, role: event.target.value })}>
+                      {roles.map((role) => (
+                        <option key={role} value={role}>
+                          {t(`roles.${role}`)}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Badge variant="outline">{t(`roles.${member.role}`)}</Badge>
+                  )}
+                </TableCell>
+                {canManage ? (
+                  <TableCell kind="actions">
+                    <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(action, { ...target, personId: member.personId, role: "" })}>
+                      {t("remove")}
+                    </Button>
+                  </TableCell>
+                ) : null}
+              </TableRow>
             ))}
-          </Select>
-          <Select name="role" aria-label={t("role")} className="w-36" defaultValue="member">
-            {roles.map((role) => (
-              <option key={role} value={role}>
-                {t(`roles.${role}`)}
-              </option>
-            ))}
-          </Select>
-          <Button type="submit" size="sm" disabled={pending}>
-            {t("add")}
-          </Button>
-        </form>
-      ) : null}
+          </TableBody>
+        </Table>
+        {canManage ? (
+          <TableAddRow label={t("addMember")} open={members.length === 0}>
+            <form
+              ref={form}
+              className="toolbar"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const data = new FormData(event.currentTarget);
+                run(action, { ...target, personId: data.get("personId"), role: data.get("role") }, () => form.current?.reset());
+              }}
+            >
+              <Select name="personId" aria-label={t("person")} required className="w-56" defaultValue="">
+                <option value="" disabled>
+                  {t("pickPerson")}
+                </option>
+                {outsiders.map((person) => (
+                  <option key={person.id} value={person.id}>
+                    {person.fullName}
+                  </option>
+                ))}
+              </Select>
+              <Select name="role" aria-label={t("role")} className="w-36" defaultValue="member">
+                {roles.map((role) => (
+                  <option key={role} value={role}>
+                    {t(`roles.${role}`)}
+                  </option>
+                ))}
+              </Select>
+              <Button type="submit" size="sm" disabled={pending}>
+                {t("add")}
+              </Button>
+            </form>
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }
@@ -248,37 +268,41 @@ export function StateManager({ teamId, states, canManage }: { teamId: string; st
   return (
     <div className="flex flex-col gap-3">
       <FormError namespace="work.errors" errorKey={errorKey} />
-      <ul className="flex flex-col divide-y rounded-xl border">
-        {states.map((state) =>
-          canManage ? (
-            <li key={state.id}>
-              <form onSubmit={submit(state.id, false)} className="flex flex-wrap items-center gap-2 p-2 text-sm">
-                {fields(state)}
-                <label className="flex items-center gap-1.5 text-xs">
-                  <input type="checkbox" name="isActive" defaultChecked={state.isActive} /> {t("active")}
-                </label>
-                <Button type="submit" size="sm" variant="outline" disabled={pending}>
-                  {tWork("save")}
-                </Button>
-              </form>
-            </li>
-          ) : (
-            <li key={state.id} className="flex items-center gap-3 p-3 text-sm">
-              <span className="flex-1 font-medium">{state.name}</span>
-              <Badge variant="outline">{tWork(`categories.${state.category}`)}</Badge>
-              {state.isActive ? null : <Badge variant="secondary">{t("inactive")}</Badge>}
-            </li>
-          ),
-        )}
-      </ul>
-      {canManage ? (
-        <form onSubmit={submit(null, true)} className="flex flex-wrap items-center gap-2 text-sm">
-          {fields()}
-          <Button type="submit" size="sm" disabled={pending}>
-            {t("add")}
-          </Button>
-        </form>
-      ) : null}
+      <TableCard>
+        <List>
+          {states.map((state) =>
+            canManage ? (
+              <ListItem key={state.id}>
+                <form onSubmit={submit(state.id, false)} className="flex flex-1 flex-wrap items-center gap-2">
+                  {fields(state)}
+                  <label className="flex items-center gap-1.5 text-xs">
+                    <Checkbox name="isActive" defaultChecked={state.isActive} /> {t("active")}
+                  </label>
+                  <Button type="submit" size="sm" variant="outline" disabled={pending}>
+                    {tWork("save")}
+                  </Button>
+                </form>
+              </ListItem>
+            ) : (
+              <ListItem key={state.id}>
+                <span className="flex-1 font-medium">{state.name}</span>
+                <Badge variant="outline">{tWork(`categories.${state.category}`)}</Badge>
+                {state.isActive ? null : <Badge variant="secondary">{t("inactive")}</Badge>}
+              </ListItem>
+            ),
+          )}
+        </List>
+        {canManage ? (
+          <TableAddRow label={t("add")} open={states.length === 0}>
+            <form onSubmit={submit(null, true)} className="flex flex-wrap items-center gap-2 text-sm">
+              {fields()}
+              <Button type="submit" size="sm" disabled={pending}>
+                {t("add")}
+              </Button>
+            </form>
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

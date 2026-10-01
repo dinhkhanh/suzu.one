@@ -1632,7 +1632,8 @@
         "upcoming": "Sắp tới",
         "ended": "Đã hết hạn",
         "revoked": "Đã kết thúc sớm"
-      }
+      },
+      "delegator": "Người ủy quyền"
     },
     "flows": {
       "title": "Luồng phê duyệt",
@@ -1690,7 +1691,8 @@
         "flow_no_unconditional_step": "Cần ít nhất một bước áp dụng cho mọi yêu cầu, nếu không sẽ có yêu cầu không ai duyệt.",
         "flow_bad_level": "Bậc quản lý từ 1 đến 6.",
         "flow_person_unknown": "Người duyệt được chỉ định không còn làm việc."
-      }
+      },
+      "steps": "Các bước duyệt"
     },
     "deepLink": {
       "title": "Duyệt nhanh",
@@ -1829,7 +1831,29 @@
     "openTriage": "Mở hàng chờ phân loại",
     "blockerFrom": "{name} báo vướng: {reason}",
     "flagged": "Vướng: {reason}",
-    "toRecordClient": "Ghi ý kiến khách"
+    "toRecordClient": "Ghi ý kiến khách",
+    "columns": {
+      "task": "Công việc",
+      "about": "Liên quan đến",
+      "assignee": "Người phụ trách",
+      "due": "Hạn",
+      "status": "Trạng thái",
+      "key": "Mã",
+      "title": "Tiêu đề",
+      "project": "Dự án",
+      "stage": "Giai đoạn",
+      "submittedBy": "Người nộp",
+      "version": "Phiên bản",
+      "step": "Việc của bạn",
+      "raisedBy": "Người báo",
+      "reason": "Lý do",
+      "created": "Ngày tạo",
+      "request": "Yêu cầu",
+      "requester": "Người gửi",
+      "state": "Trạng thái",
+      "flags": "Lưu ý",
+      "lastDay": "Ngày làm việc cuối"
+    }
   },
   "checklists": {
     "title": "Tiếp nhận & thôi việc",
@@ -1926,6 +1950,9 @@
       "remove": "Gỡ checklist",
       "add": "Thêm checklist…",
       "retired": "Checklist ngừng dùng"
+    },
+    "columns": {
+      "due": "Hạn"
     }
   },
   "forms": {
@@ -2444,7 +2471,8 @@
         "clientRounds": "Vòng sửa của khách",
         "returnedHandoffs": "Bàn giao bị trả",
         "handoffWaitHours": "Giờ chờ bàn giao (TB)",
-        "blockedHours": "Giờ bị chặn"
+        "blockedHours": "Giờ bị chặn",
+        "project": "Dự án"
       }
     },
     "profitability": {
@@ -2612,7 +2640,8 @@
           "active": "Đang hiệu lực",
           "upcoming": "Sắp tới",
           "ended": "Đã kết thúc"
-        }
+        },
+        "status": "Trạng thái"
       },
       "shifts": {
         "title": "Ca làm việc",
@@ -2746,6 +2775,12 @@
         "punch_blocked": "Chỉ được chấm công tại địa điểm làm việc:",
         "punch_already_in": "Hôm nay bạn đã chấm vào. Hãy chấm ra trước.",
         "punch_not_employed": "Chấm công dành cho nhân sự đang làm việc và thuộc một pháp nhân."
+      },
+      "columns": {
+        "time": "Giờ",
+        "direction": "Vào / ra",
+        "location": "Địa điểm",
+        "review": "Duyệt"
       }
     },
     "today": {
@@ -2764,6 +2799,12 @@
         "rest": "Ngày nghỉ",
         "holiday": "Nghỉ lễ",
         "unscheduled": "Chưa có lịch"
+      },
+      "columns": {
+        "person": "Người",
+        "status": "Trạng thái",
+        "times": "Vào → ra",
+        "department": "Phòng ban"
       }
     },
     "review": {
@@ -2855,7 +2896,8 @@
         "bulkTitle": "Gán nhiều mã theo mã nhân viên",
         "bulkHint": "Mỗi dòng: mã trên máy, mã nhân viên. Chỉ lưu khi mọi dòng đều đúng.",
         "bulkSave": "Gán tất cả",
-        "line": "Dòng {line}"
+        "line": "Dòng {line}",
+        "add": "Gán một mã"
       },
       "import": {
         "description": "Tải lên tệp xuất thô của máy chấm công. Bạn thấy mọi lỗi và những gì sẽ được ghi trước khi lưu.",
@@ -2875,7 +2917,14 @@
           "committed": "Đã ghi"
         },
         "result": "{punches} mới · {skipped} bỏ qua · {unmapped} chờ gán",
-        "rows": "{count} dòng"
+        "rows": "{count} dòng",
+        "columns": {
+          "at": "Thời điểm nhập",
+          "file": "Tệp",
+          "status": "Trạng thái",
+          "result": "Kết quả",
+          "by": "Người nhập"
+        }
       },
       "errors": {
         "generic": "Không lưu được. Vui lòng thử lại.",
@@ -3129,7 +3178,9 @@
         "window": "Khung giờ",
         "compensation": "Hình thức bù",
         "reason": "Lý do",
-        "capUsed": "Giới hạn tháng"
+        "capUsed": "Giới hạn tháng",
+        "type": "Loại đề nghị",
+        "status": "Trạng thái"
       },
       "confirmHours": {
         "title": "Xác nhận số giờ đã làm",
@@ -3287,6 +3338,10 @@
           "otHolidayMinutes": "Tăng ca ngày lễ (phút)",
           "otHolidayNightMinutes": "Tăng ca đêm ngày lễ (phút)"
         }
+      },
+      "columns": {
+        "status": "Trạng thái",
+        "summary": "Tóm tắt"
       }
     },
     "console": {
@@ -3330,6 +3385,12 @@
         "timesheets": "Bảng công",
         "schedule": "Lịch làm việc",
         "none": "Mở ngày công"
+      },
+      "columns": {
+        "kind": "Loại",
+        "subject": "Người",
+        "date": "Ngày",
+        "amount": "Mức"
       }
     }
   },
@@ -3379,7 +3440,8 @@
       "dates": "Thời gian",
       "cost": "Số ngày phép",
       "countedDays": "Các ngày được tính",
-      "balanceNow": "Số dư hiện tại"
+      "balanceNow": "Số dư hiện tại",
+      "status": "Trạng thái"
     },
     "portions": {
       "full": "Cả ngày",
@@ -3402,7 +3464,8 @@
       "person": "Nhân viên",
       "away": "Vắng mặt",
       "nonWorking": "Không phải ngày làm việc",
-      "list": "Nghỉ trong tháng"
+      "list": "Nghỉ trong tháng",
+      "noneAway": "Tháng này không có ai nghỉ."
     },
     "errors": {
       "generic": "Không thực hiện được. Vui lòng thử lại.",
@@ -3534,7 +3597,8 @@
         "prorate": "Tính theo tỷ lệ cho người mới vào / nghỉ việc",
         "payoutOnTermination": "Thanh toán ngày chưa nghỉ khi nghỉ việc",
         "seniorityShort": "thâm niên",
-        "carryShort": "chuyển năm {cap}, hết hạn {expiry}"
+        "carryShort": "chuyển năm {cap}, hết hạn {expiry}",
+        "add": "Thêm phiên bản chính sách"
       },
       "accrual": {
         "none": "Không tự cấp (chỉ qua bút toán)",
@@ -3569,7 +3633,11 @@
         "noLedger": "Chưa có phát sinh trong năm.",
         "system": "Hệ thống",
         "requests": "Các đơn nghỉ",
-        "fileFor": "Nộp đơn thay người này"
+        "fileFor": "Nộp đơn thay người này",
+        "date": "Ngày",
+        "movement": "Loại phát sinh",
+        "postedBy": "Người ghi sổ",
+        "noPeople": "Không có nhân viên nào để hiển thị."
       },
       "ledgerKinds": {
         "opening": "Đầu kỳ",
@@ -3720,7 +3788,8 @@
       "person": "Nhân sự",
       "pickPerson": "Chọn nhân sự…",
       "add": "Thêm",
-      "narrowed": "Danh sách chỉ gồm những người bạn được phép thêm: nhân sự thuộc pháp nhân và bộ phận của nhóm này. Muốn thêm người ở nơi khác, hãy nhờ người quản lý công việc ở nơi đó."
+      "narrowed": "Danh sách chỉ gồm những người bạn được phép thêm: nhân sự thuộc pháp nhân và bộ phận của nhóm này. Muốn thêm người ở nơi khác, hãy nhờ người quản lý công việc ở nơi đó.",
+      "addMember": "Thêm thành viên"
     },
     "states": {
       "title": "Quy trình",
@@ -3792,7 +3861,8 @@
         "saving": "Đang tải lên…",
         "hint": "JPG, PNG hoặc WebP. Ảnh được thu nhỏ trước khi tải lên; danh sách hiển thị dạng hình vuông."
       },
-      "teamColor": "Theo màu của nhóm"
+      "teamColor": "Theo màu của nhóm",
+      "openTasks": "Việc đang mở"
     },
     "clients": {
       "title": "Khách hàng và nhãn hàng",
@@ -3984,7 +4054,10 @@
       "checklistRemove": "Gỡ checklist",
       "checklistMissing": "Bước này bắt buộc “{name}”, công việc chưa có checklist này.",
       "checklistAddThis": "Thêm vào",
-      "checklistFromLibrary": "Thêm từ thư viện…"
+      "checklistFromLibrary": "Thêm từ thư viện…",
+      "dependencyAdd": "Thêm liên kết phụ thuộc",
+      "noSubtasks": "Chưa có việc con.",
+      "noDependencies": "Chưa có liên kết phụ thuộc."
     },
     "palette": {
       "title": "Bảng lệnh",
@@ -4259,7 +4332,14 @@
         "file_content_mismatch": "Nội dung tệp không khớp với loại tệp.",
         "file_not_found": "Không tìm thấy tệp."
       },
-      "byAutomation": "Tự động"
+      "byAutomation": "Tự động",
+      "noFiles": "Chưa có tệp nào.",
+      "columns": {
+        "file": "Tệp",
+        "size": "Dung lượng",
+        "uploadedBy": "Người tải lên",
+        "added": "Ngày thêm"
+      }
     },
     "review": {
       "title": "Duyệt sản phẩm",
@@ -4430,6 +4510,11 @@
         "recurrence_not_found": "Không tìm thấy.",
         "project_not_found": "Không tìm thấy dự án.",
         "project_archived": "Dự án này đã lưu trữ."
+      },
+      "columns": {
+        "made": "Đã tạo",
+        "next": "Lần tới",
+        "status": "Trạng thái"
       }
     },
     "leader": {
@@ -4462,7 +4547,11 @@
         "task_not_found": "Không tìm thấy công việc."
       },
       "flagged": "{count} đang vướng",
-      "flaggedReason": "vướng: {reason}"
+      "flaggedReason": "vướng: {reason}",
+      "columns": {
+        "relation": "Vai trò của bạn",
+        "risk": "Rủi ro"
+      }
     },
     "workload": {
       "title": "Khối lượng công việc",
@@ -4535,7 +4624,8 @@
         "entity": "Nhân sự trong pháp nhân của nhóm",
         "group": "Mọi người trong tập đoàn"
       },
-      "checklists": "Checklist mọi yêu cầu đều có"
+      "checklists": "Checklist mọi yêu cầu đều có",
+      "sentOn": "Ngày gửi"
     },
     "customFields": {
       "title": "Trường tùy chỉnh",
@@ -4981,7 +5071,13 @@
       "noPast": "Chưa có chu kỳ nào kết thúc.",
       "planned": "{count} kế hoạch",
       "done": "{count} xong",
-      "rolled": "{count} chuyển tiếp"
+      "rolled": "{count} chuyển tiếp",
+      "columns": {
+        "dates": "Thời gian",
+        "planned": "Kế hoạch",
+        "done": "Xong",
+        "rolled": "Chuyển tiếp"
+      }
     },
     "chains": {
       "title": "Quy trình duyệt",
@@ -5122,7 +5218,9 @@
       "note": "Ghi chú",
       "save": "Ghi nhận đã giao",
       "cancel": "Hủy",
-      "deliver": "Giao cho khách"
+      "deliver": "Giao cho khách",
+      "recordedBy": "Người ghi nhận",
+      "none": "Chưa giao lần nào."
     },
     "publish": {
       "title": "Nhật ký đăng bài",
@@ -5338,6 +5436,12 @@
           "notify": "báo {person}: “{text}”",
           "comment": "bình luận: “{text}”"
         }
+      },
+      "columns": {
+        "outcome": "Kết quả",
+        "rule": "Quy tắc",
+        "task": "Công việc",
+        "ranAt": "Thời điểm chạy"
       }
     },
     "preview": {
@@ -5381,6 +5485,15 @@
         "decided": "Đã phản hồi",
         "expired": "Hết hạn",
         "revoked": "Đã thu hồi"
+      },
+      "none": "Chưa có đường dẫn duyệt nào.",
+      "columns": {
+        "state": "Trạng thái",
+        "createdBy": "Người tạo",
+        "created": "Ngày tạo",
+        "expires": "Hết hạn",
+        "views": "Lượt xem",
+        "lastViewed": "Lần mở gần nhất"
       }
     },
     "archive": {
@@ -5924,7 +6037,8 @@
       "spread": "{min} · {median} · {max}",
       "noDepartment": "(chưa có phòng ban)",
       "hint": "Tháng đã chốt: điểm lưu. Tháng chưa chốt: điểm tạm tính trên số liệu đã nhập. Dấu * = chốt khi còn thiếu số liệu.",
-      "goalsTitle": "Mục tiêu cấp tập đoàn và pháp nhân {year}"
+      "goalsTitle": "Mục tiêu cấp tập đoàn và pháp nhân {year}",
+      "unit": "Đơn vị"
     },
     "admin": {
       "title": "Quản trị KPI",
@@ -5995,7 +6109,9 @@
       "from": "Từ tháng",
       "add": "Gán KPI",
       "lastMonth": "Tháng cuối",
-      "end": "Kết thúc sau tháng này"
+      "end": "Kết thúc sau tháng này",
+      "kpisNow": "KPI tháng này",
+      "noPeople": "Không có ai trong phạm vi của bạn."
     },
     "periods": {
       "description": "Chốt tháng sẽ tính và lưu điểm của mọi người trong pháp nhân. Điểm đã lưu không thay đổi; mở lại kỳ (Nhân sự tập đoàn, có lý do) sẽ giữ điểm cũ ở trạng thái “đã thay thế” và lần chốt sau tạo bản mới.",
@@ -6237,7 +6353,8 @@
           "calibration": "Chuyển sang cân đối",
           "released": "Đánh dấu đã công bố",
           "closed": "Đóng chu kỳ"
-        }
+        },
+        "noParticipants": "Chu kỳ này chưa có người tham gia."
       },
       "errors": {
         "generic": "Không thực hiện được. Hãy thử lại.",
@@ -6334,6 +6451,15 @@
         "attendanceAbsent": "{count} ngày vắng",
         "attendanceLeave": "{days} ngày nghỉ có lương",
         "none": "Không có dữ liệu."
+      },
+      "columns": {
+        "person": "Nhân sự",
+        "cycle": "Chu kỳ",
+        "stage": "Giai đoạn",
+        "template": "Biểu mẫu",
+        "questions": "Số câu",
+        "scale": "Thang điểm",
+        "status": "Trạng thái"
       }
     },
     "results": {
@@ -6542,6 +6668,9 @@
         "result_not_locked": "Kết quả năm chưa được chốt.",
         "salary_terms_required": "Cần nhập mức lương đề xuất và ngày hiệu lực.",
         "salary_change_open": "Nhân sự này đang có một đề xuất lương chờ duyệt."
+      },
+      "columns": {
+        "status": "Trạng thái"
       }
     },
     "workMetrics": {
@@ -6627,7 +6756,10 @@
       "restore": "Khôi phục không gian",
       "archived": "Đã lưu trữ",
       "archiveConfirm": "Lưu trữ không gian này? Người đọc sẽ không còn thấy nó; nội dung vẫn được giữ.",
-      "keyHint": "Chữ thường, số và dấu gạch ngang. Đổi mã thì các liên kết cũ vẫn dẫn về không gian này."
+      "keyHint": "Chữ thường, số và dấu gạch ngang. Đổi mã thì các liên kết cũ vẫn dẫn về không gian này.",
+      "fileName": "Tệp",
+      "fileSize": "Dung lượng",
+      "uploadedBy": "Người tải lên"
     },
     "page": {
       "new": "Trang mới",
@@ -6744,7 +6876,10 @@
       "restoreConfirm": "Đưa nội dung phiên bản {n} vào bản nháp? Bản đang xuất bản không đổi cho tới khi bạn xuất bản lại.",
       "comparing": "So sánh {from} → {to}",
       "noChanges": "Nội dung không thay đổi.",
-      "notFound": "Không tìm thấy phiên bản để so sánh."
+      "notFound": "Không tìm thấy phiên bản để so sánh.",
+      "note": "Ghi chú thay đổi",
+      "author": "Người viết",
+      "savedAt": "Thời điểm lưu"
     },
     "errors": {
       "generic": "Không thực hiện được. Hãy thử lại.",
@@ -7149,7 +7284,8 @@
         "up": "Tăng",
         "down": "Giảm",
         "same": "Lương cơ bản không đổi"
-      }
+      },
+      "request": "Đề xuất"
     },
     "profiles": {
       "title": "Hồ sơ trả lương",
@@ -7200,7 +7336,8 @@
       },
       "proposalsTitle": "Đề xuất hồ sơ trả lương",
       "proposalsDescription": "Chuyển một người giữa hồ sơ Đầy đủ và Đơn giản là một sự kiện nhân sự và chỉ có hiệu lực khi Chủ sở hữu phê duyệt.",
-      "noProposals": "Không có đề xuất nào đang chờ."
+      "noProposals": "Không có đề xuất nào đang chờ.",
+      "proposedBy": "Người đề xuất"
     },
     "rules": {
       "status": {
@@ -7332,7 +7469,8 @@
         "hint": "Dùng lại mã đã có để đề xuất phiên bản mới của khoản đó. Công thức được kiểm tra ngay khi gửi.",
         "submit": "Gửi đề xuất",
         "saved": "Đã gửi — chờ Chủ sở hữu phê duyệt."
-      }
+      },
+      "empty": "Chưa có khoản lương nào có hiệu lực."
     },
     "policy": {
       "title": "Chính sách tính lương",
@@ -8179,6 +8317,11 @@
         "rule_before_current_version": "Ngày hiệu lực phải sau phiên bản hiện hành.",
         "run_has_no_lines": "Không có khoản nào để chi.",
         "payroll_period_locked": "Kỳ lương của tháng chi đã khóa sổ."
+      },
+      "columns": {
+        "status": "Trạng thái",
+        "people": "Số người",
+        "approvedOn": "Ngày duyệt"
       }
     }
   },
@@ -8205,7 +8348,13 @@
       "open": "{count} đang chờ",
       "decided": "{count} đã xử lý",
       "median": "trung vị {hours} giờ",
-      "noMedian": "chưa có số liệu"
+      "noMedian": "chưa có số liệu",
+      "columns": {
+        "type": "Loại đề nghị",
+        "open": "Đang chờ",
+        "decided": "Đã xử lý",
+        "median": "Thời gian trả lời trung vị"
+      }
     },
     "form": {
       "submit": "Gửi đề nghị",
@@ -8336,6 +8485,13 @@
         "remove": "Xóa",
         "standalone": "Có thể lập riêng",
         "standaloneHint": "Bỏ chọn nếu loại này chỉ được lập kèm một đề nghị khác; khi đó nó không hiện trong danh sách “Tạo đề nghị”."
+      },
+      "columns": {
+        "name": "Tên",
+        "fields": "Số trường",
+        "followUps": "Đề nghị kèm theo",
+        "reminder": "Nhắc việc",
+        "status": "Trạng thái"
       }
     },
     "errors": {
@@ -8489,6 +8645,9 @@
         "not_yet": "Được lập từ ngày {date}.",
         "limit_reached": "Đã lập đủ (tối đa {max})."
       }
+    },
+    "columns": {
+      "request": "Đề nghị"
     }
   },
   "assets": {
@@ -8886,7 +9045,8 @@
         "place": "Nơi lập văn bản"
       },
       "active": "Đang sử dụng",
-      "save": "Lưu mẫu"
+      "save": "Lưu mẫu",
+      "empty": "Chưa có mẫu văn bản nào."
     },
     "errors": {
       "generic": "Không thực hiện được. Vui lòng thử lại.",
@@ -8899,7 +9059,8 @@
       "document_subject_unknown": "Không tìm thấy nhân sự.",
       "document_forbidden": "Bạn không có quyền cấp văn bản này.",
       "step_up_required": "Hãy xác thực lại để tiếp tục."
-    }
+    },
+    "new": "Cấp văn bản mới"
   },
   "recruit": {
     "title": "Tuyển dụng",
@@ -9262,6 +9423,14 @@
         "careers_opening_closed": "Vị trí này đã đóng.",
         "careers_answer_required": "Mời bạn trả lời các câu hỏi bắt buộc.",
         "careers_answer_invalid": "Câu trả lời không hợp lệ."
+      },
+      "columns": {
+        "role": "Vị trí",
+        "company": "Công ty",
+        "department": "Phòng ban",
+        "location": "Địa điểm",
+        "workMode": "Hình thức làm việc",
+        "employmentType": "Loại hình công việc"
       }
     },
     "email": {
@@ -9533,7 +9702,8 @@
         "settled": "Đã tất toán",
         "not_earned": "Không phát sinh thưởng"
       },
-      "received": "Đã tiếp nhận"
+      "received": "Đã tiếp nhận",
+      "bonusColumn": "Thưởng"
     },
     "reports": {
       "title": "Báo cáo tuyển dụng",
@@ -9747,7 +9917,15 @@
       "tentative": "Dự kiến",
       "time": "Giờ đã ghi hôm nay · {value} giờ",
       "salesHandoffs": "Cơ hội đã chốt bàn giao cho bạn ({count})",
-      "followUps": "Việc theo dõi khách hàng ({count})"
+      "followUps": "Việc theo dõi khách hàng ({count})",
+      "columns": {
+        "key": "Mã",
+        "title": "Công việc",
+        "status": "Trạng thái",
+        "details": "Chi tiết",
+        "project": "Dự án",
+        "hours": "Số giờ"
+      }
     },
     "time": {
       "log": "Ghi giờ",
@@ -9930,7 +10108,14 @@
       "nobody": "Bạn chưa phụ trách nhóm nào và không quản lý trực tiếp ai.",
       "myReports": "Nhân sự tôi quản lý",
       "counts": "{submitted} đã nộp · {missing} chưa nộp · {notRequired} không bắt buộc",
-      "remindAll": "Nhắc tất cả ({count})"
+      "remindAll": "Nhắc tất cả ({count})",
+      "columns": {
+        "person": "Người",
+        "status": "Báo cáo",
+        "blockers": "Vướng mắc",
+        "comments": "Bình luận",
+        "sentAt": "Gửi lúc"
+      }
     },
     "rules": {
       "title": "Quy định báo cáo ngày",
@@ -9985,7 +10170,14 @@
       "people": "Từng người ({count})",
       "myWeek": "Tuần của tôi",
       "done": "Đã xong ({count})",
-      "slipped": "Chưa xong như kế hoạch ({count})"
+      "slipped": "Chưa xong như kế hoạch ({count})",
+      "columns": {
+        "person": "Người",
+        "done": "Đã xong",
+        "slipped": "Trễ kế hoạch",
+        "hours": "Số giờ",
+        "reports": "Báo cáo"
+      }
     },
     "view": {
       "sentAt": "Gửi lúc {time}",
@@ -9997,7 +10189,12 @@
       "report": "Báo cáo hôm nay",
       "recent": "Báo cáo gần đây",
       "empty": "Bạn chưa gửi báo cáo ngày nào.",
-      "hasBlockers": "Có vướng mắc"
+      "hasBlockers": "Có vướng mắc",
+      "columns": {
+        "date": "Ngày",
+        "status": "Trạng thái",
+        "hours": "Số giờ"
+      }
     },
     "errors": {
       "generic": "Thao tác không thành công. Vui lòng thử lại.",
@@ -10048,7 +10245,15 @@
       "confirmReopen": "Mở lại",
       "selectAll": "Chọn tất cả",
       "approveSelected": "Duyệt {count} bảng giờ đã chọn",
-      "pick": "Chọn bảng giờ của {name}, {week}"
+      "pick": "Chọn bảng giờ của {name}, {week}",
+      "columns": {
+        "person": "Người",
+        "week": "Tuần",
+        "submitted": "Đã gửi",
+        "hours": "Số giờ",
+        "status": "Trạng thái",
+        "project": "Dự án"
+      }
     },
     "utilisation": {
       "everyoneElse": "Mọi người khác trong công ty",
@@ -10788,7 +10993,8 @@
       "referenceValue": "HĐ/PO {reference}",
       "projectItems": "Các khoản chuyển kế toán",
       "projectEmpty": "Dự án chưa có khoản nào chuyển kế toán.",
-      "invoiceInReceivables": "Ghi nhận hoá đơn ở mục Công nợ — khoản này sẽ được đánh dấu đã xuất hoá đơn và công nợ của khách được theo dõi."
+      "invoiceInReceivables": "Ghi nhận hoá đơn ở mục Công nợ — khoản này sẽ được đánh dấu đã xuất hoá đơn và công nợ của khách được theo dõi.",
+      "source": "Nguồn"
     },
     "reports": {
       "list": "Báo cáo khách hàng",
@@ -11005,7 +11211,8 @@
         "assignee": "Người phụ trách",
         "due": "Hạn",
         "startTime": "Giờ bắt đầu",
-        "durationMinutes": "Thời lượng (phút)"
+        "durationMinutes": "Thời lượng (phút)",
+        "author": "Người ghi"
       },
       "timeHint": "Có giờ bắt đầu thì mới đưa được cuộc họp lên lịch.",
       "atTime": "{time} · {minutes} phút",
@@ -11039,7 +11246,14 @@
       "newPage": "Trang mới",
       "audience": "Thành viên dự án và trưởng nhóm phụ trách xem và sửa được; ai được thêm vào dự án sẽ thấy ngay.",
       "files": "Tất cả tệp",
-      "noFiles": "Chưa có tệp nào được tải lên các trang của dự án."
+      "noFiles": "Chưa có tệp nào được tải lên các trang của dự án.",
+      "columns": {
+        "file": "Tệp",
+        "size": "Dung lượng",
+        "page": "Trang",
+        "uploadedBy": "Người tải lên",
+        "uploadedAt": "Ngày tải lên"
+      }
     },
     "crm": {
       "client": "Khách hàng:",
@@ -11842,7 +12056,12 @@
     },
     "list": {
       "replied": "Đã phản hồi",
-      "blocking": "Chặn công việc"
+      "blocking": "Chặn công việc",
+      "message": "Góp ý",
+      "person": "Người gửi",
+      "sent": "Ngày gửi",
+      "priority": "Mức ưu tiên",
+      "flags": "Lưu ý"
     },
     "inbox": {
       "title": "Hộp thư góp ý",
@@ -12127,7 +12346,10 @@
       "mine": "Chỉ của tôi",
       "empty": "Không có khách tiềm năng.",
       "unassigned": "Chưa giao",
-      "referredBy": "{name} giới thiệu"
+      "referredBy": "{name} giới thiệu",
+      "columns": {
+        "createdAt": "Ngày nhận"
+      }
     },
     "lead": {
       "me": "Tôi",
@@ -12925,7 +13147,11 @@
     "rowsCut": "Chỉ hiển thị {shown} trên {total} dòng.",
     "archiveEntries": "{count, plural, other {# mục}}",
     "archiveEmpty": "Tệp nén trống.",
-    "archiveUnreadable": "Không đọc được nội dung tệp nén."
+    "archiveUnreadable": "Không đọc được nội dung tệp nén.",
+    "columns": {
+      "name": "Tên",
+      "size": "Dung lượng"
+    }
   },
   "richText": {
     "toolbar": "Định dạng văn bản",

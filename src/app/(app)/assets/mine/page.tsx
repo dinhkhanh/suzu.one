@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canReadRegister, listAssetsOfPerson } from "@/modules/assets/service";
 import { ConfirmHandoverForm } from "@/modules/assets/ui/asset-forms";
@@ -27,26 +28,23 @@ export default async function MyAssetsPage() {
         ) : null}
       </header>
 
-      {held.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("empty")}</p>
-      ) : (
-        <ul className="flex flex-col gap-4">
-          {held.map((item) => (
-            <li key={item.assignmentId} className="flex flex-col gap-3 rounded-md border p-4">
-              <div>
-                <p className="font-mono text-xs text-muted-foreground">{item.code}</p>
-                <p className="font-medium">{item.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {item.categoryName} · {t("since", { date: item.assignedAt.toLocaleDateString("vi-VN") })}
-                  {item.dueBack ? ` · ${t("dueBack", { date: item.dueBack })}` : ""}
-                </p>
-                {item.accessories.length > 0 ? <p className="text-sm text-muted-foreground">{item.accessories.join(" · ")}</p> : null}
-              </div>
-              {item.handoverConfirmedAt ? <p className="text-sm text-emerald-600">{t("confirmed", { date: item.handoverConfirmedAt.toLocaleDateString("vi-VN") })}</p> : <ConfirmHandoverForm assignmentId={item.assignmentId} />}
-            </li>
-          ))}
-        </ul>
-      )}
+      <List>
+        {held.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
+        {held.map((item) => (
+          <ListItem key={item.assignmentId} className="flex-col items-stretch gap-3 py-4">
+            <div>
+              <p className="font-mono text-xs text-muted-foreground">{item.code}</p>
+              <p className="font-medium">{item.name}</p>
+              <p className="text-sm text-muted-foreground">
+                {item.categoryName} · {t("since", { date: item.assignedAt.toLocaleDateString("vi-VN") })}
+                {item.dueBack ? ` · ${t("dueBack", { date: item.dueBack })}` : ""}
+              </p>
+              {item.accessories.length > 0 ? <p className="text-sm text-muted-foreground">{item.accessories.join(" · ")}</p> : null}
+            </div>
+            {item.handoverConfirmedAt ? <p className="text-sm text-emerald-600">{t("confirmed", { date: item.handoverConfirmedAt.toLocaleDateString("vi-VN") })}</p> : <ConfirmHandoverForm assignmentId={item.assignmentId} />}
+          </ListItem>
+        ))}
+      </List>
     </div>
   );
 }

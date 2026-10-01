@@ -8,7 +8,9 @@ import { statusTone } from "@/components/ui/tone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addWorkTemplateItemAction, applyTemplateAction, changeRecurrenceAction, createProjectFromTemplateAction, createRecurrenceAction, nudgeTaskAction, removeWorkTemplateItemAction, saveWorkTemplateAction } from "../planning-actions";
 
 type Result = { ok: boolean; error?: string; message?: string; data?: unknown };
@@ -75,7 +77,7 @@ export function TemplateCard({ template, checklists = [] }: { template: Template
   const { run, pending, errorKey } = useRun();
   const roots = template.items.filter((item) => !item.parentItemId || !template.items.some((other) => other.id === item.parentItemId));
   const row = (item: TemplateItemView, depth: number) => (
-    <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5 text-sm" style={{ paddingLeft: depth * 20 }}>
+    <ListItem key={item.id} className="flex-wrap gap-x-3 gap-y-1" style={{ paddingLeft: depth * 20 }}>
       <span className="min-w-0 flex-1 basis-56">{item.title}</span>
       {item.roleKey ? <Badge variant="outline">{item.roleKey}</Badge> : null}
       {checklists
@@ -92,7 +94,7 @@ export function TemplateCard({ template, checklists = [] }: { template: Template
           ×
         </button>
       ) : null}
-    </li>
+    </ListItem>
   );
   return (
     <article className="flex flex-col gap-3 rounded-xl border p-4">
@@ -108,7 +110,7 @@ export function TemplateCard({ template, checklists = [] }: { template: Template
         ) : null}
       </header>
       {template.description ? <p className="text-sm text-muted-foreground">{template.description}</p> : null}
-      {template.items.length ? <ul className="divide-y">{roots.flatMap((item) => [row(item, 0), ...template.items.filter((child) => child.parentItemId === item.id).map((child) => row(child, 1))])}</ul> : <p className="text-sm text-muted-foreground">{t("noItems")}</p>}
+      <List>{template.items.length ? roots.flatMap((item) => [row(item, 0), ...template.items.filter((child) => child.parentItemId === item.id).map((child) => row(child, 1))]) : <ListEmpty>{t("noItems")}</ListEmpty>}</List>
       {template.canManage ? (
         <form
           className="flex flex-wrap items-center gap-2"
@@ -284,105 +286,126 @@ export function RecurrenceManager({ projectId, recurrences, people, canManage, t
 
   return (
     <div className="flex flex-col gap-3">
-      {recurrences.length ? (
-        <ul className="flex flex-col divide-y rounded-xl border text-sm">
-          {recurrences.map((item) => {
-            const ended = !!item.endDate && item.endDate <= today;
-            return (
-              <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
-                <div className="min-w-0 flex-1 basis-56">
-                  <p className="font-medium">{item.title}</p>
-                  <p className="text-xs text-muted-foreground">{[describe(item.rule), item.assigneeName, t("madeSoFar", { count: item.made }), item.nextDate ? t("next", { date: day(item.nextDate) }) : null].filter(Boolean).join(" · ")}</p>
-                </div>
-                <Badge dot variant={statusTone(ended ? "ended" : item.isActive ? "active" : "paused")}>{t(ended ? "ended" : item.isActive ? "active" : "paused")}</Badge>
-                {canManage && !ended ? (
-                  <>
-                    <Button size="sm" variant="outline" disabled={pending} onClick={() => run(changeRecurrenceAction, { recurrenceId: item.id, change: item.isActive ? "pause" : "resume" })}>
-                      {t(item.isActive ? "pause" : "resume")}
-                    </Button>
-                    <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(changeRecurrenceAction, { recurrenceId: item.id, change: "end" })}>
-                      {t("end")}
-                    </Button>
-                  </>
+      <TableCard>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("title")}</TableHead>
+              <TableHead kind="select">{t("frequency")}</TableHead>
+              <TableHead kind="person">{t("assignee")}</TableHead>
+              <TableHead kind="number">{t("columns.made")}</TableHead>
+              <TableHead kind="date">{t("columns.next")}</TableHead>
+              <TableHead kind="status">{t("columns.status")}</TableHead>
+              {canManage ? <TableHead kind="actions" /> : null}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {recurrences.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
+            {recurrences.map((item) => {
+              const ended = !!item.endDate && item.endDate <= today;
+              return (
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium">{item.title}</TableCell>
+                  <TableCell>{describe(item.rule)}</TableCell>
+                  <TableCell>{item.assigneeName ?? "—"}</TableCell>
+                  <TableCell kind="number">{item.made}</TableCell>
+                  <TableCell>{item.nextDate ? day(item.nextDate) : "—"}</TableCell>
+                  <TableCell>
+                    <Badge dot variant={statusTone(ended ? "ended" : item.isActive ? "active" : "paused")}>{t(ended ? "ended" : item.isActive ? "active" : "paused")}</Badge>
+                  </TableCell>
+                  {canManage ? (
+                    <TableCell kind="actions">
+                      {!ended ? (
+                        <span className="flex justify-end gap-1">
+                          <Button size="sm" variant="outline" disabled={pending} onClick={() => run(changeRecurrenceAction, { recurrenceId: item.id, change: item.isActive ? "pause" : "resume" })}>
+                            {t(item.isActive ? "pause" : "resume")}
+                          </Button>
+                          <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(changeRecurrenceAction, { recurrenceId: item.id, change: "end" })}>
+                            {t("end")}
+                          </Button>
+                        </span>
+                      ) : null}
+                    </TableCell>
+                  ) : null}
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        {canManage ? (
+          <TableAddRow label={t("create")} open={recurrences.length === 0}>
+            <form
+              className="flex flex-col gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const form = event.currentTarget;
+                const data = new FormData(form);
+                const interval = data.get("interval");
+                const rule = freq === "daily" ? { freq, interval } : freq === "weekly" ? { freq, interval, weekdays: data.getAll("weekdays") } : { freq, interval, monthDay: data.get("monthDay") };
+                run(createRecurrenceAction, { projectId, title: data.get("title"), rule, startDate: data.get("startDate"), endDate: data.get("endDate"), leadDays: data.get("leadDays"), assigneePersonId: data.get("assigneePersonId"), priority: "", description: "" }, () => form.reset());
+              }}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <Input name="title" required maxLength={200} placeholder={t("title")} aria-label={t("title")} className="min-w-48 flex-1" />
+                <Select name="assigneePersonId" aria-label={t("assignee")} className="w-48" defaultValue="">
+                  <option value="">{t("unassigned")}</option>
+                  {people.map((person) => (
+                    <option key={person.id} value={person.id}>
+                      {person.fullName}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span>{t("every")}</span>
+                <Input name="interval" type="number" required min={1} max={366} defaultValue={1} aria-label={t("interval")} className="w-16" />
+                <Select aria-label={t("frequency")} className="w-28" value={freq} onChange={(event) => setFreq(event.target.value as typeof freq)}>
+                  <option value="daily">{t("freq.daily")}</option>
+                  <option value="weekly">{t("freq.weekly")}</option>
+                  <option value="monthly">{t("freq.monthly")}</option>
+                </Select>
+                {freq === "weekly" ? (
+                  <span className="flex flex-wrap gap-2">
+                    {[1, 2, 3, 4, 5, 6, 7].map((weekday) => (
+                      <label key={weekday} className="flex items-center gap-1">
+                        <input type="checkbox" name="weekdays" value={weekday} defaultChecked={weekday === 1} />
+                        {t(`weekdays.${weekday}`)}
+                      </label>
+                    ))}
+                  </span>
                 ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="text-sm text-muted-foreground">{t("empty")}</p>
-      )}
-      {canManage ? (
-        <form
-          className="flex flex-col gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const form = event.currentTarget;
-            const data = new FormData(form);
-            const interval = data.get("interval");
-            const rule = freq === "daily" ? { freq, interval } : freq === "weekly" ? { freq, interval, weekdays: data.getAll("weekdays") } : { freq, interval, monthDay: data.get("monthDay") };
-            run(createRecurrenceAction, { projectId, title: data.get("title"), rule, startDate: data.get("startDate"), endDate: data.get("endDate"), leadDays: data.get("leadDays"), assigneePersonId: data.get("assigneePersonId"), priority: "", description: "" }, () => form.reset());
-          }}
-        >
-          <div className="flex flex-wrap items-center gap-2">
-            <Input name="title" required maxLength={200} placeholder={t("title")} aria-label={t("title")} className="min-w-48 flex-1" />
-            <Select name="assigneePersonId" aria-label={t("assignee")} className="w-48" defaultValue="">
-              <option value="">{t("unassigned")}</option>
-              {people.map((person) => (
-                <option key={person.id} value={person.id}>
-                  {person.fullName}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span>{t("every")}</span>
-            <Input name="interval" type="number" required min={1} max={366} defaultValue={1} aria-label={t("interval")} className="w-16" />
-            <Select aria-label={t("frequency")} className="w-28" value={freq} onChange={(event) => setFreq(event.target.value as typeof freq)}>
-              <option value="daily">{t("freq.daily")}</option>
-              <option value="weekly">{t("freq.weekly")}</option>
-              <option value="monthly">{t("freq.monthly")}</option>
-            </Select>
-            {freq === "weekly" ? (
-              <span className="flex flex-wrap gap-2">
-                {[1, 2, 3, 4, 5, 6, 7].map((weekday) => (
-                  <label key={weekday} className="flex items-center gap-1">
-                    <input type="checkbox" name="weekdays" value={weekday} defaultChecked={weekday === 1} />
-                    {t(`weekdays.${weekday}`)}
-                  </label>
-                ))}
-              </span>
-            ) : null}
-            {freq === "monthly" ? (
-              <Select name="monthDay" aria-label={t("monthDay")} className="w-32" defaultValue="1">
-                {Array.from({ length: 31 }, (_, index) => index + 1).map((value) => (
-                  <option key={value} value={value}>
-                    {t("onDay", { day: value })}
-                  </option>
-                ))}
-                <option value="last">{t("lastDay")}</option>
-              </Select>
-            ) : null}
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <label className="flex items-center gap-2">
-              {t("from")}
-              <DatePicker name="startDate" required defaultValue={today} className="w-40" />
-            </label>
-            <label className="flex items-center gap-2">
-              {t("until")}
-              <DatePicker name="endDate" className="w-40" />
-            </label>
-            <label className="flex items-center gap-2">
-              {t("lead")}
-              <Input name="leadDays" type="number" min={0} max={60} defaultValue={7} className="w-16" />
-            </label>
-            <Button type="submit" size="sm" disabled={pending}>
-              {t("create")}
-            </Button>
-          </div>
-        </form>
-      ) : null}
+                {freq === "monthly" ? (
+                  <Select name="monthDay" aria-label={t("monthDay")} className="w-32" defaultValue="1">
+                    {Array.from({ length: 31 }, (_, index) => index + 1).map((value) => (
+                      <option key={value} value={value}>
+                        {t("onDay", { day: value })}
+                      </option>
+                    ))}
+                    <option value="last">{t("lastDay")}</option>
+                  </Select>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <label className="flex items-center gap-2">
+                  {t("from")}
+                  <DatePicker name="startDate" required defaultValue={today} className="w-40" />
+                </label>
+                <label className="flex items-center gap-2">
+                  {t("until")}
+                  <DatePicker name="endDate" className="w-40" />
+                </label>
+                <label className="flex items-center gap-2">
+                  {t("lead")}
+                  <Input name="leadDays" type="number" min={0} max={60} defaultValue={7} className="w-16" />
+                </label>
+                <Button type="submit" size="sm" disabled={pending}>
+                  {t("create")}
+                </Button>
+              </div>
+            </form>
+          </TableAddRow>
+        ) : null}
+      </TableCard>
       <FormError namespace="work.recurrence.errors" errorKey={errorKey} />
     </div>
   );

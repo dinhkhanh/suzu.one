@@ -2,6 +2,8 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListItem } from "@/components/ui/list";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -48,11 +50,11 @@ export default async function CrmHomePage() {
       <CrmTabs current="home" show={shell.show} />
 
       {handoffs.length ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium">{t("home.handoffs")}</h2>
-          <ul className="flex flex-col gap-2">
+        <TableCard>
+          <TableCardHeader title={t("home.handoffs")} count={handoffs.length} />
+          <List>
             {handoffs.map((handoff) => (
-              <li key={handoff.projectId} className="flex flex-col gap-2 rounded-xl border p-3 text-sm">
+              <ListItem key={handoff.projectId} className="flex-col items-stretch gap-2">
                 <p>
                   <Link href={`/crm/deals/${handoff.dealId}`} className="font-medium underline">
                     {handoff.dealTitle}
@@ -61,80 +63,124 @@ export default async function CrmHomePage() {
                   <span className="text-xs text-muted-foreground"> · {t("home.handoffFrom", { name: handoff.fromName ?? "—", date: f.when(handoff.createdAt) })}</span>
                 </p>
                 <HandoffAnswerForm projectId={handoff.projectId} />
-              </li>
+              </ListItem>
             ))}
-          </ul>
-        </section>
+          </List>
+        </TableCard>
       ) : null}
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium">{t("home.followUps")}</h2>
+      <TableCard>
+        <TableCardHeader title={t("home.followUps")} count={followUps.length || null} />
         <FollowUpList items={followUps} canEdit={(item) => canEditActivity(viewer, item, null)} people={people} meId={me} today={today} />
-      </section>
+      </TableCard>
 
-      <section className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium">{t("home.myDeals")}</h2>
-          {shell.show.deals ? (
-            <Link href="/crm/deals" className="text-xs underline">
-              {t("home.pipeline")}
-            </Link>
-          ) : null}
-        </div>
-        {deals.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("home.noDeals")}</p>
-        ) : (
-          <ul className="flex flex-col divide-y rounded-xl border">
+      <TableCard>
+        <TableCardHeader
+          title={t("home.myDeals")}
+          count={deals.length || null}
+          actions={
+            shell.show.deals ? (
+              <Link href="/crm/deals" className="text-xs underline">
+                {t("home.pipeline")}
+              </Link>
+            ) : null
+          }
+        />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("deals.columns.deal")}</TableHead>
+              <TableHead kind="org">{t("deals.columns.account")}</TableHead>
+              <TableHead kind="status">{t("deals.columns.stage")}</TableHead>
+              <TableHead kind="money">{t("deals.columns.value")}</TableHead>
+              <TableHead kind="date">{t("deals.columns.close")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {deals.length === 0 ? <TableEmpty>{t("home.noDeals")}</TableEmpty> : null}
             {deals.map((deal) => (
-              <li key={deal.id} className="flex flex-wrap items-center gap-2 p-3 text-sm">
-                <Link href={`/crm/deals/${deal.id}`} className="font-medium hover:underline">
-                  {deal.title}
-                </Link>
-                <span className="text-xs text-muted-foreground">{deal.accountName}</span>
-                <Badge variant="outline">{deal.stage.name}</Badge>
-                {deal.value ? <span className="ml-auto tabular-nums">{f.money(deal.value.totalVnd)}</span> : null}
-                {deal.expectedCloseOn ? <span className="text-xs text-muted-foreground">{f.date(deal.expectedCloseOn)}</span> : null}
-              </li>
+              <TableRow key={deal.id}>
+                <TableCell>
+                  <Link href={`/crm/deals/${deal.id}`} className="font-medium hover:underline">
+                    {deal.title}
+                  </Link>
+                </TableCell>
+                <TableCell>{deal.accountName}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{deal.stage.name}</Badge>
+                </TableCell>
+                <TableCell kind="money">{deal.value ? f.money(deal.value.totalVnd) : "—"}</TableCell>
+                <TableCell>{deal.expectedCloseOn ? f.date(deal.expectedCloseOn) : "—"}</TableCell>
+              </TableRow>
             ))}
-          </ul>
-        )}
-      </section>
+          </TableBody>
+        </Table>
+      </TableCard>
 
-      {shell.show.leads && leads.length ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium">{t("home.myLeads")}</h2>
-          <ul className="flex flex-col divide-y rounded-xl border">
-            {leads.slice(0, 10).map((lead) => (
-              <li key={lead.id} className="flex flex-wrap items-center gap-2 p-3 text-sm">
-                <Link href={`/crm/leads/${lead.id}`} className="font-medium hover:underline">
-                  {lead.companyName}
-                </Link>
-                <Badge dot variant="outline">
-                  {t(`enums.leadStatus.${lead.status as "new"}`)}
-                </Badge>
-                <span className="text-xs text-muted-foreground">{lead.ownerName ?? t("leads.unassigned")}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+      {shell.show.leads ? (
+        <TableCard>
+          <TableCardHeader title={t("home.myLeads")} count={leads.length || null} />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="text">{t("lead.fields.companyName")}</TableHead>
+                <TableHead kind="status">{t("leads.status")}</TableHead>
+                <TableHead kind="person">{t("lead.fields.owner")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {leads.length === 0 ? <TableEmpty>{t("leads.empty")}</TableEmpty> : null}
+              {leads.slice(0, 10).map((lead) => (
+                <TableRow key={lead.id}>
+                  <TableCell>
+                    <Link href={`/crm/leads/${lead.id}`} className="font-medium hover:underline">
+                      {lead.companyName}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    <Badge dot variant="outline">
+                      {t(`enums.leadStatus.${lead.status as "new"}`)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{lead.ownerName ?? t("leads.unassigned")}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <TableAddRow label={t("leads.new")}>
+            <NewLeadForm entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} accounts={accounts} sellers={sellers} canAssign={sells(viewer)} />
+          </TableAddRow>
+        </TableCard>
       ) : null}
 
       {renewals.length ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium">{t("home.renewals")}</h2>
-          <ul className="flex flex-col divide-y rounded-xl border">
-            {renewals.map((contract) => (
-              <li key={contract.id} className="flex flex-wrap items-center gap-2 p-3 text-sm">
-                <Link href={`/crm/contracts/${contract.id}`} className="font-medium hover:underline">
-                  {contract.number}
-                </Link>
-                <span>{contract.title}</span>
-                <span className="text-xs text-muted-foreground">{contract.accountName}</span>
-                <span className="ml-auto text-xs">{t("home.endsOn", { date: f.date(contract.endDate) })}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <TableCard>
+          <TableCardHeader title={t("home.renewals")} count={renewals.length} />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="id">{t("contracts.columns.number")}</TableHead>
+                <TableHead kind="text">{t("contract.fields.title")}</TableHead>
+                <TableHead kind="org">{t("contracts.columns.account")}</TableHead>
+                <TableHead kind="date">{t("contract.fields.endDate")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {renewals.map((contract) => (
+                <TableRow key={contract.id}>
+                  <TableCell kind="id">
+                    <Link href={`/crm/contracts/${contract.id}`} className="font-medium text-foreground hover:underline">
+                      {contract.number}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{contract.title}</TableCell>
+                  <TableCell>{contract.accountName}</TableCell>
+                  <TableCell>{f.date(contract.endDate)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       ) : null}
 
       {aging && aging.total > 0 ? (
@@ -146,15 +192,6 @@ export default async function CrmHomePage() {
             {t("home.openReceivables")}
           </Link>
         </section>
-      ) : null}
-
-      {shell.show.leads ? (
-        <details className="rounded-xl border p-4">
-          <summary className="cursor-pointer text-sm font-medium">{t("leads.new")}</summary>
-          <div className="pt-3">
-            <NewLeadForm entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} accounts={accounts} sellers={sellers} canAssign={sells(viewer)} />
-          </div>
-        </details>
       ) : null}
     </div>
   );

@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { canManageAttendanceConfig, canOpenAttendanceSettings } from "@/modules/attendance/policy";
 import { listRoster, listShifts } from "@/modules/attendance/schedules";
@@ -27,12 +29,12 @@ export default async function ShiftsSettingsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("shifts.title")}</h2>
-        {shifts.length === 0 ? <p className="text-sm text-muted-foreground">{t("shifts.empty")}</p> : null}
-        <ul className="flex flex-col gap-3">
+      <TableCard>
+        <TableCardHeader title={t("shifts.title")} count={shifts.length || null} />
+        <List>
+          {shifts.length === 0 ? <ListEmpty>{t("shifts.empty")}</ListEmpty> : null}
           {shifts.map((shift) => (
-            <li key={shift.id} className="rounded-xl border p-4">
+            <ListItem key={shift.id} className="block">
               <details>
                 <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm">
                   <Badge variant="secondary">{shift.code}</Badge>
@@ -47,34 +49,41 @@ export default async function ShiftsSettingsPage() {
                   </div>
                 ) : null}
               </details>
-            </li>
+            </ListItem>
           ))}
-        </ul>
+        </List>
         {options.entities.length > 0 || options.canGroup ? (
-          <details className="rounded-xl border p-4">
-            <summary className="cursor-pointer text-sm font-medium">{t("shifts.add")}</summary>
-            <div className="mt-4">
-              <ShiftForm {...options} />
-            </div>
-          </details>
+          <TableAddRow label={t("shifts.add")}>
+            <ShiftForm {...options} />
+          </TableAddRow>
         ) : null}
-      </section>
+      </TableCard>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("roster.title")}</h2>
-        <p className="text-sm text-muted-foreground">{t("roster.hint")}</p>
-        {roster.length === 0 ? <p className="text-sm text-muted-foreground">{t("roster.empty")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border empty:hidden">
-          {roster.map((row) => (
-            <li key={row.id} className="flex flex-wrap items-center gap-x-3 p-2 text-sm">
-              <span className="w-36">{format.dateTime(new Date(`${row.date}T00:00:00`), { weekday: "short", day: "numeric", month: "numeric" })}</span>
-              <span className="font-medium">{row.personName}</span>
-              <span className="text-muted-foreground">{row.shiftCode ? `${row.shiftCode} · ${row.shiftName}` : t("roster.off")}</span>
-            </li>
-          ))}
-        </ul>
-        <RosterForm people={people.map((person) => ({ id: person.id, name: person.fullName }))} shifts={shifts.filter((shift) => shift.isActive).map((shift) => ({ id: shift.id, name: `${shift.code} · ${shift.name}` }))} today={today} />
-      </section>
+      <TableCard>
+        <TableCardHeader title={t("roster.title")} count={roster.length || null} description={t("roster.hint")} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="date">{t("calendar.date")}</TableHead>
+              <TableHead kind="person">{t("assignments.person")}</TableHead>
+              <TableHead kind="select">{t("roster.shift")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {roster.length === 0 ? <TableEmpty>{t("roster.empty")}</TableEmpty> : null}
+            {roster.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>{format.dateTime(new Date(`${row.date}T00:00:00`), { weekday: "short", day: "numeric", month: "numeric" })}</TableCell>
+                <TableCell className="font-medium">{row.personName}</TableCell>
+                <TableCell className="text-muted-foreground">{row.shiftCode ? `${row.shiftCode} · ${row.shiftName}` : t("roster.off")}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <TableAddRow label={t("roster.set")} open={roster.length === 0}>
+          <RosterForm people={people.map((person) => ({ id: person.id, name: person.fullName }))} shifts={shifts.filter((shift) => shift.isActive).map((shift) => ({ id: shift.id, name: `${shift.code} · ${shift.name}` }))} today={today} />
+        </TableAddRow>
+      </TableCard>
     </div>
   );
 }

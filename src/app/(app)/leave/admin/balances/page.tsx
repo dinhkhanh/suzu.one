@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { listBalancesForAdmin } from "@/modules/leave/admin";
 import { canOpenLeaveAdmin } from "@/modules/leave/policy";
@@ -37,42 +38,41 @@ export default async function LeaveBalancesPage(props: PageProps<"/leave/admin/b
         {can(user.principal, "leave:manage", {}) ? <RunAccrualsButton /> : null}
       </div>
       <p className="text-sm text-muted-foreground">{t("balances.hint")}</p>
-      <div className="overflow-x-auto rounded-xl border">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-xs text-muted-foreground">
-              <th className="p-2 font-medium">{t("balances.person")}</th>
-              <th className="p-2 font-medium">{t("balances.unit")}</th>
-              {codes.map((code) => (
-                <th key={code} className="p-2 text-right font-medium">
-                  {code}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.personId} className="border-b last:border-0">
-                <td className="p-2">
-                  <Link href={`/leave/admin/balances/${row.personId}?year=${year}`} className="font-medium hover:underline">
-                    {row.fullName}
-                  </Link>
-                </td>
-                <td className="p-2 text-muted-foreground">{[row.entityName, row.departmentName].filter(Boolean).join(" · ")}</td>
-                {codes.map((code) => {
-                  const balance = row.balances.find((candidate) => candidate.code === code);
-                  return (
-                    <td key={code} className="p-2 text-right tabular-nums">
-                      {balance ? days(balance.balanceCenti) : "—"}
-                      {balance?.pendingCenti ? <span className="text-xs text-muted-foreground"> (−{days(balance.pendingCenti)})</span> : null}
-                    </td>
-                  );
-                })}
-              </tr>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="person">{t("balances.person")}</TableHead>
+            <TableHead kind="org">{t("balances.unit")}</TableHead>
+            {codes.map((code) => (
+              <TableHead key={code} kind="number">
+                {code}
+              </TableHead>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.length === 0 ? <TableEmpty>{t("balances.noPeople")}</TableEmpty> : null}
+          {rows.map((row) => (
+            <TableRow key={row.personId}>
+              <TableCell>
+                <Link href={`/leave/admin/balances/${row.personId}?year=${year}`} className="font-medium hover:underline">
+                  {row.fullName}
+                </Link>
+              </TableCell>
+              <TableCell className="text-muted-foreground">{[row.entityName, row.departmentName].filter(Boolean).join(" · ")}</TableCell>
+              {codes.map((code) => {
+                const balance = row.balances.find((candidate) => candidate.code === code);
+                return (
+                  <TableCell key={code} kind="number">
+                    {balance ? days(balance.balanceCenti) : "—"}
+                    {balance?.pendingCenti ? <span className="text-xs text-muted-foreground"> (−{days(balance.pendingCenti)})</span> : null}
+                  </TableCell>
+                );
+              })}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

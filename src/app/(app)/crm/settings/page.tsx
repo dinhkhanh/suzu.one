@@ -2,6 +2,8 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListItem } from "@/components/ui/list";
+import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -27,11 +29,11 @@ export default async function CrmSettingsPage() {
         <p className="text-sm text-muted-foreground">{t("settings.intro")}</p>
       </header>
       <CrmTabs current="settings" show={shell.show} />
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium">{t("settings.stages")}</h2>
-        <ul className="flex flex-col divide-y rounded-xl border">
+      <TableCard>
+        <TableCardHeader title={t("settings.stages")} count={stages.length || null} />
+        <List>
           {stages.map((stage) => (
-            <li key={stage.id} className="p-3 text-sm">
+            <ListItem key={stage.id} className="block">
               <details>
                 <summary className="flex cursor-pointer flex-wrap items-center gap-2">
                   <span className="text-xs text-muted-foreground tabular-nums">{stage.sortOrder}</span>
@@ -46,16 +48,13 @@ export default async function CrmSettingsPage() {
                   <StageForm stage={stage} nextOrder={nextOrder} />
                 </div>
               </details>
-            </li>
+            </ListItem>
           ))}
-        </ul>
-        <details className="rounded-xl border p-4">
-          <summary className="cursor-pointer text-sm font-medium">{t("settings.addStage")}</summary>
-          <div className="pt-3">
-            <StageForm nextOrder={nextOrder} />
-          </div>
-        </details>
-      </section>
+        </List>
+        <TableAddRow label={t("settings.addStage")}>
+          <StageForm nextOrder={nextOrder} />
+        </TableAddRow>
+      </TableCard>
       <section className="flex flex-col gap-2 rounded-xl border p-4 text-sm">
         <h2 className="font-medium">{t("settings.parameters")}</h2>
         <p>{t("settings.parameterValues", { stale: settings.staleDealDays, renewal: settings.renewalLeadDays, reminders: settings.receivableReminderDays.join(", "), terms: settings.defaultPaymentTermsDays, validity: settings.quoteValidityDays, discount: settings.quoteDiscountApprovalBp / 100, margin: settings.quoteMarginFloorBp / 100 })}</p>

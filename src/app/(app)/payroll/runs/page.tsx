@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
 import { statusTone } from "@/components/ui/tone";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { listEntityOptions } from "@/modules/payroll/options";
@@ -61,44 +61,47 @@ export default async function PayrollRunsPage({ searchParams }: PageProps<"/payr
         </button>
       </form>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t("runs.month")}</TableHead>
-            <TableHead>{t("runs.entity")}</TableHead>
-            <TableHead>{t("runs.kind")}</TableHead>
-            <TableHead>{t("runs.status")}</TableHead>
-            <TableHead className="text-right">{t("runs.headcount")}</TableHead>
-            <TableHead className="text-right">{t("runs.net")}</TableHead>
-            <TableHead>{t("runs.paidAt")}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell>
-                <Link href={`/payroll/runs/${row.id}`} className="font-medium tabular-nums hover:underline">
-                  {row.month}
-                </Link>
-                {row.name ? <span className="ml-2 text-xs text-muted-foreground">{row.name}</span> : null}
-              </TableCell>
-              <TableCell>{row.entityCode}</TableCell>
-              <TableCell>
-                <Badge variant={row.kind === "off_cycle" ? "outline" : "secondary"}>{t(`runs.kinds.${row.kind}`)}</Badge>
-              </TableCell>
-              <TableCell>
-                <Badge dot variant={statusTone(row.status)}>{t(`runs.statuses.${row.status}`)}</Badge>
-                {row.calcState === "running" || row.calcState === "queued" ? <span className="ml-2 text-xs text-muted-foreground">{t("runs.calculating")}</span> : null}
-                {row.calcState === "failed" ? <span className="ml-2 text-xs text-destructive">{t("runs.calcFailed")}</span> : null}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">{row.headcount}</TableCell>
-              <TableCell className="text-right tabular-nums">{row.net === null ? "—" : formatVnd(row.net)}</TableCell>
-              <TableCell>{row.paidAt ? format.dateTime(row.paidAt, { dateStyle: "medium" }) : "—"}</TableCell>
+      <TableCard>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="date">{t("runs.month")}</TableHead>
+              <TableHead kind="org">{t("runs.entity")}</TableHead>
+              <TableHead kind="select">{t("runs.kind")}</TableHead>
+              <TableHead kind="status">{t("runs.status")}</TableHead>
+              <TableHead kind="number">{t("runs.headcount")}</TableHead>
+              <TableHead kind="money">{t("runs.net")}</TableHead>
+              <TableHead kind="date">{t("runs.paidAt")}</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      {rows.length === 0 ? <p className="text-sm text-muted-foreground">{t("runs.empty")}</p> : null}
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 ? <TableEmpty>{t("runs.empty")}</TableEmpty> : null}
+            {rows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>
+                  <Link href={`/payroll/runs/${row.id}`} className="font-medium tabular-nums hover:underline">
+                    {row.month}
+                  </Link>
+                  {row.name ? <span className="ml-2 text-xs text-muted-foreground">{row.name}</span> : null}
+                </TableCell>
+                <TableCell>{row.entityCode}</TableCell>
+                <TableCell>
+                  <Badge variant={row.kind === "off_cycle" ? "outline" : "secondary"}>{t(`runs.kinds.${row.kind}`)}</Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge dot variant={statusTone(row.status)}>{t(`runs.statuses.${row.status}`)}</Badge>
+                  {row.calcState === "running" || row.calcState === "queued" ? <span className="ml-2 text-xs text-muted-foreground">{t("runs.calculating")}</span> : null}
+                  {row.calcState === "failed" ? <span className="ml-2 text-xs text-destructive">{t("runs.calcFailed")}</span> : null}
+                </TableCell>
+                <TableCell kind="number">{row.headcount}</TableCell>
+                <TableCell kind="money">{row.net === null ? "—" : formatVnd(row.net)}</TableCell>
+                <TableCell>{row.paidAt ? format.dateTime(row.paidAt, { dateStyle: "medium" }) : "—"}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {canCreate ? <TableAddRow label={t("runs.new.link")} href="/payroll/runs/new" /> : null}
+      </TableCard>
     </div>
   );
 }

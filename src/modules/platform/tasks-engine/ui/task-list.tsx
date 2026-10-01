@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import { reassignTaskAction, setTaskStatusAction } from "../actions";
 
@@ -46,84 +47,106 @@ export function TaskList({ tasks, today, showSubject = false, people }: { tasks:
           {t.has(`errors.${errorKey}`) ? t(`errors.${errorKey}`) : t("errors.generic")}
         </p>
       ) : null}
-      <ul className="flex flex-col divide-y rounded-xl border">
-        {tasks.map((task) => {
-          const open = task.status === "todo" || task.status === "in_progress";
-          const overdue = open && task.dueDate !== null && task.dueDate < today;
-          return (
-            <li key={task.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm">
-              <div className="min-w-0 flex-1 basis-56">
-                <p className={open ? "font-medium" : "text-muted-foreground line-through"}>
-                  {task.href ? (
-                    <Link href={task.href} className="hover:underline">
-                      {task.title}
-                    </Link>
-                  ) : (
-                    task.title
-                  )}
-                </p>
-                {task.description?.trim() ? <p className="line-clamp-2 text-xs text-muted-foreground">{noteToPlainText(task.description)}</p> : null}
-                {task.linkUrl ? (
-                  <p className="text-xs">
-                    <a href={task.linkUrl} className="underline underline-offset-2" {...(task.linkUrl.startsWith("/") ? {} : { target: "_blank", rel: "noopener noreferrer" })}>
-                      {t("guide")}
-                    </a>
-                  </p>
-                ) : null}
-                <p className="text-xs text-muted-foreground">
-                  {[
-                    showSubject && task.subjectName ? t("about", { name: task.subjectName }) : null,
-                    task.assigneeName ?? t("unassigned"),
-                    task.dueDate ? t("due", { date: format.dateTime(new Date(`${task.dueDate}T00:00:00`), { dateStyle: "medium" }) }) : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                  {showSubject && task.subjectPersonId ? (
-                    <>
-                      {" · "}
-                      <Link href={`/people/${task.subjectPersonId}`} className="underline">
-                        {t("openRecord")}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="text">{t("columns.task")}</TableHead>
+            {showSubject ? <TableHead kind="person">{t("columns.about")}</TableHead> : null}
+            <TableHead kind="person">{t("columns.assignee")}</TableHead>
+            <TableHead kind="date">{t("columns.due")}</TableHead>
+            <TableHead kind="status">{t("columns.status")}</TableHead>
+            <TableHead kind="actions" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {tasks.map((task) => {
+            const open = task.status === "todo" || task.status === "in_progress";
+            const overdue = open && task.dueDate !== null && task.dueDate < today;
+            return (
+              <TableRow key={task.id}>
+                <TableCell className="min-w-56 max-w-md whitespace-normal">
+                  <p className={open ? "font-medium" : "text-muted-foreground line-through"}>
+                    {task.href ? (
+                      <Link href={task.href} className="hover:underline">
+                        {task.title}
                       </Link>
-                    </>
+                    ) : (
+                      task.title
+                    )}
+                  </p>
+                  {task.description?.trim() ? <p className="line-clamp-2 text-xs text-muted-foreground">{noteToPlainText(task.description)}</p> : null}
+                  {task.linkUrl ? (
+                    <p className="text-xs">
+                      <a href={task.linkUrl} className="underline underline-offset-2" {...(task.linkUrl.startsWith("/") ? {} : { target: "_blank", rel: "noopener noreferrer" })}>
+                        {t("guide")}
+                      </a>
+                    </p>
                   ) : null}
-                </p>
-              </div>
-              {overdue ? <Badge variant="destructive">{t("overdue")}</Badge> : null}
-              <Badge variant="outline">{t(`status.${task.status}`)}</Badge>
-              {task.canManage && people && open ? (
-                <Select aria-label={t("reassign")} className="w-40" defaultValue={task.assigneePersonId ?? ""} disabled={pending} onChange={(event) => run(reassignTaskAction, { taskId: task.id, assigneePersonId: event.target.value })}>
-                  <option value="">{t("unassigned")}</option>
-                  {people.map((person) => (
-                    <option key={person.id} value={person.id}>
-                      {person.fullName}
-                    </option>
-                  ))}
-                </Select>
-              ) : null}
-              {task.canMove && task.status === "todo" ? (
-                <Button size="sm" variant="outline" disabled={pending} onClick={() => run(setTaskStatusAction, { taskId: task.id, status: "in_progress" })}>
-                  {t("start")}
-                </Button>
-              ) : null}
-              {task.canMove && open ? (
-                <Button size="sm" disabled={pending} onClick={() => run(setTaskStatusAction, { taskId: task.id, status: "done" })}>
-                  {t("complete")}
-                </Button>
-              ) : null}
-              {task.canMove && task.status === "done" ? (
-                <Button size="sm" variant="outline" disabled={pending} onClick={() => run(setTaskStatusAction, { taskId: task.id, status: "todo" })}>
-                  {t("reopen")}
-                </Button>
-              ) : null}
-              {task.canManage && open ? (
-                <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(setTaskStatusAction, { taskId: task.id, status: "cancelled" })}>
-                  {t("cancel")}
-                </Button>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
+                </TableCell>
+                {showSubject ? (
+                  <TableCell>
+                    {task.subjectName ?? "—"}
+                    {task.subjectPersonId ? (
+                      <p className="text-xs">
+                        <Link href={`/people/${task.subjectPersonId}`} className="underline">
+                          {t("openRecord")}
+                        </Link>
+                      </p>
+                    ) : null}
+                  </TableCell>
+                ) : null}
+                <TableCell>
+                  {task.canManage && people && open ? (
+                    <Select aria-label={t("reassign")} className="w-40" defaultValue={task.assigneePersonId ?? ""} disabled={pending} onChange={(event) => run(reassignTaskAction, { taskId: task.id, assigneePersonId: event.target.value })}>
+                      <option value="">{t("unassigned")}</option>
+                      {people.map((person) => (
+                        <option key={person.id} value={person.id}>
+                          {person.fullName}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : (
+                    (task.assigneeName ?? <span className="text-muted-foreground">{t("unassigned")}</span>)
+                  )}
+                </TableCell>
+                <TableCell>
+                  <span className="flex items-center gap-2">
+                    {task.dueDate ? format.dateTime(new Date(`${task.dueDate}T00:00:00`), { dateStyle: "medium" }) : "—"}
+                    {overdue ? <Badge variant="destructive">{t("overdue")}</Badge> : null}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{t(`status.${task.status}`)}</Badge>
+                </TableCell>
+                <TableCell kind="actions">
+                  <span className="flex items-center justify-end gap-2">
+                    {task.canMove && task.status === "todo" ? (
+                      <Button size="sm" variant="outline" disabled={pending} onClick={() => run(setTaskStatusAction, { taskId: task.id, status: "in_progress" })}>
+                        {t("start")}
+                      </Button>
+                    ) : null}
+                    {task.canMove && open ? (
+                      <Button size="sm" disabled={pending} onClick={() => run(setTaskStatusAction, { taskId: task.id, status: "done" })}>
+                        {t("complete")}
+                      </Button>
+                    ) : null}
+                    {task.canMove && task.status === "done" ? (
+                      <Button size="sm" variant="outline" disabled={pending} onClick={() => run(setTaskStatusAction, { taskId: task.id, status: "todo" })}>
+                        {t("reopen")}
+                      </Button>
+                    ) : null}
+                    {task.canManage && open ? (
+                      <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(setTaskStatusAction, { taskId: task.id, status: "cancelled" })}>
+                        {t("cancel")}
+                      </Button>
+                    ) : null}
+                  </span>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageReferrals } from "@/modules/recruit/policy";
@@ -35,67 +36,90 @@ export default async function ReferralsPage() {
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("newTitle")}</h2>
-        <ReferralForm openings={openings} />
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("mine")}</h2>
-        {mine.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("noneMine")}</p>
-        ) : (
-          <ul className="flex flex-col divide-y rounded-xl border">
+      <TableCard>
+        <TableCardHeader title={t("mine")} count={mine.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("fullName")}</TableHead>
+              <TableHead kind="text">{t("opening")}</TableHead>
+              <TableHead kind="id">{tRoot("columns.code")}</TableHead>
+              <TableHead kind="date">{tRoot("columns.createdAt")}</TableHead>
+              <TableHead kind="status">{tRoot("columns.status")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {mine.length === 0 ? <TableEmpty>{t("noneMine")}</TableEmpty> : null}
             {mine.map((row) => (
-              <li key={row.id} className="flex flex-wrap items-center gap-3 p-3">
-                <div className="min-w-0 flex-1 basis-56">
-                  <p className="text-sm font-medium">{row.name ?? row.openingTitle}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {row.openingTitle} · {row.openingCode} · {format.dateTime(row.createdAt, { dateStyle: "medium" })}
-                  </p>
-                </div>
+              <TableRow key={row.id}>
+                <TableCell className="max-w-64 truncate font-medium">{row.name ?? row.openingTitle}</TableCell>
+                <TableCell className="max-w-64 truncate">{row.openingTitle}</TableCell>
+                <TableCell kind="id">{row.openingCode}</TableCell>
+                <TableCell>{format.dateTime(row.createdAt, { dateStyle: "medium" })}</TableCell>
                 {/* A referrer sees what they typed and whether a bonus is due — never the stage, the
                     status or the name on file, any of which would say the person was already known. */}
-                {row.state === "received" ? <Badge variant="outline">{t("received")}</Badge> : <Badge dot variant={statusTone(row.state)}>{t(`bonus.${row.state}`)}</Badge>}
-              </li>
+                <TableCell>{row.state === "received" ? <Badge variant="outline">{t("received")}</Badge> : <Badge dot variant={statusTone(row.state)}>{t(`bonus.${row.state}`)}</Badge>}</TableCell>
+              </TableRow>
             ))}
-          </ul>
-        )}
-      </section>
+          </TableBody>
+        </Table>
+        {/* The page's whole point for most readers, so the form stays unfolded. */}
+        <TableAddRow label={t("newTitle")} open>
+          <ReferralForm openings={openings} />
+        </TableAddRow>
+      </TableCard>
 
       {manages ? (
-        <section className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-medium text-muted-foreground">{t("book")}</h2>
-            <Link href="/recruit" className="text-sm underline-offset-4 hover:underline">
-              {tRoot("title")}
-            </Link>
-          </div>
-          <p className="text-xs text-muted-foreground">{t("bookHint")}</p>
-          {book.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("none")}</p>
-          ) : (
-            <ul className="flex flex-col divide-y rounded-xl border">
+        <TableCard>
+          <TableCardHeader
+            title={t("book")}
+            count={book.length || null}
+            description={t("bookHint")}
+            actions={
+              <Link href="/recruit" className="text-sm underline-offset-4 hover:underline">
+                {tRoot("title")}
+              </Link>
+            }
+          />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="text">{tRoot("columns.candidate")}</TableHead>
+                <TableHead kind="person">{tRoot("form.referredBy")}</TableHead>
+                <TableHead kind="text">{t("opening")}</TableHead>
+                <TableHead kind="date">{tRoot("columns.createdAt")}</TableHead>
+                <TableHead kind="select">{tRoot("columns.stage")}</TableHead>
+                <TableHead kind="status">{tRoot("columns.status")}</TableHead>
+                <TableHead kind="status">{t("bonusColumn")}</TableHead>
+                <TableHead kind="actions" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {book.length === 0 ? <TableEmpty>{t("none")}</TableEmpty> : null}
               {book.map((row) => (
-                <li key={row.id} className="flex flex-wrap items-center gap-3 p-3">
-                  <div className="min-w-0 flex-1 basis-56">
-                    <Link href={`/recruit/applications/${row.applicationId}`} className="text-sm font-medium hover:underline">
+                <TableRow key={row.id}>
+                  <TableCell className="max-w-64 truncate">
+                    <Link href={`/recruit/applications/${row.applicationId}`} className="font-medium hover:underline">
                       {row.candidateName}
                     </Link>
-                    <p className="text-xs text-muted-foreground">
-                      {t("by", { name: row.referredByName })} · {row.openingTitle} · {format.dateTime(row.createdAt, { dateStyle: "medium" })}
-                    </p>
-                    {row.bonusNote ? <p className="text-xs text-muted-foreground">{row.bonusNote}</p> : null}
-                  </div>
-                  <span className="text-xs text-muted-foreground">{row.stageName}</span>
-                  <Badge variant="outline">{tStatus(row.applicationStatus)}</Badge>
-                  <Badge dot variant={statusTone(row.bonus)}>{t(`bonus.${row.bonus}` as "bonus.pending")}</Badge>
-                  {row.bonus === "earned" ? <SettleBonusButton referralId={row.id} /> : null}
-                </li>
+                  </TableCell>
+                  <TableCell>{row.referredByName}</TableCell>
+                  <TableCell className="max-w-56 truncate">{row.openingTitle}</TableCell>
+                  <TableCell>{format.dateTime(row.createdAt, { dateStyle: "medium" })}</TableCell>
+                  <TableCell>{row.stageName}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{tStatus(row.applicationStatus)}</Badge>
+                  </TableCell>
+                  <TableCell className="max-w-64">
+                    <Badge dot variant={statusTone(row.bonus)}>{t(`bonus.${row.bonus}` as "bonus.pending")}</Badge>
+                    {row.bonusNote ? <p className="truncate text-xs text-muted-foreground">{row.bonusNote}</p> : null}
+                  </TableCell>
+                  <TableCell kind="actions">{row.bonus === "earned" ? <SettleBonusButton referralId={row.id} /> : null}</TableCell>
+                </TableRow>
               ))}
-            </ul>
-          )}
-        </section>
+            </TableBody>
+          </Table>
+        </TableCard>
       ) : null}
     </div>
   );

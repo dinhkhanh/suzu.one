@@ -3,7 +3,7 @@
 // the browser as data, only as the text of the page.
 import { getFormatter, getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { PayLine, PersonPayResult } from "../engine/types";
 import { formatVnd } from "./money";
 
@@ -73,14 +73,14 @@ export async function PayslipDetail({ result, componentNames, person, entity, mo
       </section>
 
       {/* ── What was earned ── */}
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium">{t("earnings")}</h2>
-        <Table>
+      <TableCard>
+        <TableCardHeader title={t("earnings")} />
+        <Table numbered={false}>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("line")}</TableHead>
-              <TableHead className="text-right">{t("taxablePart")}</TableHead>
-              <TableHead className="text-right">{t("amount")}</TableHead>
+              <TableHead kind="text">{t("line")}</TableHead>
+              <TableHead kind="money">{t("taxablePart")}</TableHead>
+              <TableHead kind="money">{t("amount")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -89,27 +89,29 @@ export async function PayslipDetail({ result, componentNames, person, entity, mo
                 <TableCell>
                   <span className="font-medium">{label(line)}</span>
                 </TableCell>
-                <TableCell className="text-right tabular-nums text-muted-foreground">{line.taxable === line.amount ? "—" : formatVnd(line.taxable)}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatVnd(line.amount)}</TableCell>
+                <TableCell kind="money" className="text-muted-foreground">{line.taxable === line.amount ? "—" : formatVnd(line.taxable)}</TableCell>
+                <TableCell kind="money">{formatVnd(line.amount)}</TableCell>
               </TableRow>
             ))}
-            <TableRow>
-              <TableCell className="font-medium">{t("grossEarnings")}</TableCell>
-              <TableCell />
-              <TableCell className="text-right font-semibold tabular-nums">{formatVnd(result.totals.grossEarnings)}</TableCell>
-            </TableRow>
           </TableBody>
+          <TableFooter>
+            <TableRow>
+              <TableCell>{t("grossEarnings")}</TableCell>
+              <TableCell />
+              <TableCell kind="money" className="font-semibold">{formatVnd(result.totals.grossEarnings)}</TableCell>
+            </TableRow>
+          </TableFooter>
         </Table>
-      </section>
+      </TableCard>
 
       {/* ── What was taken off ── */}
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium">{t("deductions")}</h2>
-        <Table>
+      <TableCard>
+        <TableCardHeader title={t("deductions")} />
+        <Table numbered={false}>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("line")}</TableHead>
-              <TableHead className="text-right">{t("amount")}</TableHead>
+              <TableHead kind="text">{t("line")}</TableHead>
+              <TableHead kind="money">{t("amount")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -118,16 +120,18 @@ export async function PayslipDetail({ result, componentNames, person, entity, mo
                 <TableCell>
                   <span className="font-medium">{label(line)}</span>
                 </TableCell>
-                <TableCell className="text-right tabular-nums">{formatVnd(line.amount)}</TableCell>
+                <TableCell kind="money">{formatVnd(line.amount)}</TableCell>
               </TableRow>
             ))}
-            <TableRow>
-              <TableCell className="font-medium">{t("totalDeductions")}</TableCell>
-              <TableCell className="text-right font-semibold tabular-nums">{formatVnd(result.totals.totalDeductions)}</TableCell>
-            </TableRow>
           </TableBody>
+          <TableFooter>
+            <TableRow>
+              <TableCell>{t("totalDeductions")}</TableCell>
+              <TableCell kind="money" className="font-semibold">{formatVnd(result.totals.totalDeductions)}</TableCell>
+            </TableRow>
+          </TableFooter>
         </Table>
-      </section>
+      </TableCard>
 
       {/* ── The net ── */}
       <section className="rounded-xl border p-4">
@@ -138,36 +142,36 @@ export async function PayslipDetail({ result, componentNames, person, entity, mo
       </section>
 
       {/* ── How the insurance was worked out (FR-PAY-11) ── */}
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium">{t("insurance.title")}</h2>
-        {result.insurance.covered ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("insurance.fund")}</TableHead>
-                <TableHead className="text-right">{t("insurance.base")}</TableHead>
-                <TableHead className="text-right">{t("insurance.employee")}</TableHead>
-                <TableHead className="text-right">{t("insurance.employer")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(["bhxh", "bhyt", "bhtn"] as const).map((fund) => (
+      <TableCard>
+        <TableCardHeader title={t("insurance.title")} />
+        <Table numbered={false}>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="select">{t("insurance.fund")}</TableHead>
+              <TableHead kind="money">{t("insurance.base")}</TableHead>
+              <TableHead kind="money">{t("insurance.employee")}</TableHead>
+              <TableHead kind="money">{t("insurance.employer")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {result.insurance.covered ? (
+              (["bhxh", "bhyt", "bhtn"] as const).map((fund) => (
                 <TableRow key={fund}>
                   <TableCell>{t(`insurance.funds.${fund}` as "insurance.funds.bhxh")}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(fund === "bhtn" ? result.insurance.bhtnBase : result.insurance.bhxhBhytBase)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(result.insurance.employee[fund])}</TableCell>
-                  <TableCell className="text-right tabular-nums text-muted-foreground">{formatVnd(result.insurance.employer[fund])}</TableCell>
+                  <TableCell kind="money">{formatVnd(fund === "bhtn" ? result.insurance.bhtnBase : result.insurance.bhxhBhytBase)}</TableCell>
+                  <TableCell kind="money">{formatVnd(result.insurance.employee[fund])}</TableCell>
+                  <TableCell kind="money" className="text-muted-foreground">{formatVnd(result.insurance.employer[fund])}</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : (
-          <p className="text-sm text-muted-foreground">{result.insurance.reason ? t(`insurance.reasons.${result.insurance.reason}` as "insurance.reasons.probation") : t("insurance.notCovered")}</p>
-        )}
+              ))
+            ) : (
+              <TableEmpty>{result.insurance.reason ? t(`insurance.reasons.${result.insurance.reason}` as "insurance.reasons.probation") : t("insurance.notCovered")}</TableEmpty>
+            )}
+          </TableBody>
+        </Table>
         {result.insurance.declaredBase !== result.insurance.bhxhBhytBase ? (
-          <p className="text-xs text-muted-foreground">{t("insurance.capped", { declared: formatVnd(result.insurance.declaredBase), capped: formatVnd(result.insurance.bhxhBhytBase) })}</p>
+          <p className="border-t px-4 py-3 text-xs text-muted-foreground">{t("insurance.capped", { declared: formatVnd(result.insurance.declaredBase), capped: formatVnd(result.insurance.bhxhBhytBase) })}</p>
         ) : null}
-      </section>
+      </TableCard>
 
       {/* ── How the tax was worked out (FR-PAY-13, 14) ── */}
       <section className="flex flex-col gap-2">
@@ -199,13 +203,13 @@ export async function PayslipDetail({ result, componentNames, person, entity, mo
                 ))}
             </dl>
             {result.pit.brackets.length > 0 ? (
-              <Table>
+              <Table numbered={false}>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t("pit.bracket")}</TableHead>
-                    <TableHead className="text-right">{t("pit.rate")}</TableHead>
-                    <TableHead className="text-right">{t("pit.slice")}</TableHead>
-                    <TableHead className="text-right">{t("pit.taxOnSlice")}</TableHead>
+                    <TableHead kind="money">{t("pit.bracket")}</TableHead>
+                    <TableHead kind="percent">{t("pit.rate")}</TableHead>
+                    <TableHead kind="money">{t("pit.slice")}</TableHead>
+                    <TableHead kind="money">{t("pit.taxOnSlice")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -213,10 +217,10 @@ export async function PayslipDetail({ result, componentNames, person, entity, mo
                     .filter((bracket) => bracket.amount > 0)
                     .map((bracket, index) => (
                       <TableRow key={index}>
-                        <TableCell className="tabular-nums">{bracket.upTo === null ? t("pit.above") : `≤ ${formatVnd(bracket.upTo)}`}</TableCell>
-                        <TableCell className="text-right tabular-nums">{percent(bracket.rateBp)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{formatVnd(bracket.amount)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{formatVnd(bracket.tax)}</TableCell>
+                        <TableCell kind="money">{bracket.upTo === null ? t("pit.above") : `≤ ${formatVnd(bracket.upTo)}`}</TableCell>
+                        <TableCell kind="percent">{percent(bracket.rateBp)}</TableCell>
+                        <TableCell kind="money">{formatVnd(bracket.amount)}</TableCell>
+                        <TableCell kind="money">{formatVnd(bracket.tax)}</TableCell>
                       </TableRow>
                     ))}
                 </TableBody>
@@ -231,17 +235,25 @@ export async function PayslipDetail({ result, componentNames, person, entity, mo
 
       {/* ── What the month cost the company: shown because it is the person's own entitlement ── */}
       {employerCosts.length > 0 ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium">{t("employerCosts")}</h2>
-          <ul className="text-sm">
-            {employerCosts.map((line) => (
-              <li key={line.code} className="flex justify-between border-b py-1">
-                <span className="text-muted-foreground">{label(line)}</span>
-                <span className="tabular-nums">{formatVnd(line.amount)}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <TableCard>
+          <TableCardHeader title={t("employerCosts")} />
+          <Table numbered={false}>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="text">{t("line")}</TableHead>
+                <TableHead kind="money">{t("amount")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {employerCosts.map((line) => (
+                <TableRow key={line.code}>
+                  <TableCell className="text-muted-foreground">{label(line)}</TableCell>
+                  <TableCell kind="money">{formatVnd(line.amount)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       ) : null}
 
       {result.warnings.length > 0 ? (

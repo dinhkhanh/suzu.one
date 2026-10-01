@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canWriteClientReport, clientReportFigures, defaultReportPeriod, listClientReports, openProject, type ReportFigures } from "@/modules/projects/service";
 import { ClientReportForm } from "@/modules/projects/ui/commercial-forms";
@@ -96,48 +98,50 @@ export default async function ProjectReportsPage({ params }: PageProps<"/project
     <div className="flex max-w-5xl flex-col gap-8">
       <ProjectHeader context={context} current="reports" />
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-base font-medium">{t("list")}</h2>
-        {reports.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : null}
-        {reports.map((report, index) => (
-          <article key={report.id} className="flex flex-col gap-3 rounded-xl border p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-medium">{report.title}</h3>
-              <span className="text-sm text-muted-foreground">
-                {date(report.periodFrom)} – {date(report.periodTo)}
-              </span>
-              {report.showHours ? <Badge variant="outline">{t("withHours")}</Badge> : null}
-              <a href={`/projects/${project.id}/reports/${report.id}/pdf`} className="ml-auto text-sm underline">
-                {t("pdf")}
-              </a>
-            </div>
-            <RichText text={report.summary} className="text-sm" />
-            {summary(figures[index])}
-            {report.nextPlan ? (
-              <div className="text-sm">
-                <p className="text-xs text-muted-foreground">{t("fields.nextPlan")}</p>
-                <RichText text={report.nextPlan} />
+      <TableCard>
+        <TableCardHeader title={t("list")} count={reports.length || null} />
+        <List>
+          {reports.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
+          {reports.map((report, index) => (
+            <ListItem key={report.id} className="flex-col items-stretch gap-3 py-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="font-medium">{report.title}</h3>
+                <span className="text-sm text-muted-foreground">
+                  {date(report.periodFrom)} – {date(report.periodTo)}
+                </span>
+                {report.showHours ? <Badge variant="outline">{t("withHours")}</Badge> : null}
+                <a href={`/projects/${project.id}/reports/${report.id}/pdf`} className="ml-auto text-sm underline">
+                  {t("pdf")}
+                </a>
               </div>
-            ) : null}
-            {write ? (
-              <details>
-                <summary className="cursor-pointer text-sm text-muted-foreground">{t("edit")}</summary>
-                <div className="pt-2">
-                  <ClientReportForm projectId={project.id} report={{ id: report.id, title: report.title, periodFrom: report.periodFrom, periodTo: report.periodTo, summary: report.summary, nextPlan: report.nextPlan, showHours: report.showHours }} defaults={{ title: report.title, from: report.periodFrom, to: report.periodTo }} />
+              <RichText text={report.summary} className="text-sm" />
+              {summary(figures[index])}
+              {report.nextPlan ? (
+                <div className="text-sm">
+                  <p className="text-xs text-muted-foreground">{t("fields.nextPlan")}</p>
+                  <RichText text={report.nextPlan} />
                 </div>
-              </details>
-            ) : null}
-          </article>
-        ))}
-      </section>
-
-      {write ? (
-        <section className="flex flex-col gap-2 rounded-xl border border-dashed p-4">
-          <h2 className="text-base font-medium">{t("new")}</h2>
-          <p className="text-xs text-muted-foreground">{t("newHint")}</p>
-          <ClientReportForm projectId={project.id} defaults={{ title: t("defaultTitle", { project: project.name, month: period.from.slice(0, 7) }), from: period.from, to: period.to }} />
-        </section>
-      ) : null}
+              ) : null}
+              {write ? (
+                <details>
+                  <summary className="cursor-pointer text-sm text-muted-foreground">{t("edit")}</summary>
+                  <div className="pt-2">
+                    <ClientReportForm projectId={project.id} report={{ id: report.id, title: report.title, periodFrom: report.periodFrom, periodTo: report.periodTo, summary: report.summary, nextPlan: report.nextPlan, showHours: report.showHours }} defaults={{ title: report.title, from: report.periodFrom, to: report.periodTo }} />
+                  </div>
+                </details>
+              ) : null}
+            </ListItem>
+          ))}
+        </List>
+        {write ? (
+          <TableAddRow label={t("new")} open={reports.length === 0}>
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-muted-foreground">{t("newHint")}</p>
+              <ClientReportForm projectId={project.id} defaults={{ title: t("defaultTitle", { project: project.name, month: period.from.slice(0, 7) }), from: period.from, to: period.to }} />
+            </div>
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { buttonVariants } from "@/components/ui/button";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { goalFormOptions, listGoals, loadGoal } from "@/modules/performance/service";
 import { CheckInForm, EditGoalForm, GoalMoves, KeyResultForm, RemoveKeyResultButton, ReparentForm } from "@/modules/performance/ui/goal-forms";
 import { GoalLine, periodLabel, progressLabel } from "@/modules/performance/ui/goal-tree";
@@ -63,12 +64,12 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
         <GoalMoves goalId={goal.id} moves={moves} />
       </header>
 
-      <section className="flex flex-col gap-2">
-        <h2>{t("kr.heading")}</h2>
-        {goal.keyResults.length === 0 ? <p className="text-sm text-muted-foreground">{children.length > 0 ? t("mine.rollsUp") : t("mine.noKeyResults")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border px-4 empty:hidden">
+      <TableCard>
+        <TableCardHeader title={t("kr.heading")} count={goal.keyResults.length || null} />
+        <List>
+          {goal.keyResults.length === 0 ? <ListEmpty>{children.length > 0 ? t("mine.rollsUp") : t("mine.noKeyResults")}</ListEmpty> : null}
           {goal.keyResults.map((keyResult) => (
-            <li key={keyResult.id} className="flex flex-col gap-2 py-3 text-sm">
+            <ListItem key={keyResult.id} className="flex-col items-stretch gap-2">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span className="min-w-0 flex-1 basis-56 font-medium">{keyResult.title}</span>
                 <ConfidenceBadge confidence={keyResult.confidence} label={keyResult.confidence ? t(`enums.confidence.${keyResult.confidence}`) : ""} />
@@ -111,92 +112,80 @@ export default async function GoalPage({ params }: PageProps<"/performance/goals
                   </div>
                 </details>
               ) : null}
-            </li>
+            </ListItem>
           ))}
-        </ul>
+        </List>
         {rights.edit && open ? (
-          <details className="rounded-xl border px-4 py-3" open={goal.keyResults.length === 0 && children.length === 0}>
-            <summary className="cursor-pointer text-sm font-medium">{t("kr.add")}</summary>
-            <div className="pt-3">
-              <KeyResultForm goalId={goal.id} value={{ id: null, title: "", metricType: "number", startValue: 0, targetValue: 0, milestones: null, weight: 1, hasCheckIns: false }} />
-            </div>
-          </details>
+          <TableAddRow label={t("kr.add")} open={goal.keyResults.length === 0 && children.length === 0}>
+            <KeyResultForm goalId={goal.id} value={{ id: null, title: "", metricType: "number", startValue: 0, targetValue: 0, milestones: null, weight: 1, hasCheckIns: false }} />
+          </TableAddRow>
         ) : null}
-      </section>
+      </TableCard>
 
-      <section className="flex flex-col gap-2">
-        <h2>{t("trace.heading")}</h2>
-        <p className="text-sm text-muted-foreground">{t(`trace.source.${goal.progress.source}`)}</p>
+      <TableCard>
+        <TableCardHeader title={t("trace.heading")} description={t(`trace.source.${goal.progress.source}`)} />
         {goal.progress.lines.length > 0 ? (
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs text-muted-foreground">
-              <tr>
-                <th className="py-1 font-normal">{t("trace.line")}</th>
-                <th className="py-1 text-right font-normal">{t("form.weight")}</th>
-                <th className="py-1 text-right font-normal">{t("trace.progress")}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table numbered={false}>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="text">{t("trace.line")}</TableHead>
+                <TableHead kind="number">{t("form.weight")}</TableHead>
+                <TableHead kind="percent">{t("trace.progress")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {goal.progress.lines.map((line) => (
-                <tr key={line.id} className={line.skipped ? "text-muted-foreground" : ""}>
-                  <td className="py-1">{line.redacted ? t("trace.private") : (lineTitles[line.id] ?? "—")}</td>
-                  <td className="py-1 text-right tabular-nums">{line.weight}</td>
-                  <td className="py-1 text-right tabular-nums">{line.redacted ? "—" : line.skipped ? t(`trace.skipped.${line.skipped}`) : progressLabel(labels, line.progressBp)}</td>
-                </tr>
+                <TableRow key={line.id} className={line.skipped ? "text-muted-foreground" : undefined}>
+                  <TableCell className="whitespace-normal">{line.redacted ? t("trace.private") : (lineTitles[line.id] ?? "—")}</TableCell>
+                  <TableCell kind="number">{line.weight}</TableCell>
+                  <TableCell kind="percent">{line.redacted ? "—" : line.skipped ? t(`trace.skipped.${line.skipped}`) : progressLabel(labels, line.progressBp)}</TableCell>
+                </TableRow>
               ))}
-              <tr className="font-medium">
-                <td className="py-1">{t("trace.result")}</td>
-                <td />
-                <td className="py-1 text-right tabular-nums">{progressLabel(labels, goal.progress.progressBp)}</td>
-              </tr>
-            </tbody>
-          </table>
+            </TableBody>
+            <TableFooter>
+              <TableRow>
+                <TableCell>{t("trace.result")}</TableCell>
+                <TableCell />
+                <TableCell kind="percent">{progressLabel(labels, goal.progress.progressBp)}</TableCell>
+              </TableRow>
+            </TableFooter>
+          </Table>
         ) : null}
-      </section>
+      </TableCard>
 
-      <section className="flex flex-col gap-2">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2>{t("detail.children")}</h2>
-          <Link href={`/performance/goals/new?year=${goal.year}&parent=${goal.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-            {t("detail.addChild")}
-          </Link>
-        </div>
-        {children.length === 0 && goal.hiddenChildren === 0 ? <p className="text-sm text-muted-foreground">{t("detail.noChildren")}</p> : null}
-        {children.length > 0 ? (
-          <ul className="flex flex-col divide-y rounded-xl border px-4">
-            {children.map((child) => (
-              <li key={child.id}>
-                <GoalLine goal={child} labels={labels} />
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {goal.hiddenChildren > 0 ? <p className="text-xs text-muted-foreground">{t("hiddenChildren", { count: goal.hiddenChildren })}</p> : null}
-      </section>
+      <TableCard>
+        <TableCardHeader title={t("detail.children")} count={children.length || null} description={goal.hiddenChildren > 0 ? t("hiddenChildren", { count: goal.hiddenChildren }) : undefined} />
+        <List>
+          {children.length === 0 && goal.hiddenChildren === 0 ? <ListEmpty>{t("detail.noChildren")}</ListEmpty> : null}
+          {children.map((child) => (
+            <ListItem key={child.id} className="block py-0">
+              <GoalLine goal={child} labels={labels} />
+            </ListItem>
+          ))}
+        </List>
+        <TableAddRow label={t("detail.addChild")} href={`/performance/goals/new?year=${goal.year}&parent=${goal.id}`} />
+      </TableCard>
 
-      <section className="flex flex-col gap-2">
-        <h2>{t("checkIn.history")}</h2>
-        {checkIns.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("checkIn.none")}</p>
-        ) : (
-          <ul className="flex flex-col divide-y rounded-xl border px-4">
-            {checkIns.map((checkIn) => {
-              const keyResult = goal.keyResults.find((candidate) => candidate.id === checkIn.keyResultId);
-              return (
-                <li key={checkIn.id} className="flex flex-col gap-1 py-2 text-sm">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="min-w-0 flex-1 basis-56">{checkIn.keyResultTitle}</span>
-                    <span className="tabular-nums">{keyResult ? metricText(format, keyResult.metricType, checkIn.value ?? 0, checkIn.milestones) : "—"}</span>
-                    <ConfidenceBadge confidence={checkIn.confidence as "on_track" | "at_risk" | "off_track"} label={t(`enums.confidence.${checkIn.confidence as "on_track" | "at_risk" | "off_track"}`)} />
-                  </div>
-                  <p className="text-xs text-muted-foreground">{[checkIn.authorName, dateTime(checkIn.createdAt), t("checkIn.week", { date: format.dateTime(new Date(`${checkIn.weekStart}T00:00:00`), { dateStyle: "medium" }) })].join(" · ")}</p>
-                  {checkIn.note ? <p className="text-sm whitespace-pre-line">{checkIn.note}</p> : null}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+      <TableCard>
+        <TableCardHeader title={t("checkIn.history")} count={checkIns.length || null} />
+        <List>
+          {checkIns.length === 0 ? <ListEmpty>{t("checkIn.none")}</ListEmpty> : null}
+          {checkIns.map((checkIn) => {
+            const keyResult = goal.keyResults.find((candidate) => candidate.id === checkIn.keyResultId);
+            return (
+              <ListItem key={checkIn.id} className="flex-col items-stretch gap-1">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="min-w-0 flex-1 basis-56">{checkIn.keyResultTitle}</span>
+                  <span className="tabular-nums">{keyResult ? metricText(format, keyResult.metricType, checkIn.value ?? 0, checkIn.milestones) : "—"}</span>
+                  <ConfidenceBadge confidence={checkIn.confidence as "on_track" | "at_risk" | "off_track"} label={t(`enums.confidence.${checkIn.confidence as "on_track" | "at_risk" | "off_track"}`)} />
+                </div>
+                <p className="text-xs text-muted-foreground">{[checkIn.authorName, dateTime(checkIn.createdAt), t("checkIn.week", { date: format.dateTime(new Date(`${checkIn.weekStart}T00:00:00`), { dateStyle: "medium" }) })].join(" · ")}</p>
+                {checkIn.note ? <p className="text-sm whitespace-pre-line">{checkIn.note}</p> : null}
+              </ListItem>
+            );
+          })}
+        </List>
+      </TableCard>
 
       {rights.edit && open && options ? (
         <section className="flex flex-col gap-4 rounded-xl border p-4">

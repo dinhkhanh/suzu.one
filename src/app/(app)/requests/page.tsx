@@ -1,6 +1,7 @@
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -48,53 +49,75 @@ export default async function RequestsPage() {
         ))}
       </nav>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("mine")}</h2>
-        {mine.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("mineEmpty")}</p>
-        ) : (
-          <ul className="flex flex-col divide-y rounded-xl border">
+      <TableCard>
+        <TableCardHeader title={t("mine")} count={mine.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("columns.request")}</TableHead>
+              <TableHead kind="text">{t("expense.columns.summary")}</TableHead>
+              <TableHead kind="date">{t("expense.columns.filed")}</TableHead>
+              <TableHead kind="status">{t("expense.columns.status")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {mine.length === 0 ? <TableEmpty>{t("mineEmpty")}</TableEmpty> : null}
             {mine.map((row) => (
-              <li key={row.requestId} className="flex flex-wrap items-center gap-3 p-3">
-                <div className="min-w-0 flex-1 basis-56">
-                  <Link href={`/approvals/request/${row.requestId}`} className="text-sm font-medium hover:underline">
+              <TableRow key={row.requestId}>
+                <TableCell className="max-w-72">
+                  <Link href={`/approvals/request/${row.requestId}`} className="block truncate font-medium hover:underline">
                     {locale === "en" ? row.nameEn : row.nameVi}
                   </Link>
-                  <p className="text-xs text-muted-foreground">{row.summary}</p>
                   {row.parentRequestId ? (
-                    <Link href={`/approvals/request/${row.parentRequestId}`} className="text-xs text-link hover:underline">
+                    <Link href={`/approvals/request/${row.parentRequestId}`} className="block truncate text-xs text-link hover:underline">
                       ↳ {t("followUps.under", { name: (locale === "en" ? row.parentNameEn : row.parentNameVi) ?? "" })}
                     </Link>
                   ) : null}
-                  <p className="text-xs text-muted-foreground">{format.dateTime(row.createdAt, { dateStyle: "medium", timeStyle: "short" })}</p>
-                </div>
-                <Badge dot variant={statusTone(row.status)}>{tApprovals(`status.${row.status}` as "status.pending")}</Badge>
-              </li>
+                </TableCell>
+                <TableCell className="max-w-80 truncate text-muted-foreground">{row.summary || "—"}</TableCell>
+                <TableCell>{format.dateTime(row.createdAt, { dateStyle: "medium", timeStyle: "short" })}</TableCell>
+                <TableCell>
+                  <Badge dot variant={statusTone(row.status)}>{tApprovals(`status.${row.status}` as "status.pending")}</Badge>
+                </TableCell>
+              </TableRow>
             ))}
-          </ul>
-        )}
-      </section>
+          </TableBody>
+        </Table>
+        <TableAddRow label={t("new")} href="/requests/new" />
+      </TableCard>
 
       {manages ? (
-        <section className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-medium text-muted-foreground">{t("tracking.title")}</h2>
-            <Link href="/admin/request-types" className="text-sm underline-offset-4 hover:underline">
-              {t("tracking.manage")}
-            </Link>
-          </div>
-          <p className="text-xs text-muted-foreground">{t("tracking.description")}</p>
-          <ul className="flex flex-col divide-y rounded-xl border text-sm">
-            {stats.map((row) => (
-              <li key={row.code} className="flex flex-wrap items-center gap-3 p-3">
-                <span className="min-w-0 flex-1 basis-56 font-medium">{locale === "en" ? row.nameEn : row.nameVi}</span>
-                <span className="text-muted-foreground">{t("tracking.open", { count: row.open })}</span>
-                <span className="text-muted-foreground">{t("tracking.decided", { count: row.decided })}</span>
-                <span className="text-muted-foreground">{row.medianHours === null ? t("tracking.noMedian") : t("tracking.median", { hours: row.medianHours })}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <TableCard>
+          <TableCardHeader
+            title={t("tracking.title")}
+            description={t("tracking.description")}
+            actions={
+              <Link href="/admin/request-types" className="text-sm underline-offset-4 hover:underline">
+                {t("tracking.manage")}
+              </Link>
+            }
+          />
+          <Table numbered={false}>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="select">{t("tracking.columns.type")}</TableHead>
+                <TableHead kind="number">{t("tracking.columns.open")}</TableHead>
+                <TableHead kind="number">{t("tracking.columns.decided")}</TableHead>
+                <TableHead kind="time">{t("tracking.columns.median")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {stats.map((row) => (
+                <TableRow key={row.code}>
+                  <TableCell className="font-medium">{locale === "en" ? row.nameEn : row.nameVi}</TableCell>
+                  <TableCell kind="number">{row.open}</TableCell>
+                  <TableCell kind="number">{row.decided}</TableCell>
+                  <TableCell kind="time" className="text-muted-foreground">{row.medianHours === null ? t("tracking.noMedian") : t("tracking.median", { hours: row.medianHours })}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       ) : null}
     </div>
   );

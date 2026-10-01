@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -50,38 +52,31 @@ export default async function ProjectAcceptancePage({ params }: PageProps<"/proj
 
       <AcceptanceWaitingList projectId={project.id} waiting={waiting} showLink={false} />
 
-      {manage ? (
-        <section className="flex flex-col gap-2 rounded-xl border border-dashed p-4">
-          <h2 className="text-base font-medium">{t("new")}</h2>
-          <NewAcceptanceForm projectId={project.id} milestones={clientFacing} periods={periods.map(({ id, month }) => ({ id, month }))} />
-        </section>
-      ) : null}
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-base font-medium">{t("list")}</h2>
-        {acceptances.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : null}
-        {acceptances.map((acceptance) => (
-          <article key={acceptance.id} className="flex flex-col gap-3 rounded-xl border p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-sm">{acceptance.code}</span>
-              <Badge dot variant={statusTone(acceptance.status)}>{t(`status.${acceptance.status as "draft"}`)}</Badge>
-              <span className="text-sm text-muted-foreground">{[t(`scopes.${acceptance.scope as "project"}`), acceptance.targetName].filter(Boolean).join(" — ")}</span>
-            </div>
-            <p className="text-sm">{t("totals", { promised: acceptance.totals.promised, delivered: acceptance.totals.delivered, accepted: acceptance.totals.accepted })}</p>
-            <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-              <table className="w-full min-w-[30rem] text-sm">
-                <thead className="text-left text-xs text-muted-foreground">
-                  <tr>
-                    <th className="py-1 pr-2 font-normal">{t("item")}</th>
-                    <th className="py-1 pr-2 text-right font-normal">{t("promised")}</th>
-                    <th className="py-1 pr-2 text-right font-normal">{t("delivered")}</th>
-                    <th className="py-1 text-right font-normal">{t("accepted")}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
+      <TableCard>
+        <TableCardHeader title={t("list")} count={acceptances.length || null} />
+        <List>
+          {acceptances.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
+          {acceptances.map((acceptance) => (
+            <ListItem key={acceptance.id} className="flex-col items-stretch gap-3 py-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-sm">{acceptance.code}</span>
+                <Badge dot variant={statusTone(acceptance.status)}>{t(`status.${acceptance.status as "draft"}`)}</Badge>
+                <span className="text-sm text-muted-foreground">{[t(`scopes.${acceptance.scope as "project"}`), acceptance.targetName].filter(Boolean).join(" — ")}</span>
+              </div>
+              <p className="text-sm">{t("totals", { promised: acceptance.totals.promised, delivered: acceptance.totals.delivered, accepted: acceptance.totals.accepted })}</p>
+              <Table numbered={false} className="min-w-[30rem]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead kind="text">{t("item")}</TableHead>
+                    <TableHead kind="number">{t("promised")}</TableHead>
+                    <TableHead kind="number">{t("delivered")}</TableHead>
+                    <TableHead kind="number">{t("accepted")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {acceptance.items.map((item) => (
-                    <tr key={item.deliverableId}>
-                      <td className="py-1.5 pr-2">
+                    <TableRow key={item.deliverableId}>
+                      <TableCell className="whitespace-normal">
                         {item.title}
                         {item.links.length ? (
                           <span className="block text-xs">
@@ -92,65 +87,81 @@ export default async function ProjectAcceptancePage({ params }: PageProps<"/proj
                             ))}
                           </span>
                         ) : null}
-                      </td>
-                      <td className="py-1.5 pr-2 text-right">{item.promised}</td>
-                      <td className="py-1.5 pr-2 text-right">{item.delivered}</td>
-                      <td className="py-1.5 text-right">{item.accepted}</td>
-                    </tr>
+                      </TableCell>
+                      <TableCell kind="number">{item.promised}</TableCell>
+                      <TableCell kind="number">{item.delivered}</TableCell>
+                      <TableCell kind="number">{item.accepted}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 text-sm">
-              {acceptance.status !== "void" ? (
-                <a href={`/projects/${project.id}/acceptance/${acceptance.id}/pdf`} className="underline">
-                  {t("pdf")}
-                </a>
+                </TableBody>
+              </Table>
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                {acceptance.status !== "void" ? (
+                  <a href={`/projects/${project.id}/acceptance/${acceptance.id}/pdf`} className="underline">
+                    {t("pdf")}
+                  </a>
+                ) : null}
+                {acceptance.status === "signed" ? (
+                  <span className="flex flex-wrap items-center gap-2 text-muted-foreground">
+                    {t("signedInfo", { name: acceptance.signedByClient ?? "—", date: date(acceptance.signedOn) })}
+                    <SignedScanLink acceptanceId={acceptance.id} label={t("signedScan")} />
+                  </span>
+                ) : null}
+                {manage ? <AcceptanceButtons acceptanceId={acceptance.id} status={acceptance.status} /> : null}
+              </div>
+              {manage && (acceptance.status === "draft" || acceptance.status === "sent") ? (
+                <details>
+                  <summary className="cursor-pointer text-sm text-muted-foreground">{t("recordSignature")}</summary>
+                  <div className="pt-2">
+                    <SignAcceptanceForm acceptanceId={acceptance.id} today={today} contacts={signers} />
+                  </div>
+                </details>
               ) : null}
-              {acceptance.status === "signed" ? (
-                <span className="flex flex-wrap items-center gap-2 text-muted-foreground">
-                  {t("signedInfo", { name: acceptance.signedByClient ?? "—", date: date(acceptance.signedOn) })}
-                  <SignedScanLink acceptanceId={acceptance.id} label={t("signedScan")} />
-                </span>
-              ) : null}
-              {manage ? <AcceptanceButtons acceptanceId={acceptance.id} status={acceptance.status} /> : null}
-            </div>
-            {manage && (acceptance.status === "draft" || acceptance.status === "sent") ? (
-              <details>
-                <summary className="cursor-pointer text-sm text-muted-foreground">{t("recordSignature")}</summary>
-                <div className="pt-2">
-                  <SignAcceptanceForm acceptanceId={acceptance.id} today={today} contacts={signers} />
-                </div>
-              </details>
-            ) : null}
-          </article>
-        ))}
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-base font-medium">{tBilling("projectItems")}</h2>
-        {billing.length === 0 ? <p className="text-sm text-muted-foreground">{tBilling("projectEmpty")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border text-sm">
-          {billing.map((item) => (
-            <li key={item.id} className="flex flex-wrap items-center gap-2 px-3 py-2">
-              <Badge dot variant={statusTone(item.status)}>{tBilling(`status.${item.status as "ready"}`)}</Badge>
-              <span className="font-medium">{item.description}</span>
-              <span className="text-muted-foreground">{tBilling(`sources.${item.source as "manual"}`)}</span>
-              {"amountVnd" in item ? <span className="ml-auto font-medium">{money(item.amountVnd)}</span> : null}
-              {item.invoiceNumber ? <span className="w-full text-xs text-muted-foreground">{tBilling("invoicedAs", { number: item.invoiceNumber, date: date(item.invoiceDate) })}</span> : null}
-              {item.waivedReason ? <span className="w-full text-xs text-muted-foreground">{tBilling("waivedBecause", { reason: item.waivedReason })}</span> : null}
-            </li>
+            </ListItem>
           ))}
-        </ul>
-        {addsBilling ? (
-          <details className="rounded-xl border border-dashed p-3">
-            <summary className="cursor-pointer text-sm">{tBilling("addManual")}</summary>
-            <div className="pt-2">
-              <ManualBillingForm projectId={project.id} />
-            </div>
-          </details>
+        </List>
+        {manage ? (
+          <TableAddRow label={t("new")} open={acceptances.length === 0}>
+            <NewAcceptanceForm projectId={project.id} milestones={clientFacing} periods={periods.map(({ id, month }) => ({ id, month }))} />
+          </TableAddRow>
         ) : null}
-      </section>
+      </TableCard>
+
+      <TableCard>
+        <TableCardHeader title={tBilling("projectItems")} count={billing.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{tBilling("description")}</TableHead>
+              <TableHead kind="status">{tBilling("statusFilter")}</TableHead>
+              <TableHead kind="select">{tBilling("source")}</TableHead>
+              {can.seeFees ? <TableHead kind="money">{tBilling("amount")}</TableHead> : null}
+              <TableHead kind="text">{tBilling("invoice")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {billing.length === 0 ? <TableEmpty>{tBilling("projectEmpty")}</TableEmpty> : null}
+            {billing.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell className="font-medium whitespace-normal">{item.description}</TableCell>
+                <TableCell>
+                  <Badge dot variant={statusTone(item.status)}>{tBilling(`status.${item.status as "ready"}`)}</Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{tBilling(`sources.${item.source as "manual"}`)}</Badge>
+                </TableCell>
+                {can.seeFees ? <TableCell kind="money">{"amountVnd" in item ? money(item.amountVnd) : "—"}</TableCell> : null}
+                <TableCell className="text-xs text-muted-foreground">{[item.invoiceNumber ? tBilling("invoicedAs", { number: item.invoiceNumber, date: date(item.invoiceDate) }) : null, item.waivedReason ? tBilling("waivedBecause", { reason: item.waivedReason }) : null].filter(Boolean).join(" · ") || "—"}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {addsBilling ? (
+          <TableAddRow label={tBilling("addManual")}>
+            <ManualBillingForm projectId={project.id} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

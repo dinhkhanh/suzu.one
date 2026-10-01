@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { getCheckInState } from "@/modules/attendance/punches";
 import { CheckInPanel, InstallHint } from "@/modules/attendance/ui/check-in";
@@ -38,20 +39,30 @@ export default async function CheckInPage() {
       {employed ? <CheckInPanel nextDirection={state.nextDirection} punchExpected={plan?.kind === "working" || plan?.kind === "unscheduled" || !plan} /> : <p className="text-center text-sm text-muted-foreground">{t("errors.punch_not_employed")}</p>}
       {employed && !state.hasLocations ? <p className="text-center text-xs text-muted-foreground">{t("noLocations")}</p> : null}
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("today")}</h2>
-        {state.punches.length === 0 ? <p className="text-sm text-muted-foreground">{t("noPunches")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border empty:hidden">
-          {state.punches.map((punch) => (
-            <li key={punch.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm">
-              <span className="font-mono">{format.dateTime(punch.at, { hour: "2-digit", minute: "2-digit" })}</span>
-              <span className="font-medium">{t(punch.direction === "in" ? "in" : "out")}</span>
-              {punch.locationName ? <span className="text-muted-foreground">{punch.locationName}</span> : null}
-              {punch.reviewStatus !== "none" ? <Badge dot variant={statusTone(punch.reviewStatus)}>{t(`review.${punch.reviewStatus}`)}</Badge> : null}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <TableCard>
+        <TableCardHeader title={t("today")} count={state.punches.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="time">{t("columns.time")}</TableHead>
+              <TableHead kind="select">{t("columns.direction")}</TableHead>
+              <TableHead kind="place">{t("columns.location")}</TableHead>
+              <TableHead kind="status">{t("columns.review")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {state.punches.length === 0 ? <TableEmpty>{t("noPunches")}</TableEmpty> : null}
+            {state.punches.map((punch) => (
+              <TableRow key={punch.id}>
+                <TableCell kind="time" className="font-mono">{format.dateTime(punch.at, { hour: "2-digit", minute: "2-digit" })}</TableCell>
+                <TableCell className="font-medium">{t(punch.direction === "in" ? "in" : "out")}</TableCell>
+                <TableCell className="text-muted-foreground">{punch.locationName ?? ""}</TableCell>
+                <TableCell>{punch.reviewStatus !== "none" ? <Badge dot variant={statusTone(punch.reviewStatus)}>{t(`review.${punch.reviewStatus}`)}</Badge> : null}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableCard>
 
       <InstallHint />
       <nav className="flex justify-center gap-4 text-sm">

@@ -3,6 +3,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Select } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { type BookingStatus } from "../enums";
 import { layoutWeek, weekDays } from "../engine/booking";
 import type { BookingView } from "../service";
@@ -71,39 +72,42 @@ export async function BookingWeek({ weekBegins, assets, bookings }: { weekBegins
   const days = weekDays(weekBegins);
   const today = isoDay(new Date());
 
-  if (assets.length === 0) return <p className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">{t("noGear")}</p>;
-
   return (
-    <div className="overflow-x-auto rounded-md border">
-      <div className="min-w-3xl">
-        <div className="grid grid-cols-[14rem_repeat(7,minmax(0,1fr))] border-b bg-muted/40 text-xs font-medium">
-          <div className="p-2">{t("columns.asset")}</div>
+    <Table numbered={false} className="min-w-3xl table-fixed">
+      <TableHeader>
+        <TableRow>
+          <TableHead kind="text" className="w-56">
+            {t("columns.asset")}
+          </TableHead>
           {days.map((day, index) => (
-            <div key={day.toISOString()} className={`p-2 text-center ${isoDay(day) === today ? "text-primary" : "text-muted-foreground"}`}>
+            <TableHead key={day.toISOString()} className={`text-center ${isoDay(day) === today ? "text-primary" : ""}`}>
               {t(`days.${DAY_LABELS[index]}`)} {vietnamDayNumber(day)}/{vietnamMonth(day)}
-            </div>
+            </TableHead>
           ))}
-        </div>
-
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {assets.length === 0 ? <TableEmpty>{t("noGear")}</TableEmpty> : null}
         {assets.map((asset) => {
           const mine = bookings.filter((booking) => booking.assetId === asset.id);
           const laid = layoutWeek(mine, weekBegins);
           const lanes = laid.length === 0 ? 1 : Math.max(...laid.map((entry) => entry.lane)) + 1;
           return (
-            <div key={asset.id} className="grid grid-cols-[14rem_repeat(7,minmax(0,1fr))] border-b last:border-b-0">
-              <div className="border-r p-2 text-sm">
+            <TableRow key={asset.id}>
+              <TableCell className="align-top">
                 <Link href={`/assets/${asset.id}`} className="font-medium hover:underline">
                   {asset.code}
                 </Link>
                 <p className="truncate text-xs text-muted-foreground">{asset.name}</p>
-              </div>
-              <div className="relative col-span-7" style={{ minHeight: `${lanes * 1.75 + 0.5}rem` }}>
+              </TableCell>
+              <TableCell colSpan={7} className="relative p-0 align-top">
                 {/* The seven day cells, drawn behind the bars so the grid stays visible. */}
                 <div className="absolute inset-0 grid grid-cols-7">
                   {days.map((day) => (
                     <div key={day.toISOString()} className={`border-r last:border-r-0 ${isoDay(day) === today ? "bg-primary/5" : ""}`} />
                   ))}
                 </div>
+                <div aria-hidden style={{ minHeight: `${lanes * 1.75 + 0.5}rem` }} />
                 {laid.map(({ item, from, to, lane }) => (
                   <Link
                     key={item.id}
@@ -116,58 +120,54 @@ export async function BookingWeek({ weekBegins, assets, bookings }: { weekBegins
                     {item.projectRef ? ` · ${item.projectRef}` : ""}
                   </Link>
                 ))}
-              </div>
-            </div>
+              </TableCell>
+            </TableRow>
           );
         })}
-      </div>
-    </div>
+      </TableBody>
+    </Table>
   );
 }
 
 /** A plain list of bookings, for the pages that are not a grid: my bookings, the keeper's inbox. */
 export async function BookingList({ rows, empty, showAsset = true }: { rows: BookingView[]; empty: string; showAsset?: boolean }) {
   const t = await getTranslations("assets.bookings");
-  if (rows.length === 0) return <p className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">{empty}</p>;
   return (
-    <div className="overflow-x-auto rounded-md border">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
-          <tr>
-            {showAsset ? <th className="p-2 font-medium">{t("columns.asset")}</th> : null}
-            <th className="p-2 font-medium">{t("columns.person")}</th>
-            <th className="p-2 font-medium">{t("columns.window")}</th>
-            <th className="p-2 font-medium">{t("columns.purpose")}</th>
-            <th className="p-2 font-medium">{t("columns.status")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.id} className="border-t">
-              {showAsset ? (
-                <td className="p-2">
-                  <Link href={`/assets/bookings/${row.id}`} className="font-medium hover:underline">
-                    {row.assetCode}
-                  </Link>
-                  <p className="truncate text-xs text-muted-foreground">{row.assetName}</p>
-                </td>
-              ) : null}
-              <td className="p-2">{row.personName}</td>
-              <td className="p-2 whitespace-nowrap text-xs">
-                {formatWindow(row.startAt, row.endAt)}
-              </td>
-              <td className="p-2 text-xs text-muted-foreground">
-                {row.purpose ?? "—"}
-                {row.projectRef ? ` · ${row.projectRef}` : ""}
-              </td>
-              <td className="p-2">
-                <BookingStatusBadge status={row.status} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          {showAsset ? <TableHead kind="text">{t("columns.asset")}</TableHead> : null}
+          <TableHead kind="person">{t("columns.person")}</TableHead>
+          <TableHead kind="date">{t("columns.window")}</TableHead>
+          <TableHead kind="text">{t("columns.purpose")}</TableHead>
+          <TableHead kind="status">{t("columns.status")}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.length === 0 ? <TableEmpty>{empty}</TableEmpty> : null}
+        {rows.map((row) => (
+          <TableRow key={row.id}>
+            {showAsset ? (
+              <TableCell className="max-w-64">
+                <Link href={`/assets/bookings/${row.id}`} className="font-medium hover:underline">
+                  {row.assetCode}
+                </Link>
+                <p className="truncate text-xs text-muted-foreground">{row.assetName}</p>
+              </TableCell>
+            ) : null}
+            <TableCell>{row.personName}</TableCell>
+            <TableCell className="text-xs">{formatWindow(row.startAt, row.endAt)}</TableCell>
+            <TableCell className="max-w-80 truncate text-xs text-muted-foreground">
+              {row.purpose ?? "—"}
+              {row.projectRef ? ` · ${row.projectRef}` : ""}
+            </TableCell>
+            <TableCell>
+              <BookingStatusBadge status={row.status} />
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 

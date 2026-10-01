@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { getPersonTarget, listEmploymentFacts } from "@/modules/core-hr/service";
 import { getBalances, getLedger } from "@/modules/leave/ledger";
@@ -57,53 +58,78 @@ export default async function PersonLedgerPage(props: PageProps<"/leave/admin/ba
           </li>
         ))}
       </ul>
-      {mine.length > 0 ? <AdjustBalanceForm personId={personId} year={year} types={mine.map((row) => ({ id: row.leaveTypeId, name: row.name }))} /> : null}
+      <TableCard>
+        <TableCardHeader title={t("balances.ledger")} count={ledger.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="date">{t("balances.date")}</TableHead>
+              <TableHead kind="id">{t("balances.type")}</TableHead>
+              <TableHead kind="select">{t("balances.movement")}</TableHead>
+              <TableHead kind="number">{t("balances.days")}</TableHead>
+              <TableHead kind="text">{t("balances.reason")}</TableHead>
+              <TableHead kind="person">{t("balances.postedBy")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {ledger.length === 0 ? <TableEmpty>{t("balances.noLedger")}</TableEmpty> : null}
+            {ledger.map((entry) => (
+              <TableRow key={entry.id}>
+                <TableCell>{date(entry.effectiveDate)}</TableCell>
+                <TableCell kind="id">{entry.typeCode}</TableCell>
+                <TableCell>
+                  <Badge variant="secondary">{t(`ledgerKinds.${entry.kind}`)}</Badge>
+                </TableCell>
+                <TableCell kind="number">{days(entry.amountCenti)}</TableCell>
+                <TableCell className="whitespace-normal text-muted-foreground">{entry.reason ?? ""}</TableCell>
+                <TableCell className="text-muted-foreground">{entry.createdByName ?? t("balances.system")}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {mine.length > 0 ? (
+          <TableAddRow label={t("balances.adjust")} open={ledger.length === 0}>
+            <AdjustBalanceForm personId={personId} year={year} types={mine.map((row) => ({ id: row.leaveTypeId, name: row.name }))} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
 
-      <section className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium text-muted-foreground">{t("balances.ledger")}</h3>
-        <div className="overflow-x-auto rounded-xl border">
-          <table className="w-full text-sm">
-            <tbody>
-              {ledger.map((entry) => (
-                <tr key={entry.id} className="border-b last:border-0">
-                  <td className="p-2 whitespace-nowrap">{date(entry.effectiveDate)}</td>
-                  <td className="p-2">{entry.typeCode}</td>
-                  <td className="p-2">
-                    <Badge variant="secondary">{t(`ledgerKinds.${entry.kind}`)}</Badge>
-                  </td>
-                  <td className="p-2 text-right tabular-nums">{days(entry.amountCenti)}</td>
-                  <td className="p-2 text-muted-foreground">{entry.reason ?? ""}</td>
-                  <td className="p-2 text-xs text-muted-foreground">{entry.createdByName ?? t("balances.system")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {ledger.length === 0 ? <p className="text-sm text-muted-foreground">{t("balances.noLedger")}</p> : null}
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium text-muted-foreground">{t("balances.requests")}</h3>
-        <ul className="flex flex-col divide-y rounded-xl border empty:hidden">
-          {requests.map((request) => (
-            <li key={request.id} className="flex flex-wrap items-center gap-3 p-3 text-sm">
-              <span className="min-w-0 flex-1 basis-56">
-                {request.approvalRequestId ? (
-                  <Link href={`/approvals/leave/${request.approvalRequestId}`} className="font-medium hover:underline">
-                    {request.typeName}
-                  </Link>
-                ) : (
-                  request.typeName
-                )}{" "}
-                <span className="text-muted-foreground">
-                  {date(request.startDate)} – {date(request.endDate)} · {tLeave("daysCount", { days: plain(request.totalCenti) })}
-                </span>
-              </span>
-              <Badge variant="outline">{tLeave(`status.${request.status}`)}</Badge>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <TableCard>
+        <TableCardHeader title={t("balances.requests")} count={requests.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{tLeave("request.type")}</TableHead>
+              <TableHead kind="date">{tLeave("request.dates")}</TableHead>
+              <TableHead kind="number">{tLeave("request.cost")}</TableHead>
+              <TableHead kind="status">{tLeave("request.status")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {requests.length === 0 ? <TableEmpty>{tLeave("request.none")}</TableEmpty> : null}
+            {requests.map((request) => (
+              <TableRow key={request.id}>
+                <TableCell>
+                  {request.approvalRequestId ? (
+                    <Link href={`/approvals/leave/${request.approvalRequestId}`} className="font-medium hover:underline">
+                      {request.typeName}
+                    </Link>
+                  ) : (
+                    request.typeName
+                  )}
+                </TableCell>
+                <TableCell>
+                  {date(request.startDate)} – {date(request.endDate)}
+                </TableCell>
+                <TableCell kind="number">{plain(request.totalCenti)}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{tLeave(`status.${request.status}`)}</Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableCard>
     </div>
   );
 }

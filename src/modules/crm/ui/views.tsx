@@ -3,6 +3,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import type { ActivityView } from "../activities";
 import type { TimelineItem } from "../timeline";
@@ -23,13 +24,13 @@ export async function formatters() {
 /** Open follow-ups, soonest first, each with done / move / drop for whoever may change it. */
 export async function FollowUpList({ items, canEdit, people, meId, today, showTarget = true }: { items: ActivityView[]; canEdit: (item: ActivityView) => boolean; people: Person[]; meId: string; today: string; showTarget?: boolean }) {
   const [t, tEnums, f] = await Promise.all([getTranslations("crm.activity"), getTranslations("crm.enums"), formatters()]);
-  if (items.length === 0) return <p className="text-sm text-muted-foreground">{t("noFollowUps")}</p>;
   return (
-    <ul className="flex flex-col divide-y rounded-xl border">
+    <List>
+      {items.length === 0 ? <ListEmpty>{t("noFollowUps")}</ListEmpty> : null}
       {items.map((item) => {
         const overdue = !!item.dueOn && item.dueOn < today;
         return (
-          <li key={item.id} className="p-3 text-sm">
+          <ListItem key={item.id} className="block">
             <details>
               <summary className="flex cursor-pointer flex-wrap items-center gap-2">
                 <Badge variant={overdue ? "destructive" : item.dueOn === today ? "warning" : "outline"}>{f.date(item.dueOn)}</Badge>
@@ -58,21 +59,21 @@ export async function FollowUpList({ items, canEdit, people, meId, today, showTa
                 ) : null}
               </div>
             </details>
-          </li>
+          </ListItem>
         );
       })}
-    </ul>
+    </List>
   );
 }
 
 /** Logged activities, newest first. */
 export async function ActivityList({ items }: { items: ActivityView[] }) {
   const [t, tEnums, f] = await Promise.all([getTranslations("crm.activity"), getTranslations("crm.enums"), formatters()]);
-  if (items.length === 0) return <p className="text-sm text-muted-foreground">{t("none")}</p>;
   return (
-    <ul className="flex flex-col gap-2">
+    <List>
+      {items.length === 0 ? <ListEmpty>{t("none")}</ListEmpty> : null}
       {items.map((item) => (
-        <li key={item.id} className="rounded-lg border p-3 text-sm">
+        <ListItem key={item.id} className="block">
           <p className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">{tEnums(`activityKind.${item.kind as "call"}`)}</Badge>
             <span className="font-medium">{item.subject}</span>
@@ -83,9 +84,9 @@ export async function ActivityList({ items }: { items: ActivityView[] }) {
           </p>
           <RichText text={item.body} className="mt-1 text-muted-foreground" />
           {item.outcome ? <p className="mt-1">{t("outcomeIs", { outcome: item.outcome })}</p> : null}
-        </li>
+        </ListItem>
       ))}
-    </ul>
+    </List>
   );
 }
 

@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
 import { addDays, todayInVietnam } from "@/lib/dates";
@@ -99,56 +100,91 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
         </div>
         <SummaryTiles summary={personMonth.summary} />
         {anomalies.length > 0 ? (
-          <div className="flex flex-col gap-1 rounded-xl border p-3 text-sm">
-            <h3 className="font-medium">{t("months.toFix", { count: anomalies.length })}</h3>
-            <ul className="flex flex-col gap-1">
-              {anomalies.map((item) => {
-                const href = fixHref(item.fix, item.date);
-                return (
-                  <li key={`${item.date}:${item.code}`} className="flex flex-wrap items-center gap-2">
-                    <span className="w-20 text-muted-foreground">{item.date.slice(5).split("-").reverse().join("/")}</span>
-                    <span>{t(`timesheet.anomalies.${item.code}`)}</span>
-                    {href ? (
-                      <Link href={href} className="underline underline-offset-4">
-                        {t(`console.fix.${item.fix}`)}
-                      </Link>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+          <TableCard>
+            <TableCardHeader title={t("months.toFix", { count: anomalies.length })} />
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead kind="date">{t("requests.fields.date")}</TableHead>
+                  <TableHead kind="select">{t("console.columns.kind")}</TableHead>
+                  <TableHead kind="actions" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {anomalies.map((item) => {
+                  const href = fixHref(item.fix, item.date);
+                  return (
+                    <TableRow key={`${item.date}:${item.code}`}>
+                      <TableCell className="text-muted-foreground">{item.date.slice(5).split("-").reverse().join("/")}</TableCell>
+                      <TableCell>{t(`timesheet.anomalies.${item.code}`)}</TableCell>
+                      <TableCell kind="actions">
+                        {href ? (
+                          <Link href={href} className="underline underline-offset-4">
+                            {t(`console.fix.${item.fix}`)}
+                          </Link>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableCard>
         ) : null}
         {requests.length > 0 ? (
-          <div className="flex flex-col gap-1 rounded-xl border p-3 text-sm">
-            <h3 className="font-medium">{t("requests.mine")}</h3>
-            <ul className="flex flex-col gap-1">
-              {requests.map((row) => (
-                <li key={row.id} className="flex flex-wrap items-center gap-2">
-                  <span className="w-20 text-muted-foreground">{row.startDate.slice(5).split("-").reverse().join("/")}</span>
-                  <Link href={row.approvalRequestId ? `/approvals/attendance/${row.approvalRequestId}` : "/approvals"} className="underline-offset-4 hover:underline">
-                    {t(`requests.types.${row.type}`)}
-                  </Link>
-                  <Badge variant="outline">{t(`requests.status.${row.status === "pending" && row.approvalStatus === "returned" ? "returned" : row.status}`)}</Badge>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <TableCard>
+            <TableCardHeader title={t("requests.mine")} count={requests.length} />
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead kind="date">{t("requests.fields.date")}</TableHead>
+                  <TableHead kind="select">{t("requests.fields.type")}</TableHead>
+                  <TableHead kind="status">{t("requests.fields.status")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {requests.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell className="text-muted-foreground">{row.startDate.slice(5).split("-").reverse().join("/")}</TableCell>
+                    <TableCell>
+                      <Link href={row.approvalRequestId ? `/approvals/attendance/${row.approvalRequestId}` : "/approvals"} className="font-medium underline-offset-4 hover:underline">
+                        {t(`requests.types.${row.type}`)}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{t(`requests.status.${row.status === "pending" && row.approvalStatus === "returned" ? "returned" : row.status}`)}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableCard>
         ) : null}
         <p className="text-xs text-muted-foreground">{t("timesheet.tapHint")}</p>
         <MonthDays days={[...personMonth.days].reverse()} />
       </section>
       <section className={subject ? "hidden" : "flex flex-col gap-3"}>
         <h2 className="text-sm font-medium text-muted-foreground">{t("mySchedule")}</h2>
-        <ul className="flex flex-col divide-y rounded-xl border">
-          {(plans?.days ?? []).map((plan) => (
-            <li key={plan.date} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm">
-              <span className="w-40 font-medium">{format.dateTime(new Date(`${plan.date}T00:00:00`), { weekday: "short", day: "numeric", month: "numeric" })}</span>
-              <Badge variant={plan.kind === "working" || plan.kind === "untracked" ? "secondary" : "outline"}>{t(`dayKinds.${plan.kind}`)}</Badge>
-              <span className="text-muted-foreground">{plan.kind === "working" ? `${planHours(plan)} · ${hoursText(plan.requiredMinutes)}` : (plan.name ?? "")}</span>
-            </li>
-          ))}
-        </ul>
+        <Table numbered={false}>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="date">{t("requests.fields.date")}</TableHead>
+              <TableHead kind="select">{t("requests.fields.kind")}</TableHead>
+              <TableHead kind="time" className="text-left">{t("requests.fields.window")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(plans?.days ?? []).map((plan) => (
+              <TableRow key={plan.date}>
+                <TableCell className="font-medium">{format.dateTime(new Date(`${plan.date}T00:00:00`), { weekday: "short", day: "numeric", month: "numeric" })}</TableCell>
+                <TableCell>
+                  <Badge variant={plan.kind === "working" || plan.kind === "untracked" ? "secondary" : "outline"}>{t(`dayKinds.${plan.kind}`)}</Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground">{plan.kind === "working" ? `${planHours(plan)} · ${hoursText(plan.requiredMinutes)}` : (plan.name ?? "")}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </section>
     </div>
   );

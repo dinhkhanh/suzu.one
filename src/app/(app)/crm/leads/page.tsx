@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -52,34 +53,49 @@ export default async function LeadsPage({ searchParams }: PageProps<"/crm/leads"
           {t("filter")}
         </Button>
       </form>
-      {leads.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("leads.empty")}</p>
-      ) : (
-        <ul className="flex flex-col divide-y rounded-xl border">
-          {leads.map((lead) => (
-            <li key={lead.id} className="flex flex-wrap items-center gap-2 p-3 text-sm">
-              <Link href={`/crm/leads/${lead.id}`} className="font-medium hover:underline">
-                {lead.companyName}
-              </Link>
-              <Badge dot variant={statusTone(lead.status === "new" ? "pending" : lead.status === "converted" ? "done" : lead.status === "disqualified" ? "cancelled" : "open")}>
-                {t(`enums.leadStatus.${lead.status as LeadStatus}`)}
-              </Badge>
-              <span className="text-xs text-muted-foreground">{t(`enums.source.${lead.source as "referral"}`)}</span>
-              {lead.need ? <span className="max-w-md truncate text-xs text-muted-foreground">{noteToPlainText(lead.need)}</span> : null}
-              <span className="ml-auto text-xs text-muted-foreground">
-                {lead.ownerName ?? t("leads.unassigned")}
-                {lead.referrerName ? ` · ${t("leads.referredBy", { name: lead.referrerName })}` : ""} · {f.when(lead.createdAt)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-      <details className="rounded-xl border p-4" open={leads.length === 0}>
-        <summary className="cursor-pointer text-sm font-medium">{t("leads.new")}</summary>
-        <div className="pt-3">
+      <TableCard>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("lead.fields.companyName")}</TableHead>
+              <TableHead kind="status">{t("leads.status")}</TableHead>
+              <TableHead kind="select">{t("lead.fields.source")}</TableHead>
+              <TableHead kind="text">{t("lead.fields.need")}</TableHead>
+              <TableHead kind="person">{t("lead.fields.owner")}</TableHead>
+              <TableHead kind="date">{t("leads.columns.createdAt")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {leads.length === 0 ? <TableEmpty>{t("leads.empty")}</TableEmpty> : null}
+            {leads.map((lead) => (
+              <TableRow key={lead.id}>
+                <TableCell>
+                  <Link href={`/crm/leads/${lead.id}`} className="font-medium hover:underline">
+                    {lead.companyName}
+                  </Link>
+                </TableCell>
+                <TableCell>
+                  <Badge dot variant={statusTone(lead.status === "new" ? "pending" : lead.status === "converted" ? "done" : lead.status === "disqualified" ? "cancelled" : "open")}>
+                    {t(`enums.leadStatus.${lead.status as LeadStatus}`)}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{t(`enums.source.${lead.source as "referral"}`)}</Badge>
+                </TableCell>
+                <TableCell className="max-w-xs truncate text-muted-foreground">{lead.need ? noteToPlainText(lead.need) : "—"}</TableCell>
+                <TableCell>
+                  {lead.ownerName ?? t("leads.unassigned")}
+                  {lead.referrerName ? <p className="text-xs text-muted-foreground">{t("leads.referredBy", { name: lead.referrerName })}</p> : null}
+                </TableCell>
+                <TableCell>{f.when(lead.createdAt)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <TableAddRow label={t("leads.new")} open={leads.length === 0}>
           <NewLeadForm entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} accounts={accounts} sellers={people} canAssign={sells(shell.viewer)} />
-        </div>
-      </details>
+        </TableAddRow>
+      </TableCard>
     </div>
   );
 }

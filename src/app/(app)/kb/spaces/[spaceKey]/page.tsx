@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { setSpaceAccessAction } from "@/modules/kb/actions";
 import { parseSubjectKey } from "@/modules/kb/enums";
@@ -61,37 +61,44 @@ export default async function SpacePage(props: PageProps<"/kb/spaces/[spaceKey]"
         {space.kind === "controlled" ? <p className="text-xs text-muted-foreground">{t("space.controlledNote")}</p> : null}
       </header>
 
-      <section className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("space.pagesTitle")}</h2>
-          {atLeast(level, "edit") && !space.archivedAt ? (
-            <Link href={`/kb/spaces/${space.key}/new`} className={buttonVariants({ size: "sm" })}>
-              {t("page.new")}
-            </Link>
-          ) : null}
+      <TableCard>
+        <TableCardHeader title={t("space.pagesTitle")} />
+        <div className="p-3">
+          <PageTree tree={tree} spaceKey={loaded.space.key} />
         </div>
-        <PageTree tree={tree} spaceKey={loaded.space.key} />
-      </section>
+        {atLeast(level, "edit") && !space.archivedAt ? <TableAddRow label={t("page.new")} href={`/kb/spaces/${space.key}/new`} /> : null}
+      </TableCard>
 
       {files.length > 0 ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("space.documentsTitle")}</h2>
-          <p className="text-xs text-muted-foreground">{t("space.documentsHelp")}</p>
-          <ul className="flex flex-col divide-y rounded-md border">
-            {files.map((file) => (
-              <li key={file.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 p-3 text-sm">
-                <KbFileLink fileId={file.id} fileName={file.fileName} className="font-medium underline underline-offset-2">
-                  {file.fileName}
-                </KbFileLink>
-                <span className="text-xs text-muted-foreground">{Math.max(1, Math.round(file.sizeBytes / 1024))} KB</span>
-                <Link href={`/kb/pages/${file.pageId}`} className="min-w-0 truncate text-xs text-link hover:underline">
-                  {file.pageTitle}
-                </Link>
-                {file.uploadedByName ? <span className="ml-auto text-xs text-muted-foreground">{file.uploadedByName}</span> : null}
-              </li>
-            ))}
-          </ul>
-        </section>
+        <TableCard>
+          <TableCardHeader title={t("space.documentsTitle")} count={files.length} description={t("space.documentsHelp")} />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="file">{t("space.fileName")}</TableHead>
+                <TableHead kind="number">{t("space.fileSize")}</TableHead>
+                <TableHead kind="link">{t("review.page")}</TableHead>
+                <TableHead kind="person">{t("space.uploadedBy")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {files.map((file) => (
+                <TableRow key={file.id}>
+                  <TableCell className="max-w-80 truncate">
+                    <KbFileLink fileId={file.id} fileName={file.fileName} className="font-medium underline underline-offset-2">
+                      {file.fileName}
+                    </KbFileLink>
+                  </TableCell>
+                  <TableCell kind="number" className="text-muted-foreground">{Math.max(1, Math.round(file.sizeBytes / 1024))} KB</TableCell>
+                  <TableCell kind="link" className="max-w-64 truncate">
+                    <Link href={`/kb/pages/${file.pageId}`}>{file.pageTitle}</Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{file.uploadedByName ?? "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       ) : null}
 
       {manages && choices ? (

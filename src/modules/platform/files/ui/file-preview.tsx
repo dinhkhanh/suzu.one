@@ -13,7 +13,7 @@ import { useTranslations } from "next-intl";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCard, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ActionResult } from "@/lib/action";
 import { parseCsv } from "../../import/engine/table";
 import { formatBytes, listZipEntries, type PreviewKind, previewKindOf, readsBytes, type ZipEntry } from "../preview";
@@ -230,12 +230,14 @@ function SheetsViewer({ sheets }: { sheets: Sheet[] }) {
       {!sheet || sheet.rows.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">{t("sheetEmpty")}</p>
       ) : (
-        <div className="max-h-[72dvh] overflow-auto rounded-md border">
+        <TableCard className="max-h-[72dvh] overflow-auto">
           <Table>
             <TableHeader className="sticky top-0 bg-background">
               <TableRow>
                 {sheet.rows[0].map((cell, index) => (
-                  <TableHead key={index}>{cell}</TableHead>
+                  <TableHead key={index} kind="text">
+                    {cell}
+                  </TableHead>
                 ))}
               </TableRow>
             </TableHeader>
@@ -251,7 +253,7 @@ function SheetsViewer({ sheets }: { sheets: Sheet[] }) {
               ))}
             </TableBody>
           </Table>
-        </div>
+        </TableCard>
       )}
       {sheet && sheet.total > sheet.rows.length ? <p className="text-xs text-muted-foreground">{t("rowsCut", { shown: sheet.rows.length, total: sheet.total })}</p> : null}
     </div>
@@ -266,18 +268,24 @@ function ArchiveViewer({ entries }: { entries: ZipEntry[] | null }) {
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs text-muted-foreground">{t("archiveEntries", { count: files.length })}</p>
-      <div className="max-h-[72dvh] overflow-auto rounded-md border">
+      <TableCard className="max-h-[72dvh] overflow-auto">
         <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="file">{t("columns.name")}</TableHead>
+              <TableHead kind="number">{t("columns.size")}</TableHead>
+            </TableRow>
+          </TableHeader>
           <TableBody>
             {files.map((entry) => (
               <TableRow key={entry.name}>
                 <TableCell className="font-mono text-xs break-all whitespace-normal">{entry.name}</TableCell>
-                <TableCell className="text-right text-xs text-muted-foreground tabular-nums">{formatBytes(entry.sizeBytes)}</TableCell>
+                <TableCell kind="number" className="text-xs text-muted-foreground">{formatBytes(entry.sizeBytes)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      </div>
+      </TableCard>
     </div>
   );
 }

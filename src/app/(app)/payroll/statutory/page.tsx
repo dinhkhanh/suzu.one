@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { listEntityOptions } from "@/modules/payroll/options";
@@ -56,40 +56,37 @@ export default async function StatutoryExportsPage({ searchParams }: PageProps<"
       <StatutoryFilters entities={entities} entityId={entityId} year={year} month={month} />
 
       {/* ── Insurance increase / decrease, form D02-LT ── */}
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-medium">{t("d02lt.title")}</h2>
-            <p className="text-sm text-muted-foreground">{insurance ? t("d02lt.summary", { count: insurance.rows.length, month }) : t("noData")}</p>
-          </div>
-          {insurance && insurance.rows.length > 0 ? <StatutoryExportButton kind="d02lt" entityId={entityId} period={month} label={t("download")} /> : null}
-        </div>
-        {insurance && insurance.rows.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("person")}</TableHead>
-                <TableHead>{t("d02lt.change")}</TableHead>
-                <TableHead className="text-right">{t("d02lt.previousBase")}</TableHead>
-                <TableHead className="text-right">{t("d02lt.newBase")}</TableHead>
+      <TableCard>
+        <TableCardHeader
+          title={t("d02lt.title")}
+          description={insurance ? t("d02lt.summary", { count: insurance.rows.length, month }) : undefined}
+          actions={insurance && insurance.rows.length > 0 ? <StatutoryExportButton kind="d02lt" entityId={entityId} period={month} label={t("download")} /> : undefined}
+        />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="person">{t("person")}</TableHead>
+              <TableHead kind="select">{t("d02lt.change")}</TableHead>
+              <TableHead kind="money">{t("d02lt.previousBase")}</TableHead>
+              <TableHead kind="money">{t("d02lt.newBase")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {!insurance || insurance.rows.length === 0 ? <TableEmpty>{t("noData")}</TableEmpty> : null}
+            {(insurance?.rows ?? []).map((row) => (
+              <TableRow key={`${row.employeeCode}-${row.reason}`}>
+                <TableCell>
+                  {row.fullName}
+                  <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
+                </TableCell>
+                <TableCell>{t(`d02lt.reasons.${row.reason}`)}</TableCell>
+                <TableCell kind="money">{formatVnd(row.previousBase)}</TableCell>
+                <TableCell kind="money">{formatVnd(row.newBase)}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {insurance.rows.map((row) => (
-                <TableRow key={`${row.employeeCode}-${row.reason}`}>
-                  <TableCell>
-                    {row.fullName}
-                    <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
-                  </TableCell>
-                  <TableCell className="text-sm">{t(`d02lt.reasons.${row.reason}`)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(row.previousBase)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(row.newBase)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : null}
-      </section>
+            ))}
+          </TableBody>
+        </Table>
+      </TableCard>
 
       {/* ── Monthly / quarterly PIT declaration, form 05/KK-TNCN ── */}
       <section className="flex flex-col gap-3">
@@ -111,55 +108,54 @@ export default async function StatutoryExportsPage({ searchParams }: PageProps<"
       </section>
 
       {/* ── Annual finalization, 05/QTT-TNCN with its two appendices ── */}
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-medium">{t("finalization.title", { year })}</h2>
-            <p className="text-sm text-muted-foreground">
-              {finalization
-                ? t("finalization.summary", {
-                    count: finalization.rows.length,
-                    withheld: formatVnd(finalization.rows.reduce((total, row) => total + row.taxWithheld, 0)),
-                    imported: finalization.rows.filter((row) => row.hasImportedPeriod).length,
-                  })
-                : t("noData")}
-            </p>
-          </div>
-          {finalization ? (
-            <div className="flex flex-wrap gap-2">
-              <StatutoryExportButton kind="pit_finalization" entityId={entityId} period={year} label={t("finalization.download")} />
-              <StatutoryExportButton kind="pit_finalization_appendix1" entityId={entityId} period={year} label={t("finalization.appendix1")} />
-              <StatutoryExportButton kind="pit_finalization_appendix2" entityId={entityId} period={year} label={t("finalization.appendix2")} />
-            </div>
-          ) : null}
-        </div>
-        {finalization && finalization.rows.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("person")}</TableHead>
-                <TableHead className="text-right">{t("finalization.taxableIncome")}</TableHead>
-                <TableHead className="text-right">{t("finalization.withheld")}</TableHead>
-                <TableHead className="text-right">{t("finalization.due")}</TableHead>
+      <TableCard>
+        <TableCardHeader
+          title={t("finalization.title", { year })}
+          description={
+            finalization
+              ? t("finalization.summary", {
+                  count: finalization.rows.length,
+                  withheld: formatVnd(finalization.rows.reduce((total, row) => total + row.taxWithheld, 0)),
+                  imported: finalization.rows.filter((row) => row.hasImportedPeriod).length,
+                })
+              : undefined
+          }
+          actions={
+            finalization ? (
+              <>
+                <StatutoryExportButton kind="pit_finalization" entityId={entityId} period={year} label={t("finalization.download")} />
+                <StatutoryExportButton kind="pit_finalization_appendix1" entityId={entityId} period={year} label={t("finalization.appendix1")} />
+                <StatutoryExportButton kind="pit_finalization_appendix2" entityId={entityId} period={year} label={t("finalization.appendix2")} />
+              </>
+            ) : undefined
+          }
+        />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="person">{t("person")}</TableHead>
+              <TableHead kind="money">{t("finalization.taxableIncome")}</TableHead>
+              <TableHead kind="money">{t("finalization.withheld")}</TableHead>
+              <TableHead kind="money">{t("finalization.due")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {!finalization || finalization.rows.length === 0 ? <TableEmpty>{t("noData")}</TableEmpty> : null}
+            {(finalization?.rows ?? []).map((row) => (
+              <TableRow key={row.personId}>
+                <TableCell>
+                  {row.fullName}
+                  <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
+                  {row.hasImportedPeriod ? <span className="ml-2 text-xs text-muted-foreground">{t("finalization.importedMark")}</span> : null}
+                </TableCell>
+                <TableCell kind="money">{formatVnd(row.taxableIncome)}</TableCell>
+                <TableCell kind="money">{formatVnd(row.taxWithheld)}</TableCell>
+                <TableCell kind="money">{formatVnd(row.taxDue)}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {finalization.rows.map((row) => (
-                <TableRow key={row.personId}>
-                  <TableCell>
-                    {row.fullName}
-                    <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
-                    {row.hasImportedPeriod ? <span className="ml-2 text-xs text-muted-foreground">{t("finalization.importedMark")}</span> : null}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(row.taxableIncome)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(row.taxWithheld)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatVnd(row.taxDue)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : null}
-      </section>
+            ))}
+          </TableBody>
+        </Table>
+      </TableCard>
 
       {/* ── Dependants register, form 07/ĐK-NPT-TNCN ── */}
       <section className="flex flex-col gap-3">

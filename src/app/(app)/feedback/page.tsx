@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
+import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { canOpenFeedbackInbox } from "@/modules/feedback/policy";
 import { listMyFeedback } from "@/modules/feedback/service";
 import { FeedbackForm } from "@/modules/feedback/ui/feedback-form";
@@ -27,14 +28,13 @@ export default async function FeedbackPage() {
           </Link>
         ) : null}
       </header>
-      <section className="flex flex-col gap-3 rounded-xl border p-4 sm:p-5">
-        <h2 className="text-sm font-medium">{t("page.send")}</h2>
-        <FeedbackForm pagePath={null} />
-      </section>
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium">{t("page.mine")}</h2>
+      <TableCard>
+        <TableCardHeader title={t("page.mine")} count={mine.length || null} />
         <FeedbackList items={mine} showPerson={false} empty={t("page.mineEmpty")} />
-      </section>
+        <TableAddRow label={t("page.send")} open={mine.length === 0}>
+          <FeedbackForm pagePath={null} />
+        </TableAddRow>
+      </TableCard>
     </div>
   );
 }

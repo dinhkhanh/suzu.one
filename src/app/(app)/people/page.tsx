@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PERSON_STATUSES, WORKFORCE_TYPES } from "@/modules/core-hr/enums";
 import { canBrowsePeople, canFilterByPersonalFacts } from "@/modules/core-hr/policy";
 import { listPeople, listSavedViews, type PeopleFilters, peopleModuleOpen } from "@/modules/core-hr/service";
@@ -133,29 +133,24 @@ export default async function PeoplePage(props: PageProps<"/people">) {
 
       <SavedViews views={views.map(({ id, name, filters }) => ({ id, name, filters }))} currentFilters={activeFilters} />
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t("fields.employeeCode")}</TableHead>
-            <TableHead>{t("fields.fullName")}</TableHead>
-            <TableHead>{t("fields.position")}</TableHead>
-            <TableHead>{t("fields.department")}</TableHead>
-            <TableHead>{t("fields.entity")}</TableHead>
-            <TableHead>{t("fields.managerId")}</TableHead>
-            {personalFacts ? <TableHead>{t("fields.workforceType")}</TableHead> : null}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.length === 0 ? (
+      <TableCard>
+        <Table numberFrom={(page - 1) * pageSize + 1}>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={personalFacts ? 7 : 6} className="text-muted-foreground">
-                {t("empty")}
-              </TableCell>
+              <TableHead kind="id">{t("fields.employeeCode")}</TableHead>
+              <TableHead kind="text">{t("fields.fullName")}</TableHead>
+              <TableHead kind="text">{t("fields.position")}</TableHead>
+              <TableHead kind="org">{t("fields.department")}</TableHead>
+              <TableHead kind="org">{t("fields.entity")}</TableHead>
+              <TableHead kind="person">{t("fields.managerId")}</TableHead>
+              {personalFacts ? <TableHead kind="select">{t("fields.workforceType")}</TableHead> : null}
             </TableRow>
-          ) : (
-            rows.map((row) => (
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
+            {rows.map((row) => (
               <TableRow key={row.id}>
-                <TableCell className="font-mono text-xs">{row.employeeCode ?? "—"}</TableCell>
+                <TableCell kind="id">{row.employeeCode ?? "—"}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2.5">
                     <PersonAvatar person={row} />
@@ -180,10 +175,11 @@ export default async function PeoplePage(props: PageProps<"/people">) {
                   </TableCell>
                 ) : null}
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ))}
+          </TableBody>
+        </Table>
+        {can(user.principal, "person:manage") ? <TableAddRow label={t("hire.title")} href="/people/new" /> : null}
+      </TableCard>
 
       {pageCount > 1 ? (
         <nav className="flex items-center gap-2 text-sm">

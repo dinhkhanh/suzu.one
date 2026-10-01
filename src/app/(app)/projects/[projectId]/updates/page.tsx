@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { StatusDraftButton } from "@/modules/ai/ui/draft-button";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -42,12 +44,12 @@ export default async function ProjectUpdatesPage({ params }: PageProps<"/project
         {can.postStatus ? <StatusUpdateForm projectId={project.id} healths={HEALTHS} draft={<StatusDraftButton projectId={project.id} targetId="summary" healthTargetId="status-health-draft" />} /> : null}
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-base font-medium">{t("updates.history")}</h2>
-        {updates.length === 0 ? <p className="text-sm text-muted-foreground">{t("updates.none")}</p> : null}
-        <ol className="flex flex-col gap-4">
+      <TableCard>
+        <TableCardHeader title={t("updates.history")} count={updates.length || null} />
+        <List>
+          {updates.length === 0 ? <ListEmpty>{t("updates.none")}</ListEmpty> : null}
           {updates.map((update) => (
-            <li key={update.id} className="flex flex-col gap-2 rounded-xl border p-4">
+            <ListItem key={update.id} className="flex-col items-stretch gap-2 py-4">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={healthVariant(update.health)}>{t(`health.${update.health as "on_track"}`)}</Badge>
                 <span className="text-sm text-muted-foreground">{[update.authorName, format.dateTime(update.createdAt, { dateStyle: "medium", timeStyle: "short" })].filter(Boolean).join(" · ")}</span>
@@ -71,10 +73,10 @@ export default async function ProjectUpdatesPage({ params }: PageProps<"/project
                   <Facts facts={update.facts} />
                 </div>
               </details>
-            </li>
+            </ListItem>
           ))}
-        </ol>
-      </section>
+        </List>
+      </TableCard>
     </div>
   );
 }

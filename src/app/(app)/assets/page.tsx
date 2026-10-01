@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { TableAddRow, TableCard } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { type AssetStatus, ASSET_STATUSES, canManageAssets, canReadAssetMoney, canReadRegister, listAssets, listCategories, summaryByStatus } from "@/modules/assets/service";
@@ -67,7 +68,10 @@ export default async function AssetsPage({ searchParams }: PageProps<"/assets">)
 
       <p className="text-sm text-muted-foreground">{t("totals", totals)}</p>
       <RegisterFilterBar query={filter} entities={entities} categories={categories} />
-      <RegisterTable rows={rows} showMoney={showMoney} />
+      <TableCard>
+        <RegisterTable rows={rows} showMoney={showMoney} />
+        {canManageAssets(user.principal) ? <TableAddRow label={t("nav.new")} href="/assets/new" /> : null}
+      </TableCard>
     </div>
   );
 }

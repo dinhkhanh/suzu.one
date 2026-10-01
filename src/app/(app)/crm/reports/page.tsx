@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -71,55 +71,54 @@ export default async function SalesReportsPage({ searchParams }: PageProps<"/crm
             {tile(t("reports.cycle"), dashboard.averageCycleDays === null ? "—" : t("reports.days", { days: dashboard.averageCycleDays }))}
             {tile(t("reports.stale"), String(dashboard.staleCount))}
           </section>
-          <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-medium">{t("reports.byStage")}</h2>
-            <Table>
+          <TableCard>
+            <TableCardHeader title={t("reports.byStage")} />
+            <Table numbered={false}>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("deals.columns.stage")}</TableHead>
-                  <TableHead className="text-right">{t("deals.columns.count")}</TableHead>
-                  <TableHead className="text-right">{t("deals.columns.value")}</TableHead>
-                  <TableHead className="text-right">{t("deals.columns.weighted")}</TableHead>
+                  <TableHead kind="status">{t("deals.columns.stage")}</TableHead>
+                  <TableHead kind="number">{t("deals.columns.count")}</TableHead>
+                  <TableHead kind="money">{t("deals.columns.value")}</TableHead>
+                  <TableHead kind="money">{t("deals.columns.weighted")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {dashboard.byStage.map((row) => (
                   <TableRow key={row.stageId}>
                     <TableCell>{stageName(row, locale)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{row.count}</TableCell>
-                    <TableCell className="text-right tabular-nums">{f.money(row.value)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{f.money(row.weighted)}</TableCell>
+                    <TableCell kind="number">{row.count}</TableCell>
+                    <TableCell kind="money">{f.money(row.value)}</TableCell>
+                    <TableCell kind="money">{f.money(row.weighted)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </section>
+          </TableCard>
           <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-medium">{t("reports.byMonth")}</h2>
-            {dashboard.byMonth.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t("reports.noClosed")}</p>
-            ) : (
-              <Table>
+            <TableCard>
+              <TableCardHeader title={t("reports.byMonth")} />
+              <Table numbered={false}>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t("reports.month")}</TableHead>
-                    <TableHead className="text-right">{t("reports.won")}</TableHead>
-                    <TableHead className="text-right">{t("reports.wonValue")}</TableHead>
-                    <TableHead className="text-right">{t("reports.lost")}</TableHead>
+                    <TableHead kind="date">{t("reports.month")}</TableHead>
+                    <TableHead kind="number">{t("reports.won")}</TableHead>
+                    <TableHead kind="money">{t("reports.wonValue")}</TableHead>
+                    <TableHead kind="number">{t("reports.lost")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {dashboard.byMonth.length === 0 ? <TableEmpty>{t("reports.noClosed")}</TableEmpty> : null}
                   {dashboard.byMonth.map((row) => (
                     <TableRow key={row.month}>
                       <TableCell>{row.month}</TableCell>
-                      <TableCell className="text-right tabular-nums">{row.wonCount}</TableCell>
-                      <TableCell className="text-right tabular-nums">{f.money(row.wonValue)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{row.lostCount}</TableCell>
+                      <TableCell kind="number">{row.wonCount}</TableCell>
+                      <TableCell kind="money">{f.money(row.wonValue)}</TableCell>
+                      <TableCell kind="number">{row.lostCount}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            )}
+            </TableCard>
             {dashboard.lostReasons.length ? <p className="text-sm text-muted-foreground">{t("reports.lostReasons", { reasons: dashboard.lostReasons.map((row) => `${t(`enums.lostReason.${row.reason as "price"}`)} ${row.count}`).join(" · ") })}</p> : null}
           </section>
         </>
@@ -128,27 +127,27 @@ export default async function SalesReportsPage({ searchParams }: PageProps<"/crm
       )}
 
       {outlook ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium">{t("reports.outlook")}</h2>
-          <Table>
+        <TableCard>
+          <TableCardHeader title={t("reports.outlook")} />
+          <Table numbered={false}>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("reports.month")}</TableHead>
-                <TableHead className="text-right">{t("reports.contracted")}</TableHead>
-                <TableHead className="text-right">{t("reports.weightedPipeline")}</TableHead>
+                <TableHead kind="date">{t("reports.month")}</TableHead>
+                <TableHead kind="money">{t("reports.contracted")}</TableHead>
+                <TableHead kind="money">{t("reports.weightedPipeline")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {outlook.map((row) => (
                 <TableRow key={row.month}>
                   <TableCell>{row.month}</TableCell>
-                  <TableCell className="text-right tabular-nums">{f.money(row.contracted)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{f.money(row.weighted)}</TableCell>
+                  <TableCell kind="money">{f.money(row.contracted)}</TableCell>
+                  <TableCell kind="money">{f.money(row.weighted)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </section>
+        </TableCard>
       ) : null}
 
       {aging ? (

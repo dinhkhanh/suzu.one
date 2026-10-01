@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListItem } from "@/components/ui/list";
+import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { can } from "@/modules/platform/rbac/policy";
@@ -66,26 +68,28 @@ export default async function RulesPage() {
       </header>
 
       {proposals.length > 0 ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("pending")}</h2>
-          {proposals.map((proposal) => (
-            <div key={proposal.id} className="flex flex-col gap-3 rounded-xl border border-dashed p-4">
-              <p className="text-sm font-medium">{label(proposal.key)}</p>
-              {meta(proposal)}
-              <ValueTable value={proposal.value} format={format} />
-              {canDecide ? <DecisionButtons id={proposal.id} decisions={["approve", "reject"]} /> : null}
-            </div>
-          ))}
-        </section>
+        <TableCard>
+          <TableCardHeader title={t("pending")} count={proposals.length} />
+          <List>
+            {proposals.map((proposal) => (
+              <ListItem key={proposal.id} className="flex-col items-stretch gap-3 py-4">
+                <p className="text-sm font-medium">{label(proposal.key)}</p>
+                {meta(proposal)}
+                <ValueTable value={proposal.value} format={format} />
+                {canDecide ? <DecisionButtons id={proposal.id} decisions={["approve", "reject"]} /> : null}
+              </ListItem>
+            ))}
+          </List>
+        </TableCard>
       ) : null}
 
-      <ul className="flex flex-col gap-3">
+      <List>
         {PARAMETER_KEYS.map((key) => {
           const all = (byKey.get(key) ?? []).filter((version) => version.status === "approved");
           const inForce = versionOn(all, today);
           const others = all.filter((version) => version.id !== inForce?.id);
           return (
-            <li key={key} className="flex flex-col gap-2 rounded-xl border p-4">
+            <ListItem key={key} className="flex-col items-stretch gap-2 py-4">
               <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
                 {label(key)}
                 <span className="font-mono text-xs font-normal text-muted-foreground">{key}</span>
@@ -113,10 +117,10 @@ export default async function RulesPage() {
                   </div>
                 </details>
               ) : null}
-            </li>
+            </ListItem>
           );
         })}
-      </ul>
+      </List>
 
       {canPropose ? <ProposeParameterForm current={current} /> : null}
     </div>

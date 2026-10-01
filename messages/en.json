@@ -1632,7 +1632,8 @@
         "upcoming": "Upcoming",
         "ended": "Ended",
         "revoked": "Ended early"
-      }
+      },
+      "delegator": "Delegated by"
     },
     "flows": {
       "title": "Approval flows",
@@ -1690,7 +1691,8 @@
         "flow_no_unconditional_step": "At least one step must apply to every request, or some requests would be approved by nobody.",
         "flow_bad_level": "Manager level must be between 1 and 6.",
         "flow_person_unknown": "A named approver is not an active person."
-      }
+      },
+      "steps": "Steps"
     },
     "deepLink": {
       "title": "Approve",
@@ -1829,7 +1831,29 @@
     "openTriage": "Open the triage queue",
     "blockerFrom": "{name} is blocked: {reason}",
     "flagged": "Blocked: {reason}",
-    "toRecordClient": "Record client decision"
+    "toRecordClient": "Record client decision",
+    "columns": {
+      "task": "Task",
+      "about": "About",
+      "assignee": "Assignee",
+      "due": "Due",
+      "status": "Status",
+      "key": "Key",
+      "title": "Title",
+      "project": "Project",
+      "stage": "Stage",
+      "submittedBy": "Submitted by",
+      "version": "Version",
+      "step": "Your step",
+      "raisedBy": "Raised by",
+      "reason": "Reason",
+      "created": "Created",
+      "request": "Request",
+      "requester": "Requester",
+      "state": "State",
+      "flags": "Flags",
+      "lastDay": "Last day"
+    }
   },
   "checklists": {
     "title": "Onboarding & offboarding",
@@ -1926,6 +1950,9 @@
       "remove": "Remove checklist",
       "add": "Add a checklist…",
       "retired": "Checklist not in use"
+    },
+    "columns": {
+      "due": "Due"
     }
   },
   "forms": {
@@ -2444,7 +2471,8 @@
         "clientRounds": "Client rounds",
         "returnedHandoffs": "Returned hand-offs",
         "handoffWaitHours": "Hand-off wait (h, mean)",
-        "blockedHours": "Hours blocked"
+        "blockedHours": "Hours blocked",
+        "project": "Project"
       }
     },
     "profitability": {
@@ -2612,7 +2640,8 @@
           "active": "In force",
           "upcoming": "Upcoming",
           "ended": "Ended"
-        }
+        },
+        "status": "Status"
       },
       "shifts": {
         "title": "Shifts",
@@ -2746,6 +2775,12 @@
         "punch_blocked": "Check-in is only allowed at a work location:",
         "punch_already_in": "You are already checked in today. Check out first.",
         "punch_not_employed": "Check-in is for active employees with an entity."
+      },
+      "columns": {
+        "time": "Time",
+        "direction": "In / out",
+        "location": "Location",
+        "review": "Review"
       }
     },
     "today": {
@@ -2764,6 +2799,12 @@
         "rest": "Rest day",
         "holiday": "Day off",
         "unscheduled": "No schedule"
+      },
+      "columns": {
+        "person": "Person",
+        "status": "Status",
+        "times": "In → out",
+        "department": "Department"
       }
     },
     "review": {
@@ -2855,7 +2896,8 @@
         "bulkTitle": "Map many at once by employee code",
         "bulkHint": "One per line: ID on the clock, employee code. Nothing is saved unless every line is right.",
         "bulkSave": "Map all",
-        "line": "Line {line}"
+        "line": "Line {line}",
+        "add": "Map an ID"
       },
       "import": {
         "description": "Upload the raw export of a clock. You see every problem and what will be written before anything is saved.",
@@ -2875,7 +2917,14 @@
           "committed": "Written"
         },
         "result": "{punches} new · {skipped} skipped · {unmapped} waiting",
-        "rows": "{count, plural, one {# row} other {# rows}}"
+        "rows": "{count, plural, one {# row} other {# rows}}",
+        "columns": {
+          "at": "Imported",
+          "file": "File",
+          "status": "Status",
+          "result": "Result",
+          "by": "By"
+        }
       },
       "errors": {
         "generic": "Could not save. Please try again.",
@@ -3129,7 +3178,9 @@
         "window": "Hours",
         "compensation": "Compensation",
         "reason": "Reason",
-        "capUsed": "Monthly limit"
+        "capUsed": "Monthly limit",
+        "type": "Request",
+        "status": "Status"
       },
       "confirmHours": {
         "title": "Confirm the hours worked",
@@ -3287,6 +3338,10 @@
           "otHolidayMinutes": "OT holiday (min)",
           "otHolidayNightMinutes": "OT holiday night (min)"
         }
+      },
+      "columns": {
+        "status": "Status",
+        "summary": "Summary"
       }
     },
     "console": {
@@ -3330,6 +3385,12 @@
         "timesheets": "Timesheets",
         "schedule": "Schedules",
         "none": "Open the day"
+      },
+      "columns": {
+        "kind": "Kind",
+        "subject": "Person",
+        "date": "Date",
+        "amount": "Amount"
       }
     }
   },
@@ -3379,7 +3440,8 @@
       "dates": "Dates",
       "cost": "Leave days",
       "countedDays": "Days counted",
-      "balanceNow": "Balance now"
+      "balanceNow": "Balance now",
+      "status": "Status"
     },
     "portions": {
       "full": "Whole day",
@@ -3402,7 +3464,8 @@
       "person": "Person",
       "away": "Away",
       "nonWorking": "Not a working day",
-      "list": "Away this month"
+      "list": "Away this month",
+      "noneAway": "Nobody is away this month."
     },
     "errors": {
       "generic": "That did not work. Please try again.",
@@ -3534,7 +3597,8 @@
         "prorate": "Pro-rata for joiners and leavers",
         "payoutOnTermination": "Pay out unused days on termination",
         "seniorityShort": "seniority",
-        "carryShort": "carry-over {cap}, lapses {expiry}"
+        "carryShort": "carry-over {cap}, lapses {expiry}",
+        "add": "Add a policy version"
       },
       "accrual": {
         "none": "No accrual (postings only)",
@@ -3569,7 +3633,11 @@
         "noLedger": "No movements this year.",
         "system": "System",
         "requests": "Requests",
-        "fileFor": "File leave for this person"
+        "fileFor": "File leave for this person",
+        "date": "Date",
+        "movement": "Movement",
+        "postedBy": "Posted by",
+        "noPeople": "Nobody to show."
       },
       "ledgerKinds": {
         "opening": "Opening",
@@ -3720,7 +3788,8 @@
       "person": "Person",
       "pickPerson": "Pick a person…",
       "add": "Add",
-      "narrowed": "The list holds only the people you may add: those in this team's entity and department. For anyone else, ask whoever manages work where they sit."
+      "narrowed": "The list holds only the people you may add: those in this team's entity and department. For anyone else, ask whoever manages work where they sit.",
+      "addMember": "Add a member"
     },
     "states": {
       "title": "Workflow",
@@ -3792,7 +3861,8 @@
         "saving": "Uploading…",
         "hint": "JPG, PNG or WebP. Resized before upload; lists show it as a square."
       },
-      "teamColor": "The team's colour"
+      "teamColor": "The team's colour",
+      "openTasks": "Open tasks"
     },
     "clients": {
       "title": "Clients and brands",
@@ -3984,7 +4054,10 @@
       "checklistRemove": "Remove checklist",
       "checklistMissing": "This stage requires “{name}”, which the task does not have yet.",
       "checklistAddThis": "Add it",
-      "checklistFromLibrary": "Add from the library…"
+      "checklistFromLibrary": "Add from the library…",
+      "dependencyAdd": "Add a dependency",
+      "noSubtasks": "No sub-tasks.",
+      "noDependencies": "No dependencies."
     },
     "palette": {
       "title": "Command palette",
@@ -4259,7 +4332,14 @@
         "file_content_mismatch": "The file's content does not match its type.",
         "file_not_found": "File not found."
       },
-      "byAutomation": "Automation"
+      "byAutomation": "Automation",
+      "noFiles": "No files yet.",
+      "columns": {
+        "file": "File",
+        "size": "Size",
+        "uploadedBy": "Uploaded by",
+        "added": "Added"
+      }
     },
     "review": {
       "title": "Review",
@@ -4430,6 +4510,11 @@
         "recurrence_not_found": "Not found.",
         "project_not_found": "Project not found.",
         "project_archived": "This project is archived."
+      },
+      "columns": {
+        "made": "Created",
+        "next": "Next",
+        "status": "Status"
       }
     },
     "leader": {
@@ -4462,7 +4547,11 @@
         "task_not_found": "Task not found."
       },
       "flagged": "{count} blocked",
-      "flaggedReason": "blocked: {reason}"
+      "flaggedReason": "blocked: {reason}",
+      "columns": {
+        "relation": "Your part",
+        "risk": "Risk"
+      }
     },
     "workload": {
       "title": "Workload",
@@ -4535,7 +4624,8 @@
         "entity": "People of this team's company",
         "group": "Anyone in the group"
       },
-      "checklists": "Checklists every request starts with"
+      "checklists": "Checklists every request starts with",
+      "sentOn": "Sent"
     },
     "customFields": {
       "title": "Custom fields",
@@ -4981,7 +5071,13 @@
       "noPast": "No cycle has ended yet.",
       "planned": "{count} planned",
       "done": "{count} done",
-      "rolled": "{count} rolled over"
+      "rolled": "{count} rolled over",
+      "columns": {
+        "dates": "Dates",
+        "planned": "Planned",
+        "done": "Done",
+        "rolled": "Rolled over"
+      }
     },
     "chains": {
       "title": "Review chains",
@@ -5122,7 +5218,9 @@
       "note": "Note",
       "save": "Record delivery",
       "cancel": "Cancel",
-      "deliver": "Deliver to client"
+      "deliver": "Deliver to client",
+      "recordedBy": "Recorded by",
+      "none": "Nothing delivered yet."
     },
     "publish": {
       "title": "Publish log",
@@ -5338,6 +5436,12 @@
           "notify": "tell {person}: “{text}”",
           "comment": "comment: “{text}”"
         }
+      },
+      "columns": {
+        "outcome": "Outcome",
+        "rule": "Rule",
+        "task": "Task",
+        "ranAt": "Ran at"
       }
     },
     "preview": {
@@ -5381,6 +5485,15 @@
         "decided": "Answered",
         "expired": "Expired",
         "revoked": "Revoked"
+      },
+      "none": "No review links yet.",
+      "columns": {
+        "state": "Status",
+        "createdBy": "Created by",
+        "created": "Created",
+        "expires": "Expires",
+        "views": "Views",
+        "lastViewed": "Last opened"
       }
     },
     "archive": {
@@ -5924,7 +6037,8 @@
       "spread": "{min} · {median} · {max}",
       "noDepartment": "(no department)",
       "hint": "Closed month: stored scores. Open month: provisional scores over what has been entered. * = closed with actuals missing.",
-      "goalsTitle": "Group and entity goals {year}"
+      "goalsTitle": "Group and entity goals {year}",
+      "unit": "Unit"
     },
     "admin": {
       "title": "KPI administration",
@@ -5995,7 +6109,9 @@
       "from": "From month",
       "add": "Assign KPI",
       "lastMonth": "Last month",
-      "end": "End after this month"
+      "end": "End after this month",
+      "kpisNow": "KPIs this month",
+      "noPeople": "Nobody in your scope."
     },
     "periods": {
       "description": "Closing a month computes and stores the score of everyone in the entity. Stored scores do not change; a reopen (group HR, with a reason) keeps the old scores as superseded and the next close writes a new revision.",
@@ -6237,7 +6353,8 @@
           "calibration": "Move to calibration",
           "released": "Mark released",
           "closed": "Close cycle"
-        }
+        },
+        "noParticipants": "Nobody is in this cycle yet."
       },
       "errors": {
         "generic": "That did not work. Try again.",
@@ -6334,6 +6451,15 @@
         "attendanceAbsent": "{count} days absent",
         "attendanceLeave": "{days} days of paid leave",
         "none": "No data."
+      },
+      "columns": {
+        "person": "Person",
+        "cycle": "Cycle",
+        "stage": "Stage",
+        "template": "Template",
+        "questions": "Questions",
+        "scale": "Rating scale",
+        "status": "Status"
       }
     },
     "results": {
@@ -6542,6 +6668,9 @@
         "result_not_locked": "The year's result is not settled yet.",
         "salary_terms_required": "A proposed salary and an effective date are required.",
         "salary_change_open": "This person already has a salary change waiting."
+      },
+      "columns": {
+        "status": "Status"
       }
     },
     "workMetrics": {
@@ -6627,7 +6756,10 @@
       "restore": "Restore space",
       "archived": "Archived",
       "archiveConfirm": "Archive this space? Readers will no longer see it; its content is kept.",
-      "keyHint": "Lower-case letters, digits and hyphens. Old links keep leading here after the key changes."
+      "keyHint": "Lower-case letters, digits and hyphens. Old links keep leading here after the key changes.",
+      "fileName": "File",
+      "fileSize": "Size",
+      "uploadedBy": "Uploaded by"
     },
     "page": {
       "new": "New page",
@@ -6744,7 +6876,10 @@
       "restoreConfirm": "Copy version {n} into the draft? The published version stays until you publish again.",
       "comparing": "Comparing {from} → {to}",
       "noChanges": "The content did not change.",
-      "notFound": "No such versions to compare."
+      "notFound": "No such versions to compare.",
+      "note": "Change note",
+      "author": "Author",
+      "savedAt": "Saved"
     },
     "errors": {
       "generic": "That did not work. Please try again.",
@@ -7149,7 +7284,8 @@
         "up": "Increase",
         "down": "Decrease",
         "same": "No change to base salary"
-      }
+      },
+      "request": "Request"
     },
     "profiles": {
       "title": "Pay profile",
@@ -7200,7 +7336,8 @@
       },
       "proposalsTitle": "Pay profile proposals",
       "proposalsDescription": "Moving a person between the Statutory and Simple profiles is a lifecycle event and takes effect only with the owner's approval.",
-      "noProposals": "Nothing is waiting."
+      "noProposals": "Nothing is waiting.",
+      "proposedBy": "Proposed by"
     },
     "rules": {
       "status": {
@@ -7332,7 +7469,8 @@
         "hint": "Reuse an existing code to propose its next version. A formula is checked when you submit.",
         "submit": "Propose",
         "saved": "Sent — waiting for the owner."
-      }
+      },
+      "empty": "No component is in force yet."
     },
     "policy": {
       "title": "Pay policy",
@@ -8179,6 +8317,11 @@
         "rule_before_current_version": "The date must be after the version in force.",
         "run_has_no_lines": "There is nothing to pay.",
         "payroll_period_locked": "The payroll month is closed."
+      },
+      "columns": {
+        "status": "Status",
+        "people": "People",
+        "approvedOn": "Approved on"
       }
     }
   },
@@ -8205,7 +8348,13 @@
       "open": "{count} waiting",
       "decided": "{count} answered",
       "median": "median {hours} h",
-      "noMedian": "nothing answered yet"
+      "noMedian": "nothing answered yet",
+      "columns": {
+        "type": "Request type",
+        "open": "Waiting",
+        "decided": "Answered",
+        "median": "Median time to answer"
+      }
     },
     "form": {
       "submit": "Send request",
@@ -8336,6 +8485,13 @@
         "remove": "Remove",
         "standalone": "Can be filed on its own",
         "standaloneHint": "Untick it for a type that only ever follows another request; it is left off the “New request” list."
+      },
+      "columns": {
+        "name": "Name",
+        "fields": "Fields",
+        "followUps": "Follow-ups",
+        "reminder": "Reminder",
+        "status": "Status"
       }
     },
     "errors": {
@@ -8489,6 +8645,9 @@
         "not_yet": "Opens on {date}.",
         "limit_reached": "Already filed ({max} at most)."
       }
+    },
+    "columns": {
+      "request": "Request"
     }
   },
   "assets": {
@@ -8886,7 +9045,8 @@
         "place": "Place"
       },
       "active": "In use",
-      "save": "Save template"
+      "save": "Save template",
+      "empty": "No templates yet."
     },
     "errors": {
       "generic": "That did not work. Please try again.",
@@ -8899,7 +9059,8 @@
       "document_subject_unknown": "Person not found.",
       "document_forbidden": "You may not issue this document.",
       "step_up_required": "Please confirm who you are to continue."
-    }
+    },
+    "new": "Issue a document"
   },
   "recruit": {
     "title": "Recruitment",
@@ -9262,6 +9423,14 @@
         "careers_opening_closed": "This role has closed.",
         "careers_answer_required": "Please answer the required questions.",
         "careers_answer_invalid": "That answer is not valid."
+      },
+      "columns": {
+        "role": "Role",
+        "company": "Company",
+        "department": "Department",
+        "location": "Location",
+        "workMode": "Work mode",
+        "employmentType": "Employment type"
       }
     },
     "email": {
@@ -9533,7 +9702,8 @@
         "settled": "Settled",
         "not_earned": "No bonus due"
       },
-      "received": "Received"
+      "received": "Received",
+      "bonusColumn": "Bonus"
     },
     "reports": {
       "title": "Recruitment reports",
@@ -9747,7 +9917,15 @@
       "tentative": "Tentative",
       "time": "Time logged today · {value} h",
       "salesHandoffs": "Won deals handed to you ({count})",
-      "followUps": "Client follow-ups ({count})"
+      "followUps": "Client follow-ups ({count})",
+      "columns": {
+        "key": "Key",
+        "title": "Task",
+        "status": "Status",
+        "details": "Details",
+        "project": "Project",
+        "hours": "Hours"
+      }
     },
     "time": {
       "log": "Log time",
@@ -9930,7 +10108,14 @@
       "nobody": "You lead no team and nobody reports to you.",
       "myReports": "People I manage",
       "counts": "{submitted} in · {missing} missing · {notRequired} not required",
-      "remindAll": "Remind all ({count})"
+      "remindAll": "Remind all ({count})",
+      "columns": {
+        "person": "Person",
+        "status": "Report",
+        "blockers": "Blockers",
+        "comments": "Comments",
+        "sentAt": "Sent at"
+      }
     },
     "rules": {
       "title": "Daily rules",
@@ -9985,7 +10170,14 @@
       "people": "People ({count})",
       "myWeek": "My week",
       "done": "Done ({count})",
-      "slipped": "Planned, not done ({count})"
+      "slipped": "Planned, not done ({count})",
+      "columns": {
+        "person": "Person",
+        "done": "Done",
+        "slipped": "Slipped",
+        "hours": "Hours",
+        "reports": "Reports"
+      }
     },
     "view": {
       "sentAt": "Sent at {time}",
@@ -9997,7 +10189,12 @@
       "report": "Today's report",
       "recent": "Recent reports",
       "empty": "You have not sent a daily report yet.",
-      "hasBlockers": "Blockers"
+      "hasBlockers": "Blockers",
+      "columns": {
+        "date": "Day",
+        "status": "Status",
+        "hours": "Hours"
+      }
     },
     "errors": {
       "generic": "That did not work. Please try again.",
@@ -10048,7 +10245,15 @@
       "confirmReopen": "Reopen",
       "selectAll": "Select all",
       "approveSelected": "Approve {count} selected",
-      "pick": "Select {name}'s timesheet, {week}"
+      "pick": "Select {name}'s timesheet, {week}",
+      "columns": {
+        "person": "Person",
+        "week": "Week",
+        "submitted": "Submitted",
+        "hours": "Hours",
+        "status": "Status",
+        "project": "Project"
+      }
     },
     "utilisation": {
       "everyoneElse": "Everyone else in the company",
@@ -10788,7 +10993,8 @@
       "referenceValue": "Contract/PO {reference}",
       "projectItems": "Items handed to finance",
       "projectEmpty": "Nothing handed to finance yet.",
-      "invoiceInReceivables": "Record the invoice in Receivables — it marks this item invoiced and tracks what the client owes."
+      "invoiceInReceivables": "Record the invoice in Receivables — it marks this item invoiced and tracks what the client owes.",
+      "source": "Source"
     },
     "reports": {
       "list": "Client reports",
@@ -11005,7 +11211,8 @@
         "assignee": "Owner",
         "due": "Due",
         "startTime": "Start time",
-        "durationMinutes": "Length (minutes)"
+        "durationMinutes": "Length (minutes)",
+        "author": "Recorded by"
       },
       "timeHint": "A meeting needs a start time before it can go in the calendar.",
       "atTime": "{time} · {minutes} min",
@@ -11039,7 +11246,14 @@
       "newPage": "New page",
       "audience": "The project's members and its team leads can read and edit; anyone added to the project sees it straight away.",
       "files": "All files",
-      "noFiles": "No files uploaded to the project's pages yet."
+      "noFiles": "No files uploaded to the project's pages yet.",
+      "columns": {
+        "file": "File",
+        "size": "Size",
+        "page": "Page",
+        "uploadedBy": "Uploaded by",
+        "uploadedAt": "Uploaded on"
+      }
     },
     "crm": {
       "client": "Client:",
@@ -11842,7 +12056,12 @@
     },
     "list": {
       "replied": "Replied",
-      "blocking": "Blocking"
+      "blocking": "Blocking",
+      "message": "Feedback",
+      "person": "From",
+      "sent": "Sent",
+      "priority": "Priority",
+      "flags": "Flags"
     },
     "inbox": {
       "title": "Feedback inbox",
@@ -12127,7 +12346,10 @@
       "mine": "Only mine",
       "empty": "No leads here.",
       "unassigned": "Not assigned yet",
-      "referredBy": "referred by {name}"
+      "referredBy": "referred by {name}",
+      "columns": {
+        "createdAt": "Received"
+      }
     },
     "lead": {
       "me": "Me",
@@ -12925,7 +13147,11 @@
     "rowsCut": "Showing {shown} of {total} rows.",
     "archiveEntries": "{count, plural, one {# item} other {# items}}",
     "archiveEmpty": "This archive is empty.",
-    "archiveUnreadable": "Couldn’t read the contents of this archive."
+    "archiveUnreadable": "Couldn’t read the contents of this archive.",
+    "columns": {
+      "name": "Name",
+      "size": "Size"
+    }
   },
   "richText": {
     "toolbar": "Text formatting",

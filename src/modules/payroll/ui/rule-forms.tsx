@@ -40,8 +40,7 @@ export function ProposeComponentForm({ entities }: { entities: EntityOption[] })
   const formulaProblem = (details as { formula?: { code: string; position: number | null; subject: string | null } } | null)?.formula;
 
   return (
-    <form ref={form} onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("propose.title")}</h2>
+    <form ref={form} onSubmit={onSubmit} className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">{t("propose.hint")}</p>
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-4 sm:grid-cols-3">
@@ -177,8 +176,7 @@ export function ProposePolicyForm({ entities, current }: { entities: EntityOptio
   );
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("propose.title")}</h2>
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">{t("propose.hint")}</p>
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-4 sm:grid-cols-3">

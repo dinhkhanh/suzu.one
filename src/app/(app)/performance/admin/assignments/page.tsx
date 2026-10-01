@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { canManageAssignmentsOf, coversMonth, listAssignments, listKpis, loadDirectory, metricValueText } from "@/modules/performance/service";
 import { kpiValueText, monthLabel } from "@/modules/performance/ui/kpi";
@@ -29,42 +31,45 @@ export default async function KpiAssignmentsPage({ searchParams }: PageProps<"/p
         <Link href="/performance/admin/assignments" className="text-sm underline underline-offset-4">
           {t("assignments.back")}
         </Link>
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <h2>{person.fullName}</h2>
-          <Link href={`/performance/kpis/${person.personId}`} className="text-sm underline underline-offset-4">
-            {t("assignments.scorecard")}
-          </Link>
-        </header>
-        {assignments.length === 0 ? <p className="text-sm text-muted-foreground">{t("assignments.none")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border">
-          {assignments.map((assignment) => (
-            <li key={assignment.id} className="flex flex-col gap-2 p-3 text-sm">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <span className="font-medium">{assignment.kpi.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {[assignment.kpi.code, t(`kpi.frequency.${assignment.kpi.frequency}`), t("assignments.range", { from: monthLabel(assignment.fromPeriod), to: assignment.toPeriod ? monthLabel(assignment.toPeriod) : "…" }), t("entry.target", { value: kpiValueText(format, assignment.kpi.unit, assignment.targetValue) }), t("assignments.weight", { weight: assignment.weight })].join(" · ")}
-                </span>
-              </div>
-              {assignment.toPeriod === null || assignment.toPeriod >= month ? (
-                <details>
-                  <summary className="cursor-pointer text-xs text-muted-foreground">{t("assignments.change")}</summary>
-                  <div className="pt-2">
-                    <AssignmentRowForm assignment={{ id: assignment.id, weight: assignment.weight, unit: assignment.kpi.unit, targetText: metricValueText(assignment.kpi.unit, assignment.targetValue), toPeriod: assignment.toPeriod }} />
-                  </div>
-                </details>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+        <TableCard>
+          <TableCardHeader
+            title={person.fullName}
+            count={assignments.length || null}
+            actions={
+              <Link href={`/performance/kpis/${person.personId}`} className="text-sm underline underline-offset-4">
+                {t("assignments.scorecard")}
+              </Link>
+            }
+          />
+          <List>
+            {assignments.length === 0 ? <ListEmpty>{t("assignments.none")}</ListEmpty> : null}
+            {assignments.map((assignment) => (
+              <ListItem key={assignment.id} className="flex-col items-stretch gap-2">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="font-medium">{assignment.kpi.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {[assignment.kpi.code, t(`kpi.frequency.${assignment.kpi.frequency}`), t("assignments.range", { from: monthLabel(assignment.fromPeriod), to: assignment.toPeriod ? monthLabel(assignment.toPeriod) : "…" }), t("entry.target", { value: kpiValueText(format, assignment.kpi.unit, assignment.targetValue) }), t("assignments.weight", { weight: assignment.weight })].join(" · ")}
+                  </span>
+                </div>
+                {assignment.toPeriod === null || assignment.toPeriod >= month ? (
+                  <details>
+                    <summary className="cursor-pointer text-xs text-muted-foreground">{t("assignments.change")}</summary>
+                    <div className="pt-2">
+                      <AssignmentRowForm assignment={{ id: assignment.id, weight: assignment.weight, unit: assignment.kpi.unit, targetText: metricValueText(assignment.kpi.unit, assignment.targetValue), toPeriod: assignment.toPeriod }} />
+                    </div>
+                  </details>
+                ) : null}
+              </ListItem>
+            ))}
+          </List>
+          <TableAddRow label={t("assignments.addTitle")} open={assignments.length === 0}>
+            <NewAssignmentForm personId={person.personId} kpis={kpis.map((kpi) => ({ id: kpi.id, name: `${kpi.name} (${kpi.code})`, unit: kpi.unit }))} defaultFrom={month} />
+          </TableAddRow>
+          <TableAddRow label={t("assignments.fromTemplate")} open={assignments.length === 0}>
+            <ApplyTemplatesForm personId={person.personId} defaultFrom={month} label={t("positions.applyOne")} />
+          </TableAddRow>
+        </TableCard>
         <p className="text-xs text-muted-foreground">{t("assignments.closedHint")}</p>
-        <section className="rounded-xl border p-3">
-          <h3 className="pb-3 text-sm font-medium">{t("assignments.fromTemplate")}</h3>
-          <ApplyTemplatesForm personId={person.personId} defaultFrom={month} label={t("positions.applyOne")} />
-        </section>
-        <section className="rounded-xl border p-3">
-          <h3 className="pb-3 text-sm font-medium">{t("assignments.addTitle")}</h3>
-          <NewAssignmentForm personId={person.personId} kpis={kpis.map((kpi) => ({ id: kpi.id, name: `${kpi.name} (${kpi.code})`, unit: kpi.unit }))} defaultFrom={month} />
-        </section>
       </div>
     );
   }
@@ -73,19 +78,32 @@ export default async function KpiAssignmentsPage({ searchParams }: PageProps<"/p
   return (
     <div className="flex flex-col gap-4">
       <p className="max-w-3xl text-sm text-muted-foreground">{t("assignments.description")}</p>
-      <ul className="flex flex-col divide-y rounded-xl border">
-        {people.map((person) => {
-          const current = assignments.filter((assignment) => assignment.personId === person.personId && coversMonth(assignment, month));
-          return (
-            <li key={person.personId} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm">
-              <Link href={`/performance/admin/assignments?person=${person.personId}`} className="min-w-0 flex-1 font-medium hover:underline">
-                {person.fullName}
-              </Link>
-              <span className={`text-xs ${current.length === 0 ? "text-warning" : "text-muted-foreground"}`}>{current.length === 0 ? t("assignments.noneNow") : t("assignments.count", { count: current.length, weight: current.reduce((sum, assignment) => sum + assignment.weight, 0) })}</span>
-            </li>
-          );
-        })}
-      </ul>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="person">{t("team.person")}</TableHead>
+            <TableHead kind="number">{t("assignments.kpisNow")}</TableHead>
+            <TableHead kind="number">{t("positions.weight")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {people.length === 0 ? <TableEmpty>{t("assignments.noPeople")}</TableEmpty> : null}
+          {people.map((person) => {
+            const current = assignments.filter((assignment) => assignment.personId === person.personId && coversMonth(assignment, month));
+            return (
+              <TableRow key={person.personId}>
+                <TableCell>
+                  <Link href={`/performance/admin/assignments?person=${person.personId}`} className="font-medium hover:underline">
+                    {person.fullName}
+                  </Link>
+                </TableCell>
+                <TableCell kind="number">{current.length === 0 ? <span className="text-warning">{t("assignments.noneNow")}</span> : current.length}</TableCell>
+                <TableCell kind="number">{current.length === 0 ? "—" : current.reduce((sum, assignment) => sum + assignment.weight, 0)}</TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     </div>
   );
 }

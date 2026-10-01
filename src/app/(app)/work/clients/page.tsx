@@ -2,6 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { TableAddRow, TableCard } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
@@ -34,8 +36,8 @@ export default async function ClientsPage() {
   const tops = clients.filter((client) => !client.parentId);
 
   const row = (client: (typeof clients)[number], indent: boolean) => (
-    <li key={client.id} className={`p-3 text-sm ${indent ? "pl-8" : ""}`}>
-      <details>
+    <ListItem key={client.id} className={indent ? "pl-8" : undefined}>
+      <details className="min-w-0 flex-1">
         <summary className="flex cursor-pointer flex-wrap items-center gap-2">
           <span className="font-mono text-xs text-muted-foreground">{client.code}</span>
           <span className="font-medium">{client.name}</span>
@@ -64,7 +66,7 @@ export default async function ClientsPage() {
           </div>
         ) : null}
       </details>
-    </li>
+    </ListItem>
   );
 
   return (
@@ -78,16 +80,17 @@ export default async function ClientsPage() {
         <h1>{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
-      <ul className="flex flex-col divide-y rounded-xl border">
-        {clients.length === 0 ? <li className="p-3 text-sm text-muted-foreground">{t("empty")}</li> : null}
-        {tops.flatMap((client) => [row(client, false), ...clients.filter((brand) => brand.parentId === client.id).map((brand) => row(brand, true))])}
-      </ul>
-      {manage ? (
-        <section className="flex flex-col gap-3 rounded-xl border p-4">
-          <h2 className="text-sm font-medium">{t("create")}</h2>
-          <ClientForm parents={parents} entities={entityOptions} />
-        </section>
-      ) : null}
+      <TableCard>
+        <List>
+          {clients.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
+          {tops.flatMap((client) => [row(client, false), ...clients.filter((brand) => brand.parentId === client.id).map((brand) => row(brand, true))])}
+        </List>
+        {manage ? (
+          <TableAddRow label={t("create")} open={clients.length === 0}>
+            <ClientForm parents={parents} entities={entityOptions} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

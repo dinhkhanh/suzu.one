@@ -1,6 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { assetsToday, canManageLicences, canReadLicences, CYCLE_MONTHS, listLicences } from "@/modules/assets/service";
 import { pageTitle } from "@/i18n/page-title";
@@ -43,53 +45,55 @@ export default async function LicencesPage() {
         </div>
       </header>
 
-      {rows.length === 0 ? (
-        <p className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">{t("empty")}</p>
-      ) : (
-        <div className="overflow-x-auto rounded-md border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
-              <tr>
-                <th className="p-2 font-medium">{t("columns.name")}</th>
-                <th className="p-2 font-medium">{t("columns.entity")}</th>
-                <th className="p-2 font-medium">{t("columns.seats")}</th>
-                <th className="p-2 font-medium">{t("columns.cycle")}</th>
-                <th className="p-2 font-medium">{t("columns.renewal")}</th>
-                <th className="p-2 font-medium">{t("columns.owner")}</th>
-                <th className="p-2 font-medium">{t("columns.cost")}</th>
-                <th className="p-2 font-medium">{t("columns.status")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id} className="border-t">
-                  <td className="p-2">
-                    {manage ? (
-                      <Link href={`/assets/licences/${row.id}`} className="font-medium hover:underline">
-                        {row.name}
-                      </Link>
-                    ) : (
-                      <span className="font-medium">{row.name}</span>
-                    )}
-                    {row.vendor ? <p className="text-xs text-muted-foreground">{row.vendor}</p> : null}
-                  </td>
-                  <td className="p-2">{row.entityName ?? "—"}</td>
-                  <td className="p-2">{row.seats ?? "—"}</td>
-                  <td className="p-2">{tc(row.billingCycle)}</td>
-                  <td className={`p-2 whitespace-nowrap ${dueTone(row.renewalDate)}`}>
-                    {row.renewalDate ? row.renewalDate.split("-").reverse().join("/") : "—"}
-                    {CYCLE_MONTHS[row.billingCycle] !== null && !row.autoRenews ? <span className="ml-1 text-xs text-muted-foreground">{t("manualRenew")}</span> : null}
-                  </td>
-                  <td className="p-2">{row.ownerName ?? "—"}</td>
-                  {/* An asset's price and a licence's price are exactly as visible as each other. */}
-                  <td className="p-2 tabular-nums">{row.canSeeMoney ? (row.costPerCycle === null ? "—" : row.costPerCycle.toLocaleString("vi-VN")) : "•••"}</td>
-                  <td className="p-2">{ts(row.status)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <TableCard>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("columns.name")}</TableHead>
+              <TableHead kind="org">{t("columns.entity")}</TableHead>
+              <TableHead kind="number">{t("columns.seats")}</TableHead>
+              <TableHead kind="select">{t("columns.cycle")}</TableHead>
+              <TableHead kind="date">{t("columns.renewal")}</TableHead>
+              <TableHead kind="person">{t("columns.owner")}</TableHead>
+              <TableHead kind="money">{t("columns.cost")}</TableHead>
+              <TableHead kind="status">{t("columns.status")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
+            {rows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>
+                  {manage ? (
+                    <Link href={`/assets/licences/${row.id}`} className="font-medium hover:underline">
+                      {row.name}
+                    </Link>
+                  ) : (
+                    <span className="font-medium">{row.name}</span>
+                  )}
+                  {row.vendor ? <p className="text-xs text-muted-foreground">{row.vendor}</p> : null}
+                </TableCell>
+                <TableCell>{row.entityName ?? "—"}</TableCell>
+                <TableCell kind="number">{row.seats ?? "—"}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{tc(row.billingCycle)}</Badge>
+                </TableCell>
+                <TableCell className={dueTone(row.renewalDate)}>
+                  {row.renewalDate ? row.renewalDate.split("-").reverse().join("/") : "—"}
+                  {CYCLE_MONTHS[row.billingCycle] !== null && !row.autoRenews ? <span className="ml-1 text-xs text-muted-foreground">{t("manualRenew")}</span> : null}
+                </TableCell>
+                <TableCell>{row.ownerName ?? "—"}</TableCell>
+                {/* An asset's price and a licence's price are exactly as visible as each other. */}
+                <TableCell kind="money">{row.canSeeMoney ? (row.costPerCycle === null ? "—" : row.costPerCycle.toLocaleString("vi-VN")) : "•••"}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{ts(row.status)}</Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {manage ? <TableAddRow label={t("nav.new")} href="/assets/licences/new" /> : null}
+      </TableCard>
 
       <p className="text-xs text-muted-foreground">{t("trackerNote")}</p>
     </div>

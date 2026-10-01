@@ -15,8 +15,11 @@ import { decideSalaryChangeAction, resubmitSalaryChangeAction, submitSalaryChang
 
 type AllowanceOption = { code: string; name: string };
 
-/** C&B proposes someone's pay terms. With `requestId` it is the corrected version of a returned request. */
-export function SalaryChangeForm({ personId, allowances, current, initial, requestId, defaults }: { personId: string; allowances: AllowanceOption[]; current: SalaryTerms | null; initial: boolean; requestId?: string; defaults?: { validFrom: string; reason: string; note: string | null } }) {
+/**
+ * C&B proposes someone's pay terms. With `requestId` it is the corrected version of a returned request.
+ * `bare` drops the frame and heading, for a form that sits in a list's add row, which names it.
+ */
+export function SalaryChangeForm({ personId, allowances, current, initial, requestId, defaults, bare }: { personId: string; allowances: AllowanceOption[]; current: SalaryTerms | null; initial: boolean; requestId?: string; defaults?: { validFrom: string; reason: string; note: string | null }; bare?: boolean }) {
   const t = useTranslations("payroll.salaries");
   const router = useRouter();
   const { onSubmit, pending, errorKey, fieldErrors, details } = useActionForm(requestId ? resubmitSalaryChangeAction : submitSalaryChangeAction, {
@@ -27,8 +30,8 @@ export function SalaryChangeForm({ personId, allowances, current, initial, reque
   const amount = (code: string) => current?.allowances.find((line) => line.code === code)?.amount ?? "";
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{initial ? t("form.titleInitial") : t("form.title")}</h2>
+    <form onSubmit={onSubmit} className={bare ? "flex flex-col gap-4" : "flex flex-col gap-4 rounded-xl border p-4"}>
+      {bare ? null : <h2 className="text-sm font-medium">{initial ? t("form.titleInitial") : t("form.title")}</h2>}
       <p className="text-sm text-muted-foreground">{t("form.hint")}</p>
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -111,14 +114,13 @@ export function WithdrawSalaryChangeButton({ requestId }: { requestId: string })
   );
 }
 
-export function ProfileForm({ personId, hasProfile }: { personId: string; hasProfile: boolean }) {
+export function ProfileForm({ personId }: { personId: string }) {
   const t = useTranslations("payroll.profiles");
   const router = useRouter();
   const [profile, setProfile] = useState<(typeof PAY_PROFILES)[number]>("statutory");
   const { onSubmit, pending, errorKey, fieldErrors } = useActionForm(submitProfileAction, { extra: { personId }, onSuccess: () => router.refresh() });
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{hasProfile ? t("form.titleChange") : t("form.title")}</h2>
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">{t("form.hint")}</p>
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-4 sm:grid-cols-3">

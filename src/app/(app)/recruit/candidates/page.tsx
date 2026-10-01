@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canBrowseCandidates, listCandidates } from "@/modules/recruit/service";
 import { pageTitle } from "@/i18n/page-title";
@@ -39,27 +40,55 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/recru
         </button>
       </form>
 
-      {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("noCandidates")}</p>
-      ) : (
-        <ul className="flex flex-col divide-y rounded-xl border">
-          {rows.map((row) => (
-            <li key={row.id} className="flex flex-wrap items-center gap-3 p-3">
-              <div className="min-w-0 flex-1 basis-56">
-                <Link href={`/recruit/candidates/${row.id}`} className="text-sm font-medium hover:underline">
-                  {row.fullName}
-                </Link>
-                <p className="text-xs text-muted-foreground">
-                  {[row.currentTitle, t(`source.${row.source}`), row.tags.join(", ")].filter(Boolean).join(" · ")}
-                </p>
-              </div>
-              <span className="text-xs text-muted-foreground">{format.dateTime(row.createdAt, { dateStyle: "medium" })}</span>
-              {row.anonymised ? <Badge variant="outline">{t("event.anonymised")}</Badge> : null}
-              <Badge variant="secondary">{row.applications}</Badge>
-            </li>
-          ))}
-        </ul>
-      )}
+      <TableCard>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("columns.candidate")}</TableHead>
+              <TableHead kind="text">{t("columns.currentTitle")}</TableHead>
+              <TableHead kind="select">{t("columns.source")}</TableHead>
+              <TableHead kind="tags">{t("columns.tags")}</TableHead>
+              <TableHead kind="date">{t("columns.createdAt")}</TableHead>
+              <TableHead kind="number">{t("reports.applications")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 ? <TableEmpty>{t("noCandidates")}</TableEmpty> : null}
+            {rows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell className="max-w-72">
+                  <span className="flex items-center gap-2">
+                    <Link href={`/recruit/candidates/${row.id}`} className="truncate font-medium hover:underline">
+                      {row.fullName}
+                    </Link>
+                    {row.anonymised ? <Badge variant="outline">{t("event.anonymised")}</Badge> : null}
+                  </span>
+                </TableCell>
+                <TableCell className="max-w-56 truncate">{row.currentTitle || "—"}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{t(`source.${row.source}`)}</Badge>
+                </TableCell>
+                <TableCell>
+                  {row.tags.length ? (
+                    <span className="flex flex-wrap gap-1">
+                      {row.tags.map((tag) => (
+                        <Badge key={tag} variant="secondary">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+                <TableCell>{format.dateTime(row.createdAt, { dateStyle: "medium" })}</TableCell>
+                <TableCell kind="number">{row.applications}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <TableAddRow label={t("newCandidate")} href="/recruit/candidates/new" />
+      </TableCard>
     </div>
   );
 }

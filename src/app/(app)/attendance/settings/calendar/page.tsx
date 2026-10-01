@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { canManageAttendanceConfig, canOpenAttendanceSettings } from "@/modules/attendance/policy";
 import { listCalendarDays } from "@/modules/attendance/schedules";
@@ -33,24 +34,51 @@ export default async function CalendarSettingsPage(props: PageProps<"/attendance
         ))}
       </div>
       <p className="text-sm text-muted-foreground">{t("calendar.hint")}</p>
-      {days.length === 0 ? <p className="text-sm text-muted-foreground">{t("calendar.empty", { year })}</p> : null}
-      <ul className="flex flex-col divide-y rounded-xl border empty:hidden">
-        {days.map((day) => {
-          const manage = canManageAttendanceConfig(user.principal, day.entityId);
-          return (
-            <li key={day.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm">
-              <span className="w-44 font-medium">{format.dateTime(new Date(`${day.date}T00:00:00`), { weekday: "short", day: "numeric", month: "numeric", year: "numeric" })}</span>
-              <Badge variant="secondary">{t(`calendar.kinds.${day.kind}`)}</Badge>
-              <span className="min-w-0 flex-1">{day.name}</span>
-              <span className="text-xs text-muted-foreground">{day.entityName ?? t("everyEntity")}</span>
-              {day.isConfirmed ? null : <Badge variant="outline">{t("calendar.unconfirmed")}</Badge>}
-              {manage && !day.isConfirmed ? <RowAction action="confirmDay" id={day.id} label={t("calendar.confirm")} /> : null}
-              {manage ? <RowAction action="deleteDay" id={day.id} label={t("remove")} confirm={t("removeConfirm")} /> : null}
-            </li>
-          );
-        })}
-      </ul>
-      {options.entities.length > 0 || options.canGroup ? <CalendarDayForm {...options} /> : null}
+      <TableCard>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="date">{t("calendar.date")}</TableHead>
+              <TableHead kind="select">{t("calendar.kind")}</TableHead>
+              <TableHead kind="text">{t("calendar.name")}</TableHead>
+              <TableHead kind="org">{t("appliesTo")}</TableHead>
+              <TableHead kind="actions" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {days.length === 0 ? <TableEmpty>{t("calendar.empty", { year })}</TableEmpty> : null}
+            {days.map((day) => {
+              const manage = canManageAttendanceConfig(user.principal, day.entityId);
+              return (
+                <TableRow key={day.id}>
+                  <TableCell className="font-medium">{format.dateTime(new Date(`${day.date}T00:00:00`), { weekday: "short", day: "numeric", month: "numeric", year: "numeric" })}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{t(`calendar.kinds.${day.kind}`)}</Badge>
+                  </TableCell>
+                  <TableCell className="whitespace-normal">
+                    <span className="flex flex-wrap items-center gap-2">
+                      {day.name}
+                      {day.isConfirmed ? null : <Badge variant="outline">{t("calendar.unconfirmed")}</Badge>}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{day.entityName ?? t("everyEntity")}</TableCell>
+                  <TableCell kind="actions">
+                    <span className="flex items-center justify-end gap-2">
+                      {manage && !day.isConfirmed ? <RowAction action="confirmDay" id={day.id} label={t("calendar.confirm")} /> : null}
+                      {manage ? <RowAction action="deleteDay" id={day.id} label={t("remove")} confirm={t("removeConfirm")} /> : null}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        {options.entities.length > 0 || options.canGroup ? (
+          <TableAddRow label={t("calendar.add")} open={days.length === 0}>
+            <CalendarDayForm {...options} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { listApprovals, listProjectTime, loadTimeReader, weekStartOf } from "@/modules/daily/service";
 import { hoursOf } from "@/modules/daily/ui/format";
@@ -35,70 +36,96 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/daily
         <p className="text-sm text-muted-foreground">{t("timesheets.intro")}</p>
       </header>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium">{t("timesheets.waiting", { count: waiting.length })}</h2>
-        {waiting.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("timesheets.none")}</p>
-        ) : (
-          <WaitingList
-            rows={waiting.map((week) => ({
-              id: week.id,
-              href: `/daily/timesheets/${week.personId}?week=${week.weekStart}`,
-              name: week.name,
-              week: weekOf(week.weekStart),
-              hours: hours(week.minutes),
-              submitted: week.submittedAt ? t("time.submittedAt", { time: format.dateTime(week.submittedAt, { dateStyle: "short", timeStyle: "short" }) }) : null,
-            }))}
-          />
-        )}
-      </section>
+      <TableCard>
+        <TableCardHeader title={t("timesheets.waiting", { count: waiting.length })} />
+        <WaitingList
+          rows={waiting.map((week) => ({
+            id: week.id,
+            href: `/daily/timesheets/${week.personId}?week=${week.weekStart}`,
+            name: week.name,
+            week: weekOf(week.weekStart),
+            hours: hours(week.minutes),
+            submitted: week.submittedAt ? t("time.submittedAt", { time: format.dateTime(week.submittedAt, { dateStyle: "short", timeStyle: "short" }) }) : null,
+          }))}
+        />
+      </TableCard>
 
       {recent.length > 0 ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("timesheets.recent")}</h2>
-          <ul className="flex flex-col divide-y rounded-xl border text-sm">
-            {recent.map((week) => (
-              <li key={week.id} className="flex flex-wrap items-center gap-2 p-3">
-                <Link href={`/daily/timesheets/${week.personId}?week=${week.weekStart}`} className="min-w-0 flex-1 hover:underline">
-                  <span className="font-medium">{week.name}</span>
-                  <span className="block text-xs text-muted-foreground">{weekOf(week.weekStart)}</span>
-                </Link>
-                <Badge dot variant={statusTone(week.status)}>{t(`time.status.${week.status}`)}</Badge>
-                <span className="tabular-nums">{hours(week.minutes)}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <TableCard>
+          <TableCardHeader title={t("timesheets.recent")} count={recent.length} />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="person">{t("timesheets.columns.person")}</TableHead>
+                <TableHead kind="date">{t("timesheets.columns.week")}</TableHead>
+                <TableHead kind="status">{t("timesheets.columns.status")}</TableHead>
+                <TableHead kind="time">{t("timesheets.columns.hours")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recent.map((week) => (
+                <TableRow key={week.id}>
+                  <TableCell>
+                    <Link href={`/daily/timesheets/${week.personId}?week=${week.weekStart}`} className="font-medium hover:underline">
+                      {week.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{weekOf(week.weekStart)}</TableCell>
+                  <TableCell>
+                    <Badge dot variant={statusTone(week.status)}>{t(`time.status.${week.status}`)}</Badge>
+                  </TableCell>
+                  <TableCell kind="time">{hours(week.minutes)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       ) : null}
 
       {reader.ledProjectIds.size > 0 ? (
-        <section className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="min-w-0 flex-1 text-sm font-medium">{t("timesheets.projectTime")}</h2>
-            <Link href={`/daily/timesheets?week=${addDays(weekStart, -7)}`} className={buttonVariants({ size: "xs", variant: "outline" })}>
-              {t("time.previousWeek")}
-            </Link>
-            <span className="text-xs">{weekOf(weekStart)}</span>
-            {weekStart < current ? (
-              <Link href={`/daily/timesheets?week=${addDays(weekStart, 7)}`} className={buttonVariants({ size: "xs", variant: "outline" })}>
-                {t("time.nextWeek")}
-              </Link>
-            ) : null}
-          </div>
-          {projectTime.length === 0 ? <p className="text-sm text-muted-foreground">{t("timesheets.noProjectTime")}</p> : null}
-          <ul className="flex flex-col divide-y rounded-xl border text-sm">
-            {projectTime.map((row) => (
-              <li key={`${row.personId}:${row.projectId}`} className="flex flex-wrap items-center gap-2 p-3">
-                <Link href={`/daily/timesheets/${row.personId}?week=${weekStart}`} className="min-w-0 flex-1 hover:underline">
-                  <span className="font-medium">{row.name}</span>
-                  <span className="block text-xs text-muted-foreground">{row.projectName}</span>
+        <TableCard>
+          <TableCardHeader
+            title={t("timesheets.projectTime")}
+            actions={
+              <>
+                <Link href={`/daily/timesheets?week=${addDays(weekStart, -7)}`} className={buttonVariants({ size: "xs", variant: "outline" })}>
+                  {t("time.previousWeek")}
                 </Link>
-                {row.billable > 0 ? <span className="text-xs text-muted-foreground">{t("timesheets.billableHours", { value: hoursOf(row.billable) })}</span> : null}
-                <span className="tabular-nums">{hours(row.minutes)}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+                <span className="text-xs">{weekOf(weekStart)}</span>
+                {weekStart < current ? (
+                  <Link href={`/daily/timesheets?week=${addDays(weekStart, 7)}`} className={buttonVariants({ size: "xs", variant: "outline" })}>
+                    {t("time.nextWeek")}
+                  </Link>
+                ) : null}
+              </>
+            }
+          />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="person">{t("timesheets.columns.person")}</TableHead>
+                <TableHead kind="text">{t("timesheets.columns.project")}</TableHead>
+                <TableHead kind="time">{t("time.billable")}</TableHead>
+                <TableHead kind="time">{t("timesheets.columns.hours")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {projectTime.length === 0 ? <TableEmpty>{t("timesheets.noProjectTime")}</TableEmpty> : null}
+              {projectTime.map((row) => (
+                <TableRow key={`${row.personId}:${row.projectId}`}>
+                  <TableCell>
+                    <Link href={`/daily/timesheets/${row.personId}?week=${weekStart}`} className="font-medium hover:underline">
+                      {row.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{row.projectName}</TableCell>
+                  <TableCell kind="time" className="text-muted-foreground">{row.billable > 0 ? hours(row.billable) : ""}</TableCell>
+                  <TableCell kind="time">{hours(row.minutes)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       ) : null}
     </div>
   );

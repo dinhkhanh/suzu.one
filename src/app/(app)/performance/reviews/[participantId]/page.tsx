@@ -1,6 +1,7 @@
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import {
   canAcknowledgeReview,
@@ -143,49 +144,62 @@ export default async function ReviewPage({ params }: PageProps<"/performance/rev
       {/* Who was asked for 360 feedback. Anonymity hides *who wrote what* (the forms below),
           never the fact that somebody was asked — HR and the manager have to be able to chase them. */}
       {seesNominations ? (
-        <section className="flex flex-col gap-3 rounded-xl border p-3">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-sm font-medium">{t("peers.title")}</h2>
-            {cycle.peersEnabled ? <span className="text-xs text-muted-foreground">{t("peers.range", { min: cycle.peerMin, max: cycle.peerMax, approved: approvedPeers })}</span> : null}
-          </div>
+        <TableCard>
+          <TableCardHeader title={t("peers.title")} count={cycle.peersEnabled ? nominations.length || null : null} description={cycle.peersEnabled ? t("peers.range", { min: cycle.peerMin, max: cycle.peerMax, approved: approvedPeers }) : undefined} />
           {!cycle.peersEnabled ? (
-            <p className="text-sm text-muted-foreground">{t("peers.disabled")}</p>
+            <p className="px-4 py-3 text-sm text-muted-foreground">{t("peers.disabled")}</p>
           ) : (
             <>
-              {cycle.peerAnonymous ? <p className="text-xs text-muted-foreground">{t("peers.anonymous")}</p> : null}
-              {peersByCountOnly && nominations.length > 0 ? <p className="text-xs text-muted-foreground">{t("peers.writtenCount", { written: writtenCount, total: nominations.length })}</p> : null}
-              {nominations.length === 0 ? <p className="text-sm text-muted-foreground">{t("peers.empty")}</p> : null}
-              <ul className="flex flex-col divide-y">
-                {nominations.map((row) => (
-                  <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-                    <span>
-                      {nameOf(row.peerPersonId)}
-                      <span className="pl-2 text-xs text-muted-foreground">
-                        {t(`peers.status.${row.status as PeerNominationStatus}`)}
-                        {peersByCountOnly ? null : <> · {peerWrote.has(row.peerPersonId) ? t("peers.written") : t("peers.notWritten")}</>}
-                      </span>
-                    </span>
-                    {/* Withdrawing is possible only while nothing is written, so on an anonymous
-                        cycle the subject is offered it only before approval — when nobody can have
-                        written yet — or the button itself would say who has. */}
-                    <NominationDecisionForm
-                      nominationId={row.id}
-                      canDecide={mayDecide && row.status === "pending"}
-                      canWithdraw={peersByCountOnly ? row.status === "pending" && row.nominatedByPersonId === user.person.id : !peerWrote.has(row.peerPersonId) && (mayDecide || row.nominatedByPersonId === user.person.id)}
-                    />
-                  </li>
-                ))}
-              </ul>
+              {cycle.peerAnonymous || (peersByCountOnly && nominations.length > 0) ? (
+                <div className="flex flex-col gap-1 border-b px-4 py-2">
+                  {cycle.peerAnonymous ? <p className="text-xs text-muted-foreground">{t("peers.anonymous")}</p> : null}
+                  {peersByCountOnly && nominations.length > 0 ? <p className="text-xs text-muted-foreground">{t("peers.writtenCount", { written: writtenCount, total: nominations.length })}</p> : null}
+                </div>
+              ) : null}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead kind="person">{t("columns.person")}</TableHead>
+                    <TableHead kind="status">{t("columns.status")}</TableHead>
+                    {peersByCountOnly ? null : <TableHead kind="check">{t("peers.written")}</TableHead>}
+                    <TableHead kind="actions" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {nominations.length === 0 ? <TableEmpty>{t("peers.empty")}</TableEmpty> : null}
+                  {nominations.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell className="font-medium">{nameOf(row.peerPersonId)}</TableCell>
+                      <TableCell className="text-muted-foreground">{t(`peers.status.${row.status as PeerNominationStatus}`)}</TableCell>
+                      {peersByCountOnly ? null : <TableCell className="text-muted-foreground">{peerWrote.has(row.peerPersonId) ? t("peers.written") : t("peers.notWritten")}</TableCell>}
+                      <TableCell kind="actions">
+                        {/* Withdrawing is possible only while nothing is written, so on an anonymous
+                            cycle the subject is offered it only before approval — when nobody can have
+                            written yet — or the button itself would say who has. */}
+                        <NominationDecisionForm
+                          nominationId={row.id}
+                          canDecide={mayDecide && row.status === "pending"}
+                          canWithdraw={peersByCountOnly ? row.status === "pending" && row.nominatedByPersonId === user.person.id : !peerWrote.has(row.peerPersonId) && (mayDecide || row.nominatedByPersonId === user.person.id)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
               {mayNominate && approvedPeers < cycle.peerMax ? (
                 <>
-                  <NominatePeerForm participantId={participantId} candidates={candidates} />
-                  <p className="text-xs text-muted-foreground">{mayDecide ? t("peers.managerHint") : t("peers.selfHint")}</p>
-                  {approvedPeers < cycle.peerMin ? <p className="text-xs text-warning">{t("peers.needMore", { count: cycle.peerMin - approvedPeers })}</p> : null}
+                  {approvedPeers < cycle.peerMin ? <p className="border-t px-4 py-2 text-xs text-warning">{t("peers.needMore", { count: cycle.peerMin - approvedPeers })}</p> : null}
+                  <TableAddRow label={t("peers.add")} open={nominations.length === 0}>
+                    <div className="flex flex-col gap-2">
+                      <NominatePeerForm participantId={participantId} candidates={candidates} />
+                      <p className="text-xs text-muted-foreground">{mayDecide ? t("peers.managerHint") : t("peers.selfHint")}</p>
+                    </div>
+                  </TableAddRow>
                 </>
               ) : null}
             </>
           )}
-        </section>
+        </TableCard>
       ) : null}
 
       <section className="flex flex-col gap-3">

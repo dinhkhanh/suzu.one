@@ -8,11 +8,13 @@ import { useRouter } from "next/navigation";
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { type ColumnKind, Table, TableBody, TableCell, TableEmpty, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { updateTaskAction } from "../actions";
-import { type CustomValue, customKey } from "../engine/custom-fields";
+import { type CustomFieldType, type CustomValue, customKey } from "../engine/custom-fields";
 import { filterTasks, type ListSort, readSort, sortTasks, type TaskFilters } from "../engine/filter";
 import { PRIORITIES } from "../enums";
 import { bulkUpdateTasksAction } from "../foundation-actions";
@@ -24,6 +26,8 @@ import { LabelChip } from "./team-forms";
 
 type Patch = Partial<Pick<ListTask, "stateId" | "assigneePersonId" | "startDate" | "dueDate" | "priority" | "estimateMinutes" | "labelIds" | "cycleId">> & { customValues?: Record<string, CustomValue> };
 type Refusal = { id: string; key: string | null; reason: string; details?: unknown };
+// A custom field's column header carries the icon of its type.
+const FIELD_KIND: Record<CustomFieldType, ColumnKind> = { text: "text", number: "number", select: "select", multi_select: "tags", date: "date", person: "person", url: "link", checkbox: "check", duration: "time" };
 const hours = (minutes: number) => Math.round((minutes / 60) * 100) / 100;
 
 function applyPatch(task: ListTask, patch: Patch): ListTask {
@@ -169,148 +173,138 @@ export function TaskTableView({
       ) : null}
       {logged === null ? <p className="text-xs text-muted-foreground">{t("loggedHidden")}</p> : null}
 
-      <div className="overflow-x-auto rounded-xl border">
-        <table className="w-full min-w-[64rem] text-sm">
-          <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
-            <tr>
-              <th className="w-8 px-2 py-2">
-                <input type="checkbox" aria-label={t("selectAll")} checked={allChosen} onChange={(event) => setSelected(event.target.checked ? new Set(visible.filter(editable).map((task) => task.id)) : new Set())} />
-              </th>
-              <th className="px-2 py-2">{t("key")}</th>
-              <th className="px-2 py-2">{t("title")}</th>
-              <th className="px-2 py-2">{t("state")}</th>
-              <th className="px-2 py-2">{t("assignee")}</th>
-              <th className="px-2 py-2">{t("startDate")}</th>
-              <th className="px-2 py-2">{t("dueDate")}</th>
-              <th className="px-2 py-2">{t("priority")}</th>
-              <th className="px-2 py-2 text-right">{t("estimate")}</th>
-              {logged ? <th className="px-2 py-2 text-right">{t("logged")}</th> : null}
-              <th className="px-2 py-2">{t("labels")}</th>
-              {fields.map((field) => (
-                <th key={field.id} className="px-2 py-2">
-                  {field.name}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {visible.length === 0 ? (
-              <tr>
-                <td colSpan={11 + fields.length + (logged ? 1 : 0)} className="p-6 text-center text-muted-foreground">
-                  {shown.length === 0 ? tList("empty") : tList("noMatch")}
-                </td>
-              </tr>
-            ) : null}
-            {visible.map((task) => {
-              const can = editable(task) && !pending;
-              const open = task.status === "todo" || task.status === "in_progress";
-              const overdue = open && task.dueDate !== null && task.dueDate < today;
-              const own = fieldsOf(task);
-              return (
-                <tr key={task.id} className={selected.has(task.id) ? "bg-muted/40" : undefined}>
-                  <td className="px-2 py-1">
-                    <input type="checkbox" aria-label={t("select", { key: task.key })} checked={selected.has(task.id)} disabled={!editable(task)} onChange={(event) => toggle(task.id, event.target.checked)} />
-                  </td>
-                  <td className="px-2 py-1 font-mono text-xs whitespace-nowrap text-muted-foreground">{task.key}</td>
-                  <td className="max-w-72 px-2 py-1">
-                    <span className="flex items-center gap-1.5">
-                      <Link href={`/work/tasks/${task.id}`} className={`truncate hover:underline ${open ? "font-medium" : "text-muted-foreground line-through"}`}>
-                        {task.title}
-                      </Link>
-                      {task.blocker ? (
-                        <Badge variant="destructive" title={task.blocker.reason}>
-                          {tWork("blockers.badge")}
-                        </Badge>
-                      ) : null}
-                    </span>
-                  </td>
-                  <td className="px-2 py-1">
-                    <Select aria-label={t("state")} value={task.stateId} disabled={!can} onChange={(event) => edit(task, { stateId: event.target.value }, { stateId: event.target.value })} className="h-7 w-36 text-xs md:text-xs">
-                      {options.states
-                        .filter((state) => state.isActive || state.id === task.stateId)
-                        .map((state) => (
-                          <option key={state.id} value={state.id}>
-                            {state.name}
-                          </option>
-                        ))}
-                    </Select>
-                  </td>
-                  <td className="px-2 py-1">
-                    <Select aria-label={t("assignee")} value={task.assigneePersonId ?? ""} disabled={!can} onChange={(event) => edit(task, { assigneePersonId: event.target.value || null }, { assigneePersonId: event.target.value })} className="h-7 w-36 text-xs md:text-xs">
-                      <option value="">{tList("unassigned")}</option>
-                      {task.assigneePersonId && !options.people.some((person) => person.id === task.assigneePersonId) ? <option value={task.assigneePersonId}>{task.assigneeName ?? "…"}</option> : null}
-                      {options.people.map((person) => (
-                        <option key={person.id} value={person.id}>
-                          {person.fullName}
+      <Table className="min-w-[64rem]">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-px">
+              <Checkbox aria-label={t("selectAll")} checked={allChosen} onCheckedChange={(checked) => setSelected(checked ? new Set(visible.filter(editable).map((task) => task.id)) : new Set())} />
+            </TableHead>
+            <TableHead kind="id">{t("key")}</TableHead>
+            <TableHead kind="text">{t("title")}</TableHead>
+            <TableHead kind="status">{t("state")}</TableHead>
+            <TableHead kind="person">{t("assignee")}</TableHead>
+            <TableHead kind="date">{t("startDate")}</TableHead>
+            <TableHead kind="date">{t("dueDate")}</TableHead>
+            <TableHead kind="select">{t("priority")}</TableHead>
+            <TableHead kind="time">{t("estimate")}</TableHead>
+            {logged ? <TableHead kind="time">{t("logged")}</TableHead> : null}
+            <TableHead kind="tags">{t("labels")}</TableHead>
+            {fields.map((field) => (
+              <TableHead key={field.id} kind={FIELD_KIND[field.type]}>
+                {field.name}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {visible.length === 0 ? <TableEmpty>{shown.length === 0 ? tList("empty") : tList("noMatch")}</TableEmpty> : null}
+          {visible.map((task) => {
+            const can = editable(task) && !pending;
+            const open = task.status === "todo" || task.status === "in_progress";
+            const overdue = open && task.dueDate !== null && task.dueDate < today;
+            const own = fieldsOf(task);
+            return (
+              <TableRow key={task.id} data-state={selected.has(task.id) ? "selected" : undefined}>
+                <TableCell>
+                  <Checkbox aria-label={t("select", { key: task.key })} checked={selected.has(task.id)} disabled={!editable(task)} onCheckedChange={(checked) => toggle(task.id, checked)} />
+                </TableCell>
+                <TableCell kind="id">{task.key}</TableCell>
+                <TableCell className="max-w-72">
+                  <span className="flex items-center gap-1.5">
+                    <Link href={`/work/tasks/${task.id}`} className={`truncate hover:underline ${open ? "font-medium" : "text-muted-foreground line-through"}`}>
+                      {task.title}
+                    </Link>
+                    {task.blocker ? (
+                      <Badge variant="destructive" title={task.blocker.reason}>
+                        {tWork("blockers.badge")}
+                      </Badge>
+                    ) : null}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <Select aria-label={t("state")} value={task.stateId} disabled={!can} onChange={(event) => edit(task, { stateId: event.target.value }, { stateId: event.target.value })} className="h-7 w-36 text-xs md:text-xs">
+                    {options.states
+                      .filter((state) => state.isActive || state.id === task.stateId)
+                      .map((state) => (
+                        <option key={state.id} value={state.id}>
+                          {state.name}
                         </option>
                       ))}
-                    </Select>
-                  </td>
-                  {(["startDate", "dueDate"] as const).map((key) => (
-                    <td key={key} className="px-2 py-1">
-                      <DatePicker
-                        aria-label={t(key)}
-                        key={task[key] ?? ""}
-                        defaultValue={task[key] ?? ""}
-                        disabled={!can}
-                        onChange={(event) => edit(task, { [key]: event.target.value || null }, { [key]: event.target.value })}
-                        className={`h-7 w-36 text-xs md:text-xs ${key === "dueDate" && overdue ? "text-destructive" : ""}`}
-                      />
-                    </td>
-                  ))}
-                  <td className="px-2 py-1">
-                    <Select aria-label={t("priority")} value={task.priority ?? ""} disabled={!can} onChange={(event) => edit(task, { priority: event.target.value ? Number(event.target.value) : null }, { priority: event.target.value })} className="h-7 w-28 text-xs md:text-xs">
-                      <option value="">{tWork("priority.none")}</option>
-                      {PRIORITIES.map((priority) => (
-                        <option key={priority} value={priority}>
-                          {tWork(`priority.${priority}`)}
-                        </option>
-                      ))}
-                    </Select>
-                  </td>
-                  <td className="px-2 py-1 text-right">
-                    <Input
-                      type="number"
-                      min={0.25}
-                      max={1000}
-                      step={0.25}
-                      aria-label={t("estimate")}
-                      key={task.estimateMinutes ?? ""}
-                      defaultValue={task.estimateMinutes ? hours(task.estimateMinutes) : ""}
+                  </Select>
+                </TableCell>
+                <TableCell>
+                  <Select aria-label={t("assignee")} value={task.assigneePersonId ?? ""} disabled={!can} onChange={(event) => edit(task, { assigneePersonId: event.target.value || null }, { assigneePersonId: event.target.value })} className="h-7 w-36 text-xs md:text-xs">
+                    <option value="">{tList("unassigned")}</option>
+                    {task.assigneePersonId && !options.people.some((person) => person.id === task.assigneePersonId) ? <option value={task.assigneePersonId}>{task.assigneeName ?? "…"}</option> : null}
+                    {options.people.map((person) => (
+                      <option key={person.id} value={person.id}>
+                        {person.fullName}
+                      </option>
+                    ))}
+                  </Select>
+                </TableCell>
+                {(["startDate", "dueDate"] as const).map((key) => (
+                  <TableCell key={key}>
+                    <DatePicker
+                      aria-label={t(key)}
+                      key={task[key] ?? ""}
+                      defaultValue={task[key] ?? ""}
                       disabled={!can}
-                      onBlur={(event) => {
-                        const minutes = event.target.value ? Math.round(Number(event.target.value) * 60) : null;
-                        if (minutes !== (task.estimateMinutes ?? null)) edit(task, { estimateMinutes: minutes }, { estimateMinutes: minutes ?? "" });
-                      }}
-                      onKeyDown={(event) => event.key === "Enter" && event.currentTarget.blur()}
-                      className="h-7 w-20 text-right text-xs md:text-xs"
+                      onChange={(event) => edit(task, { [key]: event.target.value || null }, { [key]: event.target.value })}
+                      className={`h-7 w-36 text-xs md:text-xs ${key === "dueDate" && overdue ? "text-destructive" : ""}`}
                     />
-                  </td>
-                  {logged ? <td className="px-2 py-1 text-right text-xs whitespace-nowrap text-muted-foreground">{logged[task.id] ? hours(logged[task.id]) : ""}</td> : null}
-                  <td className="px-2 py-1">
-                    <LabelCell task={task} options={options} disabled={!can} onChange={(labelIds) => edit(task, { labelIds }, { labelIds })} />
-                  </td>
-                  {fields.map((field) => (
-                    <td key={field.id} className="px-2 py-1">
-                      {own.includes(field) ? <CustomValueInput compact field={field} value={task.customValues?.[field.id]} people={options.people} disabled={!can} onCommit={(value) => edit(task, { customValues: { [field.id]: value } }, { customValues: { [field.id]: value } })} /> : null}
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot className="bg-muted/40 text-xs">
-            <tr>
-              <td colSpan={8} className="px-2 py-2 font-medium">
-                {t("totals", { count: visible.length })}
-              </td>
-              <td className="px-2 py-2 text-right font-medium whitespace-nowrap">{t("hours", { value: hours(totals.estimate) })}</td>
-              {logged ? <td className="px-2 py-2 text-right font-medium whitespace-nowrap">{t("hours", { value: hours(totals.logged) })}</td> : null}
-              <td colSpan={1 + fields.length} />
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+                  </TableCell>
+                ))}
+                <TableCell>
+                  <Select aria-label={t("priority")} value={task.priority ?? ""} disabled={!can} onChange={(event) => edit(task, { priority: event.target.value ? Number(event.target.value) : null }, { priority: event.target.value })} className="h-7 w-28 text-xs md:text-xs">
+                    <option value="">{tWork("priority.none")}</option>
+                    {PRIORITIES.map((priority) => (
+                      <option key={priority} value={priority}>
+                        {tWork(`priority.${priority}`)}
+                      </option>
+                    ))}
+                  </Select>
+                </TableCell>
+                <TableCell kind="time">
+                  <Input
+                    type="number"
+                    min={0.25}
+                    max={1000}
+                    step={0.25}
+                    aria-label={t("estimate")}
+                    key={task.estimateMinutes ?? ""}
+                    defaultValue={task.estimateMinutes ? hours(task.estimateMinutes) : ""}
+                    disabled={!can}
+                    onBlur={(event) => {
+                      const minutes = event.target.value ? Math.round(Number(event.target.value) * 60) : null;
+                      if (minutes !== (task.estimateMinutes ?? null)) edit(task, { estimateMinutes: minutes }, { estimateMinutes: minutes ?? "" });
+                    }}
+                    onKeyDown={(event) => event.key === "Enter" && event.currentTarget.blur()}
+                    className="ml-auto h-7 w-20 text-right text-xs md:text-xs"
+                  />
+                </TableCell>
+                {logged ? <TableCell kind="time" className="text-xs text-muted-foreground">{logged[task.id] ? hours(logged[task.id]) : ""}</TableCell> : null}
+                <TableCell>
+                  <LabelCell task={task} options={options} disabled={!can} onChange={(labelIds) => edit(task, { labelIds }, { labelIds })} />
+                </TableCell>
+                {fields.map((field) => (
+                  <TableCell key={field.id}>
+                    {own.includes(field) ? <CustomValueInput compact field={field} value={task.customValues?.[field.id]} people={options.people} disabled={!can} onCommit={(value) => edit(task, { customValues: { [field.id]: value } }, { customValues: { [field.id]: value } })} /> : null}
+                  </TableCell>
+                ))}
+              </TableRow>
+            );
+          })}
+        </TableBody>
+        <TableFooter className="text-xs">
+          <TableRow>
+            <TableCell colSpan={8}>{t("totals", { count: visible.length })}</TableCell>
+            <TableCell kind="time">{t("hours", { value: hours(totals.estimate) })}</TableCell>
+            {logged ? <TableCell kind="time">{t("hours", { value: hours(totals.logged) })}</TableCell> : null}
+            <TableCell colSpan={1 + fields.length} />
+          </TableRow>
+        </TableFooter>
+      </Table>
     </div>
   );
 }

@@ -1,4 +1,6 @@
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
+import { List, ListItem } from "@/components/ui/list";
+import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import {
   canComputeResults,
@@ -110,18 +112,15 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
       ) : null}
 
       {readable.length > 0 ? (
-        <section className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2>{t("list.title", { year })}</h2>
-            <span className="text-xs text-muted-foreground">{t("list.count", { count: readable.length })}</span>
-          </div>
-          <ul className="flex flex-col gap-3">
+        <TableCard>
+          <TableCardHeader title={t("list.title", { year })} count={t("list.count", { count: readable.length })} />
+          <List>
             {readable.map((line) => {
               const person = directory.get(line.personId)!;
               const row = rowOf.get(line.id) ?? null;
               const maySettle = canSettleResultOf(user.principal, person);
               return (
-                <li key={line.id} className="flex flex-col gap-3 rounded-xl border p-3">
+                <ListItem key={line.id} className="flex-col items-stretch gap-3">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span className="min-w-0 flex-1 basis-56 text-sm font-medium">{line.personName}</span>
                     <span className="text-xs text-muted-foreground tabular-nums">
@@ -179,11 +178,11 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
                       </div>
                     );
                   })()}
-                </li>
+                </ListItem>
               );
             })}
-          </ul>
-        </section>
+          </List>
+        </TableCard>
       ) : (
         <p className="text-sm text-muted-foreground">{t("list.empty")}</p>
       )}

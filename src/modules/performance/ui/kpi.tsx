@@ -1,6 +1,7 @@
 // Display pieces of the KPI screens. No hooks: labels and the number format are passed in, so
 // they work in server and client components alike.
 import Link from "next/link";
+import { Table, TableBody, TableCard, TableCell, TableEmpty, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { isMonthKey, shiftMonth } from "@/lib/month-grid";
 import type { KpiTrace, KpiTraceLine } from "../engine/kpi-score";
 import type { KpiUnit } from "../enums";
@@ -50,53 +51,53 @@ const flagsOf = (line: KpiTraceLine, t: Translate): string => line.flags.map((fl
 /** The whole working out of a month score: every line's target, actual, attainment, weight and share. */
 export function TraceTable({ trace, labels }: { trace: KpiTrace; labels: KpiLabels }) {
   const { t, format } = labels;
-  if (trace.lines.length === 0) return <p className="text-sm text-muted-foreground">{t("kpi.noLines")}</p>;
   return (
-    <div className="overflow-x-auto rounded-xl border">
-      <table className="w-full text-sm">
-        <thead className="text-left text-xs text-muted-foreground">
-          <tr className="border-b">
-            <th className="p-2 font-medium">{t("kpi.columns.kpi")}</th>
-            <th className="p-2 text-right font-medium">{t("kpi.columns.target")}</th>
-            <th className="p-2 text-right font-medium">{t("kpi.columns.actual")}</th>
-            <th className="p-2 text-right font-medium">{t("kpi.columns.attainment")}</th>
-            <th className="p-2 text-right font-medium">{t("kpi.columns.weight")}</th>
-            <th className="p-2 text-right font-medium">{t("kpi.columns.contribution")}</th>
-          </tr>
-        </thead>
-        <tbody>
+    <TableCard>
+      <Table numbered={false}>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="text">{t("kpi.columns.kpi")}</TableHead>
+            <TableHead kind="number">{t("kpi.columns.target")}</TableHead>
+            <TableHead kind="number">{t("kpi.columns.actual")}</TableHead>
+            <TableHead kind="percent">{t("kpi.columns.attainment")}</TableHead>
+            <TableHead kind="number">{t("kpi.columns.weight")}</TableHead>
+            <TableHead kind="percent">{t("kpi.columns.contribution")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {trace.lines.length === 0 ? <TableEmpty>{t("kpi.noLines")}</TableEmpty> : null}
           {trace.lines.map((line) => (
-            <tr key={line.assignmentId} className={`border-b last:border-0 ${line.counted ? "" : "text-muted-foreground"}`}>
-              <td className="p-2">
+            <TableRow key={line.assignmentId} className={line.counted ? undefined : "text-muted-foreground"}>
+              <TableCell>
                 <div>{line.kpiName}</div>
                 <div className="text-xs text-muted-foreground">
                   {[line.kpiCode, t(`kpi.direction.${line.direction}`), line.frequency === "quarterly" ? periodLabel(line.periodKey) : null, flagsOf(line, t) || null, line.note ?? null].filter(Boolean).join(" · ")}
                 </div>
-              </td>
-              <td className="p-2 text-right tabular-nums">{kpiValueText(format, line.unit, line.targetValue)}</td>
-              <td className="p-2 text-right tabular-nums">{line.notApplicable ? t("kpi.notApplicableShort") : kpiValueText(format, line.unit, line.actualValue)}</td>
-              <td className="p-2 text-right tabular-nums">
+              </TableCell>
+              <TableCell kind="number">{kpiValueText(format, line.unit, line.targetValue)}</TableCell>
+              <TableCell kind="number">{line.notApplicable ? t("kpi.notApplicableShort") : kpiValueText(format, line.unit, line.actualValue)}</TableCell>
+              <TableCell kind="percent">
                 {bpText(format, line.finalBp)}
                 {line.rawBp !== null && line.rawBp !== line.finalBp ? <div className="text-xs text-muted-foreground">{t("kpi.raw", { value: bpText(format, line.rawBp) })}</div> : null}
-              </td>
-              <td className="p-2 text-right tabular-nums">
+              </TableCell>
+              <TableCell kind="number">
                 {line.weight}
                 {line.counted && trace.totalWeight > 0 ? <div className="text-xs text-muted-foreground">{bpText(format, Math.round((line.weight * 10000) / trace.totalWeight))}</div> : null}
-              </td>
-              <td className="p-2 text-right tabular-nums">{bpText(format, line.contributionBp)}</td>
-            </tr>
+              </TableCell>
+              <TableCell kind="percent">{bpText(format, line.contributionBp)}</TableCell>
+            </TableRow>
           ))}
-        </tbody>
-        <tfoot>
-          <tr className="border-t font-medium">
-            <td className="p-2" colSpan={4}>
-              {t("kpi.formula")}
-            </td>
-            <td className="p-2 text-right tabular-nums">{trace.totalWeight}</td>
-            <td className="p-2 text-right tabular-nums">{bpText(format, trace.scoreBp)}</td>
-          </tr>
-        </tfoot>
-      </table>
+        </TableBody>
+        {trace.lines.length > 0 ? (
+          <TableFooter>
+            <TableRow>
+              <TableCell colSpan={4}>{t("kpi.formula")}</TableCell>
+              <TableCell kind="number">{trace.totalWeight}</TableCell>
+              <TableCell kind="percent">{bpText(format, trace.scoreBp)}</TableCell>
+            </TableRow>
+          </TableFooter>
+        ) : null}
+      </Table>
       {trace.notes.length > 0 ? (
         <ul className="list-disc border-t px-6 py-2 text-xs text-muted-foreground">
           {trace.notes.map((note) => (
@@ -104,6 +105,6 @@ export function TraceTable({ trace, labels }: { trace: KpiTrace; labels: KpiLabe
           ))}
         </ul>
       ) : null}
-    </div>
+    </TableCard>
   );
 }

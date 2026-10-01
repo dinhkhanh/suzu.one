@@ -11,6 +11,7 @@ import type { PersonView } from "../service";
 import { Field, FormError } from "@/components/forms/field";
 import { PlacementFields, type PlacementOptions } from "./fields";
 import { useActionForm } from "@/components/forms/use-action-form";
+import { TableAddRow } from "@/components/ui/table";
 
 export function AssignmentForm({ person, options, today }: { person: PersonView; options: PlacementOptions; today: string }) {
   const t = useTranslations("people");
@@ -26,9 +27,8 @@ export function AssignmentForm({ person, options, today }: { person: PersonView;
   const current = person.personal?.current;
 
   return (
-    <details ref={details} className="rounded-xl border p-4">
-      <summary className="cursor-pointer text-sm font-medium">{t("assignment.change")}</summary>
-      <form ref={form} onSubmit={onSubmit} className="mt-4 flex flex-col gap-4">
+    <TableAddRow label={t("assignment.change")} ref={details}>
+      <form ref={form} onSubmit={onSubmit} className="flex flex-col gap-4">
         <p className="text-sm text-muted-foreground">{t("assignment.hint")}</p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field name="validFrom" label={t("fields.validFrom")}>
@@ -58,7 +58,7 @@ export function AssignmentForm({ person, options, today }: { person: PersonView;
           </Button>
         </div>
       </form>
-    </details>
+    </TableAddRow>
   );
 }
 
@@ -76,9 +76,8 @@ export function PastAssignmentForm({ person, options, today }: { person: PersonV
   });
 
   return (
-    <details ref={details} className="rounded-xl border p-4">
-      <summary className="cursor-pointer text-sm font-medium">{t("assignment.past.title")}</summary>
-      <form ref={form} onSubmit={onSubmit} className="mt-4 flex flex-col gap-4">
+    <TableAddRow label={t("assignment.past.title")} ref={details}>
+      <form ref={form} onSubmit={onSubmit} className="flex flex-col gap-4">
         <p className="text-sm text-muted-foreground">{t("assignment.past.hint")}</p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field name="validFrom" label={t("assignment.past.from")}>
@@ -101,6 +100,6 @@ export function PastAssignmentForm({ person, options, today }: { person: PersonV
           </Button>
         </div>
       </form>
-    </details>
+    </TableAddRow>
   );
 }

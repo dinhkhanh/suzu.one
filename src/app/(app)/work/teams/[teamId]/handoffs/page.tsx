@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { checklistChoices, canManageHandoffPackages, canViewTeam, findTeam, handoffStatsByStage, listPackages, listStates, loadViewer, teamFacts } from "@/modules/work/service";
@@ -49,39 +50,34 @@ export default async function TeamHandoffsPage({ params }: PageProps<"/work/team
       />
 
       {manage ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("handoff.stats.title", { days: STATS_DAYS })}</h2>
-          {stats.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("handoff.stats.empty")}</p>
-          ) : (
-            <div className="overflow-x-auto rounded-xl border">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2">{t("handoff.stats.stage")}</th>
-                    <th className="px-3 py-2 text-right">{t("handoff.stats.total")}</th>
-                    <th className="px-3 py-2 text-right">{t("handoff.stats.returned")}</th>
-                    <th className="px-3 py-2 text-right">{t("handoff.stats.pending")}</th>
-                    <th className="px-3 py-2 text-right">{t("handoff.stats.wait")}</th>
-                    <th className="px-3 py-2 text-right">{t("handoff.stats.oldest")}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {stats.map((row) => (
-                    <tr key={row.toStateId ?? "none"}>
-                      <td className="px-3 py-2">{row.stateName ?? "—"}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{row.total}</td>
-                      <td className={`px-3 py-2 text-right tabular-nums ${row.returned ? "text-destructive" : ""}`}>{row.returned}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{row.pending}</td>
-                      <td className="px-3 py-2 text-right">{duration(row.avgWaitMinutes)}</td>
-                      <td className="px-3 py-2 text-right">{duration(row.oldestPendingMinutes)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+        <TableCard>
+          <TableCardHeader title={t("handoff.stats.title", { days: STATS_DAYS })} />
+          <Table numbered={false}>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="status">{t("handoff.stats.stage")}</TableHead>
+                <TableHead kind="number">{t("handoff.stats.total")}</TableHead>
+                <TableHead kind="number">{t("handoff.stats.returned")}</TableHead>
+                <TableHead kind="number">{t("handoff.stats.pending")}</TableHead>
+                <TableHead kind="time">{t("handoff.stats.wait")}</TableHead>
+                <TableHead kind="time">{t("handoff.stats.oldest")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {stats.length === 0 ? <TableEmpty>{t("handoff.stats.empty")}</TableEmpty> : null}
+              {stats.map((row) => (
+                <TableRow key={row.toStateId ?? "none"}>
+                  <TableCell>{row.stateName ?? "—"}</TableCell>
+                  <TableCell kind="number">{row.total}</TableCell>
+                  <TableCell kind="number" className={row.returned ? "text-destructive" : undefined}>{row.returned}</TableCell>
+                  <TableCell kind="number">{row.pending}</TableCell>
+                  <TableCell kind="time">{duration(row.avgWaitMinutes)}</TableCell>
+                  <TableCell kind="time">{duration(row.oldestPendingMinutes)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       ) : null}
     </div>
   );

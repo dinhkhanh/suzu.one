@@ -3,7 +3,9 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { List, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { ASSET_STATUSES, type AssetStatus } from "../enums";
 import type { AssetHistoryEntry, AssetListRow } from "../service";
@@ -75,64 +77,64 @@ export async function RegisterFilterBar({ query, entities, categories }: { query
 export async function RegisterTable({ rows, showMoney }: { rows: readonly AssetListRow[]; showMoney: boolean }) {
   const t = await getTranslations("assets.columns");
   const tEmpty = await getTranslations("assets");
-  if (rows.length === 0) return <p className="text-sm text-muted-foreground">{tEmpty("empty")}</p>;
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] text-sm">
-        <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-          <tr>
-            <th className="py-2 pr-3">{t("code")}</th>
-            <th className="py-2 pr-3">{t("name")}</th>
-            <th className="py-2 pr-3">{t("category")}</th>
-            <th className="py-2 pr-3">{t("entity")}</th>
-            <th className="py-2 pr-3">{t("status")}</th>
-            <th className="py-2 pr-3">{t("holder")}</th>
-            {showMoney ? <th className="py-2 pr-3 text-right">{t("purchasePrice")}</th> : null}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.id} className="border-t">
-              <td className="py-2 pr-3 font-mono text-xs">
-                <Link href={`/assets/${row.id}`} className="underline">
-                  {row.code}
-                </Link>
-              </td>
-              <td className="py-2 pr-3">
-                {row.name}
-                {row.serial ? <span className="block text-xs text-muted-foreground">{row.serial}</span> : null}
-              </td>
-              <td className="py-2 pr-3">{row.categoryName}</td>
-              <td className="py-2 pr-3">{row.entityName}</td>
-              <td className="py-2 pr-3">
-                <StatusBadge status={row.status} />
-              </td>
-              <td className="py-2 pr-3">
-                {row.holderName ?? "—"}
-                {row.holderName && !row.handoverConfirmedAt ? <span className="ml-1 text-xs text-amber-600">●</span> : null}
-              </td>
-              {showMoney ? <td className="py-2 pr-3 text-right tabular-nums">{row.purchasePrice === null ? "—" : row.purchasePrice.toLocaleString("vi-VN")}</td> : null}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table className="min-w-[720px]">
+      <TableHeader>
+        <TableRow>
+          <TableHead kind="id">{t("code")}</TableHead>
+          <TableHead kind="text">{t("name")}</TableHead>
+          <TableHead kind="select">{t("category")}</TableHead>
+          <TableHead kind="org">{t("entity")}</TableHead>
+          <TableHead kind="status">{t("status")}</TableHead>
+          <TableHead kind="person">{t("holder")}</TableHead>
+          {showMoney ? <TableHead kind="money">{t("purchasePrice")}</TableHead> : null}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.length === 0 ? <TableEmpty>{tEmpty("empty")}</TableEmpty> : null}
+        {rows.map((row) => (
+          <TableRow key={row.id}>
+            <TableCell kind="id">
+              <Link href={`/assets/${row.id}`} className="underline">
+                {row.code}
+              </Link>
+            </TableCell>
+            <TableCell>
+              {row.name}
+              {row.serial ? <span className="block text-xs text-muted-foreground">{row.serial}</span> : null}
+            </TableCell>
+            <TableCell>
+              <Badge variant="outline">{row.categoryName}</Badge>
+            </TableCell>
+            <TableCell>{row.entityName}</TableCell>
+            <TableCell>
+              <StatusBadge status={row.status} />
+            </TableCell>
+            <TableCell>
+              {row.holderName ?? "—"}
+              {row.holderName && !row.handoverConfirmedAt ? <span className="ml-1 text-xs text-amber-600">●</span> : null}
+            </TableCell>
+            {showMoney ? <TableCell kind="money">{row.purchasePrice === null ? "—" : row.purchasePrice.toLocaleString("vi-VN")}</TableCell> : null}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 
 export async function AssetHistory({ entries }: { entries: readonly AssetHistoryEntry[] }) {
   const t = await getTranslations("assets.events");
   return (
-    <ol className="flex flex-col gap-2 text-sm">
+    <List>
       {entries.map((entry) => (
-        <li key={entry.id} className="flex flex-wrap items-baseline gap-2 border-b pb-2">
+        <ListItem key={entry.id} className="flex-wrap items-baseline gap-2">
           <Badge variant="secondary">{t.has(entry.type) ? t(entry.type) : entry.type}</Badge>
           <span className="text-xs text-muted-foreground">{entry.at.toLocaleString("vi-VN")}</span>
           {entry.actorName ? <span className="text-xs text-muted-foreground">· {entry.actorName}</span> : null}
           <RichText text={entry.note} className="w-full text-muted-foreground" />
-        </li>
+        </ListItem>
       ))}
-    </ol>
+    </List>
   );
 }
 

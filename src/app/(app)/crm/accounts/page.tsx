@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -71,24 +71,23 @@ export default async function AccountsPage({ searchParams }: PageProps<"/crm/acc
         </Button>
       </form>
 
-      {accounts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("accounts.empty")}</p>
-      ) : (
+      <TableCard>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("accounts.columns.account")}</TableHead>
-              <TableHead>{t("accounts.columns.lifecycle")}</TableHead>
-              <TableHead>{t("accounts.columns.manager")}</TableHead>
-              <TableHead className="text-right">{t("accounts.columns.projects")}</TableHead>
-              <TableHead className="text-right">{t("accounts.columns.deals")}</TableHead>
-              {showMoney ? <TableHead className="text-right">{t("accounts.columns.pipeline")}</TableHead> : null}
-              {showReceivables ? <TableHead className="text-right">{t("accounts.columns.overdue")}</TableHead> : null}
-              <TableHead>{t("accounts.columns.lastActivity")}</TableHead>
-              <TableHead>{t("accounts.columns.nextFollowUp")}</TableHead>
+              <TableHead kind="text">{t("accounts.columns.account")}</TableHead>
+              <TableHead kind="status">{t("accounts.columns.lifecycle")}</TableHead>
+              <TableHead kind="person">{t("accounts.columns.manager")}</TableHead>
+              <TableHead kind="number">{t("accounts.columns.projects")}</TableHead>
+              <TableHead kind="number">{t("accounts.columns.deals")}</TableHead>
+              {showMoney ? <TableHead kind="money">{t("accounts.columns.pipeline")}</TableHead> : null}
+              {showReceivables ? <TableHead kind="money">{t("accounts.columns.overdue")}</TableHead> : null}
+              <TableHead kind="date">{t("accounts.columns.lastActivity")}</TableHead>
+              <TableHead kind="date">{t("accounts.columns.nextFollowUp")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
+            {accounts.length === 0 ? <TableEmpty>{t("accounts.empty")}</TableEmpty> : null}
             {accounts.map((row) => (
               <TableRow key={row.client.id}>
                 <TableCell>
@@ -105,27 +104,23 @@ export default async function AccountsPage({ searchParams }: PageProps<"/crm/acc
                     {t(`enums.lifecycle.${(row.profile?.lifecycle ?? "prospect") as Lifecycle}`)}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-sm">{row.managerName ?? "—"}</TableCell>
-                <TableCell className="text-right tabular-nums">{row.signals.openProjects}</TableCell>
-                <TableCell className="text-right tabular-nums">{row.signals.openDeals}</TableCell>
-                {showMoney ? <TableCell className="text-right tabular-nums">{row.seesMoney ? f.money(row.signals.pipelineVnd) : "—"}</TableCell> : null}
-                {showReceivables ? <TableCell className={`text-right tabular-nums ${row.signals.overdueVnd > 0 ? "text-destructive" : ""}`}>{row.seesReceivables ? f.money(row.signals.overdueVnd) : "—"}</TableCell> : null}
-                <TableCell className="text-sm">{f.date(row.signals.lastActivityOn)}</TableCell>
-                <TableCell className="text-sm">{f.date(row.signals.nextFollowUpOn)}</TableCell>
+                <TableCell>{row.managerName ?? "—"}</TableCell>
+                <TableCell kind="number">{row.signals.openProjects}</TableCell>
+                <TableCell kind="number">{row.signals.openDeals}</TableCell>
+                {showMoney ? <TableCell kind="money">{row.seesMoney ? f.money(row.signals.pipelineVnd) : "—"}</TableCell> : null}
+                {showReceivables ? <TableCell kind="money" className={row.signals.overdueVnd > 0 ? "text-destructive" : undefined}>{row.seesReceivables ? f.money(row.signals.overdueVnd) : "—"}</TableCell> : null}
+                <TableCell>{f.date(row.signals.lastActivityOn)}</TableCell>
+                <TableCell>{f.date(row.signals.nextFollowUpOn)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      )}
-
-      {canCreate ? (
-        <details className="rounded-xl border p-4">
-          <summary className="cursor-pointer text-sm font-medium">{t("accounts.new")}</summary>
-          <div className="pt-3">
+        {canCreate ? (
+          <TableAddRow label={t("accounts.new")}>
             <NewAccountForm entities={(creatable.length ? creatable : activeEntities).map((entity) => ({ id: entity.id, name: entity.shortName }))} people={people} defaultEntityId={creatable[0]?.id ?? user.person.primaryEntityId} />
-          </div>
-        </details>
-      ) : null}
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

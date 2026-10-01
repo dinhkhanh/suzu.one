@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListItem } from "@/components/ui/list";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { awaitingAcceptance, canEditRetainer, getRetainer, listPeriods, openProject, type PeriodView, RETAINER_ROLLOVERS, shapeRetainer, type Usage, type UsageLevel } from "@/modules/projects/service";
@@ -38,37 +40,35 @@ export default async function ProjectRetainerPage({ params }: PageProps<"/projec
 
   const report = (view: PeriodView) => (
     <div className="flex flex-col gap-3">
-      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        <table className="w-full min-w-[34rem] text-sm">
-          <thead className="text-left text-xs text-muted-foreground">
-            <tr>
-              <th className="py-1 pr-2 font-normal">{t("line")}</th>
-              <th className="py-1 pr-2 text-right font-normal">{t("quota")}</th>
-              <th className="py-1 pr-2 text-right font-normal">{t("carried")}</th>
-              <th className="py-1 pr-2 text-right font-normal">{t("consumed")}</th>
-              <th className="py-1 pr-2 text-right font-normal">{t("remaining")}</th>
-              <th className="py-1 text-right font-normal">{t("overservicing")}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {view.lines.map((line) => (
-              <tr key={line.id} className={line.cancelledAt ? "opacity-60" : ""}>
-                <td className="py-1.5 pr-2">
-                  <span className={line.cancelledAt ? "line-through" : ""}>{line.title}</span>
-                  {line.format ? <span className="ml-1 text-xs text-muted-foreground">{tWork(`formats.${line.format as "post"}`)}</span> : null}
-                </td>
-                <td className="py-1.5 pr-2 text-right">{line.quantity}</td>
-                <td className="py-1.5 pr-2 text-right">{view.period.carried[line.title] ? (view.period.carried[line.title] > 0 ? `+${view.period.carried[line.title]}` : view.period.carried[line.title]) : "—"}</td>
-                <td className="py-1.5 pr-2 text-right">{line.consumed}</td>
-                <td className="py-1.5 pr-2 text-right">{line.usage.remaining}</td>
-                <td className="py-1.5 text-right">
-                  <Badge variant={levelVariant(line.usage.level)}>{percent(line.usage)}</Badge>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table numbered={false} className="min-w-[34rem]">
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="text">{t("line")}</TableHead>
+            <TableHead kind="number">{t("quota")}</TableHead>
+            <TableHead kind="number">{t("carried")}</TableHead>
+            <TableHead kind="number">{t("consumed")}</TableHead>
+            <TableHead kind="number">{t("remaining")}</TableHead>
+            <TableHead kind="percent">{t("overservicing")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {view.lines.map((line) => (
+            <TableRow key={line.id} className={line.cancelledAt ? "opacity-60" : ""}>
+              <TableCell>
+                <span className={line.cancelledAt ? "line-through" : ""}>{line.title}</span>
+                {line.format ? <span className="ml-1 text-xs text-muted-foreground">{tWork(`formats.${line.format as "post"}`)}</span> : null}
+              </TableCell>
+              <TableCell kind="number">{line.quantity}</TableCell>
+              <TableCell kind="number">{view.period.carried[line.title] ? (view.period.carried[line.title] > 0 ? `+${view.period.carried[line.title]}` : view.period.carried[line.title]) : "—"}</TableCell>
+              <TableCell kind="number">{line.consumed}</TableCell>
+              <TableCell kind="number">{line.usage.remaining}</TableCell>
+              <TableCell kind="percent">
+                <Badge variant={levelVariant(line.usage.level)}>{percent(line.usage)}</Badge>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
       <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
         <div>
           <dt className="text-xs text-muted-foreground">{t("total")}</dt>
@@ -121,31 +121,30 @@ export default async function ProjectRetainerPage({ params }: PageProps<"/projec
       ) : null}
 
       {current ? (
-        <section className="flex flex-col gap-3 rounded-xl border p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-medium">{t("thisMonth", { month: current.period.month })}</h2>
-            <Badge variant={levelVariant(current.total.level)}>{t("overservicingValue", { percent: percent(current.total) })}</Badge>
-          </div>
-          {report(current)}
-        </section>
+        <TableCard>
+          <TableCardHeader title={t("thisMonth", { month: current.period.month })} actions={<Badge variant={levelVariant(current.total.level)}>{t("overservicingValue", { percent: percent(current.total) })}</Badge>} />
+          <div className="p-4">{report(current)}</div>
+        </TableCard>
       ) : null}
 
       {past.length ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-base font-medium">{t("report")}</h2>
-          {past.map((view) => (
-            <details key={view.period.id} className="rounded-xl border p-3">
-              <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm">
-                <span className="font-medium">{view.period.month}</span>
-                <Badge variant="outline">{t(`periodStatus.${view.period.status as "open"}`)}</Badge>
-                <Badge variant={levelVariant(view.total.level)}>{t("overservicingValue", { percent: percent(view.total) })}</Badge>
-              </summary>
-              <div className="pt-3">
-                {report(view)}
-              </div>
-            </details>
-          ))}
-        </section>
+        <TableCard>
+          <TableCardHeader title={t("report")} count={past.length} />
+          <List>
+            {past.map((view) => (
+              <ListItem key={view.period.id} className="block">
+                <details>
+                  <summary className="flex cursor-pointer flex-wrap items-center gap-2">
+                    <span className="font-medium">{view.period.month}</span>
+                    <Badge variant="outline">{t(`periodStatus.${view.period.status as "open"}`)}</Badge>
+                    <Badge variant={levelVariant(view.total.level)}>{t("overservicingValue", { percent: percent(view.total) })}</Badge>
+                  </summary>
+                  <div className="pt-3">{report(view)}</div>
+                </details>
+              </ListItem>
+            ))}
+          </List>
+        </TableCard>
       ) : null}
 
       {editable ? (

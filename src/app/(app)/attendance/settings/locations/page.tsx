@@ -1,6 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { listLocations } from "@/modules/attendance/locations";
 import { canManageLocation, canOpenAttendanceSettings } from "@/modules/attendance/policy";
 import { LocationForm } from "@/modules/attendance/ui/location-form";
@@ -21,37 +23,35 @@ export default async function LocationsSettingsPage() {
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-medium text-muted-foreground">{t("locations.title")}</h2>
-      <p className="text-sm text-muted-foreground">{t("locations.hint")}</p>
-      {mine.length === 0 ? <p className="text-sm text-muted-foreground">{t("locations.empty")}</p> : null}
-      <ul className="flex flex-col gap-3">
-        {mine.map((location) => (
-          <li key={location.id} className="rounded-xl border p-4">
-            <details>
-              <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm">
-                <span className="font-medium">{location.name}</span>
-                <span className="text-xs text-muted-foreground">{location.entityName}</span>
-                <Badge variant="secondary">{t(`locations.rules.${location.rule}`)}</Badge>
-                <Badge variant={location.mode === "block" ? "destructive" : "outline"}>{t(`locations.modes.${location.mode}`)}</Badge>
-                {location.radiusM ? <span className="text-muted-foreground">{t("locations.radiusValue", { metres: location.radiusM })}</span> : null}
-                {location.ipAllowlist.length ? <span className="text-muted-foreground">{t("locations.networks", { count: location.ipAllowlist.length })}</span> : null}
-                {location.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
-              </summary>
-              <div className="mt-4">
-                <LocationForm location={{ id: location.id, entityId: location.entityId, name: location.name, address: location.address, latitude: location.latitude, longitude: location.longitude, radiusM: location.radiusM, accuracyLimitM: location.accuracyLimitM, ipAllowlist: location.ipAllowlist, rule: location.rule, mode: location.mode, isActive: location.isActive }} entities={options.entities} />
-              </div>
-            </details>
-          </li>
-        ))}
-      </ul>
-      {options.entities.length > 0 ? (
-        <details className="rounded-xl border p-4">
-          <summary className="cursor-pointer text-sm font-medium">{t("locations.add")}</summary>
-          <div className="mt-4">
+      <TableCard>
+        <TableCardHeader title={t("locations.title")} count={mine.length || null} description={t("locations.hint")} />
+        <List>
+          {mine.length === 0 ? <ListEmpty>{t("locations.empty")}</ListEmpty> : null}
+          {mine.map((location) => (
+            <ListItem key={location.id} className="block">
+              <details>
+                <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm">
+                  <span className="font-medium">{location.name}</span>
+                  <span className="text-xs text-muted-foreground">{location.entityName}</span>
+                  <Badge variant="secondary">{t(`locations.rules.${location.rule}`)}</Badge>
+                  <Badge variant={location.mode === "block" ? "destructive" : "outline"}>{t(`locations.modes.${location.mode}`)}</Badge>
+                  {location.radiusM ? <span className="text-muted-foreground">{t("locations.radiusValue", { metres: location.radiusM })}</span> : null}
+                  {location.ipAllowlist.length ? <span className="text-muted-foreground">{t("locations.networks", { count: location.ipAllowlist.length })}</span> : null}
+                  {location.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
+                </summary>
+                <div className="mt-4">
+                  <LocationForm location={{ id: location.id, entityId: location.entityId, name: location.name, address: location.address, latitude: location.latitude, longitude: location.longitude, radiusM: location.radiusM, accuracyLimitM: location.accuracyLimitM, ipAllowlist: location.ipAllowlist, rule: location.rule, mode: location.mode, isActive: location.isActive }} entities={options.entities} />
+                </div>
+              </details>
+            </ListItem>
+          ))}
+        </List>
+        {options.entities.length > 0 ? (
+          <TableAddRow label={t("locations.add")}>
             <LocationForm entities={options.entities} />
-          </div>
-        </details>
-      ) : null}
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </section>
   );
 }

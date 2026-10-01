@@ -1,5 +1,7 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listPublicOpenings } from "@/modules/recruit/public";
 
 // Every job on offer. The only identifiers on this page are opaque slugs.
@@ -15,24 +17,39 @@ export default async function CareersPage() {
         <p className="text-sm text-muted-foreground">{t("intro")}</p>
       </header>
 
-      {openings.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("noOpenings")}</p>
-      ) : (
-        <ul className="flex flex-col divide-y rounded-xl border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="text">{t("columns.role")}</TableHead>
+            <TableHead kind="org">{t("columns.company")}</TableHead>
+            <TableHead kind="org">{t("columns.department")}</TableHead>
+            <TableHead kind="place">{t("columns.location")}</TableHead>
+            <TableHead kind="select">{t("columns.workMode")}</TableHead>
+            <TableHead kind="select">{t("columns.employmentType")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {openings.length === 0 ? <TableEmpty>{t("noOpenings")}</TableEmpty> : null}
           {openings.map((opening) => (
-            <li key={opening.slug} className="flex flex-col gap-1 p-4">
-              <Link href={`/careers/${opening.slug}`} className="text-base font-medium hover:underline">
-                {locale === "en" && opening.titleEn ? opening.titleEn : opening.title}
-              </Link>
-              <p className="text-xs text-muted-foreground">
-                {[opening.entityName, opening.departmentName, opening.workLocation, t(`workMode.${opening.workMode}` as "workMode.onsite"), t(`employmentType.${opening.employmentType}` as "employmentType.employee")]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
-            </li>
+            <TableRow key={opening.slug}>
+              <TableCell>
+                <Link href={`/careers/${opening.slug}`} className="font-medium hover:underline">
+                  {locale === "en" && opening.titleEn ? opening.titleEn : opening.title}
+                </Link>
+              </TableCell>
+              <TableCell>{opening.entityName}</TableCell>
+              <TableCell>{opening.departmentName ?? "—"}</TableCell>
+              <TableCell>{opening.workLocation ?? "—"}</TableCell>
+              <TableCell>
+                <Badge variant="outline">{t(`workMode.${opening.workMode}` as "workMode.onsite")}</Badge>
+              </TableCell>
+              <TableCell>
+                <Badge variant="outline">{t(`employmentType.${opening.employmentType}` as "employmentType.employee")}</Badge>
+              </TableCell>
+            </TableRow>
           ))}
-        </ul>
-      )}
+        </TableBody>
+      </Table>
     </div>
   );
 }

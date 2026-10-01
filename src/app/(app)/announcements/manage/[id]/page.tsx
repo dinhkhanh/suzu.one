@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { audienceNames, audienceOptionsFor, commsViewerOf, getAnnouncementView, getReadReport } from "@/modules/comms/service";
 import { AnnouncementForm } from "@/modules/comms/ui/announcement-form";
 import { AnnouncementStateButtons } from "@/modules/comms/ui/buttons";
@@ -55,35 +55,36 @@ export default async function ManageAnnouncementPage(props: PageProps<"/announce
 
       {report ? (
         <section className="flex max-w-3xl flex-col gap-3">
-          <h2 className="text-lg font-semibold">{t("report.title")}</h2>
-          <p className="text-sm text-muted-foreground">{row.mustAcknowledge ? t("report.summaryAck", { total: report.total, read: report.read, acknowledged: report.acknowledged }) : t("report.summary", { total: report.total, read: report.read })}</p>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("report.department")}</TableHead>
-                <TableHead>{t("report.people")}</TableHead>
-                <TableHead>{t("report.read")}</TableHead>
-                {row.mustAcknowledge ? <TableHead>{t("report.acknowledged")}</TableHead> : null}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {report.byDepartment.map((line) => (
-                <TableRow key={line.departmentName ?? "-"}>
-                  <TableCell>{line.departmentName ?? "—"}</TableCell>
-                  <TableCell>{line.total}</TableCell>
-                  <TableCell>{line.read}</TableCell>
-                  {row.mustAcknowledge ? <TableCell>{line.acknowledged}</TableCell> : null}
+          <TableCard>
+            <TableCardHeader title={t("report.title")} description={row.mustAcknowledge ? t("report.summaryAck", { total: report.total, read: report.read, acknowledged: report.acknowledged }) : t("report.summary", { total: report.total, read: report.read })} />
+            <Table numbered={false}>
+              <TableHeader>
+                <TableRow>
+                  <TableHead kind="org">{t("report.department")}</TableHead>
+                  <TableHead kind="number">{t("report.people")}</TableHead>
+                  <TableHead kind="number">{t("report.read")}</TableHead>
+                  {row.mustAcknowledge ? <TableHead kind="number">{t("report.acknowledged")}</TableHead> : null}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {report.byDepartment.map((line) => (
+                  <TableRow key={line.departmentName ?? "-"}>
+                    <TableCell>{line.departmentName ?? "—"}</TableCell>
+                    <TableCell kind="number">{line.total}</TableCell>
+                    <TableCell kind="number">{line.read}</TableCell>
+                    {row.mustAcknowledge ? <TableCell kind="number">{line.acknowledged}</TableCell> : null}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableCard>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("report.person")}</TableHead>
-                <TableHead>{t("report.department")}</TableHead>
-                <TableHead>{t("report.read")}</TableHead>
-                {row.mustAcknowledge ? <TableHead>{t("report.acknowledged")}</TableHead> : null}
+                <TableHead kind="person">{t("report.person")}</TableHead>
+                <TableHead kind="org">{t("report.department")}</TableHead>
+                <TableHead kind="date">{t("report.read")}</TableHead>
+                {row.mustAcknowledge ? <TableHead kind="date">{t("report.acknowledged")}</TableHead> : null}
               </TableRow>
             </TableHeader>
             <TableBody>

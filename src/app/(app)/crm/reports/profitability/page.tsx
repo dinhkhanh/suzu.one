@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -58,16 +58,16 @@ export default async function ClientProfitabilityPage({ searchParams }: PageProp
           {t("filter")}
         </Button>
       </form>
-      <Table>
+      <Table numbered={false}>
         <TableHeader>
           <TableRow>
-            <TableHead>{t("profitability.account")}</TableHead>
-            <TableHead className="text-right">{t("profitability.revenue")}</TableHead>
-            <TableHead className="text-right">{t("profitability.deliveryCost")}</TableHead>
-            <TableHead className="text-right">{t("profitability.costOfSale")}</TableHead>
-            <TableHead className="text-right">{t("profitability.margin")}</TableHead>
-            <TableHead className="text-right">{t("profitability.rate")}</TableHead>
-            <TableHead className="text-right">{t("profitability.hours")}</TableHead>
+            <TableHead kind="org">{t("profitability.account")}</TableHead>
+            <TableHead kind="money">{t("profitability.revenue")}</TableHead>
+            <TableHead kind="money">{t("profitability.deliveryCost")}</TableHead>
+            <TableHead kind="money">{t("profitability.costOfSale")}</TableHead>
+            <TableHead kind="money">{t("profitability.margin")}</TableHead>
+            <TableHead kind="percent">{t("profitability.rate")}</TableHead>
+            <TableHead kind="time">{t("profitability.hours")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -86,24 +86,26 @@ export default async function ClientProfitabilityPage({ searchParams }: PageProp
                   {row.estimated ? ` · ${t("profitability.estimated")}` : ""}
                 </p>
               </TableCell>
-              <TableCell className="text-right tabular-nums">{f.money(row.revenueVnd)}</TableCell>
-              <TableCell className="text-right tabular-nums">{f.money(row.deliveryCostVnd)}</TableCell>
-              <TableCell className="text-right tabular-nums">{f.money(row.costOfSaleVnd)}</TableCell>
-              <TableCell className={`text-right tabular-nums ${row.marginVnd < 0 ? "text-destructive" : ""}`}>{f.money(row.marginVnd)}</TableCell>
-              <TableCell className="text-right tabular-nums">{percent(row.marginRate)}</TableCell>
-              <TableCell className="text-right tabular-nums">{row.hours}</TableCell>
+              <TableCell kind="money">{f.money(row.revenueVnd)}</TableCell>
+              <TableCell kind="money">{f.money(row.deliveryCostVnd)}</TableCell>
+              <TableCell kind="money">{f.money(row.costOfSaleVnd)}</TableCell>
+              <TableCell kind="money" className={row.marginVnd < 0 ? "text-destructive" : undefined}>{f.money(row.marginVnd)}</TableCell>
+              <TableCell kind="percent">{percent(row.marginRate)}</TableCell>
+              <TableCell kind="time">{row.hours}</TableCell>
             </TableRow>
           ))}
-          <TableRow>
-            <TableCell className="font-medium">{t("profitability.total")}</TableCell>
-            <TableCell className="text-right font-medium tabular-nums">{f.money(view.total.revenueVnd)}</TableCell>
-            <TableCell className="text-right font-medium tabular-nums">{f.money(view.total.deliveryCostVnd)}</TableCell>
-            <TableCell className="text-right font-medium tabular-nums">{f.money(view.total.costOfSaleVnd)}</TableCell>
-            <TableCell className="text-right font-medium tabular-nums">{f.money(view.total.marginVnd)}</TableCell>
-            <TableCell className="text-right font-medium tabular-nums">{percent(view.total.marginRate)}</TableCell>
-            <TableCell className="text-right font-medium tabular-nums">{view.total.hours}</TableCell>
-          </TableRow>
         </TableBody>
+        <TableFooter>
+          <TableRow>
+            <TableCell>{t("profitability.total")}</TableCell>
+            <TableCell kind="money">{f.money(view.total.revenueVnd)}</TableCell>
+            <TableCell kind="money">{f.money(view.total.deliveryCostVnd)}</TableCell>
+            <TableCell kind="money">{f.money(view.total.costOfSaleVnd)}</TableCell>
+            <TableCell kind="money">{f.money(view.total.marginVnd)}</TableCell>
+            <TableCell kind="percent">{percent(view.total.marginRate)}</TableCell>
+            <TableCell kind="time">{view.total.hours}</TableCell>
+          </TableRow>
+        </TableFooter>
       </Table>
       {view.privateLine ? (
         <p className="text-sm text-muted-foreground">

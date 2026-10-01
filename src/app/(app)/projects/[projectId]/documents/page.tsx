@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { atLeast, kbViewerOf } from "@/modules/kb/service";
 import { PageTree } from "@/modules/kb/ui/page-tree";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -81,24 +82,40 @@ export default async function ProjectDocumentsPage({ params }: PageProps<"/proje
             <PageTree tree={documents.tree} spaceKey={documents.space.key} />
           </section>
 
-          <section className="flex flex-col gap-3">
-            <h2 className="text-base font-medium">{t("files")}</h2>
-            {documents.files.length === 0 ? <p className="text-sm text-muted-foreground">{t("noFiles")}</p> : null}
-            <ul className="flex flex-col divide-y rounded-xl border">
-              {documents.files.map((file) => (
-                <li key={file.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 p-3 text-sm">
-                  <KbFileLink fileId={file.id} fileName={file.fileName} className="font-medium underline underline-offset-2">
-                    {file.fileName}
-                  </KbFileLink>
-                  <span className="text-xs text-muted-foreground">{size(file.sizeBytes)}</span>
-                  <Link href={`/kb/pages/${file.pageId}`} className="min-w-0 truncate text-xs text-link hover:underline">
-                    {file.pageTitle}
-                  </Link>
-                  <span className="ml-auto text-xs text-muted-foreground">{[file.uploadedByName, format.dateTime(file.createdAt, { dateStyle: "medium" })].filter(Boolean).join(" · ")}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
+          <TableCard>
+            <TableCardHeader title={t("files")} count={documents.files.length || null} />
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead kind="file">{t("columns.file")}</TableHead>
+                  <TableHead kind="number">{t("columns.size")}</TableHead>
+                  <TableHead kind="text">{t("columns.page")}</TableHead>
+                  <TableHead kind="person">{t("columns.uploadedBy")}</TableHead>
+                  <TableHead kind="date">{t("columns.uploadedAt")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {documents.files.length === 0 ? <TableEmpty>{t("noFiles")}</TableEmpty> : null}
+                {documents.files.map((file) => (
+                  <TableRow key={file.id}>
+                    <TableCell className="max-w-80 truncate">
+                      <KbFileLink fileId={file.id} fileName={file.fileName} className="font-medium underline underline-offset-2">
+                        {file.fileName}
+                      </KbFileLink>
+                    </TableCell>
+                    <TableCell kind="number" className="text-muted-foreground">{size(file.sizeBytes)}</TableCell>
+                    <TableCell className="max-w-64 truncate">
+                      <Link href={`/kb/pages/${file.pageId}`} className="text-link hover:underline">
+                        {file.pageTitle}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{file.uploadedByName ?? "—"}</TableCell>
+                    <TableCell>{format.dateTime(file.createdAt, { dateStyle: "medium" })}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableCard>
         </>
       )}
     </div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { AUDIT_PAGE_SIZE, type AuditFilters, listAuditEntries, listAuditResourceTypes } from "@/modules/platform/audit/service";
@@ -84,14 +85,14 @@ export default async function AuditPage(props: PageProps<"/admin/audit">) {
 
       <p className="text-sm text-muted-foreground">{t("count", { count: total })}</p>
 
-      <ul className="flex flex-col divide-y rounded-xl border">
-        {rows.length === 0 ? <li className="p-4 text-sm text-muted-foreground">{t("empty")}</li> : null}
+      <List>
+        {rows.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
         {rows.map((row) => {
           const hasDetail = row.before !== null || row.after !== null;
           const denied = row.action.endsWith(".denied") || row.action.endsWith(".rejected") || row.action.endsWith(".failed");
           return (
-            <li key={String(row.id)} className="p-3 text-sm">
-              <details>
+            <ListItem key={String(row.id)}>
+              <details className="w-full min-w-0">
                 <summary className="grid cursor-pointer gap-x-4 gap-y-1 sm:grid-cols-[11rem_minmax(0,14rem)_minmax(0,1fr)]">
                   <time className="whitespace-nowrap text-muted-foreground" dateTime={row.occurredAt.toISOString()}>
                     {format.dateTime(row.occurredAt, { dateStyle: "short", timeStyle: "medium" })}
@@ -141,10 +142,10 @@ export default async function AuditPage(props: PageProps<"/admin/audit">) {
                   </div>
                 ) : null}
               </details>
-            </li>
+            </ListItem>
           );
         })}
-      </ul>
+      </List>
 
       {pageCount > 1 ? (
         <nav className="flex items-center gap-3 text-sm">

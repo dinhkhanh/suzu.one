@@ -26,8 +26,7 @@ export function NewOneOnOneForm({ reports, today }: { reports: Person[]; today: 
   const { onSubmit, pending, errorKey, fieldErrors } = useActionForm(createOneOnOneAction, { onSuccess: (data) => router.push(`/performance/one-on-ones/${(data as { id: string }).id}`) });
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("new")}</h2>
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field name="personId" label={t("person")}>
@@ -121,8 +120,7 @@ export function AddActionForm({ meetingId, people }: { meetingId: string; people
   });
 
   return (
-    <form ref={form} onSubmit={onSubmit} className="flex flex-col gap-3 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("add")}</h2>
+    <form ref={form} onSubmit={onSubmit} className="flex flex-col gap-3">
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-4 sm:grid-cols-[1fr_12rem_10rem]">
           <Field name="title" label={t("titleField")}>

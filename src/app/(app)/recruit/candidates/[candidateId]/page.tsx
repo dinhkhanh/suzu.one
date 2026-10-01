@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getCandidateView } from "@/modules/recruit/service";
@@ -74,25 +75,36 @@ export default async function CandidatePage({ params }: PageProps<"/recruit/cand
 
       <RichText text={candidate.notes} className="rounded-xl border p-4 text-sm text-muted-foreground" />
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("openings")}</h2>
-        {view.applications.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("none")}</p>
-        ) : (
-          <ul className="flex flex-col divide-y rounded-xl border">
+      <TableCard>
+        <TableCardHeader title={t("openings")} count={view.applications.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("reports.opening")}</TableHead>
+              <TableHead kind="select">{t("columns.stage")}</TableHead>
+              <TableHead kind="date">{t("columns.appliedAt")}</TableHead>
+              <TableHead kind="status">{t("columns.status")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {view.applications.length === 0 ? <TableEmpty>{t("none")}</TableEmpty> : null}
             {view.applications.map((row) => (
-              <li key={row.applicationId} className="flex flex-wrap items-center gap-3 p-3">
-                <Link href={`/recruit/applications/${row.applicationId}`} className="min-w-0 flex-1 text-sm font-medium hover:underline">
-                  {row.openingTitle}
-                </Link>
-                <span className="text-xs text-muted-foreground">{row.stageName}</span>
-                <span className="text-xs text-muted-foreground">{format.dateTime(row.appliedAt, { dateStyle: "medium" })}</span>
-                <Badge dot variant={statusTone(row.status)}>{t(`applicationStatus.${row.status}`)}</Badge>
-              </li>
+              <TableRow key={row.applicationId}>
+                <TableCell className="max-w-80 truncate">
+                  <Link href={`/recruit/applications/${row.applicationId}`} className="font-medium hover:underline">
+                    {row.openingTitle}
+                  </Link>
+                </TableCell>
+                <TableCell>{row.stageName}</TableCell>
+                <TableCell>{format.dateTime(row.appliedAt, { dateStyle: "medium" })}</TableCell>
+                <TableCell>
+                  <Badge dot variant={statusTone(row.status)}>{t(`applicationStatus.${row.status}`)}</Badge>
+                </TableCell>
+              </TableRow>
             ))}
-          </ul>
-        )}
-      </section>
+          </TableBody>
+        </Table>
+      </TableCard>
 
       <p className="text-xs text-muted-foreground">{t("confidential")}</p>
     </div>

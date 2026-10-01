@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { requireUser } from "@/modules/platform/auth/session";
 import { messageKey, resolveParams } from "@/modules/platform/notifications/kinds";
 import { messengerConfig } from "@/modules/platform/notifications/messenger";
@@ -43,15 +44,15 @@ export default async function NotificationsPage(props: PageProps<"/notifications
         {rows.some((row) => !row.readAt) ? <MarkAllReadButton /> : null}
       </header>
 
-      <ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
-        {rows.length === 0 ? <li className="p-4 text-sm text-muted-foreground">{t("empty")}</li> : null}
+      <List>
+        {rows.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
         {rows.map((row) => {
           const key = messageKey(row.kind);
           // A kind removed from the catalogue still shows, by its raw name.
           const known = t.has(`kinds.${key}.title`);
           const params = resolveParams(row.params, (messageId) => (anyText.has(messageId) ? anyText(messageId) : messageId));
           return (
-            <li key={row.id} className={`relative flex items-start justify-between gap-4 p-4 ${row.readAt ? "" : "bg-primary/5"}`}>
+            <ListItem key={row.id} className={`relative items-start justify-between gap-4 ${row.readAt ? "" : "bg-primary/5"}`}>
               {/* Unread rows carry an accent bar, a filled dot, a bold title and a solid button; read rows are dimmed. */}
               {row.readAt ? null : <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-primary" />}
               <span aria-hidden className={`mt-1.5 size-2 shrink-0 rounded-full ${row.readAt ? "border border-muted-foreground/40" : "bg-primary"}`} />
@@ -71,10 +72,10 @@ export default async function NotificationsPage(props: PageProps<"/notifications
                 </time>
               </div>
               {row.link || !row.readAt ? <OpenNotificationButton id={row.id} link={row.link} unread={!row.readAt} label={row.link ? t("open") : t("markRead")} /> : null}
-            </li>
+            </ListItem>
           );
         })}
-      </ul>
+      </List>
 
       {pageCount > 1 ? (
         <nav className="flex items-center gap-3 text-sm">

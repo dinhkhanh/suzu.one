@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -40,54 +40,53 @@ export default async function ContractsPage({ searchParams }: PageProps<"/crm/co
           </Link>
         ))}
       </nav>
-      {contracts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("contracts.empty")}</p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("contracts.columns.number")}</TableHead>
-              <TableHead>{t("contracts.columns.account")}</TableHead>
-              <TableHead>{t("contracts.columns.kind")}</TableHead>
-              <TableHead>{t("contracts.columns.state")}</TableHead>
-              <TableHead>{t("contracts.columns.period")}</TableHead>
-              <TableHead className="text-right">{t("contracts.columns.value")}</TableHead>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="id">{t("contracts.columns.number")}</TableHead>
+            <TableHead kind="org">{t("contracts.columns.account")}</TableHead>
+            <TableHead kind="select">{t("contracts.columns.kind")}</TableHead>
+            <TableHead kind="status">{t("contracts.columns.state")}</TableHead>
+            <TableHead kind="date">{t("contracts.columns.period")}</TableHead>
+            <TableHead kind="money">{t("contracts.columns.value")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {contracts.length === 0 ? <TableEmpty>{t("contracts.empty")}</TableEmpty> : null}
+          {contracts.map((contract) => (
+            <TableRow key={contract.id}>
+              <TableCell>
+                <Link href={`/crm/contracts/${contract.id}`} className="font-medium hover:underline">
+                  {contract.number}
+                </Link>
+                <p className="text-xs text-muted-foreground">{contract.title}</p>
+              </TableCell>
+              <TableCell>
+                <Link href={`/crm/accounts/${contract.clientId}`} className="hover:underline">
+                  {contract.accountName}
+                </Link>
+              </TableCell>
+              <TableCell>
+                <Badge variant="outline">{t(`contract.kinds.${contract.kind as "service"}`)}</Badge>
+              </TableCell>
+              <TableCell>
+                <Badge dot variant={statusTone(contract.state === "upcoming" ? "scheduled" : contract.state)}>
+                  {t(`enums.contractState.${contract.state}`)}
+                </Badge>
+                {contract.renewalDealId ? (
+                  <Link href={`/crm/deals/${contract.renewalDealId}`} className="ml-2 text-xs underline">
+                    {t("contracts.renewal")}
+                  </Link>
+                ) : null}
+              </TableCell>
+              <TableCell>
+                {f.date(contract.startDate)} – {f.date(contract.endDate)}
+              </TableCell>
+              <TableCell kind="money">{"valueVnd" in contract ? f.money(contract.valueVnd) : "—"}</TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {contracts.map((contract) => (
-              <TableRow key={contract.id}>
-                <TableCell>
-                  <Link href={`/crm/contracts/${contract.id}`} className="font-medium hover:underline">
-                    {contract.number}
-                  </Link>
-                  <p className="text-xs text-muted-foreground">{contract.title}</p>
-                </TableCell>
-                <TableCell>
-                  <Link href={`/crm/accounts/${contract.clientId}`} className="hover:underline">
-                    {contract.accountName}
-                  </Link>
-                </TableCell>
-                <TableCell className="text-sm">{t(`contract.kinds.${contract.kind as "service"}`)}</TableCell>
-                <TableCell>
-                  <Badge dot variant={statusTone(contract.state === "upcoming" ? "scheduled" : contract.state)}>
-                    {t(`enums.contractState.${contract.state}`)}
-                  </Badge>
-                  {contract.renewalDealId ? (
-                    <Link href={`/crm/deals/${contract.renewalDealId}`} className="ml-2 text-xs underline">
-                      {t("contracts.renewal")}
-                    </Link>
-                  ) : null}
-                </TableCell>
-                <TableCell className="text-sm">
-                  {f.date(contract.startDate)} – {f.date(contract.endDate)}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">{"valueVnd" in contract ? f.money(contract.valueVnd) : "—"}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

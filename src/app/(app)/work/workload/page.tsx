@@ -52,64 +52,68 @@ export default async function WorkloadPage({ searchParams }: PageProps<"/work/wo
         </nav>
       ) : null}
 
-      {view.rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("empty")}</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] border-separate border-spacing-1 text-sm">
-            <thead>
-              <tr className="text-left text-xs text-muted-foreground">
-                <th className="w-44 px-2 font-medium">{t("person")}</th>
-                {view.weeks.map((week, index) => (
-                  <th key={week.start} className={`px-2 font-medium ${index === 0 ? "text-foreground" : ""}`}>
-                    {index === 0 ? t("thisWeek") : t("weekOf", { date: day(week.start) })}
-                    <span className="block font-normal">
-                      {day(week.start)} – {day(week.end)}
-                    </span>
-                  </th>
-                ))}
-                <th className="px-2 font-medium">{t("later")}</th>
-                <th className="px-2 font-medium">{t("unscheduled")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {view.rows.map((row) => (
-                <tr key={row.person.id}>
-                  <th scope="row" className="px-2 text-left align-top font-medium">
-                    {row.person.fullName}
-                  </th>
-                  {row.cells.map((cell) => (
-                    <td key={cell.week.start} className={`rounded-lg border p-2 align-top ${cell.over ? "border-destructive/50 bg-destructive/5" : cell.tasks === 0 ? "text-muted-foreground" : ""}`}>
-                      <p className="font-medium tabular-nums">
-                        {t("hours", { hours: hours(cell.minutes) })} <span className="text-xs font-normal text-muted-foreground">/ {t("hours", { hours: hours(cell.capacityMinutes) })}</span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {t("tasks", { count: cell.tasks })}
-                        {cell.unestimated > 0 ? ` · ${t("unestimated", { count: cell.unestimated })}` : ""}
-                      </p>
-                      {cell.awayDays > 0 ? <p className="text-xs text-warning">{t("away", { days: cell.awayDays })}</p> : null}
-                      {cell.holidayDays > 0 ? <p className="text-xs text-muted-foreground">{t("holiday", { days: cell.holidayDays })}</p> : null}
-                      {cell.over ? <p className="text-xs font-medium text-destructive">{t("over")}</p> : null}
-                    </td>
-                  ))}
-                  {[row.later, row.unscheduled].map((rest, index) => (
-                    <td key={index} className="rounded-lg border p-2 align-top text-muted-foreground">
-                      {rest.tasks === 0 && rest.minutes === 0 ? (
-                        "—"
-                      ) : (
-                        <>
-                          <p className="tabular-nums">{t("hours", { hours: hours(rest.minutes) })}</p>
-                          <p className="text-xs">{t("tasks", { count: rest.tasks })}</p>
-                        </>
-                      )}
-                    </td>
-                  ))}
-                </tr>
+      {/* A week grid, not a register: the grid's frame and quiet headers, its own spaced cells. */}
+      <div className="overflow-x-auto rounded-xl border border-border bg-background p-1">
+        <table className="w-full min-w-[860px] border-separate border-spacing-1 text-sm">
+          <thead>
+            <tr className="text-left text-xs text-foreground/65">
+              <th className="h-10 w-44 px-2 font-normal">{t("person")}</th>
+              {view.weeks.map((week, index) => (
+                <th key={week.start} className={`px-2 ${index === 0 ? "font-medium text-foreground" : "font-normal"}`}>
+                  {index === 0 ? t("thisWeek") : t("weekOf", { date: day(week.start) })}
+                  <span className="block font-normal">
+                    {day(week.start)} – {day(week.end)}
+                  </span>
+                </th>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              <th className="px-2 font-normal">{t("later")}</th>
+              <th className="px-2 font-normal">{t("unscheduled")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {view.rows.length === 0 ? (
+              <tr>
+                <td colSpan={view.weeks.length + 3} className="h-20 px-3 text-center text-muted-foreground">
+                  {t("empty")}
+                </td>
+              </tr>
+            ) : null}
+            {view.rows.map((row) => (
+              <tr key={row.person.id}>
+                <th scope="row" className="px-2 text-left align-top font-medium">
+                  {row.person.fullName}
+                </th>
+                {row.cells.map((cell) => (
+                  <td key={cell.week.start} className={`rounded-lg border p-2 align-top ${cell.over ? "border-destructive/50 bg-destructive/5" : cell.tasks === 0 ? "text-muted-foreground" : ""}`}>
+                    <p className="font-medium tabular-nums">
+                      {t("hours", { hours: hours(cell.minutes) })} <span className="text-xs font-normal text-muted-foreground">/ {t("hours", { hours: hours(cell.capacityMinutes) })}</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("tasks", { count: cell.tasks })}
+                      {cell.unestimated > 0 ? ` · ${t("unestimated", { count: cell.unestimated })}` : ""}
+                    </p>
+                    {cell.awayDays > 0 ? <p className="text-xs text-warning">{t("away", { days: cell.awayDays })}</p> : null}
+                    {cell.holidayDays > 0 ? <p className="text-xs text-muted-foreground">{t("holiday", { days: cell.holidayDays })}</p> : null}
+                    {cell.over ? <p className="text-xs font-medium text-destructive">{t("over")}</p> : null}
+                  </td>
+                ))}
+                {[row.later, row.unscheduled].map((rest, index) => (
+                  <td key={index} className="rounded-lg border p-2 align-top text-muted-foreground">
+                    {rest.tasks === 0 && rest.minutes === 0 ? (
+                      "—"
+                    ) : (
+                      <>
+                        <p className="tabular-nums">{t("hours", { hours: hours(rest.minutes) })}</p>
+                        <p className="text-xs">{t("tasks", { count: rest.tasks })}</p>
+                      </>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {view.daysOff.length > 0 ? <p className="text-xs text-muted-foreground">{t("daysOff", { list: view.daysOff.map((off) => `${day(off.date)} ${off.name}`).join(", ") })}</p> : null}
       <p className="text-xs text-muted-foreground">{t("legend")}</p>
     </div>

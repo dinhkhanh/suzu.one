@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { type BoardRow, getTeamBoard, loadReportReader } from "@/modules/daily/service";
 import { RemindButton } from "@/modules/daily/ui/remind-button";
@@ -24,23 +25,25 @@ export default async function TeamBoardPage({ searchParams }: PageProps<"/daily/
 
   // Oversight reads the rest of the company; reminding stays with the people who run the work.
   const row = (person: BoardRow, remindable: boolean) => (
-    <li key={person.personId} className="flex flex-col gap-1 p-3">
-      <div className="flex flex-wrap items-center gap-2">
+    <TableRow key={person.personId}>
+      <TableCell className="font-medium">
         {person.reportId ? (
-          <Link href={`/daily/reports/${person.reportId}`} className="min-w-0 flex-1 text-sm font-medium hover:underline">
+          <Link href={`/daily/reports/${person.reportId}`} className="hover:underline">
             {person.name}
           </Link>
         ) : (
-          <span className="min-w-0 flex-1 text-sm font-medium">{person.name}</span>
+          person.name
         )}
-        {person.status === "submitted" ? <Badge dot variant={person.late ? "warning" : "success"}>{person.late ? t("late") : t("submitted")}</Badge> : person.status === "missing" ? <Badge dot variant="destructive">{t("board.missing")}</Badge> : <Badge variant="secondary">{t(`board.reasons.${person.reason ?? "optional"}`)}</Badge>}
-        {person.comments > 0 ? <span className="text-xs text-muted-foreground">{t("board.comments", { count: person.comments })}</span> : null}
-        {person.status === "missing" && isToday && remindable ? <RemindButton date={date} personIds={[person.personId]} label={t("board.remind")} done={person.reminded} /> : null}
-      </div>
-      <RichText text={person.blockers} className="text-destructive" />
-      {person.openBlockers > 0 ? <p className="text-xs text-destructive">{t("board.openBlockers", { count: person.openBlockers })}</p> : null}
-      {person.submittedAt ? <p className="text-xs text-muted-foreground">{t("view.sentAt", { time: format.dateTime(person.submittedAt, { timeStyle: "short" }) })}</p> : null}
-    </li>
+      </TableCell>
+      <TableCell>{person.status === "submitted" ? <Badge dot variant={person.late ? "warning" : "success"}>{person.late ? t("late") : t("submitted")}</Badge> : person.status === "missing" ? <Badge dot variant="destructive">{t("board.missing")}</Badge> : <Badge variant="secondary">{t(`board.reasons.${person.reason ?? "optional"}`)}</Badge>}</TableCell>
+      <TableCell className="min-w-56 whitespace-normal">
+        <RichText text={person.blockers} className="text-destructive" />
+        {person.openBlockers > 0 ? <p className="text-xs text-destructive">{t("board.openBlockers", { count: person.openBlockers })}</p> : null}
+      </TableCell>
+      <TableCell kind="number">{person.comments > 0 ? person.comments : ""}</TableCell>
+      <TableCell kind="time" className="text-muted-foreground">{person.submittedAt ? format.dateTime(person.submittedAt, { timeStyle: "short" }) : ""}</TableCell>
+      <TableCell kind="actions">{person.status === "missing" && isToday && remindable ? <RemindButton date={date} personIds={[person.personId]} label={t("board.remind")} done={person.reminded} /> : null}</TableCell>
+    </TableRow>
   );
 
   return (
@@ -65,14 +68,22 @@ export default async function TeamBoardPage({ searchParams }: PageProps<"/daily/
         const remindable = group.kind !== "company";
         const missing = group.rows.filter((person) => person.status === "missing" && !person.reminded).map((person) => person.personId);
         return (
-          <section key={group.kind === "team" ? group.teamId : group.kind} className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="min-w-0 flex-1 text-sm font-medium">{group.kind === "team" ? group.name : group.kind === "company" ? t("board.everyoneElse") : t("board.myReports")}</h2>
-              <span className="text-xs text-muted-foreground">{t("board.counts", { submitted: group.counts.submitted, missing: group.counts.missing, notRequired: group.counts.not_required })}</span>
-              {isToday && remindable ? <RemindButton date={date} personIds={missing} label={t("board.remindAll", { count: missing.length })} /> : null}
-            </div>
-            <ul className="flex flex-col divide-y rounded-xl border">{group.rows.map((person) => row(person, remindable))}</ul>
-          </section>
+          <TableCard key={group.kind === "team" ? group.teamId : group.kind}>
+            <TableCardHeader title={group.kind === "team" ? group.name : group.kind === "company" ? t("board.everyoneElse") : t("board.myReports")} description={t("board.counts", { submitted: group.counts.submitted, missing: group.counts.missing, notRequired: group.counts.not_required })} actions={isToday && remindable ? <RemindButton date={date} personIds={missing} label={t("board.remindAll", { count: missing.length })} /> : null} />
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead kind="person">{t("board.columns.person")}</TableHead>
+                  <TableHead kind="status">{t("board.columns.status")}</TableHead>
+                  <TableHead kind="text">{t("board.columns.blockers")}</TableHead>
+                  <TableHead kind="number">{t("board.columns.comments")}</TableHead>
+                  <TableHead kind="time">{t("board.columns.sentAt")}</TableHead>
+                  <TableHead kind="actions" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>{group.rows.map((person) => row(person, remindable))}</TableBody>
+            </Table>
+          </TableCard>
         );
       })}
     </div>

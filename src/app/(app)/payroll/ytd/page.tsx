@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listPayrollNames } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -50,35 +50,32 @@ export default async function YtdPage({ searchParams }: PageProps<"/payroll/ytd"
 
       <StatutoryFilters entities={entities} entityId={entityId} year={year} month={`${year}-01`} />
 
-      {rows.length > 0 ? (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("person")}</TableHead>
-              <TableHead className="text-right">{t("months")}</TableHead>
-              <TableHead className="text-right">{t("taxableIncome")}</TableHead>
-              <TableHead className="text-right">{t("insurance")}</TableHead>
-              <TableHead className="text-right">{t("taxWithheld")}</TableHead>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="person">{t("person")}</TableHead>
+            <TableHead kind="number">{t("months")}</TableHead>
+            <TableHead kind="money">{t("taxableIncome")}</TableHead>
+            <TableHead kind="money">{t("insurance")}</TableHead>
+            <TableHead kind="money">{t("taxWithheld")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.length === 0 ? <TableEmpty>{t("empty", { year })}</TableEmpty> : null}
+          {rows.map(({ row, figures }) => (
+            <TableRow key={row.id}>
+              <TableCell>
+                {factOf.get(row.personId)?.fullName ?? "—"}
+                <span className="ml-2 font-mono text-xs text-muted-foreground">{factOf.get(row.personId)?.employeeCode}</span>
+              </TableCell>
+              <TableCell kind="number">{row.months}</TableCell>
+              <TableCell kind="money">{formatVnd(figures.taxableIncome)}</TableCell>
+              <TableCell kind="money">{formatVnd(figures.insuranceDeduction)}</TableCell>
+              <TableCell kind="money">{formatVnd(figures.taxWithheld)}</TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map(({ row, figures }) => (
-              <TableRow key={row.id}>
-                <TableCell>
-                  {factOf.get(row.personId)?.fullName ?? "—"}
-                  <span className="ml-2 font-mono text-xs text-muted-foreground">{factOf.get(row.personId)?.employeeCode}</span>
-                </TableCell>
-                <TableCell className="text-right tabular-nums">{row.months}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatVnd(figures.taxableIncome)}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatVnd(figures.insuranceDeduction)}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatVnd(figures.taxWithheld)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      ) : (
-        <p className="rounded-xl border p-4 text-sm text-muted-foreground">{t("empty", { year })}</p>
-      )}
+          ))}
+        </TableBody>
+      </Table>
 
       <section className="flex flex-col gap-4">
         <p className="text-sm text-muted-foreground">{t("importHint", { year })}</p>

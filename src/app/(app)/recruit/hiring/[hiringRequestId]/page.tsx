@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
+import { List, ListItem } from "@/components/ui/list";
+import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getHiringRequestView } from "@/modules/recruit/hiring";
@@ -88,21 +90,21 @@ export default async function HiringRequestPage({ params }: PageProps<"/recruit/
       ) : null}
 
       {view.approval ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("history")}</h2>
-          <ul className="flex flex-col divide-y rounded-xl border text-sm">
+        <TableCard>
+          <TableCardHeader title={t("history")} />
+          <List>
             {view.approval.events.map((event) => (
-              <li key={event.id} className="flex flex-wrap items-center gap-3 p-3">
+              <ListItem key={event.id} className="flex-wrap">
                 <span className="min-w-0 flex-1 basis-56">
                   {tApprovals(`event.${event.type}` as "event.submitted")}
                   {event.comment ? <span className="block text-xs text-muted-foreground">{event.comment}</span> : null}
                 </span>
                 <span className="text-xs text-muted-foreground">{event.actorName ?? ""}</span>
                 <span className="text-xs text-muted-foreground">{format.dateTime(event.at, { dateStyle: "medium", timeStyle: "short" })}</span>
-              </li>
+              </ListItem>
             ))}
-          </ul>
-        </section>
+          </List>
+        </TableCard>
       ) : null}
     </div>
   );

@@ -6,6 +6,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
@@ -103,25 +104,22 @@ export function InstancePanel({ taskId, open, canWork, canManage, checklist, che
           {t("files", { count: files.length })}
           {star("file")}
         </h2>
-        {files.length ? (
-          <ul className="flex flex-col divide-y rounded-xl border text-sm">
-            {files.map((file) => (
-              <li key={file.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
-                <span className="min-w-0 flex-1 basis-56 truncate">
-                  <FileLink fileId={file.id} fileName={file.fileName} download={openEvidenceFileAction} onError={setErrorKey} />
-                </span>
-                <span className="text-xs text-muted-foreground">{[size(file.sizeBytes), file.uploadedByName, format.dateTime(new Date(file.createdAt), { dateStyle: "short" })].filter(Boolean).join(" · ")}</span>
-                {file.canRemove && open ? (
-                  <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => removeEvidenceFileAction({ fileId: file.id }))}>
-                    {t("removeFile")}
-                  </Button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">{t("noFiles")}</p>
-        )}
+        <List>
+          {files.length === 0 ? <ListEmpty>{t("noFiles")}</ListEmpty> : null}
+          {files.map((file) => (
+            <ListItem key={file.id} className="flex-wrap gap-x-3 gap-y-1">
+              <span className="min-w-0 flex-1 basis-56 truncate">
+                <FileLink fileId={file.id} fileName={file.fileName} download={openEvidenceFileAction} onError={setErrorKey} />
+              </span>
+              <span className="text-xs text-muted-foreground">{[size(file.sizeBytes), file.uploadedByName, format.dateTime(new Date(file.createdAt), { dateStyle: "short" })].filter(Boolean).join(" · ")}</span>
+              {file.canRemove && open ? (
+                <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => removeEvidenceFileAction({ fileId: file.id }))}>
+                  {t("removeFile")}
+                </Button>
+              ) : null}
+            </ListItem>
+          ))}
+        </List>
         {editable ? (
           <label className="flex w-fit cursor-pointer items-center gap-2 text-sm">
             <input

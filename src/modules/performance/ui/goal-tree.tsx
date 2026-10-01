@@ -2,6 +2,7 @@
 // figure, confidence and owner. Server-rendered; the viewer's visibility was applied by the service.
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { List, ListItem } from "@/components/ui/list";
 import { isAnnual } from "../enums";
 import type { GoalView } from "../goals";
 import { ConfidenceBadge, GoalStatusBadge, ProgressBar } from "./progress";
@@ -34,16 +35,24 @@ export function GoalLine({ goal, labels }: { goal: GoalView; labels: Labels }) {
 export async function GoalTree({ goals, rootIds }: { goals: GoalView[]; rootIds: string[] }) {
   const labels: Labels = { t: await getTranslations("performance"), format: await getFormatter() };
   const byId = new Map(goals.map((goal) => [goal.id, goal]));
-  const node = (id: string, path: ReadonlySet<string>) => {
+  const node = (id: string, path: ReadonlySet<string>, root = false) => {
     const goal = byId.get(id);
     if (!goal || path.has(id)) return null;
     const children = goal.childIds.filter((childId) => byId.has(childId));
-    return (
-      <li key={id}>
+    const content = (
+      <>
         <GoalLine goal={goal} labels={labels} />
         {children.length > 0 ? <ul className="ml-3 border-l pl-4">{children.map((childId) => node(childId, new Set(path).add(id)))}</ul> : null}
-      </li>
+      </>
+    );
+    // The roots are the rows of the sheet; the goals below them hang indented inside their row.
+    return root ? (
+      <ListItem key={id} className="block py-0">
+        {content}
+      </ListItem>
+    ) : (
+      <li key={id}>{content}</li>
     );
   };
-  return <ul className="flex flex-col divide-y">{rootIds.map((id) => node(id, new Set()))}</ul>;
+  return <List>{rootIds.map((id) => node(id, new Set(), true))}</List>;
 }

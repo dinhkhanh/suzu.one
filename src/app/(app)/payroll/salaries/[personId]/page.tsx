@@ -2,6 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -42,29 +44,46 @@ export default async function SalaryFilePage({ params }: PageProps<"/payroll/sal
         <p className="font-mono text-xs text-muted-foreground">{file.person.employeeCode}</p>
       </header>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("profiles.title")}</h2>
-        {file.profiles.length === 0 ? <p className="text-sm text-muted-foreground">{t("salaries.noProfile")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border empty:hidden">
-          {file.profiles.map((profile) => (
-            <li key={profile.id} className="flex flex-wrap items-center gap-2 p-3 text-sm">
-              <Badge variant={profile.profile === "simple" ? "outline" : "secondary"}>{t(`profiles.kinds.${profile.profile}`)}</Badge>
-              {profile.simpleBasis ? <span>{t(`profiles.bases.${profile.simpleBasis}`)}</span> : null}
-              <span className="text-muted-foreground">
-                {day(profile.validFrom)} → {profile.validTo ? day(profile.validTo) : t("salaries.open")}
-              </span>
-              {profile.status !== "approved" ? <Badge variant="outline">{t(`rules.status.${profile.status}`)}</Badge> : null}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <TableCard>
+        <TableCardHeader title={t("profiles.title")} count={file.profiles.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="select">{t("profiles.profile")}</TableHead>
+              <TableHead kind="select">{t("profiles.basis")}</TableHead>
+              <TableHead kind="date">{t("salaries.period")}</TableHead>
+              <TableHead kind="status">{t("runs.status")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {file.profiles.length === 0 ? <TableEmpty>{t("salaries.noProfile")}</TableEmpty> : null}
+            {file.profiles.map((profile) => (
+              <TableRow key={profile.id}>
+                <TableCell>
+                  <Badge variant={profile.profile === "simple" ? "outline" : "secondary"}>{t(`profiles.kinds.${profile.profile}`)}</Badge>
+                </TableCell>
+                <TableCell>{profile.simpleBasis ? t(`profiles.bases.${profile.simpleBasis}`) : "—"}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {day(profile.validFrom)} → {profile.validTo ? day(profile.validTo) : t("salaries.open")}
+                </TableCell>
+                <TableCell>{profile.status !== "approved" ? <Badge variant="outline">{t(`rules.status.${profile.status}`)}</Badge> : null}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {file.canManage ? (
+          <TableAddRow label={hasApprovedProfile ? t("profiles.form.titleChange") : t("profiles.form.title")} open={file.profiles.length === 0}>
+            <ProfileForm personId={personId} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("salaries.history")}</h2>
-        {file.structures.length === 0 ? <p className="text-sm text-muted-foreground">{t("salaries.noStructure")}</p> : null}
-        <ul className="flex flex-col gap-3">
+      <TableCard>
+        <TableCardHeader title={t("salaries.history")} count={file.structures.length || null} />
+        <List>
+          {file.structures.length === 0 ? <ListEmpty>{t("salaries.noStructure")}</ListEmpty> : null}
           {file.structures.map((structure) => (
-            <li key={structure.id} className="rounded-xl border p-4 text-sm">
+            <ListItem key={structure.id} className="flex-col items-stretch gap-0 py-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">
                   {day(structure.validFrom)} → {structure.validTo ? day(structure.validTo) : t("salaries.open")}
@@ -88,29 +107,45 @@ export default async function SalaryFilePage({ params }: PageProps<"/payroll/sal
                   </div>
                 ))}
               </dl>
-            </li>
+            </ListItem>
           ))}
-        </ul>
-      </section>
+        </List>
+      </TableCard>
 
       {file.canManage ? (
         <>
-          <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium text-muted-foreground">{t("salaries.requests")}</h2>
-            {file.requests.length === 0 ? <p className="text-sm text-muted-foreground">{t("salaries.noRequests")}</p> : null}
-            <ul className="flex flex-col divide-y rounded-xl border empty:hidden">
-              {file.requests.map((request) => (
-                <li key={request.id} className="flex flex-wrap items-center gap-2 p-3 text-sm">
-                  <Link href={`/payroll/salaries/changes/${request.id}`} className="hover:underline">
-                    {request.summary}
-                  </Link>
-                  <Badge variant="outline">{t(`salaries.requestStatus.${request.status}` as "salaries.requestStatus.pending")}</Badge>
-                </li>
-              ))}
-            </ul>
-          </section>
-          {openRequest ? <p className="text-sm text-muted-foreground">{t("salaries.changeOpen")}</p> : <SalaryChangeForm personId={personId} allowances={allowances} current={current?.terms ?? null} initial={file.structures.length === 0} />}
-          <ProfileForm personId={personId} hasProfile={hasApprovedProfile} />
+          <TableCard>
+            <TableCardHeader title={t("salaries.requests")} count={file.requests.length || null} />
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead kind="text">{t("salaries.request")}</TableHead>
+                  <TableHead kind="status">{t("runs.status")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {file.requests.length === 0 ? <TableEmpty>{t("salaries.noRequests")}</TableEmpty> : null}
+                {file.requests.map((request) => (
+                  <TableRow key={request.id}>
+                    <TableCell>
+                      <Link href={`/payroll/salaries/changes/${request.id}`} className="hover:underline">
+                        {request.summary}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{t(`salaries.requestStatus.${request.status}` as "salaries.requestStatus.pending")}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {openRequest ? null : (
+              <TableAddRow label={file.structures.length === 0 ? t("salaries.form.titleInitial") : t("salaries.form.title")} open={file.requests.length === 0}>
+                <SalaryChangeForm personId={personId} allowances={allowances} current={current?.terms ?? null} initial={file.structures.length === 0} bare />
+              </TableAddRow>
+            )}
+          </TableCard>
+          {openRequest ? <p className="text-sm text-muted-foreground">{t("salaries.changeOpen")}</p> : null}
         </>
       ) : null}
     </div>

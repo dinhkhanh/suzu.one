@@ -1,4 +1,5 @@
 import { getFormatter, getTranslations } from "next-intl/server";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listPositions } from "@/modules/core-hr/service";
 import { todayInVietnam } from "@/lib/dates";
 import { canManagePositionKpis, listKpis, listPositionTemplates } from "@/modules/performance/service";
@@ -27,33 +28,38 @@ export default async function PositionKpisPage() {
       {templates.map((template) => {
         const mine = canManagePositionKpis(user.principal, template.entityId);
         return (
-          <article key={`${template.positionId}:${template.entityId ?? ""}`} className="rounded-xl border">
-            <header className="flex flex-wrap items-center justify-between gap-3 border-b px-3 py-2">
-              <h2 className="text-sm font-medium">
-                {template.positionName}
-                <span className="pl-2 text-xs font-normal text-muted-foreground">{template.entityId ? (entityName.get(template.entityId) ?? "") : t("positions.everyEntity")}</span>
-              </h2>
-              <ApplyTemplatesForm positionId={template.positionId} defaultFrom={nextMonth} label={t("positions.apply")} />
-            </header>
-            <table className="w-full text-sm">
-              <tbody>
+          <TableCard key={`${template.positionId}:${template.entityId ?? ""}`}>
+            <TableCardHeader title={template.positionName} count={template.entityId ? (entityName.get(template.entityId) ?? "") : t("positions.everyEntity")} actions={<ApplyTemplatesForm positionId={template.positionId} defaultFrom={nextMonth} label={t("positions.apply")} />} />
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead kind="text">{t("positions.kpi")}</TableHead>
+                  <TableHead kind="id">{t("library.code")}</TableHead>
+                  <TableHead kind="select">{t("library.frequency")}</TableHead>
+                  <TableHead kind="select">{t("library.direction")}</TableHead>
+                  <TableHead kind="number">{t("positions.target")}</TableHead>
+                  <TableHead kind="number">{t("positions.weight")}</TableHead>
+                  <TableHead kind="actions" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {template.lines.map((line) => (
-                  <tr key={line.id} className="border-b last:border-0">
-                    <td className="p-2">
-                      {line.kpi.name}
-                      <span className="pl-2 text-xs text-muted-foreground">{[line.kpi.code, t(`kpi.frequency.${line.kpi.frequency}`), t(`kpi.direction.${line.kpi.direction}`)].join(" · ")}</span>
-                    </td>
-                    <td className="p-2 text-right tabular-nums">{t("entry.target", { value: kpiValueText(format, line.kpi.unit, line.targetValue) })}</td>
-                    <td className="p-2 text-right tabular-nums">
+                  <TableRow key={line.id}>
+                    <TableCell className="font-medium">{line.kpi.name}</TableCell>
+                    <TableCell kind="id">{line.kpi.code}</TableCell>
+                    <TableCell>{t(`kpi.frequency.${line.kpi.frequency}`)}</TableCell>
+                    <TableCell>{t(`kpi.direction.${line.kpi.direction}`)}</TableCell>
+                    <TableCell kind="number">{kpiValueText(format, line.kpi.unit, line.targetValue)}</TableCell>
+                    <TableCell kind="number">
                       {line.weight}
                       <span className="pl-1 text-xs text-muted-foreground">({bpText(format, Math.round((line.weight * 10000) / template.totalWeight))})</span>
-                    </td>
-                    <td className="p-2 text-right">{mine ? <RemovePositionKpiButton id={line.id} /> : null}</td>
-                  </tr>
+                    </TableCell>
+                    <TableCell kind="actions">{mine ? <RemovePositionKpiButton id={line.id} /> : null}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </article>
+              </TableBody>
+            </Table>
+          </TableCard>
         );
       })}
       {group || manageable.length > 0 ? (

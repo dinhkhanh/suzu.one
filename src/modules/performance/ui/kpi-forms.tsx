@@ -5,9 +5,12 @@ import { useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { List, ListItem } from "@/components/ui/list";
 import { MonthPicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { MetricValueInput } from "./metric-input";
 import { KPI_DIRECTIONS, KPI_FREQUENCIES, KPI_UNITS, type KpiDirection, type KpiFrequency, type KpiUnit, metricValueText, WORK_METRIC_UNITS, WORK_METRICS, type WorkMetric } from "../enums";
 import { applyTemplatesAction, closeKpiMonthAction, endAssignmentAction, removePositionKpiAction, reopenKpiMonthAction, saveActualsAction, saveAssignmentAction, saveKpiAction, savePositionKpiAction } from "../kpi-actions";
@@ -33,16 +36,13 @@ export function ActualsGrid({ people }: { people: GridPerson[] }) {
   return (
     <form onSubmit={form.onSubmit} className="flex flex-col gap-4">
       {people.map((person) => (
-        <section key={person.personId} className="rounded-xl border">
-          <header className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
-            <h2 className="text-sm font-medium">{person.fullName}</h2>
-            {person.closed ? <span className="text-xs text-muted-foreground">{t("entry.closed")}</span> : null}
-          </header>
-          <ul className="flex flex-col divide-y">
+        <TableCard key={person.personId}>
+          <TableCardHeader title={person.fullName} actions={person.closed ? <span className="text-xs text-muted-foreground">{t("entry.closed")}</span> : null} />
+          <List>
             {person.lines.map((line) => {
               const name = `entries.${rowOf.get(line.assignmentId) ?? 0}`;
               return (
-                <li key={line.assignmentId} className="grid items-center gap-2 px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_7rem_8rem_auto_minmax(0,1fr)]">
+                <ListItem key={line.assignmentId} className="grid items-center gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_8rem_auto_minmax(0,1fr)]">
                   <div className="min-w-0">
                     <div className="truncate">{line.kpiName}</div>
                     <div className="text-xs text-muted-foreground">{[line.kpiCode, t(`kpi.direction.${line.direction}`), line.periodKey].join(" · ")}</div>
@@ -64,16 +64,16 @@ export function ActualsGrid({ people }: { people: GridPerson[] }) {
                     <span />
                   ) : (
                     <label className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <input type="checkbox" name={`${name}.notApplicable`} defaultChecked={line.notApplicable} />
+                      <Checkbox name={`${name}.notApplicable`} defaultChecked={line.notApplicable} />
                       {t("entry.notApplicable")}
                     </label>
                   )}
                   {person.closed ? <div className="text-xs text-muted-foreground">{line.note ?? ""}</div> : <Input name={`${name}.note`} defaultValue={line.note ?? ""} maxLength={500} aria-label={`${person.fullName} — ${line.kpiName}: ${t("entry.note")}`} placeholder={t("entry.note")} />}
-                </li>
+                </ListItem>
               );
             })}
-          </ul>
-        </section>
+          </List>
+        </TableCard>
       ))}
       {open.length > 0 ? (
         <div className="flex flex-wrap items-center gap-3">

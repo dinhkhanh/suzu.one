@@ -2,6 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListItem } from "@/components/ui/list";
+import { TableAddRow, TableCard } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listStructure, listTaskLinks, loadRegisters, openProject, REGISTER_STATUSES } from "@/modules/projects/service";
@@ -46,68 +48,68 @@ export default async function ProjectDeliverablesPage({ params }: PageProps<"/pr
         ) : null}
       </section>
 
-      <ol className="flex flex-col gap-3">
-        {register.lines.map((line) => {
-          const own = tasksOf.get(line.id) ?? [];
-          const missing = Math.max(0, line.quantity - line.linked);
-          return (
-            <li key={line.id} className={`flex flex-col gap-2 rounded-xl border p-3 ${line.status === "cancelled" ? "opacity-60" : ""}`}>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`font-medium ${line.status === "cancelled" ? "line-through" : ""}`}>
-                  {line.quantity} × {line.title}
-                </span>
-                <Badge dot variant={statusTone(line.status)}>{t(`register.status.${line.status}`)}</Badge>
-                {line.format ? <Badge variant="outline">{tWork(`formats.${line.format as "post"}`)}</Badge> : null}
-                {line.channel ? <Badge variant="outline">{tWork(`channels.${line.channel as "facebook"}`)}</Badge> : null}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {[line.milestoneId ? milestoneName.get(line.milestoneId) : null, date(line.dueDate), line.status === "cancelled" ? null : t("register.lineProgress", { accepted: line.accepted, promised: line.promised, linked: line.linked })].filter(Boolean).join(" · ")}
-              </p>
-              {line.status !== "cancelled" ? (
-                <p className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
-                  {REGISTER_STATUSES.filter((status) => line.counts[status] > 0).map((status) => (
-                    <span key={status}>
-                      {t(`register.status.${status}`)}: {line.counts[status]}
-                    </span>
-                  ))}
+      <TableCard>
+        <List>
+          {register.lines.map((line) => {
+            const own = tasksOf.get(line.id) ?? [];
+            const missing = Math.max(0, line.quantity - line.linked);
+            return (
+              <ListItem key={line.id} className={`flex-col items-stretch gap-2 ${line.status === "cancelled" ? "opacity-60" : ""}`}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`font-medium ${line.status === "cancelled" ? "line-through" : ""}`}>
+                    {line.quantity} × {line.title}
+                  </span>
+                  <Badge dot variant={statusTone(line.status)}>{t(`register.status.${line.status}`)}</Badge>
+                  {line.format ? <Badge variant="outline">{tWork(`formats.${line.format as "post"}`)}</Badge> : null}
+                  {line.channel ? <Badge variant="outline">{tWork(`channels.${line.channel as "facebook"}`)}</Badge> : null}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {[line.milestoneId ? milestoneName.get(line.milestoneId) : null, date(line.dueDate), line.status === "cancelled" ? null : t("register.lineProgress", { accepted: line.accepted, promised: line.promised, linked: line.linked })].filter(Boolean).join(" · ")}
                 </p>
-              ) : null}
-              {own.length ? (
-                <ul className="flex flex-col gap-1 text-sm">
-                  {own.map((task) => (
-                    <li key={task.taskId} className="flex flex-wrap items-center gap-2">
-                      <Link href={`/work/tasks/${task.taskId}`} className="hover:underline">
-                        <span className="font-mono text-xs text-muted-foreground">{task.key}</span> {task.title}
-                      </Link>
-                      {task.assigneeName ? <span className="text-xs text-muted-foreground">{task.assigneeName}</span> : null}
-                      {can.editPlan ? <UnlinkButton taskId={task.taskId} /> : null}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              {can.editPlan ? (
-                <details>
-                  <summary className="cursor-pointer text-sm text-muted-foreground">{t("register.manage")}</summary>
-                  <div className="flex flex-col gap-4 pt-2">
-                    {line.status !== "cancelled" ? <LineTasksForm deliverableId={line.id} missing={missing} people={people} /> : null}
-                    <DeliverableForm projectId={project.id} line={{ id: line.id, title: line.title, quantity: line.quantity, format: line.format, channel: line.channel, dueDate: line.dueDate, milestoneId: line.milestoneId, sortOrder: line.sortOrder }} milestones={structure.milestones.map(({ id, name }) => ({ id, name }))} />
-                    <div>
-                      <CancelLineButton deliverableId={line.id} cancelled={line.status === "cancelled"} />
+                {line.status !== "cancelled" ? (
+                  <p className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                    {REGISTER_STATUSES.filter((status) => line.counts[status] > 0).map((status) => (
+                      <span key={status}>
+                        {t(`register.status.${status}`)}: {line.counts[status]}
+                      </span>
+                    ))}
+                  </p>
+                ) : null}
+                {own.length ? (
+                  <ul className="flex flex-col gap-1 text-sm">
+                    {own.map((task) => (
+                      <li key={task.taskId} className="flex flex-wrap items-center gap-2">
+                        <Link href={`/work/tasks/${task.taskId}`} className="hover:underline">
+                          <span className="font-mono text-xs text-muted-foreground">{task.key}</span> {task.title}
+                        </Link>
+                        {task.assigneeName ? <span className="text-xs text-muted-foreground">{task.assigneeName}</span> : null}
+                        {can.editPlan ? <UnlinkButton taskId={task.taskId} /> : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {can.editPlan ? (
+                  <details>
+                    <summary className="cursor-pointer text-sm text-muted-foreground">{t("register.manage")}</summary>
+                    <div className="flex flex-col gap-4 pt-2">
+                      {line.status !== "cancelled" ? <LineTasksForm deliverableId={line.id} missing={missing} people={people} /> : null}
+                      <DeliverableForm projectId={project.id} line={{ id: line.id, title: line.title, quantity: line.quantity, format: line.format, channel: line.channel, dueDate: line.dueDate, milestoneId: line.milestoneId, sortOrder: line.sortOrder }} milestones={structure.milestones.map(({ id, name }) => ({ id, name }))} />
+                      <div>
+                        <CancelLineButton deliverableId={line.id} cancelled={line.status === "cancelled"} />
+                      </div>
                     </div>
-                  </div>
-                </details>
-              ) : null}
-            </li>
-          );
-        })}
-      </ol>
-
-      {can.editPlan ? (
-        <section className="flex flex-col gap-2 rounded-xl border border-dashed p-3">
-          <h2 className="text-sm font-medium">{t("register.newLine")}</h2>
-          <DeliverableForm projectId={project.id} milestones={structure.milestones.map(({ id, name }) => ({ id, name }))} />
-        </section>
-      ) : null}
+                  </details>
+                ) : null}
+              </ListItem>
+            );
+          })}
+        </List>
+        {can.editPlan ? (
+          <TableAddRow label={t("register.newLine")} open={register.lines.length === 0}>
+            <DeliverableForm projectId={project.id} milestones={structure.milestones.map(({ id, name }) => ({ id, name }))} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

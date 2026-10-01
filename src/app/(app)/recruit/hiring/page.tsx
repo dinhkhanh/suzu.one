@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -29,42 +30,67 @@ export default async function HiringRequestsPage() {
         </Link>
       </header>
 
-      {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("noHiring")}</p>
-      ) : (
-        <ul className="flex flex-col divide-y rounded-xl border">
-          {rows.map((row) => (
-            <li key={row.id} className="flex flex-wrap items-center gap-3 p-3">
-              <div className="min-w-0 flex-1 basis-56">
-                <Link href={`/recruit/hiring/${row.id}`} className="text-sm font-medium hover:underline">
-                  {row.positionTitle} × {row.headcount}
-                </Link>
-                <p className="text-xs text-muted-foreground">{[row.entityName, row.departmentName, row.requesterName].filter(Boolean).join(" · ")}</p>
-              </div>
-              <span className="text-xs text-muted-foreground">{format.dateTime(row.createdAt, { dateStyle: "medium" })}</span>
-              <Badge dot variant={statusTone(row.status)}>{t(`hiringStatus.${row.status}`)}</Badge>
-            </li>
-          ))}
-        </ul>
-      )}
+      <TableCard>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("columns.title")}</TableHead>
+              <TableHead kind="number">{t("columns.headcount")}</TableHead>
+              <TableHead kind="org">{t("columns.entity")}</TableHead>
+              <TableHead kind="org">{t("columns.department")}</TableHead>
+              <TableHead kind="person">{t("columns.requester")}</TableHead>
+              <TableHead kind="date">{t("columns.createdAt")}</TableHead>
+              <TableHead kind="status">{t("columns.status")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 ? <TableEmpty>{t("noHiring")}</TableEmpty> : null}
+            {rows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell className="max-w-72 truncate">
+                  <Link href={`/recruit/hiring/${row.id}`} className="font-medium hover:underline">
+                    {row.positionTitle}
+                  </Link>
+                </TableCell>
+                <TableCell kind="number">{row.headcount}</TableCell>
+                <TableCell>{row.entityName || "—"}</TableCell>
+                <TableCell>{row.departmentName || "—"}</TableCell>
+                <TableCell>{row.requesterName || "—"}</TableCell>
+                <TableCell>{format.dateTime(row.createdAt, { dateStyle: "medium" })}</TableCell>
+                <TableCell>
+                  <Badge dot variant={statusTone(row.status)}>{t(`hiringStatus.${row.status}`)}</Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <TableAddRow label={t("newHiring")} href="/recruit/hiring/new" />
+      </TableCard>
 
       {plan.length > 0 ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("headcount")}</h2>
-          <ul className="flex flex-col divide-y rounded-xl border text-sm">
-            {plan.map((row) => (
-              <li key={`${row.entityName}-${row.departmentId}`} className="flex flex-wrap items-center gap-3 p-3">
-                <span className="min-w-0 flex-1 basis-56">{[row.entityName, row.departmentName].filter(Boolean).join(" · ")}</span>
-                <span className="text-xs text-muted-foreground">
-                  {t("columns.approved")}: {row.approvedHeads}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {t("columns.open")}: {row.openHeads}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <TableCard>
+          <TableCardHeader title={t("headcount")} />
+          <Table numbered={false}>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="org">{t("columns.entity")}</TableHead>
+                <TableHead kind="org">{t("columns.department")}</TableHead>
+                <TableHead kind="number">{t("columns.approved")}</TableHead>
+                <TableHead kind="number">{t("columns.open")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {plan.map((row) => (
+                <TableRow key={`${row.entityName}-${row.departmentId}`}>
+                  <TableCell>{row.entityName || "—"}</TableCell>
+                  <TableCell>{row.departmentName || "—"}</TableCell>
+                  <TableCell kind="number">{row.approvedHeads}</TableCell>
+                  <TableCell kind="number">{row.openHeads}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       ) : null}
     </div>
   );

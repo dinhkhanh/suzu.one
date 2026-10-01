@@ -2,6 +2,8 @@ import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
@@ -146,12 +148,12 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-w-0 flex-col gap-6">
           {deal.status === "won" || projects.length ? (
-            <section className="flex flex-col gap-2">
-              <h2 className="text-sm font-medium">{t("deal.sections.delivery")}</h2>
-              {projects.length === 0 ? <p className="text-sm text-muted-foreground">{t("deal.delivery.none")}</p> : null}
-              <ul className="flex flex-col gap-2">
+            <TableCard>
+              <TableCardHeader title={t("deal.sections.delivery")} count={projects.length || null} />
+              <List>
+                {projects.length === 0 ? <ListEmpty>{t("deal.delivery.none")}</ListEmpty> : null}
                 {projects.map((project) => (
-                  <li key={project.projectId} className="flex flex-col gap-2 rounded-xl border p-3 text-sm">
+                  <ListItem key={project.projectId} className="flex-col items-stretch gap-2">
                     <p className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-xs text-muted-foreground">{project.jobNumber ?? "—"}</span>
                       <Link href={`/projects/${project.projectId}`} className="font-medium hover:underline">
@@ -168,40 +170,50 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
                       <HandoffNoteView note={project.handoffNote} />
                     </details>
                     {project.handoffStatus === "returned" && setsUp ? <ResendHandoffForm dealId={dealId} projectId={project.projectId} /> : null}
-                  </li>
+                  </ListItem>
                 ))}
-              </ul>
+              </List>
               {setsUp && teamsWithPeople.length ? (
-                <details className="rounded-xl border p-4" open={projects.length === 0}>
-                  <summary className="cursor-pointer text-sm font-medium">{t("deal.delivery.title")}</summary>
-                  <div className="pt-3">
-                    <DeliverySetupForm dealId={dealId} dealTitle={deal.title} teams={teamsWithPeople} defaultTeamId={deal.teamId} templates={templates.filter((template) => template.purpose === "work_project").map((template) => ({ id: template.id, name: template.name }))} contracts={contracts.map((contract) => ({ id: contract.id, name: `${contract.number} · ${contract.title}` }))} today={today} />
-                  </div>
-                </details>
+                <TableAddRow label={t("deal.delivery.title")} open={projects.length === 0}>
+                  <DeliverySetupForm dealId={dealId} dealTitle={deal.title} teams={teamsWithPeople} defaultTeamId={deal.teamId} templates={templates.filter((template) => template.purpose === "work_project").map((template) => ({ id: template.id, name: template.name }))} contracts={contracts.map((contract) => ({ id: contract.id, name: `${contract.number} · ${contract.title}` }))} today={today} />
+                </TableAddRow>
               ) : null}
-            </section>
+            </TableCard>
           ) : null}
 
           {quotesVisible ? (
-            <section className="flex flex-col gap-2">
-              <h2 className="text-sm font-medium">{t("deal.sections.quotes")}</h2>
-              {quotes.length === 0 ? <p className="text-sm text-muted-foreground">{t("deal.noQuotes")}</p> : null}
-              <ul className="flex flex-col divide-y rounded-xl border">
-                {quotes.map((quote) => (
-                  <li key={quote.id} className="flex flex-wrap items-center gap-2 p-3 text-sm">
-                    <Link href={`/crm/deals/${dealId}/quotes/${quote.id}`} className="font-medium hover:underline">
-                      {quote.number} v{quote.version}
-                    </Link>
-                    <span>{quote.title}</span>
-                    <Badge dot variant={statusTone(quote.status === "in_approval" ? "pending" : quote.status)}>
-                      {t(`enums.quoteStatus.${quote.status as "draft"}`)}
-                    </Badge>
-                    <span className="ml-auto tabular-nums">{f.money(quote.totalVnd)}</span>
-                  </li>
-                ))}
-              </ul>
-              {edits ? <CrmButton action={createQuoteAction} input={{ dealId }} label={t("quote.create")} navigateTo={(data) => `/crm/deals/${dealId}/quotes/${(data as { id: string }).id}`} /> : null}
-            </section>
+            <TableCard>
+              <TableCardHeader title={t("deal.sections.quotes")} count={quotes.length || null} actions={edits ? <CrmButton action={createQuoteAction} input={{ dealId }} label={t("quote.create")} navigateTo={(data) => `/crm/deals/${dealId}/quotes/${(data as { id: string }).id}`} /> : null} />
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead kind="id">{t("contracts.columns.number")}</TableHead>
+                    <TableHead kind="text">{t("quote.title")}</TableHead>
+                    <TableHead kind="status">{t("contacts.fields.status")}</TableHead>
+                    <TableHead kind="money">{t("quote.total")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {quotes.length === 0 ? <TableEmpty>{t("deal.noQuotes")}</TableEmpty> : null}
+                  {quotes.map((quote) => (
+                    <TableRow key={quote.id}>
+                      <TableCell kind="id">
+                        <Link href={`/crm/deals/${dealId}/quotes/${quote.id}`} className="font-medium text-foreground hover:underline">
+                          {quote.number} v{quote.version}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{quote.title}</TableCell>
+                      <TableCell>
+                        <Badge dot variant={statusTone(quote.status === "in_approval" ? "pending" : quote.status)}>
+                          {t(`enums.quoteStatus.${quote.status as "draft"}`)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell kind="money">{f.money(quote.totalVnd)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableCard>
           ) : null}
 
           {staffing ? (
@@ -289,14 +301,14 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
           </section>
           <section className="flex flex-col gap-2">
             <h2 className="text-sm font-medium">{t("deal.sections.contacts")}</h2>
-            <ul className="flex flex-col gap-1 text-sm">
+            <List>
               {dealContacts.map((contact) => (
-                <li key={contact.contactId}>
+                <ListItem key={contact.contactId} className="flex-wrap gap-x-1.5 gap-y-0.5">
                   {contact.fullName}
-                  <span className="text-xs text-muted-foreground"> {[contact.title, contact.role].filter(Boolean).join(" · ")}</span>
-                </li>
+                  <span className="text-xs text-muted-foreground">{[contact.title, contact.role].filter(Boolean).join(" · ")}</span>
+                </ListItem>
               ))}
-            </ul>
+            </List>
             {edits ? (
               <details className="rounded-xl border p-3">
                 <summary className="cursor-pointer text-sm">{t("deal.editContacts")}</summary>

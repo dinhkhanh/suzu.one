@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import type { DayRule, Weekday } from "@/modules/attendance/engine/calendar";
 import { canAssignSchedule, canManageAttendanceConfig, canOpenAttendanceSettings } from "@/modules/attendance/policy";
@@ -32,12 +34,12 @@ export default async function SchedulesSettingsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("schedules.title")}</h2>
-        {schedules.length === 0 ? <p className="text-sm text-muted-foreground">{t("schedules.empty")}</p> : null}
-        <ul className="flex flex-col gap-3">
+      <TableCard>
+        <TableCardHeader title={t("schedules.title")} count={schedules.length || null} />
+        <List>
+          {schedules.length === 0 ? <ListEmpty>{t("schedules.empty")}</ListEmpty> : null}
           {schedules.map((schedule) => (
-            <li key={schedule.id} className="rounded-xl border p-4">
+            <ListItem key={schedule.id} className="block">
               <details>
                 <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm">
                   <span className="font-medium">{schedule.name}</span>
@@ -53,51 +55,66 @@ export default async function SchedulesSettingsPage() {
                   </div>
                 ) : null}
               </details>
-            </li>
+            </ListItem>
           ))}
-        </ul>
+        </List>
         {options.entities.length > 0 || options.canGroup ? (
-          <details className="rounded-xl border p-4">
-            <summary className="cursor-pointer text-sm font-medium">{t("schedules.add")}</summary>
-            <div className="mt-4">
-              <ScheduleForm {...options} />
-            </div>
-          </details>
+          <TableAddRow label={t("schedules.add")}>
+            <ScheduleForm {...options} />
+          </TableAddRow>
         ) : null}
-      </section>
+      </TableCard>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("assignments.title")}</h2>
-        {assignments.length === 0 ? <p className="text-sm text-muted-foreground">{t("assignments.empty")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border empty:hidden">
-          {assignments.map((row) => {
-            const state = row.validTo && row.validTo < today ? "ended" : row.validFrom > today ? "upcoming" : "active";
-            const who = row.scope === "person" ? row.personName : row.scope === "department" ? `${row.departmentName} · ${row.entityName ?? t("everyEntity")}` : row.entityName;
-            return (
-              <li key={row.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm">
-                <Badge variant="secondary">{t(`assignments.scopes.${row.scope}`)}</Badge>
-                <span className="font-medium">{who}</span>
-                <span>→ {row.scheduleName}</span>
-                <span className="text-xs text-muted-foreground">
-                  {day(row.validFrom)} → {row.validTo ? day(row.validTo) : "…"}
-                  {row.note ? ` · ${row.note}` : ""}
-                </span>
-                <Badge variant="outline" className="ml-auto">
-                  {t(`assignments.state.${state}`)}
-                </Badge>
-                {canAssignSchedule(user.principal, { ...row, unitPath: (row.departmentId ? unitPaths.get(row.departmentId) : null) ?? [] }, row.personId ? (personTargets.get(row.personId) ?? null) : null) ? <RowAction action="removeAssignment" id={row.id} label={t("remove")} confirm={t("removeConfirm")} /> : null}
-              </li>
-            );
-          })}
-        </ul>
-        <AssignmentForm
-          schedules={schedules.filter((schedule) => schedule.isActive).map((schedule) => ({ id: schedule.id, name: schedule.name }))}
-          entities={options.entities}
-          departments={departments}
-          people={people.map((person) => ({ id: person.id, name: person.fullName }))}
-          today={today}
-        />
-      </section>
+      <TableCard>
+        <TableCardHeader title={t("assignments.title")} count={assignments.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("assignments.scope")}</TableHead>
+              <TableHead kind="select">{t("assignments.schedule")}</TableHead>
+              <TableHead kind="date">{t("assignments.from")}</TableHead>
+              <TableHead kind="date">{t("assignments.until")}</TableHead>
+              <TableHead kind="text">{t("assignments.note")}</TableHead>
+              <TableHead kind="status">{t("assignments.status")}</TableHead>
+              <TableHead kind="actions" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {assignments.length === 0 ? <TableEmpty>{t("assignments.empty")}</TableEmpty> : null}
+            {assignments.map((row) => {
+              const state = row.validTo && row.validTo < today ? "ended" : row.validFrom > today ? "upcoming" : "active";
+              const who = row.scope === "person" ? row.personName : row.scope === "department" ? `${row.departmentName} · ${row.entityName ?? t("everyEntity")}` : row.entityName;
+              return (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    <span className="flex items-center gap-2">
+                      <Badge variant="secondary">{t(`assignments.scopes.${row.scope}`)}</Badge>
+                      <span className="font-medium">{who}</span>
+                    </span>
+                  </TableCell>
+                  <TableCell>{row.scheduleName}</TableCell>
+                  <TableCell>{day(row.validFrom)}</TableCell>
+                  <TableCell>{row.validTo ? day(row.validTo) : "…"}</TableCell>
+                  <TableCell className="text-muted-foreground">{row.note ?? ""}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{t(`assignments.state.${state}`)}</Badge>
+                  </TableCell>
+                  <TableCell kind="actions">{canAssignSchedule(user.principal, { ...row, unitPath: (row.departmentId ? unitPaths.get(row.departmentId) : null) ?? [] }, row.personId ? (personTargets.get(row.personId) ?? null) : null) ? <RowAction action="removeAssignment" id={row.id} label={t("remove")} confirm={t("removeConfirm")} /> : null}</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        <TableAddRow label={t("assignments.add")} open={assignments.length === 0}>
+          <AssignmentForm
+            schedules={schedules.filter((schedule) => schedule.isActive).map((schedule) => ({ id: schedule.id, name: schedule.name }))}
+            entities={options.entities}
+            departments={departments}
+            people={people.map((person) => ({ id: person.id, name: person.fullName }))}
+            today={today}
+          />
+        </TableAddRow>
+      </TableCard>
     </div>
   );
 }

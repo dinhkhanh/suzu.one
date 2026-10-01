@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
@@ -158,104 +158,118 @@ export default async function DeliveryPage({ searchParams }: PageProps<"/reports
       )}
 
       {view.attention.length > 0 ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-base font-medium">{t("attention.title")}</h2>
-          <ul className="flex flex-col divide-y rounded-xl border text-sm">
-            {view.attention.map((project) => (
-              <li key={project.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-                <Link href={`/work/projects/${project.id}`} className="font-medium underline-offset-4 hover:underline">
-                  {project.name}
-                  <span className="ps-2 text-xs font-normal text-muted-foreground">{project.teamName}</span>
-                </Link>
-                <span className="flex flex-wrap gap-1">
-                  {project.health ? <Badge variant={project.health === "off_track" ? "destructive" : "secondary"}>{t(`health.${project.health}`)}</Badge> : null}
-                  {project.stale ? <Badge variant="outline">{t("health.stale")}</Badge> : null}
-                  {project.overdueMilestones > 0 ? <Badge variant="outline">{t("attention.overdue", { count: project.overdueMilestones })}</Badge> : null}
-                  {project.slippedMilestones > 0 ? <Badge variant="outline">{t("attention.slipped", { count: project.slippedMilestones })}</Badge> : null}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <TableCard>
+          <TableCardHeader title={t("attention.title")} count={view.attention.length} />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="text">{t("columns.project")}</TableHead>
+                <TableHead kind="org">{t("columns.team")}</TableHead>
+                <TableHead kind="status">{t("panels.health")}</TableHead>
+                <TableHead kind="number">{t("columns.overdueMilestones")}</TableHead>
+                <TableHead kind="number">{t("columns.slipped")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {view.attention.map((project) => (
+                <TableRow key={project.id}>
+                  <TableCell className="max-w-80 truncate">
+                    <Link href={`/work/projects/${project.id}`} className="font-medium underline-offset-4 hover:underline">
+                      {project.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{project.teamName}</TableCell>
+                  <TableCell>
+                    <span className="flex flex-wrap gap-1">
+                      {project.health ? <Badge variant={project.health === "off_track" ? "destructive" : "secondary"}>{t(`health.${project.health}`)}</Badge> : null}
+                      {project.stale ? <Badge variant="outline">{t("health.stale")}</Badge> : null}
+                      {!project.health && !project.stale ? "—" : null}
+                    </span>
+                  </TableCell>
+                  <TableCell kind="number" className={project.overdueMilestones > 0 ? "text-destructive" : undefined}>{project.overdueMilestones}</TableCell>
+                  <TableCell kind="number">{project.slippedMilestones}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       ) : null}
 
       {view.byTeam.length > 1 ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-base font-medium">{t("byTeam")}</h2>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("columns.team")}</TableHead>
-                  <TableHead className="text-right">{t("columns.projects")}</TableHead>
-                  <TableHead className="text-right">{t("columns.offTrack")}</TableHead>
-                  <TableHead className="text-right">{t("columns.stale")}</TableHead>
-                  <TableHead className="text-right">{t("columns.overdueMilestones")}</TableHead>
-                  <TableHead className="text-right">{t("columns.onTimeRate")}</TableHead>
-                  <TableHead className="text-right">{t("columns.acceptedRate")}</TableHead>
-                  <TableHead className="text-right">{t("columns.burnRate")}</TableHead>
-                  <TableHead className="text-right">{t("columns.clientRounds")}</TableHead>
-                  <TableHead className="text-right">{t("columns.returnedHandoffs")}</TableHead>
-                  <TableHead className="text-right">{t("columns.blockedHours")}</TableHead>
+        <TableCard>
+          <TableCardHeader title={t("byTeam")} />
+          <Table numbered={false}>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="org">{t("columns.team")}</TableHead>
+                <TableHead kind="number">{t("columns.projects")}</TableHead>
+                <TableHead kind="number">{t("columns.offTrack")}</TableHead>
+                <TableHead kind="number">{t("columns.stale")}</TableHead>
+                <TableHead kind="number">{t("columns.overdueMilestones")}</TableHead>
+                <TableHead kind="percent">{t("columns.onTimeRate")}</TableHead>
+                <TableHead kind="percent">{t("columns.acceptedRate")}</TableHead>
+                <TableHead kind="percent">{t("columns.burnRate")}</TableHead>
+                <TableHead kind="number">{t("columns.clientRounds")}</TableHead>
+                <TableHead kind="number">{t("columns.returnedHandoffs")}</TableHead>
+                <TableHead kind="time">{t("columns.blockedHours")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {view.byTeam.map(({ teamId: id, name, summary }) => (
+                <TableRow key={id}>
+                  <TableCell>
+                    <Link href={link(id)} className="underline-offset-4 hover:underline">
+                      {name}
+                    </Link>
+                  </TableCell>
+                  <TableCell kind="number">{summary.projects}</TableCell>
+                  <TableCell kind="number">{summary.health.off_track}</TableCell>
+                  <TableCell kind="number">{summary.health.stale}</TableCell>
+                  <TableCell kind="number">{summary.milestones.overdue}</TableCell>
+                  <TableCell kind="percent">{percent(summary.onTime.rate)}</TableCell>
+                  <TableCell kind="percent">{percent(summary.register.rate)}</TableCell>
+                  <TableCell kind="percent">{percent(summary.burn.rate)}</TableCell>
+                  <TableCell kind="number">{summary.revisions.clientRounds}</TableCell>
+                  <TableCell kind="number">{summary.handoffs.returned}</TableCell>
+                  <TableCell kind="time">{decimal(summary.blocked.blockedHours)}</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {view.byTeam.map(({ teamId: id, name, summary }) => (
-                  <TableRow key={id}>
-                    <TableCell>
-                      <Link href={link(id)} className="underline-offset-4 hover:underline">
-                        {name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{summary.projects}</TableCell>
-                    <TableCell className="text-right tabular-nums">{summary.health.off_track}</TableCell>
-                    <TableCell className="text-right tabular-nums">{summary.health.stale}</TableCell>
-                    <TableCell className="text-right tabular-nums">{summary.milestones.overdue}</TableCell>
-                    <TableCell className="text-right tabular-nums">{percent(summary.onTime.rate)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{percent(summary.register.rate)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{percent(summary.burn.rate)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{summary.revisions.clientRounds}</TableCell>
-                    <TableCell className="text-right tabular-nums">{summary.handoffs.returned}</TableCell>
-                    <TableCell className="text-right tabular-nums">{decimal(summary.blocked.blockedHours)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </section>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       ) : null}
 
       {view.compliance ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-base font-medium">{t("compliance.title")}</h2>
-          <div className="overflow-x-auto">
-            <Table>
+          <TableCard>
+            <TableCardHeader title={t("compliance.title")} />
+            <Table numbered={false}>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("columns.team")}</TableHead>
-                  <TableHead className="text-right">{t("compliance.people")}</TableHead>
-                  <TableHead className="text-right">{t("compliance.reports")}</TableHead>
-                  <TableHead className="text-right">{t("compliance.timesheets")}</TableHead>
+                  <TableHead kind="org">{t("columns.team")}</TableHead>
+                  <TableHead kind="number">{t("compliance.people")}</TableHead>
+                  <TableHead kind="percent">{t("compliance.reports")}</TableHead>
+                  <TableHead kind="percent">{t("compliance.timesheets")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 <TableRow className="font-medium">
                   <TableCell>{t("total")}</TableCell>
                   <TableCell />
-                  <TableCell className="text-right tabular-nums">{compliance(view.compliance.total.reports)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{compliance(view.compliance.total.timesheets)}</TableCell>
+                  <TableCell kind="percent">{compliance(view.compliance.total.reports)}</TableCell>
+                  <TableCell kind="percent">{compliance(view.compliance.total.timesheets)}</TableCell>
                 </TableRow>
                 {view.compliance.teams.map((team) => (
                   <TableRow key={team.teamId}>
                     <TableCell>{team.name}</TableCell>
-                    <TableCell className="text-right tabular-nums">{team.people}</TableCell>
-                    <TableCell className="text-right tabular-nums">{compliance(team.reports)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{compliance(team.timesheets)}</TableCell>
+                    <TableCell kind="number">{team.people}</TableCell>
+                    <TableCell kind="percent">{compliance(team.reports)}</TableCell>
+                    <TableCell kind="percent">{compliance(team.timesheets)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </TableCard>
           <p className="text-xs text-muted-foreground">{t("compliance.hint", { days: COMPLIANCE_MAX_DAYS })}</p>
         </section>
       ) : null}

@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listOffers } from "@/modules/recruit/offers";
@@ -19,6 +20,7 @@ export default async function OffersPage() {
   if (!canRunRecruitment(user.principal)) notFound();
 
   const t = await getTranslations("recruit.offer");
+  const tRecruit = await getTranslations("recruit");
   const format = await getFormatter();
   const rows = await listOffers(user.principal, user.person.id);
 
@@ -29,29 +31,40 @@ export default async function OffersPage() {
         <p className="text-sm text-muted-foreground">{t("description")}</p>
       </header>
 
-      {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("none")}</p>
-      ) : (
-        <ul className="flex flex-col divide-y rounded-xl border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="text">{tRecruit("columns.candidate")}</TableHead>
+            <TableHead kind="text">{t("positionName")}</TableHead>
+            <TableHead kind="id">{tRecruit("reports.opening")}</TableHead>
+            <TableHead kind="id">{t("heading")}</TableHead>
+            <TableHead kind="date">{t("startDate")}</TableHead>
+            <TableHead kind="status">{tRecruit("columns.status")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.length === 0 ? <TableEmpty>{t("none")}</TableEmpty> : null}
           {rows.map((row) => (
-            <li key={row.id} className="flex flex-wrap items-center gap-3 p-3">
-              <div className="min-w-0 flex-1 basis-56">
-                <Link href={`/recruit/offers/${row.id}`} className="text-sm font-medium hover:underline">
+            <TableRow key={row.id}>
+              <TableCell className="max-w-64 truncate">
+                <Link href={`/recruit/offers/${row.id}`} className="font-medium hover:underline">
                   {row.candidateName}
                 </Link>
-                <p className="text-xs text-muted-foreground">
-                  {row.positionName} · {row.openingCode} · {row.number}
-                </p>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {t("startDate")}: {format.dateTime(new Date(`${row.startDate}T00:00:00Z`), { dateStyle: "medium", timeZone: "UTC" })}
-              </span>
-              {row.hiredPersonId ? <Badge variant="outline">{t("statuses.converted")}</Badge> : null}
-              <Badge dot variant={statusTone(row.status)}>{t(`statuses.${row.status}`)}</Badge>
-            </li>
+              </TableCell>
+              <TableCell className="max-w-56 truncate">{row.positionName}</TableCell>
+              <TableCell kind="id">{row.openingCode}</TableCell>
+              <TableCell kind="id">{row.number}</TableCell>
+              <TableCell>{format.dateTime(new Date(`${row.startDate}T00:00:00Z`), { dateStyle: "medium", timeZone: "UTC" })}</TableCell>
+              <TableCell>
+                <span className="flex items-center gap-1.5">
+                  <Badge dot variant={statusTone(row.status)}>{t(`statuses.${row.status}`)}</Badge>
+                  {row.hiredPersonId ? <Badge variant="outline">{t("statuses.converted")}</Badge> : null}
+                </span>
+              </TableCell>
+            </TableRow>
           ))}
-        </ul>
-      )}
+        </TableBody>
+      </Table>
     </div>
   );
 }

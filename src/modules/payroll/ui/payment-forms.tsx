@@ -40,9 +40,8 @@ export function BankFileForm({ runId, banks, defaultValueDate }: { runId: string
   });
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border p-4">
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <div>
-        <h2 className="text-sm font-medium">{t("bank.title")}</h2>
         <p className="text-sm text-muted-foreground">{t("bank.hint")}</p>
         {/* The formats are reconstructions until the accountant checks them against the bank. */}
         <Alert variant="warning" className="mt-2 text-xs">{t("bank.unverified")}</Alert>

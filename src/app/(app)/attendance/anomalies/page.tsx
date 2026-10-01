@@ -1,6 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { ANOMALY_KINDS, type AnomalyKind, listAnomalies } from "@/modules/attendance/anomalies";
 import { canLockPeriod, canOpenAttendanceSettings } from "@/modules/attendance/policy";
@@ -85,34 +87,48 @@ export default async function AnomaliesPage({ searchParams }: PageProps<"/attend
           </Link>
         </p>
       ) : null}
-      {lines.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("empty")}</p>
-      ) : (
-        <ul className="flex flex-col divide-y rounded-xl border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="select">{t("columns.kind")}</TableHead>
+            <TableHead kind="person">{t("columns.subject")}</TableHead>
+            <TableHead kind="date">{t("columns.date")}</TableHead>
+            <TableHead kind="number">{t("columns.amount")}</TableHead>
+            <TableHead kind="actions" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {lines.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
           {lines.map((line) => (
-            <li key={line.key} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 text-sm">
-              <span className={`rounded-md px-2 py-0.5 text-xs ${line.blocking ? "bg-destructive/10 text-destructive" : "bg-muted"}`}>{t(`kinds.${line.kind}`)}</span>
-              {line.personId ? (
-                <Link href={href({ person: line.personId })} className="min-w-36 font-medium underline-offset-4 hover:underline">
-                  {line.fullName}
-                </Link>
-              ) : (
-                <span className="min-w-36 font-medium">{line.detail}</span>
-              )}
-              <span className="w-24 text-muted-foreground">{line.date ? line.date.split("-").reverse().join("/") : ""}</span>
-              <span className="text-muted-foreground">{line.kind === "unmapped_device_id" ? t("lines", { count: line.minutes ?? 0 }) : line.minutes ? t("minutes", { minutes: line.minutes }) : ""}</span>
-              <span className="ml-auto flex items-center gap-2">
-                {line.href ? (
-                  <Link href={line.href} className="underline-offset-4 hover:underline">
-                    {t(`fix.${line.fix}`)}
+            <TableRow key={line.key}>
+              <TableCell>
+                <Badge variant={line.blocking ? "destructive" : "secondary"}>{t(`kinds.${line.kind}`)}</Badge>
+              </TableCell>
+              <TableCell className="font-medium">
+                {line.personId ? (
+                  <Link href={href({ person: line.personId })} className="underline-offset-4 hover:underline">
+                    {line.fullName}
                   </Link>
-                ) : null}
-                {line.personId ? <NudgeButton personId={line.personId} month={month} label={t("nudge")} /> : null}
-              </span>
-            </li>
+                ) : (
+                  line.detail
+                )}
+              </TableCell>
+              <TableCell>{line.date ? line.date.split("-").reverse().join("/") : ""}</TableCell>
+              <TableCell kind="number">{line.kind === "unmapped_device_id" ? t("lines", { count: line.minutes ?? 0 }) : line.minutes ? t("minutes", { minutes: line.minutes }) : ""}</TableCell>
+              <TableCell kind="actions">
+                <span className="flex items-center justify-end gap-2">
+                  {line.href ? (
+                    <Link href={line.href} className="underline-offset-4 hover:underline">
+                      {t(`fix.${line.fix}`)}
+                    </Link>
+                  ) : null}
+                  {line.personId ? <NudgeButton personId={line.personId} month={month} label={t("nudge")} /> : null}
+                </span>
+              </TableCell>
+            </TableRow>
           ))}
-        </ul>
-      )}
+        </TableBody>
+      </Table>
     </div>
   );
 }

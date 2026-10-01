@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableGroupRow, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
 import { listPeople } from "@/modules/core-hr/service";
@@ -134,62 +135,85 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
         </section>
       ) : null}
 
-      {view.canEdit ? (
-        <AddApplicationForm
-          openingId={openingId}
-          candidates={candidates}
-          canSetMoney={canSetRecruitMoney(user.principal, { entityId: view.opening.entityId, departmentId: view.opening.departmentId, teamId: view.opening.teamId })}
-        />
-      ) : null}
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("candidates")}</h2>
-        {applications.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("noApplications")}</p>
-        ) : (
-          <div className="flex flex-col gap-4">
+      <TableCard>
+        <TableCardHeader title={t("candidates")} count={applications.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("columns.candidate")}</TableHead>
+              <TableHead kind="text">{t("columns.currentTitle")}</TableHead>
+              <TableHead kind="select">{t("columns.source")}</TableHead>
+              <TableHead kind="date">{t("columns.appliedAt")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {applications.length === 0 ? <TableEmpty>{t("noApplications")}</TableEmpty> : null}
             {byStage
               .filter((column) => column.rows.length > 0)
-              .map((column) => (
-                <div key={column.stage.id} className="flex flex-col gap-2">
-                  <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {column.stage.name} ({column.rows.length})
-                  </h3>
-                  <ul className="flex flex-col divide-y rounded-xl border">
-                    {column.rows.map((row) => (
-                      <li key={row.id} className="flex flex-wrap items-center gap-3 p-3">
-                        <Link href={`/recruit/applications/${row.id}`} className="min-w-0 flex-1 text-sm font-medium hover:underline">
-                          {row.candidateName}
-                        </Link>
-                        {row.currentTitle ? <span className="text-xs text-muted-foreground">{row.currentTitle}</span> : null}
-                        <span className="text-xs text-muted-foreground">{t(`source.${row.source}`)}</span>
-                        <span className="text-xs text-muted-foreground">{format.dateTime(row.appliedAt, { dateStyle: "medium" })}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            {closed.length > 0 ? (
-              <details className="rounded-xl border p-3">
-                <summary className="cursor-pointer text-sm text-muted-foreground">
-                  {t("applicationStatus.rejected")} / {t("applicationStatus.withdrawn")} ({closed.length})
-                </summary>
-                <ul className="mt-2 flex flex-col divide-y">
-                  {closed.map((row) => (
-                    <li key={row.id} className="flex flex-wrap items-center gap-3 py-2">
-                      <Link href={`/recruit/applications/${row.id}`} className="min-w-0 flex-1 text-sm hover:underline">
+              .flatMap((column) => [
+                <TableGroupRow key={`stage-${column.stage.id}`}>
+                  {column.stage.name} ({column.rows.length})
+                </TableGroupRow>,
+                ...column.rows.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell className="max-w-72 truncate">
+                      <Link href={`/recruit/applications/${row.id}`} className="font-medium hover:underline">
                         {row.candidateName}
                       </Link>
-                      <span className="text-xs text-muted-foreground">{row.stageName}</span>
-                      <Badge variant="outline">{t(`applicationStatus.${row.status}`)}</Badge>
-                    </li>
+                    </TableCell>
+                    <TableCell className="max-w-56 truncate">{row.currentTitle || "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{t(`source.${row.source}`)}</Badge>
+                    </TableCell>
+                    <TableCell>{format.dateTime(row.appliedAt, { dateStyle: "medium" })}</TableCell>
+                  </TableRow>
+                )),
+              ])}
+          </TableBody>
+        </Table>
+        {closed.length > 0 ? (
+          <details className="group/closed border-t">
+            <summary className="flex h-12 cursor-pointer list-none items-center px-3 text-sm text-muted-foreground transition-colors select-none hover:bg-muted/40 hover:text-foreground group-open/closed:text-foreground [&::-webkit-details-marker]:hidden">
+              {t("applicationStatus.rejected")} / {t("applicationStatus.withdrawn")} ({closed.length})
+            </summary>
+            <div className="border-t">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead kind="text">{t("columns.candidate")}</TableHead>
+                    <TableHead kind="select">{t("columns.stage")}</TableHead>
+                    <TableHead kind="status">{t("columns.status")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {closed.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell className="max-w-72 truncate">
+                        <Link href={`/recruit/applications/${row.id}`} className="hover:underline">
+                          {row.candidateName}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{row.stageName}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{t(`applicationStatus.${row.status}`)}</Badge>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </ul>
-              </details>
-            ) : null}
-          </div>
-        )}
-      </section>
+                </TableBody>
+              </Table>
+            </div>
+          </details>
+        ) : null}
+        {view.canEdit && candidates.length > 0 ? (
+          <TableAddRow label={t("actions.addApplication")} open={applications.length === 0}>
+            <AddApplicationForm
+              openingId={openingId}
+              candidates={candidates}
+              canSetMoney={canSetRecruitMoney(user.principal, { entityId: view.opening.entityId, departmentId: view.opening.departmentId, teamId: view.opening.teamId })}
+            />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
 
       <p className="text-xs text-muted-foreground">{t("confidential")}</p>
     </div>

@@ -10,6 +10,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { RECORD_ONLY_EVENT_TYPES, TERMINATION_REASONS } from "../enums";
 import { cancelLifecycleEventAction, recordLifecycleEventAction, rehirePersonAction, submitResignationAction, terminateEmploymentAction, transferToEntityAction } from "../lifecycle-actions";
+import { TableAddRow } from "@/components/ui/table";
 import { PlacementFields, type PlacementOptions } from "./fields";
 
 /** Events HR writes down: probation result, renewal, reward, discipline, long leave, salary change (no amounts). */
@@ -25,9 +26,8 @@ export function RecordEventForm({ personId, today }: { personId: string; today: 
     },
   });
   return (
-    <details ref={details} className="rounded-xl border p-4">
-      <summary className="cursor-pointer text-sm font-medium">{t("record.title")}</summary>
-      <form ref={form} onSubmit={onSubmit} className="mt-4 flex flex-col gap-4">
+    <TableAddRow label={t("record.title")} ref={details}>
+      <form ref={form} onSubmit={onSubmit} className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field name="type" label={t("fields.type")}>
             <Select id="type" name="type" required defaultValue="probation_pass">
@@ -57,7 +57,7 @@ export function RecordEventForm({ personId, today }: { personId: string; today: 
           </Button>
         </div>
       </form>
-    </details>
+    </TableAddRow>
   );
 }
 
@@ -179,14 +179,13 @@ export function TransferEntityForm({ personId, entities, options, today, minDate
   // A unit or branch of another entity is not a place in this one; shared units always are.
   const placement = { ...options, units: options.units.filter((unit) => !unit.entityId || unit.entityId === entityId), branches: options.branches.filter((branch) => branch.entityId === entityId) };
   return (
-    <details className="rounded-xl border p-4">
-      <summary className="cursor-pointer text-sm font-medium">{t("transfer.title")}</summary>
+    <TableAddRow label={t("transfer.title")}>
       <form
         onSubmit={(event) => {
           if (window.confirm(t("transfer.confirm"))) onSubmit(event);
           else event.preventDefault();
         }}
-        className="mt-4 flex flex-col gap-4"
+        className="flex flex-col gap-4"
       >
         <p className="text-sm text-muted-foreground">{t("transfer.hint")}</p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -220,7 +219,7 @@ export function TransferEntityForm({ personId, entities, options, today, minDate
           </Button>
         </div>
       </form>
-    </details>
+    </TableAddRow>
   );
 }
 

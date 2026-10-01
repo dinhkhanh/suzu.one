@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { List, ListItem } from "@/components/ui/list";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -68,70 +69,70 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/crm/inv
           </Link>
         ))}
       </nav>
-      {invoices.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("invoices.empty")}</p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("invoices.columns.number")}</TableHead>
-              <TableHead>{t("invoices.columns.account")}</TableHead>
-              <TableHead>{t("invoices.columns.issued")}</TableHead>
-              <TableHead>{t("invoices.columns.due")}</TableHead>
-              <TableHead>{t("invoices.columns.standing")}</TableHead>
-              <TableHead className="text-right">{t("invoices.columns.total")}</TableHead>
-              <TableHead className="text-right">{t("invoices.columns.outstanding")}</TableHead>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="id">{t("invoices.columns.number")}</TableHead>
+            <TableHead kind="org">{t("invoices.columns.account")}</TableHead>
+            <TableHead kind="date">{t("invoices.columns.issued")}</TableHead>
+            <TableHead kind="date">{t("invoices.columns.due")}</TableHead>
+            <TableHead kind="status">{t("invoices.columns.standing")}</TableHead>
+            <TableHead kind="money">{t("invoices.columns.total")}</TableHead>
+            <TableHead kind="money">{t("invoices.columns.outstanding")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {invoices.length === 0 ? <TableEmpty>{t("invoices.empty")}</TableEmpty> : null}
+          {invoices.map((invoice) => (
+            <TableRow key={invoice.id}>
+              <TableCell>
+                <Link href={`/crm/invoices/${invoice.id}`} className="font-medium hover:underline">
+                  {invoice.number}
+                </Link>
+                <p className="text-xs text-muted-foreground">{invoice.entityName}</p>
+              </TableCell>
+              <TableCell>
+                <Link href={`/crm/accounts/${invoice.clientId}`} className="hover:underline">
+                  {invoice.accountName}
+                </Link>
+                <p className="text-xs text-muted-foreground">{invoice.managerName}</p>
+              </TableCell>
+              <TableCell>{f.date(invoice.issuedOn)}</TableCell>
+              <TableCell>
+                {f.date(invoice.dueOn)}
+                {invoice.daysPastDue > 0 ? <p className="text-xs text-destructive">{t("invoices.daysLate", { days: invoice.daysPastDue })}</p> : null}
+              </TableCell>
+              <TableCell>
+                <Badge dot variant={statusTone(invoice.standing === "open" && invoice.daysPastDue > 0 ? "overdue" : invoice.standing === "part_paid" ? "pending" : invoice.standing)}>
+                  {t(`enums.invoiceStanding.${invoice.standing}`)}
+                </Badge>
+              </TableCell>
+              <TableCell kind="money">{f.money(invoice.totalVnd)}</TableCell>
+              <TableCell kind="money">{f.money(invoice.outstandingVnd)}</TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {invoices.map((invoice) => (
-              <TableRow key={invoice.id}>
-                <TableCell>
-                  <Link href={`/crm/invoices/${invoice.id}`} className="font-medium hover:underline">
-                    {invoice.number}
-                  </Link>
-                  <p className="text-xs text-muted-foreground">{invoice.entityName}</p>
-                </TableCell>
-                <TableCell>
-                  <Link href={`/crm/accounts/${invoice.clientId}`} className="hover:underline">
-                    {invoice.accountName}
-                  </Link>
-                  <p className="text-xs text-muted-foreground">{invoice.managerName}</p>
-                </TableCell>
-                <TableCell className="text-sm">{f.date(invoice.issuedOn)}</TableCell>
-                <TableCell className="text-sm">
-                  {f.date(invoice.dueOn)}
-                  {invoice.daysPastDue > 0 ? <p className="text-xs text-destructive">{t("invoices.daysLate", { days: invoice.daysPastDue })}</p> : null}
-                </TableCell>
-                <TableCell>
-                  <Badge dot variant={statusTone(invoice.standing === "open" && invoice.daysPastDue > 0 ? "overdue" : invoice.standing === "part_paid" ? "pending" : invoice.standing)}>
-                    {t(`enums.invoiceStanding.${invoice.standing}`)}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right tabular-nums">{f.money(invoice.totalVnd)}</TableCell>
-                <TableCell className="text-right tabular-nums">{f.money(invoice.outstandingVnd)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+          ))}
+        </TableBody>
+      </Table>
 
       {groups.size ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium">{t("invoices.recordTitle")}</h2>
-          <p className="text-sm text-muted-foreground">{t("invoices.recordIntro")}</p>
-          {[...groups.entries()].map(([key, group]) => (
-            <details key={key} className="rounded-xl border p-4">
-              <summary className="cursor-pointer text-sm font-medium">
-                {group.accountName}
-                {group.entityName ? ` · ${group.entityName}` : ""} · {t("invoices.readyCount", { count: group.items.length })}
-              </summary>
-              <div className="pt-3">
-                <RecordInvoiceForm items={group.items.map((item) => ({ id: item.id, projectName: item.projectName, jobNumber: item.jobNumber, description: item.description, amountVnd: item.amountVnd ?? null, reference: item.reference ?? references.get(item.projectId) ?? null }))} vatRates={vat.allowedBp} defaultVat={vat.defaultBp} today={today} />
-              </div>
-            </details>
-          ))}
-        </section>
+        <TableCard>
+          <TableCardHeader title={t("invoices.recordTitle")} count={groups.size} description={t("invoices.recordIntro")} />
+          <List>
+            {[...groups.entries()].map(([key, group]) => (
+              <ListItem key={key} className="block">
+                <details>
+                  <summary className="cursor-pointer font-medium">
+                    {group.accountName}
+                    {group.entityName ? ` · ${group.entityName}` : ""} · {t("invoices.readyCount", { count: group.items.length })}
+                  </summary>
+                  <div className="pt-3">
+                    <RecordInvoiceForm items={group.items.map((item) => ({ id: item.id, projectName: item.projectName, jobNumber: item.jobNumber, description: item.description, amountVnd: item.amountVnd ?? null, reference: item.reference ?? references.get(item.projectId) ?? null }))} vatRates={vat.allowedBp} defaultVat={vat.defaultBp} today={today} />
+                  </div>
+                </details>
+              </ListItem>
+            ))}
+          </List>
+        </TableCard>
       ) : null}
     </div>
   );

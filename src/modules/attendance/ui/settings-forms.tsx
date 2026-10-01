@@ -5,6 +5,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { List, ListItem } from "@/components/ui/list";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
@@ -33,8 +34,7 @@ export function CalendarDayForm({ entities, canGroup }: { entities: Option[]; ca
   const t = useTranslations("attendance.settings");
   const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(saveCalendarDayAction);
   return (
-    <form onSubmit={onSubmit} key={saved ? "saved" : "open"} className="flex flex-col gap-3 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("calendar.add")}</h2>
+    <form onSubmit={onSubmit} key={saved ? "saved" : "open"} className="flex flex-col gap-3">
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-3 sm:grid-cols-4">
           <Field name="date" label={t("calendar.date")}>
@@ -211,11 +211,11 @@ export function ScheduleForm({ schedule, entities, canGroup }: { schedule?: Sche
         {schedule ? null : <EntitySelect entities={entities} canGroup={canGroup} label={t("appliesTo")} groupLabel={t("everyEntity")} />}
       </div>
       <p className="text-xs text-muted-foreground">{t(`schedules.kindHints.${kind}`)}</p>
-      <ul className="flex flex-col divide-y rounded-lg border">
+      <List>
         {WEEKDAYS.map((weekday, index) => {
           const day = days[index];
           return (
-            <li key={weekday} className="flex flex-wrap items-center gap-2 p-2 text-sm">
+            <ListItem key={weekday} className="flex-wrap gap-2 py-2">
               <span className="w-24 font-medium">{t(`weekdays.${weekday}`)}</span>
               <Select className="w-auto" aria-label={t("schedules.dayType")} value={day.type} onChange={(event) => patch(index, { type: event.target.value as DayRule["type"] })}>
                 {(["working", "untracked", "off"] as const).map((type) => (
@@ -248,10 +248,10 @@ export function ScheduleForm({ schedule, entities, canGroup }: { schedule?: Sche
                   <Input className="w-20" type="number" min={0} max={1440} value={day.creditMinutes} onChange={(event) => patch(index, { creditMinutes: Number(event.target.value) })} />
                 </label>
               ) : null}
-            </li>
+            </ListItem>
           );
         })}
-      </ul>
+      </List>
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <label className="flex items-center gap-2">
           <input type="checkbox" className="size-4" checked={alternate} onChange={(event) => setAlternate(event.target.checked)} />
@@ -292,8 +292,7 @@ export function AssignmentForm({ schedules, entities, departments, people, today
   const [scope, setScope] = useState<"entity" | "department" | "person">("entity");
   const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(assignScheduleAction);
   return (
-    <form onSubmit={onSubmit} key={saved ? "saved" : "open"} className="flex flex-col gap-3 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("assignments.add")}</h2>
+    <form onSubmit={onSubmit} key={saved ? "saved" : "open"} className="flex flex-col gap-3">
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-3 sm:grid-cols-3">
           <Field name="scope" label={t("assignments.scope")}>
@@ -373,8 +372,7 @@ export function RosterForm({ people, shifts, today }: { people: Option[]; shifts
   const t = useTranslations("attendance.settings");
   const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(setRosterAction);
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-3 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("roster.set")}</h2>
+    <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-3 sm:grid-cols-4">
           <Field name="personId" label={t("assignments.person")}>

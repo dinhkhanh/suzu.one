@@ -2,6 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { TableAddRow, TableCard } from "@/components/ui/table";
 import { listDevices, listProfiles } from "@/modules/attendance/devices";
 import { listLocations } from "@/modules/attendance/locations";
 import { canOpenAttendanceSettings } from "@/modules/attendance/policy";
@@ -23,39 +25,38 @@ export default async function DevicesPage() {
 
   return (
     <section className="flex flex-col gap-3">
-      {devices.length === 0 ? <p className="text-sm text-muted-foreground">{t("device.empty")}</p> : null}
-      <ul className="flex flex-col gap-3">
-        {devices.map((device) => (
-          <li key={device.id} className="rounded-xl border p-4">
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <Link href={`/attendance/devices/${device.id}`} className="font-medium underline-offset-4 hover:underline">
-                {device.name}
-              </Link>
-              <span className="text-xs text-muted-foreground">{device.entityName}</span>
-              <Badge variant="secondary">{device.profileName}</Badge>
-              <span className="text-muted-foreground">{t("device.mapped", { count: device.mapped })}</span>
-              {device.unmapped > 0 ? <Badge variant="destructive">{t("device.unmapped", { count: device.unmapped })}</Badge> : null}
-              <span className="text-xs text-muted-foreground">{device.lastPunchAt ? t("device.lastPunch", { at: format.dateTime(device.lastPunchAt, { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }) }) : t("device.noPunches")}</span>
-              {device.pushTokenHash ? <Badge variant="outline">{device.lastSeenAt ? t("push.lastSeen", { at: format.dateTime(device.lastSeenAt, { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }) }) : t("push.neverSeen")}</Badge> : null}
-              {device.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
-            </div>
-            <details className="mt-2">
-              <summary className="cursor-pointer text-sm text-muted-foreground">{t("device.edit")}</summary>
-              <div className="mt-3">
-                <DeviceForm device={{ id: device.id, entityId: device.entityId, name: device.name, model: device.model, serialNumber: device.serialNumber, locationId: device.locationId, profileId: device.profileId, isActive: device.isActive }} {...formOptions} />
+      <TableCard>
+        <List>
+          {devices.length === 0 ? <ListEmpty>{t("device.empty")}</ListEmpty> : null}
+          {devices.map((device) => (
+            <ListItem key={device.id} className="block">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Link href={`/attendance/devices/${device.id}`} className="font-medium underline-offset-4 hover:underline">
+                  {device.name}
+                </Link>
+                <span className="text-xs text-muted-foreground">{device.entityName}</span>
+                <Badge variant="secondary">{device.profileName}</Badge>
+                <span className="text-muted-foreground">{t("device.mapped", { count: device.mapped })}</span>
+                {device.unmapped > 0 ? <Badge variant="destructive">{t("device.unmapped", { count: device.unmapped })}</Badge> : null}
+                <span className="text-xs text-muted-foreground">{device.lastPunchAt ? t("device.lastPunch", { at: format.dateTime(device.lastPunchAt, { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }) }) : t("device.noPunches")}</span>
+                {device.pushTokenHash ? <Badge variant="outline">{device.lastSeenAt ? t("push.lastSeen", { at: format.dateTime(device.lastSeenAt, { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }) }) : t("push.neverSeen")}</Badge> : null}
+                {device.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
               </div>
-            </details>
-          </li>
-        ))}
-      </ul>
-      {options.entities.length > 0 ? (
-        <details className="rounded-xl border p-4">
-          <summary className="cursor-pointer text-sm font-medium">{t("device.add")}</summary>
-          <div className="mt-4">
+              <details className="mt-2">
+                <summary className="cursor-pointer text-sm text-muted-foreground">{t("device.edit")}</summary>
+                <div className="mt-3">
+                  <DeviceForm device={{ id: device.id, entityId: device.entityId, name: device.name, model: device.model, serialNumber: device.serialNumber, locationId: device.locationId, profileId: device.profileId, isActive: device.isActive }} {...formOptions} />
+                </div>
+              </details>
+            </ListItem>
+          ))}
+        </List>
+        {options.entities.length > 0 ? (
+          <TableAddRow label={t("device.add")}>
             <DeviceForm {...formOptions} />
-          </div>
-        </details>
-      ) : null}
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </section>
   );
 }

@@ -2,6 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { baselineSlip, canRebaseline, linkedProgress, listStructure, listTaskLinks, loadTaskSlips, openProject, slipWords } from "@/modules/projects/service";
@@ -90,39 +92,39 @@ export default async function ProjectPlanPage({ params }: PageProps<"/projects/[
         {mayRebaseline ? <RebaselineForm projectId={project.id} /> : null}
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-base font-medium">{t("plan.phases")}</h2>
-        {phases.length === 0 ? <p className="text-sm text-muted-foreground">{t("plan.noPhases")}</p> : null}
-        <ol className="flex flex-col gap-2">
+      <TableCard>
+        <TableCardHeader title={t("plan.phases")} count={phases.length || null} />
+        <List>
+          {phases.length === 0 ? <ListEmpty>{t("plan.noPhases")}</ListEmpty> : null}
           {phases.map((phase) =>
             can.editPlan ? (
-              <li key={phase.id} className="flex flex-col gap-1 rounded-lg border p-3">
+              <ListItem key={phase.id} className="flex-col items-stretch gap-1">
                 <PhaseForm projectId={project.id} phase={phase} />
                 <div>
                   <RemovePhaseButton phaseId={phase.id} />
                 </div>
-              </li>
+              </ListItem>
             ) : (
-              <li key={phase.id} className="flex flex-wrap gap-x-3 text-sm">
+              <ListItem key={phase.id} className="flex-wrap gap-x-3 gap-y-1">
                 <span className="font-medium">{phase.name}</span>
                 <span className="text-muted-foreground">
                   {date(phase.startDate)} → {date(phase.endDate)}
                 </span>
-              </li>
+              </ListItem>
             ),
           )}
-        </ol>
+        </List>
         {can.editPlan ? (
-          <div className="rounded-lg border border-dashed p-3">
+          <TableAddRow label={t("plan.addPhase")} open={phases.length === 0}>
             <PhaseForm projectId={project.id} />
-          </div>
+          </TableAddRow>
         ) : null}
-      </section>
+      </TableCard>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-base font-medium">{t("plan.milestones")}</h2>
-        {milestones.length === 0 ? <p className="text-sm text-muted-foreground">{t("plan.noMilestones")}</p> : null}
-        <ol className="flex flex-col gap-3">
+      <TableCard>
+        <TableCardHeader title={t("plan.milestones")} count={milestones.length || null} />
+        <List>
+          {milestones.length === 0 ? <ListEmpty>{t("plan.noMilestones")}</ListEmpty> : null}
           {milestones.map((milestone) => {
             const own = tasksOf.get(milestone.id) ?? [];
             const progress = linkedProgress(own.map((task) => task.status as "todo"));
@@ -130,7 +132,7 @@ export default async function ProjectPlanPage({ params }: PageProps<"/projects/[
             const slipDays = slipOf.get(milestone.id);
             const lines = deliverables.filter((line) => line.milestoneId === milestone.id && !line.cancelledAt);
             return (
-              <li key={milestone.id} className="flex flex-col gap-2 rounded-xl border p-3">
+              <ListItem key={milestone.id} className="flex-col items-stretch gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{milestone.name}</span>
                   <span className="text-sm text-muted-foreground">{date(milestone.dueDate)}</span>
@@ -165,16 +167,16 @@ export default async function ProjectPlanPage({ params }: PageProps<"/projects/[
                     </div>
                   </details>
                 ) : null}
-              </li>
+              </ListItem>
             );
           })}
-        </ol>
+        </List>
         {can.editPlan ? (
-          <div className="rounded-xl border border-dashed p-3">
+          <TableAddRow label={t("plan.addMilestone")} open={milestones.length === 0}>
             <MilestoneForm projectId={project.id} phases={phases.map(({ id, name }) => ({ id, name }))} people={people} showAmount={can.seeFees} />
-          </div>
+          </TableAddRow>
         ) : null}
-      </section>
+      </TableCard>
 
       {can.editPlan ? (
         <section className="flex flex-col gap-3">

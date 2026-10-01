@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -78,7 +78,7 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
 
   const projectRow = (project: ProjectLine) => (
     <TableRow key={project.id}>
-      <TableCell className="align-top">
+      <TableCell className="align-top whitespace-normal">
         <details>
           <summary className="cursor-pointer">
             <span className="font-medium">{project.name}</span>
@@ -96,24 +96,26 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
           {project.unratedHours > 0 ? <p className="pt-1 text-xs text-muted-foreground">{t("unrated", { hours: decimal(project.unratedHours) })}</p> : null}
         </details>
       </TableCell>
-      <TableCell className="align-top text-xs text-muted-foreground">{t(`basis.${project.basis}`)}</TableCell>
-      <TableCell className="text-right align-top tabular-nums">{decimal(project.hours)}</TableCell>
-      <TableCell className="text-right align-top tabular-nums">{money(project.feeVnd)}</TableCell>
-      <TableCell className="text-right align-top tabular-nums">{money(project.costVnd)}</TableCell>
-      <TableCell className={`text-right align-top tabular-nums ${tone(project.marginVnd)}`}>{money(project.marginVnd)}</TableCell>
-      <TableCell className={`text-right align-top tabular-nums ${tone(project.marginVnd)}`}>{percent(project.marginRate)}</TableCell>
+      <TableCell className="align-top">
+        <Badge variant="outline">{t(`basis.${project.basis}`)}</Badge>
+      </TableCell>
+      <TableCell kind="time" className="align-top">{decimal(project.hours)}</TableCell>
+      <TableCell kind="money" className="align-top">{money(project.feeVnd)}</TableCell>
+      <TableCell kind="money" className="align-top">{money(project.costVnd)}</TableCell>
+      <TableCell kind="money" className={`align-top ${tone(project.marginVnd)}`}>{money(project.marginVnd)}</TableCell>
+      <TableCell kind="percent" className={`align-top ${tone(project.marginVnd)}`}>{percent(project.marginRate)}</TableCell>
     </TableRow>
   );
 
   const head = (
     <TableRow>
-      <TableHead>{t("columns.name")}</TableHead>
-      <TableHead>{t("columns.basis")}</TableHead>
-      <TableHead className="text-right">{t("columns.hours")}</TableHead>
-      <TableHead className="text-right">{t("columns.fee")}</TableHead>
-      <TableHead className="text-right">{t("columns.cost")}</TableHead>
-      <TableHead className="text-right">{t("columns.margin")}</TableHead>
-      <TableHead className="text-right">{t("columns.marginRate")}</TableHead>
+      <TableHead kind="text">{t("columns.name")}</TableHead>
+      <TableHead kind="select">{t("columns.basis")}</TableHead>
+      <TableHead kind="time">{t("columns.hours")}</TableHead>
+      <TableHead kind="money">{t("columns.fee")}</TableHead>
+      <TableHead kind="money">{t("columns.cost")}</TableHead>
+      <TableHead kind="money">{t("columns.margin")}</TableHead>
+      <TableHead kind="percent">{t("columns.marginRate")}</TableHead>
     </TableRow>
   );
 
@@ -178,72 +180,65 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
         </div>
       </section>
 
-      {view.projects.length === 0 && !view.privateProjects ? (
-        <p className="text-sm text-muted-foreground">{t("none")}</p>
-      ) : (
-        <>
-          <section className="flex flex-col gap-2">
-            <h2 className="text-base font-medium">{t("byProject")}</h2>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>{head}</TableHeader>
-                <TableBody>
-                  {view.projects.map(projectRow)}
-                  {view.privateProjects ? (
-                    <TableRow>
-                      <TableCell className="text-muted-foreground">{t("privateProjects", { count: view.privateProjects.projects })}</TableCell>
-                      <TableCell />
-                      <TableCell className="text-right tabular-nums">{decimal(view.privateProjects.hours)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{money(view.privateProjects.feeVnd)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{money(view.privateProjects.costVnd)}</TableCell>
-                      <TableCell className={`text-right tabular-nums ${tone(view.privateProjects.marginVnd)}`}>{money(view.privateProjects.marginVnd)}</TableCell>
-                      <TableCell className={`text-right tabular-nums ${tone(view.privateProjects.marginVnd)}`}>{percent(view.privateProjects.marginRate)}</TableCell>
-                    </TableRow>
-                  ) : null}
-                </TableBody>
-              </Table>
-            </div>
-          </section>
+      <TableCard>
+        <TableCardHeader title={t("byProject")} />
+        <Table numbered={false}>
+          <TableHeader>{head}</TableHeader>
+          <TableBody>
+            {view.projects.length === 0 && !view.privateProjects ? <TableEmpty>{t("none")}</TableEmpty> : null}
+            {view.projects.map(projectRow)}
+            {view.privateProjects ? (
+              <TableRow>
+                <TableCell className="text-muted-foreground">{t("privateProjects", { count: view.privateProjects.projects })}</TableCell>
+                <TableCell />
+                <TableCell kind="time">{decimal(view.privateProjects.hours)}</TableCell>
+                <TableCell kind="money">{money(view.privateProjects.feeVnd)}</TableCell>
+                <TableCell kind="money">{money(view.privateProjects.costVnd)}</TableCell>
+                <TableCell kind="money" className={tone(view.privateProjects.marginVnd)}>{money(view.privateProjects.marginVnd)}</TableCell>
+                <TableCell kind="percent" className={tone(view.privateProjects.marginVnd)}>{percent(view.privateProjects.marginRate)}</TableCell>
+              </TableRow>
+            ) : null}
+          </TableBody>
+        </Table>
+      </TableCard>
 
-          <section className="flex flex-col gap-2">
-            <h2 className="text-base font-medium">{t("byClient")}</h2>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("client")}</TableHead>
-                    <TableHead className="text-right">{t("columns.projects")}</TableHead>
-                    <TableHead className="text-right">{t("columns.hours")}</TableHead>
-                    <TableHead className="text-right">{t("columns.fee")}</TableHead>
-                    <TableHead className="text-right">{t("columns.cost")}</TableHead>
-                    <TableHead className="text-right">{t("columns.margin")}</TableHead>
-                    <TableHead className="text-right">{t("columns.marginRate")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {view.clients.map((client) => (
-                    <TableRow key={client.clientId ?? "none"}>
-                      <TableCell>
-                        {client.clientName ?? t("noClient")}
-                        {client.estimated ? (
-                          <Badge variant="warning" className="ms-2">
-                            {t("estimated")}
-                          </Badge>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{client.projects}</TableCell>
-                      <TableCell className="text-right tabular-nums">{decimal(client.hours)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{money(client.feeVnd)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{money(client.costVnd)}</TableCell>
-                      <TableCell className={`text-right tabular-nums ${tone(client.marginVnd)}`}>{money(client.marginVnd)}</TableCell>
-                      <TableCell className={`text-right tabular-nums ${tone(client.marginVnd)}`}>{percent(client.marginRate)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </section>
-        </>
+      {view.projects.length === 0 && !view.privateProjects ? null : (
+        <TableCard>
+          <TableCardHeader title={t("byClient")} />
+          <Table numbered={false}>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="org">{t("client")}</TableHead>
+                <TableHead kind="number">{t("columns.projects")}</TableHead>
+                <TableHead kind="time">{t("columns.hours")}</TableHead>
+                <TableHead kind="money">{t("columns.fee")}</TableHead>
+                <TableHead kind="money">{t("columns.cost")}</TableHead>
+                <TableHead kind="money">{t("columns.margin")}</TableHead>
+                <TableHead kind="percent">{t("columns.marginRate")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {view.clients.map((client) => (
+                <TableRow key={client.clientId ?? "none"}>
+                  <TableCell>
+                    {client.clientName ?? t("noClient")}
+                    {client.estimated ? (
+                      <Badge variant="warning" className="ms-2">
+                        {t("estimated")}
+                      </Badge>
+                    ) : null}
+                  </TableCell>
+                  <TableCell kind="number">{client.projects}</TableCell>
+                  <TableCell kind="time">{decimal(client.hours)}</TableCell>
+                  <TableCell kind="money">{money(client.feeVnd)}</TableCell>
+                  <TableCell kind="money">{money(client.costVnd)}</TableCell>
+                  <TableCell kind="money" className={tone(client.marginVnd)}>{money(client.marginVnd)}</TableCell>
+                  <TableCell kind="percent" className={tone(client.marginVnd)}>{percent(client.marginRate)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
       )}
 
       <div className="flex flex-col gap-1 text-xs text-muted-foreground">

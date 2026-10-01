@@ -2,7 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { env } from "@/lib/env";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageSchedules, listSchedules } from "@/modules/reports/service";
@@ -43,27 +43,26 @@ export default async function SchedulesPage() {
 
       {emailConfigured ? null : <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">{t("noEmailDriver")}</p>}
 
-      {schedules.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("none")}</p>
-      ) : (
+      <TableCard>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("name")}</TableHead>
-              <TableHead>{t("report")}</TableHead>
-              <TableHead>{t("cadence")}</TableHead>
-              <TableHead>{t("recipients")}</TableHead>
-              <TableHead>{t("nextRun")}</TableHead>
-              <TableHead>{t("lastRun")}</TableHead>
-              <TableHead>{t("status")}</TableHead>
-              <TableHead />
+              <TableHead kind="text">{t("name")}</TableHead>
+              <TableHead kind="select">{t("report")}</TableHead>
+              <TableHead kind="select">{t("cadence")}</TableHead>
+              <TableHead kind="person">{t("recipients")}</TableHead>
+              <TableHead kind="date">{t("nextRun")}</TableHead>
+              <TableHead kind="date">{t("lastRun")}</TableHead>
+              <TableHead kind="status">{t("status")}</TableHead>
+              <TableHead kind="actions" />
             </TableRow>
           </TableHeader>
           <TableBody>
+            {schedules.length === 0 ? <TableEmpty>{t("none")}</TableEmpty> : null}
             {schedules.map((schedule) => (
               <TableRow key={schedule.id}>
-                <TableCell>
-                  <Link href={`/reports/schedules/${schedule.id}`} className="underline underline-offset-4">
+                <TableCell className="max-w-64 truncate">
+                  <Link href={`/reports/schedules/${schedule.id}`} className="font-medium hover:underline">
                     {schedule.name}
                   </Link>
                 </TableCell>
@@ -73,26 +72,29 @@ export default async function SchedulesPage() {
                   {schedule.cadence === "weekly" && schedule.dayOfWeek ? ` · ${t(`days.${schedule.dayOfWeek}` as never)}` : ""}
                   {schedule.cadence === "monthly" && schedule.dayOfMonth ? ` · ${schedule.dayOfMonth}` : ""}
                 </TableCell>
-                <TableCell className="text-muted-foreground">{schedule.recipients.map((recipient) => recipient.fullName).join(", ") || "—"}</TableCell>
-                <TableCell className="tabular-nums">{day(schedule.nextRunOn)}</TableCell>
-                <TableCell className="tabular-nums">{day(schedule.lastRunOn)}</TableCell>
-                <TableCell className="flex flex-col gap-1">
-                  <Badge dot variant={schedule.isActive ? "success" : "warning"}>{schedule.isActive ? t("active") : t("paused")}</Badge>
-                  {schedule.lastRun ? (
-                    <span className="text-xs text-muted-foreground">
-                      {t("delivered", { count: schedule.lastRun.delivered })}
-                      {schedule.lastRun.withheld > 0 ? ` · ${t("withheld", { count: schedule.lastRun.withheld })}` : ""}
-                    </span>
-                  ) : null}
-                </TableCell>
+                <TableCell className="max-w-64 truncate text-muted-foreground">{schedule.recipients.map((recipient) => recipient.fullName).join(", ") || "—"}</TableCell>
+                <TableCell>{day(schedule.nextRunOn)}</TableCell>
+                <TableCell>{day(schedule.lastRunOn)}</TableCell>
                 <TableCell>
+                  <div className="flex flex-col items-start gap-1">
+                    <Badge dot variant={schedule.isActive ? "success" : "warning"}>{schedule.isActive ? t("active") : t("paused")}</Badge>
+                    {schedule.lastRun ? (
+                      <span className="text-xs text-muted-foreground">
+                        {t("delivered", { count: schedule.lastRun.delivered })}
+                        {schedule.lastRun.withheld > 0 ? ` · ${t("withheld", { count: schedule.lastRun.withheld })}` : ""}
+                      </span>
+                    ) : null}
+                  </div>
+                </TableCell>
+                <TableCell kind="actions">
                   <ScheduleRowActions id={schedule.id} isActive={schedule.isActive} />
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      )}
+        <TableAddRow label={t("new")} href="/reports/schedules/new" />
+      </TableCard>
     </div>
   );
 }

@@ -2,6 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -79,11 +81,12 @@ export default async function OneOnOnePage({ params }: PageProps<"/performance/o
 
       {mayWrite && meeting.status === "draft" ? <ShareOneOnOneButton meetingId={meeting.id} /> : null}
 
-      <section className="flex flex-col gap-3">
-        <h2>{t("actions.title")}</h2>
-        <ul className="flex flex-col divide-y rounded-xl border px-4 text-sm">
+      <TableCard>
+        <TableCardHeader title={t("actions.title")} count={meeting.actions.length || null} />
+        <List>
+          {meeting.actions.length === 0 ? <ListEmpty>{t("actions.empty")}</ListEmpty> : null}
           {meeting.actions.map((action) => (
-            <li key={action.id} className="flex flex-wrap items-baseline justify-between gap-3 py-2">
+            <ListItem key={action.id} className="flex-wrap items-baseline justify-between">
               <span>
                 {action.title}
                 {action.dueOn ? <span className="ml-2 text-xs text-muted-foreground">{action.dueOn}</span> : null}
@@ -92,12 +95,15 @@ export default async function OneOnOnePage({ params }: PageProps<"/performance/o
                 {action.taskId ? <span className="text-xs text-muted-foreground">{t("actions.task")}</span> : null}
                 {mayWrite || action.assigneePersonId === user.person.id ? <CompleteActionButton actionId={action.id} /> : null}
               </span>
-            </li>
+            </ListItem>
           ))}
-        </ul>
-        {meeting.actions.length === 0 ? <p className="text-sm text-muted-foreground">{t("actions.empty")}</p> : null}
-        {mayWrite ? <AddActionForm meetingId={meeting.id} people={people} /> : null}
-      </section>
+        </List>
+        {mayWrite ? (
+          <TableAddRow label={t("actions.add")} open={meeting.actions.length === 0}>
+            <AddActionForm meetingId={meeting.id} people={people} />
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

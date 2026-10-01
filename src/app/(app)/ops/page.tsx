@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Table, TableEmpty, TableHead } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { canManageOps, canReadOps, COLOUR_SEVERITY, getDashboard, worstColour } from "@/modules/ops/service";
 import { SyncButton } from "@/modules/ops/ui/library";
@@ -52,58 +53,56 @@ export default async function OpsDashboardPage({ searchParams }: PageProps<"/ops
         ) : null}
       </p>
 
-      {dashboard.rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("empty")}</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] border-separate border-spacing-1 text-sm">
-            <thead>
-              <tr>
-                <th className="w-32 px-2 text-left text-xs font-medium text-muted-foreground">{t("dashboard.entity")}</th>
-                {dashboard.months.map((month) => (
-                  <th key={month} className={`px-2 text-left text-xs font-medium ${month === today.slice(0, 7) ? "text-foreground" : "text-muted-foreground"}`}>
-                    <Link href={`/ops/calendar${overviewParams(query, { month })}`} className="hover:underline">
-                      {monthName(month)}
-                    </Link>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {dashboard.rows.map((row) => (
-                <tr key={row.entity.id}>
-                  <th scope="row" className="px-2 text-left align-top">
-                    <Link href={`/ops/list${overviewParams(query, { entity: row.entity.id })}`} className="font-medium hover:underline">
-                      {row.entity.code}
-                    </Link>
-                    <p className="text-xs font-normal text-muted-foreground">{row.entity.shortName}</p>
-                  </th>
-                  {row.cells.map((cell) => {
-                    const worst = worstColour(cell);
-                    return (
-                      <td key={cell.month} className={`rounded-lg border p-2 align-top ${worst ? CELL_TONE[worst] : ""}`}>
-                        {cell.total === 0 ? (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        ) : (
-                          <div className="flex flex-col gap-1">
-                            {COLOUR_SEVERITY.filter((colour) => (cell.counts[colour] ?? 0) > 0).map((colour) => (
-                              <Link key={colour} href={`/ops/list${overviewParams(query, { entity: row.entity.id, month: cell.month, colour })}`} className="flex items-center gap-1.5 hover:underline">
-                                <StatusBadge colour={colour} label={String(cell.counts[colour])} />
-                                <span className="text-xs">{t(`enums.colour.${colour}`)}</span>
-                              </Link>
-                            ))}
-                            {cell.escalated > 0 ? <span className="text-xs font-medium text-destructive">{t("dashboard.escalated", { count: cell.escalated })}</span> : null}
-                          </div>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* A heatmap, not a register: the grid's frame and header, but its own spaced, tinted cells. */}
+      <Table numbered={false} className="min-w-[720px] border-separate border-spacing-1 p-1">
+        <thead>
+          <tr>
+            <TableHead kind="org" className="w-32 px-2">
+              {t("dashboard.entity")}
+            </TableHead>
+            {dashboard.months.map((month) => (
+              <TableHead key={month} className={`px-2 ${month === today.slice(0, 7) ? "font-medium text-foreground" : ""}`}>
+                <Link href={`/ops/calendar${overviewParams(query, { month })}`} className="hover:underline">
+                  {monthName(month)}
+                </Link>
+              </TableHead>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {dashboard.rows.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
+          {dashboard.rows.map((row) => (
+            <tr key={row.entity.id}>
+              <th scope="row" className="px-2 text-left align-top">
+                <Link href={`/ops/list${overviewParams(query, { entity: row.entity.id })}`} className="font-medium hover:underline">
+                  {row.entity.code}
+                </Link>
+                <p className="text-xs font-normal text-muted-foreground">{row.entity.shortName}</p>
+              </th>
+              {row.cells.map((cell) => {
+                const worst = worstColour(cell);
+                return (
+                  <td key={cell.month} className={`rounded-lg border p-2 align-top ${worst ? CELL_TONE[worst] : ""}`}>
+                    {cell.total === 0 ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : (
+                      <div className="flex flex-col gap-1">
+                        {COLOUR_SEVERITY.filter((colour) => (cell.counts[colour] ?? 0) > 0).map((colour) => (
+                          <Link key={colour} href={`/ops/list${overviewParams(query, { entity: row.entity.id, month: cell.month, colour })}`} className="flex items-center gap-1.5 hover:underline">
+                            <StatusBadge colour={colour} label={String(cell.counts[colour])} />
+                            <span className="text-xs">{t(`enums.colour.${colour}`)}</span>
+                          </Link>
+                        ))}
+                        {cell.escalated > 0 ? <span className="text-xs font-medium text-destructive">{t("dashboard.escalated", { count: cell.escalated })}</span> : null}
+                      </div>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </Table>
       <p className="text-xs text-muted-foreground">{t("dashboard.legend")}</p>
     </div>
   );

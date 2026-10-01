@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
+import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { isPeriodKey, listGoals, periodsOfYear, yearOfPeriod } from "@/modules/performance/service";
 import { GoalTree, periodLabel } from "@/modules/performance/ui/goal-tree";
@@ -69,18 +70,13 @@ export default async function AlignmentPage({ searchParams }: PageProps<"/perfor
 
       {goals.length === 0 ? <p className="text-sm text-muted-foreground">{t("alignment.empty", { year })}</p> : null}
       {roots.length > 0 ? (
-        <section className="rounded-xl border px-4">
-          <GoalTree goals={goals} rootIds={roots.map((goal) => goal.id)} />
-        </section>
+        <GoalTree goals={goals} rootIds={roots.map((goal) => goal.id)} />
       ) : null}
       {unaligned.length > 0 ? (
-        <section className="flex flex-col gap-2">
-          <h2>{t("alignment.unaligned")}</h2>
-          <p className="text-sm text-muted-foreground">{t("alignment.unalignedHint")}</p>
-          <div className="rounded-xl border px-4">
-            <GoalTree goals={goals} rootIds={unaligned.map((goal) => goal.id)} />
-          </div>
-        </section>
+        <TableCard>
+          <TableCardHeader title={t("alignment.unaligned")} count={unaligned.length} description={t("alignment.unalignedHint")} />
+          <GoalTree goals={goals} rootIds={unaligned.map((goal) => goal.id)} />
+        </TableCard>
       ) : null}
     </div>
   );

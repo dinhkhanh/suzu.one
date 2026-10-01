@@ -7,6 +7,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { FormError } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { bulkApproveWeeksAction, decideWeekAction, reopenWeekAction } from "../time-actions";
 import { TEXTAREA } from "./format";
 import { RunNotice } from "./run-notice";
@@ -69,31 +71,53 @@ export function WaitingList({ rows }: { rows: WaitingRow[] }) {
   const t = useTranslations("daily.timesheets");
   const { run, pending, errorKey, notice, dismiss } = useRun();
   const [picked, setPicked] = useState<string[]>([]);
-  const all = picked.length === rows.length;
+  const all = rows.length > 0 && picked.length === rows.length;
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-1.5 text-sm">
-          <input type="checkbox" checked={all} onChange={() => setPicked(all ? [] : rows.map((row) => row.id))} /> {t("selectAll")}
-        </label>
-        <Button type="button" size="sm" disabled={pending || picked.length === 0} onClick={() => run(bulkApproveWeeksAction, { ids: picked }, () => setPicked([]))}>
-          <Check aria-hidden /> {t("approveSelected", { count: picked.length })}
-        </Button>
+    <div className="flex flex-col">
+      {rows.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2.5">
+          <Button type="button" size="sm" disabled={pending || picked.length === 0} onClick={() => run(bulkApproveWeeksAction, { ids: picked }, () => setPicked([]))}>
+            <Check aria-hidden /> {t("approveSelected", { count: picked.length })}
+          </Button>
+        </div>
+      ) : null}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="person">
+              <span className="flex items-center gap-3">
+                {rows.length > 0 ? <Checkbox aria-label={t("selectAll")} checked={all} onCheckedChange={() => setPicked(all ? [] : rows.map((row) => row.id))} /> : null}
+                {t("columns.person")}
+              </span>
+            </TableHead>
+            <TableHead kind="date">{t("columns.week")}</TableHead>
+            <TableHead kind="date">{t("columns.submitted")}</TableHead>
+            <TableHead kind="time">{t("columns.hours")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.length === 0 ? <TableEmpty>{t("none")}</TableEmpty> : null}
+          {rows.map((row) => (
+            <TableRow key={row.id} data-state={picked.includes(row.id) ? "selected" : undefined}>
+              <TableCell>
+                <span className="flex items-center gap-3">
+                  <Checkbox aria-label={t("pick", { name: row.name, week: row.week })} checked={picked.includes(row.id)} onCheckedChange={(checked) => setPicked((current) => (checked ? [...current, row.id] : current.filter((id) => id !== row.id)))} />
+                  <Link href={row.href} className="font-medium hover:underline">
+                    {row.name}
+                  </Link>
+                </span>
+              </TableCell>
+              <TableCell className="text-muted-foreground">{row.week}</TableCell>
+              <TableCell className="text-muted-foreground">{row.submitted ?? ""}</TableCell>
+              <TableCell kind="time">{row.hours}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <div className="flex flex-col gap-2 border-t p-3 empty:hidden">
+        <RunNotice notice={notice} dismiss={dismiss} />
+        <FormError namespace="daily.errors" errorKey={errorKey} />
       </div>
-      <ul className="flex flex-col divide-y rounded-xl border">
-        {rows.map((row) => (
-          <li key={row.id} className="flex items-center gap-3 p-3 text-sm">
-            <input type="checkbox" aria-label={t("pick", { name: row.name, week: row.week })} checked={picked.includes(row.id)} onChange={(event) => setPicked((current) => (event.target.checked ? [...current, row.id] : current.filter((id) => id !== row.id)))} />
-            <Link href={row.href} className="min-w-0 flex-1 hover:underline">
-              <span className="font-medium">{row.name}</span>
-              <span className="block text-xs text-muted-foreground">{[row.week, row.submitted].filter(Boolean).join(" · ")}</span>
-            </Link>
-            <span className="tabular-nums">{row.hours}</span>
-          </li>
-        ))}
-      </ul>
-      <RunNotice notice={notice} dismiss={dismiss} />
-      <FormError namespace="daily.errors" errorKey={errorKey} />
     </div>
   );
 }

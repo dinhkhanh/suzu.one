@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { Field } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { List, ListItem } from "@/components/ui/list";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
@@ -71,9 +72,9 @@ export function QuoteEditor({ quoteId, quote, lines: initial, services, vatRates
       <Field name="intro" label={t("intro")}>
         <NoteEditor id="quote-intro" name="intro" rows={2} maxLength={4000} defaultValue={quote.intro ?? ""} />
       </Field>
-      <ol className="flex flex-col gap-3">
+      <List numbered>
         {lines.map((line, index) => (
-          <li key={line.key} className="flex flex-col gap-2 rounded-lg border p-3">
+          <ListItem key={line.key} className="flex-col items-stretch gap-2">
             <div className="grid gap-2 sm:grid-cols-6">
               <div className="sm:col-span-2">
                 <Select id={`line-service-${line.key}`} name={`lines.${index}.serviceId`} value={line.serviceId} onChange={(event) => pick(line.key, event.target.value)} aria-label={t("service")}>
@@ -144,9 +145,9 @@ export function QuoteEditor({ quoteId, quote, lines: initial, services, vatRates
             <button type="button" className="self-start text-xs text-destructive underline" onClick={() => setLines((rows) => rows.filter((row) => row.key !== line.key))}>
               {t("removeLine")}
             </button>
-          </li>
+          </ListItem>
         ))}
-      </ol>
+      </List>
       <Button
         type="button"
         size="sm"

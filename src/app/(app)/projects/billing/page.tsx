@@ -2,6 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { TableAddRow, TableCard } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -77,49 +79,46 @@ export default async function BillingQueuePage({ searchParams }: PageProps<"/pro
       </form>
 
       {status === "ready" && items.length ? <p className="text-sm">{t("readyTotal", { count: items.length, total: money(readyTotal) })}</p> : null}
-      {items.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : null}
-
-      <ul className="flex flex-col gap-3">
-        {items.map((item) => (
-          <li key={item.id} className="flex flex-col gap-2 rounded-xl border p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge dot variant={statusTone(item.status)}>{t(`status.${item.status as "ready"}`)}</Badge>
-              {item.jobNumber ? <span className="font-mono text-sm">{item.jobNumber}</span> : null}
-              {openable.has(item.projectId) ? (
-                <Link href={`/projects/${item.projectId}/acceptance`} className="font-medium hover:underline">
-                  {item.projectName}
-                </Link>
-              ) : (
-                <span className="font-medium">{item.projectName}</span>
-              )}
-              <span className="ml-auto text-lg font-medium">{money(item.amountVnd)}</span>
-            </div>
-            <p className="text-sm">
-              {item.description}
-              <span className="text-muted-foreground"> · {t(`sources.${item.source as "manual"}`)}</span>
-            </p>
-            <p className="text-xs text-muted-foreground">{[item.clientName, item.entityName, (item.reference ?? contractOf.get(item.projectId)) ? t("referenceValue", { reference: item.reference ?? contractOf.get(item.projectId)! }) : null, format.dateTime(item.createdAt, { dateStyle: "medium" })].filter(Boolean).join(" · ")}</p>
-            {item.acceptanceId && canDecideBilling(user.principal, item) ? (
-              <p className="flex flex-wrap items-center gap-3 text-sm">
-                <a href={`/projects/${item.projectId}/acceptance/${item.acceptanceId}/pdf`} className="underline">
-                  {tAcceptance("pdf")}
-                </a>
-                <SignedScanLink acceptanceId={item.acceptanceId} label={tAcceptance("signedScan")} />
+      <TableCard>
+        <List numbered>
+          {items.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
+          {items.map((item) => (
+            <ListItem key={item.id} className="flex-col items-stretch gap-2 py-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge dot variant={statusTone(item.status)}>{t(`status.${item.status as "ready"}`)}</Badge>
+                {item.jobNumber ? <span className="font-mono text-sm">{item.jobNumber}</span> : null}
+                {openable.has(item.projectId) ? (
+                  <Link href={`/projects/${item.projectId}/acceptance`} className="font-medium hover:underline">
+                    {item.projectName}
+                  </Link>
+                ) : (
+                  <span className="font-medium">{item.projectName}</span>
+                )}
+                <span className="ml-auto text-lg font-medium">{money(item.amountVnd)}</span>
+              </div>
+              <p className="text-sm">
+                {item.description}
+                <span className="text-muted-foreground"> · {t(`sources.${item.source as "manual"}`)}</span>
               </p>
-            ) : null}
-            {item.status === "invoiced" ? <p className="text-sm text-muted-foreground">{t("invoicedAs", { number: item.invoiceNumber ?? "—", date: date(item.invoiceDate) })}{item.decidedByName ? ` · ${item.decidedByName}` : ""}</p> : null}
-            {item.status === "waived" ? <p className="text-sm text-muted-foreground">{t("waivedBecause", { reason: item.waivedReason ?? "—" })}{item.decidedByName ? ` · ${item.decidedByName}` : ""}</p> : null}
-            {item.status === "ready" && canDecideBilling(user.principal, item) ? <BillingDecisionForm itemId={item.id} needsAmount={item.amountVnd === null} today={today} invoiceIn={item.clientId ? "/crm/invoices" : undefined} /> : null}
-          </li>
-        ))}
-      </ul>
-
-      <details className="rounded-xl border border-dashed p-4">
-        <summary className="cursor-pointer text-sm font-medium">{t("addManual")}</summary>
-        <div className="pt-3">
+              <p className="text-xs text-muted-foreground">{[item.clientName, item.entityName, (item.reference ?? contractOf.get(item.projectId)) ? t("referenceValue", { reference: item.reference ?? contractOf.get(item.projectId)! }) : null, format.dateTime(item.createdAt, { dateStyle: "medium" })].filter(Boolean).join(" · ")}</p>
+              {item.acceptanceId && canDecideBilling(user.principal, item) ? (
+                <p className="flex flex-wrap items-center gap-3 text-sm">
+                  <a href={`/projects/${item.projectId}/acceptance/${item.acceptanceId}/pdf`} className="underline">
+                    {tAcceptance("pdf")}
+                  </a>
+                  <SignedScanLink acceptanceId={item.acceptanceId} label={tAcceptance("signedScan")} />
+                </p>
+              ) : null}
+              {item.status === "invoiced" ? <p className="text-sm text-muted-foreground">{t("invoicedAs", { number: item.invoiceNumber ?? "—", date: date(item.invoiceDate) })}{item.decidedByName ? ` · ${item.decidedByName}` : ""}</p> : null}
+              {item.status === "waived" ? <p className="text-sm text-muted-foreground">{t("waivedBecause", { reason: item.waivedReason ?? "—" })}{item.decidedByName ? ` · ${item.decidedByName}` : ""}</p> : null}
+              {item.status === "ready" && canDecideBilling(user.principal, item) ? <BillingDecisionForm itemId={item.id} needsAmount={item.amountVnd === null} today={today} invoiceIn={item.clientId ? "/crm/invoices" : undefined} /> : null}
+            </ListItem>
+          ))}
+        </List>
+        <TableAddRow label={t("addManual")}>
           <ManualBillingForm projectId={null} />
-        </div>
-      </details>
+        </TableAddRow>
+      </TableCard>
     </div>
   );
 }

@@ -9,7 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
+import { TableAddRow, TableCard } from "@/components/ui/table";
 import { removeReviewChainAction, saveReviewChainAction } from "../delivery-actions";
 import { MAX_CHAIN_STAGES, REVIEWER_RULES } from "../engine/delivery";
 import { CONTENT_FORMATS } from "../enums";
@@ -31,47 +33,46 @@ export function ReviewChainManager({ teamId, projectId = null, chains, people, c
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">{t(projectId ? "projectHint" : "teamHint")}</p>
-      {chains.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : null}
-      <ul className="flex flex-col gap-2">
-        {chains.map((chain) => {
-          const inherited = !!projectId && !chain.projectId;
-          return (
-            <li key={chain.id} className="rounded-xl border p-3 text-sm">
-              <details>
-                <summary className="flex cursor-pointer flex-wrap items-center gap-2">
-                  <span className="font-medium">{chain.name}</span>
-                  {chain.contentFormat ? <Badge variant="secondary">{tWork(`formats.${chain.contentFormat}`)}</Badge> : <Badge variant="outline">{t("anyFormat")}</Badge>}
-                  {inherited ? <Badge variant="outline">{t("fromTeam")}</Badge> : null}
-                  {chain.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
-                  <span className="text-xs text-muted-foreground">{chain.stages.map((stage) => stage.name).join(" → ")}</span>
-                </summary>
-                <div className="pt-3">
-                  {canManage && !inherited ? (
-                    <ChainForm teamId={teamId} projectId={projectId} people={people} chain={chain} />
-                  ) : (
-                    <ol className="list-decimal pl-5">
-                      {chain.stages.map((stage) => (
-                        <li key={stage.key}>
-                          {stage.name} — {reviewerLabel(stage.reviewer)}
-                          {stage.dueHours ? ` · ${t("dueIn", { hours: stage.dueHours })}` : ""}
-                        </li>
-                      ))}
-                    </ol>
-                  )}
-                </div>
-              </details>
-            </li>
-          );
-        })}
-      </ul>
-      {canManage ? (
-        <details className="rounded-xl border p-3">
-          <summary className="cursor-pointer text-sm font-medium">{t("create")}</summary>
-          <div className="pt-3">
+      <TableCard>
+        <List>
+          {chains.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
+          {chains.map((chain) => {
+            const inherited = !!projectId && !chain.projectId;
+            return (
+              <ListItem key={chain.id}>
+                <details className="min-w-0 flex-1">
+                  <summary className="flex cursor-pointer flex-wrap items-center gap-2">
+                    <span className="font-medium">{chain.name}</span>
+                    {chain.contentFormat ? <Badge variant="secondary">{tWork(`formats.${chain.contentFormat}`)}</Badge> : <Badge variant="outline">{t("anyFormat")}</Badge>}
+                    {inherited ? <Badge variant="outline">{t("fromTeam")}</Badge> : null}
+                    {chain.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
+                    <span className="text-xs text-muted-foreground">{chain.stages.map((stage) => stage.name).join(" → ")}</span>
+                  </summary>
+                  <div className="pt-3">
+                    {canManage && !inherited ? (
+                      <ChainForm teamId={teamId} projectId={projectId} people={people} chain={chain} />
+                    ) : (
+                      <ol className="list-decimal pl-5">
+                        {chain.stages.map((stage) => (
+                          <li key={stage.key}>
+                            {stage.name} — {reviewerLabel(stage.reviewer)}
+                            {stage.dueHours ? ` · ${t("dueIn", { hours: stage.dueHours })}` : ""}
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </div>
+                </details>
+              </ListItem>
+            );
+          })}
+        </List>
+        {canManage ? (
+          <TableAddRow label={t("create")}>
             <ChainForm teamId={teamId} projectId={projectId} people={people} />
-          </div>
-        </details>
-      ) : null}
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

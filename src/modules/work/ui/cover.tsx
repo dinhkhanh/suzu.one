@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { List, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
 import type { Note } from "../engine/handoff";
 import { acknowledgeCoverAction, checkMyCoverPlansAction, handBackCoverAction, saveCoverPlanAction, submitCoverPlanAction } from "../handoff-actions";
@@ -94,9 +95,9 @@ export function CoverPlanForm({ plan, people, canSubmit, canAcknowledge, canHand
           <p className="text-sm">{t("coveredBy", { name: plan.defaultCoverName })}</p>
         ) : null}
 
-        <ul className="flex flex-col divide-y rounded-xl border text-sm">
+        <List>
           {plan.items.map((item) => (
-            <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3">
+            <ListItem key={item.id} className="flex-wrap gap-x-3 gap-y-1">
               <Badge variant="outline">{t(`types.${item.itemType}`)}</Badge>
               <div className="min-w-0 flex-1">
                 {item.href ? (
@@ -127,9 +128,9 @@ export function CoverPlanForm({ plan, people, canSubmit, canAcknowledge, canHand
                   {item.handedBackAt ? <Badge variant="outline">{t("handedBack")}</Badge> : item.acknowledgedAt ? <Badge>{t("acknowledged")}</Badge> : plan.status === "submitted" ? <Badge variant="secondary">{t("waitingAck")}</Badge> : null}
                 </span>
               )}
-            </li>
+            </ListItem>
           ))}
-        </ul>
+        </List>
 
         {draft ? <HandoffNoteFields defaultValue={plan.note} /> : <HandoffNoteView note={plan.note} />}
         <ErrorLine errorKey={errorKey} />

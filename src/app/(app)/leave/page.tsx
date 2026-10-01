@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { getBalances } from "@/modules/leave/ledger";
 import { canOpenLeaveAdmin } from "@/modules/leave/policy";
@@ -66,16 +67,25 @@ export default async function LeavePage() {
         </ul>
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("request.mine")}</h2>
-        {requests.length === 0 ? <p className="text-sm text-muted-foreground">{t("request.none")}</p> : null}
-        <ul className="flex flex-col divide-y rounded-xl border empty:hidden">
-          {requests.map((request) => {
-            const open = request.status === "pending" || (request.status === "approved" && request.startDate > today);
-            return (
-              <li key={request.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 p-3 text-sm">
-                <div className="min-w-0 flex-1 basis-56">
-                  <p className="font-medium">
+      <TableCard>
+        <TableCardHeader title={t("request.mine")} count={requests.length || null} />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("request.type")}</TableHead>
+              <TableHead kind="date">{t("request.dates")}</TableHead>
+              <TableHead kind="number">{t("request.cost")}</TableHead>
+              <TableHead kind="status">{t("request.status")}</TableHead>
+              <TableHead kind="actions" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {requests.length === 0 ? <TableEmpty>{t("request.none")}</TableEmpty> : null}
+            {requests.map((request) => {
+              const open = request.status === "pending" || (request.status === "approved" && request.startDate > today);
+              return (
+                <TableRow key={request.id}>
+                  <TableCell className="font-medium">
                     {request.approvalRequestId ? (
                       <Link href={`/approvals/leave/${request.approvalRequestId}`} className="hover:underline">
                         {request.typeName}
@@ -83,25 +93,29 @@ export default async function LeavePage() {
                     ) : (
                       request.typeName
                     )}
-                  </p>
-                  <p className="text-muted-foreground">
-                    {request.startDate === request.endDate ? date(request.startDate) : `${date(request.startDate)} – ${date(request.endDate)}`} · {t("daysCount", { days: days(request.totalCenti) })}
-                  </p>
-                </div>
-                <Badge dot variant={statusTone(request.status === "pending" && request.approvalStatus === "returned" ? "returned" : request.status)}>{t(`status.${request.status === "pending" && request.approvalStatus === "returned" ? "returned" : request.status}`)}</Badge>
-                {open ? (
-                  <div className="flex items-center gap-2">
-                    <Link href={`/leave/new?amends=${request.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                      {t("request.amend")}
-                    </Link>
-                    <CancelLeaveButton leaveRequestId={request.id} label={request.status === "pending" ? t("request.withdraw") : t("request.cancel")} confirm={t("request.cancelConfirm")} />
-                  </div>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+                  </TableCell>
+                  <TableCell>{request.startDate === request.endDate ? date(request.startDate) : `${date(request.startDate)} – ${date(request.endDate)}`}</TableCell>
+                  <TableCell kind="number">{days(request.totalCenti)}</TableCell>
+                  <TableCell>
+                    <Badge dot variant={statusTone(request.status === "pending" && request.approvalStatus === "returned" ? "returned" : request.status)}>{t(`status.${request.status === "pending" && request.approvalStatus === "returned" ? "returned" : request.status}`)}</Badge>
+                  </TableCell>
+                  <TableCell kind="actions">
+                    {open ? (
+                      <div className="flex items-center justify-end gap-2">
+                        <Link href={`/leave/new?amends=${request.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                          {t("request.amend")}
+                        </Link>
+                        <CancelLeaveButton leaveRequestId={request.id} label={request.status === "pending" ? t("request.withdraw") : t("request.cancel")} confirm={t("request.cancelConfirm")} />
+                      </div>
+                    ) : null}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        <TableAddRow label={t("request.new")} href="/leave/new" />
+      </TableCard>
     </div>
   );
 }
