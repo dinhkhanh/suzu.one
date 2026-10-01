@@ -69,11 +69,12 @@ export const PHOTO_EDGE_PX = 1024;
 const PHOTO_FILE_TYPES: readonly FileType[] = ALLOWED_FILE_TYPES.filter((type) => type.contentType.startsWith("image/")).map((type) => ({ ...type, maxBytes: MAX_PHOTO_BYTES }));
 
 /**
- * A project's poster or key visual, shown beside its name in lists and headers. Pictures only; the
- * browser shrinks it to at most `POSTER_EDGE_PX` on its longer side before upload, keeping its shape.
+ * A project's poster or key visual, shown beside its name in lists and headers. Pictures only; like
+ * a profile picture, the browser crops it to a square from the centre and shrinks it before upload.
  */
 export const POSTER_OWNER_TYPE = "work_project_poster";
-export const POSTER_EDGE_PX = 1600;
+/** The side of the square poster the browser uploads. */
+export const POSTER_EDGE_PX = 1024;
 
 const typesFor = (ownerType?: string): readonly FileType[] =>
   ownerType === PHOTO_OWNER_TYPE || ownerType === POSTER_OWNER_TYPE ? PHOTO_FILE_TYPES : ownerType && VIDEO_OWNER_TYPES.includes(ownerType) ? [...ALLOWED_FILE_TYPES, ...VIDEO_FILE_TYPES] : ALLOWED_FILE_TYPES;

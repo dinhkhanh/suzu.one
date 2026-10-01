@@ -6,32 +6,10 @@ import { FormError } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
 import { MAX_FILE_BYTES, PHOTO_EDGE_PX } from "@/modules/platform/files/rules";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
+import { squarePicture } from "@/modules/platform/files/ui/square-picture";
 import { beginPhotoUploadAction, completePhotoUploadAction, removePhotoAction } from "../photo-actions";
 
 const ERRORS = "people.errors";
-
-/**
- * The picture as it is stored: square, at most `PHOTO_EDGE_PX` a side, JPEG. Whatever the phone
- * took — 12 MP, HEIC where the browser can open it, turned by its EXIF orientation — arrives as a
- * few hundred kilobytes. The square is cut from the middle across and a little above the middle
- * down, where a portrait's face usually is.
- */
-async function squarePicture(file: File): Promise<File | null> {
-  const bitmap = await createImageBitmap(file).catch(() => null);
-  if (!bitmap) return null;
-  const side = Math.min(bitmap.width, bitmap.height);
-  const edge = Math.min(side, PHOTO_EDGE_PX);
-  const canvas = document.createElement("canvas");
-  canvas.width = edge;
-  canvas.height = edge;
-  const context = canvas.getContext("2d");
-  if (!context) return null;
-  context.imageSmoothingQuality = "high";
-  context.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 3, side, side, 0, 0, edge, edge);
-  bitmap.close();
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
-  return blob ? new File([blob], "photo.jpg", { type: "image/jpeg" }) : null;
-}
 
 /**
  * Change and remove buttons for the profile picture beside them, for the person and for HR
@@ -47,7 +25,8 @@ export function PhotoEditor({ person, compact = false }: { person: { id: string;
   const upload = (file: File) =>
     startTransition(async () => {
       if (file.size > MAX_FILE_BYTES) return setErrorKey("file_too_large");
-      const picture = await squarePicture(file);
+      // Square, cut a little above the middle, where a portrait's face usually is.
+      const picture = await squarePicture(file, { edge: PHOTO_EDGE_PX, name: "photo.jpg", top: 1 / 3 });
       if (!picture) return setErrorKey("photo_unreadable");
       const result = await uploadThroughSignedUrl(picture, (meta) => beginPhotoUploadAction({ personId: person.id, ...meta }), (fileId) => completePhotoUploadAction({ personId: person.id, fileId }));
       setErrorKey(result.ok ? null : result.errorKey);

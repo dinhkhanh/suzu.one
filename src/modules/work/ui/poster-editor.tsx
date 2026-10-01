@@ -6,28 +6,9 @@ import { FormError } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
 import { MAX_FILE_BYTES, POSTER_EDGE_PX } from "@/modules/platform/files/rules";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
+import { squarePicture } from "@/modules/platform/files/ui/square-picture";
 import { beginPosterUploadAction, completePosterUploadAction, removePosterAction } from "../poster-actions";
 import { ProjectPoster } from "./project-poster";
-
-/**
- * The poster as it is stored: its own shape, at most `POSTER_EDGE_PX` on the longer side, JPEG.
- * A print-size key visual arrives as a few hundred kilobytes; lists crop it to a square as they show it.
- */
-async function shrinkPoster(file: File): Promise<File | null> {
-  const bitmap = await createImageBitmap(file).catch(() => null);
-  if (!bitmap) return null;
-  const scale = Math.min(1, POSTER_EDGE_PX / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  const context = canvas.getContext("2d");
-  if (!context) return null;
-  context.imageSmoothingQuality = "high";
-  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
-  return blob ? new File([blob], "poster.jpg", { type: "image/jpeg" }) : null;
-}
 
 /** The project's poster with change and remove buttons, for whoever runs the project. */
 export function PosterEditor({ project }: { project: { id: string; name: string; posterFileId: string | null } }) {
@@ -40,7 +21,8 @@ export function PosterEditor({ project }: { project: { id: string; name: string;
   const upload = (file: File) =>
     startTransition(async () => {
       if (file.size > MAX_FILE_BYTES) return setErrorKey("file_too_large");
-      const picture = await shrinkPoster(file);
+      // Square, cut from the centre: every list and header shows the poster as a square.
+      const picture = await squarePicture(file, { edge: POSTER_EDGE_PX, name: "poster.jpg" });
       if (!picture) return setErrorKey("poster_unreadable");
       const result = await uploadThroughSignedUrl(picture, (meta) => beginPosterUploadAction({ projectId: project.id, ...meta }), (fileId) => completePosterUploadAction({ projectId: project.id, fileId }));
       setErrorKey(result.ok ? null : result.errorKey);

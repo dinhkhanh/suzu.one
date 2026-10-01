@@ -4045,7 +4045,7 @@
         "change": "Change poster",
         "remove": "Remove poster",
         "saving": "Uploading…",
-        "hint": "JPG, PNG or WebP. Resized before upload; lists show it as a square."
+        "hint": "JPG, PNG or WebP, up to 50 MB. It is cropped to a square from the centre and resized before upload."
       },
       "teamColor": "The team's colour",
       "openTasks": "Open tasks",
