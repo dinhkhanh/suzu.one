@@ -198,7 +198,7 @@ export async function RecordSections({ principal, personId }: { principal: Princ
       ) : null}
 
       {sensitive ? (
-        <Section title={t("sections.sensitive")} action={<span className="text-xs font-normal text-faint">{t("tierNote.restricted")}</span>}>
+        <Section title={t("sections.sensitive")} description={t("tierNote.restricted")}>
           <SensitivePanel personId={personId} summary={sensitive} canManage={manages.restricted} dependentNames={Object.fromEntries((dependents ?? []).map((row) => [row.id, row.fullName]))} />
         </Section>
       ) : null}
