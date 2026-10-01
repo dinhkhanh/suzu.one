@@ -150,7 +150,7 @@ function Row({ row, collapsed, active, soonLabel, pin }: { row: NavRow; collapse
           event.stopPropagation();
           pin.onToggle();
         }}
-        className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100 group-has-[:focus-visible]/row:opacity-100 hover:bg-background hover:text-foreground focus-visible:opacity-100 disabled:cursor-not-allowed disabled:hover:bg-transparent pointer-coarse:opacity-70"
+        className="absolute top-1 right-1 flex size-5 max-md:top-3 max-md:right-2 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100 group-has-[:focus-visible]/row:opacity-100 hover:bg-background hover:text-foreground focus-visible:opacity-100 disabled:cursor-not-allowed disabled:hover:bg-transparent pointer-coarse:opacity-70"
       >
         <Icon className="size-3" aria-hidden />
       </button>

@@ -47,7 +47,8 @@ on rows that should arrive one after another. Sheets slide up (`animate-rise-up`
   accent pills; folds to a 56px rail. A 52px header with the breadcrumb, the feedback button and
   the bell. Content scrolls under it.
 - Phone: no sidebar. A five-stop tab bar along the bottom (Today · Work · Inbox · Me · More) with
-  a count on the shoulder of the stop that has something waiting; "More" slides the full menu in.
+  a count on the shoulder of the stop that has something waiting; "More" slides the full menu in,
+  its rows 44px in 15px type.
   A round ink "+" above the bar opens the quick-add sheet (task, time, leave, request).
 - `⌘K` / the search field: the command palette (`modules/work/ui/command-palette.tsx`) — a sheet
   on a phone, a floating card on a desk. `C` creates a task.
