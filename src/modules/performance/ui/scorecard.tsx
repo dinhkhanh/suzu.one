@@ -2,9 +2,10 @@
 // month is open), the whole working out, and the year so far from the stored months.
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Section } from "@/components/ui/page";
+import { Table, TableBody, TableCard, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getKpiResults, getScorecard } from "../kpi-scores";
-import { bpText, MonthPicker, monthLabel, periodLabel, ScoreFigure, ScoreState, TraceTable } from "./kpi";
+import { bpText, MonthPicker, monthLabel, periodLabel, ScoreFigure, ScoreState, Sparkline, TraceTable } from "./kpi";
 
 export async function ScorecardView({ personId, month, basePath }: { personId: string; month: string; /** "/performance/kpis" or "/performance/kpis/<personId>". */ basePath: string }) {
   const year = Number(month.slice(0, 4));
@@ -15,8 +16,10 @@ export async function ScorecardView({ personId, month, basePath }: { personId: s
       <div className="flex flex-wrap items-center justify-between gap-3">
         <MonthPicker month={month} href={(next) => `${basePath}?month=${next}`} labels={{ previous: t("kpi.previousMonth"), next: t("kpi.nextMonth") }} />
         <div className="flex items-center gap-3">
+          {/* The year so far, as a series: the months before this one, newest at the right. */}
+          {results.months.length > 1 ? <Sparkline series={[...results.months].sort((a, b) => a.month.localeCompare(b.month)).map((item) => item.scoreBp)} /> : null}
           <ScoreState state={card.state} label={t(`kpi.state.${card.state}`)} />
-          <span className="text-2xl">
+          <span className="text-2xl tracking-[-0.02em]">
             <ScoreFigure bp={card.trace.scoreBp} text={bpText(format, card.trace.scoreBp)} />
           </span>
         </div>
@@ -40,8 +43,7 @@ export async function ScorecardView({ personId, month, basePath }: { personId: s
         </section>
       ) : null}
 
-      <section className="flex flex-col gap-3">
-        <h2>{t("kpi.year.title", { year })}</h2>
+      <Section title={t("kpi.year.title", { year })}>
         <p className="text-sm text-muted-foreground">
           {results.closedMonths.length === 0 ? t("kpi.year.none") : t("kpi.year.summary", { score: bpText(format, results.scoreBp), closed: results.closedMonths.length, open: results.openMonths.length })}
           {results.final ? ` ${t("kpi.year.final")}` : ""}
@@ -50,8 +52,8 @@ export async function ScorecardView({ personId, month, basePath }: { personId: s
           <ul className="flex flex-wrap gap-2 text-sm">
             {results.months.map((item) => (
               <li key={item.month}>
-                <Link href={`${basePath}?month=${item.month}`} className="flex items-center gap-2 rounded-md border px-2 py-1 hover:bg-muted">
-                  <span className="text-muted-foreground tabular-nums">{monthLabel(item.month)}</span>
+                <Link href={`${basePath}?month=${item.month}`} className="press flex h-8 items-center gap-2 rounded-[0.625rem] border border-border bg-background px-2.5 text-[0.8125rem] hover:bg-canvas">
+                  <span className="font-mono text-faint tabular-nums">{monthLabel(item.month)}</span>
                   <ScoreFigure bp={item.scoreBp} text={bpText(format, item.scoreBp)} />
                 </Link>
               </li>
@@ -59,6 +61,7 @@ export async function ScorecardView({ personId, month, basePath }: { personId: s
           </ul>
         ) : null}
         {results.byKpi.length > 0 ? (
+          <TableCard>
           <Table numbered={false}>
             <TableHeader>
               <TableRow>
@@ -79,9 +82,10 @@ export async function ScorecardView({ personId, month, basePath }: { personId: s
               ))}
             </TableBody>
           </Table>
+          </TableCard>
         ) : null}
         <p className="text-xs text-muted-foreground">{t("kpi.year.formula")}</p>
-      </section>
+      </Section>
     </div>
   );
 }

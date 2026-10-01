@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
+import { Page, PageHeader } from "@/components/ui/page";
 import { requireUser } from "@/modules/platform/auth/session";
 import { getOpeningView, listApplications } from "@/modules/recruit/service";
 import { PipelineBoard } from "@/modules/recruit/ui/pipeline-board";
@@ -23,17 +24,17 @@ export default async function OpeningBoardPage({ params }: PageProps<"/recruit/[
   if (!view) notFound();
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs text-muted-foreground">{view.opening.code}</p>
-          <h1>{view.opening.title}</h1>
-          <p className="text-sm text-muted-foreground">{t("board.description")}</p>
-        </div>
-        <Link href={`/recruit/${openingId}`} className={buttonVariants({ size: "sm", variant: "outline" })}>
-          {t("board.openingDetails")}
-        </Link>
-      </header>
+    <Page width="full">
+      <PageHeader
+        eyebrow={<span className="font-mono">{view.opening.code}</span>}
+        title={view.opening.title}
+        description={t("board.description")}
+        actions={
+          <Link href={`/recruit/${openingId}`} className={buttonVariants({ variant: "outline" })}>
+            {t("board.openingDetails")}
+          </Link>
+        }
+      />
 
       {applications.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("noApplications")}</p>
@@ -51,7 +52,7 @@ export default async function OpeningBoardPage({ params }: PageProps<"/recruit/[
         />
       )}
 
-      <p className="text-xs text-muted-foreground">{t("confidential")}</p>
-    </div>
+      <p className="text-xs text-faint">{t("confidential")}</p>
+    </Page>
   );
 }

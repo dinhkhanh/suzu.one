@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { getDaysOff } from "@/modules/attendance/service";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -32,16 +33,16 @@ export default async function WorkCalendarPage({ searchParams }: PageProps<"/wor
   const filters: TaskFilters = Object.fromEntries(FILTER_KEYS.flatMap((key) => (typeof query[key] === "string" ? [[key, query[key]]] : [])));
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/work" className="underline">
+    <Page width="wide">
+      <PageHeader
+        eyebrow={
+          <Link href="/work" className="hover:underline">
             {t("title")}
           </Link>
-        </p>
-        <h1>{t("calendar.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("calendar.description")}</p>
-      </header>
+        }
+        title={t("calendar.title")}
+        description={t("calendar.description")}
+      />
       <CalendarView
         tasks={tasks}
         options={{ states: [], people, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })) }}
@@ -55,6 +56,6 @@ export default async function WorkCalendarPage({ searchParams }: PageProps<"/wor
         posts={content.posts}
         missingTaskIds={content.missingTaskIds}
       />
-    </div>
+    </Page>
   );
 }

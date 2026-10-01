@@ -1,4 +1,5 @@
 "use client";
+import { DownloadIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import type { ActionResult } from "@/lib/action";
@@ -30,6 +31,7 @@ export function ExportButton({ action, input, label, failedLabel, truncatedLabel
           })
         }
       >
+        <DownloadIcon aria-hidden />
         {label}
       </Button>
       {message ? <span className="text-xs text-muted-foreground">{message}</span> : null}

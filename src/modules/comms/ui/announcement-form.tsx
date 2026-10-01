@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DateTimePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
@@ -90,11 +91,11 @@ export function AnnouncementForm({ draft, choices }: { draft: AnnouncementDraft;
         </Field>
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="pinned" defaultChecked={draft.pinned} />
+            <Checkbox name="pinned" defaultChecked={draft.pinned} />
             {t("form.pinned")}
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="mustAcknowledge" defaultChecked={draft.mustAcknowledge} />
+            <Checkbox name="mustAcknowledge" defaultChecked={draft.mustAcknowledge} />
             {t("form.mustAcknowledge")}
           </label>
         </div>

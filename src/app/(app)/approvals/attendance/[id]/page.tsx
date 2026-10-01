@@ -1,7 +1,10 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Alert } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Page, Section } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { canConfirmHoursOf, canManageAttendanceOf } from "@/modules/attendance/policy";
 import { decideAttendanceRequestAction } from "@/modules/attendance/request-actions";
@@ -9,7 +12,7 @@ import { getAttendanceRequestView } from "@/modules/attendance/requests";
 import { getTimesheetDays } from "@/modules/attendance/timesheets";
 import { CancelRequestButton, ConfirmHoursForm, EvidenceButton } from "@/modules/attendance/ui/request-forms";
 import { DecisionForm } from "@/modules/platform/approvals/ui/decision-form";
-import { RequestHistory, RequestStatusBadge, RequestTools } from "@/modules/platform/approvals/ui/request-views";
+import { ApprovalChain, PropertySheet, RequestEvents, RequestHeader, RequestTools } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -24,8 +27,7 @@ export default async function AttendanceRequestPage(props: PageProps<"/approvals
   const view = UUID.test(id) ? await getAttendanceRequestView({ personId: user.person.id, principal: user.principal }, id) : null;
   if (!view) notFound();
 
-  const t = await getTranslations("attendance.requests");
-  const format = await getFormatter();
+  const [t, tRequests, format] = await Promise.all([getTranslations("attendance.requests"), getTranslations("requests"), getFormatter()]);
   const { request, attendanceRequest: row } = view;
   const { details } = row;
   const date = (value: string) => format.dateTime(new Date(`${value}T00:00:00`), { weekday: "short", day: "numeric", month: "numeric", year: "numeric" });
@@ -41,78 +43,73 @@ export default async function AttendanceRequestPage(props: PageProps<"/approvals
   const [day] = row.startDate === row.endDate ? await getTimesheetDays([row.personId], row.startDate, row.startDate) : [];
   const clock = (value: Date | null) => (value ? format.dateTime(value, { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }) : "—");
 
-  const facts: [string, string][] = [[t("fields.dates"), row.startDate === row.endDate ? date(row.startDate) : `${date(row.startDate)} – ${date(row.endDate)}`]];
+  const facts: { label: string; value: string; long?: boolean }[] = [{ label: t("fields.dates"), value: row.startDate === row.endDate ? date(row.startDate) : `${date(row.startDate)} – ${date(row.endDate)}` }];
   if (details.type === "attendance_correction") {
-    facts.push([t("fields.cause"), t(`causes.${details.cause}`)], [t("fields.inTime"), details.inTime ?? "—"], [t("fields.outTime"), details.outTime ? `${details.outTime}${details.outNextDay ? ` (${t("fields.nextDay")})` : ""}` : "—"]);
-    if (view.correctionCap) facts.push([t("fields.capUsed"), t("capStatus", { used: view.correctionsUsed ?? 0, cap: view.correctionCap })]);
+    facts.push({ label: t("fields.cause"), value: t(`causes.${details.cause}`) }, { label: t("fields.inTime"), value: details.inTime ?? "—" }, { label: t("fields.outTime"), value: details.outTime ? `${details.outTime}${details.outNextDay ? ` (${t("fields.nextDay")})` : ""}` : "—" });
+    if (view.correctionCap) facts.push({ label: t("fields.capUsed"), value: t("capStatus", { used: view.correctionsUsed ?? 0, cap: view.correctionCap }) });
   } else if (details.type === "remote_work") {
-    facts.push([t("fields.kind"), t(`kinds.${details.kind}`)], [t("fields.portion"), t(`portions.${details.portion}`)]);
-    if (details.locationName) facts.push([t("fields.locationName"), details.locationName]);
-    if (details.latitude !== null && details.longitude !== null) facts.push([t("fields.position"), `${details.latitude}, ${details.longitude} · ${details.radiusM ?? 300} m`]);
+    facts.push({ label: t("fields.kind"), value: t(`kinds.${details.kind}`) }, { label: t("fields.portion"), value: t(`portions.${details.portion}`) });
+    if (details.locationName) facts.push({ label: t("fields.locationName"), value: details.locationName });
+    if (details.latitude !== null && details.longitude !== null) facts.push({ label: t("fields.position"), value: `${details.latitude}, ${details.longitude} · ${details.radiusM ?? 300} m` });
   } else {
-    facts.push([t("fields.window"), details.from && details.to ? `${details.from} – ${details.to}` : "—"], [t("fields.compensation"), t(`compensation.${row.compensation ?? "pay"}`)]);
-    if (row.confirmedMinutes !== null) facts.push([t("confirmHours.confirmed"), t("hoursCount", { hours: hours(row.confirmedMinutes) })]);
+    facts.push({ label: t("fields.window"), value: details.from && details.to ? `${details.from} – ${details.to}` : "—" }, { label: t("fields.compensation"), value: t(`compensation.${row.compensation ?? "pay"}`) });
+    if (row.confirmedMinutes !== null) facts.push({ label: t("confirmHours.confirmed"), value: t("hoursCount", { hours: hours(row.confirmedMinutes) }) });
   }
-  facts.push([t("fields.reason"), row.reason ?? "—"]);
+  facts.push({ label: t("fields.reason"), value: row.reason ?? "—", long: true });
 
   return (
-    <div className="flex max-w-3xl flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1>{t(`types.${row.type}`)}</h1>
-          <RequestStatusBadge status={status} />
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {view.subjectName}
-          {view.requesterName !== view.subjectName ? ` · ${t("filedBy", { name: view.requesterName })}` : ""}
-        </p>
-      </header>
+    <Page width="narrow">
+      <RequestHeader
+        title={t(`types.${row.type}`)}
+        status={status}
+        requestId={request.id}
+        who={
+          <>
+            {view.subjectName}
+            {view.requesterName !== view.subjectName ? ` · ${t("filedBy", { name: view.requesterName })}` : ""}
+          </>
+        }
+        actions={
+          view.isRequester && request.status === "returned" && row.status === "pending" ? (
+            <Link href={`/attendance/requests/new?resubmit=${request.id}`} className={buttonVariants()}>
+              {t("fixAndResubmit")}
+            </Link>
+          ) : canCancel ? (
+            <CancelRequestButton attendanceRequestId={row.id} label={row.status === "pending" ? t("withdraw") : t("cancel")} confirm={t("cancelConfirm")} />
+          ) : undefined
+        }
+      />
 
-      <dl className="grid gap-4 sm:grid-cols-2">
-        {facts.map(([label, value]) => (
-          <div key={label}>
-            <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className="text-sm">{value}</dd>
-          </div>
-        ))}
-        {row.evidenceFileId ? (
-          <div>
-            <dt className="text-xs text-muted-foreground">{t("fields.evidence")}</dt>
-            <dd>
-              <EvidenceButton requestId={request.id} label={t("openEvidence")} />
-            </dd>
-          </div>
-        ) : null}
-      </dl>
+      <Section title={tRequests("view.details")}>
+        <PropertySheet rows={[...facts, ...(row.evidenceFileId ? [{ label: t("fields.evidence"), value: <EvidenceButton requestId={request.id} label={t("openEvidence")} /> }] : [])]} />
+      </Section>
 
       {day ? (
-        <section className="flex flex-col gap-1 rounded-xl border p-4 text-sm">
-          <h2 className="font-medium">{t("dayNow")}</h2>
-          <p className="text-muted-foreground">
-            {t("dayNowLine", { first: clock(day.firstIn), last: clock(day.lastOut), worked: hours(day.workedMinutes), overtime: hours(day.otWeekdayMinutes + day.otWeekdayNightMinutes + day.otRestDayMinutes + day.otRestDayNightMinutes + day.otHolidayMinutes + day.otHolidayNightMinutes), unapproved: hours(day.otUnapprovedMinutes) })}
-          </p>
-          {day.lockedAt ? <p className="text-xs text-muted-foreground">{t("dayLocked")}</p> : null}
-        </section>
+        <Card size="sm">
+          <CardHeader>
+            <CardTitle>{t("dayNow")}</CardTitle>
+            <CardDescription>{t("dayNowLine", { first: clock(day.firstIn), last: clock(day.lastOut), worked: hours(day.workedMinutes), overtime: hours(day.otWeekdayMinutes + day.otWeekdayNightMinutes + day.otRestDayMinutes + day.otRestDayNightMinutes + day.otHolidayMinutes + day.otHolidayNightMinutes), unapproved: hours(day.otUnapprovedMinutes) })}</CardDescription>
+          </CardHeader>
+          {day.lockedAt ? <CardContent className="text-xs text-faint">{t("dayLocked")}</CardContent> : null}
+        </Card>
       ) : null}
 
       {view.warnings.map((warning) => (
-        <p key={warning.code} className="rounded-lg bg-muted p-2 text-sm">
+        <Alert key={warning.code} variant="warning">
           {t(`warnings.${warning.code}`, { total: Math.round(warning.totalMinutes / 6) / 10, limit: warning.limitMinutes / 60 })}
-        </p>
+        </Alert>
       ))}
 
+      <ApprovalChain view={view} />
       {view.canDecide && row.status === "pending" ? <DecisionForm requestId={request.id} action={decideAttendanceRequestAction} /> : null}
       {canConfirm ? <ConfirmHoursForm attendanceRequestId={row.id} defaultMinutes={row.confirmedMinutes} /> : null}
-      <div className="flex flex-wrap items-center gap-2">
-        {view.isRequester && request.status === "returned" && row.status === "pending" ? (
-          <Link href={`/attendance/requests/new?resubmit=${request.id}`} className={buttonVariants({ size: "sm" })}>
-            {t("fixAndResubmit")}
-          </Link>
-        ) : null}
-        {canCancel ? <CancelRequestButton attendanceRequestId={row.id} label={row.status === "pending" ? t("withdraw") : t("cancel")} confirm={t("cancelConfirm")} /> : null}
-      </div>
+      {view.isRequester && request.status === "returned" && row.status === "pending" && canCancel ? (
+        <div>
+          <CancelRequestButton attendanceRequestId={row.id} label={t("withdraw")} confirm={t("cancelConfirm")} />
+        </div>
+      ) : null}
       <RequestTools view={view} viewerPersonId={user.person.id} />
-      <RequestHistory view={view} />
-    </div>
+      <RequestEvents view={view} />
+    </Page>
   );
 }

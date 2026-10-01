@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Page, PageHeader } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listMyInterviews } from "@/modules/recruit/interviews";
@@ -55,7 +56,7 @@ export default async function MyInterviewsPage() {
                 <Badge variant="outline">{t(`modes.${row.mode}`)}</Badge>
               </TableCell>
               <TableCell className="max-w-48 truncate">{row.location || "—"}</TableCell>
-              <TableCell>{format.dateTime(row.startAt, { dateStyle: "medium", timeStyle: "short" })}</TableCell>
+              <TableCell className="font-mono text-[0.8125rem] tabular-nums">{format.dateTime(row.startAt, { dateStyle: "medium", timeStyle: "short" })}</TableCell>
               <TableCell>
                 {row.status === "scheduled" ? (
                   <Badge variant={row.scorecardSubmitted ? "outline" : "secondary"}>{row.scorecardSubmitted ? t("cardIn") : t("cardDue")}</Badge>
@@ -71,15 +72,12 @@ export default async function MyInterviewsPage() {
   );
 
   return (
-    <div className="flex max-w-3xl flex-col gap-8">
-      <header>
-        <h1>{t("mine")}</h1>
-        <p className="text-sm text-muted-foreground">{t("mineDescription")}</p>
-      </header>
+    <Page>
+      <PageHeader title={t("mine")} description={t("mineDescription")} />
 
       {list(t("upcoming"), upcoming, t("noneUpcoming"))}
 
       {past.length > 0 ? list(t("past"), past) : null}
-    </div>
+    </Page>
   );
 }

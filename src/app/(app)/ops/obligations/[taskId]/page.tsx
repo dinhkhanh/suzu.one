@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Page, PageHeader } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { canManageInstance, canReadOps, canViewInstance, canWorkInstance, escalationLevelOf, listEvidenceFiles, loadInstance, periodLabel, personNamesOf, statusColour } from "@/modules/ops/service";
 import { InstancePanel, ReassignForm } from "@/modules/ops/ui/instance-panel";
@@ -54,15 +55,9 @@ export default async function ObligationPage({ params }: PageProps<"/ops/obligat
   ];
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-2">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/ops" className="underline">
-            {t("title")}
-          </Link>
-        </p>
-        <h1>{task.title}</h1>
-        <div className="flex flex-wrap items-center gap-2">
+    <Page width="narrow">
+      <PageHeader eyebrow={<Link href="/ops">{t("title")}</Link>} title={task.title}>
+        <div className="flex flex-wrap items-center gap-2 pt-1">
           <StatusBadge colour={colour} label={t(`enums.colour.${colour}`)} />
           <Badge variant="outline">{t(`enums.category.${template.category}`)}</Badge>
           {level > 0 ? <Badge variant="destructive">{t(`escalation.level${level}`)}</Badge> : null}
@@ -74,9 +69,9 @@ export default async function ObligationPage({ params }: PageProps<"/ops/obligat
           ) : null}
         </div>
         {template.reviewStatus !== "reviewed" ? <p className="text-xs text-muted-foreground">{t("unreviewedNote")}</p> : null}
-      </header>
+      </PageHeader>
 
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-xl border p-4 text-sm sm:grid-cols-3">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-[14px] border border-border p-4 text-sm sm:grid-cols-3">
         {facts.map(([label, value]) => (
           <div key={label}>
             <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -131,6 +126,6 @@ export default async function ObligationPage({ params }: PageProps<"/ops/obligat
           <ReassignForm taskId={task.id} people={people} assigneePersonId={task.assigneePersonId} reviewerPersonId={instance.reviewerPersonId} />
         </section>
       ) : null}
-    </div>
+    </Page>
   );
 }

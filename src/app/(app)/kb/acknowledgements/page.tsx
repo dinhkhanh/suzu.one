@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { kbViewerOf, listMyAcknowledgements, listMyPendingAcks } from "@/modules/kb/service";
@@ -16,16 +17,16 @@ export default async function MyAcknowledgementsPage() {
   const day = (iso: string) => format.dateTime(new Date(`${iso}T00:00:00`), { dateStyle: "medium" });
 
   return (
-    <div className="flex max-w-3xl flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
+    <Page>
+      <PageHeader
+        eyebrow={
           <Link href="/kb" className="hover:underline">
             {t("title")}
           </Link>
-        </p>
-        <h1>{t("ack.mineTitle")}</h1>
-        <p className="text-sm text-muted-foreground">{t("ack.mineHelp")}</p>
-      </header>
+        }
+        title={t("ack.mineTitle")}
+        description={t("ack.mineHelp")}
+      />
 
       <TableCard>
         <TableCardHeader title={t("ack.pending", { count: pending.length })} />
@@ -84,6 +85,6 @@ export default async function MyAcknowledgementsPage() {
           </TableBody>
         </Table>
       </TableCard>
-    </div>
+    </Page>
   );
 }

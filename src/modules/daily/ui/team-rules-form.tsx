@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
@@ -38,20 +39,20 @@ export function TeamRulesForm({ teamId, rules, canManage }: { teamId: string; ru
           {mode("reportMode", rules.reportMode)}
           {mode("timeMode", rules.timeMode)}
           <Field name="planCutoff" label={t("fields.planCutoff")}>
-            <Input id="planCutoff" name="planCutoff" type="time" required defaultValue={rules.planCutoff} disabled={!canManage} />
+            <Input id="planCutoff" name="planCutoff" type="time" required defaultValue={rules.planCutoff} disabled={!canManage} className="font-mono tabular-nums" />
           </Field>
           <Field name="reportDeadline" label={t("fields.reportDeadline")}>
-            <Input id="reportDeadline" name="reportDeadline" type="time" required defaultValue={rules.reportDeadline} disabled={!canManage} />
+            <Input id="reportDeadline" name="reportDeadline" type="time" required defaultValue={rules.reportDeadline} disabled={!canManage} className="font-mono tabular-nums" />
           </Field>
           <Field name="coverMinDays" label={t("fields.coverMinDays")}>
-            <Input id="coverMinDays" name="coverMinDays" type="number" min={1} max={30} required defaultValue={rules.coverMinDays} disabled={!canManage} />
+            <Input id="coverMinDays" name="coverMinDays" type="number" min={1} max={30} required defaultValue={rules.coverMinDays} disabled={!canManage} className="font-mono tabular-nums" />
           </Field>
           <fieldset className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-3">
             <legend className="text-sm font-medium">{t("fields.reportDays")}</legend>
-            <div className="flex flex-wrap gap-3 text-sm">
+            <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
               {WEEKDAYS.map((day) => (
-                <label key={day} className="flex items-center gap-1.5">
-                  <input type="checkbox" name="reportDays[]" value={day} defaultChecked={rules.reportDays.includes(day)} disabled={!canManage} /> {t(`weekdays.${day}`)}
+                <label key={day} className="flex items-center gap-2">
+                  <Checkbox name="reportDays[]" value={String(day)} defaultChecked={rules.reportDays.includes(day)} disabled={!canManage} /> {t(`weekdays.${day}`)}
                 </label>
               ))}
             </div>
@@ -59,7 +60,7 @@ export function TeamRulesForm({ teamId, rules, canManage }: { teamId: string; ru
             <p className="text-xs text-muted-foreground">{t("reportDaysHint")}</p>
           </fieldset>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="timesheetApproval" defaultChecked={rules.timesheetApproval} disabled={!canManage} /> {t("fields.timesheetApproval")}
+            <Checkbox name="timesheetApproval" defaultChecked={rules.timesheetApproval} disabled={!canManage} /> {t("fields.timesheetApproval")}
           </label>
           <Field name="cycleWeeks" label={t("fields.cycleWeeks")}>
             <Select id="cycleWeeks" name="cycleWeeks" defaultValue={rules.cycleWeeks?.toString() ?? ""} disabled={!canManage}>

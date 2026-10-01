@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Page, PageHeader, Section } from "@/components/ui/page";
 import { cn } from "cn";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -12,6 +13,7 @@ import { canManageWorkspace, canViewTeam, listClients, listCreateTargets, listTe
 import { accentOf, projectShelf, type Shelf, teamShelf, type TeamStatus, teamStatusOf } from "@/modules/work/enums";
 import { ProjectPoster } from "@/modules/work/ui/project-poster";
 import { CreateProjectButton, CreateTeamButton } from "@/modules/work/ui/edit-dialogs";
+import { ColorSquare } from "@/modules/work/ui/task-row";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("work");
@@ -39,13 +41,12 @@ export default async function WorkPage() {
   const canCreateTeam = canManageWorkspace(viewer);
   const [entities, departments, people] = canCreateTeam || projectTeams.length ? await Promise.all([listEntities(), unitChoices(), listPersonNames()]) : [[], [], []];
 
-  // Each shelf looks its part: a set-aside card is dashed and faded, an archived one greyed out and plain.
-  const cardClass = (shelf: Shelf, accent: boolean) =>
+  // Each shelf looks its part: a set-aside card is faded, an archived one greyed out and plain.
+  const cardClass = (shelf: Shelf) =>
     cn(
-      "flex h-full flex-col rounded-xl border p-4 hover:bg-muted/50",
-      shelf === "current" && accent && "border-l-4 border-l-primary",
-      shelf === "inactive" && "border-dashed bg-muted/20 opacity-80 hover:opacity-100",
-      shelf === "archived" && "border-dashed bg-muted/40 text-muted-foreground grayscale hover:grayscale-0",
+      "press flex h-full min-w-0 flex-col gap-3 rounded-[14px] border border-border bg-card p-4 transition-colors hover:bg-canvas",
+      shelf === "inactive" && "border-dashed opacity-80 hover:opacity-100",
+      shelf === "archived" && "border-dashed text-muted-foreground grayscale hover:grayscale-0",
     );
 
   /** Why a card is set aside: its own status, else its team's. */
@@ -59,20 +60,36 @@ export default async function WorkPage() {
   const projectCard = (project: (typeof projects)[number]) => {
     const shelf = shelfOfProject(project);
     const accent = accentOf(project.color, teamColors.get(project.teamId));
+    const total = project.openTasks + project.doneTasks;
+    const percent = total ? Math.round((project.doneTasks / total) * 100) : 0;
     return (
-      <li key={project.id} data-accent={shelf === "current" ? accent : undefined}>
-        <Link href={`/work/projects/${project.id}`} className={cn(cardClass(shelf, !!accent), "gap-2")}>
-          <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
-            <ProjectPoster project={project} size="sm" />
-            {project.name}
-            {project.visibility === "private" ? <Badge variant="outline">{t("visibility.private")}</Badge> : null}
-            {projectBadge(project)}
+      <li key={project.id} data-accent={shelf === "current" ? accent : undefined} className="min-w-0">
+        <Link href={`/work/projects/${project.id}`} className={cardClass(shelf)}>
+          <span className="flex min-w-0 items-start gap-3">
+            <ProjectPoster project={project} size="sm" className="mt-0.5" />
+            <span className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="flex min-w-0 items-center gap-2 text-[0.9375rem] font-semibold tracking-[-0.01em]">
+                <ColorSquare color={accent} />
+                <span className="truncate">{project.name}</span>
+              </span>
+              <span className="truncate text-xs text-muted-foreground">{[project.teamName, project.clientName, project.leadName].filter(Boolean).join(" · ")}</span>
+            </span>
           </span>
-          <span className="text-xs text-muted-foreground">{[project.teamName, project.clientName, project.leadName].filter(Boolean).join(" · ")}</span>
-          <span className="mt-auto flex flex-wrap gap-3 text-xs text-muted-foreground">
-            <span>{t("projects.open", { count: project.openTasks })}</span>
-            <span>{t("projects.done", { count: project.doneTasks })}</span>
-            {project.overdueTasks > 0 && shelf === "current" ? <span className="font-medium text-destructive">{t("projects.overdue", { count: project.overdueTasks })}</span> : null}
+          {project.visibility === "private" || projectBadge(project) ? (
+            <span className="flex flex-wrap gap-1.5">
+              {project.visibility === "private" ? <Badge variant="outline">{t("visibility.private")}</Badge> : null}
+              {projectBadge(project)}
+            </span>
+          ) : null}
+          <span className="mt-auto flex flex-col gap-2">
+            <span className="h-1.5 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={t("projects.progress", { done: project.doneTasks, total })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
+              <span className={cn("block h-full rounded-full transition-[width] duration-300 ease-(--ease-settle)", shelf === "current" ? "bg-primary" : "bg-faint/50")} style={{ width: `${percent}%` }} />
+            </span>
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-muted-foreground tabular-nums">
+              <span>{t("projects.open", { count: project.openTasks })}</span>
+              <span>{t("projects.done", { count: project.doneTasks })}</span>
+              {project.overdueTasks > 0 && shelf === "current" ? <span className="font-medium text-destructive">{t("projects.overdue", { count: project.overdueTasks })}</span> : null}
+            </span>
           </span>
         </Link>
       </li>
@@ -83,16 +100,22 @@ export default async function WorkPage() {
     const status = teamStatusOf(team);
     const shelf = teamShelf(status);
     return (
-      <li key={team.id} data-accent={shelf === "current" ? accentOf(team.color) : undefined}>
-        <Link href={`/work/teams/${team.id}`} className={cn(cardClass(shelf, !!team.color), "gap-1")}>
-          <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
-            <span className="font-mono text-xs text-muted-foreground">{team.key}</span> {team.name}
-            {viewer.teamRoles.get(team.id) === "lead" ? <Badge variant="secondary">{t("members.roles.lead")}</Badge> : null}
-            {status === "archived" ? <ArchivedBadge label={t("teams.status.archived")} /> : status === "inactive" ? <Badge variant="outline">{t("teams.status.inactive")}</Badge> : null}
+      <li key={team.id} data-accent={shelf === "current" ? accentOf(team.color) : undefined} className="min-w-0">
+        <Link href={`/work/teams/${team.id}`} className={cn(cardClass(shelf), "gap-1.5")}>
+          <span className="flex min-w-0 items-center gap-2 text-[0.9375rem] font-semibold tracking-[-0.01em]">
+            <ColorSquare color={accentOf(team.color)} />
+            <span className="font-mono text-xs font-normal text-faint">{team.key}</span>
+            <span className="truncate">{team.name}</span>
           </span>
-          <span className="text-xs text-muted-foreground">
+          <span className="truncate text-xs text-muted-foreground">
             {team.entityName ?? t("teams.wholeGroup")} · {t("teams.memberCount", { count: team.memberCount })}
           </span>
+          {viewer.teamRoles.get(team.id) === "lead" || status !== "active" ? (
+            <span className="flex flex-wrap gap-1.5 pt-1">
+              {viewer.teamRoles.get(team.id) === "lead" ? <Badge variant="secondary">{t("members.roles.lead")}</Badge> : null}
+              {status === "archived" ? <ArchivedBadge label={t("teams.status.archived")} /> : status === "inactive" ? <Badge variant="outline">{t("teams.status.inactive")}</Badge> : null}
+            </span>
+          ) : null}
         </Link>
       </li>
     );
@@ -103,79 +126,58 @@ export default async function WorkPage() {
   const archivedProjects = projectsOn("archived");
   const inactiveTeams = teamsOn("inactive");
   const archivedTeams = teamsOn("archived");
+  const canSeeWorkload = [...viewer.teamRoles.values()].includes("lead") || canManageWorkspace(viewer);
 
   return (
-    <div className="flex max-w-6xl flex-col gap-8">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1>{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
-        </div>
-        <nav className="tab-row">
-          <Link href="/tasks" className="underline">
-            {t("myWork")}
-          </Link>
-          <Link href="/work/calendar" className="underline">
-            {t("calendar.title")}
-          </Link>
-          <Link href="/work/leader" className="underline">
-            {t("leader.title")}
-          </Link>
-          {[...viewer.teamRoles.values()].includes("lead") || canManageWorkspace(viewer) ? (
-            <Link href="/work/workload" className="underline">
-              {t("workload.title")}
-            </Link>
-          ) : null}
-          <Link href="/work/intake" className="underline">
-            {t("intake.title")}
-          </Link>
-          <Link href="/work/templates" className="underline">
-            {t("templates.title")}
-          </Link>
-          {viewer.principal.workforceType === "collaborator" ? null : (
-            <Link href="/work/clients" className="underline">
-              {t("clients.title")}
-            </Link>
-          )}
-        </nav>
-      </header>
+    <Page width="wide">
+      <PageHeader title={t("title")} description={t("description")} />
+      <nav className="tab-row" aria-label={t("title")}>
+        <Link href="/work" aria-current="page">{t("projects.title")}</Link>
+        <Link href="/tasks">{t("myWork")}</Link>
+        <Link href="/work/calendar">{t("calendar.title")}</Link>
+        <Link href="/work/leader">{t("leader.title")}</Link>
+        {canSeeWorkload ? <Link href="/work/workload">{t("workload.title")}</Link> : null}
+        <Link href="/work/intake">{t("intake.title")}</Link>
+        <Link href="/work/templates">{t("templates.title")}</Link>
+        {viewer.principal.workforceType === "collaborator" ? null : <Link href="/work/clients">{t("clients.title")}</Link>}
+      </nav>
 
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("projects.title")}</h2>
-          {projectTeams.length ? <CreateProjectButton teams={projectTeams.map((team) => ({ id: team.id, name: team.name, defaultVisibility: team.defaultVisibility }))} clients={clients.map(({ id, name }) => ({ id, name }))} people={people} /> : null}
-        </div>
+      <Section
+        title={t("projects.title")}
+        count={projectsOn("current").length || undefined}
+        action={projectTeams.length ? <CreateProjectButton teams={projectTeams.map((team) => ({ id: team.id, name: team.name, defaultVisibility: team.defaultVisibility }))} clients={clients.map(({ id, name }) => ({ id, name }))} people={people} /> : undefined}
+      >
         {projectsOn("current").length === 0 ? <p className="text-sm text-muted-foreground">{t("projects.empty")}</p> : <ul className={grid}>{projectsOn("current").map(projectCard)}</ul>}
         {inactiveProjects.length ? (
           <>
-            <h3 className="pt-2 text-sm font-medium text-muted-foreground">{t("shelves.inactiveProjects", { count: inactiveProjects.length })}</h3>
+            <h3 className="section-label pt-3">{t("shelves.inactiveProjects", { count: inactiveProjects.length })}</h3>
             <ul className={grid}>{inactiveProjects.map(projectCard)}</ul>
           </>
         ) : null}
         {archivedProjects.length ? <ArchivedShelf label={t("shelves.archivedProjects", { count: archivedProjects.length })}><ul className={grid}>{archivedProjects.map(projectCard)}</ul></ArchivedShelf> : null}
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("teams.mine")}</h2>
-          {canCreateTeam ? <CreateTeamButton entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} /> : null}
-        </div>
+      <Section
+        title={t("teams.mine")}
+        count={mine.length || undefined}
+        action={canCreateTeam ? <CreateTeamButton entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} /> : undefined}
+      >
         {mine.length === 0 ? <p className="text-sm text-muted-foreground">{t("teams.mineEmpty")}</p> : <ul className={grid}>{mine.map(teamCard)}</ul>}
         {others.length ? (
           <>
-            <h2 className="pt-2 text-sm font-medium text-muted-foreground">{t("teams.others")}</h2>
+            <h3 className="section-label pt-3">{t("teams.others")}</h3>
             <ul className={grid}>{others.map(teamCard)}</ul>
           </>
         ) : null}
         {inactiveTeams.length ? (
           <>
-            <h2 className="pt-2 text-sm font-medium text-muted-foreground">{t("shelves.inactiveTeams", { count: inactiveTeams.length })}</h2>
+            <h3 className="section-label pt-3">{t("shelves.inactiveTeams", { count: inactiveTeams.length })}</h3>
             <ul className={grid}>{inactiveTeams.map(teamCard)}</ul>
           </>
         ) : null}
         {archivedTeams.length ? <ArchivedShelf label={t("shelves.archivedTeams", { count: archivedTeams.length })}><ul className={grid}>{archivedTeams.map(teamCard)}</ul></ArchivedShelf> : null}
-      </section>
-    </div>
+      </Section>
+    </Page>
   );
 }
 
@@ -191,10 +193,10 @@ function ArchivedBadge({ label }: { label: string }) {
 /** Archived teams or projects: out of the way, shut until opened. */
 function ArchivedShelf({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <Collapsible className="flex flex-col gap-3 rounded-xl border border-dashed bg-muted/20 p-3">
-      <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-md text-left text-sm font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
-        <ChevronRightIcon className="size-4 transition-transform group-data-[panel-open]:rotate-90" />
-        <ArchiveIcon className="size-4" />
+    <Collapsible className="flex flex-col gap-3 pt-2">
+      <CollapsibleTrigger className="group section-label flex w-full items-center gap-1.5 rounded-md text-left outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+        <ChevronRightIcon className="size-3.5 transition-transform duration-200 ease-(--ease-settle) group-data-[panel-open]:rotate-90" />
+        <ArchiveIcon className="size-3.5" />
         {label}
       </CollapsibleTrigger>
       <CollapsibleContent>{children}</CollapsibleContent>

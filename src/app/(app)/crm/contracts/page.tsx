@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
+import { Page, PageHeader } from "@/components/ui/page";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
@@ -13,6 +14,8 @@ import { CrmTabs } from "@/modules/crm/ui/tabs";
 import { formatters } from "@/modules/crm/ui/views";
 
 export const generateMetadata = pageTitle("crmContracts");
+
+const STATES = ["live", "active", "draft", "expired", "terminated", "all"] as const;
 
 export default async function ContractsPage({ searchParams }: PageProps<"/crm/contracts">) {
   const user = await requireUser();
@@ -27,15 +30,12 @@ export default async function ContractsPage({ searchParams }: PageProps<"/crm/co
   const contracts = (await listContracts(visible, (row) => { const account = accounts.get(row.clientId); return !!account && canSeeAccountMoney(shell.viewer, account.facts); }, today)).filter((contract) => state === "all" || (state === "live" ? contract.state === "active" || contract.state === "upcoming" || contract.state === "draft" : contract.state === state));
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header>
-        <h1>{t("contracts.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("contracts.intro")}</p>
-      </header>
+    <Page width="wide">
+      <PageHeader title={t("contracts.title")} description={t("contracts.intro")} />
       <CrmTabs current="contracts" show={shell.show} />
-      <nav className="flex flex-wrap gap-2 text-sm">
-        {(["live", "active", "draft", "expired", "terminated", "all"] as const).map((value) => (
-          <Link key={value} href={`/crm/contracts?state=${value}`} aria-current={value === state ? "page" : undefined} className={`rounded-md border px-3 py-1 ${value === state ? "pill-on" : "pill-off"}`}>
+      <nav className="tab-row" aria-label={t("contracts.columns.state")}>
+        {STATES.map((value) => (
+          <Link key={value} href={`/crm/contracts?state=${value}`} aria-current={value === state ? "page" : undefined}>
             {t(`contracts.states.${value}`)}
           </Link>
         ))}
@@ -55,11 +55,11 @@ export default async function ContractsPage({ searchParams }: PageProps<"/crm/co
           {contracts.length === 0 ? <TableEmpty>{t("contracts.empty")}</TableEmpty> : null}
           {contracts.map((contract) => (
             <TableRow key={contract.id}>
-              <TableCell>
-                <Link href={`/crm/contracts/${contract.id}`} className="font-medium hover:underline">
+              <TableCell kind="id">
+                <Link href={`/crm/contracts/${contract.id}`} className="font-medium text-foreground hover:underline">
                   {contract.number}
                 </Link>
-                <p className="text-xs text-muted-foreground">{contract.title}</p>
+                <p className="font-sans text-xs text-faint">{contract.title}</p>
               </TableCell>
               <TableCell>
                 <Link href={`/crm/accounts/${contract.clientId}`} className="hover:underline">
@@ -70,16 +70,18 @@ export default async function ContractsPage({ searchParams }: PageProps<"/crm/co
                 <Badge variant="outline">{t(`contract.kinds.${contract.kind as "service"}`)}</Badge>
               </TableCell>
               <TableCell>
-                <Badge dot variant={statusTone(contract.state === "upcoming" ? "scheduled" : contract.state)}>
-                  {t(`enums.contractState.${contract.state}`)}
-                </Badge>
-                {contract.renewalDealId ? (
-                  <Link href={`/crm/deals/${contract.renewalDealId}`} className="ml-2 text-xs underline">
-                    {t("contracts.renewal")}
-                  </Link>
-                ) : null}
+                <span className="flex items-center gap-2">
+                  <Badge dot variant={statusTone(contract.state === "upcoming" ? "scheduled" : contract.state)}>
+                    {t(`enums.contractState.${contract.state}`)}
+                  </Badge>
+                  {contract.renewalDealId ? (
+                    <Link href={`/crm/deals/${contract.renewalDealId}`} className="text-xs text-link hover:underline">
+                      {t("contracts.renewal")}
+                    </Link>
+                  ) : null}
+                </span>
               </TableCell>
-              <TableCell>
+              <TableCell kind="date" className="text-muted-foreground">
                 {f.date(contract.startDate)} – {f.date(contract.endDate)}
               </TableCell>
               <TableCell kind="money">{"valueVnd" in contract ? f.money(contract.valueVnd) : "—"}</TableCell>
@@ -87,6 +89,6 @@ export default async function ContractsPage({ searchParams }: PageProps<"/crm/co
           ))}
         </TableBody>
       </Table>
-    </div>
+    </Page>
   );
 }

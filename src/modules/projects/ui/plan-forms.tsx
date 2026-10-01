@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import type { ActionResult } from "@/lib/action";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
@@ -20,7 +21,6 @@ type Person = { id: string; fullName: string };
 type Named = { id: string; name: string };
 type Action = (input: unknown) => Promise<ActionResult<unknown>>;
 
-const textarea = "min-h-20 w-full rounded-lg border bg-background px-2.5 py-1.5 text-sm";
 const hoursOf = (minutes: number | null | undefined) => (minutes ? String(Math.round((minutes / 60) * 100) / 100) : "");
 
 /** A form that posts to an action and shows what went wrong in the project's own words. */
@@ -109,10 +109,10 @@ export function BriefForm({ projectId, brief, kind, accountContacts = [] }: { pr
       </div>
       {area("assumptions", 2)}
       <Field name="clientContacts" label={t("fields.clientContacts")}>
-        <textarea id="clientContacts" name="clientContacts" rows={3} defaultValue={contacts.map((contact: { name: string; role?: string; contact?: string }) => [contact.name, contact.role, contact.contact].filter(Boolean).join(" — ")).join("\n")} placeholder={t("contactsHint")} className={textarea} />
+        <Textarea id="clientContacts" name="clientContacts" rows={3} defaultValue={contacts.map((contact: { name: string; role?: string; contact?: string }) => [contact.name, contact.role, contact.contact].filter(Boolean).join(" — ")).join("\n")} placeholder={t("contactsHint")} />
       </Field>
       <Field name="links" label={t("fields.links")}>
-        <textarea id="links" name="links" rows={2} defaultValue={(brief.links ?? []).join("\n")} placeholder="https://drive.google.com/…" className={`${textarea} font-mono`} />
+        <Textarea id="links" name="links" rows={2} defaultValue={(brief.links ?? []).join("\n")} placeholder="https://drive.google.com/…" className="font-mono" />
       </Field>
     </ActionForm>
   );

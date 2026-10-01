@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Page } from "@/components/ui/page";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
@@ -67,7 +68,7 @@ export default async function ProjectChangesPage({ params }: PageProps<"/project
         <List>
           {approver.changes.map((change) => (
             <ListItem key={change.id} className="flex-col items-stretch gap-3 py-4">
-              <h2 className="text-base font-medium">
+              <h2>
                 CR-{change.number} · {change.title}
               </h2>
               <RichText text={change.description} className="text-sm" />
@@ -99,7 +100,7 @@ export default async function ProjectChangesPage({ params }: PageProps<"/project
   );
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
+    <Page>
       <ProjectHeader context={context} current="changes" />
 
       <TableCard>
@@ -192,6 +193,6 @@ export default async function ProjectChangesPage({ params }: PageProps<"/project
           </TableAddRow>
         ) : null}
       </TableCard>
-    </div>
+    </Page>
   );
 }

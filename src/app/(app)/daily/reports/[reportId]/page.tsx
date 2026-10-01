@@ -1,8 +1,13 @@
+import { ChevronDown } from "lucide-react";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { CSSProperties } from "react";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { List, ListItem } from "@/components/ui/list";
+import { Page, PageHeader, Section } from "@/components/ui/page";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { canCommentOnReport, getReportView, loadReportReader, REPORT_BACKFILL_DAYS } from "@/modules/daily/service";
 import { ActivityList, TaskLines } from "@/modules/daily/ui/activity-list";
@@ -30,95 +35,98 @@ export default async function ReportViewPage({ params }: PageProps<"/daily/repor
   const editable = mine && report.date >= addDays(today, -REPORT_BACKFILL_DAYS);
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href={mine ? "/daily" : "/daily/team"} className="underline">
+    <Page width="narrow">
+      <PageHeader
+        eyebrow={
+          <Link href={mine ? "/daily" : "/daily/team"} className="hover:underline">
             {mine ? t("index.title") : t("board.title")}
           </Link>
-        </p>
-        <h1>{mine ? t("report.title") : subject.fullName}</h1>
-        <p className="text-sm text-muted-foreground">{format.dateTime(new Date(`${report.date}T12:00:00Z`), { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
-        <div className="flex flex-wrap items-center gap-2">
-          {report.status === "submitted" ? <Badge dot variant={report.late ? "warning" : "success"}>{report.late ? t("late") : t("submitted")}</Badge> : <Badge variant="outline">{t("draft")}</Badge>}
-          {report.submittedAt ? <span className="text-xs text-muted-foreground">{t("view.sentAt", { time: format.dateTime(report.submittedAt, { dateStyle: "short", timeStyle: "short" }) })}</span> : null}
-          <span className="text-xs text-muted-foreground">{t("hours", { value: hoursOf(report.minutesLogged) })}</span>
-          {editable ? (
-            <Link href={`/daily/report?date=${report.date}`} className={buttonVariants({ size: "xs", variant: "outline" })}>
+        }
+        title={mine ? t("report.title") : subject.fullName}
+        description={format.dateTime(new Date(`${report.date}T12:00:00Z`), { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        actions={
+          editable ? (
+            <Link href={`/daily/report?date=${report.date}`} className={buttonVariants({ size: "sm", variant: "outline" })}>
               {t("view.edit")}
             </Link>
-          ) : null}
+          ) : null
+        }
+      >
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          {report.status === "submitted" ? <Badge dot variant={report.late ? "warning" : "success"}>{report.late ? t("late") : t("submitted")}</Badge> : <Badge variant="outline">{t("draft")}</Badge>}
+          {report.submittedAt ? <span className="text-xs text-muted-foreground">{t("view.sentAt", { time: format.dateTime(report.submittedAt, { dateStyle: "short", timeStyle: "short" }) })}</span> : null}
+          <span className="font-mono text-xs text-muted-foreground tabular-nums">{t("hours", { value: hoursOf(report.minutesLogged) })}</span>
         </div>
-      </header>
+      </PageHeader>
 
       {report.blockers || view.openBlockers.length > 0 ? (
-        <section className="flex flex-col gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
-          <h2 className="text-sm font-medium text-destructive">{t("report.blockers")}</h2>
-          <RichText text={report.blockers} />
-          {view.openBlockers.length > 0 ? (
-            <ul className="flex flex-col gap-1 text-sm">
-              {view.openBlockers.map((blocker) => (
-                <li key={blocker.blockerId}>
-                  {blocker.hidden ? (
-                    <span className="text-muted-foreground italic">{t("privateWork")}</span>
-                  ) : (
-                    <>
-                      <Link href={`/work/tasks/${blocker.taskId}`} className="hover:underline">
-                        <span className="font-mono text-xs text-muted-foreground">{blocker.key}</span> {blocker.title}
-                      </Link>{" "}
-                      <span className="text-xs text-muted-foreground">· {blocker.reason}</span>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </section>
+        <Alert variant="destructive">
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <p className="font-medium">{t("report.blockers")}</p>
+            <RichText text={report.blockers} />
+            {view.openBlockers.length > 0 ? (
+              <ul className="flex flex-col gap-1 text-sm">
+                {view.openBlockers.map((blocker) => (
+                  <li key={blocker.blockerId}>
+                    {blocker.hidden ? (
+                      <span className="italic opacity-80">{t("privateWork")}</span>
+                    ) : (
+                      <>
+                        <Link href={`/work/tasks/${blocker.taskId}`} className="hover:underline">
+                          <span className="font-mono text-xs opacity-80">{blocker.key}</span> {blocker.title}
+                        </Link>{" "}
+                        <span className="text-xs opacity-80">· {blocker.reason}</span>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        </Alert>
       ) : null}
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("report.done", { count: report.done.length })}</h2>
+      <Section title={t("report.done", { count: report.done.length })}>
         <TaskLines lines={report.done} empty={t("report.noneDone")} />
-      </section>
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("report.notDone", { count: report.notDone.length })}</h2>
+      </Section>
+      <Section title={t("report.notDone", { count: report.notDone.length })}>
         <TaskLines lines={report.notDone} empty={t("report.allPlannedDone")} />
-      </section>
+      </Section>
       {report.notes ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("report.notes")}</h2>
+        <Section title={t("report.notes")}>
           <RichText text={report.notes} />
-        </section>
+        </Section>
       ) : null}
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("report.tomorrowPlanned", { count: report.tomorrow.length })}</h2>
+      <Section title={t("report.tomorrowPlanned", { count: report.tomorrow.length })}>
         <TaskLines lines={view.tomorrow} empty={t("report.noTomorrow")} />
-      </section>
-      <details className="rounded-xl border p-3">
-        <summary className="cursor-pointer text-sm font-medium text-muted-foreground">{t("report.activity", { count: report.activity.length })}</summary>
-        <div className="mt-3">
+      </Section>
+      <details className="group/activity rounded-[14px] border border-border bg-background">
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium select-none [&::-webkit-details-marker]:hidden">
+          <span className="min-w-0 flex-1">{t("report.activity", { count: report.activity.length })}</span>
+          <ChevronDown aria-hidden className="size-4 shrink-0 text-faint transition-transform duration-200 ease-(--ease-settle) group-open/activity:rotate-180" />
+        </summary>
+        <div className="border-t px-4 py-3">
           <ActivityList items={report.activity} />
         </div>
       </details>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("thread.title", { count: view.comments.length })}</h2>
+      <Section title={t("thread.title", { count: view.comments.length })}>
         {view.comments.length > 0 ? (
-          <ul className="flex flex-col gap-3">
-            {view.comments.map((comment) => (
-              <li key={comment.id} className="flex flex-col gap-0.5 text-sm">
+          <List>
+            {view.comments.map((comment, index) => (
+              <ListItem key={comment.id} className="rise flex-col items-stretch gap-1" style={{ "--i": index } as CSSProperties}>
                 <p className="text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">{comment.authorName}</span> · {format.dateTime(comment.createdAt, { dateStyle: "short", timeStyle: "short" })}
                 </p>
-                {comment.reaction ? <p className="text-lg">{comment.reaction}</p> : null}
+                {comment.reaction ? <p className="text-lg leading-tight">{comment.reaction}</p> : null}
                 <RichText text={comment.body} />
-              </li>
+              </ListItem>
             ))}
-          </ul>
+          </List>
         ) : null}
         {/* Oversight reads the thread; only the person and the people the report is for write in it. */}
         {canCommentOnReport(reader, view.subject) ? <ReportThread reportId={report.id} /> : null}
-      </section>
-    </div>
+      </Section>
+    </Page>
   );
 }

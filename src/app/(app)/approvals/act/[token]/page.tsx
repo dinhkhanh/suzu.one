@@ -1,5 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Alert } from "@/components/ui/alert";
+import { buttonVariants } from "@/components/ui/button";
+import { Page, PageHeader } from "@/components/ui/page";
 import { findActionToken } from "@/modules/platform/approvals/action-tokens";
 import { getRequestRows } from "@/modules/platform/approvals/service";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -26,23 +29,18 @@ export default async function ApproveFromLinkPage(props: PageProps<"/approvals/a
   const [request] = usable ? await getRequestRows([lookup.row.requestId]) : [];
 
   return (
-    <div className="flex max-w-xl flex-col gap-6">
-      <header>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </header>
+    <Page width="narrow">
+      <PageHeader title={t("title")} description={t("description")} />
       {reason || !request ? (
-        <div className="flex flex-col gap-3 rounded-xl border p-4">
-          <p role="alert" className="text-sm text-destructive">
-            {t(`refused.${reason ?? "unknown"}` as "refused.unknown")}
-          </p>
-          <Link href="/approvals" className="text-sm underline-offset-4 hover:underline">
+        <div className="flex flex-col gap-3">
+          <Alert variant="destructive">{t(`refused.${reason ?? "unknown"}` as "refused.unknown")}</Alert>
+          <Link href="/approvals" className={buttonVariants({ variant: "outline", size: "lg", className: "w-full md:w-auto md:self-start" })}>
             {t("openInbox")}
           </Link>
         </div>
       ) : (
         <ActOnRequest token={token} summary={request.summary} link={request.link} typeName={request.typeName ?? request.type} approve={approveFromLinkAction} />
       )}
-    </div>
+    </Page>
   );
 }

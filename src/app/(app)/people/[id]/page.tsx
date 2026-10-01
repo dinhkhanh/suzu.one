@@ -1,8 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { listProfileChanges } from "@/modules/core-hr/change-requests";
@@ -10,6 +10,7 @@ import { canChangePhoto } from "@/modules/core-hr/policy";
 import { getPersonTarget, getPersonView, loadPlacementOptions, peopleModuleOpen } from "@/modules/core-hr/service";
 import { AssignmentForm, PastAssignmentForm } from "@/modules/core-hr/ui/assignment-form";
 import { EditPersonForm } from "@/modules/core-hr/ui/edit-person-form";
+import { Fact, FactSheet } from "@/modules/core-hr/ui/fact-sheet";
 import { PersonAvatar } from "@/modules/core-hr/ui/person-avatar";
 import { PhotoEditor } from "@/modules/core-hr/ui/photo-editor";
 import { RehireForm, TransferEntityForm } from "@/modules/core-hr/ui/lifecycle-forms";
@@ -31,15 +32,6 @@ import { accountsManagedBy } from "@/modules/crm/service";
 export const generateMetadata = pageTitle("person");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-sm">{children ?? "—"}</dd>
-    </div>
-  );
-}
 
 export default async function PersonPage(props: PageProps<"/people/[id]">) {
   const user = await requireUser();
@@ -80,23 +72,32 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
   const transferTargets = transferring ? manageableEntities.filter((entity) => entity.id !== person.entityId) : [];
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
-      <header className="flex items-center gap-4">
-        <PersonAvatar person={person} className="size-20 text-xl" />
-        <div className="flex min-w-0 flex-col gap-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1>{person.fullName}</h1>
-            {personal && personal.status !== "active" ? <Badge variant="outline">{t(`status.${personal.status}`)}</Badge> : null}
-            {impersonable ? <ImpersonateButton personId={person.id} /> : null}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {[person.employeeCode, person.current?.positionName, person.current?.departmentName, person.entityName].filter(Boolean).join(" · ")}
-          </p>
-          {photoEditable ? <PhotoEditor person={person} /> : null}
-        </div>
-      </header>
+    <Page>
+      <div className="flex items-start gap-4">
+        <PersonAvatar person={person} className="mt-0.5 size-16 text-xl" />
+        <PageHeader
+          eyebrow={person.employeeCode}
+          title={person.fullName}
+          description={[person.current?.positionName, person.current?.departmentName, person.entityName].filter(Boolean).join(" · ")}
+          actions={
+            photoEditable || impersonable ? (
+              <>
+                {impersonable ? <ImpersonateButton personId={person.id} /> : null}
+                {photoEditable ? <PhotoEditor person={person} compact /> : null}
+              </>
+            ) : null
+          }
+          className="min-w-0 flex-1 md:items-start"
+        >
+          {personal && personal.status !== "active" ? (
+            <div className="pt-1">
+              <Badge variant="outline">{t(`status.${personal.status}`)}</Badge>
+            </div>
+          ) : null}
+        </PageHeader>
+      </div>
 
-      <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <FactSheet>
         <Fact label={t("fields.entity")}>{person.entityName}</Fact>
         <Fact label={t("fields.workEmail")}>{person.workEmail}</Fact>
         <Fact label={t("fields.team")}>{person.current?.teamName}</Fact>
@@ -113,13 +114,12 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
             ))}
           </Fact>
         ) : null}
-      </dl>
+      </FactSheet>
 
       {personal ? (
         <>
-          <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium text-muted-foreground">{t("sections.employment")}</h2>
-            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Section title={t("sections.employment")}>
+            <FactSheet>
               <Fact label={t("fields.workforceType")}>{personal.current ? t(`workforceType.${personal.current.workforceType}`) : null}</Fact>
               <Fact label={t("fields.startDate")}>{day(personal.startDate)}</Fact>
               <Fact label={t("fields.seniorityDate")}>{day(personal.seniorityDate)}</Fact>
@@ -128,12 +128,11 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
               <Fact label={t("fields.dottedManagerId")}>{personLink(personal.current?.dottedManagerId ?? null, personal.current?.dottedManagerName ?? null)}</Fact>
               <Fact label={t("fields.branch")}>{personal.current?.branchName}</Fact>
               <Fact label={t("fields.workLocation")}>{personal.current?.workLocation}</Fact>
-            </dl>
-          </section>
+            </FactSheet>
+          </Section>
 
-          <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium text-muted-foreground">{t("sections.personal")}</h2>
-            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Section title={t("sections.personal")}>
+            <FactSheet>
               <Fact label={t("fields.phone")}>{personal.profile?.phone}</Fact>
               <Fact label={t("fields.personalEmail")}>{personal.profile?.personalEmail}</Fact>
               <Fact label={t("fields.dateOfBirth")}>{day(personal.profile?.dateOfBirth)}</Fact>
@@ -142,16 +141,15 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
               <Fact label={t("fields.nationality")}>{personal.profile?.nationality}</Fact>
               <Fact label={t("fields.permanentAddress")}>{personal.profile?.permanentAddress}</Fact>
               <Fact label={t("fields.currentAddress")}>{personal.profile?.currentAddress}</Fact>
-            </dl>
-          </section>
+            </FactSheet>
+          </Section>
 
           {person.canManage ? <EditPersonForm person={person} /> : null}
 
           {changeRequests?.length ? (
-            <section className="flex flex-col gap-3">
-              <h2 className="text-sm font-medium text-muted-foreground">{t("sections.changeRequests")}</h2>
+            <Section title={t("sections.changeRequests")}>
               <RequestTable rows={changeRequests} empty="" showRequester={false} />
-            </section>
+            </Section>
           ) : null}
 
           <RecordSections principal={user.principal} personId={person.id} />
@@ -225,6 +223,6 @@ export default async function PersonPage(props: PageProps<"/people/[id]">) {
           ) : null}
         </>
       ) : null}
-    </div>
+    </Page>
   );
 }

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Page, PageHeader } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -40,16 +41,10 @@ export default async function ClientProfitabilityPage({ searchParams }: PageProp
   const percent = (rate: number | null) => (rate === null ? "—" : `${Math.round(rate * 1000) / 10}%`);
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header>
-        <p className="text-sm text-muted-foreground">
-          <Link href="/crm/reports" className="underline">
+    <Page width="wide">
+      <PageHeader eyebrow={<><Link href="/crm/reports" className="underline">
             {t("reports.title")}
-          </Link>
-        </p>
-        <h1>{t("profitability.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("profitability.intro")}</p>
-      </header>
+          </Link></>} title={t("profitability.title")} description={t("profitability.intro")} />
       <CrmTabs current="reports" show={shell.show} />
       <form method="get" className="flex flex-wrap items-end gap-2">
         <DatePicker name="from" defaultValue={period.from} aria-label={t("profitability.from")} />
@@ -113,6 +108,6 @@ export default async function ClientProfitabilityPage({ searchParams }: PageProp
         </p>
       ) : null}
       <p className="text-xs text-muted-foreground">{t("profitability.basis")}</p>
-    </div>
+    </Page>
   );
 }

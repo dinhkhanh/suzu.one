@@ -1,13 +1,17 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Page, PageHeader } from "@/components/ui/page";
 import { commsViewerOf, getAnnouncementView, markAnnouncementRead } from "@/modules/comms/service";
 import { AcknowledgeAnnouncementButton } from "@/modules/comms/ui/buttons";
 import { canViewPage, kbViewerOf, loadPage } from "@/modules/kb/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { pageTitle } from "@/i18n/page-title";
+import { cn } from "@/lib/utils";
 
 export const generateMetadata = pageTitle("announcement");
 
@@ -31,48 +35,54 @@ export default async function AnnouncementPage(props: PageProps<"/announcements/
   const page = linked && canViewPage(kbViewerOf(user), linked.facts, linked.pageFacts) ? linked.page : null;
 
   return (
-    <article className="flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-2">
-        <p className="text-sm text-muted-foreground">
+    <Page width="narrow">
+      <PageHeader
+        eyebrow={
           <Link href="/announcements" className="hover:underline">
             {t("list.title")}
           </Link>
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1>{row.title}</h1>
-          {row.pinned ? <Badge variant="secondary">{t("list.pinned")}</Badge> : null}
-          {view.phase === "live" ? null : <Badge variant="outline">{t(`phase.${view.phase}`)}</Badge>}
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {view.authorName}
-          {row.publishAt ? ` · ${format.dateTime(row.publishAt, { dateStyle: "long", timeStyle: "short" })}` : ""}
-        </p>
-      </header>
+        }
+        title={row.title}
+        description={`${view.authorName}${row.publishAt ? ` · ${format.dateTime(row.publishAt, { dateStyle: "long", timeStyle: "short" })}` : ""}`}
+        actions={
+          view.canManage ? (
+            <Link href={`/announcements/manage/${row.id}`} className={cn(buttonVariants({ variant: "outline" }))}>
+              {t("detail.manage")}
+            </Link>
+          ) : null
+        }
+      >
+        {row.pinned || view.phase !== "live" ? (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {row.pinned ? <Badge variant="secondary">{t("list.pinned")}</Badge> : null}
+            {view.phase === "live" ? null : <Badge variant="outline">{t(`phase.${view.phase}`)}</Badge>}
+          </div>
+        ) : null}
+      </PageHeader>
 
-      <RichText text={row.body} className="break-words" />
+      <article>
+        <RichText text={row.body} className="break-words" />
+      </article>
 
       {page ? (
         <p className="text-sm">
           {t("detail.readMore")}{" "}
-          <Link href={`/kb/pages/${page.id}`} className="underline underline-offset-2">
+          <Link href={`/kb/pages/${page.id}`} className="text-link underline underline-offset-2">
             {page.publishedTitle ?? page.title}
           </Link>
         </p>
       ) : null}
 
       {row.mustAcknowledge && view.isReader ? (
-        <section className="flex flex-wrap items-center gap-3 rounded-lg border p-3 text-sm">
-          {view.acknowledgedAt ? <span>{t("detail.acknowledgedOn", { date: format.dateTime(view.acknowledgedAt, { dateStyle: "medium", timeStyle: "short" }) })}</span> : <><span>{t("detail.mustAcknowledge")}</span><AcknowledgeAnnouncementButton id={row.id} /></>}
-        </section>
+        view.acknowledgedAt ? (
+          <Alert variant="success">{t("detail.acknowledgedOn", { date: format.dateTime(view.acknowledgedAt, { dateStyle: "medium", timeStyle: "short" }) })}</Alert>
+        ) : (
+          <Alert variant="warning">
+            <span className="flex-1">{t("detail.mustAcknowledge")}</span>
+            <AcknowledgeAnnouncementButton id={row.id} />
+          </Alert>
+        )
       ) : null}
-
-      {view.canManage ? (
-        <p className="text-sm">
-          <Link href={`/announcements/manage/${row.id}`} className="underline underline-offset-2">
-            {t("detail.manage")}
-          </Link>
-        </p>
-      ) : null}
-    </article>
+    </Page>
   );
 }

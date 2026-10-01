@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -9,6 +10,7 @@ import { canDecidePayRules, canSeeSimpleProfileReport, compensationReach } from 
 import { listProfileProposals } from "@/modules/payroll/profiles";
 import { RuleDecisionButtons } from "@/modules/payroll/ui/rule-forms";
 import { pageTitle } from "@/i18n/page-title";
+import { Page, PageHeader } from "@/components/ui/page";
 
 export const generateMetadata = pageTitle("payProfiles");
 
@@ -23,19 +25,23 @@ export default async function ProfilesPage() {
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00+07:00`), { dateStyle: "medium" });
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header>
-        <Link href="/payroll" className="text-sm text-link hover:underline">
-          ← {t("title")}
-        </Link>
-        <h1>{t("profiles.proposalsTitle")}</h1>
-        <p className="text-sm text-muted-foreground">{t("profiles.proposalsDescription")}</p>
-        {canSeeSimpleProfileReport(user.principal) ? (
-          <Link href="/payroll/profiles/simple" className="text-sm hover:underline">
-            {t("desk.simpleReport.title")} →
+    <Page width="wide">
+      <PageHeader
+        eyebrow={
+          <Link href="/payroll" className="text-link hover:underline">
+            ← {t("title")}
           </Link>
-        ) : null}
-      </header>
+        }
+        title={t("profiles.proposalsTitle")}
+        description={t("profiles.proposalsDescription")}
+        actions={
+          canSeeSimpleProfileReport(user.principal) ? (
+            <Link href="/payroll/profiles/simple" className={buttonVariants({ variant: "outline" })}>
+              {t("desk.simpleReport.title")}
+            </Link>
+          ) : undefined
+        }
+      />
       <Table>
         <TableHeader>
           <TableRow>
@@ -75,6 +81,6 @@ export default async function ProfilesPage() {
           ))}
         </TableBody>
       </Table>
-    </div>
+    </Page>
   );
 }

@@ -1,13 +1,17 @@
 import { asc, eq } from "drizzle-orm";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { db, schema } from "@/lib/db";
+import { Button } from "@/components/ui/button";
+import { Page, PageHeader, Section } from "@/components/ui/page";
 import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
-import { canBookAssets, canDecideBookings, listBookableAssets, listBookingRequests, listBookings, listBookingsOfPerson, listCategories, shiftWeeks, weekStart } from "@/modules/assets/service";
+import { canBookAssets, canDecideBookings, canManageAssets, listBookableAssets, listBookingRequests, listBookings, listBookingsOfPerson, listCategories, shiftWeeks, weekStart } from "@/modules/assets/service";
 import { BookingCalendarFilters, BookingList, BookingWeek } from "@/modules/assets/ui/booking-calendar";
 import { BookAssetForm } from "@/modules/assets/ui/booking-forms";
+import { AssetsNav } from "@/modules/assets/ui/nav";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("equipmentBookings");
@@ -49,33 +53,38 @@ export default async function BookingsPage({ searchParams }: PageProps<"/assets/
     if (filter.entityId) params.set("entityId", filter.entityId);
     return `/assets/bookings?${params.toString()}`;
   };
+  const weekLabel = t("week.of", { date: isoMonday(weekBegins).split("-").reverse().join("/") });
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1>{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
-        </div>
-        <Link href="/assets/mine" className="h-9 rounded-md border px-3 text-sm leading-9">
-          {t("nav.mine")}
-        </Link>
-      </header>
+    <Page width="wide">
+      <PageHeader
+        title={t("title")}
+        description={t("description")}
+        actions={
+          <Button nativeButton={false} variant="outline" render={<Link href="/assets/mine" />}>
+            {t("nav.mine")}
+          </Button>
+        }
+      />
+      <AssetsNav current="bookings" manages={canManageAssets(user.principal)} principal={user.principal} />
 
       <BookingCalendarFilters query={{ ...filter, week: isoMonday(weekBegins) }} categories={categories} entities={entities} />
 
-      <section className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-2">
-          <Link href={link(-1)} className="h-8 rounded-md border px-3 text-sm leading-8">
-            ← {t("week.previous")}
-          </Link>
-          <p className="text-sm font-medium">{t("week.of", { date: isoMonday(weekBegins).split("-").reverse().join("/") })}</p>
-          <Link href={link(1)} className="h-8 rounded-md border px-3 text-sm leading-8">
-            {t("week.next")} →
-          </Link>
-        </div>
+      <Section
+        title={weekLabel}
+        action={
+          <span className="flex items-center gap-1">
+            <Button nativeButton={false} variant="ghost" size="icon-sm" render={<Link href={link(-1)} aria-label={t("week.previous")} />}>
+              <ChevronLeftIcon />
+            </Button>
+            <Button nativeButton={false} variant="ghost" size="icon-sm" render={<Link href={link(1)} aria-label={t("week.next")} />}>
+              <ChevronRightIcon />
+            </Button>
+          </span>
+        }
+      >
         <BookingWeek weekBegins={weekBegins} assets={assets} bookings={bookings} />
-      </section>
+      </Section>
 
       {waiting.length > 0 ? (
         <TableCard>
@@ -93,6 +102,6 @@ export default async function BookingsPage({ searchParams }: PageProps<"/assets/
           </TableAddRow>
         ) : null}
       </TableCard>
-    </div>
+    </Page>
   );
 }

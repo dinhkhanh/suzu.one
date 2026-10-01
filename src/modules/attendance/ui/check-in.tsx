@@ -1,18 +1,25 @@
 "use client";
-// The check-in screen's moving parts: one big button that asks the phone where it is and sends the
-// punch, the answer in words, the install hint, and the reviewer's accept / reject form.
+// The check-in screen's moving parts: the status card (the state in words, the clock, one big key
+// that asks the phone where it is and sends the punch, the answer in words), the install hint, and
+// the reviewer's accept / reject form.
+import { MapPinIcon } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
+import { cn } from "cn";
 import { FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { punchAction, reviewPunchAction } from "../checkin-actions";
+import { hoursText } from "./day-plan";
 
 type PunchOutcome = { at: string; direction: "in" | "out"; outcome: "accepted" | "flagged"; flags: string[]; locationName: string | null; distanceM: number | null; duplicate: boolean };
 type PositionReading = { latitude: number; longitude: number; accuracyM: number };
+
+const ZONE = "Asia/Ho_Chi_Minh";
 
 // Ten seconds is as long as anyone waits at the door; without a fix the punch still goes through, flagged.
 function readPosition(): Promise<{ position: PositionReading | null; problem: string | null }> {
@@ -35,10 +42,41 @@ const deviceInfo = (positionProblem: string | null) => ({
   ...(positionProblem ? { positionProblem } : {}),
 });
 
-export function CheckInPanel({ nextDirection, punchExpected }: { nextDirection: "in" | "out"; /** false on untracked days, rest days and holidays: the button is there, but smaller words explain it is not needed. */ punchExpected: boolean }) {
+const everySecond = (onTick: () => void) => {
+  const timer = setInterval(onTick, 1000);
+  return () => clearInterval(timer);
+};
+const secondsNow = () => Math.floor(Date.now() / 1000);
+const noSnapshot = () => null;
+
+/** The wall clock, once a second, from the moment the page is on screen (the server renders no time, so nothing mismatches at hydration). */
+function useNow(): Date | null {
+  const seconds = useSyncExternalStore(everySecond, secondsNow, noSnapshot);
+  return seconds === null ? null : new Date(seconds * 1000);
+}
+
+export function CheckInPanel({
+  nextDirection,
+  punchExpected,
+  sinceAt,
+  lastLocationName,
+  hasLocations,
+  punchedToday,
+}: {
+  nextDirection: "in" | "out";
+  /** false on untracked days, rest days and holidays: the button is there, but smaller words explain it is not needed. */
+  punchExpected: boolean;
+  /** When the open check-in was made (ISO), for the "in since" line. */
+  sinceAt: string | null;
+  /** Where the last punch of the day was accepted, for the location line. */
+  lastLocationName: string | null;
+  hasLocations: boolean;
+  punchedToday: boolean;
+}) {
   const t = useTranslations("attendance.checkIn");
   const format = useFormatter();
   const router = useRouter();
+  const now = useNow();
   const [pending, startTransition] = useTransition();
   const [stage, setStage] = useState<"idle" | "locating" | "sending">("idle");
   const [result, setResult] = useState<PunchOutcome | null>(null);
@@ -65,54 +103,81 @@ export function CheckInPanel({ nextDirection, punchExpected }: { nextDirection: 
     });
   }
 
-  return (
-    <div className="flex flex-col items-center gap-4">
-      <button
-        type="button"
-        onClick={punch}
-        disabled={pending}
-        className={`flex size-48 flex-col items-center justify-center rounded-full text-xl font-semibold shadow-lg transition active:scale-95 disabled:opacity-60 ${nextDirection === "in" ? "bg-primary text-primary-foreground" : "bg-foreground text-background"}`}
-      >
-        {stage === "locating" ? t("locating") : stage === "sending" ? t("sending") : t(nextDirection === "in" ? "checkIn" : "checkOut")}
-      </button>
-      {punchExpected ? null : <p className="text-center text-sm text-muted-foreground">{t("notExpected")}</p>}
-      <label className="flex w-full max-w-sm flex-col gap-1 text-sm">
-        <span className="text-muted-foreground">{t("note")}</span>
-        <Input value={note} onChange={(event) => setNote(event.target.value)} maxLength={300} placeholder={t("notePlaceholder")} />
-      </label>
+  // Until the refresh lands, the answer just received is the truth.
+  const checkedIn = result ? result.direction === "in" : nextDirection === "out";
+  const since = result?.direction === "in" ? result.at : checkedIn ? sinceAt : null;
+  const sinceDate = since ? new Date(since) : null;
+  const elapsedMinutes = sinceDate && now ? Math.max(0, Math.floor((now.getTime() - sinceDate.getTime()) / 60_000)) : null;
+  const locationLine = result?.locationName ?? lastLocationName ?? (hasLocations ? t("locationChecked") : t("noLocations"));
+  const clock = (value: Date) => format.dateTime(value, { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: ZONE });
+  const seconds = now ? format.dateTime(now, { second: "2-digit", timeZone: ZONE }).padStart(2, "0") : "--";
+  const status = checkedIn ? "in" : result || punchedToday ? "out" : "none";
 
-      <div aria-live="polite" className="w-full max-w-sm text-center text-sm">
+  return (
+    <section data-slot="check-in-card" className={cn("flex flex-col items-center gap-5 rounded-[14px] border border-border bg-background px-5 py-6 text-center transition-shadow duration-200 ease-(--ease-settle)", checkedIn && "ring-8 ring-success/10")}>
+      <Badge variant={checkedIn ? "success" : "secondary"} className="h-7 px-3 text-[0.8125rem]">
+        <span aria-hidden className={cn("size-2 shrink-0 rounded-full bg-current", checkedIn && "animate-pulse")} />
+        {t(`status.${status}`)}
+      </Badge>
+
+      <div className="flex flex-col items-center gap-1.5">
+        <p className="flex items-baseline font-mono text-[64px] leading-none font-medium tracking-[-0.03em] tabular-nums" aria-live="off">
+          <span>{now ? clock(now) : "--:--"}</span>
+          <span className="ml-1 text-2xl text-faint">{seconds}</span>
+        </p>
+        {sinceDate && elapsedMinutes !== null ? <p className="text-sm text-muted-foreground">{t("since", { time: clock(sinceDate), elapsed: hoursText(elapsedMinutes) })}</p> : null}
+      </div>
+
+      <Button type="button" variant={nextDirection === "in" ? "accent" : "default"} size="lg" className="w-full" onClick={punch} disabled={pending}>
+        {stage === "locating" ? t("locating") : stage === "sending" ? t("sending") : t(nextDirection === "in" ? "checkIn" : "checkOut")}
+      </Button>
+      {punchExpected ? null : <p className="text-sm text-muted-foreground">{t("notExpected")}</p>}
+
+      <p className="flex items-center justify-center gap-1.5 text-[0.8125rem] text-muted-foreground">
+        <MapPinIcon aria-hidden className="size-3.5 shrink-0 text-faint" />
+        <span>{locationLine}</span>
+      </p>
+
+      <Input value={note} onChange={(event) => setNote(event.target.value)} maxLength={300} placeholder={t("notePlaceholder")} aria-label={t("note")} className="w-full" />
+
+      <div aria-live="polite" className="flex w-full flex-col gap-2 text-left empty:hidden">
         {result ? (
-          <div className={`rounded-xl border p-3 ${result.outcome === "flagged" ? "border-amber-500/50 bg-amber-500/10" : "border-emerald-500/50 bg-emerald-500/10"}`}>
-            <p className="font-medium">
-              {t(result.direction === "in" ? "doneIn" : "doneOut", { time: format.dateTime(new Date(result.at), { hour: "2-digit", minute: "2-digit" }) })}
-              {result.locationName ? ` · ${result.locationName}` : ""}
-            </p>
-            {result.duplicate ? <p className="text-muted-foreground">{t("duplicate")}</p> : null}
-            {result.outcome === "flagged" ? (
-              <>
-                <p>{t("flagged")}</p>
-                <ul className="text-muted-foreground">
-                  {result.flags.map((flag) => (
-                    <li key={flag}>{t(`flags.${flag}`, { distance: result.distanceM ?? 0 })}</li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-          </div>
+          <Alert variant={result.outcome === "flagged" ? "warning" : "success"}>
+            <div className="flex flex-col gap-1">
+              <AlertTitle>
+                {t(result.direction === "in" ? "doneIn" : "doneOut", { time: clock(new Date(result.at)) })}
+                {result.locationName ? ` · ${result.locationName}` : ""}
+              </AlertTitle>
+              {result.duplicate ? <p>{t("duplicate")}</p> : null}
+              {result.outcome === "flagged" ? (
+                <>
+                  <p>{t("flagged")}</p>
+                  <ul className="list-disc pl-4">
+                    {result.flags.map((flag) => (
+                      <li key={flag}>{t(`flags.${flag}`, { distance: result.distanceM ?? 0 })}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+            </div>
+          </Alert>
         ) : null}
         {failure ? (
           <Alert variant="destructive">
-            <AlertTitle>{t.has(`errors.${failure.key}`) ? t(`errors.${failure.key}`) : t("errors.generic")}</AlertTitle>
-            <ul className="w-full">
-              {failure.flags.map((flag) => (
-                <li key={flag}>{t(`flags.${flag}`, { distance: 0 })}</li>
-              ))}
-            </ul>
+            <div className="flex flex-col gap-1">
+              <AlertTitle>{t.has(`errors.${failure.key}`) ? t(`errors.${failure.key}`) : t("errors.generic")}</AlertTitle>
+              {failure.flags.length > 0 ? (
+                <ul className="list-disc pl-4">
+                  {failure.flags.map((flag) => (
+                    <li key={flag}>{t(`flags.${flag}`, { distance: 0 })}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
           </Alert>
         ) : null}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -142,14 +207,16 @@ export function InstallHint() {
 
   if (mode === "hidden") return null;
   return (
-    <aside className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-dashed p-3 text-sm text-muted-foreground">
-      <span>{t(offer ? "offer" : mode === "ios" ? "ios" : "generic")}</span>
-      {offer ? (
-        <Button type="button" variant="outline" size="sm" onClick={() => offer.prompt().finally(() => setOffer(null))}>
-          {t("button")}
-        </Button>
-      ) : null}
-    </aside>
+    <Alert>
+      <div className="flex w-full flex-wrap items-center justify-between gap-2 text-muted-foreground">
+        <span>{t(offer ? "offer" : mode === "ios" ? "ios" : "generic")}</span>
+        {offer ? (
+          <Button type="button" variant="outline" size="sm" onClick={() => offer.prompt().finally(() => setOffer(null))}>
+            {t("button")}
+          </Button>
+        ) : null}
+      </div>
+    </Alert>
   );
 }
 

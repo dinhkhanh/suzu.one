@@ -1,5 +1,10 @@
+import { ShieldCheckIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
+import { Alert } from "@/components/ui/alert";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Page, PageHeader } from "@/components/ui/page";
 import { requireUser } from "@/modules/platform/auth/session";
 import { stepUpDriver } from "@/modules/platform/auth/step-up";
 import { isStepUpFresh, safeNextPath, STEP_UP_WINDOW_MINUTES } from "@/modules/platform/auth/step-up-policy";
@@ -22,34 +27,32 @@ export default async function StepUpPage({ searchParams }: PageProps<"/step-up">
   // would open what only the person seen as may open. Say so instead of sending them round again.
   if (user.impersonator) {
     return (
-      <div className="flex max-w-md flex-col gap-4">
-        <header>
-          <h1>{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("impersonating", { name: user.person.fullName })}</p>
-        </header>
-      </div>
+      <Page width="narrow">
+        <PageHeader title={t("title")} />
+        <Alert variant="warning">{t("impersonating", { name: user.person.fullName })}</Alert>
+      </Page>
     );
   }
 
   return (
-    <div className="flex max-w-md flex-col gap-4">
-      <header>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description", { minutes: STEP_UP_WINDOW_MINUTES })}</p>
-      </header>
-      {params.error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {t("errors.rejected")}
-        </p>
-      ) : null}
-      {driver === "local" ? (
-        <LocalStepUpForm next={next} />
-      ) : (
-        // A plain link on purpose: the round trip leaves the site, so it must be a full navigation.
-        <a href={`/api/step-up/start?next=${encodeURIComponent(next)}`} className="inline-flex h-9 items-center self-start rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-          {t("google", { email: user.email })}
-        </a>
-      )}
-    </div>
+    <Page width="narrow">
+      <PageHeader title={t("title")} description={t("description", { minutes: STEP_UP_WINDOW_MINUTES })} />
+      {params.error ? <Alert variant="destructive">{t("errors.rejected")}</Alert> : null}
+      <Card>
+        <CardContent className="flex flex-col gap-4">
+          <span className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <ShieldCheckIcon aria-hidden className="size-5" />
+          </span>
+          {driver === "local" ? (
+            <LocalStepUpForm next={next} />
+          ) : (
+            // A plain link on purpose: the round trip leaves the site, so it must be a full navigation.
+            <a href={`/api/step-up/start?next=${encodeURIComponent(next)}`} className={buttonVariants({ variant: "accent", size: "lg", className: "h-auto min-h-12 w-full py-3 text-center whitespace-normal md:w-auto md:self-start" })}>
+              {t("google", { email: user.email })}
+            </a>
+          )}
+        </CardContent>
+      </Card>
+    </Page>
   );
 }

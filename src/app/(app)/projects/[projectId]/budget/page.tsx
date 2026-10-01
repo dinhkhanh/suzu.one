@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Page, Section, Tile, TileGrid } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { BUDGET_THRESHOLDS, listStructure, loadBurns, openProject, PROJECT_KINDS } from "@/modules/projects/service";
@@ -26,50 +28,39 @@ export default async function ProjectBudgetPage({ params }: PageProps<"/projects
   const hours = (minutes: number | null) => (minutes === null ? "—" : format.number(minutes / 60, { maximumFractionDigits: 1 }));
   const width = (minutes: number) => (burn.budgetMinutes ? `${Math.min(100, (minutes / burn.budgetMinutes) * 100)}%` : "0%");
   const budgetedPhases = structure.phases.filter((phase) => phase.budgetMinutes);
+  const tone = burn.level === "over" ? "destructive" : burn.level === "warning" ? "warning" : undefined;
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
+    <Page>
       <ProjectHeader context={context} current="budget" />
 
-      <section className="flex flex-col gap-3 rounded-xl border p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-medium">{t("budget.burn")}</h2>
-          {burn.level !== "none" ? <Badge variant={burn.level === "over" ? "destructive" : burn.level === "warning" ? "warning" : "success"}>{t(`budget.level.${burn.level}`, { percent: burn.percent ?? 0 })}</Badge> : null}
-        </div>
-        <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-          <div>
-            <dt className="text-xs text-muted-foreground">{t("budget.logged")}</dt>
-            <dd className="text-lg font-medium">{hours(burn.loggedMinutes)}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">{t("budget.remaining")}</dt>
-            <dd className="text-lg font-medium">{hours(burn.remainingMinutes)}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">{t("budget.forecast")}</dt>
-            <dd className="text-lg font-medium">{hours(burn.burnMinutes)}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">{t("fields.budgetHours")}</dt>
-            <dd className="text-lg font-medium">{hours(burn.budgetMinutes)}</dd>
-          </div>
-        </dl>
-        {burn.budgetMinutes ? (
-          <div className="relative h-3 overflow-hidden rounded-full bg-muted" role="img" aria-label={t("budget.barLabel", { logged: hours(burn.loggedMinutes), forecast: hours(burn.burnMinutes), budget: hours(burn.budgetMinutes) })}>
-            <div className="absolute inset-y-0 left-0 bg-primary/30" style={{ width: width(burn.burnMinutes) }} />
-            <div className="absolute inset-y-0 left-0 bg-primary" style={{ width: width(burn.loggedMinutes) }} />
-            {BUDGET_THRESHOLDS.filter((threshold) => threshold < 100).map((threshold) => (
-              <div key={threshold} className="absolute inset-y-0 w-px bg-foreground/50" style={{ left: `${threshold}%` }} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">{t("budget.noBudget")}</p>
-        )}
-        <p className="text-xs text-muted-foreground">{t("budget.explain")}</p>
-      </section>
+      <Section title={t("budget.burn")} action={burn.level !== "none" ? <Badge variant={burn.level === "over" ? "destructive" : burn.level === "warning" ? "warning" : "success"}>{t(`budget.level.${burn.level}`, { percent: burn.percent ?? 0 })}</Badge> : null}>
+        <TileGrid>
+          <Tile label={t("budget.logged")} value={hours(burn.loggedMinutes)} />
+          <Tile label={t("budget.remaining")} value={hours(burn.remainingMinutes)} />
+          <Tile label={t("budget.forecast")} value={hours(burn.burnMinutes)} tone={tone} />
+          <Tile label={t("fields.budgetHours")} value={hours(burn.budgetMinutes)} />
+        </TileGrid>
+        <Card>
+          <CardContent className="flex flex-col gap-3">
+            {burn.budgetMinutes ? (
+              <div className="relative h-1.5 overflow-hidden rounded-full bg-muted" role="img" aria-label={t("budget.barLabel", { logged: hours(burn.loggedMinutes), forecast: hours(burn.burnMinutes), budget: hours(burn.budgetMinutes) })}>
+                <div className="absolute inset-y-0 left-0 rounded-full bg-primary/30" style={{ width: width(burn.burnMinutes) }} />
+                <div className="absolute inset-y-0 left-0 rounded-full bg-primary" style={{ width: width(burn.loggedMinutes) }} />
+                {BUDGET_THRESHOLDS.filter((threshold) => threshold < 100).map((threshold) => (
+                  <div key={threshold} className="absolute inset-y-0 w-px bg-foreground/40" style={{ left: `${threshold}%` }} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">{t("budget.noBudget")}</p>
+            )}
+            <p className="text-xs text-muted-foreground">{t("budget.explain")}</p>
+          </CardContent>
+        </Card>
+      </Section>
 
       {plan.budgetByRole.length || budgetedPhases.length ? (
-        <section className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           {plan.budgetByRole.length ? (
             <TableCard>
               <TableCardHeader title={t("settings.byRole")} />
@@ -112,24 +103,30 @@ export default async function ProjectBudgetPage({ params }: PageProps<"/projects
               </Table>
             </TableCard>
           ) : null}
-        </section>
+        </div>
       ) : null}
 
       {can.seeFees ? (
-        <section className="flex flex-col gap-2 rounded-xl border p-4">
-          <h2 className="text-base font-medium">{t("budget.fee")}</h2>
-          <p className="text-lg font-medium">{plan.feeVnd === null || plan.feeVnd === undefined ? "—" : format.number(plan.feeVnd, { style: "currency", currency: "VND", maximumFractionDigits: 0 })}</p>
-          <p className="text-xs text-muted-foreground">{t("budget.feeNote")}</p>
-          {can.editFees ? <FeeForm projectId={project.id} feeVnd={plan.feeVnd ?? null} /> : null}
-        </section>
+        <Section title={t("budget.fee")}>
+          <Card>
+            <CardContent className="flex flex-col gap-2">
+              <p className="font-mono text-2xl font-medium tracking-[-0.02em] tabular-nums">{plan.feeVnd === null || plan.feeVnd === undefined ? "—" : format.number(plan.feeVnd, { style: "currency", currency: "VND", maximumFractionDigits: 0 })}</p>
+              <p className="text-xs text-muted-foreground">{t("budget.feeNote")}</p>
+              {can.editFees ? <FeeForm projectId={project.id} feeVnd={plan.feeVnd ?? null} /> : null}
+            </CardContent>
+          </Card>
+        </Section>
       ) : null}
 
       {can.editPlan ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-base font-medium">{t("budget.edit")}</h2>
-          <PlanSettingsForm projectId={project.id} values={{ kind: plan.kind, budgetMinutes: plan.budgetMinutes, budgetByRole: plan.budgetByRole, updateCadenceDays: plan.updateCadenceDays, driveUrl: plan.driveUrl }} kinds={PROJECT_KINDS} />
-        </section>
+        <Section title={t("budget.edit")}>
+          <Card>
+            <CardContent>
+              <PlanSettingsForm projectId={project.id} values={{ kind: plan.kind, budgetMinutes: plan.budgetMinutes, budgetByRole: plan.budgetByRole, updateCadenceDays: plan.updateCadenceDays, driveUrl: plan.driveUrl }} kinds={PROJECT_KINDS} />
+            </CardContent>
+          </Card>
+        </Section>
       ) : null}
-    </div>
+    </Page>
   );
 }

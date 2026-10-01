@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
+import { Page, PageHeader } from "@/components/ui/page";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
 import { canEditSchedule, getScheduleView, listReportsFor } from "@/modules/reports/service";
@@ -33,18 +34,16 @@ export default async function SchedulePage({ params }: PageProps<"/reports/sched
   const day = (value: string | null) => (value ? format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" }) : "—");
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/reports/schedules" className="underline underline-offset-4">
-            {t("title")}
-          </Link>
-        </p>
-        <h1>{schedule.name}</h1>
-        <p className="text-sm text-muted-foreground">
-          {t("nextRun")}: {day(schedule.nextRunOn)} · {t("lastRun")}: {day(schedule.lastRunOn)}
-        </p>
-      </header>
+    <Page width="narrow">
+      <PageHeader
+        eyebrow={<Link href="/reports/schedules">{t("title")}</Link>}
+        title={schedule.name}
+        description={
+          <>
+            {t("nextRun")}: {day(schedule.nextRunOn)} · {t("lastRun")}: {day(schedule.lastRunOn)}
+          </>
+        }
+      />
 
       <ScheduleForm
         draft={{
@@ -73,6 +72,6 @@ export default async function SchedulePage({ params }: PageProps<"/reports/sched
           </div>
         </section>
       ) : null}
-    </div>
+    </Page>
   );
 }

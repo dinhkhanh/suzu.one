@@ -4,9 +4,10 @@ import { useRef, useState } from "react";
 import { Field, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { decideParameterAction, proposeParameterAction } from "../actions";
 import { PARAMETER_KEYS, type ParameterKey } from "../catalogue";
 
@@ -18,9 +19,7 @@ export function ProposeParameterForm({ current }: { current: Partial<Record<Para
   const { onSubmit, pending, errorKey } = useActionForm(proposeParameterAction, { onSuccess: () => form.current?.reset() });
 
   return (
-    <form ref={form} onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("propose.title")}</h2>
-      <p className="text-sm text-muted-foreground">{t("propose.hint")}</p>
+    <form ref={form} onSubmit={onSubmit} className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field name="key" label={t("parameter")}>
           <Select id="key" name="key" value={key} onChange={(event) => setKey(event.target.value as ParameterKey)}>
@@ -36,16 +35,7 @@ export function ProposeParameterForm({ current }: { current: Partial<Record<Para
         </Field>
         <div className="sm:col-span-2">
           <Field name="value" label={t("propose.value")}>
-            <textarea
-              key={key}
-              id="value"
-              name="value"
-              required
-              rows={8}
-              spellCheck={false}
-              defaultValue={JSON.stringify(current[key] ?? {}, null, 2)}
-              className="w-full rounded-md border bg-transparent p-2 font-mono text-xs"
-            />
+            <Textarea key={key} id="value" name="value" required rows={8} spellCheck={false} defaultValue={JSON.stringify(current[key] ?? {}, null, 2)} className="min-h-48 font-mono text-xs leading-relaxed md:text-xs" />
           </Field>
         </div>
         <Field name="legalReference" label={t("legalReference")}>
@@ -56,8 +46,8 @@ export function ProposeParameterForm({ current }: { current: Partial<Record<Para
         </Field>
       </div>
       <FormError namespace="rules.errors" errorKey={errorKey} />
-      <div>
-        <Button type="submit" disabled={pending}>
+      <div className="flex justify-end">
+        <Button type="submit" disabled={pending} size="lg" className="w-full md:w-auto">
           {t("propose.submit")}
         </Button>
       </div>
@@ -70,10 +60,10 @@ export function DecisionButtons({ id, decisions }: { id: string; decisions: read
   const { onSubmit, pending, errorKey } = useActionForm(decideParameterAction, { extra: { id } });
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-1">
-      <div className="flex gap-2">
+    <form onSubmit={onSubmit} className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2">
         {decisions.map((option) => (
-          <Button key={option} type="submit" name="decision" value={option} size="sm" variant={option === "reject" ? "outline" : "default"} disabled={pending}>
+          <Button key={option} type="submit" name="decision" value={option} size="sm" variant={option === "reject" ? "destructive" : option === "verify" ? "outline" : "default"} disabled={pending}>
             {t(`decisions.${option}`)}
           </Button>
         ))}

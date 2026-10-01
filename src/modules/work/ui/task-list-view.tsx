@@ -1,21 +1,23 @@
 "use client";
-import { useFormatter, useTranslations } from "next-intl";
+import { ArrowUpDownIcon, LayersIcon, XIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useOptimistic, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { TableCard, TableCardHeader } from "@/components/ui/table";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableGroupRow, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createTaskAction, deleteViewAction, saveViewAction, updateTaskAction } from "../actions";
 import { customKey, fieldIdOf } from "../engine/custom-fields";
 import { filterEntries, filterTasks, GROUPINGS, groupTasks, type ListGrouping, type ListSort, nestTasks, readFilters, readGrouping, readSort, SORTS, sortTasks, type TaskFilters } from "../engine/filter";
-import { PRIORITIES } from "../enums";
-import { CustomFieldFilters, CustomValueText, type FieldView } from "./custom-fields";
-import { writeFiltersToUrl } from "./filter-bar";
+import { CustomValueText, type FieldView } from "./custom-fields";
+import { FilterBar, MenuPicker, writeFiltersToUrl } from "./filter-bar";
 import { useHandoffGate } from "./handoff";
+import { DueText, dotOf, PersonAvatar, StateDot, TaskKey } from "./task-row";
 import { LabelChip } from "./team-forms";
 
 export type ListTask = {
@@ -65,7 +67,19 @@ export function sortChoices(fields: FieldView[]): { value: string; field?: Field
   return [...SORTS.flatMap((key) => (key === "rank" ? [{ value: key }] : [{ value: key }, { value: `-${key}` }])), ...fields.flatMap((field) => [{ value: customKey(field.id), field }, { value: `-${customKey(field.id)}`, field }])];
 }
 
-const PRIORITY_CLASS: Record<number, string> = { 1: "text-destructive", 2: "text-orange-600 dark:text-orange-400", 3: "text-blue-600 dark:text-blue-400", 4: "text-muted-foreground" };
+const PRIORITY_CLASS: Record<number, string> = { 1: "text-destructive", 2: "text-tone-orange", 3: "text-info", 4: "text-faint" };
+
+/** The priority as a short mark: "!!!" for urgent down to "↓" for low; nothing when unset. */
+export function PriorityMark({ priority, title }: { priority: number | null; title?: string }) {
+  if (!priority) return null;
+  return (
+    <span className={`shrink-0 font-mono text-[0.6875rem] font-bold ${PRIORITY_CLASS[priority]}`} title={title} aria-label={title}>
+      {priority === 4 ? "↓" : "!".repeat(4 - priority)}
+    </span>
+  );
+}
+
+const typingInField = (target: EventTarget | null) => target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 
 export function TaskListView({
   tasks,
@@ -94,7 +108,6 @@ export function TaskListView({
 }) {
   const t = useTranslations("work.list");
   const tWork = useTranslations("work");
-  const format = useFormatter();
   const router = useRouter();
   const [filters, setFilters] = useState<TaskFilters>(initialFilters);
   const [grouping, setGrouping] = useState<ListGrouping>(initialGrouping);
@@ -104,10 +117,21 @@ export function TaskListView({
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const titleInput = useRef<HTMLInputElement>(null);
+  const addRow = useRef<HTMLDetailsElement>(null);
   // Shown at once; the server's answer replaces them when the page data refreshes.
   const [shown, applyOptimistic] = useOptimistic(tasks, (current: ListTask[], change: { type: "state"; id: string; stateId: string } | { type: "add"; task: ListTask }) =>
     change.type === "add" ? [...current, change.task] : current.map((task) => (task.id === change.id ? { ...task, stateId: change.stateId } : task)),
   );
+
+  // "C" (the palette's shortcut) focuses the quick-create box: unfold the add row first, so the
+  // focus lands. Capture phase, so this runs before the palette's own listener.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "c" && !event.metaKey && !event.ctrlKey && !event.altKey && !typingInField(event.target) && addRow.current) addRow.current.open = true;
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
 
   // Filters live in the URL (shareable, survive a reload) without a server round trip.
   function sync(nextFilters: TaskFilters, nextGrouping: ListGrouping, nextSort: ListSort = sort) {
@@ -120,6 +144,7 @@ export function TaskListView({
   };
 
   const names = useMemo(() => new Map(options.people.map((person) => [person.id, person.fullName])), [options.people]);
+  const stateById = useMemo(() => new Map(options.states.map((state) => [state.id, state])), [options.states]);
   const visible = useMemo(() => sortTasks(filterTasks(shown, filters, { selfId, today, fields }), sort, fields, names), [shown, filters, selfId, today, fields, sort, names]);
   const groupField = fields.find((field) => field.id === fieldIdOf(grouping));
   const groups = useMemo(() => {
@@ -134,8 +159,8 @@ export function TaskListView({
       if (groupField.type === "select" || groupField.type === "multi_select") return groupField.options.find((option) => option.id === key)?.label ?? key;
       return key;
     }
-    if (grouping === "status") return options.states.find((state) => state.id === key)?.name ?? key;
-    if (grouping === "assignee") return key === "none" ? t("unassigned") : (options.people.find((person) => person.id === key)?.fullName ?? shown.find((task) => task.assigneePersonId === key)?.assigneeName ?? key);
+    if (grouping === "status") return stateById.get(key)?.name ?? key;
+    if (grouping === "assignee") return key === "none" ? t("unassigned") : (names.get(key) ?? shown.find((task) => task.assigneePersonId === key)?.assigneeName ?? key);
     return key === "none" ? t("noClient") : (options.clients.find((client) => client.id === key)?.name ?? key);
   };
   const failed = (result: { ok: boolean; error?: string; message?: string }) => setErrorKey(result.ok ? null : ((result.error === "failed" ? result.message : result.error) ?? "generic"));
@@ -190,151 +215,144 @@ export function TaskListView({
       router.refresh();
     });
   }
+
+  const groupChoices = [
+    ...GROUPINGS.map((value) => ({ value, label: t(`grouping.${value}`) })),
+    ...fields.filter((field) => field.type !== "text" && field.type !== "url").map((field) => ({ value: customKey(field.id), label: t("groupByField", { name: field.name }) })),
+  ];
+  const sortOptions = sortChoices(fields).map((choice) => ({ value: choice.value, label: choice.field ? t(choice.value.startsWith("-") ? "sorts.-field" : "sorts.field", { name: choice.field.name }) : t(`sorts.${choice.value as "rank"}`) }));
+
+  const row = (task: ListTask, depth: number) => {
+    const open = task.status === "todo" || task.status === "in_progress";
+    const state = stateById.get(task.stateId);
+    const editable = (canContribute || task.assigneePersonId === selfId) && !task.id.startsWith("new-");
+    const assignee = task.assigneeName ?? (task.assigneePersonId ? names.get(task.assigneePersonId) : null) ?? null;
+    const chips = (
+      <>
+        {task.blocker ? (
+          <Badge variant="destructive" title={task.blocker.neededName ? `${task.blocker.reason} — ${tWork("blockers.waitingOn", { name: task.blocker.neededName })}` : task.blocker.reason}>
+            {tWork("blockers.badge")}
+          </Badge>
+        ) : null}
+        {task.blockedBy > 0 ? <Badge variant="destructive">{t("blocked")}</Badge> : null}
+        {task.triageStatus === "pending" || task.triageStatus === "snoozed" ? <Badge variant="warning">{t("inTriage")}</Badge> : null}
+        {task.away ? <Badge variant="outline">{task.away.coverName ? tWork("cover.awayCovered", { name: task.away.coverName }) : tWork("cover.away")}</Badge> : null}
+        {task.labelIds.map((id) => {
+          const label = options.labels.find((row) => row.id === id);
+          return label ? <LabelChip key={id} name={label.name} color={label.color} /> : null;
+        })}
+        {cardFields.map((field) =>
+          task.customValues?.[field.id] === undefined ? null : (
+            <span key={field.id} className="text-xs text-muted-foreground" title={field.name}>
+              <CustomValueText field={field} value={task.customValues[field.id]} people={options.people} />
+            </span>
+          ),
+        )}
+        {task.subtasks.total > 0 ? <span className="font-mono text-[0.6875rem] text-faint tabular-nums">{t("subtasks", task.subtasks)}</span> : null}
+        {task.checklist.total > 0 ? (
+          <span className="font-mono text-[0.6875rem] text-faint tabular-nums">
+            ☑ {task.checklist.done}/{task.checklist.total}
+          </span>
+        ) : null}
+      </>
+    );
+    return (
+      <TableRow key={task.id}>
+        <TableCell className="w-px pr-0">
+          <StateDot category={state?.category ?? dotOf(task.status)} title={state?.name} />
+        </TableCell>
+        <TableCell kind="id" className="hidden md:table-cell">
+          {task.key}
+        </TableCell>
+        <TableCell className="max-w-0 min-w-56 py-1.5" style={depth ? { paddingLeft: `${0.75 + depth * 1.25}rem` } : undefined}>
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="flex min-w-0 items-center gap-2">
+              <PriorityMark priority={task.priority} title={task.priority ? tWork(`priority.${task.priority as 1}`) : undefined} />
+              <Link href={`/work/tasks/${task.id}`} title={task.title} className={`min-w-0 truncate hover:underline ${open ? "font-medium" : "text-muted-foreground line-through"}`}>
+                {task.title}
+              </Link>
+              <span className="hidden min-w-0 items-center gap-1.5 md:flex">{chips}</span>
+            </span>
+            {/* On a phone the row's columns fold into a meta line under the title. */}
+            <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground md:hidden">
+              <TaskKey>{task.key}</TaskKey>
+              {state ? <span>{state.name}</span> : null}
+              <DueText dueDate={task.dueDate} today={today} open={open} />
+              {chips}
+            </span>
+          </span>
+        </TableCell>
+        <TableCell className="w-px">
+          <span className="flex items-center gap-2" title={assignee ?? t("unassigned")}>
+            <PersonAvatar name={assignee} />
+            <span className="hidden max-w-32 truncate text-xs text-muted-foreground lg:inline">{assignee ?? t("unassigned")}</span>
+          </span>
+        </TableCell>
+        <TableCell kind="date" className="hidden w-px md:table-cell">
+          <DueText dueDate={task.dueDate} today={today} open={open} />
+        </TableCell>
+        <TableCell className="hidden w-px md:table-cell">
+          {editable ? (
+            <Select aria-label={t("state")} value={task.stateId} disabled={pending} searchable={false} onChange={(event) => moveState(task, event.target.value)} className="h-7 w-36 text-xs md:h-7 md:text-xs">
+              {options.states
+                .filter((row) => row.isActive || row.id === task.stateId)
+                .map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.name}
+                  </option>
+                ))}
+            </Select>
+          ) : (
+            <span className="text-xs text-muted-foreground">{state?.name ?? "…"}</span>
+          )}
+        </TableCell>
+      </TableRow>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <Input type="search" aria-label={t("search")} placeholder={t("search")} value={filters.q ?? ""} onChange={(event) => setFilter("q", event.target.value)} className="w-52" />
-        <Select aria-label={t("assignee")} value={filters.assignee ?? ""} onChange={(event) => setFilter("assignee", event.target.value)} className="w-40">
-          <option value="">{t("anyAssignee")}</option>
-          <option value="me">{t("me")}</option>
-          <option value="none">{t("unassigned")}</option>
-          {options.people.map((person) => (
-            <option key={person.id} value={person.id}>
-              {person.fullName}
-            </option>
-          ))}
-        </Select>
-        <Select aria-label={t("state")} value={filters.state ?? ""} onChange={(event) => setFilter("state", event.target.value)} className="w-40">
-          <option value="">{t("anyState")}</option>
-          {options.states.map((state) => (
-            <option key={state.id} value={state.id}>
-              {state.name}
-            </option>
-          ))}
-        </Select>
-        <Select aria-label={t("priority")} value={filters.priority ?? ""} onChange={(event) => setFilter("priority", event.target.value)} className="w-36">
-          <option value="">{t("anyPriority")}</option>
-          {PRIORITIES.map((priority) => (
-            <option key={priority} value={priority}>
-              {tWork(`priority.${priority}`)}
-            </option>
-          ))}
-          <option value="none">{tWork("priority.none")}</option>
-        </Select>
-        {options.labels.length ? (
-          <Select aria-label={t("label")} value={filters.label ?? ""} onChange={(event) => setFilter("label", event.target.value)} className="w-36">
-            <option value="">{t("anyLabel")}</option>
-            {options.labels.map((label) => (
-              <option key={label.id} value={label.id}>
-                {label.name}
-              </option>
-            ))}
-          </Select>
-        ) : null}
-        {options.clients.length ? (
-          <Select aria-label={t("client")} value={filters.client ?? ""} onChange={(event) => setFilter("client", event.target.value)} className="w-40">
-            <option value="">{t("anyClient")}</option>
-            <option value="none">{t("noClient")}</option>
-            {options.clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name}
-              </option>
-            ))}
-          </Select>
-        ) : null}
-        <Select aria-label={t("due")} value={filters.due ?? ""} onChange={(event) => setFilter("due", event.target.value)} className="w-36">
-          <option value="">{t("anyDue")}</option>
-          <option value="overdue">{t("dueOverdue")}</option>
-          <option value="week">{t("dueWeek")}</option>
-          <option value="none">{t("dueNone")}</option>
-        </Select>
-        <CustomFieldFilters fields={fields} filters={filters} setFilter={setFilter} people={options.people} />
-        {options.cycles?.length ? (
-          <Select aria-label={tWork("cycles.filter")} value={filters.cycle ?? ""} onChange={(event) => setFilter("cycle", event.target.value)} className="w-40">
-            <option value="">{tWork("cycles.anyCycle")}</option>
-            <option value="none">{tWork("cycles.noCycle")}</option>
-            {options.cycles.map((cycle) => (
-              <option key={cycle.id} value={cycle.id}>
-                {cycle.label}
-              </option>
-            ))}
-          </Select>
-        ) : null}
-        <Select
-          aria-label={t("group")}
+      <FilterBar filters={filters} setFilter={setFilter} clear={() => {
+        setFilters({});
+        sync({}, grouping);
+      }} options={options} showState showDue>
+        <MenuPicker
+          icon={<LayersIcon data-icon="inline-start" />}
+          label={t("group")}
           value={grouping}
-          onChange={(event) => {
-            const next = readGrouping(event.target.value);
+          choices={groupChoices}
+          onChange={(value) => {
+            const next = readGrouping(value);
             setGrouping(next);
             sync(filters, next);
           }}
-          className="w-44"
-        >
-          {GROUPINGS.map((value) => (
-            <option key={value} value={value}>
-              {t(`grouping.${value}`)}
-            </option>
-          ))}
-          {fields
-            .filter((field) => field.type !== "text" && field.type !== "url")
-            .map((field) => (
-              <option key={field.id} value={customKey(field.id)}>
-                {t("groupByField", { name: field.name })}
-              </option>
-            ))}
-        </Select>
-        <Select
-          aria-label={t("sort")}
+        />
+        <MenuPicker
+          icon={<ArrowUpDownIcon data-icon="inline-start" />}
+          label={t("sort")}
           value={sort}
-          onChange={(event) => {
-            const next = readSort(event.target.value);
+          choices={sortOptions}
+          onChange={(value) => {
+            const next = readSort(value);
             setSort(next);
             sync(filters, grouping, next);
           }}
-          className="w-44"
-        >
-          {sortChoices(fields).map((choice) => (
-            <option key={choice.value} value={choice.value}>
-              {choice.field ? t(choice.value.startsWith("-") ? "sorts.-field" : "sorts.field", { name: choice.field.name }) : t(`sorts.${choice.value as "rank"}`)}
-            </option>
-          ))}
-        </Select>
-        <label className="flex items-center gap-1.5 text-sm">
-          <input type="checkbox" checked={filters.closed === "1"} onChange={(event) => setFilter("closed", event.target.checked ? "1" : "")} /> {t("showClosed")}
-        </label>
-        <label className="flex items-center gap-1.5 text-sm">
-          <input type="checkbox" checked={filters.blocked === "1"} onChange={(event) => setFilter("blocked", event.target.checked ? "1" : "")} /> {t("onlyBlocked")}
-        </label>
-        <label className="flex items-center gap-1.5 text-sm">
-          <input type="checkbox" checked={filters.triage === "1"} onChange={(event) => setFilter("triage", event.target.checked ? "1" : "")} /> {t("showTriage")}
-        </label>
-        {filtered ? (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              setFilters({});
-              sync({}, grouping);
-            }}
-          >
-            {t("clear")}
-          </Button>
-        ) : null}
-        <span className="ml-auto text-xs text-muted-foreground">{t("count", { shown: visible.length, total: shown.length })}</span>
-      </div>
+        />
+        <span className="font-mono text-xs text-faint tabular-nums">{t("count", { shown: visible.length, total: shown.length })}</span>
+      </FilterBar>
 
       {savedViews && scope.projectId ? (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {savedViews.map((view) => (
-            <span key={view.id} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5">
-              <button type="button" className="hover:underline" onClick={() => applyView(view)}>
+            <Badge key={view.id} variant="outline" className="h-7 gap-1 pr-1 pl-2.5">
+              <button type="button" className="hover:text-foreground" onClick={() => applyView(view)}>
                 {view.name}
               </button>
-              {view.isShared ? <span className="text-xs text-muted-foreground">{t("views.shared")}</span> : null}
+              {view.isShared ? <span className="text-[0.6875rem] text-faint">{t("views.shared")}</span> : null}
               {view.canDelete ? (
                 <button
                   type="button"
-                  className="text-xs text-muted-foreground hover:text-destructive"
+                  className="press flex size-5 items-center justify-center rounded-full hover:bg-foreground/10 hover:text-destructive [&_svg]:size-3"
                   aria-label={t("views.delete", { name: view.name })}
                   disabled={pending}
                   onClick={() =>
@@ -344,20 +362,20 @@ export function TaskListView({
                     })
                   }
                 >
-                  ×
+                  <XIcon />
                 </button>
               ) : null}
-            </span>
+            </Badge>
           ))}
           {filtered || grouping !== "none" ? (
             <form onSubmit={saveView} className="flex flex-wrap items-center gap-2">
-              <Input name="name" required maxLength={60} placeholder={t("views.name")} aria-label={t("views.name")} className="h-7 w-44" />
+              <Input name="name" required maxLength={60} placeholder={t("views.name")} aria-label={t("views.name")} className="h-8 w-44 md:h-7" />
               {canContribute ? (
-                <label className="flex items-center gap-1.5 text-xs">
-                  <input type="checkbox" name="isShared" /> {t("views.share")}
-                </label>
+                <Label className="flex items-center gap-1.5 text-xs font-normal">
+                  <Checkbox name="isShared" /> {t("views.share")}
+                </Label>
               ) : null}
-              <Button type="submit" size="sm" variant="outline" disabled={pending}>
+              <Button type="submit" size="xs" variant="outline" disabled={pending}>
                 {t("views.save")}
               </Button>
             </form>
@@ -372,92 +390,55 @@ export function TaskListView({
         </p>
       ) : null}
 
-      {canContribute ? (
-        <form onSubmit={quickCreate} className="flex items-center gap-2">
-          <Input ref={titleInput} data-quick-create aria-label={t("quickCreate")} placeholder={t("quickCreate")} maxLength={200} className="flex-1" />
-          <Button type="submit" size="sm" disabled={pending}>
-            {t("add")}
-          </Button>
-        </form>
-      ) : null}
-
-      {visible.length === 0 ? (
-        <List>
-          <ListEmpty>{shown.length === 0 ? t("empty") : t("noMatch")}</ListEmpty>
-        </List>
-      ) : null}
-      {groups.map((group) => {
-        if (group.tasks.length === 0) return null;
-        const list = (
-          <List key={group.key} className="@container">
-            {nestTasks(group.tasks).map(({ task, depth }) => {
-              const open = task.status === "todo" || task.status === "in_progress";
-              const overdue = open && task.dueDate !== null && task.dueDate < today;
-              const editable = (canContribute || task.assigneePersonId === selfId) && !task.id.startsWith("new-");
-              return (
-                <ListItem key={task.id} className="flex-wrap gap-x-3 gap-y-1" style={{ paddingLeft: `${depth * 1.25}rem` }}>
-                  {/* The title is what a row is for: a narrow list gives it a line of its own, wrapped rather than cut short. */}
-                  <div className="flex min-w-0 basis-full items-baseline gap-x-3 @2xl:flex-1 @2xl:basis-0">
-                    <span className={`w-4 shrink-0 text-center text-xs font-bold ${task.priority ? PRIORITY_CLASS[task.priority] : "text-transparent"}`} title={task.priority ? tWork(`priority.${task.priority}`) : undefined}>
-                      {task.priority ? (task.priority === 4 ? "↓" : "!".repeat(4 - task.priority)) : "·"}
+      <TableCard>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="status" className="w-px" />
+              <TableHead kind="id" className="hidden md:table-cell">
+                {tWork("table.key")}
+              </TableHead>
+              <TableHead kind="text">{tWork("table.title")}</TableHead>
+              <TableHead kind="person" className="w-px">
+                <span className="sr-only lg:not-sr-only">{t("assignee")}</span>
+              </TableHead>
+              <TableHead kind="date" className="hidden w-px md:table-cell">
+                {t("due")}
+              </TableHead>
+              <TableHead kind="status" className="hidden w-px md:table-cell">
+                {t("state")}
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visible.length === 0 ? <TableEmpty>{shown.length === 0 ? t("empty") : t("noMatch")}</TableEmpty> : null}
+            {groups.map((group) => {
+              if (group.tasks.length === 0) return null;
+              const band =
+                grouping === "none" ? null : (
+                  <TableGroupRow key={`group-${group.key}`}>
+                    <span className="flex items-center gap-2">
+                      {grouping === "status" ? <StateDot category={stateById.get(group.key)?.category ?? "todo"} /> : null}
+                      <span>{groupName(group.key)}</span>
+                      <span className="font-mono text-[0.6875rem] font-normal text-faint tabular-nums">{group.tasks.length}</span>
                     </span>
-                    <span className="shrink-0 font-mono text-xs text-muted-foreground @2xl:w-16">{task.key}</span>
-                    <Link href={`/work/tasks/${task.id}`} title={task.title} className={`min-w-0 flex-1 break-words hover:underline @2xl:truncate ${open ? "font-medium" : "text-muted-foreground line-through"}`}>
-                      {task.title}
-                    </Link>
-                  </div>
-                  {task.blocker ? (
-                    <Badge variant="destructive" title={task.blocker.neededName ? `${task.blocker.reason} — ${tWork("blockers.waitingOn", { name: task.blocker.neededName })}` : task.blocker.reason}>
-                      {tWork("blockers.badge")}
-                    </Badge>
-                  ) : null}
-                  {task.blockedBy > 0 ? <Badge variant="destructive">{t("blocked")}</Badge> : null}
-                  {task.triageStatus === "pending" || task.triageStatus === "snoozed" ? <Badge variant="warning">{t("inTriage")}</Badge> : null}
-                  {task.away ? <Badge variant="outline">{task.away.coverName ? tWork("cover.awayCovered", { name: task.away.coverName }) : tWork("cover.away")}</Badge> : null}
-                  {cardFields.map((field) =>
-                    task.customValues?.[field.id] === undefined ? null : (
-                      <span key={field.id} className="text-xs text-muted-foreground" title={field.name}>
-                        <CustomValueText field={field} value={task.customValues[field.id]} people={options.people} />
-                      </span>
-                    ),
-                  )}
-                  {task.subtasks.total > 0 ? <span className="text-xs text-muted-foreground">{t("subtasks", task.subtasks)}</span> : null}
-                  {task.checklist.total > 0 ? <span className="text-xs text-muted-foreground">☑ {task.checklist.done}/{task.checklist.total}</span> : null}
-                  {task.labelIds.map((id) => {
-                    const label = options.labels.find((row) => row.id === id);
-                    return label ? <LabelChip key={id} name={label.name} color={label.color} /> : null;
-                  })}
-                  <span className="truncate text-xs text-muted-foreground @2xl:w-32">{task.assigneeName ?? options.people.find((person) => person.id === task.assigneePersonId)?.fullName ?? t("unassigned")}</span>
-                  <span className={`text-xs empty:hidden @2xl:w-24 @2xl:empty:block ${overdue ? "font-medium text-destructive" : "text-muted-foreground"}`}>{task.dueDate ? format.dateTime(new Date(`${task.dueDate}T00:00:00`), { day: "numeric", month: "short" }) : ""}</span>
-                  {editable ? (
-                    <Select aria-label={t("state")} value={task.stateId} disabled={pending} onChange={(event) => moveState(task, event.target.value)} className="h-7 w-36 text-xs md:text-xs">
-                      {options.states
-                        .filter((state) => state.isActive || state.id === task.stateId)
-                        .map((state) => (
-                          <option key={state.id} value={state.id}>
-                            {state.name}
-                          </option>
-                        ))}
-                    </Select>
-                  ) : (
-                    <Badge variant="outline" className="w-36 justify-start">
-                      {options.states.find((state) => state.id === task.stateId)?.name ?? "…"}
-                    </Badge>
-                  )}
-                </ListItem>
-              );
+                  </TableGroupRow>
+                );
+              return [band, ...nestTasks(group.tasks).map(({ task, depth }) => row(task, depth))];
             })}
-          </List>
-        );
-        return grouping === "none" ? (
-          list
-        ) : (
-          <TableCard key={group.key}>
-            <TableCardHeader title={groupName(group.key)} count={group.tasks.length} />
-            {list}
-          </TableCard>
-        );
-      })}
+          </TableBody>
+        </Table>
+        {canContribute ? (
+          <TableAddRow ref={addRow} label={t("newTask")} open bodyClassName="border-t bg-background px-3 py-2 md:pl-[calc(var(--table-gutter)+0.75rem)]">
+            <form onSubmit={quickCreate} className="flex items-center gap-2">
+              <Input ref={titleInput} data-quick-create aria-label={t("quickCreate")} placeholder={t("quickCreate")} maxLength={200} className="h-9 flex-1 md:h-8" />
+              <Button type="submit" size="sm" variant="outline" disabled={pending}>
+                {t("add")}
+              </Button>
+            </form>
+          </TableAddRow>
+        ) : null}
+      </TableCard>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { notFound } from "next/navigation";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
@@ -26,20 +27,14 @@ export default async function TeamHandoffsPage({ params }: PageProps<"/work/team
   const duration = (minutes: number | null) => (minutes === null ? "—" : minutes < 60 ? t("handoff.waitedMinutes", { minutes }) : minutes < 60 * 48 ? t("handoff.waitedHours", { hours: Math.round(minutes / 60) }) : t("handoff.waitedDays", { days: Math.round(minutes / 1440) }));
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/work" className="underline">
+    <Page width="default">
+      <PageHeader eyebrow={<span className="flex flex-wrap items-center gap-x-1.5"><Link href="/work" className="hover:underline">
             {t("title")}
           </Link>
-          {" / "}
-          <Link href={`/work/teams/${team.id}`} className="underline">
+          <span className="text-faint">/</span>
+          <Link href={`/work/teams/${team.id}`} className="hover:underline">
             {team.name}
-          </Link>
-        </p>
-        <h1>{t("handoff.packages.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("handoff.packages.description")}</p>
-      </header>
+          </Link></span>} title={t("handoff.packages.title")} description={t("handoff.packages.description")} />
 
       <HandoffPackageManager
         teamId={team.id}
@@ -79,6 +74,6 @@ export default async function TeamHandoffsPage({ params }: PageProps<"/work/team
           </Table>
         </TableCard>
       ) : null}
-    </div>
+    </Page>
   );
 }

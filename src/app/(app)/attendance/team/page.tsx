@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { eachDate } from "@/modules/attendance/engine/calendar";
 import { canManageDevices } from "@/modules/attendance/policy";
@@ -26,32 +27,30 @@ export default async function TeamTimesheetPage({ searchParams }: PageProps<"/at
   const href = (value: string, department: string | null = departmentId) => `/attendance/team?month=${value}${department ? `&department=${department}` : ""}`;
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1>{t("team.title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("team.description")}</p>
-        </div>
-        <MonthNav month={month} hrefFor={(value) => href(value)} thisMonth={thisMonth} />
-      </header>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {departments.length > 1 ? (
-          <nav className="tab-row">
-            <Link href={href(month, null)} className={departmentId ? "underline-offset-4 hover:underline" : "font-medium"}>
-              {t("team.allDepartments")}
+    <Page width="full">
+      <PageHeader
+        title={t("team.title")}
+        description={t("team.description")}
+        actions={
+          <>
+            <RecomputeButton entities={mine} label={t("team.recompute")} doneLabel={t.raw("team.recomputeDone") as string} failedLabel={t("team.recomputeFailed")} />
+            <MonthNav month={month} hrefFor={(value) => href(value)} thisMonth={thisMonth} />
+          </>
+        }
+      />
+      {departments.length > 1 ? (
+        <nav className="tab-row">
+          <Link href={href(month, null)} aria-current={departmentId ? undefined : "page"}>
+            {t("team.allDepartments")}
+          </Link>
+          {departments.map((department) => (
+            <Link key={department.id} href={href(month, department.id)} aria-current={departmentId === department.id ? "page" : undefined}>
+              {department.name}
             </Link>
-            {departments.map((department) => (
-              <Link key={department.id} href={href(month, department.id)} className={departmentId === department.id ? "font-medium" : "underline-offset-4 hover:underline"}>
-                {department.name}
-              </Link>
-            ))}
-          </nav>
-        ) : (
-          <span />
-        )}
-        <RecomputeButton entities={mine} label={t("team.recompute")} doneLabel={t.raw("team.recomputeDone") as string} failedLabel={t("team.recomputeFailed")} />
-      </div>
+          ))}
+        </nav>
+      ) : null}
       <TeamGrid rows={rows} month={month} dates={eachDate(monthStart(month), monthEnd(month))} />
-    </div>
+    </Page>
   );
 }

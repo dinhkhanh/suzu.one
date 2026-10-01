@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
@@ -25,23 +26,24 @@ export default async function ExitHandoverPage({ params }: PageProps<"/work/hand
   const people = run ? (await listPersonNames()).filter((person) => person.id !== handover.personId) : [];
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/tasks" className="underline">
+    <Page width="narrow">
+      <PageHeader
+        eyebrow={
+          <Link href="/tasks" className="hover:underline">
             {t("myWork")}
           </Link>
-        </p>
-        <h1 className="flex flex-wrap items-center gap-2">
-          {t("exit.title", { name: handover.personName })}
-          <Badge dot variant={statusTone(handover.status)}>{t(`exit.statuses.${handover.status}`)}</Badge>
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {[t(`exit.reasons.${handover.reason}`), handover.lastDay ? t("exit.lastDay", { date: format.dateTime(new Date(`${handover.lastDay}T00:00:00`), { dateStyle: "medium" }) }) : null, handover.step ? t("exit.step", { name: handover.step.assigneeName ?? "—" }) : null].filter(Boolean).join(" · ")}
-        </p>
+        }
+        title={
+          <span className="flex flex-wrap items-center gap-2">
+            {t("exit.title", { name: handover.personName })}
+            <Badge dot variant={statusTone(handover.status)}>{t(`exit.statuses.${handover.status}`)}</Badge>
+          </span>
+        }
+        description={[t(`exit.reasons.${handover.reason}`), handover.lastDay ? t("exit.lastDay", { date: format.dateTime(new Date(`${handover.lastDay}T00:00:00`), { dateStyle: "medium" }) }) : null, handover.step ? t("exit.step", { name: handover.step.assigneeName ?? "—" }) : null].filter(Boolean).join(" · ")}
+      >
         {handover.summary.total ? <p className="text-sm">{t("exit.remaining", { count: handover.summary.total })}</p> : null}
-      </header>
+      </PageHeader>
       <ExitHandoverForm handoverId={handover.id} owned={handover.owned} people={people} canRun={run} open={handover.status === "open"} />
-    </div>
+    </Page>
   );
 }

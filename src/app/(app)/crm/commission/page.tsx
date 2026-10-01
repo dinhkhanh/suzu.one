@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
+import { Page, PageHeader } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -50,11 +51,8 @@ export default async function CommissionPage({ searchParams }: PageProps<"/crm/c
   const approved = schemes.filter((scheme) => scheme.status === "approved");
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("intro")}</p>
-      </header>
+    <Page width="default">
+      <PageHeader title={t("title")} description={t("intro")} />
       <CrmTabs current="commission" show={shell.show} />
       {approved.length === 0 ? <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">{t("noScheme")}</p> : null}
 
@@ -160,6 +158,6 @@ export default async function CommissionPage({ searchParams }: PageProps<"/crm/c
           ) : null}
         </TableCard>
       ) : null}
-    </div>
+    </Page>
   );
 }

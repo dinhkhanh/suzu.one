@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Page, PageHeader } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
@@ -20,18 +21,15 @@ export default async function EntitiesPage() {
   const entities = (await listEntities()).filter((entity) => can(user.principal, "org:read", { entityId: entity.id }));
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
-      <header>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </header>
+    <Page>
+      <PageHeader title={t("title")} description={t("description")} />
 
       <TableCard>
-        <Table>
+        <Table className="min-w-[40rem]">
           <TableHeader>
             <TableRow>
               <TableHead kind="id">{t("code")}</TableHead>
-              <TableHead kind="text">{t("legalName")}</TableHead>
+              <TableHead kind="org">{t("legalName")}</TableHead>
               <TableHead kind="id">{t("taxCode")}</TableHead>
               <TableHead kind="select">{t("wageRegion")}</TableHead>
               <TableHead kind="status">{t("status")}</TableHead>
@@ -42,14 +40,14 @@ export default async function EntitiesPage() {
             {entities.map((entity) => (
               <TableRow key={entity.id}>
                 <TableCell kind="id">{entity.code}</TableCell>
-                <TableCell>
-                  <Link href={`/admin/entities/${entity.id}`} className="font-medium hover:underline">
+                <TableCell className="max-w-96">
+                  <Link href={`/admin/entities/${entity.id}`} className="block truncate font-medium hover:underline">
                     {entity.shortName}
                   </Link>
-                  <p className="text-xs text-muted-foreground">{entity.legalName}</p>
+                  <p className="truncate text-xs text-muted-foreground">{entity.legalName}</p>
                 </TableCell>
                 <TableCell kind="id">{entity.taxCode ?? "—"}</TableCell>
-                <TableCell>{entity.wageRegion ?? "—"}</TableCell>
+                <TableCell>{entity.wageRegion ? t("wageRegionValue", { region: entity.wageRegion }) : <span className="text-faint">—</span>}</TableCell>
                 <TableCell>
                   <Badge dot variant={entity.isActive ? "success" : "outline"}>{entity.isActive ? t("active") : t("inactive")}</Badge>
                 </TableCell>
@@ -63,6 +61,6 @@ export default async function EntitiesPage() {
           </TableAddRow>
         ) : null}
       </TableCard>
-    </div>
+    </Page>
   );
 }

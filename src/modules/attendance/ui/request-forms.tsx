@@ -8,6 +8,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -53,123 +54,123 @@ export function AttendanceRequestForm({ type, personId, defaults, resubmit }: { 
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border p-4">
-      <FieldErrors value={fieldErrors}>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field name="startDate" label={type === "remote_work" ? t("fields.from") : t("fields.date")}>
-            <DatePicker id="startDate" name="startDate" required defaultValue={defaults.startDate} />
-          </Field>
-          {type === "remote_work" ? (
-            <Field name="endDate" label={t("fields.to")}>
-              <DatePicker id="endDate" name="endDate" defaultValue={defaults.endDate ?? defaults.startDate} />
+    <Card>
+      <form onSubmit={onSubmit} className="flex flex-col gap-4 px-(--card-spacing)">
+        <FieldErrors value={fieldErrors}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field name="startDate" label={type === "remote_work" ? t("fields.from") : t("fields.date")}>
+              <DatePicker id="startDate" name="startDate" required defaultValue={defaults.startDate} />
             </Field>
-          ) : null}
-        </div>
+            {type === "remote_work" ? (
+              <Field name="endDate" label={t("fields.to")}>
+                <DatePicker id="endDate" name="endDate" defaultValue={defaults.endDate ?? defaults.startDate} />
+              </Field>
+            ) : null}
+          </div>
 
-        {type === "attendance_correction" ? (
-          <>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field name="inTime" label={t("fields.inTime")}>
-                <Input id="inTime" name="inTime" type="time" defaultValue={defaults.inTime} />
-              </Field>
-              <Field name="outTime" label={t("fields.outTime")}>
-                <Input id="outTime" name="outTime" type="time" defaultValue={defaults.outTime} />
-              </Field>
-            </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="outNextDay" defaultChecked={defaults.outNextDay} /> {t("fields.outNextDay")}
-            </label>
-            <Field name="cause" label={t("fields.cause")}>
-              <Select id="cause" name="cause" defaultValue={defaults.cause ?? "forgot"}>
-                {(["forgot", "device_error", "other"] as const).map((value) => (
-                  <option key={value} value={value}>
-                    {t(`causes.${value}`)}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field name="evidence" label={t("fields.evidence")}>
-              {evidence ? <p className="text-sm">{evidence.fileName}</p> : <Input id="evidence" type="file" accept=".pdf,.jpg,.jpeg,.png" disabled={uploading} onChange={(event) => upload(event.target.files?.[0])} />}
-            </Field>
-          </>
-        ) : null}
-
-        {type === "remote_work" ? (
-          <>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field name="kind" label={t("fields.kind")}>
-                <Select id="kind" name="kind" value={kind} onChange={(event) => setKind(event.target.value)}>
-                  {(["wfh", "off_site", "business_trip"] as const).map((value) => (
-                    <option key={value} value={value}>
-                      {t(`kinds.${value}`)}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field name="portion" label={t("fields.portion")}>
-                <Select id="portion" name="portion" defaultValue={defaults.portion ?? "full"}>
-                  {(["full", "am", "pm"] as const).map((value) => (
-                    <option key={value} value={value}>
-                      {t(`portions.${value}`)}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-            {kind === "wfh" ? null : (
-              <>
-                <Field name="locationName" label={t("fields.locationName")}>
-                  <Input id="locationName" name="locationName" maxLength={200} defaultValue={defaults.locationName} />
+          {type === "attendance_correction" ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field name="inTime" label={t("fields.inTime")}>
+                  <Input id="inTime" name="inTime" type="time" defaultValue={defaults.inTime} />
                 </Field>
-                <p className="text-xs text-muted-foreground">{t("fields.positionHint")}</p>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <Field name="latitude" label={t("fields.latitude")}>
-                    <Input id="latitude" name="latitude" inputMode="decimal" defaultValue={defaults.latitude} />
-                  </Field>
-                  <Field name="longitude" label={t("fields.longitude")}>
-                    <Input id="longitude" name="longitude" inputMode="decimal" defaultValue={defaults.longitude} />
-                  </Field>
-                  <Field name="radiusM" label={t("fields.radius")}>
-                    <Input id="radiusM" name="radiusM" inputMode="numeric" placeholder="300" defaultValue={defaults.radiusM} />
-                  </Field>
-                </div>
-              </>
-            )}
-          </>
-        ) : null}
-
-        {type === "overtime" || type === "holiday_work" ? (
-          <>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field name="from" label={t("fields.otFrom")}>
-                <Input id="from" name="from" type="time" required={type === "overtime"} defaultValue={defaults.from} />
+                <Field name="outTime" label={t("fields.outTime")}>
+                  <Input id="outTime" name="outTime" type="time" defaultValue={defaults.outTime} />
+                </Field>
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="outNextDay" defaultChecked={defaults.outNextDay} /> {t("fields.outNextDay")}
+              </label>
+              <Field name="cause" label={t("fields.cause")}>
+                <Select id="cause" name="cause" defaultValue={defaults.cause ?? "forgot"}>
+                  {(["forgot", "device_error", "other"] as const).map((value) => (
+                    <option key={value} value={value}>
+                      {t(`causes.${value}`)}
+                    </option>
+                  ))}
+                </Select>
               </Field>
-              <Field name="to" label={t("fields.otTo")}>
-                <Input id="to" name="to" type="time" required={type === "overtime"} defaultValue={defaults.to} />
+              <Field name="evidence" label={t("fields.evidence")}>
+                {evidence ? <p className="text-sm">{evidence.fileName}</p> : <Input id="evidence" type="file" accept=".pdf,.jpg,.jpeg,.png" disabled={uploading} onChange={(event) => upload(event.target.files?.[0])} />}
               </Field>
-            </div>
-            <Field name="compensation" label={t("fields.compensation")}>
-              <Select id="compensation" name="compensation" defaultValue={defaults.compensation ?? "pay"}>
-                <option value="pay">{t("compensation.pay")}</option>
-                <option value="time_off">{t("compensation.time_off")}</option>
-              </Select>
-            </Field>
-          </>
-        ) : null}
+            </>
+          ) : null}
 
-        <Field name="reason" label={t("fields.reason")}>
-          <Input id="reason" name="reason" required minLength={3} maxLength={1000} defaultValue={defaults.reason} />
-        </Field>
-      </FieldErrors>
-      <FormError namespace="records.errors" errorKey={uploadError} />
-      <FormError namespace={ERRORS} errorKey={errorKey} />
-      {cap ? <p className="text-xs text-muted-foreground">{t("capHint", { cap })}</p> : null}
-      <div>
-        <Button type="submit" disabled={pending || uploading}>
+          {type === "remote_work" ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field name="kind" label={t("fields.kind")}>
+                  <Select id="kind" name="kind" value={kind} onChange={(event) => setKind(event.target.value)}>
+                    {(["wfh", "off_site", "business_trip"] as const).map((value) => (
+                      <option key={value} value={value}>
+                        {t(`kinds.${value}`)}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field name="portion" label={t("fields.portion")}>
+                  <Select id="portion" name="portion" defaultValue={defaults.portion ?? "full"}>
+                    {(["full", "am", "pm"] as const).map((value) => (
+                      <option key={value} value={value}>
+                        {t(`portions.${value}`)}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              {kind === "wfh" ? null : (
+                <>
+                  <Field name="locationName" label={t("fields.locationName")}>
+                    <Input id="locationName" name="locationName" maxLength={200} defaultValue={defaults.locationName} />
+                  </Field>
+                  <p className="text-xs text-muted-foreground">{t("fields.positionHint")}</p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <Field name="latitude" label={t("fields.latitude")}>
+                      <Input id="latitude" name="latitude" inputMode="decimal" defaultValue={defaults.latitude} />
+                    </Field>
+                    <Field name="longitude" label={t("fields.longitude")}>
+                      <Input id="longitude" name="longitude" inputMode="decimal" defaultValue={defaults.longitude} />
+                    </Field>
+                    <Field name="radiusM" label={t("fields.radius")}>
+                      <Input id="radiusM" name="radiusM" inputMode="numeric" placeholder="300" defaultValue={defaults.radiusM} />
+                    </Field>
+                  </div>
+                </>
+              )}
+            </>
+          ) : null}
+
+          {type === "overtime" || type === "holiday_work" ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field name="from" label={t("fields.otFrom")}>
+                  <Input id="from" name="from" type="time" required={type === "overtime"} defaultValue={defaults.from} />
+                </Field>
+                <Field name="to" label={t("fields.otTo")}>
+                  <Input id="to" name="to" type="time" required={type === "overtime"} defaultValue={defaults.to} />
+                </Field>
+              </div>
+              <Field name="compensation" label={t("fields.compensation")}>
+                <Select id="compensation" name="compensation" defaultValue={defaults.compensation ?? "pay"}>
+                  <option value="pay">{t("compensation.pay")}</option>
+                  <option value="time_off">{t("compensation.time_off")}</option>
+                </Select>
+              </Field>
+            </>
+          ) : null}
+
+          <Field name="reason" label={t("fields.reason")}>
+            <Input id="reason" name="reason" required minLength={3} maxLength={1000} defaultValue={defaults.reason} />
+          </Field>
+        </FieldErrors>
+        <FormError namespace="records.errors" errorKey={uploadError} />
+        <FormError namespace={ERRORS} errorKey={errorKey} />
+        {cap ? <p className="text-xs text-muted-foreground">{t("capHint", { cap })}</p> : null}
+        <Button type="submit" variant="accent" size="lg" className="w-full md:w-auto md:self-start" disabled={pending || uploading}>
           {resubmit ? t("resubmit") : t("submit")}
         </Button>
-      </div>
-    </form>
+      </form>
+    </Card>
   );
 }
 
@@ -203,8 +204,8 @@ export function ConfirmHoursForm({ attendanceRequestId, defaultMinutes }: { atte
   const router = useRouter();
   const { onSubmit, pending, errorKey, saved } = useActionForm(confirmWorkedMinutesAction, { extra: { attendanceRequestId }, onSuccess: () => router.refresh() });
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-2 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("confirmHours.title")}</h2>
+    <form onSubmit={onSubmit} className="flex flex-col gap-2 rounded-[14px] border border-border bg-background p-4">
+      <h3>{t("confirmHours.title")}</h3>
       <p className="text-xs text-muted-foreground">{t("confirmHours.hint")}</p>
       <div className="flex flex-wrap items-center gap-2">
         <Input name="minutes" inputMode="numeric" required defaultValue={defaultMinutes ?? ""} className="h-9 w-28" aria-label={t("confirmHours.minutes")} />
@@ -326,9 +327,9 @@ export function LockPeriodForm({ entityId, month, blocked }: { entityId: string;
         if (window.confirm(t("lock.confirm"))) onSubmit(event);
         else event.preventDefault();
       }}
-      className="flex flex-col gap-2 rounded-xl border p-4"
+      className="flex flex-col gap-2 rounded-[14px] border border-border bg-background p-4"
     >
-      <h2 className="text-sm font-medium">{t("lock.title")}</h2>
+      <h3>{t("lock.title")}</h3>
       <p className="text-xs text-muted-foreground">{blocked ? t("lock.blockedHint") : t("lock.readyHint")}</p>
       {blocked ? <Input name="overrideReason" required minLength={10} maxLength={500} placeholder={t("lock.overrideReason")} /> : null}
       <div className="flex flex-wrap items-center gap-3">

@@ -1,16 +1,18 @@
 import { getLocale, getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { Segmented } from "@/components/ui/segmented";
 import { Select } from "@/components/ui/select";
 import { listAllRequests, type OversightFilter } from "@/modules/platform/approvals/service";
 import { canOverseeRequests } from "@/modules/platform/approvals/policy";
 import { RequestTable } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
 import { entityReach } from "@/modules/platform/rbac/policy";
+import { RequestTabs } from "@/modules/requests/ui/request-tabs";
 import { allRequestTypes } from "../registry";
 import { pageTitle } from "@/i18n/page-title";
-import { DatePicker } from "@/components/ui/date-picker";
 
 export const generateMetadata = pageTitle("approvalsAll");
 
@@ -24,7 +26,7 @@ export default async function AllRequestsPage({ searchParams }: PageProps<"/appr
   const user = await requireUser();
   if (!canOverseeRequests(user.principal)) notFound();
   const query = await searchParams;
-  const [t, locale, registered] = await Promise.all([getTranslations("approvals"), getLocale(), allRequestTypes()]);
+  const [t, tRequests, locale, registered] = await Promise.all([getTranslations("approvals"), getTranslations("requests"), getLocale(), allRequestTypes()]);
 
   const state = STATES.find((value) => value === query.state) ?? "open";
   const type = typeof query.type === "string" && registered.has(query.type) ? query.type : undefined;
@@ -38,42 +40,31 @@ export default async function AllRequestsPage({ searchParams }: PageProps<"/appr
   const hrefFor = (next: (typeof STATES)[number]) => `/approvals/all?${new URLSearchParams({ state: next, ...(type ? { type } : {}), ...(since ? { since } : {}) })}`;
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1>{t("oversight.title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("oversight.description")}</p>
-        </div>
-        <Link href="/approvals" className="text-sm underline-offset-4 hover:underline">
-          {t("oversight.back")}
-        </Link>
-      </header>
+    <Page width="wide">
+      <PageHeader title={tRequests("hub")} description={t("oversight.description")} />
+      <RequestTabs active="all" personId={user.person.id} principal={user.principal} />
 
-      <div className="flex flex-wrap items-center gap-2">
-        {STATES.map((value) => (
-          <Link key={value} href={hrefFor(value)} aria-current={value === state ? "page" : undefined} className={buttonVariants({ size: "sm", variant: value === state ? "default" : "outline" })}>
-            {t(`oversight.state.${value}`)}
-          </Link>
-        ))}
-        <form action="/approvals/all" className="flex flex-wrap items-center gap-2">
-          <input type="hidden" name="state" value={state} />
-          <Select name="type" defaultValue={type ?? ""} aria-label={t("oversight.type")} className="w-auto">
-            <option value="">{t("oversight.allTypes")}</option>
-            {types.map((entry) => (
-              <option key={entry.key} value={entry.key}>
-                {entry.label}
-              </option>
-            ))}
-          </Select>
-          <DatePicker name="since" defaultValue={since ?? ""} aria-label={t("oversight.since")} className="w-44" />
-          <button type="submit" className={buttonVariants({ size: "sm", variant: "outline" })}>
-            {t("oversight.apply")}
-          </button>
-        </form>
-      </div>
+      <form action="/approvals/all" className="toolbar">
+        <input type="hidden" name="state" value={state} />
+        <Segmented aria-label={t("oversight.state.all")} value={state} options={STATES.map((value) => ({ value, label: t(`oversight.state.${value}`), href: hrefFor(value) }))} />
+        <Select name="type" defaultValue={type ?? ""} aria-label={t("oversight.type")} className="w-auto">
+          <option value="">{t("oversight.allTypes")}</option>
+          {types.map((entry) => (
+            <option key={entry.key} value={entry.key}>
+              {entry.label}
+            </option>
+          ))}
+        </Select>
+        <DatePicker name="since" defaultValue={since ?? ""} aria-label={t("oversight.since")} className="w-44" />
+        <Button type="submit" variant="outline">
+          {t("oversight.apply")}
+        </Button>
+      </form>
 
-      <RequestTable rows={rows} empty={t("oversight.empty")} showRequester labels={labels} showWaitingOn />
-      {rows.length === 200 ? <p className="text-xs text-muted-foreground">{t("oversight.limited", { count: 200 })}</p> : null}
-    </div>
+      <Section title={t("oversight.title")} count={rows.length || undefined}>
+        <RequestTable rows={rows} empty={t("oversight.empty")} showRequester labels={labels} showWaitingOn />
+        {rows.length === 200 ? <p className="text-xs text-faint">{t("oversight.limited", { count: 200 })}</p> : null}
+      </Section>
+    </Page>
   );
 }

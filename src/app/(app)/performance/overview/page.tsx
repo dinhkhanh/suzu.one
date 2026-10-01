@@ -6,6 +6,7 @@ import { todayInVietnam } from "@/lib/dates";
 import { shiftMonth } from "@/lib/month-grid";
 import { getOverview, type Spread } from "@/modules/performance/service";
 import { bpText, MonthPicker, monthLabel, readMonth, ScoreFigure, ScoreState } from "@/modules/performance/ui/kpi";
+import { Page, PageHeader } from "@/components/ui/page";
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { ConfidenceBadge, ProgressBar } from "@/modules/performance/ui/progress";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -26,11 +27,8 @@ export default async function PerformanceOverviewPage({ searchParams }: PageProp
   const spread = (value: Spread) => (value.people === 0 ? "—" : t("overview.spread", { min: bpText(format, value.minBp), median: bpText(format, value.medianBp), max: bpText(format, value.maxBp) }));
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header>
-        <h1>{t("overview.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("overview.description")}</p>
-      </header>
+    <Page>
+      <PageHeader title={t("overview.title")} description={t("overview.description")} />
       <PerformanceNav active="overview" />
       <MonthPicker month={month} href={(next) => `/performance/overview?month=${next}`} labels={{ previous: t("kpi.previousMonth"), next: t("kpi.nextMonth") }} />
 
@@ -123,6 +121,6 @@ export default async function PerformanceOverviewPage({ searchParams }: PageProp
           </TableBody>
         </Table>
       </TableCard>
-    </div>
+    </Page>
   );
 }

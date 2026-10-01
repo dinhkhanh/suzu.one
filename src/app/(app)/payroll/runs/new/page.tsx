@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Page, PageHeader } from "@/components/ui/page";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { listEntityOptions } from "@/modules/payroll/options";
@@ -22,14 +23,17 @@ export default async function NewPayrollRunPage() {
   const months = await listRunnableMonthsOf(entities.map((entity) => entity.id));
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header>
-        <Link href="/payroll/runs" className="text-sm text-link hover:underline">
-          ← {t("runs.title")}
-        </Link>
-        <h1>{t("runs.new.title")}</h1>
-      </header>
+    <Page width="narrow">
+      <PageHeader
+        eyebrow={
+          <Link href="/payroll/runs" className="text-link hover:underline">
+            ← {t("runs.title")}
+          </Link>
+        }
+        title={t("runs.new.title")}
+        description={t("runs.new.hint")}
+      />
       <NewRunForm entities={entities} months={months.map(({ entityId, month, hasRun }) => ({ entityId, month, hasRun }))} />
-    </div>
+    </Page>
   );
 }

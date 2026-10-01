@@ -1,10 +1,13 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Page, PageHeader, Tile, TileGrid } from "@/components/ui/page";
 import { TableAddRow, TableCard } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { type AssetStatus, ASSET_STATUSES, canManageAssets, canReadAssetMoney, canReadRegister, listAssets, listCategories, summaryByStatus } from "@/modules/assets/service";
+import { AssetsNav } from "@/modules/assets/ui/nav";
 import { RegisterFilterBar, RegisterTable } from "@/modules/assets/ui/register-views";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -21,57 +24,50 @@ export default async function AssetsPage({ searchParams }: PageProps<"/assets">)
   const status = ASSET_STATUSES.find((value) => value === one(query.status));
   const filter = { entityId: one(query.entityId), categoryId: one(query.categoryId), status: status as AssetStatus | undefined, search: one(query.search) };
 
-  const [rows, categories, entities, totals, t] = await Promise.all([
+  const [rows, categories, entities, totals, t, tStatus] = await Promise.all([
     listAssets(user.principal, filter),
     listCategories(),
     listEntities(),
     summaryByStatus(user.principal),
     getTranslations("assets"),
+    getTranslations("assets.enums.status"),
   ]);
   const showMoney = canReadAssetMoney(user.principal, filter.entityId);
+  const manages = canManageAssets(user.principal);
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1>{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/assets/mine" className="h-9 rounded-md border px-3 text-sm leading-9">
-            {t("nav.mine")}
-          </Link>
-          <Link href="/assets/bookings" className="h-9 rounded-md border px-3 text-sm leading-9">
-            {t("nav.bookings")}
-          </Link>
-          <Link href="/assets/licences" className="h-9 rounded-md border px-3 text-sm leading-9">
-            {t("nav.licences")}
-          </Link>
-          {canManageAssets(user.principal) ? (
+    <Page width="wide">
+      <PageHeader
+        title={t("title")}
+        description={t("description")}
+        actions={
+          manages ? (
             <>
-              <Link href="/assets/labels" className="h-9 rounded-md border px-3 text-sm leading-9">
+              <Button nativeButton={false} variant="outline" render={<Link href="/assets/labels" />}>
                 {t("nav.labels")}
-              </Link>
-              <Link href="/assets/import" className="h-9 rounded-md border px-3 text-sm leading-9">
+              </Button>
+              <Button nativeButton={false} variant="outline" render={<Link href="/assets/import" />}>
                 {t("nav.import")}
-              </Link>
-              <Link href="/assets/categories" className="h-9 rounded-md border px-3 text-sm leading-9">
-                {t("nav.categories")}
-              </Link>
-              <Link href="/assets/new" className="h-9 rounded-md bg-primary px-3 text-sm font-medium leading-9 text-primary-foreground">
-                {t("nav.new")}
-              </Link>
+              </Button>
+              <Button nativeButton={false} render={<Link href="/assets/new" />}>{t("nav.new")}</Button>
             </>
-          ) : null}
-        </div>
-      </header>
+          ) : null
+        }
+      />
+      <AssetsNav current="register" manages={manages} />
 
-      <p className="text-sm text-muted-foreground">{t("totals", totals)}</p>
+      {/* The register by status, counted over everything in reach — not the page of rows below. */}
+      <TileGrid>
+        {ASSET_STATUSES.map((value) => (
+          <Tile key={value} label={tStatus(value)} value={totals[value]} href={`/assets?status=${value}`} tone={value === "lost" && totals.lost > 0 ? "destructive" : value === "in_repair" && totals.in_repair > 0 ? "warning" : undefined} />
+        ))}
+      </TileGrid>
+
       <RegisterFilterBar query={filter} entities={entities} categories={categories} />
       <TableCard>
         <RegisterTable rows={rows} showMoney={showMoney} />
-        {canManageAssets(user.principal) ? <TableAddRow label={t("nav.new")} href="/assets/new" /> : null}
+        {manages ? <TableAddRow label={t("nav.new")} href="/assets/new" /> : null}
       </TableCard>
-    </div>
+    </Page>
   );
 }

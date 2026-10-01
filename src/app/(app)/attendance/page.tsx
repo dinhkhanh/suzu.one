@@ -1,10 +1,13 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cn } from "cn";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { Table, TableBody, TableCard, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { statusTone } from "@/components/ui/tone";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { ownAnomaliesIn } from "@/modules/attendance/anomalies";
 import { getMonthRow } from "@/modules/attendance/months";
@@ -21,8 +24,8 @@ import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("attendance");
 
-// The signed-in person's working days for the next two weeks, as their schedule, the roster and
-// the calendar see them. Check-in and the timesheet join this page in the following slices.
+// The signed-in person's month as the timesheet sees it, the ways in (check-in, requests, the
+// team's pages) and the next two weeks of their schedule.
 export default async function AttendancePage({ searchParams }: PageProps<"/attendance">) {
   const user = await requireUser();
   const query = await searchParams;
@@ -42,66 +45,66 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
   const monthOver = monthEnd(month) < today;
   const fixHref = (fix: string, date: string) => (fix === "correction" || fix === "overtime" || fix === "holiday_work" ? `/attendance/requests/new?type=${fix === "correction" ? "attendance_correction" : fix}&date=${date}` : null);
   const monthHref = (value: string) => `/attendance?${personId === user.person.id ? "" : `person=${personId}&`}month=${value}`;
+  const outline = cn(buttonVariants({ variant: "outline", size: "sm" }));
 
   return (
-    <div className="flex max-w-3xl flex-col gap-8">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1>{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
-        </div>
-        {canOpenAttendanceSettings(user.principal) ? (
-          <Link href="/attendance/settings/calendar" className="text-sm underline-offset-4 hover:underline">
-            {t("settings.title")}
-          </Link>
-        ) : null}
-      </header>
-      <nav className="flex flex-wrap items-center gap-3">
-        <Link href="/attendance/check-in" className={buttonVariants({ size: "lg" })}>
-          {t("checkIn.title")}
-        </Link>
-        <Link href="/attendance/today" className={buttonVariants({ variant: "outline", size: "lg" })}>
+    <Page>
+      <PageHeader
+        title={t("title")}
+        description={t("description")}
+        actions={
+          <>
+            {canOpenAttendanceSettings(user.principal) ? (
+              <Link href="/attendance/settings/calendar" className={cn(buttonVariants({ variant: "outline" }))}>
+                {t("settings.title")}
+              </Link>
+            ) : null}
+            <Link href="/attendance/check-in" className={cn(buttonVariants())}>
+              {t("checkIn.title")}
+            </Link>
+          </>
+        }
+      />
+
+      <nav className="toolbar">
+        <Link href="/attendance/today" className={outline}>
           {t("today.title")}
         </Link>
-        <Link href="/attendance/requests/new" className={buttonVariants({ variant: "outline", size: "lg" })}>
+        <Link href="/attendance/requests/new" className={outline}>
           {t("requests.newTitle")}
         </Link>
-        <Link href="/attendance/team" className={buttonVariants({ variant: "outline", size: "lg" })}>
+        <Link href="/attendance/team" className={outline}>
           {t("timesheet.team.title")}
         </Link>
-        <Link href="/attendance/timesheets" className={buttonVariants({ variant: "outline", size: "lg" })}>
+        <Link href="/attendance/timesheets" className={outline}>
           {t("months.title")}
         </Link>
         {canOpenAttendanceSettings(user.principal) ? (
-          <Link href="/attendance/anomalies" className={buttonVariants({ variant: "outline", size: "lg" })}>
+          <Link href="/attendance/anomalies" className={outline}>
             {t("console.title")}
           </Link>
         ) : null}
-        {toReview > 0 ? (
-          <Link href="/attendance/review" className={buttonVariants({ variant: "outline", size: "lg" })}>
-            {t("review.title")} <Badge className="text-[10px]">{toReview}</Badge>
-          </Link>
-        ) : (
-          <Link href="/attendance/review" className="text-sm text-link underline-offset-4 hover:underline">
-            {t("review.title")}
-          </Link>
-        )}
+        <Link href="/attendance/review" className={outline}>
+          {t("review.title")}
+          {toReview > 0 ? <Badge variant="info">{toReview}</Badge> : null}
+        </Link>
       </nav>
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">{subject ? t("timesheet.monthOf", { name: subject.fullName }) : t("timesheet.myMonth")}</h2>
-          <MonthNav month={month} hrefFor={monthHref} thisMonth={today.slice(0, 7)} />
-        </div>
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border p-3 text-sm">
-          <Badge dot variant={statusTone(monthStatus)}>{t(`months.status.${monthStatus}`)}</Badge>
+
+      <Section title={subject ? t("timesheet.monthOf", { name: subject.fullName }) : t("timesheet.myMonth")} action={<MonthNav month={month} hrefFor={monthHref} thisMonth={today.slice(0, 7)} />}>
+        <Alert icon={null}>
+          <Badge dot variant={statusTone(monthStatus)}>
+            {t(`months.status.${monthStatus}`)}
+          </Badge>
           <span className="text-muted-foreground">{t(`months.statusHint.${monthStatus}`)}</span>
           {own && monthStatus === "open" && monthOver && personMonth.days.length > 0 ? <ConfirmMonthButton month={month} label={t("months.confirm")} confirm={t("months.confirmAsk")} /> : null}
           {monthStatus === "open" && monthRow?.reopenedComment ? <p className="w-full text-xs text-destructive">{t("months.reopened", { comment: monthRow.reopenedComment })}</p> : null}
-        </div>
+        </Alert>
         <SummaryTiles summary={personMonth.summary} />
-        {anomalies.length > 0 ? (
+      </Section>
+
+      {anomalies.length > 0 ? (
+        <Section title={t("months.toFix", { count: anomalies.length })}>
           <TableCard>
-            <TableCardHeader title={t("months.toFix", { count: anomalies.length })} />
             <Table>
               <TableHeader>
                 <TableRow>
@@ -119,7 +122,7 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
                       <TableCell>{t(`timesheet.anomalies.${item.code}`)}</TableCell>
                       <TableCell kind="actions">
                         {href ? (
-                          <Link href={href} className="underline underline-offset-4">
+                          <Link href={href} className="text-link underline underline-offset-4">
                             {t(`console.fix.${item.fix}`)}
                           </Link>
                         ) : null}
@@ -130,10 +133,12 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
               </TableBody>
             </Table>
           </TableCard>
-        ) : null}
-        {requests.length > 0 ? (
+        </Section>
+      ) : null}
+
+      {requests.length > 0 ? (
+        <Section title={t("requests.mine")} count={requests.length}>
           <TableCard>
-            <TableCardHeader title={t("requests.mine")} count={requests.length} />
             <Table>
               <TableHeader>
                 <TableRow>
@@ -143,49 +148,61 @@ export default async function AttendancePage({ searchParams }: PageProps<"/atten
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {requests.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="text-muted-foreground">{row.startDate.slice(5).split("-").reverse().join("/")}</TableCell>
-                    <TableCell>
-                      <Link href={row.approvalRequestId ? `/approvals/attendance/${row.approvalRequestId}` : "/approvals"} className="font-medium underline-offset-4 hover:underline">
-                        {t(`requests.types.${row.type}`)}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{t(`requests.status.${row.status === "pending" && row.approvalStatus === "returned" ? "returned" : row.status}`)}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {requests.map((row) => {
+                  const status = row.status === "pending" && row.approvalStatus === "returned" ? "returned" : row.status;
+                  return (
+                    <TableRow key={row.id}>
+                      <TableCell className="text-muted-foreground">{row.startDate.slice(5).split("-").reverse().join("/")}</TableCell>
+                      <TableCell>
+                        <Link href={row.approvalRequestId ? `/approvals/attendance/${row.approvalRequestId}` : "/approvals"} className="font-medium hover:underline">
+                          {t(`requests.types.${row.type}`)}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Badge dot variant={statusTone(status)}>
+                          {t(`requests.status.${status}`)}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </TableCard>
-        ) : null}
-        <p className="text-xs text-muted-foreground">{t("timesheet.tapHint")}</p>
+        </Section>
+      ) : null}
+
+      <Section>
+        <p className="px-0.5 text-xs text-muted-foreground">{t("timesheet.tapHint")}</p>
         <MonthDays days={[...personMonth.days].reverse()} />
-      </section>
-      <section className={subject ? "hidden" : "flex flex-col gap-3"}>
-        <h2 className="text-sm font-medium text-muted-foreground">{t("mySchedule")}</h2>
-        <Table numbered={false}>
-          <TableHeader>
-            <TableRow>
-              <TableHead kind="date">{t("requests.fields.date")}</TableHead>
-              <TableHead kind="select">{t("requests.fields.kind")}</TableHead>
-              <TableHead kind="time" className="text-left">{t("requests.fields.window")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(plans?.days ?? []).map((plan) => (
-              <TableRow key={plan.date}>
-                <TableCell className="font-medium">{format.dateTime(new Date(`${plan.date}T00:00:00`), { weekday: "short", day: "numeric", month: "numeric" })}</TableCell>
-                <TableCell>
-                  <Badge variant={plan.kind === "working" || plan.kind === "untracked" ? "secondary" : "outline"}>{t(`dayKinds.${plan.kind}`)}</Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{plan.kind === "working" ? `${planHours(plan)} · ${hoursText(plan.requiredMinutes)}` : (plan.name ?? "")}</TableCell>
+      </Section>
+
+      {subject ? null : (
+        <Section title={t("mySchedule")}>
+          <Table numbered={false}>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="date">{t("requests.fields.date")}</TableHead>
+                <TableHead kind="select">{t("requests.fields.kind")}</TableHead>
+                <TableHead kind="time" className="text-left">
+                  {t("requests.fields.window")}
+                </TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </section>
-    </div>
+            </TableHeader>
+            <TableBody>
+              {(plans?.days ?? []).map((plan) => (
+                <TableRow key={plan.date}>
+                  <TableCell className="font-medium">{format.dateTime(new Date(`${plan.date}T00:00:00`), { weekday: "short", day: "numeric", month: "numeric" })}</TableCell>
+                  <TableCell>
+                    <Badge variant={plan.kind === "working" || plan.kind === "untracked" ? "secondary" : "outline"}>{t(`dayKinds.${plan.kind}`)}</Badge>
+                  </TableCell>
+                  <TableCell className="text-left font-mono text-[0.8125rem] text-muted-foreground tabular-nums">{plan.kind === "working" ? `${planHours(plan)} · ${hoursText(plan.requiredMinutes)}` : (plan.name ?? "")}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Section>
+      )}
+    </Page>
   );
 }

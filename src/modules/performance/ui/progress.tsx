@@ -1,41 +1,49 @@
 // Small display pieces without hooks: labels are passed in, so they work in server and client components alike.
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { statusTone } from "@/components/ui/tone";
+import { cn } from "cn";
 import type { Confidence, GoalStatus, MetricType, Milestone } from "../enums";
 
 /** Basis points as a percentage with at most two decimals: 3125 → "31,25" through the reader's number format. */
 export const bpToPercent = (bp: number): number => bp / 100;
 
-export function ProgressBar({ bp, label }: { bp: number | null; /** "31,25 %" or the wording for "not measured yet". */ label: string }) {
+/**
+ * The design's progress bar: 6px, the accent for what is under way and the success tone once the
+ * target is met, with the figure in faint mono beside it. `wide` stretches it to its container (a
+ * card's column); otherwise it is a fixed 7rem for a row of a list.
+ */
+export function ProgressBar({ bp, label, wide = false, className }: { bp: number | null; /** "31,25 %" or the wording for "not measured yet". */ label: string; wide?: boolean; className?: string }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="h-2 w-28 shrink-0 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={bp === null ? undefined : Math.round(bp / 100)}>
-        <div className={`h-full rounded-full ${bp !== null && bp >= 10_000 ? "bg-emerald-500" : "bg-primary"}`} style={{ width: `${bp === null ? 0 : bp / 100}%` }} />
+    <div className={cn("flex items-center gap-2.5", wide ? "min-w-0 flex-1" : "shrink-0", className)}>
+      <div className={cn("h-1.5 shrink-0 overflow-hidden rounded-full bg-muted", wide ? "min-w-0 flex-1" : "w-28")} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={bp === null ? undefined : Math.round(bp / 100)}>
+        <div className={cn("h-full rounded-full transition-[width] duration-200 ease-(--ease-settle)", bp !== null && bp >= 10_000 ? "bg-success" : "bg-primary")} style={{ width: `${bp === null ? 0 : Math.min(100, bp / 100)}%` }} />
       </div>
-      <span className="text-xs text-muted-foreground tabular-nums">{label}</span>
+      <span className="shrink-0 font-mono text-xs text-faint tabular-nums">{label}</span>
     </div>
   );
 }
 
-const CONFIDENCE_CLASSES: Record<Confidence, string> = {
-  on_track: "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
-  at_risk: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
-  off_track: "bg-destructive/10 text-destructive",
+const CONFIDENCE_TONE: Record<Confidence, BadgeVariant> = {
+  on_track: "success",
+  at_risk: "warning",
+  off_track: "destructive",
 };
-const pill = "inline-flex h-5 w-fit shrink-0 items-center rounded-full px-2 text-xs font-medium whitespace-nowrap";
 
 export function ConfidenceBadge({ confidence, label }: { confidence: Confidence | null; label: string }) {
   if (!confidence) return null;
-  return <span className={`${pill} ${CONFIDENCE_CLASSES[confidence]}`}>{label}</span>;
+  return (
+    <Badge dot variant={CONFIDENCE_TONE[confidence]}>
+      {label}
+    </Badge>
+  );
 }
 
-const STATUS_CLASSES: Record<GoalStatus, string> = {
-  draft: "border border-dashed text-muted-foreground",
-  active: "border text-foreground",
-  closed: "bg-muted text-foreground",
-  cancelled: "bg-muted text-muted-foreground line-through",
-};
-
 export function GoalStatusBadge({ status, label }: { status: GoalStatus; label: string }) {
-  return <span className={`${pill} ${STATUS_CLASSES[status]}`}>{label}</span>;
+  return (
+    <Badge dot variant={statusTone(status)} className={status === "cancelled" ? "line-through" : undefined}>
+      {label}
+    </Badge>
+  );
 }
 
 /** A key result's value the way people say it: "12,5", "85 %", "1.500.000 ₫", "2/4". */

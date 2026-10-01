@@ -2,41 +2,57 @@
 // Server components — nothing here needs the browser.
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { List, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { statusTone } from "@/components/ui/tone";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { ASSET_STATUSES, type AssetStatus } from "../enums";
 import type { AssetHistoryEntry, AssetListRow } from "../service";
 import { qrSvg } from "../labels";
 
-const STATUS_TONE: Record<AssetStatus, string> = {
-  in_stock: "bg-muted text-muted-foreground",
-  assigned: "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
-  in_repair: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
-  lost: "bg-destructive/10 text-destructive",
-  disposed: "bg-muted text-muted-foreground line-through",
-};
-
 export async function StatusBadge({ status }: { status: AssetStatus }) {
   const t = await getTranslations("assets.enums");
-  return <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_TONE[status]}`}>{t(`status.${status}`)}</span>;
+  return (
+    <Badge dot variant={statusTone(status)} className={status === "disposed" ? "line-through" : undefined}>
+      {t(`status.${status}`)}
+    </Badge>
+  );
+}
+
+const initialsOf = (name: string) => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "") + (parts.length > 1 ? (parts[parts.length - 1][0] ?? "") : "")).toUpperCase() || "?";
+};
+
+/** The holder as a disc of initials beside the name; a hollow dot on the disc while the handover is unconfirmed. */
+function Holder({ name, confirmed }: { name: string; confirmed: boolean }) {
+  return (
+    <span className="flex items-center gap-2">
+      <Avatar size="sm" className="relative">
+        <AvatarFallback className="text-[0.625rem] font-medium">{initialsOf(name)}</AvatarFallback>
+        {confirmed ? null : <span aria-hidden className="absolute -top-0.5 -right-0.5 z-10 size-2 rounded-full bg-warning ring-2 ring-background" />}
+      </Avatar>
+      <span className="truncate">{name}</span>
+    </span>
+  );
 }
 
 export type RegisterFilters = { entityId?: string; categoryId?: string; status?: string; search?: string };
 
 export async function RegisterFilterBar({ query, entities, categories }: { query: RegisterFilters; entities: { id: string; code: string; shortName: string | null }[]; categories: { id: string; name: string }[] }) {
-  const t = await getTranslations("assets.filters");
+  const [t, tStatus] = await Promise.all([getTranslations("assets.filters"), getTranslations("assets.enums.status")]);
   return (
-    <form method="get" action="/assets" className="flex flex-wrap items-end gap-3 rounded-md border p-3">
-      <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-        {t("search")}
-        <input name="search" defaultValue={query.search ?? ""} placeholder={t("searchHint")} className="h-9 rounded-md border bg-transparent px-3 text-sm text-foreground" />
-      </label>
-      <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+    <form method="get" action="/assets" className="toolbar">
+      <Input name="search" type="search" defaultValue={query.search ?? ""} placeholder={t("searchHint")} aria-label={t("search")} className="w-full sm:w-64" />
+      <Label className="flex w-full flex-col gap-1 text-xs text-muted-foreground sm:w-40">
         {t("entity")}
-        <Select name="entityId" defaultValue={query.entityId ?? ""} className="h-9">
+        <Select name="entityId" defaultValue={query.entityId ?? ""}>
           <option value="">{t("any")}</option>
           {entities.map((entity) => (
             <option key={entity.id} value={entity.id}>
@@ -44,10 +60,10 @@ export async function RegisterFilterBar({ query, entities, categories }: { query
             </option>
           ))}
         </Select>
-      </label>
-      <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+      </Label>
+      <Label className="flex w-full flex-col gap-1 text-xs text-muted-foreground sm:w-44">
         {t("category")}
-        <Select name="categoryId" defaultValue={query.categoryId ?? ""} className="h-9">
+        <Select name="categoryId" defaultValue={query.categoryId ?? ""}>
           <option value="">{t("any")}</option>
           {categories.map((category) => (
             <option key={category.id} value={category.id}>
@@ -55,21 +71,21 @@ export async function RegisterFilterBar({ query, entities, categories }: { query
             </option>
           ))}
         </Select>
-      </label>
-      <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+      </Label>
+      <Label className="flex w-full flex-col gap-1 text-xs text-muted-foreground sm:w-40">
         {t("status")}
-        <Select name="status" defaultValue={query.status ?? ""} className="h-9">
+        <Select name="status" defaultValue={query.status ?? ""}>
           <option value="">{t("any")}</option>
           {ASSET_STATUSES.map((status) => (
             <option key={status} value={status}>
-              {status}
+              {tStatus(status)}
             </option>
           ))}
         </Select>
-      </label>
-      <button type="submit" className="h-9 rounded-md border px-3 text-sm">
+      </Label>
+      <Button type="submit" variant="outline">
         {t("apply")}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -85,8 +101,8 @@ export async function RegisterTable({ rows, showMoney }: { rows: readonly AssetL
           <TableHead kind="text">{t("name")}</TableHead>
           <TableHead kind="select">{t("category")}</TableHead>
           <TableHead kind="org">{t("entity")}</TableHead>
-          <TableHead kind="status">{t("status")}</TableHead>
           <TableHead kind="person">{t("holder")}</TableHead>
+          <TableHead kind="status">{t("status")}</TableHead>
           {showMoney ? <TableHead kind="money">{t("purchasePrice")}</TableHead> : null}
         </TableRow>
       </TableHeader>
@@ -95,24 +111,21 @@ export async function RegisterTable({ rows, showMoney }: { rows: readonly AssetL
         {rows.map((row) => (
           <TableRow key={row.id}>
             <TableCell kind="id">
-              <Link href={`/assets/${row.id}`} className="underline">
+              <Link href={`/assets/${row.id}`} className="font-medium text-foreground hover:underline">
                 {row.code}
               </Link>
             </TableCell>
             <TableCell>
-              {row.name}
-              {row.serial ? <span className="block text-xs text-muted-foreground">{row.serial}</span> : null}
+              <span className="font-medium">{row.name}</span>
+              {row.serial ? <span className="block font-mono text-xs text-faint">{row.serial}</span> : null}
             </TableCell>
             <TableCell>
               <Badge variant="outline">{row.categoryName}</Badge>
             </TableCell>
-            <TableCell>{row.entityName}</TableCell>
+            <TableCell className="text-muted-foreground">{row.entityName}</TableCell>
+            <TableCell>{row.holderName ? <Holder name={row.holderName} confirmed={!!row.handoverConfirmedAt} /> : <span className="text-faint">—</span>}</TableCell>
             <TableCell>
               <StatusBadge status={row.status} />
-            </TableCell>
-            <TableCell>
-              {row.holderName ?? "—"}
-              {row.holderName && !row.handoverConfirmedAt ? <span className="ml-1 text-xs text-amber-600">●</span> : null}
             </TableCell>
             {showMoney ? <TableCell kind="money">{row.purchasePrice === null ? "—" : row.purchasePrice.toLocaleString("vi-VN")}</TableCell> : null}
           </TableRow>
@@ -129,8 +142,8 @@ export async function AssetHistory({ entries }: { entries: readonly AssetHistory
       {entries.map((entry) => (
         <ListItem key={entry.id} className="flex-wrap items-baseline gap-2">
           <Badge variant="secondary">{t.has(entry.type) ? t(entry.type) : entry.type}</Badge>
-          <span className="text-xs text-muted-foreground">{entry.at.toLocaleString("vi-VN")}</span>
-          {entry.actorName ? <span className="text-xs text-muted-foreground">· {entry.actorName}</span> : null}
+          <span className="font-mono text-xs text-faint tabular-nums">{entry.at.toLocaleString("vi-VN")}</span>
+          {entry.actorName ? <span className="text-xs text-faint">· {entry.actorName}</span> : null}
           <RichText text={entry.note} className="w-full text-muted-foreground" />
         </ListItem>
       ))}
@@ -144,5 +157,5 @@ export async function AssetHistory({ entries }: { entries: readonly AssetHistory
  * reaches the markup — only the token decides which squares are black.
  */
 export function AssetQr({ url, size = 160 }: { url: string; size?: number }) {
-  return <div className="inline-block rounded-md border bg-white p-2" dangerouslySetInnerHTML={{ __html: qrSvg(url, { size }) }} />;
+  return <div className="inline-block rounded-[10px] border border-border bg-white p-2" dangerouslySetInnerHTML={{ __html: qrSvg(url, { size }) }} />;
 }

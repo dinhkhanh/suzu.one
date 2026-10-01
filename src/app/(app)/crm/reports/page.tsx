@@ -2,6 +2,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Page, PageHeader, Section, Tile, TileGrid } from "@/components/ui/page";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
@@ -25,23 +26,23 @@ export default async function SalesReportsPage({ searchParams }: PageProps<"/crm
   const today = todayInVietnam();
   const settings = await crmSettings(today);
   const [t, f, locale, teams, dashboard, outlook, aging] = await Promise.all([getTranslations("crm"), formatters(), getLocale(), listTeams(), salesDashboard(shell.viewer, { teamId }, today, 6, settings.staleDealDays), revenueOutlook(shell.viewer, today), shell.show.invoices ? agingSummary(shell.viewer, {}, today) : Promise.resolve(null)]);
-  const tile = (label: string, value: string) => (
-    <div className="rounded-xl border p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-lg font-medium tabular-nums">{value}</p>
-    </div>
-  );
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header>
-        <h1>{t("reports.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("reports.intro")}</p>
-      </header>
+    <Page width="wide">
+      <PageHeader
+        title={t("reports.title")}
+        description={t("reports.intro")}
+        actions={
+          can(user.principal, "pjm:cost") ? (
+            <Button nativeButton={false} variant="outline" render={<Link href="/crm/reports/profitability" />}>
+              {t("reports.profitabilityLink")}
+            </Button>
+          ) : null
+        }
+      />
       <CrmTabs current="reports" show={shell.show} />
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <form method="get" className="flex flex-wrap items-end gap-2">
-          <Select name="team" defaultValue={teamId ?? ""} aria-label={t("deal.fields.team")}>
+      <form method="get" className="toolbar">
+          <Select name="team" defaultValue={teamId ?? ""} aria-label={t("deal.fields.team")} className="w-full sm:w-48">
             <option value="">{t("deals.anyTeam")}</option>
             {teams
               .filter((team) => team.isActive)
@@ -51,26 +52,20 @@ export default async function SalesReportsPage({ searchParams }: PageProps<"/crm
                 </option>
               ))}
           </Select>
-          <Button type="submit" size="sm" variant="outline">
+          <Button type="submit" variant="outline">
             {t("filter")}
           </Button>
-        </form>
-        {can(user.principal, "pjm:cost") ? (
-          <Link href="/crm/reports/profitability" className="text-sm underline">
-            {t("reports.profitabilityLink")}
-          </Link>
-        ) : null}
-      </div>
+      </form>
 
       {dashboard ? (
         <>
-          <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-            {tile(t("reports.openDeals"), String(dashboard.openCount))}
-            {tile(t("reports.winRate"), f.percent(dashboard.winRate))}
-            {tile(t("reports.averageWon"), f.money(dashboard.averageWon))}
-            {tile(t("reports.cycle"), dashboard.averageCycleDays === null ? "—" : t("reports.days", { days: dashboard.averageCycleDays }))}
-            {tile(t("reports.stale"), String(dashboard.staleCount))}
-          </section>
+          <TileGrid>
+            <Tile label={t("reports.openDeals")} value={dashboard.openCount} />
+            <Tile label={t("reports.winRate")} value={f.percent(dashboard.winRate)} />
+            <Tile label={t("reports.averageWon")} value={f.money(dashboard.averageWon)} />
+            <Tile label={t("reports.cycle")} value={dashboard.averageCycleDays === null ? "—" : t("reports.days", { days: dashboard.averageCycleDays })} />
+            <Tile label={t("reports.stale")} value={dashboard.staleCount} tone={dashboard.staleCount > 0 ? "warning" : undefined} />
+          </TileGrid>
           <TableCard>
             <TableCardHeader title={t("reports.byStage")} />
             <Table numbered={false}>
@@ -110,7 +105,7 @@ export default async function SalesReportsPage({ searchParams }: PageProps<"/crm
                   {dashboard.byMonth.length === 0 ? <TableEmpty>{t("reports.noClosed")}</TableEmpty> : null}
                   {dashboard.byMonth.map((row) => (
                     <TableRow key={row.month}>
-                      <TableCell>{row.month}</TableCell>
+                      <TableCell className="font-mono text-[0.8125rem] tabular-nums">{row.month}</TableCell>
                       <TableCell kind="number">{row.wonCount}</TableCell>
                       <TableCell kind="money">{f.money(row.wonValue)}</TableCell>
                       <TableCell kind="number">{row.lostCount}</TableCell>
@@ -140,7 +135,7 @@ export default async function SalesReportsPage({ searchParams }: PageProps<"/crm
             <TableBody>
               {outlook.map((row) => (
                 <TableRow key={row.month}>
-                  <TableCell>{row.month}</TableCell>
+                  <TableCell className="font-mono text-[0.8125rem] tabular-nums">{row.month}</TableCell>
                   <TableCell kind="money">{f.money(row.contracted)}</TableCell>
                   <TableCell kind="money">{f.money(row.weighted)}</TableCell>
                 </TableRow>
@@ -151,15 +146,13 @@ export default async function SalesReportsPage({ searchParams }: PageProps<"/crm
       ) : null}
 
       {aging ? (
-        <section className="flex flex-wrap items-center gap-3 rounded-xl border p-3 text-sm">
-          <span className="font-medium">{t("home.receivables")}</span>
-          <span className="tabular-nums">{f.money(aging.total)}</span>
-          <span className="text-muted-foreground">{t("reports.overdueShare", { amount: f.money(aging.total - aging.current) })}</span>
-          <Link href="/crm/invoices" className="ml-auto text-xs underline">
-            {t("home.openReceivables")}
-          </Link>
-        </section>
+        <Section title={t("home.receivables")} action={<Link href="/crm/invoices">{t("home.openReceivables")}</Link>}>
+          <TileGrid>
+            <Tile label={t("invoices.totalOpen", { count: aging.invoices })} value={f.money(aging.total)} href="/crm/invoices" />
+            <Tile label={t("invoices.statuses.overdue")} value={f.money(aging.total - aging.current)} tone={aging.total - aging.current > 0 ? "destructive" : undefined} href="/crm/invoices?status=overdue" />
+          </TileGrid>
+        </Section>
       ) : null}
-    </div>
+    </Page>
   );
 }

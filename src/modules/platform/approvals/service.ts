@@ -486,6 +486,15 @@ export async function listMyRequests(personId: string, limit = 50): Promise<Requ
   return listQuery().where(eq(schema.approvalRequest.requesterPersonId, personId)).orderBy(desc(schema.approvalRequest.createdAt)).limit(limit);
 }
 
+/** How many of this person's own requests are still open (pending, or returned for changes): the Me page's tile. */
+export async function countMyOpenRequests(personId: string): Promise<number> {
+  const [row] = await db()
+    .select({ value: count() })
+    .from(schema.approvalRequest)
+    .where(and(eq(schema.approvalRequest.requesterPersonId, personId), inArray(schema.approvalRequest.status, OPEN_STATUSES)));
+  return row?.value ?? 0;
+}
+
 export type OversightFilter = { /** "open" = pending or returned to the requester. */ state?: "open" | "decided"; type?: string; /** Filed on or after this day, Vietnam time. */ since?: IsoDate };
 export type OversightRow = RequestListRow & { /** Whose answer an open request is waiting for, names joined — the requester's when it was returned; null once decided. */ waitingOn: string | null };
 

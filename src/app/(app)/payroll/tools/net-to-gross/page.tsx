@@ -9,6 +9,7 @@ import { listEntityOptions } from "@/modules/payroll/options";
 import { compensationReach } from "@/modules/payroll/policy";
 import { NetToGrossForm } from "@/modules/payroll/ui/offer-form";
 import { pageTitle } from "@/i18n/page-title";
+import { Page, PageHeader } from "@/components/ui/page";
 
 export const generateMetadata = pageTitle("netToGross");
 
@@ -26,15 +27,17 @@ export default async function NetToGrossPage() {
   const allowances = await listOfferAllowances(entities[0].id, month);
 
   return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <Link href="/payroll" className="text-sm text-link hover:underline">
-          ← {t("back")}
-        </Link>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </header>
+    <Page width="narrow">
+      <PageHeader
+        eyebrow={
+          <Link href="/payroll" className="text-link hover:underline">
+            ← {t("back")}
+          </Link>
+        }
+        title={t("title")}
+        description={t("description")}
+      />
       <NetToGrossForm entities={entities} allowances={allowances} defaultMonth={month} />
-    </div>
+    </Page>
   );
 }

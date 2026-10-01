@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
-import { type ColumnKind, Table, TableBody, TableCell, TableEmpty, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { type ColumnKind, Table, TableBody, TableCard, TableCell, TableEmpty, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { updateTaskAction } from "../actions";
 import { type CustomFieldType, type CustomValue, customKey } from "../engine/custom-fields";
 import { filterTasks, type ListSort, readSort, sortTasks, type TaskFilters } from "../engine/filter";
@@ -20,7 +20,8 @@ import { PRIORITIES } from "../enums";
 import { bulkUpdateTasksAction } from "../foundation-actions";
 import { handoffOf, useHandoffGate } from "./handoff";
 import { CustomValueInput, type FieldView } from "./custom-fields";
-import { FilterBar, useUrlFilters, writeFiltersToUrl } from "./filter-bar";
+import { ArrowUpDownIcon } from "lucide-react";
+import { FilterBar, MenuPicker, useUrlFilters, writeFiltersToUrl } from "./filter-bar";
 import { type ListOptions, type ListTask, sortChoices } from "./task-list-view";
 import { LabelChip } from "./team-forms";
 
@@ -98,26 +99,20 @@ export function TaskTableView({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <FilterBar filters={filters} setFilter={setFilter} clear={clear} options={options} />
-        <Select
-          aria-label={tList("sort")}
+      <FilterBar filters={filters} setFilter={setFilter} clear={clear} options={options} showState showDue>
+        <MenuPicker
+          icon={<ArrowUpDownIcon data-icon="inline-start" />}
+          label={tList("sort")}
           value={sort}
-          onChange={(event) => {
-            const next = readSort(event.target.value);
+          choices={sortChoices(fields).map((choice) => ({ value: choice.value, label: choice.field ? tList(choice.value.startsWith("-") ? "sorts.-field" : "sorts.field", { name: choice.field.name }) : tList(`sorts.${choice.value as "rank"}`) }))}
+          onChange={(value) => {
+            const next = readSort(value);
             setSort(next);
             writeFiltersToUrl(filters, { sort: next === "rank" ? null : next });
           }}
-          className="w-44"
-        >
-          {sortChoices(fields).map((choice) => (
-            <option key={choice.value} value={choice.value}>
-              {choice.field ? tList(choice.value.startsWith("-") ? "sorts.-field" : "sorts.field", { name: choice.field.name }) : tList(`sorts.${choice.value as "rank"}`)}
-            </option>
-          ))}
-        </Select>
-        <span className="ml-auto text-xs text-muted-foreground">{tList("count", { shown: visible.length, total: shown.length })}</span>
-      </div>
+        />
+        <span className="font-mono text-xs text-faint tabular-nums">{tList("count", { shown: visible.length, total: shown.length })}</span>
+      </FilterBar>
 
       {selected.size > 0 ? (
         <BulkBar
@@ -150,7 +145,7 @@ export function TaskTableView({
       ) : null}
       {gate.sheet}
       {outcome ? (
-        <div role="status" className="rounded-lg border p-3 text-sm">
+        <div role="status" className="rounded-[14px] border border-border bg-background p-3 text-sm">
           <p>{tBulk("updated", { count: outcome.updated })}</p>
           {outcome.refused.length ? (
             <>
@@ -173,6 +168,7 @@ export function TaskTableView({
       ) : null}
       {logged === null ? <p className="text-xs text-muted-foreground">{t("loggedHidden")}</p> : null}
 
+      <TableCard>
       <Table className="min-w-[64rem]">
         <TableHeader>
           <TableRow>
@@ -222,7 +218,7 @@ export function TaskTableView({
                   </span>
                 </TableCell>
                 <TableCell>
-                  <Select aria-label={t("state")} value={task.stateId} disabled={!can} onChange={(event) => edit(task, { stateId: event.target.value }, { stateId: event.target.value })} className="h-7 w-36 text-xs md:text-xs">
+                  <Select aria-label={t("state")} value={task.stateId} disabled={!can} searchable={false} onChange={(event) => edit(task, { stateId: event.target.value }, { stateId: event.target.value })} className="h-7 w-36 text-xs md:text-xs">
                     {options.states
                       .filter((state) => state.isActive || state.id === task.stateId)
                       .map((state) => (
@@ -256,7 +252,7 @@ export function TaskTableView({
                   </TableCell>
                 ))}
                 <TableCell>
-                  <Select aria-label={t("priority")} value={task.priority ?? ""} disabled={!can} onChange={(event) => edit(task, { priority: event.target.value ? Number(event.target.value) : null }, { priority: event.target.value })} className="h-7 w-28 text-xs md:text-xs">
+                  <Select aria-label={t("priority")} value={task.priority ?? ""} disabled={!can} searchable={false} onChange={(event) => edit(task, { priority: event.target.value ? Number(event.target.value) : null }, { priority: event.target.value })} className="h-7 w-28 text-xs md:text-xs">
                     <option value="">{tWork("priority.none")}</option>
                     {PRIORITIES.map((priority) => (
                       <option key={priority} value={priority}>
@@ -305,6 +301,7 @@ export function TaskTableView({
           </TableRow>
         </TableFooter>
       </Table>
+      </TableCard>
     </div>
   );
 }
@@ -322,13 +319,13 @@ function LabelCell({ task, options, disabled, onChange }: { task: ListTask; opti
     );
   return (
     <details className="relative">
-      <summary className="flex min-h-7 cursor-pointer list-none flex-wrap items-center gap-1 rounded-md border px-1.5 py-0.5" aria-label={t("editLabels", { key: task.key })}>
-        {chips.length ? chips.map((label) => <LabelChip key={label.id} name={label.name} color={label.color} />) : <span className="text-xs text-muted-foreground">+</span>}
+      <summary className="flex min-h-7 cursor-pointer list-none flex-wrap items-center gap-1 rounded-lg border border-border px-1.5 py-0.5 hover:bg-muted [&::-webkit-details-marker]:hidden" aria-label={t("editLabels", { key: task.key })}>
+        {chips.length ? chips.map((label) => <LabelChip key={label.id} name={label.name} color={label.color} />) : <span className="text-xs text-faint">+</span>}
       </summary>
-      <div className="absolute z-20 mt-1 flex min-w-40 flex-col gap-1 rounded-md border bg-background p-2 shadow-md">
+      <div className="absolute z-20 mt-1 flex min-w-40 flex-col gap-1 rounded-xl bg-popover p-2 shadow-(--float-shadow)">
         {options.labels.map((label) => (
           <label key={label.id} className="flex items-center gap-1.5 text-sm">
-            <input type="checkbox" checked={task.labelIds.includes(label.id)} onChange={(event) => onChange(event.target.checked ? [...task.labelIds, label.id] : task.labelIds.filter((id) => id !== label.id))} />
+            <Checkbox checked={task.labelIds.includes(label.id)} onCheckedChange={(checked) => onChange(checked ? [...task.labelIds, label.id] : task.labelIds.filter((id) => id !== label.id))} />
             <LabelChip name={label.name} color={label.color} />
           </label>
         ))}
@@ -395,8 +392,8 @@ function BulkBar({ ids, options, fields, pending, onClear, onApply }: { ids: str
   };
 
   return (
-    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-xl border bg-background p-2 shadow-sm">
-      <span className="text-sm font-medium">{t("selected", { count: ids.length })}</span>
+    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-[14px] border border-border bg-background p-2 shadow-(--float-shadow)">
+      <span className="px-1 text-sm font-medium">{t("selected", { count: ids.length })}</span>
       <Select
         aria-label={t("what")}
         value={what}

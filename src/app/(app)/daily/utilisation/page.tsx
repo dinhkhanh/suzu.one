@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { Fragment } from "react";
-import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { List, ListEmpty } from "@/components/ui/list";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { getUtilisation, type Utilisation, type UtilisationGroup, type UtilisationPerson } from "@/modules/daily/service";
@@ -26,9 +28,9 @@ export default async function UtilisationPage() {
     const billable = percentOf(value.billableRatio);
     return (
       <TableCell kind="percent" className={cn("align-top", strong && "font-medium")} title={t("cellTitle", { logged: hoursOf(value.logged), available: hoursOf(value.available) })}>
-        <span className={cn("block tabular-nums", value.ratio !== null && value.ratio > 1.1 && "text-warning", value.ratio === null && "text-faint")}>{ratio === null ? "—" : t("ratio", { value: ratio })}</span>
-        <span className="block text-xs text-muted-foreground tabular-nums">{t("hoursOf", { logged: hoursOf(value.logged), available: hoursOf(value.available) })}</span>
-        {billable !== null ? <span className="block text-xs text-muted-foreground tabular-nums">{t("billableRatio", { value: billable })}</span> : null}
+        <span className={cn("block", value.ratio !== null && value.ratio > 1.1 && "text-warning", value.ratio === null && "text-faint")}>{ratio === null ? "—" : t("ratio", { value: ratio })}</span>
+        <span className="block text-xs text-muted-foreground">{t("hoursOf", { logged: hoursOf(value.logged), available: hoursOf(value.available) })}</span>
+        {billable !== null ? <span className="block text-xs text-muted-foreground">{t("billableRatio", { value: billable })}</span> : null}
       </TableCell>
     );
   };
@@ -37,7 +39,9 @@ export default async function UtilisationPage() {
     <Table numbered={false}>
       <TableHeader>
         <TableRow>
-          <TableHead kind="person" className="min-w-40">{t("person")}</TableHead>
+          <TableHead kind="person" className="min-w-40">
+            {t("person")}
+          </TableHead>
           {view.weeks.map((week) => (
             <TableHead key={week} kind="percent" className="min-w-20">
               {weekLabel(week)}
@@ -50,7 +54,7 @@ export default async function UtilisationPage() {
           ? null
           : group.people.map((person: UtilisationPerson) => (
               <TableRow key={person.personId}>
-                <TableCell className="align-top">{person.name}</TableCell>
+                <TableCell className="align-top font-medium">{person.name}</TableCell>
                 {person.weeks.map((value, index) => (
                   <Fragment key={view.weeks[index]}>{cell(value)}</Fragment>
                 ))}
@@ -69,22 +73,20 @@ export default async function UtilisationPage() {
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-      <header className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="min-w-0 flex-1">{t("title")}</h1>
-          {view.groups.length > 0 ? <ExportButton action={exportUtilisationAction} input={{}} label={t("export")} failedLabel={t("exportFailed")} truncatedLabel={t("exportTruncated")} /> : null}
-        </div>
-        <p className="text-sm text-muted-foreground">{t("intro")}</p>
-      </header>
+    <Page width="full">
+      <PageHeader title={t("title")} description={t("intro")} actions={view.groups.length > 0 ? <ExportButton action={exportUtilisationAction} input={{}} label={t("export")} failedLabel={t("exportFailed")} truncatedLabel={t("exportTruncated")} /> : null} />
 
-      {view.groups.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : null}
+      {view.groups.length === 0 ? (
+        <List>
+          <ListEmpty>{t("empty")}</ListEmpty>
+        </List>
+      ) : null}
       {view.groups.map((group) => (
-        <TableCard key={group.kind === "reports" || group.kind === "company" || group.kind === "portfolio_other" ? group.kind : `${group.kind}:${group.teamId}`}>
-          <TableCardHeader title={group.kind === "reports" ? t("myReports") : group.kind === "company" ? t("everyoneElse") : group.kind === "portfolio_other" ? t("otherTeams", { count: group.teams }) : group.name} description={group.kind === "portfolio" || group.kind === "portfolio_other" ? t("portfolioHint") : undefined} />
+        <Section key={group.kind === "reports" || group.kind === "company" || group.kind === "portfolio_other" ? group.kind : `${group.kind}:${group.teamId}`} title={group.kind === "reports" ? t("myReports") : group.kind === "company" ? t("everyoneElse") : group.kind === "portfolio_other" ? t("otherTeams", { count: group.teams }) : group.name}>
+          {group.kind === "portfolio" || group.kind === "portfolio_other" ? <p className="px-0.5 text-xs text-muted-foreground">{t("portfolioHint")}</p> : null}
           {table(group)}
-        </TableCard>
+        </Section>
       ))}
-    </div>
+    </Page>
   );
 }

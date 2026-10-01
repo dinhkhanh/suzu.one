@@ -16,13 +16,14 @@ import {
   listResultDetails,
   loadDirectory,
 } from "@/modules/performance/service";
+import { Page, PageHeader } from "@/components/ui/page";
+import { Segmented } from "@/components/ui/segmented";
 import { PerformanceNav, readYear, yearChoices } from "@/modules/performance/ui/nav";
 import { BandBadge, percentText, ResultTraceTable, StatusBadge } from "@/modules/performance/ui/result";
 import { ComputeResultsForm, OverrideResultForm, RecomputeResultForm, ResultStepForm } from "@/modules/performance/ui/result-forms";
 import { OutcomeDecisionButtons, RaiseOutcomeForm } from "@/modules/performance/ui/one-on-one-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
-import Link from "next/link";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("performanceResults");
@@ -75,19 +76,10 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
   const mayOverride = canOverrideResult(user.principal);
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </header>
+    <Page>
+      <PageHeader title={t("title")} description={t("description")} />
       <PerformanceNav active="results" />
-      <nav className="flex flex-wrap items-center gap-1">
-        {yearChoices(today).map((choice) => (
-          <Link key={choice} href={`/performance/results?year=${choice}`} className={`rounded-md px-2 py-1 text-sm ${choice === year ? "pill-on" : "pill-off"}`}>
-            {choice}
-          </Link>
-        ))}
-      </nav>
+      <Segmented aria-label={t("yearLabel")} value={String(year)} options={yearChoices(today).map((choice) => ({ value: String(choice), label: choice, href: `/performance/results?year=${choice}` }))} />
 
       <section className="flex flex-col gap-3">
         <h2>{t("mine.title")}</h2>
@@ -186,6 +178,6 @@ export default async function ResultsPage({ searchParams }: PageProps<"/performa
       ) : (
         <p className="text-sm text-muted-foreground">{t("list.empty")}</p>
       )}
-    </div>
+    </Page>
   );
 }

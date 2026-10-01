@@ -10,6 +10,7 @@ import { noteToPlainText } from "@/modules/platform/rich-text/engine/note";
 import { listQueriesForManager } from "@/modules/payroll/payslips";
 import { compensationReach } from "@/modules/payroll/policy";
 import { pageTitle } from "@/i18n/page-title";
+import { Page, PageHeader } from "@/components/ui/page";
 
 export const generateMetadata = pageTitle("payslipQueries");
 
@@ -23,14 +24,16 @@ export default async function PayslipQueriesPage() {
   const [t, format, rows] = await Promise.all([getTranslations("payroll.payslips.queries"), getFormatter(), listQueriesForManager(user.principal)]);
 
   return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <Link href="/payroll" className="text-sm text-link hover:underline">
-          ← {t("queue")}
-        </Link>
-        <h1>{t("queue")}</h1>
-        <p className="text-sm text-muted-foreground">{t("queueDescription")}</p>
-      </header>
+    <Page width="default">
+      <PageHeader
+        eyebrow={
+          <Link href="/payroll" className="text-link hover:underline">
+            ← {t("queue")}
+          </Link>
+        }
+        title={t("queue")}
+        description={t("queueDescription")}
+      />
 
       <Table>
           <TableHeader>
@@ -65,6 +68,6 @@ export default async function PayslipQueriesPage() {
             ))}
           </TableBody>
         </Table>
-    </div>
+    </Page>
   );
 }

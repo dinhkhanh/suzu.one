@@ -11,6 +11,7 @@ import { dependantRows, finalizationRows, insuranceChanges, pitPeriodRows } from
 import { formatVnd } from "@/modules/payroll/ui/money";
 import { StatutoryExportButton, StatutoryFilters } from "@/modules/payroll/ui/statutory-forms";
 import { pageTitle } from "@/i18n/page-title";
+import { Page, PageHeader } from "@/components/ui/page";
 
 export const generateMetadata = pageTitle("statutoryData");
 
@@ -42,14 +43,16 @@ export default async function StatutoryExportsPage({ searchParams }: PageProps<"
   ]);
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <Link href="/payroll" className="text-sm text-link hover:underline">
-          ← {t("back")}
-        </Link>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </header>
+    <Page width="wide">
+      <PageHeader
+        eyebrow={
+          <Link href="/payroll" className="text-link hover:underline">
+            ← {t("back")}
+          </Link>
+        }
+        title={t("title")}
+        description={t("description")}
+      />
 
       <Alert variant="warning">{t("unverifiedBanner")}</Alert>
 
@@ -167,6 +170,6 @@ export default async function StatutoryExportsPage({ searchParams }: PageProps<"
           {dependants && dependants.rows.length > 0 ? <StatutoryExportButton kind="dependants" entityId={entityId} period={month} label={t("download")} /> : null}
         </div>
       </section>
-    </div>
+    </Page>
   );
 }

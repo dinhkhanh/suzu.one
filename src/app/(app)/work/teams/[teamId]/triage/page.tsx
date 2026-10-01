@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader, Section } from "@/components/ui/page";
 import { notFound } from "next/navigation";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -36,20 +37,14 @@ export default async function TriagePage({ params }: PageProps<"/work/teams/[tea
   };
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/work" className="underline">
+    <Page width="default">
+      <PageHeader eyebrow={<span className="flex flex-wrap items-center gap-x-1.5"><Link href="/work" className="hover:underline">
             {t("title")}
           </Link>
-          {" / "}
-          <Link href={`/work/teams/${team.id}`} className="underline">
+          <span className="text-faint">/</span>
+          <Link href={`/work/teams/${team.id}`} className="hover:underline">
             {team.name}
-          </Link>
-        </p>
-        <h1>{t("triage.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("triage.description")}</p>
-      </header>
+          </Link></span>} title={t("triage.title")} description={t("triage.description")} />
 
       <TriageQueue
         items={items.map(({ id, key, title, description, source, triageStatus, snoozedUntil, requesterName, formName, createdAt, assigneePersonId, projectId, dueDate, priority, labelIds }) => ({ id, key, title, description, source, triageStatus, snoozedUntil, requesterName, formName, createdAt, assigneePersonId, projectId, dueDate, priority, labelIds }))}
@@ -59,11 +54,10 @@ export default async function TriagePage({ params }: PageProps<"/work/teams/[tea
       />
 
       {decide ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("triage.rules.title")}</h2>
+        <Section title={t("triage.rules.title")}>
           <TriageRuleManager teamId={team.id} rules={rules.map(({ id, name, match, set, sortOrder, isActive }) => ({ id, name, match, set, sortOrder, isActive }))} choices={choices} canManage={decide} />
-        </section>
+        </Section>
       ) : null}
-    </div>
+    </Page>
   );
 }

@@ -3,6 +3,7 @@
 // render it, editable only for the person and only while the week is open.
 import { getFormatter, getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
+import { Section } from "@/components/ui/page";
 import { statusTone } from "@/components/ui/tone";
 import type { TimeWeekView } from "../timesheets";
 import { TIME_CATEGORIES } from "../enums";
@@ -52,19 +53,15 @@ export async function TimeWeek({ view, openTasks = [] }: { view: TimeWeekView; o
   }));
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-6 md:gap-8">
       <WeekGrid rows={rows} days={days} weekStart={view.weekStart} editable={view.editable} options={options} copyRows={copyRows} />
-      {view.days.some((day) => day.hint) ? <p className="text-xs text-muted-foreground">{t("attendanceHint")}</p> : null}
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">
-          {t("entries")} · {t("billableTotal", { value: hoursOf(view.grid.billable), total: hoursOf(view.grid.total) })}
-        </h2>
+      {view.days.some((day) => day.hint) ? <p className="px-0.5 text-xs text-muted-foreground">{t("attendanceHint")}</p> : null}
+      <Section title={t("entries")} count={<span className="normal-case">{t("billableTotal", { value: hoursOf(view.grid.billable), total: hoursOf(view.grid.total) })}</span>}>
         <WeekEntries entries={entries} editable={view.editable} />
-      </section>
+      </Section>
     </div>
   );
 }
-
 
 /** Where the week stands (FR-PJM-25): its status, and who returned, approved or reopened it and why. */
 export async function WeekStatus({ view }: { view: TimeWeekView }) {

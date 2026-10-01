@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Page } from "@/components/ui/page";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
@@ -32,17 +34,19 @@ export default async function ProjectUpdatesPage({ params }: PageProps<"/project
   const stale = isStale(cadence, today);
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
+    <Page>
       <ProjectHeader context={context} current="updates" />
 
-      <section className="flex flex-col gap-3 rounded-xl border p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-medium">{t("updates.now")}</h2>
-          {dueOn ? <Badge variant={stale ? "warning" : "secondary"}>{stale ? t("updates.stale") : t("updates.nextDue", { date: format.dateTime(new Date(`${dueOn}T00:00:00`), { dateStyle: "medium" }) })}</Badge> : null}
-        </div>
-        <Facts facts={facts} />
-        {can.postStatus ? <StatusUpdateForm projectId={project.id} healths={HEALTHS} draft={<StatusDraftButton projectId={project.id} targetId="summary" healthTargetId="status-health-draft" />} /> : null}
-      </section>
+      <Card>
+        <CardContent className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2>{t("updates.now")}</h2>
+            {dueOn ? <Badge variant={stale ? "warning" : "secondary"}>{stale ? t("updates.stale") : t("updates.nextDue", { date: format.dateTime(new Date(`${dueOn}T00:00:00`), { dateStyle: "medium" }) })}</Badge> : null}
+          </div>
+          <Facts facts={facts} />
+          {can.postStatus ? <StatusUpdateForm projectId={project.id} healths={HEALTHS} draft={<StatusDraftButton projectId={project.id} targetId="summary" healthTargetId="status-health-draft" />} /> : null}
+        </CardContent>
+      </Card>
 
       <TableCard>
         <TableCardHeader title={t("updates.history")} count={updates.length || null} />
@@ -77,7 +81,7 @@ export default async function ProjectUpdatesPage({ params }: PageProps<"/project
           ))}
         </List>
       </TableCard>
-    </div>
+    </Page>
   );
 }
 

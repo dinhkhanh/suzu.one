@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -9,6 +10,8 @@ import { costReport, costTrend, insuranceSummary, payrollRegister, pitSummary, r
 import { formatVnd } from "@/modules/payroll/ui/money";
 import { ExportReportButton, ReportFilters } from "@/modules/payroll/ui/report-forms";
 import { pageTitle } from "@/i18n/page-title";
+import { Page, PageHeader } from "@/components/ui/page";
+import { PayrollTabs } from "@/modules/payroll/ui/payroll-tabs";
 
 export const generateMetadata = pageTitle("payrollReports");
 
@@ -41,17 +44,20 @@ export default async function PayrollReportsPage({ searchParams }: PageProps<"/p
   ]);
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <Link href="/payroll" className="text-sm text-link hover:underline">
-          ← {t("back")}
-        </Link>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </header>
+    <Page width="wide">
+      <PageHeader
+        eyebrow={
+          <Link href="/payroll" className="text-link hover:underline">
+            ← {t("back")}
+          </Link>
+        }
+        title={t("title")}
+        description={t("description")}
+      />
+      <PayrollTabs active="reports" principal={user.principal} />
 
       <ReportFilters entities={options.entities} months={options.months} entityId={entityId} month={month} />
-      {options.months.length === 0 ? <p className="rounded-xl border p-4 text-sm text-muted-foreground">{t("noRuns")}</p> : null}
+      {options.months.length === 0 ? <Alert variant="neutral">{t("noRuns")}</Alert> : null}
 
       {/* ── The register: the one report that names people and their pay (C&B only) ── */}
       {register ? (
@@ -218,6 +224,6 @@ export default async function PayrollReportsPage({ searchParams }: PageProps<"/p
           </Table>
         </TableCard>
       ) : null}
-    </div>
+    </Page>
   );
 }

@@ -2,10 +2,10 @@
 // through the records service with the viewer's principal and simply is not there when the tier is
 // not enough. Forms appear only for those who may write that tier; the actions re-check.
 import { getFormatter, getTranslations } from "next-intl/server";
-import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Section } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import type { Principal } from "@/modules/platform/rbac/policy";
@@ -16,18 +16,6 @@ import { getSensitiveSummary, listContracts, listDependents, listDocuments, list
 import { deleteContractAction, deleteDependentAction, deleteDocumentAction, deleteAttachmentAction, removeEmergencyContactAction } from "../records-actions";
 import { getPersonTarget } from "../service";
 import { AttachmentUpload, ContractForm, ContractTerms, DependentForm, DocumentUploadForm, EmergencyContactForm, EndDeductionForm, RecordFileLink, RowAction, SensitivePanel, TerminateContractForm } from "./records-forms";
-
-function Section({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-baseline gap-x-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{title}</h2>
-        {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
 
 export async function RecordSections({ principal, personId }: { principal: Principal; personId: string }) {
   const target = await getPersonTarget(personId);
@@ -210,7 +198,7 @@ export async function RecordSections({ principal, personId }: { principal: Princ
       ) : null}
 
       {sensitive ? (
-        <Section title={t("sections.sensitive")} note={t("tierNote.restricted")}>
+        <Section title={t("sections.sensitive")} action={<span className="text-xs font-normal text-faint">{t("tierNote.restricted")}</span>}>
           <SensitivePanel personId={personId} summary={sensitive} canManage={manages.restricted} dependentNames={Object.fromEntries((dependents ?? []).map((row) => [row.id, row.fullName]))} />
         </Section>
       ) : null}

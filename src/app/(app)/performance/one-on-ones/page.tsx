@@ -6,6 +6,7 @@ import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listOneOnOnes, myReports } from "@/modules/performance/service";
+import { Page, PageHeader } from "@/components/ui/page";
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { NewOneOnOneForm } from "@/modules/performance/ui/one-on-one-forms";
 import { pageTitle } from "@/i18n/page-title";
@@ -18,12 +19,9 @@ export default async function OneOnOnesPage() {
   const [t, format, meetings, reports] = await Promise.all([getTranslations("performance.oneOnOnes"), getFormatter(), listOneOnOnes(user.person.id), myReports(user.person.id)]);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </header>
-      <PerformanceNav active={null} />
+    <Page>
+      <PageHeader title={t("title")} description={t("description")} />
+      <PerformanceNav active="oneOnOnes" />
 
       <TableCard>
         <Table>
@@ -59,6 +57,6 @@ export default async function OneOnOnesPage() {
           </TableAddRow>
         ) : null}
       </TableCard>
-    </div>
+    </Page>
   );
 }

@@ -3,8 +3,10 @@ import { useTranslations } from "next-intl";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { createDelegationAction, revokeDelegationAction } from "../actions";
 
@@ -12,9 +14,9 @@ export function DelegationForm({ people, requestTypes, today }: { people: { id: 
   const t = useTranslations("approvals");
   const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(createDelegationAction);
   return (
-    <form onSubmit={onSubmit} key={saved ? "saved" : "open"} className="flex flex-col gap-4 rounded-xl border p-4">
+    <form onSubmit={onSubmit} key={saved ? "saved" : "open"} className="flex flex-col gap-4">
       <FieldErrors value={fieldErrors}>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           <Field name="toPersonId" label={t("delegation.to")}>
             <Select id="toPersonId" name="toPersonId" required defaultValue="">
               <option value="" disabled>
@@ -47,15 +49,15 @@ export function DelegationForm({ people, requestTypes, today }: { people: { id: 
         <Field name="reason" label={t("delegation.reason")}>
           <Input id="reason" name="reason" maxLength={300} />
         </Field>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="includePending" className="size-4" />
+        <Label className="flex items-center gap-2 text-sm font-normal">
+          <Checkbox name="includePending" />
           {t("delegation.includePending")}
-        </label>
+        </Label>
       </FieldErrors>
       <FormError namespace="approvals.errors" errorKey={errorKey} />
       {saved ? <p className="text-sm text-muted-foreground">{t("delegation.saved")}</p> : null}
       <div>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" size="lg" disabled={pending} className="w-full md:w-auto">
           {t("delegation.submit")}
         </Button>
       </div>

@@ -2,6 +2,9 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Page, PageHeader } from "@/components/ui/page";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -10,6 +13,7 @@ import { listEntityOptions } from "@/modules/payroll/options";
 import { compensationReach } from "@/modules/payroll/policy";
 import { listSalaryOverview } from "@/modules/payroll/salaries";
 import { formatVnd } from "@/modules/payroll/ui/money";
+import { PayrollTabs } from "@/modules/payroll/ui/payroll-tabs";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("salaries");
@@ -28,16 +32,11 @@ export default async function SalariesPage({ searchParams }: PageProps<"/payroll
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00+07:00`), { dateStyle: "medium" });
 
   return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <Link href="/payroll" className="text-sm text-link hover:underline">
-          ← {t("title")}
-        </Link>
-        <h1>{t("salaries.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("salaries.description")}</p>
-      </header>
+    <Page width="wide">
+      <PageHeader eyebrow={t("title")} title={t("salaries.title")} description={t("salaries.description")} />
+      <PayrollTabs active="salaries" principal={user.principal} />
       <form className="toolbar" action="/payroll/salaries">
-        <input name="q" defaultValue={search ?? ""} placeholder={t("salaries.search")} className="h-9 rounded-md border bg-transparent px-3 text-sm" />
+        <Input name="q" defaultValue={search ?? ""} placeholder={t("salaries.search")} aria-label={t("salaries.search")} className="w-full md:w-64" />
         <Select name="entity" defaultValue={entityId ?? ""} aria-label={t("salaries.allEntities")} className="w-auto min-w-40">
           <option value="">{t("salaries.allEntities")}</option>
           {entities.map((entity) => (
@@ -46,9 +45,9 @@ export default async function SalariesPage({ searchParams }: PageProps<"/payroll
             </option>
           ))}
         </Select>
-        <button type="submit" className="h-9 rounded-md border px-3 text-sm hover:bg-muted">
+        <Button type="submit" variant="outline">
           {t("salaries.filter")}
-        </button>
+        </Button>
       </form>
       <Table>
         <TableHeader>
@@ -70,21 +69,21 @@ export default async function SalariesPage({ searchParams }: PageProps<"/payroll
                 <Link href={`/payroll/salaries/${row.personId}`} className="font-medium hover:underline">
                   {row.fullName}
                 </Link>
-                <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
+                <span className="ml-2 font-mono text-xs text-faint">{row.employeeCode}</span>
                 {row.hasOpenChange ? (
-                  <Badge variant="outline" className="ml-2 text-[10px]">
+                  <Badge dot variant="warning" className="ml-2">
                     {t("salaries.openChange")}
                   </Badge>
                 ) : null}
               </TableCell>
               <TableCell>{row.entityId ? entityCode.get(row.entityId) : "—"}</TableCell>
-              <TableCell>{row.profile ? <Badge variant={row.profile === "simple" ? "outline" : "secondary"}>{t(`profiles.kinds.${row.profile}`)}</Badge> : <span className="text-destructive">{t("salaries.noProfile")}</span>}</TableCell>
+              <TableCell>{row.profile ? <Badge variant={row.profile === "simple" ? "outline" : "secondary"}>{t(`profiles.kinds.${row.profile}`)}</Badge> : <Badge dot variant="destructive">{t("salaries.noProfile")}</Badge>}</TableCell>
               {row.structure ? (
                 <>
                   <TableCell kind="money">{formatVnd(row.structure.baseSalary)}</TableCell>
-                  <TableCell kind="money">{formatVnd(row.structure.insuranceSalary)}</TableCell>
-                  <TableCell kind="money">{formatVnd(row.structure.allowancesTotal)}</TableCell>
-                  <TableCell>{day(row.structure.validFrom)}</TableCell>
+                  <TableCell kind="money" className="text-muted-foreground">{formatVnd(row.structure.insuranceSalary)}</TableCell>
+                  <TableCell kind="money" className="text-muted-foreground">{formatVnd(row.structure.allowancesTotal)}</TableCell>
+                  <TableCell className="text-muted-foreground">{day(row.structure.validFrom)}</TableCell>
                 </>
               ) : (
                 <TableCell colSpan={4} className="text-destructive">
@@ -95,6 +94,6 @@ export default async function SalariesPage({ searchParams }: PageProps<"/payroll
           ))}
         </TableBody>
       </Table>
-    </div>
+    </Page>
   );
 }

@@ -41,9 +41,9 @@ export async function PerformanceNav({ active, year }: { active: PerformanceSect
     admin: !!principal && canOpenKpiAdmin(principal),
   } satisfies Record<PerformanceSection, boolean>;
   return (
-    <nav className="flex flex-wrap items-center gap-1 border-b pb-2">
+    <nav className="tab-row" aria-label={t("label")}>
       {PERFORMANCE_SECTIONS.filter((section) => shown[section]).map((section) => (
-        <Link key={section} href={`${SECTION_HREF[section]}${year && TAKES_YEAR.includes(section) ? `?year=${year}` : ""}`} className={`rounded-md px-2 py-1 text-sm ${section === active ? "pill-on" : "pill-off"}`}>
+        <Link key={section} href={`${SECTION_HREF[section]}${year && TAKES_YEAR.includes(section) ? `?year=${year}` : ""}`} aria-current={section === active ? "page" : undefined}>
           {t(section)}
         </Link>
       ))}

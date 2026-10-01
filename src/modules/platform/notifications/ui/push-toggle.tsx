@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { sendTestPushAction, unsubscribePushAction } from "../actions";
 import { forgetRegistration, pushSupported, subscribeDevice } from "./push-client";
 
@@ -66,28 +67,32 @@ export function PushToggle({ vapidPublicKey, personId, deviceCount }: { vapidPub
   }
 
   return (
-    <section className="flex flex-col gap-2 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("title")}</h2>
-      <p className="text-sm text-muted-foreground">{!vapidPublicKey ? t("notConfigured") : state === "unsupported" ? t("unsupported") : state === "denied" ? t("denied") : state === "on" ? t("on") : t("off")}</p>
-      <p className="text-xs text-muted-foreground">{t("devices", { count: deviceCount })}</p>
-      <div className="flex flex-wrap items-center gap-2">
-        {vapidPublicKey && state === "off" ? (
-          <Button type="button" onClick={turnOn} disabled={pending}>
-            {t("turnOn")}
-          </Button>
-        ) : null}
-        {state === "on" ? (
-          <Button type="button" variant="outline" onClick={turnOff} disabled={pending}>
-            {t("turnOff")}
-          </Button>
-        ) : null}
-        {deviceCount > 0 ? (
-          <Button type="button" variant="outline" onClick={test} disabled={pending}>
-            {t("test")}
-          </Button>
-        ) : null}
-        {message ? <span className="text-sm text-muted-foreground">{message}</span> : null}
-      </div>
-    </section>
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("title")}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        <p className="text-sm text-muted-foreground">{!vapidPublicKey ? t("notConfigured") : state === "unsupported" ? t("unsupported") : state === "denied" ? t("denied") : state === "on" ? t("on") : t("off")}</p>
+        <p className="text-xs text-muted-foreground">{t("devices", { count: deviceCount })}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          {vapidPublicKey && state === "off" ? (
+            <Button type="button" onClick={turnOn} disabled={pending}>
+              {t("turnOn")}
+            </Button>
+          ) : null}
+          {state === "on" ? (
+            <Button type="button" variant="outline" onClick={turnOff} disabled={pending}>
+              {t("turnOff")}
+            </Button>
+          ) : null}
+          {deviceCount > 0 ? (
+            <Button type="button" variant="outline" onClick={test} disabled={pending}>
+              {t("test")}
+            </Button>
+          ) : null}
+          {message ? <span className="text-sm text-muted-foreground">{message}</span> : null}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

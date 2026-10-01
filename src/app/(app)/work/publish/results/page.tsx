@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
@@ -18,26 +19,20 @@ export default async function PublishResultsImportPage() {
   if (user.principal.workforceType === "collaborator") notFound();
   const t = await getTranslations("work");
   return (
-    <div className="flex max-w-4xl flex-col gap-4">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/work" className="underline">
+    <Page width="default">
+      <PageHeader eyebrow={<span className="flex flex-wrap items-center gap-x-1.5"><Link href="/work" className="hover:underline">
             {t("title")}
           </Link>
-          {" / "}
-          <Link href="/work/calendar" className="underline">
+          <span className="text-faint">/</span>
+          <Link href="/work/calendar" className="hover:underline">
             {t("calendar.title")}
-          </Link>
-        </p>
-        <h1>{t("results.importTitle")}</h1>
-        <p className="text-sm text-muted-foreground">{t("results.importDescription")}</p>
-      </header>
+          </Link></span>} title={t("results.importTitle")} description={t("results.importDescription")} />
       <ul className="list-disc pl-5 text-sm text-muted-foreground">
         <li>{t("results.notes.match")}</li>
         <li>{t("results.notes.reading")}</li>
         <li>{t("results.notes.again")}</li>
       </ul>
       <ImportWizard title={t("results.importWizard")} template={{ fileName: "ket-qua-bai-dang.csv", csv: resultTemplate() }} stageAction={stageResultsImportAction} commitAction={commitResultsImportAction} />
-    </div>
+    </Page>
   );
 }

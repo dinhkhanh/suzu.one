@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
+import { Page, PageHeader } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -66,22 +67,16 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
   );
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/crm/accounts" className="underline">
+    <Page width="wide">
+      <PageHeader eyebrow={<><Link href="/crm/accounts" className="underline">
             {t("accounts.title")}
-          </Link>
-        </p>
-        <h1 className="flex flex-wrap items-center gap-2">
-          {account.client.name}
+          </Link></>} title={<span className="inline-flex flex-wrap items-center gap-2">{account.client.name}
           <span className="font-mono text-sm text-muted-foreground">{account.client.code}</span>
           <Badge dot variant={statusTone(lifecycle === "churned" ? "closed" : lifecycle === "dormant" ? "pending" : lifecycle)}>
             {t(`enums.lifecycle.${lifecycle}`)}
           </Badge>
           {profile?.tier ? <Badge variant="outline">{t(`enums.tier.${profile.tier as "a"}`)}</Badge> : null}
-          {profile?.creditHold ? <Badge variant="destructive">{t("account.creditHold")}</Badge> : null}
-        </h1>
+          {profile?.creditHold ? <Badge variant="destructive">{t("account.creditHold")}</Badge> : null}</span>}>
         <p className="text-sm text-muted-foreground">
           {[profile?.legalName, profile?.taxCode ? t("account.taxCodeIs", { code: profile.taxCode }) : null, profile?.industry].filter(Boolean).join(" · ")}
         </p>
@@ -90,7 +85,7 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
           {brands.length ? ` · ${t("account.brands", { names: brands.map((brand) => brand.name).join(", ") })}` : ""}
         </p>
         {profile?.creditHold && profile.creditHoldReason ? <p className="text-sm text-destructive">{profile.creditHoldReason}</p> : null}
-      </header>
+      </PageHeader>
       <CrmTabs current="accounts" show={shell.show} />
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
@@ -407,6 +402,6 @@ export default async function AccountPage({ params }: PageProps<"/crm/accounts/[
           ) : null}
         </aside>
       </div>
-    </div>
+    </Page>
   );
 }

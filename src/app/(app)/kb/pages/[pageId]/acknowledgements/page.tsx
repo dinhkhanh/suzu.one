@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { notFound } from "next/navigation";
 import { pagePath } from "@/modules/kb/enums";
 import { Badge } from "@/components/ui/badge";
@@ -28,20 +29,16 @@ export default async function AckReportPage(props: PageProps<"/kb/pages/[pageId]
   const percent = (done: number, total: number) => (total ? Math.round((done / total) * 100) : 0);
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
+    <Page>
+      <PageHeader
+        eyebrow={
           <Link href={pagePath(loaded.space.key, page)} className="hover:underline">
             {page.publishedTitle ?? page.title}
           </Link>
-        </p>
-        <h1>{t("ack.reportTitle")}</h1>
-        {page.ackRequired && report.versionNo ? (
-          <p className="text-sm text-muted-foreground">{t("ack.reportLine", { n: report.versionNo, done: report.done, total: report.total, percent: percent(report.done, report.total), overdue: report.overdue, days: report.dueDays })}</p>
-        ) : (
-          <p className="text-sm text-muted-foreground">{page.ackRequired ? t("ack.notPublishedYet") : t("ack.notRequired")}</p>
-        )}
-      </header>
+        }
+        title={t("ack.reportTitle")}
+        description={page.ackRequired && report.versionNo ? t("ack.reportLine", { n: report.versionNo, done: report.done, total: report.total, percent: percent(report.done, report.total), overdue: report.overdue, days: report.dueDays }) : page.ackRequired ? t("ack.notPublishedYet") : t("ack.notRequired")}
+      />
 
       {report.versionNo ? (
         <>
@@ -101,6 +98,6 @@ export default async function AckReportPage(props: PageProps<"/kb/pages/[pageId]
           </Table>
         </>
       ) : null}
-    </div>
+    </Page>
   );
 }

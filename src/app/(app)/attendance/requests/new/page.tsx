@@ -1,6 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Alert } from "@/components/ui/alert";
+import { Page, PageHeader } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { getAttendancePolicy } from "@/modules/attendance/attendance-policies";
 import { canFileAttendanceRequestFor } from "@/modules/attendance/policy";
@@ -62,28 +64,25 @@ export default async function NewAttendanceRequestPage({ searchParams }: PagePro
   const href = (value: string) => `/attendance/requests/new?type=${value}&date=${date}${onBehalf ? `&person=${personId}` : ""}`;
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1>{returned ? t("resubmitTitle") : t("newTitle")}</h1>
-        <p className="text-sm text-muted-foreground">{onBehalf && subject ? t("onBehalf", { name: subject.fullName }) : t("newDescription")}</p>
-      </header>
+    <Page width="narrow">
+      <PageHeader title={returned ? t("resubmitTitle") : t("newTitle")} description={onBehalf && subject ? t("onBehalf", { name: subject.fullName }) : t("newDescription")} />
       {returned ? null : (
         <nav className="tab-row">
           {ATTENDANCE_REQUEST_TYPES.map((value) => (
-            <Link key={value} href={href(value)} className={value === type ? "rounded-md bg-primary px-3 py-1.5 text-primary-foreground" : "rounded-md border px-3 py-1.5 hover:bg-muted"}>
+            <Link key={value} href={href(value)} aria-current={value === type ? "page" : undefined}>
               {t(`types.${value}`)}
             </Link>
           ))}
         </nav>
       )}
       <p className="text-sm text-muted-foreground">{t(`typeHints.${type}`)}</p>
-      {policy?.monthlyCorrectionCap && used !== null ? <p className="rounded-lg bg-muted p-2 text-sm">{t("capStatus", { used, cap: policy.monthlyCorrectionCap })}</p> : null}
+      {policy?.monthlyCorrectionCap && used !== null ? <Alert>{t("capStatus", { used, cap: policy.monthlyCorrectionCap })}</Alert> : null}
       {warnings.map((warning) => (
-        <p key={warning.code} className="rounded-lg bg-muted p-2 text-sm">
+        <Alert key={warning.code} variant="warning">
           {t(`warnings.${warning.code}`, { total: Math.round(warning.totalMinutes / 6) / 10, limit: warning.limitMinutes / 60 })}
-        </p>
+        </Alert>
       ))}
       <AttendanceRequestForm key={type} type={type} personId={onBehalf ? personId : null} defaults={defaults} resubmit={resubmitId} />
-    </div>
+    </Page>
   );
 }

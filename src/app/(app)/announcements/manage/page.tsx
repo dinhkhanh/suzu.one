@@ -2,12 +2,15 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Page, PageHeader } from "@/components/ui/page";
 import { statusTone } from "@/components/ui/tone";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { audienceNames, canPostAnywhere, listManagedAnnouncements } from "@/modules/comms/service";
 import { audienceLabel } from "@/modules/comms/ui/labels";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
+import { cn } from "@/lib/utils";
 
 export const generateMetadata = pageTitle("manageAnnouncements");
 
@@ -18,21 +21,21 @@ export default async function ManageAnnouncementsPage() {
   const names = await audienceNames(rows.flatMap((row) => row.audience));
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-col gap-1">
-          <p className="text-sm text-muted-foreground">
-            <Link href="/announcements" className="hover:underline">
-              {t("list.title")}
-            </Link>
-          </p>
-          <h1>{t("manage.title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("manage.help")}</p>
-        </div>
-        <Link href="/announcements/manage/new" className="text-sm underline underline-offset-2">
-          {t("manage.new")}
-        </Link>
-      </header>
+    <Page>
+      <PageHeader
+        eyebrow={
+          <Link href="/announcements" className="hover:underline">
+            {t("list.title")}
+          </Link>
+        }
+        title={t("manage.title")}
+        description={t("manage.help")}
+        actions={
+          <Link href="/announcements/manage/new" className={cn(buttonVariants())}>
+            {t("manage.new")}
+          </Link>
+        }
+      />
       <TableCard>
         <Table>
           <TableHeader>
@@ -66,6 +69,6 @@ export default async function ManageAnnouncementsPage() {
         </Table>
         <TableAddRow label={t("manage.new")} href="/announcements/manage/new" />
       </TableCard>
-    </div>
+    </Page>
   );
 }

@@ -2,9 +2,13 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Page, PageHeader } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
-import { assetsToday, canManageLicences, canReadLicences, CYCLE_MONTHS, listLicences } from "@/modules/assets/service";
+import { assetsToday, canManageAssets, canManageLicences, canReadLicences, CYCLE_MONTHS, listLicences } from "@/modules/assets/service";
+import { AssetsNav } from "@/modules/assets/ui/nav";
+import { statusTone } from "@/components/ui/tone";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("licencesSubscriptions");
@@ -23,27 +27,21 @@ export default async function LicencesPage() {
   const dueTone = (renewalDate: string | null) => {
     if (!renewalDate || renewalDate < today) return "text-muted-foreground";
     const days = Math.round((Date.parse(`${renewalDate}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
-    return days <= 14 ? "text-destructive font-medium" : days <= 45 ? "text-amber-600" : "";
+    return days <= 14 ? "text-destructive font-medium" : days <= 45 ? "text-warning" : "";
   };
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1>{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/assets" className="h-9 rounded-md border px-3 text-sm leading-9">
-            {t("nav.register")}
-          </Link>
-          {manage ? (
-            <Link href="/assets/licences/new" className="h-9 rounded-md bg-primary px-3 text-sm font-medium leading-9 text-primary-foreground">
-              {t("nav.new")}
-            </Link>
-          ) : null}
-        </div>
-      </header>
+    <Page width="wide">
+      <PageHeader
+        title={t("title")}
+        description={t("description")}
+        actions={
+          manage ? (
+            <Button nativeButton={false} render={<Link href="/assets/licences/new" />}>{t("nav.new")}</Button>
+          ) : null
+        }
+      />
+      <AssetsNav current="licences" manages={canManageAssets(user.principal)} principal={user.principal} />
 
       <TableCard>
         <Table>
@@ -71,22 +69,22 @@ export default async function LicencesPage() {
                   ) : (
                     <span className="font-medium">{row.name}</span>
                   )}
-                  {row.vendor ? <p className="text-xs text-muted-foreground">{row.vendor}</p> : null}
+                  {row.vendor ? <p className="text-xs text-faint">{row.vendor}</p> : null}
                 </TableCell>
                 <TableCell>{row.entityName ?? "—"}</TableCell>
                 <TableCell kind="number">{row.seats ?? "—"}</TableCell>
                 <TableCell>
                   <Badge variant="outline">{tc(row.billingCycle)}</Badge>
                 </TableCell>
-                <TableCell className={dueTone(row.renewalDate)}>
-                  {row.renewalDate ? row.renewalDate.split("-").reverse().join("/") : "—"}
+                <TableCell kind="date" className={dueTone(row.renewalDate)}>
+                  <span className="font-mono text-[0.8125rem] tabular-nums">{row.renewalDate ? row.renewalDate.split("-").reverse().join("/") : "—"}</span>
                   {CYCLE_MONTHS[row.billingCycle] !== null && !row.autoRenews ? <span className="ml-1 text-xs text-muted-foreground">{t("manualRenew")}</span> : null}
                 </TableCell>
                 <TableCell>{row.ownerName ?? "—"}</TableCell>
                 {/* An asset's price and a licence's price are exactly as visible as each other. */}
                 <TableCell kind="money">{row.canSeeMoney ? (row.costPerCycle === null ? "—" : row.costPerCycle.toLocaleString("vi-VN")) : "•••"}</TableCell>
                 <TableCell>
-                  <Badge variant="outline">{ts(row.status)}</Badge>
+                  <Badge dot variant={statusTone(row.status)}>{ts(row.status)}</Badge>
                 </TableCell>
               </TableRow>
             ))}
@@ -96,6 +94,6 @@ export default async function LicencesPage() {
       </TableCard>
 
       <p className="text-xs text-muted-foreground">{t("trackerNote")}</p>
-    </div>
+    </Page>
   );
 }

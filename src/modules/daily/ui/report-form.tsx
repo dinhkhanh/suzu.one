@@ -2,15 +2,17 @@
 // The end-of-day report (FR-PJM-22), built to be sent in under a minute: the day is already
 // written from the record; the person adds blockers and notes, checks tomorrow's plan (what was not
 // done today is ticked) and sends. The seconds from opening to sending are recorded.
+import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useRef, useState, useTransition } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useRef, useState, useTransition } from "react";
 import { FormError } from "@/components/forms/field";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Section } from "@/components/ui/page";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import type { ActivityItem, DailyTaskLine } from "../schema";
 import { submitReportAction } from "../actions";
@@ -69,55 +71,46 @@ export function ReportForm({
     });
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("report.done", { count: draft.done.length })}</h2>
+    <div className="flex flex-col gap-6 md:gap-8">
+      <Section title={t("report.done", { count: draft.done.length })}>
         <TaskLines lines={draft.done} empty={t("report.noneDone")} />
-      </section>
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("report.notDone", { count: draft.notDone.length })}</h2>
+      </Section>
+      <Section title={t("report.notDone", { count: draft.notDone.length })}>
         <TaskLines lines={draft.notDone} empty={t("report.allPlannedDone")} />
-      </section>
-      {timeRequired && draft.minutesLogged === 0 ? (
-        <Alert variant="warning">{t("report.noTimeLogged")}</Alert>
-      ) : null}
-      <details className="rounded-xl border p-3" open={timeRequired && draft.minutesLogged === 0}>
-        <summary className="cursor-pointer text-sm font-medium text-muted-foreground">
-          {t("report.activity", { count: draft.activity.length })} · {t("hours", { value: hoursOf(draft.minutesLogged) })}
+      </Section>
+      {timeRequired && draft.minutesLogged === 0 ? <Alert variant="warning">{t("report.noTimeLogged")}</Alert> : null}
+      <details className="group/activity rounded-[14px] border border-border bg-background" open={timeRequired && draft.minutesLogged === 0}>
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium select-none [&::-webkit-details-marker]:hidden">
+          <span className="min-w-0 flex-1">
+            {t("report.activity", { count: draft.activity.length })} <span className="font-mono text-xs font-normal text-muted-foreground tabular-nums">· {t("hours", { value: hoursOf(draft.minutesLogged) })}</span>
+          </span>
+          <ChevronDown aria-hidden className="size-4 shrink-0 text-faint transition-transform duration-200 ease-(--ease-settle) group-open/activity:rotate-180" />
         </summary>
-        <div className="mt-3 flex flex-col gap-3">
+        <div className="flex flex-col gap-3 border-t px-4 py-3">
           <ActivityList items={draft.activity} />
           <QuickLog date={date} tasks={candidates.map((task) => ({ id: task.taskId, label: `${task.key} ${task.title}`, billable: task.billable }))} />
         </div>
       </details>
 
-      <section className="flex flex-col gap-2">
-        <label htmlFor="blockers" className="text-sm font-medium">
-          {t("report.blockers")}
-        </label>
+      <Section title={<label htmlFor="blockers">{t("report.blockers")}</label>}>
         <NoteEditor id="blockers" value={blockers} onChange={setBlockers} maxLength={2000} placeholder={t("report.blockersPlaceholder")} />
-      </section>
-      <section className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <label htmlFor="notes" className="text-sm font-medium">
-            {t("report.notes")}
-          </label>
-          {notesDraft}
-        </div>
+      </Section>
+      <Section title={<label htmlFor="notes">{t("report.notes")}</label>} action={notesDraft}>
         <NoteEditor id="notes" value={notes} onChange={setNotes} maxLength={2000} placeholder={t("report.notesPlaceholder")} />
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium">{t("report.tomorrow", { count: picked.length })}</h2>
+      <Section title={t("report.tomorrow", { count: picked.length })}>
         <List>
           {candidates.length === 0 ? <ListEmpty>{t("plan.noMoreWork")}</ListEmpty> : null}
-          {shown.map((task) => (
-            <ListItem key={task.taskId} className="p-0">
-              <label className="flex flex-1 items-start gap-2 px-3 py-2.5">
-                <Checkbox className="mt-0.5" checked={picked.includes(task.taskId)} onCheckedChange={(checked) => setPicked((current) => (checked ? [...current, task.taskId] : current.filter((id) => id !== task.taskId)))} />
+          {shown.map((task, index) => (
+            <ListItem key={task.taskId} className="rise p-0 md:p-0" style={{ "--i": index } as CSSProperties}>
+              <label className="flex min-h-[3.25rem] flex-1 cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors duration-100 hover:bg-canvas md:min-h-12 md:px-3.5">
+                <Checkbox checked={picked.includes(task.taskId)} onCheckedChange={(checked) => setPicked((current) => (checked ? [...current, task.taskId] : current.filter((id) => id !== task.taskId)))} />
                 <span className="min-w-0 flex-1">
-                  <span className="font-mono text-xs text-muted-foreground">{task.key}</span> {task.title}
-                  {task.projectName ? <span className="block text-xs text-muted-foreground">{task.projectName}</span> : null}
+                  <span className="block truncate text-sm font-medium">
+                    <span className="font-mono text-xs font-normal text-muted-foreground">{task.key}</span> {task.title}
+                  </span>
+                  {task.projectName ? <span className="block truncate text-xs text-muted-foreground">{task.projectName}</span> : null}
                 </span>
                 {notDone.has(task.taskId) ? <Badge variant="outline">{t("report.carried")}</Badge> : null}
               </label>
@@ -129,10 +122,10 @@ export function ReportForm({
             {t("report.showAll", { count: candidates.length })}
           </Button>
         ) : null}
-      </section>
+      </Section>
 
-      <div className="sticky bottom-0 flex items-center gap-3 border-t bg-background py-3">
-        <Button type="button" size="lg" disabled={pending} onClick={send} className="flex-1 sm:flex-none">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+        <Button type="button" size="lg" variant="accent" disabled={pending} onClick={send} className="w-full md:w-auto">
           {submitted ? t("report.resend") : t("report.send")}
         </Button>
         <FormError namespace="daily.errors" errorKey={errorKey} />

@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
+import { Page, PageHeader, Tile, TileGrid } from "@/components/ui/page";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { exportHeadcountAction } from "@/modules/core-hr/export-actions";
 import { getHeadcountReport } from "@/modules/core-hr/reports";
@@ -13,6 +15,7 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { listEntities } from "@/modules/platform/org/service";
 import { can } from "@/modules/platform/rbac/policy";
+import { RateBar } from "@/modules/reports/ui/bar";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("headcount");
@@ -34,6 +37,7 @@ export default async function HeadcountPage(props: PageProps<"/reports/headcount
   const [report, entities, t, format, locale] = await Promise.all([getHeadcountReport(user.principal, filters), listEntities(), getTranslations("reports.headcount"), getFormatter(), getLocale()]);
   if (!report) notFound();
   const te = await getTranslations("exports");
+  const tOverview = await getTranslations("reports.overview");
   const tc = await getTranslations("records.contracts.types");
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" });
   const { snapshot, movement } = report;
@@ -41,30 +45,30 @@ export default async function HeadcountPage(props: PageProps<"/reports/headcount
   const percent = (count: number) => (snapshot.total ? `${Math.round((count * 100) / snapshot.total)}%` : "—");
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1>{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
-          {report.scoped ? <p className="text-sm text-muted-foreground">{t("scoped")}</p> : null}
-        </div>
-        <ExportButton action={exportHeadcountAction} input={{ ...filters, entityId: filters.entityId ?? "", locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />
-      </header>
+    <Page width="wide">
+      <PageHeader
+        eyebrow={<Link href="/reports">{tOverview("title")}</Link>}
+        title={t("title")}
+        description={t("description")}
+        actions={<ExportButton action={exportHeadcountAction} input={{ ...filters, entityId: filters.entityId ?? "", locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />}
+      >
+        {report.scoped ? <p className="text-sm text-muted-foreground">{t("scoped")}</p> : null}
+      </PageHeader>
 
-      <form className="flex flex-wrap items-end gap-3 text-sm">
-        <label className="flex flex-col gap-1">
+      <form className="toolbar">
+        <Label className="flex flex-col gap-1 text-xs text-muted-foreground">
           {t("asOf")}
           <DatePicker name="asOf" defaultValue={filters.asOf} className="w-auto" />
-        </label>
-        <label className="flex flex-col gap-1">
+        </Label>
+        <Label className="flex flex-col gap-1 text-xs text-muted-foreground">
           {t("from")}
           <DatePicker name="from" defaultValue={filters.from} className="w-auto" />
-        </label>
-        <label className="flex flex-col gap-1">
+        </Label>
+        <Label className="flex flex-col gap-1 text-xs text-muted-foreground">
           {t("to")}
           <DatePicker name="to" defaultValue={filters.to} className="w-auto" />
-        </label>
-        <Select name="entityId" defaultValue={filters.entityId ?? ""} aria-label={t("allEntities")} className="w-auto">
+        </Label>
+        <Select name="entityId" defaultValue={filters.entityId ?? ""} aria-label={t("allEntities")} className="w-full sm:w-44">
           <option value="">{t("allEntities")}</option>
           {entities.map((entity) => (
             <option key={entity.id} value={entity.id}>
@@ -77,24 +81,14 @@ export default async function HeadcountPage(props: PageProps<"/reports/headcount
         </Button>
       </form>
 
-      <dl className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        {(
-          [
-            [t("total"), snapshot.total],
-            [t("opening"), movement.opening],
-            [t("joiners"), movement.joiners],
-            [t("leavers"), movement.leavers],
-            [t("closing"), movement.closing],
-            [t("turnover"), movement.turnoverBp === null ? "—" : `${(movement.turnoverBp / 100).toFixed(1)}%`],
-          ] as const
-        ).map(([name, value]) => (
-          <div key={name} className="rounded-xl border p-3">
-            <dt className="text-xs text-muted-foreground">{name}</dt>
-            <dd className="text-xl font-semibold tabular-nums">{value}</dd>
-          </div>
-        ))}
-      </dl>
-      <p className="-mt-4 text-xs text-muted-foreground">{t("turnoverHint")}</p>
+      <TileGrid>
+        <Tile label={t("total")} value={snapshot.total} />
+        <Tile label={t("opening")} value={movement.opening} />
+        <Tile label={t("joiners")} value={movement.joiners} tone={movement.joiners > 0 ? "success" : undefined} />
+        <Tile label={t("leavers")} value={movement.leavers} tone={movement.leavers > 0 ? "warning" : undefined} />
+        <Tile label={t("closing")} value={movement.closing} />
+        <Tile label={t("turnover")} value={movement.turnoverBp === null ? "—" : `${(movement.turnoverBp / 100).toFixed(1)}%`} hint={t("turnoverHint")} />
+      </TileGrid>
 
       <div className="grid gap-6 md:grid-cols-2">
         {(["byEntity", "byDepartment", "byWorkforceType", "byGender", "byAge", "bySeniority"] as const).map((group) => (
@@ -114,7 +108,9 @@ export default async function HeadcountPage(props: PageProps<"/reports/headcount
                   <TableRow key={row.key}>
                     <TableCell>{label(group, row.key)}</TableCell>
                     <TableCell kind="number">{row.count}</TableCell>
-                    <TableCell kind="percent" className="text-muted-foreground">{percent(row.count)}</TableCell>
+                    <TableCell kind="percent">
+                      <RateBar rate={snapshot.total ? row.count / snapshot.total : null} label={percent(row.count)} />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -165,19 +161,19 @@ export default async function HeadcountPage(props: PageProps<"/reports/headcount
                     <Link href={`/people/${row.personId}`} className="font-medium hover:underline">
                       {row.fullName}
                     </Link>{" "}
-                    <span className="font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
+                    <span className="font-mono text-xs text-faint">{row.employeeCode}</span>
                   </TableCell>
                   <TableCell>{[row.department, row.entity].filter(Boolean).join(" · ") || "—"}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{tc(row.type as "probation")}</Badge>
                   </TableCell>
-                  <TableCell>{day(row.endDate)}</TableCell>
+                  <TableCell kind="date">{day(row.endDate)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </TableCard>
       ))}
-    </div>
+    </Page>
   );
 }

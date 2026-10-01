@@ -2,6 +2,9 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { MonthPicker } from "@/components/ui/date-picker";
+import { Page, PageHeader } from "@/components/ui/page";
 import { Select } from "@/components/ui/select";
 import { statusTone } from "@/components/ui/tone";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,6 +14,7 @@ import { listEntityOptions } from "@/modules/payroll/options";
 import { compensationReach, payrollReadReach } from "@/modules/payroll/policy";
 import { listRunsForViewer } from "@/modules/payroll/run-views";
 import { formatVnd } from "@/modules/payroll/ui/money";
+import { PayrollTabs } from "@/modules/payroll/ui/payroll-tabs";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("payrollRuns");
@@ -30,21 +34,20 @@ export default async function PayrollRunsPage({ searchParams }: PageProps<"/payr
   const canCreate = manages.all || manages.entityIds.length > 0;
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <Link href="/payroll" className="text-sm text-link hover:underline">
-            ← {t("title")}
-          </Link>
-          <h1>{t("runs.title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("runs.description")}</p>
-        </div>
-        {canCreate ? (
-          <Link href="/payroll/runs/new" className="h-9 rounded-md border px-3 text-sm leading-9 hover:bg-muted">
-            {t("runs.new.link")}
-          </Link>
-        ) : null}
-      </header>
+    <Page width="wide">
+      <PageHeader
+        eyebrow={t("title")}
+        title={t("runs.title")}
+        description={t("runs.description")}
+        actions={
+          canCreate ? (
+            <Link href="/payroll/runs/new" className={buttonVariants()}>
+              {t("runs.new.link")}
+            </Link>
+          ) : undefined
+        }
+      />
+      <PayrollTabs active="runs" principal={user.principal} />
 
       <form className="toolbar" action="/payroll/runs">
         <Select name="entity" defaultValue={entityId ?? ""} aria-label={t("salaries.allEntities")} className="w-auto min-w-40">
@@ -55,10 +58,10 @@ export default async function PayrollRunsPage({ searchParams }: PageProps<"/payr
             </option>
           ))}
         </Select>
-        <input name="month" defaultValue={month ?? ""} placeholder="2026-08" pattern="\d{4}-\d{2}" className="h-9 w-28 rounded-md border bg-transparent px-3 text-sm" />
-        <button type="submit" className="h-9 rounded-md border px-3 text-sm hover:bg-muted">
+        <MonthPicker name="month" defaultValue={month ?? ""} aria-label={t("runs.month")} className="w-40" />
+        <Button type="submit" variant="outline">
           {t("salaries.filter")}
-        </button>
+        </Button>
       </form>
 
       <TableCard>
@@ -79,7 +82,7 @@ export default async function PayrollRunsPage({ searchParams }: PageProps<"/payr
             {rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
-                  <Link href={`/payroll/runs/${row.id}`} className="font-medium tabular-nums hover:underline">
+                  <Link href={`/payroll/runs/${row.id}`} className="font-mono font-medium tabular-nums hover:underline">
                     {row.month}
                   </Link>
                   {row.name ? <span className="ml-2 text-xs text-muted-foreground">{row.name}</span> : null}
@@ -95,13 +98,13 @@ export default async function PayrollRunsPage({ searchParams }: PageProps<"/payr
                 </TableCell>
                 <TableCell kind="number">{row.headcount}</TableCell>
                 <TableCell kind="money">{row.net === null ? "—" : formatVnd(row.net)}</TableCell>
-                <TableCell>{row.paidAt ? format.dateTime(row.paidAt, { dateStyle: "medium" }) : "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{row.paidAt ? format.dateTime(row.paidAt, { dateStyle: "medium" }) : "—"}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
         {canCreate ? <TableAddRow label={t("runs.new.link")} href="/payroll/runs/new" /> : null}
       </TableCard>
-    </div>
+    </Page>
   );
 }

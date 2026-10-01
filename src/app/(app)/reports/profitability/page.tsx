@@ -6,12 +6,15 @@ import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
+import { Page, PageHeader, Tile, TileGrid } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { exportReportAction } from "@/modules/reports/actions";
 import { canReadProfitability, type CostGroup, getProfitability, type ProjectLine } from "@/modules/reports/service";
+import { RateBar } from "@/modules/reports/ui/bar";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("profitability");
@@ -82,7 +85,7 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
         <details>
           <summary className="cursor-pointer">
             <span className="font-medium">{project.name}</span>
-            <span className="ps-2 text-xs text-muted-foreground">{[project.jobNumber, project.clientName].filter(Boolean).join(" · ")}</span>
+            <span className="ps-2 text-xs text-faint">{[project.jobNumber, project.clientName].filter(Boolean).join(" · ")}</span>
             {project.estimated ? (
               <Badge variant="warning" className="ms-2">
                 {t("estimated")}
@@ -103,7 +106,9 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
       <TableCell kind="money" className="align-top">{money(project.feeVnd)}</TableCell>
       <TableCell kind="money" className="align-top">{money(project.costVnd)}</TableCell>
       <TableCell kind="money" className={`align-top ${tone(project.marginVnd)}`}>{money(project.marginVnd)}</TableCell>
-      <TableCell kind="percent" className={`align-top ${tone(project.marginVnd)}`}>{percent(project.marginRate)}</TableCell>
+      <TableCell kind="percent" className={`align-top ${tone(project.marginVnd)}`}>
+        <RateBar rate={project.marginRate} label={percent(project.marginRate)} tone={project.marginVnd !== null && project.marginVnd < 0 ? "destructive" : undefined} />
+      </TableCell>
     </TableRow>
   );
 
@@ -120,33 +125,27 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
   );
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <p className="text-sm text-muted-foreground">
-            <Link href="/reports" className="underline underline-offset-4">
-              {t("back")}
-            </Link>
-          </p>
-          <h1>{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
-        </div>
-        <ExportButton action={exportReportAction} input={{ reportKey: "profitability", parameters: clientId ? { clientId } : {}, from: period.from, to: period.to, locale }} label={tExports("button")} failedLabel={tExports("failed")} truncatedLabel={tExports("truncated")} />
-      </header>
+    <Page width="wide">
+      <PageHeader
+        eyebrow={<Link href="/reports">{t("back")}</Link>}
+        title={t("title")}
+        description={t("description")}
+        actions={<ExportButton action={exportReportAction} input={{ reportKey: "profitability", parameters: clientId ? { clientId } : {}, from: period.from, to: period.to, locale }} label={tExports("button")} failedLabel={tExports("failed")} truncatedLabel={tExports("truncated")} />}
+      />
 
-      <form className="flex flex-wrap items-end gap-3 text-sm">
-        <label className="flex flex-col gap-1">
+      <form className="toolbar">
+        <Label className="flex flex-col gap-1 text-xs text-muted-foreground">
           {t("from")}
           <DatePicker name="from" defaultValue={period.from} className="w-auto" />
-        </label>
-        <label className="flex flex-col gap-1">
+        </Label>
+        <Label className="flex flex-col gap-1 text-xs text-muted-foreground">
           {t("to")}
           <DatePicker name="to" defaultValue={period.to} className="w-auto" />
-        </label>
+        </Label>
         {view.clientsOffered.length > 0 ? (
-          <label className="flex flex-col gap-1">
+          <Label className="flex w-full flex-col gap-1 text-xs text-muted-foreground sm:w-56">
             {t("client")}
-            <Select name="client" defaultValue={clientId ?? ""} className="w-auto">
+            <Select name="client" defaultValue={clientId ?? ""}>
               <option value="">{t("allClients")}</option>
               {view.clientsOffered.map((client) => (
                 <option key={client.id} value={client.id}>
@@ -154,31 +153,19 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
                 </option>
               ))}
             </Select>
-          </label>
+          </Label>
         ) : null}
-        <Button type="submit" variant="secondary">
+        <Button type="submit" variant="outline">
           {t("apply")}
         </Button>
       </form>
 
-      <section className="grid gap-3 rounded-xl border p-4 text-sm sm:grid-cols-4">
-        <div className="flex flex-col">
-          <span className="text-muted-foreground">{t("columns.fee")}</span>
-          <span className="text-lg font-semibold tabular-nums">{money(view.total.feeVnd)}</span>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-muted-foreground">{t("columns.cost")}</span>
-          <span className="text-lg font-semibold tabular-nums">{money(view.total.costVnd)}</span>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-muted-foreground">{t("columns.margin")}</span>
-          <span className={`text-lg font-semibold tabular-nums ${tone(view.total.marginVnd)}`}>{money(view.total.marginVnd)}</span>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-muted-foreground">{t("columns.marginRate")}</span>
-          <span className={`text-lg font-semibold tabular-nums ${tone(view.total.marginVnd)}`}>{percent(view.total.marginRate)}</span>
-        </div>
-      </section>
+      <TileGrid>
+        <Tile label={t("columns.fee")} value={money(view.total.feeVnd)} />
+        <Tile label={t("columns.cost")} value={money(view.total.costVnd)} />
+        <Tile label={t("columns.margin")} value={money(view.total.marginVnd)} tone={view.total.marginVnd !== null && view.total.marginVnd < 0 ? "destructive" : undefined} />
+        <Tile label={t("columns.marginRate")} value={percent(view.total.marginRate)} tone={view.total.marginVnd !== null && view.total.marginVnd < 0 ? "destructive" : undefined} />
+      </TileGrid>
 
       <TableCard>
         <TableCardHeader title={t("byProject")} />
@@ -233,7 +220,9 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
                   <TableCell kind="money">{money(client.feeVnd)}</TableCell>
                   <TableCell kind="money">{money(client.costVnd)}</TableCell>
                   <TableCell kind="money" className={tone(client.marginVnd)}>{money(client.marginVnd)}</TableCell>
-                  <TableCell kind="percent" className={tone(client.marginVnd)}>{percent(client.marginRate)}</TableCell>
+                  <TableCell kind="percent" className={tone(client.marginVnd)}>
+                    <RateBar rate={client.marginRate} label={percent(client.marginRate)} tone={client.marginVnd !== null && client.marginVnd < 0 ? "destructive" : undefined} />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -246,6 +235,6 @@ export default async function ProfitabilityPage({ searchParams }: PageProps<"/re
         <p>{t("hintEstimated")}</p>
         <p>{t("hintPrivacy")}</p>
       </div>
-    </div>
+    </Page>
   );
 }

@@ -1,5 +1,8 @@
 import { getLocale, getTranslations } from "next-intl/server";
-import Link from "next/link";
+import type { CSSProperties } from "react";
+import { ChevronRightIcon } from "lucide-react";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Page, PageHeader, Section } from "@/components/ui/page";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listAvailableTypes } from "@/modules/requests/service";
@@ -17,30 +20,28 @@ export default async function NewRequestPage() {
   const byCategory = Map.groupBy(types, (type) => type.category);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-8">
-      <header>
-        <Link href="/requests" className="text-sm text-link hover:underline">
-          ← {t("title")}
-        </Link>
-        <h1>{t("new")}</h1>
-        <p className="text-sm text-muted-foreground">{t("newDescription")}</p>
-      </header>
-      {types.length === 0 ? <p className="text-sm text-muted-foreground">{t("noTypes")}</p> : null}
+    <Page width="narrow">
+      <PageHeader eyebrow={t("hub")} title={t("new")} description={t("newDescription")} />
+      {types.length === 0 ? (
+        <List>
+          <ListEmpty>{t("noTypes")}</ListEmpty>
+        </List>
+      ) : null}
       {REQUEST_CATEGORIES.filter((category) => byCategory.has(category)).map((category) => (
-        <section key={category} className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">{t(`designer.categories.${category}` as "designer.categories.other")}</h2>
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {(byCategory.get(category) ?? []).map((type) => (
-              <li key={type.id}>
-                <Link href={`/requests/new/${type.code}`} className="flex h-full flex-col gap-1 rounded-xl border p-4 hover:bg-accent">
+        <Section key={category} title={t(`designer.categories.${category}` as "designer.categories.other")}>
+          <List>
+            {(byCategory.get(category) ?? []).map((type, index) => (
+              <ListItem key={type.id} href={`/requests/new/${type.code}`} className="rise" style={{ "--i": index } as CSSProperties}>
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="text-sm font-medium">{locale === "en" ? type.nameEn : type.nameVi}</span>
-                  <span className="text-xs text-muted-foreground">{(locale === "en" ? type.descriptionEn : type.descriptionVi) ?? ""}</span>
-                </Link>
-              </li>
+                  {(locale === "en" ? type.descriptionEn : type.descriptionVi) ? <span className="text-xs text-muted-foreground">{locale === "en" ? type.descriptionEn : type.descriptionVi}</span> : null}
+                </span>
+                <ChevronRightIcon aria-hidden className="size-4 shrink-0 text-faint" />
+              </ListItem>
             ))}
-          </ul>
-        </section>
+          </List>
+        </Section>
       ))}
-    </div>
+    </Page>
   );
 }

@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Page } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { kbViewerOf, listSpaces } from "@/modules/kb/service";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -65,52 +67,60 @@ export default async function ProjectClosePage({ params }: PageProps<"/projects/
   );
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
+    <Page>
       <ProjectHeader context={context} current="close" />
 
       {closed ? (
-        <section className="flex flex-col gap-3 rounded-xl border p-4">
-          <h2 className="text-base font-medium">{t("closedOn", { date: format.dateTime(plan.closedAt!, { dateStyle: "medium" }) })}</h2>
-          <p className="text-sm text-muted-foreground">{t("readOnly")}</p>
-          {stored?.unmet?.length ? (
-            <p className="text-sm">
-              {t("closedWithUnmet", { items: stored.unmet.map((key) => t(`checks.${key as "tasks"}`)).join(", ") })} — {stored.overrideReason}
-            </p>
-          ) : null}
-          {stored ? reportView(stored) : null}
-        </section>
+        <Card>
+          <CardContent className="flex flex-col gap-3">
+            <h2>{t("closedOn", { date: format.dateTime(plan.closedAt!, { dateStyle: "medium" }) })}</h2>
+            <p className="text-sm text-muted-foreground">{t("readOnly")}</p>
+            {stored?.unmet?.length ? (
+              <p className="text-sm">
+                {t("closedWithUnmet", { items: stored.unmet.map((key) => t(`checks.${key as "tasks"}`)).join(", ") })} — {stored.overrideReason}
+              </p>
+            ) : null}
+            {stored ? reportView(stored) : null}
+          </CardContent>
+        </Card>
       ) : (
         <>
-          <section className="flex flex-col gap-3 rounded-xl border p-4">
-            <h2 className="text-base font-medium">{t("checklist")}</h2>
-            <ul className="flex flex-col gap-2 text-sm">
-              {checklist.map((item) => (
-                <li key={item.key} className="flex flex-wrap items-center gap-2">
-                  <Badge variant={item.met ? "success" : "warning"}>{item.met ? t("met") : t("unmet")}</Badge>
-                  <span>{t(`checks.${item.key}`)}</span>
-                  {!item.met && item.count ? <span className="text-muted-foreground">{t(`counts.${item.key as "tasks"}`, { count: item.count })}</span> : null}
-                </li>
-              ))}
-            </ul>
-          </section>
+          <Card>
+            <CardContent className="flex flex-col gap-3">
+              <h2>{t("checklist")}</h2>
+              <ul className="flex flex-col gap-2 text-sm">
+                {checklist.map((item) => (
+                  <li key={item.key} className="flex flex-wrap items-center gap-2">
+                    <Badge variant={item.met ? "success" : "warning"}>{item.met ? t("met") : t("unmet")}</Badge>
+                    <span>{t(`checks.${item.key}`)}</span>
+                    {!item.met && item.count ? <span className="text-muted-foreground">{t(`counts.${item.key as "tasks"}`, { count: item.count })}</span> : null}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
           {preview ? (
-            <section className="flex flex-col gap-3 rounded-xl border p-4">
-              <h2 className="text-base font-medium">{t("previewReport")}</h2>
-              {reportView(preview)}
-            </section>
+            <Card>
+              <CardContent className="flex flex-col gap-3">
+                <h2>{t("previewReport")}</h2>
+                {reportView(preview)}
+              </CardContent>
+            </Card>
           ) : null}
         </>
       )}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-base font-medium">{t("retro.title")}</h2>
+        <h2>{t("retro.title")}</h2>
         {retro?.retro ? (
           <div className="grid gap-3 text-sm sm:grid-cols-3">
             {(["wentWell", "improve", "actions"] as const).map((key) => (
-              <div key={key} className="rounded-xl border p-3">
+              <Card key={key} size="sm">
+                <CardContent className="flex flex-col gap-1">
                 <p className="text-xs text-muted-foreground">{t(`retro.${key}`)}</p>
                 {retro.retro?.[key]?.trim() ? <RichText text={retro.retro[key]} /> : <p>—</p>}
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         ) : (
@@ -134,11 +144,13 @@ export default async function ProjectClosePage({ params }: PageProps<"/projects/
       </section>
 
       {!closed && canCloseProject(viewer, facts) ? (
-        <section className="flex flex-col gap-2 rounded-xl border border-dashed p-4">
-          <h2 className="text-base font-medium">{t("closeTitle")}</h2>
-          <CloseProjectForm projectId={project.id} unmet={unmet} />
-        </section>
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col gap-2">
+            <h2>{t("closeTitle")}</h2>
+            <CloseProjectForm projectId={project.id} unmet={unmet} />
+          </CardContent>
+        </Card>
       ) : null}
-    </div>
+    </Page>
   );
 }

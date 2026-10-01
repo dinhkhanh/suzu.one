@@ -3,7 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Page, PageHeader } from "@/components/ui/page";
+import { Segmented } from "@/components/ui/segmented";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
@@ -59,23 +63,14 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
   const months = view === "forecast" ? await forecast(shell.viewer, { teamId, ownerId: mine ? user.person.id : null }, today) : [];
 
   return (
-    <div className="flex max-w-7xl flex-col gap-6">
-      <header>
-        <h1>{t("deals.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("deals.intro")}</p>
-      </header>
+    <Page width="wide">
+      <PageHeader title={t("deals.title")} description={t("deals.intro")} />
       <CrmTabs current="deals" show={shell.show} />
-      <nav className="flex flex-wrap gap-2 text-sm" aria-label={t("deals.views")}>
-        {VIEWS.map((value) => (
-          <Link key={value} href={params_({ view: value })} aria-current={value === view ? "page" : undefined} className={`rounded-md border px-3 py-1 ${value === view ? "pill-on" : "pill-off"}`}>
-            {t(`deals.view.${value}`)}
-          </Link>
-        ))}
-      </nav>
-      <form method="get" className="flex flex-wrap items-end gap-2">
+      <form method="get" className="toolbar">
         <input type="hidden" name="view" value={view} />
-        {view === "list" ? <Input name="q" defaultValue={q ?? ""} placeholder={t("deals.search")} aria-label={t("deals.search")} className="w-48" /> : null}
-        <Select name="team" defaultValue={teamId ?? ""} aria-label={t("deal.fields.team")}>
+        <Segmented aria-label={t("deals.views")} value={view} options={VIEWS.map((value) => ({ value, label: t(`deals.view.${value}`), href: params_({ view: value }) }))} />
+        {view === "list" ? <Input name="q" defaultValue={q ?? ""} placeholder={t("deals.search")} aria-label={t("deals.search")} className="w-full sm:w-48" /> : null}
+        <Select name="team" defaultValue={teamId ?? ""} aria-label={t("deal.fields.team")} className="w-full sm:w-44">
           <option value="">{t("deals.anyTeam")}</option>
           {teams
             .filter((team) => team.isActive)
@@ -85,7 +80,7 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
               </option>
             ))}
         </Select>
-        <Select name="service" defaultValue={serviceLine ?? ""} aria-label={t("deal.fields.serviceLines")}>
+        <Select name="service" defaultValue={serviceLine ?? ""} aria-label={t("deal.fields.serviceLines")} className="w-full sm:w-44">
           <option value="">{t("deals.anyService")}</option>
           {SERVICE_LINES.map((line) => (
             <option key={line} value={line}>
@@ -94,7 +89,7 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
           ))}
         </Select>
         {view === "list" ? (
-          <Select name="status" defaultValue={status} aria-label={t("deals.status")}>
+          <Select name="status" defaultValue={status} aria-label={t("deals.status")} className="w-full sm:w-40">
             {(["open", "won", "lost", "all"] as const).map((value) => (
               <option key={value} value={value}>
                 {t(`deals.statuses.${value}`)}
@@ -102,10 +97,10 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
             ))}
           </Select>
         ) : null}
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="mine" value="1" defaultChecked={mine} /> {t("deals.mine")}
-        </label>
-        <Button type="submit" size="sm" variant="outline">
+        <Label className="flex h-10 items-center gap-2 text-sm md:h-9">
+          <Checkbox name="mine" value="1" defaultChecked={mine} /> {t("deals.mine")}
+        </Label>
+        <Button type="submit" variant="outline">
           {t("filter")}
         </Button>
       </form>
@@ -133,7 +128,7 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
                   <Link href={`/crm/deals/${deal.id}`} className="font-medium hover:underline">
                     {deal.title}
                   </Link>
-                  <p className="font-mono text-xs text-muted-foreground">{deal.code}</p>
+                  <p className="font-mono text-xs text-faint">{deal.code}</p>
                 </TableCell>
                 <TableCell>{deal.accountName}</TableCell>
                 <TableCell>
@@ -142,7 +137,7 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
                   </Badge>
                 </TableCell>
                 <TableCell>{deal.ownerName}</TableCell>
-                <TableCell>{f.date(deal.expectedCloseOn)}</TableCell>
+                <TableCell kind="date">{f.date(deal.expectedCloseOn)}</TableCell>
                 <TableCell kind="money">{deal.value ? f.money(deal.value.totalVnd) : "—"}</TableCell>
                 <TableCell kind="money">{deal.value && deal.status === "open" ? f.money(deal.value.weightedVnd) : "—"}</TableCell>
               </TableRow>
@@ -165,7 +160,7 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
             {months.length === 0 ? <TableEmpty>{t("deals.noForecast")}</TableEmpty> : null}
             {months.map((row) => (
               <TableRow key={row.month}>
-                <TableCell>{row.month === "none" ? t("deals.undatedOrLate") : row.month}</TableCell>
+                <TableCell className={row.month === "none" ? undefined : "font-mono text-[0.8125rem] tabular-nums"}>{row.month === "none" ? t("deals.undatedOrLate") : row.month}</TableCell>
                 <TableCell kind="number">{row.count}</TableCell>
                 <TableCell kind="money">{f.money(row.value)}</TableCell>
                 <TableCell kind="money">{f.money(row.weighted)}</TableCell>
@@ -174,6 +169,6 @@ export default async function DealsPage({ searchParams }: PageProps<"/crm/deals"
           </TableBody>
         </Table>
       ) : null}
-    </div>
+    </Page>
   );
 }

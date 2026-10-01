@@ -5,6 +5,7 @@ import { TableCard, TableCardHeader } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { isPeriodKey, listGoals, periodsOfYear, yearOfPeriod } from "@/modules/performance/service";
 import { GoalTree, periodLabel } from "@/modules/performance/ui/goal-tree";
+import { Page, PageHeader } from "@/components/ui/page";
 import { PerformanceNav, readYear, yearChoices } from "@/modules/performance/ui/nav";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
@@ -28,7 +29,7 @@ export default async function AlignmentPage({ searchParams }: PageProps<"/perfor
   // The tree starts at the group's goals and at anything whose parent is out of sight; a goal below the group that names no parent is unaligned.
   const roots = goals.filter((goal) => (goal.parentGoalId ? !ids.has(goal.parentGoalId) : goal.level === "group"));
   const unaligned = goals.filter((goal) => !goal.parentGoalId && goal.level !== "group");
-  const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "pill-on" : "pill-off"}`;
+  const tab = (active: boolean) => `press flex h-9 items-center rounded-[7px] px-3 text-[0.8125rem] whitespace-nowrap md:h-8 ${active ? "pill-on" : "pill-off"}`;
   const href = (next: { year?: number; period?: string | null }) => {
     const search = new URLSearchParams({ year: String(next.year ?? year) });
     const period = next.period === undefined ? periodKey : next.period;
@@ -38,34 +39,37 @@ export default async function AlignmentPage({ searchParams }: PageProps<"/perfor
   };
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1>{t("alignment.title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("alignment.description")}</p>
-        </div>
-        <Link href={`/performance/goals/new?year=${year}`} className={buttonVariants()}>
-          {t("newGoal")}
-        </Link>
-      </header>
-      <PerformanceNav active="alignment" year={year} />
-      <nav className="flex flex-wrap items-center gap-1">
-        {yearChoices(today).map((choice) => (
-          <Link key={choice} href={href({ year: choice })} className={tab(choice === year)}>
-            {choice}
+    <Page>
+      <PageHeader
+        title={t("alignment.title")}
+        description={t("alignment.description")}
+        actions={
+          <Link href={`/performance/goals/new?year=${year}`} className={buttonVariants()}>
+            {t("newGoal")}
           </Link>
-        ))}
-        <span className="mx-2 h-4 border-l" />
-        <Link href={href({ period: null })} className={tab(!periodKey)}>
-          {t("alignment.allPeriods")}
-        </Link>
-        {periodsOfYear(year)
-          .slice(1)
-          .map((period) => (
-            <Link key={period} href={href({ period })} className={tab(period === periodKey)}>
-              {periodLabel(t, period)}
+        }
+      />
+      <PerformanceNav active="alignment" year={year} />
+      <nav className="flex flex-wrap items-center gap-2">
+        <div className="segmented">
+          {yearChoices(today).map((choice) => (
+            <Link key={choice} href={href({ year: choice })} className={tab(choice === year)}>
+              {choice}
             </Link>
           ))}
+        </div>
+        <div className="segmented">
+          <Link href={href({ period: null })} className={tab(!periodKey)}>
+            {t("alignment.allPeriods")}
+          </Link>
+          {periodsOfYear(year)
+            .slice(1)
+            .map((period) => (
+              <Link key={period} href={href({ period })} className={tab(period === periodKey)}>
+                {periodLabel(t, period)}
+              </Link>
+            ))}
+        </div>
       </nav>
 
       {goals.length === 0 ? <p className="text-sm text-muted-foreground">{t("alignment.empty", { year })}</p> : null}
@@ -78,6 +82,6 @@ export default async function AlignmentPage({ searchParams }: PageProps<"/perfor
           <GoalTree goals={goals} rootIds={unaligned.map((goal) => goal.id)} />
         </TableCard>
       ) : null}
-    </div>
+    </Page>
   );
 }

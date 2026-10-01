@@ -1,9 +1,11 @@
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
-import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { listApprovals, listProjectTime, loadTimeReader, weekStartOf } from "@/modules/daily/service";
 import { hoursOf } from "@/modules/daily/ui/format";
@@ -12,7 +14,6 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("timesheets");
-
 
 // FR-PJM-25: the weeks waiting for me — for the people whose team I lead or who report to me
 // directly — with bulk approval; the weeks I decided lately (to reopen one); and, for a project's
@@ -30,14 +31,10 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/daily
   const hours = (minutes: number) => t("hours", { value: hoursOf(minutes) });
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <h1>{t("timesheets.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("timesheets.intro")}</p>
-      </header>
+    <Page width="default">
+      <PageHeader title={t("timesheets.title")} description={t("timesheets.intro")} />
 
-      <TableCard>
-        <TableCardHeader title={t("timesheets.waiting", { count: waiting.length })} />
+      <Section title={t("timesheets.waiting", { count: waiting.length })}>
         <WaitingList
           rows={waiting.map((week) => ({
             id: week.id,
@@ -48,11 +45,10 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/daily
             submitted: week.submittedAt ? t("time.submittedAt", { time: format.dateTime(week.submittedAt, { dateStyle: "short", timeStyle: "short" }) }) : null,
           }))}
         />
-      </TableCard>
+      </Section>
 
       {recent.length > 0 ? (
-        <TableCard>
-          <TableCardHeader title={t("timesheets.recent")} count={recent.length} />
+        <Section title={t("timesheets.recent")} count={recent.length}>
           <Table>
             <TableHeader>
               <TableRow>
@@ -79,27 +75,26 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/daily
               ))}
             </TableBody>
           </Table>
-        </TableCard>
+        </Section>
       ) : null}
 
       {reader.ledProjectIds.size > 0 ? (
-        <TableCard>
-          <TableCardHeader
-            title={t("timesheets.projectTime")}
-            actions={
-              <>
-                <Link href={`/daily/timesheets?week=${addDays(weekStart, -7)}`} className={buttonVariants({ size: "xs", variant: "outline" })}>
-                  {t("time.previousWeek")}
+        <Section
+          title={t("timesheets.projectTime")}
+          action={
+            <>
+              <Link href={`/daily/timesheets?week=${addDays(weekStart, -7)}`} className={buttonVariants({ size: "icon-xs", variant: "outline" })} aria-label={t("time.previousWeek")}>
+                <ChevronLeft aria-hidden />
+              </Link>
+              <span className="font-mono text-xs font-normal text-muted-foreground tabular-nums">{weekOf(weekStart)}</span>
+              {weekStart < current ? (
+                <Link href={`/daily/timesheets?week=${addDays(weekStart, 7)}`} className={buttonVariants({ size: "icon-xs", variant: "outline" })} aria-label={t("time.nextWeek")}>
+                  <ChevronRight aria-hidden />
                 </Link>
-                <span className="text-xs">{weekOf(weekStart)}</span>
-                {weekStart < current ? (
-                  <Link href={`/daily/timesheets?week=${addDays(weekStart, 7)}`} className={buttonVariants({ size: "xs", variant: "outline" })}>
-                    {t("time.nextWeek")}
-                  </Link>
-                ) : null}
-              </>
-            }
-          />
+              ) : null}
+            </>
+          }
+        >
           <Table>
             <TableHeader>
               <TableRow>
@@ -125,8 +120,8 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/daily
               ))}
             </TableBody>
           </Table>
-        </TableCard>
+        </Section>
       ) : null}
-    </div>
+    </Page>
   );
 }

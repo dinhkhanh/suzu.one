@@ -1,7 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
-import { TableCard, TableCardHeader } from "@/components/ui/table";
+import { Page, PageHeader, Section } from "@/components/ui/page";
 import { statusTone } from "@/components/ui/tone";
 import { listFlaggedPunches } from "@/modules/attendance/punches";
 import { ReviewPunchForm } from "@/modules/attendance/ui/check-in";
@@ -23,15 +23,15 @@ export default async function ReviewPunchesPage() {
     <>
       <p className="flex flex-wrap items-center gap-2 text-sm">
         <span className="font-medium">{row.personName}</span>
-        <span className="font-mono">{format.dateTime(row.at, { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-        <Badge variant="secondary">{tFlags(row.direction === "in" ? "in" : "out")}</Badge>
+        <span className="font-mono text-[0.8125rem] tabular-nums">{format.dateTime(row.at, { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+        <Badge variant={row.direction === "in" ? "success" : "secondary"}>{tFlags(row.direction === "in" ? "in" : "out")}</Badge>
       </p>
       <ul className="text-sm text-muted-foreground">
         {row.flags.map((flag) => (
           <li key={flag}>{tFlags(`flags.${flag}`, { distance: row.distanceM ?? 0 })}</li>
         ))}
       </ul>
-      <p className="text-xs text-muted-foreground">
+      <p className="font-mono text-xs text-faint tabular-nums">
         {[
           row.nearestLocationName && row.distanceM !== null ? t("distance", { metres: row.distanceM, location: row.nearestLocationName }) : null,
           row.accuracyM !== null ? t("accuracy", { metres: row.accuracyM }) : null,
@@ -46,38 +46,36 @@ export default async function ReviewPunchesPage() {
   );
 
   return (
-    <div className="flex max-w-3xl flex-col gap-8">
-      <header>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </header>
-      <TableCard>
-        <TableCardHeader title={t("waiting", { count: waiting.length })} />
+    <Page>
+      <PageHeader title={t("title")} description={t("description")} />
+      <Section title={t("waiting", { count: waiting.length })}>
         <List>
           {waiting.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
           {waiting.map((row) => (
-            <ListItem key={row.id} className="flex-col items-stretch gap-2 p-4">
+            <ListItem key={row.id} className="flex-col items-stretch gap-2 py-4">
               {describe(row)}
               <ReviewPunchForm id={row.id} />
             </ListItem>
           ))}
         </List>
-      </TableCard>
+      </Section>
       {decided.length > 0 ? (
-        <TableCard>
-          <TableCardHeader title={t("decided")} count={decided.length} />
+        <Section title={t("decided")} count={decided.length}>
           <List>
             {decided.map((row) => (
-              <ListItem key={row.id} className="flex-col items-stretch gap-1 p-3">
+              <ListItem key={row.id} className="flex-col items-stretch gap-1 py-3">
                 {describe(row)}
-                <p className="text-sm">
-                  <Badge dot variant={statusTone(row.reviewStatus)}>{tFlags(`review.${row.reviewStatus}`)}</Badge> <span className="text-muted-foreground">{[row.reviewerName, row.reviewNote].filter(Boolean).join(" — ")}</span>
+                <p className="flex flex-wrap items-center gap-2 text-sm">
+                  <Badge dot variant={statusTone(row.reviewStatus)}>
+                    {tFlags(`review.${row.reviewStatus}`)}
+                  </Badge>
+                  <span className="text-muted-foreground">{[row.reviewerName, row.reviewNote].filter(Boolean).join(" — ")}</span>
                 </p>
               </ListItem>
             ))}
           </List>
-        </TableCard>
+        </Section>
       ) : null}
-    </div>
+    </Page>
   );
 }

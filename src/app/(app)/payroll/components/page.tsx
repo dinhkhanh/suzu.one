@@ -13,6 +13,7 @@ import { canDecidePayRules, canProposePayRules, canReadPayRules } from "@/module
 import { formatVnd } from "@/modules/payroll/ui/money";
 import { ProposeComponentForm, RuleDecisionButtons } from "@/modules/payroll/ui/rule-forms";
 import { pageTitle } from "@/i18n/page-title";
+import { Page, PageHeader } from "@/components/ui/page";
 
 export const generateMetadata = pageTitle("payComponents");
 
@@ -32,14 +33,16 @@ export default async function ComponentsPage() {
   const approved = versions.filter((version) => version.status === "approved");
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <Link href="/payroll" className="text-sm text-link hover:underline">
-          ← {t("title")}
-        </Link>
-        <h1>{t("components.title")}</h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">{t("components.description")}</p>
-      </header>
+    <Page width="wide">
+      <PageHeader
+        eyebrow={
+          <Link href="/payroll" className="text-link hover:underline">
+            ← {t("title")}
+          </Link>
+        }
+        title={t("components.title")}
+        description={t("components.description")}
+      />
 
       {proposals.length ? (
         <TableCard>
@@ -119,6 +122,6 @@ export default async function ComponentsPage() {
           </TableAddRow>
         ) : null}
       </TableCard>
-    </div>
+    </Page>
   );
 }

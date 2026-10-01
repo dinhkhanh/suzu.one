@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Page, PageHeader, Section, Tile, TileGrid } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
@@ -41,31 +43,23 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <Link href={`/payroll/runs/${runId}`} className="text-sm text-link hover:underline">
-          ← {run.month}
-        </Link>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </header>
+    <Page width="wide">
+      <PageHeader
+        eyebrow={
+          <Link href={`/payroll/runs/${runId}`} className="font-mono text-link tabular-nums hover:underline">
+            ← {run.month}
+          </Link>
+        }
+        title={t("title")}
+        description={t("description")}
+      />
 
       {/* ── Bank and cash are reported apart, all the way through (FR-PAY-39) ── */}
-      <section className="grid gap-3 sm:grid-cols-3">
-        {(
-          [
-            ["bankTotal", formatVnd(plan.bankTotal), `${settlement.bankPeople}`],
-            ["cashTotal", formatVnd(plan.cashTotal), `${plan.cash.length}`],
-            ["settled", settlement.settled ? t("settledYes") : t("settledNo"), ""],
-          ] as const
-        ).map(([key, value, count]) => (
-          <div key={key} className="rounded-xl border p-4">
-            <div className="text-xs text-muted-foreground">{t(key)}</div>
-            <div className="text-lg font-semibold tabular-nums">{value}</div>
-            {count ? <div className="text-xs text-muted-foreground">{t("people", { count: Number(count) })}</div> : null}
-          </div>
-        ))}
-      </section>
+      <TileGrid>
+        <Tile label={t("bankTotal")} value={<>{formatVnd(plan.bankTotal)}</>} hint={t("people", { count: settlement.bankPeople })} />
+        <Tile label={t("cashTotal")} value={<>{formatVnd(plan.cashTotal)}</>} hint={t("people", { count: plan.cash.length })} />
+        <Tile label={t("settled")} value={<>{settlement.settled ? t("settledYes") : t("settledNo")}</>} tone={settlement.settled ? "success" : "warning"} />
+      </TileGrid>
 
       {settlement.blockers.length > 0 ? (
         <Alert variant="warning">
@@ -79,16 +73,16 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
 
       {/* ── Anybody the bank channel cannot reach: named, never dropped ── */}
       {settlement.unpaidBank.length > 0 ? (
-        <section className="rounded-md border border-destructive/40 p-3 text-sm">
-          <p className="font-medium">{t("unroutableTitle")}</p>
-          <ul>
+        <Alert variant="destructive">
+          <ul className="flex w-full flex-col gap-0.5">
+            <li className="font-medium">{t("unroutableTitle")}</li>
             {settlement.unpaidBank.map((person) => (
-              <li key={person.personId} className="text-muted-foreground">
+              <li key={person.personId}>
                 {person.fullName} — {t(`bank.skipReasons.${person.reason}` as "bank.skipReasons.no_account")}
               </li>
             ))}
           </ul>
-        </section>
+        </Alert>
       ) : null}
 
       {/* ── The bank batches (FR-PAY-33) ── */}
@@ -110,7 +104,7 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
               .filter((file) => file.channel === "bank")
               .map((file) => (
                 <TableRow key={file.id}>
-                  <TableCell className="font-mono text-xs">{file.fileName}</TableCell>
+                  <TableCell kind="id" className="text-foreground">{file.fileName}</TableCell>
                   <TableCell kind="id">{file.formatVersion}</TableCell>
                   <TableCell kind="number">
                     {file.rowCount}
@@ -131,7 +125,7 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
 
       {/* ── The cash sheet (FR-PAY-39) ── */}
       {plan.cash.length > 0 ? (
-        <section className="flex flex-col gap-3">
+        <Section>
           <TableCard>
             <TableCardHeader
               title={t("cash.title")}
@@ -140,7 +134,7 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
               actions={
                 <>
                   {cash.length > 0 ? (
-                    <a href={`/payroll/runs/${runId}/payments/cash-sheet`} className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted" download>
+                    <a href={`/payroll/runs/${runId}/payments/cash-sheet`} className={buttonVariants({ variant: "outline", size: "sm" })} download>
                       {t("cash.print")}
                     </a>
                   ) : null}
@@ -163,21 +157,21 @@ export default async function PayrollPaymentsPage({ params }: PageProps<"/payrol
                   <TableRow key={row.personId}>
                     <TableCell>
                       {row.fullName}
-                      <span className="ml-2 font-mono text-xs text-muted-foreground">{row.employeeCode}</span>
+                      <span className="ml-2 font-mono text-xs text-faint">{row.employeeCode}</span>
                     </TableCell>
                     <TableCell kind="money">{formatVnd(row.amount)}</TableCell>
-                    <TableCell>{row.disbursedOn ? <span className="tabular-nums">{row.disbursedOn}</span> : pays ? <DisbursementForm runId={runId} personId={row.personId} defaultDate={today} /> : <span className="text-muted-foreground">—</span>}</TableCell>
+                    <TableCell>{row.disbursedOn ? <span className="font-mono text-[0.8125rem] tabular-nums">{row.disbursedOn}</span> : pays ? <DisbursementForm runId={runId} personId={row.personId} defaultDate={today} /> : <span className="text-muted-foreground">—</span>}</TableCell>
                     <TableCell>
-                      <Badge variant={row.receiptConfirmed ? "secondary" : "outline"}>{t(row.receiptConfirmed ? "cash.confirmed" : "cash.awaitingReceipt")}</Badge>
+                      <Badge dot variant={row.receiptConfirmed ? "success" : "warning"}>{t(row.receiptConfirmed ? "cash.confirmed" : "cash.awaitingReceipt")}</Badge>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </TableCard>
-          <p className="text-xs text-muted-foreground">{t("cash.receiptNote")}</p>
-        </section>
+          <p className="px-0.5 text-xs text-faint">{t("cash.receiptNote")}</p>
+        </Section>
       ) : null}
-    </div>
+    </Page>
   );
 }

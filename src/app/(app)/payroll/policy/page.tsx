@@ -14,6 +14,7 @@ import { listPolicyVersions } from "@/modules/payroll/policies";
 import { canDecidePayRules, canProposePayRules, canReadPayRules } from "@/modules/payroll/policy";
 import { ProposePolicyForm, RuleDecisionButtons } from "@/modules/payroll/ui/rule-forms";
 import { pageTitle } from "@/i18n/page-title";
+import { Page, PageHeader } from "@/components/ui/page";
 
 export const generateMetadata = pageTitle("payPolicy");
 
@@ -29,14 +30,16 @@ export default async function PayPolicyPage() {
   const groupCurrent = versionOn(versions.filter((version) => version.status === "approved" && version.entityId === null), todayInVietnam());
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
-      <header>
-        <Link href="/payroll" className="text-sm text-link hover:underline">
-          ← {t("title")}
-        </Link>
-        <h1>{t("policy.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("policy.description")}</p>
-      </header>
+    <Page width="default">
+      <PageHeader
+        eyebrow={
+          <Link href="/payroll" className="text-link hover:underline">
+            ← {t("title")}
+          </Link>
+        }
+        title={t("policy.title")}
+        description={t("policy.description")}
+      />
       <TableCard>
         <List>
           {versions.length === 0 ? <ListEmpty>{t("policy.empty")}</ListEmpty> : null}
@@ -68,6 +71,6 @@ export default async function PayPolicyPage() {
           </TableAddRow>
         ) : null}
       </TableCard>
-    </div>
+    </Page>
   );
 }

@@ -28,7 +28,7 @@ export function PayslipQueryForm({ payslipId }: { payslipId: string }) {
   const router = useRouter();
   const { onSubmit, pending, errorKey, fieldErrors } = useActionForm(raisePayslipQueryAction, { extra: { payslipId }, onSuccess: () => router.refresh() });
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-3 rounded-xl border p-4">
+    <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <h3 className="text-sm font-medium">{t("ask")}</h3>
       <p className="text-sm text-muted-foreground">{t("askHint")}</p>
       <FieldErrors value={fieldErrors}>

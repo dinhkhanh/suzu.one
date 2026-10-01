@@ -3,6 +3,7 @@
 // components: every rule was applied by `getRequestFamily`; this file only draws the result.
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Alert } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import { List, ListItem } from "@/components/ui/list";
 import { TableCard, TableCardHeader } from "@/components/ui/table";
@@ -29,13 +30,13 @@ export async function ParentRequest({ parent }: { parent: FamilyMember }) {
   const t = await getTranslations("requests.followUps");
   const locale = await getLocale();
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-muted/40 p-3 text-sm">
+    <Alert variant="neutral">
       <span className="text-xs text-muted-foreground">{t("filedUnder")}</span>
       <Link href={`/approvals/request/${parent.requestId}`} className="min-w-0 flex-1 font-medium hover:underline">
         {locale === "en" ? parent.nameEn : parent.nameVi} · {parent.summary}
       </Link>
       <RequestStatusBadge status={parent.status} />
-    </div>
+    </Alert>
   );
 }
 

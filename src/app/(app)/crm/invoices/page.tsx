@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { List, ListItem } from "@/components/ui/list";
+import { Page, PageHeader, Section, Tile, TileGrid } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
@@ -42,29 +43,21 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/crm/inv
   }
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header>
-        <h1>{t("invoices.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("invoices.intro")}</p>
-      </header>
+    <Page width="wide">
+      <PageHeader title={t("invoices.title")} description={t("invoices.intro")} />
       <CrmTabs current="invoices" show={shell.show} />
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+      {/* Receivables by age: the current bucket plain, every late bucket red once it holds anything. */}
+      <TileGrid>
+        <Tile label={t("invoices.totalOpen", { count: aging.invoices })} value={f.money(aging.total)} />
         {AGING_BUCKETS.map((bucket) => (
-          <div key={bucket} className="rounded-xl border p-3">
-            <p className="text-xs text-muted-foreground">{t(`enums.aging.${bucket}`)}</p>
-            <p className={`text-lg font-medium tabular-nums ${bucket !== "current" && aging[bucket] > 0 ? "text-destructive" : ""}`}>{f.money(aging[bucket])}</p>
-          </div>
+          <Tile key={bucket} label={t(`enums.aging.${bucket}`)} value={f.money(aging[bucket])} tone={bucket !== "current" && aging[bucket] > 0 ? "destructive" : undefined} />
         ))}
-        <div className="rounded-xl border p-3">
-          <p className="text-xs text-muted-foreground">{t("invoices.totalOpen", { count: aging.invoices })}</p>
-          <p className="text-lg font-medium tabular-nums">{f.money(aging.total)}</p>
-        </div>
-      </section>
+      </TileGrid>
 
-      <nav className="flex flex-wrap gap-2 text-sm">
+      <nav className="tab-row" aria-label={t("invoices.columns.standing")}>
         {STATUSES.map((value) => (
-          <Link key={value} href={`/crm/invoices?status=${value}`} aria-current={value === status ? "page" : undefined} className={`rounded-md border px-3 py-1 ${value === status ? "pill-on" : "pill-off"}`}>
+          <Link key={value} href={`/crm/invoices?status=${value}`} aria-current={value === status ? "page" : undefined}>
             {t(`invoices.statuses.${value}`)}
           </Link>
         ))}
@@ -85,20 +78,20 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/crm/inv
           {invoices.length === 0 ? <TableEmpty>{t("invoices.empty")}</TableEmpty> : null}
           {invoices.map((invoice) => (
             <TableRow key={invoice.id}>
-              <TableCell>
-                <Link href={`/crm/invoices/${invoice.id}`} className="font-medium hover:underline">
+              <TableCell kind="id">
+                <Link href={`/crm/invoices/${invoice.id}`} className="font-medium text-foreground hover:underline">
                   {invoice.number}
                 </Link>
-                <p className="text-xs text-muted-foreground">{invoice.entityName}</p>
+                <p className="font-sans text-xs text-faint">{invoice.entityName}</p>
               </TableCell>
               <TableCell>
                 <Link href={`/crm/accounts/${invoice.clientId}`} className="hover:underline">
                   {invoice.accountName}
                 </Link>
-                <p className="text-xs text-muted-foreground">{invoice.managerName}</p>
+                <p className="text-xs text-faint">{invoice.managerName}</p>
               </TableCell>
-              <TableCell>{f.date(invoice.issuedOn)}</TableCell>
-              <TableCell>
+              <TableCell kind="date">{f.date(invoice.issuedOn)}</TableCell>
+              <TableCell kind="date">
                 {f.date(invoice.dueOn)}
                 {invoice.daysPastDue > 0 ? <p className="text-xs text-destructive">{t("invoices.daysLate", { days: invoice.daysPastDue })}</p> : null}
               </TableCell>
@@ -108,32 +101,34 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/crm/inv
                 </Badge>
               </TableCell>
               <TableCell kind="money">{f.money(invoice.totalVnd)}</TableCell>
-              <TableCell kind="money">{f.money(invoice.outstandingVnd)}</TableCell>
+              <TableCell kind="money" className={invoice.outstandingVnd > 0 && invoice.daysPastDue > 0 ? "text-destructive" : undefined}>{f.money(invoice.outstandingVnd)}</TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
 
       {groups.size ? (
-        <TableCard>
-          <TableCardHeader title={t("invoices.recordTitle")} count={groups.size} description={t("invoices.recordIntro")} />
-          <List>
-            {[...groups.entries()].map(([key, group]) => (
-              <ListItem key={key} className="block">
-                <details>
-                  <summary className="cursor-pointer font-medium">
-                    {group.accountName}
-                    {group.entityName ? ` · ${group.entityName}` : ""} · {t("invoices.readyCount", { count: group.items.length })}
-                  </summary>
-                  <div className="pt-3">
-                    <RecordInvoiceForm items={group.items.map((item) => ({ id: item.id, projectName: item.projectName, jobNumber: item.jobNumber, description: item.description, amountVnd: item.amountVnd ?? null, reference: item.reference ?? references.get(item.projectId) ?? null }))} vatRates={vat.allowedBp} defaultVat={vat.defaultBp} today={today} />
-                  </div>
-                </details>
-              </ListItem>
-            ))}
-          </List>
-        </TableCard>
+        <Section>
+          <TableCard>
+            <TableCardHeader title={t("invoices.recordTitle")} count={groups.size} description={t("invoices.recordIntro")} />
+            <List>
+              {[...groups.entries()].map(([key, group]) => (
+                <ListItem key={key} className="block">
+                  <details>
+                    <summary className="cursor-pointer font-medium">
+                      {group.accountName}
+                      {group.entityName ? ` · ${group.entityName}` : ""} <span className="font-mono text-xs font-normal text-faint tabular-nums">{t("invoices.readyCount", { count: group.items.length })}</span>
+                    </summary>
+                    <div className="pt-3">
+                      <RecordInvoiceForm items={group.items.map((item) => ({ id: item.id, projectName: item.projectName, jobNumber: item.jobNumber, description: item.description, amountVnd: item.amountVnd ?? null, reference: item.reference ?? references.get(item.projectId) ?? null }))} vatRates={vat.allowedBp} defaultVat={vat.defaultBp} today={today} />
+                    </div>
+                  </details>
+                </ListItem>
+              ))}
+            </List>
+          </TableCard>
+        </Section>
       ) : null}
-    </div>
+    </Page>
   );
 }

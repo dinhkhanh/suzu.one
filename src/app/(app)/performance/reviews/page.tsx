@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listMyParticipations, listPeerInvitations, listReviewsIOwe } from "@/modules/performance/service";
+import { Page, PageHeader } from "@/components/ui/page";
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { FormStatusBadge, ratingText, StageBadge } from "@/modules/performance/ui/review";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -16,11 +17,8 @@ export default async function ReviewsPage() {
   const [mine, owed, invitations, t, format] = await Promise.all([listMyParticipations(user.person.id), listReviewsIOwe(user.person.id), listPeerInvitations(user.person.id), getTranslations("performance.reviews"), getFormatter()]);
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
-      <header>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </header>
+    <Page>
+      <PageHeader title={t("title")} description={t("description")} />
       <PerformanceNav active="reviews" />
 
       <TableCard>
@@ -129,6 +127,6 @@ export default async function ReviewsPage() {
           </Table>
         </TableCard>
       ) : null}
-    </div>
+    </Page>
   );
 }

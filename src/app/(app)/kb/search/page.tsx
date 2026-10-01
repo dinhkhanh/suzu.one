@@ -1,5 +1,9 @@
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Page, PageHeader, Section } from "@/components/ui/page";
 import { kbViewerOf, listSpaces, searchKb } from "@/modules/kb/service";
 import { KbSearchBox } from "@/modules/kb/ui/search-box";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -29,60 +33,67 @@ export default async function KbSearchPage(props: PageProps<"/kb/search">) {
   };
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-3">
-        <p className="text-sm text-muted-foreground">
+    <Page>
+      <PageHeader
+        eyebrow={
           <Link href="/kb" className="hover:underline">
             {t("title")}
           </Link>
-        </p>
-        <h1>{t("search.title")}</h1>
-        <KbSearchBox query={query} spaceId={spaceId} />
-        {query ? (
-          <nav aria-label={t("search.filter")} className="flex flex-wrap gap-2 text-sm">
-            <Link href={href({ space: null })} className={spaceId ? "pill-off" : "pill-on"}>
-              {t("search.allSpaces")}
-            </Link>
-            {spaces
-              .filter((space) => !space.archivedAt)
-              .map((space) => (
-                <Link key={space.id} href={href({ space: space.id })} className={space.id === spaceId ? "pill-on" : "pill-off"}>
-                  {space.name}
-                </Link>
-              ))}
-          </nav>
-        ) : null}
-      </header>
+        }
+        title={t("search.title")}
+      >
+        <KbSearchBox query={query} spaceId={spaceId} className="mt-2" />
+      </PageHeader>
 
-      {query ? <p className="text-sm text-muted-foreground">{t("search.count", { count: result.total })}</p> : <p className="text-sm text-muted-foreground">{t("search.hint")}</p>}
-      <ol className="flex flex-col gap-5">
-        {result.hits.map((hit) => (
-          <li key={hit.pageId} className="flex flex-col gap-1">
-            <Link href={`/kb/pages/${hit.pageId}`} className="text-base font-medium hover:underline">
-              {hit.title}
-            </Link>
-            <p className="text-xs text-muted-foreground">
-              {[hit.spaceName, ...hit.path].join(" / ")}
-              {hit.publishedAt ? ` · ${format.dateTime(hit.publishedAt, { dateStyle: "medium" })}` : ""}
-            </p>
-            <p className="text-sm text-muted-foreground">{hit.snippet}</p>
-          </li>
-        ))}
-      </ol>
+      {query ? (
+        <nav aria-label={t("search.filter")} className="tab-row">
+          <Link href={href({ space: null })} aria-current={spaceId ? undefined : "page"}>
+            {t("search.allSpaces")}
+          </Link>
+          {spaces
+            .filter((space) => !space.archivedAt)
+            .map((space) => (
+              <Link key={space.id} href={href({ space: space.id })} aria-current={space.id === spaceId ? "page" : undefined}>
+                {space.name}
+              </Link>
+            ))}
+        </nav>
+      ) : null}
+
+      <Section title={query ? t("search.count", { count: result.total }) : undefined}>
+        <List>
+          {!query ? <ListEmpty>{t("search.hint")}</ListEmpty> : result.hits.length === 0 ? <ListEmpty>{t("search.none")}</ListEmpty> : null}
+          {result.hits.map((hit) => (
+            <ListItem key={hit.pageId} href={`/kb/pages/${hit.pageId}`} className="flex-col items-stretch gap-1 py-3">
+              <span className="text-xs text-faint">
+                {[hit.spaceName, ...hit.path].join(" › ")}
+                {hit.publishedAt ? <span className="font-mono tabular-nums"> · {format.dateTime(hit.publishedAt, { dateStyle: "medium" })}</span> : null}
+              </span>
+              <span className="font-medium">{hit.title}</span>
+              <span className="line-clamp-2 text-[0.8125rem] text-muted-foreground">{hit.snippet}</span>
+            </ListItem>
+          ))}
+        </List>
+      </Section>
+
       {result.total > PAGE_SIZE ? (
-        <nav className="tab-row">
+        <nav className="flex items-center justify-between gap-2">
           {pageNo > 1 ? (
-            <Link href={href({ page: pageNo - 1 })} className="hover:underline">
-              ← {t("search.previous")}
+            <Link href={href({ page: pageNo - 1 })} className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <ChevronLeftIcon aria-hidden data-icon="inline-start" />
+              {t("search.previous")}
             </Link>
-          ) : null}
+          ) : (
+            <span />
+          )}
           {pageNo * PAGE_SIZE < result.total ? (
-            <Link href={href({ page: pageNo + 1 })} className="hover:underline">
-              {t("search.next")} →
+            <Link href={href({ page: pageNo + 1 })} className={buttonVariants({ variant: "outline", size: "sm" })}>
+              {t("search.next")}
+              <ChevronRightIcon aria-hidden data-icon="inline-end" />
             </Link>
           ) : null}
         </nav>
       ) : null}
-    </div>
+    </Page>
   );
 }

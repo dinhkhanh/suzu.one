@@ -2,6 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Page, PageHeader, Section } from "@/components/ui/page";
 import { statusTone } from "@/components/ui/tone";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { audienceNames, audienceOptionsFor, commsViewerOf, getAnnouncementView, getReadReport } from "@/modules/comms/service";
@@ -10,6 +12,7 @@ import { AnnouncementStateButtons } from "@/modules/comms/ui/buttons";
 import { audienceLabel, toLocalInput } from "@/modules/comms/ui/labels";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
+import { cn } from "@/lib/utils";
 
 export const generateMetadata = pageTitle("announcement");
 
@@ -27,24 +30,27 @@ export default async function ManageAnnouncementPage(props: PageProps<"/announce
   const when = (date: Date | null) => (date ? format.dateTime(date, { dateStyle: "short", timeStyle: "short" }) : "—");
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-col gap-2">
-        <p className="text-sm text-muted-foreground">
+    <Page>
+      <PageHeader
+        eyebrow={
           <Link href="/announcements/manage" className="hover:underline">
             {t("manage.title")}
           </Link>
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1>{row.title}</h1>
+        }
+        title={row.title}
+        actions={
+          <>
+            <Link href={`/announcements/${row.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              {t("manage.view")}
+            </Link>
+            <AnnouncementStateButtons id={row.id} pinned={row.pinned} archived={row.status === "archived"} />
+          </>
+        }
+      >
+        <div className="pt-1">
           <Badge dot variant={statusTone(view.phase)}>{t(`phase.${view.phase}`)}</Badge>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link href={`/announcements/${row.id}`} className="text-sm underline underline-offset-2">
-            {t("manage.view")}
-          </Link>
-          <AnnouncementStateButtons id={row.id} pinned={row.pinned} archived={row.status === "archived"} />
-        </div>
-      </header>
+      </PageHeader>
 
       {row.status === "archived" ? null : (
         <AnnouncementForm
@@ -54,7 +60,7 @@ export default async function ManageAnnouncementPage(props: PageProps<"/announce
       )}
 
       {report ? (
-        <section className="flex max-w-3xl flex-col gap-3">
+        <Section title={t("report.title")} className="max-w-3xl">
           <TableCard>
             <TableCardHeader title={t("report.title")} description={row.mustAcknowledge ? t("report.summaryAck", { total: report.total, read: report.read, acknowledged: report.acknowledged }) : t("report.summary", { total: report.total, read: report.read })} />
             <Table numbered={false}>
@@ -98,8 +104,8 @@ export default async function ManageAnnouncementPage(props: PageProps<"/announce
               ))}
             </TableBody>
           </Table>
-        </section>
+        </Section>
       ) : null}
-    </div>
+    </Page>
   );
 }

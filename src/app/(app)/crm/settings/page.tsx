@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { List, ListItem } from "@/components/ui/list";
 import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
+import { Page, PageHeader } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -23,11 +24,8 @@ export default async function CrmSettingsPage() {
   const nextOrder = (stages.at(-1)?.sortOrder ?? 0) + 10;
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
-      <header>
-        <h1>{t("settings.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("settings.intro")}</p>
-      </header>
+    <Page width="default">
+      <PageHeader title={t("settings.title")} description={t("settings.intro")} />
       <CrmTabs current="settings" show={shell.show} />
       <TableCard>
         <TableCardHeader title={t("settings.stages")} count={stages.length || null} />
@@ -66,6 +64,6 @@ export default async function CrmSettingsPage() {
           </Link>
         </p>
       </section>
-    </div>
+    </Page>
   );
 }

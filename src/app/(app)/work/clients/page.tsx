@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
@@ -70,16 +71,16 @@ export default async function ClientsPage() {
   );
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
-      <header>
-        <p className="text-sm text-muted-foreground">
-          <Link href="/work" className="underline">
+    <Page width="default">
+      <PageHeader
+        eyebrow={
+          <Link href="/work" className="hover:underline">
             {tWork("title")}
           </Link>
-        </p>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </header>
+        }
+        title={t("title")}
+        description={t("description")}
+      />
       <TableCard>
         <List>
           {clients.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
@@ -91,6 +92,6 @@ export default async function ClientsPage() {
           </TableAddRow>
         ) : null}
       </TableCard>
-    </div>
+    </Page>
   );
 }

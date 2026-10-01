@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Page } from "@/components/ui/page";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { TableAddRow, TableCard } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
@@ -38,26 +39,23 @@ export default async function ProjectRisksPage({ params, searchParams }: PagePro
   const tab = (value: RaidKind | null) => (value ? `/projects/${project.id}/risks?kind=${value}` : `/projects/${project.id}/risks`);
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
+    <Page>
       <ProjectHeader context={context} current="risks" />
 
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-base font-medium">{t("title")}</h2>
+          <h2>{t("title")}</h2>
           {counts.highRisks > 0 ? <Badge variant="destructive">{t("portfolio.highRisksBadge", { count: counts.highRisks })}</Badge> : null}
           {counts.openIssues > 0 ? <Badge variant="warning">{t("portfolio.openIssuesBadge", { count: counts.openIssues })}</Badge> : null}
         </div>
         <p className="text-sm text-muted-foreground">{t("description")}</p>
-        <nav aria-label={t("filterLabel")} className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <ul className="flex w-max gap-1 text-sm">
-            {[null, ...RAID_KINDS].map((value) => (
-              <li key={value ?? "all"}>
-                <Link href={tab(value)} aria-current={value === kind ? "page" : undefined} className={`block rounded-md border px-3 py-1 whitespace-nowrap ${value === kind ? "pill-on" : "pill-off"}`}>
-                  {value ? t(`kindsPlural.${value}`) : t("all")} ({value ? all.filter((item) => item.kind === value).length : all.length})
-                </Link>
-              </li>
-            ))}
-          </ul>
+        <nav aria-label={t("filterLabel")} className="tab-row -mx-4 px-4 md:mx-0 md:px-0">
+          {[null, ...RAID_KINDS].map((value) => (
+            <Link key={value ?? "all"} href={tab(value)} aria-current={value === kind ? "page" : undefined}>
+              {value ? t(`kindsPlural.${value}`) : t("all")}
+              <span className="font-mono text-[0.6875rem] text-faint tabular-nums">{value ? all.filter((item) => item.kind === value).length : all.length}</span>
+            </Link>
+          ))}
         </nav>
 
         <TableCard>
@@ -145,6 +143,6 @@ export default async function ProjectRisksPage({ params, searchParams }: PagePro
           ) : null}
         </TableCard>
       </section>
-    </div>
+    </Page>
   );
 }

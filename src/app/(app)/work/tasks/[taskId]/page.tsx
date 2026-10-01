@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { Page } from "@/components/ui/page";
 import { requireUser } from "@/modules/platform/auth/session";
 import { acceptAttributeFor } from "@/modules/platform/files/rules";
 import { canDecideReview, canDeleteTask, canEditTask, canModerateTask, canRaiseBlocker, canResolveBlocker, canSubmitDeliverable, listDeliverables, followersOf, followStateOf, getTaskDetail, listActivity, listComments, listCustomFields, listMentionable, listMoveTargets, listTaskBlockers, listTaskFiles, listAssignable, listClients, listLabels, listLinkableTasks, listProjectOptions, listStates, loadViewer, resolveTaskKey, toFieldViews } from "@/modules/work/service";
@@ -92,28 +93,31 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
     if (extra.id && extra.fullName && !people.some((person) => person.id === extra.id)) people.push({ id: extra.id, fullName: extra.fullName });
   }
 
+  const crumb = (
+    <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+      <Link href="/work" className="hover:underline">
+        {t("title")}
+      </Link>
+      <span className="text-faint">/</span>
+      <Link href={project ? `/work/projects/${project.id}` : `/work/teams/${team.id}`} className="hover:underline">
+        {project?.name ?? team.name}
+      </Link>
+      {detail.parent ? (
+        <>
+          <span className="text-faint">/</span>
+          <Link href={`/work/tasks/${detail.parent.id}`} className="hover:underline">
+            <span className="font-mono text-xs">{detail.parent.key}</span> {detail.parent.title}
+          </Link>
+        </>
+      ) : null}
+      <span className="text-faint">/</span>
+      <span className="font-mono text-xs text-foreground">{detail.key}</span>
+    </span>
+  );
+
   return (
-    <div className="flex max-w-6xl flex-col gap-6" data-accent={accentOf(project?.color, team.color)}>
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/work" className="underline">
-            {t("title")}
-          </Link>
-          {" / "}
-          <Link href={project ? `/work/projects/${project.id}` : `/work/teams/${team.id}`} className="underline">
-            {project?.name ?? team.name}
-          </Link>
-          {detail.parent ? (
-            <>
-              {" / "}
-              <Link href={`/work/tasks/${detail.parent.id}`} className="underline">
-                {detail.parent.key} {detail.parent.title}
-              </Link>
-            </>
-          ) : null}
-        </p>
-        <p className="font-mono text-sm text-muted-foreground">{detail.key}</p>
-      </header>
+    <Page width="wide" className="gap-4 md:gap-5" data-accent={accentOf(project?.color, team.color)}>
+      <p className="text-[0.8125rem] font-medium text-muted-foreground">{crumb}</p>
       {inTriage ? <TriageBanner teamId={team.id} status={work.triageStatus!} until={work.triageSnoozedUntil} /> : null}
       <TaskDetailView
         task={{
@@ -157,6 +161,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
         linked={detail.linked}
         canEdit={canEdit}
         canDelete={canDeleteTask(viewer, detail.facts)}
+        today={today}
       >
         <TaskCustomFields taskId={task.id} fields={toFieldViews(fields)} values={work.customValues} people={people} canEdit={canEdit} />
         <BlockerPanel
@@ -252,6 +257,6 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
         />
         <MovePanel taskId={task.id} taskKey={detail.key} teams={moveTargets} />
       </TaskDetailView>
-    </div>
+    </Page>
   );
 }

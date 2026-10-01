@@ -6,11 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
+import { Page, PageHeader } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { exportReportAction } from "@/modules/reports/actions";
 import { COMPLIANCE_MAX_DAYS, type Compliance, defaultDeliveryPeriod, getDeliveryDashboard } from "@/modules/reports/service";
+import { RateBar } from "@/modules/reports/ui/bar";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("delivery");
@@ -23,9 +26,9 @@ function Figure({ label, value, hint, tone }: { label: string; value: ReactNode;
     <div className="flex flex-col gap-0.5">
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-muted-foreground">{label}</span>
-        <span className={`text-lg font-semibold tabular-nums ${tone === "danger" ? "text-destructive" : ""}`}>{value}</span>
+        <span className={`font-mono text-[0.9375rem] font-medium tabular-nums ${tone === "danger" ? "text-destructive" : ""}`}>{value}</span>
       </div>
-      {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
+      {hint ? <span className="text-xs text-faint">{hint}</span> : null}
     </div>
   );
 }
@@ -34,9 +37,9 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
+        <CardTitle>{title}</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-2 text-sm">{children}</CardContent>
+      <CardContent className="flex flex-col gap-2.5 text-sm">{children}</CardContent>
     </Card>
   );
 }
@@ -61,7 +64,6 @@ export default async function DeliveryPage({ searchParams }: PageProps<"/reports
   const decimal = (value: number | null) => (value === null ? "—" : format.number(value, { maximumFractionDigits: 1 }));
   const hours = (minutes: number | null) => (minutes === null ? "—" : format.number(minutes / 60, { maximumFractionDigits: 1 }));
   const compliance = (value: Compliance) => (value.due === 0 ? "—" : `${percent(value.rate)} (${value.met}/${value.due})`);
-  const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "pill-on" : "pill-off"}`;
   const link = (team: string | null) => {
     const query = new URLSearchParams({ from: period.from, to: period.to, ...(team ? { team } : {}) });
     return `/reports/delivery?${query.toString()}`;
@@ -69,52 +71,46 @@ export default async function DeliveryPage({ searchParams }: PageProps<"/reports
   const total = view.total;
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <p className="text-sm text-muted-foreground">
-            <Link href="/reports" className="underline underline-offset-4">
-              {t("back")}
-            </Link>
-          </p>
-          <h1>{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
-        </div>
-        <ExportButton action={exportReportAction} input={{ reportKey: "delivery", parameters: teamId ? { teamId } : {}, from: period.from, to: period.to, locale }} label={tExports("button")} failedLabel={tExports("failed")} truncatedLabel={tExports("truncated")} />
-      </header>
-
-      <form className="flex flex-wrap items-end gap-3 text-sm">
-        {teamId ? <input type="hidden" name="team" value={teamId} /> : null}
-        <label className="flex flex-col gap-1">
-          {t("from")}
-          <DatePicker name="from" defaultValue={period.from} className="w-auto" />
-        </label>
-        <label className="flex flex-col gap-1">
-          {t("to")}
-          <DatePicker name="to" defaultValue={period.to} className="w-auto" />
-        </label>
-        <Button type="submit" variant="secondary">
-          {t("apply")}
-        </Button>
-      </form>
+    <Page width="wide">
+      <PageHeader
+        eyebrow={<Link href="/reports">{t("back")}</Link>}
+        title={t("title")}
+        description={t("description")}
+        actions={<ExportButton action={exportReportAction} input={{ reportKey: "delivery", parameters: teamId ? { teamId } : {}, from: period.from, to: period.to, locale }} label={tExports("button")} failedLabel={tExports("failed")} truncatedLabel={tExports("truncated")} />}
+      />
 
       {view.teams.length > 1 ? (
-        <nav className="flex flex-wrap items-center gap-1">
-          <Link href={link(null)} className={tab(!teamId)}>
+        <nav className="tab-row" aria-label={t("byTeam")}>
+          <Link href={link(null)} aria-current={!teamId ? "page" : undefined}>
             {t("allTeams")}
           </Link>
           {view.teams.map((team) => (
-            <Link key={team.id} href={link(team.id)} className={tab(teamId === team.id)}>
+            <Link key={team.id} href={link(team.id)} aria-current={teamId === team.id ? "page" : undefined}>
               {team.name}
             </Link>
           ))}
         </nav>
       ) : null}
 
+      <form className="toolbar">
+        {teamId ? <input type="hidden" name="team" value={teamId} /> : null}
+        <Label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          {t("from")}
+          <DatePicker name="from" defaultValue={period.from} className="w-auto" />
+        </Label>
+        <Label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          {t("to")}
+          <DatePicker name="to" defaultValue={period.to} className="w-auto" />
+        </Label>
+        <Button type="submit" variant="outline">
+          {t("apply")}
+        </Button>
+      </form>
+
       {total.projects === 0 ? (
         <p className="text-sm text-muted-foreground">{t("none")}</p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Panel title={t("panels.health")}>
             <Figure label={t("health.on_track")} value={total.health.on_track} />
             <Figure label={t("health.at_risk")} value={total.health.at_risk} />
@@ -181,7 +177,7 @@ export default async function DeliveryPage({ searchParams }: PageProps<"/reports
                   <TableCell>{project.teamName}</TableCell>
                   <TableCell>
                     <span className="flex flex-wrap gap-1">
-                      {project.health ? <Badge variant={project.health === "off_track" ? "destructive" : "secondary"}>{t(`health.${project.health}`)}</Badge> : null}
+                      {project.health ? <Badge dot variant={project.health === "off_track" ? "destructive" : project.health === "at_risk" ? "warning" : "success"}>{t(`health.${project.health}`)}</Badge> : null}
                       {project.stale ? <Badge variant="outline">{t("health.stale")}</Badge> : null}
                       {!project.health && !project.stale ? "—" : null}
                     </span>
@@ -226,9 +222,15 @@ export default async function DeliveryPage({ searchParams }: PageProps<"/reports
                   <TableCell kind="number">{summary.health.off_track}</TableCell>
                   <TableCell kind="number">{summary.health.stale}</TableCell>
                   <TableCell kind="number">{summary.milestones.overdue}</TableCell>
-                  <TableCell kind="percent">{percent(summary.onTime.rate)}</TableCell>
-                  <TableCell kind="percent">{percent(summary.register.rate)}</TableCell>
-                  <TableCell kind="percent">{percent(summary.burn.rate)}</TableCell>
+                  <TableCell kind="percent">
+                    <RateBar rate={summary.onTime.rate} label={percent(summary.onTime.rate)} />
+                  </TableCell>
+                  <TableCell kind="percent">
+                    <RateBar rate={summary.register.rate} label={percent(summary.register.rate)} />
+                  </TableCell>
+                  <TableCell kind="percent">
+                    <RateBar rate={summary.burn.rate} label={percent(summary.burn.rate)} tone={summary.burn.rate !== null && summary.burn.rate > 1 ? "destructive" : undefined} />
+                  </TableCell>
                   <TableCell kind="number">{summary.revisions.clientRounds}</TableCell>
                   <TableCell kind="number">{summary.handoffs.returned}</TableCell>
                   <TableCell kind="time">{decimal(summary.blocked.blockedHours)}</TableCell>
@@ -263,8 +265,12 @@ export default async function DeliveryPage({ searchParams }: PageProps<"/reports
                   <TableRow key={team.teamId}>
                     <TableCell>{team.name}</TableCell>
                     <TableCell kind="number">{team.people}</TableCell>
-                    <TableCell kind="percent">{compliance(team.reports)}</TableCell>
-                    <TableCell kind="percent">{compliance(team.timesheets)}</TableCell>
+                    <TableCell kind="percent">
+                      <RateBar rate={team.reports.due === 0 ? null : team.reports.rate} label={compliance(team.reports)} />
+                    </TableCell>
+                    <TableCell kind="percent">
+                      <RateBar rate={team.timesheets.due === 0 ? null : team.timesheets.rate} label={compliance(team.timesheets)} />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -275,6 +281,6 @@ export default async function DeliveryPage({ searchParams }: PageProps<"/reports
       ) : null}
 
       <p className="text-xs text-muted-foreground">{t("scoped")}</p>
-    </div>
+    </Page>
   );
 }

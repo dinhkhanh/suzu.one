@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
+import { Page, PageHeader } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -89,25 +90,19 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
   const handoffWaiting = projects.find((project) => project.handoffStatus === "pending" && project.handoffToPersonId === user.person.id);
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/crm/deals" className="underline">
+    <Page width="wide">
+      <PageHeader eyebrow={<><Link href="/crm/deals" className="underline">
             {t("deals.title")}
           </Link>{" "}
           ·{" "}
           <Link href={`/crm/accounts/${account.client.id}`} className="underline">
             {account.client.name}
           </Link>
-          {deal.brandName ? ` · ${deal.brandName}` : ""}
-        </p>
-        <h1 className="flex flex-wrap items-center gap-2">
-          {deal.title}
+          {deal.brandName ? ` · ${deal.brandName}` : ""}</>} title={<span className="inline-flex flex-wrap items-center gap-2">{deal.title}
           <span className="font-mono text-sm text-muted-foreground">{deal.code}</span>
           <Badge dot variant={deal.status === "won" ? "success" : deal.status === "lost" ? "secondary" : "info"}>
             {stageName(deal.stage, locale)}
-          </Badge>
-        </h1>
+          </Badge></span>}>
         <p className="text-sm text-muted-foreground">
           {[t("deal.ownerIs", { name: deal.ownerName ?? "—" }), deal.teamName ? t("deal.teamIs", { name: deal.teamName }) : null, deal.entityName, deal.serviceLines.map((line) => t(`enums.serviceLine.${line as "social"}`)).join(", ") || null].filter(Boolean).join(" · ")}
         </p>
@@ -123,7 +118,7 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
         </p>
         {deal.status === "lost" ? <p className="text-sm text-muted-foreground">{t("deal.lostBecause", { reason: deal.lostReason ? t(`enums.lostReason.${deal.lostReason as "price"}`) : "—", note: deal.lostNote ?? "" })}</p> : null}
         {account.profile?.creditHold ? <p className="text-sm text-destructive">{t("deal.creditHoldWarning", { reason: account.profile.creditHoldReason ?? "" })}</p> : null}
-      </header>
+      </PageHeader>
       <CrmTabs current="deals" show={shell.show} />
 
       {handoffWaiting ? (
@@ -332,6 +327,6 @@ export default async function DealPage({ params, searchParams }: PageProps<"/crm
           ) : null}
         </aside>
       </div>
-    </div>
+    </Page>
   );
 }

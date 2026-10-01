@@ -1,9 +1,14 @@
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import type { CSSProperties } from "react";
+import { Alert } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
-import { List, ListItem } from "@/components/ui/list";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
+import { cn } from "@/lib/utils";
 import { listWeekly, loadReportReader, type ShownPersonWeek, type ShownTeamWeek, weekStartOf } from "@/modules/daily/service";
 import { TaskLines } from "@/modules/daily/ui/activity-list";
 import { hoursOf } from "@/modules/daily/ui/format";
@@ -33,54 +38,66 @@ export default async function WeeklyPage({ searchParams }: PageProps<"/daily/wee
   const day = (iso: string) => format.dateTime(new Date(`${iso}T12:00:00Z`), { day: "numeric", month: "short" });
   const hoursList = (week: ShownPersonWeek | ShownTeamWeek) =>
     week.hoursByProject.length > 0 ? (
-      <ul className="flex flex-col gap-0.5 text-sm">
-        {week.hoursByProject.map((group) => (
-          <li key={group.projectId ?? group.category ?? "none"} className="flex gap-2">
-            <span className="min-w-0 flex-1">{group.hidden ? <span className="text-muted-foreground italic">{t("privateWork")}</span> : (group.name ?? (group.category ? t(`time.categories.${group.category as "admin"}`) : "—"))}</span>
-            <span className="tabular-nums">{t("hours", { value: hoursOf(group.minutes) })}</span>
-          </li>
-        ))}
-      </ul>
+      <Table numbered={false}>
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="text">{t("weekly.columns.person")}</TableHead>
+            <TableHead kind="time">{t("weekly.columns.hours")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {week.hoursByProject.map((group) => (
+            <TableRow key={group.projectId ?? group.category ?? "none"}>
+              <TableCell className="whitespace-normal">{group.hidden ? <span className="text-muted-foreground italic">{t("privateWork")}</span> : (group.name ?? (group.category ? t(`time.categories.${group.category as "admin"}`) : "—"))}</TableCell>
+              <TableCell kind="time">{t("hours", { value: hoursOf(group.minutes) })}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    ) : null;
+  const blockersAlert = (blockers: { name?: string; date: string; text: string }[]) =>
+    blockers.length > 0 ? (
+      <Alert variant="destructive">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="font-medium">{t("weekly.blockers", { count: blockers.length })}</p>
+          <ul className="flex flex-col gap-1 text-sm">
+            {blockers.map((blocker, index) => (
+              <li key={`${blocker.name ?? ""}:${blocker.date}:${index}`}>{[blocker.name, day(blocker.date), noteToPlainText(blocker.text)].filter(Boolean).join(" · ")}</li>
+            ))}
+          </ul>
+        </div>
+      </Alert>
     ) : null;
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-2">
-        <h1>{t("weekly.title")}</h1>
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <Link href={`/daily/weekly?week=${addDays(weekStart, -7)}`} className={buttonVariants({ size: "sm", variant: "outline" })}>
-            {t("weekly.previous")}
-          </Link>
-          <span className="font-medium">{t("weekly.range", { from: day(weekStart), to: day(addDays(weekStart, 6)) })}</span>
-          {weekStart < current ? (
-            <Link href={`/daily/weekly?week=${addDays(weekStart, 7)}`} className={buttonVariants({ size: "sm", variant: "outline" })}>
-              {t("weekly.next")}
+    <Page width="default">
+      <PageHeader
+        eyebrow={t("weekly.range", { from: day(weekStart), to: day(addDays(weekStart, 6)) })}
+        title={t("weekly.title")}
+        actions={
+          <>
+            <Link href={`/daily/weekly?week=${addDays(weekStart, -7)}`} className={buttonVariants({ size: "sm", variant: "outline" })}>
+              <ChevronLeft aria-hidden /> {t("weekly.previous")}
             </Link>
-          ) : null}
-        </div>
-      </header>
+            {weekStart < current ? (
+              <Link href={`/daily/weekly?week=${addDays(weekStart, 7)}`} className={buttonVariants({ size: "sm", variant: "outline" })}>
+                {t("weekly.next")} <ChevronRight aria-hidden />
+              </Link>
+            ) : null}
+          </>
+        }
+      />
 
-      {teamWeeks.length === 0 && people.length === 0 && notGenerated.length === 0 ? <p className="text-sm text-muted-foreground">{t("weekly.empty")}</p> : null}
+      {teamWeeks.length === 0 && people.length === 0 && notGenerated.length === 0 ? (
+        <List>
+          <ListEmpty>{t("weekly.empty")}</ListEmpty>
+        </List>
+      ) : null}
 
       {teamWeeks.map(({ row, team, content }) => (
-        <section key={row.id} id={`team-${team.id}`} className={`flex flex-col gap-3 rounded-xl border p-4 ${focus === team.id ? "border-primary/50" : ""}`}>
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="min-w-0 flex-1 font-medium">{team.name}</h2>
-            <GenerateWeekButton teamId={team.id} weekStart={weekStart} label={t("weekly.refresh")} />
-          </div>
-          <p className="text-sm text-muted-foreground">{t("weekly.teamFacts", { done: content.done, slipped: content.slipped, hours: hoursOf(content.totalMinutes), submitted: content.submitted, required: content.required, late: content.late })}</p>
-          {content.blockers.length > 0 ? (
-            <div className="flex flex-col gap-1 rounded-lg bg-destructive/5 p-3">
-              <h3 className="text-sm font-medium text-destructive">{t("weekly.blockers", { count: content.blockers.length })}</h3>
-              <ul className="flex flex-col gap-1 text-sm">
-                {content.blockers.map((blocker, index) => (
-                  <li key={`${blocker.personId}:${blocker.date}:${index}`}>
-                    <span className="font-medium">{blocker.name}</span> · {day(blocker.date)} · {noteToPlainText(blocker.text)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+        <Section key={row.id} id={`team-${team.id}`} title={team.name} action={<GenerateWeekButton teamId={team.id} weekStart={weekStart} label={t("weekly.refresh")} />} className={cn(focus === team.id && "rounded-[14px] ring-2 ring-primary/30 ring-offset-4 ring-offset-background")}>
+          <p className="px-0.5 text-sm text-muted-foreground">{t("weekly.teamFacts", { done: content.done, slipped: content.slipped, hours: hoursOf(content.totalMinutes), submitted: content.submitted, required: content.required, late: content.late })}</p>
+          {blockersAlert(content.blockers)}
           <Table>
             <TableHeader>
               <TableRow>
@@ -111,66 +128,60 @@ export default async function WeeklyPage({ searchParams }: PageProps<"/daily/wee
           </Table>
           {hoursList(content)}
           <WeeklySummaryForm id={row.id} summary={row.summary} />
-        </section>
+        </Section>
       ))}
 
       {notGenerated.length > 0 ? (
-        <TableCard>
-          <TableCardHeader title={t("weekly.notGenerated")} count={notGenerated.length} />
+        <Section title={t("weekly.notGenerated")} count={notGenerated.length}>
           <List>
-            {notGenerated.map((team) => (
-              <ListItem key={team.id}>
-                <span className="min-w-0 flex-1">{team.name}</span>
+            {notGenerated.map((team, index) => (
+              <ListItem key={team.id} className="rise" style={{ "--i": index } as CSSProperties}>
+                <span className="min-w-0 flex-1 font-medium">{team.name}</span>
                 <GenerateWeekButton teamId={team.id} weekStart={weekStart} label={t("weekly.generate")} />
               </ListItem>
             ))}
           </List>
-        </TableCard>
+        </Section>
       ) : null}
 
       {people.length > 0 ? (
-        <TableCard>
-          <TableCardHeader title={t("weekly.people", { count: people.length })} />
-          <List>
-            {people.map(({ row, personId, name, content, canSummarise }) => (
-              <ListItem key={row.id} className="block">
-                <details id={`person-${personId}`} open={personId === user.person.id}>
-                  <summary className="cursor-pointer text-sm font-medium">
-                    {personId === user.person.id ? t("weekly.myWeek") : name} <span className="font-normal text-muted-foreground">· {t("weekly.personFacts", { done: content.done.length, slipped: content.slipped.length, hours: hoursOf(content.totalMinutes), submitted: content.submitted, required: content.required })}</span>
-                  </summary>
-                  <div className="mt-3 flex flex-col gap-3 text-sm">
-                    <div>
-                      <h3 className="text-xs font-medium text-muted-foreground">{t("weekly.done", { count: content.done.length })}</h3>
-                      <TaskLines lines={content.done} empty={t("report.noneDone")} />
+        <Section title={t("weekly.people", { count: people.length })}>
+          <TableCard>
+            <TableCardHeader title={t("weekly.people", { count: people.length })} className="sr-only" />
+            <List>
+              {people.map(({ row, personId, name, content, canSummarise }, index) => (
+                <ListItem key={row.id} className="rise block p-0 md:p-0" style={{ "--i": index } as CSSProperties}>
+                  <details id={`person-${personId}`} open={personId === user.person.id} className="group/week">
+                    <summary className="flex min-h-[3.25rem] cursor-pointer list-none items-center gap-3 px-4 py-2.5 select-none hover:bg-canvas md:min-h-12 md:px-3.5 [&::-webkit-details-marker]:hidden">
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{personId === user.person.id ? t("weekly.myWeek") : name}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{t("weekly.personFacts", { done: content.done.length, slipped: content.slipped.length, hours: hoursOf(content.totalMinutes), submitted: content.submitted, required: content.required })}</span>
+                      </span>
+                      <ChevronDown aria-hidden className="size-4 shrink-0 text-faint transition-transform duration-200 ease-(--ease-settle) group-open/week:rotate-180" />
+                    </summary>
+                    <div className="flex flex-col gap-4 border-t bg-canvas px-4 py-3 text-sm md:px-3.5">
+                      <div className="flex flex-col gap-1">
+                        <h3 className="section-label">{t("weekly.done", { count: content.done.length })}</h3>
+                        <TaskLines lines={content.done} empty={t("report.noneDone")} />
+                      </div>
+                      {content.slipped.length > 0 ? (
+                        <div className="flex flex-col gap-1">
+                          <h3 className="section-label">{t("weekly.slipped", { count: content.slipped.length })}</h3>
+                          <TaskLines lines={content.slipped} empty={t("report.noneDone")} />
+                        </div>
+                      ) : null}
+                      {blockersAlert(content.blockers)}
+                      {hoursList(content)}
+                      {row.summary && !canSummarise ? <RichText text={row.summary} className="rounded-[0.625rem] bg-muted p-3" /> : null}
+                      {canSummarise ? <WeeklySummaryForm id={row.id} summary={row.summary} /> : null}
                     </div>
-                    {content.slipped.length > 0 ? (
-                      <div>
-                        <h3 className="text-xs font-medium text-muted-foreground">{t("weekly.slipped", { count: content.slipped.length })}</h3>
-                        <TaskLines lines={content.slipped} empty={t("report.noneDone")} />
-                      </div>
-                    ) : null}
-                    {content.blockers.length > 0 ? (
-                      <div>
-                        <h3 className="text-xs font-medium text-destructive">{t("weekly.blockers", { count: content.blockers.length })}</h3>
-                        <ul className="flex flex-col gap-0.5">
-                          {content.blockers.map((blocker) => (
-                            <li key={blocker.date}>
-                              {day(blocker.date)} · {noteToPlainText(blocker.text)}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : null}
-                    {hoursList(content)}
-                    {row.summary && !canSummarise ? <RichText text={row.summary} className="rounded-lg bg-muted p-3" /> : null}
-                    {canSummarise ? <WeeklySummaryForm id={row.id} summary={row.summary} /> : null}
-                  </div>
-                </details>
-              </ListItem>
-            ))}
-          </List>
-        </TableCard>
+                  </details>
+                </ListItem>
+              ))}
+            </List>
+          </TableCard>
+        </Section>
       ) : null}
-    </div>
+    </Page>
   );
 }

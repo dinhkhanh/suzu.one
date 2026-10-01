@@ -280,8 +280,8 @@ export function MeetingCalendar({ projectId, meeting }: { projectId: string; mee
   const t = useTranslations("projects.meetings.calendar");
   const inCalendar = !!meeting.calendarEventId;
   return (
-    <div className="flex flex-col gap-2 rounded-xl border p-4">
-      <h2 className="text-base font-medium">{t("title")}</h2>
+    <div className="flex flex-col gap-2 rounded-[14px] border border-border bg-card p-4">
+      <h2>{t("title")}</h2>
       {meeting.startTime ? null : <p className="text-sm text-muted-foreground">{t("needsTime")}</p>}
       {meeting.calendarStatus ? (
         <p className="text-sm">

@@ -45,9 +45,12 @@ export function RunningTimer({ label, startedAt }: { label: string; startedAt: s
     return () => clearInterval(timer);
   }, []);
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-primary/30 bg-primary/5 p-3">
+    <div className="flex flex-col gap-1 rounded-[14px] border border-border bg-background py-3 pr-3 pl-4">
       <div className="flex items-center gap-3">
-        <span className="size-2 shrink-0 animate-pulse rounded-full bg-primary" aria-hidden />
+        <span className="relative flex size-2.5 shrink-0" aria-hidden>
+          <span className="absolute inset-0 animate-ping rounded-full bg-primary/50" />
+          <span className="relative size-2.5 rounded-full bg-primary" />
+        </span>
         <span className="min-w-0 flex-1 truncate text-sm">
           <span className="text-muted-foreground">{t("running")}</span> {label}
         </span>

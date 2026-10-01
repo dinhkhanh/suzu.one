@@ -1,11 +1,14 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { todayInVietnam } from "@/lib/dates";
+import { Page, PageHeader, Tile, TileGrid } from "@/components/ui/page";
+import { Segmented } from "@/components/ui/segmented";
+import { Table, TableBody, TableCell, TableEmpty, TableGroupRow, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { addDays, todayInVietnam } from "@/lib/dates";
 import { isMonthKey } from "@/lib/month-grid";
-import { canManageLibrary, canManageOps, canReadOps, listInstances, opsReach, STATUS_COLOURS, type StatusColour } from "@/modules/ops/service";
+import { canManageLibrary, canManageOps, canReadOps, type InstanceListItem, listInstances, opsReach, STATUS_COLOURS, type StatusColour } from "@/modules/ops/service";
 import { SyncButton } from "@/modules/ops/ui/library";
 import { OpsNav, OverviewFilters, overviewParams, overviewQuery } from "@/modules/ops/ui/overview";
 import { StatusBadge } from "@/modules/ops/ui/status-badge";
@@ -14,6 +17,9 @@ import { listEntities } from "@/modules/platform/org/service";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("compliance");
+
+type Band = "overdue" | "soon" | "later";
+const BANDS: Band[] = ["overdue", "soon", "later"];
 
 // Obligations by due date (FR-OPS-02): open or closed, or — coming from a dashboard cell — one entity, month and status colour.
 export default async function OpsListPage({ searchParams }: PageProps<"/ops/list">) {
@@ -48,47 +54,78 @@ export default async function OpsListPage({ searchParams }: PageProps<"/ops/list
     return `/ops/list${overviewParams(query, { show: (next.show ?? show) === "closed" ? "closed" : null, entity, month: next.show ? null : month, colour: next.show ? null : colour })}`;
   };
   const counts = { overdue: items.filter((item) => item.colour === "overdue").length, dueSoon: items.filter((item) => item.colour === "due_soon").length };
-  const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "pill-on" : "pill-off"}`;
+
+  // The open register reads in three bands: what is already late, what the next thirty days hold,
+  // and the rest. The rows arrive sorted by due date, so each band keeps that order.
+  const banded = show === "open" && !narrowed;
+  const horizon = addDays(today, 30);
+  const bandOf = (item: InstanceListItem): Band => (item.colour === "overdue" ? "overdue" : item.dueDate && item.dueDate <= horizon ? "soon" : "later");
+  const groups: { band: Band; rows: InstanceListItem[] }[] = banded ? BANDS.map((band) => ({ band, rows: items.filter((item) => bandOf(item) === band) })).filter((group) => group.rows.length > 0) : [{ band: "later", rows: items }];
+
+  const row = (item: InstanceListItem) => (
+    <TableRow key={item.taskId}>
+      <TableCell className="max-w-96 truncate">
+        <Link href={`/ops/obligations/${item.taskId}`} className="font-medium hover:underline">
+          {item.title}
+        </Link>
+      </TableCell>
+      <TableCell>
+        <Badge variant="outline">{t(`enums.authority.${item.authority}`)}</Badge>
+      </TableCell>
+      <TableCell className={item.assigneeName ? undefined : "text-faint"}>{item.assigneeName ?? t("unassigned")}</TableCell>
+      <TableCell kind="date" className={item.colour === "overdue" ? "text-destructive" : undefined}>
+        {item.dueDate ? format.dateTime(new Date(`${item.dueDate}T00:00:00`), { dateStyle: "medium" }) : "—"}
+        {item.dueDate && item.dueDate !== item.nominalDueDate ? <span className="ps-1.5 text-xs text-faint">({t("shifted")})</span> : null}
+      </TableCell>
+      <TableCell>
+        <span className="flex items-center gap-1.5">
+          <StatusBadge colour={item.colour} label={t(`enums.colour.${item.colour}`)} />
+          {item.escalationLevel > 0 ? <Badge variant="destructive">{t(`escalation.level${item.escalationLevel}`)}</Badge> : null}
+          {item.unreviewed ? <Badge variant="outline">{t("unreviewed")}</Badge> : null}
+        </span>
+      </TableCell>
+    </TableRow>
+  );
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1>{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
-        </div>
-        {canManageOps(user.principal) ? <SyncButton /> : null}
-      </header>
+    <Page width="wide">
+      <PageHeader title={t("title")} description={t("description")} actions={canManageOps(user.principal) ? <SyncButton /> : null} />
       <OpsNav active="list" reads={reads} />
       {reads ? <OverviewFilters action="/ops/list" query={query} owners={owners} hidden={{ show: show === "closed" ? "closed" : null, entity: entityId, month, colour }} /> : null}
 
-      <nav className="flex flex-wrap items-center gap-1">
-        <Link href={href({ show: "open" })} className={tab(show === "open" && !narrowed)}>
-          {t("tabs.open")}
-        </Link>
-        <Link href={href({ show: "closed" })} className={tab(show === "closed" && !narrowed)}>
-          {t("tabs.closed")}
-        </Link>
-        <span className="mx-2 h-4 border-l" />
-        <Link href={href({ entity: null })} className={tab(!entityId)}>
-          {t("allEntities")}
-        </Link>
-        {visibleEntities.map((entity) => (
-          <Link key={entity.id} href={href({ entity: entity.id })} className={tab(entityId === entity.id)}>
-            {entity.code}
-          </Link>
-        ))}
-      </nav>
+      <div className="toolbar">
+        <Segmented
+          aria-label={t("nav.list")}
+          value={narrowed ? "" : show}
+          options={[
+            { value: "open", label: t("tabs.open"), href: href({ show: "open" }) },
+            { value: "closed", label: t("tabs.closed"), href: href({ show: "closed" }) },
+          ]}
+        />
+        {visibleEntities.length > 1 ? (
+          <Segmented
+            aria-label={t("dashboard.entity")}
+            value={entityId ?? ""}
+            options={[{ value: "", label: t("allEntities"), href: href({ entity: null }) }, ...visibleEntities.map((entity) => ({ value: entity.id, label: <span className="font-mono">{entity.code}</span>, href: href({ entity: entity.id }) }))]}
+          />
+        ) : null}
+      </div>
 
       {narrowed ? (
         <p className="text-sm text-muted-foreground">
           {t("list.narrowed", { count: items.length, month: month ? month.split("-").reverse().join("/") : "—", colour: colour ? t(`enums.colour.${colour}`) : "—", hasMonth: month ? "yes" : "no", hasColour: colour ? "yes" : "no" })}{" "}
-          <Link href={href({ show })} className="underline">
+          <Link href={href({ show })} className="text-link hover:underline">
             {t("filters.clear")}
           </Link>
         </p>
       ) : null}
-      {show === "open" && !narrowed ? <p className="text-sm text-muted-foreground">{t("summary", { total: items.length, overdue: counts.overdue, dueSoon: counts.dueSoon })}</p> : null}
+      {banded ? (
+        <TileGrid>
+          <Tile label={t("tabs.open")} value={items.length} />
+          <Tile label={t("dashboard.tiles.overdue")} value={counts.overdue} tone={counts.overdue > 0 ? "destructive" : undefined} />
+          <Tile label={t("dashboard.tiles.dueSoon")} value={counts.dueSoon} tone={counts.dueSoon > 0 ? "warning" : undefined} />
+        </TileGrid>
+      ) : null}
 
       <Table>
         <TableHeader>
@@ -102,33 +139,27 @@ export default async function OpsListPage({ searchParams }: PageProps<"/ops/list
         </TableHeader>
         <TableBody>
           {items.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
-          {items.map((item) => (
-            <TableRow key={item.taskId}>
-              <TableCell className="max-w-96 truncate">
-                <Link href={`/ops/obligations/${item.taskId}`} className="font-medium hover:underline">
-                  {item.title}
-                </Link>
-              </TableCell>
-              <TableCell>
-                <Badge variant="outline">{t(`enums.authority.${item.authority}`)}</Badge>
-              </TableCell>
-              <TableCell className={item.assigneeName ? undefined : "text-muted-foreground"}>{item.assigneeName ?? t("unassigned")}</TableCell>
-              <TableCell>
-                {item.dueDate ? format.dateTime(new Date(`${item.dueDate}T00:00:00`), { dateStyle: "medium" }) : "—"}
-                {item.dueDate && item.dueDate !== item.nominalDueDate ? <span className="ps-1.5 text-xs text-muted-foreground">({t("shifted")})</span> : null}
-              </TableCell>
-              <TableCell>
-                <span className="flex items-center gap-1.5">
-                  <StatusBadge colour={item.colour} label={t(`enums.colour.${item.colour}`)} />
-                  {item.escalationLevel > 0 ? <Badge variant="destructive">{t(`escalation.level${item.escalationLevel}`)}</Badge> : null}
-                  {item.unreviewed ? <Badge variant="outline">{t("unreviewed")}</Badge> : null}
-                </span>
-              </TableCell>
-            </TableRow>
+          {groups.map((group) => (
+            <GroupRows key={group.band} band={banded ? group.band : null} label={t(`list.bands.${group.band}`)} count={group.rows.length}>
+              {group.rows.map(row)}
+            </GroupRows>
           ))}
         </TableBody>
       </Table>
       {canManageLibrary(user.principal) && items.some((item) => item.unreviewed) ? <p className="text-xs text-muted-foreground">{t("unreviewedHint")}</p> : null}
-    </div>
+    </Page>
+  );
+}
+
+/** A band's rows under its heading — or just the rows, when the register is not banded. */
+function GroupRows({ band, label, count, children }: { band: Band | null; label: string; count: number; children: ReactNode }) {
+  if (!band) return <>{children}</>;
+  return (
+    <>
+      <TableGroupRow className={band === "overdue" ? "text-destructive" : band === "soon" ? "text-warning" : undefined}>
+        {label} <span className="ps-1 font-mono font-normal text-faint tabular-nums">{count}</span>
+      </TableGroupRow>
+      {children}
+    </>
   );
 }

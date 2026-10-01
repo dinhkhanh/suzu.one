@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Page, PageHeader } from "@/components/ui/page";
 import { env } from "@/lib/env";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageSchedules, listSchedules } from "@/modules/reports/service";
@@ -25,23 +27,10 @@ export default async function SchedulesPage() {
   const emailConfigured = !!env().RESEND_API_KEY;
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <p className="text-sm text-muted-foreground">
-            <Link href="/reports" className="underline underline-offset-4">
-              {t("back")}
-            </Link>
-          </p>
-          <h1>{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
-        </div>
-        <Link href="/reports/schedules/new" className="rounded-lg border px-3 py-1.5 text-sm hover:bg-muted">
-          {t("new")}
-        </Link>
-      </header>
+    <Page width="wide">
+      <PageHeader eyebrow={<Link href="/reports">{t("back")}</Link>} title={t("title")} description={t("description")} actions={<Button nativeButton={false} render={<Link href="/reports/schedules/new" />}>{t("new")}</Button>} />
 
-      {emailConfigured ? null : <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">{t("noEmailDriver")}</p>}
+      {emailConfigured ? null : <p className="rounded-[10px] border border-dashed border-border p-3 text-sm text-muted-foreground">{t("noEmailDriver")}</p>}
 
       <TableCard>
         <Table>
@@ -73,13 +62,13 @@ export default async function SchedulesPage() {
                   {schedule.cadence === "monthly" && schedule.dayOfMonth ? ` · ${schedule.dayOfMonth}` : ""}
                 </TableCell>
                 <TableCell className="max-w-64 truncate text-muted-foreground">{schedule.recipients.map((recipient) => recipient.fullName).join(", ") || "—"}</TableCell>
-                <TableCell>{day(schedule.nextRunOn)}</TableCell>
-                <TableCell>{day(schedule.lastRunOn)}</TableCell>
+                <TableCell kind="date">{day(schedule.nextRunOn)}</TableCell>
+                <TableCell kind="date">{day(schedule.lastRunOn)}</TableCell>
                 <TableCell>
                   <div className="flex flex-col items-start gap-1">
                     <Badge dot variant={schedule.isActive ? "success" : "warning"}>{schedule.isActive ? t("active") : t("paused")}</Badge>
                     {schedule.lastRun ? (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-faint">
                         {t("delivered", { count: schedule.lastRun.delivered })}
                         {schedule.lastRun.withheld > 0 ? ` · ${t("withheld", { count: schedule.lastRun.withheld })}` : ""}
                       </span>
@@ -95,6 +84,6 @@ export default async function SchedulesPage() {
         </Table>
         <TableAddRow label={t("new")} href="/reports/schedules/new" />
       </TableCard>
-    </div>
+    </Page>
   );
 }

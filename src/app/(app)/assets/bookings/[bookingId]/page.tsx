@@ -1,6 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Page, PageHeader } from "@/components/ui/page";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canActOnBooking, canDecideBookings, findBooking } from "@/modules/assets/service";
 import { BookingStatusBadge, formatWindow } from "@/modules/assets/ui/booking-calendar";
@@ -31,19 +33,16 @@ export default async function BookingPage({ params }: PageProps<"/assets/booking
   ];
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1>{booking.assetCode}</h1>
-          <p className="text-sm text-muted-foreground">{booking.categoryName ?? booking.assetName}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <BookingStatusBadge status={booking.status} />
-          <Link href="/assets/bookings" className="h-9 rounded-md border px-3 text-sm leading-9">
+    <Page width="narrow">
+      <PageHeader
+        title={<span className="inline-flex flex-wrap items-center gap-2"><span className="font-mono">{booking.assetCode}</span><BookingStatusBadge status={booking.status} /></span>}
+        description={booking.categoryName ?? booking.assetName}
+        actions={
+          <Button nativeButton={false} variant="outline" render={<Link href="/assets/bookings" />}>
             {t("nav.calendar")}
-          </Link>
-        </div>
-      </header>
+          </Button>
+        }
+      />
 
       <dl className="grid gap-x-6 gap-y-3 rounded-md border p-4 text-sm sm:grid-cols-2">
         {facts.map(([label, value]) => (
@@ -94,6 +93,6 @@ export default async function BookingPage({ params }: PageProps<"/assets/booking
       ) : null}
 
       {mayAct && (booking.status === "requested" || booking.status === "confirmed") ? <CancelBookingForm bookingId={booking.id} /> : null}
-    </div>
+    </Page>
   );
 }

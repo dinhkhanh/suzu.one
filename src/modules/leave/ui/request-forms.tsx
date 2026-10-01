@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { ActionResult } from "@/lib/action";
 import { useFilePreview } from "@/modules/platform/files/ui/file-preview";
@@ -46,23 +47,23 @@ export function SubmitLeaveForm({ draft, amends, needsAttachment, disabled }: { 
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-3 rounded-xl border p-4">
-      <FieldErrors value={fieldErrors}>
-        <Field name="reason" label={t("request.reason")}>
-          <Input id="reason" name="reason" maxLength={1000} placeholder={t("request.reasonHint")} />
-        </Field>
-        <Field name="attachment" label={needsAttachment ? t("request.attachmentRequired") : t("request.attachment")}>
-          {attachment ? <p className="text-sm">{attachment.fileName}</p> : <Input id="attachment" type="file" accept=".pdf,.jpg,.jpeg,.png" disabled={uploading} onChange={(event) => upload(event.target.files?.[0])} />}
-        </Field>
-      </FieldErrors>
-      <FormError namespace="records.errors" errorKey={uploadError} />
-      <FormError namespace={ERRORS} errorKey={errorKey} />
-      <div>
-        <Button type="submit" disabled={pending || uploading || disabled || (needsAttachment && !attachment)}>
+    <Card>
+      <form onSubmit={onSubmit} className="flex flex-col gap-4 px-(--card-spacing)">
+        <FieldErrors value={fieldErrors}>
+          <Field name="reason" label={t("request.reason")}>
+            <Input id="reason" name="reason" maxLength={1000} placeholder={t("request.reasonHint")} />
+          </Field>
+          <Field name="attachment" label={needsAttachment ? t("request.attachmentRequired") : t("request.attachment")}>
+            {attachment ? <p className="text-sm">{attachment.fileName}</p> : <Input id="attachment" type="file" accept=".pdf,.jpg,.jpeg,.png" disabled={uploading} onChange={(event) => upload(event.target.files?.[0])} />}
+          </Field>
+        </FieldErrors>
+        <FormError namespace="records.errors" errorKey={uploadError} />
+        <FormError namespace={ERRORS} errorKey={errorKey} />
+        <Button type="submit" variant="accent" size="lg" className="w-full md:w-auto md:self-start" disabled={pending || uploading || disabled || (needsAttachment && !attachment)}>
           {amends ? t("request.replace") : t("request.submit")}
         </Button>
-      </div>
-    </form>
+      </form>
+    </Card>
   );
 }
 

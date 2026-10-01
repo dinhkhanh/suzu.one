@@ -2,6 +2,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Page, PageHeader } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -42,19 +43,13 @@ export default async function LeadPage({ params }: PageProps<"/crm/leads/[leadId
   const seller = sells(shell.viewer);
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/crm/leads" className="underline">
+    <Page width="default">
+      <PageHeader eyebrow={<><Link href="/crm/leads" className="underline">
             {t("leads.title")}
-          </Link>
-        </p>
-        <h1 className="flex flex-wrap items-center gap-2">
-          {lead.companyName}
+          </Link></>} title={<span className="inline-flex flex-wrap items-center gap-2">{lead.companyName}
           <Badge dot variant="outline">
             {t(`enums.leadStatus.${lead.status as LeadStatus}`)}
-          </Badge>
-        </h1>
+          </Badge></span>}>
         <p className="text-sm text-muted-foreground">
           {[t(`enums.source.${lead.source as "referral"}`), lead.entityName, lead.ownerName ? t("lead.ownerIs", { name: lead.ownerName }) : t("leads.unassigned"), lead.referrerName ? t("leads.referredBy", { name: lead.referrerName }) : null, f.when(lead.createdAt)].filter(Boolean).join(" · ")}
         </p>
@@ -66,7 +61,7 @@ export default async function LeadPage({ params }: PageProps<"/crm/leads/[leadId
           </p>
         ) : null}
         {lead.status === "disqualified" ? <p className="text-sm text-muted-foreground">{t("lead.disqualifiedBecause", { reason: lead.disqualifyReason ?? "—" })}</p> : null}
-      </header>
+      </PageHeader>
       <CrmTabs current="leads" show={shell.show} />
 
       <section className="grid gap-2 rounded-xl border p-4 text-sm sm:grid-cols-2">
@@ -137,6 +132,6 @@ export default async function LeadPage({ params }: PageProps<"/crm/leads/[leadId
         <h2 className="text-sm font-medium">{t("account.sections.activities")}</h2>
         <ActivityList items={activities.filter((activity) => !!activity.doneAt)} />
       </section>
-    </div>
+    </Page>
   );
 }

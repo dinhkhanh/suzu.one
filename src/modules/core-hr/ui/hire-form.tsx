@@ -2,7 +2,9 @@
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
@@ -61,9 +63,9 @@ export function HireForm({ entities, options, today }: { entities: { id: string;
 
       </FieldErrors>
       {duplicates.length > 0 ? (
-        <section role="alert" className="flex flex-col gap-2 rounded-xl border border-destructive/40 p-4 text-sm">
-          <p className="font-medium">{t("duplicates.title")}</p>
-          <ul className="flex flex-col gap-1">
+        <Alert variant="warning">
+          <AlertTitle>{t("duplicates.title")}</AlertTitle>
+          <ul className="flex w-full flex-col gap-1 text-foreground">
             {duplicates.map((candidate) => (
               <li key={candidate.id}>
                 <Link href={`/people/${candidate.id}`} target="_blank" className="underline">
@@ -75,11 +77,11 @@ export function HireForm({ entities, options, today }: { entities: { id: string;
               </li>
             ))}
           </ul>
-          <p className="text-muted-foreground">{t("duplicates.hint")}</p>
-          <label className="flex items-center gap-2">
-            <input type="checkbox" name="confirmDuplicate" /> {t("duplicates.confirm")}
+          <p className="w-full text-muted-foreground">{t("duplicates.hint")}</p>
+          <label className="flex w-full items-center gap-2 text-foreground">
+            <Checkbox name="confirmDuplicate" /> {t("duplicates.confirm")}
           </label>
-        </section>
+        </Alert>
       ) : null}
       <FormError namespace="people.errors" errorKey={errorKey} />
       <div>

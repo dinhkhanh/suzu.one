@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Segmented } from "@/components/ui/segmented";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { listBalancesForAdmin } from "@/modules/leave/admin";
@@ -27,14 +28,8 @@ export default async function LeaveBalancesPage(props: PageProps<"/leave/admin/b
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-        <div className="flex items-center gap-3">
-          {[year - 1, year, year + 1].map((value) => (
-            <Link key={value} href={`/leave/admin/balances?year=${value}`} className={value === year ? "pill-on" : "pill-off"}>
-              {value}
-            </Link>
-          ))}
-        </div>
+      <div className="toolbar justify-between">
+        <Segmented aria-label={t("balances.title")} value={String(year)} options={[year - 1, year, year + 1].map((value) => ({ value: String(value), label: String(value), href: `/leave/admin/balances?year=${value}` }))} />
         {can(user.principal, "leave:manage", {}) ? <RunAccrualsButton /> : null}
       </div>
       <p className="text-sm text-muted-foreground">{t("balances.hint")}</p>

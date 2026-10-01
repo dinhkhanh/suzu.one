@@ -4,18 +4,24 @@
 // nobody discovers at save time that their letter has become a compensation document.
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Section } from "@/components/ui/page";
 import { Select } from "@/components/ui/select";
+import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import { TIERS, type Tier } from "@/modules/platform/rbac/roles";
 import { saveDocumentTemplateAction } from "../actions";
 import { DOCUMENT_KINDS, type DocumentKind, type LetterheadFields } from "../enums";
 import { atLeast, PLACEHOLDERS, placeholdersIn, requiredTier, unknownPlaceholders } from "../engine/template";
-
-const textarea = "w-full rounded-md border bg-transparent px-3 py-2 font-mono text-xs";
 
 export type TemplateFormValue = {
   id: string | null;
@@ -36,6 +42,7 @@ export function DocumentTemplateForm({ value, entities }: { value: TemplateFormV
   const tiers = useTranslations("documents.tier");
   const kinds = useTranslations("documents.kind");
   const router = useRouter();
+  const activeId = useId();
   const [body, setBody] = useState(value?.body ?? "");
   const [tier, setTier] = useState<Tier>(value?.tier ?? "personal");
   const { onSubmit, pending, errorKey, fieldErrors } = useActionForm(saveDocumentTemplateAction, {
@@ -49,92 +56,106 @@ export function DocumentTemplateForm({ value, entities }: { value: TemplateFormV
   const tierTooLow = !atLeast(tier, needed);
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+    <form onSubmit={onSubmit} className="flex flex-col gap-6 md:gap-8">
       <FieldErrors value={fieldErrors}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field name="code" label={t("code")}>
-            <Input id="code" name="code" required maxLength={24} defaultValue={value?.code ?? ""} placeholder="XN-CONG-TAC" readOnly={!!value?.id} />
-          </Field>
-          <Field name="name" label={t("name")}>
-            <Input id="name" name="name" required maxLength={200} defaultValue={value?.name ?? ""} />
-          </Field>
-          <Field name="kind" label={t("kind")}>
-            <Select id="kind" name="kind" defaultValue={value?.kind ?? "confirmation_letter"}>
-              {DOCUMENT_KINDS.map((kind) => (
-                <option key={kind} value={kind}>
-                  {kinds(kind)}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field name="entityId" label={t("entity")}>
-            <Select id="entityId" name="entityId" defaultValue={value?.entityId ?? ""}>
-              <option value="">{t("groupWide")}</option>
-              {entities.map((entity) => (
-                <option key={entity.id} value={entity.id}>
-                  {entity.shortName ?? entity.code}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field name="tier" label={t("tier")}>
-            <Select id="tier" name="tier" value={tier} onChange={(event) => setTier(event.target.value as Tier)}>
-              {TIERS.map((option) => (
-                <option key={option} value={option}>
-                  {tiers(option)}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
+        <Section title={t("basics")}>
+          <Card>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <Field name="code" label={t("code")}>
+                <Input id="code" name="code" required maxLength={24} defaultValue={value?.code ?? ""} placeholder="XN-CONG-TAC" readOnly={!!value?.id} className="font-mono" />
+              </Field>
+              <Field name="name" label={t("name")}>
+                <Input id="name" name="name" required maxLength={200} defaultValue={value?.name ?? ""} />
+              </Field>
+              <Field name="kind" label={t("kind")}>
+                <Select id="kind" name="kind" defaultValue={value?.kind ?? "confirmation_letter"}>
+                  {DOCUMENT_KINDS.map((kind) => (
+                    <option key={kind} value={kind}>
+                      {kinds(kind)}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field name="entityId" label={t("entity")}>
+                <Select id="entityId" name="entityId" defaultValue={value?.entityId ?? ""}>
+                  <option value="">{t("groupWide")}</option>
+                  {entities.map((entity) => (
+                    <option key={entity.id} value={entity.id}>
+                      {entity.shortName ?? entity.code}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field name="tier" label={t("tier")}>
+                <Select id="tier" name="tier" value={tier} onChange={(event) => setTier(event.target.value as Tier)}>
+                  {TIERS.map((option) => (
+                    <option key={option} value={option}>
+                      {tiers(option)}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Label htmlFor={activeId} className="h-10 cursor-pointer gap-2.5 self-end font-normal md:h-9">
+                <Checkbox id={activeId} name="isActive" defaultChecked={value?.isActive ?? true} />
+                {t("active")}
+              </Label>
+            </CardContent>
+          </Card>
+        </Section>
 
-        <Field name="body" label={t("body")}>
-          <textarea id="body" name="body" required rows={20} maxLength={20_000} value={body} onChange={(event) => setBody(event.target.value)} className={textarea} />
-        </Field>
+        <Section title={t("body")}>
+          <Field name="body" label={t("body")}>
+            <Textarea id="body" name="body" required rows={20} maxLength={20_000} value={body} onChange={(event) => setBody(event.target.value)} className="min-h-96 font-mono text-xs leading-relaxed md:text-xs" spellCheck={false} />
+          </Field>
+          {/* The rule, said out loud while it is still cheap to act on. */}
+          <Alert variant={tierTooLow || unknown.length ? "destructive" : "neutral"}>
+            <span>
+              {t("needsTier")} <strong>{tiers(needed)}</strong>
+              {tierTooLow ? <span className="ml-2">{t("tierTooLow", { tier: tiers(needed) })}</span> : null}
+            </span>
+            {unknown.length > 0 ? <span className="w-full">{t("unknown", { keys: unknown.join(", ") })}</span> : null}
+            {used.length > 0 ? <span className="w-full font-mono text-xs text-muted-foreground">{t("using", { keys: used.join(", ") })}</span> : null}
+          </Alert>
+        </Section>
       </FieldErrors>
 
-      {/* The rule, said out loud while it is still cheap to act on. */}
-      <div className={`rounded-md border p-3 text-sm ${tierTooLow || unknown.length ? "border-destructive/60 bg-destructive/5" : "bg-muted/30"}`}>
-        <p>
-          {t("needsTier")} <strong>{tiers(needed)}</strong>
-          {tierTooLow ? <span className="ml-2 text-destructive">{t("tierTooLow", { tier: tiers(needed) })}</span> : null}
-        </p>
-        {unknown.length > 0 ? <p className="mt-1 text-destructive">{t("unknown", { keys: unknown.join(", ") })}</p> : null}
-        {used.length > 0 ? <p className="mt-1 text-xs text-muted-foreground">{t("using", { keys: used.join(", ") })}</p> : null}
-      </div>
+      <Section title={t("catalogue")}>
+        <TableCard>
+          <TableCardHeader title={t("catalogue")} count={PLACEHOLDERS.length} />
+          <Table numbered={false} containerClassName="max-h-72 overflow-y-auto">
+            <TableBody>
+              {PLACEHOLDERS.map((placeholder) => (
+                <TableRow key={placeholder.key}>
+                  <TableCell className="h-9 py-1 font-mono text-xs">{`{{${placeholder.key}}}`}</TableCell>
+                  <TableCell className="h-9 py-1 text-right">
+                    <Badge variant={placeholder.tier === "compensation" ? "destructive" : placeholder.tier === "restricted" ? "warning" : "outline"}>{tiers(placeholder.tier)}</Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
+      </Section>
 
-      <details className="rounded-md border p-3">
-        <summary className="cursor-pointer text-sm font-medium">{t("catalogue")}</summary>
-        <ul className="mt-2 grid gap-1 text-xs sm:grid-cols-2">
-          {PLACEHOLDERS.map((placeholder) => (
-            <li key={placeholder.key} className="flex items-baseline justify-between gap-2">
-              <code className="font-mono">{`{{${placeholder.key}}}`}</code>
-              <span className="text-muted-foreground">{tiers(placeholder.tier)}</span>
-            </li>
-          ))}
-        </ul>
-      </details>
-
-      <fieldset className="rounded-md border p-3">
-        <legend className="px-1 text-sm font-medium">{t("letterhead")}</legend>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {LETTERHEAD_FIELDS.map((field) => (
-            <label key={field} className="flex flex-col gap-1 text-xs text-muted-foreground">
-              {t(`letterheadFields.${field}`)}
-              <input name={`letterhead.${field}`} defaultValue={value?.letterhead?.[field] ?? ""} maxLength={300} className="h-9 rounded-md border bg-transparent px-3 text-sm text-foreground" />
-            </label>
-          ))}
-        </div>
-      </fieldset>
-
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="isActive" defaultChecked={value?.isActive ?? true} className="size-4" />
-        {t("active")}
-      </label>
+      <Section title={t("letterhead")}>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("letterhead")}</CardTitle>
+            <CardDescription>{t("letterheadHint")}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            {LETTERHEAD_FIELDS.map((field) => (
+              <Field key={field} name={`letterhead.${field}`} label={t(`letterheadFields.${field}`)}>
+                <Input id={`letterhead.${field}`} name={`letterhead.${field}`} defaultValue={value?.letterhead?.[field] ?? ""} maxLength={300} />
+              </Field>
+            ))}
+          </CardContent>
+        </Card>
+      </Section>
 
       <FormError namespace="documents.errors" errorKey={errorKey} />
-      <div>
-        <Button type="submit" disabled={pending}>
+      <div className="flex justify-end">
+        <Button type="submit" disabled={pending} size="lg" className="w-full md:w-auto">
           {t("save")}
         </Button>
       </div>

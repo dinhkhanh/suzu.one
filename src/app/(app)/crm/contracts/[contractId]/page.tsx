@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
+import { Page, PageHeader } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -41,23 +42,17 @@ export default async function ContractPage({ params }: PageProps<"/crm/contracts
   const linkable = projectIds.filter((id) => !contract.projectIds.includes(id)).map((id) => ({ id, name: projectName.get(id) ?? id }));
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/crm/contracts" className="underline">
+    <Page width="default">
+      <PageHeader eyebrow={<><Link href="/crm/contracts" className="underline">
             {t("contracts.title")}
           </Link>{" "}
           ·{" "}
           <Link href={`/crm/accounts/${account.client.id}`} className="underline">
             {account.client.name}
-          </Link>
-        </p>
-        <h1 className="flex flex-wrap items-center gap-2">
-          {contract.number}
+          </Link></>} title={<span className="inline-flex flex-wrap items-center gap-2">{contract.number}
           <Badge dot variant={statusTone(contract.state === "upcoming" ? "scheduled" : contract.state)}>
             {t(`enums.contractState.${contract.state}`)}
-          </Badge>
-        </h1>
+          </Badge></span>}>
         <p className="text-sm">{contract.title}</p>
         <p className="text-sm text-muted-foreground">
           {[t(`contract.kinds.${contract.kind as "service"}`), contract.entityName, `${f.date(contract.startDate)} – ${f.date(contract.endDate)}`, contract.paymentTermsDays !== null ? t("contract.termsIs", { days: contract.paymentTermsDays }) : null, "valueVnd" in contract ? f.money(contract.valueVnd) : null].filter(Boolean).join(" · ")}
@@ -75,7 +70,7 @@ export default async function ContractPage({ params }: PageProps<"/crm/contracts
             </Link>
           </p>
         ) : null}
-      </header>
+      </PageHeader>
       <CrmTabs current="contracts" show={shell.show} />
 
       <section className="flex flex-col gap-2">
@@ -121,6 +116,6 @@ export default async function ContractPage({ params }: PageProps<"/crm/contracts
         </details>
       ) : null}
       <RichText text={contract.note} className="text-sm text-muted-foreground" />
-    </div>
+    </Page>
   );
 }

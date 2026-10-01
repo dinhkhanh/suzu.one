@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -30,20 +31,14 @@ export default async function TeamCyclesPage({ params }: PageProps<"/work/teams/
   const range = (cycle: { startDate: string; endDate: string }) => `${day(cycle.startDate)} – ${day(cycle.endDate)}`;
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/work" className="underline">
+    <Page width="default">
+      <PageHeader eyebrow={<span className="flex flex-wrap items-center gap-x-1.5"><Link href="/work" className="hover:underline">
             {t("title")}
           </Link>
-          {" / "}
-          <Link href={`/work/teams/${team.id}`} className="underline">
+          <span className="text-faint">/</span>
+          <Link href={`/work/teams/${team.id}`} className="hover:underline">
             {team.name}
-          </Link>
-        </p>
-        <h1>{t("cycles.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("cycles.description")}</p>
-      </header>
+          </Link></span>} title={t("cycles.title")} description={t("cycles.description")} />
 
       {page.current ? (
         <TableCard>
@@ -114,6 +109,6 @@ export default async function TeamCyclesPage({ params }: PageProps<"/work/teams/
           </TableBody>
         </Table>
       </TableCard>
-    </div>
+    </Page>
   );
 }

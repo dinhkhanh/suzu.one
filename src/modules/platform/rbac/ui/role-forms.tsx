@@ -83,8 +83,8 @@ export function GrantRoleForm({ people, scopes, today }: { people: Option[]; sco
         </Field>
       </div>
       <FormError namespace="rbac.errors" errorKey={errorKey} />
-      <div>
-        <Button type="submit" disabled={pending}>
+      <div className="flex justify-end">
+        <Button type="submit" disabled={pending} size="lg" className="w-full md:w-auto">
           {t("grantSubmit")}
         </Button>
       </div>
@@ -100,7 +100,7 @@ export function RevokeRoleButton({ id }: { id: string }) {
 
   if (!armed) {
     return (
-      <Button type="button" variant="ghost" size="sm" onClick={() => setArmed(true)}>
+      <Button type="button" variant="outline" size="xs" onClick={() => setArmed(true)}>
         {t("revoke")}
       </Button>
     );
@@ -108,10 +108,10 @@ export function RevokeRoleButton({ id }: { id: string }) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col items-end gap-1">
       <div className="flex gap-1">
-        <Button type="submit" variant="destructive" size="sm" disabled={pending}>
+        <Button type="submit" variant="destructive" size="xs" disabled={pending}>
           {t("revokeConfirm")}
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={() => setArmed(false)}>
+        <Button type="button" variant="ghost" size="xs" onClick={() => setArmed(false)}>
           {t("cancel")}
         </Button>
       </div>

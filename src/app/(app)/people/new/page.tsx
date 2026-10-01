@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { Page, PageHeader } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { canHireInto } from "@/modules/core-hr/policy";
 import { loadPlacementOptions, peopleModuleOpen } from "@/modules/core-hr/service";
@@ -18,12 +19,9 @@ export default async function NewPersonPage() {
   if (entities.length === 0) notFound();
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
-      <header>
-        <h1>{t("hire.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("hire.description")}</p>
-      </header>
+    <Page>
+      <PageHeader title={t("hire.title")} description={t("hire.description")} />
       <HireForm entities={entities.map(({ id, shortName }) => ({ id, name: shortName }))} options={options} today={todayInVietnam()} />
-    </div>
+    </Page>
   );
 }

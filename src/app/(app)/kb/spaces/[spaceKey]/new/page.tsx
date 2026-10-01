@@ -1,5 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
+import { buttonVariants } from "@/components/ui/button";
 import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { atLeast, canCreatePage, kbViewerOf, listTemplates, listTree, loadPage, loadSpace, spaceLevel } from "@/modules/kb/service";
@@ -30,21 +32,21 @@ export default async function NewPagePage(props: PageProps<"/kb/spaces/[spaceKey
   const parents = spaceEditor ? tree : tree.filter((node) => node.id === parentId);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
+    <Page>
+      <PageHeader
+        eyebrow={
           <Link href={`/kb/spaces/${loaded.space.key}`} className="hover:underline">
             {loaded.space.name}
           </Link>
-        </p>
-        <h1>{t("page.new")}</h1>
-        <p className="text-sm text-muted-foreground">
-          <Link href={`/kb/spaces/${loaded.space.key}/import${parentId ? `?parent=${parentId}` : ""}`} className="underline underline-offset-2">
+        }
+        title={t("page.new")}
+        actions={
+          <Link href={`/kb/spaces/${loaded.space.key}/import${parentId ? `?parent=${parentId}` : ""}`} className={buttonVariants({ variant: "outline" })}>
             {t("import.link")}
           </Link>
-        </p>
-      </header>
+        }
+      />
       <NewPageForm spaceId={loaded.space.id} spaceKey={loaded.space.key} parents={parents.map((node) => ({ id: node.id, title: node.title, depth: node.depth }))} defaultParentId={parents.some((node) => node.id === parentId) ? parentId : ""} templates={templates} />
-    </div>
+    </Page>
   );
 }

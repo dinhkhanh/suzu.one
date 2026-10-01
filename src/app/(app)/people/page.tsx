@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Page, PageHeader } from "@/components/ui/page";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PERSON_STATUSES, WORKFORCE_TYPES } from "@/modules/core-hr/enums";
@@ -18,6 +19,7 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { can } from "@/modules/platform/rbac/policy";
 import { pageTitle } from "@/i18n/page-title";
+import { cn } from "@/lib/utils";
 
 export const generateMetadata = pageTitle("people");
 
@@ -60,29 +62,29 @@ export default async function PeoplePage(props: PageProps<"/people">) {
   const pageHref = (target: number) => `/people?${new URLSearchParams({ ...activeFilters, page: String(target) })}`;
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1>{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("count", { count: total })}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <ExportButton action={exportPeopleAction} input={{ ...activeFilters, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />
-          <Link href="/people/org-chart" className={buttonVariants({ variant: "outline" })}>
-            {t("orgChart.title")}
-          </Link>
-          {can(user.principal, "person:manage") ? (
-            <>
-              <Link href="/people/import" className={buttonVariants({ variant: "outline" })}>
-                {t("import.title")}
-              </Link>
-              <Link href="/people/new" className={buttonVariants()}>
-                {t("hire.title")}
-              </Link>
-            </>
-          ) : null}
-        </div>
-      </header>
+    <Page width="wide">
+      <PageHeader
+        title={t("title")}
+        description={t("count", { count: total })}
+        actions={
+          <>
+            <ExportButton action={exportPeopleAction} input={{ ...activeFilters, locale }} label={te("button")} failedLabel={te("failed")} truncatedLabel={te("truncated")} />
+            <Link href="/people/org-chart" className={cn(buttonVariants({ variant: "outline" }))}>
+              {t("orgChart.title")}
+            </Link>
+            {can(user.principal, "person:manage") ? (
+              <>
+                <Link href="/people/import" className={cn(buttonVariants({ variant: "outline" }))}>
+                  {t("import.title")}
+                </Link>
+                <Link href="/people/new" className={cn(buttonVariants())}>
+                  {t("hire.title")}
+                </Link>
+              </>
+            ) : null}
+          </>
+        }
+      />
 
       <Form action="/people" className="toolbar">
         <Input name="q" defaultValue={filters.q} placeholder={t("filters.search")} aria-label={t("filters.search")} className="w-full sm:w-64" />
@@ -125,7 +127,7 @@ export default async function PeoplePage(props: PageProps<"/people">) {
           {t("filters.apply")}
         </Button>
         {Object.keys(activeFilters).length > 0 ? (
-          <Link href="/people" className={buttonVariants({ variant: "ghost" })}>
+          <Link href="/people" className={cn(buttonVariants({ variant: "ghost" }))}>
             {t("filters.clear")}
           </Link>
         ) : null}
@@ -154,11 +156,11 @@ export default async function PeoplePage(props: PageProps<"/people">) {
                 <TableCell>
                   <div className="flex items-center gap-2.5">
                     <PersonAvatar person={row} />
-                    <div className="min-w-0">
+                    <div className="min-w-0 leading-tight">
                       <Link href={`/people/${row.id}`} className="font-medium hover:underline">
                         {row.fullName}
                       </Link>
-                      <p className="text-xs text-muted-foreground">{row.workEmail ?? "—"}</p>
+                      <p className="truncate text-xs text-faint">{row.workEmail ?? "—"}</p>
                     </div>
                   </div>
                 </TableCell>
@@ -182,20 +184,22 @@ export default async function PeoplePage(props: PageProps<"/people">) {
       </TableCard>
 
       {pageCount > 1 ? (
-        <nav className="flex items-center gap-2 text-sm">
-          {page > 1 ? (
-            <Link href={pageHref(page - 1)} className={buttonVariants({ variant: "outline", size: "sm" })}>
-              {t("pager.previous")}
-            </Link>
-          ) : null}
+        <nav className="flex items-center justify-between gap-3 text-sm">
           <span className="text-muted-foreground">{t("pager.page", { page, pageCount })}</span>
-          {page < pageCount ? (
-            <Link href={pageHref(page + 1)} className={buttonVariants({ variant: "outline", size: "sm" })}>
-              {t("pager.next")}
-            </Link>
-          ) : null}
+          <div className="flex gap-2">
+            {page > 1 ? (
+              <Link href={pageHref(page - 1)} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                {t("pager.previous")}
+              </Link>
+            ) : null}
+            {page < pageCount ? (
+              <Link href={pageHref(page + 1)} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                {t("pager.next")}
+              </Link>
+            ) : null}
+          </div>
         </nav>
       ) : null}
-    </div>
+    </Page>
   );
 }

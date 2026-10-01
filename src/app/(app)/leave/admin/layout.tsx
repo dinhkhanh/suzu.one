@@ -1,8 +1,9 @@
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { Page, PageHeader } from "@/components/ui/page";
 import { canOpenLeaveAdmin } from "@/modules/leave/policy";
+import { LeaveAdminTabs } from "@/modules/leave/ui/admin-tabs";
 import { requireUser } from "@/modules/platform/auth/session";
 
 // HR's side of leave. Every page and action checks again what the viewer may change.
@@ -11,22 +12,10 @@ export default async function LeaveAdminLayout({ children }: { children: ReactNo
   if (!canOpenLeaveAdmin(user.principal)) notFound();
   const t = await getTranslations("leave.admin");
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </header>
-      <nav className="tab-row border-b pb-2">
-        {(["balances", "types", "staffing", "import"] as const).map((tab) => (
-          <Link key={tab} href={`/leave/admin/${tab}`} className="underline-offset-4 hover:underline">
-            {t(`tabs.${tab}`)}
-          </Link>
-        ))}
-        <Link href="/leave" className="ml-auto text-muted-foreground underline-offset-4 hover:underline">
-          {t("myLeave")}
-        </Link>
-      </nav>
+    <Page width="wide">
+      <PageHeader title={t("title")} description={t("description")} />
+      <LeaveAdminTabs labels={{ balances: t("tabs.balances"), types: t("tabs.types"), staffing: t("tabs.staffing"), import: t("tabs.import") }} myLeave={t("myLeave")} />
       {children}
-    </div>
+    </Page>
   );
 }

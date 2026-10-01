@@ -1,26 +1,46 @@
 // The stored timesheet on screen: a person's month (tap a day for the explanation) and the team grid.
 // Server components: no client state, the month and the person are in the URL.
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import { cn } from "cn";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
-import { Table, TableCard, TableEmpty } from "@/components/ui/table";
+import { Tile, TileGrid } from "@/components/ui/page";
+import { Table, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { MonthSummary } from "../engine/timesheet";
 import type { TeamMonthRow, TimesheetDayRow } from "../timesheets";
 import { hoursText } from "./day-plan";
 
-const STATUS_TONE: Record<TimesheetDayRow["status"], string> = {
-  present: "bg-emerald-500/15 text-success",
-  partial: "bg-amber-500/20 text-amber-800 dark:text-amber-300",
-  absent: "bg-red-500/20 text-red-800 dark:text-red-300",
-  leave: "bg-sky-500/15 text-sky-800 dark:text-sky-300",
-  holiday: "bg-violet-500/15 text-violet-800 dark:text-violet-300",
-  day_off: "bg-violet-500/15 text-violet-800 dark:text-violet-300",
-  remote: "bg-teal-500/15 text-teal-800 dark:text-teal-300",
+/** One tone per day status, the badge's own (so a day reads like a status anywhere else). */
+const STATUS_VARIANT: Record<TimesheetDayRow["status"], BadgeVariant> = {
+  present: "success",
+  partial: "warning",
+  absent: "destructive",
+  leave: "info",
+  holiday: "violet",
+  day_off: "violet",
+  remote: "teal",
+  untracked: "secondary",
+  rest: "outline",
+  unscheduled: "outline",
+  in_progress: "info",
+};
+
+/** The same tones as a tint on a grid cell. */
+const CELL_TINT: Record<TimesheetDayRow["status"], string> = {
+  present: "bg-success/12 text-success",
+  partial: "bg-warning/14 text-warning",
+  absent: "bg-destructive/12 text-destructive",
+  leave: "bg-info/12 text-info",
+  holiday: "bg-tone-violet/12 text-tone-violet",
+  day_off: "bg-tone-violet/12 text-tone-violet",
+  remote: "bg-tone-teal/12 text-tone-teal",
   untracked: "bg-muted text-muted-foreground",
-  rest: "text-muted-foreground",
-  unscheduled: "text-muted-foreground",
-  in_progress: "bg-emerald-500/10 text-success",
+  rest: "text-faint",
+  unscheduled: "text-faint",
+  in_progress: "bg-info/8 text-info",
 };
 
 export const shiftMonth = (month: string, by: number): string => {
@@ -29,19 +49,23 @@ export const shiftMonth = (month: string, by: number): string => {
 };
 
 export function MonthNav({ month, hrefFor, thisMonth }: { month: string; hrefFor: (month: string) => string; thisMonth: string }) {
+  const t = useTranslations("attendance.timesheet");
   const format = useFormatter();
+  const key = cn(buttonVariants({ variant: "outline", size: "icon" }));
   return (
-    <nav className="flex items-center gap-3 text-sm">
-      <Link href={hrefFor(shiftMonth(month, -1))} className="rounded-md border px-2 py-1" aria-label="previous month">
-        ←
+    <nav className="flex items-center gap-2">
+      <Link href={hrefFor(shiftMonth(month, -1))} className={key} aria-label={t("previousMonth")}>
+        <ChevronLeftIcon />
       </Link>
-      <span className="min-w-32 text-center font-medium">{format.dateTime(new Date(`${month}-01T00:00:00`), { month: "long", year: "numeric" })}</span>
+      <span className="min-w-32 text-center text-sm font-medium">{format.dateTime(new Date(`${month}-01T00:00:00`), { month: "long", year: "numeric" })}</span>
       {month < thisMonth ? (
-        <Link href={hrefFor(shiftMonth(month, 1))} className="rounded-md border px-2 py-1" aria-label="next month">
-          →
+        <Link href={hrefFor(shiftMonth(month, 1))} className={key} aria-label={t("nextMonth")}>
+          <ChevronRightIcon />
         </Link>
       ) : (
-        <span className="px-2 py-1 text-muted-foreground">→</span>
+        <span className={cn(key, "pointer-events-none opacity-50")} aria-hidden>
+          <ChevronRightIcon />
+        </span>
       )}
     </nav>
   );
@@ -50,25 +74,22 @@ export function MonthNav({ month, hrefFor, thisMonth }: { month: string; hrefFor
 export function SummaryTiles({ summary }: { summary: MonthSummary }) {
   const t = useTranslations("attendance.timesheet");
   const days = (centi: number) => (centi / 100).toLocaleString("vi-VN", { maximumFractionDigits: 2 });
-  const tiles: [string, string][] = [
-    [t("summary.paidDays"), `${days(summary.paidDaysCenti)} / ${summary.standardDays}`],
-    [t("summary.worked"), hoursText(summary.workedMinutes + summary.creditedMinutes)],
-    [t("summary.leave"), hoursText(summary.leavePaidMinutes + summary.leaveUnpaidMinutes)],
-    [t("summary.late"), `${summary.lateCount} · ${summary.lateMinutes}′`],
-    [t("summary.early"), `${summary.earlyCount} · ${summary.earlyMinutes}′`],
-    [t("summary.missing"), String(summary.missingPunchDays)],
-    [t("summary.absent"), String(summary.absentDays)],
-    [t("summary.overtime"), hoursText(summary.otTotalMinutes)],
+  const tiles: { label: string; value: string; tone?: "warning" | "destructive" }[] = [
+    { label: t("summary.paidDays"), value: `${days(summary.paidDaysCenti)} / ${summary.standardDays}` },
+    { label: t("summary.worked"), value: hoursText(summary.workedMinutes + summary.creditedMinutes) },
+    { label: t("summary.leave"), value: hoursText(summary.leavePaidMinutes + summary.leaveUnpaidMinutes) },
+    { label: t("summary.late"), value: `${summary.lateCount} · ${summary.lateMinutes}′`, tone: summary.lateCount ? "warning" : undefined },
+    { label: t("summary.early"), value: `${summary.earlyCount} · ${summary.earlyMinutes}′`, tone: summary.earlyCount ? "warning" : undefined },
+    { label: t("summary.missing"), value: String(summary.missingPunchDays), tone: summary.missingPunchDays ? "destructive" : undefined },
+    { label: t("summary.absent"), value: String(summary.absentDays), tone: summary.absentDays ? "destructive" : undefined },
+    { label: t("summary.overtime"), value: hoursText(summary.otTotalMinutes) },
   ];
   return (
-    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      {tiles.map(([label, value]) => (
-        <div key={label} className="rounded-xl border p-3">
-          <dt className="text-xs text-muted-foreground">{label}</dt>
-          <dd className="text-lg font-semibold tabular-nums">{value}</dd>
-        </div>
+    <TileGrid className="md:grid-cols-4">
+      {tiles.map((tile) => (
+        <Tile key={tile.label} label={tile.label} value={tile.value} tone={tile.tone} />
       ))}
-    </dl>
+    </TileGrid>
   );
 }
 
@@ -98,16 +119,18 @@ export function MonthDays({ days }: { days: TimesheetDayRow[] }) {
         const overtime = day.otWeekdayMinutes + day.otWeekdayNightMinutes + day.otRestDayMinutes + day.otRestDayNightMinutes + day.otHolidayMinutes + day.otHolidayNightMinutes;
         return (
           <ListItem key={day.date} className="block p-0">
-            <details>
-              <summary className="flex min-h-12 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 text-sm hover:bg-muted/40">
-                <span className="w-28 font-medium">{format.dateTime(new Date(`${day.date}T00:00:00`), { weekday: "short", day: "numeric", month: "numeric" })}</span>
-                <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_TONE[day.status]}`}>{t(`statuses.${day.status}`)}</span>
+            <details className="group/day">
+              <summary className="flex min-h-12 cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm transition-colors duration-100 hover:bg-canvas md:px-3.5 [&::-webkit-details-marker]:hidden">
+                <span className="w-24 font-medium">{format.dateTime(new Date(`${day.date}T00:00:00`), { weekday: "short", day: "numeric", month: "numeric" })}</span>
+                <Badge dot variant={STATUS_VARIANT[day.status]}>
+                  {t(`statuses.${day.status}`)}
+                </Badge>
                 {day.firstIn || day.lastOut ? (
-                  <span className="tabular-nums text-muted-foreground">
+                  <span className="font-mono text-[0.8125rem] text-muted-foreground tabular-nums">
                     {clock(day.firstIn)} → {clock(day.lastOut)}
                   </span>
                 ) : null}
-                {day.workedMinutes + day.creditedMinutes > 0 ? <span className="tabular-nums">{hoursText(day.workedMinutes + day.creditedMinutes)}</span> : null}
+                {day.workedMinutes + day.creditedMinutes > 0 ? <span className="font-mono text-[0.8125rem] tabular-nums">{hoursText(day.workedMinutes + day.creditedMinutes)}</span> : null}
                 {overtime > 0 ? <Badge variant="secondary">{t("overtimeBadge", { hours: hoursText(overtime) })}</Badge> : null}
                 {day.anomalies.map((anomaly) => (
                   <Badge key={anomaly} variant="destructive">
@@ -116,7 +139,7 @@ export function MonthDays({ days }: { days: TimesheetDayRow[] }) {
                 ))}
                 {day.lockedAt ? <Badge variant="outline">{t("locked")}</Badge> : null}
               </summary>
-              <div className="flex flex-col gap-2 border-t bg-muted/30 p-3 text-sm">
+              <div className="flex flex-col gap-2 border-t bg-canvas p-4 text-sm md:px-3.5">
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
                   {(
                     [
@@ -128,11 +151,11 @@ export function MonthDays({ days }: { days: TimesheetDayRow[] }) {
                     .map(([key, minutes]) => (
                       <div key={key} className="flex justify-between gap-2">
                         <dt className="text-muted-foreground">{t(`fields.${key}`)}</dt>
-                        <dd className="tabular-nums">{hoursText(minutes)}</dd>
+                        <dd className="font-mono tabular-nums">{hoursText(minutes)}</dd>
                       </div>
                     ))}
                 </dl>
-                <p className="text-xs font-medium text-muted-foreground">{t("why")}</p>
+                <p className="section-label">{t("why")}</p>
                 <ul className="list-disc pl-5 text-xs">
                   {day.trace.map((line, index) => (
                     <TraceLine key={index} line={line} />
@@ -153,62 +176,64 @@ export function TeamGrid({ rows, month, dates }: { rows: TeamMonthRow[]; month: 
   const t = useTranslations("attendance.timesheet");
   return (
     <TableCard>
-      <Table numbered={false} className="border-collapse text-xs">
-        <thead>
-          <tr className="border-b bg-muted/40 text-foreground/65">
-            <th className="sticky left-0 z-10 min-w-40 bg-muted px-2 py-1 text-left font-normal">{t("team.person")}</th>
+      <Table numbered={false} className="text-xs">
+        <TableHeader>
+          <TableRow>
+            <TableHead kind="person" className="sticky left-0 z-10 min-w-36 bg-canvas">
+              {t("team.person")}
+            </TableHead>
             {dates.map((date) => {
               const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
               return (
-                <th key={date} className={`w-7 px-0.5 py-1 text-center font-normal tabular-nums ${weekday === 0 || weekday === 6 ? "text-muted-foreground" : ""}`}>
+                <TableHead key={date} className={cn("w-7 min-w-7 px-0.5 text-center font-mono tabular-nums", (weekday === 0 || weekday === 6) && "text-faint")}>
                   {Number(date.slice(8))}
-                </th>
+                </TableHead>
               );
             })}
             {(["paidDays", "late", "missing", "absent", "overtime"] as const).map((key) => (
-              <th key={key} className="px-2 py-1 text-right font-normal">
+              <TableHead key={key} kind="number">
                 {t(`team.columns.${key}`)}
-              </th>
+              </TableHead>
             ))}
-          </tr>
-        </thead>
-        <tbody>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {rows.length === 0 ? <TableEmpty>{t("team.empty")}</TableEmpty> : null}
           {rows.map((row) => {
             const byDate = new Map(row.days.map((day) => [day.date, day]));
             return (
-              <tr key={row.personId} className="border-b last:border-0">
-                <th className="sticky left-0 z-10 bg-background px-2 py-1 text-left font-normal">
-                  <Link href={`/attendance?person=${row.personId}&month=${month}`} className="font-medium underline-offset-4 hover:underline">
+              <TableRow key={row.personId}>
+                <TableCell className="sticky left-0 z-10 h-auto bg-background py-1.5">
+                  <Link href={`/attendance?person=${row.personId}&month=${month}`} className="block max-w-44 truncate text-[0.8125rem] font-medium hover:underline">
                     {row.fullName}
                   </Link>
-                  <span className="block text-[10px] text-muted-foreground">{[row.employeeCode, row.departmentName].filter(Boolean).join(" · ")}</span>
-                </th>
+                  <span className="block truncate text-[10px] text-muted-foreground">{[row.employeeCode, row.departmentName].filter(Boolean).join(" · ")}</span>
+                </TableCell>
                 {dates.map((date) => {
                   const day = byDate.get(date);
                   return (
-                    <td key={date} className="p-0.5 text-center">
+                    <TableCell key={date} className="h-auto p-0.5 text-center">
                       {day ? (
-                        <span title={`${t(`statuses.${day.status}`)}${day.anomalies.length ? ` — ${day.anomalies.map((anomaly) => t(`anomalies.${anomaly}`)).join(", ")}` : ""}`} className={`block rounded px-0.5 py-0.5 ${STATUS_TONE[day.status]} ${day.anomalies.length ? "ring-1 ring-destructive/60" : ""}`}>
+                        <span title={`${t(`statuses.${day.status}`)}${day.anomalies.length ? ` — ${day.anomalies.map((anomaly) => t(`anomalies.${anomaly}`)).join(", ")}` : ""}`} className={cn("block rounded-[4px] px-0.5 py-1 font-mono", CELL_TINT[day.status], day.anomalies.length && "ring-1 ring-destructive/60")}>
                           {CODE[day.status] || " "}
                         </span>
                       ) : null}
-                    </td>
+                    </TableCell>
                   );
                 })}
-                <td className="px-2 py-1 text-right tabular-nums">
+                <TableCell kind="number" className="h-auto py-1.5 text-xs">
                   {(row.summary.paidDaysCenti / 100).toFixed(2)} / {row.summary.standardDays}
-                </td>
-                <td className="px-2 py-1 text-right tabular-nums">{row.summary.lateCount || ""}</td>
-                <td className="px-2 py-1 text-right tabular-nums">{row.summary.missingPunchDays || ""}</td>
-                <td className="px-2 py-1 text-right tabular-nums">{row.summary.absentDays || ""}</td>
-                <td className="px-2 py-1 text-right tabular-nums">{row.summary.otTotalMinutes ? hoursText(row.summary.otTotalMinutes) : ""}</td>
-              </tr>
+                </TableCell>
+                <TableCell kind="number" className="h-auto py-1.5 text-xs">{row.summary.lateCount || ""}</TableCell>
+                <TableCell kind="number" className="h-auto py-1.5 text-xs">{row.summary.missingPunchDays || ""}</TableCell>
+                <TableCell kind="number" className="h-auto py-1.5 text-xs">{row.summary.absentDays || ""}</TableCell>
+                <TableCell kind="number" className="h-auto py-1.5 text-xs">{row.summary.otTotalMinutes ? hoursText(row.summary.otTotalMinutes) : ""}</TableCell>
+              </TableRow>
             );
           })}
-        </tbody>
+        </TableBody>
       </Table>
-      <p className="border-t p-2 text-[11px] text-muted-foreground">{t("team.legend")}</p>
+      <p className="border-t px-4 py-2 text-[11px] text-muted-foreground">{t("team.legend")}</p>
     </TableCard>
   );
 }

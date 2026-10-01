@@ -6,7 +6,6 @@ import { redirect } from "next/navigation";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
 import { ThemeSwitch } from "@/components/shell/theme-switch";
 import { Alert } from "@/components/ui/alert";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/modules/platform/auth/session";
 import { getTheme } from "@/theme/server";
 import { GoogleSignInButton } from "./google-sign-in-button";
@@ -18,6 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const KNOWN_ERRORS = ["not_a_workspace_account", "domain_not_allowed", "not_provisioned", "access_revoked", "email_not_verified"] as const;
 
+// The front door: the mark, the name and one key, centred on paper. Nothing else competes.
 export default async function SignInPage({ searchParams }: PageProps<"/sign-in">) {
   if (await getCurrentUser()) redirect("/today");
 
@@ -29,32 +29,31 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
   const message = code ? t(`signIn.errors.${known ?? "generic"}`) : null;
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-canvas px-4">
-      <div className="flex flex-col items-center gap-2 text-center">
-        <Logo className="size-12 text-brand" />
-        <p className="text-lg font-semibold tracking-[-0.015em]">{t("app.name")}</p>
-        <p className="text-sm text-muted-foreground">{t("app.tagline")}</p>
-      </div>
-      <Card className="w-full max-w-sm shadow-[var(--shell-shadow)]">
-        <CardHeader>
-          <CardTitle>{t("signIn.title")}</CardTitle>
-          <CardDescription>{t("signIn.subtitle")}</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {message ? (
-            <Alert variant="destructive">{message}</Alert>
-          ) : null}
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-canvas px-4 py-10">
+      <div className="flex w-full max-w-xs flex-col items-center gap-8">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <Logo className="size-14 text-brand" />
+          <div className="flex flex-col gap-1">
+            <p className="text-xl font-semibold tracking-[-0.02em]">{t("app.name")}</p>
+            <p className="text-sm text-muted-foreground">{t("app.tagline")}</p>
+          </div>
+        </div>
+        <div className="flex w-full flex-col gap-4">
+          {message ? <Alert variant="destructive">{message}</Alert> : null}
           <GoogleSignInButton label={t("signIn.google")} />
-        </CardContent>
-      </Card>
-      <div className="flex items-center gap-2">
-        <ThemeSwitch theme={theme} />
-        <LocaleSwitch />
+          <p className="text-center text-xs leading-relaxed text-faint">{t("signIn.subtitle")}</p>
+        </div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex items-center gap-2">
+            <ThemeSwitch theme={theme} />
+            <LocaleSwitch />
+          </div>
+          <nav className="flex gap-4 text-xs text-faint">
+            <Link href="/privacy" className="hover:text-foreground">{t("app.privacy")}</Link>
+            <Link href="/terms" className="hover:text-foreground">{t("app.terms")}</Link>
+          </nav>
+        </div>
       </div>
-      <nav className="flex gap-4 text-xs text-muted-foreground">
-        <Link href="/privacy" className="hover:text-foreground">{t("app.privacy")}</Link>
-        <Link href="/terms" className="hover:text-foreground">{t("app.terms")}</Link>
-      </nav>
     </main>
   );
 }

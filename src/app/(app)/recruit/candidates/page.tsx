@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -22,16 +23,16 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/recru
   const rows = await listCandidates(user.principal, { query: typeof q === "string" ? q : undefined });
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1>{t("candidates")}</h1>
-          <p className="text-sm text-muted-foreground">{t("confidential")}</p>
-        </div>
-        <Link href="/recruit/candidates/new" className={buttonVariants({ size: "sm" })}>
-          {t("newCandidate")}
-        </Link>
-      </header>
+    <Page>
+      <PageHeader
+        title={t("candidates")}
+        description={t("confidential")}
+        actions={
+          <Link href="/recruit/candidates/new" className={buttonVariants()}>
+            {t("newCandidate")}
+          </Link>
+        }
+      />
 
       <form className="flex gap-2">
         <Input name="q" defaultValue={typeof q === "string" ? q : ""} placeholder={t("columns.candidate")} className="max-w-xs" />
@@ -89,6 +90,6 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/recru
         </Table>
         <TableAddRow label={t("newCandidate")} href="/recruit/candidates/new" />
       </TableCard>
-    </div>
+    </Page>
   );
 }

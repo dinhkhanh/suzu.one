@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
+import { Page, PageHeader } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { exportHistoryAction } from "@/modules/ops/actions";
 import { canReadOps, getHistory, listTemplates, periodLabel, readableEntities } from "@/modules/ops/service";
@@ -37,17 +39,14 @@ export default async function OpsHistoryPage({ searchParams }: PageProps<"/ops/h
   const lateCount = rows.filter((row) => row.colour === "done_late" || row.colour === "overdue").length;
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header>
-        <h1>{t("history.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("history.description")}</p>
-      </header>
+    <Page width="wide">
+      <PageHeader title={t("history.title")} description={t("history.description")} />
       <OpsNav active="history" reads />
 
-      <form action="/ops/history" method="get" className="flex flex-wrap items-end gap-2 text-sm">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">{t("history.obligation")}</span>
-          <Select name="template" defaultValue={templateId ?? ""} className="w-72">
+      <form action="/ops/history" method="get" className="toolbar">
+        <Label className="flex w-full flex-col gap-1 text-xs text-muted-foreground sm:w-72">
+          {t("history.obligation")}
+          <Select name="template" defaultValue={templateId ?? ""}>
             <option value="">{t("filters.all")}</option>
             {templates.map((template) => (
               <option key={template.id} value={template.id}>
@@ -55,10 +54,10 @@ export default async function OpsHistoryPage({ searchParams }: PageProps<"/ops/h
               </option>
             ))}
           </Select>
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">{t("dashboard.entity")}</span>
-          <Select name="entity" defaultValue={entityId ?? ""} className="w-36">
+        </Label>
+        <Label className="flex w-full flex-col gap-1 text-xs text-muted-foreground sm:w-36">
+          {t("dashboard.entity")}
+          <Select name="entity" defaultValue={entityId ?? ""}>
             <option value="">{t("filters.all")}</option>
             {entities.map((entity) => (
               <option key={entity.id} value={entity.id}>
@@ -66,10 +65,10 @@ export default async function OpsHistoryPage({ searchParams }: PageProps<"/ops/h
               </option>
             ))}
           </Select>
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">{t("history.year")}</span>
-          <Select name="year" defaultValue={year === null ? "all" : String(year)} className="w-28">
+        </Label>
+        <Label className="flex w-full flex-col gap-1 text-xs text-muted-foreground sm:w-28">
+          {t("history.year")}
+          <Select name="year" defaultValue={year === null ? "all" : String(year)}>
             <option value="all">{t("filters.all")}</option>
             {[thisYear, thisYear - 1, thisYear - 2, thisYear - 3].map((option) => (
               <option key={option} value={option}>
@@ -77,8 +76,8 @@ export default async function OpsHistoryPage({ searchParams }: PageProps<"/ops/h
               </option>
             ))}
           </Select>
-        </label>
-        <Button type="submit" size="sm" variant="outline">
+        </Label>
+        <Button type="submit" variant="outline">
           {t("filters.apply")}
         </Button>
         <ExportButton action={exportHistoryAction} input={{ templateId, entityId, year, locale }} label={t("history.export")} failedLabel={t("history.exportFailed")} truncatedLabel={t("history.exportTruncated")} />
@@ -105,15 +104,15 @@ export default async function OpsHistoryPage({ searchParams }: PageProps<"/ops/h
           {rows.length === 0 ? <TableEmpty>{t("history.empty")}</TableEmpty> : null}
           {rows.map((row) => (
             <TableRow key={row.taskId}>
-              <TableCell>{row.entityCode}</TableCell>
+              <TableCell className="font-mono text-xs font-medium">{row.entityCode}</TableCell>
               <TableCell className="whitespace-normal">
                 <Link href={`/ops/obligations/${row.taskId}`} className="font-medium hover:underline">
                   {row.templateName}
                 </Link>
-                <p className="font-mono text-xs text-muted-foreground">{row.templateCode}</p>
+                <p className="font-mono text-xs text-faint">{row.templateCode}</p>
               </TableCell>
               <TableCell>{row.periodKey.startsWith("event:") ? (row.subjectName ?? t("instance.eventDriven")) : periodLabel(row.periodKey)}</TableCell>
-              <TableCell>{day(row.dueDate)}</TableCell>
+              <TableCell kind="date">{day(row.dueDate)}</TableCell>
               <TableCell>
                 <StatusBadge colour={row.colour} label={t(`enums.colour.${row.colour}`)} />
               </TableCell>
@@ -121,13 +120,13 @@ export default async function OpsHistoryPage({ searchParams }: PageProps<"/ops/h
                 {row.completedAt ? (
                   <>
                     {row.completedByName ?? t("instance.bySystem")}
-                    <p className="text-xs text-muted-foreground">{format.dateTime(row.completedAt, { dateStyle: "medium" })}</p>
+                    <p className="text-xs text-faint">{format.dateTime(row.completedAt, { dateStyle: "medium" })}</p>
                   </>
                 ) : (
                   <span className="text-muted-foreground">{row.assigneeName ?? t("unassigned")}</span>
                 )}
               </TableCell>
-              <TableCell>{day(row.submittedDate)}</TableCell>
+              <TableCell kind="date">{day(row.submittedDate)}</TableCell>
               <TableCell kind="id">{row.referenceNumber ?? "—"}</TableCell>
               <TableCell kind="money">{row.amountPaid === null ? "—" : format.number(row.amountPaid)}</TableCell>
               <TableCell className="text-xs">
@@ -137,6 +136,6 @@ export default async function OpsHistoryPage({ searchParams }: PageProps<"/ops/h
           ))}
         </TableBody>
       </Table>
-    </div>
+    </Page>
   );
 }

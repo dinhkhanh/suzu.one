@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Page, PageHeader } from "@/components/ui/page";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
@@ -18,9 +19,11 @@ const hours = (minutes: number) => Math.round((minutes / 60) * 10) / 10;
 
 /**
  * Capacity against bookings (FR-PJM-13): the people whose time the viewer plans — the teams they
- * lead, the people below them, or where they hold `work:manage` — over the next eight weeks. Available = work schedule − approved leave − holidays; confirmed bookings are the
- * load, tentative ones are shown apart and never counted. Leave shows as "away", never its type.
- * Filters live in the URL. Skills are not recorded yet (FR-CHR-14): people are filtered by position.
+ * lead, the people below them, or where they hold `work:manage` — over the next eight weeks, as a
+ * heat map of load against what each can work. Available = work schedule − approved leave −
+ * holidays; confirmed bookings are the load, tentative ones are marked and never counted. Leave
+ * shows as "away", never its type. Filters live in the URL. Skills are not recorded yet
+ * (FR-CHR-14): people are filtered by position.
  */
 export default async function CapacityPage({ searchParams }: PageProps<"/projects/capacity">) {
   const user = await requireUser();
@@ -38,24 +41,40 @@ export default async function CapacityPage({ searchParams }: PageProps<"/project
     const next = new URLSearchParams(Object.entries({ team: pick("team"), position: pick("position"), free: freeHours === null ? null : String(freeHours), from: start }).flatMap(([key, value]) => (value ? [[key, value]] : [])));
     return `/projects/capacity?${next.toString()}`;
   };
+  const thisMonday = mondayOf(today);
+  // The cell's tint: fine up to 90% of what the person can work, a warning up to full, wrong over it.
+  const tint = (percent: number | null, confirmed: number) => (percent === null ? "bg-muted text-faint" : confirmed === 0 ? "bg-canvas text-faint" : percent > 100 ? "bg-destructive/10 text-destructive" : percent > 90 ? "bg-warning/12 text-warning" : "bg-success/10 text-success");
 
   return (
-    <div className="flex max-w-7xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/projects" className="underline">
+    <Page width="wide">
+      <PageHeader
+        eyebrow={
+          <Link href="/projects" className="hover:text-foreground">
             {tProjects("title")}
           </Link>
-        </p>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </header>
+        }
+        title={t("title")}
+        description={t("description")}
+        actions={
+          <>
+            <Button nativeButton={false} variant="outline" size="sm" render={<Link href={query(addDays(from, -7 * CAPACITY_WEEKS))} />}>
+              {t("earlier")}
+            </Button>
+            <Button nativeButton={false} variant="outline" size="sm" render={<Link href={query(thisMonday)} />}>
+              {t("thisWeek")}
+            </Button>
+            <Button nativeButton={false} variant="outline" size="sm" render={<Link href={query(addDays(from, 7 * CAPACITY_WEEKS))} />}>
+              {t("later")}
+            </Button>
+          </>
+        }
+      />
 
-      <form method="get" className="flex flex-wrap items-end gap-3">
+      <form method="get" className="toolbar">
         <input type="hidden" name="from" value={from} />
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs text-muted-foreground">{t("team")}</span>
-          <Select name="team" defaultValue={pick("team") ?? ""} className="w-52">
+        <label className="flex min-w-0 flex-col gap-1 text-xs text-muted-foreground max-md:w-[calc(50%-0.25rem)]">
+          {t("team")}
+          <Select name="team" defaultValue={pick("team") ?? ""} className="md:w-48">
             <option value="">{t("allTeams")}</option>
             {view.teams.map((team) => (
               <option key={team.id} value={team.id}>
@@ -64,9 +83,9 @@ export default async function CapacityPage({ searchParams }: PageProps<"/project
             ))}
           </Select>
         </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs text-muted-foreground">{t("position")}</span>
-          <Select name="position" defaultValue={pick("position") ?? ""} className="w-52">
+        <label className="flex min-w-0 flex-col gap-1 text-xs text-muted-foreground max-md:w-[calc(50%-0.25rem)]">
+          {t("position")}
+          <Select name="position" defaultValue={pick("position") ?? ""} className="md:w-48">
             <option value="">{t("allPositions")}</option>
             {view.positions.map((position) => (
               <option key={position.id} value={position.id}>
@@ -75,84 +94,71 @@ export default async function CapacityPage({ searchParams }: PageProps<"/project
             ))}
           </Select>
         </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs text-muted-foreground">{t("freeAtLeast")}</span>
-          <Input name="free" type="number" min={0} max={80} step="0.5" defaultValue={freeHours ?? ""} className="w-28" />
+        <label className="flex min-w-0 flex-col gap-1 text-xs text-muted-foreground max-md:w-[calc(50%-0.25rem)]">
+          {t("freeAtLeast")}
+          <Input name="free" type="number" min={0} max={80} step="0.5" defaultValue={freeHours ?? ""} className="md:w-28" />
         </label>
-        <Button type="submit" size="sm" variant="outline">
+        <Button type="submit" variant="outline">
           {t("filter")}
         </Button>
-        <nav className="ml-auto flex items-center gap-3 text-sm">
-          <Link href={query(addDays(from, -7 * CAPACITY_WEEKS))} className="underline">
-            {t("earlier")}
-          </Link>
-          <Link href={query(mondayOf(today))} className="underline">
-            {t("thisWeek")}
-          </Link>
-          <Link href={query(addDays(from, 7 * CAPACITY_WEEKS))} className="underline">
-            {t("later")}
-          </Link>
-        </nav>
       </form>
-      <p className="text-xs text-muted-foreground">{t("skillsNote")}</p>
 
-      <Table numbered={false} className="min-w-[980px] border-separate border-spacing-1">
-        <thead>
-          <tr className="text-left text-xs text-muted-foreground">
-            <th className="w-48 px-2 font-medium">{t("person")}</th>
-            {view.weeks.map((week) => (
-              <th key={week.start} className={`px-2 font-medium ${week.start === mondayOf(today) ? "text-foreground" : ""}`}>
-                {t("weekOf", { date: day(week.start) })}
-              </th>
+      <TableCard>
+        <TableCardHeader title={t("heatmap")} count={view.rows.length || null} description={t("skillsNote")} />
+        <Table numbered={false} className="min-w-[840px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="person" className="w-52">
+                {t("person")}
+              </TableHead>
+              {view.weeks.map((week) => (
+                <TableHead key={week.start} className={`text-center ${week.start === thisMonday ? "text-foreground" : ""}`}>
+                  {t("weekOf", { date: day(week.start) })}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {view.rows.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
+            {view.rows.map((row) => (
+              <TableRow key={row.person.id}>
+                <TableCell className="whitespace-normal">
+                  <span className="block truncate font-medium">{row.person.fullName}</span>
+                  <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                    {row.person.positionName ? <span>{row.person.positionName}</span> : null}
+                    {row.overWeeks ? <span className="font-medium text-destructive">{t("overWeeks", { count: row.overWeeks })}</span> : null}
+                  </span>
+                </TableCell>
+                {row.cells.map((cell) => {
+                  const own = view.bookings.get(`${row.person.id}:${cell.week.start}`) ?? [];
+                  const percent = cell.availableMinutes > 0 ? Math.round((cell.confirmedMinutes / cell.availableMinutes) * 100) : null;
+                  const lines = [
+                    `${t("hours", { hours: hours(cell.confirmedMinutes) })} / ${t("hours", { hours: hours(cell.availableMinutes) })}`,
+                    cell.tentativeMinutes > 0 ? t("tentativeHours", { hours: hours(cell.tentativeMinutes) }) : null,
+                    cell.awayDays > 0 ? t("away", { days: cell.awayDays }) : null,
+                    cell.holidayDays > 0 ? t("holiday", { days: cell.holidayDays }) : null,
+                    cell.over ? t("over", { hours: hours(-cell.freeMinutes) }) : cell.atRisk ? t("atRisk") : null,
+                    ...own.map((booking) => `${booking.projectName ?? t("otherProject")}: ${hours(booking.minutes)} h${booking.status === "tentative" ? ` (${t("tentative")})` : ""}`),
+                  ].filter(Boolean);
+                  return (
+                    <TableCell key={cell.week.start} className="p-1.5">
+                      <div title={lines.join("\n")} className={`flex h-8 items-center justify-center gap-0.5 rounded-md font-mono text-xs tabular-nums ${tint(percent, cell.confirmedMinutes)}`}>
+                        <span>{percent === null ? "—" : `${percent}%`}</span>
+                        {cell.tentativeMinutes > 0 ? <span className="text-faint">+</span> : null}
+                        {cell.awayDays > 0 ? <span aria-label={t("away", { days: cell.awayDays })} className="size-1.5 rounded-full bg-warning" /> : null}
+                      </div>
+                    </TableCell>
+                  );
+                })}
+              </TableRow>
             ))}
-          </tr>
-        </thead>
-        <tbody>
-          {view.rows.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
-          {view.rows.map((row) => (
-            <tr key={row.person.id}>
-              <th scope="row" className="px-2 text-left align-top font-medium">
-                {row.person.fullName}
-                {row.person.positionName ? <span className="block text-xs font-normal text-muted-foreground">{row.person.positionName}</span> : null}
-                {row.overWeeks ? <span className="block text-xs font-medium text-destructive">{t("overWeeks", { count: row.overWeeks })}</span> : null}
-              </th>
-              {row.cells.map((cell) => {
-                const own = view.bookings.get(`${row.person.id}:${cell.week.start}`) ?? [];
-                const title = own.map((booking) => `${booking.projectName ?? t("otherProject")}: ${hours(booking.minutes)} h${booking.status === "tentative" ? ` (${t("tentative")})` : ""}`).join("\n");
-                return (
-                  <td key={cell.week.start} title={title || undefined} className={`rounded-lg border p-2 align-top ${cell.over ? "border-destructive/50 bg-destructive/5" : cell.atRisk ? "border-amber-600/40 bg-amber-500/5" : cell.confirmedMinutes === 0 ? "text-muted-foreground" : ""}`}>
-                    <p className="font-medium tabular-nums">
-                      {t("hours", { hours: hours(cell.confirmedMinutes) })} <span className="text-xs font-normal text-muted-foreground">/ {t("hours", { hours: hours(cell.availableMinutes) })}</span>
-                    </p>
-                    {cell.tentativeMinutes > 0 ? <p className="text-xs text-muted-foreground">{t("tentativeHours", { hours: hours(cell.tentativeMinutes) })}</p> : null}
-                    {cell.awayDays > 0 ? <p className="text-xs text-warning">{t("away", { days: cell.awayDays })}</p> : null}
-                    {cell.holidayDays > 0 ? <p className="text-xs text-muted-foreground">{t("holiday", { days: cell.holidayDays })}</p> : null}
-                    {cell.over ? <p className="text-xs font-medium text-destructive">{t("over", { hours: hours(-cell.freeMinutes) })}</p> : cell.atRisk ? <p className="text-xs text-warning">{t("atRisk")}</p> : null}
-                    {own.length ? (
-                      <ul className="mt-1 flex flex-col gap-0.5 text-[11px] text-muted-foreground">
-                        {own.map((booking, index) => (
-                          <li key={index} className="truncate">
-                            {booking.projectId ? (
-                              <Link href={`/projects/${booking.projectId}/team`} className="hover:underline">
-                                {booking.projectName}
-                              </Link>
-                            ) : (
-                              t("otherProject")
-                            )}{" "}
-                            {hours(booking.minutes)}h{booking.status === "tentative" ? "?" : ""}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-      {view.daysOff.length > 0 ? <p className="text-xs text-muted-foreground">{t("daysOff", { list: view.daysOff.map((off) => `${day(off.date)} ${off.name}`).join(", ") })}</p> : null}
-      <p className="text-xs text-muted-foreground">{t("legend")}</p>
+          </TableBody>
+        </Table>
+        <div className="flex flex-col gap-1 border-t px-4 py-3 text-xs text-muted-foreground">
+          <p>{t("heatmapLegend")}</p>
+          {view.daysOff.length > 0 ? <p>{t("daysOff", { list: view.daysOff.map((off) => `${day(off.date)} ${off.name}`).join(", ") })}</p> : null}
+        </div>
+      </TableCard>
 
       {view.openPlaceholders.length ? (
         <TableCard>
@@ -176,13 +182,13 @@ export default async function CapacityPage({ searchParams }: PageProps<"/project
                   <TableCell>
                     <Badge variant="outline">{open.placeholderRole}</Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{open.weeks.map((week) => `${day(week.weekStart)}: ${hours(week.minutes)}h${week.status === "tentative" ? "?" : ""}`).join(" · ")}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground tabular-nums">{open.weeks.map((week) => `${day(week.weekStart)}: ${hours(week.minutes)}h${week.status === "tentative" ? "?" : ""}`).join(" · ")}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </TableCard>
       ) : null}
-    </div>
+    </Page>
   );
 }

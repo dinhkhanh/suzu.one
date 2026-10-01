@@ -2,7 +2,9 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Page, PageHeader, Section } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { publicOrigin } from "@/lib/site";
@@ -54,53 +56,62 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
   const origin = publicOrigin();
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1>{view.candidate.fullName}</h1>
-          <p className="text-sm text-muted-foreground">
-            <Link href={`/recruit/${view.opening.id}`} className="underline underline-offset-4">
+    <Page>
+      <PageHeader
+        eyebrow={
+          <>
+            <Link href={`/recruit/${view.opening.id}`} className="hover:underline">
               {view.opening.title}
             </Link>
-            {` · ${view.opening.code}`}
-          </p>
+            <span className="font-mono text-xs text-faint"> · {view.opening.code}</span>
+          </>
+        }
+        title={view.candidate.fullName}
+        actions={
+          <Link href={`/recruit/candidates/${view.candidate.id}`} className={buttonVariants({ variant: "outline" })}>
+            {t("actions.openCandidate")}
+          </Link>
+        }
+      >
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <Badge dot variant={statusTone(view.application.status)}>
+            {closed ? t(`applicationStatus.${view.application.status}`) : view.stage.name}
+          </Badge>
+          {closed ? <Badge variant="outline">{view.stage.name}</Badge> : null}
+          <Badge variant="outline">{t(`source.${view.application.source}`)}</Badge>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <Badge dot variant={statusTone(view.application.status)}>{t(`applicationStatus.${view.application.status}`)}</Badge>
-          <span className="text-xs text-muted-foreground">{view.stage.name}</span>
-        </div>
-      </header>
+      </PageHeader>
 
-      <dl className="grid gap-2 rounded-xl border p-4 text-sm sm:grid-cols-2">
-        <div className="flex justify-between gap-3">
-          <dt className="text-muted-foreground">{t("columns.appliedAt")}</dt>
-          <dd>{format.dateTime(view.application.appliedAt, { dateStyle: "medium" })}</dd>
-        </div>
-        <div className="flex justify-between gap-3">
-          <dt className="text-muted-foreground">{t("columns.source")}</dt>
-          <dd>{t(`source.${view.application.source}`)}</dd>
-        </div>
-        {/* Only drawn for a compensation-tier grant over this opening. */}
-        {view.canReadMoney ? (
-          <div className="flex justify-between gap-3">
-            <dt className="text-muted-foreground">{t("form.salaryExpectation")}</dt>
-            <dd>{view.salaryExpectationVnd === null ? "—" : format.number(view.salaryExpectationVnd)}</dd>
-          </div>
-        ) : null}
-        <div className="flex justify-between gap-3">
-          <dt className="text-muted-foreground">{t("columns.candidate")}</dt>
-          <dd>
-            <Link href={`/recruit/candidates/${view.candidate.id}`} className="underline underline-offset-4">
-              {t("actions.openCandidate")}
-            </Link>
-          </dd>
-        </div>
-      </dl>
+      <TableCard>
+        <Table numbered={false}>
+          <TableBody>
+            <TableRow>
+              <TableCell className="w-40 whitespace-normal text-muted-foreground">{t("columns.appliedAt")}</TableCell>
+              <TableCell className="whitespace-normal">{format.dateTime(view.application.appliedAt, { dateStyle: "medium" })}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="w-40 whitespace-normal text-muted-foreground">{t("columns.stage")}</TableCell>
+              <TableCell className="whitespace-normal">{view.stage.name}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="w-40 whitespace-normal text-muted-foreground">{t("columns.source")}</TableCell>
+              <TableCell className="whitespace-normal">{t(`source.${view.application.source}`)}</TableCell>
+            </TableRow>
+            {/* Only drawn for a compensation-tier grant over this opening. */}
+            {view.canReadMoney ? (
+              <TableRow>
+                <TableCell className="w-40 whitespace-normal text-muted-foreground">{t("form.salaryExpectation")}</TableCell>
+                <TableCell kind="money" className="text-left">{view.salaryExpectationVnd === null ? "—" : format.number(view.salaryExpectationVnd)}</TableCell>
+              </TableRow>
+            ) : null}
+          </TableBody>
+        </Table>
+      </TableCard>
 
       {/* The CV came from the internet and nothing has scanned it. The warning is part of the
           control, not a footnote somewhere else on the page. */}
       {view.application.cvFileId && view.cvFileName ? (
-        <section className="flex flex-col gap-1 rounded-xl border p-4">
+        <section className="flex flex-col gap-1 rounded-[14px] border border-border bg-background p-4">
           <h2 className="text-sm font-medium">{t("columns.cv")}</h2>
           <CvLink applicationId={applicationId} fileId={view.application.cvFileId} fileName={view.cvFileName} />
           <p className="text-xs text-muted-foreground">{t("notScanned")}</p>
@@ -108,7 +119,7 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
       ) : null}
 
       {Object.keys(view.application.answers).length > 0 ? (
-        <dl className="flex flex-col gap-3 rounded-xl border p-4 text-sm">
+        <dl className="flex flex-col gap-3 rounded-[14px] border border-border bg-background p-4 text-sm">
           {view.opening.questions
             .filter((question) => view.application.answers[question.key])
             .map((question) => (
@@ -120,7 +131,7 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
         </dl>
       ) : null}
 
-      <RichText text={view.application.coverLetter} className="rounded-xl border p-4 text-sm text-muted-foreground" />
+      <RichText text={view.application.coverLetter} className="rounded-[14px] border border-border bg-background p-4 text-sm text-muted-foreground" />
 
       {view.application.portfolioLinks.length > 0 ? (
         <ul className="flex flex-col gap-1 text-sm">
@@ -255,24 +266,25 @@ export default async function ApplicationPage({ params }: PageProps<"/recruit/ap
         />
       ) : null}
 
-      <TableCard>
-        <TableCardHeader title={t("history")} />
+      <Section title={t("history")} count={view.events.length || null}>
         <List>
           {view.events.map((event) => (
-            <ListItem key={event.id} className="flex-wrap">
-              <span className="min-w-0 flex-1 basis-56">
-                {t(`event.${event.type}`)}
-                {event.toStageName ? ` → ${event.toStageName}` : ""}
+            <ListItem key={event.id} className="items-start">
+              <span className="w-28 shrink-0 pt-0.5 font-mono text-xs text-faint tabular-nums">{format.dateTime(event.at, { dateStyle: "short", timeStyle: "short" })}</span>
+              <span className="min-w-0 flex-1">
+                <span className="font-medium">
+                  {t(`event.${event.type}`)}
+                  {event.toStageName ? ` → ${event.toStageName}` : ""}
+                </span>
+                <span className="block text-xs text-faint">{event.actorName ?? t("source.careers_page")}</span>
                 {event.note ? <span className="block text-xs text-muted-foreground">{noteToPlainText(event.note)}</span> : null}
               </span>
-              <span className="text-xs text-muted-foreground">{event.actorName ?? t("source.careers_page")}</span>
-              <span className="text-xs text-muted-foreground">{format.dateTime(event.at, { dateStyle: "medium", timeStyle: "short" })}</span>
             </ListItem>
           ))}
         </List>
-      </TableCard>
+      </Section>
 
-      <p className="text-xs text-muted-foreground">{t("confidential")}</p>
-    </div>
+      <p className="text-xs text-faint">{t("confidential")}</p>
+    </Page>
   );
 }

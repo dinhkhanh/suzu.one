@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { automationPanel, canManageAutomations, canViewAutomations, findTeam, loadViewer, teamFacts } from "@/modules/work/service";
@@ -18,21 +19,15 @@ export default async function TeamAutomationsPage({ params }: PageProps<"/work/t
   const panel = await automationPanel({ teamId: team.id, projectId: null }, viewer);
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/work" className="underline">
+    <Page width="default">
+      <PageHeader eyebrow={<span className="flex flex-wrap items-center gap-x-1.5"><Link href="/work" className="hover:underline">
             {t("title")}
           </Link>
-          {" / "}
-          <Link href={`/work/teams/${team.id}`} className="underline">
+          <span className="text-faint">/</span>
+          <Link href={`/work/teams/${team.id}`} className="hover:underline">
             {team.name}
-          </Link>
-        </p>
-        <h1>{t("automations.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("automations.description")}</p>
-      </header>
+          </Link></span>} title={t("automations.title")} description={t("automations.description")} />
       <AutomationManager teamId={team.id} rules={panel.rules} options={panel.options} runs={panel.runs} canManage={canManageAutomations(viewer, teamFacts(team))} />
-    </div>
+    </Page>
   );
 }

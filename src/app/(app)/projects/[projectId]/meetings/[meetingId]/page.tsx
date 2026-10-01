@@ -2,6 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Page } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -31,7 +33,7 @@ export default async function ProjectMeetingPage({ params }: PageProps<"/project
   const date = (value: string | null) => (value ? format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" }) : "—");
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
+    <Page>
       <ProjectHeader context={context} current="meetings" />
 
       <section className="flex flex-col gap-3">
@@ -42,7 +44,7 @@ export default async function ProjectMeetingPage({ params }: PageProps<"/project
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{t(`kinds.${meeting.kind as MeetingKind}`)}</Badge>
-          <h2 className="text-lg font-medium">{meeting.title}</h2>
+          <h2>{meeting.title}</h2>
         </div>
         <p className="text-sm text-muted-foreground">{[date(meeting.heldOn), meeting.startTime ? t("atTime", { time: meeting.startTime.slice(0, 5), minutes: meeting.durationMinutes ?? DEFAULT_MEETING_MINUTES }) : null, meeting.authorName ? t("recordedBy", { name: meeting.authorName }) : null].filter(Boolean).join(" · ")}</p>
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -133,17 +135,19 @@ export default async function ProjectMeetingPage({ params }: PageProps<"/project
         <>
           {/* FR-PJM-30: the invitation, which says what the adapter really did — "simulated" included. */}
           <MeetingCalendar projectId={project.id} meeting={{ id: meeting.id, startTime: meeting.startTime, calendarEventId: meeting.calendarEventId, calendarStatus: meeting.calendarStatus, calendarError: meeting.calendarError, meetingUrl: meeting.meetingUrl }} />
-          <section className="flex flex-col gap-3 rounded-xl border p-4">
-            <h2 className="text-base font-medium">{t("edit")}</h2>
-            <MeetingForm
-              projectId={project.id}
-              people={people}
-              today={todayInVietnam()}
-              meeting={{ id: meeting.id, kind: meeting.kind, title: meeting.title, heldOn: meeting.heldOn, startTime: meeting.startTime, durationMinutes: meeting.durationMinutes, attendeeIds: meeting.attendeeIds, externalAttendees: meeting.externalAttendees, agenda: meeting.agenda, notes: meeting.notes }}
-            />
-          </section>
+          <Card>
+            <CardContent className="flex flex-col gap-3">
+              <h2>{t("edit")}</h2>
+              <MeetingForm
+                projectId={project.id}
+                people={people}
+                today={todayInVietnam()}
+                meeting={{ id: meeting.id, kind: meeting.kind, title: meeting.title, heldOn: meeting.heldOn, startTime: meeting.startTime, durationMinutes: meeting.durationMinutes, attendeeIds: meeting.attendeeIds, externalAttendees: meeting.externalAttendees, agenda: meeting.agenda, notes: meeting.notes }}
+              />
+            </CardContent>
+          </Card>
         </>
       ) : null}
-    </div>
+    </Page>
   );
 }

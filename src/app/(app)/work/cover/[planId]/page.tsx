@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
@@ -29,19 +30,21 @@ export default async function CoverPlanPage({ params }: PageProps<"/work/cover/[
   const people = submit && plan.status === "draft" ? (await listPersonNames()).filter((person) => person.id !== plan.personId) : [];
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/tasks" className="underline">
+    <Page width="narrow">
+      <PageHeader
+        eyebrow={
+          <Link href="/tasks" className="hover:underline">
             {t("myWork")}
           </Link>
-        </p>
-        <h1 className="flex flex-wrap items-center gap-2">
-          {t("cover.title")}
-          <Badge dot variant={statusTone(plan.status)}>{t(`cover.statuses.${plan.status}`)}</Badge>
-        </h1>
-        <p className="text-sm text-muted-foreground">{t("cover.description")}</p>
-      </header>
+        }
+        title={
+          <span className="flex flex-wrap items-center gap-2">
+            {t("cover.title")}
+            <Badge dot variant={statusTone(plan.status)}>{t(`cover.statuses.${plan.status}`)}</Badge>
+          </span>
+        }
+        description={t("cover.description")}
+      />
       <CoverPlanForm
         plan={{
           id: plan.id,
@@ -61,6 +64,6 @@ export default async function CoverPlanPage({ params }: PageProps<"/work/cover/[
         canHandBack={plan.status === "submitted" && canHandBackCover(viewer, facts)}
         selfId={user.person.id}
       />
-    </div>
+    </Page>
   );
 }

@@ -1,15 +1,20 @@
 "use client";
+import { HistoryIcon, PaperclipIcon, SmilePlusIcon } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Segmented } from "@/components/ui/segmented";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { addCommentAction, beginTaskUploadAction, completeTaskUploadAction, deleteCommentAction, editCommentAction, followTaskAction, openTaskFileAction, reactToCommentAction, removeTaskFileAction } from "../actions";
 import { mentionQueryAt, mentionToken, parseBody } from "../engine/mentions";
 import { REACTIONS } from "../enums";
 import type { DetailActivity } from "./task-detail";
+import { PersonAvatar } from "./task-row";
 
 type Person = { id: string; fullName: string };
 export type DiscussionComment = { id: string; parentId: string | null; /** null = posted by an automation. */ authorPersonId: string | null; authorName: string; byAutomation?: boolean; body: string; reactions: Record<string, string[]>; editedAt: string | null; deleted: boolean; createdAt: string };
@@ -80,14 +85,14 @@ function Composer({ people, initial = "", submitLabel, pending, onSubmit, onCanc
       }}
     >
       <div className="relative">
-        <textarea
+        <Textarea
           ref={box}
           value={body}
           rows={3}
           maxLength={5000}
           placeholder={placeholder}
           aria-label={placeholder}
-          className="w-full rounded-md border bg-transparent px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-16 md:min-h-14"
           onChange={(event) => {
             setBody(event.target.value);
             setQuery(mentionQueryAt(event.target.value, event.target.selectionStart));
@@ -101,7 +106,7 @@ function Composer({ people, initial = "", submitLabel, pending, onSubmit, onCanc
           }}
         />
         {query && matches.length ? (
-          <ul role="listbox" aria-label={t("mentionPicker")} className="absolute z-10 mt-1 w-64 rounded-md border bg-background p-1 text-sm shadow-md">
+          <ul role="listbox" aria-label={t("mentionPicker")} className="absolute z-10 mt-1 w-64 rounded-xl bg-popover p-1 text-sm shadow-(--float-shadow)">
             {matches.map((person, index) => (
               <li key={person.id}>
                 <button type="button" role="option" aria-selected={index === 0} className={`w-full rounded px-2 py-1 text-left hover:bg-muted ${index === 0 ? "bg-muted/60" : ""}`} onClick={() => pick(person)}>
@@ -121,7 +126,7 @@ function Composer({ people, initial = "", submitLabel, pending, onSubmit, onCanc
             {t("cancel")}
           </Button>
         ) : null}
-        <span className="text-xs text-muted-foreground">{t("composerHint")}</span>
+        <span className="text-xs text-faint">{t("composerHint")}</span>
       </div>
     </form>
   );
@@ -133,7 +138,7 @@ export function FollowButton({ taskId, state, followers }: { taskId: string; sta
   const { run, pending, errorKey } = useRun();
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
-      <span className="text-muted-foreground">{t("followers", { count: followers })}</span>
+      <span className="text-xs text-muted-foreground">{t("followers", { count: followers })}</span>
       {state === "working" ? (
         <span className="text-xs text-muted-foreground">{t("followWorking")}</span>
       ) : (
@@ -189,12 +194,13 @@ export function TaskFiles({ taskId, files, canAdd, accept }: { taskId: string; f
           </TableBody>
         </Table>
         {canAdd ? (
-          <label className="flex min-h-12 cursor-pointer items-center gap-2 border-t px-3 py-2 text-sm">
+          <label className="flex min-h-11 cursor-pointer items-center gap-2 border-t px-3 py-2 text-[0.8125rem] font-medium text-link hover:bg-canvas md:pl-[calc(var(--table-gutter)+0.75rem)]">
+            <PaperclipIcon className="size-3.5" />
             <input
               type="file"
               accept={accept}
               disabled={pending}
-              className="text-sm file:mr-2 file:rounded-md file:border file:bg-transparent file:px-2 file:py-1 file:text-sm"
+              className="text-sm text-foreground file:mr-2 file:rounded-md file:border file:border-border file:bg-background file:px-2 file:py-1 file:text-xs file:font-medium"
               aria-label={t("addFile")}
               onChange={(event) => {
                 const input = event.currentTarget;
@@ -271,90 +277,95 @@ export function TaskDiscussion({ taskId, comments, activity, people, selfId, can
 
   const when = (iso: string) => format.dateTime(new Date(iso), { dateStyle: "short", timeStyle: "short" });
 
+  const actionClass = "press rounded-md px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground";
   const renderComment = (comment: DiscussionComment, isReply: boolean) => (
-    <div key={comment.id} id={`comment-${comment.id}`} className={`flex flex-col gap-1.5 rounded-xl border p-3 ${isReply ? "ml-6" : ""}`}>
-      <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
-        <span className="font-medium">{comment.authorName}</span>
-        {comment.byAutomation ? <Badge variant="outline">{t("byAutomation")}</Badge> : null}
-        <time className="text-xs text-muted-foreground">{when(comment.createdAt)}</time>
-        {comment.editedAt && !comment.deleted ? <span className="text-xs text-muted-foreground">{t("edited")}</span> : null}
-      </div>
-      {comment.deleted ? (
-        <p className="text-sm text-muted-foreground italic">{t("deleted")}</p>
-      ) : editing === comment.id ? (
-        <Composer people={people} initial={comment.body} submitLabel={t("saveEdit")} pending={pending} placeholder={t("placeholder")} onCancel={() => setEditing(null)} onSubmit={(body) => run(() => editCommentAction({ commentId: comment.id, body }), () => setEditing(null))} />
-      ) : (
-        <Body body={comment.body} />
-      )}
-      {comment.deleted || editing === comment.id ? null : (
-        <div className="flex flex-wrap items-center gap-1 text-xs">
-          {REACTIONS.map((emoji) => {
-            const who = comment.reactions[emoji] ?? [];
-            const mine = who.includes(selfId);
-            return who.length || replyTo === `react:${comment.id}` ? (
-              <button key={emoji} type="button" disabled={pending} aria-pressed={mine} onClick={() => run(() => reactToCommentAction({ commentId: comment.id, emoji }))} className={`rounded-full border px-1.5 py-0.5 ${mine ? "border-primary bg-primary/10" : "hover:bg-muted"}`}>
-                {emoji} {who.length || ""}
-              </button>
-            ) : null;
-          })}
-          <button type="button" className="rounded px-1.5 py-0.5 text-muted-foreground hover:bg-muted" aria-label={t("react")} onClick={() => setReplyTo(replyTo === `react:${comment.id}` ? null : `react:${comment.id}`)}>
-            ☺+
-          </button>
-          <button type="button" className="rounded px-1.5 py-0.5 text-muted-foreground hover:bg-muted" onClick={() => setReplyTo(replyTo === comment.id ? null : comment.id)}>
-            {t("reply")}
-          </button>
-          {comment.authorPersonId === selfId ? (
-            <button type="button" className="rounded px-1.5 py-0.5 text-muted-foreground hover:bg-muted" onClick={() => setEditing(comment.id)}>
-              {t("edit")}
-            </button>
-          ) : null}
-          {comment.authorPersonId === selfId || canModerate ? (
-            <button type="button" disabled={pending} className="rounded px-1.5 py-0.5 text-muted-foreground hover:bg-muted hover:text-destructive" onClick={() => run(() => deleteCommentAction({ commentId: comment.id }))}>
-              {t("delete")}
-            </button>
-          ) : null}
+    <ListItem key={comment.id} id={`comment-${comment.id}`} className={`items-start gap-3 py-3 ${isReply ? "pl-12 md:pl-12" : ""}`}>
+      <PersonAvatar name={comment.byAutomation ? null : comment.authorName} className="mt-0.5" />
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
+          <span className="font-medium">{comment.authorName}</span>
+          {comment.byAutomation ? <Badge variant="outline">{t("byAutomation")}</Badge> : null}
+          <time className="text-xs text-faint">{when(comment.createdAt)}</time>
+          {comment.editedAt && !comment.deleted ? <span className="text-xs text-faint">{t("edited")}</span> : null}
         </div>
-      )}
-      {replyTo === comment.id ? (
-        <Composer people={people} submitLabel={t("reply")} pending={pending} placeholder={t("replyPlaceholder")} onCancel={() => setReplyTo(null)} onSubmit={(body, reset) => run(() => addCommentAction({ taskId, body, parentId: comment.id }), () => (reset(), setReplyTo(null)))} />
-      ) : null}
-    </div>
+        {comment.deleted ? (
+          <p className="text-sm text-muted-foreground italic">{t("deleted")}</p>
+        ) : editing === comment.id ? (
+          <Composer people={people} initial={comment.body} submitLabel={t("saveEdit")} pending={pending} placeholder={t("placeholder")} onCancel={() => setEditing(null)} onSubmit={(body) => run(() => editCommentAction({ commentId: comment.id, body }), () => setEditing(null))} />
+        ) : (
+          <Body body={comment.body} />
+        )}
+        {comment.deleted || editing === comment.id ? null : (
+          <div className="-ml-1.5 flex flex-wrap items-center gap-0.5 text-xs">
+            {REACTIONS.map((emoji) => {
+              const who = comment.reactions[emoji] ?? [];
+              const mine = who.includes(selfId);
+              return who.length || replyTo === `react:${comment.id}` ? (
+                <button key={emoji} type="button" disabled={pending} aria-pressed={mine} onClick={() => run(() => reactToCommentAction({ commentId: comment.id, emoji }))} className={`press inline-flex h-6 items-center gap-1 rounded-full border px-2 font-mono tabular-nums ${mine ? "border-primary/40 bg-primary/10 text-primary" : "border-border hover:bg-muted"}`}>
+                  {emoji} {who.length || ""}
+                </button>
+              ) : null;
+            })}
+            <button type="button" className={actionClass} aria-label={t("react")} onClick={() => setReplyTo(replyTo === `react:${comment.id}` ? null : `react:${comment.id}`)}>
+              <SmilePlusIcon className="size-3.5" />
+            </button>
+            <button type="button" className={actionClass} onClick={() => setReplyTo(replyTo === comment.id ? null : comment.id)}>
+              {t("reply")}
+            </button>
+            {comment.authorPersonId === selfId ? (
+              <button type="button" className={actionClass} onClick={() => setEditing(comment.id)}>
+                {t("edit")}
+              </button>
+            ) : null}
+            {comment.authorPersonId === selfId || canModerate ? (
+              <button type="button" disabled={pending} className={`${actionClass} hover:text-destructive`} onClick={() => run(() => deleteCommentAction({ commentId: comment.id }))}>
+                {t("delete")}
+              </button>
+            ) : null}
+          </div>
+        )}
+        {replyTo === comment.id ? (
+          <Composer people={people} submitLabel={t("reply")} pending={pending} placeholder={t("replyPlaceholder")} onCancel={() => setReplyTo(null)} onSubmit={(body, reset) => run(() => addCommentAction({ taskId, body, parentId: comment.id }), () => (reset(), setReplyTo(null)))} />
+        ) : null}
+      </div>
+    </ListItem>
   );
 
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-2.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("title", { count: comments.filter((comment) => !comment.deleted).length })}</h2>
-        <div className="flex gap-1 text-xs">
-          {(["all", "comments"] as const).map((value) => (
-            <button key={value} type="button" aria-pressed={show === value} onClick={() => setShow(value)} className={`rounded-md px-2 py-0.5 ${show === value ? "pill-on" : "pill-off"}`}>
-              {t(`show.${value}`)}
-            </button>
-          ))}
+        <h2 className="section-label">{t("title", { count: comments.filter((comment) => !comment.deleted).length })}</h2>
+        <Segmented aria-label={t("title", { count: comments.length })} value={show} onChange={setShow} options={(["all", "comments"] as const).map((value) => ({ value, label: t(`show.${value}`) }))} className="[&>button]:h-7 md:[&>button]:h-6 [&>button]:text-xs" />
+      </div>
+      <TableCard>
+        <List>
+          {timeline.length === 0 ? <ListEmpty>—</ListEmpty> : null}
+          {timeline.map((item) =>
+            item.kind === "activity" ? (
+              <ListItem key={item.entry.id} className="min-h-9 gap-3 py-1.5 text-xs md:min-h-9">
+                <span className="flex size-6 shrink-0 items-center justify-center text-faint">
+                  <HistoryIcon className="size-3.5" />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-wrap gap-x-1.5">
+                  <span className="font-medium">{item.entry.actorName ?? tTask("system")}</span>
+                  <span className="min-w-0 text-muted-foreground">{describe(item.entry)}</span>
+                </span>
+                <time className="shrink-0 font-mono text-[0.6875rem] text-faint tabular-nums">{when(item.entry.createdAt)}</time>
+              </ListItem>
+            ) : (
+              [renderComment(item.comment, false), ...item.replies.map((reply) => renderComment(reply, true))]
+            ),
+          )}
+        </List>
+        <div className="border-t bg-canvas p-3">
+          <Composer people={people} submitLabel={t("send")} pending={pending} placeholder={t("placeholder")} onSubmit={(body, reset) => run(() => addCommentAction({ taskId, body }), reset)} />
         </div>
-      </div>
-      <div className="flex flex-col gap-2">
-        {timeline.map((item) =>
-          item.kind === "activity" ? (
-            <p key={item.entry.id} className="flex flex-wrap gap-x-2 px-1 text-sm">
-              <span className="font-medium">{item.entry.actorName ?? tTask("system")}</span>
-              <span className="min-w-0 flex-1 text-muted-foreground">{describe(item.entry)}</span>
-              <time className="text-xs text-muted-foreground">{when(item.entry.createdAt)}</time>
-            </p>
-          ) : (
-            <div key={item.comment.id} className="flex flex-col gap-2">
-              {renderComment(item.comment, false)}
-              {item.replies.map((reply) => renderComment(reply, true))}
-            </div>
-          ),
-        )}
-      </div>
+      </TableCard>
       {errorKey ? (
         <p role="alert" className="text-sm text-destructive">
           {t.has(`errors.${errorKey}`) ? t(`errors.${errorKey}`) : t("errors.generic")}
         </p>
       ) : null}
-      <Composer people={people} submitLabel={t("send")} pending={pending} placeholder={t("placeholder")} onSubmit={(body, reset) => run(() => addCommentAction({ taskId, body }), reset)} />
     </section>
   );
 }

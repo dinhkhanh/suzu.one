@@ -14,6 +14,7 @@ import { canDecidePayRules, canProposePayRules, canReadPayRules } from "@/module
 import { DEFAULT_BONUS_SCHEME, listBonusSchemeVersions } from "@/modules/payroll/service";
 import { ProposeSchemeForm, SchemeDecisionButtons } from "@/modules/payroll/ui/bonus-forms";
 import { pageTitle } from "@/i18n/page-title";
+import { Page, PageHeader } from "@/components/ui/page";
 
 export const generateMetadata = pageTitle("bonusScheme");
 
@@ -34,14 +35,16 @@ export default async function BonusSchemePage() {
   const groupCurrent = versionOn(versions.filter((version) => version.status === "approved" && version.entityId === null), todayInVietnam());
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
-      <header>
-        <Link href="/payroll/bonus" className="text-sm text-link hover:underline">
-          ← {t("title")}
-        </Link>
-        <h1>{t("scheme.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("scheme.description")}</p>
-      </header>
+    <Page width="default">
+      <PageHeader
+        eyebrow={
+          <Link href="/payroll/bonus" className="text-link hover:underline">
+            ← {t("title")}
+          </Link>
+        }
+        title={t("scheme.title")}
+        description={t("scheme.description")}
+      />
 
       <TableCard>
         <List>
@@ -84,6 +87,6 @@ export default async function BonusSchemePage() {
           </TableAddRow>
         ) : null}
       </TableCard>
-    </div>
+    </Page>
   );
 }

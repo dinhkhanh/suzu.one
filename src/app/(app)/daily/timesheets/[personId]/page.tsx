@@ -1,8 +1,10 @@
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 import { buttonVariants } from "@/components/ui/button";
+import { Page, PageHeader } from "@/components/ui/page";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { getTimesheetView, loadTimeReader, weekStartOf } from "@/modules/daily/service";
 import { DecideWeek } from "@/modules/daily/ui/timesheet-decide";
@@ -31,31 +33,39 @@ export default async function PersonTimesheetPage({ params, searchParams }: Page
   const link = (week: string) => `/daily/timesheets/${personId}?week=${week}`;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <header className="flex flex-col gap-3">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/daily/timesheets" className="underline">
+    <Page width="wide">
+      <PageHeader
+        eyebrow={
+          <Link href="/daily/timesheets" className="hover:underline">
             {t("timesheets.title")}
           </Link>
-        </p>
-        <h1>{view.fullName}</h1>
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <Link href={link(addDays(weekStart, -7))} className={buttonVariants({ size: "sm", variant: "outline" })}>
-            {t("time.previousWeek")}
-          </Link>
-          <span className="font-medium">{t("time.week", { start: day(weekStart), end: day(addDays(weekStart, 6)) })}</span>
-          {weekStart < current ? (
-            <Link href={link(addDays(weekStart, 7))} className={buttonVariants({ size: "sm", variant: "outline" })}>
-              {t("time.nextWeek")}
+        }
+        title={view.fullName}
+        description={view.partial ? t("timesheets.partial") : undefined}
+        actions={
+          <>
+            <Link href={link(addDays(weekStart, -7))} className={buttonVariants({ size: "sm", variant: "outline" })}>
+              <ChevronLeft aria-hidden /> {t("time.previousWeek")}
             </Link>
-          ) : null}
-        </div>
-        {view.partial ? <p className="text-sm text-muted-foreground">{t("timesheets.partial")}</p> : <WeekStatus view={view} />}
-      </header>
+            <span className="font-mono text-[0.8125rem] text-muted-foreground tabular-nums">{t("time.week", { start: day(weekStart), end: day(addDays(weekStart, 6)) })}</span>
+            {weekStart < current ? (
+              <Link href={link(addDays(weekStart, 7))} className={buttonVariants({ size: "sm", variant: "outline" })}>
+                {t("time.nextWeek")} <ChevronRight aria-hidden />
+              </Link>
+            ) : null}
+          </>
+        }
+      >
+        {view.partial ? null : (
+          <div className="pt-1">
+            <WeekStatus view={view} />
+          </div>
+        )}
+      </PageHeader>
 
       {view.canApprove && view.week ? <DecideWeek weekId={view.week.id} status={view.status} /> : null}
 
       <TimeWeek view={view} />
-    </div>
+    </Page>
   );
 }

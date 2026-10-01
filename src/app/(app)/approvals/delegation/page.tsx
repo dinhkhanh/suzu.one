@@ -1,10 +1,13 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { buttonVariants } from "@/components/ui/button";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { listDelegations } from "@/modules/platform/approvals/delegations";
+import { PersonName } from "@/modules/platform/approvals/ui/person-name";
 import { DelegationForm, RevokeDelegationButton } from "@/modules/platform/approvals/ui/delegation-forms";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
@@ -24,56 +27,59 @@ export default async function DelegationPage() {
   const current = received.filter((row) => row.validTo >= today);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-8">
-      <header>
-        <Link href="/approvals" className="text-sm text-link hover:underline">
-          ← {t("title")}
-        </Link>
-        <h1>{t("delegation.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("delegation.description")}</p>
-      </header>
-      <TableCard>
-        <TableCardHeader title={t("delegation.given")} count={given.length || null} />
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead kind="person">{t("delegation.to")}</TableHead>
-              <TableHead kind="date">{t("delegation.from")}</TableHead>
-              <TableHead kind="date">{t("delegation.until")}</TableHead>
-              <TableHead kind="tags">{t("delegation.types")}</TableHead>
-              <TableHead kind="text">{t("delegation.reason")}</TableHead>
-              <TableHead kind="status">{t("columns.status")}</TableHead>
-              <TableHead kind="actions" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {given.length === 0 ? <TableEmpty>{t("delegation.none")}</TableEmpty> : null}
-            {given.map((row) => {
-              const state = row.revokedAt ? "revoked" : row.validTo < today ? "ended" : row.validFrom > today ? "upcoming" : "active";
-              return (
-                <TableRow key={row.id}>
-                  <TableCell className="font-medium">{row.toName}</TableCell>
-                  <TableCell>{day(row.validFrom)}</TableCell>
-                  <TableCell>{day(row.validTo)}</TableCell>
-                  <TableCell className="max-w-64 truncate">{types(row)}</TableCell>
-                  <TableCell className="max-w-64 truncate text-muted-foreground">{row.reason ?? "—"}</TableCell>
-                  <TableCell>
-                    <Badge dot variant={statusTone(state)}>{t(`delegation.state.${state}` as "delegation.state.active")}</Badge>
-                  </TableCell>
-                  <TableCell kind="actions">{state === "active" || state === "upcoming" ? <RevokeDelegationButton id={row.id} /> : null}</TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-        <TableAddRow label={t("delegation.link")} open={given.length === 0}>
-          <div className="[&>form]:rounded-none [&>form]:border-0 [&>form]:p-0">
+    <Page>
+      <PageHeader
+        eyebrow={t("title")}
+        title={t("delegation.title")}
+        description={t("delegation.description")}
+        actions={
+          <Link href="/approvals" className={buttonVariants({ variant: "outline" })}>
+            {t("oversight.back")}
+          </Link>
+        }
+      />
+      <Section title={t("delegation.given")} count={given.length || undefined}>
+        <TableCard>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="person">{t("delegation.to")}</TableHead>
+                <TableHead kind="date">{t("delegation.from")}</TableHead>
+                <TableHead kind="date">{t("delegation.until")}</TableHead>
+                <TableHead kind="tags">{t("delegation.types")}</TableHead>
+                <TableHead kind="text">{t("delegation.reason")}</TableHead>
+                <TableHead kind="status">{t("columns.status")}</TableHead>
+                <TableHead kind="actions" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {given.length === 0 ? <TableEmpty>{t("delegation.none")}</TableEmpty> : null}
+              {given.map((row) => {
+                const state = row.revokedAt ? "revoked" : row.validTo < today ? "ended" : row.validFrom > today ? "upcoming" : "active";
+                return (
+                  <TableRow key={row.id}>
+                    <TableCell className="font-medium">
+                      <PersonName name={row.toName} />
+                    </TableCell>
+                    <TableCell>{day(row.validFrom)}</TableCell>
+                    <TableCell>{day(row.validTo)}</TableCell>
+                    <TableCell className="max-w-64 truncate">{types(row)}</TableCell>
+                    <TableCell className="max-w-64 truncate text-muted-foreground">{row.reason ?? "—"}</TableCell>
+                    <TableCell>
+                      <Badge dot variant={statusTone(state)}>{t(`delegation.state.${state}` as "delegation.state.active")}</Badge>
+                    </TableCell>
+                    <TableCell kind="actions">{state === "active" || state === "upcoming" ? <RevokeDelegationButton id={row.id} /> : null}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+          <TableAddRow label={t("delegation.link")} open={given.length === 0}>
             <DelegationForm people={people.filter((person) => person.id !== user.person.id)} requestTypes={[...registered.keys()].map((type) => ({ type, name: label(type) }))} today={today} />
-          </div>
-        </TableAddRow>
-      </TableCard>
-      <TableCard>
-        <TableCardHeader title={t("delegation.received")} count={current.length || null} />
+          </TableAddRow>
+        </TableCard>
+      </Section>
+      <Section title={t("delegation.received")} count={current.length || undefined}>
         <Table>
           <TableHeader>
             <TableRow>
@@ -87,7 +93,9 @@ export default async function DelegationPage() {
             {current.length === 0 ? <TableEmpty>{t("delegation.none")}</TableEmpty> : null}
             {current.map((row) => (
               <TableRow key={row.id}>
-                <TableCell className="font-medium">{row.fromName}</TableCell>
+                <TableCell className="font-medium">
+                  <PersonName name={row.fromName} />
+                </TableCell>
                 <TableCell>{day(row.validFrom)}</TableCell>
                 <TableCell>{day(row.validTo)}</TableCell>
                 <TableCell className="max-w-64 truncate">{types(row)}</TableCell>
@@ -95,7 +103,7 @@ export default async function DelegationPage() {
             ))}
           </TableBody>
         </Table>
-      </TableCard>
-    </div>
+      </Section>
+    </Page>
   );
 }

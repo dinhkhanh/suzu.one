@@ -2,6 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Page } from "@/components/ui/page";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
@@ -40,57 +42,59 @@ export default async function ProjectPlanPage({ params }: PageProps<"/projects/[
   const unlinked = links.filter((link) => !link.milestoneId && !link.deliverableId && !link.phaseId);
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
+    <Page>
       <ProjectHeader context={context} current="plan" />
 
-      <section className="flex flex-col gap-2 rounded-xl border p-4">
-        <h2 className="text-base font-medium">{t("plan.baseline")}</h2>
-        {plan.baseline ? (
-          <dl className="grid gap-3 text-sm sm:grid-cols-3">
-            <div>
-              <dt className="text-xs text-muted-foreground">{t("fields.startDate")}</dt>
-              <dd>
-                {date(project.startDate)} <span className="text-xs text-muted-foreground">({t("plan.baselineWas", { value: date(plan.baseline.startDate) })})</span> {days(slip?.startSlipDays) ? <SlipBadge days={slip!.startSlipDays!} label={days(slip!.startSlipDays)!} /> : null}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">{t("fields.dueDate")}</dt>
-              <dd>
-                {date(project.dueDate)} <span className="text-xs text-muted-foreground">({t("plan.baselineWas", { value: date(plan.baseline.dueDate) })})</span> {days(slip?.dueSlipDays) ? <SlipBadge days={slip!.dueSlipDays!} label={days(slip!.dueSlipDays)!} /> : null}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">{t("fields.budgetHours")}</dt>
-              <dd>
-                {plan.budgetMinutes === null ? "—" : format.number(plan.budgetMinutes / 60, { maximumFractionDigits: 1 })} <span className="text-xs text-muted-foreground">({t("plan.baselineWas", { value: plan.baseline.budgetMinutes === null ? "—" : format.number(plan.baseline.budgetMinutes / 60, { maximumFractionDigits: 1 }) })})</span>
-              </dd>
-            </div>
-          </dl>
-        ) : (
-          <p className="text-sm text-muted-foreground">{t("plan.noBaseline")}</p>
-        )}
-        {taskSlips.summary.compared > 0 ? (
-          <div className="flex flex-col gap-1 border-t pt-2 text-sm">
-            <p>
-              {t("baseline.taskSummary", { compared: taskSlips.summary.compared, late: taskSlips.summary.late, early: taskSlips.summary.early, onTime: taskSlips.summary.onTime })}
-            </p>
-            {taskSlips.summary.worst && worstTask ? (
+      <Card>
+        <CardContent className="flex flex-col gap-2">
+          <h2>{t("plan.baseline")}</h2>
+          {plan.baseline ? (
+            <dl className="grid gap-3 text-sm sm:grid-cols-3">
+              <div>
+                <dt className="text-xs text-muted-foreground">{t("fields.startDate")}</dt>
+                <dd>
+                  {date(project.startDate)} <span className="text-xs text-muted-foreground">({t("plan.baselineWas", { value: date(plan.baseline.startDate) })})</span> {days(slip?.startSlipDays) ? <SlipBadge days={slip!.startSlipDays!} label={days(slip!.startSlipDays)!} /> : null}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">{t("fields.dueDate")}</dt>
+                <dd>
+                  {date(project.dueDate)} <span className="text-xs text-muted-foreground">({t("plan.baselineWas", { value: date(plan.baseline.dueDate) })})</span> {days(slip?.dueSlipDays) ? <SlipBadge days={slip!.dueSlipDays!} label={days(slip!.dueSlipDays)!} /> : null}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">{t("fields.budgetHours")}</dt>
+                <dd>
+                  {plan.budgetMinutes === null ? "—" : format.number(plan.budgetMinutes / 60, { maximumFractionDigits: 1 })} <span className="text-xs text-muted-foreground">({t("plan.baselineWas", { value: plan.baseline.budgetMinutes === null ? "—" : format.number(plan.baseline.budgetMinutes / 60, { maximumFractionDigits: 1 }) })})</span>
+                </dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("plan.noBaseline")}</p>
+          )}
+          {taskSlips.summary.compared > 0 ? (
+            <div className="flex flex-col gap-1 border-t pt-2 text-sm">
+              <p>
+                {t("baseline.taskSummary", { compared: taskSlips.summary.compared, late: taskSlips.summary.late, early: taskSlips.summary.early, onTime: taskSlips.summary.onTime })}
+              </p>
+              {taskSlips.summary.worst && worstTask ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("baseline.worst", { days: taskSlips.summary.worst.slipDays })}{" "}
+                  <Link href={`/work/tasks/${worstTask.taskId}`} className="underline">
+                    <span className="font-mono">{worstTask.key}</span> {worstTask.title}
+                  </Link>
+                </p>
+              ) : null}
               <p className="text-xs text-muted-foreground">
-                {t("baseline.worst", { days: taskSlips.summary.worst.slipDays })}{" "}
-                <Link href={`/work/tasks/${worstTask.taskId}`} className="underline">
-                  <span className="font-mono">{worstTask.key}</span> {worstTask.title}
+                <Link href={`/projects/${project.id}/timeline`} className="underline">
+                  {t("baseline.onTimeline")}
                 </Link>
               </p>
-            ) : null}
-            <p className="text-xs text-muted-foreground">
-              <Link href={`/projects/${project.id}/timeline`} className="underline">
-                {t("baseline.onTimeline")}
-              </Link>
-            </p>
-          </div>
-        ) : null}
-        {mayRebaseline ? <RebaselineForm projectId={project.id} /> : null}
-      </section>
+            </div>
+          ) : null}
+          {mayRebaseline ? <RebaselineForm projectId={project.id} /> : null}
+        </CardContent>
+      </Card>
 
       <TableCard>
         <TableCardHeader title={t("plan.phases")} count={phases.length || null} />
@@ -180,7 +184,7 @@ export default async function ProjectPlanPage({ params }: PageProps<"/projects/[
 
       {can.editPlan ? (
         <section className="flex flex-col gap-3">
-          <h2 className="text-base font-medium">{t("plan.linkTasks")}</h2>
+          <h2>{t("plan.linkTasks")}</h2>
           <p className="text-sm text-muted-foreground">{t("plan.linkHint", { count: unlinked.length })}</p>
           <LinkTaskForm
             tasks={links.filter((link) => link.status === "todo" || link.status === "in_progress").map((link) => ({ id: link.taskId, key: link.key, title: link.title }))}
@@ -190,7 +194,7 @@ export default async function ProjectPlanPage({ params }: PageProps<"/projects/[
           />
         </section>
       ) : null}
-    </div>
+    </Page>
   );
 }
 

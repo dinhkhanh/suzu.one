@@ -1,8 +1,10 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
-import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
+import { Page, PageHeader, Section, Tile, TileGrid } from "@/components/ui/page";
+import { TableAddRow, TableCard } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { getPeriodOverview, listAdjustments, listMonthsToApprove } from "@/modules/attendance/months";
 import { canLockPeriod } from "@/modules/attendance/policy";
@@ -48,17 +50,10 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
   const unconfirmed = toConfirm;
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1>{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
-        </div>
-        <MonthNav month={month} hrefFor={href} thisMonth={thisMonth} />
-      </header>
+    <Page>
+      <PageHeader title={t("title")} description={t("description")} actions={<MonthNav month={month} hrefFor={href} thisMonth={thisMonth} />} />
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("team.title")}</h2>
+      <Section title={t("team.title")} count={team.length || null}>
         {team.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("team.empty")}</p>
         ) : (
@@ -72,73 +67,72 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
             ))}
           </>
         )}
-        {unconfirmed.length > 0 ? (
-          <TableCard>
-            <TableCardHeader title={t("team.hoursToConfirm")} count={unconfirmed.length} />
-            <List>
-              {unconfirmed.map((row) => (
-                <ListItem key={row.id} href={`/approvals/attendance/${row.approvalRequestId}`}>
-                  {team.find((person) => person.personId === row.personId)?.fullName} · {row.startDate.split("-").reverse().join("/")}
-                </ListItem>
-              ))}
-            </List>
-          </TableCard>
-        ) : null}
-      </section>
+      </Section>
+
+      {unconfirmed.length > 0 ? (
+        <Section title={t("team.hoursToConfirm")} count={unconfirmed.length}>
+          <List>
+            {unconfirmed.map((row) => (
+              <ListItem key={row.id} href={`/approvals/attendance/${row.approvalRequestId}`}>
+                <span className="flex-1 font-medium">{team.find((person) => person.personId === row.personId)?.fullName}</span>
+                <span className="font-mono text-[0.8125rem] text-muted-foreground tabular-nums">{row.startDate.split("-").reverse().join("/")}</span>
+              </ListItem>
+            ))}
+          </List>
+        </Section>
+      ) : null}
 
       {chosen && overview ? (
-        <section className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-sm font-medium text-muted-foreground">{t("period.title", { entity: chosen.shortName })}</h2>
-            {mine.length > 1 ? (
-              <nav className="tab-row">
+        <Section
+          title={t("period.title", { entity: chosen.shortName })}
+          action={
+            mine.length > 1 ? (
+              <nav className="tab-row border-b-0">
                 {mine.map((entity) => (
-                  <Link key={entity.id} href={`/attendance/timesheets?month=${month}&entity=${entity.id}`} className={entity.id === chosen.id ? "font-medium" : "underline-offset-4 hover:underline"}>
+                  <Link key={entity.id} href={`/attendance/timesheets?month=${month}&entity=${entity.id}`} aria-current={entity.id === chosen.id ? "page" : undefined}>
                     {entity.shortName}
                   </Link>
                 ))}
               </nav>
-            ) : null}
-          </div>
-          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            ) : null
+          }
+        >
+          <TileGrid className="md:grid-cols-4">
             {(["open", "confirmed", "approved", "locked"] as const).map((status) => (
-              <div key={status} className="rounded-xl border p-3">
-                <dt className="text-xs text-muted-foreground">{t(`status.${status}`)}</dt>
-                <dd className="text-xl font-semibold">{overview.counts[status]}</dd>
-              </div>
+              <Tile key={status} label={t(`status.${status}`)} value={overview.counts[status]} tone={status === "open" && overview.counts.open > 0 && overview.isOver ? "warning" : undefined} />
             ))}
-          </dl>
+          </TileGrid>
           {locked && overview.period ? (
-            <div className="rounded-xl border p-4 text-sm">
-              <p className="font-medium">{t("period.lockedOn", { date: format.dateTime(overview.period.lockedAt!, { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }) })}</p>
-              {overview.period.overrideReason ? <p className="text-muted-foreground">{t("period.override", { reason: overview.period.overrideReason, count: overview.period.exceptions.length })}</p> : null}
-            </div>
+            <Alert variant="success">
+              <div className="flex flex-col gap-0.5">
+                <p className="font-medium">{t("period.lockedOn", { date: format.dateTime(overview.period.lockedAt!, { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }) })}</p>
+                {overview.period.overrideReason ? <p>{t("period.override", { reason: overview.period.overrideReason, count: overview.period.exceptions.length })}</p> : null}
+              </div>
+            </Alert>
           ) : (
             <>
               {overview.issues.length > 0 ? (
-                <TableCard>
-                  <TableCardHeader
-                    title={t("period.issues", { blocking: blocking.length, total: overview.issues.length })}
-                    actions={
-                      <Link href={`/attendance/anomalies?month=${month}&entity=${chosen.id}`} className="text-sm underline-offset-4 hover:underline">
-                        {t("period.openConsole")}
-                      </Link>
-                    }
-                  />
+                <Section
+                  title={t("period.issues", { blocking: blocking.length, total: overview.issues.length })}
+                  action={<Link href={`/attendance/anomalies?month=${month}&entity=${chosen.id}`}>{t("period.openConsole")}</Link>}
+                >
                   <List>
                     {overview.issues.map((issue) => (
                       <ListItem key={`${issue.personId}:${issue.code}`} className={issue.blocking ? "" : "text-muted-foreground"}>
-                        {nameOf.get(issue.personId)} — {t(`issues.${issue.code}`, { count: issue.count })}
+                        <span className="flex-1">
+                          <span className="font-medium">{nameOf.get(issue.personId)}</span> — {t(`issues.${issue.code}`, { count: issue.count })}
+                        </span>
+                        {issue.blocking ? <Badge dot variant="destructive">{t("issues.blocking")}</Badge> : null}
                       </ListItem>
                     ))}
                   </List>
-                </TableCard>
+                </Section>
               ) : null}
               {overview.isOver && overview.people.length > 0 ? (
-                <>
+                <div className="flex flex-col gap-3">
                   {overview.counts.open > 0 ? <RemindButton entityId={chosen.id} month={month} label={t("period.remind", { count: overview.counts.open })} /> : null}
                   <LockPeriodForm entityId={chosen.id} month={month} blocked={blocking.length > 0} />
-                </>
+                </div>
               ) : (
                 <p className="text-sm text-muted-foreground">{overview.people.length === 0 ? t("period.empty") : t("period.notOver")}</p>
               )}
@@ -146,31 +140,32 @@ export default async function TimesheetsPage({ searchParams }: PageProps<"/atten
           )}
 
           {locked ? (
-            <TableCard>
-              <TableCardHeader title={t("adjust.listTitle")} count={adjustments.length || null} />
-              <List>
-                {adjustments.length === 0 ? <ListEmpty>{t("adjust.none")}</ListEmpty> : null}
-                {adjustments.map((row) => (
-                  <ListItem key={row.id} className="flex-col items-stretch gap-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">{row.fullName}</span>
-                      {row.date ? <span className="text-muted-foreground">{row.date.split("-").reverse().join("/")}</span> : null}
-                      <Badge variant={row.status === "voided" ? "outline" : "secondary"}>{row.status === "voided" ? t("adjust.voided") : row.payrollMonth ? t("adjust.inPayroll", { month: row.payrollMonth }) : t("adjust.waiting")}</Badge>
-                    </div>
-                    <p className="text-muted-foreground">
-                      {Object.entries(row.deltas).map(([field, value]) => `${t(`adjust.fields.${field}`)}: ${(value ?? 0) > 0 ? "+" : ""}${value}`).join(" · ")} — {row.reason}
-                    </p>
-                    {row.status === "active" && !row.payrollMonth ? <VoidAdjustmentButton adjustmentId={row.id} label={t("adjust.void")} placeholder={t("adjust.voidWhy")} /> : null}
-                  </ListItem>
-                ))}
-              </List>
-              <TableAddRow label={t("adjust.title")} open={adjustments.length === 0}>
-                <AdjustmentForm month={month} people={overview.people.map((person) => ({ id: person.personId, fullName: person.fullName }))} />
-              </TableAddRow>
-            </TableCard>
+            <Section title={t("adjust.listTitle")} count={adjustments.length || null}>
+              <TableCard>
+                <List>
+                  {adjustments.length === 0 ? <ListEmpty>{t("adjust.none")}</ListEmpty> : null}
+                  {adjustments.map((row) => (
+                    <ListItem key={row.id} className="flex-col items-stretch gap-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{row.fullName}</span>
+                        {row.date ? <span className="font-mono text-[0.8125rem] text-muted-foreground tabular-nums">{row.date.split("-").reverse().join("/")}</span> : null}
+                        <Badge variant={row.status === "voided" ? "outline" : "secondary"}>{row.status === "voided" ? t("adjust.voided") : row.payrollMonth ? t("adjust.inPayroll", { month: row.payrollMonth }) : t("adjust.waiting")}</Badge>
+                      </div>
+                      <p className="text-muted-foreground">
+                        {Object.entries(row.deltas).map(([field, value]) => `${t(`adjust.fields.${field}`)}: ${(value ?? 0) > 0 ? "+" : ""}${value}`).join(" · ")} — {row.reason}
+                      </p>
+                      {row.status === "active" && !row.payrollMonth ? <VoidAdjustmentButton adjustmentId={row.id} label={t("adjust.void")} placeholder={t("adjust.voidWhy")} /> : null}
+                    </ListItem>
+                  ))}
+                </List>
+                <TableAddRow label={t("adjust.title")} open={adjustments.length === 0}>
+                  <AdjustmentForm month={month} people={overview.people.map((person) => ({ id: person.personId, fullName: person.fullName }))} />
+                </TableAddRow>
+              </TableCard>
+            </Section>
           ) : null}
-        </section>
+        </Section>
       ) : null}
-    </div>
+    </Page>
   );
 }

@@ -8,8 +8,10 @@ import { useState, useTransition } from "react";
 import { FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { ActionResult } from "@/lib/action";
+import { cn } from "@/lib/utils";
 
 export type ChatAppStatus = {
   link: { linkedAt: string; lastSuccessAt: string | null } | null;
@@ -66,8 +68,11 @@ export function ChatAppLink({ namespace, actions, configured, status }: { namesp
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-xl border p-4">
-      <h2 className="text-sm font-medium">{t("title")}</h2>
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("title")}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
       {!configured ? <p className="text-sm text-muted-foreground">{t("notConfigured")}</p> : null}
 
       {configured && status.link ? (
@@ -96,7 +101,7 @@ export function ChatAppLink({ namespace, actions, configured, status }: { namesp
             <div className="flex flex-col gap-3">
               <p className="text-sm">{t("step1")}</p>
               {waiting.url ? (
-                <a href={waiting.url} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "outline", size: "sm" }) + " w-fit"}>
+                <a href={waiting.url} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-fit")}>
                   {t("openLink")}
                 </a>
               ) : null}
@@ -128,6 +133,7 @@ export function ChatAppLink({ namespace, actions, configured, status }: { namesp
       ) : null}
 
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
-    </section>
+      </CardContent>
+    </Card>
   );
 }

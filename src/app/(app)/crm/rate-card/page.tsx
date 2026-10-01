@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { TableAddRow, TableCard } from "@/components/ui/table";
+import { Page, PageHeader } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -27,11 +28,8 @@ export default async function RateCardPage() {
   const minutesTotal = (roles: { minutes: number }[]) => roles.reduce((sum, role) => sum + role.minutes, 0);
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header>
-        <h1>{t("rateCard.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("rateCard.intro")}</p>
-      </header>
+    <Page width="default">
+      <PageHeader title={t("rateCard.title")} description={t("rateCard.intro")} />
       <CrmTabs current="rateCard" show={shell.show} />
       <TableCard>
         <List numbered>
@@ -64,6 +62,6 @@ export default async function RateCardPage() {
           </TableAddRow>
         ) : null}
       </TableCard>
-    </div>
+    </Page>
   );
 }

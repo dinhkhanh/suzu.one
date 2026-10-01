@@ -97,7 +97,7 @@ export function RequestForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border p-4">
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <FieldErrors value={touched ? problems : {}}>
         {shown.map((field) => (
           <Field key={field.key} name={field.key} label={`${label(field)}${field.required ? " *" : ""}`}>

@@ -1,10 +1,12 @@
 "use client";
 import { useTranslations } from "next-intl";
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import { Field, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { createBranchAction, createEntityAction, updateBranchAction, updateEntityAction } from "../actions";
 import type { BranchRow, EntityRow } from "../service";
@@ -25,12 +27,14 @@ function WageRegionSelect({ defaultValue }: { defaultValue?: number | null }) {
   );
 }
 
+/** The "still active" tick of an edit form; posts `isActive=on` when ticked, like a native checkbox. */
 export function ActiveCheckbox({ defaultChecked, label }: { defaultChecked: boolean; label: string }) {
+  const id = useId();
   return (
-    <label className="flex items-center gap-2 text-sm">
-      <input type="checkbox" name="isActive" defaultChecked={defaultChecked} className="size-4" />
+    <Label htmlFor={id} className="h-10 cursor-pointer gap-2.5 font-normal md:h-9">
+      <Checkbox id={id} name="isActive" defaultChecked={defaultChecked} />
       {label}
-    </label>
+    </Label>
   );
 }
 
@@ -43,7 +47,7 @@ export function CreateEntityForm() {
     <form ref={form} onSubmit={onSubmit} className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Field name="code" label={t("code")}>
-          <Input id="code" name="code" required minLength={2} maxLength={12} pattern="[A-Za-z0-9_-]+" />
+          <Input id="code" name="code" required minLength={2} maxLength={12} pattern="[A-Za-z0-9_-]+" className="font-mono" />
         </Field>
         <Field name="shortName" label={t("shortName")}>
           <Input id="shortName" name="shortName" required maxLength={60} />
@@ -52,15 +56,15 @@ export function CreateEntityForm() {
           <Input id="legalName" name="legalName" required minLength={2} maxLength={200} />
         </Field>
         <Field name="taxCode" label={t("taxCode")}>
-          <Input id="taxCode" name="taxCode" maxLength={20} />
+          <Input id="taxCode" name="taxCode" maxLength={20} className="font-mono" />
         </Field>
         <Field name="wageRegion" label={t("wageRegion")}>
           <WageRegionSelect />
         </Field>
       </div>
       <FormError namespace="entities.errors" errorKey={errorKey} />
-      <div>
-        <Button type="submit" disabled={pending}>
+      <div className="flex justify-end">
+        <Button type="submit" disabled={pending} size="lg" className="w-full md:w-auto">
           {pending ? t("creating") : t("create")}
         </Button>
       </div>
@@ -73,7 +77,7 @@ export function EditEntityForm({ entity }: { entity: EntityRow }) {
   const { onSubmit, pending, errorKey, saved } = useActionForm(updateEntityAction, { extra: { id: entity.id } });
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-xl border p-4">
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field name="shortName" label={t("shortName")}>
           <Input id="shortName" name="shortName" required maxLength={60} defaultValue={entity.shortName} />
@@ -85,10 +89,10 @@ export function EditEntityForm({ entity }: { entity: EntityRow }) {
           <Input id="legalRepresentative" name="legalRepresentative" maxLength={120} defaultValue={entity.legalRepresentative ?? ""} />
         </Field>
         <Field name="taxCode" label={t("taxCode")}>
-          <Input id="taxCode" name="taxCode" maxLength={20} defaultValue={entity.taxCode ?? ""} />
+          <Input id="taxCode" name="taxCode" maxLength={20} defaultValue={entity.taxCode ?? ""} className="font-mono" />
         </Field>
         <Field name="insuranceUnitCode" label={t("insuranceUnitCode")}>
-          <Input id="insuranceUnitCode" name="insuranceUnitCode" maxLength={30} defaultValue={entity.insuranceUnitCode ?? ""} />
+          <Input id="insuranceUnitCode" name="insuranceUnitCode" maxLength={30} defaultValue={entity.insuranceUnitCode ?? ""} className="font-mono" />
         </Field>
         <Field name="wageRegion" label={t("wageRegion")}>
           <WageRegionSelect defaultValue={entity.wageRegion} />
@@ -101,11 +105,11 @@ export function EditEntityForm({ entity }: { entity: EntityRow }) {
       </div>
       <ActiveCheckbox defaultChecked={entity.isActive} label={t("active")} />
       <FormError namespace="entities.errors" errorKey={errorKey} />
-      <div className="flex items-center gap-3">
-        <Button type="submit" disabled={pending}>
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        {saved ? <span className="mr-auto text-xs text-success">{t("saved")}</span> : null}
+        <Button type="submit" disabled={pending} size="lg" className="w-full md:w-auto">
           {pending ? t("saving") : t("save")}
         </Button>
-        {saved ? <span className="text-sm text-muted-foreground">{t("saved")}</span> : null}
       </div>
     </form>
   );
@@ -121,7 +125,7 @@ export function BranchForm({ entityId, branch }: { entityId: string; branch?: Br
   const suffix = branch?.id ?? "new";
 
   return (
-    <form ref={form} onSubmit={onSubmit} className="flex flex-col gap-3">
+    <form ref={form} onSubmit={onSubmit} className="flex w-full flex-col gap-3">
       <div className="grid gap-3 sm:grid-cols-[1fr_2fr_auto_auto] sm:items-end">
         <Field name={`branch-name-${suffix}`} label={t("branchName")}>
           <Input id={`branch-name-${suffix}`} name="name" required maxLength={120} defaultValue={branch?.name} />

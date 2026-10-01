@@ -5,6 +5,7 @@ import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
+import { Page, PageHeader } from "@/components/ui/page";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
 import { canBookAssets, canConfirmHandover, canManageAssets, getAssetView, listBookings, listCategories } from "@/modules/assets/service";
@@ -53,18 +54,13 @@ export default async function AssetPage({ params }: PageProps<"/assets/[assetId]
     );
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="font-mono text-xs text-muted-foreground">{view.asset.code}</p>
-          <h1>{view.asset.name}</h1>
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <StatusBadge status={view.asset.status} />
-            {view.asset.categoryName} · {view.asset.entityName}
-          </p>
-        </div>
-        <AssetQr url={`${env().BETTER_AUTH_URL}/assets/qr/${view.qrToken}`} />
-      </header>
+    <Page>
+      <PageHeader eyebrow={<span className="font-mono">{view.asset.code}</span>} title={view.asset.name} actions={<AssetQr url={`${env().BETTER_AUTH_URL}/assets/qr/${view.qrToken}`} />}>
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <StatusBadge status={view.asset.status} />
+          {view.asset.categoryName} · {view.asset.entityName}
+        </p>
+      </PageHeader>
 
       <dl className="grid grid-cols-2 gap-4 rounded-md border p-4 sm:grid-cols-4">
         {fact(tField("brand"), view.asset.brand)}
@@ -132,6 +128,6 @@ export default async function AssetPage({ params }: PageProps<"/assets/[assetId]
       </TableCard>
 
       {categories.length > 0 ? null : null}
-    </div>
+    </Page>
   );
 }

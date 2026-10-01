@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { TableAddRow, TableCard } from "@/components/ui/table";
+import { Page, PageHeader } from "@/components/ui/page";
 import { canManageLibrary, canReadOps, DEFAULT_ESCALATION, DEFAULT_REMINDER_LEAD_DAYS, listTemplates, NO_EVIDENCE, type ObligationTemplateRow } from "@/modules/ops/service";
 import { ReviewButton, TemplateForm, type TemplateFormValue } from "@/modules/ops/ui/library";
 import { OpsNav } from "@/modules/ops/ui/overview";
@@ -40,17 +41,10 @@ export default async function ObligationLibraryPage() {
   };
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/ops" className="underline">
-            {t("title")}
-          </Link>
-        </p>
-        <h1>{t("library.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("library.description")}</p>
+    <Page>
+      <PageHeader eyebrow={<Link href="/ops">{t("title")}</Link>} title={t("library.title")} description={t("library.description")}>
         {unreviewed > 0 ? <p className="text-sm text-warning">{t("library.unreviewedCount", { count: unreviewed, total: templates.length })}</p> : null}
-      </header>
+      </PageHeader>
       <OpsNav active="library" reads />
 
       <TableCard>
@@ -58,26 +52,26 @@ export default async function ObligationLibraryPage() {
           const rows = templates.filter((row) => row.category === category);
           return (
             <section key={category} className="border-b last:border-b-0">
-              <h2 className="flex h-10 items-center gap-2 border-b bg-muted/30 px-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              <h2 className="section-label flex h-9 items-center gap-2 border-b bg-canvas px-3">
                 {t(`enums.category.${category}`)}
-                <span className="font-normal text-faint tabular-nums">{rows.length}</span>
+                <span className="font-mono font-normal tabular-nums">{rows.length}</span>
               </h2>
               <List>
                 {rows.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
                 {rows.map((row) => (
                   <ListItem key={row.id} className="block p-0">
                     <details>
-                      <summary className="flex min-h-12 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 transition-colors hover:bg-muted/40">
+                      <summary className="flex min-h-12 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 transition-colors hover:bg-canvas">
                         <span className="min-w-0 flex-1">
                           <span className={row.isActive ? "font-medium" : "font-medium text-muted-foreground line-through"}>{row.name}</span>
-                          <span className="block text-xs text-muted-foreground">
+                          <span className="block text-xs text-faint">
                             {[row.code, t(`enums.recurrence.${row.recurrence}`), describeRule(row), t(`enums.authority.${row.authority}`)].join(" · ")}
                           </span>
                         </span>
                         {!row.isActive ? <Badge variant="outline">{t("library.inactive")}</Badge> : null}
                         {row.reviewStatus === "reviewed" ? <Badge variant="secondary">{t("library.reviewedOn", { date: row.reviewedAt ? format.dateTime(row.reviewedAt, { dateStyle: "medium" }) : "" })}</Badge> : <Badge variant="outline">{t("unreviewed")}</Badge>}
                       </summary>
-                      <div className="border-t bg-muted/30">
+                      <div className="border-t bg-canvas">
                         {canEdit ? (
                           <>
                             <div className="flex justify-end px-3 pt-3">
@@ -112,6 +106,6 @@ export default async function ObligationLibraryPage() {
           </TableAddRow>
         ) : null}
       </TableCard>
-    </div>
+    </Page>
   );
 }

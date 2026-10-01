@@ -1,8 +1,10 @@
+import { PlusIcon } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { Page, PageHeader } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
@@ -21,18 +23,19 @@ export default async function RequestTypesPage() {
   const entityName = new Map(entities.map((entity) => [entity.id, entity.shortName]));
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1>{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
-        </div>
-        <Link href="/admin/request-types/new" className={buttonVariants({ size: "sm" })}>
-          {t("add")}
-        </Link>
-      </header>
+    <Page>
+      <PageHeader
+        title={t("title")}
+        description={t("description")}
+        actions={
+          <Link href="/admin/request-types/new" className={buttonVariants()}>
+            <PlusIcon aria-hidden />
+            {t("add")}
+          </Link>
+        }
+      />
       <TableCard>
-        <Table>
+        <Table className="min-w-[48rem]">
           <TableHeader>
             <TableRow>
               <TableHead kind="text">{t("columns.name")}</TableHead>
@@ -40,7 +43,7 @@ export default async function RequestTypesPage() {
               <TableHead kind="org">{t("entity")}</TableHead>
               <TableHead kind="number">{t("columns.fields")}</TableHead>
               <TableHead kind="number">{t("columns.followUps")}</TableHead>
-              <TableHead kind="time">{t("columns.reminder")}</TableHead>
+              <TableHead kind="time" className="text-left">{t("columns.reminder")}</TableHead>
               <TableHead kind="status">{t("columns.status")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -55,15 +58,15 @@ export default async function RequestTypesPage() {
                 </TableCell>
                 <TableCell kind="id">{type.code}</TableCell>
                 <TableCell>
-                  <Badge variant="secondary">{type.entityId ? (entityName.get(type.entityId) ?? "—") : t("wholeGroup")}</Badge>
+                  <Badge variant={type.entityId ? "info" : "secondary"}>{type.entityId ? (entityName.get(type.entityId) ?? "—") : t("wholeGroup")}</Badge>
                 </TableCell>
                 <TableCell kind="number">{type.form.fields.length}</TableCell>
-                <TableCell kind="number">{type.followUps.length || "—"}</TableCell>
-                <TableCell kind="time">{type.slaRemindAfterDays > 0 ? t("remindsAfter", { days: type.slaRemindAfterDays }) : "—"}</TableCell>
+                <TableCell kind="number">{type.followUps.length || <span className="text-faint">—</span>}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{type.slaRemindAfterDays > 0 ? t("remindsAfter", { days: type.slaRemindAfterDays }) : <span className="text-faint">—</span>}</TableCell>
                 <TableCell>
                   <span className="flex gap-1.5">
+                    <Badge dot variant={type.active ? "success" : "outline"}>{type.active ? t("on") : t("off")}</Badge>
                     {type.standalone ? null : <Badge variant="outline">{t("followUpOnly")}</Badge>}
-                    {type.active ? null : <Badge variant="outline">{t("off")}</Badge>}
                   </span>
                 </TableCell>
               </TableRow>
@@ -72,6 +75,6 @@ export default async function RequestTypesPage() {
         </Table>
         <TableAddRow label={t("add")} href="/admin/request-types/new" />
       </TableCard>
-    </div>
+    </Page>
   );
 }

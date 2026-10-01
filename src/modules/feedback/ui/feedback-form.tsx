@@ -8,6 +8,7 @@ import { type ClipboardEvent, useRef, useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { ActionResult } from "@/lib/action";
 import { cn } from "@/lib/utils";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
@@ -98,7 +99,7 @@ export function FeedbackForm({ pagePath, onSent, autoFocus }: { pagePath: string
 
         {category === "bug" || category === "question" ? (
           <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" name="blocking" className="mt-0.5 size-4" />
+            <Checkbox name="blocking" className="mt-0.5" />
             <span>{t("form.blocking")}</span>
           </label>
         ) : null}

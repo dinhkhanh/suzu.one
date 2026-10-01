@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Page } from "@/components/ui/page";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -95,7 +96,7 @@ export default async function ProjectReportsPage({ params }: PageProps<"/project
   );
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
+    <Page>
       <ProjectHeader context={context} current="reports" />
 
       <TableCard>
@@ -142,6 +143,6 @@ export default async function ProjectReportsPage({ params }: PageProps<"/project
           </TableAddRow>
         ) : null}
       </TableCard>
-    </div>
+    </Page>
   );
 }

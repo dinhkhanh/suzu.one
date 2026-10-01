@@ -2,6 +2,9 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { TableAddRow, TableCard } from "@/components/ui/table";
 import type { FlowDefinition } from "@/modules/platform/approvals/engine/flow";
 import { FLOW_PERMISSIONS, listFlows } from "@/modules/platform/approvals/flows";
 import { FlowEditor } from "@/modules/platform/approvals/ui/flow-editor";
@@ -31,9 +34,10 @@ export default async function RequestTypePage(props: PageProps<"/admin/request-t
   const [t, entities, people, flows, types] = await Promise.all([getTranslations("requests.designer"), listEntities(), listPersonNames(), listFlows(), listRequestTypes()]);
   const approvalType = approvalTypeOf(type.code);
   const mine = flows.filter((flow) => flow.requestType === approvalType);
+  const manageable = entities.filter((entity) => can(user.principal, "org:manage", { entityId: entity.id })).map((entity) => ({ id: entity.id, name: entity.shortName }));
   const options = {
     requestTypes: [{ type: approvalType, conditionFields: conditionFieldsOf(type.form), name: type.nameVi }],
-    entities: entities.filter((entity) => can(user.principal, "org:manage", { entityId: entity.id })).map((entity) => ({ id: entity.id, name: entity.shortName })),
+    entities: manageable,
     canGroup: can(user.principal, "org:manage", {}),
     people,
     roles: ROLES,
@@ -41,41 +45,47 @@ export default async function RequestTypePage(props: PageProps<"/admin/request-t
   };
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
-      <header>
-        <Link href="/admin/request-types" className="text-sm text-link hover:underline">
-          ← {t("title")}
-        </Link>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1>{type.nameVi}</h1>
-          {type.active ? null : <Badge variant="outline">{t("off")}</Badge>}
-        </div>
-        <p className="text-sm text-muted-foreground">{t("editHint")}</p>
-      </header>
-
-      <TypeDesigner
-        draft={{ ...type, form: type.form, slaEscalateTo: type.slaEscalateTo ?? null }}
-        entities={entities.filter((entity) => can(user.principal, "org:manage", { entityId: entity.id })).map((entity) => ({ id: entity.id, name: entity.shortName }))}
-        canGroup={can(user.principal, "org:manage", {})}
-        catalogue={types.map((row) => ({ code: row.code, nameVi: row.nameVi, nameEn: row.nameEn, followUps: row.followUps }))}
+    <Page>
+      <PageHeader
+        eyebrow={
+          <Link href="/admin/request-types" className="hover:text-foreground">
+            {t("title")}
+          </Link>
+        }
+        title={
+          <span className="flex items-center gap-3">
+            <span className="min-w-0 truncate">{type.nameVi}</span>
+            <Badge dot variant={type.active ? "success" : "outline"}>{type.active ? t("on") : t("off")}</Badge>
+          </span>
+        }
+        description={
+          <>
+            <span className="font-mono text-xs">{type.code}</span> · {t("editHint")}
+          </>
+        }
       />
 
-      <section className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-sm font-medium">{t("flow")}</h2>
-          <p className="text-xs text-muted-foreground">{t("flowHint")}</p>
-        </div>
+      <TypeDesigner draft={{ ...type, form: type.form, slaEscalateTo: type.slaEscalateTo ?? null }} entities={manageable} canGroup={can(user.principal, "org:manage", {})} catalogue={types.map((row) => ({ code: row.code, nameVi: row.nameVi, nameEn: row.nameEn, followUps: row.followUps }))} />
+
+      <Section title={t("flow")} count={mine.length}>
+        <p className="-mt-1 text-sm text-muted-foreground">{t("flowHint")}</p>
         {mine.map((flow) => (
-          <div key={flow.id} className="rounded-xl border p-4">
-            <p className="mb-3 text-sm font-medium">{flow.entityName ?? t("wholeGroup")}</p>
-            <FlowEditor options={options} flow={{ id: flow.id, requestType: flow.requestType, entityId: flow.entityId, active: flow.active, definition: flow.definition as FlowDefinition }} />
-          </div>
+          <Card key={flow.id}>
+            <CardHeader>
+              <CardTitle>{flow.entityName ?? t("wholeGroup")}</CardTitle>
+              <CardDescription>{flow.active ? t("flowOn") : t("off")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FlowEditor options={options} flow={{ id: flow.id, requestType: flow.requestType, entityId: flow.entityId, active: flow.active, definition: flow.definition as FlowDefinition }} />
+            </CardContent>
+          </Card>
         ))}
-        <div className="rounded-xl border p-4">
-          <p className="mb-3 text-sm font-medium">{t("addFlow")}</p>
-          <FlowEditor options={options} />
-        </div>
-      </section>
-    </div>
+        <TableCard>
+          <TableAddRow label={t("addFlow")} open={mine.length === 0} className="border-t-0">
+            <FlowEditor options={options} />
+          </TableAddRow>
+        </TableCard>
+      </Section>
+    </Page>
   );
 }

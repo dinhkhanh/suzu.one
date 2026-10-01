@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Page } from "@/components/ui/page";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
@@ -47,7 +48,7 @@ export default async function ProjectAcceptancePage({ params }: PageProps<"/proj
   const clientFacing = structure.milestones.filter((milestone) => milestone.isClientFacing).map(({ id, name }) => ({ id, name }));
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
+    <Page>
       <ProjectHeader context={context} current="acceptance" />
 
       <AcceptanceWaitingList projectId={project.id} waiting={waiting} showLink={false} />
@@ -162,6 +163,6 @@ export default async function ProjectAcceptancePage({ params }: PageProps<"/proj
           </TableAddRow>
         ) : null}
       </TableCard>
-    </div>
+    </Page>
   );
 }

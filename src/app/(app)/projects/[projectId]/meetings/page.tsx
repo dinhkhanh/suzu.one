@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Page } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -29,7 +30,7 @@ export default async function ProjectMeetingsPage({ params }: PageProps<"/projec
   const date = (value: string) => format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" });
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
+    <Page>
       <ProjectHeader context={context} current="meetings" />
 
       <TableCard>
@@ -79,6 +80,6 @@ export default async function ProjectMeetingsPage({ params }: PageProps<"/projec
           </TableAddRow>
         ) : null}
       </TableCard>
-    </div>
+    </Page>
   );
 }

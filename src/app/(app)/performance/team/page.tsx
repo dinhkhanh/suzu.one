@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { todayInVietnam } from "@/lib/dates";
 import { getTeamDashboard } from "@/modules/performance/service";
 import { bpText, MonthPicker, readMonth, ScoreFigure, ScoreState } from "@/modules/performance/ui/kpi";
+import { Page, PageHeader } from "@/components/ui/page";
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { ConfidenceBadge, ProgressBar } from "@/modules/performance/ui/progress";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -27,18 +28,18 @@ export default async function TeamPerformancePage({ searchParams }: PageProps<"/
   const entersFor = rows.some((row) => row.canEnter && row.kpi);
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1>{t("team.title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("team.description")}</p>
-        </div>
-        {entersFor ? (
-          <Link href={`/performance/team/actuals?month=${month}`} className={buttonVariants()}>
-            {t("team.enter")}
-          </Link>
-        ) : null}
-      </header>
+    <Page>
+      <PageHeader
+        title={t("team.title")}
+        description={t("team.description")}
+        actions={
+          entersFor ? (
+            <Link href={`/performance/team/actuals?month=${month}`} className={buttonVariants()}>
+              {t("team.enter")}
+            </Link>
+          ) : null
+        }
+      />
       <PerformanceNav active="team" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <MonthPicker month={month} href={(next) => `/performance/team?month=${next}`} labels={{ previous: t("kpi.previousMonth"), next: t("kpi.nextMonth") }} />
@@ -90,6 +91,6 @@ export default async function TeamPerformancePage({ searchParams }: PageProps<"/
         </TableBody>
       </Table>
       <p className="text-xs text-muted-foreground">{t("team.hint")}</p>
-    </div>
+    </Page>
   );
 }

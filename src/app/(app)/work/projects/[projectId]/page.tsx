@@ -1,7 +1,10 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChevronRightIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
@@ -22,6 +25,7 @@ import { RecurrenceManager, TemplateUseForm } from "@/modules/work/ui/planning-f
 import { accentOf } from "@/modules/work/enums";
 import { ArchiveButton, EditProjectButton } from "@/modules/work/ui/edit-dialogs";
 import { ProjectPoster } from "@/modules/work/ui/project-poster";
+import { ColorSquare } from "@/modules/work/ui/task-row";
 import { TaskListView } from "@/modules/work/ui/task-list-view";
 import { auditPrivateRead } from "@/modules/projects/service";
 import { ProjectTabs } from "@/modules/projects/ui/project-tabs";
@@ -29,6 +33,8 @@ import { MemberManager } from "@/modules/work/ui/team-forms";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("project");
+
+const DETAILS_SUMMARY = "flex h-11 cursor-pointer list-none items-center gap-2 px-4 text-sm font-medium select-none hover:bg-canvas [&::-webkit-details-marker]:hidden";
 
 export default async function ProjectPage({ params, searchParams }: PageProps<"/work/projects/[projectId]">) {
   const user = await requireUser();
@@ -76,36 +82,42 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   const [calendarTasks, daysOff, content] = view === "calendar" ? await Promise.all([withEditable(viewer, tasks), getDaysOff(project.entityId ?? team.entityId, grid.from, grid.to), contentCalendar(viewer, { ...grid, projectId: project.id }, tasks.filter((task) => task.dueDate && task.dueDate >= grid.from && task.dueDate <= grid.to))]) : [[], [], null];
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6" data-accent={accentOf(project.color, team.color)}>
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/work" className="underline">
-            {t("title")}
-          </Link>
-          {" / "}
-          <Link href={`/work/teams/${team.id}`} className="underline">
-            {team.name}
-          </Link>
-        </p>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="flex flex-wrap items-center gap-2">
+    <Page width="wide" data-accent={accentOf(project.color, team.color)}>
+      <PageHeader
+        eyebrow={
+          <span className="flex flex-wrap items-center gap-x-1.5">
+            <Link href="/work" className="hover:underline">
+              {t("title")}
+            </Link>
+            <span className="text-faint">/</span>
+            <Link href={`/work/teams/${team.id}`} className="hover:underline">
+              {team.name}
+            </Link>
+          </span>
+        }
+        title={
+          <span className="flex flex-wrap items-center gap-2.5">
             <ProjectPoster project={project} />
+            <ColorSquare color={accentOf(project.color, team.color)} className="size-2.5 rounded-[3px]" />
             {project.name}
             <Badge variant="outline">{t(`visibility.${project.visibility}`)}</Badge>
-            {project.status === "active" ? null : <Badge variant="secondary">{t(`projects.status.${project.status}`)}</Badge>}
-          </h1>
-          {manage ? (
-            <div className="flex flex-wrap items-start gap-2">
+            {project.status === "active" ? null : <Badge dot variant={statusTone(project.status)}>{t(`projects.status.${project.status}`)}</Badge>}
+          </span>
+        }
+        description={[clientName, project.description].filter(Boolean).join(" · ") || undefined}
+        actions={
+          manage ? (
+            <>
               <EditProjectButton project={project} clients={clients.map(({ id, name }) => ({ id, name }))} people={assignable} />
               <ArchiveButton target={{ projectId: project.id }} name={project.name} archived={project.status === "archived"} />
-            </div>
-          ) : null}
-        </div>
-        <p className="text-sm text-muted-foreground">{[clientName, project.description].filter(Boolean).join(" · ")}</p>
-      </header>
+            </>
+          ) : undefined
+        }
+      />
 
       <ProjectTabs projectId={project.id} current={view === "board" ? "board" : "tasks"} />
-      <ViewTabs current={view} />
+      <Section>
+        <ViewTabs current={view} />
       {view === "table" ? (
         <TaskTableView tasks={tasks} options={options} initialFilters={filters} initialSort={sort} selfId={user.person.id} today={today} canContribute={canContribute} logged={logged} />
       ) : view === "board" ? (
@@ -137,12 +149,16 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           savedViews={views.map((view) => ({ id: view.id, name: view.name, isShared: view.isShared, mine: view.ownerPersonId === user.person.id, canDelete: view.ownerPersonId === user.person.id || manage, filters: view.filters }))}
         />
       )}
+      </Section>
 
-      <details className="rounded-xl border p-4" open={recurrences.length > 0 && typeof query.planning === "string"}>
-        <summary className="cursor-pointer text-sm font-medium">{t("projects.planning", { count: recurrences.filter((row) => row.isActive).length })}</summary>
-        <div className="flex flex-col gap-6 pt-4">
+      <details className="group/details rounded-[14px] border border-border bg-background" open={recurrences.length > 0 && typeof query.planning === "string"}>
+        <summary className={DETAILS_SUMMARY}>
+          <ChevronRightIcon className="size-4 text-faint transition-transform duration-200 ease-(--ease-settle) group-open/details:rotate-90" />
+          {t("projects.planning", { count: recurrences.filter((row) => row.isActive).length })}
+        </summary>
+        <div className="flex flex-col gap-6 border-t p-4">
           <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-medium text-muted-foreground">{t("recurrence.heading")}</h2>
+            <h2 className="section-label">{t("recurrence.heading")}</h2>
             <RecurrenceManager
               projectId={project.id}
               recurrences={recurrences.map(({ id, title, rule, startDate, endDate, isActive, assigneeName, nextDate, made }) => ({ id, title, rule, startDate, endDate, isActive, assigneeName, nextDate, made }))}
@@ -153,33 +169,36 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
           </section>
           {canContribute ? (
             <section className="flex flex-col gap-2">
-              <h2 className="text-sm font-medium text-muted-foreground">{t("templates.addToProject")}</h2>
+              <h2 className="section-label">{t("templates.addToProject")}</h2>
               <TemplateUseForm templates={templates.filter((template) => template.items.length > 0).map(({ id, name, ownerId, roleKeys }) => ({ id, name, ownerId, roleKeys }))} projectId={project.id} peopleByTeam={{ "": assignable }} today={today} />
             </section>
           ) : null}
         </div>
       </details>
 
-      <details className="rounded-xl border p-4">
-        <summary className="cursor-pointer text-sm font-medium">{t("projects.membersAndSettings", { count: members.length })}</summary>
-        <div className="flex flex-col gap-6 pt-4">
+      <details className="group/details rounded-[14px] border border-border bg-background">
+        <summary className={DETAILS_SUMMARY}>
+          <ChevronRightIcon className="size-4 text-faint transition-transform duration-200 ease-(--ease-settle) group-open/details:rotate-90" />
+          {t("projects.membersAndSettings", { count: members.length })}
+        </summary>
+        <div className="flex flex-col gap-6 border-t p-4">
           <MemberManager members={members} people={people} canManage={manage} target={{ projectId: project.id }} />
           <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-medium text-muted-foreground">{t("customFields.title")}</h2>
+            <h2 className="section-label">{t("customFields.title")}</h2>
             <CustomFieldManager teamId={team.id} projectId={project.id} fields={fields} canManage={canManageCustomFields(viewer, teamFacts(team), facts)} />
           </section>
           <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-medium text-muted-foreground">{t("chains.title")}</h2>
+            <h2 className="section-label">{t("chains.title")}</h2>
             <ReviewChainManager teamId={team.id} projectId={project.id} chains={chains.map(({ id, name, projectId: chainProject, contentFormat, isActive, stages }) => ({ id, name, projectId: chainProject, contentFormat, isActive, stages }))} people={assignable} canManage={canManageReviewChains(viewer, teamFacts(team), facts)} />
           </section>
           {automations ? (
             <section className="flex flex-col gap-2">
-              <h2 className="text-sm font-medium text-muted-foreground">{t("automations.title")}</h2>
+              <h2 className="section-label">{t("automations.title")}</h2>
               <AutomationManager teamId={team.id} projectId={project.id} rules={automations.rules} options={automations.options} runs={automations.runs} canManage={canManageAutomations(viewer, teamFacts(team), facts)} />
             </section>
           ) : null}
         </div>
       </details>
-    </div>
+    </Page>
   );
 }

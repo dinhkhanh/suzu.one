@@ -1,8 +1,10 @@
 import { getTranslations } from "next-intl/server";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { List, ListEmpty, ListItem } from "@/components/ui/list";
-import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { FlowDefinition } from "@/modules/platform/approvals/engine/flow";
 import { FLOW_PERMISSIONS, listFlows } from "@/modules/platform/approvals/flows";
 import { FlowEditor } from "@/modules/platform/approvals/ui/flow-editor";
@@ -16,16 +18,19 @@ import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("approvalFlows");
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // Who approves what (FR-PLT-20, 21). Every request type ships a default flow; a flow saved here
 // replaces it for one entity or for the group. Requests already sent keep the flow they started with.
-export default async function ApprovalFlowsPage() {
+export default async function ApprovalFlowsPage(props: PageProps<"/admin/approval-flows">) {
   const user = await requireUser();
   if (!can(user.principal, "org:manage")) notFound();
   const t = await getTranslations("approvals");
-  const [allFlows, entities, people, registered] = await Promise.all([listFlows(), listEntities(), listPersonNames(), allRequestTypes()]);
+  const [allFlows, entities, people, registered, query] = await Promise.all([listFlows(), listEntities(), listPersonNames(), allRequestTypes(), props.searchParams]);
   // Only the flows this administrator could save: an entity's own admin sees that entity's flows,
   // and the group's need a group grant — the same check as `saveFlowAction`.
   const flows = allFlows.filter((flow) => can(user.principal, "org:manage", flow.entityId ? { entityId: flow.entityId } : {}));
+  const selected = typeof query.flow === "string" && UUID.test(query.flow) ? flows.find((flow) => flow.id === query.flow) : undefined;
   // The builder's types carry their own name; the ones in code are named in the message bundle.
   const label = (type: string) => registered.get(type)?.names?.vi ?? (t.has(`types.${type}`) ? t(`types.${type}` as "types.profile_change") : type);
   const options = {
@@ -42,60 +47,85 @@ export default async function ApprovalFlowsPage() {
       .join("");
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
-      <header>
-        <h1>{t("flows.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("flows.description")}</p>
-      </header>
-      <TableCard>
-        <TableCardHeader title={t("flows.defaults")} count={registered.size || null} />
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead kind="select">{t("flows.requestType")}</TableHead>
-              <TableHead kind="text">{t("flows.steps")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {[...registered.values()].map(({ definition }) => (
-              <TableRow key={definition.type}>
-                <TableCell className="font-medium">{label(definition.type)}</TableCell>
-                <TableCell className="whitespace-normal text-muted-foreground">{describe(definition.flow)}</TableCell>
+    <Page>
+      <PageHeader title={t("flows.title")} description={t("flows.description")} />
+
+      <Section title={t("flows.configured")} count={flows.length}>
+        <TableCard>
+          <Table className="min-w-[40rem]">
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="select">{t("flows.requestType")}</TableHead>
+                <TableHead kind="org">{t("flows.entity")}</TableHead>
+                <TableHead kind="text">{t("flows.steps")}</TableHead>
+                <TableHead kind="status">{t("flows.status")}</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableCard>
-      <TableCard>
-        <TableCardHeader title={t("flows.configured")} count={flows.length || null} />
-        <List>
-          {flows.length === 0 ? <ListEmpty>{t("flows.none")}</ListEmpty> : null}
-          {flows.map((flow) => {
-            const definition = flow.definition as FlowDefinition;
-            const manage = can(user.principal, "org:manage", flow.entityId ? { entityId: flow.entityId } : {});
-            return (
-              <ListItem key={flow.id}>
-                <details className="w-full">
-                  <summary className="flex cursor-pointer flex-wrap items-center gap-2">
-                    <span className="font-medium">{label(flow.requestType)}</span>
-                    <Badge variant="secondary">{flow.entityName ?? t("flows.group")}</Badge>
-                    {flow.active ? null : <Badge variant="outline">{t("flows.off")}</Badge>}
-                    <span className="text-muted-foreground">{describe(definition)}</span>
-                  </summary>
-                  {manage ? (
-                    <div className="mt-4">
-                      <FlowEditor options={options} flow={{ id: flow.id, requestType: flow.requestType, entityId: flow.entityId, active: flow.active, definition }} />
-                    </div>
-                  ) : null}
-                </details>
-              </ListItem>
-            );
-          })}
-        </List>
-        <TableAddRow label={t("flows.add")} open={flows.length === 0}>
-          <FlowEditor options={options} />
-        </TableAddRow>
-      </TableCard>
-    </div>
+            </TableHeader>
+            <TableBody>
+              {flows.length === 0 ? <TableEmpty>{t("flows.none")}</TableEmpty> : null}
+              {flows.map((flow) => {
+                const on = flow.id === selected?.id;
+                return (
+                  <TableRow key={flow.id} data-state={on ? "selected" : undefined}>
+                    <TableCell className="font-medium">
+                      <Link href={`/admin/approval-flows?flow=${flow.id}#flow`} className="hover:underline">
+                        {label(flow.requestType)}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={flow.entityId ? "info" : "secondary"}>{flow.entityName ?? t("flows.group")}</Badge>
+                    </TableCell>
+                    <TableCell className="max-w-md truncate text-muted-foreground" title={describe(flow.definition as FlowDefinition)}>
+                      {describe(flow.definition as FlowDefinition)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge dot variant={flow.active ? "success" : "outline"}>{flow.active ? t("flows.active") : t("flows.off")}</Badge>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+          <TableAddRow label={t("flows.add")} open={flows.length === 0 && !selected}>
+            <FlowEditor options={options} />
+          </TableAddRow>
+        </TableCard>
+      </Section>
+
+      {selected && can(user.principal, "org:manage", selected.entityId ? { entityId: selected.entityId } : {}) ? (
+        <Section title={t("flows.edit")} id="flow">
+          <Card>
+            <CardHeader>
+              <CardTitle>{label(selected.requestType)}</CardTitle>
+              <CardDescription>{selected.entityName ?? t("flows.group")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FlowEditor key={selected.id} options={options} flow={{ id: selected.id, requestType: selected.requestType, entityId: selected.entityId, active: selected.active, definition: selected.definition as FlowDefinition }} />
+            </CardContent>
+          </Card>
+        </Section>
+      ) : null}
+
+      <Section title={t("flows.defaults")} count={registered.size || null}>
+        <TableCard>
+          <Table className="min-w-[36rem]">
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="select">{t("flows.requestType")}</TableHead>
+                <TableHead kind="text">{t("flows.steps")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[...registered.values()].map(({ definition }) => (
+                <TableRow key={definition.type}>
+                  <TableCell className="font-medium">{label(definition.type)}</TableCell>
+                  <TableCell className="whitespace-normal text-muted-foreground">{describe(definition.flow)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
+      </Section>
+    </Page>
   );
 }

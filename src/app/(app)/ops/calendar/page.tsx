@@ -1,6 +1,11 @@
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { Segmented } from "@/components/ui/segmented";
+import { cn } from "cn";
 import { todayInVietnam } from "@/lib/dates";
 import { isMonthKey, monthGrid, shiftMonth } from "@/lib/month-grid";
 import { getDaysOff } from "@/modules/attendance/service";
@@ -39,77 +44,76 @@ export default async function OpsCalendarPage({ searchParams }: PageProps<"/ops/
   const t = await getTranslations("ops");
   const format = await getFormatter();
   const href = (next: { month?: string; entity?: string | null }) => `/ops/calendar${overviewParams(query, { month: next.month ?? month, entity: next.entity === undefined ? entityId : next.entity })}`;
-  const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "pill-on" : "pill-off"}`;
   const weekdays = grid.weeks[0].map((day) => format.dateTime(new Date(`${day.date}T00:00:00`), { weekday: "short" }));
+  const monthLabel = format.dateTime(new Date(`${month}-01T00:00:00`), { month: "long", year: "numeric" });
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header>
-        <h1>{t("calendar.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("calendar.description")}</p>
-      </header>
+    <Page width="wide">
+      <PageHeader title={t("calendar.title")} description={t("calendar.description")} />
       <OpsNav active="calendar" reads />
       <OverviewFilters action="/ops/calendar" query={query} owners={owners} hidden={{ month, entity: entityId }} />
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <nav className="flex flex-wrap items-center gap-1">
-          <Link href={href({ entity: null })} className={tab(!entityId)}>
-            {t("allEntities")}
-          </Link>
-          {entities.map((entity) => (
-            <Link key={entity.id} href={href({ entity: entity.id })} className={tab(entityId === entity.id)}>
-              {entity.code}
-            </Link>
-          ))}
-        </nav>
-        <div className="flex items-center gap-2 text-sm">
-          <Link href={href({ month: shiftMonth(month, -1) })} className="rounded-md border px-2 py-1 hover:bg-muted" aria-label={t("calendar.previous")}>
-            ←
-          </Link>
-          <span className="min-w-32 text-center font-medium">{format.dateTime(new Date(`${month}-01T00:00:00`), { month: "long", year: "numeric" })}</span>
-          <Link href={href({ month: shiftMonth(month, 1) })} className="rounded-md border px-2 py-1 hover:bg-muted" aria-label={t("calendar.next")}>
-            →
-          </Link>
-          <Link href={href({ month: today.slice(0, 7) })} className="underline">
-            {t("calendar.today")}
-          </Link>
-        </div>
-      </div>
+      <Section
+        title={monthLabel}
+        action={
+          <span className="flex items-center gap-1">
+            <Button nativeButton={false} variant="ghost" size="icon-sm" render={<Link href={href({ month: shiftMonth(month, -1) })} aria-label={t("calendar.previous")} />}>
+              <ChevronLeftIcon />
+            </Button>
+            <Button nativeButton={false} variant="ghost" size="sm" render={<Link href={href({ month: today.slice(0, 7) })} />}>
+              {t("calendar.today")}
+            </Button>
+            <Button nativeButton={false} variant="ghost" size="icon-sm" render={<Link href={href({ month: shiftMonth(month, 1) })} aria-label={t("calendar.next")} />}>
+              <ChevronRightIcon />
+            </Button>
+          </span>
+        }
+      >
+        {entities.length > 1 ? (
+          <Segmented
+            aria-label={t("dashboard.entity")}
+            value={entityId ?? ""}
+            className="self-start"
+            options={[{ value: "", label: t("allEntities"), href: href({ entity: null }) }, ...entities.map((entity) => ({ value: entity.id, label: <span className="font-mono">{entity.code}</span>, href: href({ entity: entity.id }) }))]}
+          />
+        ) : null}
 
-      <div className="overflow-x-auto">
-        <div className="grid min-w-[840px] grid-cols-7 gap-px overflow-hidden rounded-xl border bg-border text-xs">
-          {weekdays.map((weekday) => (
-            <div key={weekday} className="bg-muted px-2 py-1 font-medium text-muted-foreground">
-              {weekday}
-            </div>
-          ))}
-          {grid.weeks.flat().map((day) => {
-            const own = byDate.get(day.date) ?? [];
-            const weekend = [0, 6].includes(new Date(`${day.date}T00:00:00Z`).getUTCDay());
-            const off = offNames.get(day.date);
-            return (
-              <div key={day.date} className={`flex min-h-28 flex-col gap-1 p-1.5 ${off || weekend ? "bg-muted/60" : "bg-background"} ${day.inMonth ? "" : "opacity-50"}`}>
-                <p className={`flex items-center justify-between gap-1 ${day.date === today ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
-                  <span className={day.date === today ? "rounded-full bg-foreground px-1.5 text-background" : ""}>{Number(day.date.slice(8))}</span>
-                  {off ? <span className="truncate text-[10px]">{off}</span> : null}
-                </p>
-                {own.slice(0, MAX_PER_DAY).map((item) => (
-                  <Link key={item.taskId} href={`/ops/obligations/${item.taskId}`} title={`${item.title} · ${item.assigneeName ?? t("unassigned")}`} className="flex items-center gap-1 hover:underline">
-                    <StatusBadge colour={item.colour} label={item.entityCode} />
-                    <span className="truncate">{item.subjectName ? `${item.templateName} — ${item.subjectName}` : item.templateName}</span>
-                  </Link>
-                ))}
-                {own.length > MAX_PER_DAY ? (
-                  <Link href={`/ops/list${overviewParams(query, { entity: entityId, month: day.date.slice(0, 7) })}`} className="text-muted-foreground underline">
-                    {t("calendar.more", { count: own.length - MAX_PER_DAY })}
-                  </Link>
-                ) : null}
+        {/* The month grid keeps its shape; on a phone its container scrolls sideways. */}
+        <div className="w-full min-w-0 overflow-x-auto">
+          <div className="grid min-w-[840px] grid-cols-7 gap-px overflow-hidden rounded-[14px] border border-border bg-border text-xs">
+            {weekdays.map((weekday) => (
+              <div key={weekday} className="bg-canvas px-2 py-1.5 text-[0.6875rem] font-semibold tracking-[0.06em] text-faint uppercase">
+                {weekday}
               </div>
-            );
-          })}
+            ))}
+            {grid.weeks.flat().map((day) => {
+              const own = byDate.get(day.date) ?? [];
+              const weekend = [0, 6].includes(new Date(`${day.date}T00:00:00Z`).getUTCDay());
+              const off = offNames.get(day.date);
+              return (
+                <div key={day.date} className={cn("flex min-h-28 flex-col gap-1 p-1.5", off || weekend ? "bg-canvas" : "bg-background", !day.inMonth && "opacity-50")}>
+                  <p className={cn("flex items-center justify-between gap-1 font-mono tabular-nums", day.date === today ? "font-semibold text-foreground" : "text-faint")}>
+                    <span className={day.date === today ? "rounded-full bg-primary px-1.5 text-primary-foreground" : ""}>{Number(day.date.slice(8))}</span>
+                    {off ? <span className="truncate font-sans text-[10px]">{off}</span> : null}
+                  </p>
+                  {own.slice(0, MAX_PER_DAY).map((item) => (
+                    <Link key={item.taskId} href={`/ops/obligations/${item.taskId}`} title={`${item.title} · ${item.assigneeName ?? t("unassigned")}`} className="flex items-center gap-1 hover:underline">
+                      <StatusBadge colour={item.colour} label={item.entityCode} />
+                      <span className="truncate">{item.subjectName ? `${item.templateName} — ${item.subjectName}` : item.templateName}</span>
+                    </Link>
+                  ))}
+                  {own.length > MAX_PER_DAY ? (
+                    <Link href={`/ops/list${overviewParams(query, { entity: entityId, month: day.date.slice(0, 7) })}`} className="text-link hover:underline">
+                      {t("calendar.more", { count: own.length - MAX_PER_DAY })}
+                    </Link>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
-      <p className="text-xs text-muted-foreground">{t("calendar.legend")}</p>
-    </div>
+        <p className="text-xs text-muted-foreground">{t("calendar.legend")}</p>
+      </Section>
+    </Page>
   );
 }

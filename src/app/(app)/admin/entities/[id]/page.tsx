@@ -2,6 +2,10 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { List, ListItem } from "@/components/ui/list";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { findEntity, listBranches } from "@/modules/platform/org/service";
 import { BranchForm, EditEntityForm } from "@/modules/platform/org/ui/entity-forms";
@@ -19,65 +23,97 @@ export default async function EntityPage({ params }: PageProps<"/admin/entities/
 
   const canManage = can(user.principal, "org:manage", { entityId: entity.id });
   const branches = allBranches.filter((branch) => branch.entityId === entity.id);
-  const facts: [string, string | number | null][] = [
+  const facts: [string, string | null, boolean?][] = [
     [t("legalName"), entity.legalName],
     [t("legalRepresentative"), entity.legalRepresentative],
-    [t("taxCode"), entity.taxCode],
-    [t("insuranceUnitCode"), entity.insuranceUnitCode],
+    [t("taxCode"), entity.taxCode, true],
+    [t("insuranceUnitCode"), entity.insuranceUnitCode, true],
     [t("wageRegion"), entity.wageRegion ? t("wageRegionValue", { region: entity.wageRegion }) : null],
     [t("address"), entity.address],
   ];
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <Link href="/admin/entities" className="text-sm text-link hover:underline">
-          ← {t("title")}
-        </Link>
-        <h1 className="flex items-center gap-3">
-          {entity.shortName}
-          <span className="font-mono text-sm text-muted-foreground">{entity.code}</span>
-          {entity.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
-        </h1>
-      </header>
+    <Page>
+      <PageHeader
+        eyebrow={
+          <Link href="/admin/entities" className="hover:text-foreground">
+            {t("title")}
+          </Link>
+        }
+        title={
+          <span className="flex items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-muted font-mono text-[0.6875rem] font-medium tracking-tight text-muted-foreground">{entity.code}</span>
+            <span className="min-w-0 truncate">{entity.shortName}</span>
+            <Badge dot variant={entity.isActive ? "success" : "outline"}>{entity.isActive ? t("active") : t("inactive")}</Badge>
+          </span>
+        }
+        description={entity.legalName}
+      />
 
       {canManage ? (
-        <EditEntityForm entity={entity} />
+        <Section title={t("details")}>
+          <Card>
+            <CardContent>
+              <EditEntityForm entity={entity} />
+            </CardContent>
+          </Card>
+        </Section>
       ) : (
-        <dl className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-3">
-          {facts.map(([label, value]) => (
-            <div key={label}>
-              <dt className="text-xs text-muted-foreground">{label}</dt>
-              <dd className="text-sm">{value ?? "—"}</dd>
-            </div>
-          ))}
-        </dl>
+        <Section title={t("details")}>
+          <Table numbered={false}>
+            <TableBody>
+              {facts.map(([label, value, mono]) => (
+                <TableRow key={label}>
+                  <TableCell className="w-48 text-xs font-medium text-muted-foreground">{label}</TableCell>
+                  <TableCell className={mono ? "font-mono text-[0.8125rem]" : "whitespace-normal"}>{value ?? <span className="text-faint">—</span>}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Section>
       )}
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("branches")}</h2>
-        {branches.length === 0 ? <p className="text-sm text-muted-foreground">{t("noBranches")}</p> : null}
-        {canManage ? (
-          <>
-            {branches.map((branch) => (
-              <BranchForm key={branch.id} entityId={entity.id} branch={branch} />
-            ))}
-            <div className="rounded-xl border p-4">
+      <Section title={t("branches")} count={branches.length}>
+        <TableCard>
+          {canManage ? (
+            <List>
+              {branches.map((branch) => (
+                <ListItem key={branch.id} className="py-3">
+                  <BranchForm entityId={entity.id} branch={branch} />
+                </ListItem>
+              ))}
+            </List>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead kind="place">{t("branchName")}</TableHead>
+                  <TableHead kind="text">{t("address")}</TableHead>
+                  <TableHead kind="status">{t("status")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {branches.length === 0 ? <TableEmpty>{t("noBranches")}</TableEmpty> : null}
+                {branches.map((branch) => (
+                  <TableRow key={branch.id}>
+                    <TableCell className="font-medium">{branch.name}</TableCell>
+                    <TableCell className="whitespace-normal text-muted-foreground">{branch.address ?? "—"}</TableCell>
+                    <TableCell>
+                      <Badge dot variant={branch.isActive ? "success" : "outline"}>{branch.isActive ? t("active") : t("inactive")}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          {canManage && branches.length === 0 ? <p className="px-4 py-5 text-center text-sm text-muted-foreground">{t("noBranches")}</p> : null}
+          {canManage ? (
+            <TableAddRow label={t("addBranch")} open={branches.length === 0}>
               <BranchForm entityId={entity.id} />
-            </div>
-          </>
-        ) : (
-          <ul className="flex flex-col gap-2 text-sm">
-            {branches.map((branch) => (
-              <li key={branch.id}>
-                <span className="font-medium">{branch.name}</span>
-                {branch.address ? <span className="text-muted-foreground"> — {branch.address}</span> : null}
-                {branch.isActive ? null : <Badge variant="outline" className="ml-2">{t("inactive")}</Badge>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </div>
+            </TableAddRow>
+          ) : null}
+        </TableCard>
+      </Section>
+    </Page>
   );
 }

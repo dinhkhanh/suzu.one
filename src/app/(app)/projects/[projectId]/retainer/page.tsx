@@ -1,6 +1,9 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Page } from "@/components/ui/page";
 import { List, ListItem } from "@/components/ui/list";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
@@ -94,28 +97,30 @@ export default async function ProjectRetainerPage({ params }: PageProps<"/projec
   );
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
+    <Page>
       <ProjectHeader context={context} current="retainer" />
 
-      {plan.kind !== "retainer" ? <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{t("notRetainer")}</p> : null}
+      {plan.kind !== "retainer" ? <Alert>{t("notRetainer")}</Alert> : null}
 
       {retainer ? (
-        <section className="flex flex-col gap-2 rounded-xl border p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-medium">{t("terms")}</h2>
-            <Badge dot variant={retainer.isActive ? "success" : "outline"}>{retainer.isActive ? t("active") : t("inactive")}</Badge>
-          </div>
-          <p className="text-sm">{t("termsLine", { start: retainer.startMonth, end: retainer.endMonth ?? t("noEnd"), rollover: t(`rollovers.${retainer.rollover as "reset"}`) })}</p>
-          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            {retainer.lines.map((line) => (
-              <li key={line.title}>
-                {line.quantity} × {line.title}
-              </li>
-            ))}
-            {retainer.minutesPerMonth ? <li>{t("hoursPerMonthValue", { hours: hours(retainer.minutesPerMonth) })}</li> : null}
-            {"feePerMonthVnd" in retainer ? <li>{t("feePerMonthValue", { fee: money(retainer.feePerMonthVnd) })}</li> : null}
-          </ul>
-        </section>
+        <Card>
+          <CardContent className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2>{t("terms")}</h2>
+              <Badge dot variant={retainer.isActive ? "success" : "outline"}>{retainer.isActive ? t("active") : t("inactive")}</Badge>
+            </div>
+            <p className="text-sm">{t("termsLine", { start: retainer.startMonth, end: retainer.endMonth ?? t("noEnd"), rollover: t(`rollovers.${retainer.rollover as "reset"}`) })}</p>
+            <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              {retainer.lines.map((line) => (
+                <li key={line.title}>
+                  {line.quantity} × {line.title}
+                </li>
+              ))}
+              {retainer.minutesPerMonth ? <li>{t("hoursPerMonthValue", { hours: hours(retainer.minutesPerMonth) })}</li> : null}
+              {"feePerMonthVnd" in retainer ? <li>{t("feePerMonthValue", { fee: money(retainer.feePerMonthVnd) })}</li> : null}
+            </ul>
+          </CardContent>
+        </Card>
       ) : plan.kind === "retainer" ? (
         <p className="text-sm text-muted-foreground">{t("none")}</p>
       ) : null}
@@ -149,7 +154,7 @@ export default async function ProjectRetainerPage({ params }: PageProps<"/projec
 
       {editable ? (
         <section className="flex flex-col gap-2">
-          <h2 className="text-base font-medium">{retainer ? t("edit") : t("setUp")}</h2>
+          <h2>{retainer ? t("edit") : t("setUp")}</h2>
           <RetainerForm
             projectId={project.id}
             values={retainer ? { startMonth: retainer.startMonth, endMonth: retainer.endMonth, lines: retainer.lines, minutesPerMonth: retainer.minutesPerMonth, ...("feePerMonthVnd" in retainer ? { feePerMonthVnd: retainer.feePerMonthVnd } : {}), rollover: retainer.rollover, isActive: retainer.isActive } : null}
@@ -159,6 +164,6 @@ export default async function ProjectRetainerPage({ params }: PageProps<"/projec
           />
         </section>
       ) : null}
-    </div>
+    </Page>
   );
 }

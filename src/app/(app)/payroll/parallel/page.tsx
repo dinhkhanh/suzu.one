@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listEmploymentFacts } from "@/modules/core-hr/service";
@@ -14,6 +15,7 @@ import { parallelTemplate } from "@/modules/payroll/parallel-import";
 import { canManageCompensation, compensationReach } from "@/modules/payroll/policy";
 import { ClassifyForm, DifferenceCell, ParallelFilters, ReferenceForm } from "@/modules/payroll/ui/parallel-forms";
 import { pageTitle } from "@/i18n/page-title";
+import { Page, PageHeader } from "@/components/ui/page";
 
 export const generateMetadata = pageTitle("parallelRun");
 
@@ -44,24 +46,26 @@ export default async function ParallelRunPage({ searchParams }: PageProps<"/payr
   const summary = report.summary;
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <Link href="/payroll" className="text-sm text-link hover:underline">
-          ← {t("back")}
-        </Link>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </header>
+    <Page width="wide">
+      <PageHeader
+        eyebrow={
+          <Link href="/payroll" className="text-link hover:underline">
+            ← {t("back")}
+          </Link>
+        }
+        title={t("title")}
+        description={t("description")}
+      />
 
       <ParallelFilters entities={entities} entityId={entityId} month={month} months={known} />
 
       {/* ── The one state that decides go-live ── */}
       {report.hasReference ? (
-        <p className={`rounded-xl border p-4 text-sm ${summary.zeroUnexplained ? "border-emerald-500/50 bg-emerald-500/5" : "border-amber-500/50 bg-amber-500/5"}`}>
+        <Alert variant={summary.zeroUnexplained ? "success" : "warning"}>
           {summary.zeroUnexplained ? t("verdict.clean", { month, people: summary.people }) : t("verdict.open", { lines: summary.unexplainedLines, people: summary.differing })}
-        </p>
+        </Alert>
       ) : (
-        <p className="rounded-xl border p-4 text-sm text-muted-foreground">{t("verdict.noReference")}</p>
+        <Alert variant="neutral">{t("verdict.noReference")}</Alert>
       )}
 
       {report.rows.length > 0 ? (
@@ -125,6 +129,6 @@ export default async function ParallelRunPage({ searchParams }: PageProps<"/payr
       </section>
 
       {people.length > 0 ? <ReferenceForm entityId={entityId} month={month} people={people.map((fact) => ({ personId: fact.personId, fullName: fact.fullName, employeeCode: fact.employeeCode }))} /> : null}
-    </div>
+    </Page>
   );
 }

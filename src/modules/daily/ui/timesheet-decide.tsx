@@ -7,10 +7,12 @@ import Link from "next/link";
 import { useState } from "react";
 import { FormError } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import { bulkApproveWeeksAction, decideWeekAction, reopenWeekAction } from "../time-actions";
-import { TEXTAREA } from "./format";
 import { RunNotice } from "./run-notice";
 import { useRun } from "./use-run";
 
@@ -21,46 +23,47 @@ export function DecideWeek({ weekId, status }: { weekId: string; status: string 
   const [text, setText] = useState("");
   if (status !== "submitted" && status !== "approved") return null;
   return (
-    <div className="flex flex-col gap-2 rounded-xl border p-3">
-      <div className="flex flex-wrap gap-2">
-        {status === "submitted" ? (
-          <>
-            <Button type="button" disabled={pending} onClick={() => run(decideWeekAction, { id: weekId, decision: "approve" })}>
-              <Check aria-hidden /> {t("approve")}
+    <Card>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2 md:flex-row md:flex-wrap">
+          {status === "submitted" ? (
+            <>
+              {/* Approving is what the approver opened this week for: the one accent key. */}
+              <Button type="button" variant="accent" disabled={pending} onClick={() => run(decideWeekAction, { id: weekId, decision: "approve" })}>
+                <Check aria-hidden /> {t("approve")}
+              </Button>
+              <Button type="button" variant="outline" disabled={pending} onClick={() => setMode(mode === "return" ? null : "return")}>
+                <Undo2 aria-hidden /> {t("return")}
+              </Button>
+            </>
+          ) : (
+            <Button type="button" variant="outline" disabled={pending} onClick={() => setMode(mode === "reopen" ? null : "reopen")}>
+              <RotateCcw aria-hidden /> {t("reopen")}
             </Button>
-            <Button type="button" variant="outline" disabled={pending} onClick={() => setMode(mode === "return" ? null : "return")}>
-              <Undo2 aria-hidden /> {t("return")}
+          )}
+        </div>
+        {mode ? (
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!text.trim()) return;
+              run(mode === "return" ? decideWeekAction : reopenWeekAction, mode === "return" ? { id: weekId, decision: "return", comment: text } : { id: weekId, reason: text }, () => {
+                setMode(null);
+                setText("");
+              });
+            }}
+          >
+            <Label htmlFor="decision-text">{mode === "return" ? t("returnComment") : t("reopenReason")}</Label>
+            <Textarea id="decision-text" value={text} onChange={(event) => setText(event.target.value)} maxLength={2000} required placeholder={mode === "return" ? t("returnPlaceholder") : t("reopenPlaceholder")} />
+            <Button type="submit" size="sm" variant={mode === "return" ? "destructive" : "default"} disabled={pending || !text.trim()} className="self-start">
+              {mode === "return" ? t("confirmReturn") : t("confirmReopen")}
             </Button>
-          </>
-        ) : (
-          <Button type="button" variant="outline" disabled={pending} onClick={() => setMode(mode === "reopen" ? null : "reopen")}>
-            <RotateCcw aria-hidden /> {t("reopen")}
-          </Button>
-        )}
-      </div>
-      {mode ? (
-        <form
-          className="flex flex-col gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!text.trim()) return;
-            run(mode === "return" ? decideWeekAction : reopenWeekAction, mode === "return" ? { id: weekId, decision: "return", comment: text } : { id: weekId, reason: text }, () => {
-              setMode(null);
-              setText("");
-            });
-          }}
-        >
-          <label htmlFor="decision-text" className="text-sm font-medium">
-            {mode === "return" ? t("returnComment") : t("reopenReason")}
-          </label>
-          <textarea id="decision-text" value={text} onChange={(event) => setText(event.target.value)} maxLength={2000} required className={TEXTAREA} placeholder={mode === "return" ? t("returnPlaceholder") : t("reopenPlaceholder")} />
-          <Button type="submit" size="sm" variant={mode === "return" ? "destructive" : "default"} disabled={pending || !text.trim()} className="self-start">
-            {mode === "return" ? t("confirmReturn") : t("confirmReopen")}
-          </Button>
-        </form>
-      ) : null}
-      <FormError namespace="daily.errors" errorKey={errorKey} />
-    </div>
+          </form>
+        ) : null}
+        <FormError namespace="daily.errors" errorKey={errorKey} />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -73,9 +76,9 @@ export function WaitingList({ rows }: { rows: WaitingRow[] }) {
   const [picked, setPicked] = useState<string[]>([]);
   const all = rows.length > 0 && picked.length === rows.length;
   return (
-    <div className="flex flex-col">
+    <TableCard>
       {rows.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2.5">
+        <div className="toolbar border-b px-4 py-2.5">
           <Button type="button" size="sm" disabled={pending || picked.length === 0} onClick={() => run(bulkApproveWeeksAction, { ids: picked }, () => setPicked([]))}>
             <Check aria-hidden /> {t("approveSelected", { count: picked.length })}
           </Button>
@@ -114,10 +117,12 @@ export function WaitingList({ rows }: { rows: WaitingRow[] }) {
           ))}
         </TableBody>
       </Table>
-      <div className="flex flex-col gap-2 border-t p-3 empty:hidden">
-        <RunNotice notice={notice} dismiss={dismiss} />
-        <FormError namespace="daily.errors" errorKey={errorKey} />
-      </div>
-    </div>
+      {notice || errorKey ? (
+        <div className="flex flex-col gap-2 border-t p-3">
+          <RunNotice notice={notice} dismiss={dismiss} />
+          <FormError namespace="daily.errors" errorKey={errorKey} />
+        </div>
+      ) : null}
+    </TableCard>
   );
 }

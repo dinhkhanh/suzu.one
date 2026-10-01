@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { todayInVietnam } from "@/lib/dates";
-import { readMonth } from "@/modules/performance/ui/kpi";
+import { Page, PageHeader } from "@/components/ui/page";
+import { monthLabel, readMonth } from "@/modules/performance/ui/kpi";
 import { PerformanceNav } from "@/modules/performance/ui/nav";
 import { ScorecardView } from "@/modules/performance/ui/scorecard";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -15,13 +16,10 @@ export default async function MyKpisPage({ searchParams }: PageProps<"/performan
   const month = readMonth((await searchParams).month, todayInVietnam());
   const t = await getTranslations("performance");
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
-      <header>
-        <h1>{t("kpi.mineTitle")}</h1>
-        <p className="text-sm text-muted-foreground">{t("kpi.mineDescription")}</p>
-      </header>
+    <Page>
+      <PageHeader eyebrow={monthLabel(month)} title={t("kpi.mineTitle")} description={t("kpi.mineDescription")} />
       <PerformanceNav active="kpis" />
       <ScorecardView personId={user.person.id} month={month} basePath="/performance/kpis" />
-    </div>
+    </Page>
   );
 }

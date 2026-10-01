@@ -1,7 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Segmented } from "@/components/ui/segmented";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { canManageAttendanceConfig, canOpenAttendanceSettings } from "@/modules/attendance/policy";
@@ -26,14 +26,10 @@ export default async function CalendarSettingsPage(props: PageProps<"/attendance
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        {[year - 1, year, year + 1].map((value) => (
-          <Link key={value} href={`/attendance/settings/calendar?year=${value}`} className={value === year ? "pill-on" : "pill-off"}>
-            {value}
-          </Link>
-        ))}
+      <div className="toolbar justify-between">
+        <Segmented aria-label={t("calendar.date")} value={String(year)} options={[year - 1, year, year + 1].map((value) => ({ value: String(value), label: String(value), href: `/attendance/settings/calendar?year=${value}` }))} />
+        <p className="text-sm text-muted-foreground">{t("calendar.hint")}</p>
       </div>
-      <p className="text-sm text-muted-foreground">{t("calendar.hint")}</p>
       <TableCard>
         <Table>
           <TableHeader>

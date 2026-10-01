@@ -1,5 +1,7 @@
 import { getTranslations } from "next-intl/server";
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Page, PageHeader, Section } from "@/components/ui/page";
 import { LifecycleTemplates } from "@/modules/core-hr/ui/lifecycle-templates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { orgUnitOptions } from "@/modules/platform/org/service";
@@ -10,15 +12,22 @@ import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("checklists");
 
+const TABS = ["library", "lifecycle"] as const;
+type Tab = (typeof TABS)[number];
+
 // Checklists: the library every department keeps and hooks into its work (stages, hand-off
 // packages, intake forms, template steps, tasks) — open to the whole company — and, for HR, the
-// onboarding and offboarding templates whose steps become assigned tasks.
-export default async function ChecklistsPage() {
+// onboarding and offboarding templates whose steps become assigned tasks. Two tabs, in the URL.
+export default async function ChecklistsPage({ searchParams }: PageProps<"/checklists">) {
   const user = await requireUser();
   const viewer = await loadViewer(user);
   const hr = canManageTemplates(user.principal);
-  if (!canUseChecklists(viewer) && !hr) notFound();
+  const library = canUseChecklists(viewer);
+  if (!library && !hr) notFound();
   const t = await getTranslations("checklists");
+  const params = await searchParams;
+  const tabs = TABS.filter((tab) => (tab === "library" ? library : hr));
+  const tab: Tab = tabs.includes(params.tab as Tab) ? (params.tab as Tab) : tabs[0];
 
   const [rows, usage, units, teams] = await Promise.all([listChecklists(), checklistUsage(), orgUnitOptions({ activeOnly: true }), listTeams()]);
   const owners = await checklistOwners(rows);
@@ -47,29 +56,29 @@ export default async function ChecklistsPage() {
     : [];
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
-      <header>
-        <h1>{t("pageTitle")}</h1>
-        <p className="text-sm text-muted-foreground">{t("pageDescription")}</p>
-      </header>
-      {canUseChecklists(viewer) ? (
-        <section className="flex flex-col gap-3">
-          <div>
-            <h2 className="text-base font-medium">{t("library.title")}</h2>
-            <p className="text-sm text-muted-foreground">{t("library.description")}</p>
-          </div>
+    <Page>
+      <PageHeader title={t("pageTitle")} description={t("pageDescription")}>
+        {tabs.length > 1 ? (
+          <nav aria-label={t("tabs.label")} className="tab-row -mx-4 mt-2 px-4 md:mx-0 md:px-0">
+            {tabs.map((each) => (
+              <Link key={each} href={each === tabs[0] ? "/checklists" : `/checklists?tab=${each}`} aria-current={each === tab ? "page" : undefined}>
+                {t(`tabs.${each}`)}
+                <span className="font-mono text-[0.6875rem] text-faint tabular-nums">{each === "library" ? cards.length : null}</span>
+              </Link>
+            ))}
+          </nav>
+        ) : null}
+      </PageHeader>
+      {tab === "library" ? (
+        <Section title={t("library.title")}>
           <ChecklistLibrary checklists={cards} owners={ownerChoices} canCreate={ownerChoices.length > 0} />
-        </section>
-      ) : null}
-      {hr ? (
-        <section className="flex flex-col gap-3">
-          <div>
-            <h2 className="text-base font-medium">{t("title")}</h2>
-            <p className="text-sm text-muted-foreground">{t("description")}</p>
-          </div>
+        </Section>
+      ) : (
+        <Section title={t("title")}>
+          <p className="-mt-1 px-0.5 text-sm text-muted-foreground">{t("description")}</p>
           <LifecycleTemplates principal={user.principal} />
-        </section>
-      ) : null}
-    </div>
+        </Section>
+      )}
+    </Page>
   );
 }

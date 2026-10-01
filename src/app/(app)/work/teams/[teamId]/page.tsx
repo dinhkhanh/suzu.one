@@ -2,7 +2,9 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { Table, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
 import { DailyRulesSection } from "@/modules/daily/ui/team-rules-section";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -19,6 +21,7 @@ import { canViewAutomations, listOpenCycles } from "@/modules/work/service";
 import { accentOf, teamStatusOf } from "@/modules/work/enums";
 import { ArchiveButton, EditTeamButton } from "@/modules/work/ui/edit-dialogs";
 import { ProjectPoster } from "@/modules/work/ui/project-poster";
+import { ColorSquare } from "@/modules/work/ui/task-row";
 import { LabelManager, MemberManager, StateManager } from "@/modules/work/ui/team-forms";
 import { checklistChoices, listStateChecklists } from "@/modules/work/service";
 import { StageChecklists } from "@/modules/work/ui/checklists";
@@ -62,52 +65,51 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
   const sort = readSort(query.sort);
   const teamProjects = projects.filter((project) => project.teamId === team.id);
 
+  const listOptions = { states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })), people: assignable, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })), fields: fields.filter((field) => field.projectId === null), cycles };
+
   return (
-    <div className="flex max-w-6xl flex-col gap-8" data-accent={accentOf(team.color)}>
-      <header>
-        <p className="text-sm text-muted-foreground">
-          <Link href="/work" className="underline">
+    <Page width="wide" data-accent={accentOf(team.color)}>
+      <PageHeader
+        eyebrow={
+          <Link href="/work" className="hover:underline">
             {t("title")}
           </Link>
-        </p>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-base text-muted-foreground">{team.key}</span> {team.name}
+        }
+        title={
+          <span className="flex flex-wrap items-center gap-2">
+            <ColorSquare color={accentOf(team.color)} className="size-2.5 rounded-[3px]" />
+            <span className="font-mono text-base font-normal text-faint">{team.key}</span> {team.name}
             {status === "active" ? null : <Badge variant={status === "archived" ? "secondary" : "outline"}>{t(`teams.status.${status}`)}</Badge>}
-          </h1>
-          {admin ? (
-            <div className="flex flex-wrap items-start gap-2">
+          </span>
+        }
+        description={team.description}
+        actions={
+          admin ? (
+            <>
               <EditTeamButton team={team} entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} />
               <ArchiveButton target={{ teamId: team.id }} name={team.name} archived={status === "archived"} />
-            </div>
-          ) : null}
-        </div>
-        {team.description ? <p className="text-sm text-muted-foreground">{team.description}</p> : null}
-        <p className="flex flex-wrap gap-x-4 pt-1 text-sm">
-          {triageCounts ? (
-            <Link href={`/work/teams/${team.id}/triage`} className="underline">
-              {t("teams.triageCount", { count: triageCounts.get(team.id) ?? 0 })}
-            </Link>
-          ) : null}
-          <Link href={`/work/teams/${team.id}/cycles`} className="underline">
-            {t("cycles.title")}
+            </>
+          ) : undefined
+        }
+      />
+      <nav className="tab-row" aria-label={t("teams.settings")}>
+        <Link href={`/work/teams/${team.id}`} aria-current="page">
+          {t("task.overview")}
+        </Link>
+        {triageCounts ? (
+          <Link href={`/work/teams/${team.id}/triage`}>
+            {t("teams.triage")}
+            <span className="font-mono text-[0.6875rem] text-faint tabular-nums">{triageCounts.get(team.id) ?? 0}</span>
           </Link>
-          <Link href={`/work/teams/${team.id}/handoffs`} className="underline">
-            {t("handoff.packages.title")}
-          </Link>
-          <Link href={`/work/teams/${team.id}/reviews`} className="underline">
-            {t("chains.title")}
-          </Link>
-          {canViewAutomations(viewer, facts) ? (
-            <Link href={`/work/teams/${team.id}/automations`} className="underline">
-              {t("automations.title")}
-            </Link>
-          ) : null}
-        </p>
-      </header>
+        ) : null}
+        <Link href={`/work/teams/${team.id}/cycles`}>{t("cycles.title")}</Link>
+        <Link href={`/work/teams/${team.id}/handoffs`}>{t("handoff.packages.title")}</Link>
+        <Link href={`/work/teams/${team.id}/reviews`}>{t("chains.title")}</Link>
+        {canViewAutomations(viewer, facts) ? <Link href={`/work/teams/${team.id}/automations`}>{t("automations.title")}</Link> : null}
+      </nav>
 
+      <Section title={t("projects.title")} count={teamProjects.length || undefined}>
       <TableCard>
-        <TableCardHeader title={t("projects.title")} count={teamProjects.length || null} />
         <Table>
           <TableHeader>
             <TableRow>
@@ -123,13 +125,14 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
                 <TableCell className="max-w-96">
                   <span className="flex items-center gap-3">
                     <ProjectPoster project={project} size="sm" />
+                    <ColorSquare color={accentOf(project.color, team.color)} />
                     <Link href={`/work/projects/${project.id}`} className="min-w-0 truncate font-medium hover:underline">
                       {project.name}
                     </Link>
                   </span>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={project.status === "active" ? "outline" : "secondary"}>{t(`projects.status.${project.status}`)}</Badge>
+                  <Badge dot variant={statusTone(project.status)}>{t(`projects.status.${project.status}`)}</Badge>
                 </TableCell>
                 <TableCell kind="number">{project.openTasks}</TableCell>
                 <TableCell>
@@ -141,74 +144,47 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
           </TableBody>
         </Table>
       </TableCard>
+      </Section>
 
       {seesBacklog ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("teams.backlog")}</h2>
-          <ViewTabs current={backlogView} views={["list", "table"]} />
+        <Section title={t("teams.backlog")} count={backlog.length || undefined} action={<ViewTabs current={backlogView} views={["list", "table"]} />}>
           {backlogView === "table" ? (
-            <TaskTableView
-              tasks={backlog}
-              options={{ states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })), people: assignable, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })), fields: fields.filter((field) => field.projectId === null), cycles }}
-              initialFilters={filters}
-              initialSort={sort}
-              selfId={user.person.id}
-              today={today}
-              canContribute={canContributeToTeam(viewer, facts)}
-              logged={logged}
-            />
+            <TaskTableView tasks={backlog} options={listOptions} initialFilters={filters} initialSort={sort} selfId={user.person.id} today={today} canContribute={canContributeToTeam(viewer, facts)} logged={logged} />
           ) : (
-            <TaskListView
-              tasks={backlog}
-              options={{ states: states.map(({ id, name, category, isActive }) => ({ id, name, category, isActive })), people: assignable, labels: labels.map(({ id, name, color }) => ({ id, name, color })), clients: clients.map(({ id, name }) => ({ id, name })), fields: fields.filter((field) => field.projectId === null), cycles }}
-              scope={{ teamId: team.id, projectId: null }}
-              initialFilters={filters}
-              initialGrouping={grouping}
-              initialSort={sort}
-              selfId={user.person.id}
-              today={today}
-              canContribute={canContributeToTeam(viewer, facts)}
-            />
+            <TaskListView tasks={backlog} options={listOptions} scope={{ teamId: team.id, projectId: null }} initialFilters={filters} initialGrouping={grouping} initialSort={sort} selfId={user.person.id} today={today} canContribute={canContributeToTeam(viewer, facts)} />
           )}
-        </section>
+        </Section>
       ) : null}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("members.title")}</h2>
+      <Section title={t("members.title")} count={members.length || undefined}>
         {/* A lead adds people from the team's own place; anyone else takes `work:manage` over where they sit. */}
         {admin && addable.narrowed ? <p className="text-xs text-muted-foreground">{t("members.narrowed")}</p> : null}
         <MemberManager members={members} people={addable.people} canManage={admin} target={{ teamId: team.id }} />
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("states.title")}</h2>
+      <Section title={t("states.title")}>
         <p className="text-xs text-muted-foreground">{t("states.description")}</p>
         <StateManager teamId={team.id} states={states.map(({ id, name, category, sortOrder, isActive }) => ({ id, name, category, sortOrder, isActive }))} canManage={admin} />
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{tChecklists("title")}</h2>
+      <Section title={tChecklists("title")}>
         <p className="text-xs text-muted-foreground">{tChecklists("description")}</p>
         <StageChecklists states={states.filter((state) => state.isActive).map(({ id, name }) => ({ id, name }))} hooks={stageHooks.map(({ stateId, checklistId, required }) => ({ stateId, checklistId, required }))} choices={checklists} canManage={admin} />
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("labels.title")}</h2>
+      <Section title={t("labels.title")}>
         <LabelManager teamId={team.id} labels={labels.map(({ id, teamId: owner, name, color }) => ({ id, teamId: owner, name, color }))} canManage={admin} />
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("customFields.title")}</h2>
+      <Section title={t("customFields.title")}>
         <CustomFieldManager teamId={team.id} projectId={null} fields={fields} canManage={canManageCustomFields(viewer, facts)} />
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("intake.title")}</h2>
+      <Section title={t("intake.title")}>
         <IntakeFormManager teamId={team.id} forms={intakeForms.map(({ id, name, description, projectId, audience, fields, checklistIds, isActive, submissions }) => ({ id, name, description, projectId, audience, fields, checklistIds, isActive, submissions }))} projects={intakeProjects} checklists={checklists} canManage={admin} />
-      </section>
+      </Section>
 
       <DailyRulesSection teamId={team.id} canManage={admin} />
-
-    </div>
+    </Page>
   );
 }

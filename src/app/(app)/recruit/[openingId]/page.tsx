@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableGroupRow, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { buttonVariants } from "@/components/ui/button";
+import { Page, PageHeader } from "@/components/ui/page";
 import { listPeople } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canSetRecruitMoney, getOpeningView, listApplications, listCandidates } from "@/modules/recruit/service";
@@ -41,37 +42,34 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
   const closed = applications.filter((row) => row.status !== "active");
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
-      <header className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs text-muted-foreground">{view.opening.code}</p>
-            <h1>{view.opening.title}</h1>
-            <p className="text-sm text-muted-foreground">
-              {[view.entityName, view.departmentName, view.teamName, t(`employmentType.${view.opening.employmentType}`), t(`workMode.${view.opening.workMode}`), view.opening.workLocation].filter(Boolean).join(" · ")}
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <Badge dot variant={statusTone(view.opening.status)}>{t(`status.${view.opening.status}`)}</Badge>
-            <div className="flex gap-2">
-              {/* Only an open opening has a public page; any other status answers 404 there. */}
-              {OPENING_PUBLIC_STATUSES.includes(view.opening.status) ? <CareersLinks url={`${publicOrigin()}/careers/${view.opening.publicSlug}`} /> : null}
-              <Link href={`/recruit/${openingId}/board`} className={buttonVariants({ size: "sm", variant: "outline" })}>
-                {t("board.title")}
+    <Page>
+      <PageHeader
+        eyebrow={<span className="font-mono">{view.opening.code}</span>}
+        title={view.opening.title}
+        description={[view.entityName, view.departmentName, view.teamName, t(`employmentType.${view.opening.employmentType}`), t(`workMode.${view.opening.workMode}`), view.opening.workLocation].filter(Boolean).join(" · ")}
+        actions={
+          <>
+            {/* Only an open opening has a public page; any other status answers 404 there. */}
+            {OPENING_PUBLIC_STATUSES.includes(view.opening.status) ? <CareersLinks url={`${publicOrigin()}/careers/${view.opening.publicSlug}`} /> : null}
+            {view.canEdit ? (
+              <Link href={`/recruit/${openingId}/edit`} className={buttonVariants({ variant: "outline" })}>
+                {t("actions.edit")}
               </Link>
-              {view.canEdit ? (
-                <Link href={`/recruit/${openingId}/edit`} className={buttonVariants({ size: "sm", variant: "outline" })}>
-                  {t("actions.edit")}
-                </Link>
-              ) : null}
-            </div>
-          </div>
+            ) : null}
+            <Link href={`/recruit/${openingId}/board`} className={buttonVariants()}>
+              {t("board.title")}
+            </Link>
+          </>
+        }
+      >
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <Badge dot variant={statusTone(view.opening.status)}>{t(`status.${view.opening.status}`)}</Badge>
+          {view.canEdit ? <OpeningStatusControls openingId={openingId} status={view.opening.status} /> : null}
         </div>
-        {view.canEdit ? <OpeningStatusControls openingId={openingId} status={view.opening.status} /> : null}
-      </header>
+      </PageHeader>
 
       <section className="grid gap-4 sm:grid-cols-2">
-        <dl className="flex flex-col gap-2 rounded-xl border p-4 text-sm">
+        <dl className="flex flex-col gap-2 rounded-[14px] border border-border bg-background p-4 text-sm">
           <div className="flex justify-between gap-3">
             <dt className="text-muted-foreground">{t("columns.headcount")}</dt>
             <dd>{view.opening.headcount}</dd>
@@ -100,8 +98,8 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
           ) : null}
         </dl>
 
-        <div className="flex flex-col gap-2 rounded-xl border p-4">
-          <h2 className="text-sm font-medium">{t("columns.team")}</h2>
+        <div className="flex flex-col gap-2 rounded-[14px] border border-border bg-background p-4">
+          <h2 className="section-label">{t("columns.team")}</h2>
           {view.canEdit ? (
             <HiringTeamForm openingId={openingId} members={view.members.map((member) => ({ personId: member.personId, role: member.role }))} people={people} />
           ) : (
@@ -119,7 +117,7 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
       </section>
 
       {view.opening.description || view.opening.requirements || view.opening.benefits ? (
-        <section className="flex flex-col gap-4 rounded-xl border p-4 text-sm">
+        <section className="flex flex-col gap-4 rounded-[14px] border border-border bg-background p-4 text-sm">
           {[
             ["description", view.opening.description],
             ["requirements", view.opening.requirements],
@@ -128,7 +126,7 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
             .filter(([, body]) => !!body)
             .map(([key, body]) => (
               <div key={key} className="flex flex-col gap-1">
-                <h2 className="text-sm font-medium">{t(`form.${key}` as "form.description")}</h2>
+                <h2 className="section-label">{t(`form.${key}` as "form.description")}</h2>
                 <RichText text={body} className="text-muted-foreground" />
               </div>
             ))}
@@ -215,7 +213,7 @@ export default async function OpeningPage({ params }: PageProps<"/recruit/[openi
         ) : null}
       </TableCard>
 
-      <p className="text-xs text-muted-foreground">{t("confidential")}</p>
-    </div>
+      <p className="text-xs text-faint">{t("confidential")}</p>
+    </Page>
   );
 }

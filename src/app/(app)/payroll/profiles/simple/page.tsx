@@ -10,6 +10,7 @@ import { canSeeSimpleProfileReport } from "@/modules/payroll/policy";
 import { listSimpleProfileExposure } from "@/modules/payroll/profiles";
 import { SIMPLE_BASES } from "@/modules/payroll/enums";
 import { pageTitle } from "@/i18n/page-title";
+import { Page, PageHeader } from "@/components/ui/page";
 
 export const generateMetadata = pageTitle("simpleProfileReport");
 
@@ -24,18 +25,22 @@ export default async function SimpleProfileReportPage() {
   const entityCode = new Map(entities.map((entity) => [entity.id, entity.code]));
 
   return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <Link href="/payroll/profiles" className="text-sm text-link hover:underline">
-          ← {t("profiles.proposalsTitle")}
-        </Link>
-        <h1>{t("exposure.title")}</h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">{t("exposure.description")}</p>
-      </header>
+    <Page width="wide">
+      <PageHeader
+        eyebrow={
+          <Link href="/payroll/profiles" className="text-link hover:underline">
+            ← {t("profiles.proposalsTitle")}
+          </Link>
+        }
+        title={t("exposure.title")}
+        description={t("exposure.description")}
+      />
       <ul className="flex flex-wrap gap-2 text-sm">
         {SIMPLE_BASES.map((basis) => (
-          <li key={basis} className="rounded-md border px-3 py-1">
-            {t(`profiles.bases.${basis}`)}: <span className="font-medium tabular-nums">{rows.filter((row) => row.basis === basis).length}</span>
+          <li key={basis}>
+            <Badge variant="secondary">
+              {t(`profiles.bases.${basis}`)} · <span className="font-mono tabular-nums">{rows.filter((row) => row.basis === basis).length}</span>
+            </Badge>
           </li>
         ))}
       </ul>
@@ -82,6 +87,6 @@ export default async function SimpleProfileReportPage() {
         </TableBody>
       </Table>
       <p className="max-w-3xl text-xs text-muted-foreground">{t("exposure.legalNote")}</p>
-    </div>
+    </Page>
   );
 }

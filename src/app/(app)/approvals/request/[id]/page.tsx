@@ -1,9 +1,10 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Page, Section } from "@/components/ui/page";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import { DecisionForm, WithdrawForm } from "@/modules/platform/approvals/ui/decision-form";
-import { RequestHistory, RequestStatusBadge, RequestTools } from "@/modules/platform/approvals/ui/request-views";
+import { ApprovalChain, RequestEvents, RequestHeader, RequestTools } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listFileNames } from "@/modules/platform/files/service";
 import { listEntities } from "@/modules/platform/org/service";
@@ -49,32 +50,38 @@ export default async function GenericRequestPage(props: PageProps<"/approvals/re
     type.form.fields.some((field) => field.type === "entity") ? listEntities() : Promise.resolve([]),
   ]);
   const recordNames = new Map<string, string>([...people.map((person) => [person.id, person.fullName] as const), ...entities.map((entity) => [entity.id, entity.shortName] as const)]);
+  const typeName = locale === "en" ? type.nameEn : type.nameVi;
 
   return (
-    <div className="flex max-w-3xl flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <Link href="/approvals" className="text-sm text-link hover:underline">
-          ← {t("backToApprovals")}
-        </Link>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1>{locale === "en" ? type.nameEn : type.nameVi}</h1>
-          <RequestStatusBadge status={request.status} />
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {view.isRequester ? view.requesterName : <Link href={`/people/${request.requesterPersonId}`} className="hover:underline">{view.requesterName}</Link>}
-        </p>
-      </header>
+    // A claim carries a table of lines, which wants the room; everything else reads best narrow.
+    <Page width={claim ? "default" : "narrow"}>
+      <RequestHeader
+        title={request.summary || typeName}
+        kind={typeName}
+        status={request.status}
+        requestId={request.id}
+        who={view.isRequester ? view.requesterName : <Link href={`/people/${request.requesterPersonId}`} className="hover:underline">{view.requesterName}</Link>}
+        actions={
+          <Link href="/approvals" className="text-sm text-link hover:underline">
+            ← {t("backToApprovals")}
+          </Link>
+        }
+      />
 
       {family.parent ? <ParentRequest parent={family.parent} /> : null}
-      <Answers form={type.form} values={submission.values} requestId={request.id} fileNames={fileNames} recordNames={recordNames} />
+
+      <Section title={t("view.details")}>
+        <Answers form={type.form} values={submission.values} requestId={request.id} fileNames={fileNames} recordNames={recordNames} />
+      </Section>
       {claim ? <ClaimLines lines={claim.lines} total={claim.total} byCategory={claim.byCategory} payment={claim.payment} requestId={request.id} fileNames={fileNames} /> : null}
 
       <FollowUps family={family} requestId={request.id} />
 
+      <ApprovalChain view={view} />
+
       {view.canDecide ? <DecisionForm requestId={request.id} action={decideRequestAction} /> : null}
       {returned ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("view.correctAndResend")}</h2>
+        <Section title={t("view.correctAndResend")}>
           {claim ? (
             <ExpenseClaimForm
               form={type.form}
@@ -96,11 +103,11 @@ export default async function GenericRequestPage(props: PageProps<"/approvals/re
               submitLabel={t("view.resend")}
             />
           )}
-        </section>
+        </Section>
       ) : null}
       {view.isRequester && (request.status === "pending" || request.status === "returned") ? <WithdrawForm requestId={request.id} /> : null}
       <RequestTools view={view} viewerPersonId={user.person.id} />
-      <RequestHistory view={view} />
-    </div>
+      <RequestEvents view={view} />
+    </Page>
   );
 }

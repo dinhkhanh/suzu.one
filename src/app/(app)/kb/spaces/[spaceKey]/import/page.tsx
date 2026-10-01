@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { atLeast, canCreatePage, kbViewerOf, listTree, loadPage, loadSpace, spaceLevel } from "@/modules/kb/service";
@@ -30,17 +31,17 @@ export default async function ImportPagePage(props: PageProps<"/kb/spaces/[space
   const parents = spaceEditor ? tree : tree.filter((node) => node.id === parentId);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
+    <Page>
+      <PageHeader
+        eyebrow={
           <Link href={`/kb/spaces/${loaded.space.key}`} className="hover:underline">
             {loaded.space.name}
           </Link>
-        </p>
-        <h1>{t("import.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("import.help")}</p>
-      </header>
+        }
+        title={t("import.title")}
+        description={t("import.help")}
+      />
       <ImportPageForm spaceId={loaded.space.id} parents={parents.map((node) => ({ id: node.id, title: node.title, depth: node.depth }))} defaultParentId={parents.some((node) => node.id === parentId) ? parentId : ""} />
-    </div>
+    </Page>
   );
 }

@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Page, PageHeader } from "@/components/ui/page";
 import { audienceOptionsFor, canPostAnywhere } from "@/modules/comms/service";
 import { AnnouncementForm } from "@/modules/comms/ui/announcement-form";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -15,16 +16,16 @@ export default async function NewAnnouncementPage() {
   const choices = await audienceOptionsFor(user.principal);
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
+    <Page>
+      <PageHeader
+        eyebrow={
           <Link href="/announcements/manage" className="hover:underline">
             {t("manage.title")}
           </Link>
-        </p>
-        <h1>{t("manage.new")}</h1>
-      </header>
+        }
+        title={t("manage.new")}
+      />
       <AnnouncementForm choices={choices} draft={{ id: null, title: "", body: "", kbPageId: null, pinned: false, mustAcknowledge: false, expiresAt: "", publishAt: "", audience: [], published: false }} />
-    </div>
+    </Page>
   );
 }

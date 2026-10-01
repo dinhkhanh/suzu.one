@@ -3,7 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Page, PageHeader } from "@/components/ui/page";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
@@ -31,7 +34,8 @@ export default async function AccountsPage({ searchParams }: PageProps<"/crm/acc
   const lifecycle = (LIFECYCLES as readonly string[]).includes(one(params.lifecycle) ?? "") ? (one(params.lifecycle) as Lifecycle) : "all";
   const tier = (ACCOUNT_TIERS as readonly string[]).includes(one(params.tier) ?? "") ? (one(params.tier) as "a") : "all";
   const mine = one(params.mine) === "1";
-  const [t, f, accounts, entities, people] = await Promise.all([getTranslations("crm"), formatters(), listAccounts(shell.viewer, { q, lifecycle, tier, mine }, todayInVietnam()), listEntities(), listPersonNames()]);
+  const today = todayInVietnam();
+  const [t, f, accounts, entities, people] = await Promise.all([getTranslations("crm"), formatters(), listAccounts(shell.viewer, { q, lifecycle, tier, mine }, today), listEntities(), listPersonNames()]);
   const activeEntities = entities.filter((entity) => entity.isActive);
   const creatable = activeEntities.filter((entity) => canCreateAccount(shell.viewer, entity.id));
   const canCreate = creatable.length > 0 || canCreateAccount(shell.viewer, null);
@@ -39,15 +43,12 @@ export default async function AccountsPage({ searchParams }: PageProps<"/crm/acc
   const showReceivables = accounts.some((row) => row.seesReceivables);
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header>
-        <h1>{t("accounts.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("accounts.intro")}</p>
-      </header>
+    <Page width="wide">
+      <PageHeader title={t("accounts.title")} description={t("accounts.intro")} />
       <CrmTabs current="accounts" show={shell.show} />
-      <form method="get" className="flex flex-wrap items-end gap-2">
-        <Input name="q" defaultValue={q} placeholder={t("accounts.search")} aria-label={t("accounts.search")} className="w-56" />
-        <Select name="lifecycle" defaultValue={lifecycle} aria-label={t("account.fields.lifecycle")}>
+      <form method="get" className="toolbar">
+        <Input name="q" defaultValue={q} placeholder={t("accounts.search")} aria-label={t("accounts.search")} className="w-full sm:w-56" />
+        <Select name="lifecycle" defaultValue={lifecycle} aria-label={t("account.fields.lifecycle")} className="w-full sm:w-44">
           <option value="all">{t("accounts.anyLifecycle")}</option>
           {LIFECYCLES.map((value) => (
             <option key={value} value={value}>
@@ -55,7 +56,7 @@ export default async function AccountsPage({ searchParams }: PageProps<"/crm/acc
             </option>
           ))}
         </Select>
-        <Select name="tier" defaultValue={tier} aria-label={t("account.fields.tier")}>
+        <Select name="tier" defaultValue={tier} aria-label={t("account.fields.tier")} className="w-full sm:w-40">
           <option value="all">{t("accounts.anyTier")}</option>
           {ACCOUNT_TIERS.map((value) => (
             <option key={value} value={value}>
@@ -63,10 +64,10 @@ export default async function AccountsPage({ searchParams }: PageProps<"/crm/acc
             </option>
           ))}
         </Select>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="mine" value="1" defaultChecked={mine} /> {t("accounts.mine")}
-        </label>
-        <Button type="submit" size="sm" variant="outline">
+        <Label className="flex h-10 items-center gap-2 text-sm md:h-9">
+          <Checkbox name="mine" value="1" defaultChecked={mine} /> {t("accounts.mine")}
+        </Label>
+        <Button type="submit" variant="outline">
           {t("filter")}
         </Button>
       </form>
@@ -94,10 +95,10 @@ export default async function AccountsPage({ searchParams }: PageProps<"/crm/acc
                   <Link href={`/crm/accounts/${row.client.id}`} className="font-medium hover:underline">
                     {row.client.name}
                   </Link>
-                  <span className="ml-2 font-mono text-xs text-muted-foreground">{row.client.code}</span>
+                  <span className="ml-2 font-mono text-xs text-faint">{row.client.code}</span>
                   {row.profile?.tier ? <Badge variant="outline" className="ml-2">{t(`enums.tier.${row.profile.tier as "a"}`)}</Badge> : null}
                   {row.profile?.creditHold ? <Badge variant="destructive" className="ml-2">{t("account.creditHold")}</Badge> : null}
-                  {row.brands.length ? <p className="text-xs text-muted-foreground">{row.brands.map((brand) => brand.name).join(", ")}</p> : null}
+                  {row.brands.length ? <p className="text-xs text-faint">{row.brands.map((brand) => brand.name).join(", ")}</p> : null}
                 </TableCell>
                 <TableCell>
                   <Badge dot variant={LIFECYCLE_TONE[row.profile?.lifecycle ?? "prospect"]}>
@@ -109,8 +110,8 @@ export default async function AccountsPage({ searchParams }: PageProps<"/crm/acc
                 <TableCell kind="number">{row.signals.openDeals}</TableCell>
                 {showMoney ? <TableCell kind="money">{row.seesMoney ? f.money(row.signals.pipelineVnd) : "—"}</TableCell> : null}
                 {showReceivables ? <TableCell kind="money" className={row.signals.overdueVnd > 0 ? "text-destructive" : undefined}>{row.seesReceivables ? f.money(row.signals.overdueVnd) : "—"}</TableCell> : null}
-                <TableCell>{f.date(row.signals.lastActivityOn)}</TableCell>
-                <TableCell>{f.date(row.signals.nextFollowUpOn)}</TableCell>
+                <TableCell kind="date">{f.date(row.signals.lastActivityOn)}</TableCell>
+                <TableCell kind="date" className={row.signals.nextFollowUpOn && row.signals.nextFollowUpOn < today ? "text-destructive" : undefined}>{f.date(row.signals.nextFollowUpOn)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -121,6 +122,6 @@ export default async function AccountsPage({ searchParams }: PageProps<"/crm/acc
           </TableAddRow>
         ) : null}
       </TableCard>
-    </div>
+    </Page>
   );
 }

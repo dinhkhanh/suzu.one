@@ -1,7 +1,9 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { Table, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { getWhoIsIn, type PresenceStatus } from "@/modules/attendance/punches";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -20,19 +22,17 @@ export default async function WhoIsInPage(props: PageProps<"/attendance/today">)
   const departmentId = typeof query.department === "string" && query.department ? query.department : null;
   const presence = await getWhoIsIn({ personId: user.person.id, principal: user.principal }, { departmentId });
   const time = (value: Date | null) => (value ? format.dateTime(value, { hour: "2-digit", minute: "2-digit" }) : null);
+  const times = (row: (typeof presence.rows)[number]) => [time(row.firstInAt), time(row.lastOutAt)].filter(Boolean).join(" → ");
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{format.dateTime(new Date(`${presence.date}T00:00:00`), { weekday: "long", day: "numeric", month: "long" })}</p>
-      </header>
+    <Page>
+      <PageHeader eyebrow={format.dateTime(new Date(`${presence.date}T00:00:00`), { weekday: "long", day: "numeric", month: "long" })} title={t("title")} />
 
       <ul className="flex flex-wrap gap-2 text-sm">
         {ORDER.filter((status) => presence.counts[status] > 0).map((status) => (
           <li key={status}>
             <Badge dot variant={statusTone(status)}>
-              {t(`status.${status}`)} · {presence.counts[status]}
+              {t(`status.${status}`)} <span className="font-mono tabular-nums">{presence.counts[status]}</span>
             </Badge>
           </li>
         ))}
@@ -40,46 +40,76 @@ export default async function WhoIsInPage(props: PageProps<"/attendance/today">)
 
       {presence.departments.length > 1 ? (
         <nav className="tab-row">
-          <Link href="/attendance/today" className={departmentId ? "underline-offset-4 hover:underline" : "font-medium"}>
+          <Link href="/attendance/today" aria-current={departmentId ? undefined : "page"}>
             {t("everyone")}
           </Link>
           {presence.departments.map((department) => (
-            <Link key={department.id} href={`/attendance/today?department=${department.id}`} className={department.id === departmentId ? "font-medium" : "underline-offset-4 hover:underline"}>
+            <Link key={department.id} href={`/attendance/today?department=${department.id}`} aria-current={department.id === departmentId ? "page" : undefined}>
               {department.name}
             </Link>
           ))}
         </nav>
       ) : null}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead kind="person">{t("columns.person")}</TableHead>
-            <TableHead kind="status">{t("columns.status")}</TableHead>
-            <TableHead kind="time" className="text-left">{t("columns.times")}</TableHead>
-            <TableHead kind="org">{t("columns.department")}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+      <Section count={presence.rows.length || null}>
+        <List className="md:hidden">
+          {presence.rows.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
           {presence.rows.map((row) => (
-            <TableRow key={row.personId}>
-              <TableCell className="font-medium">
-                {row.fullName}
-                {row.isSelf ? <span className="font-normal text-muted-foreground"> · {t("you")}</span> : null}
-              </TableCell>
-              <TableCell>
-                <span className="flex items-center gap-1.5">
-                  <Badge dot variant={statusTone(row.status)}>{t(`status.${row.status}`)}</Badge>
+            <ListItem key={row.personId}>
+              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="truncate font-medium">
+                  {row.fullName}
+                  {row.isSelf ? <span className="font-normal text-muted-foreground"> · {t("you")}</span> : null}
+                </span>
+                <span className="flex flex-wrap items-center gap-1.5">
+                  <Badge dot variant={statusTone(row.status)}>
+                    {t(`status.${row.status}`)}
+                  </Badge>
                   {row.partLeave ? <Badge variant="outline">{t("partLeave")}</Badge> : null}
                   {row.flagged ? <Badge variant="outline">{t("flagged")}</Badge> : null}
                 </span>
-              </TableCell>
-              <TableCell className="tabular-nums text-muted-foreground">{[time(row.firstInAt), time(row.lastOutAt)].filter(Boolean).join(" → ")}</TableCell>
-              <TableCell className="text-muted-foreground">{row.departmentName ?? ""}</TableCell>
-            </TableRow>
+              </span>
+              <span className="font-mono text-[0.8125rem] text-muted-foreground tabular-nums">{times(row)}</span>
+            </ListItem>
           ))}
-        </TableBody>
-      </Table>
-    </div>
+        </List>
+        <TableCard className="hidden md:flex">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="person">{t("columns.person")}</TableHead>
+                <TableHead kind="status">{t("columns.status")}</TableHead>
+                <TableHead kind="time" className="text-left">
+                  {t("columns.times")}
+                </TableHead>
+                <TableHead kind="org">{t("columns.department")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {presence.rows.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
+              {presence.rows.map((row) => (
+                <TableRow key={row.personId}>
+                  <TableCell className="font-medium">
+                    {row.fullName}
+                    {row.isSelf ? <span className="font-normal text-muted-foreground"> · {t("you")}</span> : null}
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1.5">
+                      <Badge dot variant={statusTone(row.status)}>
+                        {t(`status.${row.status}`)}
+                      </Badge>
+                      {row.partLeave ? <Badge variant="outline">{t("partLeave")}</Badge> : null}
+                      {row.flagged ? <Badge variant="outline">{t("flagged")}</Badge> : null}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-left font-mono text-[0.8125rem] text-muted-foreground tabular-nums">{times(row)}</TableCell>
+                  <TableCell className="text-muted-foreground">{row.departmentName ?? ""}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
+      </Section>
+    </Page>
   );
 }

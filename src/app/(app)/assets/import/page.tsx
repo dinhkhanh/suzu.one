@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
+import { Page, PageHeader } from "@/components/ui/page";
 import { assetTemplate } from "@/modules/assets/import";
 import { commitAssetImportAction, stageAssetImportAction } from "@/modules/assets/import-actions";
 import { canManageAssets } from "@/modules/assets/service";
@@ -17,16 +18,16 @@ export default async function ImportAssetsPage() {
   const t = await getTranslations("assets.import");
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1>{t("title")}</h1>
-          <p className="max-w-3xl text-sm text-muted-foreground">{t("description")}</p>
-        </div>
-        <Link href="/assets" className={buttonVariants({ variant: "outline" })}>
-          {t("back")}
-        </Link>
-      </header>
+    <Page>
+      <PageHeader
+        title={t("title")}
+        description={t("description")}
+        actions={
+          <Link href="/assets" className={buttonVariants({ variant: "outline" })}>
+            {t("back")}
+          </Link>
+        }
+      />
       <ul className="list-disc pl-5 text-sm text-muted-foreground">
         <li>{t("notes.newOnly")}</li>
         <li>{t("notes.code")}</li>
@@ -34,6 +35,6 @@ export default async function ImportAssetsPage() {
         <li>{t("notes.serial")}</li>
       </ul>
       <ImportWizard title={t("wizard")} template={{ fileName: "assets.csv", csv: assetTemplate() }} stageAction={stageAssetImportAction} commitAction={commitAssetImportAction} />
-    </div>
+    </Page>
   );
 }

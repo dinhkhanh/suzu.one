@@ -1,6 +1,9 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Page, PageHeader } from "@/components/ui/page";
+import { Segmented } from "@/components/ui/segmented";
 import { canReadUnansweredLog, listUnanswered } from "@/modules/ai/service";
 import { ResolveUnansweredForm } from "@/modules/ai/ui/resolve-form";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -21,41 +24,47 @@ export default async function UnansweredPage(props: PageProps<"/assistant/unansw
   const [t, format, rows] = await Promise.all([getTranslations("assistant.unanswered"), getFormatter(), listUnanswered(user.principal, { resolved })]);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-2">
-        <p className="text-sm text-muted-foreground">
+    <Page>
+      <PageHeader
+        eyebrow={
           <Link href="/assistant" className="hover:underline">
             {t("back")}
           </Link>
-        </p>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("intro")}</p>
-        <nav className="tab-row">
-          <Link href="/assistant/unanswered" className={resolved ? "pill-off" : "pill-on"}>
-            {t("open")}
-          </Link>
-          <Link href="/assistant/unanswered?show=resolved" className={resolved ? "pill-on" : "pill-off"}>
-            {t("all")}
-          </Link>
-        </nav>
-      </header>
+        }
+        title={t("title")}
+        description={t("intro")}
+        actions={
+          <Segmented
+            aria-label={t("title")}
+            value={resolved ? "all" : "open"}
+            options={[
+              { value: "open", label: t("open"), href: "/assistant/unanswered" },
+              { value: "all", label: t("all"), href: "/assistant/unanswered?show=resolved" },
+            ]}
+          />
+        }
+      />
 
-      {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("empty")}</p>
-      ) : (
-        <ol className="flex flex-col gap-4">
-          {rows.map((row) => (
-            <li key={row.id} className="flex flex-col gap-2 rounded-xl border p-3">
-              <p className="text-sm font-medium">{row.question}</p>
+      <List>
+        {rows.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
+        {rows.map((row) => (
+          <ListItem key={row.id} className="flex-col items-stretch gap-2 py-3">
+            <p className="text-sm font-medium">{row.question}</p>
+            <p className="text-xs text-faint">
+              {t("askedTimes", { count: row.asked })} · <span className="font-mono tabular-nums">{format.dateTime(row.createdAt, { dateStyle: "medium" })}</span> · {row.locale.toUpperCase()}
+              {row.bestScore === null ? "" : ` · ${t("bestScore", { score: Math.round(row.bestScore * 100) })}`}
+            </p>
+            {row.resolvedAt ? (
               <p className="text-xs text-muted-foreground">
-                {t("askedTimes", { count: row.asked })} · {format.dateTime(row.createdAt, { dateStyle: "medium" })} · {row.locale.toUpperCase()}
-                {row.bestScore === null ? "" : ` · ${t("bestScore", { score: Math.round(row.bestScore * 100) })}`}
+                {t("resolvedOn", { date: format.dateTime(row.resolvedAt, { dateStyle: "medium" }) })}
+                {row.resolutionNote ? ` — ${row.resolutionNote}` : ""}
               </p>
-              {row.resolvedAt ? <p className="text-xs text-muted-foreground">{t("resolvedOn", { date: format.dateTime(row.resolvedAt, { dateStyle: "medium" }) })}{row.resolutionNote ? ` — ${row.resolutionNote}` : ""}</p> : <ResolveUnansweredForm id={row.id} />}
-            </li>
-          ))}
-        </ol>
-      )}
-    </div>
+            ) : (
+              <ResolveUnansweredForm id={row.id} />
+            )}
+          </ListItem>
+        ))}
+      </List>
+    </Page>
   );
 }

@@ -1,8 +1,12 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cn } from "cn";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { buttonVariants } from "@/components/ui/button";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { Segmented } from "@/components/ui/segmented";
+import { Table, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
 import { ANOMALY_KINDS, type AnomalyKind, listAnomalies } from "@/modules/attendance/anomalies";
 import { canLockPeriod, canOpenAttendanceSettings } from "@/modules/attendance/policy";
@@ -41,94 +45,98 @@ export default async function AnomaliesPage({ searchParams }: PageProps<"/attend
     return `/attendance/anomalies?${Object.entries(next).flatMap(([key, value]) => (value ? [`${key}=${value}`] : [])).join("&")}`;
   };
   const total = Object.values(counts).reduce((sum, value) => sum + (value ?? 0), 0);
+  const kindOptions = [{ value: "all", label: t("allKinds"), count: total, href: href({ kind: null }) }, ...ANOMALY_KINDS.filter((value) => counts[value]).map((value) => ({ value, label: t(`kinds.${value}`), count: counts[value], href: href({ kind: value }) }))];
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1>{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
-        </div>
-        <MonthNav month={month} hrefFor={(value) => href({ month: value })} thisMonth={thisMonth} />
-      </header>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav className="tab-row">
-          <Link href={href({ entity: null })} className={entityId ? "underline-offset-4 hover:underline" : "font-medium"}>
-            {t("allEntities")}
-          </Link>
-          {entities.map((entity) => (
-            <Link key={entity.id} href={href({ entity: entity.id })} className={entity.id === entityId ? "font-medium" : "underline-offset-4 hover:underline"}>
-              {entity.shortName}
+    <Page width="wide">
+      <PageHeader
+        title={t("title")}
+        description={t("description")}
+        actions={
+          <>
+            <Link href={`/attendance/timesheets?month=${month}${entityId ? `&entity=${entityId}` : ""}`} className={cn(buttonVariants({ variant: "outline" }))}>
+              {t("toTimesheets")}
             </Link>
-          ))}
-        </nav>
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          <Link href={`/attendance/timesheets?month=${month}${entityId ? `&entity=${entityId}` : ""}`} className="underline-offset-4 hover:underline">
-            {t("toTimesheets")}
-          </Link>
-          <ExportButton action={exportAnomaliesAction} input={{ month, ...filters }} label={t("export")} failedLabel={t("exportFailed")} truncatedLabel={t("exportTruncated")} />
-        </div>
-      </div>
-      <nav className="flex flex-wrap gap-2 text-xs">
-        <Link href={href({ kind: null })} className={kind ? "rounded-md border px-2 py-1 hover:bg-muted" : "rounded-md bg-primary px-2 py-1 text-primary-foreground"}>
-          {t("allKinds")} · {total}
+            <ExportButton action={exportAnomaliesAction} input={{ month, ...filters }} label={t("export")} failedLabel={t("exportFailed")} truncatedLabel={t("exportTruncated")} />
+          </>
+        }
+      />
+
+      <nav className="tab-row">
+        <Link href={href({ entity: null })} aria-current={entityId ? undefined : "page"}>
+          {t("allEntities")}
         </Link>
-        {ANOMALY_KINDS.filter((value) => counts[value]).map((value) => (
-          <Link key={value} href={href({ kind: value })} className={value === kind ? "rounded-md bg-primary px-2 py-1 text-primary-foreground" : "rounded-md border px-2 py-1 hover:bg-muted"}>
-            {t(`kinds.${value}`)} · {counts[value]}
+        {entities.map((entity) => (
+          <Link key={entity.id} href={href({ entity: entity.id })} aria-current={entity.id === entityId ? "page" : undefined}>
+            {entity.shortName}
           </Link>
         ))}
       </nav>
+
+      <div className="toolbar justify-between">
+        <div className="max-w-full overflow-x-auto">
+          <Segmented aria-label={t("columns.kind")} value={kind ?? "all"} options={kindOptions} />
+        </div>
+        <MonthNav month={month} hrefFor={(value) => href({ month: value })} thisMonth={thisMonth} />
+      </div>
+
       {personId ? (
         <p className="text-sm">
-          {people.find((person) => person.id === personId)?.fullName} ·{" "}
-          <Link href={href({ person: null })} className="underline-offset-4 hover:underline">
+          <span className="font-medium">{people.find((person) => person.id === personId)?.fullName}</span> ·{" "}
+          <Link href={href({ person: null })} className="text-link">
             {t("clearPerson")}
           </Link>
         </p>
       ) : null}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead kind="select">{t("columns.kind")}</TableHead>
-            <TableHead kind="person">{t("columns.subject")}</TableHead>
-            <TableHead kind="date">{t("columns.date")}</TableHead>
-            <TableHead kind="number">{t("columns.amount")}</TableHead>
-            <TableHead kind="actions" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {lines.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
-          {lines.map((line) => (
-            <TableRow key={line.key}>
-              <TableCell>
-                <Badge variant={line.blocking ? "destructive" : "secondary"}>{t(`kinds.${line.kind}`)}</Badge>
-              </TableCell>
-              <TableCell className="font-medium">
-                {line.personId ? (
-                  <Link href={href({ person: line.personId })} className="underline-offset-4 hover:underline">
-                    {line.fullName}
-                  </Link>
-                ) : (
-                  line.detail
-                )}
-              </TableCell>
-              <TableCell>{line.date ? line.date.split("-").reverse().join("/") : ""}</TableCell>
-              <TableCell kind="number">{line.kind === "unmapped_device_id" ? t("lines", { count: line.minutes ?? 0 }) : line.minutes ? t("minutes", { minutes: line.minutes }) : ""}</TableCell>
-              <TableCell kind="actions">
-                <span className="flex items-center justify-end gap-2">
-                  {line.href ? (
-                    <Link href={line.href} className="underline-offset-4 hover:underline">
-                      {t(`fix.${line.fix}`)}
-                    </Link>
-                  ) : null}
-                  {line.personId ? <NudgeButton personId={line.personId} month={month} label={t("nudge")} /> : null}
-                </span>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+
+      <Section count={lines.length || null}>
+        <TableCard>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead kind="select">{t("columns.kind")}</TableHead>
+                <TableHead kind="person">{t("columns.subject")}</TableHead>
+                <TableHead kind="date">{t("columns.date")}</TableHead>
+                <TableHead kind="number">{t("columns.amount")}</TableHead>
+                <TableHead kind="actions" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {lines.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
+              {lines.map((line) => (
+                <TableRow key={line.key}>
+                  <TableCell>
+                    <Badge dot variant={line.blocking ? "destructive" : "secondary"}>
+                      {t(`kinds.${line.kind}`)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {line.personId ? (
+                      <Link href={href({ person: line.personId })} className="hover:underline">
+                        {line.fullName}
+                      </Link>
+                    ) : (
+                      line.detail
+                    )}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{line.date ? line.date.split("-").reverse().join("/") : ""}</TableCell>
+                  <TableCell kind="number">{line.kind === "unmapped_device_id" ? t("lines", { count: line.minutes ?? 0 }) : line.minutes ? t("minutes", { minutes: line.minutes }) : ""}</TableCell>
+                  <TableCell kind="actions">
+                    <span className="flex items-center justify-end gap-2">
+                      {line.href ? (
+                        <Link href={line.href} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                          {t(`fix.${line.fix}`)}
+                        </Link>
+                      ) : null}
+                      {line.personId ? <NudgeButton personId={line.personId} month={month} label={t("nudge")} /> : null}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCard>
+      </Section>
+    </Page>
   );
 }

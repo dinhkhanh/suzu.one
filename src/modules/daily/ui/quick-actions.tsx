@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { FormError } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
@@ -70,7 +71,7 @@ export function QuickLog({ date, taskId, billable = false, tasks }: { date: stri
       </Button>
     );
   return (
-    <div className="flex w-full flex-col gap-2 rounded-lg border bg-muted/40 p-2">
+    <div className="flex w-full flex-col gap-2 rounded-[0.625rem] bg-muted p-2.5">
       {taskId ? null : (
         <Select
           aria-label={t("time.what")}
@@ -94,8 +95,8 @@ export function QuickLog({ date, taskId, billable = false, tasks }: { date: stri
           </optgroup>
         </Select>
       )}
-      <label className="flex items-center gap-1.5 text-xs">
-        <input type="checkbox" checked={billed} onChange={(event) => setChosen(event.target.checked)} /> {t("time.billableLabel")}
+      <label className="flex items-center gap-2 text-xs">
+        <Checkbox checked={billed} onCheckedChange={(checked) => setChosen(checked)} /> {t("time.billableLabel")}
       </label>
       <div className="flex flex-wrap items-center gap-1.5">
         {QUICK_MINUTES.map((minutes) => (
@@ -154,15 +155,15 @@ export function QuickAdd({ targets, createTask, selfId, today }: { targets: Targ
     });
   };
   return (
-    <form onSubmit={submit} className="flex flex-col gap-2">
+    <form onSubmit={submit} className="flex flex-col gap-1.5">
       <div className="flex gap-2">
-        <Input aria-label={t("today.quickAdd")} placeholder={t("today.quickAdd")} value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} className="flex-1" />
-        <Button type="submit" disabled={pending || !title.trim()} aria-label={t("today.add")}>
+        <Input aria-label={t("today.quickAdd")} placeholder={t("today.quickAdd")} value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} className="min-w-0 flex-1" />
+        <Button type="submit" size="icon" disabled={pending || !title.trim()} aria-label={t("today.add")}>
           <Plus aria-hidden />
         </Button>
       </div>
-      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-        <Select aria-label={t("today.where")} value={place} onChange={(event) => setPlace(event.target.value)} className="h-8 w-auto max-w-56 text-xs">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-0.5 text-xs text-muted-foreground">
+        <Select aria-label={t("today.where")} value={place} onChange={(event) => setPlace(event.target.value)} className="h-7 w-auto max-w-56 border-transparent bg-transparent px-1 text-xs text-muted-foreground shadow-none md:h-7">
           {places.map((row) => (
             <option key={row.value} value={row.value}>
               {row.label}
@@ -170,7 +171,7 @@ export function QuickAdd({ targets, createTask, selfId, today }: { targets: Targ
           ))}
         </Select>
         <label className="flex items-center gap-1.5">
-          <input type="checkbox" checked={planIt} onChange={(event) => setPlanIt(event.target.checked)} /> {t("today.addToPlan")}
+          <Checkbox checked={planIt} onCheckedChange={(checked) => setPlanIt(checked)} className="size-4" /> {t("today.addToPlan")}
         </label>
       </div>
       <FormError namespace="daily.errors" errorKey={errorKey} />

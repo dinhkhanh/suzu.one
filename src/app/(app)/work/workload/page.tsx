@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { notFound } from "next/navigation";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -28,16 +29,16 @@ export default async function WorkloadPage({ searchParams }: PageProps<"/work/wo
   const tab = (active: boolean) => `rounded-md px-2 py-1 text-sm ${active ? "pill-on" : "pill-off"}`;
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/work" className="underline">
+    <Page width="wide">
+      <PageHeader
+        eyebrow={
+          <Link href="/work" className="hover:underline">
             {tWork("title")}
           </Link>
-        </p>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </header>
+        }
+        title={t("title")}
+        description={t("description")}
+      />
 
       {view.teams.length > 1 ? (
         <nav className="flex flex-wrap items-center gap-1">
@@ -116,6 +117,6 @@ export default async function WorkloadPage({ searchParams }: PageProps<"/work/wo
       </div>
       {view.daysOff.length > 0 ? <p className="text-xs text-muted-foreground">{t("daysOff", { list: view.daysOff.map((off) => `${day(off.date)} ${off.name}`).join(", ") })}</p> : null}
       <p className="text-xs text-muted-foreground">{t("legend")}</p>
-    </div>
+    </Page>
   );
 }

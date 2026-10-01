@@ -2,7 +2,9 @@
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { FormError } from "@/components/forms/field";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { List, ListItem } from "@/components/ui/list";
 import { deleteTimeEntryAction } from "../time-actions";
 import { hoursOf } from "./format";
 import { useRun } from "./use-run";
@@ -16,20 +18,21 @@ export function TimeList({ entries }: { entries: Entry[] }) {
   if (entries.length === 0) return null;
   return (
     <>
-      <ul className="flex flex-col gap-1 text-sm">
-        {entries.map((entry) => (
-          <li key={entry.id} className="flex items-center gap-2">
+      <List>
+        {entries.map((entry, index) => (
+          <ListItem key={entry.id} className="rise" style={{ "--i": index } as React.CSSProperties}>
             <span className="min-w-0 flex-1 truncate">
-              {entry.key ? <span className="font-mono text-xs text-muted-foreground">{entry.key}</span> : null} {entry.title ?? (entry.category ? t(`time.categories.${entry.category as "admin"}`) : "")}
+              {entry.key ? <span className="font-mono text-xs text-muted-foreground">{entry.key} </span> : null}
+              {entry.title ?? (entry.category ? t(`time.categories.${entry.category as "admin"}`) : "")}
             </span>
-            <span className="text-xs text-muted-foreground">{entry.billable ? t("time.billable") : null}</span>
-            <span className="tabular-nums">{t("hours", { value: hoursOf(entry.minutes) })}</span>
+            {entry.billable ? <Badge variant="info">{t("time.billable")}</Badge> : null}
+            <span className="font-mono text-[0.8125rem] tabular-nums">{t("hours", { value: hoursOf(entry.minutes) })}</span>
             <Button type="button" size="icon-xs" variant="ghost" disabled={pending} onClick={() => run(deleteTimeEntryAction, { id: entry.id })} aria-label={t("time.remove")}>
               <X aria-hidden />
             </Button>
-          </li>
+          </ListItem>
         ))}
-      </ul>
+      </List>
       <FormError namespace="daily.errors" errorKey={errorKey} />
     </>
   );

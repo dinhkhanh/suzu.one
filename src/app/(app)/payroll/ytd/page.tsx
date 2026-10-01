@@ -14,6 +14,7 @@ import { StatutoryFilters } from "@/modules/payroll/ui/statutory-forms";
 import { listYtd } from "@/modules/payroll/ytd";
 import { ytdTemplate } from "@/modules/payroll/ytd-import";
 import { pageTitle } from "@/i18n/page-title";
+import { Page, PageHeader } from "@/components/ui/page";
 
 export const generateMetadata = pageTitle("yearToDateImport");
 
@@ -39,14 +40,16 @@ export default async function YtdPage({ searchParams }: PageProps<"/payroll/ytd"
   const factOf = new Map(facts.map((fact) => [fact.personId, fact]));
 
   return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <Link href="/payroll" className="text-sm text-link hover:underline">
-          ← {t("back")}
-        </Link>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </header>
+    <Page width="wide">
+      <PageHeader
+        eyebrow={
+          <Link href="/payroll" className="text-link hover:underline">
+            ← {t("back")}
+          </Link>
+        }
+        title={t("title")}
+        description={t("description")}
+      />
 
       <StatutoryFilters entities={entities} entityId={entityId} year={year} month={`${year}-01`} />
 
@@ -84,6 +87,6 @@ export default async function YtdPage({ searchParams }: PageProps<"/payroll/ytd"
           <input type="hidden" name="year" value={year} />
         </ImportWizard>
       </section>
-    </div>
+    </Page>
   );
 }

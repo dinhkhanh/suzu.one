@@ -1,6 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Page, PageHeader } from "@/components/ui/page";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { getReportForm, REPORT_BACKFILL_DAYS } from "@/modules/daily/service";
 import { EodNotesDraftButton } from "@/modules/ai/ui/draft-button";
@@ -21,20 +21,10 @@ export default async function ReportPage({ searchParams }: PageProps<"/daily/rep
   const submitted = form.report?.status === "submitted";
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/today" className="underline">
-            {t("today.title")}
-          </Link>
-        </p>
-        <h1>{t("report.title")}</h1>
-        <p className="text-sm text-muted-foreground">{format.dateTime(new Date(`${date}T12:00:00Z`), { weekday: "long", day: "numeric", month: "long" })}</p>
-        <div className="flex flex-wrap gap-2">
-          {submitted ? <Badge dot variant={form.report!.late ? "warning" : "success"}>{form.report!.late ? t("late") : t("submitted")}</Badge> : day?.report.required ? <Badge variant="outline">{t("report.dueBy", { time: day.rules.reportDeadline })}</Badge> : <Badge variant="secondary">{t("report.optional")}</Badge>}
-        </div>
-        <p className="text-xs text-muted-foreground">{t("report.prefilledHint")}</p>
-      </header>
+    <Page width="narrow">
+      <PageHeader eyebrow={format.dateTime(new Date(`${date}T12:00:00Z`), { weekday: "long", day: "numeric", month: "long" })} title={t("report.title")} description={t("report.prefilledHint")}>
+        <div className="flex flex-wrap gap-1.5 pt-1">{submitted ? <Badge dot variant={form.report!.late ? "warning" : "success"}>{form.report!.late ? t("late") : t("submitted")}</Badge> : day?.report.required ? <Badge variant="outline">{t("report.dueBy", { time: day.rules.reportDeadline })}</Badge> : <Badge variant="secondary">{t("report.optional")}</Badge>}</div>
+      </PageHeader>
       <ReportForm
         date={date}
         draft={form.draft}
@@ -47,6 +37,6 @@ export default async function ReportPage({ searchParams }: PageProps<"/daily/rep
         // key trips React's list-key warning there.
         notesDraft={<EodNotesDraftButton key="notes-draft" date={date} targetId="notes" />}
       />
-    </div>
+    </Page>
   );
 }

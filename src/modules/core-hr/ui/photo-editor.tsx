@@ -33,8 +33,11 @@ async function squarePicture(file: File): Promise<File | null> {
   return blob ? new File([blob], "photo.jpg", { type: "image/jpeg" }) : null;
 }
 
-/** Change and remove buttons for the profile picture beside them, for the person and for HR (FR-CHR-01). */
-export function PhotoEditor({ person }: { person: { id: string; photoFileId: string | null } }) {
+/**
+ * Change and remove buttons for the profile picture beside them, for the person and for HR
+ * (FR-CHR-01). `compact` keeps the hint as the button's title, for a page header.
+ */
+export function PhotoEditor({ person, compact = false }: { person: { id: string; photoFileId: string | null }; compact?: boolean }) {
   const t = useTranslations("people.photo");
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
@@ -61,7 +64,7 @@ export function PhotoEditor({ person }: { person: { id: string; photoFileId: str
   return (
     <div className="flex flex-col items-start gap-1.5">
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => input.current?.click()}>
+        <Button type="button" variant="outline" size="sm" disabled={pending} title={compact ? t("hint") : undefined} onClick={() => input.current?.click()}>
           {pending ? t("saving") : person.photoFileId ? t("change") : t("add")}
         </Button>
         {person.photoFileId ? (
@@ -69,7 +72,7 @@ export function PhotoEditor({ person }: { person: { id: string; photoFileId: str
             {t("remove")}
           </Button>
         ) : null}
-        <span className="text-xs text-muted-foreground">{t("hint")}</span>
+        {compact ? null : <span className="text-xs text-muted-foreground">{t("hint")}</span>}
       </div>
       <input
         ref={input}

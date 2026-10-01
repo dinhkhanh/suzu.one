@@ -3,14 +3,16 @@ import Form from "next/form";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Page, PageHeader, Tile, TileGrid } from "@/components/ui/page";
 import { Select } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { FEEDBACK_CATEGORIES, FEEDBACK_STATUSES, type FeedbackCategory, type FeedbackStatus } from "@/modules/feedback/enums";
 import { canOpenFeedbackInbox, feedbackReach } from "@/modules/feedback/policy";
 import { countFeedbackByStatus, FEEDBACK_PAGE_SIZE, type FeedbackFilters, listFeedbackAreas, listFeedbackInbox } from "@/modules/feedback/service";
 import { FeedbackList } from "@/modules/feedback/ui/feedback-list";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
+import { cn } from "@/lib/utils";
 
 export const generateMetadata = pageTitle("feedbackInbox");
 
@@ -40,40 +42,34 @@ export default async function FeedbackInboxPage(props: PageProps<"/feedback/inbo
   const pages = Math.max(1, Math.ceil(total / FEEDBACK_PAGE_SIZE));
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h1>{t("inbox.title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("inbox.help")}</p>
-        </div>
-        <Link href="/feedback" className={buttonVariants({ variant: "outline", size: "sm" })}>
-          {t("inbox.mine")}
-        </Link>
-      </header>
+    <Page>
+      <PageHeader
+        title={t("inbox.title")}
+        description={t("inbox.help")}
+        actions={
+          <Link href="/feedback" className={cn(buttonVariants({ variant: "outline" }))}>
+            {t("inbox.mine")}
+          </Link>
+        }
+      />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <TileGrid>
         {(["new", "in_progress", "resolved"] as const).map((status) => (
-          <div key={status} className="rounded-xl border px-4 py-3">
-            <p className="text-xs text-muted-foreground">{t(`statuses.${status}`)}</p>
-            <p className="text-2xl font-semibold tabular-nums">{counts[status]}</p>
-          </div>
+          <Tile key={status} label={t(`statuses.${status}`)} value={counts[status]} href={href({ status, page: undefined })} />
         ))}
-        <div className="rounded-xl border px-4 py-3">
-          <p className="text-xs text-muted-foreground">{t("inbox.blockingOpen")}</p>
-          <p className={cn("text-2xl font-semibold tabular-nums", counts.blockingOpen > 0 && "text-destructive")}>{counts.blockingOpen}</p>
-        </div>
-      </div>
+        <Tile label={t("inbox.blockingOpen")} value={counts.blockingOpen} tone={counts.blockingOpen > 0 ? "destructive" : undefined} href={href({ status: "open", blocking: "1", page: undefined })} />
+      </TileGrid>
 
-      <nav aria-label={t("inbox.statusFilter")} className="flex flex-wrap gap-1.5">
+      <nav aria-label={t("inbox.statusFilter")} className="tab-row">
         {STATUS_TABS.map((value) => (
-          <Link key={value} href={href({ status: value, page: undefined })} aria-current={value === tab ? "page" : undefined} className={buttonVariants({ variant: value === tab ? "secondary" : "ghost", size: "sm" })}>
+          <Link key={value} href={href({ status: value, page: undefined })} aria-current={value === tab ? "page" : undefined}>
             {value === "open" || value === "all" ? t(`inbox.tabs.${value}`) : t(`statuses.${value}`)}
-            <span className="text-xs text-muted-foreground tabular-nums">{tabCount[value]}</span>
+            <span className="font-mono text-[0.6875rem] text-faint tabular-nums">{tabCount[value]}</span>
           </Link>
         ))}
       </nav>
 
-      <Form action="/feedback/inbox" className="flex flex-wrap items-end gap-3">
+      <Form action="/feedback/inbox" className="toolbar">
         <input type="hidden" name="status" value={tab} />
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="font-medium">{t("inbox.category")}</span>
@@ -97,8 +93,8 @@ export default async function FeedbackInboxPage(props: PageProps<"/feedback/inbo
             ))}
           </Select>
         </label>
-        <label className="flex h-9 items-center gap-2 text-sm">
-          <input type="checkbox" name="blocking" value="1" defaultChecked={blocking} className="size-4" />
+        <label className="flex h-10 items-center gap-2 text-sm md:h-9">
+          <Checkbox name="blocking" value="1" defaultChecked={blocking} />
           {t("inbox.onlyBlocking")}
         </label>
         <Button type="submit" variant="outline">
@@ -109,22 +105,22 @@ export default async function FeedbackInboxPage(props: PageProps<"/feedback/inbo
       <FeedbackList items={rows} showPerson empty={t("inbox.empty")} numberFrom={(page - 1) * FEEDBACK_PAGE_SIZE + 1} />
 
       {pages > 1 ? (
-        <div className="flex items-center justify-between gap-3 text-sm">
+        <nav className="flex items-center justify-between gap-3 text-sm">
           <span className="text-muted-foreground">{t("inbox.pageOf", { page, pages, total })}</span>
           <div className="flex gap-2">
             {page > 1 ? (
-              <Link href={href({ page: String(page - 1) })} className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <Link href={href({ page: String(page - 1) })} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
                 {t("inbox.previous")}
               </Link>
             ) : null}
             {page < pages ? (
-              <Link href={href({ page: String(page + 1) })} className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <Link href={href({ page: String(page + 1) })} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
                 {t("inbox.next")}
               </Link>
             ) : null}
           </div>
-        </div>
+        </nav>
       ) : null}
-    </div>
+    </Page>
   );
 }

@@ -1,7 +1,9 @@
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
+import { Page, PageHeader } from "@/components/ui/page";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { getMyTimeWeek, getRunningTimer, weekStartOf } from "@/modules/daily/service";
 import { RunningTimer } from "@/modules/daily/ui/timer";
@@ -28,44 +30,44 @@ export default async function TimePage({ searchParams }: PageProps<"/daily/time"
   const locked = view.status === "submitted" || view.status === "approved";
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <header className="flex flex-col gap-3">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/today" className="underline">
-            {t("today.title")}
-          </Link>
-        </p>
-        <h1>{t("time.title")}</h1>
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <Link href={`/daily/time?week=${addDays(weekStart, -7)}`} className={buttonVariants({ size: "sm", variant: "outline" })}>
-            {t("time.previousWeek")}
-          </Link>
-          <span className="font-medium">{t("time.week", { start: day(weekStart), end: day(addDays(weekStart, 6)) })}</span>
-          {weekStart < current ? (
-            <>
-              <Link href={`/daily/time?week=${addDays(weekStart, 7)}`} className={buttonVariants({ size: "sm", variant: "outline" })}>
-                {t("time.nextWeek")}
-              </Link>
-              <Link href="/daily/time" className={buttonVariants({ size: "sm", variant: "ghost" })}>
-                {t("time.thisWeek")}
-              </Link>
-            </>
-          ) : null}
+    <Page width="wide">
+      <PageHeader
+        eyebrow={t("time.week", { start: day(weekStart), end: day(addDays(weekStart, 6)) })}
+        title={t("time.title")}
+        description={locked ? (view.status === "approved" ? t("time.lockedApproved") : t("time.lockedSubmitted")) : !view.editable ? t("time.tooOld") : undefined}
+        actions={
+          <>
+            <Link href={`/daily/time?week=${addDays(weekStart, -7)}`} className={buttonVariants({ size: "sm", variant: "outline" })} aria-label={t("time.previousWeek")}>
+              <ChevronLeft aria-hidden /> {t("time.previousWeek")}
+            </Link>
+            {weekStart < current ? (
+              <>
+                <Link href={`/daily/time?week=${addDays(weekStart, 7)}`} className={buttonVariants({ size: "sm", variant: "outline" })}>
+                  {t("time.nextWeek")} <ChevronRight aria-hidden />
+                </Link>
+                <Link href="/daily/time" className={buttonVariants({ size: "sm", variant: "ghost" })}>
+                  {t("time.thisWeek")}
+                </Link>
+              </>
+            ) : null}
+          </>
+        }
+      >
+        <div className="pt-1">
+          <WeekStatus view={view} />
         </div>
-        <WeekStatus view={view} />
-        {locked ? <p className="text-sm text-muted-foreground">{view.status === "approved" ? t("time.lockedApproved") : t("time.lockedSubmitted")}</p> : !view.editable ? <p className="text-sm text-muted-foreground">{t("time.tooOld")}</p> : null}
-      </header>
+      </PageHeader>
 
       {timer ? <RunningTimer label={timer.key ? `${timer.key} ${timer.title ?? ""}` : t(`time.categories.${(timer.category ?? "internal") as "internal"}`)} startedAt={timer.startedAt.toISOString()} /> : null}
 
       <TimeWeek view={view} openTasks={open.map(({ taskId, key, title, projectName }) => ({ taskId, key, title, projectName }))} />
 
       {canSubmit ? (
-        <div className="sticky bottom-0 flex flex-col gap-2 border-t bg-background py-3 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
           <SubmitWeekButton weekStart={weekStart} again={view.status === "returned"} />
           <p className="text-xs text-muted-foreground">{t("time.submitHint")}</p>
         </div>
       ) : null}
-    </div>
+    </Page>
   );
 }

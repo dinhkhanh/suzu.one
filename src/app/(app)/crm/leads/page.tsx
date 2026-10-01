@@ -3,6 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Page, PageHeader } from "@/components/ui/page";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
@@ -30,14 +33,11 @@ export default async function LeadsPage({ searchParams }: PageProps<"/crm/leads"
   const [t, f, leads, entities, accounts, people] = await Promise.all([getTranslations("crm"), formatters(), listLeads(shell.viewer, { status, mine }), listEntities(), accountChoices(shell.viewer), listPersonNames()]);
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header>
-        <h1>{t("leads.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("leads.intro")}</p>
-      </header>
+    <Page width="wide">
+      <PageHeader title={t("leads.title")} description={t("leads.intro")} />
       <CrmTabs current="leads" show={shell.show} />
-      <form method="get" className="flex flex-wrap items-end gap-2">
-        <Select name="status" defaultValue={status} aria-label={t("leads.status")}>
+      <form method="get" className="toolbar">
+        <Select name="status" defaultValue={status} aria-label={t("leads.status")} className="w-full sm:w-48">
           <option value="open">{t("leads.openOnes")}</option>
           <option value="all">{t("leads.allOnes")}</option>
           {LEAD_STATUSES.map((value) => (
@@ -46,10 +46,10 @@ export default async function LeadsPage({ searchParams }: PageProps<"/crm/leads"
             </option>
           ))}
         </Select>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="mine" value="1" defaultChecked={mine} /> {t("leads.mine")}
-        </label>
-        <Button type="submit" size="sm" variant="outline">
+        <Label className="flex h-10 items-center gap-2 text-sm md:h-9">
+          <Checkbox name="mine" value="1" defaultChecked={mine} /> {t("leads.mine")}
+        </Label>
+        <Button type="submit" variant="outline">
           {t("filter")}
         </Button>
       </form>
@@ -82,12 +82,12 @@ export default async function LeadsPage({ searchParams }: PageProps<"/crm/leads"
                 <TableCell>
                   <Badge variant="outline">{t(`enums.source.${lead.source as "referral"}`)}</Badge>
                 </TableCell>
-                <TableCell className="max-w-xs truncate text-muted-foreground">{lead.need ? noteToPlainText(lead.need) : "—"}</TableCell>
+                <TableCell className="max-w-xs truncate text-faint">{lead.need ? noteToPlainText(lead.need) : "—"}</TableCell>
                 <TableCell>
                   {lead.ownerName ?? t("leads.unassigned")}
-                  {lead.referrerName ? <p className="text-xs text-muted-foreground">{t("leads.referredBy", { name: lead.referrerName })}</p> : null}
+                  {lead.referrerName ? <p className="text-xs text-faint">{t("leads.referredBy", { name: lead.referrerName })}</p> : null}
                 </TableCell>
-                <TableCell>{f.when(lead.createdAt)}</TableCell>
+                <TableCell kind="date" className="text-muted-foreground">{f.when(lead.createdAt)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -96,6 +96,6 @@ export default async function LeadsPage({ searchParams }: PageProps<"/crm/leads"
           <NewLeadForm entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} accounts={accounts} sellers={people} canAssign={sells(shell.viewer)} />
         </TableAddRow>
       </TableCard>
-    </div>
+    </Page>
   );
 }

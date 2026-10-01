@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
+import { Page, PageHeader } from "@/components/ui/page";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageCategories, listCategories } from "@/modules/assets/service";
 import { CategoryForm } from "@/modules/assets/ui/asset-forms";
@@ -14,11 +15,8 @@ export default async function AssetCategoriesPage() {
   const [categories, t] = await Promise.all([listCategories(), getTranslations("assets.categories")]);
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
-      <div>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </div>
+    <Page>
+      <PageHeader title={t("title")} description={t("description")} />
       <div className="flex flex-col gap-4">
         {categories.map((category) => (
           <CategoryForm
@@ -31,6 +29,6 @@ export default async function AssetCategoriesPage() {
           <CategoryForm value={{ id: null, code: "", name: "", kind: "it_equipment", requiresSerial: false, defaultWarrantyMonths: null, bookable: false, sortOrder: (categories.at(-1)?.sortOrder ?? 0) + 1, isActive: true }} />
         </div>
       </div>
-    </div>
+    </Page>
   );
 }

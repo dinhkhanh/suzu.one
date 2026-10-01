@@ -9,17 +9,25 @@
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type DragEvent, useState, useTransition } from "react";
-import { Badge } from "@/components/ui/badge";
+import { type CSSProperties, type DragEvent, useState, useTransition } from "react";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select } from "@/components/ui/select";
+import { cn } from "cn";
 import { moveApplicationAction, rejectApplicationAction } from "../actions";
 import { REJECTION_REASONS } from "../enums";
 
 export type BoardStage = { id: string; name: string };
-export type BoardCard = { id: string; candidateName: string; currentTitle: string | null; stageId: string; days: number; source: string };
+/** What a card says beside the name, when there is something to say. */
+export type BoardFlag = "new" | "referral" | "scheduled" | "today" | "awaiting";
+export type BoardCard = { id: string; candidateName: string; currentTitle: string | null; stageId: string; days: number; source: string; flag?: BoardFlag | null };
 
-export function PipelineBoard({ stages, cards }: { stages: BoardStage[]; cards: BoardCard[] }) {
+const FLAG_TONE: Record<BoardFlag, BadgeVariant> = { new: "info", referral: "violet", scheduled: "info", today: "warning", awaiting: "warning" };
+/** The dot in a column's header: one hue per position in the pipeline, so the stages read left to right. */
+const STAGE_DOTS = ["bg-tone-indigo", "bg-tone-teal", "bg-primary", "bg-tone-violet", "bg-tone-orange", "bg-success", "bg-tone-pink"];
+
+export function PipelineBoard({ stages, cards, className }: { stages: BoardStage[]; cards: BoardCard[]; className?: string }) {
   const t = useTranslations("recruit");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -63,15 +71,15 @@ export function PipelineBoard({ stages, cards }: { stages: BoardStage[]; cards: 
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className={cn("flex min-w-0 flex-col gap-3", className)}>
       {selected.size > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 rounded-[0.625rem] bg-muted px-3 py-2 text-sm">
           <span className="font-medium">{t("board.selected", { count: selected.size })}</span>
           <Select
             aria-label={t("board.moveTo")}
             value=""
             disabled={pending}
-            className="h-8 w-auto"
+            className="w-auto"
             onChange={(event) => {
               if (event.target.value) moveTo(event.target.value, [...selected]);
             }}
@@ -87,7 +95,7 @@ export function PipelineBoard({ stages, cards }: { stages: BoardStage[]; cards: 
             aria-label={t("board.rejectWith")}
             value=""
             disabled={pending}
-            className="h-8 w-auto"
+            className="w-auto"
             onChange={(event) => {
               if (event.target.value) rejectSelected(event.target.value);
             }}
@@ -111,61 +119,69 @@ export function PipelineBoard({ stages, cards }: { stages: BoardStage[]; cards: 
         </p>
       ) : null}
 
-      <div className="flex gap-3 overflow-x-auto pb-2">
-        {stages.map((stage) => {
-          const column = cards.filter((card) => card.stageId === stage.id);
-          return (
-            <div
-              key={stage.id}
-              onDragOver={(event) => {
-                event.preventDefault();
-                setOver(stage.id);
-              }}
-              onDragLeave={() => setOver((current) => (current === stage.id ? null : current))}
-              onDrop={(event) => onDrop(event, stage.id)}
-              className={`flex w-64 shrink-0 flex-col gap-2 rounded-xl border p-2 ${over === stage.id ? "border-primary bg-muted/50" : "bg-muted/20"}`}
-            >
-              <div className="flex items-center justify-between gap-2 px-1">
-                <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{stage.name}</h3>
-                <Badge variant="outline" className="text-[10px]">
-                  {column.length}
-                </Badge>
-              </div>
-
-              {column.map((card) => (
-                <div
-                  key={card.id}
-                  draggable={!pending}
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData("text/plain", card.id);
-                    setDragging(card.id);
-                  }}
-                  onDragEnd={() => setDragging(null)}
-                  className={`flex flex-col gap-1 rounded-lg border bg-background p-2 ${dragging === card.id ? "opacity-50" : ""}`}
-                >
-                  <div className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      aria-label={card.candidateName}
-                      checked={selected.has(card.id)}
-                      onChange={() => toggle(card.id)}
-                      className="mt-1"
-                    />
-                    <Link href={`/recruit/applications/${card.id}`} className="min-w-0 flex-1 text-sm font-medium hover:underline">
-                      {card.candidateName}
-                    </Link>
-                  </div>
-                  {card.currentTitle ? <p className="truncate pl-6 text-xs text-muted-foreground">{card.currentTitle}</p> : null}
-                  <p className="pl-6 text-xs text-muted-foreground">
-                    {t(`source.${card.source}` as "source.direct")} · {t("board.days", { days: card.days })}
-                  </p>
+      {/* The columns scroll sideways inside their own frame; the page never grows wider than the screen. */}
+      <div className="-mx-4 min-w-0 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+        <div className="grid grid-flow-col auto-cols-[minmax(240px,1fr)] gap-3">
+          {stages.map((stage, index) => {
+            const column = cards.filter((card) => card.stageId === stage.id);
+            return (
+              <div
+                key={stage.id}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setOver(stage.id);
+                }}
+                onDragLeave={() => setOver((current) => (current === stage.id ? null : current))}
+                onDrop={(event) => onDrop(event, stage.id)}
+                className={cn("flex min-w-0 flex-col gap-2 rounded-[14px] border p-2 transition-colors duration-200", over === stage.id ? "border-primary bg-primary/5" : "border-border bg-canvas")}
+              >
+                <div className="flex h-7 items-center gap-2 px-1.5">
+                  <span aria-hidden className={cn("size-2 shrink-0 rounded-full", STAGE_DOTS[index % STAGE_DOTS.length])} />
+                  <h3 className="min-w-0 flex-1 truncate text-[0.8125rem] font-semibold">{stage.name}</h3>
+                  <span className="font-mono text-xs text-faint tabular-nums">{column.length}</span>
                 </div>
-              ))}
 
-              {column.length === 0 ? <p className="px-1 py-4 text-center text-xs text-muted-foreground">{t("board.empty")}</p> : null}
-            </div>
-          );
-        })}
+                {column.map((card, cardIndex) => (
+                  <div
+                    key={card.id}
+                    draggable={!pending}
+                    onDragStart={(event) => {
+                      event.dataTransfer.setData("text/plain", card.id);
+                      setDragging(card.id);
+                    }}
+                    onDragEnd={() => setDragging(null)}
+                    style={{ "--i": cardIndex } as CSSProperties}
+                    className={cn(
+                      "rise flex flex-col gap-1.5 rounded-[0.625rem] border border-border bg-background p-3 shadow-[0_1px_2px_oklch(0_0_0/4%)] transition-[opacity,box-shadow] duration-100",
+                      dragging === card.id && "opacity-50",
+                      selected.has(card.id) && "border-primary/40 bg-primary/5"
+                    )}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <Checkbox aria-label={card.candidateName} checked={selected.has(card.id)} onCheckedChange={() => toggle(card.id)} className="mt-0.5" />
+                      <Link href={`/recruit/applications/${card.id}`} className="min-w-0 flex-1 truncate text-sm font-semibold tracking-[-0.01em] hover:underline">
+                        {card.candidateName}
+                      </Link>
+                    </div>
+                    {card.currentTitle ? <p className="truncate pl-7 text-xs text-faint">{card.currentTitle}</p> : null}
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pl-7">
+                      <span className="text-xs text-faint">
+                        {t(`source.${card.source}` as "source.direct")} · {t("board.days", { days: card.days })}
+                      </span>
+                      {card.flag ? (
+                        <Badge variant={FLAG_TONE[card.flag]} className="h-5">
+                          {t(`board.flags.${card.flag}`)}
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+
+                {column.length === 0 ? <p className="rounded-[0.625rem] border border-dashed border-border px-2 py-5 text-center text-xs text-faint">{t("board.empty")}</p> : null}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

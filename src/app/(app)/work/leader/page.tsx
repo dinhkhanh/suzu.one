@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { todayInVietnam } from "@/lib/dates";
@@ -35,22 +36,23 @@ export default async function LeaderPage() {
   );
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/work" className="underline">
+    <Page width="default">
+      <PageHeader
+        eyebrow={
+          <Link href="/work" className="hover:underline">
             {tWork("title")}
           </Link>
-        </p>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-        <p className="flex flex-wrap gap-2 pt-1 text-sm">
+        }
+        title={t("title")}
+        description={t("description")}
+      >
+        <p className="flex flex-wrap gap-1.5 pt-1 text-sm">
           <Badge variant="outline">{t("open", { count: view.totals.open })}</Badge>
           {view.totals.blocked ? <Badge variant="destructive">{t("flagged", { count: view.totals.blocked })}</Badge> : null}
           <Badge variant={view.totals.overdue ? "destructive" : "outline"}>{t("overdue", { count: view.totals.overdue })}</Badge>
-          <Badge variant={view.totals.atRisk ? "secondary" : "outline"}>{t("atRisk", { count: view.totals.atRisk })}</Badge>
+          <Badge variant={view.totals.atRisk ? "warning" : "outline"}>{t("atRisk", { count: view.totals.atRisk })}</Badge>
         </p>
-      </header>
+      </PageHeader>
       {view.people.length === 0 ? (
         <Table>
           {head}
@@ -105,6 +107,6 @@ export default async function LeaderPage() {
           </Table>
         </TableCard>
       ))}
-    </div>
+    </Page>
   );
 }

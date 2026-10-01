@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { confirmLocalStepUpAction } from "../step-up-actions";
 
@@ -14,8 +15,8 @@ export function LocalStepUpForm({ next }: { next: string }) {
   const { onSubmit, pending, errorKey } = useActionForm(confirmLocalStepUpAction, { onSuccess: () => router.replace(next) });
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
-      <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">{t("localNotice")}</p>
-      <Button type="submit" disabled={pending} className="self-start">
+      <Alert variant="neutral">{t("localNotice")}</Alert>
+      <Button type="submit" variant="accent" size="lg" disabled={pending} className="w-full md:w-auto md:self-start">
         {t("localConfirm")}
       </Button>
       <FormError namespace="stepUp.errors" errorKey={errorKey} />

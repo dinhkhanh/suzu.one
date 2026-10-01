@@ -1,5 +1,7 @@
 import { getTranslations } from "next-intl/server";
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Page, PageHeader } from "@/components/ui/page";
 import { requireUser } from "@/modules/platform/auth/session";
 import { canManageTemplates } from "@/modules/documents/service";
 import { listEntities } from "@/modules/platform/org/service";
@@ -14,9 +16,17 @@ export default async function NewDocumentTemplatePage() {
   const [allEntities, t] = await Promise.all([listEntities(), getTranslations("documents.designer")]);
   const entities = allEntities.map((entity) => ({ id: entity.id, code: entity.code, shortName: entity.shortName }));
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
-      <h1>{t("new")}</h1>
+    <Page>
+      <PageHeader
+        eyebrow={
+          <Link href="/admin/document-templates" className="hover:text-foreground">
+            {t("title")}
+          </Link>
+        }
+        title={t("new")}
+        description={t("description")}
+      />
       <DocumentTemplateForm value={null} entities={entities} />
-    </div>
+    </Page>
   );
 }

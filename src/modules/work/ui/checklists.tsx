@@ -1,9 +1,10 @@
 "use client";
-// The checklist library on screen: the library page's cards and editor, the picker the places a
+// The checklist library on screen: the library page's grid and editor, the picker the places a
 // checklist hooks into share (hand-off packages, intake forms), and the stage hooks of a workflow.
+import { ChevronDownIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { FormError } from "@/components/forms/field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
-import { TableAddRow, TableCard } from "@/components/ui/table";
+import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { deleteChecklistAction, saveChecklistAction, setStateChecklistsAction } from "../checklist-actions";
@@ -54,9 +55,11 @@ export type ChecklistCard = {
 /** Where a checklist may be filed, as the viewer may file it: "" = company-wide. */
 export type OwnerChoice = { value: string; name: string };
 
+/** The library as the reference grid: one row per checklist, which unfolds into its steps or its editor. */
 export function ChecklistLibrary({ checklists, owners, canCreate }: { checklists: ChecklistCard[]; owners: OwnerChoice[]; canCreate: boolean }) {
   const t = useTranslations("checklists.library");
   const [filter, setFilter] = useState("");
+  const [openId, setOpenId] = useState<string | null>(null);
   const usageText = (usage: ChecklistCard["usage"]) =>
     (["stages", "packages", "forms", "steps"] as const)
       .filter((part) => usage[part] > 0)
@@ -64,42 +67,74 @@ export function ChecklistLibrary({ checklists, owners, canCreate }: { checklists
       .join(" · ");
   const shown = filter ? checklists.filter((list) => list.owner === filter) : checklists;
   const ownersShown = [...new Map(checklists.map((list) => [list.owner, list.ownerName ?? t("companyWide")])).entries()];
+  const columns = 6;
   return (
     <div className="flex flex-col gap-3">
       {ownersShown.length > 1 ? (
-        <Select aria-label={t("filterOwner")} value={filter} onChange={(event) => setFilter(event.target.value)} className="w-full sm:w-72">
-          <option value="">{t("allOwners")}</option>
-          {ownersShown.map(([value, name]) => (
-            <option key={value || "company"} value={value}>
-              {name}
-            </option>
-          ))}
-        </Select>
+        <div className="toolbar">
+          <Select aria-label={t("filterOwner")} value={filter} onChange={(event) => setFilter(event.target.value)} className="w-full md:w-72">
+            <option value="">{t("allOwners")}</option>
+            {ownersShown.map(([value, name]) => (
+              <option key={value || "company"} value={value}>
+                {name}
+              </option>
+            ))}
+          </Select>
+        </div>
       ) : null}
       <TableCard>
-        <List>
-          {shown.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
-          {shown.map((list) => (
-            <ListItem key={list.id}>
-              <details className="min-w-0 flex-1">
-                <summary className="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1">
-                  <span className="font-medium">{list.name}</span>
-                  <span className="text-muted-foreground">{list.ownerName ?? t("companyWide")}</span>
-                  <span className="text-xs text-muted-foreground">{t("itemCount", { count: list.items.length })}</span>
-                  {usageText(list.usage) ? <span className="text-xs text-muted-foreground">{t("usedBy", { list: usageText(list.usage) })}</span> : null}
-                  {list.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
-                </summary>
-                <div className="pt-3">
-                  {list.canManage ? (
-                    <ChecklistEditor checklist={list} owners={owners.some((owner) => owner.value === list.owner) ? owners : [{ value: list.owner, name: list.ownerName ?? t("companyWide") }, ...owners]} />
-                  ) : (
-                    <ChecklistReadOnly checklist={list} />
-                  )}
-                </div>
-              </details>
-            </ListItem>
-          ))}
-        </List>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="text">{t("name")}</TableHead>
+              <TableHead kind="org">{t("owner")}</TableHead>
+              <TableHead kind="number">{t("columns.items")}</TableHead>
+              <TableHead kind="link">{t("columns.usedBy")}</TableHead>
+              <TableHead kind="status">{t("columns.state")}</TableHead>
+              <TableHead kind="actions" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {shown.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
+            {shown.map((list) => {
+              const open = openId === list.id;
+              const toggle = () => setOpenId(open ? null : list.id);
+              return (
+                <Fragment key={list.id}>
+                  <TableRow className="cursor-pointer" onClick={toggle}>
+                    <TableCell className="whitespace-normal">
+                      <span className="font-medium">{list.name}</span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{list.ownerName ?? t("companyWide")}</TableCell>
+                    <TableCell kind="number">{list.items.length}</TableCell>
+                    <TableCell className="max-w-64 truncate text-xs text-muted-foreground">{usageText(list.usage) || "—"}</TableCell>
+                    <TableCell>
+                      <Badge dot variant={list.isActive ? "success" : "outline"}>
+                        {list.isActive ? t("active") : t("inactive")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell kind="actions">
+                      <Button type="button" variant="ghost" size="icon-xs" aria-expanded={open} aria-label={open ? t("collapse") : t("expand")} onClick={(event) => { event.stopPropagation(); toggle(); }}>
+                        <ChevronDownIcon className={`transition-transform duration-200 ease-(--ease-settle) ${open ? "rotate-180" : ""}`} />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                  {open ? (
+                    <TableRow data-unnumbered="" className="hover:bg-transparent">
+                      <TableCell colSpan={columns} className="h-auto bg-canvas/60 py-4 whitespace-normal">
+                        {list.canManage ? (
+                          <ChecklistEditor checklist={list} owners={owners.some((owner) => owner.value === list.owner) ? owners : [{ value: list.owner, name: list.ownerName ?? t("companyWide") }, ...owners]} />
+                        ) : (
+                          <ChecklistReadOnly checklist={list} />
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </Fragment>
+              );
+            })}
+          </TableBody>
+        </Table>
         {canCreate && owners.length > 0 ? (
           <TableAddRow label={t("create")}>
             <ChecklistEditor owners={owners} />
@@ -110,24 +145,27 @@ export function ChecklistLibrary({ checklists, owners, canCreate }: { checklists
   );
 }
 
+/** A checklist's steps as they will be ticked: a row each, with the box, the text and its guide. */
 function ChecklistReadOnly({ checklist }: { checklist: ChecklistCard }) {
   const t = useTranslations("checklists.library");
   return (
-    <div className="flex flex-col gap-2">
-      <RichText text={checklist.description} className="text-muted-foreground" />
-      <ul className="flex flex-col gap-1">
-        {checklist.items.map((item) => (
-          <li key={item.id} className="flex flex-wrap gap-x-2">
-            <span aria-hidden>☐</span>
-            <span>{item.text}</span>
+    <div className="flex flex-col gap-3">
+      <RichText text={checklist.description} className="text-sm text-muted-foreground" />
+      <List>
+        {checklist.items.length === 0 ? <ListEmpty>{t("noItems")}</ListEmpty> : null}
+        {checklist.items.map((item, index) => (
+          <ListItem key={item.id} className="min-h-11 gap-3 py-2 md:min-h-10">
+            <Checkbox disabled aria-label={item.text} />
+            <span className="min-w-0 flex-1 text-sm">{item.text}</span>
             {item.linkUrl ? (
-              <a href={item.linkUrl} className="text-xs underline underline-offset-2">
+              <a href={item.linkUrl} className="shrink-0 text-xs text-link hover:underline">
                 {t("guide")}
               </a>
             ) : null}
-          </li>
+            <span className="shrink-0 font-mono text-[0.6875rem] text-faint tabular-nums">{index + 1}</span>
+          </ListItem>
         ))}
-      </ul>
+      </List>
     </div>
   );
 }
@@ -199,7 +237,7 @@ function ChecklistEditor({ checklist, owners }: { checklist?: ChecklistCard; own
         <legend className="pb-1 text-sm font-medium">{t("items")}</legend>
         {items.map((item, index) => (
           <div key={item.row} className="flex flex-wrap items-center gap-2">
-            <span className="w-5 text-right text-xs text-muted-foreground tabular-nums">{index + 1}</span>
+            <span className="w-5 text-right font-mono text-xs text-faint tabular-nums">{index + 1}</span>
             <Input aria-label={t("itemText")} value={item.text} maxLength={200} placeholder={t("itemText")} onChange={(event) => setItem(index, { text: event.target.value })} className="min-w-0 flex-[2_1_14rem]" />
             <Input aria-label={t("itemLink")} value={item.linkUrl} maxLength={500} placeholder={t("itemLink")} onChange={(event) => setItem(index, { linkUrl: event.target.value })} className="min-w-0 flex-[1_1_10rem]" />
             <div className="flex">
@@ -223,8 +261,8 @@ function ChecklistEditor({ checklist, owners }: { checklist?: ChecklistCard; own
         <p className="text-xs text-muted-foreground">{t("itemsHint")}</p>
       </fieldset>
 
-      <label className="flex items-center gap-1.5 text-sm">
-        <input type="checkbox" name="isActive" defaultChecked={checklist?.isActive ?? true} /> {t("active")}
+      <label className="flex items-center gap-2 text-sm">
+        <Checkbox name="isActive" defaultChecked={checklist?.isActive ?? true} /> {t("active")}
       </label>
       <FormError namespace="work.errors" errorKey={errorKey} />
       <div className="flex gap-2">
@@ -263,10 +301,10 @@ export function ChecklistPicker({ choices, selected, name = "checklistIds[]", le
   return (
     <fieldset className="flex flex-col gap-1.5">
       <legend className="pb-1 text-sm font-medium">{legend ?? t("pickLegend")}</legend>
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+      <div className="flex flex-wrap gap-x-4 gap-y-2">
         {choices.map((choice) => (
-          <label key={choice.id} className="flex items-center gap-1.5 text-sm">
-            <input type="checkbox" name={name} value={choice.id} defaultChecked={selected.includes(choice.id)} />
+          <label key={choice.id} className="flex items-center gap-2 text-sm">
+            <Checkbox name={name} value={choice.id} defaultChecked={selected.includes(choice.id)} />
             {choice.name}
           </label>
         ))}
@@ -306,7 +344,7 @@ export function StageChecklists({ states, hooks, choices, canManage }: { states:
                 <span className="w-40 shrink-0 font-medium">{state.name}</span>
                 {own.length === 0 ? <span className="text-xs text-muted-foreground">{t("noneHere")}</span> : null}
                 {own.map((hook) => (
-                  <span key={hook.checklistId} className="flex items-center gap-1.5 rounded-full border px-2.5 py-0.5">
+                  <span key={hook.checklistId} className="flex h-7 items-center gap-1.5 rounded-full bg-muted px-2.5 text-[0.8125rem]">
                     {nameOf(hook.checklistId)}
                     {canManage ? (
                       <>

@@ -1,13 +1,16 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Page, Section } from "@/components/ui/page";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { decideProfileChangeAction } from "@/modules/core-hr/change-request-actions";
 import { getProfileChange } from "@/modules/core-hr/change-requests";
 import { getPersonView } from "@/modules/core-hr/service";
 import { ChangeRequestForm, ChangeRequestReveal } from "@/modules/core-hr/ui/change-request-forms";
 import { DecisionForm, WithdrawForm } from "@/modules/platform/approvals/ui/decision-form";
-import { RequestHistory, RequestStatusBadge, RequestTools } from "@/modules/platform/approvals/ui/request-views";
+import { ApprovalChain, RequestEvents, RequestHeader, RequestTools } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -21,7 +24,7 @@ export default async function ProfileChangePage(props: PageProps<"/approvals/pro
   const view = UUID.test(id) ? await getProfileChange({ personId: user.person.id, principal: user.principal }, id) : null;
   if (!view) notFound();
 
-  const t = await getTranslations("changeRequests");
+  const [t, tApprovals] = await Promise.all([getTranslations("changeRequests"), getTranslations("approvals")]);
   const { request, payload } = view;
   const personal = Object.entries(payload.personal);
   const value = (field: string, raw: string | null) => (raw === null ? "—" : field === "maritalStatus" ? t(`maritalStatus.${raw}` as "maritalStatus.single") : raw);
@@ -31,20 +34,11 @@ export default async function ProfileChangePage(props: PageProps<"/approvals/pro
   const proposed = Object.fromEntries(personal.map(([field, change]) => [field, change.to]));
 
   return (
-    <div className="flex max-w-3xl flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1>{t("detail.title")}</h1>
-          <RequestStatusBadge status={request.status} />
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {view.isRequester ? view.requesterName : <Link href={`/people/${request.requesterPersonId}`} className="hover:underline">{view.requesterName}</Link>}
-        </p>
-      </header>
+    <Page width="narrow">
+      <RequestHeader title={t("detail.title")} kind={tApprovals("types.profile_change")} status={request.status} requestId={request.id} who={view.isRequester ? view.requesterName : <Link href={`/people/${request.requesterPersonId}`} className="hover:underline">{view.requesterName}</Link>} />
 
       {personal.length > 0 ? (
-        <TableCard>
-          <TableCardHeader title={t("detail.personal")} />
+        <Section title={t("detail.personal")}>
           <Table numbered={false}>
             <TableHeader>
               <TableRow>
@@ -56,38 +50,39 @@ export default async function ProfileChangePage(props: PageProps<"/approvals/pro
             <TableBody>
               {personal.map(([field, change]) => (
                 <TableRow key={field}>
-                  <TableCell>{t(`fields.${field}` as "fields.phone")}</TableCell>
-                  <TableCell className="text-muted-foreground">{value(field, change.from)}</TableCell>
-                  <TableCell>{value(field, change.to)}</TableCell>
+                  <TableCell className="text-muted-foreground">{t(`fields.${field}` as "fields.phone")}</TableCell>
+                  <TableCell className="whitespace-normal text-muted-foreground line-through decoration-border">{value(field, change.from)}</TableCell>
+                  <TableCell className="whitespace-normal font-medium">{value(field, change.to)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </TableCard>
+        </Section>
       ) : null}
 
       {payload.restricted.length > 0 ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">{t("detail.restricted")}</h2>
+        <Section title={t("detail.restricted")}>
           <ChangeRequestReveal requestId={request.id} fields={payload.restricted} canReveal={view.canReveal} />
           {view.canDecide ? (
             <p className="text-xs text-muted-foreground">
               {t("detail.currentValues")}{" "}
-              <Link href={`/people/${request.requesterPersonId}`} className="underline">
+              <Link href={`/people/${request.requesterPersonId}`} className="text-link underline-offset-4 hover:underline">
                 {view.requesterName}
               </Link>
             </p>
           ) : null}
-        </section>
+        </Section>
       ) : null}
+
+      <ApprovalChain view={view} />
 
       {view.canDecide ? (
         <DecisionForm requestId={request.id} action={decideProfileChangeAction}>
           {payload.restricted.includes("bankAccount") ? (
-            <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" name="verifiedSecondChannel" className="mt-0.5" />
+            <Label className="items-start gap-2 text-sm font-normal leading-snug">
+              <Checkbox name="verifiedSecondChannel" className="mt-0.5" />
               <span>{t("detail.verify")}</span>
-            </label>
+            </Label>
           ) : null}
         </DecisionForm>
       ) : null}
@@ -108,7 +103,7 @@ export default async function ProfileChangePage(props: PageProps<"/approvals/pro
       {canWithdraw ? <WithdrawForm requestId={request.id} /> : null}
 
       <RequestTools view={view} viewerPersonId={user.person.id} />
-      <RequestHistory view={view} />
-    </div>
+      <RequestEvents view={view} />
+    </Page>
   );
 }

@@ -2,6 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Page } from "@/components/ui/page";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { atLeast, kbViewerOf } from "@/modules/kb/service";
 import { PageTree } from "@/modules/kb/ui/page-tree";
@@ -32,41 +34,47 @@ export default async function ProjectDocumentsPage({ params }: PageProps<"/proje
   const size = (bytes: number) => (bytes >= 1024 * 1024 ? `${format.number(bytes / 1024 / 1024, { maximumFractionDigits: 1 })} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
   return (
-    <div className="flex max-w-4xl flex-col gap-8">
+    <Page>
       <ProjectHeader context={context} current="documents" />
 
-      <section className="flex flex-col gap-2 rounded-xl border p-4">
-        <h2 className="text-base font-medium">{t("drive")}</h2>
-        {plan.driveUrl ? (
-          <a href={plan.driveUrl} target="_blank" rel="noopener noreferrer" className="text-sm break-all underline">
-            {plan.driveUrl}
-          </a>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {t("noDrive")}{" "}
-            <Link href={`/projects/${project.id}/plan`} className="underline">
-              {t("setDrive")}
-            </Link>
-          </p>
-        )}
-      </section>
+      <Card>
+        <CardContent className="flex flex-col gap-2">
+          <h2>{t("drive")}</h2>
+          {plan.driveUrl ? (
+            <a href={plan.driveUrl} target="_blank" rel="noopener noreferrer" className="text-sm break-all underline">
+              {plan.driveUrl}
+            </a>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {t("noDrive")}{" "}
+              <Link href={`/projects/${project.id}/plan`} className="underline">
+                {t("setDrive")}
+              </Link>
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {!plan.kbSpaceId ? (
-        <section className="flex flex-col gap-3 rounded-xl border border-dashed p-4">
-          <h2 className="text-base font-medium">{t("title")}</h2>
-          <p className="text-sm text-muted-foreground">{t("noSpace")}</p>
-          {canCreateProjectSpace(viewer, facts) ? <CreateSpaceButton projectId={project.id} /> : null}
-        </section>
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col gap-3">
+            <h2>{t("title")}</h2>
+            <p className="text-sm text-muted-foreground">{t("noSpace")}</p>
+            {canCreateProjectSpace(viewer, facts) ? <CreateSpaceButton projectId={project.id} /> : null}
+          </CardContent>
+        </Card>
       ) : !documents ? (
-        <section className="flex flex-col gap-2 rounded-xl border p-4">
-          <h2 className="text-base font-medium">{t("title")}</h2>
-          <p className="text-sm text-muted-foreground">{t("membersOnly")}</p>
-        </section>
+        <Card>
+          <CardContent className="flex flex-col gap-2">
+            <h2>{t("title")}</h2>
+            <p className="text-sm text-muted-foreground">{t("membersOnly")}</p>
+          </CardContent>
+        </Card>
       ) : (
         <>
           <section className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-base font-medium">{t("pages")}</h2>
+              <h2>{t("pages")}</h2>
               <div className="flex flex-wrap gap-2">
                 <Link href={`/kb/spaces/${documents.space.key}`} className={buttonVariants({ size: "sm", variant: "outline" })}>
                   {t("openSpace")}
@@ -118,6 +126,6 @@ export default async function ProjectDocumentsPage({ params }: PageProps<"/proje
           </TableCard>
         </>
       )}
-    </div>
+    </Page>
   );
 }

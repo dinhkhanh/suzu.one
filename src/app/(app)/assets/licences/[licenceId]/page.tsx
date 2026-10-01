@@ -1,6 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { Page, PageHeader } from "@/components/ui/page";
 import { db, schema } from "@/lib/db";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
@@ -25,8 +26,8 @@ export default async function LicencePage({ params }: PageProps<"/assets/licence
   const canSeeMoney = canReadAssetMoney(user.principal, licence.entityId);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <h1>{licence.name}</h1>
+    <Page width="narrow">
+      <PageHeader title={licence.name} />
       <LicenceForm
         value={{
           id: licence.id,
@@ -48,6 +49,6 @@ export default async function LicencePage({ params }: PageProps<"/assets/licence
         canSeeMoney={canSeeMoney}
       />
       <p className="text-xs text-muted-foreground">{t("trackerNote")}</p>
-    </div>
+    </Page>
   );
 }

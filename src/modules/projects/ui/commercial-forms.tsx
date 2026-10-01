@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker, MonthPicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import type { ActionResult } from "@/lib/action";
 import { FileLink, uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
@@ -46,7 +47,6 @@ type Line = { title: string; quantity: number; format: string | null; channel: s
 type Upload = { fileId: string; uploadUrl: string; contentType: string };
 type Stored = { fileId: string; fileName: string };
 
-const textarea = "min-h-20 w-full rounded-lg border bg-background px-2.5 py-1.5 text-sm";
 const hoursOf = (minutes: number | null | undefined) => (minutes ? String(Math.round((minutes / 60) * 100) / 100) : "");
 
 /** Rows of register lines — a retainer's monthly template, or the lines a change adds. Two blank rows to fill. */
@@ -505,7 +505,7 @@ export function CloseProjectForm({ projectId, unmet }: { projectId: string; unme
     <ActionForm action={closeProjectAction} extra={{ projectId }} submit={t("close")}>
       {unmet ? (
         <Field name="overrideReason" label={t("overrideReason")}>
-          <textarea id="overrideReason" name="overrideReason" rows={3} required maxLength={2000} placeholder={t("overrideHint")} className={textarea} />
+          <Textarea id="overrideReason" name="overrideReason" rows={3} required maxLength={2000} placeholder={t("overrideHint")} />
         </Field>
       ) : null}
       <p className="text-xs text-muted-foreground">{t("closeWarning")}</p>

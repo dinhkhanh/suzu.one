@@ -3,7 +3,7 @@
 // it is billed — or removed while the week is open. A timer cut at 16 hours says so.
 import { Pencil, Send, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { type CSSProperties, useState } from "react";
 import { FormError } from "@/components/forms/field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { useRun } from "./use-run";
 
 export type EntryView = { id: string; day: string; label: string; sub: string | null; minutes: number; billable: boolean; note: string | null; timer: boolean; capped: boolean };
 
-function EntryRow({ entry, editable }: { entry: EntryView; editable: boolean }) {
+function EntryRow({ entry, editable, index }: { entry: EntryView; editable: boolean; index: number }) {
   const t = useTranslations("daily.time");
   const { run, pending, errorKey } = useRun();
   const [editing, setEditing] = useState(false);
@@ -25,16 +25,16 @@ function EntryRow({ entry, editable }: { entry: EntryView; editable: boolean }) 
   const [billable, setBillable] = useState(entry.billable);
   const minutes = parseCellDuration(length);
   return (
-    <ListItem className="flex-col items-stretch gap-1.5 p-3">
+    <ListItem className="rise flex-col items-stretch gap-1.5" style={{ "--i": index } as CSSProperties}>
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="w-16 shrink-0 text-xs text-muted-foreground">{entry.day}</span>
+        <span className="w-14 shrink-0 text-xs text-muted-foreground">{entry.day}</span>
         <span className="min-w-0 flex-1 truncate">
           {entry.label}
           {entry.sub ? <span className="text-xs text-muted-foreground"> · {entry.sub}</span> : null}
         </span>
         {entry.timer ? <Badge variant="outline">{t("timerSource")}</Badge> : null}
         {entry.billable ? <Badge variant="info">{t("billable")}</Badge> : null}
-        <span className="tabular-nums">{durationText(entry.minutes)}</span>
+        <span className="font-mono text-[0.8125rem] tabular-nums">{durationText(entry.minutes)}</span>
         {editable ? (
           <>
             <Button type="button" size="icon-xs" variant="ghost" onClick={() => setEditing((open) => !open)} aria-label={t("edit")}>
@@ -46,7 +46,7 @@ function EntryRow({ entry, editable }: { entry: EntryView; editable: boolean }) 
           </>
         ) : null}
       </div>
-      {entry.note && !editing ? <p className="pl-18 text-xs whitespace-pre-wrap text-muted-foreground">{entry.note}</p> : null}
+      {entry.note && !editing ? <p className="pl-16 text-xs whitespace-pre-wrap text-muted-foreground">{entry.note}</p> : null}
       {entry.capped ? <p className="text-xs text-warning">{t("capped")}</p> : null}
       {editing ? (
         <form
@@ -57,8 +57,8 @@ function EntryRow({ entry, editable }: { entry: EntryView; editable: boolean }) 
             run(updateTimeEntryAction, { id: entry.id, minutes, note, billable }, () => setEditing(false));
           }}
         >
-          <Input aria-label={t("minutes")} value={length} onChange={(event) => setLength(event.target.value)} className="h-8 w-20" inputMode="decimal" aria-invalid={!minutes || undefined} />
-          <Input aria-label={t("note")} placeholder={t("note")} value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} className="h-8 min-w-40 flex-1" />
+          <Input aria-label={t("minutes")} value={length} onChange={(event) => setLength(event.target.value)} className="h-9 w-20 font-mono text-[0.8125rem] tabular-nums md:h-8" inputMode="decimal" aria-invalid={!minutes || undefined} />
+          <Input aria-label={t("note")} placeholder={t("note")} value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} className="h-9 min-w-40 flex-1 md:h-8" />
           <label className="flex items-center gap-1.5 text-xs">
             <Checkbox checked={billable} onCheckedChange={(checked) => setBillable(checked)} /> {t("billableLabel")}
           </label>
@@ -77,20 +77,20 @@ export function WeekEntries({ entries, editable }: { entries: EntryView[]; edita
   return (
     <List>
       {entries.length === 0 ? <ListEmpty>{t("noEntries")}</ListEmpty> : null}
-      {entries.map((entry) => (
-        <EntryRow key={`${entry.id}:${entry.minutes}:${entry.billable}:${entry.note ?? ""}`} entry={entry} editable={editable} />
+      {entries.map((entry, index) => (
+        <EntryRow key={`${entry.id}:${entry.minutes}:${entry.billable}:${entry.note ?? ""}`} entry={entry} editable={editable} index={index} />
       ))}
     </List>
   );
 }
 
-/** Send the week to the approvers (FR-PJM-25). */
+/** Send the week to the approvers (FR-PJM-25): the hero key of the week's page. */
 export function SubmitWeekButton({ weekStart, again }: { weekStart: string; again: boolean }) {
   const t = useTranslations("daily.time");
   const { run, pending, errorKey } = useRun();
   return (
     <div className="flex flex-col gap-1">
-      <Button type="button" disabled={pending} onClick={() => run(submitWeekAction, { weekStart })}>
+      <Button type="button" size="lg" variant="accent" disabled={pending} onClick={() => run(submitWeekAction, { weekStart })} className="w-full md:w-auto">
         <Send aria-hidden /> {again ? t("resubmit") : t("submit")}
       </Button>
       <FormError namespace="daily.errors" errorKey={errorKey} />

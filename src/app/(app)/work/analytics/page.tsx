@@ -1,5 +1,6 @@
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -51,19 +52,17 @@ export default async function WorkAnalyticsPage({ searchParams }: PageProps<"/wo
   ];
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <p className="text-sm text-muted-foreground">
-            <Link href="/work" className="underline underline-offset-4">
-              {tWork("title")}
-            </Link>
-          </p>
-          <h1>{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
-        </div>
-        <ExportButton action={exportReportAction} input={{ reportKey: "work_analytics", parameters: teamId ? { teamId } : {}, from: period.from, to: period.to, locale }} label={tExports("button")} failedLabel={tExports("failed")} truncatedLabel={tExports("truncated")} />
-      </header>
+    <Page width="wide">
+      <PageHeader
+        eyebrow={
+          <Link href="/work" className="hover:underline">
+            {tWork("title")}
+          </Link>
+        }
+        title={t("title")}
+        description={t("description")}
+        actions={<ExportButton action={exportReportAction} input={{ reportKey: "work_analytics", parameters: teamId ? { teamId } : {}, from: period.from, to: period.to, locale }} label={tExports("button")} failedLabel={tExports("failed")} truncatedLabel={tExports("truncated")} />}
+      />
 
       <form className="flex flex-wrap items-end gap-3 text-sm">
         {teamId ? <input type="hidden" name="team" value={teamId} /> : null}
@@ -153,6 +152,6 @@ export default async function WorkAnalyticsPage({ searchParams }: PageProps<"/wo
           </>
         )}
       </div>
-    </div>
+    </Page>
   );
 }

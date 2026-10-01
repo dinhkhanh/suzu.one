@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { notFound } from "next/navigation";
 import { pagePath } from "@/modules/kb/enums";
 import { Badge } from "@/components/ui/badge";
@@ -34,15 +35,15 @@ export default async function KbPageHistory(props: PageProps<"/kb/pages/[pageId]
   const comparison = from !== null && to !== undefined ? await compareVersions(loaded.page, from, to) : null;
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
+    <Page>
+      <PageHeader
+        eyebrow={
           <Link href={pagePath(loaded.space.key, loaded.page)} className="hover:underline">
             {loaded.page.publishedTitle ?? loaded.page.title}
           </Link>
-        </p>
-        <h1>{t("history.title")}</h1>
-      </header>
+        }
+        title={t("history.title")}
+      />
 
       <Table>
         <TableHeader>
@@ -113,6 +114,6 @@ export default async function KbPageHistory(props: PageProps<"/kb/pages/[pageId]
       ) : from !== null ? (
         <p className="text-sm text-muted-foreground">{t("history.notFound")}</p>
       ) : null}
-    </div>
+    </Page>
   );
 }

@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
@@ -47,11 +48,11 @@ export default async function InterviewPage({ params }: PageProps<"/recruit/inte
   const parts = officeParts(interview.startAt);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1>{interview.title}</h1>
-          <p className="text-sm text-muted-foreground">
+    <Page>
+      <PageHeader
+        title={interview.title}
+        description={
+          <>
             {view.candidateName} ·{" "}
             {view.canSchedule ? (
               <Link href={`/recruit/applications/${view.applicationId}`} className="underline underline-offset-4">
@@ -60,12 +61,15 @@ export default async function InterviewPage({ params }: PageProps<"/recruit/inte
             ) : (
               view.openingTitle
             )}
-          </p>
+          </>
+        }
+      >
+        <div className="mt-1">
+          <Badge dot variant={statusTone(interview.status)}>{t(`statuses.${interview.status}`)}</Badge>
         </div>
-        <Badge dot variant={statusTone(interview.status)}>{t(`statuses.${interview.status}`)}</Badge>
-      </header>
+      </PageHeader>
 
-      <dl className="grid gap-2 rounded-xl border p-4 text-sm sm:grid-cols-2">
+      <dl className="grid gap-2 rounded-[14px] border border-border bg-background p-4 text-sm sm:grid-cols-2">
         <div className="flex justify-between gap-3">
           <dt className="text-muted-foreground">{t("when")}</dt>
           <dd>{format.dateTime(interview.startAt, { dateStyle: "full", timeStyle: "short" })}</dd>
@@ -153,6 +157,6 @@ export default async function InterviewPage({ params }: PageProps<"/recruit/inte
       ) : null}
 
       <p className="text-xs text-muted-foreground">{tRecruit("confidential")}</p>
-    </div>
+    </Page>
   );
 }

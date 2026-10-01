@@ -1,6 +1,8 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Alert } from "@/components/ui/alert";
+import { Page, PageHeader } from "@/components/ui/page";
 import { getPersonTarget } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
@@ -40,28 +42,32 @@ export default async function FileRequestPage(props: PageProps<"/requests/new/[c
   const [people, entities] = await Promise.all([needsPeople ? listPersonNames() : Promise.resolve([]), needsEntities ? listEntities() : Promise.resolve([])]);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header>
-        {followUp ? (
-          <Link href={`/approvals/request/${followUp.parent.request.id}`} className="text-sm text-link hover:underline">
-            ← {parentName}
-          </Link>
-        ) : (
-          <Link href="/requests/new" className="text-sm text-link hover:underline">
-            ← {t("new")}
-          </Link>
-        )}
-        <h1>{locale === "en" ? type.nameEn : type.nameVi}</h1>
-        <p className="text-sm text-muted-foreground">{(locale === "en" ? type.descriptionEn : type.descriptionVi) ?? ""}</p>
-      </header>
+    <Page width="narrow">
+      <PageHeader
+        eyebrow={
+          followUp ? (
+            <Link href={`/approvals/request/${followUp.parent.request.id}`} className="text-link hover:underline">
+              ← {parentName}
+            </Link>
+          ) : (
+            <Link href="/requests/new" className="text-link hover:underline">
+              ← {t("new")}
+            </Link>
+          )
+        }
+        title={locale === "en" ? type.nameEn : type.nameVi}
+        description={(locale === "en" ? type.descriptionEn : type.descriptionVi) ?? undefined}
+      />
       {followUp ? (
-        <div className="flex flex-col gap-1 rounded-xl border bg-muted/40 p-3 text-sm">
-          <span className="text-xs text-muted-foreground">{t("followUps.filedUnder")}</span>
-          <Link href={`/approvals/request/${followUp.parent.request.id}`} className="font-medium hover:underline">
-            {parentName} · {followUp.parent.request.summary}
-          </Link>
-          {Object.keys(followUp.values).length > 0 ? <span className="text-xs text-muted-foreground">{t("followUps.carriedOver", { name: parentName ?? "" })}</span> : null}
-        </div>
+        <Alert variant="neutral">
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-xs text-muted-foreground">{t("followUps.filedUnder")}</span>
+            <Link href={`/approvals/request/${followUp.parent.request.id}`} className="font-medium hover:underline">
+              {parentName} · {followUp.parent.request.summary}
+            </Link>
+            {Object.keys(followUp.values).length > 0 ? <span className="text-xs text-muted-foreground">{t("followUps.carriedOver", { name: parentName ?? "" })}</span> : null}
+          </span>
+        </Alert>
       ) : null}
       {followUp && !followUp.gate.open ? (
         <FollowUpGateNote gate={followUp.gate} />
@@ -85,6 +91,6 @@ export default async function FileRequestPage(props: PageProps<"/requests/new/[c
           submitLabel={t("form.submit")}
         />
       )}
-    </div>
+    </Page>
   );
 }

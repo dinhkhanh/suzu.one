@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
+import { Page, PageHeader, Section } from "@/components/ui/page";
 import { employeeTemplate } from "@/modules/core-hr/import";
 import { historyTemplate } from "@/modules/core-hr/history-import";
 import { commitEmployeeImportAction, commitHistoryImportAction, stageEmployeeImportAction, stageHistoryImportAction } from "@/modules/core-hr/import-actions";
@@ -10,6 +11,7 @@ import { requireUser } from "@/modules/platform/auth/session";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
 import { can } from "@/modules/platform/rbac/policy";
 import { pageTitle } from "@/i18n/page-title";
+import { cn } from "@/lib/utils";
 
 export const generateMetadata = pageTitle("importEmployees");
 
@@ -19,16 +21,16 @@ export default async function ImportPeoplePage() {
   const t = await getTranslations("people");
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1>{t("import.title")}</h1>
-          <p className="max-w-3xl text-sm text-muted-foreground">{t("import.description")}</p>
-        </div>
-        <Link href="/people" className={buttonVariants({ variant: "outline" })}>
-          {t("orgChart.backToList")}
-        </Link>
-      </header>
+    <Page>
+      <PageHeader
+        title={t("import.title")}
+        description={t("import.description")}
+        actions={
+          <Link href="/people" className={cn(buttonVariants({ variant: "outline" }))}>
+            {t("orgChart.backToList")}
+          </Link>
+        }
+      />
       <ul className="list-disc pl-5 text-sm text-muted-foreground">
         <li>{t("import.notes.newOnly")}</li>
         <li>{t("import.notes.manager")}</li>
@@ -36,13 +38,10 @@ export default async function ImportPeoplePage() {
         <li>{t("import.notes.phone")}</li>
       </ul>
       <ImportWizard title={t("import.wizard")} template={{ fileName: "employees.csv", csv: employeeTemplate() }} stageAction={stageEmployeeImportAction} commitAction={commitEmployeeImportAction} />
-      <section className="flex flex-col gap-3 border-t pt-6">
-        <div>
-          <h2>{t("import.historyTitle")}</h2>
-          <p className="max-w-3xl text-sm text-muted-foreground">{t("import.historyDescription")}</p>
-        </div>
+      <Section title={t("import.historyTitle")}>
+        <p className="max-w-prose text-sm text-muted-foreground">{t("import.historyDescription")}</p>
         <ImportWizard title={t("import.historyWizard")} template={{ fileName: "work-history.csv", csv: historyTemplate() }} stageAction={stageHistoryImportAction} commitAction={commitHistoryImportAction} />
-      </section>
-    </div>
+      </Section>
+    </Page>
   );
 }

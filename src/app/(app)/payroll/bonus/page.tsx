@@ -2,6 +2,8 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Page, PageHeader } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
 import { todayInVietnam } from "@/lib/dates";
@@ -12,6 +14,7 @@ import { listEntityOptions } from "@/modules/payroll/options";
 import { compensationReach, payrollReadReach } from "@/modules/payroll/policy";
 import { NewBonusRunForm } from "@/modules/payroll/ui/bonus-forms";
 import { formatVnd } from "@/modules/payroll/ui/money";
+import { PayrollTabs } from "@/modules/payroll/ui/payroll-tabs";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("yearEndBonus");
@@ -26,26 +29,25 @@ export default async function BonusRunsPage() {
   if (!reach.all && reach.entityIds.length === 0) notFound();
   requireStepUp(user, "/payroll/bonus");
 
-  const [t, format, runs, entities] = await Promise.all([getTranslations("payroll.bonus"), getFormatter(), listBonusRuns(), listEntityOptions(reach)]);
+  const [t, tPayroll, format, runs, entities] = await Promise.all([getTranslations("payroll.bonus"), getTranslations("payroll"), getFormatter(), listBonusRuns(), listEntityOptions(reach)]);
   const manages = compensationReach(user.principal);
   const canCreate = manages.all || manages.entityIds.length > 0;
   const mayRead = (entityIds: string[]) => reach.all || entityIds.every((entityId) => reach.entityIds.includes(entityId));
   const year = Number(todayInVietnam().slice(0, 4));
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <Link href="/payroll" className="text-sm text-link hover:underline">
-            ← {t("back")}
+    <Page width="wide">
+      <PageHeader
+        eyebrow={tPayroll("title")}
+        title={t("title")}
+        description={t("description")}
+        actions={
+          <Link href="/payroll/bonus/scheme" className={buttonVariants({ variant: "outline" })}>
+            {t("scheme.link")}
           </Link>
-          <h1>{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("description")}</p>
-        </div>
-        <Link href="/payroll/bonus/scheme" className="h-9 rounded-md border px-3 text-sm leading-9 hover:bg-muted">
-          {t("scheme.link")}
-        </Link>
-      </header>
+        }
+      />
+      <PayrollTabs active="bonus" principal={user.principal} />
 
       <TableCard>
         <Table>
@@ -69,7 +71,7 @@ export default async function BonusRunsPage() {
                 <TableRow key={run.id}>
                   <TableCell className="font-medium">
                     {readable ? (
-                      <Link href={`/payroll/bonus/${run.id}`} className="underline">
+                      <Link href={`/payroll/bonus/${run.id}`} className="hover:underline">
                         {run.name}
                       </Link>
                     ) : (
@@ -79,11 +81,11 @@ export default async function BonusRunsPage() {
                   <TableCell>
                     <Badge dot variant={statusTone(run.status)}>{t(`status.${run.status}`)}</Badge>
                   </TableCell>
-                  <TableCell className="tabular-nums">{run.year}</TableCell>
-                  <TableCell className="tabular-nums">{run.payrollMonth}</TableCell>
+                  <TableCell className="font-mono text-[0.8125rem] tabular-nums">{run.year}</TableCell>
+                  <TableCell className="font-mono text-[0.8125rem] tabular-nums">{run.payrollMonth}</TableCell>
                   <TableCell kind="number">{t("headcount", { count: run.headcount, eligible: run.eligibleCount })}</TableCell>
-                  <TableCell>{run.approvedAt ? format.dateTime(run.approvedAt, { dateStyle: "medium" }) : "—"}</TableCell>
-                  <TableCell kind="money">{totals ? formatVnd(totals.totalVnd) : t("hidden")}</TableCell>
+                  <TableCell className="text-muted-foreground">{run.approvedAt ? format.dateTime(run.approvedAt, { dateStyle: "medium" }) : "—"}</TableCell>
+                  <TableCell kind="money">{totals ? formatVnd(totals.totalVnd) : <span className="text-faint">{t("hidden")}</span>}</TableCell>
                 </TableRow>
               );
             })}
@@ -95,6 +97,6 @@ export default async function BonusRunsPage() {
           </TableAddRow>
         ) : null}
       </TableCard>
-    </div>
+    </Page>
   );
 }

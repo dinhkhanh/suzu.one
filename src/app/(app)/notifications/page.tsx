@@ -1,8 +1,11 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import type { CSSProperties } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { cn } from "@/lib/utils";
+import { addDays, todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { messageKey, resolveParams } from "@/modules/platform/notifications/kinds";
 import { messengerConfig } from "@/modules/platform/notifications/messenger";
@@ -18,6 +21,9 @@ import { TelegramLink } from "@/modules/platform/notifications/ui/telegram-link"
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("notifications");
+
+const GROUPS = ["today", "yesterday", "earlier"] as const;
+type Group = (typeof GROUPS)[number];
 
 export default async function NotificationsPage(props: PageProps<"/notifications">) {
   const user = await requireUser();
@@ -36,71 +42,82 @@ export default async function NotificationsPage(props: PageProps<"/notifications
   ]);
   const pageCount = Math.max(1, Math.ceil(total / NOTIFICATIONS_PAGE_SIZE));
   const now = new Date();
+  // The page's rows under three captions, by the day they arrived (Vietnam time).
+  const today = todayInVietnam(now);
+  const yesterday = addDays(today, -1);
+  const groupOf = (at: Date): Group => {
+    const day = todayInVietnam(at);
+    return day === today ? "today" : day === yesterday ? "yesterday" : "earlier";
+  };
+  const groups = GROUPS.map((group) => ({ group, rows: rows.filter((row) => groupOf(row.createdAt) === group) })).filter((entry) => entry.rows.length > 0);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1>{t("title")}</h1>
-        {rows.some((row) => !row.readAt) ? <MarkAllReadButton /> : null}
-      </header>
+    <Page width="narrow">
+      <PageHeader title={t("title")} actions={rows.some((row) => !row.readAt) ? <MarkAllReadButton /> : null} />
 
-      <List>
-        {rows.length === 0 ? <ListEmpty>{t("empty")}</ListEmpty> : null}
-        {rows.map((row) => {
-          const key = messageKey(row.kind);
-          // A kind removed from the catalogue still shows, by its raw name.
-          const known = t.has(`kinds.${key}.title`);
-          const params = resolveParams(row.params, (messageId) => (anyText.has(messageId) ? anyText(messageId) : messageId));
-          return (
-            <ListItem key={row.id} className={`relative items-start justify-between gap-4 ${row.readAt ? "" : "bg-primary/5"}`}>
-              {/* Unread rows carry an accent bar, a filled dot, a bold title and a solid button; read rows are dimmed. */}
-              {row.readAt ? null : <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-primary" />}
-              <span aria-hidden className={`mt-1.5 size-2 shrink-0 rounded-full ${row.readAt ? "border border-muted-foreground/40" : "bg-primary"}`} />
-              <div className="min-w-0 flex-1">
-                <p className={`flex flex-wrap items-center gap-2 text-sm ${row.readAt ? "font-normal text-muted-foreground" : "font-semibold text-foreground"}`}>
-                  {known ? t(`kinds.${key}.title`, params) : row.kind}
-                  <span className="sr-only">({row.readAt ? t("read") : t("unread")})</span>
-                  {row.readAt ? null : (
-                    <Badge variant="info" dot aria-hidden>
-                      {t("unread")}
-                    </Badge>
-                  )}
-                </p>
-                {known ? <p className={`text-sm ${row.readAt ? "text-muted-foreground/80" : "text-foreground/80"}`}>{t(`kinds.${key}.body`, params)}</p> : null}
-                <time className="text-xs text-muted-foreground" dateTime={row.createdAt.toISOString()}>
-                  {format.relativeTime(row.createdAt, now)}
-                </time>
-              </div>
-              {row.link || !row.readAt ? <OpenNotificationButton id={row.id} link={row.link} unread={!row.readAt} label={row.link ? t("open") : t("markRead")} /> : null}
-            </ListItem>
-          );
-        })}
-      </List>
+      {rows.length === 0 ? (
+        <List>
+          <ListEmpty>{t("empty")}</ListEmpty>
+        </List>
+      ) : null}
+
+      {groups.map(({ group, rows: inGroup }) => (
+        <Section key={group} title={t(`groups.${group}`)} count={inGroup.length}>
+          <List>
+            {inGroup.map((row, index) => {
+              const key = messageKey(row.kind);
+              // A kind removed from the catalogue still shows, by its raw name.
+              const known = t.has(`kinds.${key}.title`);
+              const params = resolveParams(row.params, (messageId) => (anyText.has(messageId) ? anyText(messageId) : messageId));
+              const unread = !row.readAt;
+              return (
+                <ListItem key={row.id} className="rise items-start gap-3" style={{ "--i": index } as CSSProperties}>
+                  {/* An unread row is told by the accent dot and its medium title; a read one is dimmed. */}
+                  <span aria-hidden className={cn("mt-[0.4375rem] size-2 shrink-0 rounded-full", unread ? "bg-primary" : "bg-transparent")} />
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <p className={cn("text-sm", unread ? "font-medium text-foreground" : "text-muted-foreground")}>
+                      {known ? t(`kinds.${key}.title`, params) : row.kind}
+                      <span className="sr-only"> ({unread ? t("unread") : t("read")})</span>
+                    </p>
+                    {known ? <p className={cn("text-sm", unread ? "text-foreground/80" : "text-muted-foreground/80")}>{t(`kinds.${key}.body`, params)}</p> : null}
+                    <time className="text-xs text-faint" dateTime={row.createdAt.toISOString()}>
+                      {format.relativeTime(row.createdAt, now)}
+                    </time>
+                  </div>
+                  {row.link || unread ? <OpenNotificationButton id={row.id} link={row.link} unread={unread} label={row.link ? t("open") : t("markRead")} /> : null}
+                </ListItem>
+              );
+            })}
+          </List>
+        </Section>
+      ))}
 
       {pageCount > 1 ? (
-        <nav className="flex items-center gap-3 text-sm">
-          {page > 1 ? (
-            <Link href={`/notifications?page=${page - 1}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-              {t("previous")}
-            </Link>
-          ) : null}
+        <nav className="flex items-center justify-between gap-3 text-sm">
           <span className="text-muted-foreground">{t("page", { page, pageCount })}</span>
-          {page < pageCount ? (
-            <Link href={`/notifications?page=${page + 1}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-              {t("next")}
-            </Link>
-          ) : null}
+          <div className="flex gap-2">
+            {page > 1 ? (
+              <Link href={`/notifications?page=${page - 1}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                {t("previous")}
+              </Link>
+            ) : null}
+            {page < pageCount ? (
+              <Link href={`/notifications?page=${page + 1}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                {t("next")}
+              </Link>
+            ) : null}
+          </div>
         </nav>
       ) : null}
 
       {/* Where the sidebar's "Notification settings" lands: every channel, then every category. */}
-      <section id="settings" className="flex scroll-mt-4 flex-col gap-8">
+      <Section id="settings" title={t("settings")} className="scroll-mt-16 gap-4">
         <PushToggle vapidPublicKey={vapidPublicKey()} personId={user.person.id} deviceCount={devices.length} />
         <TelegramLink configured={telegramConfig() !== null} status={serialise(telegram)} />
         <MessengerLink configured={messengerConfig() !== null} status={serialise(messenger)} />
         <PreferencesForm preferences={preferences} />
-      </section>
-    </div>
+      </Section>
+    </Page>
   );
 }
 

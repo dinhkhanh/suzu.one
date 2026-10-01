@@ -5,6 +5,8 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Section } from "@/components/ui/page";
 import type { AcceptanceWaiting } from "../acceptance";
 
 export async function AcceptanceWaitingList({ projectId, waiting, showLink = true }: { projectId: string; waiting: AcceptanceWaiting[] | null; showLink?: boolean }) {
@@ -12,26 +14,19 @@ export async function AcceptanceWaitingList({ projectId, waiting, showLink = tru
   const t = await getTranslations("projects.acceptance");
   const label = (item: AcceptanceWaiting) => (item.scope === "milestone" ? t("waitingMilestone", { name: item.name ?? "" }) : item.scope === "retainer_period" ? t("waitingMonth", { name: item.name ?? "" }) : t("waitingWhole"));
   return (
-    <section className="flex flex-col gap-3 rounded-xl border p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-medium">{t("waitingTitle")}</h2>
-        <Badge variant={waiting.length ? "warning" : "success"}>{waiting.length}</Badge>
-      </div>
-      <p className="text-sm text-muted-foreground">{t("waitingNote")}</p>
-      {waiting.length === 0 ? (
-        <p className="text-sm">{t("waitingNone")}</p>
-      ) : (
-        <ul className="flex flex-col gap-1 text-sm">
-          {waiting.map((item) => (
-            <li key={`${item.scope}:${item.milestoneId ?? item.retainerPeriodId ?? "all"}`}>{label(item)}</li>
-          ))}
-        </ul>
-      )}
-      {showLink ? (
-        <Link href={`/projects/${projectId}/acceptance`} className="text-sm underline">
-          {t("waitingLink")}
-        </Link>
-      ) : null}
-    </section>
+    <Section title={t("waitingTitle")} count={waiting.length} action={showLink ? <Link href={`/projects/${projectId}/acceptance`}>{t("waitingLink")}</Link> : null}>
+      <List>
+        {waiting.length === 0 ? <ListEmpty>{t("waitingNone")}</ListEmpty> : null}
+        {waiting.map((item) => (
+          <ListItem key={`${item.scope}:${item.milestoneId ?? item.retainerPeriodId ?? "all"}`} className="gap-3">
+            <Badge dot variant="warning">
+              {t(`scopes.${item.scope}`)}
+            </Badge>
+            <span className="min-w-0 flex-1">{label(item)}</span>
+          </ListItem>
+        ))}
+      </List>
+      <p className="px-0.5 text-xs text-muted-foreground">{t("waitingNote")}</p>
+    </Section>
   );
 }

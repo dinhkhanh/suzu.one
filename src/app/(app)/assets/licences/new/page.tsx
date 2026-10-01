@@ -1,6 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { Page, PageHeader } from "@/components/ui/page";
 import { db, schema } from "@/lib/db";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
@@ -19,9 +20,9 @@ export default async function NewLicencePage() {
     getTranslations("assets.licences"),
   ]);
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <h1>{t("nav.new")}</h1>
+    <Page width="narrow">
+      <PageHeader title={t("nav.new")} />
       <LicenceForm value={null} entities={entities} people={people} canSeeMoney={canReadAssetMoney(user.principal)} />
-    </div>
+    </Page>
   );
 }

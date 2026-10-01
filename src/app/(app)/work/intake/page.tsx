@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -20,16 +21,16 @@ export default async function IntakeIndexPage() {
   const format = await getFormatter();
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/work" className="underline">
+    <Page width="narrow">
+      <PageHeader
+        eyebrow={
+          <Link href="/work" className="hover:underline">
             {tWork("title")}
           </Link>
-        </p>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("indexDescription")}</p>
-      </header>
+        }
+        title={t("title")}
+        description={t("indexDescription")}
+      />
 
       {forms.length === 0 ? (
         <List>
@@ -87,6 +88,6 @@ export default async function IntakeIndexPage() {
           </Table>
         </TableCard>
       ) : null}
-    </div>
+    </Page>
   );
 }

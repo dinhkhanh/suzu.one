@@ -1,8 +1,9 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { List, ListItem } from "@/components/ui/list";
-import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { List, ListEmpty, ListItem } from "@/components/ui/list";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
 import { listCashAwaitingReceipt } from "@/modules/payroll/payments";
@@ -13,6 +14,8 @@ import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("payslips");
 
+const monthLabel = (month: string) => month.split("-").reverse().join("/");
+
 /** My payslips (FR-PAY-32). Every signed-in person has this page; it shows their own months only. */
 export default async function MyPayslipsPage() {
   const user = await requireUser();
@@ -22,37 +25,35 @@ export default async function MyPayslipsPage() {
   const toConfirm = cash.filter((row) => row.disbursedOn);
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
-      <header>
-        <h1>{t("mine")}</h1>
-        <p className="text-sm text-muted-foreground">{t("mineDescription")}</p>
-      </header>
+    <Page>
+      <PageHeader title={t("mine")} description={t("mineDescription")} />
 
       {toConfirm.length > 0 ? (
-        <TableCard>
-          <TableCardHeader title={tCash("confirm")} count={toConfirm.length} />
+        <Section title={tCash("confirm")} count={toConfirm.length}>
           <List>
             {toConfirm.map((row) => (
               <ListItem key={row.runId} className="flex-wrap justify-between">
-                <span>
-                  {row.month} · <span className="tabular-nums">{formatVnd(row.amount)}</span>
-                  <span className="ml-2 text-muted-foreground">{row.disbursedOn}</span>
+                <span className="flex flex-col">
+                  <span className="font-medium">
+                    <span className="font-mono tabular-nums">{monthLabel(row.month)}</span> · <span className="font-mono tabular-nums">{formatVnd(row.amount)}</span>
+                  </span>
+                  <span className="text-xs text-muted-foreground">{row.disbursedOn}</span>
                 </span>
                 <ConfirmReceiptButton runId={row.runId} />
               </ListItem>
             ))}
           </List>
-        </TableCard>
+        </Section>
       ) : null}
 
-      <Table>
+      <Table containerClassName="hidden md:block">
         <TableHeader>
           <TableRow>
             <TableHead kind="date">{t("month")}</TableHead>
             <TableHead kind="org">{t("entity")}</TableHead>
             <TableHead kind="money">{t("net")}</TableHead>
             <TableHead kind="date">{t("published")}</TableHead>
-            <TableHead kind="actions" />
+            <TableHead kind="status" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -60,29 +61,43 @@ export default async function MyPayslipsPage() {
           {payslips.map((payslip) => (
             <TableRow key={payslip.id}>
               <TableCell>
-                <Link href={`/payslips/${payslip.id}`} className="font-medium hover:underline">
-                  {payslip.month}
+                <Link href={`/payslips/${payslip.id}`} className="font-mono font-medium tabular-nums hover:underline">
+                  {monthLabel(payslip.month)}
                 </Link>
                 {payslip.kind === "off_cycle" ? <span className="ml-2 text-xs text-muted-foreground">{payslip.runName}</span> : null}
-                {payslip.firstViewedAt ? null : (
-                  <Badge className="ml-2 text-[10px]" variant="default">
-                    {t("new")}
-                  </Badge>
-                )}
               </TableCell>
-              <TableCell className="font-mono text-xs">{payslip.entityCode}</TableCell>
-              <TableCell kind="money">{formatVnd(payslip.net)}</TableCell>
+              <TableCell className="font-mono text-xs text-muted-foreground">{payslip.entityCode}</TableCell>
+              <TableCell kind="money" className="font-medium">{formatVnd(payslip.net)}</TableCell>
               <TableCell className="text-muted-foreground">{format.dateTime(payslip.publishedAt, { dateStyle: "medium" })}</TableCell>
-              <TableCell kind="actions">
-                {payslip.openQueries > 0 ? <Badge variant="outline">{t("queryOpen")}</Badge> : null}
-                <Link href={`/payslips/${payslip.id}`} className="ml-2 text-sm hover:underline">
-                  {t("open")}
-                </Link>
+              <TableCell>
+                <span className="flex gap-1.5">
+                  {payslip.firstViewedAt ? null : <Badge dot variant="info">{t("new")}</Badge>}
+                  {payslip.openQueries > 0 ? <Badge dot variant="warning">{t("queryOpen")}</Badge> : null}
+                </span>
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </div>
+      <List className="md:hidden">
+        {payslips.length === 0 ? <ListEmpty>{t("none")}</ListEmpty> : null}
+        {payslips.map((payslip) => (
+          <ListItem key={payslip.id} href={`/payslips/${payslip.id}`} className="justify-between">
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="flex items-center gap-2">
+                <span className="font-mono font-medium tabular-nums">{monthLabel(payslip.month)}</span>
+                {payslip.firstViewedAt ? null : <Badge dot variant="info">{t("new")}</Badge>}
+                {payslip.openQueries > 0 ? <Badge dot variant="warning">{t("queryOpen")}</Badge> : null}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {payslip.entityCode} · {format.dateTime(payslip.publishedAt, { dateStyle: "medium" })}
+                {payslip.kind === "off_cycle" ? ` · ${payslip.runName}` : ""}
+              </span>
+            </span>
+            <span className="font-mono text-[0.9375rem] font-medium tabular-nums">{formatVnd(payslip.net)}</span>
+          </ListItem>
+        ))}
+      </List>
+    </Page>
   );
 }

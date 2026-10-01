@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { Page, PageHeader } from "@/components/ui/page";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities } from "@/modules/platform/org/service";
 import { canManageAssets, canReadAssetMoney, findAsset, listCategories } from "@/modules/assets/service";
@@ -16,10 +17,8 @@ export default async function EditAssetPage({ params }: PageProps<"/assets/[asse
   const [categories, entities, t] = await Promise.all([listCategories(), listEntities(), getTranslations("assets")]);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <h1>
-        {t("nav.edit")} · <span className="font-mono text-base">{asset.code}</span>
-      </h1>
+    <Page width="narrow">
+      <PageHeader eyebrow={<span className="font-mono">{asset.code}</span>} title={t("nav.edit")} />
       <AssetForm
         value={{
           id: asset.id,
@@ -39,6 +38,6 @@ export default async function EditAssetPage({ params }: PageProps<"/assets/[asse
         }}
         options={{ entities, categories, people: [], teams: [], canSeeMoney: canReadAssetMoney(user.principal, asset.entityId) }}
       />
-    </div>
+    </Page>
   );
 }

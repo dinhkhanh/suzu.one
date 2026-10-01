@@ -1,8 +1,9 @@
-// A filled-in request, read by an approver. Server component: it renders only the fields the form
-// actually asked, in the order it asked them, so a type that changed afterwards does not turn an
-// old request into a puzzle.
+// A filled-in request, read by an approver, as the property sheet of the design: one row per
+// field the form actually asked, in the order it asked them, so a type that changed afterwards
+// does not turn an old request into a puzzle. Server component.
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import type { FormDefinition } from "../engine/form";
 import { AttachmentLink } from "./attachment-link";
@@ -30,46 +31,49 @@ export async function Answers({
 
   if (answered.length === 0) return <p className="text-sm text-muted-foreground">{t("view.noAnswers")}</p>;
   return (
-    <dl className="grid gap-4 sm:grid-cols-2">
-      {answered.map((field) => {
-        const value = values[field.key];
-        return (
-          <div key={field.key} className={field.type === "textarea" ? "sm:col-span-2" : undefined}>
-            <dt className="text-xs text-muted-foreground">{label(field)}</dt>
-            <dd className={field.type === "textarea" ? "text-sm" : "text-sm whitespace-pre-wrap"}>
-              {value === null || value === "" ? (
-                "—"
-              ) : field.type === "checkbox" ? (
-                <Badge variant="outline">{value === true ? t("view.yes") : t("view.no")}</Badge>
-              ) : field.type === "money" ? (
-                format.number(Number(value), { style: "currency", currency: "VND", maximumFractionDigits: 0 })
-              ) : field.type === "date" ? (
-                format.dateTime(new Date(`${String(value)}T00:00:00`), { dateStyle: "long" })
-              ) : field.type === "select" ? (
-                (label((field.options ?? []).find((option) => option.value === value) ?? { labelVi: String(value), labelEn: String(value) }))
-              ) : field.type === "multi_select" ? (
-                (Array.isArray(value) ? value : [])
-                  .map((entry) => label((field.options ?? []).find((option) => option.value === entry) ?? { labelVi: String(entry), labelEn: String(entry) }))
-                  .join(", ") || "—"
-              ) : field.type === "person" || field.type === "entity" ? (
-                (Array.isArray(value) ? value : [value]).map((entry) => recordNames.get(String(entry)) ?? String(entry)).join(", ") || "—"
-              ) : field.type === "textarea" ? (
-                <RichText text={String(value)} />
-              ) : field.type === "file" ? (
-                <ul className="flex flex-col gap-1">
-                  {(Array.isArray(value) ? value : []).map((fileId) => (
-                    <li key={String(fileId)}>
-                      <AttachmentLink requestId={requestId} fileId={String(fileId)} fileName={fileNames.get(String(fileId)) ?? String(fileId)} />
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                String(value)
-              )}
-            </dd>
-          </div>
-        );
-      })}
-    </dl>
+    <Table numbered={false}>
+      <TableBody>
+        {answered.map((field) => {
+          const value = values[field.key];
+          const long = field.type === "textarea";
+          return (
+            <TableRow key={field.key} className="hover:bg-transparent">
+              <TableCell className="w-44 align-top text-xs text-muted-foreground md:w-56 md:text-sm">{label(field)}</TableCell>
+              <TableCell className={long ? "whitespace-normal" : field.type === "money" ? "whitespace-normal font-mono text-[0.9375rem] font-medium tabular-nums" : "whitespace-pre-wrap"}>
+                {value === null || value === "" ? (
+                  <span className="text-faint">—</span>
+                ) : field.type === "checkbox" ? (
+                  <Badge variant="outline">{value === true ? t("view.yes") : t("view.no")}</Badge>
+                ) : field.type === "money" ? (
+                  format.number(Number(value), { style: "currency", currency: "VND", maximumFractionDigits: 0 })
+                ) : field.type === "date" ? (
+                  format.dateTime(new Date(`${String(value)}T00:00:00`), { dateStyle: "long" })
+                ) : field.type === "select" ? (
+                  (label((field.options ?? []).find((option) => option.value === value) ?? { labelVi: String(value), labelEn: String(value) }))
+                ) : field.type === "multi_select" ? (
+                  (Array.isArray(value) ? value : [])
+                    .map((entry) => label((field.options ?? []).find((option) => option.value === entry) ?? { labelVi: String(entry), labelEn: String(entry) }))
+                    .join(", ") || "—"
+                ) : field.type === "person" || field.type === "entity" ? (
+                  (Array.isArray(value) ? value : [value]).map((entry) => recordNames.get(String(entry)) ?? String(entry)).join(", ") || "—"
+                ) : field.type === "textarea" ? (
+                  <RichText text={String(value)} />
+                ) : field.type === "file" ? (
+                  <ul className="flex flex-col gap-1">
+                    {(Array.isArray(value) ? value : []).map((fileId) => (
+                      <li key={String(fileId)}>
+                        <AttachmentLink requestId={requestId} fileId={String(fileId)} fileName={fileNames.get(String(fileId)) ?? String(fileId)} />
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  String(value)
+                )}
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
   );
 }

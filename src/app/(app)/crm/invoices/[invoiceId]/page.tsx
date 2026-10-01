@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusTone } from "@/components/ui/tone";
+import { Page, PageHeader } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { requireUser } from "@/modules/platform/auth/session";
@@ -27,27 +28,21 @@ export default async function InvoicePage({ params }: PageProps<"/crm/invoices/[
   const [t, tProjects, f] = await Promise.all([getTranslations("crm"), getTranslations("projects"), formatters()]);
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/crm/invoices" className="underline">
+    <Page width="default">
+      <PageHeader eyebrow={<><Link href="/crm/invoices" className="underline">
             {t("invoices.title")}
           </Link>{" "}
           ·{" "}
           <Link href={`/crm/accounts/${invoice.clientId}`} className="underline">
             {invoice.accountName}
-          </Link>
-        </p>
-        <h1 className="flex flex-wrap items-center gap-2">
-          {t("invoice.heading", { number: invoice.number })}
+          </Link></>} title={<span className="inline-flex flex-wrap items-center gap-2">{t("invoice.heading", { number: invoice.number })}
           <Badge dot variant={statusTone(invoice.standing === "open" && invoice.daysPastDue > 0 ? "overdue" : invoice.standing === "part_paid" ? "pending" : invoice.standing)}>
             {t(`enums.invoiceStanding.${invoice.standing}`)}
-          </Badge>
-        </h1>
+          </Badge></span>}>
         <p className="text-sm text-muted-foreground">{[invoice.entityName, t("invoice.issuedIs", { date: f.date(invoice.issuedOn) }), t("invoice.dueIs", { date: f.date(invoice.dueOn) }), invoice.daysPastDue > 0 ? t("invoices.daysLate", { days: invoice.daysPastDue }) : null].filter(Boolean).join(" · ")}</p>
         <p className="text-sm">{t("invoice.figures", { subtotal: f.money(invoice.subtotalVnd), vat: f.money(invoice.vatVnd), rate: invoice.vatRateBp / 100, total: f.money(invoice.totalVnd), paid: f.money(invoice.paidVnd), outstanding: f.money(invoice.outstandingVnd) })}</p>
         {invoice.writtenOffReason ? <p className="text-sm text-muted-foreground">{t("invoice.writtenOffBecause", { reason: invoice.writtenOffReason })}</p> : null}
-      </header>
+      </PageHeader>
       <CrmTabs current="invoices" show={shell.show} />
 
       <TableCard>
@@ -126,6 +121,6 @@ export default async function InvoicePage({ params }: PageProps<"/crm/invoices/[
         </details>
       ) : null}
       {invoice.note ? <p className="text-sm text-muted-foreground">{invoice.note}</p> : null}
-    </div>
+    </Page>
   );
 }

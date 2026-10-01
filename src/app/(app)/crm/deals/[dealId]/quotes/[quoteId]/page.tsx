@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Page, PageHeader } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { pageTitle } from "@/i18n/page-title";
 import { getRequest } from "@/modules/platform/approvals/service";
@@ -49,20 +50,14 @@ export default async function QuotePage({ params }: PageProps<"/crm/deals/[dealI
   const visibleReasons = reasons.filter((reason) => reason === "discount" || seesMargin);
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href={`/crm/deals/${dealId}`} className="underline">
+    <Page width="default">
+      <PageHeader eyebrow={<><Link href={`/crm/deals/${dealId}`} className="underline">
             {found.deal.title}
           </Link>{" "}
-          · {found.account.client.name}
-        </p>
-        <h1 className="flex flex-wrap items-center gap-2">
-          {quote.quote.number} v{quote.quote.version}
+          · {found.account.client.name}</>} title={<span className="inline-flex flex-wrap items-center gap-2">{quote.quote.number} v{quote.quote.version}
           <Badge dot variant={statusTone(quote.quote.status === "in_approval" ? "pending" : quote.quote.status)}>
             {t(`enums.quoteStatus.${quote.quote.status as "draft"}`)}
-          </Badge>
-        </h1>
+          </Badge></span>}>
         <p className="text-sm text-muted-foreground">
           {t("quote.totalIs", { total: f.money(quote.quote.totalVnd), valid: f.date(quote.quote.validUntil) })}
           {quote.quote.sentAt ? ` · ${t("quote.sentOn", { date: f.when(quote.quote.sentAt) })}` : ""}
@@ -73,7 +68,7 @@ export default async function QuotePage({ params }: PageProps<"/crm/deals/[dealI
             {t("quote.pdf")}
           </a>
         </p>
-      </header>
+      </PageHeader>
       <CrmTabs current="deals" show={shell.show} />
 
       {request?.canDecide ? (
@@ -146,6 +141,6 @@ export default async function QuotePage({ params }: PageProps<"/crm/deals/[dealI
           </TableFooter>
         </Table>
       )}
-    </div>
+    </Page>
   );
 }

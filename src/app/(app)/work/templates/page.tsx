@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader, Section } from "@/components/ui/page";
 import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listTemplatePlans, PROJECT_KINDS, type TemplatePlanRow } from "@/modules/projects/service";
@@ -28,29 +29,29 @@ export default async function WorkTemplatesPage() {
   const canManage = (ownerId: string | null) => (ownerId ? owners.some((team) => team.id === ownerId) : canShare);
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/work" className="underline">
+    <Page width="default">
+      <PageHeader
+        eyebrow={
+          <Link href="/work" className="hover:underline">
             {tWork("title")}
           </Link>
-        </p>
-        <h1>{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </header>
+        }
+        title={t("title")}
+        description={t("description")}
+      />
 
-      <section className="flex flex-col gap-3 rounded-xl border p-4">
-        <h2 className="text-sm font-medium">{t("newProject")}</h2>
+      <Section title={t("newProject")}>
+        <div className="rounded-[14px] border border-border bg-background p-4">
         <TemplateProjectForm
           templates={templates.filter((template) => template.purpose === "work_project" && template.isActive && template.items.length > 0).map(({ id, name, ownerId, roleKeys }) => ({ id, name, ownerId, roleKeys }))}
           teams={createTeams.map(({ id, name, defaultVisibility }) => ({ id, name, defaultVisibility }))}
           peopleByTeam={peopleByTeam}
           today={todayInVietnam()}
         />
-      </section>
+        </div>
+      </Section>
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("library", { count: templates.length })}</h2>
+      <Section title={t("library", { count: templates.length })}>
         {templates.map((template) => (
           <div key={template.id} className="flex flex-col gap-2">
             <TemplateCard
@@ -72,15 +73,16 @@ export default async function WorkTemplatesPage() {
           </div>
         ))}
         {templates.length === 0 ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : null}
-      </section>
+      </Section>
 
       {owners.length > 0 || canShare ? (
-        <section className="flex flex-col gap-3 rounded-xl border p-4">
-          <h2 className="text-sm font-medium">{t("newTemplate")}</h2>
-          <TemplateCreateForm owners={owners.map(({ id, name }) => ({ id, name }))} canShare={canShare} />
-        </section>
+        <Section title={t("newTemplate")}>
+          <div className="rounded-[14px] border border-border bg-background p-4">
+            <TemplateCreateForm owners={owners.map(({ id, name }) => ({ id, name }))} canShare={canShare} />
+          </div>
+        </Section>
       ) : null}
-    </div>
+    </Page>
   );
 }
 

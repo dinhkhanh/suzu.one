@@ -1,64 +1,102 @@
 import { getFormatter, getTranslations } from "next-intl/server";
+import { ChevronRight } from "lucide-react";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { LocaleSwitch } from "@/components/shell/locale-switch";
+import { SignOutButton } from "@/components/shell/sign-out-button";
+import { ThemeSwitch } from "@/components/shell/theme-switch";
+import { List, ListItem } from "@/components/ui/list";
+import { Page, PageHeader, Section, Tile, TileGrid } from "@/components/ui/page";
 import { listProfileChanges } from "@/modules/core-hr/change-requests";
 import { getPersonView } from "@/modules/core-hr/service";
 import { ChangeRequestForm } from "@/modules/core-hr/ui/change-request-forms";
+import { Fact, FactSheet } from "@/modules/core-hr/ui/fact-sheet";
+import { IconTile, MenuList } from "@/modules/core-hr/ui/me-menu";
 import { PersonAvatar } from "@/modules/core-hr/ui/person-avatar";
 import { PhotoEditor } from "@/modules/core-hr/ui/photo-editor";
 import { ResignationForm } from "@/modules/core-hr/ui/lifecycle-forms";
 import { PersonEquipment } from "@/modules/assets/ui/person-equipment";
 import { LifecycleSection } from "@/modules/core-hr/ui/lifecycle-section";
 import { RecordSections } from "@/modules/core-hr/ui/record-sections";
-import { listRequestsAbout } from "@/modules/platform/approvals/service";
+import { getMonthSummaryFor } from "@/modules/attendance/service";
+import { hoursText } from "@/modules/attendance/ui/day-plan";
+import { getLeaveBalanceFor } from "@/modules/leave/service";
+import { countMyOpenRequests, listRequestsAbout } from "@/modules/platform/approvals/service";
 import { todayInVietnam } from "@/lib/dates";
 import { RequestTable } from "@/modules/platform/approvals/ui/request-views";
 import { requireUser } from "@/modules/platform/auth/session";
+import { getTheme } from "@/theme/server";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("myProfile");
 
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-sm">{children ?? "—"}</dd>
-    </div>
-  );
-}
-
-// Self-service (FR-CHR-12): everything the company holds about the signed-in person, read-only
-// but for the profile picture.
+// Self-service (FR-CHR-12): the hub of everything that is the signed-in person's own — the key
+// figures, the way to each of their pages, then everything the company holds about them,
+// read-only but for the profile picture.
 // Not behind the People feature flag — seeing your own data does not wait for a pilot.
 export default async function MyProfilePage() {
   const user = await requireUser();
   const viewer = { personId: user.person.id, principal: user.principal };
-  const [person, requests] = await Promise.all([getPersonView(user.principal, user.person.id), listProfileChanges(viewer, user.person.id)]);
+  const today = todayInVietnam();
+  const year = Number(today.slice(0, 4));
+  const month = today.slice(0, 7);
+  const [person, requests, balances, summary, openRequests, theme] = await Promise.all([
+    getPersonView(user.principal, user.person.id),
+    listProfileChanges(viewer, user.person.id),
+    getLeaveBalanceFor(user.principal, user.person.id, year),
+    getMonthSummaryFor(user.principal, user.person.id, month),
+    countMyOpenRequests(user.person.id),
+    getTheme(),
+  ]);
   if (!person?.personal) notFound();
 
   const t = await getTranslations("people");
+  const tn = await getTranslations("nav");
   const tc = await getTranslations("changeRequests");
   const format = await getFormatter();
   const day = (value: string | null | undefined) => (value ? format.dateTime(new Date(`${value}T00:00:00`), { dateStyle: "medium" }) : null);
+  const days = (centi: number) => format.number(centi / 100, { maximumFractionDigits: 1 });
   const { personal } = person;
   const profile = personal.profile;
   const hasOpenRequest = (requests ?? []).some((request) => request.status === "pending" || request.status === "returned");
+  // The annual allowance is the figure people ask about; a person without one shows their first tracked type.
+  const annual = balances?.find((row) => row.code === "ANNUAL") ?? balances?.[0] ?? null;
+  const workedMinutes = summary ? summary.workedMinutes + summary.creditedMinutes : null;
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
-      <header className="flex items-center gap-4">
-        <PersonAvatar person={person} className="size-20 text-xl" />
-        <div className="flex min-w-0 flex-col gap-1">
-          <h1>{person.fullName}</h1>
-          <p className="text-sm text-muted-foreground">{[person.employeeCode, person.current?.positionName, person.current?.departmentName, person.entityName].filter(Boolean).join(" · ")}</p>
-          {/* Your own picture is yours to change, no change request (canChangePhoto). */}
-          <PhotoEditor person={person} />
-        </div>
-      </header>
+    <Page>
+      <div className="flex items-start gap-4">
+        <PersonAvatar person={person} className="mt-0.5 size-16 text-xl" />
+        <PageHeader
+          eyebrow={person.employeeCode}
+          title={person.fullName}
+          description={[person.current?.positionName, person.current?.departmentName, person.entityName].filter(Boolean).join(" · ")}
+          actions={<PhotoEditor person={person} compact />}
+          className="min-w-0 flex-1 md:items-start"
+        />
+      </div>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("sections.employment")}</h2>
-        <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <TileGrid>
+        {annual ? <Tile label={t("me.leaveLeft")} value={days(annual.availableCenti)} hint={t("me.leaveUsed", { days: days(annual.usedCenti) })} href="/leave" /> : null}
+        {workedMinutes !== null && summary ? <Tile label={t("me.hoursThisMonth")} value={hoursText(workedMinutes)} hint={t("me.hoursHint", { days: summary.standardDays })} href="/attendance" /> : null}
+        <Tile label={t("me.pendingRequests")} value={openRequests} hint={t("me.pendingHint")} tone={openRequests > 0 ? "warning" : undefined} href="/requests" />
+      </TileGrid>
+
+      <Section title={t("me.mine")}>
+        <MenuList
+          rows={[
+            { key: "profile", icon: "me", href: "#profile", label: t("me.profile") },
+            { key: "attendance", href: "/attendance", label: tn("attendance"), meta: workedMinutes !== null ? hoursText(workedMinutes) : undefined },
+            { key: "leave", href: "/leave", label: tn("leave"), meta: annual ? t("me.days", { days: days(annual.availableCenti) }) : undefined },
+            { key: "requests", href: "/requests", label: tn("requests"), meta: t("me.pendingCount", { count: openRequests }) },
+            { key: "payslips", href: "/payslips", label: tn("payslips") },
+            { key: "performance", href: "/performance", label: tn("performance") },
+            { key: "assets", href: "/assets/mine", label: t("me.equipment") },
+          ]}
+        />
+      </Section>
+
+      <Section id="profile" title={t("sections.employment")} className="scroll-mt-16">
+        <FactSheet>
           <Fact label={t("fields.entity")}>{person.entityName}</Fact>
           <Fact label={t("fields.employeeCode")}>{person.employeeCode}</Fact>
           <Fact label={t("fields.workEmail")}>{person.workEmail}</Fact>
@@ -69,12 +107,11 @@ export default async function MyProfilePage() {
           <Fact label={t("fields.seniorityDate")}>{day(personal.seniorityDate)}</Fact>
           <Fact label={t("fields.jobLevel")}>{personal.current?.jobLevel}</Fact>
           <Fact label={t("fields.branch")}>{personal.current?.branchName}</Fact>
-        </dl>
-      </section>
+        </FactSheet>
+      </Section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{t("sections.personal")}</h2>
-        <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <Section title={t("sections.personal")}>
+        <FactSheet>
           <Fact label={t("fields.phone")}>{profile?.phone}</Fact>
           <Fact label={t("fields.personalEmail")}>{profile?.personalEmail}</Fact>
           <Fact label={t("fields.dateOfBirth")}>{day(profile?.dateOfBirth)}</Fact>
@@ -83,11 +120,10 @@ export default async function MyProfilePage() {
           <Fact label={t("fields.nationality")}>{profile?.nationality}</Fact>
           <Fact label={t("fields.permanentAddress")}>{profile?.permanentAddress}</Fact>
           <Fact label={t("fields.currentAddress")}>{profile?.currentAddress}</Fact>
-        </dl>
-      </section>
+        </FactSheet>
+      </Section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">{tc("title")}</h2>
+      <Section title={tc("title")}>
         <p className="text-sm text-muted-foreground">{tc("description")}</p>
         {hasOpenRequest ? (
           <p className="text-sm">{tc("oneAtATime")}</p>
@@ -97,13 +133,37 @@ export default async function MyProfilePage() {
           />
         )}
         <RequestTable rows={requests ?? []} empty={tc("none")} showRequester={false} />
-      </section>
+      </Section>
 
       <RecordSections principal={user.principal} personId={user.person.id} />
       <LifecycleSection principal={user.principal} personId={user.person.id} canManage={false} employed />
       <PersonEquipment principal={user.principal} personId={user.person.id} />
       <ResignationBlock personId={user.person.id} />
-    </div>
+
+      <Section title={t("me.preferences")}>
+        <List>
+          <ListItem>
+            <IconTile name="language" className="bg-muted text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate font-medium">{tn("language")}</span>
+            <LocaleSwitch />
+          </ListItem>
+          <ListItem>
+            <IconTile name="appearance" className="bg-muted text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate font-medium">{tn("appearance")}</span>
+            <ThemeSwitch theme={theme} />
+          </ListItem>
+          <ListItem href="/notifications#settings" className="press">
+            <IconTile name="notificationSettings" className="bg-muted text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate font-medium">{tn("notificationSettings")}</span>
+            <ChevronRight className="size-4 shrink-0 text-faint" aria-hidden />
+          </ListItem>
+        </List>
+        {/* The desk signs out from the sidebar; the phone has no sidebar, so the key is here. */}
+        <div className="md:hidden [&_button]:h-11 [&_button]:w-full [&_button]:text-destructive [&_button_svg]:text-destructive">
+          <SignOutButton label={tn("signOut")} />
+        </div>
+      </Section>
+    </Page>
   );
 }
 
@@ -113,10 +173,9 @@ async function ResignationBlock({ personId }: { personId: string }) {
   const requests = await listRequestsAbout("resignation", personId);
   const open = requests.some((request) => request.status === "pending" || request.status === "returned" || request.status === "approved");
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-medium text-muted-foreground">{t("resign.section")}</h2>
+    <Section title={t("resign.section")}>
       {requests.length > 0 ? <RequestTable rows={requests} empty="" showRequester={false} /> : null}
       {open ? null : <ResignationForm today={todayInVietnam()} />}
-    </section>
+    </Section>
   );
 }

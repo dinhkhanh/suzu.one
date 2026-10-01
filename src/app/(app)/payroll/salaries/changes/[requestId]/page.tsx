@@ -1,11 +1,15 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { List, ListItem } from "@/components/ui/list";
-import { Table, TableBody, TableCard, TableCardHeader, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { Table, TableBody, TableCard, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { statusTone } from "@/components/ui/tone";
 import { requireUser } from "@/modules/platform/auth/session";
 import { requireStepUp } from "@/modules/platform/auth/step-up";
+import { requestCode } from "@/modules/platform/approvals/ui/request-views";
 import { resolveCatalogue } from "@/modules/payroll/components";
 import { BASE_SALARY_CODE, getSalaryChange } from "@/modules/payroll/salaries";
 import { formatVnd } from "@/modules/payroll/ui/money";
@@ -24,7 +28,7 @@ export default async function SalaryChangePage({ params }: PageProps<"/payroll/s
   if (!view) notFound();
   requireStepUp(user, `/payroll/salaries/changes/${requestId}`);
 
-  const [t, format, catalogue] = await Promise.all([getTranslations("payroll"), getFormatter(), resolveCatalogue(view.request.entityId, view.payload.validFrom)]);
+  const [t, tApprovals, format, catalogue] = await Promise.all([getTranslations("payroll"), getTranslations("approvals"), getFormatter(), resolveCatalogue(view.request.entityId, view.payload.validFrom)]);
   const day = (value: string) => format.dateTime(new Date(`${value}T00:00:00+07:00`), { dateStyle: "medium" });
   const names = new Map(catalogue.map((component) => [component.code, component.name]));
   const allowanceOptions = catalogue.filter((component) => component.source === "structure" && component.kind === "earning" && component.code !== BASE_SALARY_CODE).map((component) => ({ code: component.code, name: component.name }));
@@ -40,50 +44,60 @@ export default async function SalaryChangePage({ params }: PageProps<"/payroll/s
     : [];
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header>
-        <Link href={view.request.subjectPersonId && view.figures ? `/payroll/salaries/${view.request.subjectPersonId}` : "/approvals"} className="text-sm text-link hover:underline">
-          ← {view.subjectName}
-        </Link>
-        <h1>{view.request.summary}</h1>
-        <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <Badge variant="outline">{t(`salaries.requestStatus.${view.request.status}` as "salaries.requestStatus.pending")}</Badge>
-          {t("salaries.requestedBy", { name: view.requesterName })} · {t("salaries.effective", { date: day(view.payload.validFrom) })}
-        </p>
-      </header>
+    <Page width="narrow">
+      <PageHeader
+        eyebrow={
+          <span className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">{tApprovals("types.salary_change")}</Badge>
+            <span className="font-mono text-xs text-faint tabular-nums">{requestCode(view.request.id)}</span>
+            <Badge dot variant={statusTone(view.request.status)}>{t(`salaries.requestStatus.${view.request.status}` as "salaries.requestStatus.pending")}</Badge>
+          </span>
+        }
+        title={view.request.summary}
+        description={
+          <>
+            <Link href={view.request.subjectPersonId && view.figures ? `/payroll/salaries/${view.request.subjectPersonId}` : "/approvals"} className="text-link hover:underline">
+              {view.subjectName}
+            </Link>
+            {" · "}
+            {t("salaries.requestedBy", { name: view.requesterName })} · {t("salaries.effective", { date: day(view.payload.validFrom) })}
+          </>
+        }
+      />
 
       {figures ? (
-        <TableCard>
-          <Table numbered={false}>
-            <TableHeader>
-              <TableRow>
-                <TableHead kind="text">{t("salaries.component")}</TableHead>
-                <TableHead kind="money">{t("salaries.currentTerms")}</TableHead>
-                <TableHead kind="money">{t("salaries.proposedTerms")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lines.map((line) => (
-                <TableRow key={line.label} className={line.from !== null && line.from !== line.to ? "font-medium" : undefined}>
-                  <TableCell>{line.label}</TableCell>
-                  <TableCell kind="money">{line.from === null ? "—" : formatVnd(line.from)}</TableCell>
-                  <TableCell kind="money">{formatVnd(line.to)}</TableCell>
+        <Section title={t("salaries.component")}>
+          <TableCard>
+            <Table numbered={false}>
+              <TableHeader>
+                <TableRow>
+                  <TableHead kind="text">{t("salaries.component")}</TableHead>
+                  <TableHead kind="money">{t("salaries.currentTerms")}</TableHead>
+                  <TableHead kind="money">{t("salaries.proposedTerms")}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          {figures.note ? <p className="border-t px-4 py-3 text-sm text-muted-foreground">{figures.note}</p> : null}
-        </TableCard>
+              </TableHeader>
+              <TableBody>
+                {lines.map((line) => (
+                  <TableRow key={line.label}>
+                    <TableCell>{line.label}</TableCell>
+                    <TableCell kind="money" className="text-muted-foreground">{line.from === null ? "—" : formatVnd(line.from)}</TableCell>
+                    <TableCell kind="money" className={line.from !== null && line.from !== line.to ? "font-semibold" : undefined}>{formatVnd(line.to)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {figures.note ? <p className="border-t px-4 py-3 text-sm text-muted-foreground">{figures.note}</p> : null}
+          </TableCard>
+        </Section>
       ) : (
-        <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{t("salaries.figuresHidden")}</p>
+        <Alert variant="neutral">{t("salaries.figuresHidden")}</Alert>
       )}
 
-      <TableCard>
-        <TableCardHeader title={t("salaries.steps")} count={view.steps.length || null} />
+      <Section title={t("salaries.steps")} count={view.steps.length || undefined}>
         <List>
           {view.steps.map((step) => (
             <ListItem key={step.key} className="flex-wrap gap-2">
-              <Badge variant="outline">{step.status}</Badge>
+              <Badge dot variant={statusTone(step.status)}>{tApprovals.has(`assignee.${step.status}`) ? tApprovals(`assignee.${step.status}` as "assignee.pending") : step.status}</Badge>
               {step.assignees.map((assignee) => (
                 <span key={assignee.personId}>
                   {assignee.name}
@@ -93,13 +107,13 @@ export default async function SalaryChangePage({ params }: PageProps<"/payroll/s
             </ListItem>
           ))}
         </List>
-      </TableCard>
+      </Section>
 
       {view.canDecide ? <DecideSalaryChangeForm requestId={requestId} /> : null}
       {view.canResubmit && view.request.subjectPersonId && figures ? (
         <SalaryChangeForm personId={view.request.subjectPersonId} allowances={allowanceOptions} current={figures.proposed} initial={view.payload.initial} requestId={requestId} defaults={{ validFrom: view.payload.validFrom, reason: view.payload.reason, note: figures.note }} />
       ) : null}
       {view.isRequester && (view.request.status === "pending" || view.request.status === "returned") ? <WithdrawSalaryChangeButton requestId={requestId} /> : null}
-    </div>
+    </Page>
   );
 }

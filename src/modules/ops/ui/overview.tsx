@@ -3,6 +3,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { AUTHORITIES, OBLIGATION_CATEGORIES } from "../enums";
 
@@ -14,9 +15,9 @@ export async function OpsNav({ active, reads }: { active: OpsSection; /** Withou
   const t = await getTranslations("ops.nav");
   const sections = reads ? OPS_SECTIONS : (["list"] as const);
   return (
-    <nav className="flex flex-wrap items-center gap-1 border-b pb-2">
+    <nav className="tab-row" aria-label={t("dashboard")}>
       {sections.map((section) => (
-        <Link key={section} href={SECTION_HREF[section]} className={`rounded-md px-2 py-1 text-sm ${section === active ? "pill-on" : "pill-off"}`}>
+        <Link key={section} href={SECTION_HREF[section]} aria-current={section === active ? "page" : undefined}>
           {t(section)}
         </Link>
       ))}
@@ -49,11 +50,11 @@ export async function OverviewFilters({ action, query, owners, hidden = {} }: { 
   const t = await getTranslations("ops");
   const dirty = !!(query.authority || query.category || query.ownerId);
   return (
-    <form action={action} method="get" className="flex flex-wrap items-end gap-2 text-sm">
+    <form action={action} method="get" className="toolbar">
       {Object.entries(hidden).map(([key, value]) => (value ? <input key={key} type="hidden" name={key} value={value} /> : null))}
-      <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted-foreground">{t("filters.authority")}</span>
-        <Select name="authority" defaultValue={query.authority ?? ""} className="w-44">
+      <Label className="flex w-full flex-col gap-1 text-xs text-muted-foreground sm:w-44">
+        {t("filters.authority")}
+        <Select name="authority" defaultValue={query.authority ?? ""}>
           <option value="">{t("filters.all")}</option>
           {AUTHORITIES.map((authority) => (
             <option key={authority} value={authority}>
@@ -61,10 +62,10 @@ export async function OverviewFilters({ action, query, owners, hidden = {} }: { 
             </option>
           ))}
         </Select>
-      </label>
-      <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted-foreground">{t("filters.category")}</span>
-        <Select name="category" defaultValue={query.category ?? ""} className="w-36">
+      </Label>
+      <Label className="flex w-full flex-col gap-1 text-xs text-muted-foreground sm:w-40">
+        {t("filters.category")}
+        <Select name="category" defaultValue={query.category ?? ""}>
           <option value="">{t("filters.all")}</option>
           {OBLIGATION_CATEGORIES.map((category) => (
             <option key={category} value={category}>
@@ -72,10 +73,10 @@ export async function OverviewFilters({ action, query, owners, hidden = {} }: { 
             </option>
           ))}
         </Select>
-      </label>
-      <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted-foreground">{t("filters.owner")}</span>
-        <Select name="owner" defaultValue={query.ownerId ?? ""} className="w-48">
+      </Label>
+      <Label className="flex w-full flex-col gap-1 text-xs text-muted-foreground sm:w-48">
+        {t("filters.owner")}
+        <Select name="owner" defaultValue={query.ownerId ?? ""}>
           <option value="">{t("filters.all")}</option>
           {owners.map((owner) => (
             <option key={owner.id} value={owner.id}>
@@ -83,14 +84,14 @@ export async function OverviewFilters({ action, query, owners, hidden = {} }: { 
             </option>
           ))}
         </Select>
-      </label>
-      <Button type="submit" size="sm" variant="outline">
+      </Label>
+      <Button type="submit" variant="outline">
         {t("filters.apply")}
       </Button>
       {dirty ? (
-        <Link href={`${action}${overviewParams({ authority: null, category: null, ownerId: null }, hidden)}`} className="pb-1.5 text-xs underline">
+        <Button nativeButton={false} variant="ghost" render={<Link href={`${action}${overviewParams({ authority: null, category: null, ownerId: null }, hidden)}`} />}>
           {t("filters.clear")}
-        </Link>
+        </Button>
       ) : null}
     </form>
   );

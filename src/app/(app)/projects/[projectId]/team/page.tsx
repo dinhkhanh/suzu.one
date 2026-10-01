@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Page } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
 import { List, ListItem } from "@/components/ui/list";
 import { Table, TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
@@ -47,10 +48,8 @@ export default async function ProjectTeamPage({ params, searchParams }: PageProp
   const nav = (start: string) => `/projects/${project.id}/team?from=${start}`;
 
   return (
-    <div className="flex max-w-6xl flex-col gap-8">
-      <div className="max-w-5xl">
-        <ProjectHeader context={context} current="team" />
-      </div>
+    <Page width="wide">
+      <ProjectHeader context={context} current="team" />
 
       <TableCard>
         <TableCardHeader
@@ -105,7 +104,7 @@ export default async function ProjectTeamPage({ params, searchParams }: PageProp
                       const capacityCell = row?.cells[index];
                       const tentative = cell.every((booking) => booking.status === "tentative");
                       return (
-                        <td key={week.start} className={`rounded-lg border p-2 align-top ${cell.length === 0 ? "text-muted-foreground" : tentative ? "border-dashed" : ""} ${capacityCell?.over ? "border-destructive/50 bg-destructive/5" : ""}`}>
+                        <td key={week.start} className={`rounded-md p-2 align-top ${cell.length === 0 ? "bg-canvas text-muted-foreground" : tentative ? "border border-dashed border-border" : "bg-muted"} ${capacityCell?.over ? "bg-destructive/10" : ""}`}>
                           {cell.length ? (
                             <p className="font-medium tabular-nums">
                               {t("hoursShort", { hours: hours(cell.reduce((sum, booking) => sum + booking.minutes, 0)) })}
@@ -187,6 +186,6 @@ export default async function ProjectTeamPage({ params, searchParams }: PageProp
           ) : null}
         </>
       ) : null}
-    </div>
+    </Page>
   );
 }

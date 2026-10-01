@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Page, PageHeader } from "@/components/ui/page";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/modules/platform/auth/session";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
@@ -18,18 +19,14 @@ export default async function IntakeFormPage({ params }: PageProps<"/work/intake
   const t = await getTranslations("work.intake");
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/work/intake" className="underline">
+    <Page width="narrow">
+      <PageHeader eyebrow={<span className="flex flex-wrap items-center gap-x-1.5"><Link href="/work/intake" className="hover:underline">
             {t("title")}
           </Link>{" "}
-          · {found.team.name}
-        </p>
-        <h1>{found.form.name}</h1>
-        <RichText text={found.form.description} className="text-sm text-muted-foreground" />
-      </header>
+          · {found.team.name}</span>} title={found.form.name}>
+        <RichText text={found.form.description} className="max-w-prose text-sm text-muted-foreground" />
+      </PageHeader>
       <IntakeSubmitForm formId={found.form.id} fields={found.form.fields} />
-    </div>
+    </Page>
   );
 }

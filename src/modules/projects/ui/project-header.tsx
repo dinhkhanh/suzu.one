@@ -1,16 +1,36 @@
-// The top of every plan page: where the project sits, its job number, type, health and whether it
-// has passed the kick-off gate — then the tabs.
+// The top of every plan page: the project's mark (its colour and initials, or its poster), its
+// name, the badges that say what it is and how it stands, its description — then the tabs. The
+// edit key sits at the right end of the title line.
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { statusTone } from "@/components/ui/tone";
+import { cn } from "@/lib/utils";
+import { initialsOf } from "@/lib/text";
+import { accentOf } from "../../work/enums";
 import { canManageProject, listAssignable, listClients } from "../../work/service";
 import { EditProjectButton } from "../../work/ui/edit-dialogs";
-import { ProjectPoster } from "../../work/ui/project-poster";
+import { posterUrlOf } from "../../work/ui/project-poster";
 import type { ProjectContext } from "../views";
 import { type ProjectTab, ProjectTabs } from "./project-tabs";
 
 export const healthVariant = (health: string | null) => (health === "on_track" ? "success" : health === "at_risk" ? "warning" : health === "off_track" ? "destructive" : "secondary");
+
+/**
+ * A project's mark: a rounded square in the project's accent (the page's `data-accent` turns the
+ * one blue into it) with its initials, or its poster when it has one; ink when it has no colour.
+ */
+export function ProjectMark({ project, accent, size = "default", className }: { project: { id: string; name: string; posterFileId?: string | null }; accent?: boolean; size?: "sm" | "default"; className?: string }) {
+  const src = posterUrlOf(project);
+  const radius = size === "sm" ? "rounded-[9px] after:rounded-[9px]" : "rounded-[11px] after:rounded-[11px]";
+  return (
+    <Avatar className={cn(size === "sm" ? "size-8" : "size-10", radius, "after:border-foreground/10", className)}>
+      {src ? <AvatarImage src={src} alt={project.name} className={radius} /> : null}
+      <AvatarFallback className={cn(radius, "font-semibold tracking-tight", size === "sm" ? "text-xs" : "text-sm", accent ? "bg-primary text-primary-foreground" : "bg-ink text-ink-foreground")}>{initialsOf(project.name.replace(/[^\p{L}\p{N}\s]+/gu, " "))}</AvatarFallback>
+    </Avatar>
+  );
+}
 
 export async function ProjectHeader({ context, current }: { context: ProjectContext; current: ProjectTab }) {
   const t = await getTranslations("projects");
@@ -19,32 +39,44 @@ export async function ProjectHeader({ context, current }: { context: ProjectCont
   // The project's own details (name, client, lead, dates, status) are edited from every plan page.
   const [clients, people] = canManageProject(context.viewer, context.facts) ? await Promise.all([listClients({ activeOnly: true }), listAssignable(team.id, project.id)]) : [null, null];
   return (
-    <header className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/projects" className="underline">
-            {t("title")}
-          </Link>
-          {" / "}
-          <Link href={`/work/teams/${team.id}`} className="underline">
-            {team.name}
-          </Link>
-        </p>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="flex flex-wrap items-center gap-2">
-            <ProjectPoster project={project} />
-            {plan.jobNumber ? <span className="font-mono text-base text-muted-foreground">{plan.jobNumber}</span> : null}
-            {project.name}
-          </h1>
-          {clients && people ? <EditProjectButton project={project} clients={clients.map(({ id, name }) => ({ id, name }))} people={people} /> : null}
+    <header className="flex flex-col gap-4">
+      <p className="flex flex-wrap items-center gap-x-1.5 text-[0.8125rem] font-medium text-muted-foreground">
+        <Link href="/projects" className="hover:text-foreground">
+          {t("title")}
+        </Link>
+        <span className="text-faint">/</span>
+        <Link href={`/work/teams/${team.id}`} className="hover:text-foreground">
+          {team.name}
+        </Link>
+        {plan.jobNumber ? (
+          <>
+            <span className="text-faint">/</span>
+            <span className="font-mono text-xs tabular-nums">{plan.jobNumber}</span>
+          </>
+        ) : null}
+      </p>
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6">
+        <div className="flex min-w-0 items-start gap-3">
+          <ProjectMark project={project} accent={!!accentOf(project.color, team.color)} className="mt-0.5" />
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+              <h1 className="min-w-0 break-words">{project.name}</h1>
+              <span className="flex flex-wrap items-center gap-1.5">
+                <Badge dot variant={statusTone(project.status)}>{tWork(`projects.status.${project.status as "active"}`)}</Badge>
+                <Badge variant="outline">{t(`kinds.${plan.kind as "client"}`)}</Badge>
+                <Badge dot variant={statusTone(plan.briefStatus)}>{t(`brief.status.${plan.briefStatus as "draft"}`)}</Badge>
+                {plan.health ? <Badge variant={healthVariant(plan.health)}>{t(`health.${plan.health as "on_track"}`)}</Badge> : null}
+                {plan.closedAt ? <Badge variant="secondary">{t("close.closedBadge")}</Badge> : null}
+              </span>
+            </div>
+            {project.description ? <p className="max-w-prose text-sm text-muted-foreground">{project.description}</p> : null}
+          </div>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          <Badge variant="outline">{t(`kinds.${plan.kind as "client"}`)}</Badge>
-          <Badge dot variant={statusTone(project.status)}>{tWork(`projects.status.${project.status as "active"}`)}</Badge>
-          <Badge dot variant={statusTone(plan.briefStatus)}>{t(`brief.status.${plan.briefStatus as "draft"}`)}</Badge>
-          {plan.health ? <Badge variant={healthVariant(plan.health)}>{t(`health.${plan.health as "on_track"}`)}</Badge> : null}
-          {plan.closedAt ? <Badge variant="outline">{t("close.closedBadge")}</Badge> : null}
-        </div>
+        {clients && people ? (
+          <div className="flex shrink-0 items-center gap-2 md:pt-1">
+            <EditProjectButton project={project} clients={clients.map(({ id, name }) => ({ id, name }))} people={people} />
+          </div>
+        ) : null}
       </div>
       <ProjectTabs projectId={project.id} current={current} kind={plan.kind} />
     </header>
