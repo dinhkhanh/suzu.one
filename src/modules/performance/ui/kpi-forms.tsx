@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MonthPicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
+import { MetricValueInput } from "./metric-input";
 import { KPI_DIRECTIONS, KPI_FREQUENCIES, KPI_UNITS, type KpiDirection, type KpiFrequency, type KpiUnit, metricValueText, WORK_METRIC_UNITS, WORK_METRICS, type WorkMetric } from "../enums";
 import { applyTemplatesAction, closeKpiMonthAction, endAssignmentAction, removePositionKpiAction, reopenKpiMonthAction, saveActualsAction, saveAssignmentAction, saveKpiAction, savePositionKpiAction } from "../kpi-actions";
 
 type Option = { id: string; name: string };
+type KpiOption = Option & { unit: KpiUnit };
 const ERRORS = "performance.errors";
 
 // ── Actuals grid ────────────────────────────────────────────────────────────────────────────
@@ -53,7 +55,7 @@ export function ActualsGrid({ people }: { people: GridPerson[] }) {
                       <input type="hidden" name={`${name}.assignmentId`} value={line.assignmentId} />
                       <input type="hidden" name={`${name}.periodKey`} value={line.periodKey} />
                       <div className="flex flex-col gap-1">
-                        <Input id={`actual-${line.assignmentId}`} name={`${name}.actual`} defaultValue={line.actualValue === null ? "" : metricValueText(line.unit, line.actualValue)} inputMode="decimal" maxLength={30} aria-label={`${person.fullName} — ${line.kpiName}: ${t("entry.actual")}`} placeholder={t("entry.actual")} />
+                        <MetricValueInput unit={line.unit} id={`actual-${line.assignmentId}`} name={`${name}.actual`} defaultValue={line.actualValue === null ? "" : metricValueText(line.unit, line.actualValue)} maxLength={30} aria-label={`${person.fullName} — ${line.kpiName}: ${t("entry.actual")}`} placeholder={t("entry.actual")} />
                         {person.proposals?.[line.assignmentId] !== undefined ? <ProposalHint inputId={`actual-${line.assignmentId}`} value={person.proposals[line.assignmentId]} /> : null}
                       </div>
                     </>
@@ -96,7 +98,9 @@ function ProposalHint({ inputId, value }: { inputId: string; value: string }) {
   const take = () => {
     const input = document.getElementById(inputId);
     if (input instanceof HTMLInputElement) {
-      input.value = value;
+      // Through the native setter and an input event, so a field React controls (an amount) takes it too.
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
       input.focus();
     }
   };
@@ -185,10 +189,11 @@ export function KpiForm({ value }: { value: KpiFormValue }) {
 
 // ── Position templates ──────────────────────────────────────────────────────────────────────
 
-export function PositionKpiForm({ positions, entities, kpis, defaults }: { positions: Option[]; entities: Option[]; kpis: Option[]; defaults?: { positionId: string; entityId: string | null } }) {
+export function PositionKpiForm({ positions, entities, kpis, defaults }: { positions: Option[]; entities: Option[]; kpis: KpiOption[]; defaults?: { positionId: string; entityId: string | null } }) {
   const t = useTranslations("performance");
   const router = useRouter();
   const form = useActionForm(savePositionKpiAction, { onSuccess: () => router.refresh() });
+  const [kpiId, setKpiId] = useState("");
   return (
     <form onSubmit={form.onSubmit} className="flex flex-col gap-3">
       <FieldErrors value={form.fieldErrors}>
@@ -214,7 +219,7 @@ export function PositionKpiForm({ positions, entities, kpis, defaults }: { posit
             </Select>
           </Field>
           <Field name="kpiId" label={t("positions.kpi")}>
-            <Select id="kpiId" name="kpiId" required>
+            <Select id="kpiId" name="kpiId" required onChange={(event) => setKpiId(event.target.value)}>
               <option value="">—</option>
               {kpis.map((option) => (
                 <option key={option.id} value={option.id}>
@@ -227,7 +232,7 @@ export function PositionKpiForm({ positions, entities, kpis, defaults }: { posit
             <Input name="weight" type="number" min={1} max={1000} defaultValue={10} required />
           </Field>
           <Field name="target" label={t("positions.target")}>
-            <Input name="target" inputMode="decimal" required maxLength={30} />
+            <MetricValueInput unit={unitOf(kpis, kpiId)} name="target" required maxLength={30} />
           </Field>
           <Field name="sortOrder" label={t("positions.order")}>
             <Input name="sortOrder" type="number" min={0} max={999} defaultValue={0} />
@@ -296,19 +301,23 @@ export function ApplyTemplatesForm({ positionId, personId, defaultFrom, label }:
   );
 }
 
+/** The unit of the KPI picked so far; a target typed before one is picked reads as a number. */
+const unitOf = (kpis: KpiOption[], kpiId: string): KpiUnit => kpis.find((kpi) => kpi.id === kpiId)?.unit ?? "number";
+
 // ── Assignments ─────────────────────────────────────────────────────────────────────────────
 
-export function NewAssignmentForm({ personId, kpis, defaultFrom }: { personId: string; kpis: Option[]; defaultFrom: string }) {
+export function NewAssignmentForm({ personId, kpis, defaultFrom }: { personId: string; kpis: KpiOption[]; defaultFrom: string }) {
   const t = useTranslations("performance");
   const router = useRouter();
   const form = useActionForm(saveAssignmentAction, { extra: { personId }, onSuccess: () => router.refresh() });
+  const [kpiId, setKpiId] = useState("");
   return (
     <form onSubmit={form.onSubmit} className="flex flex-col gap-3">
       <FieldErrors value={form.fieldErrors}>
         <div className="grid gap-3 sm:grid-cols-5">
           <div className="sm:col-span-2">
             <Field name="kpiId" label={t("positions.kpi")}>
-              <Select id="kpiId" name="kpiId" required>
+              <Select id="kpiId" name="kpiId" required onChange={(event) => setKpiId(event.target.value)}>
                 <option value="">—</option>
                 {kpis.map((option) => (
                   <option key={option.id} value={option.id}>
@@ -322,7 +331,7 @@ export function NewAssignmentForm({ personId, kpis, defaultFrom }: { personId: s
             <Input name="weight" type="number" min={1} max={1000} defaultValue={10} required />
           </Field>
           <Field name="target" label={t("positions.target")}>
-            <Input name="target" inputMode="decimal" required maxLength={30} />
+            <MetricValueInput unit={unitOf(kpis, kpiId)} name="target" required maxLength={30} />
           </Field>
           <Field name="fromPeriod" label={t("assignments.from")}>
             <MonthPicker name="fromPeriod" defaultValue={defaultFrom} required />
@@ -339,7 +348,7 @@ export function NewAssignmentForm({ personId, kpis, defaultFrom }: { personId: s
   );
 }
 
-export function AssignmentRowForm({ assignment }: { assignment: { id: string; weight: number; targetText: string; toPeriod: string | null } }) {
+export function AssignmentRowForm({ assignment }: { assignment: { id: string; weight: number; unit: KpiUnit; targetText: string; toPeriod: string | null } }) {
   const t = useTranslations("performance");
   const router = useRouter();
   const form = useActionForm(saveAssignmentAction, { extra: { assignmentId: assignment.id }, onSuccess: () => router.refresh() });
@@ -352,7 +361,7 @@ export function AssignmentRowForm({ assignment }: { assignment: { id: string; we
           <Input name="weight" type="number" min={1} max={1000} defaultValue={assignment.weight} required className="w-24" />
         </Field>
         <Field name="target" label={t("positions.target")}>
-          <Input name="target" inputMode="decimal" defaultValue={assignment.targetText} required maxLength={30} className="w-32" />
+          <MetricValueInput unit={assignment.unit} name="target" defaultValue={assignment.targetText} required maxLength={30} className="w-32" />
         </Field>
         <Button type="submit" size="sm" variant="outline" disabled={form.pending}>
           {t("library.save")}

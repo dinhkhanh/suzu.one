@@ -8,6 +8,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
@@ -183,7 +184,7 @@ export function FeeForm({ projectId, feeVnd }: { projectId: string; feeVnd: numb
   return (
     <ActionForm action={setFeeAction} extra={{ projectId }} submit={t("settings.save")} className="flex flex-col gap-2 sm:flex-row sm:items-end">
       <Field name="feeVnd" label={t("fields.feeVnd")}>
-        <Input id="feeVnd" name="feeVnd" inputMode="numeric" defaultValue={feeVnd ?? ""} placeholder="120000000" className="sm:w-56" />
+        <MoneyInput id="feeVnd" name="feeVnd" defaultValue={feeVnd ?? ""} placeholder="120000000" className="sm:w-56" />
       </Field>
     </ActionForm>
   );
@@ -257,7 +258,7 @@ export function MilestoneForm({ projectId, milestone, phases, people, showAmount
         </label>
         {showAmount ? (
           <Field name="billingAmountVnd" label={t("fields.billingAmountVnd")}>
-            <Input id={`ms-amount-${id}`} name="billingAmountVnd" inputMode="numeric" defaultValue={milestone?.billingAmountVnd ?? ""} className="w-44" />
+            <MoneyInput id={`ms-amount-${id}`} name="billingAmountVnd" defaultValue={milestone?.billingAmountVnd ?? ""} className="w-44" />
           </Field>
         ) : null}
         <Field name="sortOrder" label={t("fields.order")}>

@@ -8,6 +8,7 @@ import { useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { MultiSelect, Select } from "@/components/ui/select";
@@ -150,8 +151,9 @@ function FieldInput({
     case "textarea":
       return <textarea id={field.key} name={field.key} rows={4} value={text} maxLength={Math.min(field.maxLength ?? MAX_TEXT, MAX_TEXT)} onChange={(event) => set(event.target.value)} className="rounded-lg border bg-transparent px-2.5 py-1.5 text-sm" />;
     case "number":
+      return <Input id={field.key} name={field.key} inputMode="numeric" value={text} onChange={(event) => set(event.target.value)} />;
     case "money":
-      return <Input id={field.key} name={field.key} inputMode="numeric" value={text} onChange={(event) => set(event.target.value)} placeholder={field.type === "money" ? "0" : undefined} />;
+      return <MoneyInput id={field.key} name={field.key} value={text} onChange={(event) => set(event.target.value)} placeholder="0" />;
     case "date":
       return <DatePicker id={field.key} name={field.key} value={text} min={field.minDate ?? undefined} max={field.maxDate ?? undefined} onChange={(event) => set(event.target.value)} />;
     case "checkbox":

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Field } from "@/components/forms/field";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker, MonthPicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { computeCommissionAction, confirmCommissionStatementAction, decideCommissionSchemeAction, proposeCommissionSchemeAction } from "../commission-actions";
@@ -52,7 +53,7 @@ export function CommissionSchemeForm({ entities, today }: { entities: Named[]; t
         <p className="text-xs text-muted-foreground">{t("tiersHint")}</p>
         {Array.from({ length: TIER_ROWS }, (_, index) => (
           <div key={index} className="grid grid-cols-2 gap-2 sm:max-w-md">
-            <Input name="tierFrom[]" inputMode="numeric" aria-label={t("fields.tierFrom")} placeholder={index === 0 ? "0" : t("fields.tierFrom")} defaultValue={index === 0 ? "0" : ""} />
+            <MoneyInput name="tierFrom[]" aria-label={t("fields.tierFrom")} placeholder={index === 0 ? "0" : t("fields.tierFrom")} defaultValue={index === 0 ? "0" : ""} />
             <Input name="tierRate[]" inputMode="decimal" aria-label={t("fields.tierRate")} placeholder={t("fields.tierRate")} />
           </div>
         ))}

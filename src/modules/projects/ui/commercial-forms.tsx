@@ -9,6 +9,7 @@ import { useState, useTransition } from "react";
 import { Field } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker, MonthPicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
@@ -160,7 +161,7 @@ export function RetainerForm({ projectId, values, rollovers, editFee, defaultMon
         </Field>
         {editFee ? (
           <Field name="feePerMonthVnd" label={t("feePerMonth")}>
-            <Input id="feePerMonthVnd" name="feePerMonthVnd" inputMode="numeric" defaultValue={values?.feePerMonthVnd ?? ""} placeholder="60.000.000" />
+            <MoneyInput id="feePerMonthVnd" name="feePerMonthVnd" defaultValue={values?.feePerMonthVnd ?? ""} placeholder="60.000.000" />
           </Field>
         ) : null}
         <label className="flex items-center gap-2 self-end pb-2 text-sm">
@@ -221,7 +222,7 @@ export function ChangeForm({ projectId, change, register, requesters, editFee }:
         </Field>
         {editFee ? (
           <Field name="feeDeltaVnd" label={t("fields.feeDelta")}>
-            <Input id={`cr-fee-${id}`} name="feeDeltaVnd" inputMode="numeric" defaultValue={change?.feeDeltaVnd ?? ""} placeholder="+15.000.000" />
+            <MoneyInput id={`cr-fee-${id}`} name="feeDeltaVnd" allowNegative defaultValue={change?.feeDeltaVnd ?? ""} placeholder="+15.000.000" />
           </Field>
         ) : null}
         <Field name="dueDateTo" label={t("fields.dueDateTo")}>
@@ -367,7 +368,7 @@ export function BillingDecisionForm({ itemId, needsAmount, today, invoiceIn }: {
             </Field>
             {needsAmount ? (
               <Field name="amountVnd" label={t("amount")}>
-                <Input id={`inv-amount-${itemId}`} name="amountVnd" inputMode="numeric" />
+                <MoneyInput id={`inv-amount-${itemId}`} name="amountVnd" />
               </Field>
             ) : null}
           </div>
@@ -402,7 +403,7 @@ export function ManualBillingForm({ projectId }: { projectId: string | null }) {
           <Input id="manual-ref" name="reference" maxLength={120} placeholder={t("referenceHint")} />
         </Field>
         <Field name="amountVnd" label={t("amount")}>
-          <Input id="manual-amount" name="amountVnd" inputMode="numeric" />
+          <MoneyInput id="manual-amount" name="amountVnd" />
         </Field>
       </div>
     </ActionForm>

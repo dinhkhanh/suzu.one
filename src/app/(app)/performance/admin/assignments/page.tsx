@@ -49,7 +49,7 @@ export default async function KpiAssignmentsPage({ searchParams }: PageProps<"/p
                 <details>
                   <summary className="cursor-pointer text-xs text-muted-foreground">{t("assignments.change")}</summary>
                   <div className="pt-2">
-                    <AssignmentRowForm assignment={{ id: assignment.id, weight: assignment.weight, targetText: metricValueText(assignment.kpi.unit, assignment.targetValue), toPeriod: assignment.toPeriod }} />
+                    <AssignmentRowForm assignment={{ id: assignment.id, weight: assignment.weight, unit: assignment.kpi.unit, targetText: metricValueText(assignment.kpi.unit, assignment.targetValue), toPeriod: assignment.toPeriod }} />
                   </div>
                 </details>
               ) : null}
@@ -63,7 +63,7 @@ export default async function KpiAssignmentsPage({ searchParams }: PageProps<"/p
         </section>
         <section className="rounded-xl border p-3">
           <h3 className="pb-3 text-sm font-medium">{t("assignments.addTitle")}</h3>
-          <NewAssignmentForm personId={person.personId} kpis={kpis.map((kpi) => ({ id: kpi.id, name: `${kpi.name} (${kpi.code})` }))} defaultFrom={month} />
+          <NewAssignmentForm personId={person.personId} kpis={kpis.map((kpi) => ({ id: kpi.id, name: `${kpi.name} (${kpi.code})`, unit: kpi.unit }))} defaultFrom={month} />
         </section>
       </div>
     );

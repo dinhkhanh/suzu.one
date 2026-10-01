@@ -8,6 +8,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { createOpeningAction, updateOpeningAction } from "../actions";
@@ -150,10 +151,10 @@ export function OpeningForm({
           <fieldset className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2">
             <legend className="px-1 text-sm font-medium">{tRoot("columns.salary")}</legend>
             <Field name="salaryMinVnd" label={t("salaryMin")}>
-              <Input id="salaryMinVnd" name="salaryMinVnd" inputMode="numeric" defaultValue={value?.salaryMinVnd ?? ""} />
+              <MoneyInput id="salaryMinVnd" name="salaryMinVnd" defaultValue={value?.salaryMinVnd ?? ""} />
             </Field>
             <Field name="salaryMaxVnd" label={t("salaryMax")}>
-              <Input id="salaryMaxVnd" name="salaryMaxVnd" inputMode="numeric" defaultValue={value?.salaryMaxVnd ?? ""} />
+              <MoneyInput id="salaryMaxVnd" name="salaryMaxVnd" defaultValue={value?.salaryMaxVnd ?? ""} />
             </Field>
             <label className="flex items-center gap-2 text-sm sm:col-span-2">
               <input type="checkbox" name="salaryPublic" defaultChecked={value?.salaryPublic ?? false} className="size-4" />

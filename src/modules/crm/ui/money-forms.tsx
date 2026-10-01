@@ -6,6 +6,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import { Field } from "@/components/forms/field";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
@@ -91,7 +92,7 @@ export function ContractForm({ clientId, contract, entities, parents, deals, see
       <div className="grid gap-3 sm:grid-cols-2">
         {seesValue ? (
           <Field name="valueVnd" label={t("fields.value")}>
-            <Input id={`c-value-${id}`} name="valueVnd" inputMode="numeric" defaultValue={contract?.valueVnd ?? ""} />
+            <MoneyInput id={`c-value-${id}`} name="valueVnd" defaultValue={contract?.valueVnd ?? ""} />
           </Field>
         ) : null}
         <label className="flex items-center gap-2 pt-6 text-sm">
@@ -231,7 +232,7 @@ export function RecordInvoiceForm({ items, vatRates, defaultVat, today }: { item
               {item.amountVnd !== null ? (
                 money(item.amountVnd)
               ) : (
-                <Input name={`amounts.${item.id}`} inputMode="numeric" required={picked.has(item.id)} value={typed[item.id] ?? ""} onChange={(event) => setTyped((current) => ({ ...current, [item.id]: event.target.value }))} placeholder={t("amount")} aria-label={t("amount")} className="w-36" />
+                <MoneyInput name={`amounts.${item.id}`} required={picked.has(item.id)} value={typed[item.id] ?? ""} onChange={(event) => setTyped((current) => ({ ...current, [item.id]: event.target.value }))} placeholder={t("amount")} aria-label={t("amount")} className="w-36" />
               )}
             </span>
           </li>
@@ -278,7 +279,7 @@ export function PaymentForm({ invoiceId, outstanding, today }: { invoiceId: stri
           <DatePicker id="pay-date" name="receivedOn" required max={today} defaultValue={today} />
         </Field>
         <Field name="amountVnd" label={t("fields.amount")}>
-          <Input id="pay-amount" name="amountVnd" inputMode="numeric" required defaultValue={outstanding} />
+          <MoneyInput id="pay-amount" name="amountVnd" required defaultValue={outstanding} />
         </Field>
         <Field name="method" label={t("fields.method")}>
           <Select id="pay-method" name="method" defaultValue="transfer">

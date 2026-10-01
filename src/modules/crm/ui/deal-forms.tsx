@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Field } from "@/components/forms/field";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { assignLeadAction, convertLeadAction, createDealAction, createLeadAction, moveDealAction, openPitchAction, reassignDealAction, reopenDealAction, resendHandoffAction, respondToHandoffAction, setDealContactsAction, setLeadStatusAction, setUpDeliveryAction, updateDealAction, updateLeadAction } from "../deal-actions";
@@ -194,10 +195,10 @@ function DealFields({ deal, brands, teams, entities, seesValue }: { deal?: Parti
       {seesValue ? (
         <div className="grid gap-3 sm:grid-cols-4">
           <Field name="oneOffVnd" label={t("deal.fields.oneOff")}>
-            <Input id="deal-oneoff" name="oneOffVnd" inputMode="numeric" defaultValue={deal?.oneOffVnd ?? ""} />
+            <MoneyInput id="deal-oneoff" name="oneOffVnd" defaultValue={deal?.oneOffVnd ?? ""} />
           </Field>
           <Field name="monthlyVnd" label={t("deal.fields.monthly")}>
-            <Input id="deal-monthly" name="monthlyVnd" inputMode="numeric" defaultValue={deal?.monthlyVnd ?? ""} />
+            <MoneyInput id="deal-monthly" name="monthlyVnd" defaultValue={deal?.monthlyVnd ?? ""} />
           </Field>
           <Field name="months" label={t("deal.fields.months")}>
             <Input id="deal-months" name="months" type="number" min={1} max={120} defaultValue={deal?.months ?? ""} />
@@ -670,10 +671,10 @@ export function ConvertLeadForm({ leadId, lead, accounts, entities, teams, stage
             <ServiceLineChecks />
             <div className="grid gap-3 sm:grid-cols-4">
               <Field name="oneOffVnd" label={t("deal.fields.oneOff")}>
-                <Input id="convert-oneoff" name="oneOffVnd" inputMode="numeric" />
+                <MoneyInput id="convert-oneoff" name="oneOffVnd" />
               </Field>
               <Field name="monthlyVnd" label={t("deal.fields.monthly")}>
-                <Input id="convert-monthly" name="monthlyVnd" inputMode="numeric" />
+                <MoneyInput id="convert-monthly" name="monthlyVnd" />
               </Field>
               <Field name="expectedCloseOn" label={t("deal.fields.expectedClose")}>
                 <DatePicker id="convert-close" name="expectedCloseOn" />

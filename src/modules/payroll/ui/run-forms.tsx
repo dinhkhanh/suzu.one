@@ -6,6 +6,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Select } from "@/components/ui/select";
 import type { RunStep } from "../lifecycle";
 import { calculatePayrollRunAction, cancelPayrollRunAction, createPayrollRunAction, removePayrollRunInputAction, setPayrollRunInputAction, stepPayrollRunAction } from "../run-actions";
@@ -160,7 +161,7 @@ export function RunInputForm({ runId, people, codes }: { runId: string; people: 
             </Select>
           </Field>
           <Field name="amount" label={t("inputs.amount")}>
-            <Input id="amount" name="amount" inputMode="numeric" required className="text-right tabular-nums" />
+            <MoneyInput id="amount" name="amount" required className="text-right" />
           </Field>
           <Field name="note" label={t("inputs.note")}>
             <Input id="note" name="note" maxLength={300} />

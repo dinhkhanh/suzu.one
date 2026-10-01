@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { Field } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
@@ -90,7 +91,7 @@ export function QuoteEditor({ quoteId, quote, lines: initial, services, vatRates
             <div className="grid gap-2 sm:grid-cols-6">
               <Input name={`lines.${index}.quantity`} type="number" min={1} value={line.quantity} onChange={(event) => update(line.key, { quantity: event.target.value })} aria-label={t("quantity")} placeholder={t("quantity")} />
               <Input name={`lines.${index}.unit`} maxLength={40} value={line.unit} onChange={(event) => update(line.key, { unit: event.target.value })} aria-label={t("unit")} placeholder={t("unit")} />
-              <Input name={`lines.${index}.unitPriceVnd`} inputMode="numeric" value={line.unitPriceVnd} onChange={(event) => update(line.key, { unitPriceVnd: event.target.value })} aria-label={t("unitPrice")} placeholder={t("unitPrice")} />
+              <MoneyInput name={`lines.${index}.unitPriceVnd`} value={line.unitPriceVnd} onChange={(event) => update(line.key, { unitPriceVnd: event.target.value })} aria-label={t("unitPrice")} placeholder={t("unitPrice")} />
               <Input name={`lines.${index}.discountPercent`} inputMode="decimal" value={line.discountPercent} onChange={(event) => update(line.key, { discountPercent: event.target.value })} aria-label={t("discount")} placeholder={t("discount")} />
               <Input name={`lines.${index}.months`} type="number" min={1} max={120} value={line.months} onChange={(event) => update(line.key, { months: event.target.value })} aria-label={t("months")} placeholder={t("monthsHint")} />
               <p className="self-center text-right text-sm tabular-nums">{money(Math.max(0, number(line.quantity) * number(line.unitPriceVnd) * (line.months ? number(line.months) : 1) * (1 - Number(line.discountPercent || 0) / 100)))}</p>

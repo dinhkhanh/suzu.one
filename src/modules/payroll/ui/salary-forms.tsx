@@ -6,6 +6,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { INSURANCE_EXEMPTIONS, PAY_PROFILES, PIT_METHODS, SALARY_CHANGE_REASONS, type SalaryTerms, SIMPLE_BASES, TAX_RESIDENCIES } from "../enums";
@@ -44,14 +45,14 @@ export function SalaryChangeForm({ personId, allowances, current, initial, reque
             </Select>
           </Field>
           <Field name="terms.baseSalary" label={t("baseSalary")}>
-            <Input id="terms.baseSalary" name="terms.baseSalary" inputMode="numeric" required defaultValue={current?.baseSalary ?? ""} autoComplete="off" />
+            <MoneyInput id="terms.baseSalary" name="terms.baseSalary" required defaultValue={current?.baseSalary ?? ""} />
           </Field>
           <Field name="terms.insuranceSalary" label={t("insuranceSalary")}>
-            <Input id="terms.insuranceSalary" name="terms.insuranceSalary" inputMode="numeric" required defaultValue={current?.insuranceSalary ?? ""} autoComplete="off" />
+            <MoneyInput id="terms.insuranceSalary" name="terms.insuranceSalary" required defaultValue={current?.insuranceSalary ?? ""} />
           </Field>
           {allowances.map((allowance) => (
             <Field key={allowance.code} name={`terms.allowances.${allowance.code}`} label={allowance.name}>
-              <Input id={`terms.allowances.${allowance.code}`} name={`terms.allowances.${allowance.code}`} inputMode="numeric" defaultValue={amount(allowance.code)} autoComplete="off" />
+              <MoneyInput id={`terms.allowances.${allowance.code}`} name={`terms.allowances.${allowance.code}`} defaultValue={amount(allowance.code)} />
             </Field>
           ))}
         </div>

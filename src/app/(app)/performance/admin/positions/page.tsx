@@ -59,7 +59,7 @@ export default async function PositionKpisPage() {
       {group || manageable.length > 0 ? (
         <section className="rounded-xl border p-3">
           <h2 className="pb-3 text-sm font-medium">{t("positions.addLine")}</h2>
-          <PositionKpiForm positions={positions} entities={manageable.map((entity) => ({ id: entity.id, name: entity.code }))} kpis={kpis.map((kpi) => ({ id: kpi.id, name: `${kpi.name} (${kpi.code})` }))} />
+          <PositionKpiForm positions={positions} entities={manageable.map((entity) => ({ id: entity.id, name: entity.code }))} kpis={kpis.map((kpi) => ({ id: kpi.id, name: `${kpi.name} (${kpi.code})`, unit: kpi.unit }))} />
           {group ? null : <p className="pt-2 text-xs text-muted-foreground">{t("positions.entityOnly")}</p>}
         </section>
       ) : null}

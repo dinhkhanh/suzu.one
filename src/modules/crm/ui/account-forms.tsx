@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Field } from "@/components/forms/field";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { accountMemberAction, createAccountAction, eraseContactAction, moveAccountWorkAction, saveContactAction, saveProfileAction, saveTermsAction, setLifecycleAction, setSalesOwnerAction } from "../account-actions";
@@ -170,7 +171,7 @@ export function TermsForm({ clientId, terms }: { clientId: string; terms: { paym
           <Input id="paymentTermsDays" name="paymentTermsDays" type="number" min={0} max={365} defaultValue={terms.paymentTermsDays ?? ""} placeholder={t("account.defaultTerms")} />
         </Field>
         <Field name="creditLimitVnd" label={t("account.fields.creditLimit")}>
-          <Input id="creditLimitVnd" name="creditLimitVnd" inputMode="numeric" defaultValue={terms.creditLimitVnd ?? ""} />
+          <MoneyInput id="creditLimitVnd" name="creditLimitVnd" defaultValue={terms.creditLimitVnd ?? ""} />
         </Field>
         <label className="flex items-center gap-2 pt-6 text-sm">
           <input type="checkbox" name="creditHold" defaultChecked={terms.creditHold} /> {t("account.fields.creditHold")}

@@ -8,6 +8,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { addOneOnOneActionAction, completeOneOnOneActionAction, createOneOnOneAction, shareOneOnOneAction, updateOneOnOneAction } from "../one-on-one-actions";
@@ -205,10 +206,10 @@ export function RaiseOutcomeForm({ resultId, mayProposeSalary }: { resultId: str
                 <DatePicker id="validFrom" name="validFrom" />
               </Field>
               <Field name="baseSalary" label={t("baseSalary")}>
-                <Input id="baseSalary" name="baseSalary" inputMode="numeric" className="text-right tabular-nums" />
+                <MoneyInput id="baseSalary" name="baseSalary" className="text-right" />
               </Field>
               <Field name="insuranceSalary" label={t("insuranceSalary")}>
-                <Input id="insuranceSalary" name="insuranceSalary" inputMode="numeric" className="text-right tabular-nums" />
+                <MoneyInput id="insuranceSalary" name="insuranceSalary" className="text-right" />
               </Field>
             </>
           ) : null}

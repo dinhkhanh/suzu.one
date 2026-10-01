@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Select } from "@/components/ui/select";
 import { createApplicationAction } from "../actions";
 import { CANDIDATE_SOURCES } from "../enums";
@@ -49,7 +49,7 @@ export function AddApplicationForm({ openingId, candidates, canSetMoney }: { ope
           </Field>
           {canSetMoney ? (
             <Field name="salaryExpectationVnd" label={t("salaryExpectation")}>
-              <Input id="salaryExpectationVnd" name="salaryExpectationVnd" inputMode="numeric" />
+              <MoneyInput id="salaryExpectationVnd" name="salaryExpectationVnd" />
             </Field>
           ) : null}
         </div>

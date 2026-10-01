@@ -6,6 +6,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { assignAssetAction, confirmHandoverAction, registerAssetAction, returnAssetAction, saveAssetCategoryAction, setAssetStatusAction, updateAssetAction } from "../actions";
@@ -101,7 +102,7 @@ export function AssetForm({ value, options }: { value: AssetFormValue; options: 
         {options.canSeeMoney ? (
           <>
             <Field name="purchasePrice" label={t("purchasePrice")}>
-              <Input id="purchasePrice" name="purchasePrice" inputMode="numeric" defaultValue={value.purchasePrice ?? ""} />
+              <MoneyInput id="purchasePrice" name="purchasePrice" defaultValue={value.purchasePrice ?? ""} />
             </Field>
             <Field name="supplier" label={t("supplier")}>
               <Input id="supplier" name="supplier" defaultValue={value.supplier ?? ""} maxLength={200} />

@@ -6,6 +6,7 @@ import { useActionForm } from "@/components/forms/use-action-form";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { MonthPicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { quoteOfferAction } from "../offer-actions";
@@ -37,7 +38,7 @@ export function NetToGrossForm({ entities, allowances, defaultMonth }: { entitie
               <MonthPicker id="month" name="month" required defaultValue={defaultMonth} />
             </Field>
             <Field name="netSalary" label={t("netSalary")}>
-              <Input id="netSalary" name="netSalary" required inputMode="numeric" autoComplete="off" placeholder="30.000.000" />
+              <MoneyInput id="netSalary" name="netSalary" required placeholder="30.000.000" />
             </Field>
             <Field name="dependents" label={t("dependents")}>
               <Input id="dependents" name="dependents" type="number" min={0} max={20} defaultValue={0} />
@@ -55,7 +56,7 @@ export function NetToGrossForm({ entities, allowances, defaultMonth }: { entitie
               </Select>
             </Field>
             <Field name="insuranceSalary" label={t("insuranceSalary")}>
-              <Input id="insuranceSalary" name="insuranceSalary" inputMode="numeric" autoComplete="off" placeholder={t("followGross")} />
+              <MoneyInput id="insuranceSalary" name="insuranceSalary" placeholder={t("followGross")} />
             </Field>
             <label className="flex items-center gap-2 self-end text-sm">
               <input type="checkbox" name="insuranceExempt" value="true" className="size-4" />
@@ -69,7 +70,7 @@ export function NetToGrossForm({ entities, allowances, defaultMonth }: { entitie
               <div className="grid gap-3 sm:grid-cols-2">
                 {allowances.map((allowance) => (
                   <Field key={allowance.code} name={`allowances.${allowance.code}`} label={allowance.name}>
-                    <Input id={`allowances.${allowance.code}`} name={`allowances.${allowance.code}`} inputMode="numeric" autoComplete="off" placeholder="0" />
+                    <MoneyInput id={`allowances.${allowance.code}`} name={`allowances.${allowance.code}`} placeholder="0" />
                   </Field>
                 ))}
               </div>

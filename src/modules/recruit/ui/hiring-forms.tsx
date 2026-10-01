@@ -7,6 +7,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { decideHiringRequestAction, submitHiringRequestAction } from "../actions";
@@ -107,10 +108,10 @@ export function HiringRequestForm({
           <fieldset className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2">
             <legend className="px-1 text-sm font-medium">{tRoot("columns.budget")}</legend>
             <Field name="budgetMinVnd" label={t("budgetMin")}>
-              <Input id="budgetMinVnd" name="budgetMinVnd" inputMode="numeric" />
+              <MoneyInput id="budgetMinVnd" name="budgetMinVnd" />
             </Field>
             <Field name="budgetMaxVnd" label={t("budgetMax")}>
-              <Input id="budgetMaxVnd" name="budgetMaxVnd" inputMode="numeric" />
+              <MoneyInput id="budgetMaxVnd" name="budgetMaxVnd" />
             </Field>
           </fieldset>
         ) : (

@@ -6,6 +6,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { MonthPicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { classifyParallelDifferenceAction, setParallelReferenceAction } from "../parallel-actions";
@@ -147,7 +148,7 @@ export function ReferenceForm({ entityId, month, people }: { entityId: string; m
         <div className="grid gap-3 sm:grid-cols-3">
           {FIELDS.map((field) => (
             <Field key={field} name={field} label={t(`fields.${field}`)}>
-              <Input id={field} name={field} type="number" min={0} step={1} defaultValue={0} required />
+              <MoneyInput id={field} name={field} defaultValue={0} required />
             </Field>
           ))}
         </div>

@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -254,11 +255,19 @@ export function TypeDesigner({ draft, entities, canGroup, catalogue }: { draft: 
                   <>
                     <label className="flex flex-col gap-1.5">
                       <Label htmlFor={`min-${index}`}>{t("min")}</Label>
-                      <Input id={`min-${index}`} className="w-28" type="number" value={field.min ?? ""} onChange={(event) => patch(index, { min: event.target.value === "" ? null : Number(event.target.value) })} />
+                      {field.type === "money" ? (
+                        <MoneyInput id={`min-${index}`} className="w-36" value={field.min ?? ""} onChange={(event) => patch(index, { min: event.target.value === "" ? null : Number(event.target.value) })} />
+                      ) : (
+                        <Input id={`min-${index}`} className="w-28" type="number" value={field.min ?? ""} onChange={(event) => patch(index, { min: event.target.value === "" ? null : Number(event.target.value) })} />
+                      )}
                     </label>
                     <label className="flex flex-col gap-1.5">
                       <Label htmlFor={`max-${index}`}>{t("max")}</Label>
-                      <Input id={`max-${index}`} className="w-28" type="number" value={field.max ?? ""} onChange={(event) => patch(index, { max: event.target.value === "" ? null : Number(event.target.value) })} />
+                      {field.type === "money" ? (
+                        <MoneyInput id={`max-${index}`} className="w-36" value={field.max ?? ""} onChange={(event) => patch(index, { max: event.target.value === "" ? null : Number(event.target.value) })} />
+                      ) : (
+                        <Input id={`max-${index}`} className="w-28" type="number" value={field.max ?? ""} onChange={(event) => patch(index, { max: event.target.value === "" ? null : Number(event.target.value) })} />
+                      )}
                     </label>
                   </>
                 ) : null}

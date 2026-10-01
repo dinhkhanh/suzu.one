@@ -8,6 +8,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
@@ -118,7 +119,7 @@ export function ExpenseClaimForm({
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-muted-foreground">
                     {t("amount")}
-                    <Input inputMode="numeric" value={line.amount} placeholder="0" onChange={(event) => set(index, { amount: event.target.value })} />
+                    <MoneyInput value={line.amount} placeholder="0" onChange={(event) => set(index, { amount: event.target.value })} />
                   </label>
 
                   <label className="flex flex-col gap-1 text-xs text-muted-foreground sm:col-span-2">

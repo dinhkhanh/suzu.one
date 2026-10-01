@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { createCheckInAction, createGoalAction, moveGoalAction, removeKeyResultAction, reparentGoalAction, saveKeyResultAction, updateGoalAction } from "../actions";
+import { MetricValueInput } from "./metric-input";
 import { CONFIDENCES, type GoalLevel, isAnnual, levelRank, METRIC_TYPES, type MetricType, metricValueText, type Milestone, periodsOfYear } from "../enums";
 
 const textarea = "w-full rounded-md border bg-transparent px-3 py-2 text-sm";
@@ -261,10 +262,10 @@ export function KeyResultForm({ goalId, value }: { goalId: string; value: KeyRes
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             <Field name="startValue" label={t("kr.start")}>
-              <Input id="startValue" name="startValue" inputMode="decimal" defaultValue={value.metricType === "milestone" ? "0" : metricValueText(value.metricType, value.startValue)} required />
+              <MetricValueInput unit={metricType} id="startValue" name="startValue" defaultValue={value.metricType === "milestone" ? "0" : metricValueText(value.metricType, value.startValue)} required />
             </Field>
             <Field name="targetValue" label={t("kr.target")}>
-              <Input id="targetValue" name="targetValue" inputMode="decimal" defaultValue={value.metricType === "milestone" || !value.id ? "" : metricValueText(value.metricType, value.targetValue)} required />
+              <MetricValueInput unit={metricType} id="targetValue" name="targetValue" defaultValue={value.metricType === "milestone" || !value.id ? "" : metricValueText(value.metricType, value.targetValue)} required />
             </Field>
           </div>
         )}
@@ -331,7 +332,7 @@ export function CheckInForm({ keyResult }: { keyResult: CheckInTarget }) {
         <div className="grid gap-2 sm:grid-cols-4">
           {keyResult.metricType === "milestone" ? null : (
             <Field name="value" label={t("checkIn.value")}>
-              <Input id="value" name="value" inputMode="decimal" defaultValue={metricValueText(keyResult.metricType, keyResult.currentValue)} required />
+              <MetricValueInput unit={keyResult.metricType} id="value" name="value" defaultValue={metricValueText(keyResult.metricType, keyResult.currentValue)} required />
             </Field>
           )}
           <Field name="confidence" label={t("checkIn.confidence")}>

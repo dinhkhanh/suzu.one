@@ -3,6 +3,7 @@ import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { ACCEPT_ATTRIBUTE } from "@/modules/platform/files/rules";
@@ -162,7 +163,7 @@ export default async function CareersOpeningPage({ params, searchParams }: PageP
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="salaryExpectationVnd">{t("fields.salaryExpectation")}</Label>
-            <Input id="salaryExpectationVnd" name="salaryExpectationVnd" inputMode="numeric" maxLength={20} />
+            <MoneyInput id="salaryExpectationVnd" name="salaryExpectationVnd" />
           </div>
 
           {/* The notice, and the two separate permissions it asks for. The version is submitted

@@ -8,6 +8,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { saveLicenceAction } from "../actions";
@@ -103,7 +104,7 @@ export function LicenceForm({
           )}
           {canSeeMoney ? (
             <Field name="costPerCycle" label={t("form.cost")}>
-              <Input id="costPerCycle" name="costPerCycle" inputMode="numeric" defaultValue={value?.costPerCycle ?? ""} placeholder="12.500.000" />
+              <MoneyInput id="costPerCycle" name="costPerCycle" defaultValue={value?.costPerCycle ?? ""} placeholder="12.500.000" />
             </Field>
           ) : null}
           <Field name="accountRef" label={t("form.accountRef")}>

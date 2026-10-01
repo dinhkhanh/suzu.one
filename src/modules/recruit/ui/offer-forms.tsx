@@ -13,6 +13,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { EMPLOYMENT_TYPES, OFFER_DECLINE_REASONS, OFFER_LIMITS } from "../enums";
@@ -123,10 +124,10 @@ export function OfferForm({
           <div className="grid gap-4 rounded-lg border border-dashed p-3 sm:grid-cols-2">
             <p className="text-xs text-muted-foreground sm:col-span-2">{t("moneyNote")}</p>
             <Field name="baseSalaryVnd" label={t("baseSalary")}>
-              <Input id="baseSalaryVnd" name="baseSalaryVnd" inputMode="numeric" defaultValue={values?.baseSalaryVnd ?? ""} required />
+              <MoneyInput id="baseSalaryVnd" name="baseSalaryVnd" defaultValue={values?.baseSalaryVnd ?? ""} required />
             </Field>
             <Field name="allowancesVnd" label={t("allowances")}>
-              <Input id="allowancesVnd" name="allowancesVnd" inputMode="numeric" defaultValue={values?.allowancesVnd ?? 0} />
+              <MoneyInput id="allowancesVnd" name="allowancesVnd" defaultValue={values?.allowancesVnd ?? 0} />
             </Field>
           </div>
         ) : null}

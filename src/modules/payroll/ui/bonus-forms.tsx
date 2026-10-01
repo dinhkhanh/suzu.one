@@ -8,6 +8,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { bonusWhatIfAction, createBonusRunAction, decideBonusSchemeAction, overrideBonusLineAction, payBonusRunAction, proposeBonusSchemeAction, simulateBonusRunAction, stepBonusRunAction } from "../bonus-actions";
@@ -154,7 +155,7 @@ export function OverrideLineForm({ runId, personId, currentAmount, currentReason
       <FieldErrors value={fieldErrors}>
         <div className="grid gap-4 sm:grid-cols-[12rem_1fr]">
           <Field name="amount" label={t("override.amount")}>
-            <Input id="amount" name="amount" inputMode="numeric" defaultValue={currentAmount ?? ""} className="text-right tabular-nums" />
+            <MoneyInput id="amount" name="amount" defaultValue={currentAmount ?? ""} className="text-right" />
           </Field>
           <Field name="reason" label={t("override.reason")}>
             <Input id="reason" name="reason" maxLength={500} defaultValue={currentReason ?? ""} />

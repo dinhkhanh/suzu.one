@@ -4,6 +4,7 @@
 import { useTranslations } from "next-intl";
 import { Field } from "@/components/forms/field";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { CHANNELS, CONTENT_FORMATS } from "../../work/enums";
@@ -153,7 +154,7 @@ export function PriceForm({ serviceId, entities, today }: { serviceId: string; e
   return (
     <CrmForm action={setPriceAction} extra={{ serviceId }} submit={t("setPrice")} className="flex flex-wrap items-end gap-3">
       <Field name="priceVnd" label={t("fields.price")}>
-        <Input id={`price-${serviceId}`} name="priceVnd" inputMode="numeric" required />
+        <MoneyInput id={`price-${serviceId}`} name="priceVnd" required />
       </Field>
       <Field name="validFrom" label={t("fields.validFrom")}>
         <DatePicker id={`price-from-${serviceId}`} name="validFrom" required defaultValue={today} />

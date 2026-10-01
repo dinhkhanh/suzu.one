@@ -5,6 +5,7 @@ import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
@@ -98,7 +99,7 @@ export function ProposeComponentForm({ entities }: { entities: EntityOption[] })
           </Field>
           {tax === "exempt_up_to_cap" ? (
             <Field name="exemptCap" label={t("exemptCap")}>
-              <Input id="exemptCap" name="exemptCap" inputMode="numeric" required />
+              <MoneyInput id="exemptCap" name="exemptCap" required />
             </Field>
           ) : null}
           <Field name="proration" label={t("proration")}>
