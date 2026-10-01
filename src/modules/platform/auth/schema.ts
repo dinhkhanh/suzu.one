@@ -13,6 +13,9 @@ export const user = pgTable("user", {
   // follow the person to every device. Null is "never chosen", so the browser's cookie decides.
   locale: text("locale"),
   theme: text("theme"),
+  // The sidebar entries the person pinned to its top, in the order they pinned them (keys of
+  // `nav.ts`). Null is "never pinned anything". Entries they cannot open are skipped when drawn.
+  navPins: text("nav_pins").array(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }).enableRLS();

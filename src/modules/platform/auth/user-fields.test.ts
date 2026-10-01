@@ -20,12 +20,13 @@ describe("hostedDomain user field", () => {
 
 // The account's preferences are the app's to write (`preference-actions.ts`), through its own
 // audited action: a browser talking to Better Auth's update-user endpoint may not set them.
-describe("locale and theme user fields", () => {
+describe("preference user fields", () => {
   const options = { user: { additionalFields: USER_ADDITIONAL_FIELDS } };
 
   it("are refused when a client sends them to Better Auth", () => {
     expect(() => parseUserInput(options, { name: "Ngọc", locale: "en" }, "update")).toThrow("locale is not allowed to be set");
     expect(() => parseUserInput(options, { name: "Ngọc", theme: "dark" }, "update")).toThrow("theme is not allowed to be set");
+    expect(() => parseUserInput(options, { name: "Ngọc", navPins: ["payroll"] }, "update")).toThrow("navPins is not allowed to be set");
   });
 
   it("leave the hosted-domain claim untouched at sign-in", () => {

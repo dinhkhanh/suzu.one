@@ -2,7 +2,7 @@
 // bug of its own, so the entries gated on a permission are kept in step with the page behind them.
 import { describe, expect, it } from "vitest";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
-import { navFor } from "./nav";
+import { groupNav, NAV_GROUPS, navFor } from "./nav";
 
 const group = { type: "group" } as const;
 const principal = (grants: Grant[]): Principal => ({ personId: "me", workforceType: "employee", grants });
@@ -53,5 +53,26 @@ describe("feedback", () => {
   it("offers the inbox to whoever triages or reads feedback, as the inbox page does", () => {
     for (const role of ["owner", "hr_admin", "c_level", "entity_director"] as const) expect(admin([{ role, scope: group }]), role).toContain("/feedback/inbox");
     for (const role of ["hr_staff", "department_head", "finance"] as const) expect(admin([{ role, scope: group }]), role).not.toContain("/feedback/inbox");
+  });
+});
+
+describe("sidebar sections", () => {
+  const everything = navFor(principal([{ role: "owner", scope: group }]), { people: true, recruit: true, interviews: true });
+  const offered = [{ key: "today" }, { key: "tasks" }, { key: "approvals" }, { key: "notifications" }, { key: "notificationSettings" }, ...everything.main, ...everything.admin];
+
+  it("names a section for every entry the sidebar can offer", () => {
+    const named = new Set(NAV_GROUPS.flatMap((section) => section.keys));
+    expect(offered.map((item) => item.key).filter((key) => !named.has(key))).toEqual([]);
+  });
+
+  it("places every entry once, in its section's order, and drops empty sections", () => {
+    const grouped = groupNav(offered);
+    expect(grouped.flatMap((section) => section.items)).toHaveLength(new Set(offered.map((item) => item.key)).size);
+    expect(grouped[0]).toEqual({ key: "today", items: [{ key: "today" }, { key: "tasks" }, { key: "approvals" }, { key: "notifications" }] });
+    expect(groupNav([{ key: "kb" }, { key: "home" }])).toEqual([{ key: "company", items: [{ key: "home" }, { key: "kb" }] }]);
+  });
+
+  it("still draws an entry no section names", () => {
+    expect(groupNav([{ key: "somethingNew" }])).toEqual([{ key: "work", items: [{ key: "somethingNew" }] }]);
   });
 });

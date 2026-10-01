@@ -92,3 +92,42 @@ export function navFor(principal: Principal, open: { people: boolean; recruit: b
   ];
   return { main, admin };
 }
+
+export type NavGroupKey = "today" | "me" | "work" | "manage" | "company" | "preferences" | "admin";
+
+/**
+ * The sidebar's sections, each a fold of its own, and the entries in each in the order drawn. An
+ * entry is offered or not by `navFor`; this only says where an offered one sits. `nav.test.ts`
+ * holds every entry to a section, so a new one cannot quietly land in the fallback.
+ */
+export const NAV_GROUPS: readonly { key: NavGroupKey; keys: readonly string[] }[] = [
+  // What waits for the person today: the landing page and the three inboxes with their counts.
+  { key: "today", keys: ["today", "tasks", "approvals", "notifications"] },
+  // One's own matters: the profile, the clock, time off, requests, pay, goals, one's equipment.
+  { key: "me", keys: ["me", "checkIn", "attendance", "leave", "requests", "payslips", "performance", "assets"] },
+  // The work itself, as somebody doing it.
+  { key: "work", keys: ["work", "projects", "daily", "time", "checklists", "crm", "bookings", "interviews"] },
+  // The desks over other people's work: reports, capacity, money in and out, hiring, compliance.
+  { key: "manage", keys: ["reports", "capacity", "billing", "receivables", "recruit", "payroll", "ops"] },
+  // What the whole company shares.
+  { key: "company", keys: ["home", "announcements", "kudos", "people", "kb", "assistant", "referrals", "feedback"] },
+  // How the app behaves for this person; the language and the theme switches sit under these rows.
+  { key: "preferences", keys: ["notificationSettings"] },
+  { key: "admin", keys: ["entities", "org", "flags", "documentTemplates", "approvalFlows", "requestTypes", "roles", "rules", "audit", "jobs", "feedbackInbox"] },
+];
+
+/** Where an entry no section names is drawn, rather than not at all. */
+const FALLBACK_GROUP: NavGroupKey = "work";
+
+/** The offered entries, sorted into their sections; a section with nothing offered is left out. */
+export function groupNav<Item extends { key: string }>(items: readonly Item[]): { key: NavGroupKey; items: Item[] }[] {
+  const byKey = new Map(items.map((item) => [item.key, item]));
+  const placed = new Set(NAV_GROUPS.flatMap((group) => group.keys));
+  return NAV_GROUPS.map((group) => ({
+    key: group.key,
+    items: [
+      ...group.keys.flatMap((key) => byKey.get(key) ?? []),
+      ...(group.key === FALLBACK_GROUP ? items.filter((item) => !placed.has(item.key)) : []),
+    ],
+  })).filter((group) => group.items.length > 0);
+}

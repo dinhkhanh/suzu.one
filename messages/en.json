@@ -78,7 +78,6 @@
     "referrals": "Refer a candidate",
     "assistant": "Ask SuZu",
     "quickActions": "Quick actions",
-    "general": "General",
     "close": "Close",
     "collapse": "Toggle sidebar",
     "today": "Today",
@@ -96,7 +95,23 @@
     "feedback": "Feedback",
     "feedbackInbox": "Feedback inbox",
     "crm": "Clients & sales",
-    "receivables": "Receivables"
+    "receivables": "Receivables",
+    "pinned": "Pinned",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "pinLimit": "You can pin up to {max} items",
+    "notificationSettings": "Notification settings",
+    "language": "Language",
+    "appearance": "Appearance",
+    "sections": {
+      "today": "Today",
+      "me": "My stuff",
+      "work": "Work",
+      "manage": "Management",
+      "company": "Company",
+      "preferences": "Preferences",
+      "admin": "Admin"
+    }
   },
   "home": {
     "greeting": "Hello, {name}",

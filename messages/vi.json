@@ -78,7 +78,6 @@
     "referrals": "Giới thiệu ứng viên",
     "assistant": "Hỏi SuZu",
     "quickActions": "Thao tác nhanh",
-    "general": "Chung",
     "close": "Đóng",
     "collapse": "Thu gọn thanh bên",
     "today": "Hôm nay",
@@ -96,7 +95,23 @@
     "feedback": "Góp ý",
     "feedbackInbox": "Hộp thư góp ý",
     "crm": "Khách hàng & kinh doanh",
-    "receivables": "Công nợ"
+    "receivables": "Công nợ",
+    "pinned": "Đã ghim",
+    "pin": "Ghim",
+    "unpin": "Bỏ ghim",
+    "pinLimit": "Chỉ ghim được tối đa {max} mục",
+    "notificationSettings": "Cài đặt thông báo",
+    "language": "Ngôn ngữ",
+    "appearance": "Giao diện",
+    "sections": {
+      "today": "Hôm nay",
+      "me": "Của tôi",
+      "work": "Công việc",
+      "manage": "Quản lý",
+      "company": "Công ty",
+      "preferences": "Tuỳ chỉnh",
+      "admin": "Quản trị"
+    }
   },
   "home": {
     "greeting": "Xin chào, {name}",

@@ -2,24 +2,34 @@
 import { Logo } from "@/components/brand/logo";
 import {
   ChevronDown,
+  ChevronRight,
   Menu,
   PanelLeft,
+  Pin,
+  PinOff,
   Search,
   X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useState, useSyncExternalStore } from "react";
+import { type ReactNode, useState, useSyncExternalStore, useTransition } from "react";
 import { NavIcon } from "@/components/shell/nav-icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { openCommandPalette } from "@/components/shell/palette-bus";
 import {
   readCollapsed,
   readCollapsedOnServer,
+  readFolded,
+  readFoldedOnServer,
   subscribeCollapsed,
+  subscribeFolded,
   writeCollapsed,
+  writeFolded,
 } from "@/components/shell/sidebar-store";
+import { setNavPinsAction } from "@/modules/platform/auth/preference-actions";
+import { MAX_NAV_PINS } from "@/modules/platform/auth/preferences";
 import { initialsOf } from "@/lib/text";
 import { cn } from "@/lib/utils";
 
@@ -30,11 +40,21 @@ export type NavRow = {
   count?: number;
 };
 
+/** One fold of the sidebar; `end` is drawn under its rows (the preference switches), never on the rail. */
+export type NavSection = {
+  key: string;
+  label: string;
+  items: NavRow[];
+  end?: ReactNode;
+};
+
 export type FrameLabels = {
   workspace: string;
   quickActions: string;
-  general: string;
-  admin: string;
+  pinned: string;
+  pin: string;
+  unpin: string;
+  pinLimit: string;
   menu: string;
   close: string;
   collapse: string;
@@ -43,10 +63,10 @@ export type FrameLabels = {
 
 type Props = {
   labels: FrameLabels;
-  pinned: NavRow[];
-  main: NavRow[];
-  admin: NavRow[];
-  /** `photoUrl`: the profile picture, when the person has put one up. */
+  sections: NavSection[];
+  /** The entries this person pinned, as stored on their account; any they are not offered is skipped. */
+  pins: string[];
+  /** `photoUrl`: the profile picture, when the person has put one up. `footer` sits at the end of their row. */
   user: { name: string; email: string; photoUrl: string | null };
   footer: ReactNode;
   /** At the right end of the header on every page: the feedback button. */
@@ -68,16 +88,29 @@ function crumbsFor(pathname: string, rows: NavRow[]): NavRow[] {
   return matches.slice(-2);
 }
 
+const countOf = (count: number) => (count > 99 ? "99+" : count);
+
+type PinControl = {
+  pinned: boolean;
+  /** Pinning is refused at the limit; unpinning never is. */
+  full: boolean;
+  labels: Pick<FrameLabels, "pin" | "unpin" | "pinLimit">;
+  onToggle: () => void;
+};
+
 function Row({
   row,
   collapsed,
   active,
   soonLabel,
+  pin,
 }: {
   row: NavRow;
   collapsed: boolean;
   active: boolean;
   soonLabel: string;
+  /** Absent on the rail and for an entry that has not arrived yet. */
+  pin?: PinControl;
 }) {
   const body = (
     <>
@@ -86,13 +119,19 @@ function Row({
         <span className="min-w-0 flex-1 truncate">{row.label}</span>
       )}
       {row.count ? (
-        <span className={collapsed ? "nav-count-rail" : "nav-count"}>
-          {row.count > 99 ? "99+" : row.count}
+        <span
+          className={cn(
+            collapsed ? "nav-count-rail" : "nav-count",
+            // A mouse sees the pin where the count was; a finger sees both, side by side.
+            pin && "pointer-fine:group-hover/row:invisible pointer-fine:group-has-[:focus-visible]/row:invisible",
+          )}
+        >
+          {countOf(row.count)}
         </span>
       ) : null}
     </>
   );
-  const className = cn("nav-row", collapsed && "justify-center px-0");
+  const className = cn("nav-row", collapsed && "justify-center px-0", pin && "pointer-coarse:pr-9");
   // A module that has not arrived yet: shown with the label rather than hidden.
   if (!row.href) {
     return (
@@ -109,7 +148,7 @@ function Row({
       </span>
     );
   }
-  return (
+  const link = (
     <Link
       href={row.href}
       aria-current={active ? "page" : undefined}
@@ -118,6 +157,58 @@ function Row({
     >
       {body}
     </Link>
+  );
+  if (!pin) return link;
+  const refused = !pin.pinned && pin.full;
+  const label = refused ? pin.labels.pinLimit : `${pin.pinned ? pin.labels.unpin : pin.labels.pin}: ${row.label}`;
+  const Icon = pin.pinned ? PinOff : Pin;
+  return (
+    <div className="group/row relative">
+      {link}
+      <button
+        type="button"
+        aria-label={label}
+        title={label}
+        aria-pressed={pin.pinned}
+        disabled={refused}
+        onClick={(event) => {
+          // On a phone the drawer shuts on any tap inside it; pinning is not done with it yet.
+          event.stopPropagation();
+          pin.onToggle();
+        }}
+        className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100 group-has-[:focus-visible]/row:opacity-100 hover:bg-background hover:text-foreground focus-visible:opacity-100 disabled:cursor-not-allowed disabled:hover:bg-transparent pointer-coarse:opacity-70"
+      >
+        <Icon className="size-3.5" aria-hidden />
+      </button>
+    </div>
+  );
+}
+
+function SectionHeading({
+  label,
+  open,
+  count,
+  current,
+}: {
+  label: string;
+  open: boolean;
+  /** What waits behind the rows of a shut section, so folding it hides no badge. */
+  count: number;
+  /** The page open now is one of this shut section's rows. */
+  current: boolean;
+}) {
+  return (
+    <CollapsibleTrigger
+      onClick={(event) => event.stopPropagation()}
+      className="nav-section group/heading flex w-full items-center gap-1 rounded-md text-left outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span className={cn("min-w-0 flex-1 truncate", !open && current && "text-link")}>{label}</span>
+      {!open && count ? <span className="nav-count">{countOf(count)}</span> : null}
+      <ChevronRight
+        className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-90")}
+        aria-hidden
+      />
+    </CollapsibleTrigger>
   );
 }
 
@@ -128,9 +219,8 @@ function Row({
  */
 export function AppFrame({
   labels,
-  pinned,
-  main,
-  admin,
+  sections,
+  pins: storedPins,
   user,
   footer,
   headerEnd,
@@ -143,32 +233,84 @@ export function AppFrame({
     readCollapsed,
     readCollapsedOnServer,
   );
+  const folded = useSyncExternalStore(subscribeFolded, readFolded, readFoldedOnServer);
   const [open, setOpen] = useState(false);
   const toggleCollapsed = () => writeCollapsed(!collapsed);
 
-  const rows = [...pinned, ...main, ...admin];
+  // The pins as this sidebar shows them: changed here at once, then saved to the account. The
+  // whole list goes each time, so the stored one is always a list this sidebar showed.
+  const [pins, setPins] = useState(storedPins);
+  const [, startSaving] = useTransition();
+  const togglePin = (key: string) => {
+    const before = pins;
+    const next = pins.includes(key) ? pins.filter((pin) => pin !== key) : [...pins, key];
+    setPins(next);
+    startSaving(async () => {
+      const result = await setNavPinsAction(next);
+      if (!result.ok) setPins(before);
+    });
+  };
+
+  const rows = sections.flatMap((section) => section.items);
   const crumbs = crumbsFor(pathname, rows);
   const activeKey = crumbs.at(-1)?.key;
+  const byKey = new Map(rows.map((row) => [row.key, row]));
+  const pinnedRows = pins.flatMap((key) => byKey.get(key) ?? []);
 
-  const group = (label: string, items: NavRow[]) =>
-    items.length === 0 ? null : (
-      <div className="flex flex-col gap-0.5">
-        {collapsed ? (
-          <div className="mx-2 my-2 border-t" />
-        ) : (
-          <p className="nav-section">{label}</p>
-        )}
-        {items.map((row) => (
-          <Row
-            key={row.key}
-            row={row}
-            collapsed={collapsed}
-            active={row.key === activeKey}
-            soonLabel={labels.soon}
-          />
-        ))}
-      </div>
+  const rowOf = (row: NavRow) => (
+    <Row
+      key={row.key}
+      row={row}
+      collapsed={collapsed}
+      active={row.key === activeKey}
+      soonLabel={labels.soon}
+      pin={
+        row.href && !collapsed
+          ? {
+              pinned: pins.includes(row.key),
+              full: pins.length >= MAX_NAV_PINS,
+              labels,
+              onToggle: () => togglePin(row.key),
+            }
+          : undefined
+      }
+    />
+  );
+
+  // On the rail every icon shows, with a rule between sections: a fold there would hide its icons
+  // behind nothing a person could open.
+  const section = (entry: NavSection, index: number) => {
+    if (collapsed) {
+      return (
+        <div key={entry.key} className="flex flex-col gap-0.5">
+          {index > 0 || pinnedRows.length > 0 ? <div className="mx-2 my-2 border-t" /> : null}
+          {entry.items.map(rowOf)}
+        </div>
+      );
+    }
+    const shut = folded.includes(entry.key);
+    return (
+      <Collapsible
+        key={entry.key}
+        open={!shut}
+        onOpenChange={(next) => writeFolded(entry.key, !next)}
+        className="flex flex-col"
+      >
+        <SectionHeading
+          label={entry.label}
+          open={!shut}
+          count={entry.items.reduce((sum, row) => sum + (row.count ?? 0), 0)}
+          current={entry.items.some((row) => row.key === activeKey)}
+        />
+        <CollapsibleContent className="h-(--collapsible-panel-height) overflow-hidden transition-[height] duration-150 ease-out data-ending-style:h-0 data-starting-style:h-0">
+          <div className="flex flex-col gap-0.5">
+            {entry.items.map(rowOf)}
+            {entry.end}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     );
+  };
 
   return (
     <div className="flex h-dvh flex-col bg-canvas p-0 md:p-2.5">
@@ -264,23 +406,13 @@ export function AppFrame({
               collapsed && "md:px-2",
             )}
           >
-            <div className="flex flex-col gap-0.5">
-              {pinned.map((row) => (
-                <Row
-                  key={row.key}
-                  row={row}
-                  collapsed={collapsed}
-                  active={row.key === activeKey}
-                  soonLabel={labels.soon}
-                />
-              ))}
-            </div>
-            <div className="flex flex-col gap-0.5">
-              {group(labels.general, main)}
-            </div>
-            <div className="flex flex-col gap-0.5">
-              {group(labels.admin, admin)}
-            </div>
+            {pinnedRows.length > 0 ? (
+              <div className="flex flex-col gap-0.5">
+                {collapsed ? null : <p className="nav-section pt-1">{labels.pinned}</p>}
+                {pinnedRows.map(rowOf)}
+              </div>
+            ) : null}
+            {sections.map(section)}
           </nav>
 
           <div
@@ -297,7 +429,7 @@ export function AppFrame({
                 </AvatarFallback>
               </Avatar>
               {collapsed ? null : (
-                <span className="flex min-w-0 flex-col">
+                <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-[0.8125rem] font-medium">
                     {user.name}
                   </span>
@@ -306,8 +438,8 @@ export function AppFrame({
                   </span>
                 </span>
               )}
+              {collapsed ? null : footer}
             </div>
-            {collapsed ? null : footer}
           </div>
         </aside>
 
@@ -322,7 +454,7 @@ export function AppFrame({
             >
               <Menu className="size-4" aria-hidden />
               {/* The drawer is shut on a phone: the button says something waits in it. */}
-              {pinned.some((row) => row.count) ? <span className="nav-menu-dot" aria-hidden /> : null}
+              {rows.some((row) => row.count) ? <span className="nav-menu-dot" aria-hidden /> : null}
             </button>
             {collapsed ? (
               <button

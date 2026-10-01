@@ -729,6 +729,13 @@
       "when": 1790755854322,
       "tag": "0103_work_project_poster_and_colors",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1790827594063,
+      "tag": "0104_user_nav_pins",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "nav_pins" text[];

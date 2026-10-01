@@ -44,6 +44,9 @@ import {
   type LucideIcon,
   Handshake,
   HandCoins,
+  Languages,
+  SlidersHorizontal,
+  SunMoon,
 } from "lucide-react";
 
 /**
@@ -84,6 +87,9 @@ const ICONS: Record<string, LucideIcon> = {
   tasks: ListTodo,
   approvals: CheckCheck,
   notifications: Bell,
+  notificationSettings: SlidersHorizontal,
+  language: Languages,
+  appearance: SunMoon,
   feedback: MessageSquarePlus,
   feedbackInbox: MessagesSquare,
   entities: Building2,

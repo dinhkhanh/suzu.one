@@ -92,10 +92,13 @@ export default async function NotificationsPage(props: PageProps<"/notifications
         </nav>
       ) : null}
 
-      <PushToggle vapidPublicKey={vapidPublicKey()} personId={user.person.id} deviceCount={devices.length} />
-      <TelegramLink configured={telegramConfig() !== null} status={serialise(telegram)} />
-      <MessengerLink configured={messengerConfig() !== null} status={serialise(messenger)} />
-      <PreferencesForm preferences={preferences} />
+      {/* Where the sidebar's "Notification settings" lands: every channel, then every category. */}
+      <section id="settings" className="flex scroll-mt-4 flex-col gap-8">
+        <PushToggle vapidPublicKey={vapidPublicKey()} personId={user.person.id} deviceCount={devices.length} />
+        <TelegramLink configured={telegramConfig() !== null} status={serialise(telegram)} />
+        <MessengerLink configured={messengerConfig() !== null} status={serialise(messenger)} />
+        <PreferencesForm preferences={preferences} />
+      </section>
     </div>
   );
 }

@@ -1,13 +1,16 @@
 import { getTranslations } from "next-intl/server";
 import { cookies } from "next/headers";
+import type { ReactNode } from "react";
 import { AppFrame, type NavRow } from "@/components/shell/app-frame";
 import { LocaleSwitch } from "@/components/shell/locale-switch";
-import { navFor } from "@/components/shell/nav";
+import { groupNav, navFor } from "@/components/shell/nav";
+import { NavIcon } from "@/components/shell/nav-icons";
 import { canRunRecruitment } from "@/modules/recruit/policy";
 import { SignOutButton } from "@/components/shell/sign-out-button";
 import { ThemeSwitch } from "@/components/shell/theme-switch";
 import { peopleModuleOpen } from "@/modules/core-hr/service";
 import { photoUrlOf } from "@/modules/core-hr/ui/person-avatar";
+import { MAX_NAV_PINS } from "@/modules/platform/auth/preferences";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ImpersonationBanner } from "@/modules/platform/auth/ui/impersonation";
 import { vapidPublicKey } from "@/modules/platform/notifications/push";
@@ -35,8 +38,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const tasks = openTasks + reviews + waiting + handoffs + blockers;
 
   const label = (key: string) => t(`nav.${key}`);
-  // What waits for this person, at the top of the sidebar; then the modules, then the admin desk.
-  const pinned: NavRow[] = [
+  // What waits for this person: the sidebar's first section.
+  const today: NavRow[] = [
     // The day starts here (FR-PJM-20): the landing page after sign-in.
     { key: "today", href: "/today", label: label("today") },
     { key: "tasks", href: "/tasks", label: label("tasks"), count: tasks },
@@ -44,12 +47,31 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     { key: "notifications", href: "/notifications", label: label("notifications"), count: unread },
   ];
   const row = (item: { key: string; href?: string }): NavRow => ({ key: item.key, href: item.href, label: label(item.key) });
-  const main = nav.main.map(row);
-  const admin = nav.admin.map(row);
+  // Today's inboxes, the modules, the preferences and the admin desk, sorted into the sidebar's
+  // folds (nav.ts). The language and the theme are switched in place, under the preference rows.
+  const preferenceRow = (key: string, control: ReactNode) => (
+    <div key={key} className="flex h-8 items-center gap-2.5 px-2 text-sm font-medium">
+      <NavIcon name={key} className="size-4 shrink-0 text-foreground/60" />
+      <span className="min-w-0 flex-1 truncate">{label(key)}</span>
+      {control}
+    </div>
+  );
+  const sections = groupNav([...today, ...nav.main.map(row), row({ key: "notificationSettings", href: "/notifications#settings" }), ...nav.admin.map(row)]).map((section) => ({
+    key: section.key,
+    label: t(`nav.sections.${section.key}`),
+    items: section.items,
+    end:
+      section.key === "preferences" ? (
+        <>
+          {preferenceRow("language", <LocaleSwitch compact />)}
+          {preferenceRow("appearance", <ThemeSwitch theme={theme} compact />)}
+        </>
+      ) : undefined,
+  }));
   // The first-sign-in guide, until confirmed: it points only at pages this person's sidebar offers.
   // Vietnamese names end with the given name, which is what the greeting uses.
   const welcome = shouldShowWelcome({ completedAt: user.person.welcomeCompletedAt, sessionId: user.sessionId, laterCookie: jar.get(WELCOME_LATER_COOKIE)?.value })
-    ? welcomeSteps(new Map([...pinned, ...nav.main].flatMap((item) => (item.href ? [[item.key, item.href] as const] : []))))
+    ? welcomeSteps(new Map([...today, ...nav.main].flatMap((item) => (item.href ? [[item.key, item.href] as const] : []))))
     : null;
 
   return (
@@ -58,16 +80,17 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         labels={{
           workspace: t("app.name"),
           quickActions: t("nav.quickActions"),
-          general: t("nav.general"),
-          admin: t("nav.admin"),
+          pinned: t("nav.pinned"),
+          pin: t("nav.pin"),
+          unpin: t("nav.unpin"),
+          pinLimit: t("nav.pinLimit", { max: MAX_NAV_PINS }),
           menu: t("nav.menu"),
           close: t("nav.close"),
           collapse: t("nav.collapse"),
           soon: t("nav.soon"),
         }}
-        pinned={pinned}
-        main={main}
-        admin={admin}
+        sections={sections}
+        pins={user.preferences.navPins}
         user={{ name: user.person.fullName, email: user.email, photoUrl: photoUrlOf(user.person) }}
         // Feedback on the app, one click from every page while it is new to everybody.
         headerEnd={<FeedbackButton />}
@@ -80,15 +103,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             {user.impersonator ? null : <PushPrompt vapidPublicKey={vapidPublicKey()} personId={user.person.id} />}
           </>
         }
-        footer={
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5">
-              <LocaleSwitch compact />
-              <ThemeSwitch theme={theme} compact />
-            </div>
-            <SignOutButton label={t("nav.signOut")} />
-          </div>
-        }
+        footer={<SignOutButton label={t("nav.signOut")} compact />}
       >
         {children}
       </AppFrame>

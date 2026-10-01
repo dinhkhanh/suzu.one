@@ -1,17 +1,23 @@
 "use server";
-// The language and the colour theme. Both live on the account, so they follow the person to every
-// device (owner's decision 2026-09-24), and each is mirrored into a cookie for the pages a visitor
-// sees before signing in — the sign-in page, the public site — and for the moment after signing out.
+// The language, the colour theme and the sidebar pins. All live on the account, so they follow the
+// person to every device (owner's decision 2026-09-24). The language and the theme are also mirrored
+// into a cookie for the pages a visitor sees before signing in — the sign-in page, the public site —
+// and for the moment after signing out; the pins only matter signed in.
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { isLocale, LOCALE_COOKIE, LOCALES } from "@/i18n/config";
 import { createAction } from "@/lib/action";
 import { DEFAULT_THEME, isTheme, THEME_COOKIE, THEMES } from "@/theme/config";
+import { MAX_NAV_PINS, NAV_PIN_KEY } from "./preferences";
 import { updatePreferences } from "./service";
 
 const pipeline = createAction({
   name: "user.preferences.update",
-  input: z.object({ locale: z.enum(LOCALES).optional(), theme: z.enum(THEMES).optional() }),
+  input: z.object({
+    locale: z.enum(LOCALES).optional(),
+    theme: z.enum(THEMES).optional(),
+    navPins: z.array(z.string().regex(NAV_PIN_KEY)).max(MAX_NAV_PINS).optional(),
+  }),
   // One's own preferences need no permission.
   authorize: () => true,
   run: async ({ user, input }) => {
@@ -40,4 +46,13 @@ export async function setThemeAction(theme: string): Promise<void> {
   if (!isTheme(theme)) return;
   await remember(THEME_COOKIE, theme === DEFAULT_THEME ? null : theme);
   await pipeline({ theme });
+}
+
+/**
+ * The whole list of pinned sidebar entries, in their order — the sidebar sends the list it now
+ * shows, so two quick clicks cannot interleave into a list neither of them meant. A key the person
+ * cannot open is harmless: the sidebar draws only the pins among the entries it offers them.
+ */
+export async function setNavPinsAction(navPins: string[]) {
+  return pipeline({ navPins: [...new Set(navPins)] });
 }

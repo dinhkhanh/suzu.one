@@ -37,3 +37,43 @@ export function writeCollapsed(next: boolean) {
   }
   for (const listener of listeners) listener();
 }
+
+// Which of the sidebar's sections are folded shut: the same kind of preference, kept the same way.
+// The snapshot is one array per change, so `useSyncExternalStore` sees a new value only on a write.
+const FOLDED_KEY = "suzu.sidebar.folded";
+const foldedListeners = new Set<() => void>();
+const NONE_FOLDED: readonly string[] = [];
+let folded: readonly string[] | null = null;
+
+export function subscribeFolded(listener: () => void) {
+  foldedListeners.add(listener);
+  return () => foldedListeners.delete(listener);
+}
+
+export function readFolded(): readonly string[] {
+  if (folded === null) {
+    try {
+      const stored: unknown = JSON.parse(window.localStorage.getItem(FOLDED_KEY) ?? "[]");
+      folded = Array.isArray(stored) ? stored.filter((key): key is string => typeof key === "string") : NONE_FOLDED;
+    } catch {
+      folded = NONE_FOLDED;
+    }
+  }
+  return folded;
+}
+
+// Every section open: what the server renders, and what hydration starts from.
+export function readFoldedOnServer(): readonly string[] {
+  return NONE_FOLDED;
+}
+
+export function writeFolded(section: string, shut: boolean) {
+  const current = readFolded();
+  folded = shut ? [...current.filter((key) => key !== section), section] : current.filter((key) => key !== section);
+  try {
+    window.localStorage.setItem(FOLDED_KEY, JSON.stringify(folded));
+  } catch {
+    // As above: the fold still works, it is just not remembered.
+  }
+  for (const listener of foldedListeners) listener();
+}

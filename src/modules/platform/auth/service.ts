@@ -19,10 +19,10 @@ export async function revokeSessionsOf(email: string | null, executor: Tx | Retu
   return removed.length;
 }
 
-const PREFERENCE_COLUMNS = { locale: schema.user.locale, theme: schema.user.theme };
+const PREFERENCE_COLUMNS = { locale: schema.user.locale, theme: schema.user.theme, navPins: schema.user.navPins };
 
 /**
- * Changes the language or the theme on an account (owner's decision 2026-09-24). Only the keys
+ * Changes the language, the theme or the sidebar pins on an account (owner's decision 2026-09-24). Only the keys
  * given change; the rest stay as they were. Returns both states for the audit entry.
  */
 export async function updatePreferences(userId: string, changes: Partial<Preferences>): Promise<{ before: Preferences; after: Preferences }> {
