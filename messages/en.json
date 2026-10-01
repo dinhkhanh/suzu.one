@@ -2895,6 +2895,23 @@
         "bad_line": "expected: ID, employee code",
         "employee_not_found": "no such employee code in this entity",
         "duplicate_in_list": "this ID appears twice"
+      },
+      "push": {
+        "title": "Sends its own punches",
+        "hint": "For a clock that posts punches to SuZu One itself, such as the face-recognition kiosk on the office NAS. Issue a token, paste it into the kiosk settings, and map each person the kiosk knows on this page.",
+        "issue": "Issue token",
+        "replace": "Issue a new token",
+        "replaceConfirm": "The current token stops working at once. The kiosk sends nothing until you give it the new one. Continue?",
+        "revoke": "Revoke token",
+        "revokeConfirm": "Revoke the token? The kiosk stops being able to send punches.",
+        "tokenOnce": "Copy the token now: it is shown only this once.",
+        "token": "Device token",
+        "copy": "Copy",
+        "copied": "Copied",
+        "failed": "That did not work. Try again.",
+        "issuedAt": "token issued {at}",
+        "lastSeen": "last called in {at}",
+        "neverSeen": "has not called in yet"
       }
     },
     "policy": {

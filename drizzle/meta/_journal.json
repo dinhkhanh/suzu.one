@@ -750,6 +750,13 @@
       "when": 1790836144846,
       "tag": "0106_kb_slugs",
       "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1790839697596,
+      "tag": "0107_attendance_device_push",
+      "breakpoints": true
     }
   ]
 }

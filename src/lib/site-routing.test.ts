@@ -17,7 +17,7 @@ describe("routeRequest", () => {
     });
 
     it("serves nothing of the app", () => {
-      for (const path of ["/sign-in", "/today", "/privacy", "/portfolio", "/api/auth/session", "/api/cron/daily", "/api/messenger/webhook", "/api/telegram/webhook", "/sw.js", "/manifest.webmanifest", "/careersx", "/previews"]) {
+      for (const path of ["/sign-in", "/today", "/privacy", "/portfolio", "/api/auth/session", "/api/cron/daily", "/api/messenger/webhook", "/api/telegram/webhook", "/api/attendance/device/punches", "/sw.js", "/manifest.webmanifest", "/careersx", "/previews"]) {
         expect(on("suzu.vn", path)).toEqual({ kind: "notFound" });
       }
     });
@@ -47,6 +47,8 @@ describe("routeRequest", () => {
       expect(on("suzu.one", "/api/auth/callback/google")).toEqual({ kind: "pass" });
       expect(on("suzu.one", "/api/messenger/webhook")).toEqual({ kind: "pass" });
       expect(on("suzu.one", "/api/telegram/webhook")).toEqual({ kind: "pass" });
+      expect(on("suzu.one", "/api/attendance/device/punches")).toEqual({ kind: "pass" });
+      expect(on("suzu.one", "/api/attendance/devices")).toEqual({ kind: "app" });
       expect(on("suzu.one", "/sw.js")).toEqual({ kind: "pass" });
     });
   });

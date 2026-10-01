@@ -9,7 +9,7 @@ import { getPersonTarget } from "@/modules/core-hr/service";
 import { type CsvFile, EXPORT_ROW_LIMIT, toCsv } from "@/modules/platform/export/csv";
 import { can } from "@/modules/platform/rbac/policy";
 import { savePolicy } from "./attendance-policies";
-import { bulkMapByEmployeeCode, deviceLogImport, getDevice, getProfile, getUserMapRow, listUnmappedLines, mapDeviceUser, saveDevice, saveProfile, unmapDeviceUser } from "./devices";
+import { bulkMapByEmployeeCode, deviceLogImport, getDevice, getProfile, getUserMapRow, issuePushToken, listUnmappedLines, mapDeviceUser, revokePushToken, saveDevice, saveProfile, unmapDeviceUser } from "./devices";
 import { canManageAttendanceConfig, canManageDevices } from "./policy";
 import { recomputeOpenMonths, requestScopeRecompute } from "./recompute";
 
@@ -164,6 +164,37 @@ const unmappedExportPipeline = createAction({
 });
 export async function exportUnmappedAction(input: unknown) {
   return unmappedExportPipeline(input);
+}
+
+// ── A clock that sends its own punches ──────────────────────────────────────────────────────
+
+// The token is in the answer once and nowhere else: not in the audit log, not in the database.
+const issuePushTokenPipeline = createAction({
+  name: "attendance.device.push_token_issue",
+  input: z.object({ deviceId: z.uuid() }),
+  authorize: async (user, input) => !!(await deviceInReach(user, input.deviceId)),
+  run: async ({ input }) => {
+    const { token, device } = await issuePushToken(input.deviceId);
+    refresh();
+    return { data: { token }, audit: { resource: { type: "attendance_device", id: device.id, entityId: device.entityId }, summary: `${device.name}: push token issued; any earlier token stops working` } };
+  },
+});
+export async function issuePushTokenAction(input: unknown) {
+  return issuePushTokenPipeline(input);
+}
+
+const revokePushTokenPipeline = createAction({
+  name: "attendance.device.push_token_revoke",
+  input: z.object({ deviceId: z.uuid() }),
+  authorize: async (user, input) => !!(await deviceInReach(user, input.deviceId)),
+  run: async ({ input }) => {
+    const device = await revokePushToken(input.deviceId);
+    refresh();
+    return { data: { id: device.id }, audit: { resource: { type: "attendance_device", id: device.id, entityId: device.entityId }, summary: `${device.name}: push token revoked` } };
+  },
+});
+export async function revokePushTokenAction(input: unknown) {
+  return revokePushTokenPipeline(input);
 }
 
 export async function stageDeviceLogAction(input: unknown) {

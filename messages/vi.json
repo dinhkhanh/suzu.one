@@ -2895,6 +2895,23 @@
         "bad_line": "cần: mã trên máy, mã nhân viên",
         "employee_not_found": "không có mã nhân viên này trong pháp nhân",
         "duplicate_in_list": "mã này xuất hiện hai lần"
+      },
+      "push": {
+        "title": "Tự gửi lượt chấm",
+        "hint": "Dành cho máy tự gửi lượt chấm về SuZu One, ví dụ máy nhận diện khuôn mặt chạy trên NAS văn phòng. Cấp mã, dán vào phần cài đặt của máy, rồi gán từng người mà máy nhận diện ở trang này.",
+        "issue": "Cấp mã",
+        "replace": "Cấp mã mới",
+        "replaceConfirm": "Mã hiện tại sẽ ngừng hoạt động ngay. Máy sẽ không gửi được gì cho tới khi bạn nhập mã mới. Tiếp tục?",
+        "revoke": "Thu hồi mã",
+        "revokeConfirm": "Thu hồi mã? Máy sẽ không gửi được lượt chấm nữa.",
+        "tokenOnce": "Hãy sao chép mã ngay: mã chỉ hiện một lần này.",
+        "token": "Mã thiết bị",
+        "copy": "Sao chép",
+        "copied": "Đã sao chép",
+        "failed": "Chưa thực hiện được. Vui lòng thử lại.",
+        "issuedAt": "cấp mã lúc {at}",
+        "lastSeen": "liên lạc gần nhất {at}",
+        "neverSeen": "chưa liên lạc lần nào"
       }
     },
     "policy": {

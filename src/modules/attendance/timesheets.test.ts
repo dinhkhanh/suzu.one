@@ -23,9 +23,10 @@ import { parseTable } from "@/modules/platform/import/engine/table";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { getAttendancePolicy, savePolicy } from "./attendance-policies";
-import { bulkMapByEmployeeCode, checkLogRows, commitLogRows, deviceLogColumns, listUnmapped, mapDeviceUser, saveDevice, saveProfile } from "./devices";
+import { bulkMapByEmployeeCode, checkLogRows, commitLogRows, commitPushedRows, deviceLogColumns, devicePresentingToken, deviceRoster, getDevice, issuePushToken, listUnmapped, mapDeviceUser, revokePushToken, saveDevice, saveProfile } from "./devices";
 import type { SchedulePattern } from "./engine/calendar";
 import { parseDat, PROFILE_SEED, toCanonicalTable } from "./engine/device-log";
+import { pushBodySchema, pushedRows } from "./engine/device-push";
 import { requestTimesheetRecompute } from "./recompute";
 import { saveSchedule } from "./schedules";
 import { getTeamMonth, getTimesheetDays, recomputeDays, summariseMonth, timesheetTargetFor } from "./timesheets";
@@ -178,5 +179,44 @@ describe("who reads whose month", () => {
     expect(await timesheetTargetFor(principal(ids.lan, [{ role: "hr_staff", scope: { type: "entity", id: ids.creative } }]), ids.huy)).toBeNull();
     expect(await timesheetTargetFor(principal(ids.lead), ids.huy)).not.toBeNull();
     expect(await timesheetTargetFor(principal(ids.huy), ids.huy)).not.toBeNull();
+  });
+});
+
+describe("a clock that sends its own punches", () => {
+  it("signs in with its token, adds each punch once, and is shut out when the token is revoked", async () => {
+    const { profileId } = (await getDevice(ids.device))!;
+    const { after: kiosk } = await saveDevice({ id: null, entityId: ids.creative, name: "Face kiosk", model: null, serialNumber: null, locationId: null, profileId, isActive: true });
+    await bulkMapByEmployeeCode(kiosk.id, "SZC-0001, SZC-0001", ids.hr);
+    expect(await deviceRoster(kiosk.id)).toEqual([{ userId: "SZC-0001", fullName: "Lan", employeeCode: "SZC-0001" }]);
+
+    const { token } = await issuePushToken(kiosk.id);
+    expect(token).toMatch(/^szd_[A-Za-z0-9_-]{43}$/);
+    // Only the hash is kept.
+    expect((await getDevice(kiosk.id))!.pushTokenHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(await devicePresentingToken(`szd_${"x".repeat(43)}`)).toBeNull();
+    expect(await devicePresentingToken("not a token")).toBeNull();
+    const seen = await devicePresentingToken(token);
+    expect(seen?.id).toBe(kiosk.id);
+    expect(seen?.lastSeenAt).toBeInstanceOf(Date);
+
+    const body = pushBodySchema.parse({ punches: [{ userId: "SZC-0001", at: "2026-09-01T08:25:00+07:00" }, { userId: "SZC-0001", at: "2026-09-01T10:31:00Z" }, { userId: "SZC-9999", at: "2026-09-01T08:40:00+07:00" }] });
+    expect(await commitPushedRows(kiosk.id, pushedRows(body))).toEqual({ punches: 2, skipped: 0, unmapped: 1, people: 1 });
+    // The kiosk resends after a timeout: nothing is added twice.
+    expect(await commitPushedRows(kiosk.id, pushedRows(body))).toEqual({ punches: 0, skipped: 3, unmapped: 0, people: 0 });
+    const punches = await db().select().from(schema.punch).where(eq(schema.punch.deviceId, kiosk.id));
+    expect(punches.map((punch) => [punch.at.toISOString(), punch.direction, punch.source])).toEqual([
+      ["2026-09-01T01:25:00.000Z", "in", "device"],
+      ["2026-09-01T10:31:00.000Z", "out", "device"],
+    ]);
+    expect((await dayOf(ids.lan, "2026-09-01"))?.status).toBeDefined();
+    expect(await listUnmapped(kiosk.id)).toMatchObject([{ deviceUserId: "SZC-9999", lines: 1 }]);
+
+    await revokePushToken(kiosk.id);
+    expect(await devicePresentingToken(token)).toBeNull();
+    const { token: second } = await issuePushToken(kiosk.id);
+    expect(await devicePresentingToken(token)).toBeNull();
+    await saveDevice({ id: kiosk.id, entityId: ids.creative, name: "Face kiosk", model: null, serialNumber: null, locationId: null, profileId, isActive: false });
+    // An inactive clock is shut out too, whatever token it holds.
+    expect(await devicePresentingToken(second)).toBeNull();
   });
 });

@@ -36,6 +36,7 @@ export default async function DevicesPage() {
               <span className="text-muted-foreground">{t("device.mapped", { count: device.mapped })}</span>
               {device.unmapped > 0 ? <Badge variant="destructive">{t("device.unmapped", { count: device.unmapped })}</Badge> : null}
               <span className="text-xs text-muted-foreground">{device.lastPunchAt ? t("device.lastPunch", { at: format.dateTime(device.lastPunchAt, { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }) }) : t("device.noPunches")}</span>
+              {device.pushTokenHash ? <Badge variant="outline">{device.lastSeenAt ? t("push.lastSeen", { at: format.dateTime(device.lastSeenAt, { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }) }) : t("push.neverSeen")}</Badge> : null}
               {device.isActive ? null : <Badge variant="outline">{t("inactive")}</Badge>}
             </div>
             <details className="mt-2">

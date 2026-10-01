@@ -1,0 +1,36 @@
+# Container Manager → Project → Create → choose this folder. It builds the image on the NAS the
+# first time (10–15 minutes) and starts the kiosk on port 8080. See README.md.
+services:
+  face-kiosk:
+    build:
+      context: .
+      target: service
+    image: suzu-face-kiosk:latest
+    container_name: suzu-face-kiosk
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # The kiosk's database: enrolled faces (as numbers, never photos) and the punch log.
+      - ./data:/data
+    environment:
+      # From SuZu One → Attendance → Time clocks → this device → "Sends its own punches".
+      SUZU_URL: "https://suzu.one"
+      SUZU_DEVICE_TOKEN: ""
+      # Long random strings (at least 12 characters). KIOSK_KEY pairs the tablet once;
+      # ADMIN_PASSWORD opens /admin (any user name).
+      KIOSK_KEY: "change-me-to-a-long-random-string"
+      ADMIN_PASSWORD: "change-me-too-please"
+      KIOSK_LANG: "vi"                 # vi | en
+      # Recognition. Raise MATCH_THRESHOLD if two colleagues get confused; lower it if people
+      # are often not recognised.
+      MATCH_THRESHOLD: "0.45"
+      MATCH_MARGIN: "0.08"
+      DET_SIZE: "320"                  # 320 is quick and enough for a face near the tablet
+      MIN_FACE_PX: "110"
+      # The turn-your-head check that stops photos and phone screens. "0" turns it off.
+      LIVENESS: "1"
+      LIVENESS_MIN_TURN: "0.12"
+      COOLDOWN_SECONDS: "60"           # the same person again within this shows the earlier time
+      UNDO_SECONDS: "8"                # how long "Not me" is offered before the punch is sent
+      PURGE_INACTIVE_DAYS: "30"        # faces of people taken off the roster are deleted after this

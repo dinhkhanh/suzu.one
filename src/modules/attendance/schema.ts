@@ -232,10 +232,16 @@ export const attendanceDevice = pgTable(
       .notNull()
       .references(() => deviceMappingProfile.id),
     isActive: boolean("is_active").notNull().default(true),
+    // A clock that sends its punches itself (the face kiosk, tools/face-kiosk): SHA-256 of the
+    // token it presents. The token is shown once when issued and never stored.
+    pushTokenHash: text("push_token_hash"),
+    pushTokenIssuedAt: timestamp("push_token_issued_at", { withTimezone: true }),
+    // The last time the clock called in, punches or not: HR sees a kiosk that has gone quiet.
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique("attendance_device_entity_name_key").on(t.entityId, t.name)],
+  (t) => [unique("attendance_device_entity_name_key").on(t.entityId, t.name), uniqueIndex("attendance_device_push_token_key").on(t.pushTokenHash).where(sql`${t.pushTokenHash} is not null`)],
 ).enableRLS();
 
 // Whose finger is ID 17 on this clock. One person per ID per device.
