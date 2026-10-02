@@ -21,6 +21,7 @@ import { projectPlansJob, projectRemindersJob, projectRetainersJob } from "@/mod
 import { crmMorningJob, crmNightlyJob } from "@/modules/crm/service";
 import { aiEvalJob } from "../ai-eval";
 import { bonusDemoRunJob } from "./bonus-demo";
+import { cacheFlushJob } from "./cache-flush";
 import { payrollDemoRunsJob } from "./payroll-demo";
 
 // What each cron URL runs. Schedules live in vercel.json and stay daily, which every Vercel plan
@@ -40,7 +41,8 @@ const SCHEDULES: Record<string, JobDefinition[]> = {
 
 // Run by hand only: /api/cron/<job name>.
 // `payroll-demo-runs`, `bonus-demo-run` and `ai-eval` refuse to run outside a development server.
-const ON_DEMAND: JobDefinition[] = [fieldKeysRewrapJob, opsBackfillJob, payrollDemoRunsJob, bonusDemoRunJob, aiEvalJob];
+// `cache-flush` is what `pnpm cache:flush` calls.
+const ON_DEMAND: JobDefinition[] = [fieldKeysRewrapJob, opsBackfillJob, payrollDemoRunsJob, bonusDemoRunJob, aiEvalJob, cacheFlushJob];
 
 export const maxDuration = 300;
 

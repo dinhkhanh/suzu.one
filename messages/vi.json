@@ -12608,9 +12608,8 @@
             "Chúng tôi không bán dữ liệu cá nhân. Chúng tôi chỉ chia sẻ dữ liệu với các nhà cung cấp vận hành một phần Dịch vụ cho chúng tôi, theo hợp đồng giới hạn việc sử dụng dữ liệu vào việc cung cấp dịch vụ của họ:"
           ],
           "list": [
-            "Vercel Inc. — lưu trữ ứng dụng;",
+            "Vercel Inc. — lưu trữ ứng dụng, và bộ nhớ đệm cho cấu hình và dữ liệu tham chiếu (không bao giờ chứa lương hay dữ liệu cá nhân nhạy cảm khác);",
             "Supabase Inc. — cơ sở dữ liệu, đặt tại Singapore;",
-            "Upstash Inc. — bộ nhớ đệm cho cấu hình và dữ liệu tham chiếu (không bao giờ chứa lương hay dữ liệu cá nhân nhạy cảm khác);",
             "Cloudflare, Inc. — kho tệp riêng tư (R2), lưu tại khu vực châu Á – Thái Bình Dương, và phân tích văn bản phục vụ tìm kiếm kho tri thức (Workers AI), nhận nội dung kho tri thức và các câu hỏi được đặt ra;",
             "Resend — gửi email do Dịch vụ phát đi;",
             "Functional Software Inc. (Sentry) — theo dõi lỗi;",

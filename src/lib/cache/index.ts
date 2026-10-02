@@ -1,13 +1,18 @@
 import "server-only";
-import { Redis } from "@upstash/redis";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { createHash } from "node:crypto";
+import { unstable_cache } from "next/cache";
+import { after } from "next/server";
 import { env } from "@/lib/env";
 import { decode, encode } from "./codec";
-import { cachePrefix } from "./prefix";
+import { cachePrefix, cacheScopeTag } from "./prefix";
+import { purgeApi } from "./vercel";
 
-// A shared read-through cache in front of Postgres (Upstash Redis). A page asks the cache first
-// and Postgres only for what the cache does not hold; every entry has a TTL as a backstop, and
-// every write path that changes cached data calls `invalidate()` with the entry's key. Redis being
-// slow or down is never an error: the read falls through to Postgres.
+// A shared read-through cache in front of Postgres: Vercel's Data Cache, through Next.js's
+// `unstable_cache` (owner's decision 2026-10-02, replacing Upstash Redis). A page asks the cache
+// first and Postgres only for what the cache does not hold; every entry has a TTL as a backstop,
+// and every write path that changes cached data calls `invalidate()` with the entry's key. The
+// cache being slow, full or absent is never an error: the read falls through to Postgres.
 //
 // Three tiers, by how the data changes (owner's decision 2026-09-25):
 //   reference — types, templates, rules, the org tree: one key for the whole small table, a long
@@ -20,104 +25,191 @@ import { cachePrefix } from "./prefix";
 //               and for the recipients of every notification.
 // Restricted and compensation data (identity numbers, bank details, salaries, payslips) are never
 // cached: they stay in Postgres and are read per request.
+//
+// Every entry is tagged with its key, and `invalidate()` deletes by that tag through Vercel's purge
+// API (`dangerouslyDeleteByTag`: gone at once, in every region, not served stale). Not Next's
+// `revalidateTag`: that one waits for the end of the request and, in a server action, makes every
+// action re-render the page it was called from, and `createAction()` invalidates after every action.
+// The cache is only used where entries can be deleted again — inside a Vercel function. A
+// developer's machine, a script and a test read Postgres directly.
 
 /** Seconds an entry may live without a writer invalidating it. */
 export const TTL = { reference: 60 * 60, personal: 5 * 60, live: 60 } as const;
 
-type Client = { redis: Redis; prefix: string } | null;
-let client: Client | undefined;
+/** What is stored: the value (codec-encoded, so Dates survive) and when the read behind it began. */
+type Entry = { at: number; v?: string };
 
-function connect(): Client {
-  const config = env();
-  if (!config.KV_REST_API_URL || !config.KV_REST_API_TOKEN) return null;
-  return {
-    redis: new Redis({ url: config.KV_REST_API_URL, token: config.KV_REST_API_TOKEN, automaticDeserialization: false, enableTelemetry: false }),
-    prefix: cachePrefix(config.POSTGRES_URL),
-  };
-}
+let scope: { prefix: string; all: string } | null | undefined;
 
-function redis(): Client {
-  if (client !== undefined) return client;
+function names(): { prefix: string; all: string } | null {
+  if (scope !== undefined) return scope;
   try {
-    client = connect();
+    const config = env();
+    scope = config.DATA_CACHE === "off" ? null : { prefix: cachePrefix(config.POSTGRES_URL), all: cacheScopeTag(config.POSTGRES_URL) };
   } catch {
     // An environment without a database configured (unit tests) runs without the cache; a real
     // misconfiguration still fails loudly at the first query.
-    client = null;
+    scope = null;
   }
-  return client;
+  return scope;
 }
 
-/** Long enough to cover a slow region hop, short enough that a Redis outage costs little. */
-const TIMEOUT_MS = 400;
+/**
+ * How long, after `invalidate()`, this instance reads the key from Postgres and stores nothing. The
+ * deletion is immediate but the change behind it may not be committed yet (writers may invalidate
+ * inside their transaction): a read in that window would put the old rows straight back.
+ */
+const STALE_MS = 30_000;
+/**
+ * Another instance can still do that: read the old rows just before the commit and store them just
+ * after the deletion. So the keys are deleted once more this long after the response — by then the
+ * commit has landed and such a read has stored what it had.
+ */
+const REDELETE_AFTER_MS = 3_000;
 const INVALIDATE_TIMEOUT_MS = 2_000;
+/** Vercel takes at most this many tags per purge call. */
+const TAGS_PER_CALL = 16;
 
-function withTimeout<T>(promise: Promise<T>): Promise<T | undefined> {
-  return Promise.race([promise, new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), TIMEOUT_MS))]);
+/**
+ * When this instance last invalidated each entry. Older than a day it cannot matter: no TTL is that
+ * long. Kept on `globalThis` because Next may load this module once per route bundle, and the
+ * action that writes and the page that reads next must see the same map.
+ */
+const INVALIDATED_AT = Symbol.for("suzu.cache.invalidatedAt");
+const invalidatedAt: Map<string, number> = ((globalThis as { [INVALIDATED_AT]?: Map<string, number> })[INVALIDATED_AT] ??= new Map());
+const REMEMBER_MS = 24 * 3600_000;
+
+function noteInvalidated(tags: readonly string[], now: number) {
+  if (invalidatedAt.size > 10_000) for (const [tag, at] of invalidatedAt) if (now - at > REMEMBER_MS) invalidatedAt.delete(tag);
+  for (const tag of tags) invalidatedAt.set(tag, now);
+}
+
+function recentlyInvalidated(tag: string, now: number): boolean {
+  const at = invalidatedAt.get(tag);
+  return at !== undefined && now - at < STALE_MS;
+}
+
+/**
+ * The entry's tag (and key): the key itself where Vercel takes it as one tag — printable ASCII, no
+ * comma (its separator), well under its 256 bytes — and a hash of it otherwise, since an over-long
+ * tag is quietly dropped and its entry could never be deleted.
+ */
+export function entryTag(prefix: string, key: string): string {
+  return /^[\x21-\x2b\x2d-\x7e]{1,160}$/.test(key) ? prefix + key : `${prefix}#${createHash("sha256").update(key).digest("hex")}`;
 }
 
 function warn(operation: string, error: unknown) {
   console.warn(`[cache] ${operation} failed:`, error instanceof Error ? error.message : error);
 }
 
+/** True when this request runs where the Data Cache is, and the entry may be stored and read. */
+function usable(): { prefix: string; all: string } | null {
+  const named = names();
+  return named && purgeApi() ? named : null;
+}
+
 /**
- * What `invalidate()` leaves behind instead of deleting: for a short while the key holds this
- * marker, readers go to Postgres and nobody may store a value. Without it a request that read the
- * old rows just before a change could store them just after the change cleared the key — and a
- * revoked role would keep working until the TTL ran out.
+ * A stored entry still answers: it holds a value, is younger than its TTL (Next serves an older one
+ * once while it refreshes it behind the response), and its read began after the last change this
+ * instance made to it (`changedAt`).
  */
-const STALE = "\u0000stale";
-const STALE_SECONDS = 30;
+export function isFresh(entry: Entry | undefined, ttlSeconds: number, now: number, changedAt?: number): entry is Entry & { v: string } {
+  return !!entry && typeof entry.v === "string" && now - entry.at < ttlSeconds * 1000 && (changedAt === undefined || entry.at > changedAt);
+}
 
 /**
  * Returns the cached value under `key`, or runs `load`, stores its result for `ttlSeconds` and
  * returns it. `undefined` is never cached (use null for "known to be absent").
  */
 export async function cached<T>(key: string, ttlSeconds: number, load: () => Promise<T>): Promise<T> {
-  const connection = redis();
-  if (!connection) return load();
-  const fullKey = connection.prefix + key;
-  let hit: string | null | undefined;
+  const named = usable();
+  if (!named) return load();
+  const tag = entryTag(named.prefix, key);
+  if (recentlyInvalidated(tag, Date.now())) return load();
+
+  // `load` runs in the caller's context, not inside `unstable_cache`'s: there Next refuses headers
+  // and cookies (Better Auth's session read uses both), revalidation and `after()`, and a loader may
+  // need any of them — as it could when the cache was Redis.
+  const loadHere = AsyncLocalStorage.bind(load);
+  let outcome: { value: T } | { error: unknown } | undefined;
+  const read = unstable_cache(
+    async (): Promise<Entry> => {
+      const at = Date.now();
+      try {
+        const value = await loadHere();
+        outcome = { value };
+        return { at, v: value === undefined ? undefined : encode(value) };
+      } catch (error) {
+        outcome = { error };
+        throw error;
+      }
+    },
+    [tag],
+    { tags: [tag, named.all], revalidate: ttlSeconds },
+  );
+
+  let entry: Entry | undefined;
   try {
-    hit = await withTimeout(connection.redis.get<string>(fullKey));
-    if (typeof hit === "string" && hit !== STALE) return decode<T>(hit);
+    entry = await read();
   } catch (error) {
-    warn(`get ${key}`, error);
-  }
-  const value = await load();
-  // Only into an empty key (NX): a marker left by a change in the meantime wins over this read.
-  // Awaited, because a serverless function may be frozen the moment the response is sent; a miss
-  // is rare, so the extra hop is too.
-  if (value !== undefined && hit !== STALE) {
-    try {
-      await withTimeout(connection.redis.set(fullKey, encode(value), { ex: ttlSeconds, nx: true }));
-    } catch (error) {
-      warn(`set ${key}`, error);
+    // A failing `load` is the caller's error; a failing cache is not.
+    if (outcome && "error" in outcome) throw outcome.error;
+    if (!outcome) {
+      warn(`read ${key}`, error);
+      return load();
     }
   }
-  return value;
+  if (outcome && "value" in outcome) return outcome.value;
+  if (!isFresh(entry, ttlSeconds, Date.now(), invalidatedAt.get(tag))) return load();
+  return decode<T>(entry.v);
+}
+
+async function deleteTags(tags: readonly string[], purge: NonNullable<ReturnType<typeof purgeApi>>): Promise<void> {
+  const calls: Promise<void>[] = [];
+  for (let start = 0; start < tags.length; start += TAGS_PER_CALL) calls.push(purge.dangerouslyDeleteByTag(tags.slice(start, start + TAGS_PER_CALL)));
+  await Promise.all(calls);
 }
 
 /**
- * Marks entries stale after the data behind them changed. Call once the change is committed. Tried
- * twice with a longer wait than reads get: a missed invalidation is what leaves stale data behind.
+ * Deletes the entries after the data behind them changed — at once, and once more shortly after
+ * the response (see `REDELETE_AFTER_MS`). Tried twice with a timeout: a missed deletion is what
+ * leaves stale data behind.
  */
 export async function invalidate(...keys: string[]): Promise<void> {
-  const connection = redis();
-  if (!connection || !keys.length) return;
-  const mark = () => {
-    const batch = connection.redis.pipeline();
-    for (const key of keys) batch.set(connection.prefix + key, STALE, { ex: STALE_SECONDS });
-    return batch.exec();
-  };
+  const named = names();
+  if (!named || !keys.length) return;
+  const tags = [...new Set(keys.map((key) => entryTag(named.prefix, key)))];
+  noteInvalidated(tags, Date.now());
+  const purge = purgeApi();
+  if (!purge) return;
+
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      await Promise.race([mark(), new Promise((_, reject) => setTimeout(() => reject(new Error("timed out")), INVALIDATE_TIMEOUT_MS))]);
-      return;
+      await Promise.race([deleteTags(tags, purge), new Promise((_, reject) => setTimeout(() => reject(new Error("timed out")), INVALIDATE_TIMEOUT_MS))]);
+      break;
     } catch (error) {
       if (attempt === 2) console.error(`[cache] invalidate ${keys.join(",")} failed; entries may stay stale until their TTL:`, error instanceof Error ? error.message : error);
     }
   }
+  try {
+    after(async () => {
+      await new Promise((resolve) => setTimeout(resolve, REDELETE_AFTER_MS));
+      await deleteTags(tags, purge).catch((error) => warn(`invalidate ${keys.join(",")} (again)`, error));
+    });
+  } catch (error) {
+    // Outside a request (nothing to come back to) or inside a cached function (which writes nothing).
+    warn(`schedule invalidate ${keys.join(",")} (again)`, error);
+  }
+}
+
+/** Every entry of this database, every version. After writing behind the app's back: a seed, a manual fix in SQL. */
+export async function flushCache(): Promise<boolean> {
+  const named = names();
+  const purge = purgeApi();
+  if (!named || !purge) return false;
+  invalidatedAt.clear();
+  await purge.dangerouslyDeleteByTag(named.all);
+  return true;
 }
 
 /** Seconds until the next midnight in Vietnam, for entries that are only true for "today". */

@@ -12608,9 +12608,8 @@
             "We do not sell personal data. We share it only with the providers that run parts of the Service for us, under contracts that limit their use of it to providing their service:"
           ],
           "list": [
-            "Vercel Inc. — application hosting;",
+            "Vercel Inc. — application hosting, and a cache for configuration and reference data (never salary or other sensitive personal data);",
             "Supabase Inc. — database, hosted in Singapore;",
-            "Upstash Inc. — a cache for configuration and reference data (never salary or other sensitive personal data);",
             "Cloudflare, Inc. — private file storage (R2), kept in the Asia-Pacific region, and the text analysis behind knowledge base search (Workers AI), which receives the knowledge base content and the questions asked;",
             "Resend — delivery of emails the Service sends;",
             "Functional Software Inc. (Sentry) — error monitoring;",
