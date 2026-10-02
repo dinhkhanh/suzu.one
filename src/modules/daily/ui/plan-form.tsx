@@ -125,7 +125,7 @@ export function PlanForm({ date, today, candidates, selected, dayMinutes, note }
       </Section>
 
       <Section title={<label htmlFor="plan-note">{t("plan.note")}</label>}>
-        <NoteEditor id="plan-note" value={text} onChange={setText} maxLength={1000} placeholder={t("plan.notePlaceholder")} />
+        <NoteEditor id="plan-note" draft={`daily-plan:${date}`} value={text} onChange={setText} maxLength={1000} placeholder={t("plan.notePlaceholder")} />
       </Section>
 
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">

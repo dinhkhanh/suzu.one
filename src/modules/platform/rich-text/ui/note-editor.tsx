@@ -3,15 +3,20 @@
 // description, a comment, a meeting's minutes. It is a form control like the textarea was: give it
 // a `name` and the form posts the note (Markdown, engine/note.ts) under it; give it `value` and
 // `onChange` to hold it yourself. `required` and `maxLength` hold as they did, and the form's reset
-// empties it.
+// empties it. What is being written is kept as a draft on this device (drafts.ts) until the form is
+// sent, and offered back when the form opens again.
 import { Extension } from "@tiptap/core";
 import { EditorContent, type Editor, useEditor, useEditorState } from "@tiptap/react";
 import { cn } from "cn";
 import { Bold, Code, Italic, List, ListOrdered, ListTodo, Quote, RemoveFormatting, SquareCode, Strikethrough } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
+import { usePathname } from "next/navigation";
 import { type FocusEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { docToNote, noteToDoc } from "../engine/note";
 import type { Doc } from "../engine/doc";
+import { useDraftOwner } from "./draft-owner";
+import { DRAFT_SAVED_EVENT, draftKey, readDraft, removeDraft, writeDraft } from "./drafts";
 import { clearSelectionFormatting, textExtensions } from "./extensions";
 import { LinkControl, MOD, Toolbar, ToolButton, ToolSeparator } from "./toolbar";
 
@@ -30,6 +35,11 @@ type NoteEditorProps = {
   /** The height it opens at, in lines; it grows with what is written. */
   rows?: number;
   autoFocus?: boolean;
+  /**
+   * Where the draft is kept. By default one per page and field (`id`, else `name`); a string keeps
+   * one wherever the form opens (the feedback dialog on every page); `false` keeps none.
+   */
+  draft?: string | false;
   className?: string;
   "aria-label"?: string;
   "aria-invalid"?: boolean;
@@ -89,8 +99,9 @@ const NoteKeys = Extension.create({
   },
 });
 
-export function NoteEditor({ id, name, form, defaultValue, value, onChange, placeholder, maxLength, required, disabled, rows = 3, autoFocus, className, "aria-label": ariaLabel, "aria-invalid": ariaInvalid }: NoteEditorProps) {
+export function NoteEditor({ id, name, form, defaultValue, value, onChange, placeholder, maxLength, required, disabled, rows = 3, autoFocus, draft, className, "aria-label": ariaLabel, "aria-invalid": ariaInvalid }: NoteEditorProps) {
   const t = useTranslations("richText");
+  const format = useFormatter();
   const controlled = value !== undefined;
   const [note, setNote] = useState(() => (controlled ? value : (defaultValue ?? "")));
   const [problem, setProblem] = useState<"required" | "tooLong" | null>(null);
@@ -104,6 +115,17 @@ export function NoteEditor({ id, name, form, defaultValue, value, onChange, plac
   // The note this editor last wrote, so a `value` coming back unchanged is not loaded again.
   const written = useRef(note);
   const initial = useMemo<Doc>(() => noteToDoc(note), []); // eslint-disable-line react-hooks/exhaustive-deps -- the first content only
+
+  const owner = useDraftOwner();
+  const pathname = usePathname();
+  const scope = draft === false ? null : (draft ?? (id || name ? `${pathname}#${id || name}` : null));
+  const storeKey = owner && scope ? draftKey(owner, scope) : null;
+  // The note as it stands when nothing is being drafted: what the field opened with, or what was
+  // last sent or set from outside. A note equal to it is no draft.
+  const base = useRef(note);
+  // Drafts are written only once the stored one has been offered back, never over it.
+  const offered = useRef(false);
+  const [restored, setRestored] = useState<{ at: number; now: number } | null>(null);
 
   const editor = useEditor({
     // Rendered in the browser only: the server has no DOM for ProseMirror.
@@ -132,6 +154,38 @@ export function NoteEditor({ id, name, form, defaultValue, value, onChange, plac
 
   useEffect(() => editor?.setEditable(!disabled), [editor, disabled]);
 
+  // The draft left here last time, offered back once the editor is up.
+  useEffect(() => {
+    if (!editor || offered.current) return;
+    offered.current = true;
+    if (!storeKey || disabled) return;
+    const kept = readDraft(storeKey);
+    if (!kept) return;
+    if (kept.text === written.current) return removeDraft(storeKey);
+    load(kept.text);
+    setRestored({ at: kept.at, now: Date.now() });
+  }, [editor, storeKey]); // eslint-disable-line react-hooks/exhaustive-deps -- `load` is this render's; the draft is offered once
+
+  // Every change is kept until the form is sent; a note back to where it started keeps nothing.
+  useEffect(() => {
+    if (!storeKey || !offered.current) return;
+    if (note === base.current) removeDraft(storeKey);
+    else writeDraft(storeKey, note);
+  }, [note, storeKey]);
+
+  // Sent (useActionForm says so, or the form's own code) or reset: what is shown is no draft now.
+  useEffect(() => {
+    const sent = proxy.current?.form;
+    if (!sent || !storeKey) return;
+    const settle = () => {
+      base.current = written.current;
+      removeDraft(storeKey);
+      setRestored(null);
+    };
+    sent.addEventListener(DRAFT_SAVED_EVENT, settle);
+    return () => sent.removeEventListener(DRAFT_SAVED_EVENT, settle);
+  }, [storeKey, editor]);
+
   useEffect(() => {
     if (!editor) return;
     const element = editor.view.dom;
@@ -156,6 +210,8 @@ export function NoteEditor({ id, name, form, defaultValue, value, onChange, plac
   useEffect(() => {
     if (!controlled || !editor || value === written.current) return;
     written.current = value;
+    base.current = value;
+    setRestored(null);
     setNote(value);
     editor.commands.setContent(noteToDoc(value), { emitUpdate: false });
   }, [controlled, editor, value]);
@@ -167,8 +223,10 @@ export function NoteEditor({ id, name, form, defaultValue, value, onChange, plac
     const reset = () => {
       const original = defaultValue ?? "";
       written.current = original;
+      base.current = original;
       setNote(original);
       setProblem(null);
+      setRestored(null);
       editor.commands.setContent(noteToDoc(original), { emitUpdate: false });
     };
     owner.addEventListener("reset", reset);
@@ -182,6 +240,11 @@ export function NoteEditor({ id, name, form, defaultValue, value, onChange, plac
     setProblem(null);
     editor.commands.setContent(noteToDoc(next), { emitUpdate: false });
     changed.current?.(next);
+  }
+
+  function discard() {
+    setRestored(null);
+    load(base.current);
   }
 
   const tooLong = maxLength !== undefined && note.length > maxLength;
@@ -230,6 +293,14 @@ export function NoteEditor({ id, name, form, defaultValue, value, onChange, plac
       />
       {editor && !disabled ? <NoteToolbar editor={editor} linkOpen={linkOpen} setLinkOpen={setLinkOpen} /> : null}
       <EditorContent editor={editor} className="max-h-[60vh] overflow-y-auto" />
+      {restored ? (
+        <div className="flex items-center justify-between gap-2 border-t px-2.5 py-1 text-xs text-muted-foreground">
+          <span className="min-w-0">{t("draftRestored", { when: format.relativeTime(restored.at, restored.now) })}</span>
+          <Button type="button" variant="ghost" size="xs" onClick={discard}>
+            {t("draftDiscard")}
+          </Button>
+        </div>
+      ) : null}
       {shown || nearLimit ? (
         <div className="flex items-center justify-between gap-2 border-t px-2.5 py-1 text-xs">
           <span role={shown ? "alert" : undefined} className="text-destructive">

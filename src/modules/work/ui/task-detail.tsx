@@ -19,6 +19,7 @@ import {
   removeDependencyAction,
   updateTaskAction,
 } from "../actions";
+import { draftSaved } from "@/modules/platform/rich-text/ui/drafts";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import { CHANNELS, CONTENT_FORMATS, PRIORITIES } from "../enums";
@@ -181,7 +182,8 @@ export function TaskDetailView({
 
   function saveFields(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     const text = (name: string) => String(data.get(name) ?? "");
     const hours = text("estimateHours");
     setSaved(false);
@@ -201,7 +203,10 @@ export function TaskDetailView({
         labelIds: data.getAll("labelIds").map(String),
         collaboratorIds: data.getAll("collaboratorIds").map(String),
       },
-      () => setSaved(true),
+      () => {
+        setSaved(true);
+        draftSaved(form);
+      },
     );
   }
 

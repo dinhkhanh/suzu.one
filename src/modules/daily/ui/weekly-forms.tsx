@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { FormError } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
+import { draftSaved } from "@/modules/platform/rich-text/ui/drafts";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { generateTeamWeekAction, saveWeeklySummaryAction } from "../actions";
 import { useRun } from "./use-run";
@@ -20,11 +21,16 @@ export function WeeklySummaryForm({ id, summary }: { id: string; summary: string
       className="flex flex-col gap-2"
       onSubmit={(event) => {
         event.preventDefault();
-        run(saveWeeklySummaryAction, { id, summary: text }, () => setSaved(true));
+        const form = event.currentTarget;
+        run(saveWeeklySummaryAction, { id, summary: text }, () => {
+          setSaved(true);
+          draftSaved(form);
+        });
       }}
     >
       <NoteEditor
         aria-label={t("summary")}
+        draft={`weekly-summary:${id}`}
         value={text}
         onChange={(next) => {
           setText(next);

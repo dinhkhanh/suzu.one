@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { MultiSelect, Select } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/action";
 import { uploadThroughSignedUrl } from "@/modules/platform/files/ui/signed-upload";
+import { draftSaved } from "@/modules/platform/rich-text/ui/drafts";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { type FieldValue, type FormDefinition, type FormField, type FormValues, MAX_TEXT, validateSubmission, visibleFields } from "../engine/form";
 import { beginRequestAttachmentAction, completeRequestAttachmentAction } from "../file-actions";
@@ -68,12 +69,14 @@ export function RequestForm({
     event.preventDefault();
     setTouched(true);
     if (Object.keys(problems).length > 0 || addendumInvalid) return;
+    const sent = event.currentTarget;
     startTransition(async () => {
       // Only what is on screen: a hidden field's answer is nobody's business, here or on the server.
       const payload = Object.fromEntries(shown.map((field) => [field.key, values[field.key] ?? null]));
       const result = await submit({ ...extra, values: payload });
       if (result.ok) {
         setErrorKey(null);
+        draftSaved(sent);
         router.push(`/approvals/request/${result.data.requestId}`);
       } else setErrorKey((result.error === "failed" ? result.message : result.error) ?? "generic");
     });

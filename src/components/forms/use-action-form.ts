@@ -1,6 +1,7 @@
 "use client";
 import { type FormEvent, useState, useTransition } from "react";
 import type { ActionResult } from "@/lib/action";
+import { draftSaved } from "@/modules/platform/rich-text/ui/drafts";
 
 // "profile.phone" → { profile: { phone } }. Blank fields are kept: the actions read them as "no value".
 function nest(formData: FormData): Record<string, unknown> {
@@ -34,8 +35,9 @@ export function useActionForm<T>(action: (input: unknown) => Promise<ActionResul
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     // The clicked button counts as a field, so a form can offer several outcomes (approve / reject).
-    const formData = new FormData(event.currentTarget, (event.nativeEvent as SubmitEvent).submitter);
+    const formData = new FormData(form, (event.nativeEvent as SubmitEvent).submitter);
     setSaved(false);
     startTransition(async () => {
       const result = await action({ ...nest(formData), ...options.extra });
@@ -44,6 +46,8 @@ export function useActionForm<T>(action: (input: unknown) => Promise<ActionResul
       if (result.ok) {
         setErrorKey(null);
         setSaved(true);
+        // Sent: the note editors in it drop their drafts, before onSuccess resets or leaves the form.
+        draftSaved(form);
         options.onSuccess?.(result.data);
         return;
       }

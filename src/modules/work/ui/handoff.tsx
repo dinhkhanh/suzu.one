@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { List, ListEmpty, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
 import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
+import { draftSaved } from "@/modules/platform/rich-text/ui/drafts";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { RichText } from "@/modules/platform/rich-text/ui/rich-text";
 import type { HandoffRequirement } from "../handoff-gate";
@@ -165,7 +166,8 @@ export function HandoffSheet({ requirement, onClose, onDone }: { requirement: Ha
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     const values = Object.fromEntries(pkg.fields.map((field) => [field.key, String(data.get(`value.${field.key}`) ?? "")]));
     const link = String(data.get("link") ?? "").trim();
     startTransition(async () => {
@@ -180,6 +182,7 @@ export function HandoffSheet({ requirement, onClose, onDone }: { requirement: Ha
         note: readNote(data),
       })) as Result;
       if (result.ok) {
+        draftSaved(form);
         onDone?.();
         onClose();
         router.refresh();

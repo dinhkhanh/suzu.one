@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Button, type buttonVariants } from "@/components/ui/button";
 import type { VariantProps } from "class-variance-authority";
 import { authClient } from "@/modules/platform/auth/client";
+import { forgetAllDrafts } from "@/modules/platform/rich-text/ui/drafts";
 
 /**
  * `compact` is the sidebar's version: the icon alone, beside the person's name. A page that puts
@@ -20,6 +21,8 @@ export function SignOutButton({ label, compact = false, variant = "ghost", size,
       title={compact ? label : undefined}
       onClick={async () => {
         await authClient.signOut();
+        // Whoever uses this browser next does not find what was being written.
+        forgetAllDrafts();
         router.replace("/sign-in");
         router.refresh();
       }}

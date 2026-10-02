@@ -1,8 +1,9 @@
 "use client";
 // The page editor (FR-KB-02): a full WYSIWYG over the page document. A toolbar and a bubble menu over
 // the selection for formatting, "/" to insert any block, Markdown shortcuts as one types (## , - ,
-// [ ] , > , ```), pictures and files uploaded by picking, pasting or dropping them, Mod-S to save
-// the draft, and a warning before leaving with unsaved changes.
+// [ ] , > , ```), pictures and files uploaded by picking, pasting or dropping them, the draft saved
+// by itself a few seconds after the typing stops (and at once with Mod-S), and a warning before
+// leaving with changes not yet saved.
 import { type Editor, EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { NodeSelection } from "@tiptap/pm/state";
@@ -141,6 +142,9 @@ function Counts({ editor }: { editor: Editor }) {
   );
 }
 
+/** How long the typing has to stop before the draft saves itself. */
+const AUTOSAVE_MS = 3000;
+
 export function PageEditor({ pageId, initialTitle, initialContent, canPublish, controlled }: { pageId: string; initialTitle: string; initialContent: unknown; canPublish: boolean; controlled: boolean }) {
   const t = useTranslations("kb");
   const tr = useTranslations("richText");
@@ -155,6 +159,16 @@ export function PageEditor({ pageId, initialTitle, initialContent, canPublish, c
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  // Counts the changes, so a save that finishes after more typing does not call the page saved.
+  const revision = useRef(0);
+  const autosave = useRef<ReturnType<typeof setTimeout>>(undefined);
+  function changed() {
+    revision.current += 1;
+    setDirty(true);
+    clearTimeout(autosave.current);
+    autosave.current = setTimeout(() => answer.current.autosave(), AUTOSAVE_MS);
+  }
+  useEffect(() => () => clearTimeout(autosave.current), []);
   const [panels, setPanels] = useState<Panels>({ link: false, embed: false, image: false });
   const setPanel = useCallback((panel: keyof Panels, open: boolean) => setPanels((current) => ({ ...current, [panel]: open })), []);
   const uploading = uploads > 0;
@@ -184,7 +198,7 @@ export function PageEditor({ pageId, initialTitle, initialContent, canPublish, c
         return true;
       },
     },
-    onUpdate: () => setDirty(true),
+    onUpdate: () => changed(),
   });
 
   function upload(file: File, at?: number) {
@@ -203,8 +217,15 @@ export function PageEditor({ pageId, initialTitle, initialContent, canPublish, c
   }
   const picker = useFilePicker((file) => upload(file));
 
-  function save(publish: boolean) {
-    if (!editor || pending || uploading) return;
+  /** `auto`: the draft saving itself, which keeps the page as it is rather than reloading it. */
+  function save(publish: boolean, auto = false) {
+    if (!editor || pending || uploading) {
+      // Busy saving or uploading: the draft tries again once the moment has passed.
+      if (auto) autosave.current = setTimeout(() => answer.current.autosave(), AUTOSAVE_MS);
+      return;
+    }
+    clearTimeout(autosave.current);
+    const saving = revision.current;
     startTransition(async () => {
       // Sent as a JSON string: passed as an object, React's action encoding delivered a node's
       // `attrs` to the server as a function, and every heading, callout and table was refused.
@@ -213,19 +234,19 @@ export function PageEditor({ pageId, initialTitle, initialContent, canPublish, c
       const result = !publish ? await savePageDraftAction({ pageId, title, content }) : canPublish ? await publishPageAction({ pageId, title, content, changeNote, isMajor }) : await submitPageReviewAction({ pageId, title, content, changeNote, isMajor });
       setErrorKey(keyOf(result));
       if (!result.ok) return;
-      setDirty(false);
+      if (revision.current === saving) setDirty(false);
       if (publish) router.push(`/kb/pages/${pageId}`);
       else {
         setSavedAt(format.dateTime(new Date(), { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
-        router.refresh();
+        if (!auto) router.refresh();
       }
     });
   }
 
   // The editor's handlers' requests, answered with this render's state.
-  const answer = useRef({ save: () => save(false), upload, pick: picker.pick, setPanel });
+  const answer = useRef({ save: () => save(false), autosave: () => save(false, true), upload, pick: picker.pick, setPanel });
   useEffect(() => {
-    answer.current = { save: () => save(false), upload, pick: picker.pick, setPanel };
+    answer.current = { save: () => save(false), autosave: () => save(false, true), upload, pick: picker.pick, setPanel };
   });
   useEffect(() => {
     if (!editor) return;
@@ -256,7 +277,7 @@ export function PageEditor({ pageId, initialTitle, initialContent, canPublish, c
         value={title}
         onChange={(event) => {
           setTitle(event.target.value);
-          setDirty(true);
+          changed();
         }}
         maxLength={200}
         placeholder={t("fields.title")}

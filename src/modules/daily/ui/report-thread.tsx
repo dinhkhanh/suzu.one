@@ -29,7 +29,7 @@ export function ReportThread({ reportId }: { reportId: string }) {
           if (body.trim()) run(commentOnReportAction, { reportId, body }, () => setBody(""));
         }}
       >
-        <NoteEditor aria-label={t("comment")} value={body} onChange={setBody} maxLength={2000} placeholder={t("placeholder")} />
+        <NoteEditor aria-label={t("comment")} draft={`report-thread:${reportId}`} value={body} onChange={setBody} maxLength={2000} placeholder={t("placeholder")} />
         <Button type="submit" size="sm" disabled={pending || !body.trim()} className="self-start">
           {t("send")}
         </Button>

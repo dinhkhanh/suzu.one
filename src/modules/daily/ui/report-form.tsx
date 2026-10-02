@@ -93,10 +93,10 @@ export function ReportForm({
       </details>
 
       <Section title={<label htmlFor="blockers">{t("report.blockers")}</label>}>
-        <NoteEditor id="blockers" value={blockers} onChange={setBlockers} maxLength={2000} placeholder={t("report.blockersPlaceholder")} />
+        <NoteEditor id="blockers" draft={`daily-report:${date}:blockers`} value={blockers} onChange={setBlockers} maxLength={2000} placeholder={t("report.blockersPlaceholder")} />
       </Section>
       <Section title={<label htmlFor="notes">{t("report.notes")}</label>} action={notesDraft}>
-        <NoteEditor id="notes" value={notes} onChange={setNotes} maxLength={2000} placeholder={t("report.notesPlaceholder")} />
+        <NoteEditor id="notes" draft={`daily-report:${date}:notes`} value={notes} onChange={setNotes} maxLength={2000} placeholder={t("report.notesPlaceholder")} />
       </Section>
 
       <Section title={t("report.tomorrow", { count: picked.length })}>

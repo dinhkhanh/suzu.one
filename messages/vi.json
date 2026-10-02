@@ -7109,7 +7109,7 @@
       "words": "{count, plural, other {# từ}}",
       "characters": "{count, plural, other {# ký tự}}",
       "unsaved": "Có thay đổi chưa lưu",
-      "saveShortcut": "Ctrl/⌘ + S để lưu nháp",
+      "saveShortcut": "Nháp tự lưu · Ctrl/⌘ + S để lưu ngay",
       "slashHint": "Gõ / để chèn khối",
       "slashEmpty": "Không có khối nào khớp"
     },
@@ -13623,6 +13623,8 @@
     "placeholder": "Viết gì đó… (Markdown: **đậm**, - danh sách, [ ] việc cần làm)",
     "length": "{count, number} / {max, number} ký tự",
     "tooLong": "Nội dung dài hơn {max, number} ký tự cho phép.",
-    "required": "Hãy điền mục này."
+    "required": "Hãy điền mục này.",
+    "draftRestored": "Đã khôi phục bản nháp chưa gửi từ {when}.",
+    "draftDiscard": "Bỏ bản nháp"
   }
 }

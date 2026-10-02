@@ -11,6 +11,7 @@ import { photoUrlOf } from "@/modules/core-hr/ui/person-avatar";
 import { MAX_NAV_PINS } from "@/modules/platform/auth/preferences";
 import { requireUser } from "@/modules/platform/auth/session";
 import { ImpersonationBanner } from "@/modules/platform/auth/ui/impersonation";
+import { DraftOwnerProvider } from "@/modules/platform/rich-text/ui/draft-owner";
 import { vapidPublicKey } from "@/modules/platform/notifications/push";
 import { PushPrompt } from "@/modules/platform/notifications/ui/push-prompt";
 import { loadShellCounts } from "@/modules/platform/shell/service";
@@ -69,7 +70,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     : null;
 
   return (
-    <>
+    // The note editors keep drafts of what is being written, for this person only.
+    <DraftOwnerProvider personId={user.person.id}>
       <AppFrame
         labels={{
           workspace: t("app.name"),
@@ -111,6 +113,6 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         pages={[{ key: "today", href: "/today" }, ...nav.main, { key: "approvals", href: "/approvals" }, { key: "notifications", href: "/notifications" }, ...nav.admin].flatMap((item) => (item.href ? [{ label: label(item.key), href: item.href }] : []))}
       />
       {welcome ? <WelcomeGuide steps={welcome} name={user.person.fullName.split(" ").at(-1) ?? user.person.fullName} /> : null}
-    </>
+    </DraftOwnerProvider>
   );
 }

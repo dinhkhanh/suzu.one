@@ -33,7 +33,7 @@ export function PayslipQueryForm({ payslipId }: { payslipId: string }) {
       <p className="text-sm text-muted-foreground">{t("askHint")}</p>
       <FieldErrors value={fieldErrors}>
         <Field name="body" label={t("question")}>
-          <NoteEditor id="body" name="body" rows={3} maxLength={4000} required />
+          <NoteEditor id="body" name="body" rows={3} maxLength={4000} required draft={false} />
         </Field>
       </FieldErrors>
       <FormError namespace="payroll.payslips.errors" errorKey={errorKey} />
@@ -55,7 +55,7 @@ export function PayslipReplyForm({ queryId }: { queryId: string }) {
     <form onSubmit={onSubmit} className="flex flex-col gap-2">
       <FieldErrors value={fieldErrors}>
         <Field name="body" label={t("reply")}>
-          <NoteEditor id={`reply-${queryId}`} name="body" rows={2} maxLength={4000} required aria-label={t("reply")} />
+          <NoteEditor id={`reply-${queryId}`} name="body" rows={2} maxLength={4000} required aria-label={t("reply")} draft={false} />
         </Field>
       </FieldErrors>
       <FormError namespace="payroll.payslips.errors" errorKey={errorKey} />

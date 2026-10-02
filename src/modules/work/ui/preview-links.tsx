@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { draftSaved } from "@/modules/platform/rich-text/ui/drafts";
 import { NoteEditor } from "@/modules/platform/rich-text/ui/note-editor";
 import { PREVIEW_DEFAULT_DAYS, PREVIEW_LABEL_MAX, PREVIEW_MAX_DAYS, PREVIEW_MESSAGE_MAX, PREVIEW_MIN_DAYS, type PreviewState } from "../engine/preview";
 import { createPreviewLinkAction, revokePreviewLinkAction } from "../preview-actions";
@@ -62,11 +63,12 @@ export function PreviewLinkPanel({ taskId, links, versions, canManage }: { taskI
     });
 
   /** Creating is the one call whose answer matters: it carries the only copy of the link. */
-  const create = (input: Record<string, unknown>) =>
+  const create = (input: Record<string, unknown>, form: HTMLFormElement) =>
     startTransition(async () => {
       const result = await createPreviewLinkAction({ taskId, ...input });
       setErrorKey(errorKeyOf(result));
       if (!result.ok) return;
+      draftSaved(form);
       setFresh({ url: result.data.url, expiresAt: result.data.expiresAt });
       setCopied(false);
       setAddRow((count) => count + 1);
@@ -168,13 +170,16 @@ export function PreviewLinkPanel({ taskId, links, versions, canManage }: { taskI
                 onSubmit={(event) => {
                   event.preventDefault();
                   const data = new FormData(event.currentTarget);
-                  create({
-                    deliverableId: data.get("deliverableId"),
-                    label: data.get("label"),
-                    message: data.get("message"),
-                    allowDecision: data.get("allowDecision") ?? false,
-                    days: data.get("days"),
-                  });
+                  create(
+                    {
+                      deliverableId: data.get("deliverableId"),
+                      label: data.get("label"),
+                      message: data.get("message"),
+                      allowDecision: data.get("allowDecision") ?? false,
+                      days: data.get("days"),
+                    },
+                    event.currentTarget,
+                  );
                 }}
               >
                 <div className="grid gap-3 sm:grid-cols-3">

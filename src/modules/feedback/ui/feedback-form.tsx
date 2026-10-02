@@ -92,7 +92,7 @@ export function FeedbackForm({ pagePath, onSent, autoFocus }: { pagePath: string
         <Field name="message" label={t("form.message")}>
           {/* Captured before the editor sees it, so a pasted image becomes the screenshot. */}
           <div onPasteCapture={onPaste}>
-            <NoteEditor id="message" name="message" required rows={5} maxLength={FEEDBACK_MESSAGE_MAX} autoFocus={autoFocus} placeholder={t(`form.placeholders.${category}`)} />
+            <NoteEditor id="message" name="message" draft="feedback" required rows={5} maxLength={FEEDBACK_MESSAGE_MAX} autoFocus={autoFocus} placeholder={t(`form.placeholders.${category}`)} />
           </div>
         </Field>
         <p className="-mt-2 text-xs text-muted-foreground">{t("form.privacy")}</p>

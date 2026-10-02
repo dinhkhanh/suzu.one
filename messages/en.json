@@ -7109,7 +7109,7 @@
       "words": "{count, plural, one {# word} other {# words}}",
       "characters": "{count, plural, one {# character} other {# characters}}",
       "unsaved": "Unsaved changes",
-      "saveShortcut": "Ctrl/⌘ + S saves a draft",
+      "saveShortcut": "The draft saves by itself · Ctrl/⌘ + S saves now",
       "slashHint": "Type / to insert a block",
       "slashEmpty": "No block matches"
     },
@@ -13623,6 +13623,8 @@
     "placeholder": "Write something… (Markdown works: **bold**, - list, [ ] to-do)",
     "length": "{count, number} / {max, number} characters",
     "tooLong": "This is longer than the {max, number} characters allowed.",
-    "required": "Please fill in this field."
+    "required": "Please fill in this field.",
+    "draftRestored": "Your unsaved draft from {when} is back.",
+    "draftDiscard": "Discard draft"
   }
 }
