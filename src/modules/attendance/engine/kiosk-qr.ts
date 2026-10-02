@@ -35,11 +35,11 @@ export function isWindowAccepted(window: number, nowMs: number): boolean {
 // ── Handing the kiosk its codes in batches ──────────────────────────────────────────────────
 //
 // The kiosk asks for the codes of the next few minutes at once and shows each in its window, so
-// it calls the server every few minutes instead of every few seconds. A code it holds is no use
+// it calls the server twice an hour instead of every few seconds. A code it holds is no use
 // before its window starts (`isWindowAccepted`), so knowing the next ones proves nothing early.
 
-/** Windows handed out per request: five minutes of codes. */
-export const QR_BATCH_WINDOWS = 15;
+/** Windows handed out per request: half an hour of codes, so a kiosk asks about twice an hour. */
+export const QR_BATCH_WINDOWS = 90;
 /** Ask again when fewer than this many of the held windows are still to come. */
 export const QR_REFILL_BELOW = 3;
 
@@ -52,4 +52,18 @@ export const currentQr = (codes: readonly QrCode[], nowMs: number): QrCode | nul
 export function needsMoreQr(codes: readonly QrCode[], nowMs: number): boolean {
   const current = qrWindow(nowMs);
   return !codes.some((code) => code.window === current) || codes.filter((code) => code.window > current).length < QR_REFILL_BELOW;
+}
+
+// ── The nightly reload ─────────────────────────────────────────────────────────────────────
+//
+// A wall tablet keeps one page open for weeks, running whatever script it loaded first. It reloads
+// itself once a night, while nobody is in front of it, so it picks up a new version on its own.
+
+/** The hour (Vietnam time) the kiosk reloads itself. */
+export const KIOSK_RELOAD_HOUR = 3;
+
+/** Whether to reload now: the reload hour in Vietnam, the page loaded over an hour ago, and the screen idle. */
+export function shouldReload(nowMs: number, loadedAtMs: number, idle: boolean): boolean {
+  const vietnamHour = new Date(nowMs + 7 * 3_600_000).getUTCHours();
+  return idle && vietnamHour === KIOSK_RELOAD_HOUR && nowMs - loadedAtMs > 3_600_000;
 }

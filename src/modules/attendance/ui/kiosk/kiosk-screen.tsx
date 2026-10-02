@@ -10,7 +10,7 @@ import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { cosine } from "../../engine/face";
 import { KioskMachine, type KioskView, type Named, type Punched } from "../../engine/kiosk-machine";
-import { currentQr, needsMoreQr, type QrCode as QrCodeEntry } from "../../engine/kiosk-qr";
+import { currentQr, needsMoreQr, type QrCode as QrCodeEntry, shouldReload } from "../../engine/kiosk-qr";
 import { type FaceEngine, loadFaceEngine } from "./face-engine";
 import { QrCode } from "./kiosk-qr";
 
@@ -56,10 +56,10 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
     };
   }, []);
 
-  // The QR code changes every 20 seconds, and the server hands out five minutes of them at a time:
-  // the kiosk asks again only when it is running low (`needsMoreQr`), about every four minutes, and
-  // every 30 seconds while it cannot reach the server. Asking is also how an idle kiosk learns it
-  // was closed (a kiosk in use learns it from its next punch).
+  // The QR code changes every 20 seconds, and the server hands out half an hour of them at a time:
+  // the kiosk asks again only when it is running low (`needsMoreQr`), about twice an hour, and every
+  // 30 seconds while it cannot reach the server. A kiosk that was closed learns it from its next
+  // face; the codes it still holds are refused by then.
   useEffect(() => {
     if (phase === "closed") return;
     let stopped = false;
@@ -91,6 +91,15 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
       clearInterval(timer);
     };
   }, [phase, closed]);
+
+  // Once a night, with nobody in front of it, the tablet reloads to pick up a new version.
+  const loadedAt = useRef(0);
+  useEffect(() => {
+    loadedAt.current = Date.now();
+  }, []);
+  useEffect(() => {
+    if (now && phase === "ready" && shouldReload(now.getTime(), loadedAt.current, view.state === "idle")) window.location.reload();
+  }, [now, phase, view.state]);
 
   // The screen stays on.
   useEffect(() => {

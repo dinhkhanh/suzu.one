@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { currentQr, isWindowAccepted, needsMoreQr, parseQrToken, QR_BATCH_WINDOWS, QR_REFILL_BELOW, QR_WINDOW_MS, qrToken, qrWindow } from "./kiosk-qr";
+import { currentQr, isWindowAccepted, needsMoreQr, shouldReload, parseQrToken, QR_BATCH_WINDOWS, QR_REFILL_BELOW, QR_WINDOW_MS, qrToken, qrWindow } from "./kiosk-qr";
 
 const session = "0b6c1f7e-3c2a-4d5e-9f10-112233445566";
 
@@ -36,7 +36,19 @@ describe("the kiosk's codes, a batch at a time", () => {
     expect(needsMoreQr(codes, start + (QR_BATCH_WINDOWS - QR_REFILL_BELOW - 1) * QR_WINDOW_MS)).toBe(false);
     expect(needsMoreQr(codes, start + (QR_BATCH_WINDOWS - QR_REFILL_BELOW) * QR_WINDOW_MS)).toBe(true);
     expect(needsMoreQr([], start)).toBe(true);
-    // One request lasts this long before the next one.
-    expect((QR_BATCH_WINDOWS - QR_REFILL_BELOW) * QR_WINDOW_MS).toBe(240_000);
+    // One request lasts this long before the next one: 29 minutes.
+    expect((QR_BATCH_WINDOWS - QR_REFILL_BELOW) * QR_WINDOW_MS).toBe(1_740_000);
+  });
+});
+
+describe("the nightly reload", () => {
+  // 03:10 in Vietnam is 20:10 UTC the day before.
+  const night = Date.parse("2026-10-02T20:10:00Z");
+
+  it("reloads an idle kiosk at three in the morning, once it has run an hour", () => {
+    expect(shouldReload(night, night - 2 * 3_600_000, true)).toBe(true);
+    expect(shouldReload(night, night - 2 * 3_600_000, false)).toBe(false);
+    expect(shouldReload(night, night - 60_000, true)).toBe(false);
+    expect(shouldReload(night + 3_600_000, night - 2 * 3_600_000, true)).toBe(false);
   });
 });
