@@ -3032,7 +3032,9 @@
         "mapped": "{count} mã đã gán",
         "unmapped": "{count} mã chưa gán người",
         "lastPunch": "lượt chấm gần nhất {at}",
-        "noPunches": "chưa có lượt chấm"
+        "noPunches": "chưa có lượt chấm",
+        "alsoServes": "Phục vụ thêm pháp nhân",
+        "alsoServesHint": "Văn phòng dùng chung: nhân sự của các pháp nhân này cũng chấm công trên máy. Mỗi lượt chấm vẫn thuộc pháp nhân của người đó."
       },
       "profile": {
         "hint": "Hồ sơ mô tả tệp xuất của một dòng máy: cột nào là mã người dùng, thời điểm và mã vào/ra. Tìm cột theo tiêu đề, hoặc theo vị trí khi tệp không có dòng tiêu đề (ZKTeco attlog.dat).",
@@ -3120,8 +3122,10 @@
         "bulk_map_problems": "Chưa lưu gì. Hãy sửa các dòng sau:",
         "bulk_map_empty": "Không có dòng nào để gán.",
         "bad_line": "cần: mã trên máy, mã nhân viên",
-        "employee_not_found": "không có mã nhân viên này trong pháp nhân",
-        "duplicate_in_list": "mã này xuất hiện hai lần"
+        "employee_not_found": "không có mã nhân viên này trong các pháp nhân của máy",
+        "duplicate_in_list": "mã này xuất hiện hai lần",
+        "entity_not_found": "Không tìm thấy pháp nhân.",
+        "employee_code_ambiguous": "mã nhân viên này có ở nhiều pháp nhân, hãy gán từng mã một"
       },
       "push": {
         "title": "Tự gửi lượt chấm",

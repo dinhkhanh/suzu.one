@@ -34,7 +34,7 @@ export default async function DevicesPage() {
                 <Link href={`/attendance/devices/${device.id}`} className="font-medium underline-offset-4 hover:underline">
                   {device.name}
                 </Link>
-                <span className="text-xs text-muted-foreground">{device.entityName}</span>
+                <span className="text-xs text-muted-foreground">{[device.entityName, ...device.alsoServes.map((entity) => entity.name)].join(" + ")}</span>
                 <Badge variant="secondary">{device.profileName}</Badge>
                 <span className="text-muted-foreground">{t("device.mapped", { count: device.mapped })}</span>
                 {device.unmapped > 0 ? <Badge variant="destructive">{t("device.unmapped", { count: device.unmapped })}</Badge> : null}
@@ -45,7 +45,7 @@ export default async function DevicesPage() {
               <details className="mt-2">
                 <summary className="cursor-pointer text-sm text-muted-foreground">{t("device.edit")}</summary>
                 <div className="mt-3">
-                  <DeviceForm device={{ id: device.id, entityId: device.entityId, name: device.name, model: device.model, serialNumber: device.serialNumber, locationId: device.locationId, profileId: device.profileId, isActive: device.isActive }} {...formOptions} />
+                  <DeviceForm device={{ id: device.id, entityId: device.entityId, name: device.name, model: device.model, serialNumber: device.serialNumber, locationId: device.locationId, profileId: device.profileId, isActive: device.isActive, alsoServes: device.alsoServes }} {...formOptions} />
                 </div>
               </details>
             </ListItem>

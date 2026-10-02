@@ -6,7 +6,7 @@ import { useActionForm } from "@/components/forms/use-action-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Select } from "@/components/ui/select";
+import { MultiSelect, Select } from "@/components/ui/select";
 import { ImportWizard } from "@/modules/platform/import/ui/import-wizard";
 import { bulkMapAction, commitDeviceLogAction, issuePushTokenAction, mapDeviceUserAction, recomputeTimesheetsAction, revokePushTokenAction, saveDeviceAction, savePolicyAction, saveProfileAction, stageDeviceLogAction, unmapDeviceUserAction } from "../device-actions";
 import type { DeviceMapping } from "../engine/device-log";
@@ -108,12 +108,14 @@ export function ProfileForm({ profile, entities, canGroup }: { profile?: Profile
   );
 }
 
-export type DeviceFormValue = { id: string; entityId: string; name: string; model: string | null; serialNumber: string | null; locationId: string | null; profileId: string; isActive: boolean };
+export type DeviceFormValue = { id: string; entityId: string; name: string; model: string | null; serialNumber: string | null; locationId: string | null; profileId: string; isActive: boolean; alsoServes: Option[] };
 
 export function DeviceForm({ device, entities, profiles, locations }: { device?: DeviceFormValue; entities: Option[]; profiles: (Option & { entityId: string | null })[]; locations: (Option & { entityId: string })[] }) {
   const t = useTranslations("attendance.devices");
   const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(saveDeviceAction, { extra: device ? { id: device.id, entityId: device.entityId } : {} });
   const [entityId, setEntityId] = useState(device?.entityId ?? entities[0]?.id ?? "");
+  // The entities the viewer keeps, and those the clock already serves even if the viewer does not.
+  const others = [...entities, ...(device?.alsoServes ?? []).filter((served) => !entities.some((entity) => entity.id === served.id))].filter((entity) => entity.id !== entityId);
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <FieldErrors value={fieldErrors}>
@@ -156,6 +158,20 @@ export function DeviceForm({ device, entities, profiles, locations }: { device?:
             </Select>
           </Field>
         </div>
+        {others.length > 0 ? (
+          <div className="flex flex-col gap-1.5">
+            <Field name="alsoServes" label={t("device.alsoServes")}>
+              <MultiSelect id="alsoServes" name="alsoServes[]" defaultValue={device?.alsoServes.map((entity) => entity.id)} key={entityId}>
+                {others.map((entity) => (
+                  <option key={entity.id} value={entity.id}>
+                    {entity.name}
+                  </option>
+                ))}
+              </MultiSelect>
+            </Field>
+            <p className="text-xs text-muted-foreground">{t("device.alsoServesHint")}</p>
+          </div>
+        ) : null}
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="isActive" defaultChecked={device?.isActive ?? true} /> {t("active")}
         </label>

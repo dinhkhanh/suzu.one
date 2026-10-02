@@ -23,7 +23,7 @@ import { parseTable } from "@/modules/platform/import/engine/table";
 import type { Grant, Principal } from "@/modules/platform/rbac/policy";
 import { migrateTestDb } from "../../../tests/helpers/db";
 import { getAttendancePolicy, savePolicy } from "./attendance-policies";
-import { bulkMapByEmployeeCode, checkLogRows, commitLogRows, commitPushedRows, deviceLogColumns, devicePresentingToken, deviceRoster, getDevice, issuePushToken, listUnmapped, mapDeviceUser, revokePushToken, saveDevice, saveProfile } from "./devices";
+import { bulkMapByEmployeeCode, checkLogRows, commitLogRows, commitPushedRows, deviceLogColumns, devicePresentingToken, deviceRoster, getDevice, issuePushToken, listUnmapped, mapDeviceUser, revokePushToken, saveDevice, saveProfile, servedEntityIds } from "./devices";
 import type { SchedulePattern } from "./engine/calendar";
 import { parseDat, PROFILE_SEED, toCanonicalTable } from "./engine/device-log";
 import { pushBodySchema, pushedRows } from "./engine/device-push";
@@ -218,5 +218,37 @@ describe("a clock that sends its own punches", () => {
     await saveDevice({ id: kiosk.id, entityId: ids.creative, name: "Face kiosk", model: null, serialNumber: null, locationId: null, profileId, isActive: false });
     // An inactive clock is shut out too, whatever token it holds.
     expect(await devicePresentingToken(second)).toBeNull();
+  });
+});
+
+describe("one clock for an office several entities share", () => {
+  it("maps the people of every entity it serves, and each punch keeps its person's entity", async () => {
+    const { profileId } = (await getDevice(ids.device))!;
+    const { after: kiosk, alsoServes } = await saveDevice({ id: null, entityId: ids.media, name: "Sảnh chung", model: null, serialNumber: null, locationId: null, profileId, isActive: true, alsoServes: [ids.creative, ids.media] });
+    // Its own entity is never listed among the others.
+    expect(alsoServes).toEqual({ before: [], after: [ids.creative] });
+    expect(await servedEntityIds(kiosk)).toEqual([ids.media, ids.creative]);
+
+    await bulkMapByEmployeeCode(kiosk.id, "SZM-0002, SZM-0002\nSZC-0001, SZC-0001", ids.hr);
+    expect((await deviceRoster(kiosk.id)).map((row) => row.fullName)).toEqual(["Lan", "Huy"]);
+    const body = pushBodySchema.parse({ punches: [{ userId: "SZM-0002", at: "2026-09-02T08:20:00+07:00" }, { userId: "SZC-0001", at: "2026-09-02T08:21:00+07:00" }] });
+    expect(await commitPushedRows(kiosk.id, pushedRows(body))).toMatchObject({ punches: 2, unmapped: 0, people: 2 });
+    const punches = await db().select({ personId: schema.punch.personId, entityId: schema.punch.entityId }).from(schema.punch).where(eq(schema.punch.deviceId, kiosk.id));
+    expect(new Map(punches.map((punch) => [punch.personId, punch.entityId]))).toEqual(new Map([[ids.huy, ids.media], [ids.lan, ids.creative]]));
+
+    // Codes are unique within an entity only: one both entities use is not guessed at.
+    const [twin] = await db().insert(schema.person).values({ fullName: "Nhu Creative", searchName: "nhu creative", primaryEntityId: ids.creative, orgUnitId: ids.video, status: "active" }).returning();
+    await db().insert(schema.employment).values({ personId: twin.id, entityId: ids.creative, employeeCode: "SZM-0003", startDate: "2025-01-01", seniorityDate: "2025-01-01" });
+    await expect(bulkMapByEmployeeCode(kiosk.id, "40, SZM-0003", ids.hr)).rejects.toMatchObject({ message: "bulk_map_problems", details: [{ line: 1, code: "employee_code_ambiguous" }] });
+    // Someone the caller may not keep is as good as unknown.
+    await expect(bulkMapByEmployeeCode(kiosk.id, "41, SZM-0001", ids.hr, (person) => person.entityId === ids.creative)).rejects.toMatchObject({ details: [{ line: 1, code: "employee_not_found" }] });
+
+    // A clock that serves only its own entity takes nobody from another.
+    await expect(mapDeviceUser(ids.device, "77", ids.lan, ids.hr)).rejects.toMatchObject({ message: "not_found" });
+    // Left out, the served entities stay; an empty list drops them.
+    await saveDevice({ id: kiosk.id, entityId: ids.media, name: "Sảnh chung", model: null, serialNumber: null, locationId: null, profileId, isActive: true });
+    expect(await servedEntityIds(kiosk)).toEqual([ids.media, ids.creative]);
+    await saveDevice({ id: kiosk.id, entityId: ids.media, name: "Sảnh chung", model: null, serialNumber: null, locationId: null, profileId, isActive: true, alsoServes: [] });
+    expect(await servedEntityIds(kiosk)).toEqual([ids.media]);
   });
 });

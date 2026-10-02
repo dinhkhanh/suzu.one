@@ -9,7 +9,7 @@ import { getPersonTarget } from "@/modules/core-hr/service";
 import { type CsvFile, EXPORT_ROW_LIMIT, toCsv } from "@/modules/platform/export/csv";
 import { can } from "@/modules/platform/rbac/policy";
 import { savePolicy } from "./attendance-policies";
-import { bulkMapByEmployeeCode, deviceLogImport, getDevice, getProfile, getUserMapRow, issuePushToken, listUnmappedLines, mapDeviceUser, revokePushToken, saveDevice, saveProfile, unmapDeviceUser } from "./devices";
+import { alsoServedEntityIds, bulkMapByEmployeeCode, deviceLogImport, getDevice, getProfile, getUserMapRow, issuePushToken, listUnmappedLines, mapDeviceUser, revokePushToken, saveDevice, saveProfile, unmapDeviceUser } from "./devices";
 import { canManageAttendanceConfig, canManageDevices } from "./policy";
 import { recomputeOpenMonths, requestScopeRecompute } from "./recompute";
 
@@ -74,17 +74,21 @@ export async function saveProfileAction(input: unknown) {
 
 const saveDevicePipeline = createAction({
   name: "attendance.device.save",
-  input: z.object({ id: optional(z.uuid()), entityId: z.uuid(), name: z.string().trim().min(1).max(120), model: optional(z.string().trim().max(120)), serialNumber: optional(z.string().trim().max(80)), locationId: optional(z.uuid()), profileId: z.uuid(), isActive: checkbox }),
+  input: z.object({ id: optional(z.uuid()), entityId: z.uuid(), name: z.string().trim().min(1).max(120), model: optional(z.string().trim().max(120)), serialNumber: optional(z.string().trim().max(80)), locationId: optional(z.uuid()), profileId: z.uuid(), isActive: checkbox, alsoServes: z.array(z.uuid()).max(20).default([]) }),
   authorize: async (user, input) => {
     const existing = input.id ? await getDevice(input.id) : null;
     if (input.id && !existing) return false;
-    return canManageDevices(user.principal, existing ? existing.entityId : input.entityId);
+    if (!canManageDevices(user.principal, existing ? existing.entityId : input.entityId)) return false;
+    // Serving an entity puts its people on the clock: adding or dropping one is for whoever keeps its attendance.
+    const before = existing ? await alsoServedEntityIds(existing.id) : [];
+    const changed = [...input.alsoServes.filter((id) => !before.includes(id)), ...before.filter((id) => !input.alsoServes.includes(id))];
+    return changed.every((entityId) => canManageDevices(user.principal, entityId));
   },
   run: async ({ input }) => {
-    const { before, after } = await saveDevice(input);
+    const { before, after, alsoServes } = await saveDevice(input);
     refresh();
     const facts = (row: typeof after) => ({ name: row.name, model: row.model, serialNumber: row.serialNumber, locationId: row.locationId, profileId: row.profileId, isActive: row.isActive });
-    return { data: { id: after.id }, audit: { resource: { type: "attendance_device", id: after.id, entityId: after.entityId }, summary: after.name, before: before ? facts(before) : null, after: facts(after) } };
+    return { data: { id: after.id }, audit: { resource: { type: "attendance_device", id: after.id, entityId: after.entityId }, summary: after.name, before: before ? { ...facts(before), alsoServes: alsoServes.before } : null, after: { ...facts(after), alsoServes: alsoServes.after } } };
   },
 });
 export async function saveDeviceAction(input: unknown) {
@@ -121,7 +125,8 @@ const bulkMapPipeline = createAction({
   authorize: async (user, input) => !!(await deviceInReach(user, input.deviceId)),
   run: async ({ user, input }) => {
     const device = (await getDevice(input.deviceId))!;
-    const result = await bulkMapByEmployeeCode(input.deviceId, input.lines, user.person.id);
+    // As with one ID at a time: mapping writes the person's punches, so they must be the actor's to keep.
+    const result = await bulkMapByEmployeeCode(input.deviceId, input.lines, user.person.id, (person) => can(user.principal, "attendance:manage", person));
     refresh();
     return { data: result, audit: { resource: { type: "attendance_device", id: device.id, entityId: device.entityId }, summary: `${result.mapped} IDs mapped by employee code; ${result.resolved} waiting lines became punches`, after: result } };
   },

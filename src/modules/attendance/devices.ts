@@ -5,6 +5,9 @@
 // re-importing an overlapping export adds only what is new. An ID nobody is mapped to does not fail
 // the batch: its lines wait in `device_unmapped_log` and become punches the moment HR maps the ID.
 //
+// A clock belongs to one entity, whose HR administers it, and may serve others too: an office shared
+// by several entities has one kiosk at its door. Its IDs may then be any served entity's people.
+//
 // A clock may also send its punches itself (the face kiosk, tools/face-kiosk): it signs in with a
 // device token and its posts go through the same commit as an uploaded file.
 import "server-only";
@@ -16,7 +19,7 @@ import { ActionError } from "@/lib/action";
 import { invalidateLive } from "@/lib/cache/live";
 import { addDays, type IsoDate } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
-import { listEmploymentFacts } from "@/modules/core-hr/service";
+import { type EmploymentFacts, listEmploymentFacts } from "@/modules/core-hr/service";
 import { type Column, oneOf, type ParsedRow, type Problem, text } from "@/modules/platform/import/engine/table";
 import { defineImport, readSpreadsheet } from "@/modules/platform/import/service";
 import { can, type Principal } from "@/modules/platform/rbac/policy";
@@ -61,7 +64,7 @@ export async function saveProfile(input: ProfileInput): Promise<{ before: Profil
 
 // ── Devices ─────────────────────────────────────────────────────────────────────────────────
 
-export type DeviceView = DeviceRow & { entityName: string; profileName: string; fileKind: ProfileRow["fileKind"]; mapped: number; unmapped: number; lastPunchAt: Date | null };
+export type DeviceView = DeviceRow & { entityName: string; profileName: string; fileKind: ProfileRow["fileKind"]; alsoServes: { id: string; name: string }[]; mapped: number; unmapped: number; lastPunchAt: Date | null };
 
 export async function listDevices(principal: Principal): Promise<DeviceView[]> {
   const rows = await db()
@@ -73,7 +76,13 @@ export async function listDevices(principal: Principal): Promise<DeviceView[]> {
   const visible = rows.filter((row) => can(principal, "attendance:manage", { entityId: row.device.entityId }));
   const ids = visible.map((row) => row.device.id);
   if (ids.length === 0) return [];
-  const [mapped, unmapped, last] = await Promise.all([
+  const [served, mapped, unmapped, last] = await Promise.all([
+    db()
+      .select({ deviceId: schema.attendanceDeviceEntity.deviceId, value: sql<{ id: string; name: string }[]>`json_agg(json_build_object('id', ${schema.entity.id}, 'name', ${schema.entity.shortName}) order by ${schema.entity.shortName})` })
+      .from(schema.attendanceDeviceEntity)
+      .innerJoin(schema.entity, eq(schema.entity.id, schema.attendanceDeviceEntity.entityId))
+      .where(inArray(schema.attendanceDeviceEntity.deviceId, ids))
+      .groupBy(schema.attendanceDeviceEntity.deviceId),
     db().select({ deviceId: schema.deviceUserMap.deviceId, value: count() }).from(schema.deviceUserMap).where(inArray(schema.deviceUserMap.deviceId, ids)).groupBy(schema.deviceUserMap.deviceId),
     db().select({ deviceId: schema.deviceUnmappedLog.deviceId, value: sql<number>`count(distinct ${schema.deviceUnmappedLog.deviceUserId})::int` }).from(schema.deviceUnmappedLog).where(inArray(schema.deviceUnmappedLog.deviceId, ids)).groupBy(schema.deviceUnmappedLog.deviceId),
     db().select({ deviceId: schema.punch.deviceId, value: max(schema.punch.at) }).from(schema.punch).where(inArray(schema.punch.deviceId, ids)).groupBy(schema.punch.deviceId),
@@ -83,6 +92,7 @@ export async function listDevices(principal: Principal): Promise<DeviceView[]> {
     entityName: row.entityName,
     profileName: row.profileName,
     fileKind: row.fileKind,
+    alsoServes: served.find((item) => item.deviceId === row.device.id)?.value ?? [],
     mapped: mapped.find((item) => item.deviceId === row.device.id)?.value ?? 0,
     unmapped: unmapped.find((item) => item.deviceId === row.device.id)?.value ?? 0,
     lastPunchAt: last.find((item) => item.deviceId === row.device.id)?.value ?? null,
@@ -91,12 +101,30 @@ export async function listDevices(principal: Principal): Promise<DeviceView[]> {
 
 export const getDevice = async (id: string, executor: Executor = db()): Promise<DeviceRow | null> => (await executor.select().from(schema.attendanceDevice).where(eq(schema.attendanceDevice.id, id)).limit(1))[0] ?? null;
 
-export type DeviceInput = { id: string | null; entityId: string; name: string; model: string | null; serialNumber: string | null; locationId: string | null; profileId: string; isActive: boolean };
+/** The other entities a clock serves, besides its own. */
+export async function alsoServedEntityIds(deviceId: string, executor: Executor = db()): Promise<string[]> {
+  const rows = await executor.select({ entityId: schema.attendanceDeviceEntity.entityId }).from(schema.attendanceDeviceEntity).where(eq(schema.attendanceDeviceEntity.deviceId, deviceId)).orderBy(asc(schema.attendanceDeviceEntity.entityId));
+  return rows.map((row) => row.entityId);
+}
 
-export async function saveDevice(input: DeviceInput): Promise<{ before: DeviceRow | null; after: DeviceRow }> {
+/** Every entity whose people may hold an ID on the clock: its own first, then the others it serves. */
+export async function servedEntityIds(device: DeviceRow, executor: Executor = db()): Promise<string[]> {
+  return [device.entityId, ...(await alsoServedEntityIds(device.id, executor)).filter((id) => id !== device.entityId)];
+}
+
+/** `alsoServes` left out keeps the entities the clock already serves. */
+export type DeviceInput = { id: string | null; entityId: string; name: string; model: string | null; serialNumber: string | null; locationId: string | null; profileId: string; isActive: boolean; alsoServes?: readonly string[] };
+
+export async function saveDevice(input: DeviceInput): Promise<{ before: DeviceRow | null; after: DeviceRow; alsoServes: { before: string[]; after: string[] } }> {
   const before = input.id ? await getDevice(input.id) : null;
   if (input.id && !before) throw new ActionError("not_found");
   const entityId = before?.entityId ?? input.entityId;
+  const servedBefore = before ? await alsoServedEntityIds(before.id) : [];
+  const servedAfter = input.alsoServes ? [...new Set(input.alsoServes)].filter((id) => id !== entityId).sort() : servedBefore;
+  if (servedAfter.length > 0) {
+    const [found] = await db().select({ value: count() }).from(schema.entity).where(inArray(schema.entity.id, servedAfter));
+    if (found.value !== servedAfter.length) throw new ActionError("entity_not_found");
+  }
   const profile = await getProfile(input.profileId);
   if (!profile || (profile.entityId !== null && profile.entityId !== entityId)) throw new ActionError("profile_not_found");
   if (input.locationId) {
@@ -105,8 +133,16 @@ export async function saveDevice(input: DeviceInput): Promise<{ before: DeviceRo
   }
   const values = { name: input.name, model: input.model, serialNumber: input.serialNumber, locationId: input.locationId, profileId: input.profileId, isActive: input.isActive, updatedAt: new Date() };
   try {
-    const [after] = before ? await db().update(schema.attendanceDevice).set(values).where(eq(schema.attendanceDevice.id, before.id)).returning() : await db().insert(schema.attendanceDevice).values({ ...values, entityId }).returning();
-    return { before, after };
+    const after = await db().transaction(async (tx) => {
+      const [row] = before ? await tx.update(schema.attendanceDevice).set(values).where(eq(schema.attendanceDevice.id, before.id)).returning() : await tx.insert(schema.attendanceDevice).values({ ...values, entityId }).returning();
+      if (input.alsoServes) {
+        await tx.delete(schema.attendanceDeviceEntity).where(eq(schema.attendanceDeviceEntity.deviceId, row.id));
+        if (servedAfter.length > 0) await tx.insert(schema.attendanceDeviceEntity).values(servedAfter.map((id) => ({ deviceId: row.id, entityId: id })));
+      }
+      return row;
+    });
+    // IDs already mapped to people of an entity the clock no longer serves stay: their punches are theirs.
+    return { before, after, alsoServes: { before: servedBefore, after: servedAfter } };
   } catch (error) {
     if (String((error as { cause?: unknown }).cause ?? error).includes("attendance_device_entity_name_key")) throw new ActionError("device_name_taken");
     throw error;
@@ -191,7 +227,7 @@ export async function mapDeviceUser(deviceId: string, deviceUserId: string, pers
   return db().transaction(async (tx) => {
     const device = await getDevice(deviceId, tx as Tx);
     const [person] = await tx.select({ id: schema.person.id, entityId: schema.person.primaryEntityId }).from(schema.person).where(eq(schema.person.id, personId)).limit(1);
-    if (!device || !person) throw new ActionError("not_found");
+    if (!device || !person || !person.entityId || !(await servedEntityIds(device, tx as Tx)).includes(person.entityId)) throw new ActionError("not_found");
     const [taken] = await tx.select({ id: schema.deviceUserMap.id }).from(schema.deviceUserMap).where(and(eq(schema.deviceUserMap.deviceId, deviceId), eq(schema.deviceUserMap.deviceUserId, deviceUserId))).limit(1);
     if (taken) throw new ActionError("device_user_taken");
     await tx.insert(schema.deviceUserMap).values({ deviceId, deviceUserId, personId, createdByPersonId: actorPersonId });
@@ -219,16 +255,26 @@ export async function unmapDeviceUser(mapId: string): Promise<{ deviceId: string
 
 export const getUserMapRow = async (mapId: string) => (await db().select().from(schema.deviceUserMap).where(eq(schema.deviceUserMap.id, mapId)).limit(1))[0] ?? null;
 
-export type BulkMapProblem = { line: number; code: "bad_line" | "employee_not_found" | "device_user_taken" | "duplicate_in_list" };
+export type BulkMapProblem = { line: number; code: "bad_line" | "employee_not_found" | "employee_code_ambiguous" | "device_user_taken" | "duplicate_in_list" };
 
-/** Lines of "device user ID, employee code". All or nothing; every problem at once. People must belong to the device's entity. */
-export async function bulkMapByEmployeeCode(deviceId: string, lines: string, actorPersonId: string): Promise<{ mapped: number; resolved: number }> {
+/**
+ * Lines of "device user ID, employee code". All or nothing; every problem at once. People must belong
+ * to an entity the clock serves, and pass `mayMap` (the caller's right over them). Codes are unique
+ * within an entity only: one that two served entities both use is mapped one at a time instead.
+ */
+export async function bulkMapByEmployeeCode(deviceId: string, lines: string, actorPersonId: string, mayMap: (person: EmploymentFacts) => boolean = () => true): Promise<{ mapped: number; resolved: number }> {
   return db().transaction(async (tx) => {
     const device = await getDevice(deviceId, tx as Tx);
     if (!device) throw new ActionError("not_found");
+    const served = new Set(await servedEntityIds(device, tx as Tx));
     const parsed = lines.split(/\r?\n/).map((raw, index) => ({ line: index + 1, fields: raw.split(/[,;\t]/).map((field) => field.trim()) })).filter((item) => item.fields.some(Boolean));
     const facts = await listEmploymentFacts({ employeeCodes: parsed.map((item) => (item.fields[1] ?? "").toUpperCase()).filter(Boolean) }, tx as Tx);
-    const byCode = new Map(facts.filter((fact) => fact.entityId === device.entityId && fact.employeeCode).map((fact) => [fact.employeeCode!.toUpperCase(), fact]));
+    const byCode = new Map<string, EmploymentFacts[]>();
+    for (const fact of facts) {
+      if (!fact.employeeCode || !fact.entityId || !served.has(fact.entityId) || !mayMap(fact)) continue;
+      const code = fact.employeeCode.toUpperCase();
+      byCode.set(code, [...(byCode.get(code) ?? []), fact]);
+    }
     const current = await tx.select().from(schema.deviceUserMap).where(eq(schema.deviceUserMap.deviceId, deviceId));
     const problems: BulkMapProblem[] = [];
     const seenIds = new Set<string>();
@@ -237,8 +283,9 @@ export async function bulkMapByEmployeeCode(deviceId: string, lines: string, act
       const [deviceUserId, code] = item.fields;
       if (item.fields.length < 2 || !deviceUserId || !code) problems.push({ line: item.line, code: "bad_line" });
       else {
-        const person = byCode.get(code.toUpperCase());
+        const [person, other] = byCode.get(code.toUpperCase()) ?? [];
         if (!person) problems.push({ line: item.line, code: "employee_not_found" });
+        else if (other) problems.push({ line: item.line, code: "employee_code_ambiguous" });
         else if (seenIds.has(deviceUserId)) problems.push({ line: item.line, code: "duplicate_in_list" });
         else if (current.some((row) => row.deviceUserId === deviceUserId)) problems.push({ line: item.line, code: "device_user_taken" });
         else rows.push({ deviceUserId, personId: person.personId, entityId: person.entityId });

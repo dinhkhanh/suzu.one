@@ -3,11 +3,12 @@ import { notFound } from "next/navigation";
 import { List, ListItem } from "@/components/ui/list";
 import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { exportUnmappedAction } from "@/modules/attendance/device-actions";
-import { getDevice, listUnmapped, listUserMap } from "@/modules/attendance/devices";
+import { getDevice, listUnmapped, listUserMap, servedEntityIds } from "@/modules/attendance/devices";
 import { canManageDevices } from "@/modules/attendance/policy";
 import { BulkMapForm, MapUserForm, PushTokenPanel, UnmapButton } from "@/modules/attendance/ui/device-forms";
 import { listEmploymentFacts } from "@/modules/core-hr/service";
 import { requireUser } from "@/modules/platform/auth/session";
+import { listEntities } from "@/modules/platform/org/service";
 import { ExportButton } from "@/modules/platform/export/ui/export-button";
 import { can } from "@/modules/platform/rbac/policy";
 import { pageTitle } from "@/i18n/page-title";
@@ -23,10 +24,13 @@ export default async function DeviceUsersPage({ params }: PageProps<"/attendance
   if (!device || !canManageDevices(user.principal, device.entityId)) notFound();
   const t = await getTranslations("attendance.devices");
   const format = await getFormatter();
-  const [map, unmapped, facts] = await Promise.all([listUserMap(id), listUnmapped(id), listEmploymentFacts({ entityIds: [device.entityId] })]);
+  const served = await servedEntityIds(device);
+  const [map, unmapped, facts, entities] = await Promise.all([listUserMap(id), listUnmapped(id), listEmploymentFacts({ entityIds: served }), listEntities()]);
+  // A clock serving several entities names each person's, since an employee code is unique only within one.
+  const entityName = new Map(served.length > 1 ? entities.map((entity) => [entity.id, entity.shortName]) : []);
   const people = facts
     .filter((fact) => fact.status !== "offboarded" && can(user.principal, "attendance:manage", fact))
-    .map((fact) => ({ id: fact.personId, name: `${fact.fullName}${fact.employeeCode ? ` · ${fact.employeeCode}` : ""}` }))
+    .map((fact) => ({ id: fact.personId, name: [fact.fullName, fact.employeeCode, fact.entityId ? entityName.get(fact.entityId) : null].filter(Boolean).join(" · ") }))
     .sort((a, b) => a.name.localeCompare(b.name));
   const when = (at: Date) => format.dateTime(at, { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" });
 

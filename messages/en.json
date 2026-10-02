@@ -3032,7 +3032,9 @@
         "mapped": "{count, plural, one {# ID mapped} other {# IDs mapped}}",
         "unmapped": "{count, plural, one {# ID without a person} other {# IDs without a person}}",
         "lastPunch": "last punch {at}",
-        "noPunches": "no punches yet"
+        "noPunches": "no punches yet",
+        "alsoServes": "Also serves entities",
+        "alsoServesHint": "A shared office: these entities' people punch on this clock too. Each punch still belongs to its person's entity."
       },
       "profile": {
         "hint": "A profile describes one device model's export: which column holds the user ID, the time and the in/out code. Columns are found by header, or by position when the file has no header row (ZKTeco attlog.dat).",
@@ -3120,8 +3122,10 @@
         "bulk_map_problems": "Nothing was saved. Fix these lines:",
         "bulk_map_empty": "No lines to map.",
         "bad_line": "expected: ID, employee code",
-        "employee_not_found": "no such employee code in this entity",
-        "duplicate_in_list": "this ID appears twice"
+        "employee_not_found": "no such employee code in the entities this clock serves",
+        "duplicate_in_list": "this ID appears twice",
+        "entity_not_found": "Entity not found.",
+        "employee_code_ambiguous": "this employee code exists in more than one entity; map it on its own"
       },
       "push": {
         "title": "Sends its own punches",

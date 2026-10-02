@@ -2,7 +2,7 @@
 // who follows which schedule, and the shift roster. Holidays are rows, never constants: the
 // government announces Tết and the swap days year by year.
 import { sql } from "drizzle-orm";
-import { type AnyPgColumn, boolean, check, date, doublePrecision, index, integer, jsonb, pgEnum, pgTable, smallint, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, boolean, check, date, doublePrecision, index, integer, jsonb, pgEnum, pgTable, primaryKey, smallint, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { approvalRequest } from "../platform/approvals/schema";
 import { entity, orgUnit } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
@@ -242,6 +242,22 @@ export const attendanceDevice = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [unique("attendance_device_entity_name_key").on(t.entityId, t.name), uniqueIndex("attendance_device_push_token_key").on(t.pushTokenHash).where(sql`${t.pushTokenHash} is not null`)],
+).enableRLS();
+
+// The other entities a clock serves: one office shared by several entities has one kiosk at its
+// door, and their people punch on it alike. The clock's own entity (whose HR administers it) is
+// always served and is not listed here. Each punch still belongs to its person's entity.
+export const attendanceDeviceEntity = pgTable(
+  "attendance_device_entity",
+  {
+    deviceId: uuid("device_id")
+      .notNull()
+      .references(() => attendanceDevice.id, { onDelete: "cascade" }),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+  },
+  (t) => [primaryKey({ columns: [t.deviceId, t.entityId] }), index("attendance_device_entity_entity_idx").on(t.entityId)],
 ).enableRLS();
 
 // Whose finger is ID 17 on this clock. One person per ID per device.
