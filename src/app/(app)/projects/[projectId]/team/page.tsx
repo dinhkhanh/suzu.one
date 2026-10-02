@@ -3,9 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Page } from "@/components/ui/page";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { List, ListItem } from "@/components/ui/list";
 import { RecordLink } from "@/components/ui/record-link";
-import { Table, TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
+import { Table, TableAddRow, TableBody, TableCard, TableCardHeader, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { addDays, todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listPersonNames } from "@/modules/platform/people/service";
@@ -57,63 +58,67 @@ export default async function ProjectTeamPage({ params, searchParams }: PageProp
           title={t("title")}
           description={t("description")}
           actions={
-            <nav className="flex items-center gap-3 text-sm">
-              <Link href={nav(addDays(from, -7 * WEEKS))} className="underline">
+            <nav className="flex flex-wrap items-center gap-2">
+              <Button nativeButton={false} variant="outline" size="sm" render={<Link href={nav(addDays(from, -7 * WEEKS))} />}>
                 {t("earlier")}
-              </Link>
-              <Link href={nav(mondayOf(today))} className="underline">
+              </Button>
+              <Button nativeButton={false} variant="outline" size="sm" render={<Link href={nav(mondayOf(today))} />}>
                 {t("thisWeek")}
-              </Link>
-              <Link href={nav(addDays(from, 7 * WEEKS))} className="underline">
+              </Button>
+              <Button nativeButton={false} variant="outline" size="sm" render={<Link href={nav(addDays(from, 7 * WEEKS))} />}>
                 {t("later")}
-              </Link>
+              </Button>
               {reader.mayOpen ? (
-                <Link href="/projects/capacity" className="underline">
+                <Button nativeButton={false} variant="ghost" size="sm" render={<Link href="/projects/capacity" />}>
                   {t("capacityLink")}
-                </Link>
+                </Button>
               ) : null}
             </nav>
           }
         />
 
-        {lines.length === 0 ? (
-          <p className="flex h-20 items-center justify-center px-3 text-center text-sm text-muted-foreground">{t("empty")}</p>
-        ) : (
-          <Table numbered={false} className="min-w-[860px] border-separate border-spacing-1">
-            <thead>
-              <tr className="text-left text-xs text-muted-foreground">
-                <th className="w-48 px-2 font-medium">{t("who")}</th>
-                {weeks.map((week) => (
-                  <th key={week.start} className={`px-2 font-medium ${week.start === mondayOf(today) ? "text-foreground" : ""}`}>
-                    {weekLabel(week.start)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map(([key, own]) => {
-                const personId = own[0].personId;
-                const row = personId ? capacity.get(personId) : undefined;
-                return (
-                  <tr key={key}>
-                    <th scope="row" className="px-2 text-left align-top font-medium">
-                      {personId ? <RecordLink kind="person" id={personId}>{own[0].personName}</RecordLink> : <span className="italic">{t("placeholder", { role: own[0].placeholderRole ?? "" })}</span>}
-                      {personId && own.some((booking) => booking.placeholderRole) ? <span className="block text-xs font-normal text-muted-foreground">{own.find((booking) => booking.placeholderRole)?.placeholderRole}</span> : null}
-                    </th>
-                    {weeks.map((week, index) => {
-                      const cell = own.filter((booking) => booking.weekStart === week.start);
-                      const capacityCell = row?.cells[index];
-                      const tentative = cell.every((booking) => booking.status === "tentative");
-                      return (
-                        <td key={week.start} className={`rounded-md p-2 align-top ${cell.length === 0 ? "bg-canvas text-muted-foreground" : tentative ? "border border-dashed border-border" : "bg-muted"} ${capacityCell?.over ? "bg-destructive/10" : ""}`}>
-                          {cell.length ? (
-                            <p className="font-medium tabular-nums">
-                              {t("hoursShort", { hours: hours(cell.reduce((sum, booking) => sum + booking.minutes, 0)) })}
-                              {tentative ? <span className="ml-1 text-xs font-normal text-muted-foreground">{t("statuses.tentative")}</span> : null}
-                            </p>
-                          ) : (
-                            "—"
-                          )}
+        <Table numbered={false} className="min-w-[760px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead kind="person" className="sticky left-0 z-10 w-40 min-w-36 bg-canvas">
+                {t("who")}
+              </TableHead>
+              {weeks.map((week) => (
+                <TableHead key={week.start} kind="number" className={week.start === mondayOf(today) ? "text-foreground" : ""}>
+                  {weekLabel(week.start)}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {lines.length === 0 ? <TableEmpty>{t("empty")}</TableEmpty> : null}
+            {lines.map(([key, own]) => {
+              const personId = own[0].personId;
+              const row = personId ? capacity.get(personId) : undefined;
+              const role = personId ? own.find((booking) => booking.placeholderRole)?.placeholderRole : undefined;
+              return (
+                <TableRow key={key}>
+                  <TableCell className="sticky left-0 z-10 h-auto max-w-40 bg-background whitespace-normal">
+                    {personId ? (
+                      <RecordLink kind="person" id={personId} className="block font-medium">
+                        {own[0].personName}
+                      </RecordLink>
+                    ) : (
+                      <span className="block font-medium italic">{t("placeholder", { role: own[0].placeholderRole ?? "" })}</span>
+                    )}
+                    {role ? <span className="block text-xs text-muted-foreground">{role}</span> : null}
+                  </TableCell>
+                  {weeks.map((week, index) => {
+                    const cell = own.filter((booking) => booking.weekStart === week.start);
+                    const capacityCell = row?.cells[index];
+                    const tentative = cell.every((booking) => booking.status === "tentative");
+                    return (
+                      <TableCell key={week.start} kind="number" className="h-auto p-1">
+                        <div className={`flex min-h-11 flex-col items-end justify-center rounded-md px-2 py-1 font-sans ${capacityCell?.over ? "bg-destructive/10" : cell.length === 0 ? "text-muted-foreground" : tentative ? "border border-dashed border-border" : "bg-muted"}`}>
+                          <p className="font-mono font-medium">
+                            {cell.length ? t("hoursShort", { hours: hours(cell.reduce((sum, booking) => sum + booking.minutes, 0)) }) : "—"}
+                            {cell.length && tentative ? <span className="ml-1 font-sans text-xs font-normal text-muted-foreground">{t("statuses.tentative")}</span> : null}
+                          </p>
                           {capacityCell ? (
                             <p className="text-xs text-muted-foreground">
                               {t("free", { free: hours(capacityCell.freeMinutes), available: hours(capacityCell.availableMinutes) })}
@@ -121,26 +126,26 @@ export default async function ProjectTeamPage({ params, searchParams }: PageProp
                             </p>
                           ) : null}
                           {capacityCell?.over ? <p className="text-xs font-medium text-destructive">{t("over")}</p> : null}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-              <tr className="text-xs text-muted-foreground">
-                <th scope="row" className="px-2 text-left font-medium">
-                  {t("total")}
-                </th>
+                        </div>
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              );
+            })}
+            {lines.length ? (
+              <TableRow className="text-xs text-muted-foreground">
+                <TableCell className="sticky left-0 z-10 bg-background font-medium">{t("total")}</TableCell>
                 {totals.map((total, index) => (
-                  <td key={weeks[index].start} className="px-2 tabular-nums">
+                  <TableCell key={weeks[index].start} kind="number" className="h-auto py-2">
                     {t("hoursShort", { hours: hours(total.confirmed) })}
-                    {total.tentative ? ` + ${t("tentativeHours", { hours: hours(total.tentative) })}` : ""}
-                  </td>
+                    {total.tentative ? <span className="block font-sans">+ {t("tentativeHours", { hours: hours(total.tentative) })}</span> : null}
+                  </TableCell>
                 ))}
-              </tr>
-            </tbody>
-          </Table>
-        )}
+              </TableRow>
+            ) : null}
+          </TableBody>
+        </Table>
         <p className="border-t px-4 py-3 text-xs text-muted-foreground">{t("legend")}</p>
         {can.editPlan ? (
           <TableAddRow label={t("add")} open={lines.length === 0}>

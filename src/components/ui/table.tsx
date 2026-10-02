@@ -339,7 +339,8 @@ function TableCardHeader({
       )}
       {...props}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+      {/* The title keeps 14rem before the actions may sit beside it; past that they wrap below. */}
+      <div className="flex min-w-0 flex-[1_1_14rem] items-center gap-2.5">
         {icon ? (
           <span className="flex shrink-0 text-muted-foreground [&_svg]:size-[1.125rem]">
             {icon}
