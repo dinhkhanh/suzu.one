@@ -32,6 +32,7 @@ import { getWorkAnalytics } from "./analytics";
 import { analyse, type AnalyticsTask } from "./engine/analytics";
 import { getPersonTaskStats } from "./stats";
 import { loadViewerWith } from "./viewer";
+import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "szc" | "vidDept" | "owner" | "long" | "tam" | "huy" | "khoi" | "bao" | "freelancer" | "head" | "video" | "design" | "teamProject" | "entityProject" | "privateProject" | "designProject", string>;
 const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
@@ -52,8 +53,8 @@ beforeAll(async () => {
   for (const [key, name, entity] of [["owner", "The Owner", szm.id], ["long", "Long Dang", szm.id], ["tam", "Tam Bui", szm.id], ["huy", "Huy Ho", szm.id], ["bao", "Bao Pham", szm.id], ["head", "Other Head", szm.id], ["khoi", "Khoi Ly", szc.id]] as const) ids[key] = await addPerson(name, entity);
   ids.freelancer = await addPerson("Bao Anh", szm.id, "collaborator");
 
-  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: vid.id, defaultVisibility: "team", isActive: true }, "content", { brief: "Brief", edit: "Edit", published: "Published", reported: "Reported", backlog: "Backlog" }, ids.long);
-  const design = await createTeam({ key: "DES", name: "Design", description: null, entityId: szc.id, departmentId: null, defaultVisibility: "entity", isActive: true }, "simple", {}, ids.khoi);
+  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: vid.id, defaultVisibility: "team", isActive: true }, workflow("content", { brief: "Brief", edit: "Edit", published: "Published", reported: "Reported", backlog: "Backlog" }), ids.long);
+  const design = await createTeam({ key: "DES", name: "Design", description: null, entityId: szc.id, departmentId: null, defaultVisibility: "entity", isActive: true }, workflow("simple"), ids.khoi);
   Object.assign(ids, { video: video.id, design: design.id });
   for (const personId of [ids.tam, ids.huy, ids.freelancer]) await setTeamMember(video.id, personId, "member");
 
@@ -72,7 +73,7 @@ describe("teams and workflows", () => {
     expect((await viewerOf(ids.long, ids.szm)).teamRoles.get(ids.video)).toBe("lead");
   });
   it("refuse a second team with the same key, and removing the last lead", async () => {
-    expect(await fails(createTeam({ key: "VID", name: "Again", description: null, entityId: null, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.owner))).toBe("team_key_taken");
+    expect(await fails(createTeam({ key: "VID", name: "Again", description: null, entityId: null, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.owner))).toBe("team_key_taken");
     expect(await fails(setTeamMember(ids.video, ids.long, "member"))).toBe("team_last_lead");
     expect(await fails(setTeamMember(ids.video, ids.long, null))).toBe("team_last_lead");
   });
@@ -92,7 +93,7 @@ describe("teams and workflows", () => {
   });
   it("go inactive, are archived — never active while archived — and come back", async () => {
     const values = { name: "Archive me", description: null, entityId: ids.szm, departmentId: null, defaultVisibility: "team" as const };
-    const team = await createTeam({ ...values, key: "ARC", isActive: true }, "simple", {}, ids.long);
+    const team = await createTeam({ ...values, key: "ARC", isActive: true }, workflow("simple"), ids.long);
     const project = await createProject({ teamId: team.id, name: "Old campaign", description: null, clientId: null, status: "done", visibility: "team", leadPersonId: null, startDate: null, dueDate: null }, ids.long);
     expect((await setProjectArchived(project.id, true)).after.status).toBe("archived");
     const listed = async (includeArchived: boolean) => (await visibleProjects(await viewerOf(ids.long, ids.szm), { today: "2026-10-01", includeArchived })).some((row) => row.id === project.id);

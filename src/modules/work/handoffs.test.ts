@@ -35,6 +35,7 @@ import { createWorkTask, listProjectTasks, loadTask, updateWorkTask } from "./ta
 import { createTeam, listStates, saveClient, setTeamMember } from "./teams";
 import { acceptTriage, declineTriage } from "./triage";
 import { viewerOfPerson } from "./viewer";
+import { workflow } from "../../../tests/helpers/workflows";
 
 type Key = "long" | "tam" | "huy" | "bao" | "lan" | "khoi";
 const ids = {} as Record<Key | "szm" | "video" | "social" | "project" | "client" | "script" | "design" | "edit" | "leaveType", string>;
@@ -54,8 +55,8 @@ beforeAll(async () => {
     ids[key] = row.id;
   }
   await db().update(schema.person).set({ managerId: ids.long }).where(eq(schema.person.id, ids.huy));
-  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "content", {}, ids.long);
-  const social = await createTeam({ key: "SOC", name: "Social", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.khoi);
+  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("content"), ids.long);
+  const social = await createTeam({ key: "SOC", name: "Social", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.khoi);
   Object.assign(ids, { video: video.id, social: social.id });
   for (const key of ["tam", "huy", "bao", "lan"] as const) await setTeamMember(video.id, ids[key], "member");
   const client = await saveClient(null, { code: "VNM", name: "Vinamilk", kind: "client", parentId: null, entityId: szm.id, note: null, isActive: true });

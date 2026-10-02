@@ -28,6 +28,7 @@ import { createProject, setProjectMember } from "./projects";
 import { createWorkTask, listActivity, listVisibleTaskIds, loadTask, updateWorkTask } from "./tasks";
 import { createTeam, listStates, setTeamMember } from "./teams";
 import { viewerOfPerson } from "./viewer";
+import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "szc" | "long" | "tam" | "huy" | "khoi" | "video" | "teamProject" | "privateProject" | "task" | "privateTask", string>;
 const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
@@ -48,7 +49,7 @@ beforeAll(async () => {
   const [szc] = await db().insert(schema.entity).values({ code: "SZC", legalName: "SuZu Creative", shortName: "Creative" }).returning();
   Object.assign(ids, { szm: szm.id, szc: szc.id });
   for (const [key, name, entity] of [["long", "Long Dang", szm.id], ["tam", "Tam Bui", szm.id], ["huy", "Huy Ho", szm.id], ["khoi", "Khoi Ly", szc.id]] as const) ids[key] = await addPerson(name, entity);
-  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.long);
+  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
   ids.video = video.id;
   for (const personId of [ids.tam, ids.huy]) await setTeamMember(video.id, personId, "member");
   const project = (name: string, visibility: "team" | "private", actor: string) => createProject({ teamId: video.id, name, description: null, clientId: null, status: "active", visibility, leadPersonId: null, startDate: null, dueDate: null }, actor);

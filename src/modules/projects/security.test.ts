@@ -44,6 +44,7 @@ import { issueToTask, saveRaidItem } from "./raid-log";
 import { runRetainers, saveRetainer } from "./retainers";
 import { createTasksForLine, saveDeliverable, saveMilestone, setMilestoneDone } from "./structure";
 import { openProject } from "./views";
+import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "owner" | "director" | "lead" | "am" | "member" | "outsider" | "team" | "lonely" | "private" | "hidden" | "open" | "retainer" | "fresh", string>;
 const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
@@ -67,7 +68,7 @@ beforeAll(async () => {
     // `work:manage` and `pjm:commercial` over the entity — and no business with a private project.
     { personId: ids.director, role: "entity_director", scopeType: "entity", scopeId: szm.id, validFrom: "2024-01-01" },
   ]);
-  const team = await createTeam({ key: "VID", name: "Video", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.lead);
+  const team = await createTeam({ key: "VID", name: "Video", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.lead);
   ids.team = team.id;
   for (const personId of [ids.am, ids.member]) await setTeamMember(team.id, personId, "member");
   const project = (name: string, visibility: "team" | "private", leadPersonId: string, teamId = team.id) =>
@@ -78,7 +79,7 @@ beforeAll(async () => {
   ids.fresh = (await project("Chưa có kế hoạch", "team", ids.lead)).id;
   await setAccountManager(ids.private, ids.am);
   // A private project of a team with no lead at all: nobody in the team answers for it.
-  const lonely = await createTeam({ key: "SOL", name: "Solo", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.lead);
+  const lonely = await createTeam({ key: "SOL", name: "Solo", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.lead);
   ids.lonely = lonely.id;
   await setTeamMember(lonely.id, ids.am, "member");
   ids.hidden = (await project("Dự án kín không có lead", "private", ids.am, lonely.id)).id;

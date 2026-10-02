@@ -9,7 +9,7 @@ import { statusTone } from "@/components/ui/tone";
 import { cn } from "@/lib/utils";
 import { initialsOf } from "@/lib/text";
 import { accentOf } from "../../work/enums";
-import { canManageProject, listAssignable, listClients } from "../../work/service";
+import { canManageProject, listAssignable, listClients, projectStatusChoices, projectStatusNames } from "../../work/service";
 import { EditProjectButton } from "../../work/ui/edit-dialogs";
 import { posterUrlOf } from "../../work/ui/project-poster";
 import type { ProjectContext } from "../views";
@@ -37,7 +37,11 @@ export async function ProjectHeader({ context, current }: { context: ProjectCont
   const tWork = await getTranslations("work");
   const { project, team, plan } = context;
   // The project's own details (name, client, lead, dates, status) are edited from every plan page.
-  const [clients, people] = canManageProject(context.viewer, context.facts) ? await Promise.all([listClients({ activeOnly: true }), listAssignable(team.id, project.id)]) : [null, null];
+  const manage = canManageProject(context.viewer, context.facts);
+  const [[clients, people, statuses], statusNames] = await Promise.all([
+    manage ? Promise.all([listClients({ activeOnly: true }), listAssignable(team.id, project.id), projectStatusChoices(team.projectStatusSetId, project.statusId)]) : ([null, null, []] as const),
+    projectStatusNames(),
+  ]);
   return (
     <header className="flex flex-col gap-4">
       <p className="flex flex-wrap items-center gap-x-1.5 text-[0.8125rem] font-medium text-muted-foreground">
@@ -62,7 +66,7 @@ export async function ProjectHeader({ context, current }: { context: ProjectCont
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
               <h1 className="min-w-0 break-words">{project.name}</h1>
               <span className="flex flex-wrap items-center gap-1.5">
-                <Badge dot variant={statusTone(project.status)}>{tWork(`projects.status.${project.status as "active"}`)}</Badge>
+                <Badge dot variant={statusTone(project.status)}>{(project.statusId && statusNames.get(project.statusId)) || tWork(`projects.status.${project.status as "active"}`)}</Badge>
                 <Badge variant="outline">{t(`kinds.${plan.kind as "client"}`)}</Badge>
                 <Badge dot variant={statusTone(plan.briefStatus)}>{t(`brief.status.${plan.briefStatus as "draft"}`)}</Badge>
                 {plan.health ? <Badge variant={healthVariant(plan.health)}>{t(`health.${plan.health as "on_track"}`)}</Badge> : null}
@@ -74,7 +78,7 @@ export async function ProjectHeader({ context, current }: { context: ProjectCont
         </div>
         {clients && people ? (
           <div className="flex shrink-0 items-center gap-2 md:pt-1">
-            <EditProjectButton project={project} clients={clients.map(({ id, name }) => ({ id, name }))} people={people} />
+            <EditProjectButton project={project} clients={clients.map(({ id, name }) => ({ id, name }))} people={people} statuses={statuses} />
           </div>
         ) : null}
       </div>

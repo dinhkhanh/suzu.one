@@ -38,6 +38,7 @@ import { decideReview, decideStage, listDeliverables, submitDeliverable } from "
 import { createWorkTask, loadTask } from "./tasks";
 import { createTeam, listStates, saveClient, setTeamMember } from "./teams";
 import { viewerOfPerson } from "./viewer";
+import { workflow } from "../../../tests/helpers/workflows";
 
 type Key = "long" | "tam" | "huy" | "an" | "khoi";
 const ids = {} as Record<Key | "szm" | "video" | "project" | "secret" | "client" | "edit", string>;
@@ -69,7 +70,7 @@ beforeAll(async () => {
     const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
     ids[key] = row.id;
   }
-  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "content", {}, ids.long);
+  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("content"), ids.long);
   ids.video = video.id;
   for (const key of ["tam", "huy"] as const) await setTeamMember(video.id, ids[key], "member");
   const client = await saveClient(null, { code: "VNM", name: "Vinamilk", kind: "client", parentId: null, entityId: szm.id, note: null, isActive: true });

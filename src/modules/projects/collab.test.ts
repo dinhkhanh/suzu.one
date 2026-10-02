@@ -39,6 +39,7 @@ import { getMeeting, listMeetings, putMeetingInCalendar, removeMeetingFromCalend
 import { loadRaidCounts, loadStatusFacts } from "./metrics";
 import { ensurePlan } from "./plans";
 import { issueToTask, listRaid, saveRaidItem, setRaidStatus } from "./raid-log";
+import { workflow } from "../../../tests/helpers/workflows";
 
 type Who = "long" | "tam" | "huy" | "lan" | "khoi" | "other";
 const ids = {} as Record<Who | "szm" | "team" | "otherTeam" | "project", string>;
@@ -61,10 +62,10 @@ beforeAll(async () => {
   // Long leads the Social team; Tam leads the project; Huy (in the team) and Lan (from outside it)
   // are its members. Khoi sits in the same unit and entity and — the project being open to the
   // entity — may read the project, but is not one of its people. "Other" leads another team.
-  const team = await createTeam({ key: "SOC", name: "Social", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.long);
+  const team = await createTeam({ key: "SOC", name: "Social", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
   ids.team = team.id;
   for (const personId of [ids.tam, ids.huy]) await setTeamMember(team.id, personId, "member");
-  ids.otherTeam = (await createTeam({ key: "DES", name: "Design", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.other)).id;
+  ids.otherTeam = (await createTeam({ key: "DES", name: "Design", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.other)).id;
   const project = await createProject({ teamId: team.id, name: "TVC Tết 2027", description: null, clientId: null, status: "active", visibility: "entity", leadPersonId: ids.tam, startDate: null, dueDate: null }, ids.tam);
   ids.project = project.id;
   await setProjectMember(project.id, ids.huy, "member");

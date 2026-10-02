@@ -36,6 +36,7 @@ import { buildPortfolioExport, listPortfolio } from "./portfolio";
 import { postStatusUpdate } from "./status-updates";
 import { createTasksForLine, saveDeliverable, saveMilestone } from "./structure";
 import { applyTemplatePlanIn, saveTemplatePlan } from "./template-plans";
+import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "long" | "tam" | "lan" | "huy" | "ke" | "video" | "tvc" | "social" | "group", string>;
 const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
@@ -61,14 +62,14 @@ beforeAll(async () => {
     ids[key] = row.id;
   }
   // Long leads the video team; Tam leads the TVC project; Huy works in it.
-  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.long);
+  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
   ids.video = video.id;
   for (const personId of [ids.tam, ids.huy, ids.lan]) await setTeamMember(video.id, personId, "member");
   const project = (name: string, status: "planned" | "active") => createProject({ teamId: video.id, name, description: null, clientId: null, status, visibility: "team", leadPersonId: ids.tam, startDate: "2026-10-01", dueDate: "2026-11-30" }, ids.long);
   ids.tvc = (await project("TVC Tết", "planned")).id;
   ids.social = (await project("Social tháng 10", "active")).id;
   // A team without an entity numbers its projects under the group prefix.
-  const group = await createTeam({ key: "GRP", name: "Group Brand", description: null, entityId: null, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.long);
+  const group = await createTeam({ key: "GRP", name: "Group Brand", description: null, entityId: null, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
   ids.group = (await createProject({ teamId: group.id, name: "Group brand book", description: null, clientId: null, status: "active", visibility: "team", leadPersonId: ids.long, startDate: null, dueDate: null }, ids.long)).id;
 });
 

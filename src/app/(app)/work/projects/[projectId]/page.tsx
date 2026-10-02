@@ -13,7 +13,7 @@ import { isMonthKey, monthGrid } from "@/modules/work/engine/calendar";
 import { readFilters, readGrouping, readSort } from "@/modules/work/engine/filter";
 import { canContributeToProject, canManageProject, canViewProject, findProject, listAssignable, listClients, listLabels, listProjectMembers, listProjectTasks, listRecurrences, listSavedViews, listStates, listWorkTemplates, loadViewer, projectFacts, withEditable, WORK_VIEWS, type WorkView } from "@/modules/work/service";
 import { canManageCustomFields, canSeeLoggedTime, listCustomFields, listOpenCycles, loggedMinutesByTask, teamFacts, toFieldViews } from "@/modules/work/service";
-import { automationPanel, canManageAutomations, canManageReviewChains, canViewAutomations, contentCalendar, listReviewChains } from "@/modules/work/service";
+import { automationPanel, canManageAutomations, canManageReviewChains, canViewAutomations, contentCalendar, listReviewChains, projectStatusChoices, projectStatusNames } from "@/modules/work/service";
 import { AutomationManager } from "@/modules/work/ui/automations";
 import { ReviewChainManager } from "@/modules/work/ui/review-chains";
 import { CustomFieldManager } from "@/modules/work/ui/custom-fields";
@@ -65,6 +65,8 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
     listCustomFields({ teamId: team.id, projectId: project.id }, { includeInactive: true }),
   ]);
   const [chains, automations] = await Promise.all([listReviewChains({ teamId: team.id, projectId: project.id }), canViewAutomations(viewer, teamFacts(team)) ? automationPanel({ teamId: team.id, projectId: project.id }, viewer) : null]);
+  const [statusChoices, statusNames] = await Promise.all([projectStatusChoices(team.projectStatusSetId, project.statusId), projectStatusNames()]);
+  const statusName = project.statusId ? statusNames.get(project.statusId) : undefined;
   const filters = readFilters(query);
   const grouping = readGrouping(query.group);
   const sort = readSort(query.sort);
@@ -101,14 +103,14 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
             <ColorSquare color={accentOf(project.color, team.color)} className="size-2.5 rounded-[3px]" />
             {project.name}
             <Badge variant="outline">{t(`visibility.${project.visibility}`)}</Badge>
-            {project.status === "active" ? null : <Badge dot variant={statusTone(project.status)}>{t(`projects.status.${project.status}`)}</Badge>}
+            {project.status === "active" && !statusName ? null : <Badge dot variant={statusTone(project.status)}>{statusName ?? t(`projects.status.${project.status}`)}</Badge>}
           </span>
         }
         description={[clientName, project.description].filter(Boolean).join(" · ") || undefined}
         actions={
           manage ? (
             <>
-              <EditProjectButton project={project} clients={clients.map(({ id, name }) => ({ id, name }))} people={assignable} />
+              <EditProjectButton project={project} clients={clients.map(({ id, name }) => ({ id, name }))} people={assignable} statuses={statusChoices} />
               <ArchiveButton target={{ projectId: project.id }} name={project.name} archived={project.status === "archived"} />
             </>
           ) : undefined

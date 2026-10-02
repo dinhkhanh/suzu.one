@@ -1,5 +1,6 @@
 "use client";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
@@ -12,18 +13,22 @@ import { List, ListItem } from "@/components/ui/list";
 import { Select } from "@/components/ui/select";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createTeamAction, deleteLabelAction, saveLabelAction, saveStateAction, setProjectMemberAction, setTeamMemberAction, updateTeamAction } from "../actions";
-import { ACCENT_COLORS, LABEL_COLORS, PROJECT_ROLES, STATE_CATEGORIES, TEAM_ROLES, TEAM_STATUSES, teamStatusOf, VISIBILITIES, WORKFLOW_PRESETS } from "../enums";
+import { ACCENT_COLORS, LABEL_COLORS, PROJECT_ROLES, STATE_CATEGORIES, TEAM_ROLES, TEAM_STATUSES, teamStatusOf, VISIBILITIES } from "../enums";
 
 type Option = { id: string; name: string };
-type Team = { id: string; key: string; name: string; description: string | null; entityId: string | null; departmentId: string | null; defaultVisibility: string; isActive: boolean; archivedAt: Date | string | null; color: string | null };
+type Team = { id: string; key: string; name: string; description: string | null; entityId: string | null; departmentId: string | null; defaultVisibility: string; isActive: boolean; archivedAt: Date | string | null; color: string | null; projectStatusSetId: string | null };
+/** A workflow from the library a new team may start from. */
+export type WorkflowChoice = Option & { states: { name: string; category: string }[] };
 
-export function TeamForm({ team, entities, departments, allowGroup, onSaved }: { team?: Team; entities: Option[]; departments: Option[]; /** May the viewer file the team under the whole group? */ allowGroup: boolean; /** After an edit is saved — the dialog closes. */ onSaved?: () => void }) {
+export function TeamForm({ team, entities, departments, allowGroup, workflows, statusSets, onSaved }: { team?: Team; entities: Option[]; departments: Option[]; /** May the viewer file the team under the whole group? */ allowGroup: boolean; /** Workflows a new team may start from (create only). */ workflows?: WorkflowChoice[]; /** Project status sets the team may use. */ statusSets: Option[]; /** After an edit is saved — the dialog closes. */ onSaved?: () => void }) {
   const t = useTranslations("work.teams");
   const tWork = useTranslations("work");
   const router = useRouter();
-  const [preset, setPreset] = useState<keyof typeof WORKFLOW_PRESETS>("content");
-  // A new team's states are created in the reader's language; the team renames them afterwards.
-  const stateNames = Object.fromEntries(WORKFLOW_PRESETS[preset].map((state) => [state.key, tWork(`presetStates.${state.key}`)]));
+  const [workflowId, setWorkflowId] = useState(workflows?.[0]?.id ?? "");
+  const workflow = workflows?.find((choice) => choice.id === workflowId);
+  // Without a workflow from the library: one state per category, named in the reader's language.
+  const stateNames = Object.fromEntries(STATE_CATEGORIES.map((category) => [category, tWork(`categories.${category}`)]));
+  const preview = workflow ? workflow.states.map((state) => state.name) : STATE_CATEGORIES.map((category) => stateNames[category]);
   const { onSubmit, pending, errorKey, saved, fieldErrors } = useActionForm(team ? updateTeamAction : createTeamAction, {
     extra: team ? { teamId: team.id } : { stateNames },
     onSuccess: (data) => {
@@ -77,16 +82,27 @@ export function TeamForm({ team, entities, departments, allowGroup, onSaved }: {
             <ColorSelect id="color" name="color" defaultValue={team?.color ?? ""} none={t("noColor")} />
           </Field>
           {team ? null : (
-            <Field name="preset" label={t("fields.preset")}>
-              <Select id="preset" name="preset" value={preset} onChange={(event) => setPreset(event.target.value as keyof typeof WORKFLOW_PRESETS)}>
-                {Object.keys(WORKFLOW_PRESETS).map((key) => (
-                  <option key={key} value={key}>
-                    {t(`presets.${key}`)}
+            <Field name="stateSetId" label={t("fields.stateSetId")}>
+              <Select id="stateSetId" name="stateSetId" value={workflowId} onChange={(event) => setWorkflowId(event.target.value)}>
+                {workflows?.map((choice) => (
+                  <option key={choice.id} value={choice.id}>
+                    {choice.name}
                   </option>
                 ))}
+                <option value="">{t("basicWorkflow")}</option>
               </Select>
             </Field>
           )}
+          <Field name="projectStatusSetId" label={t("fields.projectStatusSetId")}>
+            <Select id="projectStatusSetId" name="projectStatusSetId" defaultValue={team?.projectStatusSetId ?? ""}>
+              <option value="">{t("basicProjectStatuses")}</option>
+              {statusSets.map((set) => (
+                <option key={set.id} value={set.id}>
+                  {set.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
           <div className="sm:col-span-2 lg:col-span-3">
             <Field name="description" label={t("fields.description")}>
               <Input id="description" name="description" maxLength={500} defaultValue={team?.description ?? ""} />
@@ -103,7 +119,9 @@ export function TeamForm({ team, entities, departments, allowGroup, onSaved }: {
               </Select>
             </Field>
           ) : (
-            <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">{WORKFLOW_PRESETS[preset].map((state) => tWork(`presetStates.${state.key}`)).join(" → ")}</p>
+            <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
+              {preview.join(" → ")} · <Link href="/work/statuses" className="text-link hover:underline">{t("manageLibrary")}</Link>
+            </p>
           )}
         </div>
       </FieldErrors>

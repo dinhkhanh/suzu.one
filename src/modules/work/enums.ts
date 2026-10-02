@@ -29,8 +29,14 @@ export type TeamRole = (typeof TEAM_ROLES)[number];
 export const PROJECT_ROLES = ["lead", "account_manager", "member", "viewer"] as const;
 export type ProjectRole = (typeof PROJECT_ROLES)[number];
 
+/**
+ * The categories of a project status: what the rules read (planned waits for the kick-off gate,
+ * archived leaves the lists, done closes). The statuses people see are their own, in sets kept in
+ * the library (`work_project_status_set`); a team without a set shows the categories themselves.
+ */
 export const PROJECT_STATUSES = ["planned", "active", "paused", "done", "archived"] as const;
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
+export const MAX_SET_PROJECT_STATUSES = 20;
 
 /** A team's status, as its two columns hold it: `is_active`, and `archived_at` (archived is never active). */
 export const TEAM_STATUSES = ["active", "inactive", "archived"] as const;
@@ -68,32 +74,13 @@ export type AccentColor = (typeof ACCENT_COLORS)[number];
 /** The first set colour of a record and what it belongs to (a project, then its team), for `data-accent`. */
 export const accentOf = (...colors: (string | null | undefined)[]): AccentColor | undefined => colors.find((color): color is AccentColor => !!color && (ACCENT_COLORS as readonly string[]).includes(color));
 
-/** Starter workflows a new team can take (FR-WRK-03); the team edits its states afterwards. */
-export const WORKFLOW_PRESETS: Record<"simple" | "content", { key: string; category: StateCategory }[]> = {
-  simple: [
-    { key: "backlog", category: "backlog" },
-    { key: "todo", category: "todo" },
-    { key: "in_progress", category: "in_progress" },
-    { key: "in_review", category: "in_review" },
-    { key: "done", category: "done" },
-    { key: "cancelled", category: "cancelled" },
-  ],
-  content: [
-    { key: "backlog", category: "backlog" },
-    { key: "brief", category: "todo" },
-    { key: "ideation", category: "in_progress" },
-    { key: "script", category: "in_progress" },
-    { key: "design", category: "in_progress" },
-    { key: "edit", category: "in_progress" },
-    { key: "internal_review", category: "in_review" },
-    { key: "client_review", category: "in_review" },
-    { key: "scheduled", category: "in_progress" },
-    { key: "published", category: "done" },
-    { key: "reported", category: "done" },
-    { key: "cancelled", category: "cancelled" },
-  ],
-};
-export type WorkflowPreset = keyof typeof WORKFLOW_PRESETS;
+/**
+ * Workflows are not shipped in code (FR-WRK-03): a new team starts from a set in the library
+ * (`work_state_set`), or — while the library is empty — from one state per category, named in the
+ * creator's language. A set needs somewhere for work to start and somewhere for it to end.
+ */
+export const MAX_SET_STATES = 30;
+export const workflowHasStartAndDone = (categories: readonly string[]): boolean => categories.some((category) => category === "backlog" || category === "todo") && categories.includes("done");
 
 /** Reactions on a comment (FR-WRK-09): a short fixed set, so a reaction is one tap and one meaning. */
 export const REACTIONS = ["👍", "❤️", "🎉", "👀", "✅"] as const;

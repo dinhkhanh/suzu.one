@@ -764,6 +764,13 @@
       "when": 1790906879877,
       "tag": "0108_attendance_device_entities",
       "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "7",
+      "when": 1790911570816,
+      "tag": "0109_work_status_sets",
+      "breakpoints": true
     }
   ]
 }

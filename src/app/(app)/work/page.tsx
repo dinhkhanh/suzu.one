@@ -9,7 +9,7 @@ import { todayInVietnam } from "@/lib/dates";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, unitChoices } from "@/modules/platform/org/service";
 import { listPersonNames } from "@/modules/platform/people/service";
-import { canManageWorkspace, canViewTeam, listClients, listCreateTargets, listTeams, loadViewer, teamFacts, visibleProjects } from "@/modules/work/service";
+import { canManageWorkspace, canViewTeam, listClients, listCreateTargets, listTeams, loadViewer, projectStatusNames, projectStatusSetChoices, teamFacts, visibleProjects, workflowChoices } from "@/modules/work/service";
 import { accentOf, projectShelf, type Shelf, teamShelf, type TeamStatus, teamStatusOf } from "@/modules/work/enums";
 import { ProjectPoster } from "@/modules/work/ui/project-poster";
 import { CreateProjectButton, CreateTeamButton } from "@/modules/work/ui/edit-dialogs";
@@ -24,7 +24,7 @@ export default async function WorkPage() {
   const t = await getTranslations("work");
   const today = todayInVietnam();
   // Archived projects too: they are shelved apart below, not hidden.
-  const [allTeams, projects, targets, clients] = await Promise.all([listTeams(), visibleProjects(viewer, { today, includeArchived: true }), listCreateTargets(viewer), listClients({ activeOnly: true })]);
+  const [allTeams, projects, targets, clients, statusNames] = await Promise.all([listTeams(), visibleProjects(viewer, { today, includeArchived: true }), listCreateTargets(viewer), listClients({ activeOnly: true }), projectStatusNames()]);
   const teams = allTeams.filter((team) => canViewTeam(viewer, teamFacts(team)));
   // A project without a colour of its own wears its team's, so the cards of one team read as one.
   const teamColors = new Map(allTeams.map((team) => [team.id, team.color]));
@@ -40,6 +40,8 @@ export default async function WorkPage() {
   const projectTeams = targets.teams.filter((team) => team.canCreateProject);
   const canCreateTeam = canManageWorkspace(viewer);
   const [entities, departments, people] = canCreateTeam || projectTeams.length ? await Promise.all([listEntities(), unitChoices(), listPersonNames()]) : [[], [], []];
+  // A new team starts from a workflow of the library and may name a project status set.
+  const [workflows, statusSets] = canCreateTeam ? await Promise.all([workflowChoices(new Set(viewer.teamRoles.keys())), projectStatusSetChoices(null)]) : [[], []];
 
   // Each shelf looks its part: a set-aside card is faded, an archived one greyed out and plain.
   const cardClass = (shelf: Shelf) =>
@@ -51,8 +53,10 @@ export default async function WorkPage() {
 
   /** Why a card is set aside: its own status, else its team's. */
   const projectBadge = (project: (typeof projects)[number]) => {
-    if (project.status === "archived") return <ArchivedBadge label={t("projects.status.archived")} />;
-    if (project.status !== "active") return <Badge variant="secondary">{t(`projects.status.${project.status}`)}</Badge>;
+    const name = project.statusId ? statusNames.get(project.statusId) : undefined;
+    if (project.status === "archived") return <ArchivedBadge label={name ?? t("projects.status.archived")} />;
+    if (project.status !== "active") return <Badge variant="secondary">{name ?? t(`projects.status.${project.status}`)}</Badge>;
+    if (name) return <Badge variant="outline">{name}</Badge>;
     const status = teamStatus(project.teamId);
     return status === "active" ? null : <Badge variant="outline">{t(`shelves.team.${status}`)}</Badge>;
   };
@@ -139,6 +143,7 @@ export default async function WorkPage() {
         {canSeeWorkload ? <Link href="/work/workload">{t("workload.title")}</Link> : null}
         <Link href="/work/intake">{t("intake.title")}</Link>
         <Link href="/work/templates">{t("templates.title")}</Link>
+        <Link href="/work/statuses">{t("statusSets.title")}</Link>
         {viewer.principal.workforceType === "collaborator" ? null : <Link href="/work/clients">{t("clients.title")}</Link>}
       </nav>
 
@@ -160,7 +165,7 @@ export default async function WorkPage() {
       <Section
         title={t("teams.mine")}
         count={mine.length || undefined}
-        action={canCreateTeam ? <CreateTeamButton entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} /> : undefined}
+        action={canCreateTeam ? <CreateTeamButton entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} workflows={workflows} statusSets={statusSets} /> : undefined}
       >
         {mine.length === 0 ? <p className="text-sm text-muted-foreground">{t("teams.mineEmpty")}</p> : <ul className={grid}>{mine.map(teamCard)}</ul>}
         {others.length ? (

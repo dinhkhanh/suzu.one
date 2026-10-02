@@ -24,6 +24,7 @@ import { getCapacity, listCapacitySubjects, loadCapacityReader } from "./capacit
 import { decideBrief, submitBrief } from "./kickoff";
 import { updateBrief, updatePlanSettings } from "./plans";
 import { getTimeline } from "./timeline";
+import { workflow } from "../../../tests/helpers/workflows";
 
 type Key = "szm" | "long" | "tam" | "huy" | "an" | "khoa" | "dir" | "video" | "tvc" | "script" | "board" | "shoot" | "edit" | "side" | "after" | "partTime";
 const ids = {} as Record<Key, string>;
@@ -54,7 +55,7 @@ beforeAll(async () => {
   users.huy.person.managerId = ids.tam;
 
   // Long leads the video team; Tam, Huy and An work in it; Tam leads the TVC project. Khoa is outside.
-  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.long);
+  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
   ids.video = video.id;
   for (const personId of [ids.tam, ids.huy, ids.an]) await setTeamMember(video.id, personId, "member");
   const project = await createProject({ teamId: video.id, name: "TVC Tết", description: null, clientId: null, status: "planned", visibility: "team", leadPersonId: ids.tam, startDate: "2026-10-01", dueDate: "2026-10-30" }, ids.long);

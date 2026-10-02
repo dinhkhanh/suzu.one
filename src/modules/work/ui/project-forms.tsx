@@ -12,9 +12,9 @@ import { ColorSelect } from "./team-forms";
 import { CLIENT_KINDS, PROJECT_STATUSES, VISIBILITIES } from "../enums";
 
 type Option = { id: string; name: string };
-type Project = { id: string; teamId: string; name: string; description: string | null; clientId: string | null; status: string; visibility: string; leadPersonId: string | null; startDate: string | null; dueDate: string | null; color: string | null };
+type Project = { id: string; teamId: string; name: string; description: string | null; clientId: string | null; status: string; statusId: string | null; visibility: string; leadPersonId: string | null; startDate: string | null; dueDate: string | null; color: string | null };
 
-export function ProjectForm({ project, teams, clients, people, onSaved }: { project?: Project; /** Teams the viewer may start a project in, with their default visibility. */ teams: (Option & { defaultVisibility: string })[]; clients: Option[]; people: { id: string; fullName: string }[]; /** After an edit is saved — the dialog closes. */ onSaved?: () => void }) {
+export function ProjectForm({ project, teams, clients, people, statuses = [], onSaved }: { project?: Project; /** Teams the viewer may start a project in, with their default visibility. */ teams: (Option & { defaultVisibility: string })[]; clients: Option[]; people: { id: string; fullName: string }[]; /** The statuses of the team's set (`projectStatusChoices`); none = the categories. */ statuses?: (Option & { category: string })[]; /** After an edit is saved — the dialog closes. */ onSaved?: () => void }) {
   const t = useTranslations("work.projects");
   const tWork = useTranslations("work");
   const router = useRouter();
@@ -75,13 +75,24 @@ export function ProjectForm({ project, teams, clients, people, onSaved }: { proj
           </Field>
           {project ? (
             <Field name="status" label={t("fields.status")}>
-              <Select id="status" name="status" defaultValue={project.status}>
-                {PROJECT_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {t(`status.${status}`)}
-                  </option>
-                ))}
-              </Select>
+              {statuses.length ? (
+                <Select id="status" name="status" defaultValue={project.statusId ?? statuses.find((status) => status.category === project.status)?.id ?? project.status}>
+                  {statuses.some((status) => status.category === project.status) ? null : <option value={project.status}>{t(`status.${project.status as "active"}`)}</option>}
+                  {statuses.map((status) => (
+                    <option key={status.id} value={status.id}>
+                      {status.name}
+                    </option>
+                  ))}
+                </Select>
+              ) : (
+                <Select id="status" name="status" defaultValue={project.status}>
+                  {PROJECT_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {t(`status.${status}`)}
+                    </option>
+                  ))}
+                </Select>
+              )}
             </Field>
           ) : null}
           <Field name="color" label={t("fields.color")}>

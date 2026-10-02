@@ -35,6 +35,7 @@ import { createProject } from "./projects";
 import { countReviewsWaitingFor, recordClientDecision, submitDeliverable } from "./reviews";
 import { createWorkTask, listActivity, loadTask, updateWorkTask, updateWorkTaskIn } from "./tasks";
 import { createTeam, listStates, setTeamMember } from "./teams";
+import { workflow } from "../../../tests/helpers/workflows";
 
 type Key = "long" | "tam" | "huy" | "bao";
 const ids = {} as Record<Key | "szm", string>;
@@ -45,7 +46,7 @@ const runsOf = async (automationId: string) => db().select().from(schema.workAut
 
 /** A team of its own for each case, so one case's rules never fire in another's. Content workflow, led by long. */
 async function newTeam(key: string) {
-  const team = await createTeam({ key, name: key, description: null, entityId: ids.szm, departmentId: null, defaultVisibility: "team", isActive: true }, "content", {}, ids.long);
+  const team = await createTeam({ key, name: key, description: null, entityId: ids.szm, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("content"), ids.long);
   for (const member of ["tam", "huy", "bao"] as const) await setTeamMember(team.id, ids[member], "member");
   const states = Object.fromEntries((await listStates([team.id], db())).map((state) => [state.name, state.id]));
   return { id: team.id, states };
@@ -237,9 +238,9 @@ describe("starter rules", () => {
   });
 
   it("a workflow without review has no client-review rule", async () => {
-    const plain = await createTeam({ key: "AUI", name: "AUI", description: null, entityId: ids.szm, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.long);
+    const plain = await createTeam({ key: "AUI", name: "AUI", description: null, entityId: ids.szm, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
     await expect(addPresetAutomation({ teamId: plain.id, projectId: null }, "client_changes_reopen", { name: "x", text: "y" }, ids.long)).resolves.toBeTruthy();
-    const noReview = await createTeam({ key: "AUJ", name: "AUJ", description: null, entityId: ids.szm, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.long);
+    const noReview = await createTeam({ key: "AUJ", name: "AUJ", description: null, entityId: ids.szm, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
     await db().update(schema.workState).set({ isActive: false }).where(and(eq(schema.workState.teamId, noReview.id), eq(schema.workState.category, "in_review")));
     await expect(addPresetAutomation({ teamId: noReview.id, projectId: null }, "client_review_due", { name: "x", text: "y" }, ids.long)).rejects.toThrow("automation_preset_unavailable");
   });

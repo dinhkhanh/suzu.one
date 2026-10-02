@@ -8,7 +8,9 @@ import { cached, invalidate } from "@/lib/cache";
 import { notify } from "../platform/notifications/service";
 import { invalidateWorkDirectory } from "./directory";
 import { invalidateMemberships } from "./viewer";
-import { isOpenCategory, type StateCategory, type TeamRole, type Visibility, WORKFLOW_PRESETS, type WorkflowPreset } from "./enums";
+import { isOpenCategory, type StateCategory, type TeamRole, type Visibility, workflowHasStartAndDone } from "./enums";
+import type { StateSetItem } from "./schema";
+import { checkTeamProjectStatusSet, restatusTeamProjects } from "./status-sets";
 import { canAddTeamMember, type PersonPlacement, type TeamFacts, type WorkViewer } from "./policy";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -47,15 +49,17 @@ export const listTeams = cache(async (): Promise<TeamSummary[]> => {
   return rows.map(({ team, ...rest }) => ({ ...team, ...rest }));
 });
 
-export type TeamInput = { key: string; name: string; description: string | null; entityId: string | null; departmentId: string | null; defaultVisibility: Visibility; isActive: boolean; color?: string | null };
+export type TeamInput = { key: string; name: string; description: string | null; entityId: string | null; departmentId: string | null; defaultVisibility: Visibility; isActive: boolean; color?: string | null; projectStatusSetId?: string | null };
 
-/** A new team starts with a workflow preset and its creator as lead. */
-export async function createTeam(input: TeamInput, preset: WorkflowPreset, stateNames: Record<string, string>, actorPersonId: string): Promise<TeamRow> {
+/** A new team starts with its workflow's states (`startingStates`) and its creator as lead. */
+export async function createTeam(input: TeamInput, states: readonly StateSetItem[], actorPersonId: string): Promise<TeamRow> {
   const created = await db().transaction(async (tx) => {
     const [taken] = await tx.select({ id: schema.workTeam.id }).from(schema.workTeam).where(eq(schema.workTeam.key, input.key)).limit(1);
     if (taken) throw new ActionError("team_key_taken");
+    if (!workflowHasStartAndDone(states.map((state) => state.category))) throw new ActionError("workflow_needs_start_and_done");
+    await checkTeamProjectStatusSet(tx, null, input.projectStatusSetId ?? null);
     const [team] = await tx.insert(schema.workTeam).values(input).returning();
-    await tx.insert(schema.workState).values(WORKFLOW_PRESETS[preset].map((state, index) => ({ teamId: team.id, name: stateNames[state.key] ?? state.key, category: state.category, sortOrder: (index + 1) * 10 })));
+    await tx.insert(schema.workState).values(states.map((state, index) => ({ teamId: team.id, name: state.name, category: state.category, sortOrder: (index + 1) * 10 })));
     await tx.insert(schema.workTeamMember).values({ teamId: team.id, personId: actorPersonId, role: "lead" });
     return team;
   });
@@ -72,11 +76,18 @@ export async function updateTeam(teamId: string, input: Omit<TeamInput, "key"> &
   if (!before) throw new ActionError("team_not_found");
   const { archived, ...values } = input;
   const archivedAt = archived === undefined ? before.archivedAt : archived ? (before.archivedAt ?? new Date()) : null;
-  const [after] = await db()
-    .update(schema.workTeam)
-    .set({ ...values, isActive: values.isActive && !archivedAt, archivedAt, updatedAt: new Date() })
-    .where(eq(schema.workTeam.id, teamId))
-    .returning();
+  const after = await db().transaction(async (tx) => {
+    // A new project status set: the team's projects take its statuses, by category.
+    const restatus = values.projectStatusSetId !== undefined && values.projectStatusSetId !== before.projectStatusSetId;
+    if (restatus) await checkTeamProjectStatusSet(tx, teamId, values.projectStatusSetId ?? null, before.projectStatusSetId);
+    const [row] = await tx
+      .update(schema.workTeam)
+      .set({ ...values, isActive: values.isActive && !archivedAt, archivedAt, updatedAt: new Date() })
+      .where(eq(schema.workTeam.id, teamId))
+      .returning();
+    if (restatus) await restatusTeamProjects(tx, teamId);
+    return row;
+  });
   await invalidateWorkDirectory();
   return { before, after };
 }

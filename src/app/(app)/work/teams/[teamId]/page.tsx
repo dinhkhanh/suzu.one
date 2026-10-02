@@ -23,8 +23,9 @@ import { ArchiveButton, EditTeamButton } from "@/modules/work/ui/edit-dialogs";
 import { ProjectPoster } from "@/modules/work/ui/project-poster";
 import { ColorSquare } from "@/modules/work/ui/task-row";
 import { LabelManager, MemberManager, StateManager } from "@/modules/work/ui/team-forms";
-import { checklistChoices, listStateChecklists } from "@/modules/work/service";
+import { checklistChoices, listStateChecklists, projectStatusNames, projectStatusSetChoices } from "@/modules/work/service";
 import { StageChecklists } from "@/modules/work/ui/checklists";
+import { SaveWorkflowToLibrary } from "@/modules/work/ui/status-sets";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("team");
@@ -53,7 +54,14 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
     // The picker offers only the people this viewer may actually add (`canAddTeamMember`).
     admin ? Promise.all([addableMembers(viewer, facts), listEntities(), unitChoices()]) : ([{ people: [], narrowed: false }, [], []] as [Awaited<ReturnType<typeof addableMembers>>, Awaited<ReturnType<typeof listEntities>>, Awaited<ReturnType<typeof unitChoices>>]),
   ]);
-  const [fieldRows, triageCounts, checklists, stageHooks] = await Promise.all([listCustomFields({ teamId: team.id }, { includeInactive: true }), canViewTriage(viewer, facts) ? countTriage([team.id]) : null, checklistChoices(), listStateChecklists(states.map((state) => state.id))]);
+  const [fieldRows, triageCounts, checklists, stageHooks, statusNames, statusSets] = await Promise.all([
+    listCustomFields({ teamId: team.id }, { includeInactive: true }),
+    canViewTriage(viewer, facts) ? countTriage([team.id]) : null,
+    checklistChoices(),
+    listStateChecklists(states.map((state) => state.id)),
+    projectStatusNames(),
+    admin ? projectStatusSetChoices(team.id, team.projectStatusSetId) : [],
+  ]);
   const fields = toFieldViews(fieldRows);
   // FR-PJM-10: the team's open cycles, for the filter and bulk edit.
   const cycles = (await listOpenCycles([team.id])).map((cycle) => ({ id: cycle.id, label: t("cycles.label", { number: cycle.number, from: cycle.startDate.split("-").reverse().slice(0, 2).join("/"), to: cycle.endDate.split("-").reverse().slice(0, 2).join("/") }) }));
@@ -86,7 +94,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
         actions={
           admin ? (
             <>
-              <EditTeamButton team={team} entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} />
+              <EditTeamButton team={team} entities={entities.filter((entity) => entity.isActive).map((entity) => ({ id: entity.id, name: entity.shortName }))} departments={departments} allowGroup={canManageWorkspace(viewer, { entityId: null, departmentId: null })} statusSets={statusSets} />
               <ArchiveButton target={{ teamId: team.id }} name={team.name} archived={status === "archived"} />
             </>
           ) : undefined
@@ -132,7 +140,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
                   </span>
                 </TableCell>
                 <TableCell>
-                  <Badge dot variant={statusTone(project.status)}>{t(`projects.status.${project.status}`)}</Badge>
+                  <Badge dot variant={statusTone(project.status)}>{(project.statusId && statusNames.get(project.statusId)) || t(`projects.status.${project.status}`)}</Badge>
                 </TableCell>
                 <TableCell kind="number">{project.openTasks}</TableCell>
                 <TableCell>
@@ -165,6 +173,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<"/wor
       <Section title={t("states.title")}>
         <p className="text-xs text-muted-foreground">{t("states.description")}</p>
         <StateManager teamId={team.id} states={states.map(({ id, name, category, sortOrder, isActive }) => ({ id, name, category, sortOrder, isActive }))} canManage={admin} />
+        {admin ? <SaveWorkflowToLibrary teamId={team.id} teamName={team.name} /> : null}
       </Section>
 
       <Section title={tChecklists("title")}>

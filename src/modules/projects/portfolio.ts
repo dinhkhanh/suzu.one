@@ -11,7 +11,7 @@ import { type CsvFile, EXPORT_ROW_LIMIT, type ExportColumn, toCsv } from "@/modu
 import en from "../../../messages/en.json";
 import vi from "../../../messages/vi.json";
 import { listEntities } from "../platform/org/service";
-import { visibleProjects, type WorkViewer } from "../work/service";
+import { projectStatusNames, visibleProjects, type WorkViewer } from "../work/service";
 import { slipDays } from "./engine/baseline";
 import type { Burn } from "./engine/budget";
 import type { ProjectKind } from "./engine/brief";
@@ -25,6 +25,8 @@ export type PortfolioRow = {
   id: string;
   name: string;
   status: string;
+  /** The project's status as its team's set names it; null = shown by its category. */
+  statusName: string | null;
   jobNumber: string | null;
   kind: ProjectKind;
   teamId: string;
@@ -72,7 +74,7 @@ export async function listPortfolio(viewer: WorkViewer, options: { today: IsoDat
   const plans = await readPlans(ids);
   const managerIds = [...new Set([...plans.values()].flatMap((plan) => (plan.accountManagerPersonId ? [plan.accountManagerPersonId] : [])))];
   const entityIds = [...new Set(projects.flatMap((project) => (project.entityId ? [project.entityId] : [])))];
-  const [registers, burns, milestones, phases, managers, entities, raid] = await Promise.all([
+  const [registers, burns, milestones, phases, managers, entities, raid, statusNames] = await Promise.all([
     loadRegisters(ids),
     loadBurns(ids, new Map([...plans].map(([id, plan]) => [id, plan.budgetMinutes]))),
     // One row per project, chosen in Postgres: the next open milestone (earliest date first, and
@@ -92,6 +94,7 @@ export async function listPortfolio(viewer: WorkViewer, options: { today: IsoDat
     // Entities are reference data: the org module's cached list, not a query of this page's own.
     entityIds.length ? listEntities() : [],
     loadRaidCounts(ids),
+    projectStatusNames(),
   ]);
   const nextOf = new Map(milestones.map((milestone) => [milestone.projectId, { name: milestone.name, dueDate: milestone.dueDate }]));
   const phaseOf = new Map(phases.map((phase) => [phase.projectId, phase.name]));
@@ -107,6 +110,7 @@ export async function listPortfolio(viewer: WorkViewer, options: { today: IsoDat
       id: project.id,
       name: project.name,
       status: project.status,
+      statusName: (project.statusId && statusNames.get(project.statusId)) || null,
       jobNumber: plan.jobNumber,
       kind: plan.kind as ProjectKind,
       teamId: project.teamId,
@@ -161,7 +165,7 @@ export async function buildPortfolioExport(viewer: WorkViewer, filters: Portfoli
     { header: t("projects.fields.jobNumber"), value: (row) => row.jobNumber },
     { header: t("projects.fields.name"), value: (row) => row.name },
     { header: t("projects.fields.kind"), value: (row) => t(`projects.kinds.${row.kind}`) },
-    { header: t("projects.fields.status"), value: (row) => t(`work.projects.status.${row.status as "active"}`) },
+    { header: t("projects.fields.status"), value: (row) => row.statusName ?? t(`work.projects.status.${row.status as "active"}`) },
     { header: t("projects.fields.team"), value: (row) => row.teamName },
     { header: t("projects.fields.entity"), value: (row) => row.entityName },
     { header: t("projects.fields.client"), value: (row) => row.clientName },

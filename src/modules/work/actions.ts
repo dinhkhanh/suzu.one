@@ -8,11 +8,12 @@ import { beginTaskUpload, completeTaskUpload, findTaskFile, removeTaskFile, task
 import { MAX_LINKED_CHECKLISTS, MAX_TASK_CHECKLIST } from "./engine/checklists";
 import { FILTER_KEYS, isFilterKey } from "./engine/filter";
 import { setFollowing } from "./followers";
-import { ACCENT_COLORS, CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_ROLES, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, TEAM_STATUSES, VISIBILITIES, WORKFLOW_PRESETS } from "./enums";
+import { ACCENT_COLORS, CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_ROLES, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, TEAM_STATUSES, VISIBILITIES } from "./enums";
 import { canAddTeamMember, canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canTakeOutOfProject, canViewTask } from "./policy";
 import { createProject, findProject, projectFacts, projectRoleOf, setProjectArchived, setProjectMember, updateProject } from "./projects";
 import { addDependency, createWorkTask, deleteWorkTask, findDependency, loadTask, removeDependency, updateWorkTask } from "./tasks";
 import { createTeam, deleteLabel, findLabel, findTeam, isTeamMember, personPlacement, saveClient, saveLabel, saveState, setTeamArchived, setTeamMember, teamFacts, updateTeam } from "./teams";
+import { findStateSet, startingStates } from "./status-sets";
 import { loadViewer } from "./viewer";
 import { createSavedView, deleteSavedView, findSavedView } from "./views";
 
@@ -32,16 +33,34 @@ const teamFields = {
   departmentId: optional(z.uuid()),
   defaultVisibility: z.enum(VISIBILITIES),
   color: optional(z.enum(ACCENT_COLORS)),
+  // The project status set its projects use (the library); blank = the bare categories.
+  projectStatusSetId: optional(z.uuid()),
 };
 
 const createTeamPipeline = createAction({
   name: "work.team.create",
-  input: z.object({ ...teamFields, key: z.string().trim().toUpperCase().regex(/^[A-Z][A-Z0-9]{1,7}$/), preset: z.enum(Object.keys(WORKFLOW_PRESETS) as [keyof typeof WORKFLOW_PRESETS, ...(keyof typeof WORKFLOW_PRESETS)[]]), stateNames: z.record(z.string(), z.string().trim().min(1).max(40)).default({}) }),
-  authorize: async (user, input) => canManageWorkspace(await loadViewer(user), { entityId: input.entityId, departmentId: input.departmentId }),
+  input: z.object({
+    ...teamFields,
+    key: z.string().trim().toUpperCase().regex(/^[A-Z][A-Z0-9]{1,7}$/),
+    // The workflow to start from (the library); blank = one state per category, named in `stateNames`.
+    stateSetId: optional(z.uuid()),
+    stateNames: z.partialRecord(z.enum(STATE_CATEGORIES), z.string().trim().min(1).max(40)).default({}),
+  }),
+  // A team's own workflow is offered to the people of that team, and to whoever runs it.
+  authorize: async (user, input) => {
+    const viewer = await loadViewer(user);
+    if (!canManageWorkspace(viewer, { entityId: input.entityId, departmentId: input.departmentId })) return false;
+    const set = input.stateSetId ? await findStateSet(input.stateSetId) : null;
+    if (input.stateSetId && (!set || !set.isActive)) return false;
+    if (!set?.ownerTeamId || viewer.teamRoles.has(set.ownerTeamId)) return true;
+    const owner = await findTeam(set.ownerTeamId);
+    return !!owner && canAdminTeam(viewer, teamFacts(owner));
+  },
   run: async ({ user, input }) => {
-    const { preset, stateNames, ...values } = input;
+    const { stateSetId, stateNames, ...values } = input;
     if (values.departmentId && !(await findOrgUnit(values.departmentId))) values.departmentId = null;
-    const team = await createTeam({ ...values, isActive: true }, preset, stateNames, user.person.id);
+    const set = stateSetId ? ((await findStateSet(stateSetId)) ?? null) : null;
+    const team = await createTeam({ ...values, isActive: true }, startingStates(set, stateNames), user.person.id);
     revalidatePath("/work");
     return { data: { id: team.id }, audit: { resource: { type: "work_team", id: team.id, entityId: team.entityId }, summary: `${team.key}: ${team.name}`, after: team } };
   },
@@ -209,7 +228,8 @@ const projectFields = {
   name: z.string().trim().min(1).max(120),
   description: optional(z.string().trim().max(2000)),
   clientId: optional(z.uuid()),
-  status: z.enum(PROJECT_STATUSES).default("active"),
+  // A category, or a status of the team's set (`resolveProjectStatus` checks which).
+  status: z.union([z.enum(PROJECT_STATUSES), z.uuid()]).default("active"),
   visibility: z.enum(VISIBILITIES),
   leadPersonId: optional(z.uuid()),
   startDate: optional(isoDate),

@@ -35,6 +35,7 @@ import { createWorkTask, getTaskDetail, loadTask, updateWorkTask } from "./tasks
 import { createTeam, listStates, saveClient, setTeamMember } from "./teams";
 import { listMergeTargets, listTriage, sendToTriage } from "./triage";
 import { viewerOfPerson } from "./viewer";
+import { workflow } from "../../../tests/helpers/workflows";
 
 type Key = "long" | "huy" | "bao" | "khoi" | "boss" | "ngoai";
 const ids = {} as Record<Key | "szm" | "video" | "social" | "open" | "secret" | "client" | "script" | "design", string>;
@@ -57,8 +58,8 @@ beforeAll(async () => {
   // The leader with `work:manage` over the whole group: a director, not a member of any project.
   await db().insert(schema.roleAssignment).values({ personId: ids.boss, role: "owner", scopeType: "group", scopeId: null, validFrom: "2020-01-01" });
 
-  const video = await createTeam({ key: "VID", name: "Video", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.long);
-  const social = await createTeam({ key: "SOC", name: "Social", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.khoi);
+  const video = await createTeam({ key: "VID", name: "Video", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
+  const social = await createTeam({ key: "SOC", name: "Social", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.khoi);
   Object.assign(ids, { video: video.id, social: social.id });
   for (const key of ["huy", "bao"] as const) await setTeamMember(video.id, ids[key], "member");
   const client = await saveClient(null, { code: "VNM", name: "Vinamilk", kind: "client", parentId: null, entityId: szm.id, note: null, isActive: true });

@@ -36,6 +36,7 @@ import { buildReportFor, reportToCsv } from "./catalogue";
 import { getDeliveryDashboard } from "./delivery";
 import { runKpiFromWork } from "./kpi-from-work";
 import { buildProfitability, getProfitability } from "./profitability";
+import { workflow } from "../../../tests/helpers/workflows";
 
 type Who = "long" | "huy" | "lan" | "khoi" | "finance" | "director" | "head" | "owner";
 const ids = {} as Record<Who | "szm" | "szc" | "video" | "tvc" | "secret" | "other" | "done", string>;
@@ -82,7 +83,7 @@ beforeAll(async () => {
     people[who] = { person, principal: { personId: person.id, workforceType: "employee", grants: grants[who] } };
   }
   // Long leads the video team; Huy and Lan work in it. Khoi is at another entity, on nothing.
-  const video = await createTeam({ key: "VID", name: "Video", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.long);
+  const video = await createTeam({ key: "VID", name: "Video", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
   ids.video = video.id;
   await setTeamMember(video.id, ids.huy, "member");
   await setTeamMember(video.id, ids.lan, "member");

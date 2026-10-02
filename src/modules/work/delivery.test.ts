@@ -35,6 +35,7 @@ import { decideReview, decideStage, listDeliverables, listReviewsWaitingFor, rec
 import { createWorkTask, loadTask, updateWorkTask } from "./tasks";
 import { createTeam, listStates, saveClient, setTeamMember } from "./teams";
 import { viewerOfPerson } from "./viewer";
+import { workflow } from "../../../tests/helpers/workflows";
 
 type Key = "long" | "tam" | "huy" | "bao" | "an" | "khoi";
 const ids = {} as Record<Key | "szm" | "video" | "social" | "project" | "client" | "edit" | "internal" | "clientReview" | "published" | "socialEdit" | "chain", string>;
@@ -53,8 +54,8 @@ beforeAll(async () => {
     ids[key] = row.id;
   }
   // Video: the content workflow, led by Long. Social: a simple workflow with a "Published" state, led by Khôi.
-  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "content", {}, ids.long);
-  const social = await createTeam({ key: "SOC", name: "Social", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "content", { published: "Đã đăng" }, ids.khoi);
+  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("content"), ids.long);
+  const social = await createTeam({ key: "SOC", name: "Social", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("content", { published: "Đã đăng" }), ids.khoi);
   Object.assign(ids, { video: video.id, social: social.id });
   for (const key of ["tam", "huy", "bao"] as const) await setTeamMember(video.id, ids[key], "member");
   await setTeamMember(social.id, ids.huy, "member");

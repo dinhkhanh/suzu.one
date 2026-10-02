@@ -32,6 +32,7 @@ import { createWorkTask, listActivity, listProjectTasks, listTeamBacklog, loadTa
 import { addableMembers, createTeam, findTeam, listStates, saveLabel, setTeamMember, teamFacts } from "./teams";
 import { acceptTriage, declineTriage, listTriage, listTriageForLead, mergeTriage, saveTriageRule, snoozeTriage, wakeSnoozedTriage } from "./triage";
 import { viewerOfPerson } from "./viewer";
+import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "long" | "tam" | "huy" | "duc" | "khoi" | "video" | "social" | "project" | "socialProject" | "form" | "format" | "platform" | "editor" | "videoLabel" | "sharedLabel", string>;
 const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error & { details?: unknown }) => error.message);
@@ -47,8 +48,8 @@ beforeAll(async () => {
     const [row] = await db().insert(schema.person).values({ fullName: key, searchName: key, workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
     ids[key] = row.id;
   }
-  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "content", {}, ids.long);
-  const social = await createTeam({ key: "SOC", name: "Social", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.khoi);
+  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("content"), ids.long);
+  const social = await createTeam({ key: "SOC", name: "Social", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.khoi);
   Object.assign(ids, { video: video.id, social: social.id });
   await setTeamMember(video.id, ids.tam, "member");
   await setTeamMember(video.id, ids.huy, "member");

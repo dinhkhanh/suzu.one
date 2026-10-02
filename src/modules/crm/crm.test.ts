@@ -41,6 +41,7 @@ import { firstStageOf, listStages } from "./stages";
 import { seedStages } from "./seed";
 import { accountTimeline } from "./timeline";
 import { tiesFrom } from "./viewer";
+import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "seller" | "am" | "lead" | "director" | "finance" | "colleague" | "member" | "team" | "account" | "contact", string>;
 const today = todayInVietnam();
@@ -72,7 +73,7 @@ beforeAll(async () => {
     { key: "tax.vat", validFrom: "2021-01-01", value: { defaultBp: 1000, allowedBp: [0, 800, 1000] }, status: "approved", isVerified: false, legalReference: "test" },
   ]);
   await seedStages(db() as never);
-  const team = await createTeam({ key: "VID", name: "Video", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.lead);
+  const team = await createTeam({ key: "VID", name: "Video", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.lead);
   ids.team = team.id;
   await setTeamMember(team.id, ids.member, "member");
 });

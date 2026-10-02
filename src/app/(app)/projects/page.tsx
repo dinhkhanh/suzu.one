@@ -92,7 +92,7 @@ export default async function PortfolioPage({ searchParams }: PageProps<"/projec
               {row.jobNumber ? <span className="shrink-0 font-mono text-xs text-faint tabular-nums">{row.jobNumber}</span> : null}
             </div>
             <div className="flex flex-wrap gap-1.5">
-              <Badge dot variant={statusTone(row.status)}>{tWork(`projects.status.${row.status as "active"}`)}</Badge>
+              <Badge dot variant={statusTone(row.status)}>{row.statusName ?? tWork(`projects.status.${row.status as "active"}`)}</Badge>
               <Badge variant="outline">{t(`kinds.${row.kind}`)}</Badge>
               {row.briefStatus !== "approved" ? <Badge variant="secondary">{t(`brief.status.${row.briefStatus as "draft"}`)}</Badge> : null}
               {row.health ? <Badge variant={healthVariant(row.health)}>{t(`health.${row.health}`)}</Badge> : null}

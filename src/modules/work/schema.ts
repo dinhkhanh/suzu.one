@@ -40,6 +40,8 @@ export const workTeam = pgTable(
     defaultVisibility: text("default_visibility").notNull().default("team"),
     // One of ACCENT_COLORS: tells the team apart on /work and is the accent of its pages. null = the app's own.
     color: text("color"),
+    // The project statuses its projects use (a set from the library). null = the bare categories.
+    projectStatusSetId: uuid("project_status_set_id").references((): AnyPgColumn => workProjectStatusSet.id),
     // Last task number handed out.
     taskSeq: integer("task_seq").notNull().default(0),
     // Inactive: takes no new projects or tasks, still listed. Archived: put away as well — kept for
@@ -82,6 +84,60 @@ export const workState = pgTable(
     ...timestamps,
   },
   (t) => [index("work_state_team_idx").on(t.teamId, t.sortOrder)],
+).enableRLS();
+
+/** One state of a saved workflow: its name and its category (enums.ts). */
+export type StateSetItem = { name: string; category: string };
+
+// The workflow library (FR-WRK-03): named, ordered sets of task states, kept by people rather than
+// shipped in code. A new team starts from one, a team saves its own for the next. Copied, never
+// linked: the team's `work_state` rows are its own to rename afterwards. No owner = shared.
+export const workStateSet = pgTable(
+  "work_state_set",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    description: text("description"),
+    ownerTeamId: uuid("owner_team_id").references(() => workTeam.id, { onDelete: "cascade" }),
+    states: jsonb("states").$type<StateSetItem[]>().notNull().default([]),
+    isActive: boolean("is_active").notNull().default(true),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [index("work_state_set_owner_idx").on(t.ownerTeamId)],
+).enableRLS();
+
+// Project statuses (FR-PJM): named sets of statuses a team's projects move through, each in one of
+// the fixed categories (PROJECT_STATUSES) the app reasons with — archived hides, done closes.
+// Linked, not copied: a project points at its status, so renaming one renames it everywhere.
+export const workProjectStatusSet = pgTable(
+  "work_project_status_set",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    description: text("description"),
+    ownerTeamId: uuid("owner_team_id").references((): AnyPgColumn => workTeam.id, { onDelete: "cascade" }),
+    isActive: boolean("is_active").notNull().default(true),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [index("work_project_status_set_owner_idx").on(t.ownerTeamId)],
+).enableRLS();
+
+export const workProjectStatus = pgTable(
+  "work_project_status",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    setId: uuid("set_id")
+      .notNull()
+      .references(() => workProjectStatusSet.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    category: text("category").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    ...timestamps,
+  },
+  (t) => [index("work_project_status_set_idx").on(t.setId, t.sortOrder)],
 ).enableRLS();
 
 // A client or one of its brands. Deliberately light: the CRM (Phase 11) promotes these rows to
@@ -129,7 +185,12 @@ export const workProject = pgTable(
     name: text("name").notNull(),
     description: text("description"),
     clientId: uuid("client_id").references(() => workClient.id),
+    // The category of the project's status (PROJECT_STATUSES): what every rule reads. `status_id`
+    // names the status itself, from the team's set. A trigger keeps the two together: writing
+    // `status_id` sets `status` from its category; writing `status` alone (or moving the project to
+    // another team) picks the first active status of that category in the team's set, or none.
     status: text("status").notNull().default("active"),
+    statusId: uuid("status_id").references((): AnyPgColumn => workProjectStatus.id),
     visibility: text("visibility").notNull().default("team"),
     leadPersonId: uuid("lead_person_id").references(() => person.id),
     startDate: date("start_date"),
@@ -142,7 +203,7 @@ export const workProject = pgTable(
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     ...timestamps,
   },
-  (t) => [index("work_project_team_idx").on(t.teamId), index("work_project_client_idx").on(t.clientId)],
+  (t) => [index("work_project_team_idx").on(t.teamId), index("work_project_client_idx").on(t.clientId), index("work_project_status_idx").on(t.statusId)],
 ).enableRLS();
 
 export const workProjectMember = pgTable(

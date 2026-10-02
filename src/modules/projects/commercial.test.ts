@@ -37,6 +37,7 @@ import { listPeriods, retainerConsumption, runRetainers, saveRetainer, sendQuota
 import { createTasksForLine, saveDeliverable, saveMilestone, setMilestoneDone } from "./structure";
 import { summariseRetainers } from "../reports/engine/delivery";
 import { loadRetainerFacts } from "../reports/retainer-source";
+import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "szc" | "long" | "tam" | "lan" | "huy" | "ke" | "keC" | "cfo" | "team" | "teamC" | "retainer" | "tvc" | "other", string>;
 const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
@@ -71,7 +72,7 @@ beforeAll(async () => {
     { personId: ids.keC, role: "finance", scopeType: "entity", scopeId: szc.id, validFrom: "2024-01-01" },
     { personId: ids.cfo, role: "finance", scopeType: "group", scopeId: null, validFrom: "2024-01-01" },
   ]);
-  const team = await createTeam({ key: "SOC", name: "Social", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.long);
+  const team = await createTeam({ key: "SOC", name: "Social", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
   ids.team = team.id;
   for (const personId of [ids.tam, ids.huy, ids.lan]) await setTeamMember(team.id, personId, "member");
   done = (await listStates([team.id])).find((state) => state.category === "done")!.id;
@@ -83,7 +84,7 @@ beforeAll(async () => {
   await db().update(schema.workProject).set({ clientId: client.id }).where(eq(schema.workProject.id, ids.tvc));
   expect(await seedAcceptanceTemplate(db() as never)).toEqual({ seeded: 1 });
   expect(await seedAcceptanceTemplate(db() as never)).toEqual({ seeded: 0 });
-  const teamC = await createTeam({ key: "CRE", name: "Creative", description: null, entityId: szc.id, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.long);
+  const teamC = await createTeam({ key: "CRE", name: "Creative", description: null, entityId: szc.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.long);
   ids.teamC = teamC.id;
   ids.other = (await createProject({ teamId: teamC.id, name: "Creative job", description: null, clientId: null, status: "active", visibility: "team", leadPersonId: ids.long, startDate: null, dueDate: null }, ids.long)).id;
 });

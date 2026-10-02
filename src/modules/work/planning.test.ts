@@ -29,6 +29,7 @@ import { addDependency, createWorkTask, listActivity, listProjectTasks, loadTask
 import { createTeam, listStates, setTeamMember, teamFacts } from "./teams";
 import { addWorkTemplateItem, applyTemplate, createProjectFromTemplate, listWorkTemplates, saveWorkTemplate } from "./templates";
 import { viewerOfPerson } from "./viewer";
+import { workflow } from "../../../tests/helpers/workflows";
 
 const ids = {} as Record<"szm" | "long" | "tam" | "huy" | "khoi" | "video" | "project" | "task", string>;
 const fails = (promise: Promise<unknown>) => promise.then(() => "no error", (error: Error) => error.message);
@@ -43,7 +44,7 @@ beforeAll(async () => {
     const [row] = await db().insert(schema.person).values({ fullName: name, searchName: name.toLowerCase(), workEmail: `${key}@suzu.group`, status: "active", primaryEntityId: szm.id }).returning();
     ids[key] = row.id;
   }
-  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "content", {}, ids.long);
+  const video = await createTeam({ key: "VID", name: "Video Production", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("content"), ids.long);
   ids.video = video.id;
   for (const personId of [ids.tam, ids.huy]) await setTeamMember(video.id, personId, "member");
   ids.project = (await createProject({ teamId: video.id, name: "TVC Tet", description: null, clientId: null, status: "active", visibility: "team", leadPersonId: ids.tam, startDate: null, dueDate: null }, ids.long)).id;

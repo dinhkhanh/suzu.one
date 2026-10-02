@@ -5,13 +5,17 @@
 import { and, eq, inArray } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
 import { orgUnit, entity, person, task, workActivity, workComment, workClient, workLabel, workProject, workProjectMember, workState, workTask, workTaskDependency, workTaskLabel, workTaskPerson, workTeam, workTeamMember } from "../src/lib/db/schema";
-import { CATEGORY_STATUS, type StateCategory, WORKFLOW_PRESETS } from "../src/modules/work/enums";
+import { CATEGORY_STATUS, type StateCategory } from "../src/modules/work/enums";
 
 type Db = ReturnType<typeof drizzle>;
 
 const addDays = (date: string, days: number) => new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
 // The content workflow, named as a Vietnamese team would name it.
+// The demo teams' content workflow (the app ships none: teams make theirs in the library).
+const CONTENT_WORKFLOW: { key: string; category: StateCategory }[] = (
+  [["backlog", "backlog"], ["brief", "todo"], ["ideation", "in_progress"], ["script", "in_progress"], ["design", "in_progress"], ["edit", "in_progress"], ["internal_review", "in_review"], ["client_review", "in_review"], ["scheduled", "in_progress"], ["published", "done"], ["reported", "done"], ["cancelled", "cancelled"]] as const
+).map(([key, category]) => ({ key, category }));
 const STATE_NAMES: Record<string, string> = { backlog: "Tồn đọng", brief: "Brief", ideation: "Lên ý tưởng", script: "Kịch bản / Nội dung", design: "Thiết kế / Quay", edit: "Dựng / Chỉnh sửa", internal_review: "Duyệt nội bộ", client_review: "Khách duyệt", scheduled: "Đã lên lịch", published: "Đã đăng", reported: "Đã báo cáo", cancelled: "Đã hủy" };
 
 const TEAMS = [
@@ -168,8 +172,8 @@ export async function seedWork(db: Db, today: string): Promise<string> {
       const [row] = await tx.insert(workTeam).values({ key: team.key, name: team.name, description: team.description, entityId: entities.get(team.entity) ?? null, departmentId: team.department ? (departments.get(team.department) ?? null) : null, defaultVisibility: "team" }).returning();
       teamIds.set(team.key, row.id);
       teamEntity.set(team.key, row.entityId);
-      const created = await tx.insert(workState).values(WORKFLOW_PRESETS.content.map((state, index) => ({ teamId: row.id, name: STATE_NAMES[state.key], category: state.category, sortOrder: (index + 1) * 10 }))).returning();
-      WORKFLOW_PRESETS.content.forEach((state, index) => states.set(`${team.key}:${state.key}`, { id: created[index].id, category: state.category }));
+      const created = await tx.insert(workState).values(CONTENT_WORKFLOW.map((state, index) => ({ teamId: row.id, name: STATE_NAMES[state.key], category: state.category, sortOrder: (index + 1) * 10 }))).returning();
+      CONTENT_WORKFLOW.forEach((state, index) => states.set(`${team.key}:${state.key}`, { id: created[index].id, category: state.category }));
       await tx.insert(workTeamMember).values([{ teamId: row.id, personId: personId(team.lead), role: "lead" }, ...team.members.map((member) => ({ teamId: row.id, personId: personId(member), role: "member" }))]);
     }
 

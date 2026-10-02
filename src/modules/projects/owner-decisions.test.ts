@@ -50,6 +50,7 @@ import { listPortfolio } from "./portfolio";
 import { getRetainer, listPeriods, runRetainers, saveRetainer } from "./retainers";
 import { saveDeliverable, saveMilestone, setMilestoneDone } from "./structure";
 import { auditPrivateTaskRead, openProject } from "./views";
+import { workflow } from "../../../tests/helpers/workflows";
 
 type Who = "lead" | "am" | "member" | "colleague" | "hr" | "payroll" | "auditor" | "director" | "teamLead";
 const ids = {} as Record<Who | "szm" | "team" | "client" | "tvc" | "retainer" | "secret", string>;
@@ -85,7 +86,7 @@ beforeAll(async () => {
   for (const [who, grants] of Object.entries(GRANTS) as [Who, () => Grant[]][]) {
     for (const grant of grants()) await db().insert(schema.roleAssignment).values({ personId: ids[who], role: grant.role, scopeType: grant.scope.type, scopeId: grant.scope.type === "group" ? null : grant.scope.id, validFrom: "2024-01-01" });
   }
-  const team = await createTeam({ key: "VID", name: "Video", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, "simple", {}, ids.teamLead);
+  const team = await createTeam({ key: "VID", name: "Video", description: null, entityId: szm.id, departmentId: null, defaultVisibility: "team", isActive: true }, workflow("simple"), ids.teamLead);
   ids.team = team.id;
   for (const who of ["lead", "am", "member"] as const) await setTeamMember(team.id, ids[who], "member");
   const [client] = await db().insert(schema.workClient).values({ code: "BIBO", name: "Công ty Bibo", entityId: szm.id }).returning();

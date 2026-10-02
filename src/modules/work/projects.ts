@@ -7,8 +7,9 @@ import { ActionError } from "@/lib/action";
 import { db, schema, type Tx } from "@/lib/db";
 import { invalidateWorkDirectory, projectsWithTeams, workDirectory } from "./directory";
 import { invalidateMemberships } from "./viewer";
-import type { ProjectRole, ProjectStatus, Visibility } from "./enums";
+import type { ProjectRole, Visibility } from "./enums";
 import { canContributeToProject, canContributeToTeam, canCreateProject, canViewProject, type ProjectFacts, type WorkViewer } from "./policy";
+import { resolveProjectStatus } from "./status-sets";
 import { teamFacts, type TeamRow } from "./teams";
 
 type Executor = Tx | ReturnType<typeof db>;
@@ -80,7 +81,8 @@ export type ProjectInput = {
   name: string;
   description: string | null;
   clientId: string | null;
-  status: ProjectStatus;
+  /** A category (PROJECT_STATUSES), or the id of a status in the team's set. */
+  status: string;
   visibility: Visibility;
   leadPersonId: string | null;
   startDate: string | null;
@@ -114,7 +116,8 @@ export async function createProjectIn(tx: Executor, input: ProjectInput, actorPe
     if (!team || !team.isActive) throw new ActionError("team_not_found");
     await checkProjectInput(tx, input);
     const leadPersonId = input.leadPersonId ?? actorPersonId;
-    const [project] = await tx.insert(schema.workProject).values({ ...input, leadPersonId, entityId: team.entityId, createdByPersonId: actorPersonId }).returning();
+    const status = await resolveProjectStatus(tx, team.id, input.status);
+    const [project] = await tx.insert(schema.workProject).values({ ...input, ...status, leadPersonId, entityId: team.entityId, createdByPersonId: actorPersonId }).returning();
     const members = new Map<string, ProjectRole>([[actorPersonId, "member"], [leadPersonId, "lead"]]);
     await tx.insert(schema.workProjectMember).values([...members].map(([personId, role]) => ({ projectId: project.id, personId, role })));
     await invalidateMemberships(...members.keys());
@@ -128,7 +131,9 @@ export async function updateProject(projectId: string, input: Omit<ProjectInput,
     const found = await findProject(projectId, tx);
     if (!found) throw new ActionError("project_not_found");
     await checkProjectInput(tx, { ...input, teamId: found.project.teamId });
-    const [after] = await tx.update(schema.workProject).set({ ...input, updatedAt: new Date() }).where(eq(schema.workProject.id, projectId)).returning();
+    // The status as posted: unchanged keeps the project's own, even one its set has since retired.
+    const status = input.status === found.project.statusId ? { status: found.project.status, statusId: found.project.statusId } : await resolveProjectStatus(tx, found.project.teamId, input.status, found.project.statusId);
+    const [after] = await tx.update(schema.workProject).set({ ...input, ...status, updatedAt: new Date() }).where(eq(schema.workProject.id, projectId)).returning();
     if (input.leadPersonId && input.leadPersonId !== found.project.leadPersonId) {
       await tx.insert(schema.workProjectMember).values({ projectId, personId: input.leadPersonId, role: "lead" }).onConflictDoUpdate({ target: [schema.workProjectMember.projectId, schema.workProjectMember.personId], set: { role: "lead" } });
       await invalidateMemberships(input.leadPersonId);
