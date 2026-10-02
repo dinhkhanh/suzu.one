@@ -307,7 +307,7 @@ export function AppFrame({ labels, sections, tabs, quickAdd, unread, pins: store
             </button>
           </div>
 
-          <nav className={cn("flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-2.5 pt-1 pb-3", collapsed && "md:px-2")}>
+          <nav className={cn("relative flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-2.5 pt-1 pb-3", collapsed && "md:px-2")}>
             {pinnedRows.length > 0 ? (
               <div className="flex flex-col gap-px">
                 {collapsed ? null : <p className="nav-section mt-1">{labels.pinned}</p>}
@@ -370,7 +370,8 @@ export function AppFrame({ labels, sections, tabs, quickAdd, unread, pins: store
             </div>
           </header>
 
-          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 pt-5 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] md:px-8 md:py-7 md:pb-12">{children}</main>
+          {/* `relative`: the hidden inputs Base UI puts beside its checkboxes and selects are absolutely placed, and would otherwise hang off the document and scroll the whole window. */}
+          <main className="relative min-h-0 min-w-0 flex-1 overflow-y-auto px-4 pt-5 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] md:px-8 md:py-7 md:pb-12">{children}</main>
         </div>
       </div>
 
