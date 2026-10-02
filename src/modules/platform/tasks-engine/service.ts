@@ -50,7 +50,7 @@ async function tellAssignees(executor: Executor, tasks: TaskRow[], actorId: stri
   // One notice per person per batch: a twelve-step checklist is one event, not twelve.
   const byAssignee = Map.groupBy(tasks.filter((task) => task.assigneePersonId && task.assigneePersonId !== actorId), (task) => task.assigneePersonId!);
   for (const [assigneeId, own] of byAssignee) {
-    await notify({ recipients: [assigneeId], kind: "tasks.assigned", params: { count: own.length, title: own[0].title }, link: "/tasks" }, executor);
+    await notify({ recipients: [assigneeId], kind: "tasks.assigned", params: { count: own.length, title: own[0].title }, link: "/today?view=work" }, executor);
   }
 }
 

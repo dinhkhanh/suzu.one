@@ -32,7 +32,6 @@ function refresh(clientId?: string | null) {
   if (clientId) revalidatePath(`/crm/accounts/${clientId}`);
   revalidatePath("/work/clients");
   revalidatePath("/today");
-  revalidatePath("/tasks");
 }
 
 const profileFields = {

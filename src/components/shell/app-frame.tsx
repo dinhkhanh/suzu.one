@@ -41,7 +41,7 @@ export type NavSection = {
 };
 
 /** The phone's tab bar: four stops with a page each, and "More", which opens the full menu. */
-export type TabStop = { key: "today" | "work" | "inbox" | "me"; href: string; label: string; count?: number };
+export type TabStop = { key: "today" | "work" | "notifications" | "me"; href: string; label: string; count?: number };
 
 export type FrameLabels = {
   workspace: string;
@@ -168,7 +168,7 @@ function SectionHeading({ label, open, count, current }: { label: string; open: 
   );
 }
 
-const TAB_ICON: Record<TabStop["key"], string> = { today: "today", work: "work", inbox: "tasks", me: "me" };
+const TAB_ICON: Record<TabStop["key"], string> = { today: "today", work: "work", notifications: "notifications", me: "me" };
 
 /**
  * The workspace shell: a tinted sidebar of 28px icon rows beside the white page on a desk, folding
@@ -363,7 +363,8 @@ export function AppFrame({ labels, sections, tabs, quickAdd, unread, pins: store
             ) : null}
             <div className="ml-auto flex shrink-0 items-center gap-1">
               {headerEnd}
-              <Link href="/notifications" aria-label={labels.notifications} className="press relative flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
+              {/* On a phone the bell is a stop of the tab bar. */}
+              <Link href="/notifications" aria-label={labels.notifications} className="press relative hidden size-8 md:flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
                 <Bell className="size-[1.125rem]" aria-hidden />
                 {unread > 0 ? <span aria-hidden className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary ring-2 ring-background" /> : null}
               </Link>

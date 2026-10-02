@@ -133,7 +133,7 @@ export default async function WorkPage() {
       <PageHeader title={t("title")} description={t("description")} />
       <nav className="tab-row" aria-label={t("title")}>
         <Link href="/work" aria-current="page">{t("projects.title")}</Link>
-        <Link href="/tasks">{t("myWork")}</Link>
+        <Link href="/today?view=work">{t("myWork")}</Link>
         <Link href="/work/calendar">{t("calendar.title")}</Link>
         <Link href="/work/leader">{t("leader.title")}</Link>
         {canSeeWorkload ? <Link href="/work/workload">{t("workload.title")}</Link> : null}

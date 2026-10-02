@@ -27,7 +27,7 @@ const managesPerson = async (user: { principal: Parameters<typeof can>[0] }, per
 function refresh(personId: string) {
   revalidatePath("/people");
   revalidatePath(`/people/${personId}`);
-  revalidatePath("/tasks");
+  revalidatePath("/today");
   revalidatePath("/reports/headcount");
 }
 

@@ -11,7 +11,7 @@ const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blan
 const checkbox = z.preprocess((value) => value === "on" || value === true, z.boolean());
 
 function refresh(task: { subjectPersonId: string | null }) {
-  revalidatePath("/tasks");
+  revalidatePath("/today");
   if (task.subjectPersonId) revalidatePath(`/people/${task.subjectPersonId}`);
 }
 const auditResource = (task: { id: string; kind: string; entityId: string | null }) => ({ type: `task:${task.kind}`, id: task.id, entityId: task.entityId });

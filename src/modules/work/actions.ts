@@ -304,7 +304,7 @@ function refreshTask(task: { id: string; parentTaskId?: string | null }, project
   revalidatePath(`/work/tasks/${task.id}`);
   if (task.parentTaskId) revalidatePath(`/work/tasks/${task.parentTaskId}`);
   if (projectId) revalidatePath(`/work/projects/${projectId}`);
-  revalidatePath("/tasks");
+  revalidatePath("/today");
 }
 
 const createTaskPipeline = createAction({

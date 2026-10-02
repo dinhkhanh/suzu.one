@@ -32,7 +32,6 @@ const auditTask = (loaded: LoadedTask) => ({ type: "task:work", id: loaded.task.
 function refreshTask(taskId: string, projectId?: string | null) {
   revalidatePath(`/work/tasks/${taskId}`);
   if (projectId) revalidatePath(`/work/projects/${projectId}`);
-  revalidatePath("/tasks");
   revalidatePath("/today");
 }
 

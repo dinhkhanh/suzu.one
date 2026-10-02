@@ -101,8 +101,8 @@ export type NavGroupKey = "today" | "me" | "work" | "manage" | "company" | "pref
  * holds every entry to a section, so a new one cannot quietly land in the fallback.
  */
 export const NAV_GROUPS: readonly { key: NavGroupKey; keys: readonly string[] }[] = [
-  // What waits for the person today: the landing page and the three inboxes with their counts.
-  { key: "today", keys: ["today", "tasks", "approvals", "notifications"] },
+  // What waits for the person today: the landing page (My work under its tabs) and the inboxes with their counts.
+  { key: "today", keys: ["today", "approvals", "notifications"] },
   // One's own matters: the profile, the clock, time off, requests, pay, goals, one's equipment.
   { key: "me", keys: ["me", "checkIn", "attendance", "leave", "requests", "payslips", "performance", "assets"] },
   // The work itself, as somebody doing it.

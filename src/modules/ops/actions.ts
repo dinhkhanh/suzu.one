@@ -21,7 +21,7 @@ const auditInstance = (taskId: string, entityId: string) => ({ type: "task:oblig
 function refresh(taskId: string) {
   revalidatePath("/ops");
   revalidatePath(`/ops/obligations/${taskId}`);
-  revalidatePath("/tasks");
+  revalidatePath("/today");
 }
 
 // ── The library ─────────────────────────────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ const syncPipeline = createAction({
   run: async ({ user }) => {
     const result = await generateInstances(todayInVietnam(), { actorId: user.person.id });
     revalidatePath("/ops");
-    revalidatePath("/tasks");
+    revalidatePath("/today");
     return { data: result, audit: { resource: { type: "obligation_instance" }, summary: JSON.stringify(result), after: result } };
   },
 });

@@ -29,7 +29,7 @@ export default async function ExitHandoverPage({ params }: PageProps<"/work/hand
     <Page width="narrow">
       <PageHeader
         eyebrow={
-          <Link href="/tasks" className="hover:underline">
+          <Link href="/today?view=handoffs" className="hover:underline">
             {t("myWork")}
           </Link>
         }

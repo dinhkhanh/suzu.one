@@ -28,7 +28,6 @@ const noteInput = z.object({ context: text(4000), state: text(4000), done: text(
 function refreshTask(taskId: string, projectId?: string | null) {
   revalidatePath(`/work/tasks/${taskId}`);
   if (projectId) revalidatePath(`/work/projects/${projectId}`);
-  revalidatePath("/tasks");
   revalidatePath("/today");
 }
 
@@ -242,7 +241,7 @@ const submitCoverPipeline = createAction({
     const { planId, ...choice } = input;
     const { plan, covers, applied } = await submitCoverPlan(planId, choice, actorOf(user), todayInVietnam());
     revalidatePath(`/work/cover/${planId}`);
-    revalidatePath("/tasks");
+    revalidatePath("/today");
     return { data: { id: plan.id, covers: covers.length, applied }, audit: { resource: { type: "work_cover_plan", id: plan.id }, summary: `cover plan submitted: ${covers.length} covers${applied ? ", applied" : ""}`, after: { ...choice, covers } } };
   },
 });
@@ -260,7 +259,7 @@ const acknowledgePipeline = createAction({
   run: async ({ user, input }) => {
     const count = await acknowledgeCover(input.planId, actorOf(user));
     revalidatePath(`/work/cover/${input.planId}`);
-    revalidatePath("/tasks");
+    revalidatePath("/today");
     return { data: { acknowledged: count }, audit: { resource: { type: "work_cover_plan", id: input.planId }, summary: `acknowledged ${count} items` } };
   },
 });
@@ -281,7 +280,7 @@ const handBackPipeline = createAction({
     const whole = !!found && canSubmitCoverPlan(await loadViewer(user), found.facts);
     const { returned, covers } = await handBackCover(input.planId, actorOf(user), todayInVietnam(), { whole });
     revalidatePath(`/work/cover/${input.planId}`);
-    revalidatePath("/tasks");
+    revalidatePath("/today");
     return { data: { returned }, audit: { resource: { type: "work_cover_plan", id: input.planId }, summary: `handed back ${returned} items`, after: { covers } } };
   },
 });
@@ -296,7 +295,7 @@ const checkCoverPipeline = createAction({
   authorize: (user) => !!user.person.id,
   run: async ({ user }) => {
     const result = await syncCoverPlans(todayInVietnam(), { personId: user.person.id });
-    revalidatePath("/tasks");
+    revalidatePath("/today");
     return { data: result, audit: { resource: { type: "work_cover_plan", id: user.person.id }, summary: `drafted ${result.drafted}, cancelled ${result.cancelled}` } };
   },
 });
@@ -320,7 +319,7 @@ const reassignPipeline = createAction({
     const { handoverId, ...rest } = input;
     const result = await reassignOwnership(handoverId, rest, actorOf(user), await loadViewer(user));
     revalidatePath(`/work/handover/${handoverId}`);
-    revalidatePath("/tasks");
+    revalidatePath("/today");
     revalidatePath("/work", "layout");
     return { data: { moved: result.moved.length, remaining: result.remaining }, audit: { resource: { type: "work_exit_handover", id: handoverId }, summary: `${result.moved.length} items → ${input.toPersonId}, ${result.remaining} left`, after: { toPersonId: input.toPersonId, moved: result.moved, note: input.note } } };
   },
@@ -336,7 +335,7 @@ const completeHandoverPipeline = createAction({
   run: async ({ user, input }) => {
     const after = await completeExitHandover(input.handoverId, user.person.id);
     revalidatePath(`/work/handover/${input.handoverId}`);
-    revalidatePath("/tasks");
+    revalidatePath("/today");
     revalidatePath(`/people/${after.personId}`);
     return { data: { id: after.id }, audit: { resource: { type: "work_exit_handover", id: after.id }, summary: "work handover done", after: { status: after.status } } };
   },

@@ -64,7 +64,7 @@ const submitPipeline = createAction({
   run: async ({ user, input }) => {
     const submission = await submitIntake(input.formId, { title: input.title, answers: input.answers }, { personId: user.person.id, fullName: user.person.fullName });
     revalidatePath("/work/intake");
-    revalidatePath("/tasks");
+    revalidatePath("/today");
     // The answers are in the task; the audit log records that a request was made, not its words.
     return { data: submission, audit: { resource: { type: "task:work", id: submission.taskId }, summary: `${submission.key} via intake form`, after: { formId: input.formId, taskId: submission.taskId } } };
   },

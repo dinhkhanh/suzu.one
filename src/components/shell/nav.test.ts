@@ -58,7 +58,7 @@ describe("feedback", () => {
 
 describe("sidebar sections", () => {
   const everything = navFor(principal([{ role: "owner", scope: group }]), { people: true, recruit: true, interviews: true });
-  const offered = [{ key: "today" }, { key: "tasks" }, { key: "approvals" }, { key: "notifications" }, { key: "notificationSettings" }, ...everything.main, ...everything.admin];
+  const offered = [{ key: "today" }, { key: "approvals" }, { key: "notifications" }, { key: "notificationSettings" }, ...everything.main, ...everything.admin];
 
   it("names a section for every entry the sidebar can offer", () => {
     const named = new Set(NAV_GROUPS.flatMap((section) => section.keys));
@@ -68,7 +68,7 @@ describe("sidebar sections", () => {
   it("places every entry once, in its section's order, and drops empty sections", () => {
     const grouped = groupNav(offered);
     expect(grouped.flatMap((section) => section.items)).toHaveLength(new Set(offered.map((item) => item.key)).size);
-    expect(grouped[0]).toEqual({ key: "today", items: [{ key: "today" }, { key: "tasks" }, { key: "approvals" }, { key: "notifications" }] });
+    expect(grouped[0]).toEqual({ key: "today", items: [{ key: "today" }, { key: "approvals" }, { key: "notifications" }] });
     expect(groupNav([{ key: "kb" }, { key: "home" }])).toEqual([{ key: "company", items: [{ key: "home" }, { key: "kb" }] }]);
   });
 

@@ -40,7 +40,7 @@
     "tabs": {
       "today": "Today",
       "work": "Work",
-      "inbox": "Inbox",
+      "notifications": "Alerts",
       "me": "Me",
       "more": "More"
     },
@@ -1930,7 +1930,7 @@
     "recentlyDone": "Recently done",
     "views": {
       "label": "Show",
-      "all": "All",
+      "today": "Today",
       "work": "Work",
       "reviews": "To review",
       "approvals": "Approvals",
@@ -12350,7 +12350,7 @@
       },
       "tasks": {
         "title": "My work",
-        "body": "Everything that needs you is in one inbox: tasks assigned to you, deliverables to review, requests to approve and hand-offs to accept. The number in the sidebar tells you how many are left.",
+        "body": "Everything that needs you is under the tabs of Today: tasks assigned to you, deliverables to review, requests to approve and hand-offs to accept. The number beside Today tells you how many are left.",
         "tip": "My notifications tells you when new work arrives or one of your requests is decided."
       },
       "daily": {

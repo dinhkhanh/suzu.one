@@ -13,7 +13,7 @@ const optional = <Schema extends z.ZodType>(schema: Schema) => z.preprocess(blan
 function refresh(taskId: string, projectId: string | null) {
   revalidatePath(`/work/tasks/${taskId}`);
   if (projectId) revalidatePath(`/work/projects/${projectId}`);
-  revalidatePath("/tasks");
+  revalidatePath("/today");
 }
 
 const submitPipeline = createAction({

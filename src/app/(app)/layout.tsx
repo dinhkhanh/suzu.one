@@ -38,20 +38,19 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const label = (key: string) => t(`nav.${key}`);
   // What waits for this person: the sidebar's first section.
   const today: NavRow[] = [
-    // The day starts here (FR-PJM-20): the landing page after sign-in.
-    { key: "today", href: "/today", label: label("today") },
-    { key: "tasks", href: "/tasks", label: label("tasks"), count: tasks },
+    // The day starts here (FR-PJM-20): the landing page after sign-in, and My work under its tabs.
+    { key: "today", href: "/today", label: label("today"), count: tasks },
     { key: "approvals", href: "/approvals", label: label("approvals"), count: waiting },
     { key: "notifications", href: "/notifications", label: label("notifications"), count: unread },
   ];
   const row = (item: { key: string; href?: string }): NavRow => ({ key: item.key, href: item.href, label: label(item.key) });
   // Today's inboxes, the modules, the preferences and the admin desk, sorted into the sidebar's
   // folds (nav.ts). The language and the theme are switched in place, under the preference rows.
-  // The phone's tab bar: the day, the work, what waits for me, and me. "More" opens the rest.
+  // The phone's tab bar: the day and what waits for me, the work, the news, and me. "More" opens the rest.
   const tabs: TabStop[] = [
-    { key: "today", href: "/today", label: t("nav.tabs.today") },
+    { key: "today", href: "/today", label: t("nav.tabs.today"), count: tasks },
     { key: "work", href: "/work", label: t("nav.tabs.work") },
-    { key: "inbox", href: "/tasks", label: t("nav.tabs.inbox"), count: tasks },
+    { key: "notifications", href: "/notifications", label: t("nav.tabs.notifications"), count: unread },
     { key: "me", href: "/me", label: t("nav.tabs.me") },
   ];
   const quickAdd = { title: t("nav.quickAdd.title"), button: t("nav.quickAdd.button"), task: t("nav.quickAdd.task"), taskHint: t("nav.quickAdd.taskHint"), time: t("nav.quickAdd.time"), timeHint: t("nav.quickAdd.timeHint"), leave: t("nav.quickAdd.leave"), leaveHint: t("nav.quickAdd.leaveHint"), request: t("nav.quickAdd.request"), requestHint: t("nav.quickAdd.requestHint"), cancel: t("nav.quickAdd.cancel") };
@@ -109,7 +108,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       </AppFrame>
       <CommandPalette
         selfId={user.person.id}
-        pages={[{ key: "today", href: "/today" }, ...nav.main, { key: "tasks", href: "/tasks" }, { key: "approvals", href: "/approvals" }, { key: "notifications", href: "/notifications" }, ...nav.admin].flatMap((item) => (item.href ? [{ label: label(item.key), href: item.href }] : []))}
+        pages={[{ key: "today", href: "/today" }, ...nav.main, { key: "approvals", href: "/approvals" }, { key: "notifications", href: "/notifications" }, ...nav.admin].flatMap((item) => (item.href ? [{ label: label(item.key), href: item.href }] : []))}
       />
       {welcome ? <WelcomeGuide steps={welcome} name={user.person.fullName.split(" ").at(-1) ?? user.person.fullName} /> : null}
     </>

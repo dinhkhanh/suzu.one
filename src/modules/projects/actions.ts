@@ -370,7 +370,7 @@ const lineTasksPipeline = createAction({
   run: async ({ user, input }) => {
     const { line, taskIds } = await createTasksForLine(input.deliverableId, { count: input.count, assigneePersonId: input.assigneePersonId, dueDate: input.dueDate }, user.person.id);
     refresh(line.projectId);
-    revalidatePath("/tasks");
+    revalidatePath("/today");
     return { data: { tasks: taskIds.length }, audit: { resource: auditProject(line.projectId), summary: `${taskIds.length} tasks for ${line.title}`, after: { deliverableId: line.id, taskIds } } };
   },
 });

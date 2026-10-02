@@ -86,7 +86,7 @@ const assignAssetPipeline = createAction({
     const assignment = await assignAsset(input, user.person.id);
     const asset = await findAsset(input.assetId);
     refresh(input.assetId);
-    revalidatePath("/tasks");
+    revalidatePath("/today");
     return { data: { assignmentId: assignment.id }, audit: { resource: { type: "asset", id: input.assetId, entityId: asset?.entityId ?? null }, summary: asset?.code ?? input.assetId, after: { holderType: input.holderType, holderId: input.holderId } } };
   },
 });
@@ -118,7 +118,7 @@ const returnAssetPipeline = createAction({
     const found = await findAssignment(input.assignmentId);
     await returnAsset(input, user.person.id);
     refresh(found?.asset.id);
-    revalidatePath("/tasks");
+    revalidatePath("/today");
     return { data: { ok: true }, audit: { resource: { type: "asset_assignment", id: input.assignmentId, entityId: found?.asset.entityId ?? null }, summary: found?.asset.code ?? input.assignmentId, after: { conditionIn: input.conditionIn } } };
   },
 });

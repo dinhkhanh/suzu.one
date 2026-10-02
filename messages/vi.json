@@ -40,7 +40,7 @@
     "tabs": {
       "today": "Hôm nay",
       "work": "Công việc",
-      "inbox": "Hộp thư",
+      "notifications": "Thông báo",
       "me": "Tôi",
       "more": "Thêm"
     },
@@ -1930,7 +1930,7 @@
     "recentlyDone": "Hoàn thành gần đây",
     "views": {
       "label": "Hiển thị",
-      "all": "Tất cả",
+      "today": "Hôm nay",
       "work": "Công việc",
       "reviews": "Cần duyệt",
       "approvals": "Phê duyệt",
@@ -12350,7 +12350,7 @@
       },
       "tasks": {
         "title": "Việc của tôi",
-        "body": "Mọi thứ cần bạn xử lý nằm trong một hộp: việc được giao, sản phẩm chờ bạn duyệt, đề nghị chờ phê duyệt và việc được bàn giao. Con số trên thanh bên cho biết còn bao nhiêu việc.",
+        "body": "Mọi thứ cần bạn xử lý nằm dưới các thẻ của trang Hôm nay: việc được giao, sản phẩm chờ bạn duyệt, đề nghị chờ phê duyệt và việc được bàn giao. Con số cạnh Hôm nay cho biết còn bao nhiêu việc.",
         "tip": "Mục Thông báo của tôi báo cho bạn khi có việc mới hoặc khi đơn của bạn được xử lý."
       },
       "daily": {

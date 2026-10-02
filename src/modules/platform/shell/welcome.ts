@@ -7,14 +7,16 @@ export const WELCOME_LATER_COOKIE = "suzu_welcome_later";
 export type WelcomeStepKey = "welcome" | "today" | "checkIn" | "me" | "leave" | "tasks" | "daily" | "payslips" | "kb" | "finish";
 export type WelcomeStep = { key: WelcomeStepKey; href?: string };
 
-// Each page step names the navigation entry it points at: a step whose entry this person does not
-// have (a collaborator without payslips, say) is left out rather than linking to a refusal.
-const PAGE_STEPS: { key: WelcomeStepKey; nav: string }[] = [
+// Each page step names the navigation entry it points at, and the tab of that page when it has one:
+// a step whose entry this person does not have (a collaborator without payslips, say) is left out
+// rather than linking to a refusal.
+const PAGE_STEPS: { key: WelcomeStepKey; nav: string; query?: string }[] = [
   { key: "today", nav: "today" },
   { key: "checkIn", nav: "checkIn" },
   { key: "me", nav: "me" },
   { key: "leave", nav: "leave" },
-  { key: "tasks", nav: "tasks" },
+  // My work is the Today page's tabs.
+  { key: "tasks", nav: "today", query: "?view=work" },
   { key: "daily", nav: "daily" },
   { key: "payslips", nav: "payslips" },
   { key: "kb", nav: "kb" },
@@ -22,9 +24,9 @@ const PAGE_STEPS: { key: WelcomeStepKey; nav: string }[] = [
 
 /** The steps for someone whose navigation holds `nav` (entry key → href), opening and closing steps included. */
 export function welcomeSteps(nav: ReadonlyMap<string, string>): WelcomeStep[] {
-  const pages = PAGE_STEPS.flatMap(({ key, nav: entry }) => {
+  const pages = PAGE_STEPS.flatMap(({ key, nav: entry, query = "" }) => {
     const href = nav.get(entry);
-    return href ? [{ key, href }] : [];
+    return href ? [{ key, href: `${href}${query}` }] : [];
   });
   return [{ key: "welcome" }, ...pages, { key: "finish" }];
 }

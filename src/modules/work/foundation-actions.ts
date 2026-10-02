@@ -30,7 +30,7 @@ function refreshTask(taskId: string, projectId: string | null, teamId?: string) 
   revalidatePath(`/work/tasks/${taskId}`);
   if (projectId) revalidatePath(`/work/projects/${projectId}`);
   if (teamId) revalidatePath(`/work/teams/${teamId}`);
-  revalidatePath("/tasks");
+  revalidatePath("/today");
 }
 
 // ── Custom fields (FR-PJM-35) ───────────────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ const bulkPipeline = createAction({
     const outcome = await bulkEditTasks(await loadViewer(user), taskIds, patch, user.person.id);
     for (const task of outcome.updated) revalidatePath(`/work/tasks/${task.id}`);
     revalidatePath("/work", "layout");
-    revalidatePath("/tasks");
+    revalidatePath("/today");
     const summary = `${outcome.updated.length} updated, ${outcome.refused.length} refused`;
     return {
       data: { updated: outcome.updated.map(({ id, key }) => ({ id, key })), refused: outcome.refused },

@@ -91,7 +91,7 @@ const addActionPipeline = createAction({
   run: async ({ user, input }) => {
     const created = await addOneOnOneAction(input, user.person.id);
     refresh(input.meetingId);
-    revalidatePath("/tasks");
+    revalidatePath("/today");
     return { data: { id: created.id, taskId: created.taskId }, audit: { resource: { type: "one_on_one_action", id: created.id, entityId: null }, summary: created.title, after: { taskId: created.taskId, assigneePersonId: created.assigneePersonId, dueOn: created.dueOn } } };
   },
 });
@@ -114,7 +114,7 @@ const completeActionPipeline = createAction({
   run: async ({ user, input }) => {
     const row = await completeOneOnOneAction(input.actionId, user.person.id);
     refresh(row.meetingId);
-    revalidatePath("/tasks");
+    revalidatePath("/today");
     return { data: { id: row.id }, audit: { resource: { type: "one_on_one_action", id: row.id, entityId: null }, summary: row.title, after: { taskId: row.taskId, done: true } } };
   },
 });
@@ -149,7 +149,7 @@ const raisePipeline = createAction({
     if (salary && (!salary.validFrom || salary.baseSalary <= 0)) throw new ActionError("salary_terms_required");
     const created = await raiseOutcome({ resultId: input.resultId, type: input.type, note: input.note, salary }, user.person.id);
     revalidatePath("/performance/results");
-    revalidatePath("/tasks");
+    revalidatePath("/today");
     // The type and the ids; the proposed salary itself lives in payroll's encrypted request.
     return { data: { id: created.id }, audit: { resource: { type: "review_outcome", id: created.id, entityId: created.entityId }, summary: `${created.type} (${created.year})`, after: { personId: created.personId, type: created.type, salaryRequestId: created.salaryRequestId, taskId: created.taskId } } };
   },

@@ -33,7 +33,7 @@ export async function applyLeaveCover(today: IsoDate): Promise<{ followUpsCovere
         .set({ ownerPersonId: plan.coverId!, coverFromPersonId: plan.personId, remindedOn: null, updatedAt: new Date() })
         .where(and(eq(schema.crmActivity.ownerPersonId, plan.personId), isNull(schema.crmActivity.doneAt), isNull(schema.crmActivity.coverFromPersonId), sql`${schema.crmActivity.dueOn} between ${plan.fromDate}::date and ${plan.toDate}::date`))
         .returning({ id: schema.crmActivity.id });
-      if (moved.length) await notify({ recipients: [plan.coverId!], kind: "crm.cover_followups", params: { count: moved.length, name: plan.name }, link: "/tasks" }, tx);
+      if (moved.length) await notify({ recipients: [plan.coverId!], kind: "crm.cover_followups", params: { count: moved.length, name: plan.name }, link: "/today?view=work" }, tx);
       covered += moved.length;
     }
     const back = Array.isArray(handedBack) ? handedBack.length : ((handedBack as { rows?: unknown[] }).rows?.length ?? 0);

@@ -9,18 +9,18 @@ describe("welcomeSteps", () => {
       ["checkIn", "/attendance/check-in"],
       ["me", "/me"],
       ["leave", "/leave"],
-      ["tasks", "/tasks"],
       ["daily", "/daily"],
       ["payslips", "/payslips"],
       ["people", "/people"],
     ]);
     expect(welcomeSteps(nav).map((step) => step.key)).toEqual(["welcome", "today", "checkIn", "me", "leave", "tasks", "daily", "payslips", "kb", "finish"]);
     expect(welcomeSteps(nav).find((step) => step.key === "checkIn")?.href).toBe("/attendance/check-in");
+    expect(welcomeSteps(nav).find((step) => step.key === "tasks")?.href).toBe("/today?view=work");
   });
 
   it("leaves out a page the person has no entry for", () => {
-    const steps = welcomeSteps(new Map([["today", "/today"], ["me", "/me"]]));
-    expect(steps.map((step) => step.key)).toEqual(["welcome", "today", "me", "finish"]);
+    const steps = welcomeSteps(new Map([["me", "/me"], ["kb", "/kb"]]));
+    expect(steps.map((step) => step.key)).toEqual(["welcome", "me", "kb", "finish"]);
   });
 });
 
