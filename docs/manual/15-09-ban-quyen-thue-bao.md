@@ -12,16 +12,47 @@ Mở [Tài sản](/assets) → **Bản quyền & thuê bao** ([mở](/assets/lic
 | --- | --- |
 | **Tên** | Tên bản quyền / thuê bao; bấm để mở và sửa |
 | **Pháp nhân** | Pháp nhân trả tiền |
-| **Số người dùng** | Số chỗ (seat) đã mua |
+| **Số người dùng** | Số suất đang dùng / số suất đã mua, ví dụ `4 / 6`; hiện màu cảnh báo khi còn suất trả tiền mà không ai dùng |
 | **Chu kỳ** | **Hằng tháng**, **Hằng quý**, **Hằng năm** hoặc **Vĩnh viễn** |
 | **Đến hạn** | Ngày đến hạn; ghi thêm **(không tự gia hạn)** nếu thuê bao không tự động gia hạn |
 | **Người phụ trách** | Người quyết định gia hạn hay hủy |
 | **Chi phí / kỳ (₫)** | Số tiền mỗi kỳ |
 | **Trạng thái** | **Đang dùng**, **Đã hủy**, **Hết hạn** |
 
+Phía trên bảng là bốn con số tính trên mọi thuê bao **Đang dùng** trong phạm vi của bạn: số **thuê bao đang chạy**, **suất đang dùng** trên tổng số suất đã mua, **suất chưa dùng** (kèm số tiền mỗi tháng đang trả cho suất không ai dùng) và **chi phí mỗi tháng** — mọi chu kỳ được quy về tháng.
+
+## Ai đang dùng: suất cho người, suất cho thiết bị
+
+Bấm vào tên một bản quyền để mở trang của nó. Mục **Suất dùng** ghi từng suất đang được dùng:
+
+- **cho một người** — ví dụ tài khoản Adobe của một bạn thiết kế; hoặc
+- **cho một thiết bị** (một tài sản trong sổ) — ví dụ phần mềm dựng phim cài trên máy trạm phòng dựng. Suất này đi theo máy, bất kể ai đang giữ máy; trang ghi rõ máy đang do ai giữ.
+
+Để cấp một suất:
+
+1. Bấm **Cấp suất dùng**.
+2. Chọn **Một người** hoặc **Một thiết bị**, rồi chọn người / thiết bị.
+3. Ghi chú nếu cần, bấm **Cấp suất dùng**. Màn hình báo **Đã cấp.**
+
+Hệ thống từ chối khi: đã dùng hết số suất đã mua (*hãy thu hồi một suất hoặc mua thêm*); người hoặc thiết bị đó đã có suất của thuê bao này; người đã nghỉ việc; thiết bị đã mất hoặc thanh lý; thuê bao không còn **Đang dùng**.
+
+Để lấy lại một suất, bấm **Thu hồi** trên dòng đó (ghi lý do nếu có). Suất đã thu hồi chuyển xuống mục **Suất đã thu hồi** — đó là lịch sử ai đã dùng, từ ngày nào đến ngày nào.
+
+Suất tự được thu hồi khi:
+
+- thiết bị mang suất được **Báo mất** hoặc **Thanh lý**;
+- thuê bao chuyển sang **Đã hủy** hoặc **Hết hạn** (mọi suất được thu hồi).
+
+Khi một người nghỉ việc, mỗi suất đứng tên họ sinh một việc **Thu hồi suất dùng: …**, hạn là ngày làm việc cuối, giao cho **Người phụ trách** thuê bao (nếu không có thì quản lý trực tiếp của người nghỉ, rồi đến người quản lý tài sản). Thu hồi suất xong thì việc tự đóng.
+
+Người dùng thấy suất của mình ở **Thiết bị của tôi → Phần mềm và thuê bao**; trang của một thiết bị ghi **Phần mềm trên thiết bị này**.
+
+> [!TIP]
+> Không giảm **Số người dùng** xuống thấp hơn số suất đang dùng được — hãy thu hồi bớt trước. Con số **suất chưa dùng** chính là danh sách việc cần làm trước mỗi kỳ gia hạn: cấp cho người cần, hoặc giảm gói.
+
 ## Thêm hoặc sửa một bản quyền
 
-1. Bấm **Thêm bản quyền** (hoặc bấm vào tên một bản quyền có sẵn).
+1. Bấm **Thêm bản quyền** (hoặc bấm vào tên một bản quyền có sẵn; biểu mẫu nằm ở mục **Thông tin** cuối trang).
 2. Điền:
    - **Tên bản quyền / thuê bao** và **Nhà cung cấp**;
    - **Pháp nhân**;

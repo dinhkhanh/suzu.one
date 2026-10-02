@@ -7,6 +7,7 @@ import { addComment, deleteComment, editComment, findComment, toggleReaction } f
 import { beginTaskUpload, completeTaskUpload, findTaskFile, removeTaskFile, taskFileLink } from "./attachments";
 import { MAX_LINKED_CHECKLISTS, MAX_TASK_CHECKLIST } from "./engine/checklists";
 import { FILTER_KEYS, isFilterKey } from "./engine/filter";
+import { MAX_LINKED_DIGITAL_ASSETS, setProjectDigitalAssets } from "./digital-links";
 import { setFollowing } from "./followers";
 import { ACCENT_COLORS, CHANNELS, CLIENT_KINDS, CONTENT_FORMATS, DEPENDENCY_TYPES, LABEL_COLORS, PROJECT_ROLES, PROJECT_STATUSES, REACTIONS, STATE_CATEGORIES, TEAM_ROLES, TEAM_STATUSES, VISIBILITIES } from "./enums";
 import { canAddTeamMember, canAdminTeam, canContributeToProject, canViewProject, canContributeToTeam, canCreateProject, canDeleteTask, canEditTask, canGiveProjectRole, canJoinTaskConversation, canManageProject, canManageWorkspace, canModerateTask, canTakeOutOfProject, canViewTask } from "./policy";
@@ -279,6 +280,25 @@ export async function updateProjectAction(input: unknown) {
   return updateProjectPipeline(input);
 }
 
+/** FR-AST-09: the pages, channels and accounts a project produces for — offered first on each of its tasks. */
+const projectDigitalAssetsPipeline = createAction({
+  name: "work.project.digital_assets",
+  input: z.object({ projectId: z.uuid(), digitalAssetIds: z.array(z.uuid()).max(MAX_LINKED_DIGITAL_ASSETS).default([]) }),
+  authorize: async (user, input) => {
+    const found = await findProject(input.projectId);
+    return !!found && canManageProject(await loadViewer(user), projectFacts(found.project, found.team));
+  },
+  run: async ({ input }) => {
+    const found = (await findProject(input.projectId))!;
+    const { before, after } = await setProjectDigitalAssets(input.projectId, input.digitalAssetIds);
+    revalidatePath(`/work/projects/${input.projectId}`);
+    return { data: { count: after.length }, audit: { resource: { type: "work_project", id: input.projectId, entityId: found.project.entityId }, summary: found.project.name, before: { digitalAssets: before }, after: { digitalAssets: after } } };
+  },
+});
+export async function setProjectDigitalAssetsAction(input: unknown) {
+  return projectDigitalAssetsPipeline(input);
+}
+
 const archiveProjectPipeline = createAction({
   name: "work.project.archive",
   input: z.object({ projectId: z.uuid(), archived: z.boolean() }),
@@ -345,6 +365,7 @@ const createTaskPipeline = createAction({
     contentFormat: optional(z.enum(CONTENT_FORMATS)),
     parentTaskId: optional(z.uuid()),
     labelIds: z.array(z.uuid()).max(20).default([]),
+    digitalAssetIds: z.array(z.uuid()).max(MAX_LINKED_DIGITAL_ASSETS).default([]),
     collaboratorIds: z.array(z.uuid()).max(20).default([]),
   }),
   authorize: async (user, input) => {
@@ -398,6 +419,7 @@ const updateTaskPipeline = createAction({
     contentFormat: patchable(z.enum(CONTENT_FORMATS)),
     parentTaskId: patchable(z.uuid()),
     labelIds: z.array(z.uuid()).max(20).optional(),
+    digitalAssetIds: z.array(z.uuid()).max(MAX_LINKED_DIGITAL_ASSETS).optional(),
     collaboratorIds: z.array(z.uuid()).max(20).optional(),
     checklist: z.array(checklistItem).max(MAX_TASK_CHECKLIST).optional(),
     addChecklistIds: z.array(z.uuid()).min(1).max(MAX_LINKED_CHECKLISTS).optional(),

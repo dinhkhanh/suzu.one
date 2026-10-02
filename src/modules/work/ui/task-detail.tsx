@@ -50,6 +50,8 @@ export type DetailTask = {
   channel: string | null;
   contentFormat: string | null;
   labelIds: string[];
+  /** FR-AST-09: the registered pages, channels and accounts the task's output is for. */
+  digitalAssetIds?: string[];
   collaboratorIds: string[];
   checklist: {
     id: string;
@@ -69,6 +71,8 @@ export type DetailOptions = {
   labels: { id: string; name: string; color: string }[];
   clients: Named[];
   projects: Named[];
+  /** The pages and channels a task may name; the project's own come first. Absent = the field is not shown. */
+  digitalAssets?: { id: string; name: string; platform: string }[];
   /** Tasks that can be linked: the same project's (or backlog's) other tasks. */
   linkable: { id: string; key: string; title: string }[];
   /** The team's cycles a task may be planned in (FR-PJM-10); the task's own closed one is listed too. */
@@ -171,6 +175,7 @@ export function TaskDetailView({
 }) {
   const t = useTranslations("work.task");
   const tWork = useTranslations("work");
+  const tAssets = useTranslations("assets.digital.platform");
   const format = useFormatter();
   const router = useRouter();
   const gate = useHandoffGate();
@@ -201,6 +206,8 @@ export function TaskDetailView({
         channel: text("channel"),
         contentFormat: text("contentFormat"),
         labelIds: data.getAll("labelIds").map(String),
+        // Sent only when the field is on screen: an absent list must not read as "none".
+        ...(options.digitalAssets?.length ? { digitalAssetIds: data.getAll("digitalAssetIds").map(String) } : {}),
         collaboratorIds: data.getAll("collaboratorIds").map(String),
       },
       () => {
@@ -370,6 +377,19 @@ export function TaskDetailView({
               ))}
             </>,
           )}
+          {options.digitalAssets?.length
+            ? prop(
+                t("fields.digitalAssets"),
+                <MultiSelect id="digitalAssetIds" name="digitalAssetIds" form="task-fields" defaultValue={task.digitalAssetIds ?? []} disabled={!canEdit} className="text-sm md:text-xs">
+                  {options.digitalAssets.map((asset) => (
+                    <option key={asset.id} value={asset.id}>
+                      {asset.name} · {tAssets(asset.platform)}
+                    </option>
+                  ))}
+                </MultiSelect>,
+                "digitalAssetIds",
+              )
+            : null}
           {options.labels.length
             ? prop(
                 t("fields.labels"),

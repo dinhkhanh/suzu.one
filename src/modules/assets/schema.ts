@@ -2,10 +2,10 @@
 // one person, team or office at a time; every handover and return is a row of its own, and the
 // whole history of the thing is an append-only event log. Value lists are in enums.ts.
 import { sql } from "drizzle-orm";
-import { bigint, boolean, date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { bigint, boolean, check, date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { entity, orgUnit } from "../platform/org/schema";
 import { person } from "../platform/people/schema";
-import type { AssetCondition, AssetEventType, AssetKind, AssetStatus, BillingCycle, BookingStatus, HolderType, LicenceStatus } from "./enums";
+import type { AccessLevel, AccessMethod, AccessStatus, AssetCondition, AssetEventType, AssetKind, AssetStatus, BillingCycle, BookingStatus, DigitalKind, DigitalOwnership, DigitalPlatform, DigitalStatus, DigitalVisibility, HolderType, LicenceStatus } from "./enums";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -167,8 +167,10 @@ export const licence = pgTable(
     entityId: uuid("entity_id")
       .notNull()
       .references(() => entity.id),
-    // How many seats are paid for, and who is actually using them.
+    // How many seats are paid for; null = not counted. Who is using them is `licence_seat`.
     seats: integer("seats"),
+    // Superseded by `licence_seat` (migration 0111 copied what it held). Kept until the code that
+    // still names it is no longer deployed; nothing reads it.
     seatHolderPersonIds: uuid("seat_holder_person_ids").array(),
     // Integer VND per billing cycle. Read by the same people who read an asset's price.
     costPerCycle: bigint("cost_per_cycle", { mode: "number" }),
@@ -178,7 +180,7 @@ export const licence = pgTable(
     // Whether it renews itself if nobody acts — which changes what the obligation is *for*.
     autoRenews: boolean("auto_renews").notNull().default(true),
     ownerPersonId: uuid("owner_person_id").references(() => person.id),
-    // The machine it is tied to, when it is tied to one (a workstation licence).
+    // Superseded by `licence_seat` as well: a seat on a device is a row there.
     assetId: uuid("asset_id").references(() => asset.id),
     accountRef: text("account_ref"),
     notes: text("notes"),
@@ -206,4 +208,115 @@ export const assetEvent = pgTable(
     at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("asset_event_asset_idx").on(t.assetId, t.id)],
+).enableRLS();
+
+// Who is using a paid seat (FR-AST-11): a person, or a device — the edit suite's Adobe seat belongs
+// to the machine, whoever sits at it. Exactly one of the two. Open while `released_at` is null; a
+// released row stays, so the table is also the history of who had the seat and when.
+export const licenceSeat = pgTable(
+  "licence_seat",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    licenceId: uuid("licence_id")
+      .notNull()
+      .references(() => licence.id),
+    personId: uuid("person_id").references(() => person.id),
+    assetId: uuid("asset_id").references(() => asset.id),
+    assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
+    assignedByPersonId: uuid("assigned_by_person_id").references(() => person.id),
+    note: text("note"),
+    releasedAt: timestamp("released_at", { withTimezone: true }),
+    releasedByPersonId: uuid("released_by_person_id").references(() => person.id),
+    releaseNote: text("release_note"),
+    ...timestamps,
+  },
+  (t) => [
+    check("licence_seat_one_holder", sql`(${t.personId} IS NULL) <> (${t.assetId} IS NULL)`),
+    // Nobody holds two seats of one subscription, and no machine does either — the database says so.
+    uniqueIndex("licence_seat_person_open_key").on(t.licenceId, t.personId).where(sql`${t.releasedAt} is null and ${t.personId} is not null`),
+    uniqueIndex("licence_seat_asset_open_key").on(t.licenceId, t.assetId).where(sql`${t.releasedAt} is null and ${t.assetId} is not null`),
+    index("licence_seat_licence_idx").on(t.licenceId, t.releasedAt),
+    index("licence_seat_person_idx").on(t.personId).where(sql`${t.releasedAt} is null`),
+    index("licence_seat_asset_idx").on(t.assetId).where(sql`${t.releasedAt} is null`),
+  ],
+).enableRLS();
+
+// A digital asset (FR-AST-07): a page, a channel, an ad account, a website, a business account.
+// It sits on an entity's books like a camera does, has one person who answers for it, and — unlike
+// a camera — is used by several people at once, each with their own access (`digital_asset_access`).
+export const digitalAsset = pgTable(
+  "digital_asset",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind").$type<DigitalKind>().notNull(),
+    platform: text("platform").$type<DigitalPlatform>().notNull(),
+    // What people call it: "SuZu Media — Fanpage".
+    name: text("name").notNull(),
+    // What the platform calls it: "@suzumedia", a page id, a domain.
+    handle: text("handle"),
+    url: text("url"),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id),
+    ownership: text("ownership").$type<DigitalOwnership>().notNull().default("company"),
+    // The client or brand it belongs to or speaks for (`work_client`). The foreign key is written
+    // in migration 0111 by hand: the work schema imports this file for its links to an asset, and
+    // importing it back would make the two schemas depend on each other.
+    clientId: uuid("client_id"),
+    // Who answers for it: grants and takes away access, and is asked when it changes hands.
+    ownerPersonId: uuid("owner_person_id").references(() => person.id),
+    visibility: text("visibility").$type<DigitalVisibility>().notNull().default("staff"),
+    status: text("status").$type<DigitalStatus>().notNull().default("active"),
+    // Restricted from here down (`canReadDigitalSecrets`): the email or phone the account is
+    // registered under, who receives its two-factor codes, and where the password is kept — the
+    // name of the vault item, never the password.
+    loginIdentity: text("login_identity"),
+    recoveryContact: text("recovery_contact"),
+    credentialLocation: text("credential_location"),
+    notes: text("notes"),
+    // Set when somebody who knew the shared login lost their access; cleared when the password is changed.
+    rotationDueSince: timestamp("rotation_due_since", { withTimezone: true }),
+    credentialsRotatedAt: timestamp("credentials_rotated_at", { withTimezone: true }),
+    createdByPersonId: uuid("created_by_person_id").references(() => person.id),
+    ...timestamps,
+  },
+  (t) => [index("digital_asset_entity_idx").on(t.entityId, t.status), index("digital_asset_owner_idx").on(t.ownerPersonId), index("digital_asset_client_idx").on(t.clientId)],
+).enableRLS();
+
+// One person's access to one digital asset (FR-AST-08), from the request to the day it was taken
+// away. Only ever inserted and moved forward; never deleted.
+export const digitalAssetAccess = pgTable(
+  "digital_asset_access",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    digitalAssetId: uuid("digital_asset_id")
+      .notNull()
+      .references(() => digitalAsset.id),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => person.id),
+    level: text("level").$type<AccessLevel>().notNull(),
+    method: text("method").$type<AccessMethod>().notNull().default("own_account"),
+    status: text("status").$type<AccessStatus>().notNull(),
+    // Why it is needed, in the words of whoever asked or granted.
+    note: text("note"),
+    requestedAt: timestamp("requested_at", { withTimezone: true }),
+    // Who answered the request or made the grant, and when.
+    decidedByPersonId: uuid("decided_by_person_id").references(() => person.id),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    grantedAt: timestamp("granted_at", { withTimezone: true }),
+    // Access for a campaign: the day it should be looked at again.
+    expiresOn: date("expires_on"),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    endedByPersonId: uuid("ended_by_person_id").references(() => person.id),
+    // Why it was declined or taken away.
+    endNote: text("end_note"),
+    ...timestamps,
+  },
+  (t) => [
+    // One open grant or request per person per asset; the history of closed ones is unlimited.
+    uniqueIndex("digital_asset_access_open_key").on(t.digitalAssetId, t.personId).where(sql`${t.status} in ('requested', 'active')`),
+    index("digital_asset_access_asset_idx").on(t.digitalAssetId, t.status),
+    index("digital_asset_access_person_idx").on(t.personId).where(sql`${t.status} in ('requested', 'active')`),
+  ],
 ).enableRLS();

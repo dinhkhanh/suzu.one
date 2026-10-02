@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Principal } from "../platform/rbac/policy";
-import { assetReach, canActOnBooking, canBookAssets, canConfirmHandover, canDecideBookings, canManageAssets, canManageCategories, canReadAssetMoney, canReadPersonAssets, canReadRegister, canViewAsset } from "./policy";
+import { assetReach, canActOnBooking, canBookAssets, canConfirmHandover, canDecideBookings, canEndDigitalAccess, canManageAssets, canManageCategories, canManageDigitalAssets, canReadAssetMoney, canReadDigitalSecrets, canReadPersonAssets, canReadRegister, canRequestDigitalAccess, canRunDigitalAsset, canViewAsset, canViewDigitalAsset } from "./policy";
 
 const SZM = "00000000-0000-4000-8000-000000000001";
 const SZC = "00000000-0000-4000-8000-000000000002";
@@ -149,5 +149,59 @@ describe("asset policy", () => {
       // Nor can a keeper of a different entity.
       expect(canActOnBooking(entityKeeper, { personId: "employee", entityId: SZC })).toBe(false);
     });
+  });
+});
+
+describe("digital asset policy", () => {
+  const fanpage = { entityId: SZM, ownerPersonId: "social-lead", visibility: "staff" as const };
+  const bankPortal = { entityId: SZM, ownerPersonId: "chief-accountant", visibility: "restricted" as const };
+  const socialLead = principal("social-lead");
+  const accountant = principal("chief-accountant");
+  const anonymous: Principal = { personId: null, workforceType: "employee", grants: [] };
+
+  it("registers on asset:manage over the entity; no other role does, as the catalogue stands", () => {
+    expect(canManageDigitalAssets(keeper, SZC)).toBe(true);
+    expect(canManageDigitalAssets(entityKeeper, SZM)).toBe(true);
+    expect(canManageDigitalAssets(entityKeeper, SZC)).toBe(false);
+    for (const who of [hrAdmin, hrStaff, finance, ceo, head, employee, socialLead]) expect(canManageDigitalAssets(who, SZM)).toBe(false);
+  });
+
+  it("is run by the register's keeper or by the person who answers for it — ownership, not a role", () => {
+    expect(canRunDigitalAsset(socialLead, fanpage)).toBe(true);
+    expect(canRunDigitalAsset(entityKeeper, fanpage)).toBe(true);
+    expect(canRunDigitalAsset(owner, fanpage)).toBe(true);
+    // Owning one asset says nothing about another, and an asset with no owner is nobody's by default.
+    expect(canRunDigitalAsset(socialLead, bankPortal)).toBe(false);
+    expect(canRunDigitalAsset(employee, { ...fanpage, ownerPersonId: null })).toBe(false);
+    expect(canRunDigitalAsset(anonymous, { ...fanpage, ownerPersonId: null })).toBe(false);
+    for (const who of [hrAdmin, finance, ceo, head, employee]) expect(canRunDigitalAsset(who, fanpage)).toBe(false);
+  });
+
+  it("shows a staff asset to anybody on the staff, a restricted one only to its keepers and the people who hold access", () => {
+    for (const who of [employee, hrAdmin, finance, head]) expect(canViewDigitalAsset(who, fanpage, false)).toBe(true);
+    expect(canViewDigitalAsset(anonymous, fanpage, false)).toBe(false);
+    for (const who of [employee, hrAdmin, finance, ceo, head, socialLead]) expect(canViewDigitalAsset(who, bankPortal, false)).toBe(false);
+    expect(canViewDigitalAsset(employee, bankPortal, true)).toBe(true);
+    expect(canViewDigitalAsset(accountant, bankPortal, false)).toBe(true);
+    expect(canViewDigitalAsset(entityKeeper, bankPortal, false)).toBe(true);
+    // The keeper of another entity's register is staff like any other here.
+    const szcKeeper = principal("szc-keeper", [{ role: "asset_admin", scope: { type: "entity", id: SZC } }]);
+    expect(canViewDigitalAsset(szcKeeper, bankPortal, false)).toBe(false);
+  });
+
+  it("keeps where the login is to whoever runs the asset — holding access, even as admin on the platform, is not enough", () => {
+    expect(canReadDigitalSecrets(socialLead, fanpage)).toBe(true);
+    expect(canReadDigitalSecrets(keeper, fanpage)).toBe(true);
+    for (const who of [employee, hrAdmin, finance, ceo, head]) expect(canReadDigitalSecrets(who, fanpage)).toBe(false);
+  });
+
+  it("lets anybody ask for a staff asset, nobody for a restricted one; and ends access for the runner or the person themselves", () => {
+    expect(canRequestDigitalAccess(employee, fanpage)).toBe(true);
+    expect(canRequestDigitalAccess(employee, bankPortal)).toBe(false);
+    expect(canRequestDigitalAccess(anonymous, fanpage)).toBe(false);
+    expect(canEndDigitalAccess(socialLead, fanpage, "employee")).toBe(true);
+    expect(canEndDigitalAccess(employee, fanpage, "employee")).toBe(true);
+    expect(canEndDigitalAccess(employee, fanpage, "somebody-else")).toBe(false);
+    expect(canEndDigitalAccess(head, fanpage, "employee")).toBe(false);
   });
 });

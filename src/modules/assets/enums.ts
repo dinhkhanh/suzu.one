@@ -77,3 +77,53 @@ export const CYCLE_MONTHS: Record<BillingCycle, number | null> = { monthly: 1, q
 
 export const LICENCE_STATUSES = ["active", "cancelled", "expired"] as const;
 export type LicenceStatus = (typeof LICENCE_STATUSES)[number];
+
+// ── Digital assets (FR-AST-07) ──────────────────────────────────────────────────────────────
+// What the company owns or runs that has no shelf: a Facebook page, a TikTok or YouTube channel,
+// an ad account, a website, the business accounts behind them. Nothing here is a credential — the
+// register says where the login is kept, never what it is.
+
+export const DIGITAL_KINDS = ["social_channel", "ad_account", "website", "business_account", "other"] as const;
+export type DigitalKind = (typeof DIGITAL_KINDS)[number];
+
+/** Where the thing lives. The names shared with the work module's channels are spelt the same. */
+export const DIGITAL_PLATFORMS = ["facebook", "instagram", "tiktok", "youtube", "zalo", "linkedin", "threads", "x", "google", "website", "other"] as const;
+export type DigitalPlatform = (typeof DIGITAL_PLATFORMS)[number];
+
+/** Whose it is: the company's own, or a client's that the company runs for them. */
+export const DIGITAL_OWNERSHIPS = ["company", "client"] as const;
+export type DigitalOwnership = (typeof DIGITAL_OWNERSHIPS)[number];
+
+/**
+ * Who may see that the thing exists. `staff`: in the directory for everybody, and work can name it
+ * as where its output goes. `restricted`: only its keepers and the people who hold access — the
+ * bank portal, the tax account.
+ */
+export const DIGITAL_VISIBILITIES = ["staff", "restricted"] as const;
+export type DigitalVisibility = (typeof DIGITAL_VISIBILITIES)[number];
+
+export const DIGITAL_STATUSES = ["active", "paused", "retired"] as const;
+export type DigitalStatus = (typeof DIGITAL_STATUSES)[number];
+
+/** What a person may do on the platform, strongest first. The platforms' own names differ; these are the five every one of them has. */
+export const ACCESS_LEVELS = ["admin", "editor", "moderator", "advertiser", "analyst"] as const;
+export type AccessLevel = (typeof ACCESS_LEVELS)[number];
+
+/**
+ * How the person gets in. `own_account`: their own profile was given a role, and taking the role
+ * away ends it. `shared_login`: they know the account's password — revoking that is only true once
+ * the password has been changed, which is why the register asks for it.
+ */
+export const ACCESS_METHODS = ["own_account", "shared_login"] as const;
+export type AccessMethod = (typeof ACCESS_METHODS)[number];
+
+/**
+ * A grant's life. Somebody asks (`requested`) and the owner answers, or the owner grants straight
+ * into `active`. `declined` and `revoked` are the two ends; a row is never deleted, so the table
+ * is also the history of who could get in and when.
+ */
+export const ACCESS_STATUSES = ["requested", "active", "declined", "revoked"] as const;
+export type AccessStatus = (typeof ACCESS_STATUSES)[number];
+
+/** The statuses that hold the (asset, person) pair: one open grant or request per person per asset. */
+export const ACCESS_OPEN: readonly AccessStatus[] = ["requested", "active"];

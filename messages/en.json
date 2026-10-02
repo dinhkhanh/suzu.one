@@ -838,6 +838,30 @@
         "title": "Your request ({requestType}): {outcome}",
         "body": "{approver} answered your request ({requestType}): {outcome}."
       },
+      "approvals_asset_handover": {
+        "title": "Equipment handed to you: {asset}",
+        "body": "{asset} was assigned to you. Open My equipment and confirm that you received it."
+      },
+      "approvals_digital_access_requested": {
+        "title": "{requester} asks for access to {asset}",
+        "body": "{requester} asked for access to {asset}. Open the asset to answer."
+      },
+      "approvals_digital_access_decided": {
+        "title": "Your access request ({asset}): {outcome}",
+        "body": "Your request for access to {asset} was answered: {outcome}."
+      },
+      "approvals_digital_access_granted": {
+        "title": "You were given access to {asset}",
+        "body": "You now have access to {asset}. Open it to see your level."
+      },
+      "approvals_digital_access_revoked": {
+        "title": "Your access to {asset} was removed",
+        "body": "You no longer have access to {asset}."
+      },
+      "approvals_digital_asset_entrusted": {
+        "title": "{asset} is now yours to look after",
+        "body": "You were named the owner of {asset}: you decide who gets access to it."
+      },
       "tasks_assigned": {
         "title": "You were given {count, plural, =1 {a task: {title}} other {# new tasks}}",
         "body": "You have {count, plural, =1 {a new task: {title}} other {# new tasks, starting with: {title}}}. Open My tasks to see due dates and mark them done."
@@ -3944,6 +3968,13 @@
   },
   "work": {
     "title": "Work",
+    "digitalAssets": {
+      "title": "Pages & channels",
+      "retired": "Retired",
+      "noAccess": "{name} has no access",
+      "none": "No page or channel named yet.",
+      "projectHint": "The pages, channels and accounts this project produces for. They are offered first on each of its tasks."
+    },
     "description": "Teams, projects and tasks. Press Ctrl/⌘ K to go anywhere, C to create a task.",
     "myWork": "My work",
     "save": "Save",
@@ -4272,7 +4303,8 @@
         "checklist": "Checklist",
         "links": "Links",
         "reviewer": "Reviewer",
-        "cycle": "cycle"
+        "cycle": "cycle",
+        "digitalAssets": "Pages & channels"
       },
       "descriptionPlaceholder": "Brief, references, what done looks like…",
       "checklist": "Checklist",
@@ -4306,6 +4338,8 @@
         "created": "created the task",
         "label_added": "added the label {name}",
         "label_removed": "removed the label {name}",
+        "digital_asset_added": "added the page or channel {name}",
+        "digital_asset_removed": "removed the page or channel {name}",
         "person_added": "added {name}",
         "person_removed": "removed {name}",
         "dependency_added": "linked {name}",
@@ -4565,7 +4599,9 @@
       "checklist_incomplete": "This stage requires its checklist: tick every box before moving on.",
       "checklist_item_locked": "Boxes of a checklist this stage requires cannot be removed.",
       "task_checklist_full": "The task has too many checklist items to add this one.",
-      "poster_unreadable": "That picture could not be opened. Use a JPG, PNG or WebP image."
+      "poster_unreadable": "That picture could not be opened. Use a JPG, PNG or WebP image.",
+      "digital_asset_not_linkable": "That page or channel cannot be named: it is retired, restricted, or no longer there.",
+      "digital_asset_too_many": "Too many pages and channels for one piece of work."
     },
     "views": {
       "list": "List",
@@ -5556,6 +5592,8 @@
       "platform": "Platform",
       "page": "Page / account",
       "pagePlaceholder": "e.g. Vinamilk Fanpage",
+      "account": "Registered page or channel",
+      "accountOther": "Another page (type it)",
       "plannedFor": "Planned time",
       "savePlan": "Save schedule",
       "cancel": "Cancel",
@@ -9058,6 +9096,228 @@
     "empty": "No assets yet.",
     "totals": "In stock: {in_stock} · Assigned: {assigned} · In repair: {in_repair} · Lost: {lost} · Disposed: {disposed}",
     "history": "History",
+    "digital": {
+      "title": "Digital assets",
+      "description": "Pages, channels, ad accounts and websites the company owns or runs: who answers for each, and who can get in.",
+      "new": "Register a digital asset",
+      "edit": "Edit",
+      "empty": "No digital assets here yet.",
+      "noOwner": "Nobody yet",
+      "youRun": "You run it",
+      "waitingCount": "{count} waiting",
+      "tiles": {
+        "total": "Assets",
+        "mine": "I have access",
+        "waiting": "Requests waiting",
+        "rotationDue": "Password to change"
+      },
+      "filters": {
+        "search": "Search",
+        "searchHint": "Name or handle",
+        "any": "All",
+        "apply": "Filter"
+      },
+      "fields": {
+        "name": "Name",
+        "platform": "Platform",
+        "kind": "Kind",
+        "handle": "Handle or ID",
+        "url": "Address",
+        "entity": "Entity",
+        "owner": "Owner",
+        "ownership": "Belongs to",
+        "client": "Client",
+        "brand": "Client / brand",
+        "visibility": "Who sees it",
+        "status": "Status",
+        "notes": "Notes"
+      },
+      "columns": {
+        "belongsTo": "Belongs to",
+        "people": "People",
+        "myAccess": "My access"
+      },
+      "platform": {
+        "facebook": "Facebook",
+        "instagram": "Instagram",
+        "tiktok": "TikTok",
+        "youtube": "YouTube",
+        "zalo": "Zalo",
+        "linkedin": "LinkedIn",
+        "threads": "Threads",
+        "x": "X",
+        "google": "Google",
+        "website": "Website",
+        "other": "Other"
+      },
+      "kind": {
+        "social_channel": "Page / channel",
+        "ad_account": "Ad account",
+        "website": "Website / domain",
+        "business_account": "Business account",
+        "other": "Other"
+      },
+      "ownership": {
+        "company": "The company",
+        "client": "A client (run by us)"
+      },
+      "visibility": {
+        "staff": "Everyone on the staff",
+        "restricted": "Restricted"
+      },
+      "status": {
+        "active": "Active",
+        "paused": "Paused",
+        "retired": "Retired"
+      },
+      "level": {
+        "admin": "Admin",
+        "editor": "Editor",
+        "moderator": "Moderator",
+        "advertiser": "Advertiser",
+        "analyst": "Analyst"
+      },
+      "method": {
+        "own_account": "Own account",
+        "shared_login": "Shared login"
+      },
+      "access": {
+        "title": "Who has access",
+        "description": "Each person's level on the platform. Taking someone off this list is a record: remove them on the platform too.",
+        "person": "Person",
+        "level": "Level",
+        "method": "How",
+        "since": "Since",
+        "until": "Review on",
+        "empty": "Nobody has been given access yet.",
+        "status": {
+          "requested": "Requested",
+          "active": "Active",
+          "declined": "Declined",
+          "revoked": "Removed"
+        }
+      },
+      "form": {
+        "intro": "Record the asset and who answers for it. Access is given on its own page afterwards.",
+        "namePlaceholder": "SuZu Media — Fanpage",
+        "visibilityHint": "\"Everyone on the staff\" puts the asset in the directory and lets tasks and projects name it. \"Restricted\" shows it only to its keepers and the people who hold access — a bank portal, a tax account.",
+        "save": "Save",
+        "register": "Register",
+        "saved": "Saved. Opening the asset…"
+      },
+      "secrets": {
+        "title": "Login and recovery",
+        "readers": "Shown only to the owner and to whoever keeps the asset register.",
+        "never": "Never type a password here. Record where it is kept — the name of the vault item — not what it is.",
+        "loginIdentity": "Registered under (email or phone)",
+        "recoveryContact": "Recovery and two-factor codes go to",
+        "credentialLocation": "Where the password is kept",
+        "credentialPlaceholder": "1Password › Social › Fanpage SuZu Media"
+      },
+      "grant": {
+        "title": "Give access",
+        "person": "Person",
+        "level": "Level",
+        "method": "How they get in",
+        "expiresOn": "Review on (optional)",
+        "note": "Why",
+        "notePlaceholder": "Runs the October campaign",
+        "hint": "Naming someone who already has access changes their level. \"Shared login\" means they know the account's password: when their access ends, the password has to change.",
+        "submit": "Give access",
+        "done": "Done — they have been told."
+      },
+      "request": {
+        "title": "Ask for access",
+        "intro": "{owner} will answer your request.",
+        "level": "Level needed",
+        "note": "What for",
+        "notePlaceholder": "I schedule this page's posts",
+        "submit": "Send request",
+        "waiting": "Your request is waiting for {owner}.",
+        "withdraw": "Withdraw",
+        "keepers": "the asset keepers"
+      },
+      "decide": {
+        "title": "Requests waiting",
+        "approve": "Give access",
+        "decline": "Decline",
+        "level": "Level",
+        "method": "How they get in",
+        "expiresOn": "Review on",
+        "reason": "Reason for declining",
+        "confirmApprove": "Confirm",
+        "confirmDecline": "Decline",
+        "back": "Back"
+      },
+      "end": {
+        "note": "Reason (optional)",
+        "back": "Back",
+        "revoke": "Remove",
+        "confirmRevoke": "Remove access",
+        "giveUp": "Give up",
+        "confirmGiveUp": "Give up my access"
+      },
+      "rotation": {
+        "badge": "Change password",
+        "due": "Somebody who knew the shared password lost their access on {date}. Change the password, then record it here.",
+        "done": "Password changed",
+        "last": "Password last changed"
+      },
+      "work": {
+        "tasks": "Open work for this asset",
+        "projects": "Projects: {names}",
+        "noTasks": "No open task names this asset.",
+        "posts": "Posts",
+        "noPosts": "No post planned or published here lately.",
+        "post": {
+          "planned": "Planned",
+          "published": "Published"
+        }
+      },
+      "history": {
+        "title": "Past access"
+      }
+    },
+    "seats": {
+      "title": "Seats",
+      "description": "Who is using a seat: a person, or a device — a seat on a device goes with the machine, whoever holds it.",
+      "used": "Seats in use",
+      "free": "Unused seats",
+      "idleCost": "≈ {amount} ₫ per cycle for nobody",
+      "idlePerMonth": "≈ {amount} ₫ a month for nobody",
+      "holder": "Used by",
+      "since": "Since",
+      "by": "Given by",
+      "empty": "No seat has been given out.",
+      "deviceWith": "Device held by {name}",
+      "deviceOnShelf": "Device — nobody is holding it",
+      "assign": "Give a seat",
+      "assigned": "Seat given.",
+      "history": "Seats taken back",
+      "for": "Seat for",
+      "forPerson": "A person",
+      "forDevice": "A device",
+      "person": "Person",
+      "device": "Device",
+      "note": "Note",
+      "release": "Take back",
+      "releaseNote": "Reason (optional)",
+      "confirmRelease": "Take the seat back",
+      "back": "Back",
+      "onDevice": "Software on this device",
+      "tiles": {
+        "active": "Running subscriptions",
+        "perMonth": "Cost per month (₫)"
+      }
+    },
+    "offboarding": {
+      "revokeAccess": "Remove access: {asset}",
+      "handOverAsset": "Name a new owner: {asset}",
+      "releaseSeat": "Take back the seat: {licence}",
+      "retiredNote": "The asset was retired.",
+      "deviceGoneNote": "The device was lost or written off.",
+      "licenceEndedNote": "The subscription ended."
+    },
     "nav": {
       "mine": "My equipment",
       "labels": "Print QR labels",
@@ -9066,6 +9326,7 @@
       "edit": "Edit",
       "import": "Import",
       "bookings": "Equipment bookings",
+      "digital": "Digital assets",
       "licences": "Licences",
       "register": "Register"
     },
@@ -9102,7 +9363,8 @@
       "supplier": "Supplier",
       "notes": "Notes",
       "register": "Register",
-      "save": "Save"
+      "save": "Save",
+      "saved": "Saved. Opening the asset…"
     },
     "assign": {
       "title": "Assign",
@@ -9145,7 +9407,18 @@
       "since": "Since {date}",
       "dueBack": "due back {date}",
       "confirmed": "Confirmed on {date}",
-      "register": "Open the register"
+      "register": "Open the register",
+      "digital": {
+        "title": "Pages, channels and accounts",
+        "directory": "Directory",
+        "empty": "You have no access to a digital asset. Ask for it from the directory.",
+        "owner": "You answer for it"
+      },
+      "software": {
+        "title": "Software and subscriptions",
+        "empty": "No software seat is in your name.",
+        "onDevice": "on {device}"
+      }
     },
     "categories": {
       "title": "Asset categories",
@@ -9240,14 +9513,40 @@
       "licence_not_found": "Licence not found.",
       "licence_cost_invalid": "That cost is not a valid figure.",
       "licence_seats_invalid": "That seat count is not valid.",
-      "licence_renewal_date_required": "A renewing cycle needs a renewal date."
+      "licence_renewal_date_required": "A renewing cycle needs a renewal date.",
+      "licence_not_active": "This subscription is not running: it has no seats to give.",
+      "licence_seats_below_used": "More seats are in use than that. Take some back first.",
+      "seat_holder_required": "Choose a person or a device.",
+      "seat_holder_unknown": "That person or device was not found.",
+      "seat_holder_inactive": "That person has left and cannot be given a seat.",
+      "seat_device_unavailable": "That device is lost or written off.",
+      "seat_already_assigned": "They already have a seat of this subscription.",
+      "seat_none_free": "Every seat is in use. Take one back, or buy more.",
+      "seat_not_found": "Seat not found.",
+      "seat_already_released": "That seat has already been taken back.",
+      "digital_asset_not_found": "Digital asset not found.",
+      "digital_asset_url_invalid": "The address must start with https://.",
+      "digital_asset_client_required": "Choose the client the asset belongs to.",
+      "digital_asset_client_unknown": "That client was not found.",
+      "digital_asset_retired": "This asset has been retired.",
+      "digital_person_unknown": "That person was not found.",
+      "digital_person_inactive": "That person has left the company.",
+      "digital_access_already_open": "They already have access, or a request waiting.",
+      "digital_access_not_found": "That access record was not found.",
+      "digital_access_not_pending": "This request has already been answered.",
+      "digital_access_reason_required": "Please say why you are declining.",
+      "digital_access_closed": "That access has already ended."
     },
     "person": {
       "title": "Equipment held",
       "empty": "Holds no company equipment.",
       "since": "since {date}",
       "dueBack": "due back {date}",
-      "unconfirmed": "receipt not confirmed"
+      "unconfirmed": "receipt not confirmed",
+      "digital": "Pages, channels and accounts",
+      "answersFor": "answers for it",
+      "software": "Software seats",
+      "onDevice": "on {device}"
     },
     "import": {
       "title": "Import assets",
@@ -9382,6 +9681,7 @@
         "accountRef": "Account or contract reference",
         "status": "Status",
         "autoRenews": "Renews itself unless cancelled",
+        "title": "Details",
         "notes": "Notes",
         "tracker": "The renewal date raises an obligation in the compliance tracker. Whoever is named here as owner receives it.",
         "submit": "Save",
@@ -11974,6 +12274,10 @@
     "leaveTypes": "Leave types",
     "licence": "Licence",
     "licencesSubscriptions": "Licences & subscriptions",
+    "digitalAssets": "Digital assets",
+    "digitalAsset": "Digital asset",
+    "newDigitalAsset": "Register a digital asset",
+    "editDigitalAsset": "Edit digital asset",
     "manageAnnouncements": "Manage announcements",
     "mappingProfiles": "Mapping profiles",
     "meeting": "Meeting",

@@ -4,6 +4,7 @@
 // lives in these tables. Value lists are in enums.ts and checked by the actions.
 import { sql } from "drizzle-orm";
 import { type AnyPgColumn, boolean, check, date, doublePrecision, index, integer, jsonb, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { digitalAsset } from "../assets/schema";
 import { entity, orgUnit } from "../platform/org/schema";
 import { storedFile } from "../platform/files/schema";
 import { person } from "../platform/people/schema";
@@ -897,6 +898,9 @@ export const workPublish = pgTable(
       .references(() => task.id, { onDelete: "cascade" }),
     platform: text("platform").notNull(),
     page: text("page"),
+    // The registered page or channel the post goes out on (FR-AST-09). null = a page typed by hand;
+    // `platform` and `page` are filled from the asset either way, so every reader of them still reads.
+    digitalAssetId: uuid("digital_asset_id").references(() => digitalAsset.id),
     plannedAt: timestamp("planned_at", { withTimezone: true }),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     url: text("url"),
@@ -908,7 +912,39 @@ export const workPublish = pgTable(
     createdByPersonId: uuid("created_by_person_id").references(() => person.id),
     ...timestamps,
   },
-  (t) => [index("work_publish_task_idx").on(t.taskId), index("work_publish_planned_idx").on(t.plannedAt).where(sql`${t.status} = 'planned'`)],
+  (t) => [index("work_publish_task_idx").on(t.taskId), index("work_publish_planned_idx").on(t.plannedAt).where(sql`${t.status} = 'planned'`), index("work_publish_digital_asset_idx").on(t.digitalAssetId)],
+).enableRLS();
+
+// The pages, channels and accounts a task's output is for (FR-AST-09): "this post goes out on
+// Facebook page X and TikTok channel Y". The asset itself — who owns it, who may get in — lives in
+// the asset register; work only points at it.
+export const workTaskDigitalAsset = pgTable(
+  "work_task_digital_asset",
+  {
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => task.id, { onDelete: "cascade" }),
+    digitalAssetId: uuid("digital_asset_id")
+      .notNull()
+      .references(() => digitalAsset.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.taskId, t.digitalAssetId] }), index("work_task_digital_asset_asset_idx").on(t.digitalAssetId)],
+).enableRLS();
+
+// The same for a project: the channels it produces for, offered first on each of its tasks.
+export const workProjectDigitalAsset = pgTable(
+  "work_project_digital_asset",
+  {
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => workProject.id, { onDelete: "cascade" }),
+    digitalAssetId: uuid("digital_asset_id")
+      .notNull()
+      .references(() => digitalAsset.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.digitalAssetId] }), index("work_project_digital_asset_asset_idx").on(t.digitalAssetId)],
 ).enableRLS();
 
 // Results of a published post (FR-PJM-57). Money in integer VND.

@@ -11,6 +11,7 @@ import { createTask, type TaskRow } from "../platform/tasks-engine/service";
 import { runTaskAutomations } from "./automations";
 import { type ChecklistRow, resolveChecklists, type StageChecklist, stageChecklists } from "./checklist-library";
 import { customValueChanges } from "./custom-fields";
+import { digitalAssetsByTask, type LinkedDigitalAsset, syncTaskDigitalAssets } from "./digital-links";
 import { appendChecklists, gatedStages, resolveLinked, MAX_TASK_CHECKLIST, mergeChecklistPatch, missingRequired, newChecklistItemId, partlyRemoved, removedFrom } from "./engine/checklists";
 import { changedFields } from "./engine/automation";
 import { requirementFor } from "./handoff-gate";
@@ -204,6 +205,8 @@ export type NewWorkTask = {
   contentFormat?: string | null;
   parentTaskId?: string | null;
   labelIds?: string[];
+  /** FR-AST-09: the pages, channels and accounts the task's output is for. */
+  digitalAssetIds?: string[];
   collaboratorIds?: string[];
   /** Made from a template item or by a recurrence. */
   templateItemId?: string | null;
@@ -271,6 +274,7 @@ export async function createWorkTaskIn(tx: Executor, input: NewWorkTask, actorPe
     .values({ taskId: task.id, teamId: team.id, projectId: project?.id ?? null, number: team.taskSeq, stateId: state.id, clientId: clientId ?? project?.clientId ?? null, channel: input.channel ?? null, contentFormat: input.contentFormat ?? null, boardRank: await nextRank(tx, state.id), checklist: checklist.items, recurrenceId: input.recurrence?.id ?? null, occurrenceDate: input.recurrence?.occurrenceDate ?? null })
     .returning();
   if (labels.length) await tx.insert(schema.workTaskLabel).values(labels.map((label) => ({ taskId: task.id, labelId: label.id })));
+  if (input.digitalAssetIds?.length) await syncTaskDigitalAssets(tx, task.id, input.digitalAssetIds);
   const collaborators = [...new Set(input.collaboratorIds ?? [])].filter((id) => id !== input.assigneePersonId);
   for (const personId of collaborators) await personNamed(tx, personId, { mustBeActive: true });
   if (collaborators.length) await tx.insert(schema.workTaskPerson).values(collaborators.map((personId) => ({ taskId: task.id, personId, role: "collaborator" })));
@@ -305,6 +309,8 @@ export type WorkTaskPatch = Partial<{
   contentFormat: string | null;
   parentTaskId: string | null;
   labelIds: string[];
+  /** FR-AST-09: the whole list of pages, channels and accounts the task is for. */
+  digitalAssetIds: string[];
   collaboratorIds: string[];
   checklist: { id: string; text: string; done: boolean }[];
   /** Library checklists to add to the task's boxes (each once). */
@@ -488,6 +494,7 @@ export async function updateWorkTaskIn(
       if (removed.length) await tx.delete(schema.workTaskLabel).where(and(eq(schema.workTaskLabel.taskId, taskId), inArray(schema.workTaskLabel.labelId, removed.map((row) => row.id))));
       changes.push(...added.map((label) => ({ type: "label_added", to: label })), ...removed.map((label) => ({ type: "label_removed", from: label })));
     }
+    if (patch.digitalAssetIds) changes.push(...(await syncTaskDigitalAssets(tx, taskId, patch.digitalAssetIds)));
 
     const newCollaborators: string[] = [];
     if (patch.collaboratorIds) {
@@ -920,6 +927,8 @@ export type TaskDetail = LoadedTask & {
   clientName: string | null;
   parent: { id: string; key: string; title: string } | null;
   labelIds: string[];
+  /** FR-AST-09: where the task's output goes. */
+  digitalAssets: LinkedDigitalAsset[];
   collaborators: { id: string; name: string }[];
   subtasks: TaskListItem[];
   linked: LinkedTask[];
@@ -934,7 +943,7 @@ export async function getTaskDetail(taskId: string, viewer: WorkViewer): Promise
   if (loaded.facts.project) await notePrivateProjectRead(viewer, loaded.facts.project);
   const { task, work, team } = loaded;
   const personIds = [task.assigneePersonId, task.requesterPersonId, task.createdByPersonId, ...loaded.peopleIds].filter((id): id is string => !!id);
-  const [people, [state], [client], labels, subtasks, dependencies, parent] = await Promise.all([
+  const [people, [state], [client], labels, subtasks, dependencies, parent, digitalAssets] = await Promise.all([
     personIds.length ? db().select({ id: schema.person.id, name: schema.person.fullName }).from(schema.person).where(inArray(schema.person.id, personIds)) : [],
     db().select({ name: schema.workState.name }).from(schema.workState).where(eq(schema.workState.id, work.stateId)),
     work.clientId ? db().select({ name: schema.workClient.name }).from(schema.workClient).where(eq(schema.workClient.id, work.clientId)) : [],
@@ -942,6 +951,7 @@ export async function getTaskDetail(taskId: string, viewer: WorkViewer): Promise
     listItems(eq(schema.task.parentTaskId, taskId), db()),
     db().select().from(schema.workTaskDependency).where(or(eq(schema.workTaskDependency.blockerTaskId, taskId), eq(schema.workTaskDependency.blockedTaskId, taskId))),
     task.parentTaskId ? loadTask(task.parentTaskId) : undefined,
+    digitalAssetsByTask([taskId]),
   ]);
   const names = new Map(people.map((person) => [person.id, person.name]));
   const nameOf = (id: string | null) => (id ? (names.get(id) ?? null) : null);
@@ -976,6 +986,7 @@ export async function getTaskDetail(taskId: string, viewer: WorkViewer): Promise
     clientName: client?.name ?? null,
     parent: parent && canViewTask(viewer, parent.facts) ? { id: parent.task.id, key: taskKey(parent.team.key, parent.work.number), title: parent.task.title } : null,
     labelIds: labels.map((label) => label.labelId),
+    digitalAssets: digitalAssets.get(taskId) ?? [],
     collaborators: loaded.peopleIds.map((personId) => ({ id: personId, name: nameOf(personId) ?? "" })),
     subtasks: shownSubtasks,
     linked,

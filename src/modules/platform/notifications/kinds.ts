@@ -88,6 +88,16 @@ export const KINDS = {
   "approvals.oversight_digest": "approvals",
   // HR called off someone's approved leave: the person is told, the days are back in the balance.
   "approvals.leave_cancelled": "approvals",
+  // The asset register (FR-AST-02, 08). Equipment handed to you waits for your confirmation; for a
+  // page or a channel, somebody asks to be let in, the owner answers, access is given or taken
+  // away, or the asset itself is now yours to answer for. The asset's name — never where its
+  // login is kept, and never a price.
+  "approvals.asset_handover": "approvals",
+  "approvals.digital_access_requested": "approvals",
+  "approvals.digital_access_decided": "approvals",
+  "approvals.digital_access_granted": "approvals",
+  "approvals.digital_access_revoked": "approvals",
+  "approvals.digital_asset_entrusted": "approvals",
   "tasks.assigned": "tasks",
   // Work management (Phase 3): a task in a project, with a link straight to it.
   "tasks.work_assigned": "tasks",

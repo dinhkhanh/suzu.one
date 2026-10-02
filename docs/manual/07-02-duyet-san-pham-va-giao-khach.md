@@ -97,9 +97,9 @@ Nếu phiên bản chưa được duyệt, bạn phải tích xác nhận *Tôi 
 
 ## Nhật ký đăng bài
 
-Với việc nội dung (có **Kênh**), mục **Nhật ký đăng bài** theo dõi từng bài đăng:
+Với việc nội dung (có **Kênh**, hoặc đã gắn **Trang & kênh**), mục **Nhật ký đăng bài** theo dõi từng bài đăng:
 
-1. **Lên lịch đăng**: chọn **Nền tảng**, **Trang / tài khoản**, **Giờ đăng dự kiến**, bấm **Lưu lịch đăng**.
+1. **Lên lịch đăng**: chọn **Trang / kênh đã ghi nhận** — trang, kênh của việc này được gợi ý trước — và **Giờ đăng dự kiến**, bấm **Lưu lịch đăng**. Nền tảng và tên trang lấy từ sổ tài sản số. Nếu trang chưa có trong sổ, chọn **Trang khác (tự nhập)** rồi chọn **Nền tảng** và gõ **Trang / tài khoản**.
 2. Khi đã đăng, bấm **Đã đăng**: dán **Đường dẫn bài đăng** (`https://`), **Thời điểm đăng**; nếu **Có chạy quảng cáo** thì điền **Tài khoản quảng cáo**.
 3. Có thể **Đổi lịch** hoặc **Hủy bài**.
 
@@ -107,6 +107,12 @@ Buổi sáng, người làm nhận nhắc *Sắp đến giờ đăng bài*; bài
 
 > [!WARNING]
 > Việc nội dung không chuyển sang trạng thái đã đăng được nếu chưa có ít nhất một bài **Đã đăng** kèm đường dẫn.
+
+### Trang & kênh của một việc
+
+Trường **Trang & kênh** ở cột thuộc tính cho biết sản phẩm của việc này dành cho trang, kênh, tài khoản nào — ví dụ một bài đăng cho *Fanpage Trà Lá Xanh* và kênh TikTok *@tralaxanh*. Danh sách lấy từ **Tài sản số** (xem chương **Tài sản & đề nghị**); trang, kênh của dự án được xếp lên đầu. Người quản lý dự án chọn trang, kênh của dự án ở **Thành viên & cài đặt → Trang & kênh**.
+
+Dưới phần mô tả, mục **Trang & kênh** liệt kê từng trang đã gắn và dẫn tới trang của nó trong sổ. Nếu người phụ trách việc **chưa có quyền truy cập** trang đó, dòng ấy hiện cảnh báo *… chưa có quyền truy cập*: bấm vào để mở tài sản và xin quyền (hoặc cấp quyền, nếu bạn phụ trách trang).
 
 ### Ghi kết quả bài đăng
 

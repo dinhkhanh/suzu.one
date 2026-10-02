@@ -4,11 +4,12 @@ import { notFound } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
+import { List, ListItem } from "@/components/ui/list";
 import { TableAddRow, TableCard, TableCardHeader } from "@/components/ui/table";
 import { Page, PageHeader } from "@/components/ui/page";
 import { requireUser } from "@/modules/platform/auth/session";
 import { listEntities, listOrgUnits } from "@/modules/platform/org/service";
-import { canBookAssets, canConfirmHandover, canManageAssets, getAssetView, listBookings, listCategories } from "@/modules/assets/service";
+import { canBookAssets, canConfirmHandover, canManageAssets, getAssetView, listBookings, listCategories, listSeatsOfAsset } from "@/modules/assets/service";
 import { AssignForm, ConfirmHandoverForm, ReturnForm, StatusForm } from "@/modules/assets/ui/asset-forms";
 import { BookingList } from "@/modules/assets/ui/booking-calendar";
 import { BookAssetForm } from "@/modules/assets/ui/booking-forms";
@@ -30,11 +31,13 @@ export default async function AssetPage({ params }: PageProps<"/assets/[assetId]
   // Shared production gear carries its own booking panel; ordinary equipment does not.
   const bookable = view.bookable;
   const from = new Date();
-  const [t, tField, tBooking, upcoming, [people, teams, entities, categories]] = await Promise.all([
+  const [t, tField, tBooking, upcoming, installed, [people, teams, entities, categories]] = await Promise.all([
     getTranslations("assets"),
     getTranslations("assets.form"),
     getTranslations("assets.bookings"),
     bookable ? listBookings({ from, to: new Date(from.getTime() + 90 * 86_400_000), assetId }) : [],
+    // The software seats given to this device (FR-AST-11): they go with the machine, whoever holds it.
+    listSeatsOfAsset(assetId),
     manage
       ? Promise.all([
           db().select({ id: schema.person.id, fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.status, "active")).orderBy(asc(schema.person.fullName)),
@@ -119,6 +122,20 @@ export default async function AssetPage({ params }: PageProps<"/assets/[assetId]
               <BookAssetForm assets={[]} assetId={assetId} people={people} canBookForOthers={manage} />
             </TableAddRow>
           ) : null}
+        </TableCard>
+      ) : null}
+
+      {installed.length > 0 ? (
+        <TableCard>
+          <TableCardHeader title={t("seats.onDevice")} count={installed.length} />
+          <List>
+            {installed.map((seat) => (
+              <ListItem key={seat.seatId} href={manage ? `/assets/licences/${seat.licenceId}` : undefined} className="flex-wrap gap-x-3 gap-y-0.5">
+                <span className="min-w-0 flex-1 truncate font-medium">{seat.name}</span>
+                <span className="text-xs text-muted-foreground">{[seat.vendor, seat.assignedAt.toLocaleDateString("vi-VN")].filter(Boolean).join(" · ")}</span>
+              </ListItem>
+            ))}
+          </List>
         </TableCard>
       ) : null}
 

@@ -30,6 +30,8 @@ import { TaskListView } from "@/modules/work/ui/task-list-view";
 import { auditPrivateRead } from "@/modules/projects/service";
 import { ProjectTabs } from "@/modules/projects/ui/project-tabs";
 import { MemberManager } from "@/modules/work/ui/team-forms";
+import { digitalAssetsByProject, listLinkableDigitalAssets } from "@/modules/work/service";
+import { DigitalAssetChips, ProjectDigitalAssets } from "@/modules/work/ui/digital-assets";
 import { pageTitle } from "@/i18n/page-title";
 
 export const generateMetadata = pageTitle("project");
@@ -66,6 +68,9 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
   ]);
   const [chains, automations] = await Promise.all([listReviewChains({ teamId: team.id, projectId: project.id }), canViewAutomations(viewer, teamFacts(team)) ? automationPanel({ teamId: team.id, projectId: project.id }, viewer) : null]);
   const [statusChoices, statusNames] = await Promise.all([projectStatusChoices(team.projectStatusSetId, project.statusId), projectStatusNames()]);
+  // FR-AST-09: the pages and channels the project produces for.
+  const [digitalAssets, digitalOptions] = await Promise.all([digitalAssetsByProject([project.id]).then((byProject) => byProject.get(project.id) ?? []), manage ? listLinkableDigitalAssets() : []]);
+  const chip = ({ id, name, platform, status }: (typeof digitalAssets)[number]) => ({ id, name, platform, status });
   const statusName = project.statusId ? statusNames.get(project.statusId) : undefined;
   const filters = readFilters(query);
   const grouping = readGrouping(query.group);
@@ -115,7 +120,9 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
             </>
           ) : undefined
         }
-      />
+      >
+        <DigitalAssetChips assets={digitalAssets.map(chip)} />
+      </PageHeader>
 
       <ProjectTabs projectId={project.id} current={view === "board" ? "board" : "tasks"} />
       <Section>
@@ -185,6 +192,10 @@ export default async function ProjectPage({ params, searchParams }: PageProps<"/
         </summary>
         <div className="flex flex-col gap-6 border-t p-4">
           <MemberManager members={members} people={people} canManage={manage} target={{ projectId: project.id }} />
+          <section className="flex flex-col gap-2">
+            <h2 className="section-label">{t("digitalAssets.title")}</h2>
+            <ProjectDigitalAssets projectId={project.id} linked={digitalAssets.map(chip)} options={digitalOptions.map(chip)} canManage={manage} />
+          </section>
           <section className="flex flex-col gap-2">
             <h2 className="section-label">{t("customFields.title")}</h2>
             <CustomFieldManager teamId={team.id} projectId={project.id} fields={fields} canManage={canManageCustomFields(viewer, teamFacts(team), facts)} />

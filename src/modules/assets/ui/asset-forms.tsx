@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Field, FieldErrors, FormError } from "@/components/forms/field";
 import { useActionForm } from "@/components/forms/use-action-form";
+import type { ActionResult } from "@/lib/action";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
@@ -45,8 +46,16 @@ export function AssetForm({ value, options }: { value: AssetFormValue; options: 
   const t = useTranslations("assets.form");
   const tEnum = useTranslations("assets.enums");
   const router = useRouter();
-  const action = value.id ? updateAssetAction : registerAssetAction;
-  const form = useActionForm(action, { extra: value.id ? { assetId: value.id } : {}, onSuccess: () => router.refresh() });
+  const action: (input: unknown) => Promise<ActionResult<{ id: string }>> = value.id ? updateAssetAction : registerAssetAction;
+  // Saved: the form gives way to the asset's own page, which is where it is assigned and labelled.
+  // Staying on the form said nothing, and a second press registered the same thing twice.
+  const form = useActionForm(action, {
+    extra: value.id ? { assetId: value.id } : {},
+    onSuccess: (data) => {
+      router.push(`/assets/${data.id}`);
+      router.refresh();
+    },
+  });
 
   return (
     <form onSubmit={form.onSubmit} className="flex flex-col gap-4">
@@ -116,9 +125,10 @@ export function AssetForm({ value, options }: { value: AssetFormValue; options: 
       </Field>
       <FormError namespace="assets.errors" errorKey={form.errorKey} />
       <div>
-        <Button type="submit" disabled={form.pending}>
+        <Button type="submit" disabled={form.pending || form.saved}>
           {value.id ? t("save") : t("register")}
         </Button>
+        {form.saved ? <span className="ml-3 text-sm text-success">{t("saved")}</span> : null}
       </div>
       </FieldErrors>
     </form>

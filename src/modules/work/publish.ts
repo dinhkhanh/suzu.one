@@ -9,6 +9,7 @@ import { addDays, type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
 import { notify } from "../platform/notifications/service";
 import { cleanMetrics, isHttpsUrl, isPublishMissing, latestMetrics, type Metrics, publishFlag, type PublishFlag, type ResultMetric } from "./engine/delivery";
+import { channelOfPlatform, linkableDigitalAsset } from "./digital-links";
 import { CHANNELS } from "./enums";
 import { type LoadedTask, loadTask, logActivity, taskKey, visibleTaskCondition, WORK_KIND } from "./tasks";
 import type { WorkViewer } from "./policy";
@@ -28,17 +29,31 @@ export async function findPublish(publishId: string, executor: Executor = db()):
 
 const touch = (tx: Executor, taskId: string) => tx.update(schema.task).set({ updatedAt: new Date() }).where(eq(schema.task.id, taskId));
 
-export type PlanInput = { platform: string; page: string | null; plannedAt: Date | null };
+export type PlanInput = { platform: string | null; page: string | null; plannedAt: Date | null; /** A registered page or channel (FR-AST-09): it names the platform and the page itself. */ digitalAssetId?: string | null };
+
+/**
+ * Where the post goes. A registered asset fills the platform and the page from the register, so
+ * every reader of those two columns — the calendar, the client report — reads them as before;
+ * without one, the platform is chosen and the page typed by hand.
+ */
+async function placeOf(input: PlanInput): Promise<{ platform: string; page: string | null; digitalAssetId: string | null }> {
+  if (input.digitalAssetId) {
+    const asset = await linkableDigitalAsset(input.digitalAssetId);
+    return { platform: channelOfPlatform(asset.platform), page: asset.name, digitalAssetId: asset.id };
+  }
+  if (!input.platform || !isChannel(input.platform)) throw new ActionError("publish_platform_invalid");
+  return { platform: input.platform, page: input.page, digitalAssetId: null };
+}
 
 /** A planned post. The platform is one of the channels (FR-WRK channels), the page the brand's account on it. */
 export async function planPublish(taskId: string, input: PlanInput, actor: Actor): Promise<PublishRow> {
-  if (!isChannel(input.platform)) throw new ActionError("publish_platform_invalid");
+  const place = await placeOf(input);
   return db().transaction(async (tx) => {
     const loaded = await loadTask(taskId, tx);
     if (!loaded) throw new ActionError("task_not_found");
     if (loaded.task.status === "cancelled") throw new ActionError("publish_task_closed");
-    const [publish] = await tx.insert(schema.workPublish).values({ taskId, platform: input.platform, page: input.page, plannedAt: input.plannedAt, createdByPersonId: actor.personId }).returning();
-    await logActivity(tx, taskId, actor.personId, [{ type: "publish_planned", to: { name: [input.platform, input.page].filter(Boolean).join(" · "), plannedAt: input.plannedAt?.toISOString() ?? null } }]);
+    const [publish] = await tx.insert(schema.workPublish).values({ taskId, ...place, plannedAt: input.plannedAt, createdByPersonId: actor.personId }).returning();
+    await logActivity(tx, taskId, actor.personId, [{ type: "publish_planned", to: { name: [place.platform, place.page].filter(Boolean).join(" · "), plannedAt: input.plannedAt?.toISOString() ?? null } }]);
     await touch(tx, taskId);
     return publish;
   });
@@ -46,13 +61,13 @@ export async function planPublish(taskId: string, input: PlanInput, actor: Actor
 
 /** Moving a planned post, or correcting its page. A published post keeps what it was published as. */
 export async function updatePublishPlan(publishId: string, input: PlanInput, actor: Actor): Promise<{ before: PublishRow; after: PublishRow }> {
-  if (!isChannel(input.platform)) throw new ActionError("publish_platform_invalid");
+  const place = await placeOf(input);
   return db().transaction(async (tx) => {
     const found = await findPublish(publishId, tx);
     if (!found) throw new ActionError("publish_not_found");
     if (found.publish.status !== "planned") throw new ActionError("publish_not_planned");
-    const [after] = await tx.update(schema.workPublish).set({ platform: input.platform, page: input.page, plannedAt: input.plannedAt, updatedAt: new Date() }).where(eq(schema.workPublish.id, publishId)).returning();
-    await logActivity(tx, found.publish.taskId, actor.personId, [{ type: "publish_rescheduled", from: { plannedAt: found.publish.plannedAt?.toISOString() ?? null }, to: { name: [input.platform, input.page].filter(Boolean).join(" · "), plannedAt: input.plannedAt?.toISOString() ?? null } }]);
+    const [after] = await tx.update(schema.workPublish).set({ ...place, plannedAt: input.plannedAt, updatedAt: new Date() }).where(eq(schema.workPublish.id, publishId)).returning();
+    await logActivity(tx, found.publish.taskId, actor.personId, [{ type: "publish_rescheduled", from: { plannedAt: found.publish.plannedAt?.toISOString() ?? null }, to: { name: [place.platform, place.page].filter(Boolean).join(" · "), plannedAt: input.plannedAt?.toISOString() ?? null } }]);
     return { before: found.publish, after };
   });
 }

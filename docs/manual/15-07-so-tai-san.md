@@ -32,7 +32,7 @@ Mở **Của tôi → Tài sản** (với bạn, mục này mở thẳng sổ) h
 1. Bấm **Ghi nhận tài sản** ([mở](/assets/new)).
 2. Điền **Tên tài sản**, chọn **Nhóm** và **Pháp nhân sở hữu**, **Tình trạng** (**Mới**, **Tốt**, **Bình thường**, **Kém**, **Hỏng**).
 3. Điền thêm nếu có: **Hãng**, **Model**, **Số sê-ri**, **Vị trí**, **Ngày mua**, **Bảo hành đến**, **Nguyên giá (₫)**, **Nhà cung cấp**, **Ghi chú**.
-4. Bấm **Ghi nhận**.
+4. Bấm **Ghi nhận**. Màn hình báo **Đã lưu** rồi mở ngay trang của tài sản vừa ghi nhận, nơi bạn giao tài sản và in nhãn.
 
 Hệ thống tự cấp **mã tài sản** theo dạng **mã pháp nhân – mã nhóm – số thứ tự**, ví dụ `SZM-LAP-0007`, và một mã QR riêng. Tài sản mới ở trạng thái **Trong kho**.
 
@@ -64,7 +64,7 @@ Khi tài sản đang **Trong kho** (hoặc **Đang sửa**), khung **Giao cho** 
 4. **Phụ kiện kèm theo**: mỗi dòng một món — sạc, túi, pin dự phòng…
 5. Bấm **Giao tài sản**.
 
-Tài sản chuyển sang **Đang giao**. Nếu giao cho một cá nhân, người đó phải tự vào **Thiết bị của tôi** để **Xác nhận đã nhận**; cho đến lúc đó, trang tài sản ghi **Chưa xác nhận nhận**. Giao cho nhóm hoặc pháp nhân thì không cần ai xác nhận.
+Tài sản chuyển sang **Đang giao**. Nếu giao cho một cá nhân, người đó nhận ngay thông báo **Bạn được giao thiết bị: …** dẫn tới **Thiết bị của tôi** để **Xác nhận đã nhận**; cho đến lúc đó, trang tài sản ghi **Chưa xác nhận nhận**. Giao cho nhóm hoặc pháp nhân thì không cần ai xác nhận.
 
 Không giao được khi:
 

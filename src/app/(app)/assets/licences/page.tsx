@@ -3,10 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Page, PageHeader } from "@/components/ui/page";
+import { Page, PageHeader, Tile, TileGrid } from "@/components/ui/page";
 import { Table, TableAddRow, TableBody, TableCard, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/modules/platform/auth/session";
-import { assetsToday, canManageAssets, canManageLicences, canReadLicences, CYCLE_MONTHS, listLicences } from "@/modules/assets/service";
+import { assetsToday, canManageAssets, canManageLicences, canReadLicences, CYCLE_MONTHS, licenceTotals, listLicences } from "@/modules/assets/service";
 import { AssetsNav } from "@/modules/assets/ui/nav";
 import { statusTone } from "@/components/ui/tone";
 import { pageTitle } from "@/i18n/page-title";
@@ -19,8 +19,7 @@ export default async function LicencesPage() {
   const user = await requireUser();
   if (!canReadLicences(user.principal)) notFound();
 
-  const [rows, t, tc] = await Promise.all([listLicences(user.principal), getTranslations("assets.licences"), getTranslations("assets.licences.cycle")]);
-  const ts = await getTranslations("assets.licences.status");
+  const [rows, totals, t, tc, ts, tSeats] = await Promise.all([listLicences(user.principal), licenceTotals(user.principal), getTranslations("assets.licences"), getTranslations("assets.licences.cycle"), getTranslations("assets.licences.status"), getTranslations("assets.seats")]);
   const today = assetsToday();
   const manage = canManageLicences(user.principal);
 
@@ -42,6 +41,14 @@ export default async function LicencesPage() {
         }
       />
       <AssetsNav current="licences" manages={canManageAssets(user.principal)} principal={user.principal} />
+
+      {/* Over every running subscription in reach: what is paid for, what is used, what sits idle. */}
+      <TileGrid>
+        <Tile label={tSeats("tiles.active")} value={totals.active} />
+        <Tile label={tSeats("used")} value={`${totals.seatsUsed} / ${totals.seats}`} />
+        <Tile label={tSeats("free")} value={totals.seatsUnused} tone={totals.seatsUnused > 0 ? "warning" : undefined} hint={totals.unusedPerMonth ? tSeats("idlePerMonth", { amount: totals.unusedPerMonth.toLocaleString("vi-VN") }) : undefined} />
+        {totals.costPerMonth !== null ? <Tile label={tSeats("tiles.perMonth")} value={totals.costPerMonth.toLocaleString("vi-VN")} /> : null}
+      </TileGrid>
 
       <TableCard>
         <Table>
@@ -72,7 +79,10 @@ export default async function LicencesPage() {
                   {row.vendor ? <p className="text-xs text-faint">{row.vendor}</p> : null}
                 </TableCell>
                 <TableCell>{row.entityName ?? "—"}</TableCell>
-                <TableCell kind="number">{row.seats ?? "—"}</TableCell>
+                {/* Seats in use against seats paid for; idle seats of a running subscription are money for nobody. */}
+                <TableCell kind="number" className={row.status === "active" && row.seats !== null && row.seatsUsed < row.seats ? "text-warning" : undefined}>
+                  {row.seats === null ? (row.seatsUsed || "—") : `${row.seatsUsed} / ${row.seats}`}
+                </TableCell>
                 <TableCell>
                   <Badge variant="outline">{tc(row.billingCycle)}</Badge>
                 </TableCell>

@@ -113,3 +113,10 @@ export { checklistChoices, type ChecklistRow, listChecklists, listStateChecklist
 export { checklistOwners, checklistUsage } from "./checklists";
 export { MAX_CHECKLIST_ITEMS, MAX_LINKED_CHECKLISTS } from "./engine/checklists";
 export { listProjectStatusSets, listProjectStatuses, listStateSets, projectStatusChoices, projectStatusNames, projectStatusSetChoices, projectStatusUsage, type ProjectStatusRow, type ProjectStatusSetRow, statusesOfSet, type StateSetRow, usableByTeam, workflowChoices } from "./status-sets";
+/**
+ * FR-AST-09: where a piece of work goes. Tasks, projects and posts point at the digital assets of
+ * the asset register — the pages and channels everybody may name — and the asset's page reads back
+ * the work aimed at it, narrowed to what the reader may already open.
+ */
+export { channelOfPlatform, digitalAssetsByProject, digitalAssetsByTask, type LinkedDigitalAsset, listLinkableDigitalAssets, MAX_LINKED_DIGITAL_ASSETS } from "./digital-links";
+export { type DigitalAssetWork, listWorkOfDigitalAsset } from "./digital-work";

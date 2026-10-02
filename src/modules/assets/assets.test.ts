@@ -348,3 +348,20 @@ describe("the totals above the register", () => {
     expect(await summaryByStatus(huy)).toEqual({ in_stock: 0, assigned: 0, in_repair: 0, lost: 0, disposed: 0 });
   });
 });
+
+describe("telling the holder", () => {
+  it("notifies the person a thing is assigned to, with the link that asks them to confirm — and nobody when it goes to a team", async () => {
+    const holder = await newPerson("Người nhận máy");
+    const asset = await newAsset();
+    await assignAsset({ assetId: asset.id, holderType: "person", holderId: holder, conditionOut: "good", dueBack: null, purpose: null, accessories: [] }, ids.keeper);
+    const told = await db().select().from(schema.notification).where(and(eq(schema.notification.recipientPersonId, holder), eq(schema.notification.kind, "approvals.asset_handover")));
+    expect(told).toHaveLength(1);
+    expect(told[0]).toMatchObject({ link: "/assets/mine", params: { asset: `${asset.code} ${asset.name}` } });
+
+    // A shelf has nobody to tell, and handing a thing to yourself needs no notice.
+    const before = (await db().select().from(schema.notification).where(eq(schema.notification.kind, "approvals.asset_handover"))).length;
+    await assignAsset({ assetId: (await newAsset()).id, holderType: "team", holderId: ids.team, conditionOut: "good", dueBack: null, purpose: null, accessories: [] }, ids.keeper);
+    await assignAsset({ assetId: (await newAsset()).id, holderType: "person", holderId: ids.keeper, conditionOut: "good", dueBack: null, purpose: null, accessories: [] }, ids.keeper);
+    expect((await db().select().from(schema.notification).where(eq(schema.notification.kind, "approvals.asset_handover"))).length).toBe(before);
+  });
+});

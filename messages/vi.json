@@ -838,6 +838,30 @@
         "title": "Yêu cầu của bạn ({requestType}): {outcome}",
         "body": "{approver} đã trả lời yêu cầu của bạn ({requestType}): {outcome}."
       },
+      "approvals_asset_handover": {
+        "title": "Bạn được giao thiết bị: {asset}",
+        "body": "{asset} đã được giao cho bạn. Mở mục Thiết bị của tôi để xác nhận đã nhận."
+      },
+      "approvals_digital_access_requested": {
+        "title": "{requester} xin quyền truy cập {asset}",
+        "body": "{requester} đã xin quyền truy cập {asset}. Mở tài sản để trả lời."
+      },
+      "approvals_digital_access_decided": {
+        "title": "Yêu cầu quyền truy cập của bạn ({asset}): {outcome}",
+        "body": "Yêu cầu quyền truy cập {asset} của bạn đã được trả lời: {outcome}."
+      },
+      "approvals_digital_access_granted": {
+        "title": "Bạn được cấp quyền truy cập {asset}",
+        "body": "Bạn đã có quyền truy cập {asset}. Mở để xem mức quyền của bạn."
+      },
+      "approvals_digital_access_revoked": {
+        "title": "Quyền truy cập {asset} của bạn đã được thu hồi",
+        "body": "Bạn không còn quyền truy cập {asset}."
+      },
+      "approvals_digital_asset_entrusted": {
+        "title": "Bạn là người phụ trách {asset}",
+        "body": "Bạn được giao phụ trách {asset}: bạn quyết định ai được cấp quyền truy cập."
+      },
       "tasks_assigned": {
         "title": "Bạn được giao {count, plural, =1 {việc: {title}} other {# việc mới}}",
         "body": "Bạn có {count, plural, =1 {một việc mới: {title}} other {# việc mới, bắt đầu bằng: {title}}}. Mở mục Việc của tôi để xem hạn và đánh dấu hoàn thành."
@@ -3944,6 +3968,13 @@
   },
   "work": {
     "title": "Công việc",
+    "digitalAssets": {
+      "title": "Trang & kênh",
+      "retired": "Ngừng sử dụng",
+      "noAccess": "{name} chưa có quyền truy cập",
+      "none": "Chưa gắn trang hay kênh nào.",
+      "projectHint": "Các trang, kênh và tài khoản mà dự án này sản xuất nội dung. Chúng được gợi ý trước trên từng công việc của dự án."
+    },
     "description": "Nhóm, dự án và công việc. Nhấn Ctrl/⌘ K để đi tới bất cứ đâu, C để tạo công việc.",
     "myWork": "Việc của tôi",
     "save": "Lưu",
@@ -4272,7 +4303,8 @@
         "checklist": "Checklist",
         "links": "Liên kết",
         "reviewer": "Người duyệt",
-        "cycle": "chu kỳ"
+        "cycle": "chu kỳ",
+        "digitalAssets": "Trang & kênh"
       },
       "descriptionPlaceholder": "Brief, tài liệu tham khảo, thế nào là hoàn thành…",
       "checklist": "Checklist",
@@ -4306,6 +4338,8 @@
         "created": "tạo công việc",
         "label_added": "thêm nhãn {name}",
         "label_removed": "gỡ nhãn {name}",
+        "digital_asset_added": "gắn trang / kênh {name}",
+        "digital_asset_removed": "gỡ trang / kênh {name}",
         "person_added": "thêm {name}",
         "person_removed": "gỡ {name}",
         "dependency_added": "liên kết với {name}",
@@ -4565,7 +4599,9 @@
       "checklist_incomplete": "Bước này bắt buộc checklist: tick đủ mọi ô trước khi chuyển tiếp.",
       "checklist_item_locked": "Không thể xóa ô của checklist mà bước này bắt buộc.",
       "task_checklist_full": "Công việc đã có quá nhiều mục checklist để thêm checklist này.",
-      "poster_unreadable": "Không mở được ảnh này. Hãy dùng ảnh JPG, PNG hoặc WebP."
+      "poster_unreadable": "Không mở được ảnh này. Hãy dùng ảnh JPG, PNG hoặc WebP.",
+      "digital_asset_not_linkable": "Không thể gắn trang / kênh này: đã ngừng sử dụng, bị hạn chế hoặc không còn tồn tại.",
+      "digital_asset_too_many": "Quá nhiều trang và kênh cho một công việc."
     },
     "views": {
       "list": "Danh sách",
@@ -5556,6 +5592,8 @@
       "platform": "Nền tảng",
       "page": "Trang / tài khoản",
       "pagePlaceholder": "Ví dụ: Fanpage Vinamilk",
+      "account": "Trang / kênh đã ghi nhận",
+      "accountOther": "Trang khác (tự nhập)",
       "plannedFor": "Giờ đăng dự kiến",
       "savePlan": "Lưu lịch đăng",
       "cancel": "Hủy",
@@ -9058,6 +9096,228 @@
     "empty": "Chưa có tài sản nào.",
     "totals": "Trong kho: {in_stock} · Đang giao: {assigned} · Đang sửa: {in_repair} · Mất: {lost} · Đã thanh lý: {disposed}",
     "history": "Lịch sử",
+    "digital": {
+      "title": "Tài sản số",
+      "description": "Trang, kênh, tài khoản quảng cáo và website mà công ty sở hữu hoặc vận hành: ai phụ trách và ai có quyền truy cập.",
+      "new": "Ghi nhận tài sản số",
+      "edit": "Sửa thông tin",
+      "empty": "Chưa có tài sản số nào.",
+      "noOwner": "Chưa có ai",
+      "youRun": "Bạn phụ trách",
+      "waitingCount": "{count} chờ duyệt",
+      "tiles": {
+        "total": "Tài sản",
+        "mine": "Tôi có quyền",
+        "waiting": "Yêu cầu chờ duyệt",
+        "rotationDue": "Cần đổi mật khẩu"
+      },
+      "filters": {
+        "search": "Tìm kiếm",
+        "searchHint": "Tên hoặc tên định danh",
+        "any": "Tất cả",
+        "apply": "Lọc"
+      },
+      "fields": {
+        "name": "Tên",
+        "platform": "Nền tảng",
+        "kind": "Loại",
+        "handle": "Tên định danh / ID",
+        "url": "Đường dẫn",
+        "entity": "Pháp nhân",
+        "owner": "Người phụ trách",
+        "ownership": "Thuộc về",
+        "client": "Khách hàng",
+        "brand": "Khách hàng / thương hiệu",
+        "visibility": "Ai nhìn thấy",
+        "status": "Trạng thái",
+        "notes": "Ghi chú"
+      },
+      "columns": {
+        "belongsTo": "Thuộc về",
+        "people": "Số người",
+        "myAccess": "Quyền của tôi"
+      },
+      "platform": {
+        "facebook": "Facebook",
+        "instagram": "Instagram",
+        "tiktok": "TikTok",
+        "youtube": "YouTube",
+        "zalo": "Zalo",
+        "linkedin": "LinkedIn",
+        "threads": "Threads",
+        "x": "X",
+        "google": "Google",
+        "website": "Website",
+        "other": "Khác"
+      },
+      "kind": {
+        "social_channel": "Trang / kênh",
+        "ad_account": "Tài khoản quảng cáo",
+        "website": "Website / tên miền",
+        "business_account": "Tài khoản doanh nghiệp",
+        "other": "Khác"
+      },
+      "ownership": {
+        "company": "Công ty",
+        "client": "Khách hàng (công ty vận hành)"
+      },
+      "visibility": {
+        "staff": "Mọi nhân viên",
+        "restricted": "Hạn chế"
+      },
+      "status": {
+        "active": "Đang hoạt động",
+        "paused": "Tạm dừng",
+        "retired": "Ngừng sử dụng"
+      },
+      "level": {
+        "admin": "Quản trị viên",
+        "editor": "Biên tập viên",
+        "moderator": "Người kiểm duyệt",
+        "advertiser": "Người chạy quảng cáo",
+        "analyst": "Người xem số liệu"
+      },
+      "method": {
+        "own_account": "Tài khoản cá nhân",
+        "shared_login": "Dùng chung mật khẩu"
+      },
+      "access": {
+        "title": "Ai có quyền truy cập",
+        "description": "Mức quyền của từng người trên nền tảng. Thu hồi ở đây là ghi nhận: nhớ gỡ quyền trên nền tảng nữa.",
+        "person": "Người",
+        "level": "Mức quyền",
+        "method": "Cách vào",
+        "since": "Từ ngày",
+        "until": "Xem lại ngày",
+        "empty": "Chưa ai được cấp quyền.",
+        "status": {
+          "requested": "Chờ duyệt",
+          "active": "Đang có quyền",
+          "declined": "Từ chối",
+          "revoked": "Đã thu hồi"
+        }
+      },
+      "form": {
+        "intro": "Ghi nhận tài sản và người phụ trách. Việc cấp quyền thực hiện trên trang của tài sản sau khi lưu.",
+        "namePlaceholder": "SuZu Media — Fanpage",
+        "visibilityHint": "“Mọi nhân viên”: tài sản có trong danh bạ, công việc và dự án có thể gắn vào. “Hạn chế”: chỉ người quản lý và người được cấp quyền nhìn thấy — ví dụ cổng ngân hàng, tài khoản thuế.",
+        "save": "Lưu",
+        "register": "Ghi nhận",
+        "saved": "Đã lưu. Đang mở tài sản…"
+      },
+      "secrets": {
+        "title": "Đăng nhập và khôi phục",
+        "readers": "Chỉ người phụ trách và người giữ sổ tài sản nhìn thấy.",
+        "never": "Không bao giờ nhập mật khẩu vào đây. Chỉ ghi nơi lưu mật khẩu — tên mục trong kho mật khẩu — không ghi mật khẩu.",
+        "loginIdentity": "Đăng ký bằng (email hoặc số điện thoại)",
+        "recoveryContact": "Mã khôi phục và mã 2 lớp gửi về",
+        "credentialLocation": "Nơi lưu mật khẩu",
+        "credentialPlaceholder": "1Password › Social › Fanpage SuZu Media"
+      },
+      "grant": {
+        "title": "Cấp quyền",
+        "person": "Người được cấp",
+        "level": "Mức quyền",
+        "method": "Cách vào",
+        "expiresOn": "Xem lại ngày (không bắt buộc)",
+        "note": "Lý do",
+        "notePlaceholder": "Phụ trách chiến dịch tháng 10",
+        "hint": "Chọn người đã có quyền sẽ đổi mức quyền của họ. “Dùng chung mật khẩu” nghĩa là họ biết mật khẩu tài khoản: khi thu hồi quyền, phải đổi mật khẩu.",
+        "submit": "Cấp quyền",
+        "done": "Đã cấp — người này đã được thông báo."
+      },
+      "request": {
+        "title": "Xin quyền truy cập",
+        "intro": "{owner} sẽ trả lời yêu cầu của bạn.",
+        "level": "Mức quyền cần",
+        "note": "Để làm gì",
+        "notePlaceholder": "Tôi lên lịch đăng bài cho trang này",
+        "submit": "Gửi yêu cầu",
+        "waiting": "Yêu cầu của bạn đang chờ {owner} trả lời.",
+        "withdraw": "Rút yêu cầu",
+        "keepers": "người giữ sổ tài sản"
+      },
+      "decide": {
+        "title": "Yêu cầu chờ duyệt",
+        "approve": "Cấp quyền",
+        "decline": "Từ chối",
+        "level": "Mức quyền",
+        "method": "Cách vào",
+        "expiresOn": "Xem lại ngày",
+        "reason": "Lý do từ chối",
+        "confirmApprove": "Xác nhận",
+        "confirmDecline": "Từ chối",
+        "back": "Quay lại"
+      },
+      "end": {
+        "note": "Lý do (không bắt buộc)",
+        "back": "Quay lại",
+        "revoke": "Thu hồi",
+        "confirmRevoke": "Thu hồi quyền",
+        "giveUp": "Trả quyền",
+        "confirmGiveUp": "Trả lại quyền của tôi"
+      },
+      "rotation": {
+        "badge": "Cần đổi mật khẩu",
+        "due": "Một người biết mật khẩu dùng chung đã bị thu hồi quyền ngày {date}. Hãy đổi mật khẩu rồi ghi nhận tại đây.",
+        "done": "Đã đổi mật khẩu",
+        "last": "Lần đổi mật khẩu gần nhất"
+      },
+      "work": {
+        "tasks": "Việc đang làm cho tài sản này",
+        "projects": "Dự án: {names}",
+        "noTasks": "Chưa có việc đang mở nào gắn với tài sản này.",
+        "posts": "Bài đăng",
+        "noPosts": "Gần đây chưa có bài nào được lên lịch hoặc đăng tại đây.",
+        "post": {
+          "planned": "Đã lên lịch",
+          "published": "Đã đăng"
+        }
+      },
+      "history": {
+        "title": "Quyền đã kết thúc"
+      }
+    },
+    "seats": {
+      "title": "Suất dùng",
+      "description": "Ai đang dùng: một người, hoặc một thiết bị — suất gắn với thiết bị thì đi theo máy, bất kể ai đang giữ máy.",
+      "used": "Suất đang dùng",
+      "free": "Suất chưa dùng",
+      "idleCost": "≈ {amount} ₫ mỗi kỳ không ai dùng",
+      "idlePerMonth": "≈ {amount} ₫ mỗi tháng không ai dùng",
+      "holder": "Người / thiết bị dùng",
+      "since": "Từ ngày",
+      "by": "Người cấp",
+      "empty": "Chưa cấp suất nào.",
+      "deviceWith": "Thiết bị do {name} giữ",
+      "deviceOnShelf": "Thiết bị — chưa ai giữ",
+      "assign": "Cấp suất dùng",
+      "assigned": "Đã cấp.",
+      "history": "Suất đã thu hồi",
+      "for": "Cấp cho",
+      "forPerson": "Một người",
+      "forDevice": "Một thiết bị",
+      "person": "Người dùng",
+      "device": "Thiết bị",
+      "note": "Ghi chú",
+      "release": "Thu hồi",
+      "releaseNote": "Lý do (không bắt buộc)",
+      "confirmRelease": "Thu hồi suất dùng",
+      "back": "Quay lại",
+      "onDevice": "Phần mềm trên thiết bị này",
+      "tiles": {
+        "active": "Thuê bao đang chạy",
+        "perMonth": "Chi phí mỗi tháng (₫)"
+      }
+    },
+    "offboarding": {
+      "revokeAccess": "Thu hồi quyền truy cập: {asset}",
+      "handOverAsset": "Giao người phụ trách mới: {asset}",
+      "releaseSeat": "Thu hồi suất dùng: {licence}",
+      "retiredNote": "Tài sản đã ngừng sử dụng.",
+      "deviceGoneNote": "Thiết bị đã mất hoặc thanh lý.",
+      "licenceEndedNote": "Thuê bao đã kết thúc."
+    },
     "nav": {
       "mine": "Thiết bị của tôi",
       "labels": "In nhãn QR",
@@ -9066,6 +9326,7 @@
       "edit": "Sửa thông tin",
       "import": "Nhập từ tệp",
       "bookings": "Lịch đặt thiết bị",
+      "digital": "Tài sản số",
       "licences": "Bản quyền & thuê bao",
       "register": "Sổ tài sản"
     },
@@ -9102,7 +9363,8 @@
       "supplier": "Nhà cung cấp",
       "notes": "Ghi chú",
       "register": "Ghi nhận",
-      "save": "Lưu"
+      "save": "Lưu",
+      "saved": "Đã lưu. Đang mở tài sản…"
     },
     "assign": {
       "title": "Giao cho",
@@ -9145,7 +9407,18 @@
       "since": "Nhận từ {date}",
       "dueBack": "hẹn trả {date}",
       "confirmed": "Đã xác nhận ngày {date}",
-      "register": "Mở sổ tài sản"
+      "register": "Mở sổ tài sản",
+      "digital": {
+        "title": "Trang, kênh và tài khoản",
+        "directory": "Danh bạ",
+        "empty": "Bạn chưa có quyền truy cập tài sản số nào. Có thể xin quyền trong danh bạ.",
+        "owner": "Bạn phụ trách"
+      },
+      "software": {
+        "title": "Phần mềm và thuê bao",
+        "empty": "Chưa có suất phần mềm nào đứng tên bạn.",
+        "onDevice": "trên {device}"
+      }
     },
     "categories": {
       "title": "Nhóm tài sản",
@@ -9240,14 +9513,40 @@
       "licence_not_found": "Không tìm thấy bản quyền.",
       "licence_cost_invalid": "Chi phí không hợp lệ.",
       "licence_seats_invalid": "Số người dùng không hợp lệ.",
-      "licence_renewal_date_required": "Chu kỳ này cần có ngày đến hạn."
+      "licence_renewal_date_required": "Chu kỳ này cần có ngày đến hạn.",
+      "licence_not_active": "Thuê bao này không còn chạy nên không có suất để cấp.",
+      "licence_seats_below_used": "Số suất đang dùng nhiều hơn con số này. Hãy thu hồi bớt trước.",
+      "seat_holder_required": "Hãy chọn một người hoặc một thiết bị.",
+      "seat_holder_unknown": "Không tìm thấy người hoặc thiết bị này.",
+      "seat_holder_inactive": "Người này đã nghỉ việc, không thể cấp suất dùng.",
+      "seat_device_unavailable": "Thiết bị này đã mất hoặc đã thanh lý.",
+      "seat_already_assigned": "Đã có suất dùng của thuê bao này rồi.",
+      "seat_none_free": "Đã dùng hết số suất. Hãy thu hồi một suất hoặc mua thêm.",
+      "seat_not_found": "Không tìm thấy suất dùng.",
+      "seat_already_released": "Suất này đã được thu hồi.",
+      "digital_asset_not_found": "Không tìm thấy tài sản số.",
+      "digital_asset_url_invalid": "Đường dẫn phải bắt đầu bằng https://.",
+      "digital_asset_client_required": "Hãy chọn khách hàng sở hữu tài sản.",
+      "digital_asset_client_unknown": "Không tìm thấy khách hàng này.",
+      "digital_asset_retired": "Tài sản này đã ngừng sử dụng.",
+      "digital_person_unknown": "Không tìm thấy người này.",
+      "digital_person_inactive": "Người này đã nghỉ việc.",
+      "digital_access_already_open": "Người này đã có quyền hoặc đang có yêu cầu chờ duyệt.",
+      "digital_access_not_found": "Không tìm thấy quyền truy cập này.",
+      "digital_access_not_pending": "Yêu cầu này đã được trả lời.",
+      "digital_access_reason_required": "Hãy ghi lý do từ chối.",
+      "digital_access_closed": "Quyền này đã kết thúc."
     },
     "person": {
       "title": "Thiết bị đang giữ",
       "empty": "Không giữ thiết bị nào của công ty.",
       "since": "nhận từ {date}",
       "dueBack": "hẹn trả {date}",
-      "unconfirmed": "chưa xác nhận nhận"
+      "unconfirmed": "chưa xác nhận nhận",
+      "digital": "Trang, kênh và tài khoản",
+      "answersFor": "người phụ trách",
+      "software": "Suất phần mềm",
+      "onDevice": "trên {device}"
     },
     "import": {
       "title": "Nhập tài sản từ tệp",
@@ -9382,6 +9681,7 @@
         "accountRef": "Mã tài khoản / hợp đồng",
         "status": "Trạng thái",
         "autoRenews": "Tự động gia hạn nếu không hủy",
+        "title": "Thông tin",
         "notes": "Ghi chú",
         "tracker": "Ngày đến hạn sẽ sinh nghĩa vụ trong Sổ tay tuân thủ. Người phụ trách ghi ở đây sẽ nhận nghĩa vụ đó.",
         "submit": "Lưu",
@@ -11974,6 +12274,10 @@
     "leaveTypes": "Loại nghỉ phép",
     "licence": "Bản quyền",
     "licencesSubscriptions": "Bản quyền & thuê bao",
+    "digitalAssets": "Tài sản số",
+    "digitalAsset": "Tài sản số",
+    "newDigitalAsset": "Ghi nhận tài sản số",
+    "editDigitalAsset": "Sửa tài sản số",
     "manageAnnouncements": "Quản lý thông báo",
     "mappingProfiles": "Hồ sơ ánh xạ",
     "meeting": "Cuộc họp",

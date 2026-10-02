@@ -12,11 +12,14 @@ import { ActionError } from "@/lib/action";
 import { cached, invalidate } from "@/lib/cache";
 import { type IsoDate, todayInVietnam } from "@/lib/dates";
 import { db, schema, type Tx } from "@/lib/db";
+import { notify } from "@/modules/platform/notifications/service";
 import { cancelOpenTasksOfContext, createTasks } from "@/modules/platform/tasks-engine/service";
 import type { Principal } from "@/modules/platform/rbac/policy";
 import { listPeopleHolding } from "@/modules/platform/rbac/service";
 import { type AssetCondition, type AssetKind, type AssetStatus, type BillingCycle, BOOKING_CLOSED, BOOKING_HOLDS_SLOT, type BookingStatus, CYCLE_MONTHS, type HolderType, type LicenceStatus, UNASSIGNABLE_STATUSES } from "./enums";
 import { assetReach, canManageAssets, canReadAssetMoney, canReadRegister, canViewAsset } from "./policy";
+import { cancelDigitalOffboardingTasks, openDigitalOffboardingTasks } from "./digital";
+import { cancelSeatReleaseTasks, countOpenSeats, openSeatReleaseTasks, releaseSeatsOfAsset, releaseSeatsOfLicence } from "./seats";
 import { renewalsBetween } from "./engine/renewal";
 import { encodeQr } from "./engine/qr";
 
@@ -35,7 +38,29 @@ export function qrPath(text: string, quietZone = 2): { path: string; size: numbe
 export * from "./enums";
 export * from "./engine/booking";
 export * from "./engine/renewal";
-export { assetReach, canActOnBooking, canBookAssets, canConfirmHandover, canDecideBookings, canManageAssets, canManageCategories, canManageLicences, canReadAssetMoney, canReadLicences, canReadPersonAssets, canReadRegister, canViewAsset } from "./policy";
+export * from "./digital";
+export * from "./seats";
+export {
+  assetReach,
+  canActOnBooking,
+  canBookAssets,
+  canConfirmHandover,
+  canDecideBookings,
+  canEndDigitalAccess,
+  canManageAssets,
+  canManageCategories,
+  canManageDigitalAssets,
+  canManageLicences,
+  canReadAssetMoney,
+  canReadDigitalSecrets,
+  canReadLicences,
+  canReadPersonAssets,
+  canReadRegister,
+  canRequestDigitalAccess,
+  canRunDigitalAsset,
+  canViewAsset,
+  canViewDigitalAsset,
+} from "./policy";
 
 type Executor = Tx | ReturnType<typeof db>;
 export type AssetRow = typeof schema.asset.$inferSelect;
@@ -177,6 +202,8 @@ export async function setAssetStatus(assetId: string, status: AssetStatus, note:
       .returning();
     const type = status === "lost" ? "lost" : status === "disposed" ? "disposed" : status === "in_repair" ? "condition_changed" : "repaired";
     await tx.insert(schema.assetEvent).values({ assetId, type, actorPersonId, note, detail: { from: before.status, to: status } });
+    // A machine that is gone runs nothing: the seats installed on it are free for another (FR-AST-11).
+    if (UNASSIGNABLE_STATUSES.includes(status)) await releaseSeatsOfAsset(tx, assetId, actorPersonId);
     return { before, after };
   });
 }
@@ -243,6 +270,12 @@ export async function assignAsset(input: AssignInput, actorPersonId: string, exe
       .returning();
     await tx.update(schema.asset).set({ status: "assigned", condition: input.conditionOut, updatedAt: now() }).where(eq(schema.asset.id, input.assetId));
     await tx.insert(schema.assetEvent).values({ assetId: input.assetId, assignmentId: assignment.id, type: "assigned", actorPersonId, detail: { holderType: input.holderType, holderId: input.holderId } });
+    // The handover is only half done until the holder says they received it (FR-AST-02), so they
+    // are told at once, with a link to the page that asks. Inside the transaction: nobody hears
+    // about an assignment that was rolled back. A team's or an office's asset has nobody to tell.
+    if (holder.holderPersonId && holder.holderPersonId !== actorPersonId) {
+      await notify({ recipients: [holder.holderPersonId], kind: "approvals.asset_handover", params: { asset: `${asset.code} ${asset.name}` }, link: "/assets/mine" }, tx);
+    }
     return assignment;
   };
   return executor ? run(executor) : db().transaction(run);
@@ -585,10 +618,18 @@ const RETURN_TASK_KIND = "asset_return";
  * themselves, whose access ends with their last day, which would leave the task unanswerable.
  */
 export async function openReturnTasks(tx: Tx, personId: string, lastDay: IsoDate, actorPersonId: string | null): Promise<number> {
-  const held = await listAssetsOfPerson(personId, tx);
-  if (held.length === 0) return 0;
   const [subject] = await tx.select({ managerId: schema.person.managerId, entityId: schema.person.primaryEntityId, fullName: schema.person.fullName }).from(schema.person).where(eq(schema.person.id, personId)).limit(1);
   if (!subject) return 0;
+  const keepers = subject.entityId ? await listPeopleHolding("asset:manage", { entityId: subject.entityId }, { includeWildcard: false, executor: tx }) : [];
+  // A leaver gives back more than what sits on a desk: the access they hold to pages and channels,
+  // the assets they answer for, and the paid seats in their name (FR-AST-08, 11). Each is its own
+  // task with its own person to do it; the register decides who.
+  const leaver = { personId, lastDay, managerId: subject.managerId, entityId: subject.entityId, keepers };
+  const digital = await openDigitalOffboardingTasks(tx, leaver, actorPersonId);
+  const seats = await openSeatReleaseTasks(tx, leaver, actorPersonId);
+
+  const held = await listAssetsOfPerson(personId, tx);
+  if (held.length === 0) return digital + seats;
 
   const existing = await tx
     .select({ contextId: schema.task.contextId })
@@ -596,11 +637,10 @@ export async function openReturnTasks(tx: Tx, personId: string, lastDay: IsoDate
     .where(and(eq(schema.task.kind, RETURN_TASK_KIND), eq(schema.task.contextType, "asset_assignment"), inArray(schema.task.status, ["todo", "in_progress"])));
   const alreadyOpen = new Set(existing.map((row) => row.contextId));
 
-  const keepers = subject.entityId ? await listPeopleHolding("asset:manage", { entityId: subject.entityId }, { includeWildcard: false, executor: tx }) : [];
   const assignee = subject.managerId ?? keepers[0] ?? null;
 
   const wanted = held.filter((item) => !alreadyOpen.has(item.assignmentId));
-  if (wanted.length === 0) return 0;
+  if (wanted.length === 0) return digital + seats;
   await createTasks(
     tx,
     wanted.map((item) => ({
@@ -616,13 +656,13 @@ export async function openReturnTasks(tx: Tx, personId: string, lastDay: IsoDate
     actorPersonId,
     { notify: true },
   );
-  return wanted.length;
+  return wanted.length + digital + seats;
 }
 
 /** A termination called off: the return tasks go with it. Anything already handed back stays returned. */
 export async function cancelReturnTasks(tx: Tx, personId: string): Promise<number> {
   const held = await listAssetsOfPerson(personId, tx);
-  let cancelled = 0;
+  let cancelled = (await cancelDigitalOffboardingTasks(tx, personId)) + (await cancelSeatReleaseTasks(tx, personId));
   for (const item of held) cancelled += await cancelOpenTasksOfContext(tx, { type: "asset_assignment", id: item.assignmentId });
   return cancelled;
 }
@@ -912,32 +952,40 @@ export type LicenceInput = {
   vendor: string | null;
   entityId: string;
   seats: number | null;
-  seatHolderPersonIds: string[];
   costPerCycle: number | null;
   billingCycle: BillingCycle;
   renewalDate: IsoDate | null;
   autoRenews: boolean;
   ownerPersonId: string | null;
-  assetId: string | null;
   accountRef: string | null;
   notes: string | null;
   status: LicenceStatus;
 };
 
-export async function saveLicence(licenceId: string | null, input: LicenceInput, actorPersonId: string): Promise<{ before: LicenceRow | null; after: LicenceRow }> {
+/**
+ * Records a licence, or changes one. The seat count cannot go below the seats in use — take some
+ * back first — and a subscription that is cancelled or has run out lets go of every seat it held:
+ * what no longer exists has nobody using it (FR-AST-11).
+ */
+export async function saveLicence(licenceId: string | null, input: LicenceInput, actorPersonId: string): Promise<{ before: LicenceRow | null; after: LicenceRow; released: number }> {
   if (input.costPerCycle !== null && (!Number.isSafeInteger(input.costPerCycle) || input.costPerCycle < 0)) throw new ActionError("licence_cost_invalid");
   if (input.seats !== null && (!Number.isInteger(input.seats) || input.seats < 0)) throw new ActionError("licence_seats_invalid");
   // A cycle that renews needs a date to renew on, or nothing can ever be put in the tracker.
   if (CYCLE_MONTHS[input.billingCycle] !== null && !input.renewalDate) throw new ActionError("licence_renewal_date_required");
-  const values = { ...input, seatHolderPersonIds: input.seatHolderPersonIds, updatedAt: now() };
+  const values = { ...input, updatedAt: now() };
   if (!licenceId) {
     const [after] = await db().insert(schema.licence).values({ ...values, createdByPersonId: actorPersonId }).returning();
-    return { before: null, after };
+    return { before: null, after, released: 0 };
   }
-  const [before] = await db().select().from(schema.licence).where(eq(schema.licence.id, licenceId)).limit(1);
-  if (!before) throw new ActionError("licence_not_found");
-  const [after] = await db().update(schema.licence).set(values).where(eq(schema.licence.id, licenceId)).returning();
-  return { before, after };
+  return db().transaction(async (tx) => {
+    const [before] = await tx.select().from(schema.licence).where(eq(schema.licence.id, licenceId)).limit(1).for("update");
+    if (!before) throw new ActionError("licence_not_found");
+    const ending = input.status !== "active";
+    if (!ending && input.seats !== null && (await countOpenSeats(tx, licenceId)) > input.seats) throw new ActionError("licence_seats_below_used");
+    const [after] = await tx.update(schema.licence).set(values).where(eq(schema.licence.id, licenceId)).returning();
+    const released = ending ? await releaseSeatsOfLicence(tx, licenceId, actorPersonId) : 0;
+    return { before, after, released };
+  });
 }
 
 export async function findLicence(licenceId: string, executor: Executor = db()): Promise<LicenceRow | undefined> {
@@ -945,22 +993,63 @@ export async function findLicence(licenceId: string, executor: Executor = db()):
   return row;
 }
 
-export type LicenceView = LicenceRow & { entityName: string | null; ownerName: string | null; assetCode: string | null; canSeeMoney: boolean };
+export type LicenceView = LicenceRow & { entityName: string | null; ownerName: string | null; /** Seats in use now. */ seatsUsed: number; canSeeMoney: boolean };
 
-/** The licence list, narrowed to the entities whose register the viewer keeps. */
-export async function listLicences(viewer: Principal, filter: { entityId?: string; status?: LicenceStatus } = {}): Promise<LicenceView[]> {
+/** The licence list, narrowed to the entities whose register the viewer keeps, each with its seats in use. */
+export async function listLicences(viewer: Principal, filter: { entityId?: string; status?: LicenceStatus; id?: string } = {}): Promise<LicenceView[]> {
   const reach = assetReach(viewer);
   if (!reach.all && reach.entityIds.length === 0) return [];
   const owner = alias(schema.person, "licence_owner");
   const rows = await db()
-    .select({ licence: schema.licence, entityName: schema.entity.shortName, ownerName: owner.fullName, assetCode: schema.asset.code })
+    .select({
+      licence: schema.licence,
+      entityName: schema.entity.shortName,
+      ownerName: owner.fullName,
+      seatsUsed: sql<number>`(select count(*)::int from licence_seat s where s.licence_id = ${schema.licence.id} and s.released_at is null)`,
+    })
     .from(schema.licence)
     .leftJoin(schema.entity, eq(schema.entity.id, schema.licence.entityId))
     .leftJoin(owner, eq(owner.id, schema.licence.ownerPersonId))
-    .leftJoin(schema.asset, eq(schema.asset.id, schema.licence.assetId))
-    .where(and(reach.all ? undefined : inArray(schema.licence.entityId, reach.entityIds), filter.entityId ? eq(schema.licence.entityId, filter.entityId) : undefined, filter.status ? eq(schema.licence.status, filter.status) : undefined))
+    .where(
+      and(
+        reach.all ? undefined : inArray(schema.licence.entityId, reach.entityIds),
+        filter.id ? eq(schema.licence.id, filter.id) : undefined,
+        filter.entityId ? eq(schema.licence.entityId, filter.entityId) : undefined,
+        filter.status ? eq(schema.licence.status, filter.status) : undefined,
+      ),
+    )
     .orderBy(asc(schema.licence.renewalDate), asc(schema.licence.name));
-  return rows.map((row) => ({ ...row.licence, entityName: row.entityName, ownerName: row.ownerName, assetCode: row.assetCode, canSeeMoney: canReadAssetMoney(viewer, row.licence.entityId) }));
+  return rows.map((row) => ({ ...row.licence, entityName: row.entityName, ownerName: row.ownerName, seatsUsed: Number(row.seatsUsed), canSeeMoney: canReadAssetMoney(viewer, row.licence.entityId) }));
+}
+
+export type LicenceTotals = { active: number; seats: number; seatsUsed: number; seatsUnused: number; /** Integer VND per month, every cycle brought to a month; null when the reader may not see money. */ costPerMonth: number | null; /** What the unused seats cost per month. */ unusedPerMonth: number | null };
+
+/**
+ * The page's figures over every running subscription in reach: seats paid for against seats in
+ * use, and what the difference costs. Summed in SQL — one row comes back, not the register.
+ * A cycle's cost is brought to a month by its length; a perpetual licence costs nothing per month.
+ */
+export async function licenceTotals(viewer: Principal): Promise<LicenceTotals> {
+  const none: LicenceTotals = { active: 0, seats: 0, seatsUsed: 0, seatsUnused: 0, costPerMonth: null, unusedPerMonth: null };
+  const reach = assetReach(viewer);
+  if (!reach.all && reach.entityIds.length === 0) return none;
+  const used = sql`(select count(*) from licence_seat s where s.licence_id = ${schema.licence.id} and s.released_at is null)`;
+  const months = sql`(case ${schema.licence.billingCycle} when 'monthly' then 1 when 'quarterly' then 3 when 'annual' then 12 end)`;
+  const monthly = sql`(${schema.licence.costPerCycle}::numeric / ${months})`;
+  const [row] = await db()
+    .select({
+      active: sql<number>`count(*)::int`,
+      seats: sql<number>`coalesce(sum(${schema.licence.seats}), 0)::int`,
+      seatsUsed: sql<number>`coalesce(sum(${used}), 0)::int`,
+      seatsUnused: sql<number>`coalesce(sum(greatest(${schema.licence.seats} - ${used}, 0)), 0)::int`,
+      costPerMonth: sql<string>`coalesce(round(sum(${monthly})), 0)`,
+      unusedPerMonth: sql<string>`coalesce(round(sum(${monthly} * greatest(${schema.licence.seats} - ${used}, 0) / nullif(${schema.licence.seats}, 0))), 0)`,
+    })
+    .from(schema.licence)
+    .where(and(eq(schema.licence.status, "active"), reach.all ? undefined : inArray(schema.licence.entityId, reach.entityIds)));
+  if (!row) return none;
+  // Reach is by `asset:manage`, which is also what reads the money: everything summed is the reader's to see.
+  return { active: Number(row.active), seats: Number(row.seats), seatsUsed: Number(row.seatsUsed), seatsUnused: Number(row.seatsUnused), costPerMonth: Number(row.costPerMonth), unusedPerMonth: Number(row.unusedPerMonth) };
 }
 
 /**

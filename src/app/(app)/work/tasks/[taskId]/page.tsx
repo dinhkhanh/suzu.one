@@ -20,6 +20,9 @@ import { auditPrivateTaskRead } from "@/modules/projects/service";
 import { contactChoicesFor } from "@/modules/crm/service";
 import { PreviewLinkPanel } from "@/modules/work/ui/preview-links";
 import { PublishPanel } from "@/modules/work/ui/publish";
+import { digitalAssetsByProject, listLinkableDigitalAssets } from "@/modules/work/service";
+import { TaskDigitalAssets } from "@/modules/work/ui/digital-assets";
+import { activeAccessPairs } from "@/modules/assets/service";
 import { accentOf } from "@/modules/work/enums";
 import { pageTitle } from "@/i18n/page-title";
 
@@ -64,6 +67,15 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
     canEdit ? listMoveTargets(viewer, detail.facts) : [],
   ]);
   const [pins, deliveries, publishes, client, checklists, stageHooks] = await Promise.all([listTaskPins(task.id), listDeliveriesByTask([task.id]), listPublishesByTask([task.id]), clientOfTask(detail), checklistChoices(), listStateChecklists([work.stateId])]);
+  // FR-AST-09: the pages and channels the task may name — the project's own first, then the rest;
+  // what the task already names stays in the list even once retired, so saving does not drop it.
+  const [linkable, ofProject, accessPairs] = await Promise.all([
+    listLinkableDigitalAssets(),
+    work.projectId ? digitalAssetsByProject([work.projectId]).then((byProject) => byProject.get(work.projectId!) ?? []) : [],
+    task.assigneePersonId ? activeAccessPairs(detail.digitalAssets.map((asset) => asset.id), [task.assigneePersonId]) : new Set<string>(),
+  ]);
+  const firstIds = new Set(ofProject.map((asset) => asset.id));
+  const digitalOptions = [...ofProject.filter((asset) => asset.status !== "retired"), ...linkable.filter((asset) => !firstIds.has(asset.id)), ...detail.digitalAssets.filter((asset) => asset.status === "retired")].map(({ id, name, platform }) => ({ id, name, platform }));
   const recordsClient = canRecordClientDecision(viewer, detail.facts, client);
   const clientContacts = recordsClient ? await contactChoicesFor(client.id) : [];
   const stageChecklists = stageHooks.flatMap((hook) => {
@@ -141,6 +153,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
           channel: work.channel,
           contentFormat: work.contentFormat,
           labelIds: detail.labelIds,
+          digitalAssetIds: detail.digitalAssets.map((asset) => asset.id),
           collaboratorIds: detail.collaborators.map((person) => person.id),
           checklist: work.checklist,
           links: work.links,
@@ -152,6 +165,7 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
           labels: labels.map(({ id, name, color }) => ({ id, name, color })),
           clients: clients.map(({ id, name }) => ({ id, name })),
           projects,
+          digitalAssets: digitalOptions,
           linkable: siblings.filter((row) => !linkedIds.has(row.id)),
           cycles,
           checklists,
@@ -223,11 +237,17 @@ export default async function TaskPage({ params }: PageProps<"/work/tasks/[taskI
           canRecord={canRecordDelivery(viewer, detail.facts)}
           today={today}
         />
-        {work.channel || publishes.length ? (
+        <TaskDigitalAssets
+          assets={detail.digitalAssets.map((asset) => ({ ...asset, assigneeHasAccess: task.assigneePersonId ? accessPairs.has(`${asset.id}:${task.assigneePersonId}`) : null }))}
+          assigneeName={detail.assigneeName}
+        />
+        {work.channel || publishes.length || detail.digitalAssets.length ? (
           <PublishPanel
             taskId={task.id}
             channel={work.channel}
-            publishes={publishes.map((item) => ({ id: item.id, platform: item.platform, page: item.page, status: item.status, plannedAt: item.plannedAt?.toISOString() ?? null, publishedAt: item.publishedAt?.toISOString() ?? null, url: item.url, boosted: item.boosted, adAccount: item.adAccount, publishedByName: item.publishedByName, latest: item.latest, results: item.results.map(({ id, recordedOn, metrics, source }) => ({ id, recordedOn, metrics, source })) }))}
+            accounts={digitalOptions}
+            defaultAccountId={detail.digitalAssets.length === 1 && detail.digitalAssets[0].status !== "retired" ? detail.digitalAssets[0].id : null}
+            publishes={publishes.map((item) => ({ id: item.id, platform: item.platform, page: item.page, digitalAssetId: item.digitalAssetId, status: item.status, plannedAt: item.plannedAt?.toISOString() ?? null, publishedAt: item.publishedAt?.toISOString() ?? null, url: item.url, boosted: item.boosted, adAccount: item.adAccount, publishedByName: item.publishedByName, latest: item.latest, results: item.results.map(({ id, recordedOn, metrics, source }) => ({ id, recordedOn, metrics, source })) }))}
             canManage={canManagePublish(viewer, detail.facts) && task.status !== "cancelled"}
             today={today}
             now={new Date().toISOString()}

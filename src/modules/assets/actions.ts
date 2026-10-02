@@ -278,13 +278,11 @@ const saveLicencePipeline = createAction({
     vendor: optional(z.string().trim().max(120)),
     entityId: z.uuid(),
     seats: optional(z.coerce.number().int().min(0).max(100_000)),
-    seatHolderPersonIds: z.preprocess((value) => (Array.isArray(value) ? value : value ? [value] : []), z.array(z.uuid()).max(500).default([])),
     costPerCycle: optional(money),
     billingCycle: z.enum(BILLING_CYCLES),
     renewalDate: optional(isoDate),
     autoRenews: checkbox,
     ownerPersonId: optional(z.uuid()),
-    assetId: optional(z.uuid()),
     accountRef: optional(z.string().trim().max(200)),
     notes: optional(z.string().trim().max(2000)),
     status: z.enum(LICENCE_STATUSES),
@@ -300,6 +298,7 @@ const saveLicencePipeline = createAction({
     const { licenceId, ...fields } = input;
     const { before, after } = await saveLicence(licenceId, fields, user.person.id);
     revalidatePath("/assets/licences");
+    revalidatePath(`/assets/licences/${after.id}`);
     revalidatePath("/ops");
     // The audit names the subscription and its renewal date, never what it costs.
     return {

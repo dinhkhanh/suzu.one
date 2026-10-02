@@ -6,9 +6,9 @@
 // because the seed runs as a script with no session; the shapes it writes are exactly what the
 // use-cases write, and the one-holder rule is enforced by the database either way.
 import { randomBytes } from "node:crypto";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, ilike, isNull, sql } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/postgres-js";
-import { asset, assetAssignment, assetBooking, assetCategory, assetEvent, employment, entity, licence, person, roleAssignment } from "../src/lib/db/schema";
+import { asset, assetAssignment, assetBooking, assetCategory, assetEvent, digitalAsset, digitalAssetAccess, employment, entity, licence, licenceSeat, person, roleAssignment, workClient } from "../src/lib/db/schema";
 import type { AssetCondition } from "../src/modules/assets/enums";
 
 type Db = ReturnType<typeof drizzle>;
@@ -89,6 +89,8 @@ export async function seedAssets(db: Db, today: string): Promise<{ assets: numbe
     const byKeyOnly = await peopleByKey(db);
     const bookings = await seedBookings(db, byKeyOnly, await keeperId(db));
     await seedLicences(db, byKeyOnly);
+    await seedSeats(db, byKeyOnly, await keeperId(db));
+    await seedDigitalAssets(db, byKeyOnly);
     return { assets: 0, assigned: 0, bookings };
   }
 
@@ -231,6 +233,8 @@ export async function seedAssets(db: Db, today: string): Promise<{ assets: numbe
 
   const bookings = await seedBookings(db, byKey, keeper?.id ?? null);
   await seedLicences(db, byKey);
+  await seedSeats(db, byKey, keeper?.id ?? null);
+  await seedDigitalAssets(db, byKey);
   return { assets, assigned, bookings };
 }
 
@@ -334,4 +338,107 @@ async function seedLicences(db: Db, byKey: Map<string, { id: string }>): Promise
     ])
     .returning({ id: licence.id });
   return rows.length;
+}
+
+/**
+ * Who is using the seats (FR-AST-11): four of the six Adobe seats are in people's names and one
+ * sits on the spare laptop — so one is paid for and idle, which is the figure the page is there to
+ * show — and a CapCut subscription with every seat taken.
+ */
+async function seedSeats(db: Db, byKey: Map<string, { id: string }>, keeper: string | null): Promise<number> {
+  const existing = await db.select({ id: licenceSeat.id }).from(licenceSeat).limit(1);
+  if (existing.length > 0) return 0;
+  const [adobe] = await db.select().from(licence).where(ilike(licence.name, "Adobe Creative Cloud%")).limit(1);
+  if (!adobe) return 0;
+  const idOf = (email: string) => byKey.get(email)?.id ?? null;
+  const [spare] = await db.select({ id: asset.id }).from(asset).where(ilike(asset.name, "MacBook Air 13 (máy dự phòng)")).limit(1);
+
+  const [capcut] = await db
+    .insert(licence)
+    .values({ name: "CapCut Pro (Teams)", vendor: "Bytedance", entityId: adobe.entityId, seats: 3, costPerCycle: 690_000, billingCycle: "monthly" as const, renewalDate: new Date(Date.now() + 12 * 86_400_000).toISOString().slice(0, 10), autoRenews: true, ownerPersonId: idOf("khoi.ly@suzu.group"), accountRef: "social@suzu.group", notes: "Dựng video ngắn cho TikTok và Reels." })
+    .returning({ id: licence.id });
+
+  const seats: (typeof licenceSeat.$inferInsert)[] = [
+    ...["chi.duong@suzu.group", "tam.bui@suzu.group", "huy.ho@suzu.group", "linh.do@suzu.group"].flatMap((email) => (idOf(email) ? [{ licenceId: adobe.id, personId: idOf(email), assignedByPersonId: keeper }] : [])),
+    ...(spare ? [{ licenceId: adobe.id, assetId: spare.id, assignedByPersonId: keeper, note: "Máy dự phòng cho cộng tác viên dựng phim." }] : []),
+    ...["khoi.ly@suzu.group", "duyen.huynh@suzu.group", "huy.ho@suzu.group"].flatMap((email) => (idOf(email) ? [{ licenceId: capcut.id, personId: idOf(email), assignedByPersonId: keeper }] : [])),
+  ];
+  if (seats.length) await db.insert(licenceSeat).values(seats);
+  return seats.length;
+}
+
+/**
+ * The pages and channels a media company runs (FR-AST-07, 08): its own, a client's it operates,
+ * an ad account, the website, and one restricted account nobody browses. The social lead answers
+ * for the channels and has let the team in; one grant is on a shared password, one request is
+ * still waiting, and one access was taken away — so the page has something to say about each.
+ */
+async function seedDigitalAssets(db: Db, byKey: Map<string, { id: string }>): Promise<number> {
+  const entities = new Map((await db.select().from(entity)).map((row) => [row.code, row]));
+  const media = entities.get("SZM");
+  const idOf = (email: string) => byKey.get(email)?.id ?? null;
+  const [existing] = await db.select({ id: digitalAsset.id }).from(digitalAsset).limit(1);
+  let created = 0;
+
+  if (!existing && media) {
+    const [client] = await db.select({ id: workClient.id }).from(workClient).where(ilike(workClient.name, "Trà Lá Xanh%")).limit(1);
+    const lead = idOf("khoi.ly@suzu.group");
+    const owner = idOf("owner@suzu.vn");
+    const accountant = idOf("mai.le@suzu.group");
+    const row = (values: Partial<typeof digitalAsset.$inferInsert> & Pick<typeof digitalAsset.$inferInsert, "name" | "platform" | "kind">): typeof digitalAsset.$inferInsert => ({ entityId: media.id, ownerPersonId: lead, createdByPersonId: owner, credentialLocation: "1Password › Social", ...values });
+    const rows = await db
+      .insert(digitalAsset)
+      .values([
+        row({ name: "SuZu Media — Fanpage", platform: "facebook", kind: "social_channel", handle: "@suzumedia", url: "https://www.facebook.com/suzumedia", loginIdentity: "social@suzu.group" }),
+        row({ name: "SuZu Media — TikTok", platform: "tiktok", kind: "social_channel", handle: "@suzumedia", url: "https://www.tiktok.com/@suzumedia", loginIdentity: "social@suzu.group", recoveryContact: "Số điện thoại của Lý Minh Khôi" }),
+        row({ name: "SuZu Media — YouTube", platform: "youtube", kind: "social_channel", handle: "@suzumedia", url: "https://www.youtube.com/@suzumedia", loginIdentity: "social@suzu.group" }),
+        row({ name: "Tài khoản quảng cáo Meta — SuZu", platform: "facebook", kind: "ad_account", handle: "act_1029384756", loginIdentity: "Business Manager SuZu Group" }),
+        row({ name: "suzu.vn", platform: "website", kind: "website", url: "https://suzu.vn", ownerPersonId: owner, credentialLocation: "1Password › Hạ tầng › Tên miền", notes: "Tên miền gia hạn hằng năm; DNS ở Cloudflare." }),
+        ...(client
+          ? [
+              row({ name: "Trà Lá Xanh Fanpage", platform: "facebook", kind: "social_channel", ownership: "client", clientId: client.id, handle: "@tralaxanh", url: "https://www.facebook.com/tralaxanh", loginIdentity: "Khách cấp quyền qua Business Manager", credentialLocation: null }),
+              row({ name: "@tralaxanh", platform: "tiktok", kind: "social_channel", ownership: "client", clientId: client.id, handle: "@tralaxanh", url: "https://www.tiktok.com/@tralaxanh", loginIdentity: "marketing@tralaxanh.vn", credentialLocation: "1Password › Khách hàng › Trà Lá Xanh" }),
+            ]
+          : []),
+        row({ name: "Thuế điện tử (eTax) — SuZu Media", platform: "other", kind: "business_account", visibility: "restricted", ownerPersonId: accountant, url: "https://thuedientu.gdt.gov.vn", loginIdentity: "Mã số thuế của pháp nhân", credentialLocation: "Két sắt phòng kế toán — USB chữ ký số" }),
+      ])
+      .returning({ id: digitalAsset.id, name: digitalAsset.name });
+    created = rows.length;
+    const assetId = (name: string) => rows.find((item) => item.name === name)?.id;
+
+    const now = new Date();
+    const daysAgo = (days: number) => new Date(now.getTime() - days * 86_400_000);
+    const access: (typeof digitalAssetAccess.$inferInsert)[] = [];
+    const grant = (name: string, email: string, level: "admin" | "editor" | "moderator" | "advertiser" | "analyst", over: Partial<typeof digitalAssetAccess.$inferInsert> = {}) => {
+      const [digitalAssetId, personId] = [assetId(name), idOf(email)];
+      if (digitalAssetId && personId) access.push({ digitalAssetId, personId, level, status: "active", grantedAt: daysAgo(120), decidedByPersonId: lead, decidedAt: daysAgo(120), ...over });
+    };
+    grant("SuZu Media — Fanpage", "khoi.ly@suzu.group", "admin");
+    grant("SuZu Media — Fanpage", "duyen.huynh@suzu.group", "editor");
+    grant("SuZu Media — Fanpage", "huy.ho@suzu.group", "moderator");
+    // The TikTok channel is on one password the team shares — the thing the register is there to see.
+    grant("SuZu Media — TikTok", "khoi.ly@suzu.group", "admin", { method: "shared_login" });
+    grant("SuZu Media — TikTok", "duyen.huynh@suzu.group", "editor", { method: "shared_login" });
+    grant("SuZu Media — TikTok", "huy.ho@suzu.group", "editor", { method: "shared_login", status: "revoked", endedAt: daysAgo(3), endedByPersonId: lead, endNote: "Chuyển sang nhóm Video." });
+    grant("SuZu Media — YouTube", "khoi.ly@suzu.group", "admin");
+    grant("SuZu Media — YouTube", "tam.bui@suzu.group", "editor");
+    grant("Tài khoản quảng cáo Meta — SuZu", "khoi.ly@suzu.group", "admin");
+    grant("Tài khoản quảng cáo Meta — SuZu", "duyen.huynh@suzu.group", "advertiser", { expiresOn: new Date(now.getTime() + 30 * 86_400_000).toISOString().slice(0, 10), note: "Chạy chiến dịch Trung thu." });
+    grant("Trà Lá Xanh Fanpage", "duyen.huynh@suzu.group", "editor");
+    grant("@tralaxanh", "duyen.huynh@suzu.group", "editor", { method: "shared_login" });
+    grant("Thuế điện tử (eTax) — SuZu Media", "tuan.vo@suzu.group", "analyst", { decidedByPersonId: accountant });
+    // Waiting for the social lead's answer.
+    grant("Trà Lá Xanh Fanpage", "huy.ho@suzu.group", "editor", { status: "requested", requestedAt: daysAgo(1), grantedAt: null, decidedByPersonId: null, decidedAt: null, note: "Hỗ trợ đăng bài tuần này." });
+    if (access.length) await db.insert(digitalAssetAccess).values(access);
+    // Huy knew the TikTok password and is out: it has not been changed since.
+    const tiktok = assetId("SuZu Media — TikTok");
+    if (tiktok) await db.update(digitalAsset).set({ rotationDueSince: daysAgo(3) }).where(eq(digitalAsset.id, tiktok));
+  }
+
+  // The posts the project demo typed a page name for now point at the registered page of that
+  // name, and their tasks name it. Runs every time and changes nothing the second time — the two
+  // seeds do not know which of them ran first.
+  await db.execute(sql`update work_publish p set digital_asset_id = a.id from digital_asset a where p.digital_asset_id is null and p.page = a.name and a.visibility = 'staff'`);
+  await db.execute(sql`insert into work_task_digital_asset (task_id, digital_asset_id) select distinct p.task_id, p.digital_asset_id from work_publish p where p.digital_asset_id is not null on conflict do nothing`);
+  return created;
 }

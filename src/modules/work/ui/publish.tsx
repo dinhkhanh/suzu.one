@@ -23,6 +23,8 @@ export type PublishItem = {
   id: string;
   platform: string;
   page: string | null;
+  /** The registered page or channel the post goes out on (FR-AST-09); null = a page typed by hand. */
+  digitalAssetId?: string | null;
   status: string;
   plannedAt: string | null;
   publishedAt: string | null;
@@ -34,9 +36,12 @@ export type PublishItem = {
   results: { id: string; recordedOn: string; metrics: Metrics; source: string }[];
 };
 
+/** The registered pages and channels a post may go out on: the task's own first. */
+export type PublishAccount = { id: string; name: string; platform: string };
+
 const FLAG_VARIANT = { published: "success", late: "destructive", planned: "secondary", unscheduled: "outline", cancelled: "outline" } as const;
 
-export function PublishPanel({ taskId, channel, publishes, canManage, today, now }: { taskId: string; channel: string | null; publishes: PublishItem[]; canManage: boolean; today: string; /** The server's clock, so a post is late on the server and the screen alike. */ now: string }) {
+export function PublishPanel({ taskId, channel, publishes, canManage, today, now, accounts = [], defaultAccountId = null }: { taskId: string; channel: string | null; publishes: PublishItem[]; canManage: boolean; today: string; /** The server's clock, so a post is late on the server and the screen alike. */ now: string; accounts?: PublishAccount[]; /** The task's own page or channel, when it names exactly one. */ defaultAccountId?: string | null }) {
   const t = useTranslations("work.publish");
   const tWork = useTranslations("work");
   const format = useFormatter();
@@ -64,7 +69,15 @@ export function PublishPanel({ taskId, channel, publishes, canManage, today, now
             <ListItem key={publish.id} className="flex-col items-stretch gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{tWork(`channels.${publish.platform}`)}</span>
-                {publish.page ? <span className="text-muted-foreground">{publish.page}</span> : null}
+                {publish.page ? (
+                  publish.digitalAssetId ? (
+                    <Link href={`/assets/digital/${publish.digitalAssetId}`} className="text-muted-foreground underline-offset-2 hover:underline">
+                      {publish.page}
+                    </Link>
+                  ) : (
+                    <span className="text-muted-foreground">{publish.page}</span>
+                  )
+                ) : null}
                 <Badge variant={FLAG_VARIANT[flag]}>{t(`flags.${flag}`)}</Badge>
                 {publish.boosted ? <Badge variant="info">{t("boostedOn", { account: publish.adAccount ?? "—" })}</Badge> : null}
               </div>
@@ -76,7 +89,7 @@ export function PublishPanel({ taskId, channel, publishes, canManage, today, now
                   {publish.url}
                 </a>
               ) : null}
-              {canManage && publish.status === "planned" ? <PublishActions publish={publish} /> : null}
+              {canManage && publish.status === "planned" ? <PublishActions publish={publish} accounts={accounts} /> : null}
               {publish.status === "published" ? <Results publish={publish} canManage={canManage} today={today} /> : null}
             </ListItem>
           );
@@ -84,7 +97,7 @@ export function PublishPanel({ taskId, channel, publishes, canManage, today, now
       </List>
       {canManage ? (
         <TableAddRow key={addRow} label={t("plan")}>
-          <PlanForm taskId={taskId} defaultPlatform={channel} onDone={() => setAddRow((count) => count + 1)} />
+          <PlanForm taskId={taskId} defaultPlatform={channel} accounts={accounts} defaultAccountId={defaultAccountId} onDone={() => setAddRow((count) => count + 1)} />
         </TableAddRow>
       ) : null}
     </TableCard>
@@ -107,35 +120,56 @@ function useRunner() {
   return { run, pending, errorKey };
 }
 
-function PlanForm({ taskId, publish, defaultPlatform, onDone }: { taskId: string; publish?: PublishItem; defaultPlatform: string | null; onDone: () => void }) {
+function PlanForm({ taskId, publish, defaultPlatform, accounts, defaultAccountId, onDone }: { taskId: string; publish?: PublishItem; defaultPlatform: string | null; accounts: PublishAccount[]; defaultAccountId?: string | null; onDone: () => void }) {
   const t = useTranslations("work.publish");
   const tWork = useTranslations("work");
+  const tPlatform = useTranslations("assets.digital.platform");
   const { run, pending, errorKey } = useRunner();
+  // A registered page or channel names its own platform and page; "" = typed by hand.
+  const [account, setAccount] = useState(publish ? (publish.digitalAssetId ?? "") : (defaultAccountId ?? ""));
+  const key = publish?.id ?? "new";
   return (
     <form
       className="flex flex-col gap-2 rounded-xl border p-3"
       onSubmit={(event) => {
         event.preventDefault();
         const data = new FormData(event.currentTarget);
-        const values = { platform: data.get("platform"), page: data.get("page"), plannedAt: data.get("plannedAt") };
+        const values = account ? { digitalAssetId: account, plannedAt: data.get("plannedAt") } : { platform: data.get("platform"), page: data.get("page"), plannedAt: data.get("plannedAt") };
         run(() => (publish ? updatePublishPlanAction({ publishId: publish.id, ...values }) : planPublishAction({ taskId, ...values })), onDone);
       }}
     >
-      <div className="grid gap-2 sm:grid-cols-3">
+      {accounts.length ? (
         <div className="flex flex-col gap-1">
-          <Label htmlFor={`platform-${publish?.id ?? "new"}`}>{t("platform")}</Label>
-          <Select id={`platform-${publish?.id ?? "new"}`} name="platform" defaultValue={publish?.platform ?? defaultPlatform ?? "facebook"}>
-            {CHANNELS.map((channel) => (
-              <option key={channel} value={channel}>
-                {tWork(`channels.${channel}`)}
+          <Label htmlFor={`account-${key}`}>{t("account")}</Label>
+          <Select id={`account-${key}`} value={account} onChange={(event) => setAccount(event.target.value)}>
+            <option value="">{t("accountOther")}</option>
+            {accounts.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name} · {tPlatform(option.platform)}
               </option>
             ))}
           </Select>
         </div>
-        <div className="flex flex-col gap-1">
-          <Label htmlFor={`page-${publish?.id ?? "new"}`}>{t("page")}</Label>
-          <Input id={`page-${publish?.id ?? "new"}`} name="page" maxLength={200} defaultValue={publish?.page ?? ""} placeholder={t("pagePlaceholder")} />
-        </div>
+      ) : null}
+      <div className="grid gap-2 sm:grid-cols-3">
+        {account ? null : (
+          <>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor={`platform-${key}`}>{t("platform")}</Label>
+              <Select id={`platform-${key}`} name="platform" defaultValue={publish?.platform ?? defaultPlatform ?? "facebook"}>
+                {CHANNELS.map((channel) => (
+                  <option key={channel} value={channel}>
+                    {tWork(`channels.${channel}`)}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor={`page-${key}`}>{t("page")}</Label>
+              <Input id={`page-${key}`} name="page" maxLength={200} defaultValue={publish?.digitalAssetId ? "" : (publish?.page ?? "")} placeholder={t("pagePlaceholder")} />
+            </div>
+          </>
+        )}
         <div className="flex flex-col gap-1">
           <Label htmlFor={`planned-${publish?.id ?? "new"}`}>{t("plannedFor")}</Label>
           <DateTimePicker id={`planned-${publish?.id ?? "new"}`} name="plannedAt" defaultValue={publish?.plannedAt ? toVietnamLocal(new Date(publish.plannedAt)) : ""} />
@@ -154,12 +188,12 @@ function PlanForm({ taskId, publish, defaultPlatform, onDone }: { taskId: string
   );
 }
 
-function PublishActions({ publish }: { publish: PublishItem }) {
+function PublishActions({ publish, accounts }: { publish: PublishItem; accounts: PublishAccount[] }) {
   const t = useTranslations("work.publish");
   const { run, pending, errorKey } = useRunner();
   const [mode, setMode] = useState<"none" | "published" | "edit">("none");
   const [boosted, setBoosted] = useState(false);
-  if (mode === "edit") return <PlanForm taskId="" publish={publish} defaultPlatform={publish.platform} onDone={() => setMode("none")} />;
+  if (mode === "edit") return <PlanForm taskId="" publish={publish} defaultPlatform={publish.platform} accounts={accounts} onDone={() => setMode("none")} />;
   if (mode === "published")
     return (
       <form

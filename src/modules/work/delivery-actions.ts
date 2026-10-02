@@ -283,7 +283,8 @@ export async function removeDeliveryAction(input: unknown) {
 
 // ── Publish log and results (FR-PJM-54, 57) ─────────────────────────────────────────────────
 
-const planFields = { platform: z.enum(CHANNELS), page: optional(z.string().trim().max(200)), plannedAt: optional(localDateTime) };
+// A registered page or channel names its own platform and page; without one, the platform is chosen and the page typed.
+const planFields = { platform: optional(z.enum(CHANNELS)), page: optional(z.string().trim().max(200)), plannedAt: optional(localDateTime), digitalAssetId: optional(z.uuid()) };
 const managesTask = async (user: User, taskId: string) => {
   const loaded = await loadTask(taskId);
   return !!loaded && canManagePublish(await loadViewer(user), loaded.facts);
@@ -298,7 +299,7 @@ const planPipeline = createAction({
   input: z.object({ taskId: z.uuid(), ...planFields }),
   authorize: (user, input) => managesTask(user, input.taskId),
   run: async ({ user, input }) => {
-    const publish = await planPublish(input.taskId, { platform: input.platform, page: input.page, plannedAt: input.plannedAt ? fromVietnamLocal(input.plannedAt) : null }, actorOf(user));
+    const publish = await planPublish(input.taskId, { platform: input.platform, page: input.page, plannedAt: input.plannedAt ? fromVietnamLocal(input.plannedAt) : null, digitalAssetId: input.digitalAssetId }, actorOf(user));
     const loaded = (await loadTask(input.taskId))!;
     refreshTask(input.taskId, loaded.work.projectId);
     revalidatePath("/work/calendar");
@@ -314,7 +315,7 @@ const replanPipeline = createAction({
   input: z.object({ publishId: z.uuid(), ...planFields }),
   authorize: (user, input) => managesPublish(user, input.publishId),
   run: async ({ user, input }) => {
-    const { before, after } = await updatePublishPlan(input.publishId, { platform: input.platform, page: input.page, plannedAt: input.plannedAt ? fromVietnamLocal(input.plannedAt) : null }, actorOf(user));
+    const { before, after } = await updatePublishPlan(input.publishId, { platform: input.platform, page: input.page, plannedAt: input.plannedAt ? fromVietnamLocal(input.plannedAt) : null, digitalAssetId: input.digitalAssetId }, actorOf(user));
     const loaded = (await loadTask(after.taskId))!;
     refreshTask(after.taskId, loaded.work.projectId);
     revalidatePath("/work/calendar");

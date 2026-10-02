@@ -4,7 +4,7 @@ Chương này gom những việc "hành chính" thường ngày trong công ty:
 
 - **Đề nghị**: xin mua sắm, xin thanh toán, xin tạm ứng, đăng ký đi công tác, xin giấy xác nhận, kê khai chi phí đã chi hộ công ty… Mỗi loại đề nghị có biểu mẫu riêng và luồng duyệt riêng, do quản trị viên thiết kế ngay trong SuZu One, không cần lập trình.
 - **Văn bản**: giấy xác nhận, quyết định, hợp đồng… được Nhân sự cấp từ mẫu có sẵn, có số văn bản và tải về dưới dạng PDF.
-- **Tài sản**: sổ tài sản của công ty (laptop, máy quay, nội thất, xe…), ai đang giữ món gì, lịch đặt mượn thiết bị dùng chung, và danh sách bản quyền phần mềm, thuê bao kèm ngày đến hạn.
+- **Tài sản**: sổ tài sản của công ty (laptop, máy quay, nội thất, xe…), ai đang giữ món gì, lịch đặt mượn thiết bị dùng chung, danh sách bản quyền phần mềm, thuê bao kèm ngày đến hạn và ai đang dùng từng suất, và **tài sản số** — fanpage, kênh TikTok, YouTube, tài khoản quảng cáo, website — ai phụ trách và ai có quyền truy cập.
 
 ## Ai dùng chương này
 
@@ -38,7 +38,9 @@ Vai trò được gán ở **Quản trị → Phân quyền**. Những gì bạn
 | Xem và quản lý sổ tài sản (quản lý tài sản) | [Tài sản](/assets) |
 | Ghi nhận một tài sản mới | [Ghi nhận tài sản](/assets/new) |
 | Nhập sổ tài sản từ bảng tính | [Nhập từ tệp](/assets/import) |
-| Quản lý bản quyền phần mềm, thuê bao | [Bản quyền & thuê bao](/assets/licences) |
+| Quản lý bản quyền phần mềm, thuê bao, cấp suất dùng cho người hoặc thiết bị | [Bản quyền & thuê bao](/assets/licences) |
+| Xem các trang, kênh, tài khoản của công ty; xin quyền truy cập | [Tài sản số](/assets/digital) |
+| Ghi nhận một trang / kênh mới, cấp và thu hồi quyền | [Tài sản số](/assets/digital) → mở tài sản |
 
 ## Tìm các mục này trên thanh bên
 

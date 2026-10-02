@@ -27,13 +27,21 @@ Khi người quản lý tài sản giao cho bạn một món đồ, món đó xu
 Chỉ chính bạn mới xác nhận được — người quản lý tài sản không thể xác nhận thay. Cho đến khi bạn xác nhận, sổ tài sản và hồ sơ của bạn ghi **Chưa xác nhận nhận**.
 
 > [!IMPORTANT]
-> Hệ thống không gửi thông báo khi giao thiết bị. Sau khi nhận đồ từ bộ phận tài sản, hãy chủ động mở **Thiết bị của tôi** để xác nhận. Nếu bạn thấy một món đồ mình không hề nhận, đừng xác nhận — báo ngay cho người quản lý tài sản.
+> Khi được giao một món đồ, bạn nhận thông báo **Bạn được giao thiết bị: …**; bấm vào thông báo để mở **Thiết bị của tôi** và xác nhận. Nếu bạn thấy một món đồ mình không hề nhận, đừng xác nhận — báo ngay cho người quản lý tài sản.
+
+### Trang, kênh và tài khoản
+
+Bên dưới danh sách thiết bị là mục **Trang, kênh và tài khoản**: những tài sản số (fanpage, kênh TikTok, YouTube, tài khoản quảng cáo, website…) mà bạn **phụ trách** hoặc **có quyền truy cập**, kèm mức quyền của bạn. Yêu cầu bạn đã gửi mà chưa được trả lời hiện là **Chờ duyệt**. Bấm **Danh bạ** để xem mọi trang, kênh của công ty và xin quyền — xem **Tài sản số**.
+
+### Phần mềm và thuê bao
+
+Mục **Phần mềm và thuê bao** liệt kê các suất phần mềm đứng tên bạn (ví dụ Adobe Creative Cloud, CapCut Pro) và các suất gắn với thiết bị bạn đang giữ (ghi *trên …* kèm mã thiết bị). Bạn không thấy chi phí. Cần thêm phần mềm, hãy báo người phụ trách thuê bao đó hoặc người quản lý tài sản.
 
 ### Trả lại thiết bị
 
 Bạn không tự "trả" trên hệ thống. Hãy mang thiết bị đến người quản lý tài sản; họ bấm **Thu hồi** trên sổ tài sản và ghi tình trạng khi trả. Món đồ sẽ biến mất khỏi danh sách của bạn.
 
-Khi bạn nghỉ việc, hệ thống tự tạo việc thu hồi từng món bạn đang giữ, hạn là ngày làm việc cuối cùng của bạn, giao cho quản lý trực tiếp của bạn (hoặc người quản lý tài sản). Hãy bàn giao đầy đủ trước ngày đó.
+Khi bạn nghỉ việc, hệ thống tự tạo việc thu hồi từng món bạn đang giữ, hạn là ngày làm việc cuối cùng của bạn, giao cho quản lý trực tiếp của bạn (hoặc người quản lý tài sản). Tương tự, mỗi quyền truy cập trang / kênh và mỗi suất phần mềm đứng tên bạn sinh một việc thu hồi; tài sản số bạn đang phụ trách sinh một việc giao người phụ trách mới. Hãy bàn giao đầy đủ trước ngày đó.
 
 ## Lịch đặt thiết bị
 

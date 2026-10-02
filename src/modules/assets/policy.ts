@@ -12,6 +12,7 @@
 //     `report:read` over the owning entity. The person holding the laptop does not see its price,
 //     and that is the line the tests are drawn along.
 import { can, entityReach, type Principal, type Target } from "../platform/rbac/policy";
+import type { DigitalVisibility } from "./enums";
 
 export type AssetTarget = { entityId: string };
 export type HolderTarget = Target & { personId: string };
@@ -100,3 +101,40 @@ export const canManageLicences = (principal: Principal, entityId?: string): bool
 export function assetReach(principal: Principal): { all: true } | { all: false; entityIds: string[] } {
   return entityReach(principal, "asset:manage");
 }
+
+// ── Digital assets (FR-AST-07, 08) ──────────────────────────────────────────────────────────
+// The shape of it, and why:
+//   · A page or a channel is **a working tool, not a possession**: the social team has to know
+//     which pages exist to plan a post on one. So a digital asset marked `staff` is in the
+//     directory for everybody — its name, its address, who answers for it, who can get in. That is
+//     no more than the platform itself shows the page's own admins.
+//   · One marked `restricted` (the bank portal, the tax account) exists only for its keepers and
+//     the people who hold access to it. To everybody else it answers like an id that is not there.
+//   · **Running** one — its facts, who gets in, changing the password — is the register's keeper
+//     (`asset:manage` over its entity) *or the person who answers for it*. The head of social owns
+//     the fanpage and grants her team access without holding a role that also hands out laptops;
+//     no new permission is needed for that, only ownership.
+//   · **Where the login is kept** and what it is registered under is narrower again: whoever runs
+//     the asset, nobody else — not even someone who holds admin access on the platform.
+
+export type DigitalTarget = { entityId: string; ownerPersonId: string | null; visibility: DigitalVisibility };
+
+/** Registering one, moving it to another entity, retiring it. Without an entity: "anywhere" — navigation only. */
+export const canManageDigitalAssets = (principal: Principal, entityId?: string): boolean => can(principal, "asset:manage", over(entityId));
+
+/** Its facts, its people, its password change: the register's keeper or the person who answers for it. */
+export const canRunDigitalAsset = (principal: Principal, asset: DigitalTarget): boolean => canManageDigitalAssets(principal, asset.entityId) || (!!principal.personId && asset.ownerPersonId === principal.personId);
+
+/** Whether the asset exists for this reader at all. `holdsAccess`: they have an open grant on it. */
+export const canViewDigitalAsset = (principal: Principal, asset: DigitalTarget, holdsAccess: boolean): boolean =>
+  canRunDigitalAsset(principal, asset) || (!!principal.personId && (asset.visibility === "staff" || holdsAccess));
+
+/** What it is registered under and where the password is kept. Never wider than running it. */
+export const canReadDigitalSecrets = (principal: Principal, asset: DigitalTarget): boolean => canRunDigitalAsset(principal, asset);
+
+/** Asking to be let in: anybody on the staff, for a thing they can see. A restricted asset is granted, never asked for. */
+export const canRequestDigitalAccess = (principal: Principal, asset: DigitalTarget): boolean => !!principal.personId && asset.visibility === "staff";
+
+/** Ending a grant or a request: whoever runs the asset, or the person it belongs to giving it up. */
+export const canEndDigitalAccess = (principal: Principal, asset: DigitalTarget, accessPersonId: string): boolean =>
+  canRunDigitalAsset(principal, asset) || (!!principal.personId && principal.personId === accessPersonId);
