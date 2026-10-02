@@ -31,3 +31,25 @@ export function isWindowAccepted(window: number, nowMs: number): boolean {
   const current = qrWindow(nowMs);
   return window <= current && window > current - QR_ACCEPTED_WINDOWS;
 }
+
+// ── Handing the kiosk its codes in batches ──────────────────────────────────────────────────
+//
+// The kiosk asks for the codes of the next few minutes at once and shows each in its window, so
+// it calls the server every few minutes instead of every few seconds. A code it holds is no use
+// before its window starts (`isWindowAccepted`), so knowing the next ones proves nothing early.
+
+/** Windows handed out per request: five minutes of codes. */
+export const QR_BATCH_WINDOWS = 15;
+/** Ask again when fewer than this many of the held windows are still to come. */
+export const QR_REFILL_BELOW = 3;
+
+export type QrCode = { window: number; url: string };
+
+/** The code to show at `nowMs` (on the server's clock): the one of the current window, or null. */
+export const currentQr = (codes: readonly QrCode[], nowMs: number): QrCode | null => codes.find((code) => code.window === qrWindow(nowMs)) ?? null;
+
+/** Whether the kiosk should ask for the next batch: it is running out, or holds nothing for now. */
+export function needsMoreQr(codes: readonly QrCode[], nowMs: number): boolean {
+  const current = qrWindow(nowMs);
+  return !codes.some((code) => code.window === current) || codes.filter((code) => code.window > current).length < QR_REFILL_BELOW;
+}

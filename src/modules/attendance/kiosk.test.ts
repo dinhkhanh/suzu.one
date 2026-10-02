@@ -25,7 +25,7 @@ import { PROFILE_SEED } from "./engine/device-log";
 import { EMBEDDING_SIZE, normalise } from "./engine/face";
 import { qrWindow } from "./engine/kiosk-qr";
 import { deleteFaces, enrolFaces, faceStatusOf, purgeFacesOfLeavers, recogniseFace } from "./faces";
-import { closeKioskSession, kioskOfQrToken, kioskOfToken, kioskQrUrl, openKioskSession } from "./kiosk";
+import { closeKioskSession, kioskOfQrToken, kioskOfToken, kioskQrCodes, kioskQrUrl, openKioskSession } from "./kiosk";
 
 const ids = {} as Record<"media" | "creative" | "huy" | "nhu" | "lan" | "hr" | "device", string>;
 
@@ -130,6 +130,14 @@ describe("a kiosk on the wall", () => {
     const [sessionId, window] = code.split(".");
     expect(await kioskOfQrToken(`${sessionId}.${window}.${"A".repeat(22)}`)).toBeNull();
     expect(await kioskOfQrToken(`${sessionId}.${qrWindow(Date.now()) + 1}.${code.split(".")[2]}`)).toBeNull();
+
+    // A batch: one code per window from now on, each good only once its window has started.
+    const batch = kioskQrCodes(session, Date.now(), 4);
+    expect(batch.map((item) => item.window)).toEqual([0, 1, 2, 3].map((offset) => qrWindow(Date.now()) + offset));
+    expect(new URL(batch[0].url).searchParams.get("t")).toBe(code);
+    const later = new URL(batch[3].url).searchParams.get("t")!;
+    expect(await kioskOfQrToken(later)).toBeNull();
+    expect(await kioskOfQrToken(later, Date.now() + 3 * 20_000)).toMatchObject({ session: { id: session.id } });
 
     await closeKioskSession(session.id, ids.hr);
     expect(await kioskOfToken(token)).toBeNull();

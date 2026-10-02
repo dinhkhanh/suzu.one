@@ -10,6 +10,7 @@ import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { cosine } from "../../engine/face";
 import { KioskMachine, type KioskView, type Named, type Punched } from "../../engine/kiosk-machine";
+import { currentQr, needsMoreQr, type QrCode as QrCodeEntry } from "../../engine/kiosk-qr";
 import { type FaceEngine, loadFaceEngine } from "./face-engine";
 import { QrCode } from "./kiosk-qr";
 
@@ -34,7 +35,9 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
   const [phase, setPhase] = useState<Phase>("loading");
   const [view, setView] = useState<KioskView>({ state: "idle" });
   const [offline, setOffline] = useState(false);
-  const [qr, setQr] = useState<{ path: string; size: number } | null>(null);
+  const [codes, setCodes] = useState<{ list: QrCodeEntry[]; offset: number }>({ list: [], offset: 0 });
+  // The codes held and the server's clock, kept across re-renders so a re-run asks for nothing new.
+  const held = useRef<{ list: QrCodeEntry[]; offset: number }>({ list: [], offset: 0 });
   const [now, setNow] = useState<Date | null>(null);
 
   const closed = useCallback((error: unknown) => {
@@ -53,21 +56,36 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
     };
   }, []);
 
-  // The QR code changes every 20 seconds; asking for it is also how the kiosk learns it was closed.
+  // The QR code changes every 20 seconds, and the server hands out five minutes of them at a time:
+  // the kiosk asks again only when it is running low (`needsMoreQr`), about every four minutes, and
+  // every 30 seconds while it cannot reach the server. Asking is also how an idle kiosk learns it
+  // was closed (a kiosk in use learns it from its next punch).
   useEffect(() => {
     if (phase === "closed") return;
     let stopped = false;
-    const refresh = () =>
-      call<{ url: string; qr: { path: string; size: number } }>("/api/kiosk/qr")
+    let asking = false;
+    let retryAt = 0;
+    const check = () => {
+      if (asking || Date.now() < retryAt || !needsMoreQr(held.current.list, Date.now() + held.current.offset)) return;
+      asking = true;
+      call<{ now: number; codes: QrCodeEntry[] }>("/api/kiosk/qr")
         .then((body) => {
-          if (!stopped) {
-            setQr(body.qr);
-            setOffline(false);
-          }
+          if (stopped) return;
+          // The codes follow the server's clock, whatever the tablet's says.
+          held.current = { list: body.codes, offset: body.now - Date.now() };
+          setCodes(held.current);
+          setOffline(false);
         })
-        .catch(closed);
-    void refresh();
-    const timer = setInterval(refresh, 15_000);
+        .catch((error) => {
+          retryAt = Date.now() + 30_000;
+          closed(error);
+        })
+        .finally(() => {
+          asking = false;
+        });
+    };
+    check();
+    const timer = setInterval(check, 5_000);
     return () => {
       stopped = true;
       clearInterval(timer);
@@ -117,6 +135,9 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
       const kiosk = machine.current;
       let busy = false;
       let lastRead = 0;
+      // Naming a face asks the server: a few times a second at most while it is being named, and
+      // slower for a face nobody knows, which would otherwise ask several times a second until it left.
+      let identifyAfter = 0;
       // The face as it was when the kiosk named it: the challenge checks it is still the same one, and the punch sends it.
       let named: number[] | null = null;
 
@@ -129,7 +150,7 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
         const found = engine.detect(element, at);
         const step = kiosk.observe(found ? { width: found.width, position: found.position, count: found.count } : null, at);
         setView(step.view);
-        if (!step.need || !found || busy) return;
+        if (!step.need || !found || busy || (step.need === "identify" && at < identifyAfter)) return;
         busy = true;
         const reader = engine;
         void (async () => {
@@ -137,6 +158,7 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
             const embedding = await reader.embed(element, found.points);
             if (step.need === "identify") {
               const body = await call<{ person: Named | null }>("/api/kiosk/identify", { embedding });
+              identifyAfter = performance.now() + (body.person ? 250 : 1200);
               setOffline(false);
               const next = kiosk.identified(body.person, found.position, performance.now());
               if (next.state === "challenge") named = embedding;
@@ -202,6 +224,7 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
   }
 
   const [title, sub] = words(view, t, time);
+  const shownQr = now ? currentQr(codes.list, now.getTime() + codes.offset) : null;
   const tone = view.state === "challenge" || view.state === "punching" ? "border-warning" : view.state === "done" ? "border-success" : view.state === "failed" || view.state === "unknown" ? "border-destructive" : "border-white/55";
 
   return (
@@ -214,9 +237,9 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
           <div className="font-mono text-4xl font-semibold tabular-nums sm:text-6xl">{now ? format.dateTime(now, { hour: "2-digit", minute: "2-digit", timeZone: ZONE }) : "--:--"}</div>
           <div className="text-sm text-white/90 sm:text-lg">{now ? format.dateTime(now, { weekday: "long", day: "numeric", month: "long", timeZone: ZONE }) : ""}</div>
         </div>
-        {qr ? (
+        {shownQr ? (
           <figure className="flex w-28 flex-col items-center gap-1.5 rounded-[14px] bg-black/55 p-2 backdrop-blur sm:w-36">
-            <QrCode path={qr.path} modules={qr.size} size={128} label={t("qr.label")} />
+            <QrCode text={shownQr.url} size={128} label={t("qr.label")} />
             <figcaption className="text-center text-[0.6875rem] leading-tight text-white/90 sm:text-xs">{t("qr.caption")}</figcaption>
           </figure>
         ) : null}

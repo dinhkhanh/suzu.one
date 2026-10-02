@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isWindowAccepted, parseQrToken, QR_WINDOW_MS, qrToken, qrWindow } from "./kiosk-qr";
+import { currentQr, isWindowAccepted, needsMoreQr, parseQrToken, QR_BATCH_WINDOWS, QR_REFILL_BELOW, QR_WINDOW_MS, qrToken, qrWindow } from "./kiosk-qr";
 
 const session = "0b6c1f7e-3c2a-4d5e-9f10-112233445566";
 
@@ -18,5 +18,25 @@ describe("the kiosk's QR code", () => {
     const current = qrWindow(now);
     expect(current).toBe(1_000);
     expect([current + 1, current, current - 1, current - 2, current - 3].map((window) => isWindowAccepted(window, now))).toEqual([false, true, true, true, false]);
+  });
+});
+
+describe("the kiosk's codes, a batch at a time", () => {
+  const start = 2_000 * QR_WINDOW_MS + 1_000;
+  const codes = Array.from({ length: QR_BATCH_WINDOWS }, (_, index) => ({ window: 2_000 + index, url: `u${index}` }));
+
+  it("shows the code of the window it is in", () => {
+    expect(currentQr(codes, start)?.url).toBe("u0");
+    expect(currentQr(codes, start + 3 * QR_WINDOW_MS)?.url).toBe("u3");
+    expect(currentQr(codes, start + QR_BATCH_WINDOWS * QR_WINDOW_MS)).toBeNull();
+  });
+
+  it("asks again only when the batch runs low, every few minutes", () => {
+    expect(needsMoreQr(codes, start)).toBe(false);
+    expect(needsMoreQr(codes, start + (QR_BATCH_WINDOWS - QR_REFILL_BELOW - 1) * QR_WINDOW_MS)).toBe(false);
+    expect(needsMoreQr(codes, start + (QR_BATCH_WINDOWS - QR_REFILL_BELOW) * QR_WINDOW_MS)).toBe(true);
+    expect(needsMoreQr([], start)).toBe(true);
+    // One request lasts this long before the next one.
+    expect((QR_BATCH_WINDOWS - QR_REFILL_BELOW) * QR_WINDOW_MS).toBe(240_000);
   });
 });

@@ -1,4 +1,5 @@
-// A QR code, written out by hand (FR-AST-01: every asset carries a QR label).
+// A QR code, written out by hand (FR-AST-01: every asset carries a QR label; the face kiosk shows
+// one that changes every few seconds, drawn on the tablet itself).
 //
 // Nothing in the tree draws QR codes and the project adds no dependency for one, so this is the
 // encoder itself: ISO/IEC 18004, byte mode, error-correction level **M** (recovers about 15% of a

@@ -12,7 +12,7 @@ import { db, schema } from "@/lib/db";
 import { appOrigin } from "@/lib/site";
 import { entityReach, type Principal } from "@/modules/platform/rbac/policy";
 import { type DeviceRow, servedEntityIds } from "./devices";
-import { isWindowAccepted, parseQrToken, qrPayload, qrToken, qrWindow } from "./engine/kiosk-qr";
+import { isWindowAccepted, parseQrToken, QR_BATCH_WINDOWS, type QrCode, qrPayload, qrToken, qrWindow } from "./engine/kiosk-qr";
 import { canOpenKiosk } from "./policy";
 
 export const KIOSK_COOKIE = "suzu_kiosk";
@@ -85,10 +85,15 @@ export function kioskTokenOf(request: Request): string | null {
 
 const sign = (secret: string, sessionId: string, window: number) => createHmac("sha256", secret).update(qrPayload(sessionId, window)).digest("base64url").slice(0, 22);
 
+const qrUrl = (session: KioskSessionRow, window: number) => `${appOrigin()}${KIOSK_SCAN_PATH}?t=${qrToken(session.id, window, sign(session.qrSecret, session.id, window))}`;
+
 /** The address the kiosk shows as a QR code right now. */
-export function kioskQrUrl(session: KioskSessionRow, now: number = Date.now()): string {
-  const window = qrWindow(now);
-  return `${appOrigin()}${KIOSK_SCAN_PATH}?t=${qrToken(session.id, window, sign(session.qrSecret, session.id, window))}`;
+export const kioskQrUrl = (session: KioskSessionRow, now: number = Date.now()): string => qrUrl(session, qrWindow(now));
+
+/** The codes of the current window and the ones after it, for the kiosk to show in turn. */
+export function kioskQrCodes(session: KioskSessionRow, now: number = Date.now(), count: number = QR_BATCH_WINDOWS): QrCode[] {
+  const first = qrWindow(now);
+  return Array.from({ length: count }, (_, index) => ({ window: first + index, url: qrUrl(session, first + index) }));
 }
 
 /** The open kiosk a scanned code came from, while the code is fresh; null otherwise. */

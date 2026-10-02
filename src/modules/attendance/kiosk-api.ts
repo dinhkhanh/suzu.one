@@ -9,19 +9,19 @@
 // `next` and `direction` say whether the punch arrives or leaves ("in" / "out"), from the person's
 // own punches of every source (`nextKioskDirection`), so the screen greets or says goodbye.
 //   POST /api/kiosk/undo     {"punchId"}                       → {"cancelled":true|false}
-//   GET  /api/kiosk/qr                                          → {"url","qr":{"path","size"}} — also the heartbeat
+//   GET  /api/kiosk/qr                                          → {"now","codes":[{"window","url"}…]} — five minutes of
+//                                                                 QR codes at once; the tablet draws them in turn
 //
 // Every answer to a closed or unknown kiosk is a 401, and the screen says the kiosk is closed.
 import "server-only";
 import { z } from "zod";
 import { reportError } from "@/lib/observability/report";
-import { qrPath } from "@/modules/assets/service";
 import { recordAudit } from "@/modules/platform/audit/service";
 import { clientIpFrom } from "@/modules/platform/auth/client-ip";
 import { commitKioskPunch, nextKioskDirection, recentKioskPunches, withdrawKioskPunch } from "./devices";
 import { EMBEDDING_SIZE } from "./engine/face";
 import { recogniseFace } from "./faces";
-import { type Kiosk, kioskOfToken, kioskQrUrl, kioskTokenOf } from "./kiosk";
+import { type Kiosk, kioskOfToken, kioskQrCodes, kioskTokenOf } from "./kiosk";
 
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
 
@@ -99,7 +99,8 @@ export function undo(request: Request): Promise<Response> {
 
 export function qr(request: Request): Promise<Response> {
   return guarded(request, "/api/kiosk/qr", async (kiosk) => {
-    const url = kioskQrUrl(kiosk.session);
-    return json({ url, qr: qrPath(url) });
+    // The server's clock rides along: the tablet shows each code in the server's window, not its own.
+    const now = Date.now();
+    return json({ now, codes: kioskQrCodes(kiosk.session, now) });
   });
 }

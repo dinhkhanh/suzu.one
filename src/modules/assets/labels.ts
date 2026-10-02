@@ -9,7 +9,7 @@
 // same size — a sheet of subtly different squares looks like a mistake and prints like one.
 import { type ParsedFont, truncateToWidth } from "@/modules/platform/pdf/font";
 import { A4, Page, type PageSize, renderPdf } from "@/modules/platform/pdf/writer";
-import { encodeQr, type QrMatrix, smallestVersion } from "./engine/qr";
+import { encodeQr, type QrMatrix, smallestVersion } from "@/lib/qr";
 
 export type LabelRow = {
   /** What the label says in words: SZM-LAP-0007. */

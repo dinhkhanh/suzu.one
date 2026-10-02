@@ -14,7 +14,7 @@ const audit = vi.fn();
 vi.mock("./kiosk", () => ({
   kioskTokenOf: (request: Request) => /suzu_kiosk=([^;]+)/.exec(request.headers.get("cookie") ?? "")?.[1] ?? null,
   kioskOfToken: async (token: string | null) => (token === TOKEN ? kiosk : null),
-  kioskQrUrl: () => "https://suzu.one/attendance/check-in/kiosk?t=x",
+  kioskQrCodes: () => [{ window: 1, url: "https://suzu.one/attendance/check-in/kiosk?t=x" }],
 }));
 vi.mock("./faces", () => ({ recogniseFace: (...args: unknown[]) => recognise(...args) }));
 vi.mock("./devices", () => ({
@@ -23,7 +23,6 @@ vi.mock("./devices", () => ({
   nextKioskDirection: (...args: unknown[]) => next(...args),
   withdrawKioskPunch: (...args: unknown[]) => withdraw(...args),
 }));
-vi.mock("@/modules/assets/service", () => ({ qrPath: () => ({ path: "M0 0h1v1h-1z", size: 25 }) }));
 vi.mock("@/modules/platform/audit/service", () => ({ recordAudit: (entry: unknown) => audit(entry) }));
 vi.mock("@/lib/observability/report", () => ({ reportError: async () => undefined }));
 
@@ -93,8 +92,10 @@ describe("the kiosk's endpoints", () => {
     expect(audit).not.toHaveBeenCalled();
   });
 
-  it("hands out the QR code, drawn on the server", async () => {
-    expect(await (await qr(request("/api/kiosk/qr"))).json()).toEqual({ url: "https://suzu.one/attendance/check-in/kiosk?t=x", qr: { path: "M0 0h1v1h-1z", size: 25 } });
+  it("hands out the QR codes of the next minutes at once, with the server's clock", async () => {
+    const body = await (await qr(request("/api/kiosk/qr"))).json();
+    expect(body.codes).toEqual([{ window: 1, url: "https://suzu.one/attendance/check-in/kiosk?t=x" }]);
+    expect(Math.abs(body.now - Date.now())).toBeLessThan(5_000);
   });
 
   it("answers 500 when something breaks, never a stack", async () => {

@@ -7,7 +7,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseFont } from "../platform/pdf/font";
-import { encodeQr } from "./engine/qr";
+import { encodeQr } from "@/lib/qr";
 import { type LabelRow, qrSvg, renderLabelSheetPdf, sheetVersion } from "./labels";
 
 const font = parseFont(readFileSync("src/modules/platform/pdf/fonts/Roboto-Subset-Regular.ttf"));
