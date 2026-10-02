@@ -8,6 +8,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
+import { reportBrowserError } from "@/lib/observability/browser";
 import { cosine } from "../../engine/face";
 import { KioskMachine, type KioskView, type Named, type Punched } from "../../engine/kiosk-machine";
 import { currentQr, needsMoreQr, type QrCode as QrCodeEntry, shouldReload } from "../../engine/kiosk-qr";
@@ -33,6 +34,8 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
   const video = useRef<HTMLVideoElement>(null);
   const machine = useRef(new KioskMachine());
   const [phase, setPhase] = useState<Phase>("loading");
+  // Why the models did not load, in the browser's own words: whoever stands at the tablet can read it out.
+  const [failure, setFailure] = useState<string | null>(null);
   const [view, setView] = useState<KioskView>({ state: "idle" });
   const [offline, setOffline] = useState(false);
   const [codes, setCodes] = useState<{ list: QrCodeEntry[]; offset: number }>({ list: [], offset: 0 });
@@ -124,8 +127,11 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
     (async () => {
       try {
         engine = await loadFaceEngine("VIDEO");
-      } catch {
-        if (!stopped) setPhase("failed");
+      } catch (error) {
+        if (stopped) return;
+        reportBrowserError(error, "kiosk");
+        setFailure((error instanceof Error ? error.message : String(error)).slice(0, 240));
+        setPhase("failed");
         return;
       }
       try {
@@ -227,7 +233,10 @@ export function KioskScreen({ deviceName }: { deviceName: string }) {
   if (phase === "camera" || phase === "failed") {
     return (
       <Shell>
-        <p className="max-w-md text-center text-lg text-white/90">{t(phase === "camera" ? "cameraError" : "loadError")}</p>
+        <div className="flex max-w-md flex-col gap-3 text-center">
+          <p className="text-lg text-white/90">{t(phase === "camera" ? "cameraError" : "loadError")}</p>
+          {phase === "failed" && failure ? <p className="text-xs break-words text-white/55">{t("loadErrorDetail", { detail: failure })}</p> : null}
+        </div>
       </Shell>
     );
   }

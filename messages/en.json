@@ -12127,6 +12127,7 @@
     "loading": "Getting the kiosk ready…",
     "cameraError": "Could not open the camera. Allow this page to use the camera, then reload.",
     "loadError": "Could not load face recognition. Check the network, then reload the page.",
+    "loadErrorDetail": "Technical detail: {detail}",
     "offline": "Lost the connection to SuZu One. Retrying…",
     "notMe": "Not me",
     "manage": "Manage the kiosk",

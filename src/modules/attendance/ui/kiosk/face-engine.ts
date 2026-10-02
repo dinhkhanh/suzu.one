@@ -6,6 +6,7 @@
 import type { FaceLandmarker } from "@mediapipe/tasks-vision";
 import type { InferenceSession } from "onnxruntime-web";
 import { ALIGNED_SIZE, alignmentMatrix, applyAffine, alignedFace, type FivePoints, fivePointsFromMesh, invertAffine, normalise, nosePosition } from "../../engine/face";
+import { withModestMemory } from "./wasm-memory";
 
 const ASSETS = "/kiosk/assets";
 
@@ -44,13 +45,19 @@ async function recogniser(): Promise<{ session: InferenceSession; Tensor: typeof
   ort.env.logLevel = "error";
   // Threads need a cross-origin-isolated page; one thread embeds a face in a few tens of milliseconds.
   ort.env.wasm.numThreads = 1;
-  const session = await ort.InferenceSession.create(`${ASSETS}/models/face_recognition_sface_2021dec_int8.onnx`, { executionProviders: ["wasm"], graphOptimizationLevel: "all", logSeverityLevel: 3 });
+  // The runtime starts with the first session, and asks for its memory then (wasm-memory.ts).
+  const session = await withModestMemory(() => ort.InferenceSession.create(`${ASSETS}/models/face_recognition_sface_2021dec_int8.onnx`, { executionProviders: ["wasm"], graphOptimizationLevel: "all", logSeverityLevel: 3 }));
   return { session, Tensor: ort.Tensor };
 }
 
+/** Which of the two did not load, kept in front of the browser's own words: the screen shows it and the report carries it. */
+const named = (part: "landmarker" | "recogniser") => (error: unknown) => {
+  throw new Error(`${part}: ${error instanceof Error ? `${error.name}: ${error.message}` : String(error)}`, { cause: error });
+};
+
 /** Loads both models. `mode` is how `detect` is fed: a running camera, or still pictures. */
 export async function loadFaceEngine(mode: "VIDEO" | "IMAGE"): Promise<FaceEngine> {
-  const [marker, { session, Tensor }] = await Promise.all([landmarker(mode), recogniser()]);
+  const [marker, { session, Tensor }] = await Promise.all([landmarker(mode).catch(named("landmarker")), recogniser().catch(named("recogniser"))]);
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d", { willReadFrequently: true })!;
 

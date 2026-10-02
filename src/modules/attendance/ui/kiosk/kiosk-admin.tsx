@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { reportBrowserError } from "@/lib/observability/browser";
 import { closeKioskAction, deleteFacesAction, enrolFaceAction, kioskQrPunchAction, openKioskAction } from "../../kiosk-actions";
 import { type FaceEngine, loadFaceEngine } from "./face-engine";
 
@@ -171,7 +172,10 @@ function EnrolForm({ personId, personName, enrolled, onDone }: { personId: strin
           setCameraFailed(true);
         }
       })
-      .catch(() => setError("models"));
+      .catch((error) => {
+        reportBrowserError(error, "kiosk");
+        setError("models");
+      });
     return () => {
       stopped = true;
       stream?.getTracks().forEach((track) => track.stop());
@@ -272,10 +276,14 @@ function EnrolForm({ personId, personName, enrolled, onDone }: { personId: strin
         <DialogTitle>{t("title", { name: personName })}</DialogTitle>
         <DialogDescription>{t("hint")}</DialogDescription>
       </DialogHeader>
-      <div className="relative aspect-[4/3] overflow-hidden rounded-[14px] bg-neutral-900">
-        <video ref={video} autoPlay playsInline muted className="size-full -scale-x-100 object-cover" />
-        {!ready || cameraFailed ? <p className="absolute inset-0 grid place-items-center p-4 text-center text-sm text-white/80">{cameraFailed ? t("noCamera") : t("loading")}</p> : null}
-        {bursting ? <p className="absolute inset-x-3 bottom-3 rounded-[10px] bg-black/65 px-3 py-2 text-center text-sm text-white">{t("bursting", { current: bursting, total: BURST })}</p> : null}
+      {/* A plain block around the frame: a clipped box that is itself a row of the sheet's grid has no
+          minimum height, so on a short screen its row gives way and the frame lies over the buttons. */}
+      <div>
+        <div className="relative aspect-[4/3] overflow-hidden rounded-[14px] bg-neutral-900">
+          <video ref={video} autoPlay playsInline muted className="absolute inset-0 size-full -scale-x-100 object-cover" />
+          {!ready || cameraFailed ? <p className="absolute inset-0 grid place-items-center p-4 text-center text-sm text-white/80">{cameraFailed ? t("noCamera") : t("loading")}</p> : null}
+          {bursting ? <p className="absolute inset-x-3 bottom-3 rounded-[10px] bg-black/65 px-3 py-2 text-center text-sm text-white">{t("bursting", { current: bursting, total: BURST })}</p> : null}
+        </div>
       </div>
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" disabled={!ready || cameraFailed || busy} onClick={() => void burst()}>

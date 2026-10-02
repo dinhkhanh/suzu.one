@@ -12127,6 +12127,7 @@
     "loading": "Đang chuẩn bị máy chấm công…",
     "cameraError": "Không mở được camera. Hãy cho phép trang này dùng camera, rồi tải lại.",
     "loadError": "Không tải được bộ nhận diện khuôn mặt. Kiểm tra kết nối mạng rồi tải lại trang.",
+    "loadErrorDetail": "Chi tiết kỹ thuật: {detail}",
     "offline": "Mất kết nối với SuZu One. Đang thử lại…",
     "notMe": "Không phải tôi",
     "manage": "Quản lý máy chấm công",
